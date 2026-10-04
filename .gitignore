@@ -1,0 +1,14 @@
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/
+*.log
+.DS_Store
+
+# Machine-local and private (never published)
+private/
+.env.local
+*.local
+.cargo/
+.claude/
+*.tsbuildinfo

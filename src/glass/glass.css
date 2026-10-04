@@ -1,0 +1,467 @@
+/* ==========================================================================
+   Liquid Glass: CSS side of the material.
+   The optical pipeline (refraction, non-uniform blur, saturation,
+   brightness) runs in the per-surface SVG filter owned by glass/scene.ts.
+   These layers add the parts that are lighting and body, all driven by
+   variables the scene adapts from the sampled backdrop.
+
+   NOTE: never put opacity / filter / mask on a glass element or its
+   ancestors; those create a Backdrop Root and the glass would stop seeing
+   the scene behind it. Animate the layers instead.
+   ========================================================================== */
+
+@property --light-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 180deg;
+}
+@property --spot {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+.glass {
+  --g-tint-rgb: 22, 22, 24;
+  --g-opacity: 0.14;
+  --g-dim: 0;
+  --rim-top: 0.18;
+  --rim-side: 0.09;
+  --rim-bottom: 0.04;
+  --rim-inner: 0.06;
+  --g-rim-w: 0.75px;
+  --g-fresnel: 0.05;
+  --g-noise: 0.01;
+  --g-shadow-y: 4px;
+  --g-shadow-blur: 16px;
+  --g-shadow-a: 0.12;
+  --g-scale: 1;
+  --g-lift: 0px;
+  --px: 50%;
+  --py: 0%;
+
+  position: relative;
+  border-radius: var(--r);
+  color: var(--text-1);
+  /* No transform on the surface itself: Chromium hands an SVG backdrop filter
+     an empty backdrop when any ancestor of the filtered element is
+     transformed (even by an identity matrix). Lift and scale move the layers
+     instead; see "Motion" below. */
+  /* Lift only. No outline: the single edge light below is the only stroke. */
+  box-shadow: 0 var(--g-shadow-y) var(--g-shadow-blur) rgba(0, 0, 0, var(--g-shadow-a));
+  transition:
+    box-shadow var(--d-hover) var(--ease-out),
+    --light-angle var(--d-micro) var(--ease-out),
+    --spot var(--d-hover) var(--ease-out);
+}
+
+.glass > .g-optics,
+.glass > .g-tint,
+.glass > .g-rim,
+.glass > .g-clip {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* Optics: the backdrop pipeline itself (backdrop-filter set by the scene). */
+.glass > .g-optics {
+  transition: opacity var(--d-panel) var(--ease-out);
+}
+
+/* Body: adaptive tint with environment spill, fresnel rim glow, inner
+   highlight, dim compensation and micro-noise. */
+.glass > .g-tint {
+  background:
+    radial-gradient(120% 140% at var(--px) var(--py), rgba(255, 255, 255, calc(0.035 * var(--spot))), transparent 55%),
+    linear-gradient(rgba(0, 0, 0, var(--g-dim)), rgba(0, 0, 0, var(--g-dim))),
+    rgba(var(--g-tint-rgb), var(--g-opacity));
+  /* One soft sheen entering from the top edge only: the body is lit, not outlined. */
+  box-shadow: inset 0 16px 18px -18px rgba(255, 255, 255, calc(var(--g-fresnel) * 2.4));
+  transition: background-color var(--d-hover) var(--ease-out), box-shadow var(--d-hover) var(--ease-out);
+}
+.glass > .g-tint::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: var(--g-noise-tile);
+  background-size: 96px 96px;
+  opacity: var(--g-noise);
+  mix-blend-mode: overlay;
+}
+
+/* Edge light: the one and only stroke. It is not a uniform border: a
+   specular arc catches the upper-left of the edge and fades out along the
+   sides, a faint counter-reflection sits low on the opposite side, and the
+   pointer adds a glint. Nothing else follows the outline, so the surface
+   reads as one piece of glass instead of nested rings. */
+.glass > .g-rim {
+  --rim-k: 1;
+  padding: var(--g-rim-w);
+  background:
+    radial-gradient(90px circle at var(--px) var(--py), rgba(255, 255, 255, calc(0.28 * var(--spot))), transparent 70%),
+    radial-gradient(110% 130% at 22% -12%, rgba(255, 255, 255, calc(var(--rim-top) * var(--rim-k))) 0%, rgba(255, 255, 255, calc(var(--rim-top) * 0.3 * var(--rim-k))) 42%, transparent 66%),
+    radial-gradient(70% 110% at 84% 118%, rgba(255, 255, 255, calc(var(--rim-bottom) * 1.6 * var(--rim-k))) 0%, transparent 60%);
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+}
+
+/* Intersection response: where this surface covers lower glass, the lower
+   surface's bezel shows through as a refracted highlight and the overlap
+   reads denser. Positioned by the scene. */
+.glass > .g-clip {
+  overflow: hidden;
+}
+.g-intersect {
+  position: absolute;
+  background: rgba(var(--g-tint-rgb), 0.05);
+}
+
+.glass > .g-content {
+  position: relative;
+  border-radius: inherit;
+  height: 100%;
+}
+
+/* ---- Tone: over bright backdrops the glass turns light with dark ink ---- */
+.glass[data-tone="light"] {
+  color: var(--text-on-light);
+  /* Every ink level flips, including --text-1 which most controls use. */
+  --text-1: var(--text-on-light);
+  --text-2: rgba(30, 30, 34, 0.62);
+  --text-3: rgba(30, 30, 34, 0.42);
+}
+
+/* ---- Interaction states ------------------------------------------------- */
+.glass-interactive[data-state="hover"] {
+  --g-scale: 1.015;
+  --g-lift: -0.5px;
+  --g-shadow-blur: calc(var(--g-shadow-blur) + 4px);
+  --g-td: var(--d-hover);
+  transition-duration: var(--d-hover);
+}
+.glass-interactive[data-state="press"] {
+  --g-scale: 0.975;
+  --g-lift: 0.5px;
+  --g-shadow-a: calc(var(--g-shadow-a) * 0.6);
+  --g-shadow-y: 1px;
+  --g-td: var(--d-press-in);
+  transition-duration: var(--d-press-in);
+}
+
+/* ---- Motion: the layers move, the surface box does not -----------------
+   Every layer of one surface shares the same box, so scaling each about its
+   own centre moves the glass as one piece. Transforms exist only while a
+   surface is moving (hover, press, entering); at rest there is none, so
+   glass nested inside keeps an untransformed ancestry. */
+.glass > :is(.g-optics, .g-tint, .g-rim, .g-clip, .g-content) {
+  transition:
+    transform var(--g-td, var(--d-release)) var(--g-te, var(--spring-snappy)),
+    opacity var(--g-fade, 160ms) var(--ease-out);
+}
+.glass > .g-tint {
+  transition:
+    transform var(--g-td, var(--d-release)) var(--g-te, var(--spring-snappy)),
+    opacity var(--g-fade, 160ms) var(--ease-out),
+    background-color var(--d-hover) var(--ease-out),
+    box-shadow var(--d-hover) var(--ease-out);
+}
+.glass-interactive:is([data-state="hover"], [data-state="press"]) > :is(.g-optics, .g-tint, .g-rim, .g-clip, .g-content) {
+  transform: translateY(var(--g-lift)) scale(var(--g-scale));
+}
+.glass-interactive[data-state="press"] > .g-tint {
+  box-shadow: inset 0 2px 6px -2px rgba(0, 0, 0, 0.18);
+}
+.glass[aria-disabled="true"] > .g-content {
+  opacity: 0.42;
+}
+.glass[aria-disabled="true"] {
+  --spot: 0;
+}
+
+/* ---- Window inactive: calmer, denser, no luminous response ------------- */
+.is-inactive .glass {
+  --spot: 0;
+}
+.is-inactive .glass > .g-rim {
+  background: radial-gradient(110% 130% at 22% -12%, rgba(255, 255, 255, var(--rim-top)) 0%, transparent 62%);
+}
+
+/* ---- Glass inside glass ------------------------------------------------
+   A container that holds other glass (a toolbar capsule, a panel) stays
+   calm; the inner control keeps a light distinction. Never equal strength. */
+.glass:has(> .g-content .glass) > .g-rim { --rim-k: 0.55; }
+.glass:has(> .g-content .glass) > .g-tint { box-shadow: none; }
+.glass .glass { --g-shadow-a: 0.08 !important; --g-shadow-blur: 6px !important; --g-shadow-y: 1px !important; }
+
+/* ---- Quality tiers ------------------------------------------------------ */
+:root[data-glass="solid"] .glass > .g-tint {
+  background: var(--surface-raised);
+}
+:root[data-glass="solid"] .glass[data-material="dense"] > .g-tint {
+  background: var(--surface-deep);
+}
+:root[data-glass="solid"] .glass > .g-tint::after,
+:root[data-glass="solid"] .g-intersect {
+  display: none;
+}
+
+@media (prefers-contrast: more) {
+  .glass > .g-tint {
+    background: var(--surface-raised);
+  }
+  .glass > .g-rim {
+    background: rgba(255, 255, 255, 0.28);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-interactive[data-state="hover"],
+  .glass-interactive[data-state="press"] {
+    --g-scale: 1;
+    --g-lift: 0px;
+  }
+}
+
+/* ---- Merged glass (one body from several shapes) ----------------------- */
+.glass[data-union] { box-shadow: none; }
+.glass[data-union] > .g-optics,
+.glass[data-union] > .g-tint,
+.glass[data-union] > .g-clip {
+  border-radius: 0;
+  -webkit-mask: var(--g-mask) 0 0 / 100% 100% no-repeat;
+  mask: var(--g-mask) 0 0 / 100% 100% no-repeat;
+}
+.glass[data-union] > .g-tint { box-shadow: none; }
+.glass[data-union] > .g-rim {
+  border-radius: 0;
+  padding: 0;
+  -webkit-mask: none;
+  mask: none;
+  background: var(--g-rim-img) 0 0 / 100% 100% no-repeat;
+}
+.glass > .g-shadow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: #000;
+  -webkit-mask: var(--g-mask) 0 0 / 100% 100% no-repeat;
+  mask: var(--g-mask) 0 0 / 100% 100% no-repeat;
+  filter: blur(10px);
+  opacity: 0.38;
+  transform: translateY(6px);
+}
+
+/* ---- Grouped controls inside one capsule (Mail-style) ------------------ */
+.glass-group-row { display: flex; align-items: center; height: 100%; padding: 0 4px; }
+.glass-group-row > .gg-sep { width: 0.5px; height: 20px; margin: 0 2px; background: rgba(255, 255, 255, 0.16); flex: none; }
+.glass[data-tone="light"] .glass-group-row > .gg-sep { background: rgba(0, 0, 0, 0.14); }
+.gg-btn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 36px;
+  border-radius: 999px;
+  color: var(--text-1);
+  transition: background-color var(--d-hover) var(--ease-out), transform var(--d-release) var(--spring-snappy), color var(--d-hover);
+}
+.gg-btn::after { content: ""; position: absolute; inset: -4px -1px; }
+.gg-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); }
+.gg-btn:active:not(:disabled) { transform: scale(0.92); background: rgba(255, 255, 255, 0.16); transition-duration: var(--d-press-in); }
+.gg-btn:disabled { opacity: 0.32; }
+.gg-btn.is-active { background: rgba(255, 255, 255, 0.14); }
+.glass[data-tone="light"] .gg-btn:hover:not(:disabled) { background: rgba(0, 0, 0, 0.06); }
+
+/* ---- Guaranteed frost for sheets, menus and panels -----------------------
+   Dense surfaces carry reading content, so they never depend on the optical
+   pipeline alone: if the SVG backdrop filter is unavailable (some WebView2
+   and GPU combinations), this plain blur still keeps what is behind them
+   from competing with their text. */
+.glass[data-material="dense"] > .g-tint {
+  -webkit-backdrop-filter: blur(26px) saturate(1.5);
+  backdrop-filter: blur(26px) saturate(1.5);
+}
+/* Regular and prominent glass rely on the optical pipeline alone, so the
+   refraction stays crisp (an extra blur here would smear it). */
+:root[data-glass="solid"] .glass > .g-tint { -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* ==========================================================================
+   Material v3: one piece of thick, polished glass.
+
+   Built as a single body, not stacked effects:
+     shell     the backdrop pipeline (refraction + blur, scene.ts)
+     body      translucent fill whose face is lit from above and whose
+               floor falls into soft shade: that gradient is the thickness
+     edge      ONE hairline stroke whose brightness varies around the
+               shape (bright toward the light, a softer catch on the far
+               side, nearly gone on the flanks); no inner strokes, no glow
+     lift      a two-layer shadow: a tight contact shadow plus a wide,
+               soft falloff, so the piece floats just above the page
+     light     the pointer moves a broad, soft specular sheen across the
+               face and turns the edge light a few degrees; nothing that
+               reads as a line ever travels around the shape
+   ========================================================================== */
+
+.glass {
+  --g-face: 0.085;
+  --g-floor: 0.14;
+  --g-sheen: 0.075;
+  box-shadow:
+    0 0.5px 1.5px rgba(0, 0, 0, 0.16),
+    0 var(--g-shadow-y) var(--g-shadow-blur) calc(var(--g-shadow-blur) * -0.3) rgba(0, 0, 0, var(--g-shadow-a));
+}
+
+.glass > .g-tint {
+  background:
+    /* moving specular: a wide soft sheen, never a line */
+    radial-gradient(80% 140% at var(--px) var(--py), rgba(255, 255, 255, calc(var(--g-sheen) * var(--spot))), transparent 62%),
+    /* face lit from above */
+    radial-gradient(130% 80% at 50% -10%, rgba(255, 255, 255, var(--g-face)), transparent 62%),
+    /* floor: the far side of a thick piece of glass falls into shade */
+    radial-gradient(140% 70% at 50% 112%, rgba(0, 0, 0, var(--g-floor)), transparent 66%),
+    linear-gradient(rgba(0, 0, 0, var(--g-dim)), rgba(0, 0, 0, var(--g-dim))),
+    rgba(var(--g-tint-rgb), var(--g-opacity));
+  box-shadow: none;
+}
+
+/* The single edge. Its light turns only a little with the pointer. */
+.glass > .g-rim {
+  --rim-k: 1;
+  --rim-turn: calc((var(--light-angle) - 180deg) * 0.4);
+  padding: 1px;
+  background: conic-gradient(
+    from var(--rim-turn) at 50% 50%,
+    rgba(255, 255, 255, calc(var(--rim-top) * 0.95 * var(--rim-k))) 0deg,
+    rgba(255, 255, 255, calc(var(--rim-top) * 0.55 * var(--rim-k))) 40deg,
+    rgba(255, 255, 255, calc(var(--rim-side) * 0.35 * var(--rim-k))) 90deg,
+    rgba(255, 255, 255, calc(var(--rim-bottom) * 2.2 * var(--rim-k))) 165deg,
+    rgba(255, 255, 255, calc(var(--rim-bottom) * 2.2 * var(--rim-k))) 195deg,
+    rgba(255, 255, 255, calc(var(--rim-side) * 0.35 * var(--rim-k))) 270deg,
+    rgba(255, 255, 255, calc(var(--rim-top) * 0.55 * var(--rim-k))) 320deg,
+    rgba(255, 255, 255, calc(var(--rim-top) * 0.95 * var(--rim-k))) 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+.is-inactive .glass > .g-rim { --rim-k: 0.6; }
+
+/* Over bright backdrops the piece turns milky white with dark ink, and its
+   edge reads as a fine darker line, as in Apple's light appearance. */
+.glass[data-tone="light"] {
+  --g-face: 0.22;
+  --g-floor: 0.07;
+  --g-sheen: 0.18;
+  box-shadow:
+    0 0.5px 1.5px rgba(0, 0, 0, 0.12),
+    0 var(--g-shadow-y) var(--g-shadow-blur) calc(var(--g-shadow-blur) * -0.3) rgba(0, 0, 0, calc(var(--g-shadow-a) * 0.75));
+}
+.glass[data-tone="light"] > .g-rim {
+  background: conic-gradient(
+    from var(--rim-turn) at 50% 50%,
+    rgba(255, 255, 255, 0.95) 0deg,
+    rgba(255, 255, 255, 0.6) 50deg,
+    rgba(0, 0, 0, 0.07) 100deg,
+    rgba(0, 0, 0, 0.1) 180deg,
+    rgba(0, 0, 0, 0.07) 260deg,
+    rgba(255, 255, 255, 0.6) 310deg,
+    rgba(255, 255, 255, 0.95) 360deg
+  );
+}
+
+/* Pressing pushes the face in: the top light dims, the floor deepens. */
+.glass-interactive[data-state="press"] { --g-face: 0.04; --g-floor: 0.2; }
+.glass-interactive[data-state="press"] > .g-tint { box-shadow: none; }
+.glass-interactive[data-state="hover"] { --g-face: 0.11; }
+
+/* Glass inside glass: the container stays calm, the inner piece is a lens. */
+.glass:has(> .g-content .glass) { --g-sheen: 0.05; }
+.glass .glass { --g-face: 0.1; --g-floor: 0.08; }
+
+/* ---- Grouped controls (Mail toolbar pattern) ------------------------------ */
+.glass-group-row { padding: 0 3px; }
+.glass-group-row > .gg-sep { width: 0.5px; height: 18px; margin: 0 1px; background: rgba(255, 255, 255, 0.11); }
+.glass[data-tone="light"] .glass-group-row > .gg-sep { background: rgba(0, 0, 0, 0.1); }
+.gg-btn { width: 42px; height: 38px; }
+.gg-btn .icon { filter: none; }
+
+/* ==========================================================================
+   Material v4: physically believable glass.
+
+   One light, from the upper left, for every surface.
+     body      a milky, slightly brightening glass (not a dark veil): the
+               backdrop shows through refracted and lifted, with a faint
+               scattering haze; the floor only darkens a little
+     specular  a fixed, asymmetric highlight under the light (upper left)
+               plus a broad sheen the pointer slides across the face
+     edge      one hairline: bright where the light hits (upper left), a
+               soft caustic catch at the opposite lower corner, almost gone
+               on the flanks. It never moves with the pointer.
+     lens      nested selections (tabs, segmented) have no edge at all;
+               they are a lighter, slightly raised piece of the same glass
+   ========================================================================== */
+
+.glass {
+  --g-face: 0.06;
+  --g-floor: 0.07;
+  --g-sheen: 0.11;
+  --g-haze: 0.045;
+  --g-spec: 0.14;
+}
+
+.glass > .g-tint {
+  background:
+    /* pointer sheen: broad and soft; only its position and strength change */
+    radial-gradient(90% 150% at var(--px) var(--py), rgba(255, 255, 255, calc(var(--g-sheen) * var(--spot))), transparent 60%),
+    /* fixed specular under the light, upper left, asymmetric */
+    radial-gradient(55% 75% at 24% -6%, rgba(255, 255, 255, var(--g-spec)), transparent 70%),
+    /* face lit from above */
+    radial-gradient(140% 85% at 40% -12%, rgba(255, 255, 255, var(--g-face)), transparent 64%),
+    /* a little shade toward the far edge: thickness, not a dark veil */
+    radial-gradient(150% 70% at 60% 116%, rgba(0, 0, 0, var(--g-floor)), transparent 64%),
+    /* scattering haze: glass lifts what is behind it */
+    linear-gradient(rgba(255, 255, 255, var(--g-haze)), rgba(255, 255, 255, var(--g-haze))),
+    linear-gradient(rgba(0, 0, 0, var(--g-dim)), rgba(0, 0, 0, var(--g-dim))),
+    rgba(var(--g-tint-rgb), var(--g-opacity));
+}
+
+/* The one edge. Fixed to the light: bright upper left, caustic lower right. */
+.glass > .g-rim {
+  padding: 1px;
+  background: conic-gradient(
+    from -50deg at 50% 50%,
+    rgba(255, 255, 255, calc(var(--rim-top) * 1.55 * var(--rim-k))) 0deg,
+    rgba(255, 255, 255, calc(var(--rim-top) * 0.6 * var(--rim-k))) 45deg,
+    rgba(255, 255, 255, calc(var(--rim-side) * 0.25 * var(--rim-k))) 95deg,
+    rgba(255, 255, 255, calc(var(--rim-bottom) * 2.6 * var(--rim-k))) 175deg,
+    rgba(255, 255, 255, calc(var(--rim-side) * 0.25 * var(--rim-k))) 255deg,
+    rgba(255, 255, 255, calc(var(--rim-top) * 0.6 * var(--rim-k))) 315deg,
+    rgba(255, 255, 255, calc(var(--rim-top) * 1.55 * var(--rim-k))) 360deg
+  );
+}
+.glass[data-tone="light"] > .g-rim {
+  background: conic-gradient(
+    from -50deg at 50% 50%,
+    rgba(255, 255, 255, 1) 0deg,
+    rgba(255, 255, 255, 0.55) 50deg,
+    rgba(0, 0, 0, 0.06) 110deg,
+    rgba(0, 0, 0, 0.09) 175deg,
+    rgba(0, 0, 0, 0.06) 250deg,
+    rgba(255, 255, 255, 0.55) 310deg,
+    rgba(255, 255, 255, 1) 360deg
+  );
+}
+.glass[data-tone="light"] { --g-face: 0.2; --g-floor: 0.04; --g-sheen: 0.2; --g-haze: 0.12; --g-spec: 0.32; }
+
+/* States move light, not lines. */
+.glass-interactive[data-state="hover"] { --g-face: 0.085; --g-haze: 0.06; }
+.glass-interactive[data-state="press"] { --g-face: 0.03; --g-floor: 0.12; --g-spec: 0.08; }
+
+/* Nested selections: no edge, no capsule-in-capsule; a lighter raised lens. */
+.tab-lens > .g-rim, .segmented-lens > .g-rim { display: none; }
+.tab-lens, .segmented-lens { --g-face: 0.12; --g-haze: 0.09; --g-spec: 0.16; --g-floor: 0.04; }
+.glass[data-tone="light"] .tab-lens, .glass[data-tone="light"] .segmented-lens { --g-haze: 0.3; }

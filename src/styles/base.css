@@ -1,0 +1,117 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  font: var(--t-ui);
+  color: var(--text-1);
+  background: transparent;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "ss01" on, "cv11" on;
+  user-select: none;
+  cursor: default;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: default;
+}
+
+input,
+textarea {
+  user-select: text;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Text entry shows its caret and its own field styling; a ring box around a
+   borderless input inside glass reads as a rendering glitch. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):focus-visible,
+textarea:focus-visible,
+[contenteditable="true"]:focus-visible {
+  box-shadow: none;
+}
+.field:focus-visible { box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.6); }
+
+/* Arabic gets a touch more leading and a little larger optical size. */
+:lang(ar),
+[dir="rtl"] {
+  --t-body: 400 15.5px/1.8 var(--font-text);
+}
+
+/* Paragraph-level direction everywhere text is authored or shown. */
+.bidi {
+  unicode-bidi: plaintext;
+  text-align: start;
+}
+
+bdi,
+.isolate {
+  unicode-bidi: isolate;
+}
+
+::selection {
+  background: rgba(var(--accent-rgb), 0.32);
+}
+
+/* Scrollbars: thin, quiet, appear on hover. */
+.scroll {
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.scroll:hover {
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+kbd {
+  font: var(--t-caption);
+  font-family: var(--font-ui);
+  color: var(--text-3);
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--fill-1);
+  box-shadow: inset 0 0 0 0.5px var(--hairline);
+}

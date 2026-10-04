@@ -1,0 +1,1123 @@
+[
+  {
+    "name": "calendar",
+    "label": "Calendar",
+    "category": "Planning",
+    "keywords": [
+      "date",
+      "schedule",
+      "month",
+      "events",
+      "تقويم"
+    ]
+  },
+  {
+    "name": "clock",
+    "label": "Clock",
+    "category": "Planning",
+    "keywords": [
+      "time",
+      "hour",
+      "watch",
+      "ساعة"
+    ]
+  },
+  {
+    "name": "timer",
+    "label": "Timer",
+    "category": "Planning",
+    "keywords": [
+      "stopwatch",
+      "countdown",
+      "focus",
+      "مؤقت"
+    ]
+  },
+  {
+    "name": "checklist",
+    "label": "Checklist",
+    "category": "Planning",
+    "keywords": [
+      "tasks",
+      "todo",
+      "done",
+      "list",
+      "مهام",
+      "قائمة"
+    ]
+  },
+  {
+    "name": "notes",
+    "label": "Notes",
+    "category": "Planning",
+    "keywords": [
+      "memo",
+      "jot",
+      "notepad",
+      "ملاحظات"
+    ]
+  },
+  {
+    "name": "notebook",
+    "label": "Notebook",
+    "category": "Planning",
+    "keywords": [
+      "journal",
+      "spiral",
+      "diary",
+      "دفتر"
+    ]
+  },
+  {
+    "name": "bookmark",
+    "label": "Bookmark",
+    "category": "Planning",
+    "keywords": [
+      "save",
+      "favorite",
+      "ribbon",
+      "علامة"
+    ]
+  },
+  {
+    "name": "tag",
+    "label": "Tag",
+    "category": "Planning",
+    "keywords": [
+      "label",
+      "price",
+      "category",
+      "وسم"
+    ]
+  },
+  {
+    "name": "folder",
+    "label": "Folder",
+    "category": "Planning",
+    "keywords": [
+      "files",
+      "directory",
+      "organize",
+      "مجلد"
+    ]
+  },
+  {
+    "name": "inbox",
+    "label": "Inbox",
+    "category": "Planning",
+    "keywords": [
+      "tray",
+      "incoming",
+      "messages",
+      "وارد"
+    ]
+  },
+  {
+    "name": "mail",
+    "label": "Mail",
+    "category": "Planning",
+    "keywords": [
+      "email",
+      "envelope",
+      "letter",
+      "بريد"
+    ]
+  },
+  {
+    "name": "chat",
+    "label": "Chat",
+    "category": "Planning",
+    "keywords": [
+      "message",
+      "conversation",
+      "bubble",
+      "محادثة"
+    ]
+  },
+  {
+    "name": "phone",
+    "label": "Phone",
+    "category": "Planning",
+    "keywords": [
+      "call",
+      "contact",
+      "dial",
+      "هاتف",
+      "اتصال"
+    ]
+  },
+  {
+    "name": "meeting",
+    "label": "Meeting",
+    "category": "Planning",
+    "keywords": [
+      "video",
+      "call",
+      "conference",
+      "اجتماع"
+    ]
+  },
+  {
+    "name": "team",
+    "label": "Team",
+    "category": "Planning",
+    "keywords": [
+      "people",
+      "group",
+      "members",
+      "فريق"
+    ]
+  },
+  {
+    "name": "briefcase",
+    "label": "Briefcase",
+    "category": "Planning",
+    "keywords": [
+      "work",
+      "business",
+      "job",
+      "عمل",
+      "حقيبة"
+    ]
+  },
+  {
+    "name": "clipboard",
+    "label": "Clipboard",
+    "category": "Planning",
+    "keywords": [
+      "form",
+      "report",
+      "paste",
+      "حافظة"
+    ]
+  },
+  {
+    "name": "calculator",
+    "label": "Calculator",
+    "category": "Planning",
+    "keywords": [
+      "math",
+      "numbers",
+      "budget",
+      "حاسبة"
+    ]
+  },
+  {
+    "name": "chart-bar",
+    "label": "Bar Chart",
+    "category": "Planning",
+    "keywords": [
+      "stats",
+      "analytics",
+      "growth",
+      "إحصائيات"
+    ]
+  },
+  {
+    "name": "chart-pie",
+    "label": "Pie Chart",
+    "category": "Planning",
+    "keywords": [
+      "share",
+      "breakdown",
+      "analytics",
+      "رسم بياني"
+    ]
+  },
+  {
+    "name": "kanban",
+    "label": "Kanban",
+    "category": "Planning",
+    "keywords": [
+      "board",
+      "tasks",
+      "workflow",
+      "لوحة مهام"
+    ]
+  },
+  {
+    "name": "table",
+    "label": "Table",
+    "category": "Planning",
+    "keywords": [
+      "grid",
+      "rows",
+      "columns",
+      "data",
+      "جدول"
+    ]
+  },
+  {
+    "name": "database",
+    "label": "Database",
+    "category": "Planning",
+    "keywords": [
+      "storage",
+      "records",
+      "data",
+      "قاعدة بيانات"
+    ]
+  },
+  {
+    "name": "invoice",
+    "label": "Invoice",
+    "category": "Planning",
+    "keywords": [
+      "receipt",
+      "bill",
+      "payment",
+      "فاتورة"
+    ]
+  },
+  {
+    "name": "contract",
+    "label": "Contract",
+    "category": "Planning",
+    "keywords": [
+      "agreement",
+      "signature",
+      "legal",
+      "عقد"
+    ]
+  },
+  {
+    "name": "book",
+    "label": "Book",
+    "category": "Planning",
+    "keywords": [
+      "reading",
+      "study",
+      "pages",
+      "كتاب"
+    ]
+  },
+  {
+    "name": "library",
+    "label": "Library",
+    "category": "Planning",
+    "keywords": [
+      "books",
+      "shelf",
+      "collection",
+      "مكتبة"
+    ]
+  },
+  {
+    "name": "graduation",
+    "label": "Graduation",
+    "category": "Planning",
+    "keywords": [
+      "school",
+      "university",
+      "education",
+      "تخرج",
+      "تعليم"
+    ]
+  },
+  {
+    "name": "lightbulb",
+    "label": "Lightbulb",
+    "category": "Planning",
+    "keywords": [
+      "idea",
+      "insight",
+      "brainstorm",
+      "فكرة"
+    ]
+  },
+  {
+    "name": "target",
+    "label": "Target",
+    "category": "Planning",
+    "keywords": [
+      "goal",
+      "aim",
+      "focus",
+      "هدف"
+    ]
+  },
+  {
+    "name": "roadmap",
+    "label": "Roadmap",
+    "category": "Planning",
+    "keywords": [
+      "plan",
+      "journey",
+      "milestones",
+      "خارطة طريق"
+    ]
+  },
+  {
+    "name": "flowchart",
+    "label": "Flowchart",
+    "category": "Planning",
+    "keywords": [
+      "process",
+      "diagram",
+      "steps",
+      "مخطط"
+    ]
+  },
+  {
+    "name": "puzzle",
+    "label": "Puzzle",
+    "category": "Planning",
+    "keywords": [
+      "pieces",
+      "solve",
+      "fit",
+      "لغز",
+      "أحجية"
+    ]
+  },
+  {
+    "name": "link",
+    "label": "Link",
+    "category": "Planning",
+    "keywords": [
+      "url",
+      "chain",
+      "connect",
+      "رابط"
+    ]
+  },
+  {
+    "name": "cloud",
+    "label": "Cloud",
+    "category": "Planning",
+    "keywords": [
+      "online",
+      "storage",
+      "sync",
+      "سحابة"
+    ]
+  },
+  {
+    "name": "sync",
+    "label": "Sync",
+    "category": "Planning",
+    "keywords": [
+      "refresh",
+      "update",
+      "loop",
+      "مزامنة"
+    ]
+  },
+  {
+    "name": "printer",
+    "label": "Printer",
+    "category": "Planning",
+    "keywords": [
+      "print",
+      "paper",
+      "document",
+      "طابعة"
+    ]
+  },
+  {
+    "name": "translate",
+    "label": "Translate",
+    "category": "Planning",
+    "keywords": [
+      "language",
+      "words",
+      "localize",
+      "ترجمة"
+    ]
+  },
+  {
+    "name": "camera",
+    "label": "Camera",
+    "category": "Creative",
+    "keywords": [
+      "photo",
+      "photography",
+      "lens",
+      "كاميرا"
+    ]
+  },
+  {
+    "name": "film",
+    "label": "Film",
+    "category": "Creative",
+    "keywords": [
+      "movie",
+      "clapperboard",
+      "cinema",
+      "فيلم"
+    ]
+  },
+  {
+    "name": "microphone",
+    "label": "Microphone",
+    "category": "Creative",
+    "keywords": [
+      "podcast",
+      "record",
+      "voice",
+      "ميكروفون"
+    ]
+  },
+  {
+    "name": "headphones",
+    "label": "Headphones",
+    "category": "Creative",
+    "keywords": [
+      "audio",
+      "listen",
+      "music",
+      "سماعات"
+    ]
+  },
+  {
+    "name": "guitar",
+    "label": "Guitar",
+    "category": "Creative",
+    "keywords": [
+      "music",
+      "instrument",
+      "strings",
+      "جيتار"
+    ]
+  },
+  {
+    "name": "piano",
+    "label": "Piano",
+    "category": "Creative",
+    "keywords": [
+      "keys",
+      "music",
+      "instrument",
+      "بيانو"
+    ]
+  },
+  {
+    "name": "palette",
+    "label": "Palette",
+    "category": "Creative",
+    "keywords": [
+      "paint",
+      "colors",
+      "art",
+      "ألوان"
+    ]
+  },
+  {
+    "name": "paintbrush",
+    "label": "Paintbrush",
+    "category": "Creative",
+    "keywords": [
+      "paint",
+      "brush",
+      "art",
+      "فرشاة"
+    ]
+  },
+  {
+    "name": "pen-tool",
+    "label": "Pen Tool",
+    "category": "Creative",
+    "keywords": [
+      "vector",
+      "bezier",
+      "design",
+      "قلم"
+    ]
+  },
+  {
+    "name": "layers",
+    "label": "Layers",
+    "category": "Creative",
+    "keywords": [
+      "stack",
+      "design",
+      "levels",
+      "طبقات"
+    ]
+  },
+  {
+    "name": "cube-3d",
+    "label": "3D Cube",
+    "category": "Creative",
+    "keywords": [
+      "model",
+      "three",
+      "dimensional",
+      "object",
+      "مكعب"
+    ]
+  },
+  {
+    "name": "sparkles",
+    "label": "Sparkles",
+    "category": "Creative",
+    "keywords": [
+      "magic",
+      "shine",
+      "new",
+      "لمعان"
+    ]
+  },
+  {
+    "name": "gamepad",
+    "label": "Gamepad",
+    "category": "Gaming",
+    "keywords": [
+      "controller",
+      "console",
+      "play",
+      "ألعاب",
+      "يد تحكم"
+    ]
+  },
+  {
+    "name": "joystick",
+    "label": "Joystick",
+    "category": "Gaming",
+    "keywords": [
+      "arcade",
+      "retro",
+      "stick",
+      "عصا تحكم"
+    ]
+  },
+  {
+    "name": "dice",
+    "label": "Dice",
+    "category": "Gaming",
+    "keywords": [
+      "roll",
+      "chance",
+      "board",
+      "game",
+      "نرد"
+    ]
+  },
+  {
+    "name": "chess",
+    "label": "Chess",
+    "category": "Gaming",
+    "keywords": [
+      "knight",
+      "strategy",
+      "board",
+      "شطرنج"
+    ]
+  },
+  {
+    "name": "trophy",
+    "label": "Trophy",
+    "category": "Gaming",
+    "keywords": [
+      "win",
+      "award",
+      "champion",
+      "كأس"
+    ]
+  },
+  {
+    "name": "medal",
+    "label": "Medal",
+    "category": "Gaming",
+    "keywords": [
+      "award",
+      "achievement",
+      "prize",
+      "ميدالية"
+    ]
+  },
+  {
+    "name": "racing-wheel",
+    "label": "Racing Wheel",
+    "category": "Gaming",
+    "keywords": [
+      "steering",
+      "driving",
+      "race",
+      "سباق"
+    ]
+  },
+  {
+    "name": "vr-headset",
+    "label": "VR Headset",
+    "category": "Gaming",
+    "keywords": [
+      "virtual",
+      "reality",
+      "goggles",
+      "واقع افتراضي"
+    ]
+  },
+  {
+    "name": "sword",
+    "label": "Sword",
+    "category": "Gaming",
+    "keywords": [
+      "blade",
+      "fantasy",
+      "rpg",
+      "سيف"
+    ]
+  },
+  {
+    "name": "treasure-chest",
+    "label": "Treasure Chest",
+    "category": "Gaming",
+    "keywords": [
+      "loot",
+      "reward",
+      "chest",
+      "كنز"
+    ]
+  },
+  {
+    "name": "laptop",
+    "label": "Laptop",
+    "category": "Tech",
+    "keywords": [
+      "computer",
+      "notebook",
+      "work",
+      "حاسوب محمول"
+    ]
+  },
+  {
+    "name": "desktop",
+    "label": "Desktop",
+    "category": "Tech",
+    "keywords": [
+      "computer",
+      "monitor",
+      "screen",
+      "حاسوب"
+    ]
+  },
+  {
+    "name": "smartphone",
+    "label": "Smartphone",
+    "category": "Tech",
+    "keywords": [
+      "mobile",
+      "phone",
+      "device",
+      "جوال"
+    ]
+  },
+  {
+    "name": "keyboard",
+    "label": "Keyboard",
+    "category": "Tech",
+    "keywords": [
+      "typing",
+      "keys",
+      "input",
+      "لوحة مفاتيح"
+    ]
+  },
+  {
+    "name": "server-rack",
+    "label": "Server Rack",
+    "category": "Tech",
+    "keywords": [
+      "hosting",
+      "backend",
+      "infrastructure",
+      "خادم"
+    ]
+  },
+  {
+    "name": "cpu",
+    "label": "CPU",
+    "category": "Tech",
+    "keywords": [
+      "chip",
+      "processor",
+      "hardware",
+      "معالج"
+    ]
+  },
+  {
+    "name": "wifi",
+    "label": "WiFi",
+    "category": "Tech",
+    "keywords": [
+      "wireless",
+      "internet",
+      "network",
+      "واي فاي",
+      "شبكة"
+    ]
+  },
+  {
+    "name": "terminal",
+    "label": "Terminal",
+    "category": "Tech",
+    "keywords": [
+      "console",
+      "shell",
+      "command",
+      "طرفية"
+    ]
+  },
+  {
+    "name": "bug",
+    "label": "Bug",
+    "category": "Tech",
+    "keywords": [
+      "debug",
+      "issue",
+      "error",
+      "خطأ",
+      "حشرة"
+    ]
+  },
+  {
+    "name": "git-branch",
+    "label": "Git Branch",
+    "category": "Tech",
+    "keywords": [
+      "version",
+      "control",
+      "repo",
+      "فرع"
+    ]
+  },
+  {
+    "name": "robot",
+    "label": "Robot",
+    "category": "Tech",
+    "keywords": [
+      "bot",
+      "automation",
+      "machine",
+      "روبوت"
+    ]
+  },
+  {
+    "name": "ai-brain",
+    "label": "AI Brain",
+    "category": "Tech",
+    "keywords": [
+      "artificial",
+      "intelligence",
+      "mind",
+      "neural",
+      "ذكاء اصطناعي"
+    ]
+  },
+  {
+    "name": "lock",
+    "label": "Lock",
+    "category": "Tech",
+    "keywords": [
+      "secure",
+      "private",
+      "password",
+      "قفل"
+    ]
+  },
+  {
+    "name": "key",
+    "label": "Key",
+    "category": "Tech",
+    "keywords": [
+      "access",
+      "unlock",
+      "credentials",
+      "مفتاح"
+    ]
+  },
+  {
+    "name": "shield-check",
+    "label": "Shield Check",
+    "category": "Tech",
+    "keywords": [
+      "security",
+      "protected",
+      "verified",
+      "حماية",
+      "أمان"
+    ]
+  },
+  {
+    "name": "qr-code",
+    "label": "QR Code",
+    "category": "Tech",
+    "keywords": [
+      "scan",
+      "code",
+      "share",
+      "رمز"
+    ]
+  },
+  {
+    "name": "coffee",
+    "label": "Coffee",
+    "category": "Life",
+    "keywords": [
+      "cup",
+      "cafe",
+      "drink",
+      "قهوة"
+    ]
+  },
+  {
+    "name": "dallah",
+    "label": "Dallah",
+    "category": "Life",
+    "keywords": [
+      "arabic",
+      "coffee",
+      "pot",
+      "hospitality",
+      "دلة",
+      "قهوة"
+    ]
+  },
+  {
+    "name": "dates",
+    "label": "Dates",
+    "category": "Life",
+    "keywords": [
+      "fruit",
+      "palm",
+      "ramadan",
+      "تمر"
+    ]
+  },
+  {
+    "name": "food",
+    "label": "Food",
+    "category": "Life",
+    "keywords": [
+      "meal",
+      "restaurant",
+      "dining",
+      "طعام",
+      "أكل"
+    ]
+  },
+  {
+    "name": "cake",
+    "label": "Cake",
+    "category": "Life",
+    "keywords": [
+      "birthday",
+      "celebration",
+      "dessert",
+      "كعكة"
+    ]
+  },
+  {
+    "name": "plane",
+    "label": "Plane",
+    "category": "Life",
+    "keywords": [
+      "travel",
+      "flight",
+      "trip",
+      "طائرة",
+      "سفر"
+    ]
+  },
+  {
+    "name": "car",
+    "label": "Car",
+    "category": "Life",
+    "keywords": [
+      "drive",
+      "vehicle",
+      "road",
+      "سيارة"
+    ]
+  },
+  {
+    "name": "map-pin",
+    "label": "Map Pin",
+    "category": "Life",
+    "keywords": [
+      "location",
+      "place",
+      "map",
+      "موقع"
+    ]
+  },
+  {
+    "name": "globe",
+    "label": "Globe",
+    "category": "Life",
+    "keywords": [
+      "world",
+      "earth",
+      "international",
+      "عالم"
+    ]
+  },
+  {
+    "name": "tent",
+    "label": "Tent",
+    "category": "Life",
+    "keywords": [
+      "camping",
+      "outdoors",
+      "desert",
+      "خيمة"
+    ]
+  },
+  {
+    "name": "sun",
+    "label": "Sun",
+    "category": "Life",
+    "keywords": [
+      "day",
+      "weather",
+      "bright",
+      "شمس"
+    ]
+  },
+  {
+    "name": "moon",
+    "label": "Moon",
+    "category": "Life",
+    "keywords": [
+      "night",
+      "crescent",
+      "sleep",
+      "قمر",
+      "هلال"
+    ]
+  },
+  {
+    "name": "palm-tree",
+    "label": "Palm Tree",
+    "category": "Life",
+    "keywords": [
+      "beach",
+      "island",
+      "vacation",
+      "نخلة"
+    ]
+  },
+  {
+    "name": "leaf",
+    "label": "Leaf",
+    "category": "Life",
+    "keywords": [
+      "nature",
+      "plant",
+      "eco",
+      "ورقة"
+    ]
+  },
+  {
+    "name": "flower",
+    "label": "Flower",
+    "category": "Life",
+    "keywords": [
+      "bloom",
+      "spring",
+      "garden",
+      "زهرة"
+    ]
+  },
+  {
+    "name": "fire",
+    "label": "Fire",
+    "category": "Life",
+    "keywords": [
+      "flame",
+      "hot",
+      "trending",
+      "نار"
+    ]
+  },
+  {
+    "name": "heart",
+    "label": "Heart",
+    "category": "Life",
+    "keywords": [
+      "love",
+      "like",
+      "favorite",
+      "قلب"
+    ]
+  },
+  {
+    "name": "gift",
+    "label": "Gift",
+    "category": "Life",
+    "keywords": [
+      "present",
+      "surprise",
+      "celebration",
+      "هدية"
+    ]
+  },
+  {
+    "name": "cart",
+    "label": "Cart",
+    "category": "Life",
+    "keywords": [
+      "shopping",
+      "store",
+      "buy",
+      "سلة",
+      "تسوق"
+    ]
+  },
+  {
+    "name": "wallet",
+    "label": "Wallet",
+    "category": "Life",
+    "keywords": [
+      "money",
+      "cards",
+      "finance",
+      "محفظة"
+    ]
+  },
+  {
+    "name": "mosque",
+    "label": "Mosque",
+    "category": "Life",
+    "keywords": [
+      "prayer",
+      "islam",
+      "masjid",
+      "مسجد"
+    ]
+  },
+  {
+    "name": "lantern",
+    "label": "Lantern",
+    "category": "Life",
+    "keywords": [
+      "ramadan",
+      "fanous",
+      "light",
+      "فانوس"
+    ]
+  },
+  {
+    "name": "crown",
+    "label": "Crown",
+    "category": "Life",
+    "keywords": [
+      "king",
+      "royal",
+      "premium",
+      "تاج"
+    ]
+  },
+  {
+    "name": "gem",
+    "label": "Gem",
+    "category": "Life",
+    "keywords": [
+      "diamond",
+      "jewel",
+      "precious",
+      "جوهرة"
+    ]
+  }
+]

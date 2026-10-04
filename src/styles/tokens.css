@@ -1,0 +1,141 @@
+/* ==========================================================================
+   Worlds design tokens
+   One source for color, geometry, type, spacing and motion.
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* ---- Surfaces -------------------------------------------------------- */
+  --canvas: #000000;
+  --surface-deep: #1c1c1e;
+  --surface-raised: #242426;
+  --surface-2: #2c2c2e;
+  --surface-3: #3a3a3c;
+  --surface-sidebar: #111113;
+
+  /* ---- Text ------------------------------------------------------------ */
+  --text-1: rgba(245, 245, 247, 0.94);
+  --text-2: rgba(235, 235, 245, 0.62);
+  --text-3: rgba(235, 235, 245, 0.40);
+  --text-4: rgba(235, 235, 245, 0.24);
+  --text-on-light: rgba(18, 18, 20, 0.88);
+
+  /* ---- Lines & fills --------------------------------------------------- */
+  --hairline: rgba(255, 255, 255, 0.075);
+  --hairline-strong: rgba(255, 255, 255, 0.12);
+  --fill-1: rgba(255, 255, 255, 0.045);
+  --fill-2: rgba(255, 255, 255, 0.075);
+  --fill-3: rgba(255, 255, 255, 0.11);
+  --fill-press: rgba(255, 255, 255, 0.14);
+
+  /* ---- Accent (configurable; set from profile) ------------------------- */
+  --accent: #d2a46e;
+  --accent-rgb: 210, 164, 110;
+  --accent-soft: rgba(var(--accent-rgb), 0.16);
+  --accent-text: rgb(var(--accent-rgb));
+
+  /* ---- Semantic -------------------------------------------------------- */
+  --red: #e5675f;
+  --red-soft: rgba(229, 103, 95, 0.14);
+  --green: #63bf86;
+  --green-soft: rgba(99, 191, 134, 0.14);
+  --yellow: #e2b455;
+  --yellow-soft: rgba(226, 180, 85, 0.14);
+  --blue: #6ea6e6;
+  --blue-soft: rgba(110, 166, 230, 0.14);
+  --mention: #c9b38f;
+  --mention-bg: rgba(201, 179, 143, 0.10);
+
+  /* ---- Geometry -------------------------------------------------------- */
+  --r-xs: 8px;
+  --r-sm: 14px;
+  --r: 18px;
+  --r-lg: 22px;
+  --r-toolbar: 24px;
+  --r-popover: 24px;
+  --r-float: 30px;
+  --r-capsule: 999px;
+  --r-window: 16px;
+
+  /* ---- Control sizing -------------------------------------------------- */
+  --ctl-compact: 32px;
+  --ctl: 40px;
+  --ctl-lg: 48px;
+  --pad-x: 14px;
+  --hit: 44px;
+
+  /* ---- Spacing --------------------------------------------------------- */
+  --s-1: 4px;
+  --s-2: 6px;
+  --s-3: 8px;
+  --s-4: 12px;
+  --s-5: 16px;
+  --s-6: 24px;
+  --s-7: 32px;
+  --s-8: 48px;
+  --s-9: 64px;
+
+  /* ---- Type ------------------------------------------------------------ */
+  --font-ui: "Instrument Sans Variable", "IBM Plex Sans Arabic", "Segoe UI Variable Text", system-ui, sans-serif;
+  --font-text: "Instrument Sans Variable", "IBM Plex Sans Arabic", "Segoe UI Variable Text", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", monospace;
+
+  --t-title: 600 34px/1.14 var(--font-text);
+  --t-title-track: -0.024em;
+  --t-h1: 600 25px/1.25 var(--font-text);
+  --t-h1-track: -0.016em;
+  --t-h2: 600 19.5px/1.32 var(--font-text);
+  --t-h2-track: -0.01em;
+  --t-h3: 600 16px/1.4 var(--font-text);
+  --t-body: 400 15.5px/1.68 var(--font-text);
+  --t-ui: 500 13.5px/1.35 var(--font-ui);
+  --t-ui-strong: 600 13.5px/1.35 var(--font-ui);
+  --t-small: 450 12.5px/1.4 var(--font-ui);
+  --t-caption: 500 11.5px/1.35 var(--font-ui);
+
+  /* ---- Motion (timings from the material system) ----------------------- */
+  --d-micro: 180ms;
+  --d-press-in: 100ms;
+  --d-release: 200ms;
+  --d-hover: 160ms;
+  --d-panel: 300ms;
+  --d-struct: 420ms;
+  --d-select: 280ms;
+  --d-morph: 360ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.45, 0, 0.2, 1);
+  /* Spring curves are generated at runtime (motion/spring.ts) into
+     --spring-snappy and --spring-soft as CSS linear() easings. */
+  --spring-snappy: var(--ease-out);
+  --spring-soft: var(--ease-out);
+
+  /* ---- Elevation ------------------------------------------------------- */
+  --shadow-glass: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-float: 0 10px 34px rgba(0, 0, 0, 0.32), 0 2px 8px rgba(0, 0, 0, 0.18);
+  /* Must fully fade inside --win-margin, or the window rect clips it into a hard box. */
+  --shadow-window: 0 4px 13px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.35);
+  --win-margin: 20px;
+
+  --focus-ring: 0 0 0 2px rgba(var(--accent-rgb), 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --d-micro: 1ms;
+    --d-hover: 1ms;
+    --d-panel: 120ms;
+    --d-struct: 150ms;
+    --d-select: 1ms;
+    --d-morph: 1ms;
+  }
+}
+
+:root[data-motion="reduced"] {
+  --d-micro: 1ms;
+  --d-hover: 1ms;
+  --d-panel: 120ms;
+  --d-struct: 150ms;
+  --d-select: 1ms;
+  --d-morph: 1ms;
+}

@@ -1,0 +1,411 @@
+/* ==========================================================================
+   Worlds Design System
+   --------------------------------------------------------------------------
+   Loaded last. Defines the tokens every surface speaks (color, type, radius,
+   elevation, motion) and rebuilds the shared components on top of them, so
+   each screen inherits one macOS-style language instead of local styles.
+
+   Elevation ladder (one light source, from above):
+     0 canvas  ·  1 control  ·  2 raised / toolbar  ·  3 floating
+     4 menu / popover  ·  5 sheet / modal
+   Radius ladder:
+     xs 6 small marks · sm 8 fields, menu rows · md 10 inline controls
+     lg 14 cards, menus · xl 20 panels, popovers · 2xl 28 sheets, floats
+     capsule for buttons, chips, toolbars and segmented controls
+   ========================================================================== */
+
+:root {
+  /* ---- Neutrals: never pure black; a faint cool tint, layered ---------- */
+  --canvas: #0c0c0e;
+  --surface-sidebar: #121215;
+  --surface-deep: #1c1c1f;
+  --surface-raised: #242428;
+  --surface-2: #2c2c31;
+  --surface-3: #3a3a40;
+
+  --hairline: rgba(255, 255, 255, 0.07);
+  --hairline-strong: rgba(255, 255, 255, 0.11);
+  --separator: rgba(255, 255, 255, 0.06);
+  --fill-1: rgba(255, 255, 255, 0.045);
+  --fill-2: rgba(255, 255, 255, 0.075);
+  --fill-3: rgba(255, 255, 255, 0.11);
+  --fill-press: rgba(255, 255, 255, 0.13);
+
+  /* Quiet control fill with a lit top, the shared body of non-glass controls. */
+  --control-fill: linear-gradient(180deg, rgba(255, 255, 255, 0.095), rgba(255, 255, 255, 0.065));
+  --control-fill-hover: linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.09));
+  --control-fill-press: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.085));
+
+  /* ---- Radius ladder ------------------------------------------------------ */
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+  --r-2xl: 28px;
+  --r-capsule: 999px;
+  --r-card: var(--r-lg);
+  --r-field: var(--r-sm);
+  --r-menu: var(--r-lg);
+  --r-popover: var(--r-xl);
+  --r-sheet: var(--r-2xl);
+
+  /* ---- Elevation ladder --------------------------------------------------- */
+  --elev-1: 0 0.5px 1px rgba(0, 0, 0, 0.22), 0 1px 3px rgba(0, 0, 0, 0.14);
+  --elev-2: 0 0.5px 1.5px rgba(0, 0, 0, 0.2), 0 6px 16px -6px rgba(0, 0, 0, 0.38);
+  --elev-3: 0 1px 3px rgba(0, 0, 0, 0.2), 0 16px 36px -10px rgba(0, 0, 0, 0.48);
+  --elev-4: 0 2px 6px rgba(0, 0, 0, 0.22), 0 24px 56px -14px rgba(0, 0, 0, 0.58);
+  --elev-5: 0 4px 12px rgba(0, 0, 0, 0.26), 0 40px 90px -20px rgba(0, 0, 0, 0.64);
+
+  /* ---- Type scale (SF-like hierarchy) -------------------------------------- */
+  --t-display: 700 34px/1.12 var(--font-text);
+  --t-title1: 700 26px/1.2 var(--font-text);
+  --t-title2: 650 20px/1.28 var(--font-text);
+  --t-title3: 600 16.5px/1.35 var(--font-text);
+  --t-headline: 600 13.5px/1.35 var(--font-ui);
+  --t-callout: 500 14px/1.45 var(--font-ui);
+  --t-subhead: 500 13px/1.4 var(--font-ui);
+  --t-footnote: 500 12px/1.4 var(--font-ui);
+
+  /* ---- Motion tokens ----------------------------------------------------- */
+  --m-fast: 120ms;
+  --m-standard: 220ms;
+  --m-slow: 420ms;
+  --m-ease: cubic-bezier(0.25, 0.8, 0.25, 1);
+  --m-spring: var(--spring-snappy);
+  --m-spring-soft: var(--spring-soft);
+
+  --focus-ring: 0 0 0 3px rgba(var(--accent-rgb), 0.32);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --m-fast: 1ms; --m-standard: 1ms; --m-slow: 120ms; }
+}
+
+body { background: var(--canvas); }
+
+/* ==========================================================================
+   Glass variants: one material, tuned per role.
+   (subtle = clear, regular, prominent, control, toolbar, floating, selection)
+   ========================================================================== */
+.glass { box-shadow: var(--g-elev, var(--elev-2)); }
+.glass[data-material="clear"] { --g-elev: var(--elev-1); }
+.glass[data-material="control"] { --g-elev: var(--elev-1); }
+.glass[data-material="prominent"] { --g-elev: var(--elev-2); }
+.glass[data-material="dense"] { --g-elev: var(--elev-4); }
+.glass-group, .tb-tabs, .win-controls { --g-elev: var(--elev-2); }
+.menu-panel, .popover, .pf-inspector, .inspector { --g-elev: var(--elev-4); }
+.modal-panel, .ai-panel, .palette { --g-elev: var(--elev-5); }
+.tab-lens, .segmented-lens { --g-elev: 0 0.5px 1px rgba(0, 0, 0, 0.3), 0 2px 6px -1px rgba(0, 0, 0, 0.3); }
+.glass .glass { --g-elev: 0 0.5px 1px rgba(0, 0, 0, 0.28), 0 2px 6px -2px rgba(0, 0, 0, 0.32); }
+.glass-interactive[data-state="hover"] { box-shadow: var(--g-elev, var(--elev-2)), 0 0 0 0.5px rgba(255, 255, 255, 0.02); }
+.glass-interactive[data-state="press"] { --g-elev: var(--elev-1); }
+
+/* ==========================================================================
+   Buttons: primary, secondary, glass, ghost, icon, destructive, toolbar,
+   capsule, compact. Press = the material gives a little (scale + light).
+   ========================================================================== */
+.btn {
+  position: relative;
+  border-radius: var(--r-capsule);
+  font: var(--t-headline);
+  letter-spacing: -0.005em;
+  transition:
+    background var(--m-fast) var(--m-ease),
+    color var(--m-fast) var(--m-ease),
+    box-shadow var(--m-standard) var(--m-ease),
+    transform var(--m-standard) var(--m-spring),
+    opacity var(--m-fast);
+}
+.btn:active:not(:disabled) { transform: scale(0.975); transition-duration: 70ms; }
+.btn:focus-visible { box-shadow: var(--focus-ring); }
+.btn:disabled { opacity: 0.38; }
+
+/* secondary (plain) */
+.btn-plain { background: var(--control-fill); color: var(--text-1); box-shadow: var(--elev-1); }
+.btn-plain:hover:not(:disabled) { background: var(--control-fill-hover); }
+.btn-plain:active:not(:disabled) { background: var(--control-fill-press); box-shadow: none; }
+
+/* primary (tinted): accent with a lit face */
+.btn-tinted {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 60%), var(--accent);
+  color: #14110d;
+  box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.3), 0 4px 12px -4px rgba(var(--accent-rgb), 0.55);
+}
+.btn-tinted:hover:not(:disabled) { filter: brightness(1.05) saturate(1.04); }
+.btn-tinted:active:not(:disabled) { filter: brightness(0.96); box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.3); }
+
+/* ghost (quiet) */
+.btn-quiet { background: transparent; color: var(--text-2); }
+.btn-quiet:hover:not(:disabled) { background: var(--fill-1); color: var(--text-1); }
+.btn-quiet:active:not(:disabled) { background: var(--fill-2); }
+
+/* destructive */
+.btn-danger {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 60%), var(--red);
+  color: #fff;
+  box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.3), 0 4px 12px -4px rgba(229, 103, 95, 0.5);
+}
+.btn-danger:hover:not(:disabled) { filter: brightness(1.06); }
+
+.btn-compact { height: 30px; padding: 0 12px; font: var(--t-subhead); font-weight: 600; }
+.btn-standard { height: 34px; padding: 0 15px; }
+.btn-large { height: 44px; padding: 0 20px; font-size: 14.5px; }
+
+/* Glass buttons (GlassButton): sizes follow the control ladder. */
+.glass-btn { font: var(--t-headline); }
+.glass-btn-compact { height: 32px; }
+.glass-btn-standard { height: 38px; }
+.glass-btn-large { height: 46px; }
+.glass-btn:focus-visible { box-shadow: var(--focus-ring), var(--elev-1); outline: none; }
+
+/* ---- Icon buttons: quiet until touched; a soft lit fill, centered glyph ---- */
+.icon-btn {
+  border-radius: var(--r-capsule);
+  color: var(--text-2);
+  transition: background var(--m-fast) var(--m-ease), color var(--m-fast) var(--m-ease), transform var(--m-standard) var(--m-spring);
+}
+.icon-btn-compact { width: 30px; height: 30px; }
+.icon-btn-standard { width: 36px; height: 36px; border-radius: var(--r-capsule); }
+.icon-btn:hover:not(:disabled) { background: radial-gradient(120% 120% at 50% 0%, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.06)); color: var(--text-1); }
+.icon-btn:active:not(:disabled) { background: rgba(255, 255, 255, 0.1); transform: scale(0.94); transition-duration: 70ms; }
+.icon-btn.is-active { background: rgba(255, 255, 255, 0.09); color: var(--text-1); }
+.icon-btn:focus-visible { box-shadow: var(--focus-ring); }
+.icon-btn:disabled { opacity: 0.3; }
+
+/* ---- Toolbar groups (shared capsules with hairline separators) ---------- */
+.gg-btn { border-radius: var(--r-capsule); transition: background var(--m-fast) var(--m-ease), transform var(--m-standard) var(--m-spring), color var(--m-fast); }
+.gg-btn:hover:not(:disabled) { background: radial-gradient(120% 140% at 50% 0%, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04)); }
+.gg-btn:active:not(:disabled) { transform: scale(0.94); transition-duration: 70ms; }
+.gg-btn:disabled { color: var(--text-4); }
+.gg-btn.is-active { background: rgba(255, 255, 255, 0.1); }
+
+/* ==========================================================================
+   Segmented control: a quiet track; the selection is one raised glass lens.
+   ========================================================================== */
+.segmented { display: inline-flex; flex: none; border-radius: var(--r-capsule); background: rgba(255, 255, 255, 0.06); box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.03); }
+.segmented-track { padding: 2px; gap: 0; }
+.segmented-compact .segmented-track { height: 30px; }
+.segmented-standard .segmented-track { height: 36px; }
+.segmented-lens-wrap { inset: 2px auto 2px 0; }
+.segmented-item {
+  padding: 0 13px;
+  font: var(--t-subhead);
+  font-weight: 560;
+  color: var(--text-3);
+  transition: color var(--m-standard) var(--m-ease);
+}
+.segmented-item:hover { color: var(--text-2); }
+.segmented-item.is-selected { color: var(--text-1); font-weight: 620; }
+.segmented-item:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.segmented-lens { --g-opacity: 0.34 !important; }
+.glass .segmented { background: rgba(255, 255, 255, 0.05); }
+
+/* ==========================================================================
+   Search field
+   ========================================================================== */
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 8px 0 10px;
+  border-radius: var(--r-capsule);
+  background: rgba(255, 255, 255, 0.065);
+  color: var(--text-3);
+  transition: background var(--m-fast) var(--m-ease), box-shadow var(--m-standard) var(--m-ease);
+  min-width: 0;
+  cursor: text;
+}
+.search-field.sf-compact { height: 30px; }
+.search-field:hover { background: rgba(255, 255, 255, 0.085); }
+.search-field:focus-within { background: rgba(255, 255, 255, 0.1); box-shadow: var(--focus-ring); }
+.search-field input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: none; color: var(--text-1); font: var(--t-subhead); }
+.search-field input::placeholder { color: var(--text-3); }
+.search-field .sf-glass { flex: none; color: var(--text-3); }
+.sf-kbd, .search-field kbd { flex: none; padding: 1px 6px; border-radius: var(--r-xs); background: rgba(255, 255, 255, 0.07); color: var(--text-3); font: 600 10.5px/1.5 var(--font-ui); letter-spacing: 0.02em; }
+.sf-clear { flex: none; width: 16px; height: 16px; display: grid; place-items: center; border-radius: 50%; background: rgba(255, 255, 255, 0.28); color: #111; }
+.sf-clear:hover { background: rgba(255, 255, 255, 0.45); }
+.search-field.sf-button { cursor: default; min-width: 220px; justify-content: flex-start; font: var(--t-subhead); }
+.search-field.sf-button span { flex: 1; text-align: start; }
+
+/* ==========================================================================
+   Fields: text, textarea, number, select. Calm body, soft focus, quiet error.
+   ========================================================================== */
+.field {
+  height: 34px;
+  border-radius: var(--r-field);
+  background: rgba(255, 255, 255, 0.055);
+  box-shadow: none;
+  font: var(--t-callout);
+  font-weight: 450;
+  transition: background var(--m-fast) var(--m-ease), box-shadow var(--m-standard) var(--m-ease);
+}
+.field:hover { background: rgba(255, 255, 255, 0.075); }
+.field:focus, .field:focus-visible { background: rgba(255, 255, 255, 0.085); box-shadow: var(--focus-ring); outline: none; }
+.field::placeholder { color: var(--text-4); }
+.field.is-error { box-shadow: 0 0 0 1px rgba(229, 103, 95, 0.55); }
+textarea.field { padding: 8px 11px; }
+.field-label { font: var(--t-footnote); font-weight: 600; color: var(--text-3); text-transform: none; letter-spacing: 0; margin: 14px 0 6px; }
+.select-trigger { cursor: default; }
+.select-trigger .select-chevron { color: var(--text-3); }
+
+/* Checkbox, radio, range: native controls in the accent, at Apple sizes. */
+input[type="checkbox"], input[type="radio"], input[type="range"] { accent-color: var(--accent); }
+input[type="checkbox"], input[type="radio"] { width: 15px; height: 15px; }
+input[type="range"] { height: 4px; }
+
+/* ---- Switch (macOS proportions) ------------------------------------------- */
+.switch { width: 38px; height: 22px; background: rgba(255, 255, 255, 0.16); box-shadow: inset 0 0.5px 1px rgba(0, 0, 0, 0.25); }
+.switch.is-on { background: var(--accent); }
+.switch-knob { top: 2px; left: 2px; width: 18px; height: 18px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(0, 0, 0, 0.08); }
+.switch.is-on .switch-knob { transform: translateX(16px); }
+.switch:focus-visible { box-shadow: var(--focus-ring); }
+
+/* ==========================================================================
+   Chips (interactive), tags (static), badges (counts). One family.
+   ========================================================================== */
+.chip-btn, .ai-suggest-chip, .related-chip, .tpl-chip, .meta-chip, .preview-chip, .pf-customize, .owner-chip {
+  border-radius: var(--r-capsule);
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: none;
+  color: var(--text-2);
+  transition: background var(--m-fast) var(--m-ease), color var(--m-fast) var(--m-ease), transform var(--m-standard) var(--m-spring);
+}
+.chip-btn:hover:not(:disabled), .ai-suggest-chip:hover, .related-chip:hover, .tpl-chip:hover, .meta-chip:hover, .preview-chip:hover, .pf-customize:hover, .owner-chip:hover { background: rgba(255, 255, 255, 0.11); color: var(--text-1); }
+.chip-btn:active:not(:disabled), .ai-suggest-chip:active, .related-chip:active, .tpl-chip:active { transform: scale(0.96); transition-duration: 70ms; }
+.tag, .status-chip { border-radius: var(--r-capsule); background: rgba(255, 255, 255, 0.06); box-shadow: none; color: var(--text-3); font: var(--t-footnote); }
+.side-badge, .pf-media-badge, .col-count { font-variant-numeric: tabular-nums; }
+.side-badge { min-width: 18px; height: 18px; padding: 0 6px; border-radius: var(--r-capsule); background: var(--accent); color: #14110d; font: 700 10.5px/18px var(--font-ui); text-align: center; }
+
+/* ==========================================================================
+   Cards by role. Separation comes from material and depth, not borders.
+   ========================================================================== */
+/* content + interactive cards */
+.page-card, .featured-card, .tpl-card, .auto-card, .integ-card, .sub-card, .sub-card2, .pf-page, .col-tile, .pb-picker-item, .starter {
+  border-radius: var(--r-card);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.035));
+  box-shadow: var(--elev-1);
+  transition: background var(--m-standard) var(--m-ease), box-shadow var(--m-standard) var(--m-ease), transform var(--m-standard) var(--m-spring);
+}
+.page-card:hover, .featured-card:hover, .tpl-card:hover, .auto-card:hover, .sub-card:hover, .sub-card2:hover, .pf-page:hover, .col-tile:hover, .pb-picker-item:hover:not(:disabled), .starter:hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.05));
+  box-shadow: var(--elev-2);
+  transform: translateY(-1px);
+}
+.page-card:active, .featured-card:active, .tpl-card:active, .sub-card2:active, .pf-page:active, .col-tile:active, .starter:active { transform: scale(0.985); transition-duration: 80ms; }
+/* info panels and grouped lists: flat, quiet */
+.set-rows, .profile-about, .toc-block, .collection, .owner-card, .pf-blocks-empty {
+  border-radius: var(--r-lg);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: none;
+}
+.collection.is-selected, .toc-block.is-selected { box-shadow: var(--focus-ring); }
+
+/* ---- List rows (palette, menus, pickers, sidebars) ---------------------- */
+.list-row, .page-row, .auto-row, .act-row, .ai-chat-row, .version-row, .dest-row, .sg-item, .pal-item, .mm-row, .col-row {
+  border-radius: var(--r-sm);
+  transition: background var(--m-fast) var(--m-ease);
+}
+.side-item, .tree-row { border-radius: var(--r-sm); }
+.side-item.is-active, .tree-row.is-active { background: rgba(255, 255, 255, 0.09); }
+
+/* ==========================================================================
+   Menus, popovers, sheets, tooltips, toasts
+   ========================================================================== */
+.menu-panel { border-radius: var(--r-menu) !important; }
+.menu-items { padding: 5px; }
+.menu-item { height: 30px; padding: 0 10px 0 7px; border-radius: 7px; gap: 9px; font: var(--t-callout); font-size: 13.5px; }
+.menu-item.is-active { background: rgba(255, 255, 255, 0.1); }
+.menu-item.is-danger.is-active { background: rgba(229, 103, 95, 0.16); }
+.menu-icon { width: 20px; color: var(--text-2); }
+.menu-shortcut, .menu-item kbd { color: var(--text-3); font: var(--t-footnote); }
+.menu-sep, .menu-separator { height: 0.5px; margin: 5px 8px; background: var(--separator); }
+.popover { border-radius: var(--r-popover) !important; }
+.modal-panel { border-radius: var(--r-sheet) !important; }
+.tooltip {
+  border-radius: var(--r-sm) !important;
+  font: var(--t-footnote) !important;
+  background: rgba(40, 40, 44, 0.94) !important;
+  color: var(--text-1) !important;
+  box-shadow: var(--elev-3) !important;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+.toast { border-radius: var(--r-capsule); }
+
+/* ---- Separators: lighter, thinner, only where spacing is not enough ------- */
+.set-row + .set-row::before { background: var(--separator); }
+.gg-sep { background: rgba(255, 255, 255, 0.1) !important; }
+.bb-sep { background: rgba(255, 255, 255, 0.1); width: 0.5px; }
+.foot-head { border-bottom: 0; }
+
+/* ==========================================================================
+   Typography roles
+   ========================================================================== */
+.view-title, .home-title { font: var(--t-display); letter-spacing: -0.022em; }
+.section-label, .set-title, .foot-head > span:first-child { font: var(--t-footnote); font-weight: 650; color: var(--text-3); letter-spacing: 0.01em; text-transform: none; }
+.empty-title { font: var(--t-headline); font-size: 14.5px; }
+.empty-text { font: var(--t-subhead); color: var(--text-3); }
+.empty-icon { border-radius: var(--r-lg); background: rgba(255, 255, 255, 0.06); box-shadow: none; }
+
+/* Page titles scale with their column, so narrow panes never break words. */
+.page-column { container-type: inline-size; container-name: page; }
+.page-title { font-size: clamp(26px, 6.4cqi, 42px); overflow-wrap: break-word; word-break: normal; hyphens: manual; }
+@container page (max-width: 420px) {
+  .page-title { letter-spacing: -0.015em; }
+}
+
+/* ==========================================================================
+   Accessibility: visible focus everywhere, quieter motion on request
+   ========================================================================== */
+button:focus-visible, [role="button"]:focus-visible, [role="tab"]:focus-visible, [role="radio"]:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+@media (prefers-reduced-motion: reduce) {
+  .btn:active, .icon-btn:active, .gg-btn:active, .chip-btn:active, .page-card:hover, .featured-card:hover, .sub-card2:hover { transform: none !important; }
+}
+
+/* Home header: the greeting never wraps; controls move below it when space runs out. */
+.home-top { flex-wrap: wrap; row-gap: 12px; }
+.home-title { white-space: nowrap; }
+.empty-product { margin-bottom: 14px; filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.35)); }
+.empty-compact .empty-product { margin-bottom: 10px; }
+
+/* ---- Mixed-direction titles in app chrome --------------------------------
+   Lists, cards, rows and menus are left-to-right chrome: an Arabic title
+   starts beside its icon (it still reads right to left inside), instead of
+   flying to the far edge. Page content keeps its own direction. */
+.act-title, .act-main, .page-card-title, .page-card-preview, .featured-title, .featured-preview,
+.sub-title, .col-card-title, .col-row-title, .col-tile-title, .col-tile-sub, .pf-page-title, .pf-page-preview,
+.backlink-title, .backlink-excerpt, .ai-chat-row-title, .pal-item-title, .sg-title, .mm-label, .related-chip span,
+.tab-title, .list-row-title, .page-row-title, .tpl-card-title, .tpl-card-desc, .auto-card-name, .menu-text,
+.outline-item, .toc-item, .crumb-btn span, .sub-prop, .pb-item-title, .pb-item-sub {
+  text-align: left;
+  unicode-bidi: plaintext;
+}
+
+/* Reading surfaces (sheets, menus, popovers, palette, panels) carry text,
+   so their body is denser: an even dark veil inside the glass, under content. */
+.glass[data-material="dense"] > .g-tint { box-shadow: inset 0 0 0 100vmax rgba(26, 26, 30, 0.42); }
+.glass[data-material="dense"][data-tone="light"] > .g-tint { box-shadow: inset 0 0 0 100vmax rgba(250, 250, 252, 0.4); }
+.modal-body { overflow-x: hidden; }
+.pf-edit-media { flex-wrap: wrap; }
+
+/* Softer, lighter shadows: a lifted piece of glass, not a dark slab. */
+:root {
+  --elev-1: 0 0.5px 1px rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.1);
+  --elev-2: 0 0.5px 1px rgba(0, 0, 0, 0.16), 0 8px 22px -8px rgba(0, 0, 0, 0.36);
+}
+/* Optical centering: arrows and chevrons sit a hair toward their point. */
+.gg-btn .lucide-chevron-left, .tb-nav .lucide-chevron-left { transform: translateX(-0.5px); }
+.gg-btn .lucide-chevron-right, .tb-nav .lucide-chevron-right { transform: translateX(0.5px); }
+.glass-group-row > .gg-sep { height: 16px; background: rgba(255, 255, 255, 0.09) !important; }
+
+/* A search field that is a piece of glass (toolbar-level search, as on Home). */
+.sf-piece { height: 38px; min-width: 240px; cursor: default; color: var(--text-2); }
+.sf-piece-row { display: flex; align-items: center; gap: 8px; height: 100%; padding: 0 9px 0 13px; }
+.sf-piece-text { flex: 1; text-align: start; font: var(--t-subhead); color: var(--text-3); }
+.sf-piece .sf-kbd { background: rgba(255, 255, 255, 0.08); }
+.home-controls .glass-btn-standard { height: 38px; }
+.home-controls .segmented-standard .segmented-track { height: 38px; padding: 3px; }
+.home-controls .segmented-lens-wrap { inset: 3px auto 3px 0; }
+.home-controls .segmented-item { min-width: 38px; }

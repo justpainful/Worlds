@@ -1,0 +1,330 @@
+/* ==========================================================================
+   Claude: Siri-style panel, Apple Intelligence glow, quick-ask capsule,
+   Codex-style composer (one merged glass body with the "+" lens).
+   Loaded after views.css, so these rules refine the older chat styles.
+   ========================================================================== */
+
+/* ---- Apple Intelligence glow ------------------------------------------- */
+@property --ai-angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.ai-glow {
+  --ai-r: 24px;
+  --ai-w: 1.5px;
+  position: absolute;
+  inset: 0;
+  border-radius: var(--ai-r);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 420ms ease;
+  z-index: 0;
+}
+.ai-glow::before,
+.ai-glow::after {
+  content: "";
+  position: absolute;
+  inset: calc(var(--ai-w) * -1);
+  border-radius: inherit;
+  background: conic-gradient(from var(--ai-angle), #ff7a59, #ffb35c, #f46fd0, #a77bff, #5e8bff, #47d4ff, #7bf1c8, #ff7a59);
+  animation: ai-spin 6s linear infinite;
+}
+.ai-glow::before {
+  padding: var(--ai-w);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+.ai-glow::after { filter: blur(16px); opacity: 0.45; z-index: -1; }
+.ai-glow.is-focus { opacity: 0.55; }
+.ai-glow.is-focus::before, .ai-glow.is-focus::after { animation-duration: 14s; }
+.ai-glow.is-focus::after { opacity: 0.22; }
+.ai-glow.is-working { opacity: 1; }
+.ai-glow.is-working::before, .ai-glow.is-working::after { animation-duration: 2.6s; }
+.ai-glow.is-working::after { opacity: 0.6; filter: blur(20px); }
+.ai-glow.is-large { --ai-r: 32px; --ai-w: 2px; opacity: 0.9; }
+.ai-glow.is-large::after { filter: blur(26px); opacity: 0.5; }
+@keyframes ai-spin { to { --ai-angle: 360deg; } }
+@media (prefers-reduced-motion: reduce) {
+  .ai-glow::before, .ai-glow::after { animation: none; }
+}
+
+/* ---- Thinking shimmer and streaming ------------------------------------ */
+.ai-thinking { padding: 4px 2px; }
+.shimmer {
+  font: var(--t-ui);
+  font-size: 14px;
+  background: linear-gradient(90deg, var(--text-3) 0%, var(--text-3) 35%, #fff 50%, var(--text-3) 65%, var(--text-3) 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 1.8s linear infinite;
+}
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -150% 0; } }
+@media (prefers-reduced-motion: reduce) { .shimmer { animation: none; color: var(--text-3); } }
+.ai-answer.is-streaming .md > :last-child::after {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-inline-start: 6px;
+  border-radius: 50%;
+  background: var(--text-2);
+  vertical-align: middle;
+  animation: ai-caret 1s ease-in-out infinite;
+}
+@keyframes ai-caret { 50% { opacity: 0.2; transform: scale(0.7); } }
+
+/* ---- Conversation turns ----------------------------------------------- */
+.ai-feed .ai-prompt,
+.chat-view .ai-prompt {
+  max-width: 82%;
+  padding: 10px 15px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.13);
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.12);
+  font: var(--t-ui);
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+.ai-answer { padding: 2px 2px 0; white-space: normal; }
+.ai-answer .md { font-size: 15px; line-height: 1.62; }
+.ai-step { font: var(--t-caption); color: var(--text-3); gap: 7px; padding: 1px 2px; }
+.ai-step .icon:first-child { opacity: 0.8; }
+.ai-turn { gap: 6px; }
+.ai-result { background: rgba(255, 255, 255, 0.06); border-radius: 14px; }
+
+/* ---- Siri-style panel -------------------------------------------------- */
+.ai-panel {
+  right: 22px;
+  bottom: 22px;
+  width: 440px;
+  height: min(720px, calc(100vh - 92px));
+  max-height: none;
+  animation: none;
+}
+.ai-panel > :is(.g-optics, .g-tint, .g-rim, .g-clip, .g-content) { transform-origin: 100% 100%; animation: ai-panel-in 460ms var(--spring-snappy); }
+.ai-panel > .g-content { height: 100%; max-height: none; }
+@keyframes ai-panel-in { from { transform: translateY(24px) scale(0.94); opacity: 0; } }
+.ai-panel-head { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; padding: 12px 12px 4px; }
+.ai-panel-head .ai-chat-switch { justify-self: center; max-width: 220px; }
+.ai-panel-head-end { display: flex; gap: 6px; }
+.ai-panel .ai-feed { padding: 10px 20px 14px; gap: 14px; }
+.ai-panel-compose { padding: 4px 12px 12px; }
+.ai-panel .ai-empty { padding: 26px 4px 8px; }
+.ai-panel .ai-empty-title { font: var(--t-h3); font-size: 19px; letter-spacing: -0.01em; }
+
+/* ---- Composer ---------------------------------------------------------- */
+.ai-composer { position: relative; }
+.composer-shell { position: relative; min-height: 50px; isolation: isolate; }
+.composer-shell > .composer-glass { position: absolute !important; inset: 0; z-index: 0; pointer-events: none; }
+.composer-shell > .ai-glow { left: 27px; }
+.composer-plus {
+  position: absolute;
+  left: 0;
+  bottom: 4px;
+  z-index: 2;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--text-1);
+  transition: background-color var(--d-hover), transform var(--d-release) var(--spring-snappy);
+}
+.composer-plus:hover { background: rgba(255, 255, 255, 0.09); }
+.composer-plus:active { transform: scale(0.92); }
+.composer-body { position: relative; z-index: 1; display: flex; flex-direction: column; padding: 12px 10px 8px 60px; min-width: 0; }
+.composer-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; }
+.composer-chips .ai-context { margin: 0; height: 26px; background: rgba(255, 255, 255, 0.09); }
+.composer-chips .att-strip { width: 100%; }
+.composer-input {
+  width: 100%;
+  min-height: 24px;
+  resize: none;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: var(--text-1);
+  font: var(--t-ui);
+  font-size: 15px;
+  line-height: 1.5;
+  padding: 1px 4px 0;
+  overflow-y: auto;
+}
+.composer-input::placeholder { color: var(--text-3); }
+.composer-bar { display: flex; align-items: center; gap: 8px; height: 34px; margin-top: 6px; }
+.composer-hint { font: var(--t-caption); color: var(--text-4); white-space: nowrap; opacity: 0; transition: opacity var(--d-hover); }
+.ai-composer.is-focused .composer-hint, .ai-composer.is-busy .composer-hint { opacity: 1; }
+.ai-model-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font: var(--t-caption);
+  font-weight: 560;
+  color: var(--text-2);
+  background: rgba(255, 255, 255, 0.07);
+}
+.ai-model-btn:hover { background: rgba(255, 255, 255, 0.13); color: var(--text-1); }
+.composer-send {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--text-3);
+  background: rgba(255, 255, 255, 0.1);
+  transition: background-color 160ms ease, color 160ms ease, transform var(--d-release) var(--spring-snappy);
+}
+.composer-send.is-ready, .composer-send.is-stop { background: #f4f2ee; color: #111; }
+.composer-send.is-ready:hover, .composer-send.is-stop:hover { background: #fff; }
+.composer-send:active:not(:disabled) { transform: scale(0.9); }
+.composer-send:disabled { cursor: default; }
+.stop-square { width: 11px; height: 11px; border-radius: 3px; background: currentColor; }
+.ai-panel .composer-hint { display: none; }
+
+/* Larger, page-level composer (full chat view) */
+.ai-composer-page .composer-shell { min-height: 58px; }
+.ai-composer-page .composer-body { padding: 15px 12px 10px 62px; }
+.ai-composer-page .composer-input { font-size: 16px; min-height: 52px; }
+
+/* ---- Quick ask capsule ------------------------------------------------- */
+.quick-ask-root {
+  position: fixed;
+  inset: 0;
+  z-index: 2600;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 24vh;
+  background: rgba(0, 0, 0, 0);
+  transition: background-color 260ms ease;
+}
+.quick-ask-root.is-in { background: rgba(0, 0, 0, 0.22); }
+.quick-ask {
+  position: relative;
+  width: min(640px, calc(100vw - 48px));
+  transform: translateY(-10px) scale(0.96);
+  opacity: 0;
+  transition: transform 520ms var(--spring-snappy), opacity 200ms ease;
+}
+.quick-ask-root.is-in .quick-ask { transform: none; opacity: 1; }
+.quick-ask-field { position: relative; }
+.quick-ask-glass { position: relative; z-index: 1; }
+.quick-ask-row { display: flex; align-items: flex-end; gap: 12px; padding: 18px 26px; }
+.quick-ask-input {
+  flex: 1;
+  min-height: 32px;
+  resize: none;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: var(--text-1);
+  font: var(--t-ui);
+  font-size: 22px;
+  font-weight: 450;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  padding: 0;
+}
+.quick-ask-input::placeholder { color: var(--text-3); }
+.quick-ask-hint { flex: none; padding-bottom: 6px; font: var(--t-caption); color: var(--text-3); }
+.quick-ask-pills { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.qa-pill-btn { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 14px; font: var(--t-small); font-weight: 520; color: var(--text-1); max-width: 300px; }
+.qa-pill-btn span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- Full chat view ---------------------------------------------------- */
+.chat-view-head { min-height: 44px; }
+.chat-view-column { gap: 18px; padding-top: 18px; }
+.chat-view-column .ai-prompt { font-size: 15px; }
+.chat-view-compose { padding: 4px 28px 22px; }
+.chat-view-compose .ai-composer { max-width: 780px; margin: 0 auto; }
+.chat-view.is-empty .chat-view-main { justify-content: safe center; padding-bottom: 10vh; position: relative; overflow-y: auto; }
+.chat-view.is-empty .chat-view-head { position: absolute; top: 0; left: 0; right: 0; }
+.chat-view.is-empty .chat-view-feed { flex: none; overflow: visible; }
+.chat-view.is-empty .ai-empty { text-align: center; padding: 0 0 18px; }
+.chat-view.is-empty .ai-empty-title { font: var(--t-h1); font-size: 30px; letter-spacing: -0.02em; }
+.chat-view.is-empty .ai-empty-text { max-width: 560px; margin: 10px auto 0; }
+.chat-view.is-empty .ai-suggest { justify-content: center; }
+
+.composer-input:focus, .composer-input:focus-visible,
+.quick-ask-input:focus, .quick-ask-input:focus-visible { outline: none; box-shadow: none; }
+
+/* ---- Model and effort sliders ------------------------------------------ */
+.ai-model-dot { width: 7px; height: 7px; border-radius: 50%; background: conic-gradient(#8d99ff, #f46fd0, #ffb35c, #8d99ff); box-shadow: 0 0 6px rgba(141, 153, 255, 0.6); }
+.intel-pop .g-content { padding: 16px 18px 14px; }
+.intel { display: flex; flex-direction: column; gap: 16px; min-width: 260px; }
+.intel-block { display: flex; flex-direction: column; gap: 8px; }
+.intel-head { display: flex; align-items: baseline; justify-content: space-between; }
+.intel-title { font: var(--t-caption); color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; }
+.intel-value { font: var(--t-ui-strong); font-size: 15px; color: var(--text-1); }
+.intel-note { margin: 0; font: var(--t-small); color: var(--text-3); min-height: 1.4em; }
+.step-slider { display: flex; flex-direction: column; gap: 6px; user-select: none; }
+.ss-track { position: relative; height: 26px; margin: 0 11px; cursor: pointer; touch-action: none; outline: none; }
+.ss-rail, .ss-fill { position: absolute; left: -11px; top: 50%; height: 6px; margin-top: -3px; border-radius: 999px; }
+.ss-rail { right: -11px; background: rgba(255, 255, 255, 0.1); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35); }
+.ss-fill { width: calc(var(--ss-pct) + 11px); background: linear-gradient(90deg, color-mix(in srgb, var(--ss-hue) 55%, transparent), var(--ss-hue)); transition: width 320ms var(--spring-snappy); }
+.ss-stop { position: absolute; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: rgba(255, 255, 255, 0.35); }
+.ss-stop.is-on { background: rgba(255, 255, 255, 0.8); }
+.ss-thumb {
+  position: absolute;
+  top: 50%;
+  left: var(--ss-pct);
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 30%, #fff, #e9e6f2 60%, #cfcbd9);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(0, 0, 0, 0.2), 0 0 14px color-mix(in srgb, var(--ss-hue) 50%, transparent);
+  transition: left 320ms var(--spring-snappy), transform 160ms ease;
+}
+.ss-track:active .ss-thumb { transform: scale(1.12); }
+.ss-track:focus-visible .ss-thumb { outline: 2px solid var(--ss-hue); outline-offset: 2px; }
+.ss-labels { display: flex; justify-content: space-between; }
+.ss-label { font: var(--t-caption); color: var(--text-3); padding: 2px 4px; border-radius: 6px; transition: color 160ms ease; }
+.ss-label.is-on { color: var(--text-1); font-weight: 600; }
+.ss-label:hover { color: var(--text-2); }
+.pref-row .intel, .settings-row .intel { width: 320px; }
+
+/* ---- Calm, colour-free Claude ------------------------------------------
+   No rainbow ring, no coloured dots, neutral sliders. The only motion cue is
+   a faint white sheen around the field while Claude is working. */
+.ai-glow::before,
+.ai-glow::after { background: conic-gradient(from var(--ai-angle), rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.05) 40%, rgba(255, 255, 255, 0.05)); }
+.ai-glow.is-focus, .ai-glow.is-large { opacity: 0; }
+.ai-glow.is-working { opacity: 0.7; }
+.ai-glow.is-working::after { opacity: 0.25; filter: blur(14px); }
+.ai-model-dot { display: none; }
+.ss-fill { background: rgba(255, 255, 255, 0.75); }
+.ss-thumb { box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(0, 0, 0, 0.2); }
+.ai-context.is-chat, .ai-context.is-tool { color: var(--text-1); background: rgba(255, 255, 255, 0.09); }
+.chat-chip { background: rgba(255, 255, 255, 0.1); color: var(--text-1); }
+.chat-chip:hover { background: rgba(255, 255, 255, 0.16); }
+
+/* ---- @ menu -------------------------------------------------------------- */
+.mention-menu .g-content { padding: 6px; }
+.mm-list { max-height: 360px; overflow-y: auto; }
+.mm-section { padding: 8px 10px 4px; font: var(--t-small); font-weight: 600; color: var(--text-3); }
+.mm-row { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: 10px; cursor: default; }
+.mm-row.is-sel { background: rgba(255, 255, 255, 0.09); }
+.mm-icon { flex: none; width: 22px; display: grid; place-items: center; }
+.mm-label { flex: none; font: var(--t-ui-strong); font-size: 14px; color: var(--text-1); max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mm-note { min-width: 0; font: var(--t-small); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Panel header: both controls sit fully inside the panel's corner curve and
+   share one control style (a round close, a two-button capsule). */
+.ai-panel { border-radius: 28px; }
+.ai-panel-head { padding: 16px 16px 6px; }
+.ai-panel-head .glass-group { height: 38px; }
+.ai-panel-head .glass-group .gg-btn { width: 38px; height: 38px; }
+.ai-panel-head .glass-group .gg-btn .icon { width: 18px; height: 18px; }
+
+/* Panel header: both controls sit fully inside the panel's corner curve and
+   share one control style (a round close, a two-button capsule). */
+.ai-panel { border-radius: 28px; }
+.ai-panel-head { padding: 16px 16px 6px; }
+.ai-panel-head .glass-group { height: 38px; }
+.ai-panel-head .glass-group .gg-btn { width: 38px; height: 38px; }
+.tool-chip { display: inline-flex; align-items: center; gap: 4px; padding: 0.05em 0.5em 0.05em 0.3em; margin: 0 1px; border-radius: 7px; background: rgba(255, 255, 255, 0.1); color: var(--text-1); font-weight: 600; vertical-align: baseline; }
