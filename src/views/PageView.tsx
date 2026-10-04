@@ -4,7 +4,7 @@ import { api, errorMessage, fileUrl, isTauri } from "../lib/api";
 import type { Page } from "../lib/types";
 import { useStore, childrenOf, pageTitle } from "../state/store";
 import { emit, on } from "../lib/bus";
-import { PageEditor, type PageEditorHandle } from "../editor/PageEditor";
+import { PageEditor, whenSaved, type PageEditorHandle } from "../editor/PageEditor";
 import { insertPaths } from "../editor/media";
 import { Glass } from "../glass/Glass";
 import { LAYER } from "../glass/materials";
@@ -30,18 +30,24 @@ export function PageView({ pageId, paneId }: { pageId: string; paneId: string })
   const [error, setError] = useState<string | null>(null);
   const [rev, setRev] = useState(0);
 
+  // Only the latest request may land: switching pages quickly must never show
+  // (and then edit) a page other than the one the route points at.
+  const request = useRef(0);
   const load = useCallback(() => {
-    api
-      .page(pageId, true)
+    const ticket = ++request.current;
+    whenSaved(pageId)
+      .then(() => api.page(pageId, true))
       .then((p) => {
+        if (ticket !== request.current) return;
         setPage(p);
         setRev((r) => r + 1);
       })
-      .catch((e) => setError(errorMessage(e)));
+      .catch((e) => ticket === request.current && setError(errorMessage(e)));
   }, [pageId]);
 
   useEffect(() => {
     setPage(undefined);
+    setError(null);
     load();
   }, [load]);
 

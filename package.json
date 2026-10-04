@@ -11,7 +11,8 @@
     "app:dev": "tauri dev",
     "app:build": "tauri build",
     "app:install": "tauri build && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1",
-    "app": "tauri build --debug --no-bundle && node scripts/run-debug.mjs"
+    "app": "tauri build --debug --no-bundle && node scripts/run-debug.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
     "@floating-ui/dom": "^1.8.0",
@@ -55,6 +56,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
     "typescript": "^7.0.2",
-    "vite": "^8.3.2"
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
   }
 }

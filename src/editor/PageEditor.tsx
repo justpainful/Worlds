@@ -75,6 +75,17 @@ function refreshMentionLabels(n: JSONContent): JSONContent {
 }
 
 const blocksOf = (editor: Editor): JSONContent[] => editor.getJSON().content ?? [];
+const blocksOfDoc = (doc: PMNode): JSONContent[] => (doc.toJSON() as JSONContent).content ?? [];
+
+/**
+ * Saves still on their way to the database, per page. Opening a page waits
+ * for its pending save first, so a quick "leave and come back" never loads
+ * (and then re-saves) content older than what was just typed.
+ */
+const inflight = new Map<string, Promise<void>>();
+export function whenSaved(pageId: string): Promise<void> {
+  return inflight.get(pageId) ?? Promise.resolve();
+}
 
 export const PageEditor = forwardRef<PageEditorHandle, { page: Page; onSaved?: (at: number) => void; onSaving?: (s: boolean) => void }>(function PageEditor(
   { page, onSaved, onSaving },
@@ -85,6 +96,10 @@ export const PageEditor = forwardRef<PageEditorHandle, { page: Page; onSaved?: (
   const saveTimer = useRef(0);
   const saving = useRef<Promise<void> | null>(null);
   const dirty = useRef(false);
+  /** The latest document, kept so the final save works even after the editor is torn down. */
+  const lastDoc = useRef<PMNode | null>(null);
+  /** Identifies this editor among several open on the same page (split panes). */
+  const instance = useRef(Math.random().toString(36).slice(2));
   const external = useStore((s) => s.externalRevision[pageId] ?? 0);
   const [hovered, setHovered] = useState<{ node: PMNode; pos: number } | null>(null);
   const show = useMenu((s) => s.show);
@@ -184,8 +199,10 @@ export const PageEditor = forwardRef<PageEditorHandle, { page: Page; onSaved?: (
       },
       onCreate: ({ editor: ed }) => {
         baseline.current = new Map(blocksOf(ed).map((n) => [n.attrs?.bid as string, JSON.stringify(n)]));
+        lastDoc.current = ed.state.doc;
       },
-      onUpdate: () => {
+      onUpdate: ({ editor: ed }) => {
+        lastDoc.current = ed.state.doc;
         dirty.current = true;
         window.clearTimeout(saveTimer.current);
         saveTimer.current = window.setTimeout(() => flush(), 450);
@@ -198,12 +215,14 @@ export const PageEditor = forwardRef<PageEditorHandle, { page: Page; onSaved?: (
 
   async function flush() {
     const ed = editorRef.current;
-    if (!ed || ed.isDestroyed) return;
     window.clearTimeout(saveTimer.current);
     if (saving.current) await saving.current;
     if (!dirty.current) return;
+    const live = ed && !ed.isDestroyed;
+    const doc = live ? ed.state.doc : lastDoc.current;
+    if (!doc) return;
     dirty.current = false;
-    const blocks = blocksOf(ed);
+    const blocks = blocksOfDoc(doc);
     const changed = blocks.length !== baseline.current.size || blocks.some((b) => baseline.current.get(b.attrs?.bid) !== JSON.stringify(b));
     if (!changed) return;
     onSaving?.(true);
@@ -213,8 +232,11 @@ export const PageEditor = forwardRef<PageEditorHandle, { page: Page; onSaved?: (
           pageId,
           blocks.map((b) => ({ id: b.attrs?.bid as string, content: b })),
         );
-        if (res.remapped.length) applyRemaps(ed, res.remapped);
-        baseline.current = new Map(blocksOf(ed).map((n) => [n.attrs?.bid as string, JSON.stringify(n)]));
+        if (live && !ed.isDestroyed) {
+          if (res.remapped.length) applyRemaps(ed, res.remapped);
+          baseline.current = new Map(blocksOf(ed).map((n) => [n.attrs?.bid as string, JSON.stringify(n)]));
+        }
+        emit("page:saved", { pageId, from: instance.current });
         onSaved?.(res.updatedAt);
         const s = useStore.getState();
         const meta = s.pages[pageId];
@@ -224,10 +246,13 @@ export const PageEditor = forwardRef<PageEditorHandle, { page: Page; onSaved?: (
         useStore.getState().toast({ message: `Could not save: ${errorMessage(e)}`, tone: "error" });
       } finally {
         onSaving?.(false);
+        if (inflight.get(pageId) === saving.current) inflight.delete(pageId);
         saving.current = null;
       }
     })();
-    await saving.current;
+    const current = saving.current;
+    inflight.set(pageId, current);
+    await current;
   }
 
   useImperativeHandle(ref, () => ({
@@ -241,19 +266,36 @@ export const PageEditor = forwardRef<PageEditorHandle, { page: Page; onSaved?: (
     const before = () => {
       flush();
     };
+    const hidden = () => document.visibilityState === "hidden" && flush();
     window.addEventListener("beforeunload", before);
+    // Closing to the tray, quitting from it, or switching apps: save now, not in 450ms.
+    window.addEventListener("blur", before);
+    document.addEventListener("visibilitychange", hidden);
     return () => {
       window.removeEventListener("beforeunload", before);
+      window.removeEventListener("blur", before);
+      document.removeEventListener("visibilitychange", hidden);
       flush();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor]);
 
-  // Another writer (Claude / automation) changed this page: three-way merge.
+  // Another writer (Claude, an automation, or this page open in another pane)
+  // changed the page: three-way merge against what this editor last saved.
   const lastExternal = useRef(external);
+  const [peerRevision, setPeerRevision] = useState(0);
+  useEffect(
+    () =>
+      on("page:saved", ({ pageId: saved, from }) => {
+        if (saved === pageId && from !== instance.current) setPeerRevision((r) => r + 1);
+      }),
+    [pageId],
+  );
+  const lastPeer = useRef(0);
   useEffect(() => {
-    if (external === lastExternal.current || !editor) return;
+    if ((external === lastExternal.current && peerRevision === lastPeer.current) || !editor) return;
     lastExternal.current = external;
+    lastPeer.current = peerRevision;
     (async () => {
       await flush();
       const fresh = await api.page(pageId);
@@ -280,7 +322,7 @@ export const PageEditor = forwardRef<PageEditorHandle, { page: Page; onSaved?: (
       if (needsSave) flush();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [external, editor]);
+  }, [external, peerRevision, editor]);
 
   // Palette / menu commands targeting this page's editor.
   useEffect(() => {

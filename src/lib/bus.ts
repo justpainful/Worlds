@@ -2,6 +2,8 @@
 export interface BusEvents {
   "ai:open": { pageId: string | null; prompt?: string };
   "editor:command": { pageId: string; command: string; args?: unknown };
+  /** A page editor finished saving (other editors of the same page merge it). */
+  "page:saved": { pageId: string; from: string };
   "discord:compose": { pageId: string };
   "automation:new": { pageId: string | null };
   "page:info": { pageId: string; panel: "info" | "history" | "instructions" };
