@@ -31,7 +31,19 @@ fn serve_inner(request: &Request<Vec<u8>>) -> Result<Response<Vec<u8>>, StatusCo
     serve_file(request, &abs, &att.mime)
 }
 
+/// Attachments are shown, never run: markup that a frame could execute is
+/// served as plain text.
+fn safe_mime(mime: &str) -> &str {
+    match mime {
+        "text/html" | "application/xhtml+xml" | "text/xml" | "application/xml" | "text/javascript" | "application/javascript" => {
+            "text/plain; charset=utf-8"
+        }
+        m => m,
+    }
+}
+
 fn serve_file(request: &Request<Vec<u8>>, abs: &std::path::Path, mime: &str) -> Result<Response<Vec<u8>>, StatusCode> {
+    let mime = safe_mime(mime);
     let mut file = std::fs::File::open(abs).map_err(|_| StatusCode::NOT_FOUND)?;
     let total = file.metadata().map_err(|_| StatusCode::NOT_FOUND)?.len();
     let read_range = |file: &mut std::fs::File, start: u64, len: u64| -> Result<Vec<u8>, StatusCode> {
@@ -45,6 +57,7 @@ fn serve_file(request: &Request<Vec<u8>>, abs: &std::path::Path, mime: &str) -> 
     let base = || {
         Response::builder()
             .header(header::CONTENT_TYPE, mime)
+            .header("X-Content-Type-Options", "nosniff")
             .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
             .header(header::ACCEPT_RANGES, "bytes")
             .header(header::CACHE_CONTROL, "private, max-age=31536000, immutable")

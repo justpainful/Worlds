@@ -27,7 +27,7 @@ export function slashItems(): SlashItem[] {
     { id: "h3", title: "Heading 3", icon: "h3", group: "Basic", hint: "###", run: (e, r) => block(e, r).setHeading({ level: 3 }).run() },
     { id: "bullet", title: "Bulleted List", icon: "bulletList", group: "Basic", hint: "-", keywords: "ul unordered", run: (e, r) => block(e, r).toggleBulletList().run() },
     { id: "numbered", title: "Numbered List", icon: "numberedList", group: "Basic", hint: "1.", keywords: "ol ordered", run: (e, r) => block(e, r).toggleOrderedList().run() },
-    { id: "check", title: "Checklist", icon: "checklist", group: "Basic", hint: "[]", keywords: "todo task", run: (e, r) => block(e, r).toggleTaskList().run() },
+    { id: "check", title: "Checklist", icon: "checklist", group: "Basic", hint: "[]", keywords: "todo task checkbox to-do", run: (e, r) => block(e, r).toggleTaskList().run() },
     { id: "quote", title: "Quote", icon: "quote", group: "Basic", hint: ">", run: (e, r) => block(e, r).toggleBlockquote().run() },
     { id: "callout", title: "Callout", icon: "callout", group: "Basic", keywords: "note tip info", run: (e, r) => block(e, r).setCallout("note").run() },
     { id: "highlight", title: "Highlight", icon: "highlight", group: "Basic", keywords: "emphasis important", run: (e, r) => block(e, r).setCallout("highlight").run() },

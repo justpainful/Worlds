@@ -189,6 +189,10 @@ export const SlashCommand = Extension.create<{ getContext: () => EditorContext }
             if (t.includes(q)) return 2;
             if (k.split(/\s+/).some((w) => w.startsWith(q))) return 3;
             if (k.includes(q)) return 4;
+            // "to-do", "todo", "to do" all find the checklist.
+            const bare = (x: string) => x.replace(/[^\p{L}\p{N}]+/gu, "");
+            const bq = bare(q);
+            if (bq && (bare(t).includes(bq) || bare(k).includes(bq))) return 5;
             return 9;
           };
           return all

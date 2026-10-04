@@ -147,3 +147,12 @@ fn saves_based_on_an_old_sync_are_detected() {
     assert!(store::page_changed_since(&conn, &page, synced).unwrap());
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn attachment_names_are_plain_names() {
+    assert_eq!(store::clean_file_name(r"C:\Users\me\Desktop\photo.png"), "photo.png");
+    assert_eq!(store::clean_file_name("../../etc/passwd"), "passwd");
+    assert_eq!(store::clean_file_name("a<b>c:d?.txt"), "abcd.txt");
+    assert_eq!(store::clean_file_name("   "), "file");
+    assert_eq!(store::clean_file_name("\u{0}\u{7}x.pdf"), "x.pdf");
+}

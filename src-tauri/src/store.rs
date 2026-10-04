@@ -1564,11 +1564,42 @@ pub fn kind_for_mime(mime: &str) -> &'static str {
     }
 }
 
+/// Largest file accepted as an attachment.
+pub const MAX_ATTACHMENT_BYTES: usize = 1024 * 1024 * 1024;
+
+/// A display name that is only a name: no folders, control characters or
+/// reserved characters, and not absurdly long.
+pub fn clean_file_name(raw: &str) -> String {
+    let base = raw.rsplit(['/', '\\']).next().unwrap_or(raw);
+    let cleaned: String = base.chars().filter(|c| !c.is_control() && !matches!(c, '<' | '>' | ':' | '"' | '|' | '?' | '*')).collect();
+    let trimmed = cleaned.trim().trim_matches('.').trim();
+    let mut name: String = trimmed.chars().take(180).collect();
+    if name.is_empty() {
+        name = "file".into();
+    }
+    name
+}
+
 pub fn add_attachment_bytes(conn: &Connection, page_id: Option<&str>, file_name: &str, bytes: &[u8]) -> Result<Attachment> {
+    if bytes.len() > MAX_ATTACHMENT_BYTES {
+        bail!("the file is larger than 1 GB");
+    }
+    let file_name = clean_file_name(file_name);
+    let file_name = file_name.as_str();
     let id = new_id();
-    let mime = mime_guess::from_path(file_name).first_or_octet_stream().essence_str().to_string();
-    let ext =
-        std::path::Path::new(file_name).extension().and_then(|e| e.to_str()).map(|e| format!(".{}", e.to_lowercase())).unwrap_or_default();
+    let mut mime = mime_guess::from_path(file_name).first_or_octet_stream().essence_str().to_string();
+    // Stored under a short, plain extension only (the original name is kept for display).
+    let ext = std::path::Path::new(file_name)
+        .extension()
+        .and_then(|e| e.to_str())
+        .filter(|e| e.len() <= 10 && e.chars().all(|c| c.is_ascii_alphanumeric()))
+        .map(|e| format!(".{}", e.to_lowercase()))
+        .unwrap_or_default();
+    // Something named like a raster image has to actually be one.
+    let vector_or_new = matches!(ext.as_str(), ".svg" | ".heic" | ".heif" | ".avif" | ".ico");
+    if mime.starts_with("image/") && !vector_or_new && imagesize::blob_size(bytes).is_err() {
+        mime = "application/octet-stream".into();
+    }
     let month = chrono::Local::now().format("%Y-%m").to_string();
     let rel = format!("{month}/{id}{ext}");
     let abs = db::attachments_dir().join(&rel);
