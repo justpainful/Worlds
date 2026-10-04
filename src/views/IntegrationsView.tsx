@@ -126,9 +126,9 @@ export function BridgeCard({ detailed }: { detailed?: boolean }) {
 
       {state === "connected" ? (
         <ul className="integ-facts">
-          <li><Icon name="check" size={13} /> Bot <bdi>{bot}</bdi></li>
+          <li><Icon name="check" size={13} /> <span>Bot <bdi>{bot}</bdi></span></li>
           <li><Icon name="check" size={13} /> Destinations refreshed {inventoryAt ? relTime(inventoryAt) : ""}</li>
-          <li><Icon name="lock" size={13} /> The bot token stays on <bdi>{BRIDGE.host}</bdi>; Worlds holds only a shared key in memory</li>
+          <li><Icon name="lock" size={13} /> <span>The bot token stays on <bdi>{BRIDGE.host}</bdi>; Worlds holds only a shared key in memory</span></li>
         </ul>
       ) : state === "unknown" ? null : (
         <EmptyState compact icon="disconnected" title={explain.title} text={explain.text} />
