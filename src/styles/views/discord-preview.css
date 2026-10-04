@@ -1,0 +1,43 @@
+/* ---- Discord preview --------------------------------------------------- */
+.dc-preview { --dc-bg: #313338; background: var(--dc-bg); border-radius: 14px; padding: 16px 16px 18px 12px; color: #dbdee1; font: 400 15px/1.375 "gg sans", "Segoe UI", "IBM Plex Sans Arabic", sans-serif; user-select: text; max-width: 100%; }
+.dc-preview.is-mobile { max-width: 380px; margin: 0 auto; font-size: 15px; padding: 12px 10px; }
+.dc-preview.is-compact { padding: 10px 12px; }
+.dc-message { display: flex; gap: 14px; }
+.dc-avatar { width: 40px; height: 40px; flex: none; border-radius: 50%; background: #5865f2; color: #fff; display: grid; place-items: center; }
+.dc-body { flex: 1; min-width: 0; }
+.dc-head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.dc-name { color: #f2f3f5; font-weight: 600; }
+.dc-app { font-size: 10px; font-weight: 600; padding: 1px 4px; border-radius: 4px; background: #5865f2; color: #fff; }
+.dc-time { font-size: 12px; color: #949ba4; }
+.dc-components { display: flex; flex-direction: column; gap: 8px; }
+.dc-container { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 8px; background: #393a41; border: 1px solid rgba(255, 255, 255, 0.04); max-width: 520px; }
+.dc-preview.is-mobile .dc-container { max-width: 100%; }
+.dc-container.has-accent { border-left: 4px solid var(--dc-accent); }
+.dc-text { white-space: normal; overflow-wrap: anywhere; }
+.dc-line { unicode-bidi: plaintext; text-align: start; min-height: 1.375em; }
+.dc-line.dc-h1 { font-size: 24px; font-weight: 700; line-height: 1.375; margin: 8px 0 4px; }
+.dc-line.dc-h2 { font-size: 20px; font-weight: 700; margin: 8px 0 4px; }
+.dc-line.dc-h3 { font-size: 16px; font-weight: 700; margin: 8px 0 2px; }
+.dc-text > .dc-line:first-child.dc-h1, .dc-text > .dc-line:first-child.dc-h2 { margin-top: 0; }
+.dc-subtext { font-size: 12px; color: #949ba4; }
+.dc-li { display: flex; gap: 8px; padding-inline-start: 6px; }
+.dc-bullet { color: #dbdee1; flex: none; }
+.dc-quote { border-inline-start: 4px solid #4e5058; padding-inline-start: 12px; }
+.dc-code { margin: 4px 0; padding: 8px 10px; border-radius: 4px; background: #2b2d31; border: 1px solid #1e1f22; font: 13px/1.45 var(--font-mono); white-space: pre-wrap; }
+.dc-inline-code { padding: 0 3px; border-radius: 3px; background: #2b2d31; font: 13px var(--font-mono); }
+.dc-link { color: #00a8fc; }
+.dc-sep { height: 1px; background: #4e5058; margin: 4px 0; }
+.dc-sep.is-space { background: none; }
+.dc-gallery { display: grid; gap: 4px; border-radius: 8px; overflow: hidden; }
+.dc-gallery.n1 { grid-template-columns: 1fr; }
+.dc-gallery.n2, .dc-gallery.n4 { grid-template-columns: 1fr 1fr; }
+.dc-gallery.n3 { grid-template-columns: 2fr 1fr; }
+.dc-gallery img { width: 100%; height: 100%; max-height: 320px; object-fit: cover; display: block; }
+.dc-file { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 8px; background: #2b2d31; border: 1px solid #1e1f22; color: #b5bac1; }
+.dc-file-name { color: #00a8fc; font-size: 15px; }
+.dc-file-size { font-size: 12px; color: #949ba4; }
+.dc-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.dc-button { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 16px; border-radius: 8px; font-size: 14px; font-weight: 500; color: #fff; background: #4e5058; }
+.dc-button.style-1 { background: #5865f2; }
+.dc-button.style-3 { background: #248046; }
+.dc-button.style-4 { background: #da373c; }

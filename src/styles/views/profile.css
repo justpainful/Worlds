@@ -1,0 +1,33 @@
+/* ---- Profile ------------------------------------------------------------ */
+.profile { max-width: 1040px; margin: 0 auto; padding: 70px 40px 96px; }
+.profile-banner { position: relative; height: 300px; border-radius: 26px; overflow: hidden; background: linear-gradient(140deg, #222226, #141416); box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.06); }
+.profile-banner-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.profile-banner-empty { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--text-3); font: var(--t-small); }
+.profile-banner-actions { position: absolute; z-index: 3; right: 16px; top: 16px; display: flex; gap: 8px; }
+/* Overlaps the banner by 54px; only its contents take clicks so banner controls stay reachable. */
+.profile-id { display: flex; align-items: flex-end; gap: 22px; padding: 0 28px; margin-top: -54px; position: relative; pointer-events: none; }
+.profile-id > * { pointer-events: auto; }
+.profile-avatar { position: relative; border-radius: 50%; padding: 6px; background: var(--surface-deep); flex: none; }
+.profile-avatar .avatar { font-size: 38px !important; }
+.profile-avatar-edit { position: absolute; right: 8px; bottom: 8px; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-3); color: var(--text-1); opacity: 0; transition: opacity var(--d-hover); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); }
+.profile-avatar:hover .profile-avatar-edit { opacity: 1; }
+.profile-names { flex: 1; min-width: 0; padding-bottom: 8px; display: flex; flex-direction: column; gap: 6px; }
+.profile-name { margin: 0; font: var(--t-title); letter-spacing: var(--t-title-track); }
+.profile-name-input { height: 44px; font-size: 22px; font-weight: 600; }
+.profile-handle { display: flex; align-items: center; gap: 10px; color: var(--text-3); font: var(--t-ui); }
+.profile-status { padding: 3px 10px; border-radius: 999px; background: var(--fill-1); color: var(--text-2); font: var(--t-small); }
+.profile-actions { display: flex; gap: 8px; padding-bottom: 12px; }
+.profile-body { display: grid; grid-template-columns: 1fr 300px; gap: 28px; margin-top: 30px; padding: 0 28px; }
+.profile-bio { margin: 0; font: var(--t-body); font-size: 16px; color: var(--text-1); max-width: 600px; text-align: start; }
+.profile-bio.is-empty { color: var(--text-4); font: var(--t-ui); }
+.profile-edit { display: flex; flex-direction: column; }
+.profile-edit .field-label:first-child { margin-top: 0; }
+.profile-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 28px; }
+.stat { padding: 16px 18px; }
+.stat-num { font: 600 26px/1.1 var(--font-ui); letter-spacing: -0.02em; }
+.stat-num.stat-small { font-size: 16px; padding: 5px 0; }
+.stat-label { font: var(--t-small); color: var(--text-3); margin-top: 4px; }
+.profile-prefs { display: flex; flex-direction: column; gap: 16px; padding: 18px; border-radius: 20px; background: var(--surface-raised); align-self: start; }
+.pref-label { font: var(--t-caption); color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+.pref-note { display: flex; gap: 7px; font: var(--t-small); color: var(--text-3); line-height: 1.45; }
+.pref-note .icon { margin-top: 2px; }

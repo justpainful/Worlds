@@ -1,0 +1,17 @@
+/* ---- Material lab ------------------------------------------------------- */
+.lab-controls { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.lab-stage { position: relative; height: 560px; border-radius: 24px; overflow: auto; }
+.lab-scroll-content { min-height: 1400px; position: relative; }
+.lab-shapes { position: relative; height: 1400px; }
+.lab-orb { position: absolute; border-radius: 50%; filter: none; }
+.lab-orb.a { width: 260px; height: 260px; left: 8%; top: 60px; background: #ff5f3a; }
+.lab-orb.b { width: 200px; height: 200px; left: 46%; top: 260px; background: #2e7dff; }
+.lab-orb.c { width: 320px; height: 320px; left: 64%; top: 40px; background: #19c37d; }
+.lab-text { position: relative; margin: 0; padding: 30px; font: var(--t-body); color: var(--text-1); }
+.lab-text.on-image { position: absolute; top: 520px; color: #111; font-size: 22px; }
+.lab-overlay { position: sticky; top: 0; height: 0; }
+.lab-panel-a { position: absolute; left: 60px; top: 80px; width: 340px; height: 200px; padding: 20px; }
+.lab-panel-b { position: absolute; left: 280px; top: 200px; width: 320px; height: 180px; padding: 20px; }
+.lab-label { font: var(--t-ui-strong); font-size: 15px; }
+.lab-label-sub { margin: 6px 0 0; font: var(--t-small); color: var(--text-2); }
+.lab-buttons { position: absolute; left: 60px; top: 420px; display: flex; gap: 10px; }

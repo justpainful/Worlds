@@ -1,0 +1,39 @@
+/* ---- Claude: shared chat surfaces -------------------------------------- */
+.ai-user { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.ai-user-ctx { display: inline-flex; align-items: center; gap: 5px; font: var(--t-caption); color: var(--text-3); }
+.ai-prompt { white-space: pre-wrap; }
+.ai-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 6px; }
+.ai-chips .ai-context { margin: 0; }
+.ai-context.is-chat { color: var(--accent-text); background: var(--accent-soft); }
+.ai-attach { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 9px; color: var(--text-3); }
+.ai-attach:hover { background: var(--fill-2); color: var(--text-1); }
+.chat-chip { display: inline-flex; align-items: center; gap: 4px; padding: 0.05em 0.45em; margin: 0 1px; border-radius: 6px; background: var(--accent-soft); color: var(--accent-text); font-weight: 520; }
+.chat-chip:hover { background: rgba(var(--accent-rgb), 0.26); }
+.chat-picker .sg-list { max-height: 320px; overflow-y: auto; padding: 6px; }
+.chat-list { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.chat-list .ai-chats-list { flex: 1; }
+
+/* Markdown in answers */
+.md { display: flex; flex-direction: column; gap: 8px; font: var(--t-ui); font-size: 14px; line-height: 1.6; color: var(--text-1); }
+.md-p { margin: 0; unicode-bidi: plaintext; text-align: start; }
+.md-h { margin: 6px 0 0; font: var(--t-ui-strong); font-size: 15px; unicode-bidi: plaintext; text-align: start; }
+.md-list { margin: 0; padding-inline-start: 1.4em; display: flex; flex-direction: column; gap: 3px; }
+.md-list li { unicode-bidi: plaintext; }
+.md-quote { margin: 0; padding-inline-start: 12px; border-inline-start: 2px solid var(--hairline-strong); color: var(--text-2); }
+.md-code { margin: 0; padding: 10px 12px; border-radius: 10px; background: #151517; font: 12.5px/1.55 var(--font-mono); color: #e6e1d8; overflow-x: auto; white-space: pre; user-select: text; }
+.md-icode { font: 0.88em var(--font-mono); padding: 0.1em 0.35em; border-radius: 5px; background: var(--fill-2); unicode-bidi: isolate; }
+.md-link { color: var(--text-1); text-decoration: underline; text-decoration-color: rgba(var(--accent-rgb), 0.6); text-underline-offset: 3px; unicode-bidi: isolate; }
+.ai-answer { user-select: text; }
+
+/* Full view */
+.chat-view { position: absolute; inset: 0; display: grid; grid-template-columns: 280px 1fr; padding-top: 60px; }
+.chat-view-side { border-inline-end: 0.5px solid var(--hairline); padding: 4px 6px 10px 10px; min-height: 0; }
+.chat-view-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.chat-view-head { display: flex; align-items: center; gap: 10px; padding: 10px 28px 8px; }
+.chat-view-title { flex: 1; min-width: 0; margin: 0; font: var(--t-h3); font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-view-feed { flex: 1; min-height: 0; overflow-y: auto; }
+.chat-view-column { max-width: 760px; margin: 0 auto; padding: 12px 28px 24px; display: flex; flex-direction: column; gap: 14px; }
+.chat-view-column .md { font-size: 15px; }
+.chat-view-compose { padding: 0 28px 20px; }
+.chat-view-compose .ai-compose { max-width: 760px; margin: 0 auto; border: 0; border-radius: 22px; background: var(--surface-raised); box-shadow: inset 0 0 0 0.5px var(--hairline-strong); padding: 10px 14px 10px; }
+.chat-view-compose .ai-input { min-height: 52px; }

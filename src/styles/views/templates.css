@@ -1,0 +1,11 @@
+/* ---- Templates --------------------------------------------------------- */
+.tpl-section { margin-bottom: 32px; }
+.tpl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+.tpl-card { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 20px; background: var(--surface-raised); box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.05); min-height: 170px; }
+.tpl-card-head { display: flex; align-items: center; justify-content: space-between; }
+.tpl-card-icon { font-size: 26px; font-family: "Segoe UI Emoji", sans-serif; }
+.tpl-card-more { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 9px; color: var(--text-3); }
+.tpl-card-more:hover { background: var(--fill-2); color: var(--text-1); }
+.tpl-card-title { font: var(--t-ui-strong); font-size: 15px; }
+.tpl-card-desc { flex: 1; color: var(--text-3); font: var(--t-small); line-height: 1.45; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.tpl-card-foot { display: flex; align-items: center; gap: 6px; }

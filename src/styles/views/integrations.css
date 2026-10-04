@@ -1,0 +1,16 @@
+/* ---- Integrations ------------------------------------------------------ */
+.integ-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 14px; }
+.integ-card { display: flex; flex-direction: column; gap: 12px; padding: 18px 18px 14px; border-radius: 22px; background: var(--surface-raised); }
+.integ-head { display: flex; align-items: center; gap: 12px; }
+.integ-icon { width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center; background: var(--fill-2); }
+.integ-name { font: var(--t-ui-strong); font-size: 15px; }
+.integ-sub { font: var(--t-small); color: var(--text-3); margin-top: 2px; }
+.integ-facts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; font: var(--t-small); color: var(--text-2); }
+.integ-facts li { display: flex; align-items: center; gap: 8px; }
+.integ-facts .icon { color: var(--green); }
+.integ-install { padding: 12px 14px; border-radius: 14px; background: var(--fill-1); font: var(--t-small); color: var(--text-2); line-height: 1.5; }
+.integ-install p { margin: 4px 0 0; }
+.integ-install-title { font: var(--t-ui-strong); color: var(--text-1); }
+.integ-config { display: flex; flex-direction: column; }
+.integ-config .field-label:first-child { margin-top: 0; }
+.integ-foot { display: flex; justify-content: flex-end; gap: 6px; margin-top: auto; }

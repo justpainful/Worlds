@@ -1,0 +1,14 @@
+/* ---- Generic view ------------------------------------------------------ */
+.view { max-width: 980px; margin: 0 auto; padding: 84px 48px 96px; }
+.view-wide { max-width: 1240px; }
+.view-head { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 28px; }
+.view-head > div:first-child { flex: 1; }
+.view-title { margin: 0; font: var(--t-title); font-size: 30px; letter-spacing: var(--t-title-track); }
+.view-sub { margin: 6px 0 0; color: var(--text-3); font: var(--t-ui); font-weight: 450; }
+.section-label { margin: 0 0 10px; font: var(--t-caption); text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-3); }
+.section-gap { margin-top: 36px; }
+.row-list { display: flex; flex-direction: column; gap: 2px; }
+.list-row { display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 0 14px; border-radius: 14px; background: var(--surface-raised); }
+.list-row-title { flex: 1; min-width: 0; font: var(--t-ui); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-1); }
+.list-row-sub { color: var(--text-3); font: var(--t-small); }
+.page-loading { display: grid; place-items: center; height: 60%; color: var(--text-3); }

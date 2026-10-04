@@ -1,0 +1,8 @@
+/* ---- Emoji picker ------------------------------------------------------- */
+.emoji-tabs { display: flex; gap: 2px; padding: 8px 8px 4px; overflow-x: auto; }
+.emoji-tab { height: 26px; padding: 0 9px; border-radius: 999px; font: var(--t-caption); color: var(--text-3); white-space: nowrap; }
+.emoji-tab.is-active, .emoji-tab:hover { background: var(--fill-2); color: var(--text-1); }
+.emoji-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; padding: 6px 8px 10px; max-height: 260px; overflow-y: auto; }
+.emoji-cell { height: 36px; border-radius: 10px; font-size: 20px; font-family: "Segoe UI Emoji", sans-serif; transition: transform var(--d-release) var(--spring-snappy), background-color 100ms; }
+.emoji-cell:hover { background: var(--fill-2); transform: scale(1.12); }
+.emoji-foot { padding: 0 8px 8px; }

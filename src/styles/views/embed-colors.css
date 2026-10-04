@@ -1,0 +1,10 @@
+/* ---- Embed colour picker --------------------------------------------- */
+.embed-color { display: flex; flex-direction: column; gap: 10px; }
+.embed-swatches { flex-wrap: wrap; gap: 7px; }
+.swatch-none { position: relative; background: var(--fill-1); overflow: hidden; }
+.swatch-none span { position: absolute; left: 50%; top: 2px; bottom: 2px; width: 1.5px; background: var(--red); transform: translateX(-50%) rotate(45deg); }
+.swatch-custom { position: relative; display: grid; place-items: center; background: conic-gradient(from 0deg, #ed4245, #fee75c, #57f287, #5865f2, #eb459e, #ed4245); color: #fff; cursor: default; }
+.swatch-custom input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: default; }
+.embed-hex { display: flex; align-items: center; gap: 8px; }
+.embed-hex-dot { width: 12px; height: 12px; border-radius: 4px; box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.3); }
+.embed-hex .field { font-family: var(--font-mono); font-size: 12.5px; }

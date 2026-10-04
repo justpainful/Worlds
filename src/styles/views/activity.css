@@ -1,0 +1,19 @@
+/* ---- Activity ----------------------------------------------------------- */
+.approvals { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
+.approval { padding: 14px 16px; border-radius: 20px; background: var(--surface-raised); box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.35); }
+.approval-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.approval-main { flex: 1; min-width: 0; }
+.approval-title { font: var(--t-ui); color: var(--text-1); line-height: 1.45; }
+.approval-sub { font: var(--t-small); color: var(--text-3); margin-top: 2px; }
+.act-day { margin-bottom: 20px; }
+.act-day-label { font: var(--t-small); color: var(--text-3); margin-bottom: 6px; font-weight: 550; }
+.act-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 10px; border-radius: 12px; text-align: start; }
+.act-row:hover:not(:disabled) { background: var(--fill-1); }
+.act-icon { width: 26px; height: 26px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--fill-2); color: var(--text-2); }
+.act-ai { background: var(--accent-soft); color: var(--accent-text); }
+.act-automation { background: var(--blue-soft); color: var(--blue); }
+.act-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.act-title { font: var(--t-ui); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.act-title strong { font-weight: 600; }
+.act-sum { color: var(--text-2); }
+.act-sub { font: var(--t-small); color: var(--text-3); }

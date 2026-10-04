@@ -1,0 +1,58 @@
+/* ---- Page --------------------------------------------------------------- */
+.page-view { min-height: 100%; }
+.page-column { max-width: 780px; margin: 0 auto; padding: 72px 56px 140px; }
+.page-head { position: relative; margin-bottom: 10px; }
+.page-head-top { display: flex; align-items: center; gap: 12px; min-height: 34px; margin-bottom: 18px; }
+.crumbs { flex: 1; min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 2px; color: var(--text-3); font: var(--t-small); }
+.crumb { display: inline-flex; align-items: center; gap: 2px; }
+.crumb-btn { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 7px; border-radius: 8px; color: var(--text-3); max-width: 220px; }
+.crumb-btn span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crumb-btn:hover { background: var(--fill-1); color: var(--text-1); }
+.crumb-sep { color: var(--text-4); }
+:dir(rtl) .crumb-sep { transform: scaleX(-1); }
+.page-actions { display: flex; align-items: center; gap: 2px; opacity: 0.55; transition: opacity var(--d-hover); }
+.page-view:hover .page-actions, .page-actions:focus-within { opacity: 1; }
+.save-state { color: var(--text-4); font: var(--t-caption); margin-inline-end: 8px; white-space: nowrap; }
+
+.page-icon-btn { display: inline-flex; align-items: center; margin-bottom: 8px; border-radius: 14px; color: var(--text-3); }
+.page-icon-big { font-size: 46px; line-height: 1; padding: 4px; border-radius: 14px; font-family: "Segoe UI Emoji", sans-serif; transition: background-color var(--d-hover); }
+.page-icon-btn:hover .page-icon-big { background: var(--fill-1); }
+.page-icon-add { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 9px; border-radius: 8px; font: var(--t-small); opacity: 0; transition: opacity var(--d-hover); }
+.page-view:hover .page-icon-add, .page-icon-btn:focus-visible .page-icon-add { opacity: 1; }
+.page-icon-add:hover { background: var(--fill-1); color: var(--text-1); }
+
+.page-title {
+  display: block;
+  width: 100%;
+  resize: none;
+  overflow: hidden;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: none;
+  color: var(--text-1);
+  font: var(--t-title);
+  letter-spacing: var(--t-title-track);
+  font-weight: 640;
+}
+.page-title:dir(rtl), .page-title:lang(ar) { line-height: 1.35; letter-spacing: 0; }
+.page-title::placeholder { color: var(--text-4); }
+.page-meta { display: flex; align-items: center; gap: 8px; margin-top: 12px; min-height: 26px; }
+.owner-chip, .meta-chip { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px 0 4px; border-radius: 999px; font: var(--t-small); color: var(--text-3); }
+.meta-chip { padding: 0 10px; }
+.owner-chip:hover, .meta-chip:hover { background: var(--fill-1); color: var(--text-1); }
+
+.page-foot { margin-top: 64px; }
+.foot-head { display: flex; align-items: center; justify-content: space-between; margin: 26px 0 10px; font: var(--t-caption); text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-3); }
+.foot-empty { font: var(--t-small); color: var(--text-4); padding: 4px 0; }
+.sub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.sub-card { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px; border-radius: 14px; background: var(--surface-raised); text-align: start; font: var(--t-ui); color: var(--text-1); }
+.sub-card:hover { background: #2a2a2c; }
+.sub-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sub-time { color: var(--text-4); font: var(--t-caption); }
+.backlinks { display: flex; flex-direction: column; gap: 4px; }
+.backlink { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border-radius: 14px; background: var(--surface-raised); text-align: start; }
+.backlink:hover { background: #2a2a2c; }
+.backlink-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.backlink-title { font: var(--t-ui); color: var(--text-1); }
+.backlink-excerpt { font: var(--t-small); color: var(--text-3); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }

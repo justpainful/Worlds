@@ -1,0 +1,27 @@
+/* ---- Claude conversations ------------------------------------------------ */
+.ai-panel { width: 460px; }
+.ai-chat-switch { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 210px; height: 30px; padding: 0 10px; border-radius: 999px; font: var(--t-ui-strong); color: var(--text-1); }
+.ai-chat-switch:hover { background: var(--fill-2); }
+.ai-chat-title { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ai-feed { min-height: 120px; gap: 10px; }
+.ai-turn { display: flex; flex-direction: column; gap: 4px; }
+.ai-empty { padding: 18px 4px 8px; }
+.ai-empty-title { font: var(--t-ui-strong); font-size: 14.5px; }
+.ai-empty-text { margin-top: 6px; font: var(--t-small); color: var(--text-3); line-height: 1.55; }
+.ai-steps-toggle { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 999px; font: var(--t-caption); color: var(--text-3); background: var(--fill-1); }
+.ai-steps-toggle:hover { color: var(--text-1); }
+.ai-steps-toggle .is-flipped { transform: rotate(180deg); }
+.ai-result.is-undone { opacity: 0.6; }
+.ai-chats .g-content { display: flex; flex-direction: column; max-height: 420px; }
+.ai-chats-head { display: flex; align-items: center; gap: 8px; padding: 10px 10px 6px; }
+.ai-chats-head .dest-search { flex: 1; }
+.ai-chats-list { overflow-y: auto; padding: 4px 6px 8px; display: flex; flex-direction: column; gap: 1px; }
+.ai-chat-row { display: flex; align-items: center; gap: 4px; min-height: 46px; padding: 4px 6px 4px 12px; border-radius: 12px; cursor: default; }
+.ai-chat-row:hover { background: var(--fill-1); }
+.ai-chat-row.is-current { background: var(--fill-2); }
+.ai-chat-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ai-chat-row-title { font: var(--t-ui); color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ai-chat-row-sub { font: var(--t-caption); color: var(--text-3); }
+.ai-chat-row-btn { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 8px; color: var(--text-3); opacity: 0; }
+.ai-chat-row:hover .ai-chat-row-btn { opacity: 1; }
+.ai-chat-row-btn:hover { background: var(--fill-2); color: var(--text-1); }
