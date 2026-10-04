@@ -2,12 +2,13 @@ import { useEffect, useState, type ReactNode } from "react";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { enable as enableAutostart, disable as disableAutostart, isEnabled as autostartEnabled } from "@tauri-apps/plugin-autostart";
 import { IntelligenceControls } from "../ai/models";
-import { api, errorMessage } from "../lib/api";
+import { api, errorMessage, type BackupInfo, type BackupState } from "../lib/api";
 import { useStore } from "../state/store";
 import { Segmented } from "../ui/Segmented";
 import { Button } from "../ui/Button";
 import { Icon } from "../ui/Icon";
-import { Avatar, Spinner } from "../ui/misc";
+import { Avatar, formatBytes, relTime, Spinner } from "../ui/misc";
+import { confirmDialog } from "../ui/Modal";
 import { ProductIcon } from "../ui/ProductIcon";
 import { SearchField } from "../ui/SearchField";
 import { ACCENTS } from "../shell/appearance";
@@ -336,14 +337,88 @@ function AutomationSettings() {
   );
 }
 
+const BACKUP_REASON: Record<string, string> = {
+  daily: "Daily",
+  manual: "Manual",
+  "before-restore": "Before a restore",
+  damaged: "Damaged copy (set aside)",
+};
+
+function backupLabel(reason: string) {
+  if (reason.startsWith("pre-migration")) return "Before an update";
+  return BACKUP_REASON[reason] ?? reason;
+}
+
 function StorageSettings() {
   const dataDir = useStore((s) => s.dataDir);
+  const toast = useStore((s) => s.toast);
+  const [state, setState] = useState<BackupState | null>(null);
+  const [busy, setBusy] = useState(false);
+  const load = () => api.backups().then(setState).catch((e) => toast({ message: errorMessage(e), tone: "error" }));
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const backupNow = async () => {
+    setBusy(true);
+    try {
+      await api.backupNow();
+      toast({ message: "Backup saved", tone: "success" });
+      await load();
+    } catch (e) {
+      toast({ message: errorMessage(e), tone: "error" });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const restore = async (b: BackupInfo) => {
+    const ok = await confirmDialog({
+      title: "Restore this backup?",
+      message: `Worlds will go back to how it was on ${new Date(b.createdAt).toLocaleString()} the next time it starts. Your current data is kept as a backup first.`,
+      confirm: "Restore at next launch",
+    });
+    if (!ok) return;
+    try {
+      await api.backupRestore(b.file);
+      await load();
+    } catch (e) {
+      toast({ message: errorMessage(e), tone: "error" });
+    }
+  };
+  const restorable = state?.backups.filter((b) => b.reason !== "damaged") ?? [];
+
   return (
-    <Group title="Storage" note="Everything lives in one folder on this PC: the SQLite database and your attachments. No account, no cloud.">
-      <Row label="Data folder" hint={dataDir}>
-        <Button variant="plain" icon="folderOpen" onClick={() => revealItemInDir(`${dataDir}\\worlds.db`)}>Show in Explorer</Button>
-      </Row>
-    </Group>
+    <>
+      <Group title="Storage" note="Everything lives in one folder on this PC: the SQLite database and your attachments. No account, no cloud.">
+        <Row label="Data folder" hint={dataDir}>
+          <Button variant="plain" icon="folderOpen" onClick={() => revealItemInDir(`${dataDir}\worlds.db`)}>Show in Explorer</Button>
+        </Row>
+      </Group>
+      <Group
+        title="Backups"
+        note="Worlds copies the database once a day, before every update to its storage format, and whenever you ask. Restoring takes effect the next time Worlds starts."
+      >
+        {state?.pendingRestore && (
+          <Row label="Restore waiting" hint="It will be applied the next time Worlds starts.">
+            <Button variant="plain" onClick={() => api.backupCancelRestore().then(load)}>Cancel</Button>
+          </Row>
+        )}
+        <Row label="Back up now" hint={restorable[0] ? `Last backup ${relTime(restorable[0].createdAt)}` : "No backups yet"}>
+          <Button variant="plain" icon="archive" loading={busy} onClick={backupNow}>Back up now</Button>
+        </Row>
+        {restorable.slice(0, 8).map((b) => (
+          <Row key={b.file} label={new Date(b.createdAt).toLocaleString()} hint={`${backupLabel(b.reason)} · ${formatBytes(b.size)}`}>
+            <Button variant="quiet" onClick={() => restore(b)}>Restore</Button>
+          </Row>
+        ))}
+        {state && (
+          <Row label="Backups folder" hint={state.folder}>
+            <Button variant="plain" icon="folderOpen" onClick={() => revealItemInDir(state.folder)}>Show</Button>
+          </Row>
+        )}
+      </Group>
+    </>
   );
 }
 

@@ -1,14 +1,17 @@
 pub mod ai;
-pub mod jobs;
 pub mod automations;
+pub mod backup;
 pub mod commands;
 pub mod content;
 pub mod db;
 pub mod discord;
+pub mod jobs;
 pub mod mcp;
 pub mod preview;
 pub mod protocol;
 pub mod store;
+#[cfg(test)]
+mod store_tests;
 pub mod templates;
 pub mod window_style;
 
@@ -33,6 +36,8 @@ pub fn ui_bytes(n: i64) -> String {
 pub struct AppState {
     pub db: Mutex<rusqlite::Connection>,
     pub launched_hidden: bool,
+    /// Set when launch restored or recovered the database (shown once in the UI).
+    pub storage_note: Mutex<Option<String>>,
 }
 
 impl AppState {
@@ -52,6 +57,8 @@ pub fn show_main(app: &tauri::AppHandle) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let hidden = std::env::args().any(|a| a == "--hidden");
+    // Backups, staged restores and recovery happen before anything opens the file.
+    let storage_note = backup::prepare(&db::db_path(), &db::data_dir()).unwrap_or_else(|e| Some(format!("Backup check failed: {e:#}")));
     let conn = db::open(&db::db_path()).expect("failed to open Worlds database");
     store::profile(&conn).expect("profile");
     store::ensure_builtin_templates(&conn).expect("templates");
@@ -60,16 +67,21 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app)))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_autostart::init(
-            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            Some(vec!["--hidden"]),
-        ))
-        .manage(AppState { db: Mutex::new(conn), launched_hidden: hidden })
+        .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec!["--hidden"])))
+        .manage(AppState { db: Mutex::new(conn), launched_hidden: hidden, storage_note: Mutex::new(storage_note) })
         .register_asynchronous_uri_scheme_protocol("wfile", |_ctx, request, responder| {
             std::thread::spawn(move || responder.respond(protocol::serve(&request)));
         })
         .setup(|app| {
             let handle = app.handle().clone();
+
+            // Daily backup, off the startup path.
+            std::thread::spawn(|| {
+                std::thread::sleep(std::time::Duration::from_secs(20));
+                if let Ok(conn) = db::open(&db::db_path()) {
+                    let _ = backup::daily(&conn, &db::data_dir());
+                }
+            });
 
             // Tray: the process stays alive (and keeps running automations)
             // when the window is closed.
@@ -102,11 +114,7 @@ pub fn run() {
                         let keep = {
                             let state = h.state::<AppState>();
                             let conn = state.conn();
-                            db::get_setting(&conn, "app.runInBackground")
-                                .ok()
-                                .flatten()
-                                .and_then(|v| v.as_bool())
-                                .unwrap_or(true)
+                            db::get_setting(&conn, "app.runInBackground").ok().flatten().and_then(|v| v.as_bool()).unwrap_or(true)
                         };
                         if keep {
                             api.prevent_close();
@@ -124,6 +132,10 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::bootstrap,
+            commands::backups_list,
+            commands::backup_now,
+            commands::backup_restore,
+            commands::backup_cancel_restore,
             commands::launch_info,
             commands::pages_list,
             commands::page_get,
@@ -190,20 +202,16 @@ pub fn run() {
 fn spawn_change_watcher(app: tauri::AppHandle) {
     std::thread::spawn(move || {
         let Ok(conn) = db::open(&db::db_path()) else { return };
-        let mut last: i64 = conn
-            .query_row("SELECT COALESCE(MAX(seq), 0) FROM changes", [], |r| r.get(0))
-            .unwrap_or(0);
+        let mut last: i64 = conn.query_row("SELECT COALESCE(MAX(seq), 0) FROM changes", [], |r| r.get(0)).unwrap_or(0);
         loop {
             std::thread::sleep(std::time::Duration::from_millis(600));
-            let rows: Vec<(i64, Option<String>, String, String)> = match conn
-                .prepare("SELECT seq, page_id, kind, origin FROM changes WHERE seq > ?1 ORDER BY seq")
-                .and_then(|mut s| {
-                    s.query_map([last], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?
-                        .collect::<rusqlite::Result<Vec<_>>>()
+            let rows: Vec<(i64, Option<String>, String, String)> =
+                match conn.prepare("SELECT seq, page_id, kind, origin FROM changes WHERE seq > ?1 ORDER BY seq").and_then(|mut s| {
+                    s.query_map([last], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?.collect::<rusqlite::Result<Vec<_>>>()
                 }) {
-                Ok(r) => r,
-                Err(_) => continue,
-            };
+                    Ok(r) => r,
+                    Err(_) => continue,
+                };
             if rows.is_empty() {
                 continue;
             }

@@ -19,17 +19,12 @@ pub fn attr_str<'a>(node: &'a Value, key: &str) -> Option<&'a str> {
 }
 
 pub fn children(node: &Value) -> &[Value] {
-    node.get("content")
-        .and_then(Value::as_array)
-        .map(|v| v.as_slice())
-        .unwrap_or(&[])
+    node.get("content").and_then(Value::as_array).map(|v| v.as_slice()).unwrap_or(&[])
 }
 
 pub fn set_block_id(node: &mut Value, id: &str) {
     if let Some(obj) = node.as_object_mut() {
-        let attrs = obj
-            .entry("attrs")
-            .or_insert_with(|| Value::Object(Map::new()));
+        let attrs = obj.entry("attrs").or_insert_with(|| Value::Object(Map::new()));
         if let Some(a) = attrs.as_object_mut() {
             a.insert("bid".into(), Value::String(id.to_string()));
         }
@@ -185,13 +180,7 @@ pub fn parse_inline(src: &str) -> Vec<Value> {
                 }
             }
         }
-        let pairs: [(&str, &str); 5] = [
-            ("**", "bold"),
-            ("~~", "strike"),
-            ("==", "highlight"),
-            ("`", "code"),
-            ("*", "italic"),
-        ];
+        let pairs: [(&str, &str); 5] = [("**", "bold"), ("~~", "strike"), ("==", "highlight"), ("`", "code"), ("*", "italic")];
         let mut matched = false;
         for (delim, mark) in pairs {
             if starts(delim) {
@@ -319,10 +308,7 @@ pub fn from_markdown(src: &str) -> Vec<Value> {
                     rest.push(after);
                 }
                 rest.extend(body.into_iter().skip(1));
-                let paras: Vec<Value> = rest
-                    .iter()
-                    .map(|l| paragraph(parse_inline(l)))
-                    .collect();
+                let paras: Vec<Value> = rest.iter().map(|l| paragraph(parse_inline(l))).collect();
                 let paras = if paras.is_empty() { vec![paragraph(vec![])] } else { paras };
                 if tag == "prompt" {
                     blocks.push(json!({ "type": "prompt", "attrs": { "label": "Prompt" }, "content": paras }));
@@ -341,11 +327,7 @@ pub fn from_markdown(src: &str) -> Vec<Value> {
             let mut rows: Vec<Vec<String>> = Vec::new();
             while i < lines.len() && lines[i].trim_start().starts_with('|') {
                 let row = lines[i].trim();
-                let cells: Vec<String> = row
-                    .trim_matches('|')
-                    .split('|')
-                    .map(|c| c.trim().to_string())
-                    .collect();
+                let cells: Vec<String> = row.trim_matches('|').split('|').map(|c| c.trim().to_string()).collect();
                 let is_sep = cells.iter().all(|c| !c.is_empty() && c.chars().all(|ch| ch == '-' || ch == ':'));
                 if !is_sep {
                     rows.push(cells);
@@ -460,11 +442,7 @@ pub fn inline_markdown(nodes: &[Value]) -> String {
                 out.push_str(&s);
             }
             "hardBreak" => out.push('\n'),
-            "pageMention" => out.push_str(&format!(
-                "@[{}](page:{})",
-                attr_str(n, "label").unwrap_or(""),
-                attr_str(n, "id").unwrap_or("")
-            )),
+            "pageMention" => out.push_str(&format!("@[{}](page:{})", attr_str(n, "label").unwrap_or(""), attr_str(n, "id").unwrap_or(""))),
             _ => out.push_str(&inline_markdown(children(n))),
         }
     }
@@ -480,12 +458,7 @@ pub fn to_markdown(node: &Value) -> String {
             format!("{} {}", "#".repeat(level), inline_markdown(kids))
         }
         "bulletList" => kids.iter().map(|li| format!("- {}", item_md(li))).collect::<Vec<_>>().join("\n"),
-        "orderedList" => kids
-            .iter()
-            .enumerate()
-            .map(|(i, li)| format!("{}. {}", i + 1, item_md(li)))
-            .collect::<Vec<_>>()
-            .join("\n"),
+        "orderedList" => kids.iter().enumerate().map(|(i, li)| format!("{}. {}", i + 1, item_md(li))).collect::<Vec<_>>().join("\n"),
         "taskList" => kids
             .iter()
             .map(|li| {
@@ -504,11 +477,7 @@ pub fn to_markdown(node: &Value) -> String {
             let body: Vec<String> = kids.iter().map(to_markdown).collect();
             format!("> [!prompt] {}", body.join("\n> "))
         }
-        "codeBlock" => format!(
-            "```{}\n{}\n```",
-            attr_str(node, "language").unwrap_or(""),
-            plain_text(node)
-        ),
+        "codeBlock" => format!("```{}\n{}\n```", attr_str(node, "language").unwrap_or(""), plain_text(node)),
         "horizontalRule" => "---".into(),
         "table" => {
             let mut lines = Vec::new();
@@ -524,25 +493,32 @@ pub fn to_markdown(node: &Value) -> String {
         "image" => format!("[image: {}]", attr_str(node, "caption").or(attr_str(node, "name")).unwrap_or("")),
         "video" => format!("[video: {}]", attr_str(node, "caption").or(attr_str(node, "name")).unwrap_or("")),
         "file" => format!("[file: {}]", attr_str(node, "name").unwrap_or("")),
-        "pageLink" => format!(
-            "[subpage: @[{}](page:{})]",
-            attr_str(node, "title").unwrap_or(""),
-            attr_str(node, "pageId").unwrap_or("")
-        ),
+        "pageLink" => format!("[subpage: @[{}](page:{})]", attr_str(node, "title").unwrap_or(""), attr_str(node, "pageId").unwrap_or("")),
         "embed" => format!("[embed: {}]", attr_str(node, "url").unwrap_or("")),
         "discordMessage" => format!("[discord message: {}]", attr_str(node, "content").unwrap_or("")),
         "schedule" => format!("[schedule: {}]", attr_str(node, "automationId").unwrap_or("")),
         // Layout containers: their blocks read in order.
-        "columns" | "column" => kids.iter().map(to_markdown).filter(|s| !s.is_empty()).collect::<Vec<_>>().join("
+        "columns" | "column" => kids.iter().map(to_markdown).filter(|s| !s.is_empty()).collect::<Vec<_>>().join(
+            "
 
-"),
+",
+        ),
         "toggle" => {
             let mut it = kids.iter();
             let head = it.next().map(to_markdown).unwrap_or_default();
             let body: Vec<String> = it.map(to_markdown).collect();
-            if body.is_empty() { format!("> [!toggle] {head}") } else { format!("> [!toggle] {head}
-> {}", body.join("
-> ")) }
+            if body.is_empty() {
+                format!("> [!toggle] {head}")
+            } else {
+                format!(
+                    "> [!toggle] {head}
+> {}",
+                    body.join(
+                        "
+> "
+                    )
+                )
+            }
         }
         "toc" => "[table of contents]".into(),
         "gallery" => format!("[gallery: {} pictures]", attr(node, "images").and_then(Value::as_array).map(|a| a.len()).unwrap_or(0)),
@@ -561,11 +537,7 @@ fn item_md(li: &Value) -> String {
         .iter()
         .map(|c| match node_type(c) {
             "paragraph" => inline_markdown(children(c)),
-            _ => to_markdown(c)
-                .lines()
-                .map(|l| format!("  {l}"))
-                .collect::<Vec<_>>()
-                .join("\n"),
+            _ => to_markdown(c).lines().map(|l| format!("  {l}")).collect::<Vec<_>>().join("\n"),
         })
         .collect::<Vec<_>>()
         .join("\n")

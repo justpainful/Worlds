@@ -8,11 +8,7 @@ use tauri::http::{header, Request, Response, StatusCode};
 pub fn serve(request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
     match serve_inner(request) {
         Ok(r) => r,
-        Err(status) => Response::builder()
-            .status(status)
-            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-            .body(Vec::new())
-            .unwrap(),
+        Err(status) => Response::builder().status(status).header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*").body(Vec::new()).unwrap(),
     }
 }
 
@@ -25,19 +21,12 @@ fn serve_inner(request: &Request<Vec<u8>>) -> Result<Response<Vec<u8>>, StatusCo
         let (abs, mime) = crate::preview::cached_file(id, file).ok_or(StatusCode::NOT_FOUND)?;
         return serve_file(request, &abs, mime);
     }
-    let id: String = percent_encoding::percent_decode_str(path)
-        .decode_utf8_lossy()
-        .split('/')
-        .next()
-        .unwrap_or("")
-        .to_string();
+    let id: String = percent_encoding::percent_decode_str(path).decode_utf8_lossy().split('/').next().unwrap_or("").to_string();
     if id.is_empty() || !id.chars().all(|c| c.is_ascii_alphanumeric()) {
         return Err(StatusCode::BAD_REQUEST);
     }
     let conn = db::open(&db::db_path()).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    let att = store::get_attachment(&conn, &id)
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .ok_or(StatusCode::NOT_FOUND)?;
+    let att = store::get_attachment(&conn, &id).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?.ok_or(StatusCode::NOT_FOUND)?;
     let abs = store::attachment_abs_path(&att);
     serve_file(request, &abs, &att.mime)
 }

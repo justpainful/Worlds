@@ -368,19 +368,13 @@ const PROFILE_COLS: &str = "id, display_name, handle, avatar, banner, bio, statu
 
 /// The local profile, created silently on first use.
 pub fn profile(conn: &Connection) -> Result<Profile> {
-    if let Some(p) = conn
-        .query_row(&format!("SELECT {PROFILE_COLS} FROM profile LIMIT 1"), [], profile_row)
-        .optional()?
-    {
+    if let Some(p) = conn.query_row(&format!("SELECT {PROFILE_COLS} FROM profile LIMIT 1"), [], profile_row).optional()? {
         return Ok(p);
     }
     let id = new_id();
     let name = std::env::var("USERNAME").unwrap_or_default();
     let t = now();
-    conn.execute(
-        "INSERT INTO profile (id, display_name, created_at, updated_at) VALUES (?1, ?2, ?3, ?3)",
-        params![id, name, t],
-    )?;
+    conn.execute("INSERT INTO profile (id, display_name, created_at, updated_at) VALUES (?1, ?2, ?3, ?3)", params![id, name, t])?;
     profile(conn)
 }
 
@@ -429,17 +423,39 @@ pub fn update_profile_as(conn: &Connection, ctx: &Ctx, patch: ProfilePatch) -> R
     }
     use rusqlite::types::Value as V;
     let opt = |o: Option<String>| o.map(V::Text).unwrap_or(V::Null);
-    if let Some(v) = patch.display_name { set!("display_name", V::Text(v)); }
-    if let Some(v) = patch.handle { set!("handle", opt(v)); }
-    if let Some(v) = patch.avatar { set!("avatar", opt(v)); }
-    if let Some(v) = patch.banner { set!("banner", opt(v)); }
-    if let Some(v) = patch.bio { set!("bio", opt(v)); }
-    if let Some(v) = patch.status { set!("status", opt(v)); }
-    if let Some(v) = patch.accent { set!("accent", opt(v)); }
-    if let Some(v) = patch.theme { set!("theme", V::Text(v)); }
-    if let Some(v) = patch.language { set!("language", V::Text(v)); }
-    if let Some(v) = patch.text_direction { set!("text_direction", V::Text(v)); }
-    if let Some(v) = patch.location { set!("location", opt(v)); }
+    if let Some(v) = patch.display_name {
+        set!("display_name", V::Text(v));
+    }
+    if let Some(v) = patch.handle {
+        set!("handle", opt(v));
+    }
+    if let Some(v) = patch.avatar {
+        set!("avatar", opt(v));
+    }
+    if let Some(v) = patch.banner {
+        set!("banner", opt(v));
+    }
+    if let Some(v) = patch.bio {
+        set!("bio", opt(v));
+    }
+    if let Some(v) = patch.status {
+        set!("status", opt(v));
+    }
+    if let Some(v) = patch.accent {
+        set!("accent", opt(v));
+    }
+    if let Some(v) = patch.theme {
+        set!("theme", V::Text(v));
+    }
+    if let Some(v) = patch.language {
+        set!("language", V::Text(v));
+    }
+    if let Some(v) = patch.text_direction {
+        set!("text_direction", V::Text(v));
+    }
+    if let Some(v) = patch.location {
+        set!("location", opt(v));
+    }
     if let Some(v) = patch.links {
         let clean: Vec<Value> = v
             .as_array()
@@ -464,8 +480,12 @@ pub fn update_profile_as(conn: &Connection, ctx: &Ctx, patch: ProfilePatch) -> R
             .collect();
         set!("blocks", V::Text(Value::Array(clean).to_string()));
     }
-    if let Some(v) = patch.banner_focus { set!("banner_focus", opt(v)); }
-    if let Some(v) = patch.avatar_crop { set!("avatar_crop", opt(v)); }
+    if let Some(v) = patch.banner_focus {
+        set!("banner_focus", opt(v));
+    }
+    if let Some(v) = patch.avatar_crop {
+        set!("avatar_crop", opt(v));
+    }
     if !sets.is_empty() {
         set!("updated_at", V::Integer(now()));
         let sql = format!("UPDATE profile SET {} WHERE id = ?{}", sets.join(", "), vals.len() + 1);
@@ -538,17 +558,13 @@ pub fn profile_stats(conn: &Connection) -> Result<Value> {
 
 pub fn list_pages(conn: &Connection, include_deleted: bool) -> Result<Vec<PageMeta>> {
     let filter = if include_deleted { "" } else { "WHERE deleted_at IS NULL" };
-    let mut stmt = conn.prepare(&format!(
-        "SELECT {PAGE_COLS} FROM pages {filter} ORDER BY sort_key, created_at"
-    ))?;
+    let mut stmt = conn.prepare(&format!("SELECT {PAGE_COLS} FROM pages {filter} ORDER BY sort_key, created_at"))?;
     let rows = stmt.query_map([], page_meta)?.collect::<rusqlite::Result<Vec<_>>>()?;
     Ok(rows)
 }
 
 pub fn page_meta_by_id(conn: &Connection, id: &str) -> Result<Option<PageMeta>> {
-    Ok(conn
-        .query_row(&format!("SELECT {PAGE_COLS} FROM pages WHERE id = ?1"), [id], page_meta)
-        .optional()?)
+    Ok(conn.query_row(&format!("SELECT {PAGE_COLS} FROM pages WHERE id = ?1"), [id], page_meta).optional()?)
 }
 
 fn require_page(conn: &Connection, id: &str) -> Result<PageMeta> {
@@ -556,32 +572,23 @@ fn require_page(conn: &Connection, id: &str) -> Result<PageMeta> {
 }
 
 pub fn blocks_of(conn: &Connection, page_id: &str) -> Result<Vec<Block>> {
-    let mut stmt = conn.prepare(&format!(
-        "SELECT {BLOCK_COLS} FROM blocks WHERE page_id = ?1 ORDER BY sort_key"
-    ))?;
+    let mut stmt = conn.prepare(&format!("SELECT {BLOCK_COLS} FROM blocks WHERE page_id = ?1 ORDER BY sort_key"))?;
     let rows = stmt.query_map([page_id], block_row)?.collect::<rusqlite::Result<Vec<_>>>()?;
     Ok(rows)
 }
 
 pub fn block_by_id(conn: &Connection, id: &str) -> Result<Option<Block>> {
-    Ok(conn
-        .query_row(&format!("SELECT {BLOCK_COLS} FROM blocks WHERE id = ?1"), [id], block_row)
-        .optional()?)
+    Ok(conn.query_row(&format!("SELECT {BLOCK_COLS} FROM blocks WHERE id = ?1"), [id], block_row).optional()?)
 }
 
 pub fn get_page(conn: &Connection, id: &str) -> Result<Option<Page>> {
     let Some(meta) = page_meta_by_id(conn, id)? else { return Ok(None) };
-    let (metadata, instructions): (String, String) = conn.query_row(
-        "SELECT metadata, instructions FROM pages WHERE id = ?1",
-        [id],
-        |r| Ok((r.get(0)?, r.get(1)?)),
-    )?;
+    let (metadata, instructions): (String, String) =
+        conn.query_row("SELECT metadata, instructions FROM pages WHERE id = ?1", [id], |r| Ok((r.get(0)?, r.get(1)?)))?;
     let blocks = blocks_of(conn, id)?;
     let backlinks = backlinks(conn, id)?;
     let attachments = {
-        let mut stmt = conn.prepare(&format!(
-            "SELECT {ATTACHMENT_COLS} FROM attachments WHERE page_id = ?1 ORDER BY created_at"
-        ))?;
+        let mut stmt = conn.prepare(&format!("SELECT {ATTACHMENT_COLS} FROM attachments WHERE page_id = ?1 ORDER BY created_at"))?;
         let rows = stmt.query_map([id], attachment_row)?.collect::<rusqlite::Result<Vec<_>>>()?;
         rows
     };
@@ -605,9 +612,7 @@ fn breadcrumbs(conn: &Connection, parent: Option<&str>) -> Result<Vec<Crumb>> {
             break;
         }
         let row: Option<(String, Option<String>, Option<String>)> = conn
-            .query_row("SELECT title, icon, parent_id FROM pages WHERE id = ?1", [&pid], |r| {
-                Ok((r.get(0)?, r.get(1)?, r.get(2)?))
-            })
+            .query_row("SELECT title, icon, parent_id FROM pages WHERE id = ?1", [&pid], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
             .optional()?;
         let Some((title, icon, next)) = row else { break };
         out.push(Crumb { id: pid, title, icon });
@@ -643,9 +648,7 @@ pub fn backlinks(conn: &Connection, page_id: &str) -> Result<Vec<Backlink>> {
 
 fn next_sort_key(conn: &Connection, parent: Option<&str>, after: Option<&str>) -> Result<f64> {
     if let Some(after_id) = after {
-        let k: Option<f64> = conn
-            .query_row("SELECT sort_key FROM pages WHERE id = ?1", [after_id], |r| r.get(0))
-            .optional()?;
+        let k: Option<f64> = conn.query_row("SELECT sort_key FROM pages WHERE id = ?1", [after_id], |r| r.get(0)).optional()?;
         if let Some(k) = k {
             let next: Option<f64> = conn
                 .query_row(
@@ -661,14 +664,8 @@ fn next_sort_key(conn: &Connection, parent: Option<&str>, after: Option<&str>) -
             });
         }
     }
-    let max: Option<f64> = conn
-        .query_row(
-            "SELECT MAX(sort_key) FROM pages WHERE parent_id IS ?1",
-            params![parent],
-            |r| r.get(0),
-        )
-        .optional()?
-        .flatten();
+    let max: Option<f64> =
+        conn.query_row("SELECT MAX(sort_key) FROM pages WHERE parent_id IS ?1", params![parent], |r| r.get(0)).optional()?.flatten();
     Ok(max.map(|m| m + 1.0).unwrap_or(0.0))
 }
 
@@ -720,8 +717,17 @@ pub fn update_page(conn: &Connection, ctx: &Ctx, id: &str, patch: PagePatch) -> 
     if let Some(title) = &patch.title {
         if *title != before.title {
             conn.execute("UPDATE pages SET title = ?1, updated_at = ?2 WHERE id = ?3", params![title, t, id])?;
-            record(conn, ctx, Some(id), "renamed", &format!("Renamed to “{title}”"), None,
-                   Some(json!(before.title)), Some(json!(title)), json!({}))?;
+            record(
+                conn,
+                ctx,
+                Some(id),
+                "renamed",
+                &format!("Renamed to “{title}”"),
+                None,
+                Some(json!(before.title)),
+                Some(json!(title)),
+                json!({}),
+            )?;
             // keep mention labels pointing here fresh is the renderer's job; labels resolve live.
         }
     }
@@ -745,8 +751,17 @@ pub fn update_page(conn: &Connection, ctx: &Ctx, id: &str, patch: PagePatch) -> 
     }
     if let Some(a) = patch.archived {
         conn.execute("UPDATE pages SET archived = ?1, updated_at = ?2 WHERE id = ?3", params![a as i64, t, id])?;
-        record(conn, ctx, Some(id), if a { "archived" } else { "unarchived" },
-               if a { "Archived" } else { "Restored from archive" }, None, None, None, json!({}))?;
+        record(
+            conn,
+            ctx,
+            Some(id),
+            if a { "archived" } else { "unarchived" },
+            if a { "Archived" } else { "Restored from archive" },
+            None,
+            None,
+            None,
+            json!({}),
+        )?;
     }
     if let Some(m) = &patch.metadata {
         conn.execute("UPDATE pages SET metadata = ?1, updated_at = ?2 WHERE id = ?3", params![m.to_string(), t, id])?;
@@ -756,8 +771,17 @@ pub fn update_page(conn: &Connection, ctx: &Ctx, id: &str, patch: PagePatch) -> 
         let new_s = serde_json::to_string(ins)?;
         if old != new_s {
             conn.execute("UPDATE pages SET instructions = ?1, updated_at = ?2 WHERE id = ?3", params![new_s, t, id])?;
-            record(conn, ctx, Some(id), "instructions", "Updated assistant instructions", None,
-                   serde_json::from_str(&old).ok(), Some(json!(ins)), json!({}))?;
+            record(
+                conn,
+                ctx,
+                Some(id),
+                "instructions",
+                "Updated assistant instructions",
+                None,
+                serde_json::from_str(&old).ok(),
+                Some(json!(ins)),
+                json!({}),
+            )?;
         }
     }
     if let Some(cat) = &patch.template_category {
@@ -784,10 +808,7 @@ fn is_descendant(conn: &Connection, candidate: &str, ancestor: &str) -> Result<b
         if guard > 256 {
             return Ok(true);
         }
-        cur = conn
-            .query_row("SELECT parent_id FROM pages WHERE id = ?1", [&c], |r| r.get::<_, Option<String>>(0))
-            .optional()?
-            .flatten();
+        cur = conn.query_row("SELECT parent_id FROM pages WHERE id = ?1", [&c], |r| r.get::<_, Option<String>>(0)).optional()?.flatten();
     }
     Ok(false)
 }
@@ -816,26 +837,28 @@ pub fn move_page(conn: &Connection, ctx: &Ctx, id: &str, parent_id: Option<&str>
         }
     } else {
         let max: Option<f64> = conn
-            .query_row(
-                "SELECT MAX(sort_key) FROM pages WHERE parent_id IS ?1 AND id != ?2",
-                params![parent_id, id],
-                |r| r.get(0),
-            )
+            .query_row("SELECT MAX(sort_key) FROM pages WHERE parent_id IS ?1 AND id != ?2", params![parent_id, id], |r| r.get(0))
             .optional()?
             .flatten();
         max.map(|m| m + 1.0).unwrap_or(0.0)
     };
-    conn.execute(
-        "UPDATE pages SET parent_id = ?1, sort_key = ?2 WHERE id = ?3",
-        params![parent_id, sort, id],
-    )?;
+    conn.execute("UPDATE pages SET parent_id = ?1, sort_key = ?2 WHERE id = ?3", params![parent_id, sort, id])?;
     if page.parent_id.as_deref() != parent_id {
         let dest = match parent_id {
             Some(p) => require_page(conn, p)?.title,
             None => "top level".into(),
         };
-        record(conn, ctx, Some(id), "moved", &format!("Moved to {dest}"), None,
-               Some(json!(page.parent_id)), Some(json!(parent_id)), json!({}))?;
+        record(
+            conn,
+            ctx,
+            Some(id),
+            "moved",
+            &format!("Moved to {dest}"),
+            None,
+            Some(json!(page.parent_id)),
+            Some(json!(parent_id)),
+            json!({}),
+        )?;
     }
     mark_change(conn, Some(id), "tree", &ctx.origin)?;
     require_page(conn, id)
@@ -896,7 +919,14 @@ pub fn subtree_ids(conn: &Connection, root: &str) -> Result<Vec<String>> {
 }
 
 /// Duplicate a page (optionally with its subpages). Block ids are regenerated.
-pub fn duplicate_page(conn: &Connection, ctx: &Ctx, id: &str, deep: bool, as_kind: Option<&str>, new_parent: Option<Option<&str>>) -> Result<PageMeta> {
+pub fn duplicate_page(
+    conn: &Connection,
+    ctx: &Ctx,
+    id: &str,
+    deep: bool,
+    as_kind: Option<&str>,
+    new_parent: Option<Option<&str>>,
+) -> Result<PageMeta> {
     let src = get_page(conn, id)?.ok_or_else(|| anyhow!("page not found"))?;
     let parent = match new_parent {
         Some(p) => p.map(str::to_string),
@@ -909,18 +939,22 @@ pub fn duplicate_page(conn: &Connection, ctx: &Ctx, id: &str, deep: bool, as_kin
         src.meta.title.clone()
     };
     let nodes: Vec<Value> = src.blocks.iter().map(|b| strip_bid(b.content.clone())).collect();
-    let created = create_page(conn, ctx, NewPage {
-        title: Some(title),
-        icon: src.meta.icon.clone(),
-        parent_id: parent,
-        after_id: if new_parent.is_none() { Some(id.to_string()) } else { None },
-        kind: Some(kind.clone()),
-        template_category: src.meta.template_category.clone(),
-        blocks: Some(nodes),
-        instructions: Some(src.instructions.clone()),
-        metadata: Some(src.metadata.clone()),
-        ..Default::default()
-    })?;
+    let created = create_page(
+        conn,
+        ctx,
+        NewPage {
+            title: Some(title),
+            icon: src.meta.icon.clone(),
+            parent_id: parent,
+            after_id: if new_parent.is_none() { Some(id.to_string()) } else { None },
+            kind: Some(kind.clone()),
+            template_category: src.meta.template_category.clone(),
+            blocks: Some(nodes),
+            instructions: Some(src.instructions.clone()),
+            metadata: Some(src.metadata.clone()),
+            ..Default::default()
+        },
+    )?;
     if deep {
         let kids: Vec<String> = conn
             .prepare("SELECT id FROM pages WHERE parent_id = ?1 AND deleted_at IS NULL ORDER BY sort_key")?
@@ -994,9 +1028,7 @@ fn write_blocks(conn: &Connection, ctx: &Ctx, page_id: &str, nodes: Vec<Value>, 
             content::set_block_id(&mut node, &id);
         } else if !existing.contains_key(&id) {
             // id already used on another page? never steal it.
-            let other: Option<String> = conn
-                .query_row("SELECT page_id FROM blocks WHERE id = ?1", [&id], |r| r.get(0))
-                .optional()?;
+            let other: Option<String> = conn.query_row("SELECT page_id FROM blocks WHERE id = ?1", [&id], |r| r.get(0)).optional()?;
             if other.is_some() {
                 let fresh = new_id();
                 res.remapped.push((id.clone(), fresh.clone()));
@@ -1070,9 +1102,7 @@ fn write_blocks(conn: &Connection, ctx: &Ctx, page_id: &str, nodes: Vec<Value>, 
 fn rebuild_refs(conn: &Connection, page_id: &str) -> Result<()> {
     conn.execute("DELETE FROM refs WHERE source_page = ?1", [page_id])?;
     let mut stmt = conn.prepare("SELECT id, content FROM blocks WHERE page_id = ?1")?;
-    let rows: Vec<(String, String)> = stmt
-        .query_map([page_id], |r| Ok((r.get(0)?, r.get(1)?)))?
-        .collect::<rusqlite::Result<_>>()?;
+    let rows: Vec<(String, String)> = stmt.query_map([page_id], |r| Ok((r.get(0)?, r.get(1)?)))?.collect::<rusqlite::Result<_>>()?;
     for (bid, c) in rows {
         let node: Value = serde_json::from_str(&c).unwrap_or(Value::Null);
         let mut refs = Vec::new();
@@ -1093,11 +1123,9 @@ fn record_user_edit(conn: &Connection, page_id: &str, res: &SaveResult) -> Resul
     const WINDOW: i64 = 10 * 60 * 1000;
     let t = now();
     let last: Option<(i64, i64, String)> = conn
-        .query_row(
-            "SELECT id, created_at, meta FROM history WHERE page_id = ?1 ORDER BY id DESC LIMIT 1",
-            [page_id],
-            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
-        )
+        .query_row("SELECT id, created_at, meta FROM history WHERE page_id = ?1 ORDER BY id DESC LIMIT 1", [page_id], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?))
+        })
         .optional()?;
     if let Some((hid, at, meta)) = &last {
         let m: Value = serde_json::from_str(meta).unwrap_or(json!({}));
@@ -1107,7 +1135,11 @@ fn record_user_edit(conn: &Connection, page_id: &str, res: &SaveResult) -> Resul
             let rem = m["removed"].as_u64().unwrap_or(0) + res.removed as u64;
             conn.execute(
                 "UPDATE history SET meta = ?1, summary = ?2 WHERE id = ?3",
-                params![json!({ "edit": true, "added": add, "changed": chg, "removed": rem, "until": t }).to_string(), edit_summary(add, chg, rem), hid],
+                params![
+                    json!({ "edit": true, "added": add, "changed": chg, "removed": rem, "until": t }).to_string(),
+                    edit_summary(add, chg, rem),
+                    hid
+                ],
             )?;
             return Ok(());
         }
@@ -1130,26 +1162,30 @@ fn record_user_edit(conn: &Connection, page_id: &str, res: &SaveResult) -> Resul
 
 fn edit_summary(add: u64, chg: u64, rem: u64) -> String {
     let mut parts = Vec::new();
-    if add > 0 { parts.push(format!("{add} added")); }
-    if chg > 0 { parts.push(format!("{chg} changed")); }
-    if rem > 0 { parts.push(format!("{rem} removed")); }
-    if parts.is_empty() { "Edited".into() } else { format!("Edited · {}", parts.join(", ")) }
+    if add > 0 {
+        parts.push(format!("{add} added"));
+    }
+    if chg > 0 {
+        parts.push(format!("{chg} changed"));
+    }
+    if rem > 0 {
+        parts.push(format!("{rem} removed"));
+    }
+    if parts.is_empty() {
+        "Edited".into()
+    } else {
+        format!("Edited · {}", parts.join(", "))
+    }
 }
 
 /// Called before applying a user save: if no version exists within the
 /// editing window, capture one so the prior state stays restorable.
 pub fn snapshot_before_user_edit(conn: &Connection, page_id: &str) -> Result<()> {
     const WINDOW: i64 = 10 * 60 * 1000;
-    let last: Option<i64> = conn
-        .query_row("SELECT MAX(created_at) FROM versions WHERE page_id = ?1", [page_id], |r| r.get(0))
-        .optional()?
-        .flatten();
+    let last: Option<i64> =
+        conn.query_row("SELECT MAX(created_at) FROM versions WHERE page_id = ?1", [page_id], |r| r.get(0)).optional()?.flatten();
     let last_edit: Option<i64> = conn
-        .query_row(
-            "SELECT MAX(created_at) FROM history WHERE page_id = ?1 AND kind = 'edited'",
-            [page_id],
-            |r| r.get(0),
-        )
+        .query_row("SELECT MAX(created_at) FROM history WHERE page_id = ?1 AND kind = 'edited'", [page_id], |r| r.get(0))
         .optional()?
         .flatten();
     let t = now();
@@ -1170,11 +1206,7 @@ fn ensure_op_snapshot(conn: &Connection, ctx: &Ctx, page_id: &str) -> Result<()>
         return Ok(());
     };
     let exists: bool = conn
-        .query_row(
-            "SELECT 1 FROM versions WHERE page_id = ?1 AND op_id = ?2",
-            params![page_id, op],
-            |_| Ok(true),
-        )
+        .query_row("SELECT 1 FROM versions WHERE page_id = ?1 AND op_id = ?2", params![page_id, op], |_| Ok(true))
         .optional()?
         .unwrap_or(false);
     if !exists {
@@ -1203,11 +1235,8 @@ pub fn snapshot(conn: &Connection, page_id: &str, actor: &str, op_id: Option<&st
 }
 
 pub fn version_snapshot(conn: &Connection, version_id: &str) -> Result<(String, Value)> {
-    let (page_id, snap): (String, String) = conn.query_row(
-        "SELECT page_id, snapshot FROM versions WHERE id = ?1",
-        [version_id],
-        |r| Ok((r.get(0)?, r.get(1)?)),
-    )?;
+    let (page_id, snap): (String, String) =
+        conn.query_row("SELECT page_id, snapshot FROM versions WHERE id = ?1", [version_id], |r| Ok((r.get(0)?, r.get(1)?)))?;
     Ok((page_id, serde_json::from_str(&snap)?))
 }
 
@@ -1241,15 +1270,27 @@ pub fn restore_version(conn: &Connection, ctx: &Ctx, version_id: &str) -> Result
     let t = now();
     conn.execute(
         "UPDATE pages SET title = ?1, icon = ?2, instructions = ?3, updated_at = ?4 WHERE id = ?5",
-        params![
-            snap["title"].as_str().unwrap_or(""),
-            snap["icon"].as_str(),
-            snap["instructions"].to_string(),
-            t,
-            page_id
-        ],
+        params![snap["title"].as_str().unwrap_or(""), snap["icon"].as_str(), snap["instructions"].to_string(), t, page_id],
     )?;
-    record(conn, ctx, Some(&page_id), "restored_version", "Restored an earlier version", None, None, None, json!({ "version": version_id }))?;
+    // Cover and metadata (properties, look) are part of the page too. Older
+    // snapshots may lack them; leave the current values in that case.
+    if let Some(cover) = snap.get("cover") {
+        conn.execute("UPDATE pages SET cover = ?1 WHERE id = ?2", params![cover.as_str(), page_id])?;
+    }
+    if let Some(meta) = snap.get("metadata").filter(|m| m.is_object()) {
+        conn.execute("UPDATE pages SET metadata = ?1 WHERE id = ?2", params![meta.to_string(), page_id])?;
+    }
+    record(
+        conn,
+        ctx,
+        Some(&page_id),
+        "restored_version",
+        "Restored an earlier version",
+        None,
+        None,
+        None,
+        json!({ "version": version_id }),
+    )?;
     index_page(conn, &page_id)?;
     mark_change(conn, Some(&page_id), "blocks", &ctx.origin)?;
     require_page(conn, &page_id)
@@ -1258,18 +1299,13 @@ pub fn restore_version(conn: &Connection, ctx: &Ctx, version_id: &str) -> Result
 /// Undo every page change made by one AI / automation operation.
 pub fn undo_op(conn: &Connection, ctx: &Ctx, op_id: &str) -> Result<Vec<String>> {
     let mut stmt = conn.prepare("SELECT id, page_id FROM versions WHERE op_id = ?1")?;
-    let rows: Vec<(String, String)> = stmt
-        .query_map([op_id], |r| Ok((r.get(0)?, r.get(1)?)))?
-        .collect::<rusqlite::Result<_>>()?;
+    let rows: Vec<(String, String)> = stmt.query_map([op_id], |r| Ok((r.get(0)?, r.get(1)?)))?.collect::<rusqlite::Result<_>>()?;
     let mut pages = Vec::new();
     for (vid, pid) in rows {
         restore_version(conn, ctx, &vid)?;
         pages.push(pid);
     }
-    conn.execute(
-        "UPDATE history SET meta = json_set(meta, '$.undone', 1) WHERE op_id = ?1",
-        [op_id],
-    )?;
+    conn.execute("UPDATE history SET meta = json_set(meta, '$.undone', 1) WHERE op_id = ?1", [op_id])?;
     Ok(pages)
 }
 
@@ -1306,10 +1342,8 @@ pub fn replace_blocks(conn: &Connection, ctx: &Ctx, page_id: &str, nodes: Vec<Va
 pub fn update_block(conn: &Connection, ctx: &Ctx, block_id: &str, mut node: Value) -> Result<()> {
     let b = block_by_id(conn, block_id)?.ok_or_else(|| anyhow!("block not found: {block_id}"))?;
     content::set_block_id(&mut node, block_id);
-    let list: Vec<Value> = blocks_of(conn, &b.page_id)?
-        .into_iter()
-        .map(|x| if x.id == block_id { node.clone() } else { x.content })
-        .collect();
+    let list: Vec<Value> =
+        blocks_of(conn, &b.page_id)?.into_iter().map(|x| if x.id == block_id { node.clone() } else { x.content }).collect();
     write_blocks(conn, ctx, &b.page_id, list, true)?;
     index_page(conn, &b.page_id)?;
     mark_change(conn, Some(&b.page_id), "blocks", &ctx.origin)?;
@@ -1318,11 +1352,7 @@ pub fn update_block(conn: &Connection, ctx: &Ctx, block_id: &str, mut node: Valu
 
 pub fn delete_block(conn: &Connection, ctx: &Ctx, block_id: &str) -> Result<()> {
     let b = block_by_id(conn, block_id)?.ok_or_else(|| anyhow!("block not found: {block_id}"))?;
-    let list: Vec<Value> = blocks_of(conn, &b.page_id)?
-        .into_iter()
-        .filter(|x| x.id != block_id)
-        .map(|x| x.content)
-        .collect();
+    let list: Vec<Value> = blocks_of(conn, &b.page_id)?.into_iter().filter(|x| x.id != block_id).map(|x| x.content).collect();
     write_blocks(conn, ctx, &b.page_id, list, true)?;
     index_page(conn, &b.page_id)?;
     mark_change(conn, Some(&b.page_id), "blocks", &ctx.origin)?;
@@ -1349,8 +1379,17 @@ pub fn move_block(conn: &Connection, ctx: &Ctx, block_id: &str, after: Option<&s
 // ---------------------------------------------------------------------------
 
 #[allow(clippy::too_many_arguments)]
-pub fn record(conn: &Connection, ctx: &Ctx, page_id: Option<&str>, kind: &str, summary: &str,
-              block_id: Option<&str>, before: Option<Value>, after: Option<Value>, meta: Value) -> Result<()> {
+pub fn record(
+    conn: &Connection,
+    ctx: &Ctx,
+    page_id: Option<&str>,
+    kind: &str,
+    summary: &str,
+    block_id: Option<&str>,
+    before: Option<Value>,
+    after: Option<Value>,
+    meta: Value,
+) -> Result<()> {
     conn.execute(
         "INSERT INTO history (page_id, op_id, actor, kind, summary, block_id, before, after, meta, created_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
@@ -1413,11 +1452,8 @@ pub fn list_history(conn: &Connection, page_id: Option<&str>, op_id: Option<&str
 // ---------------------------------------------------------------------------
 
 pub fn index_page(conn: &Connection, page_id: &str) -> Result<()> {
-    let (title, deleted): (String, Option<i64>) = conn.query_row(
-        "SELECT title, deleted_at FROM pages WHERE id = ?1",
-        [page_id],
-        |r| Ok((r.get(0)?, r.get(1)?)),
-    )?;
+    let (title, deleted): (String, Option<i64>) =
+        conn.query_row("SELECT title, deleted_at FROM pages WHERE id = ?1", [page_id], |r| Ok((r.get(0)?, r.get(1)?)))?;
     let texts: Vec<(String, String)> = conn
         .prepare("SELECT type, text FROM blocks WHERE page_id = ?1 ORDER BY sort_key")?
         .query_map([page_id], |r| Ok((r.get(0)?, r.get(1)?)))?
@@ -1441,10 +1477,7 @@ pub fn index_page(conn: &Connection, page_id: &str) -> Result<()> {
     conn.execute("UPDATE pages SET preview = ?1 WHERE id = ?2", params![preview, page_id])?;
     conn.execute("DELETE FROM pages_fts WHERE page_id = ?1", [page_id])?;
     if deleted.is_none() {
-        conn.execute(
-            "INSERT INTO pages_fts (page_id, title, body) VALUES (?1, ?2, ?3)",
-            params![page_id, title, body],
-        )?;
+        conn.execute("INSERT INTO pages_fts (page_id, title, body) VALUES (?1, ?2, ?3)", params![page_id, title, body])?;
     }
     Ok(())
 }
@@ -1485,9 +1518,7 @@ pub fn search(conn: &Connection, query: &str, limit: i64, include_templates: boo
                  ORDER BY bm25(pages_fts, 0.0, 8.0, 1.0) LIMIT ?2"
             );
             let mut stmt = conn.prepare(&sql)?;
-            hits = stmt
-                .query_map(params![fts_q, limit], map)?
-                .collect::<rusqlite::Result<_>>()?;
+            hits = stmt.query_map(params![fts_q, limit], map)?.collect::<rusqlite::Result<_>>()?;
         }
     }
     if hits.len() < limit as usize {
@@ -1500,9 +1531,7 @@ pub fn search(conn: &Connection, query: &str, limit: i64, include_templates: boo
              ORDER BY p.updated_at DESC LIMIT ?2"
         );
         let mut stmt = conn.prepare(&sql)?;
-        let extra: Vec<SearchHit> = stmt
-            .query_map(params![like, limit], map)?
-            .collect::<rusqlite::Result<_>>()?;
+        let extra: Vec<SearchHit> = stmt.query_map(params![like, limit], map)?.collect::<rusqlite::Result<_>>()?;
         for h in extra {
             if !hits.iter().any(|x| x.page_id == h.page_id) {
                 hits.push(h);
@@ -1532,11 +1561,8 @@ pub fn kind_for_mime(mime: &str) -> &'static str {
 pub fn add_attachment_bytes(conn: &Connection, page_id: Option<&str>, file_name: &str, bytes: &[u8]) -> Result<Attachment> {
     let id = new_id();
     let mime = mime_guess::from_path(file_name).first_or_octet_stream().essence_str().to_string();
-    let ext = std::path::Path::new(file_name)
-        .extension()
-        .and_then(|e| e.to_str())
-        .map(|e| format!(".{}", e.to_lowercase()))
-        .unwrap_or_default();
+    let ext =
+        std::path::Path::new(file_name).extension().and_then(|e| e.to_str()).map(|e| format!(".{}", e.to_lowercase())).unwrap_or_default();
     let month = chrono::Local::now().format("%Y-%m").to_string();
     let rel = format!("{month}/{id}{ext}");
     let abs = db::attachments_dir().join(&rel);
@@ -1565,9 +1591,7 @@ pub fn add_attachment_path(conn: &Connection, page_id: Option<&str>, path: &std:
 }
 
 pub fn get_attachment(conn: &Connection, id: &str) -> Result<Option<Attachment>> {
-    Ok(conn
-        .query_row(&format!("SELECT {ATTACHMENT_COLS} FROM attachments WHERE id = ?1"), [id], attachment_row)
-        .optional()?)
+    Ok(conn.query_row(&format!("SELECT {ATTACHMENT_COLS} FROM attachments WHERE id = ?1"), [id], attachment_row).optional()?)
 }
 
 /// Recent images, GIFs and videos across all live pages (and the profile), newest first.
@@ -1583,7 +1607,14 @@ pub fn recent_media(conn: &Connection, limit: i64) -> Result<Vec<Attachment>> {
 }
 
 pub fn attachment_abs_path(a: &Attachment) -> std::path::PathBuf {
-    db::attachments_dir().join(&a.rel_path)
+    // Stored paths are always plain relative names inside the attachments
+    // folder; anything else (.., absolute, drive prefixes) resolves nowhere.
+    let rel = std::path::Path::new(&a.rel_path);
+    if rel.components().all(|c| matches!(c, std::path::Component::Normal(_))) {
+        db::attachments_dir().join(rel)
+    } else {
+        db::attachments_dir().join("_invalid_")
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1591,16 +1622,20 @@ pub fn attachment_abs_path(a: &Attachment) -> std::path::PathBuf {
 // ---------------------------------------------------------------------------
 
 /// Create a new page from a template (deep: includes template subpages).
-pub fn instantiate_template(conn: &Connection, ctx: &Ctx, template_id: &str, parent_id: Option<&str>, title: Option<&str>) -> Result<PageMeta> {
+pub fn instantiate_template(
+    conn: &Connection,
+    ctx: &Ctx,
+    template_id: &str,
+    parent_id: Option<&str>,
+    title: Option<&str>,
+) -> Result<PageMeta> {
     let t = require_page(conn, template_id)?;
     if t.kind != "template" {
         bail!("not a template");
     }
     let page = duplicate_page(conn, ctx, template_id, true, Some("page"), Some(parent_id))?;
     let today = chrono::Local::now().format("%Y-%m-%d").to_string();
-    let final_title = title
-        .map(str::to_string)
-        .unwrap_or_else(|| t.title.replace("{{date}}", &today));
+    let final_title = title.map(str::to_string).unwrap_or_else(|| t.title.replace("{{date}}", &today));
     // Fill {{date}} tokens in blocks.
     let blocks = blocks_of(conn, &page.id)?;
     let nodes: Vec<Value> = blocks
@@ -1628,23 +1663,25 @@ pub fn save_as_template(conn: &Connection, ctx: &Ctx, page_id: &str) -> Result<P
 }
 
 pub fn ensure_builtin_templates(conn: &Connection) -> Result<()> {
-    let seeded: Option<String> = conn
-        .query_row("SELECT value FROM meta WHERE key = 'templates_v1'", [], |r| r.get(0))
-        .optional()?;
+    let seeded: Option<String> = conn.query_row("SELECT value FROM meta WHERE key = 'templates_v1'", [], |r| r.get(0)).optional()?;
     if seeded.is_some() {
         return Ok(());
     }
     let ctx = Ctx { actor: "system".into(), op_id: None, origin: "ui".into() };
     for t in crate::templates::BUILTIN {
-        create_page(conn, &ctx, NewPage {
-            title: Some(t.title.to_string()),
-            icon: Some(t.icon.to_string()),
-            kind: Some("template".into()),
-            template_category: Some(t.category.to_string()),
-            markdown: Some(t.markdown.to_string()),
-            metadata: Some(json!({ "builtin": t.key, "description": t.description })),
-            ..Default::default()
-        })?;
+        create_page(
+            conn,
+            &ctx,
+            NewPage {
+                title: Some(t.title.to_string()),
+                icon: Some(t.icon.to_string()),
+                kind: Some("template".into()),
+                template_category: Some(t.category.to_string()),
+                markdown: Some(t.markdown.to_string()),
+                metadata: Some(json!({ "builtin": t.key, "description": t.description })),
+                ..Default::default()
+            },
+        )?;
     }
     conn.execute("INSERT INTO meta (key, value) VALUES ('templates_v1', '1')", [])?;
     // seeding is not user activity

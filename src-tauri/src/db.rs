@@ -11,9 +11,7 @@ pub fn data_dir() -> PathBuf {
     if let Ok(dir) = std::env::var("WORLDS_DATA_DIR") {
         return PathBuf::from(dir);
     }
-    dirs::data_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("Worlds")
+    dirs::data_dir().unwrap_or_else(|| PathBuf::from(".")).join("Worlds")
 }
 
 pub fn db_path() -> PathBuf {
@@ -248,14 +246,18 @@ const MIGRATIONS: &[&str] = &[
     "#,
 ];
 
+/// The schema version this build expects (the number of migrations).
+pub fn schema_version() -> i64 {
+    MIGRATIONS.len() as i64
+}
+
 fn migrate(conn: &Connection) -> Result<()> {
     let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
     for (i, sql) in MIGRATIONS.iter().enumerate() {
         let target = (i + 1) as i64;
         if version < target {
             let tx = conn.unchecked_transaction()?;
-            tx.execute_batch(sql)
-                .with_context(|| format!("migration {target}"))?;
+            tx.execute_batch(sql).with_context(|| format!("migration {target}"))?;
             tx.execute_batch(&format!("PRAGMA user_version = {target}"))?;
             tx.commit()?;
         }
@@ -282,9 +284,7 @@ pub fn mark_change(conn: &Connection, page_id: Option<&str>, kind: &str, origin:
 
 pub fn get_setting(conn: &Connection, key: &str) -> Result<Option<serde_json::Value>> {
     use rusqlite::OptionalExtension;
-    let raw: Option<String> = conn
-        .query_row("SELECT value FROM settings WHERE key = ?1", [key], |r| r.get(0))
-        .optional()?;
+    let raw: Option<String> = conn.query_row("SELECT value FROM settings WHERE key = ?1", [key], |r| r.get(0)).optional()?;
     Ok(raw.and_then(|s| serde_json::from_str(&s).ok()))
 }
 

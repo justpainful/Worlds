@@ -40,11 +40,11 @@ pub struct Policy {
 #[serde(rename_all = "camelCase")]
 pub struct Spec {
     pub trigger: Trigger,
-    pub source: Value,     // { pageId }
+    pub source: Value, // { pageId }
     #[serde(default)]
-    pub transform: Value,  // { kind: "none" } | { kind: "claude", instructions, model? }
+    pub transform: Value, // { kind: "none" } | { kind: "claude", instructions, model? }
     #[serde(default)]
-    pub action: Value,     // { kind: "discord.send", options?, mode?: "send" | "editLast" }
+    pub action: Value, // { kind: "discord.send", options?, mode?: "send" | "editLast" }
     pub destination: Option<Destination>,
     #[serde(default)]
     pub policy: Policy,
@@ -101,10 +101,12 @@ pub fn next_run(trigger: &Trigger, after: i64) -> Option<i64> {
             if days.is_empty() {
                 return None;
             }
-            (0..15).filter_map(|d| {
-                let date = after_dt.date_naive() + Duration::days(d);
-                days.contains(&date.weekday().num_days_from_sunday()).then(|| at_local(date, t)).flatten()
-            }).find(|&ms| ms > after)
+            (0..15)
+                .filter_map(|d| {
+                    let date = after_dt.date_naive() + Duration::days(d);
+                    days.contains(&date.weekday().num_days_from_sunday()).then(|| at_local(date, t)).flatten()
+                })
+                .find(|&ms| ms > after)
         }
         Trigger::Monthly { day, time } => {
             let t = parse_time(time);
@@ -191,7 +193,17 @@ pub fn save(conn: &Connection, ctx: &Ctx, input: AutomationInput) -> Result<Auto
         }
     };
     if let Some(pid) = spec.source.get("pageId").and_then(Value::as_str) {
-        store::record(conn, ctx, Some(pid), "automation", &format!("Automation “{}” saved", input.name), None, None, None, json!({ "automationId": id }))?;
+        store::record(
+            conn,
+            ctx,
+            Some(pid),
+            "automation",
+            &format!("Automation “{}” saved", input.name),
+            None,
+            None,
+            None,
+            json!({ "automationId": id }),
+        )?;
     }
     db::mark_change(conn, None, "automation", &ctx.origin)?;
     get(conn, &id)?.ok_or_else(|| anyhow!("automation vanished"))
@@ -234,7 +246,13 @@ pub fn finish_run(conn: &Connection, run_id: &str, status: &str, output: Option<
 }
 
 /// Execute one run end-to-end.
-pub async fn execute(app: &tauri::AppHandle, automation_id: &str, trigger: &str, scheduled_for: Option<i64>, authorized: bool) -> Result<String> {
+pub async fn execute(
+    app: &tauri::AppHandle,
+    automation_id: &str,
+    trigger: &str,
+    scheduled_for: Option<i64>,
+    authorized: bool,
+) -> Result<String> {
     let state = app.state::<AppState>();
     let run_id = new_id();
 
@@ -243,7 +261,8 @@ pub async fn execute(app: &tauri::AppHandle, automation_id: &str, trigger: &str,
         let c = state.conn();
         let a = get(&c, automation_id)?.ok_or_else(|| anyhow!("automation not found"))?;
         let spec: Spec = serde_json::from_value(a.spec.clone())?;
-        let page_id = spec.source.get("pageId").and_then(Value::as_str).ok_or_else(|| anyhow!("automation has no source page"))?.to_string();
+        let page_id =
+            spec.source.get("pageId").and_then(Value::as_str).ok_or_else(|| anyhow!("automation has no source page"))?.to_string();
         c.execute(
             "INSERT INTO runs (id, automation_id, status, trigger, scheduled_for, started_at) VALUES (?1, ?2, 'running', ?3, ?4, ?5)",
             params![run_id, automation_id, trigger, scheduled_for, now()],
@@ -310,15 +329,21 @@ pub async fn execute(app: &tauri::AppHandle, automation_id: &str, trigger: &str,
 
     if !(spec.policy.unattended || authorized) {
         let c = state.conn();
-        discord::queue_action(&c, "discord.send", json!({
-            "pageId": page_id,
-            "destination": dest,
-            "options": options,
-            "blocks": blocks_override,
-            "automationId": automation_id,
-            "automationName": auto.name,
-            "runId": run_id,
-        }), "automation", Some(&run_id))?;
+        discord::queue_action(
+            &c,
+            "discord.send",
+            json!({
+                "pageId": page_id,
+                "destination": dest,
+                "options": options,
+                "blocks": blocks_override,
+                "automationId": automation_id,
+                "automationName": auto.name,
+                "runId": run_id,
+            }),
+            "automation",
+            Some(&run_id),
+        )?;
         c.execute("UPDATE runs SET status = 'waiting' WHERE id = ?1", [&run_id])?;
         db::mark_change(&c, Some(&page_id), "pending", "runner")?;
         let _ = app.emit("worlds://approval", json!({ "runId": run_id, "automation": auto.name }));
@@ -334,7 +359,13 @@ pub async fn execute(app: &tauri::AppHandle, automation_id: &str, trigger: &str,
     let res = discord::deliver(&state.db, &cfg, &rendered, files, &dest, Some(&page_id), Some(automation_id)).await;
     let c = state.conn();
     match res {
-        Ok(v) => finish_run(&c, &run_id, "succeeded", Some(json!({ "payload": rendered.payload, "result": v, "warnings": rendered.warnings })), None)?,
+        Ok(v) => finish_run(
+            &c,
+            &run_id,
+            "succeeded",
+            Some(json!({ "payload": rendered.payload, "result": v, "warnings": rendered.warnings })),
+            None,
+        )?,
         Err(e) => finish_run(&c, &run_id, "failed", Some(json!({ "payload": rendered.payload })), Some(&format!("{e:#}")))?,
     }
     Ok(run_id)

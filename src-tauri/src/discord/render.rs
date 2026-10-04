@@ -278,7 +278,13 @@ fn render_list(node: &Value, b: &mut Builder, depth: usize, opts: &RenderOptions
         let indent = "  ".repeat(depth);
         let marker = match kind {
             "orderedList" => format!("{}. ", attr(node, "start").and_then(Value::as_u64).unwrap_or(1) as usize + i),
-            "taskList" => if checked { "☑ ".into() } else { "☐ ".into() },
+            "taskList" => {
+                if checked {
+                    "☑ ".into()
+                } else {
+                    "☐ ".into()
+                }
+            }
             _ => "- ".into(),
         };
         for (k, c) in children(li).iter().enumerate() {
@@ -300,15 +306,9 @@ fn render_list(node: &Value, b: &mut Builder, depth: usize, opts: &RenderOptions
 }
 
 pub fn render_page(title: &str, blocks: &[Value], opts: &RenderOptions, resolver: &dyn Resolver) -> Rendered {
-    let mut b = Builder {
-        resolver,
-        items: Vec::new(),
-        text: Vec::new(),
-        files: Vec::new(),
-        warnings: Vec::new(),
-        buttons: Vec::new(),
-    };
-    let first_is_h1 = blocks.first().map(|n| node_type(n) == "heading" && attr(n, "level").and_then(Value::as_u64) == Some(1)).unwrap_or(false);
+    let mut b = Builder { resolver, items: Vec::new(), text: Vec::new(), files: Vec::new(), warnings: Vec::new(), buttons: Vec::new() };
+    let first_is_h1 =
+        blocks.first().map(|n| node_type(n) == "heading" && attr(n, "level").and_then(Value::as_u64) == Some(1)).unwrap_or(false);
     if opts.include_title.unwrap_or(true) && !title.trim().is_empty() && !first_is_h1 {
         b.push_text(bidi::normalize(&format!("# {}", escape_md(title.trim())), None));
     }
@@ -381,11 +381,13 @@ pub fn render_page(title: &str, blocks: &[Value], opts: &RenderOptions, resolver
             "horizontalRule" => b.separator(true),
             "table" => {
                 let rows = children(node);
-                let headers: Vec<String> = rows.first().map(|r| children(r).iter().map(|c| plain(children(c)).trim().to_string()).collect()).unwrap_or_default();
+                let headers: Vec<String> =
+                    rows.first().map(|r| children(r).iter().map(|c| plain(children(c)).trim().to_string()).collect()).unwrap_or_default();
                 let has_header = rows.first().map(|r| children(r).iter().any(|c| node_type(c) == "tableHeader")).unwrap_or(false);
                 let body = if has_header { &rows[1..] } else { rows };
                 for row in body {
-                    let cells: Vec<String> = children(row).iter().map(|c| inline(children(children(c).first().unwrap_or(&Value::Null)), resolver)).collect();
+                    let cells: Vec<String> =
+                        children(row).iter().map(|c| inline(children(children(c).first().unwrap_or(&Value::Null)), resolver)).collect();
                     if cells.iter().all(|c| c.trim().is_empty()) {
                         continue;
                     }
@@ -476,10 +478,16 @@ pub fn render_page(title: &str, blocks: &[Value], opts: &RenderOptions, resolver
 
     let component_count = count_components(&top);
     if component_count > MAX_COMPONENTS {
-        warnings.push(Warning { level: "error", message: format!("Uses {component_count} components; Discord allows {MAX_COMPONENTS}. Shorten the page or merge sections.") });
+        warnings.push(Warning {
+            level: "error",
+            message: format!("Uses {component_count} components; Discord allows {MAX_COMPONENTS}. Shorten the page or merge sections."),
+        });
     }
     if text_chars > MAX_TEXT_CHARS {
-        warnings.push(Warning { level: "error", message: format!("{text_chars} characters of text; Discord allows {MAX_TEXT_CHARS} per message.") });
+        warnings.push(Warning {
+            level: "error",
+            message: format!("{text_chars} characters of text; Discord allows {MAX_TEXT_CHARS} per message."),
+        });
     } else if text_chars > MAX_TEXT_CHARS * 9 / 10 {
         warnings.push(Warning { level: "warn", message: format!("{text_chars} of {MAX_TEXT_CHARS} characters used.") });
     }
@@ -537,8 +545,12 @@ mod tests {
 
     struct R;
     impl Resolver for R {
-        fn attachment(&self, _: &str) -> Option<(String, String, i64)> { None }
-        fn page_title(&self, _: &str) -> Option<String> { None }
+        fn attachment(&self, _: &str) -> Option<(String, String, i64)> {
+            None
+        }
+        fn page_title(&self, _: &str) -> Option<String> {
+            None
+        }
     }
 
     #[test]

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openExternal } from "../lib/links";
 import { fileUrl } from "../lib/api";
 import { useStore, pageTitle } from "../state/store";
 import { Glass } from "../glass/Glass";
@@ -30,7 +30,7 @@ export interface ProfileStats {
 
 const open = (url?: string) => {
   if (!url) return;
-  if (/^https?:\/\//.test(url)) openUrl(url).catch(() => window.open(url, "_blank"));
+  if (/^https?:\/\//.test(url)) openExternal(url);
 };
 
 /** The frame: size on the 12-column grid plus the chosen style preset. */

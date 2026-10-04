@@ -43,9 +43,9 @@ pub fn kind_for(name: &str, mime: &str) -> &'static str {
         "pptx" | "ppt" | "pps" | "ppsx" | "pptm" | "odp" => "slides",
         "docx" | "docm" => "docx",
         "xlsx" | "xls" | "xlsm" | "xlsb" | "ods" | "csv" | "tsv" => "sheet",
-        "txt" | "md" | "markdown" | "json" | "jsonc" | "log" | "ini" | "toml" | "yaml" | "yml" | "xml" | "html" | "css"
-        | "js" | "ts" | "tsx" | "jsx" | "py" | "rs" | "cs" | "lua" | "sql" | "sh" | "ps1" | "bat" | "go" | "java"
-        | "c" | "h" | "cpp" | "hpp" | "kt" | "swift" | "php" | "rb" | "env" => "text",
+        "txt" | "md" | "markdown" | "json" | "jsonc" | "log" | "ini" | "toml" | "yaml" | "yml" | "xml" | "html" | "css" | "js" | "ts"
+        | "tsx" | "jsx" | "py" | "rs" | "cs" | "lua" | "sql" | "sh" | "ps1" | "bat" | "go" | "java" | "c" | "h" | "cpp" | "hpp" | "kt"
+        | "swift" | "php" | "rb" | "env" => "text",
         _ if mime.starts_with("audio/") => "audio",
         _ if mime.starts_with("text/") => "text",
         _ => "none",

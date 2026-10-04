@@ -141,7 +141,13 @@ fn protected_spans(s: &str) -> Vec<(usize, usize)> {
         if c == b'<' {
             if let Some(end) = s[i..].find('>') {
                 let tok = &s[i..i + end + 1];
-                if tok.starts_with("<@") || tok.starts_with("<#") || tok.starts_with("<:") || tok.starts_with("<a:") || tok.starts_with("<t:") || tok.starts_with("<http") {
+                if tok.starts_with("<@")
+                    || tok.starts_with("<#")
+                    || tok.starts_with("<:")
+                    || tok.starts_with("<a:")
+                    || tok.starts_with("<t:")
+                    || tok.starts_with("<http")
+                {
                     spans.push((i, i + end + 1));
                     i += end + 1;
                     continue;

@@ -1,6 +1,6 @@
 import { NodeViewWrapper, type ReactNodeViewProps } from "@tiptap/react";
 import { useEffect, useState } from "react";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openExternal } from "../../lib/links";
 import { api } from "../../lib/api";
 import type { Automation } from "../../lib/types";
 import { describeDestination, describeTrigger, STATUS_LABEL } from "../../lib/automationText";
@@ -27,7 +27,7 @@ export function EmbedView({ node, selected }: ReactNodeViewProps) {
         <span className="embed-title isolate">{node.attrs.title || host(url)}</span>
         <span className="embed-url isolate" dir="ltr">{url}</span>
       </span>
-      <button className="chip-btn" onClick={() => openUrl(url)}>
+      <button className="chip-btn" onClick={() => openExternal(url)}>
         <Icon name="external" size={13} />
         Open
       </button>
@@ -46,7 +46,7 @@ export function DiscordMessageView({ node, selected }: ReactNodeViewProps) {
         {a.channel && <span className="discord-ref-channel isolate">#{a.channel}</span>}
         {a.timestamp && <span className="discord-ref-time">{formatDateTime(a.timestamp)}</span>}
         <span className="grow" />
-        <button className="chip-btn" onClick={() => openUrl((a.url as string).replace("https://discord.com", "discord://discord.com"))}>
+        <button className="chip-btn" onClick={() => openExternal((a.url as string).replace("https://discord.com", "discord://discord.com"))}>
           <Icon name="external" size={13} />
           Open in Discord
         </button>

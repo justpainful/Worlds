@@ -14,6 +14,8 @@ fn err<E: std::fmt::Display>(e: E) -> String {
 macro_rules! with_conn {
     ($state:expr, |$c:ident| $body:expr) => {{
         let $c = $state.conn();
+        // The closure lets `$body` use `?`.
+        #[allow(clippy::redundant_closure_call)]
         let r: anyhow::Result<_> = (|| $body)();
         r.map_err(err)
     }};
@@ -38,6 +40,36 @@ pub async fn bootstrap(state: State<'_, AppState>) -> CmdResult<Value> {
             "dataDir": db::data_dir(),
         }))
     })
+}
+
+#[tauri::command]
+pub async fn backups_list(state: State<'_, AppState>) -> CmdResult<Value> {
+    let note = state.storage_note.lock().unwrap_or_else(|e| e.into_inner()).take();
+    let dir = db::data_dir();
+    Ok(json!({
+        "backups": crate::backup::list(&dir),
+        "pendingRestore": crate::backup::pending_restore(&dir),
+        "note": note,
+        "folder": crate::backup::backups_dir(&dir),
+    }))
+}
+
+#[tauri::command]
+pub async fn backup_now(state: State<'_, AppState>) -> CmdResult<Value> {
+    let c = state.conn();
+    crate::backup::backup_conn(&c, &db::data_dir(), "manual").map(|b| json!(b)).map_err(err)
+}
+
+/// Stage a restore; it is applied at the next launch.
+#[tauri::command]
+pub async fn backup_restore(file: String) -> CmdResult<()> {
+    crate::backup::schedule_restore(&db::data_dir(), &file).map_err(err)
+}
+
+#[tauri::command]
+pub async fn backup_cancel_restore() -> CmdResult<()> {
+    crate::backup::cancel_restore(&db::data_dir());
+    Ok(())
 }
 
 #[tauri::command]
@@ -69,13 +101,20 @@ pub async fn page_create(state: State<'_, AppState>, page: store::NewPage) -> Cm
 pub async fn page_markdown(state: State<'_, AppState>, id: String) -> CmdResult<String> {
     with_conn!(state, |c| {
         let page = store::get_page(&c, &id)?.ok_or_else(|| anyhow::anyhow!("page not found"))?;
-        let body: Vec<String> = page.blocks.iter().map(|b| crate::content::to_markdown(&b.content)).filter(|m| !m.trim().is_empty()).collect();
-        Ok::<String, anyhow::Error>(format!("# {}
+        let body: Vec<String> =
+            page.blocks.iter().map(|b| crate::content::to_markdown(&b.content)).filter(|m| !m.trim().is_empty()).collect();
+        Ok::<String, anyhow::Error>(format!(
+            "# {}
 
 {}
-", page.meta.title, body.join("
+",
+            page.meta.title,
+            body.join(
+                "
 
-")))
+"
+            )
+        ))
     })
 }
 
@@ -90,7 +129,12 @@ pub async fn page_update(state: State<'_, AppState>, id: String, patch: store::P
 }
 
 #[tauri::command]
-pub async fn page_move(state: State<'_, AppState>, id: String, parent_id: Option<String>, before_id: Option<String>) -> CmdResult<store::PageMeta> {
+pub async fn page_move(
+    state: State<'_, AppState>,
+    id: String,
+    parent_id: Option<String>,
+    before_id: Option<String>,
+) -> CmdResult<store::PageMeta> {
     with_conn!(state, |c| store::move_page(&c, &Ctx::user(), &id, parent_id.as_deref(), before_id.as_deref()))
 }
 
@@ -126,12 +170,22 @@ pub async fn blocks_save(state: State<'_, AppState>, page_id: String, blocks: Ve
 }
 
 #[tauri::command]
-pub async fn search(state: State<'_, AppState>, query: String, limit: Option<i64>, include_templates: Option<bool>) -> CmdResult<Vec<store::SearchHit>> {
+pub async fn search(
+    state: State<'_, AppState>,
+    query: String,
+    limit: Option<i64>,
+    include_templates: Option<bool>,
+) -> CmdResult<Vec<store::SearchHit>> {
     with_conn!(state, |c| store::search(&c, &query, limit.unwrap_or(30), include_templates.unwrap_or(true)))
 }
 
 #[tauri::command]
-pub async fn history_list(state: State<'_, AppState>, page_id: Option<String>, op_id: Option<String>, limit: Option<i64>) -> CmdResult<Vec<store::HistoryEntry>> {
+pub async fn history_list(
+    state: State<'_, AppState>,
+    page_id: Option<String>,
+    op_id: Option<String>,
+    limit: Option<i64>,
+) -> CmdResult<Vec<store::HistoryEntry>> {
     with_conn!(state, |c| store::list_history(&c, page_id.as_deref(), op_id.as_deref(), limit.unwrap_or(100)))
 }
 
@@ -176,7 +230,12 @@ pub async fn attachment_import(state: State<'_, AppState>, page_id: Option<Strin
 }
 
 #[tauri::command]
-pub async fn attachment_import_bytes(state: State<'_, AppState>, page_id: Option<String>, name: String, bytes: Vec<u8>) -> CmdResult<store::Attachment> {
+pub async fn attachment_import_bytes(
+    state: State<'_, AppState>,
+    page_id: Option<String>,
+    name: String,
+    bytes: Vec<u8>,
+) -> CmdResult<store::Attachment> {
     with_conn!(state, |c| store::add_attachment_bytes(&c, page_id.as_deref(), &name, &bytes))
 }
 
@@ -199,7 +258,12 @@ pub async fn attachment_path(state: State<'_, AppState>, id: String) -> CmdResul
 }
 
 #[tauri::command]
-pub async fn template_instantiate(state: State<'_, AppState>, template_id: String, parent_id: Option<String>, title: Option<String>) -> CmdResult<store::PageMeta> {
+pub async fn template_instantiate(
+    state: State<'_, AppState>,
+    template_id: String,
+    parent_id: Option<String>,
+    title: Option<String>,
+) -> CmdResult<store::PageMeta> {
     with_conn!(state, |c| {
         let tx = c.unchecked_transaction()?;
         let p = store::instantiate_template(&tx, &Ctx::user(), &template_id, parent_id.as_deref(), title.as_deref())?;

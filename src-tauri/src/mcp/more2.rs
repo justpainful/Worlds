@@ -133,7 +133,10 @@ fn fresh(node: &Value) -> Value {
 }
 
 fn table_rows(node: &Value) -> Vec<Vec<String>> {
-    content::children(node).iter().map(|row| content::children(row).iter().map(|c| content::plain_text(c).trim().to_string()).collect()).collect()
+    content::children(node)
+        .iter()
+        .map(|row| content::children(row).iter().map(|c| content::plain_text(c).trim().to_string()).collect())
+        .collect()
 }
 
 fn cell(text: &str, header: bool) -> Value {
@@ -233,8 +236,12 @@ fn md_of_snapshot(snap: &Value) -> String {
 
 fn collect_links(node: &Value, pages: &mut Vec<Value>, urls: &mut Vec<String>) {
     match content::node_type(node) {
-        "pageMention" => pages.push(json!({ "pageId": node.pointer("/attrs/id"), "label": node.pointer("/attrs/label"), "kind": "mention" })),
-        "pageLink" => pages.push(json!({ "pageId": node.pointer("/attrs/pageId"), "label": node.pointer("/attrs/title"), "kind": "subpage" })),
+        "pageMention" => {
+            pages.push(json!({ "pageId": node.pointer("/attrs/id"), "label": node.pointer("/attrs/label"), "kind": "mention" }))
+        }
+        "pageLink" => {
+            pages.push(json!({ "pageId": node.pointer("/attrs/pageId"), "label": node.pointer("/attrs/title"), "kind": "subpage" }))
+        }
         "embed" => {
             if let Some(u) = node.pointer("/attrs/url").and_then(Value::as_str) {
                 urls.push(u.to_string());
@@ -293,8 +300,16 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
                     let mut i = 0;
                     for_tasks(&mut node, &mut i, &mut |item, idx| {
                         let checked = item.pointer("/attrs/checked").and_then(Value::as_bool).unwrap_or(false);
-                        if checked { done += 1 } else { open += 1 }
-                        let keep = match status { "done" => checked, "all" => true, _ => !checked };
+                        if checked {
+                            done += 1
+                        } else {
+                            open += 1
+                        }
+                        let keep = match status {
+                            "done" => checked,
+                            "all" => true,
+                            _ => !checked,
+                        };
                         if keep && items.len() < limit {
                             items.push(json!({ "pageId": p.id, "page": p.title, "blockId": b.id, "index": idx, "text": content::plain_text(item).trim(), "checked": checked }));
                         }
@@ -348,11 +363,18 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
         }
         "tasks_add" => {
             let page = s(a, "pageId")?;
-            let items: Vec<String> = a.get("items").and_then(Value::as_array).map(|v| v.iter().filter_map(Value::as_str).map(|t| format!("- [ ] {}", t.trim())).collect()).unwrap_or_default();
+            let items: Vec<String> = a
+                .get("items")
+                .and_then(Value::as_array)
+                .map(|v| v.iter().filter_map(Value::as_str).map(|t| format!("- [ ] {}", t.trim())).collect())
+                .unwrap_or_default();
             if items.is_empty() {
                 bail!("items is empty");
             }
-            let after = match os(a, "afterBlockId") { Some(b) => Some(b.to_string()), None => last_block(conn, page)? };
+            let after = match os(a, "afterBlockId") {
+                Some(b) => Some(b.to_string()),
+                None => last_block(conn, page)?,
+            };
             json!({ "inserted": store::insert_blocks(conn, ctx, page, after.as_deref(), md_nodes(&items.join("\n"))?)? })
         }
         "tasks_clear_done" => {
@@ -395,7 +417,11 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
             }
             let mut node = b.content.clone();
             let width = content::children(&node).first().map(|r| content::children(r).len()).unwrap_or(1).max(1);
-            let cells: Vec<String> = a.get("cells").and_then(Value::as_array).map(|v| v.iter().map(|c| c.as_str().map(str::to_string).unwrap_or_else(|| c.to_string())).collect()).unwrap_or_default();
+            let cells: Vec<String> = a
+                .get("cells")
+                .and_then(Value::as_array)
+                .map(|v| v.iter().map(|c| c.as_str().map(str::to_string).unwrap_or_else(|| c.to_string())).collect())
+                .unwrap_or_default();
             let row: Vec<Value> = (0..width).map(|i| cell(cells.get(i).map(String::as_str).unwrap_or(""), false)).collect();
             kids_mut(&mut node).ok_or_else(|| anyhow!("empty table"))?.push(json!({ "type": "tableRow", "content": row }));
             store::update_block(conn, ctx, &b.id, node)?;
@@ -406,7 +432,11 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
             let r = a.get("row").and_then(Value::as_u64).ok_or_else(|| anyhow!("row is required"))? as usize;
             let c = a.get("col").and_then(Value::as_u64).ok_or_else(|| anyhow!("col is required"))? as usize;
             let mut node = b.content.clone();
-            let target = kids_mut(&mut node).and_then(|rows| rows.get_mut(r)).and_then(|row| kids_mut(row)).and_then(|cells| cells.get_mut(c)).ok_or_else(|| anyhow!("no cell at row {r}, column {c}"))?;
+            let target = kids_mut(&mut node)
+                .and_then(|rows| rows.get_mut(r))
+                .and_then(|row| kids_mut(row))
+                .and_then(|cells| cells.get_mut(c))
+                .ok_or_else(|| anyhow!("no cell at row {r}, column {c}"))?;
             target["content"] = json!([para(s(a, "text")?)]);
             store::update_block(conn, ctx, &b.id, node)?;
             json!({ "ok": true })
@@ -423,12 +453,19 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
                 .enumerate()
                 .map(|(i, r)| json!({ "type": "tableRow", "content": (0..width).map(|c| cell(r.get(c).map(|s| s.trim()).unwrap_or(""), i == 0)).collect::<Vec<_>>() }))
                 .collect();
-            let after = match os(a, "afterBlockId") { Some(b) => Some(b.to_string()), None => last_block(conn, page)? };
+            let after = match os(a, "afterBlockId") {
+                Some(b) => Some(b.to_string()),
+                None => last_block(conn, page)?,
+            };
             json!({ "inserted": store::insert_blocks(conn, ctx, page, after.as_deref(), vec![json!({ "type": "table", "content": content })])?, "rows": rows.len(), "columns": width })
         }
         "tables_to_csv" => {
             let b = block(conn, s(a, "blockId")?)?;
-            let csv = table_rows(&b.content).iter().map(|r| r.iter().map(|c| csv_escape(c)).collect::<Vec<_>>().join(",")).collect::<Vec<_>>().join("\n");
+            let csv = table_rows(&b.content)
+                .iter()
+                .map(|r| r.iter().map(|c| csv_escape(c)).collect::<Vec<_>>().join(","))
+                .collect::<Vec<_>>()
+                .join("\n");
             json!({ "csv": csv })
         }
         // ---- blocks
@@ -448,7 +485,11 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
         "blocks_copy_to_page" | "blocks_move_to_page" => {
             let target = s(a, "targetPageId")?;
             page_meta(conn, target)?;
-            let ids: Vec<String> = a.get("blockIds").and_then(Value::as_array).map(|v| v.iter().filter_map(Value::as_str).map(str::to_string).collect()).unwrap_or_default();
+            let ids: Vec<String> = a
+                .get("blockIds")
+                .and_then(Value::as_array)
+                .map(|v| v.iter().filter_map(Value::as_str).map(str::to_string).collect())
+                .unwrap_or_default();
             if ids.is_empty() {
                 bail!("blockIds is empty");
             }
@@ -456,7 +497,10 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
             for id in &ids {
                 nodes.push(fresh(&block(conn, id)?.content));
             }
-            let after = match os(a, "afterBlockId") { Some(b) => Some(b.to_string()), None => last_block(conn, target)? };
+            let after = match os(a, "afterBlockId") {
+                Some(b) => Some(b.to_string()),
+                None => last_block(conn, target)?,
+            };
             let inserted = store::insert_blocks(conn, ctx, target, after.as_deref(), nodes)?;
             if name == "blocks_move_to_page" {
                 for id in &ids {
@@ -480,7 +524,8 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
                 "code" => format!("```\n{text}\n```"),
                 _ => text.clone(),
             };
-            let node = md_nodes(if md.trim().is_empty() { " " } else { &md })?.into_iter().next().ok_or_else(|| anyhow!("nothing to convert"))?;
+            let node =
+                md_nodes(if md.trim().is_empty() { " " } else { &md })?.into_iter().next().ok_or_else(|| anyhow!("nothing to convert"))?;
             store::update_block(conn, ctx, &b.id, node)?;
             json!({ "ok": true })
         }
@@ -514,7 +559,11 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
                 let mut node = b.content.clone();
                 let mut i = 0;
                 for_tasks(&mut node, &mut i, &mut |item, _| {
-                    if item.pointer("/attrs/checked").and_then(Value::as_bool).unwrap_or(false) { done += 1 } else { open += 1 }
+                    if item.pointer("/attrs/checked").and_then(Value::as_bool).unwrap_or(false) {
+                        done += 1
+                    } else {
+                        open += 1
+                    }
                 });
                 collect_links(&b.content, &mut pages_l, &mut urls);
             }
@@ -539,41 +588,57 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
             json!({ "pages": pages_l, "urls": urls })
         }
         "pages_recent" => {
-            let mut all: Vec<store::PageMeta> = store::list_pages(conn, false)?.into_iter().filter(|p| p.kind == "page" && !p.archived).collect();
+            let mut all: Vec<store::PageMeta> =
+                store::list_pages(conn, false)?.into_iter().filter(|p| p.kind == "page" && !p.archived).collect();
             if os(a, "by") == Some("opened") {
-                all.sort_by(|x, y| y.opened_at.unwrap_or(0).cmp(&x.opened_at.unwrap_or(0)));
+                all.sort_by_key(|p| std::cmp::Reverse(p.opened_at.unwrap_or(0)));
             } else {
-                all.sort_by(|x, y| y.updated_at.cmp(&x.updated_at));
+                all.sort_by_key(|p| std::cmp::Reverse(p.updated_at));
             }
             let n = a.get("limit").and_then(Value::as_u64).unwrap_or(15) as usize;
-            json!(all.iter().take(n).map(|p| json!({ "id": p.id, "title": p.title, "icon": p.icon, "updatedAt": p.updated_at, "openedAt": p.opened_at })).collect::<Vec<_>>())
+            json!(all
+                .iter()
+                .take(n)
+                .map(|p| json!({ "id": p.id, "title": p.title, "icon": p.icon, "updatedAt": p.updated_at, "openedAt": p.opened_at }))
+                .collect::<Vec<_>>())
         }
         "pages_stale" => {
             let days = a.get("days").and_then(Value::as_i64).unwrap_or(60);
             let cutoff = crate::db::now() - days * 86_400_000;
-            let mut list: Vec<store::PageMeta> = store::list_pages(conn, false)?.into_iter().filter(|p| p.kind == "page" && !p.archived && p.updated_at < cutoff).collect();
+            let mut list: Vec<store::PageMeta> =
+                store::list_pages(conn, false)?.into_iter().filter(|p| p.kind == "page" && !p.archived && p.updated_at < cutoff).collect();
             list.sort_by_key(|p| p.updated_at);
             let n = a.get("limit").and_then(Value::as_u64).unwrap_or(30) as usize;
             json!(list.iter().take(n).map(|p| json!({ "id": p.id, "title": p.title, "updatedAt": p.updated_at, "daysIdle": (crate::db::now() - p.updated_at) / 86_400_000 })).collect::<Vec<_>>())
         }
         "pages_reorder_children" => {
-            let ids: Vec<String> = a.get("orderedIds").and_then(Value::as_array).map(|v| v.iter().filter_map(Value::as_str).map(str::to_string).collect()).unwrap_or_default();
+            let ids: Vec<String> = a
+                .get("orderedIds")
+                .and_then(Value::as_array)
+                .map(|v| v.iter().filter_map(Value::as_str).map(str::to_string).collect())
+                .unwrap_or_default();
             json!({ "ordered": order_children(conn, ctx, os(a, "parentId"), &ids)? })
         }
         "pages_sort_children" => {
             let parent = os(a, "parentId");
             let by = s(a, "by")?;
             let desc = a.get("descending").and_then(Value::as_bool).unwrap_or(false);
-            let mut kids: Vec<store::PageMeta> = store::list_pages(conn, false)?.into_iter().filter(|p| p.parent_id.as_deref() == parent && p.kind == "page").collect();
+            let mut kids: Vec<store::PageMeta> =
+                store::list_pages(conn, false)?.into_iter().filter(|p| p.parent_id.as_deref() == parent && p.kind == "page").collect();
             let key = |p: &store::PageMeta| -> String {
                 match by {
                     "title" => p.title.to_lowercase(),
                     "created" => format!("{:020}", p.created_at),
                     "updated" => format!("{:020}", p.updated_at),
-                    prop => p.properties.as_array().and_then(|ps| ps.iter().find(|x| same_name(x, prop))).map(|x| match &x["value"] {
-                        Value::Number(n) => format!("{:020.4}", n.as_f64().unwrap_or(0.0) + 1e12),
-                        v => v.to_string().to_lowercase(),
-                    }).unwrap_or_else(|| "\u{10FFFF}".into()),
+                    prop => p
+                        .properties
+                        .as_array()
+                        .and_then(|ps| ps.iter().find(|x| same_name(x, prop)))
+                        .map(|x| match &x["value"] {
+                            Value::Number(n) => format!("{:020.4}", n.as_f64().unwrap_or(0.0) + 1e12),
+                            v => v.to_string().to_lowercase(),
+                        })
+                        .unwrap_or_else(|| "\u{10FFFF}".into()),
                 }
             };
             kids.sort_by_key(|p| key(p));
@@ -588,7 +653,11 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
             page_meta(conn, target)?;
             let with_heads = a.get("withHeadings").and_then(Value::as_bool).unwrap_or(true);
             let archive = a.get("archiveSources").and_then(Value::as_bool).unwrap_or(false);
-            let sources: Vec<String> = a.get("sourcePageIds").and_then(Value::as_array).map(|v| v.iter().filter_map(Value::as_str).map(str::to_string).collect()).unwrap_or_default();
+            let sources: Vec<String> = a
+                .get("sourcePageIds")
+                .and_then(Value::as_array)
+                .map(|v| v.iter().filter_map(Value::as_str).map(str::to_string).collect())
+                .unwrap_or_default();
             let mut moved = 0;
             for src in &sources {
                 let meta = page_meta(conn, src)?;
@@ -630,16 +699,26 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
                     let section: Vec<&store::Block> = blocks[i + 1..j].iter().collect();
                     if !section.is_empty() {
                         let title = content::plain_text(&b.content).trim().to_string();
-                        let sub = store::create_page(conn, ctx, store::NewPage {
-                            title: Some(title.clone()),
-                            parent_id: Some(page.to_string()),
-                            blocks: Some(section.iter().map(|x| fresh(&x.content)).collect()),
-                            ..Default::default()
-                        })?;
+                        let sub = store::create_page(
+                            conn,
+                            ctx,
+                            store::NewPage {
+                                title: Some(title.clone()),
+                                parent_id: Some(page.to_string()),
+                                blocks: Some(section.iter().map(|x| fresh(&x.content)).collect()),
+                                ..Default::default()
+                            },
+                        )?;
                         for x in &section {
                             store::delete_block(conn, ctx, &x.id)?;
                         }
-                        store::insert_blocks(conn, ctx, page, Some(&b.id), vec![json!({ "type": "pageLink", "attrs": { "pageId": sub.id, "title": title } })])?;
+                        store::insert_blocks(
+                            conn,
+                            ctx,
+                            page,
+                            Some(&b.id),
+                            vec![json!({ "type": "pageLink", "attrs": { "pageId": sub.id, "title": title } })],
+                        )?;
                         made.push(json!({ "id": sub.id, "title": sub.title }));
                     }
                     i = j;
@@ -679,7 +758,11 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
             json!({ "inserted": ids })
         }
         "pages_rename_many" => {
-            let pages: Vec<store::PageMeta> = if a.get("pageIds").is_some() || a.get("parentId").is_some() { scope_pages(conn, a)? } else { bail!("give pageIds or parentId") };
+            let pages: Vec<store::PageMeta> = if a.get("pageIds").is_some() || a.get("parentId").is_some() {
+                scope_pages(conn, a)?
+            } else {
+                bail!("give pageIds or parentId")
+            };
             let mut renamed = Vec::new();
             for p in pages {
                 let mut t = p.title.clone();
@@ -706,7 +789,11 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
             json!({ "renamed": renamed })
         }
         "archive_list" => {
-            let list: Vec<Value> = store::list_pages(conn, false)?.into_iter().filter(|p| p.archived && p.kind == "page").map(|p| json!({ "id": p.id, "title": p.title, "updatedAt": p.updated_at })).collect();
+            let list: Vec<Value> = store::list_pages(conn, false)?
+                .into_iter()
+                .filter(|p| p.archived && p.kind == "page")
+                .map(|p| json!({ "id": p.id, "title": p.title, "updatedAt": p.updated_at }))
+                .collect();
             json!(list)
         }
         // ---- properties and collections
@@ -763,7 +850,11 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
             json!({ "pagesChanged": touched })
         }
         "collections_list" => {
-            let list: Vec<Value> = store::blocks_of(conn, s(a, "pageId")?)?.into_iter().filter(|b| b.block_type == "collection").map(|b| json!({ "blockId": b.id, "settings": b.content.get("attrs") })).collect();
+            let list: Vec<Value> = store::blocks_of(conn, s(a, "pageId")?)?
+                .into_iter()
+                .filter(|b| b.block_type == "collection")
+                .map(|b| json!({ "blockId": b.id, "settings": b.content.get("attrs") }))
+                .collect();
             json!(list)
         }
         "collections_update" => {
@@ -786,9 +877,17 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
         }
         // ---- versions
         "versions_diff" => {
-            let (page_id, snap): (String, String) = conn.query_row("SELECT page_id, snapshot FROM versions WHERE id = ?1", [s(a, "versionId")?], |r| Ok((r.get(0)?, r.get(1)?)))?;
+            let (page_id, snap): (String, String) =
+                conn.query_row("SELECT page_id, snapshot FROM versions WHERE id = ?1", [s(a, "versionId")?], |r| {
+                    Ok((r.get(0)?, r.get(1)?))
+                })?;
             let old = md_of_snapshot(&serde_json::from_str(&snap).unwrap_or(json!([])));
-            let now: String = store::blocks_of(conn, &page_id)?.iter().map(|b| content::to_markdown(&b.content)).filter(|m| !m.trim().is_empty()).collect::<Vec<_>>().join("\n");
+            let now: String = store::blocks_of(conn, &page_id)?
+                .iter()
+                .map(|b| content::to_markdown(&b.content))
+                .filter(|m| !m.trim().is_empty())
+                .collect::<Vec<_>>()
+                .join("\n");
             let mut count: HashMap<&str, i64> = HashMap::new();
             for l in old.lines().filter(|l| !l.trim().is_empty()) {
                 *count.entry(l).or_default() += 1;
@@ -800,7 +899,8 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
                     _ => added.push(l.to_string()),
                 }
             }
-            let removed: Vec<String> = count.into_iter().filter(|(_, c)| *c > 0).flat_map(|(l, c)| std::iter::repeat(l.to_string()).take(c as usize)).collect();
+            let removed: Vec<String> =
+                count.into_iter().filter(|(_, c)| *c > 0).flat_map(|(l, c)| std::iter::repeat_n(l.to_string(), c as usize)).collect();
             json!({ "pageId": page_id, "added": added, "removed": removed })
         }
         // ---- templates
@@ -812,7 +912,12 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
         "templates_update" => {
             let id = s(a, "templateId")?;
             let cat = os(a, "category").map(|c| Some(c.to_string()));
-            store::update_page(conn, ctx, id, store::PagePatch { title: os(a, "title").map(str::to_string), template_category: cat, ..Default::default() })?;
+            store::update_page(
+                conn,
+                ctx,
+                id,
+                store::PagePatch { title: os(a, "title").map(str::to_string), template_category: cat, ..Default::default() },
+            )?;
             json!({ "ok": true })
         }
         "templates_delete" => {
@@ -824,16 +929,21 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
         "automations_toggle" => {
             let id = s(a, "id")?;
             let cur = crate::automations::get(conn, id)?.ok_or_else(|| anyhow!("automation not found"))?;
-            let au = crate::automations::save(conn, ctx, crate::automations::AutomationInput {
-                id: Some(id.to_string()),
-                name: cur.name,
-                enabled: a.get("enabled").and_then(Value::as_bool).unwrap_or(!cur.enabled),
-                spec: cur.spec,
-            })?;
+            let au = crate::automations::save(
+                conn,
+                ctx,
+                crate::automations::AutomationInput {
+                    id: Some(id.to_string()),
+                    name: cur.name,
+                    enabled: a.get("enabled").and_then(Value::as_bool).unwrap_or(!cur.enabled),
+                    spec: cur.spec,
+                },
+            )?;
             json!({ "id": au.id, "enabled": au.enabled, "nextRunAt": au.next_run_at })
         }
         "automations_upcoming" => {
-            let mut list: Vec<crate::automations::Automation> = crate::automations::list(conn)?.into_iter().filter(|x| x.enabled && x.next_run_at.is_some()).collect();
+            let mut list: Vec<crate::automations::Automation> =
+                crate::automations::list(conn)?.into_iter().filter(|x| x.enabled && x.next_run_at.is_some()).collect();
             list.sort_by_key(|x| x.next_run_at.unwrap_or(i64::MAX));
             let n = a.get("limit").and_then(Value::as_u64).unwrap_or(10) as usize;
             json!(list.iter().take(n).map(|x| json!({ "id": x.id, "name": x.name, "nextRunAt": x.next_run_at })).collect::<Vec<_>>())
@@ -878,7 +988,10 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
                 _ => {
                     let label = os(a, "label").map(str::to_lowercase);
                     let url = os(a, "url");
-                    links.retain(|l| !(label.as_ref().map(|x| l["label"].as_str().map(str::to_lowercase).as_ref() == Some(x)).unwrap_or(false) || url.map(|u| l["url"].as_str() == Some(u)).unwrap_or(false)));
+                    links.retain(|l| {
+                        !(label.as_ref().map(|x| l["label"].as_str().map(str::to_lowercase).as_ref() == Some(x)).unwrap_or(false)
+                            || url.map(|u| l["url"].as_str() == Some(u)).unwrap_or(false))
+                    });
                 }
             }
             let p = store::update_profile_as(conn, ctx, store::ProfilePatch { links: Some(Value::Array(links)), ..Default::default() })?;
@@ -886,20 +999,29 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
         }
         "profile_set_status" => {
             let v = s(a, "status")?.trim().to_string();
-            store::update_profile_as(conn, ctx, store::ProfilePatch { status: Some(if v.is_empty() { None } else { Some(v) }), ..Default::default() })?;
+            store::update_profile_as(
+                conn,
+                ctx,
+                store::ProfilePatch { status: Some(if v.is_empty() { None } else { Some(v) }), ..Default::default() },
+            )?;
             json!({ "ok": true })
         }
         // ---- search and activity
         "search_everything" => {
             let q = s(a, "query")?;
             let n = a.get("limit").and_then(Value::as_i64).unwrap_or(10);
-            let like = format!("%{}%", q.replace('%', "").replace('_', ""));
+            let like = format!("%{}%", q.replace(['%', '_'], ""));
             let pages = store::search(conn, q, n, true)?;
             let mut stmt = conn.prepare("SELECT DISTINCT c.id, c.title FROM ai_chats c LEFT JOIN ai_messages m ON m.chat_id = c.id WHERE c.title LIKE ?1 OR m.content LIKE ?1 ORDER BY c.updated_at DESC LIMIT ?2")?;
-            let chats = stmt.query_map(params![like, n], |r| Ok(json!({ "chatId": r.get::<_, String>(0)?, "title": r.get::<_, String>(1)? })))?.collect::<rusqlite::Result<Vec<_>>>()?;
+            let chats = stmt
+                .query_map(params![like, n], |r| Ok(json!({ "chatId": r.get::<_, String>(0)?, "title": r.get::<_, String>(1)? })))?
+                .collect::<rusqlite::Result<Vec<_>>>()?;
             let mut stmt = conn.prepare("SELECT id, name FROM automations WHERE name LIKE ?1 LIMIT ?2")?;
-            let autos = stmt.query_map(params![like, n], |r| Ok(json!({ "id": r.get::<_, String>(0)?, "name": r.get::<_, String>(1)? })))?.collect::<rusqlite::Result<Vec<_>>>()?;
-            let mut stmt = conn.prepare("SELECT id, file_name, page_id FROM attachments WHERE file_name LIKE ?1 ORDER BY created_at DESC LIMIT ?2")?;
+            let autos = stmt
+                .query_map(params![like, n], |r| Ok(json!({ "id": r.get::<_, String>(0)?, "name": r.get::<_, String>(1)? })))?
+                .collect::<rusqlite::Result<Vec<_>>>()?;
+            let mut stmt =
+                conn.prepare("SELECT id, file_name, page_id FROM attachments WHERE file_name LIKE ?1 ORDER BY created_at DESC LIMIT ?2")?;
             let files = stmt.query_map(params![like, n], |r| Ok(json!({ "id": r.get::<_, String>(0)?, "fileName": r.get::<_, String>(1)?, "pageId": r.get::<_, Option<String>>(2)? })))?.collect::<rusqlite::Result<Vec<_>>>()?;
             json!({
                 "pages": pages.iter().map(|h| json!({ "pageId": h.page_id, "title": h.title, "kind": h.kind, "snippet": h.snippet.replace('\u{E000}', "«").replace('\u{E001}', "»") })).collect::<Vec<_>>(),
@@ -931,7 +1053,9 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
         }
         // ---- discord
         "discord_pending" => {
-            let mut stmt = conn.prepare("SELECT id, kind, payload, requested_by, created_at FROM pending_actions WHERE status = 'pending' ORDER BY created_at DESC")?;
+            let mut stmt = conn.prepare(
+                "SELECT id, kind, payload, requested_by, created_at FROM pending_actions WHERE status = 'pending' ORDER BY created_at DESC",
+            )?;
             let rows = stmt
                 .query_map([], |r| {
                     let payload: String = r.get(2)?;

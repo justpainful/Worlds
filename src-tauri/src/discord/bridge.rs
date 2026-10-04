@@ -87,12 +87,7 @@ fn no_window(_: &mut Command) {}
 
 fn ssh_base(_cfg: &BridgeConfig) -> Command {
     let mut c = Command::new("ssh");
-    c.args([
-        "-o", "BatchMode=yes",
-        "-o", "ConnectTimeout=8",
-        "-o", "ServerAliveInterval=30",
-        "-o", "StrictHostKeyChecking=accept-new",
-    ]);
+    c.args(["-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ServerAliveInterval=30", "-o", "StrictHostKeyChecking=accept-new"]);
     no_window(&mut c);
     c
 }
@@ -155,8 +150,10 @@ pub fn connect(cfg: &BridgeConfig) -> Result<String> {
         let mut cmd = ssh_base(cfg);
         cmd.args([
             "-N",
-            "-o", "ExitOnForwardFailure=yes",
-            "-L", &format!("127.0.0.1:{}:127.0.0.1:{}", cfg.local_port, cfg.remote_port),
+            "-o",
+            "ExitOnForwardFailure=yes",
+            "-L",
+            &format!("127.0.0.1:{}:127.0.0.1:{}", cfg.local_port, cfg.remote_port),
             &format!("{}@{}", cfg.user, cfg.host),
         ])
         .stdin(Stdio::null())
@@ -201,13 +198,8 @@ pub async fn call(cfg: &BridgeConfig, route: &str, body: Value) -> Result<Value>
     let key = tokio::task::spawn_blocking(move || connect(&cfg2)).await??;
     let url = format!("http://127.0.0.1:{}/worlds/{}", cfg.local_port, route);
     let client = reqwest::Client::builder().timeout(Duration::from_secs(60)).build()?;
-    let resp = client
-        .post(&url)
-        .header(cfg.key_header.as_str(), key)
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| anyhow!("module-missing: {e}"))?;
+    let resp =
+        client.post(&url).header(cfg.key_header.as_str(), key).json(&body).send().await.map_err(|e| anyhow!("module-missing: {e}"))?;
     let status = resp.status();
     let text = resp.text().await.unwrap_or_default();
     if status.as_u16() == 404 {

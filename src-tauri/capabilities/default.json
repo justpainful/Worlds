@@ -21,7 +21,25 @@
     "dialog:default",
     "opener:default",
     "opener:allow-reveal-item-in-dir",
-    "opener:allow-open-path",
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [
+        {
+          "path": "$APPDATA/Worlds/attachments/**"
+        },
+        {
+          "path": "$APPDATA/Worlds/previews/**"
+        }
+      ]
+    },
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        {
+          "url": "discord://*"
+        }
+      ]
+    },
     "core:window:allow-set-size",
     "core:window:allow-set-position",
     "core:window:allow-outer-position",

@@ -156,6 +156,11 @@ export const useStore = create<State>((set, get) => ({
       layout,
       sidebar: { ...get().sidebar, ...(session?.sidebar ?? {}) },
     });
+    // Tell the user once if launch restored or recovered the database.
+    api
+      .backups()
+      .then((b) => b.note && get().toast({ message: b.note, tone: "info" }))
+      .catch(() => {});
   },
 
   refreshPages: async () => {

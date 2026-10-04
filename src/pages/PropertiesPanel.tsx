@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openExternal } from "../lib/links";
 import { api, errorMessage } from "../lib/api";
 import type { PageMeta } from "../lib/types";
 import { useStore } from "../state/store";
@@ -179,7 +179,7 @@ function ValueEditor({ prop, editable, onChange }: { prop: Property; editable: b
             onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
           />
           {prop.value ? (
-            <button className="prop-open" onClick={() => openUrl(String(prop.value))} aria-label="Open link">
+            <button className="prop-open" onClick={() => openExternal(String(prop.value))} aria-label="Open link">
               <Icon name="external" size={13} />
             </button>
           ) : null}

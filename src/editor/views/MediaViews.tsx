@@ -1,7 +1,8 @@
 import { NodeViewWrapper, type ReactNodeViewProps } from "@tiptap/react";
 import { ProductIcon, type ProductIconName } from "../../ui/ProductIcon";
 import { useEffect, useRef, useState } from "react";
-import { openPath, revealItemInDir } from "@tauri-apps/plugin-opener";
+import { revealItemInDir } from "@tauri-apps/plugin-opener";
+import { openAttachment } from "../../lib/links";
 import { api, errorMessage, fileUrl } from "../../lib/api";
 import { useStore } from "../../state/store";
 import { Icon, type IconName } from "../../ui/Icon";
@@ -18,13 +19,7 @@ async function reveal(id: string) {
     useStore.getState().toast({ message: errorMessage(e), tone: "error" });
   }
 }
-async function openFile(id: string) {
-  try {
-    await openPath(await api.attachmentPath(id));
-  } catch (e) {
-    useStore.getState().toast({ message: errorMessage(e), tone: "error" });
-  }
-}
+const openFile = openAttachment;
 
 /** Drag the edge of media to resize it as a % of the text column. */
 function useResize(update: (pct: number) => void) {

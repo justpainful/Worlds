@@ -1,4 +1,4 @@
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openExternal } from "../lib/links";
 import { emit } from "../lib/bus";
 import { useStore } from "../state/store";
 import { useMenu, type MenuItem } from "../ui/Menu";
@@ -79,7 +79,7 @@ export function installContextMenu(): () => void {
 
     if (link && /^https?:/.test(link.href)) {
       items.push(
-        { label: "Open Link", icon: "openExternal", onSelect: () => openUrl(link.href) },
+        { label: "Open Link", icon: "openExternal", onSelect: () => openExternal(link.href) },
         { label: "Copy Link", icon: "link", onSelect: () => navigator.clipboard.writeText(link.href).then(() => toast("Link copied")) },
         { kind: "separator" },
       );

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openExternal } from "../lib/links";
 import { useStore, pageTitle } from "../state/store";
 import { Icon } from "../ui/Icon";
 
@@ -108,7 +108,7 @@ function inline(s: string, onOpenChat?: (id: string) => void): ReactNode[] {
     else if (t.startsWith("[")) {
       const mm = t.match(/^\[([^\]]+)\]\((.+)\)$/)!;
       out.push(
-        <button key={k++} className="md-link" onClick={() => openUrl(mm[2])}>
+        <button key={k++} className="md-link" onClick={() => openExternal(mm[2])}>
           {mm[1]}
         </button>,
       );

@@ -37,8 +37,27 @@ export interface PagePatch {
   templateCategory?: string | null;
 }
 
+export interface BackupInfo {
+  file: string;
+  createdAt: number;
+  reason: string;
+  size: number;
+}
+
+export interface BackupState {
+  backups: BackupInfo[];
+  pendingRestore: string | null;
+  /** Set once after launch when the database was restored or recovered. */
+  note: string | null;
+  folder: string;
+}
+
 export const api = {
   bootstrap: () => invoke<Bootstrap>("bootstrap"),
+  backups: () => invoke<BackupState>("backups_list"),
+  backupNow: () => invoke<BackupInfo>("backup_now"),
+  backupRestore: (file: string) => invoke<void>("backup_restore", { file }),
+  backupCancelRestore: () => invoke<void>("backup_cancel_restore"),
   launchInfo: () => invoke<{ hidden: boolean }>("launch_info"),
   pages: () => invoke<PageMeta[]>("pages_list"),
   page: (id: string, touch = false) => invoke<Page | null>("page_get", { id, touch }),

@@ -40,9 +40,7 @@ pub fn claude_path(conn: &rusqlite::Connection) -> Option<PathBuf> {
         }
     }
     let home = dirs::home_dir()?;
-    [home.join(".local").join("bin").join(exe), home.join(".claude").join("local").join(exe)]
-        .into_iter()
-        .find(|p| p.exists())
+    [home.join(".local").join("bin").join(exe), home.join(".claude").join("local").join(exe)].into_iter().find(|p| p.exists())
 }
 
 fn setting_str(conn: &rusqlite::Connection, key: &str, default: &str) -> String {
@@ -70,7 +68,12 @@ fn prepare_claude(cmd: &mut tokio::process::Command) {
     let inherited_host = std::env::var_os("CLAUDECODE").is_some() || std::env::var_os("CLAUDE_CODE_SDK_HAS_HOST_AUTH_REFRESH").is_some();
     for (key, _) in std::env::vars_os() {
         let k = key.to_string_lossy();
-        if k.starts_with("CLAUDE_CODE_") || k == "CLAUDECODE" || k == "CLAUDE_PID" || k == "CLAUDE_AGENT_SDK_VERSION" || k.starts_with("CLAUDE_PREVIEW_") {
+        if k.starts_with("CLAUDE_CODE_")
+            || k == "CLAUDECODE"
+            || k == "CLAUDE_PID"
+            || k == "CLAUDE_AGENT_SDK_VERSION"
+            || k.starts_with("CLAUDE_PREVIEW_")
+        {
             cmd.env_remove(&key);
         }
     }
@@ -249,16 +252,18 @@ fn chat_title(prompt: &str) -> String {
     if line.chars().count() > 60 {
         t.push('\u{2026}');
     }
-    if t.is_empty() { "New chat".into() } else { t }
+    if t.is_empty() {
+        "New chat".into()
+    } else {
+        t
+    }
 }
 
 /// Returns (chat_id, session_id, resume).
 fn open_chat(conn: &rusqlite::Connection, chat_id: Option<&str>, page_id: Option<&str>, prompt: &str) -> Result<(String, String, bool)> {
     use rusqlite::OptionalExtension;
     if let Some(id) = chat_id {
-        let row: Option<String> = conn
-            .query_row("SELECT session_id FROM ai_chats WHERE id = ?1", [id], |r| r.get(0))
-            .optional()?;
+        let row: Option<String> = conn.query_row("SELECT session_id FROM ai_chats WHERE id = ?1", [id], |r| r.get(0)).optional()?;
         if let Some(session) = row {
             // Only resume once Claude has actually created the session.
             let started: i64 = conn.query_row(
@@ -283,9 +288,7 @@ fn open_chat(conn: &rusqlite::Connection, chat_id: Option<&str>, page_id: Option
 pub fn chat_transcript(conn: &rusqlite::Connection, chat_id: &str, max_chars: usize) -> Result<(String, String)> {
     let title: String = conn.query_row("SELECT title FROM ai_chats WHERE id = ?1", [chat_id], |r| r.get(0))?;
     let mut stmt = conn.prepare("SELECT role, content FROM ai_messages WHERE chat_id = ?1 ORDER BY created_at, rowid")?;
-    let rows: Vec<(String, String)> = stmt
-        .query_map([chat_id], |r| Ok((r.get(0)?, r.get(1)?)))?
-        .collect::<rusqlite::Result<_>>()?;
+    let rows: Vec<(String, String)> = stmt.query_map([chat_id], |r| Ok((r.get(0)?, r.get(1)?)))?.collect::<rusqlite::Result<_>>()?;
     let mut lines: Vec<String> = rows
         .into_iter()
         .map(|(role, content)| {
@@ -328,7 +331,15 @@ fn referenced_chats(conn: &rusqlite::Connection, prompt: &str, current: &str) ->
     }
 }
 
-fn add_message(conn: &rusqlite::Connection, chat_id: &str, role: &str, content: &str, steps: &Value, op_id: Option<&str>, meta: &Value) -> Result<()> {
+fn add_message(
+    conn: &rusqlite::Connection,
+    chat_id: &str,
+    role: &str,
+    content: &str,
+    steps: &Value,
+    op_id: Option<&str>,
+    meta: &Value,
+) -> Result<()> {
     let t = now();
     conn.execute(
         "INSERT INTO ai_messages (id, chat_id, role, content, steps, op_id, meta, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
@@ -357,21 +368,30 @@ pub async fn ai_run(app: tauri::AppHandle, state: State<'_, AppState>, request: 
             .take(10)
             .filter_map(|id| store::get_attachment(&c, id).ok().flatten())
             .collect();
-        let att_meta: Vec<Value> = atts
-            .iter()
-            .map(|a| json!({ "id": a.id, "name": a.file_name, "mime": a.mime, "kind": a.kind, "size": a.size }))
-            .collect();
-        add_message(&c, &chat_id, "user", &request.prompt, &json!([]), None, &json!({ "pageId": request.page_id, "attachments": att_meta }))
-            .map_err(|e| e.to_string())?;
+        let att_meta: Vec<Value> =
+            atts.iter().map(|a| json!({ "id": a.id, "name": a.file_name, "mime": a.mime, "kind": a.kind, "size": a.size })).collect();
+        add_message(
+            &c,
+            &chat_id,
+            "user",
+            &request.prompt,
+            &json!([]),
+            None,
+            &json!({ "pageId": request.page_id, "attachments": att_meta }),
+        )
+        .map_err(|e| e.to_string())?;
         let refs = referenced_chats(&c, &request.prompt, &chat_id);
         (claude, system, model, effort, chat_id, session, resume, refs, atts)
     };
     // "@[Pages](tool:pages_create,...)" shows as a short chip to the user; Claude gets the tool names.
     let (mut prompt, tools) = expand_tool_tokens(&request.prompt);
     if !tools.is_empty() {
-        prompt.push_str(&format!("
+        prompt.push_str(&format!(
+            "
 
-(The user picked these Worlds tools for this request; prefer them: {}.)", tools.join(", ")));
+(The user picked these Worlds tools for this request; prefer them: {}.)",
+            tools.join(", ")
+        ));
     }
     prompt.push_str(&refs);
     if let Some(ids) = &request.block_ids {
@@ -434,23 +454,31 @@ async fn run_claude(
     let dir = db::data_dir().join("ai");
     std::fs::create_dir_all(&dir)?;
     let mcp_path = dir.join(format!("mcp-{run_id}.json"));
-    std::fs::write(&mcp_path, json!({
-        "mcpServers": {
-            "worlds": {
-                "type": "stdio",
-                "command": exe.to_string_lossy(),
-                "args": ["--mcp", "--actor", "ai", "--op", run_id],
+    std::fs::write(
+        &mcp_path,
+        json!({
+            "mcpServers": {
+                "worlds": {
+                    "type": "stdio",
+                    "command": exe.to_string_lossy(),
+                    "args": ["--mcp", "--actor", "ai", "--op", run_id],
+                }
             }
-        }
-    }).to_string())?;
+        })
+        .to_string(),
+    )?;
 
     let mut cmd = tokio::process::Command::new(claude);
     cmd.args([
         "-p",
-        "--model", model,
-        "--effort", effort,
-        "--input-format", "stream-json",
-        "--output-format", "stream-json",
+        "--model",
+        model,
+        "--effort",
+        effort,
+        "--input-format",
+        "stream-json",
+        "--output-format",
+        "stream-json",
         "--verbose",
         "--strict-mcp-config",
         "--mcp-config",
@@ -464,11 +492,7 @@ async fn run_claude(
     } else {
         cmd.args(["--session-id", session]);
     }
-    cmd.current_dir(&dir)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .kill_on_drop(true);
+    cmd.current_dir(&dir).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped()).kill_on_drop(true);
     prepare_claude(&mut cmd);
     let mut child = cmd.spawn().context("start Claude Code")?;
     crate::jobs::adopt_tokio(&child);
@@ -622,10 +646,7 @@ pub async fn ai_chat_delete(state: State<'_, AppState>, id: String) -> CmdResult
 #[tauri::command]
 pub async fn ai_chat_rename(state: State<'_, AppState>, id: String, title: String) -> CmdResult<()> {
     let t: String = title.trim().chars().take(80).collect();
-    state
-        .conn()
-        .execute("UPDATE ai_chats SET title = ?1 WHERE id = ?2", rusqlite::params![t, id])
-        .map_err(|e| e.to_string())?;
+    state.conn().execute("UPDATE ai_chats SET title = ?1 WHERE id = ?2", rusqlite::params![t, id]).map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -713,15 +734,26 @@ no code fences around it. Preserve the language(s) and structure unless told oth
     std::fs::create_dir_all(empty_mcp.parent().unwrap())?;
     std::fs::write(&empty_mcp, r#"{"mcpServers":{}}"#)?;
     let mut cmd = tokio::process::Command::new(claude);
-    cmd.args(["-p", "--model", &model, "--effort", &effort, "--output-format", "json", "--no-session-persistence", "--strict-mcp-config", "--mcp-config"])
-        .arg(&empty_mcp)
-        .args(["--tools", ""])
-        .args(["--system-prompt", &system])
-        .current_dir(db::data_dir())
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .kill_on_drop(true);
+    cmd.args([
+        "-p",
+        "--model",
+        &model,
+        "--effort",
+        &effort,
+        "--output-format",
+        "json",
+        "--no-session-persistence",
+        "--strict-mcp-config",
+        "--mcp-config",
+    ])
+    .arg(&empty_mcp)
+    .args(["--tools", ""])
+    .args(["--system-prompt", &system])
+    .current_dir(db::data_dir())
+    .stdin(Stdio::piped())
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped())
+    .kill_on_drop(true);
     prepare_claude(&mut cmd);
     let mut child = cmd.spawn()?;
     crate::jobs::adopt_tokio(&child);
@@ -731,7 +763,7 @@ no code fences around it. Preserve the language(s) and structure unless told oth
         stdin.shutdown().await?;
     }
     let out = tokio::time::timeout(std::time::Duration::from_secs(180), child.wait_with_output()).await??;
-    let v: Value = serde_json::from_slice(&out.stdout).map_err(|_| anyhow!("{}", String::from_utf8_lossy(&out.stderr).trim().to_string()))?;
+    let v: Value = serde_json::from_slice(&out.stdout).map_err(|_| anyhow!("{}", String::from_utf8_lossy(&out.stderr).trim()))?;
     if v.get("is_error").and_then(Value::as_bool).unwrap_or(false) {
         bail!("{}", v.get("result").and_then(Value::as_str).unwrap_or("Claude returned an error"));
     }

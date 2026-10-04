@@ -180,6 +180,9 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
     case "automation_runs": return [];
     case "pending_actions": return [];
     case "discord_destinations": return { guilds: [], users: [] };
+    case "backups_list": return { backups: [{ file: "worlds-1-daily.db", createdAt: now - 3_600_000, reason: "daily", size: 2_400_000 }], pendingRestore: null, note: null, folder: "C:/Worlds/backups" };
+    case "backup_now": return { file: "worlds-2-manual.db", createdAt: Date.now(), reason: "manual", size: 2_400_000 };
+    case "backup_restore": case "backup_cancel_restore": return null;
     case "discord_status": return { state: "connected", bot: { tag: "Worlds Bot#0001" }, config: {} };
     case "preview_prepare": return { kind: "none" };
     case "attachment_get": return null;

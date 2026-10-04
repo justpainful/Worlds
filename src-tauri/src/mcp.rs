@@ -126,7 +126,7 @@ fn tool_list() -> Vec<Value> {
         tool("blocks_delete", "Delete one block.", json!({ "blockId": { "type": "string" } }), &["blockId"]),
         tool("references_search", "Pages that mention or link to a page (backlinks) and pages it references.", json!({ "pageId": page_id }), &["pageId"]),
         tool("references_resolve", "Find page ids by (partial) title, to build @[Title](page:ID) mentions.", json!({ "title": { "type": "string" } }), &["title"]),
-        tool("attachments_add", "Attach a local file to a page and append it as an image/video/file block.", json!({ "pageId": page_id, "path": { "type": "string", "description": "absolute local path" } }), &["pageId", "path"]),
+        tool("attachments_add", "Attach a picture, video, audio file or document from the user's Desktop, Downloads, Documents, Pictures, Videos or Music folders to a page and append it as a block. Other locations and program files are refused.", json!({ "pageId": page_id, "path": { "type": "string", "description": "absolute local path" } }), &["pageId", "path"]),
         tool("attachments_insert", "Place an existing Worlds attachment (for example a file the user attached in chat) into a page as an image, video or file block.", json!({ "pageId": page_id, "attachmentId": { "type": "string" }, "afterBlockId": { "type": "string" }, "caption": { "type": "string" } }), &["pageId", "attachmentId"]),
         tool("attachments_read_metadata", "List attachment metadata for a page.", json!({ "pageId": page_id }), &["pageId"]),
         tool("templates_list", "List templates.", json!({}), &[]),
@@ -197,10 +197,13 @@ fn call_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Valu
     match name {
         "pages_search" => {
             let hits = store::search(conn, s(a, "query")?, a.get("limit").and_then(Value::as_i64).unwrap_or(15), false)?;
-            Ok(json!(hits.iter().map(|h| json!({
-                "pageId": h.page_id, "title": h.title, "parent": h.parent_title,
-                "snippet": h.snippet.replace('\u{E000}', "«").replace('\u{E001}', "»")
-            })).collect::<Vec<_>>()))
+            Ok(json!(hits
+                .iter()
+                .map(|h| json!({
+                    "pageId": h.page_id, "title": h.title, "parent": h.parent_title,
+                    "snippet": h.snippet.replace('\u{E000}', "«").replace('\u{E001}', "»")
+                }))
+                .collect::<Vec<_>>()))
         }
         "pages_list" => {
             let all = store::list_pages(conn, false)?;
@@ -239,17 +242,26 @@ fn call_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Valu
             }))
         }
         "pages_create" => {
-            let p = store::create_page(conn, ctx, store::NewPage {
-                title: Some(s(a, "title")?.to_string()),
-                icon: os(a, "icon").map(str::to_string),
-                parent_id: os(a, "parentId").map(str::to_string),
-                markdown: os(a, "markdown").map(str::to_string),
-                ..Default::default()
-            })?;
+            let p = store::create_page(
+                conn,
+                ctx,
+                store::NewPage {
+                    title: Some(s(a, "title")?.to_string()),
+                    icon: os(a, "icon").map(str::to_string),
+                    parent_id: os(a, "parentId").map(str::to_string),
+                    markdown: os(a, "markdown").map(str::to_string),
+                    ..Default::default()
+                },
+            )?;
             Ok(json!({ "pageId": p.id, "title": p.title }))
         }
         "pages_rename" => {
-            let p = store::update_page(conn, ctx, s(a, "pageId")?, store::PagePatch { title: Some(s(a, "title")?.to_string()), ..Default::default() })?;
+            let p = store::update_page(
+                conn,
+                ctx,
+                s(a, "pageId")?,
+                store::PagePatch { title: Some(s(a, "title")?.to_string()), ..Default::default() },
+            )?;
             Ok(json!({ "pageId": p.id, "title": p.title }))
         }
         "pages_move" => {
@@ -321,9 +333,13 @@ fn call_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Valu
         "references_search" => {
             let id = s(a, "pageId")?;
             let back = store::backlinks(conn, id)?;
-            let mut stmt = conn.prepare("SELECT DISTINCT r.target_page, p.title, r.kind FROM refs r JOIN pages p ON p.id = r.target_page WHERE r.source_page = ?1")?;
+            let mut stmt = conn.prepare(
+                "SELECT DISTINCT r.target_page, p.title, r.kind FROM refs r JOIN pages p ON p.id = r.target_page WHERE r.source_page = ?1",
+            )?;
             let outgoing: Vec<Value> = stmt
-                .query_map([id], |r| Ok(json!({ "pageId": r.get::<_, String>(0)?, "title": r.get::<_, String>(1)?, "kind": r.get::<_, String>(2)? })))?
+                .query_map([id], |r| {
+                    Ok(json!({ "pageId": r.get::<_, String>(0)?, "title": r.get::<_, String>(1)?, "kind": r.get::<_, String>(2)? }))
+                })?
                 .collect::<rusqlite::Result<_>>()?;
             Ok(json!({
                 "backlinks": back.iter().map(|b| json!({ "pageId": b.page_id, "title": b.title, "kind": b.kind, "excerpt": b.excerpt })).collect::<Vec<_>>(),
@@ -333,13 +349,21 @@ fn call_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Valu
         "references_resolve" => {
             let q = s(a, "title")?;
             let hits = store::search(conn, q, 8, false)?;
-            Ok(json!(hits.iter().map(|h| json!({ "pageId": h.page_id, "title": h.title, "mention": format!("@[{}](page:{})", h.title, h.page_id) })).collect::<Vec<_>>()))
+            Ok(json!(hits
+                .iter()
+                .map(|h| json!({ "pageId": h.page_id, "title": h.title, "mention": format!("@[{}](page:{})", h.title, h.page_id) }))
+                .collect::<Vec<_>>()))
         }
         "attachments_add" => {
             let page = s(a, "pageId")?;
             let path = std::path::Path::new(s(a, "path")?);
+            claude_may_attach(path)?;
             let att = store::add_attachment_path(conn, Some(page), path)?;
-            let node_type = match att.kind.as_str() { "image" | "gif" => "image", "video" => "video", _ => "file" };
+            let node_type = match att.kind.as_str() {
+                "image" | "gif" => "image",
+                "video" => "video",
+                _ => "file",
+            };
             let node = json!({ "type": node_type, "attrs": {
                 "attachmentId": att.id, "name": att.file_name, "mime": att.mime, "size": att.size,
                 "width": att.width, "height": att.height
@@ -354,7 +378,11 @@ fn call_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Valu
             if att.page_id.is_none() {
                 conn.execute("UPDATE attachments SET page_id = ?1 WHERE id = ?2", rusqlite::params![page, att.id])?;
             }
-            let node_type = match att.kind.as_str() { "image" | "gif" => "image", "video" => "video", _ => "file" };
+            let node_type = match att.kind.as_str() {
+                "image" | "gif" => "image",
+                "video" => "video",
+                _ => "file",
+            };
             let node = json!({ "type": node_type, "attrs": {
                 "attachmentId": att.id, "name": att.file_name, "mime": att.mime, "size": att.size,
                 "width": att.width, "height": att.height, "caption": os(a, "caption").unwrap_or("")
@@ -393,38 +421,55 @@ fn call_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Valu
             if let Some(d) = a.get("destination") {
                 spec["destination"] = d.clone();
             }
-            let au = crate::automations::save(conn, ctx, crate::automations::AutomationInput {
-                id: None, name: s(a, "name")?.to_string(), enabled: true, spec,
-            })?;
+            let au = crate::automations::save(
+                conn,
+                ctx,
+                crate::automations::AutomationInput { id: None, name: s(a, "name")?.to_string(), enabled: true, spec },
+            )?;
             Ok(json!({ "id": au.id, "nextRunAt": au.next_run_at, "note": "Each run waits for the user's approval in Worlds." }))
         }
         "automations_update" => {
             let id = s(a, "id")?;
             let cur = crate::automations::get(conn, id)?.ok_or_else(|| anyhow!("automation not found"))?;
             let mut spec = cur.spec.clone();
-            if let Some(t) = a.get("trigger") { spec["trigger"] = t.clone(); }
-            if let Some(d) = a.get("destination") { spec["destination"] = d.clone(); }
-            let au = crate::automations::save(conn, ctx, crate::automations::AutomationInput {
-                id: Some(id.to_string()),
-                name: os(a, "name").map(str::to_string).unwrap_or(cur.name),
-                enabled: a.get("enabled").and_then(Value::as_bool).unwrap_or(cur.enabled),
-                spec,
-            })?;
+            if let Some(t) = a.get("trigger") {
+                spec["trigger"] = t.clone();
+            }
+            if let Some(d) = a.get("destination") {
+                spec["destination"] = d.clone();
+            }
+            let au = crate::automations::save(
+                conn,
+                ctx,
+                crate::automations::AutomationInput {
+                    id: Some(id.to_string()),
+                    name: os(a, "name").map(str::to_string).unwrap_or(cur.name),
+                    enabled: a.get("enabled").and_then(Value::as_bool).unwrap_or(cur.enabled),
+                    spec,
+                },
+            )?;
             Ok(json!({ "id": au.id, "enabled": au.enabled, "nextRunAt": au.next_run_at }))
         }
         "automations_run" => {
             let au = crate::automations::get(conn, s(a, "id")?)?.ok_or_else(|| anyhow!("automation not found"))?;
             let page_id = au.spec["source"]["pageId"].as_str().ok_or_else(|| anyhow!("no source page"))?;
             let dest = au.spec.get("destination").cloned().ok_or_else(|| anyhow!("automation has no destination"))?;
-            let id = discord::queue_action(conn, "discord.send", json!({
-                "pageId": page_id, "destination": dest, "options": au.spec["action"].get("options"),
-                "automationId": au.id, "automationName": au.name,
-            }), &ctx.actor, ctx.op_id.as_deref())?;
+            let id = discord::queue_action(
+                conn,
+                "discord.send",
+                json!({
+                    "pageId": page_id, "destination": dest, "options": au.spec["action"].get("options"),
+                    "automationId": au.id, "automationName": au.name,
+                }),
+                &ctx.actor,
+                ctx.op_id.as_deref(),
+            )?;
             Ok(json!({ "queued": id, "note": "Waiting for the user's approval in Worlds." }))
         }
         "discord_inspect" => {
             let cache = db::get_setting(conn, "discord.cache")?;
-            Ok(cache.unwrap_or(json!({ "note": "No Discord data yet. Ask the user to open Integrations → Discord in Worlds and refresh." })))
+            Ok(cache
+                .unwrap_or(json!({ "note": "No Discord data yet. Ask the user to open Integrations → Discord in Worlds and refresh." })))
         }
         "discord_preview" => {
             let opts = RenderOptions {
@@ -444,18 +489,39 @@ fn call_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Valu
                 a.get("destination").cloned().ok_or_else(|| anyhow!("missing destination"))?
             };
             let opts = json!({ "includeTitle": a.get("includeTitle") });
-            let id = discord::queue_action(conn, "discord.send", json!({ "pageId": page_id, "destination": dest, "options": opts }), &ctx.actor, ctx.op_id.as_deref())?;
-            store::record(conn, ctx, Some(page_id), "discord_requested", "Claude asked to send this page to Discord", None, None, None, json!({ "pending": id }))?;
+            let id = discord::queue_action(
+                conn,
+                "discord.send",
+                json!({ "pageId": page_id, "destination": dest, "options": opts }),
+                &ctx.actor,
+                ctx.op_id.as_deref(),
+            )?;
+            store::record(
+                conn,
+                ctx,
+                Some(page_id),
+                "discord_requested",
+                "Claude asked to send this page to Discord",
+                None,
+                None,
+                None,
+                json!({ "pending": id }),
+            )?;
             Ok(json!({ "queued": id, "note": "Nothing has been sent. The user will see a preview in Worlds and decide." }))
         }
         "profile_read" => {
             let p = store::profile(conn)?;
             let stats = store::profile_stats(conn).unwrap_or(json!({}));
-            Ok(json!({ "displayName": p.display_name, "handle": p.handle, "bio": p.bio, "status": p.status, "location": p.location, "links": p.links, "language": p.language, "blocks": p.blocks, "stats": stats }))
+            Ok(
+                json!({ "displayName": p.display_name, "handle": p.handle, "bio": p.bio, "status": p.status, "location": p.location, "links": p.links, "language": p.language, "blocks": p.blocks, "stats": stats }),
+            )
         }
         "history_read" => {
             let h = store::list_history(conn, os(a, "pageId"), None, a.get("limit").and_then(Value::as_i64).unwrap_or(30))?;
-            Ok(json!(h.iter().map(|e| json!({ "at": e.created_at, "page": e.page_title, "actor": e.actor, "kind": e.kind, "summary": e.summary })).collect::<Vec<_>>()))
+            Ok(json!(h
+                .iter()
+                .map(|e| json!({ "at": e.created_at, "page": e.page_title, "actor": e.actor, "kind": e.kind, "summary": e.summary }))
+                .collect::<Vec<_>>()))
         }
         "instructions_read" => {
             let global = crate::ai::global_instructions(conn);
@@ -478,11 +544,26 @@ fn call_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Valu
                 "global" => {
                     let before = crate::ai::global_instructions(conn);
                     db::set_setting(conn, "ai.instructions", &json!(list))?;
-                    store::record(conn, ctx, None, "instructions", "Updated global assistant instructions", None, Some(json!(before)), Some(json!(list)), json!({}))?;
+                    store::record(
+                        conn,
+                        ctx,
+                        None,
+                        "instructions",
+                        "Updated global assistant instructions",
+                        None,
+                        Some(json!(before)),
+                        Some(json!(list)),
+                        json!({}),
+                    )?;
                     db::mark_change(conn, None, "settings", &ctx.origin)?;
                 }
                 "page" => {
-                    store::update_page(conn, ctx, s(a, "pageId")?, store::PagePatch { instructions: Some(list.clone()), ..Default::default() })?;
+                    store::update_page(
+                        conn,
+                        ctx,
+                        s(a, "pageId")?,
+                        store::PagePatch { instructions: Some(list.clone()), ..Default::default() },
+                    )?;
                 }
                 other => bail!("unknown scope {other}"),
             }
@@ -492,7 +573,11 @@ fn call_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Valu
             let opt = |k: &str| {
                 a.get(k).and_then(Value::as_str).map(|v| {
                     let t = v.trim().to_string();
-                    if t.is_empty() { None } else { Some(t) }
+                    if t.is_empty() {
+                        None
+                    } else {
+                        Some(t)
+                    }
                 })
             };
             if let Some(acc) = a.get("accent").and_then(Value::as_str) {
@@ -501,19 +586,25 @@ fn call_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Valu
                     bail!("accent must look like #a1b2c3");
                 }
             }
-            let p = store::update_profile_as(conn, ctx, store::ProfilePatch {
-                display_name: a.get("displayName").and_then(Value::as_str).map(|v| v.trim().to_string()),
-                handle: opt("handle"),
-                bio: opt("bio"),
-                status: opt("status"),
-                location: opt("location"),
-                accent: opt("accent"),
-                links: a.get("links").cloned(),
-                language: a.get("language").and_then(Value::as_str).map(str::to_string),
-                blocks: a.get("blocks").cloned(),
-                ..Default::default()
-            })?;
-            Ok(json!({ "displayName": p.display_name, "handle": p.handle, "bio": p.bio, "status": p.status, "location": p.location, "links": p.links, "blocks": p.blocks }))
+            let p = store::update_profile_as(
+                conn,
+                ctx,
+                store::ProfilePatch {
+                    display_name: a.get("displayName").and_then(Value::as_str).map(|v| v.trim().to_string()),
+                    handle: opt("handle"),
+                    bio: opt("bio"),
+                    status: opt("status"),
+                    location: opt("location"),
+                    accent: opt("accent"),
+                    links: a.get("links").cloned(),
+                    language: a.get("language").and_then(Value::as_str).map(str::to_string),
+                    blocks: a.get("blocks").cloned(),
+                    ..Default::default()
+                },
+            )?;
+            Ok(
+                json!({ "displayName": p.display_name, "handle": p.handle, "bio": p.bio, "status": p.status, "location": p.location, "links": p.links, "blocks": p.blocks }),
+            )
         }
         "pages_set_properties" => {
             let props = a.get("properties").cloned().unwrap_or(json!([]));
@@ -568,7 +659,7 @@ fn call_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Valu
         "chats_search" => {
             let q = os(a, "query").unwrap_or("").trim().to_lowercase();
             let limit = a.get("limit").and_then(Value::as_i64).unwrap_or(15).clamp(1, 50);
-            let like = format!("%{}%", q.replace('%', "").replace('_', ""));
+            let like = format!("%{}%", q.replace(['%', '_'], ""));
             let mut stmt = conn.prepare(
                 "SELECT c.id, c.title, c.updated_at,
                         (SELECT content FROM ai_messages m WHERE m.chat_id = c.id AND m.role = 'user' ORDER BY m.created_at LIMIT 1)
@@ -625,4 +716,39 @@ fn call_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Valu
             }
         }
     }
+}
+
+/// Claude may attach the user's own media and documents, never arbitrary
+/// files: only from the usual personal folders, only common content types,
+/// never hidden folders, and at most 500 MB. (Files the user attaches
+/// themselves in the UI are not limited by this.)
+pub fn claude_may_attach(path: &std::path::Path) -> Result<()> {
+    const TYPES: &[&str] = &[
+        "png", "jpg", "jpeg", "gif", "webp", "avif", "bmp", "svg", "heic", "mp4", "mov", "webm", "mkv", "m4v", "mp3", "wav", "m4a", "ogg",
+        "flac", "pdf", "txt", "md", "csv", "json", "docx", "xlsx", "pptx", "doc", "xls", "ppt", "zip",
+    ];
+    let canonical = std::fs::canonicalize(path).map_err(|_| anyhow!("file not found: {}", path.display()))?;
+    let ext = canonical.extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase();
+    if !TYPES.contains(&ext.as_str()) {
+        bail!("Claude can only attach pictures, video, audio and documents (not .{ext} files)");
+    }
+    let roots: Vec<std::path::PathBuf> =
+        [dirs::desktop_dir(), dirs::download_dir(), dirs::document_dir(), dirs::picture_dir(), dirs::video_dir(), dirs::audio_dir()]
+            .into_iter()
+            .flatten()
+            .filter_map(|d| std::fs::canonicalize(d).ok())
+            .collect();
+    let Some(root) = roots.iter().find(|r| canonical.starts_with(r)) else {
+        bail!("Claude can only attach files from Desktop, Downloads, Documents, Pictures, Videos or Music");
+    };
+    let hidden =
+        canonical.strip_prefix(root).map(|rel| rel.components().any(|c| c.as_os_str().to_string_lossy().starts_with('.'))).unwrap_or(true);
+    if hidden {
+        bail!("Claude cannot attach files from hidden folders");
+    }
+    let size = std::fs::metadata(&canonical)?.len();
+    if size > 500 * 1024 * 1024 {
+        bail!("the file is larger than 500 MB");
+    }
+    Ok(())
 }

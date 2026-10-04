@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openExternal } from "../lib/links";
 import { api, errorMessage, fileUrl } from "../lib/api";
 import type { Attachment, Profile } from "../lib/types";
 import { useStore, pageTitle } from "../state/store";
@@ -290,7 +290,7 @@ export function ProfileView() {
                 </span>
               )}
               {(profile.links ?? []).map((l, i) => (
-                <button key={i} className="pf-link" onClick={() => openUrl(l.url)}>
+                <button key={i} className="pf-link" onClick={() => openExternal(l.url)}>
                   <Icon name="link" size={13} />
                   <span className="bidi">{l.label || hostOf(l.url)}</span>
                 </button>
@@ -668,7 +668,7 @@ function AboutTab({ profile, memberSince, stats, onEdit }: { profile: Profile; m
         {(profile.links ?? []).map((l, i) => (
           <li key={i}>
             <Icon name="link" size={14} />
-            <button className="about-link" onClick={() => openUrl(l.url)}>
+            <button className="about-link" onClick={() => openExternal(l.url)}>
               <span className="bidi">{l.label || hostOf(l.url)}</span>
               <Icon name="external" size={12} />
             </button>

@@ -55,11 +55,8 @@ pub fn bridge_config(conn: &Connection) -> bridge::BridgeConfig {
 }
 
 pub fn default_options(conn: &Connection) -> RenderOptions {
-    let mut o: RenderOptions = db::get_setting(conn, "discord.renderDefaults")
-        .ok()
-        .flatten()
-        .and_then(|v| serde_json::from_value(v).ok())
-        .unwrap_or_default();
+    let mut o: RenderOptions =
+        db::get_setting(conn, "discord.renderDefaults").ok().flatten().and_then(|v| serde_json::from_value(v).ok()).unwrap_or_default();
     if o.accent_color.is_none() {
         if let Ok(p) = store::profile(conn) {
             o.accent_color = p.accent.as_deref().and_then(|a| u32::from_str_radix(a.trim_start_matches('#'), 16).ok());
@@ -107,25 +104,42 @@ pub fn file_payloads(conn: &Connection, rendered: &Rendered) -> Result<Vec<Value
 }
 
 /// Send (or edit) a rendered message through the bridge and log it.
-pub async fn deliver(app_db: &std::sync::Mutex<Connection>, cfg: &bridge::BridgeConfig, rendered: &Rendered, files: Vec<Value>,
-                     dest: &Destination, page_id: Option<&str>, automation_id: Option<&str>) -> Result<Value> {
+pub async fn deliver(
+    app_db: &std::sync::Mutex<Connection>,
+    cfg: &bridge::BridgeConfig,
+    rendered: &Rendered,
+    files: Vec<Value>,
+    dest: &Destination,
+    page_id: Option<&str>,
+    automation_id: Option<&str>,
+) -> Result<Value> {
     if rendered.warnings.iter().any(|w| w.level == "error") {
         let msgs: Vec<String> = rendered.warnings.iter().filter(|w| w.level == "error").map(|w| w.message.clone()).collect();
         return Err(anyhow!("cannot send: {}", msgs.join(" ")));
     }
     let result = if dest.kind == "edit" {
-        bridge::call(cfg, "edit", json!({
-            "channelId": dest.channel_id,
-            "messageId": dest.message_id,
-            "payload": rendered.payload,
-            "files": files,
-        })).await?
+        bridge::call(
+            cfg,
+            "edit",
+            json!({
+                "channelId": dest.channel_id,
+                "messageId": dest.message_id,
+                "payload": rendered.payload,
+                "files": files,
+            }),
+        )
+        .await?
     } else {
-        bridge::call(cfg, "send", json!({
-            "destination": { "kind": dest.kind, "id": dest.id, "guildId": dest.guild_id },
-            "payload": rendered.payload,
-            "files": files,
-        })).await?
+        bridge::call(
+            cfg,
+            "send",
+            json!({
+                "destination": { "kind": dest.kind, "id": dest.id, "guildId": dest.guild_id },
+                "payload": rendered.payload,
+                "files": files,
+            }),
+        )
+        .await?
     };
     let conn = app_db.lock().unwrap_or_else(|e| e.into_inner());
     let t = now();
@@ -155,7 +169,17 @@ pub async fn deliver(app_db: &std::sync::Mutex<Connection>, cfg: &bridge::Bridge
         let ctx = Ctx { actor: actor.into(), op_id: None, origin: if automation_id.is_some() { "runner".into() } else { "ui".into() } };
         let label = dest.label.clone().unwrap_or_else(|| dest.id.clone());
         let summary = if dest.kind == "edit" { "Updated the Discord message".to_string() } else { format!("Sent to Discord · {label}") };
-        store::record(&conn, &ctx, Some(pid), "discord_sent", &summary, None, None, None, json!({ "destination": dest, "result": result }))?;
+        store::record(
+            &conn,
+            &ctx,
+            Some(pid),
+            "discord_sent",
+            &summary,
+            None,
+            None,
+            None,
+            json!({ "destination": dest, "result": result }),
+        )?;
         db::mark_change(&conn, Some(pid), "history", &ctx.origin)?;
     }
     Ok(result)
@@ -166,7 +190,12 @@ pub async fn deliver(app_db: &std::sync::Mutex<Connection>, cfg: &bridge::Bridge
 // ---------------------------------------------------------------------------
 
 #[tauri::command]
-pub async fn discord_render(state: State<'_, AppState>, page_id: String, blocks: Option<Vec<Value>>, options: Option<RenderOptions>) -> CmdResult<Rendered> {
+pub async fn discord_render(
+    state: State<'_, AppState>,
+    page_id: String,
+    blocks: Option<Vec<Value>>,
+    options: Option<RenderOptions>,
+) -> CmdResult<Rendered> {
     let c = state.conn();
     render_for_page(&c, &page_id, blocks, options).map_err(|e| format!("{e:#}"))
 }
@@ -213,16 +242,20 @@ pub async fn discord_destinations(state: State<'_, AppState>, refresh: Option<bo
 }
 
 #[tauri::command]
-pub async fn discord_send(state: State<'_, AppState>, page_id: String, destination: Destination, options: Option<RenderOptions>, blocks: Option<Vec<Value>>) -> CmdResult<Value> {
+pub async fn discord_send(
+    state: State<'_, AppState>,
+    page_id: String,
+    destination: Destination,
+    options: Option<RenderOptions>,
+    blocks: Option<Vec<Value>>,
+) -> CmdResult<Value> {
     let (cfg, rendered, files) = {
         let c = state.conn();
         let r = render_for_page(&c, &page_id, blocks, options).map_err(|e| format!("{e:#}"))?;
         let f = file_payloads(&c, &r).map_err(|e| format!("{e:#}"))?;
         (bridge_config(&c), r, f)
     };
-    deliver(&state.db, &cfg, &rendered, files, &destination, Some(&page_id), None)
-        .await
-        .map_err(|e| format!("{e:#}"))
+    deliver(&state.db, &cfg, &rendered, files, &destination, Some(&page_id), None).await.map_err(|e| format!("{e:#}"))
 }
 
 #[derive(Serialize)]
@@ -268,7 +301,9 @@ pub async fn pending_resolve(state: State<'_, AppState>, id: String, approve: bo
     let (kind, payload): (String, Value) = {
         let c = state.conn();
         let row: Option<(String, String)> = c
-            .query_row("SELECT kind, payload FROM pending_actions WHERE id = ?1 AND status = 'pending'", [&id], |r| Ok((r.get(0)?, r.get(1)?)))
+            .query_row("SELECT kind, payload FROM pending_actions WHERE id = ?1 AND status = 'pending'", [&id], |r| {
+                Ok((r.get(0)?, r.get(1)?))
+            })
             .optional()
             .map_err(|e| e.to_string())?;
         let (k, p) = row.ok_or("This request was already handled.")?;
@@ -279,7 +314,8 @@ pub async fn pending_resolve(state: State<'_, AppState>, id: String, approve: bo
         c.execute(
             "UPDATE pending_actions SET status = ?1, result = ?2, resolved_at = ?3 WHERE id = ?4",
             params![status, result.to_string(), now(), id],
-        ).map_err(|e| e.to_string())?;
+        )
+        .map_err(|e| e.to_string())?;
         db::mark_change(&c, None, "pending", "ui").map_err(|e| e.to_string())?;
         Ok(())
     };
@@ -312,7 +348,13 @@ pub async fn pending_resolve(state: State<'_, AppState>, id: String, approve: bo
                     finish("approved", v.clone())?;
                     if let Some(run) = run {
                         let c = state.conn();
-                        let _ = crate::automations::finish_run(&c, &run, "succeeded", Some(json!({ "payload": rendered.payload, "result": v })), None);
+                        let _ = crate::automations::finish_run(
+                            &c,
+                            &run,
+                            "succeeded",
+                            Some(json!({ "payload": rendered.payload, "result": v })),
+                            None,
+                        );
                     }
                     Ok(v)
                 }
