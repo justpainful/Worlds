@@ -136,7 +136,14 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
     case "page_get": return page(a.id) ?? null;
     case "page_create": { const pid = addPage(a.page.title ?? "", a.page.icon ?? null, []); return pages[pid]; }
     case "page_update": Object.assign(pages[a.id], a.patch); return pages[a.id];
-    case "blocks_save": blocks[a.pageId] = a.blocks.map((b: any) => b.content); return { added: 0, changed: 0, removed: 0, remapped: [], updatedAt: Date.now() };
+    case "blocks_save": {
+      // Same rule as the real backend: a save based on an older sync is refused.
+      if (a.base != null && pages[a.pageId] && pages[a.pageId].updatedAt > a.base) throw "conflict: the page changed since it was loaded";
+      const at = Math.max(Date.now(), (pages[a.pageId]?.updatedAt ?? 0) + 1);
+      blocks[a.pageId] = a.blocks.map((b: any) => b.content);
+      if (pages[a.pageId]) pages[a.pageId].updatedAt = at;
+      return { added: 0, changed: 0, removed: 0, remapped: [], updatedAt: at };
+    }
     case "search": return Object.values(pages).filter((p: any) => p.title.includes(a.query)).map((p: any) => ({ pageId: p.id, title: p.title, icon: p.icon, kind: p.kind, snippet: p.preview, parentTitle: null, updatedAt: p.updatedAt }));
     case "history_list": return [{ id: 1, pageId: p1, pageTitle: pages[p1].title, opId: null, actor: "user", kind: "edited", summary: "Edited · 3 changed", blockId: null, before: null, after: null, meta: {}, createdAt: now - 600_000 }];
     case "versions_list": return [];

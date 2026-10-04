@@ -128,7 +128,19 @@ export const PageEditor = forwardRef<PageEditorHandle, { page: Page; onSaved?: (
           includeChildren: true,
           placeholder: ({ node, editor: ed, pos }) => {
             // Nested blocks: only toggle summaries and empty columns get a hint.
-            const $p = ed.state.doc.resolve(pos);
+            // The hint is computed while a new document is being drawn and
+            // `ed.state` can still be the previous one, so a position may not
+            // exist there yet. A hint must never throw: an exception here
+            // aborts the whole view update (and breaks undo/redo).
+            const doc = ed.state.doc;
+            if (pos < 0 || pos > doc.content.size) return "";
+            let $p;
+            try {
+              $p = doc.resolve(pos);
+            } catch {
+              return "";
+            }
+            if (doc.nodeAt(pos) !== node) return $p.depth > 0 ? "" : "Press / for blocks";
             if ($p.depth > 0) {
               if ($p.parent.type.name === "toggle") return $p.index() === 0 ? "Toggle" : "Hidden content";
               if ($p.parent.type.name === "column" && $p.parent.childCount === 1) return "Column";
@@ -213,28 +225,39 @@ export const PageEditor = forwardRef<PageEditorHandle, { page: Page; onSaved?: (
   const editorRef = useRef<Editor | null>(null);
   editorRef.current = editor;
 
-  async function flush() {
+  /** When this editor last agreed with the database (the save's `base`). */
+  const syncedAt = useRef(page.updatedAt);
+  const merging = useRef<Promise<boolean> | null>(null);
+
+  async function flush(): Promise<void> {
     const ed = editorRef.current;
     window.clearTimeout(saveTimer.current);
+    // Never save a block list that predates a merge in progress.
+    if (merging.current) await merging.current;
     if (saving.current) await saving.current;
     if (!dirty.current) return;
-    const live = ed && !ed.isDestroyed;
+    const live = !!ed && !ed.isDestroyed;
     const doc = live ? ed.state.doc : lastDoc.current;
     if (!doc) return;
     dirty.current = false;
     const blocks = blocksOfDoc(doc);
     const changed = blocks.length !== baseline.current.size || blocks.some((b) => baseline.current.get(b.attrs?.bid) !== JSON.stringify(b));
     if (!changed) return;
+    let conflict = false;
     onSaving?.(true);
     saving.current = (async () => {
       try {
         const res = await api.saveBlocks(
           pageId,
           blocks.map((b) => ({ id: b.attrs?.bid as string, content: b })),
+          syncedAt.current,
         );
+        syncedAt.current = res.updatedAt;
         if (live && !ed.isDestroyed) {
           if (res.remapped.length) applyRemaps(ed, res.remapped);
           baseline.current = new Map(blocksOf(ed).map((n) => [n.attrs?.bid as string, JSON.stringify(n)]));
+        } else {
+          baseline.current = new Map(blocks.map((n) => [n.attrs?.bid as string, JSON.stringify(n)]));
         }
         emit("page:saved", { pageId, from: instance.current });
         onSaved?.(res.updatedAt);
@@ -243,7 +266,10 @@ export const PageEditor = forwardRef<PageEditorHandle, { page: Page; onSaved?: (
         if (meta) s.patchPageLocal({ ...meta, updatedAt: res.updatedAt });
       } catch (e) {
         dirty.current = true;
-        useStore.getState().toast({ message: `Could not save: ${errorMessage(e)}`, tone: "error" });
+        const message = errorMessage(e);
+        // Someone else wrote the page since we synced: merge, then save again.
+        if (message.startsWith("conflict")) conflict = true;
+        else useStore.getState().toast({ message: `Could not save: ${message}`, tone: "error" });
       } finally {
         onSaving?.(false);
         if (inflight.get(pageId) === saving.current) inflight.delete(pageId);
@@ -253,6 +279,63 @@ export const PageEditor = forwardRef<PageEditorHandle, { page: Page; onSaved?: (
     const current = saving.current;
     inflight.set(pageId, current);
     await current;
+    if (conflict) await pullAndMerge();
+  }
+
+  /**
+   * Fold the database's version of the page into this editor (three-way, by
+   * block, against what this editor last synced), then save the result if it
+   * differs. Works after the editor is torn down too, on the kept document,
+   * so a last save that hits a conflict is merged rather than dropped.
+   */
+  async function pullAndMerge(): Promise<void> {
+    if (merging.current) {
+      await merging.current;
+      return;
+    }
+    let resolveDone!: (v: boolean) => void;
+    merging.current = new Promise<boolean>((r) => (resolveDone = r));
+    let needsSave = false;
+    try {
+      window.clearTimeout(saveTimer.current);
+      if (saving.current) await saving.current;
+      const fresh = await api.page(pageId);
+      const ed = editorRef.current;
+      const live = !!ed && !ed.isDestroyed;
+      const doc = live ? ed.state.doc : lastDoc.current;
+      if (!fresh || !doc) return;
+      syncedAt.current = fresh.updatedAt;
+      const server = fresh.blocks.map((b) => refreshMentionLabels(b.content));
+      const local = blocksOfDoc(doc);
+      if (JSON.stringify(server) === JSON.stringify(local)) {
+        baseline.current = new Map(server.map((n) => [n.attrs?.bid as string, JSON.stringify(n)]));
+        dirty.current = false;
+        return;
+      }
+      const { merged, dirty: differs } = mergeBlocks(baseline.current, local, server);
+      const mergedDoc = doc.type.schema.nodeFromJSON({ type: "doc", content: merged.length ? merged : [{ type: "paragraph" }] });
+      if (live) {
+        const { from, to } = ed.state.selection;
+        const tr = ed.state.tr.replaceWith(0, ed.state.doc.content.size, mergedDoc.content).setMeta("addToHistory", false);
+        const max = tr.doc.content.size;
+        try {
+          tr.setSelection(TextSelection.create(tr.doc, Math.min(from, max), Math.min(to, max)));
+        } catch {
+          /* selection landed in an atom; leave default */
+        }
+        ed.view.dispatch(tr);
+      }
+      lastDoc.current = live ? ed.state.doc : mergedDoc;
+      baseline.current = new Map(server.map((n) => [n.attrs?.bid as string, JSON.stringify(n)]));
+      dirty.current = differs;
+      needsSave = differs;
+    } catch (e) {
+      useStore.getState().toast({ message: `Could not merge changes: ${errorMessage(e)}`, tone: "error" });
+    } finally {
+      resolveDone(needsSave);
+      merging.current = null;
+    }
+    if (needsSave) await flush();
   }
 
   useImperativeHandle(ref, () => ({
@@ -296,31 +379,7 @@ export const PageEditor = forwardRef<PageEditorHandle, { page: Page; onSaved?: (
     if ((external === lastExternal.current && peerRevision === lastPeer.current) || !editor) return;
     lastExternal.current = external;
     lastPeer.current = peerRevision;
-    (async () => {
-      await flush();
-      const fresh = await api.page(pageId);
-      if (!fresh || editor.isDestroyed) return;
-      const server = fresh.blocks.map((b) => refreshMentionLabels(b.content));
-      const local = blocksOf(editor);
-      if (JSON.stringify(server) === JSON.stringify(local)) {
-        baseline.current = new Map(server.map((n) => [n.attrs?.bid as string, JSON.stringify(n)]));
-        return;
-      }
-      const { merged, dirty: needsSave } = mergeBlocks(baseline.current, local, server);
-      const { from, to } = editor.state.selection;
-      const doc = editor.state.schema.nodeFromJSON({ type: "doc", content: merged.length ? merged : [{ type: "paragraph" }] });
-      const tr = editor.state.tr.replaceWith(0, editor.state.doc.content.size, doc.content).setMeta("addToHistory", false);
-      const max = tr.doc.content.size;
-      try {
-        tr.setSelection(TextSelection.create(tr.doc, Math.min(from, max), Math.min(to, max)));
-      } catch {
-        /* selection landed in an atom; leave default */
-      }
-      editor.view.dispatch(tr);
-      baseline.current = new Map(server.map((n) => [n.attrs?.bid as string, JSON.stringify(n)]));
-      dirty.current = needsSave;
-      if (needsSave) flush();
-    })();
+    pullAndMerge();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [external, peerRevision, editor]);
 

@@ -159,10 +159,23 @@ pub async fn page_duplicate(state: State<'_, AppState>, id: String, deep: Option
 }
 
 #[tauri::command]
-pub async fn blocks_save(state: State<'_, AppState>, page_id: String, blocks: Vec<store::BlockInput>) -> CmdResult<store::SaveResult> {
+pub async fn blocks_save(
+    state: State<'_, AppState>,
+    page_id: String,
+    blocks: Vec<store::BlockInput>,
+    base: Option<i64>,
+) -> CmdResult<store::SaveResult> {
     with_conn!(state, |c| {
         store::snapshot_before_user_edit(&c, &page_id)?;
         let tx = c.unchecked_transaction()?;
+        // The editor saves its whole block list. If someone else wrote the page
+        // since this editor last synced (Claude, an automation, another pane),
+        // that list would delete their blocks: refuse, and let the editor merge.
+        if let Some(base) = base {
+            if store::page_changed_since(&tx, &page_id, base)? {
+                anyhow::bail!("conflict: the page changed since it was loaded");
+            }
+        }
         let r = store::save_blocks(&tx, &Ctx::user(), &page_id, blocks)?;
         tx.commit()?;
         Ok(r)

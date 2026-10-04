@@ -984,6 +984,12 @@ pub struct BlockInput {
     pub content: Value,
 }
 
+/// Whether the page was written after `base` (ms), by anyone.
+pub fn page_changed_since(conn: &Connection, page_id: &str, base: i64) -> Result<bool> {
+    let at: i64 = conn.query_row("SELECT updated_at FROM pages WHERE id = ?1", [page_id], |r| r.get(0))?;
+    Ok(at > base)
+}
+
 /// Save the full ordered block list for a page (editor autosave path).
 pub fn save_blocks(conn: &Connection, ctx: &Ctx, page_id: &str, input: Vec<BlockInput>) -> Result<SaveResult> {
     require_page(conn, page_id)?;

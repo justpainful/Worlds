@@ -72,10 +72,11 @@ export const api = {
   restorePage: (id: string) => invoke<void>("page_restore", { id }),
   purgePage: (id: string) => invoke<void>("page_purge", { id }),
   duplicatePage: (id: string, deep = true) => invoke<PageMeta>("page_duplicate", { id, deep }),
-  saveBlocks: (pageId: string, blocks: { id: string; content: JSONContent }[]) =>
+  /** `base`: when this editor last synced; the save is refused ("conflict") if the page changed since. */
+  saveBlocks: (pageId: string, blocks: { id: string; content: JSONContent }[], base?: number) =>
     invoke<{ added: number; changed: number; removed: number; remapped: [string, string][]; updatedAt: number }>(
       "blocks_save",
-      { pageId, blocks },
+      { pageId, blocks, base: base ?? null },
     ),
   search: (query: string, limit = 30, includeTemplates = true) =>
     invoke<SearchHit[]>("search", { query, limit, includeTemplates }),

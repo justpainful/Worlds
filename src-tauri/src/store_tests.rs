@@ -132,3 +132,18 @@ fn delete_restore_and_archive_keep_content() {
     assert_eq!(texts(&conn, &page), ["body"]);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn saves_based_on_an_old_sync_are_detected() {
+    let (dir, conn) = temp_db("conflict");
+    let page = new_page(&conn, "Shared");
+    let synced = user_save(&conn, &page, &[("a", "mine")]).updated_at;
+    assert!(!store::page_changed_since(&conn, &page, synced).unwrap());
+    std::thread::sleep(std::time::Duration::from_millis(5));
+    // Claude adds a block after the editor synced.
+    let ai = Ctx { actor: "ai".into(), op_id: Some("op-c".into()), origin: "mcp".into() };
+    store::insert_blocks(&conn, &ai, &page, None, vec![para("claude")]).unwrap();
+    // A full-list save from the editor would now delete Claude's block: it must be refused.
+    assert!(store::page_changed_since(&conn, &page, synced).unwrap());
+    let _ = std::fs::remove_dir_all(&dir);
+}
