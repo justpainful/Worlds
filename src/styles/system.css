@@ -82,7 +82,8 @@
   :root { --m-fast: 1ms; --m-standard: 1ms; --m-slow: 120ms; }
 }
 
-body { background: var(--canvas); }
+/* The body stays transparent (base.css): the window is see-through and the
+   frame paints the canvas, so transparency modes can show the desktop. */
 
 /* ==========================================================================
    Glass variants: one material, tuned per role.
