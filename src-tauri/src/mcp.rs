@@ -18,6 +18,11 @@ use std::io::{BufRead, Write};
 
 mod more;
 mod more2;
+mod page_content;
+mod page_structure;
+mod profile_history;
+mod tasks_tables;
+mod workspace;
 
 fn arg_after(args: &[String], flag: &str) -> Option<String> {
     args.iter().position(|a| a == flag).and_then(|i| args.get(i + 1)).cloned()
