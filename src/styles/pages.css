@@ -7,11 +7,14 @@
 .page-cover { position: relative; overflow: hidden; -webkit-mask-image: linear-gradient(#000 calc(100% - 60px), transparent); mask-image: linear-gradient(#000 calc(100% - 60px), transparent); transition: height 380ms var(--spring-snappy); }
 .page-cover-img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .page-cover-wrap { position: relative; }
-.page-cover-actions { position: absolute; z-index: 6; top: 68px; right: 22px; display: flex; gap: 6px; opacity: 0; transition: opacity 160ms ease; }
+.page-cover-actions { position: absolute; z-index: 6; top: 68px; right: 22px; }
+.page-cover-actions-row { display: flex; gap: 2px; padding: 3px; }
+.page-cover-actions > * { opacity: 0; transition: opacity 160ms ease; }
 /* Shown while the pointer is anywhere over the cover or on the buttons themselves. */
-.page-cover-wrap:hover .page-cover-actions, .page-cover-actions:hover, .page-cover-actions:focus-within { opacity: 1; }
-.page-cover-actions button { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; background: rgba(18, 18, 20, 0.66); color: #fff; font: var(--t-small); font-weight: 550; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
-.page-cover-actions button:hover { background: rgba(18, 18, 20, 0.82); }
+.page-cover-wrap:hover .page-cover-actions > *, .page-cover-actions:hover > *, .page-cover-actions:focus-within > * { opacity: 1; }
+.page-cover-actions button { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; color: var(--text-1); font: var(--t-small); font-weight: 550; }
+.page-cover-actions button:hover { background: rgba(255, 255, 255, 0.12); }
+.glass[data-tone="light"] .page-cover-actions-row button:hover { background: rgba(0, 0, 0, 0.06); }
 .page-view.has-cover .page-column { padding-top: 0; margin-top: -54px; position: relative; }
 .page-view.has-cover .page-head-top { position: absolute; top: -40px; left: 56px; right: 56px; }
 .page-head-adds { display: flex; align-items: flex-end; gap: 6px; flex-wrap: wrap; min-height: 30px; }
@@ -173,27 +176,19 @@
 /* ---- Sticky title capsule ------------------------------------------------ */
 .sticky-title { position: sticky; top: 64px; z-index: 18; height: 0; display: flex; justify-content: center; pointer-events: none; }
 .sticky-title-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
   max-width: min(460px, 70%);
   height: 34px;
-  padding: 0 14px 0 11px;
-  border-radius: 999px;
-  background: rgba(30, 30, 33, 0.78);
-  -webkit-backdrop-filter: blur(22px) saturate(1.5);
-  backdrop-filter: blur(22px) saturate(1.5);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3), inset 0 0.5px 0 rgba(255, 255, 255, 0.12);
   color: var(--text-1);
   font: var(--t-ui-strong);
   font-size: 13.5px;
-  transform: translateY(-14px) scale(0.94);
-  opacity: 0;
-  transition: transform 360ms var(--spring-snappy), opacity 180ms ease;
+  /* Hidden state lives on the layers (a transform here would blank the lens). */
+  opacity: 1;
 }
+.sticky-title-row { display: inline-flex; align-items: center; gap: 8px; height: 100%; padding: 0 14px 0 11px; }
+.sticky-title-btn > * { opacity: 0; transform: translateY(-14px) scale(0.94); transition: transform 360ms var(--spring-snappy), opacity 180ms ease; }
 .sticky-title-btn span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sticky-title.is-on { pointer-events: auto; }
-.sticky-title.is-on .sticky-title-btn { transform: none; opacity: 1; }
+.sticky-title.is-on .sticky-title-btn > * { transform: none; opacity: 1; }
 
 /* ---- Find bar ------------------------------------------------------------ */
 .find-bar {
@@ -202,17 +197,9 @@
   right: 34px;
   z-index: 40;
   width: 380px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 6px;
-  border-radius: 16px;
-  background: rgba(32, 32, 35, 0.9);
-  -webkit-backdrop-filter: blur(24px) saturate(1.5);
-  backdrop-filter: blur(24px) saturate(1.5);
-  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.4), inset 0 0.5px 0 rgba(255, 255, 255, 0.1);
-  animation: find-in 260ms var(--spring-snappy);
 }
+.find-body { display: flex; flex-direction: column; gap: 4px; padding: 6px; }
+.find-bar > * { animation: find-in 260ms var(--spring-snappy); }
 @keyframes find-in { from { transform: translateY(-8px); opacity: 0; } }
 .find-row { display: flex; align-items: center; gap: 4px; height: 34px; padding: 0 4px 0 10px; border-radius: 10px; background: rgba(255, 255, 255, 0.06); color: var(--text-3); }
 .find-row input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: var(--text-1); font: var(--t-ui); }
@@ -232,19 +219,11 @@
   z-index: 12;
   width: fit-content;
   margin: 0 18px 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 4px 6px;
-  border-radius: 999px;
-  background: rgba(28, 28, 31, 0.72);
-  -webkit-backdrop-filter: blur(18px) saturate(1.4);
-  backdrop-filter: blur(18px) saturate(1.4);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
-  opacity: 0.45;
-  transition: opacity 200ms ease;
 }
-.status-bar:hover { opacity: 1; }
+.status-row { display: flex; align-items: center; gap: 2px; padding: 4px 6px; }
+/* Quiet until hovered; dimming the layers, not the surface, keeps the lens live. */
+.status-bar > * { opacity: 0.45; transition: opacity 200ms ease; }
+.status-bar:hover > * { opacity: 1; }
 .sb-item { padding: 0 8px; font: var(--t-caption); color: var(--text-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .sb-item + .sb-item { border-inline-start: 0.5px solid rgba(255, 255, 255, 0.1); }
 .sb-lock { display: inline-flex; align-items: center; gap: 4px; color: #f2c94c; }
@@ -314,11 +293,12 @@
 @keyframes lb-in { from { opacity: 0; } }
 .lightbox img { max-width: calc(100vw - 120px); max-height: calc(100vh - 140px); object-fit: contain; border-radius: 12px; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6); cursor: default; animation: lb-img 320ms var(--spring-snappy); }
 @keyframes lb-img { from { transform: scale(0.94); } }
-.lightbox-bar { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 5px; border-radius: 999px; background: rgba(40, 40, 44, 0.8); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); cursor: default; }
-.lightbox-bar button { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: #fff; }
+.lightbox-bar { position: absolute; bottom: 24px; left: 0; right: 0; width: max-content; margin-inline: auto; cursor: default; }
+.lightbox-row { display: flex; align-items: center; gap: 6px; padding: 5px; }
+.lightbox-bar button { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: var(--text-1); }
 .lightbox-bar button:hover { background: rgba(255, 255, 255, 0.12); }
-.lightbox-name { max-width: 320px; padding: 0 6px; font: var(--t-small); color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lightbox-count { font: var(--t-caption); color: rgba(255, 255, 255, 0.6); padding-inline-end: 4px; font-variant-numeric: tabular-nums; }
+.lightbox-name { max-width: 320px; padding: 0 6px; font: var(--t-small); color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lightbox-count { font: var(--t-caption); color: var(--text-3); padding-inline-end: 4px; font-variant-numeric: tabular-nums; }
 
 /* ---- Colour button in the format bubble ------------------------------------------- */
 .bb-color { font: 700 15px/1 var(--font-ui); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
@@ -350,47 +330,18 @@
   --over-light-sub: rgba(22, 22, 26, 0.62);
 }
 
-/* Page action row and breadcrumbs sit on the cover's lower edge. */
-.page-view.has-cover .page-head-top .page-actions,
-.page-view.has-cover .page-head-top .crumbs:not(:empty) {
-  opacity: 1;
-  padding: 3px 6px;
-  border-radius: 999px;
-  -webkit-backdrop-filter: blur(18px) saturate(1.5);
-  backdrop-filter: blur(18px) saturate(1.5);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
-  transition: background-color 240ms ease, color 240ms ease;
-}
-.page-view.has-cover .page-head-top .crumbs { flex: 0 1 auto; }
-.page-view.has-cover .page-head-top .crumbs:not(:has(.crumb)) { display: none; }
-.page-view.cover-bottom-dark .page-head-top .page-actions,
-.page-view.cover-bottom-dark .page-head-top .crumbs { background: var(--over-dark-bg); color: var(--over-dark-ink); }
-.page-view.cover-bottom-light .page-head-top .page-actions,
-.page-view.cover-bottom-light .page-head-top .crumbs { background: var(--over-light-bg); color: var(--over-light-ink); }
-.page-view.cover-bottom-dark .page-head-top .icon-btn,
-.page-view.cover-bottom-dark .page-head-top .crumb-btn { color: var(--over-dark-ink); }
-.page-view.cover-bottom-dark .page-head-top .save-state,
-.page-view.cover-bottom-dark .page-head-top .crumb-sep { color: var(--over-dark-sub); }
-.page-view.cover-bottom-light .page-head-top .icon-btn,
-.page-view.cover-bottom-light .page-head-top .crumb-btn { color: var(--over-light-ink); }
-.page-view.cover-bottom-light .page-head-top .save-state,
-.page-view.cover-bottom-light .page-head-top .crumb-sep { color: var(--over-light-sub); }
-.page-view.cover-bottom-light .page-head-top .icon-btn:hover:not(:disabled),
-.page-view.cover-bottom-light .page-head-top .crumb-btn:hover { background: rgba(0, 0, 0, 0.07); }
-.page-view.cover-bottom-dark .page-head-top .icon-btn:hover:not(:disabled),
-.page-view.cover-bottom-dark .page-head-top .crumb-btn:hover { background: rgba(255, 255, 255, 0.12); }
-
-/* Cover buttons sit in the top-right corner. */
-.page-cover-actions button { transition: background-color 240ms ease, color 240ms ease; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18); }
-.page-view.cover-top-dark .page-cover-actions button { background: var(--over-dark-bg); color: var(--over-dark-ink); }
-.page-view.cover-top-light .page-cover-actions button { background: var(--over-light-bg); color: var(--over-light-ink); }
-.page-view.cover-top-dark .page-cover-actions button:hover { background: rgba(18, 18, 20, 0.72); }
-.page-view.cover-top-light .page-cover-actions button:hover { background: rgba(255, 255, 255, 0.86); }
+/* Page action row and breadcrumbs sit on the cover's lower edge, in glass. */
+.page-actions.is-glass, .crumbs.is-glass { opacity: 1; gap: 0; }
+.page-actions-row, .crumbs-row { display: flex; align-items: center; gap: 2px; padding: 3px 6px; }
+.crumbs.is-glass { flex: 0 1 auto; }
+.crumbs.is-glass:not(:has(.crumb)) { display: none; }
+.glass[data-tone="light"] .icon-btn:hover:not(:disabled), .glass[data-tone="light"] .crumb-btn:hover { background: rgba(0, 0, 0, 0.07); }
 
 /* The outline gets a soft frost of its own, so it reads over anything. */
 .outline { padding: 8px 6px; border-radius: 14px; }
-.outline:hover { background: rgba(24, 24, 27, 0.6); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+.outline:hover { background: rgba(24, 24, 27, 0.88); }
 
-/* Profile: controls on the banner's lower edge follow the banner too. */
-.pf.is-light-banner .pf-round.icon-btn { background: rgba(255, 255, 255, 0.66); color: rgba(22, 22, 26, 0.92); }
-.pf.is-light-banner .pf-round.icon-btn:hover { background: rgba(255, 255, 255, 0.86); }
+
+/* Glass that waits hidden (layers at opacity 0) must not leave its shadow behind. */
+.sticky-title:not(.is-on) .sticky-title-btn,
+.page-cover-wrap:not(:hover) .page-cover-actions:not(:hover):not(:focus-within) { box-shadow: none; }

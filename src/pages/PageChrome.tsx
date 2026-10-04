@@ -4,6 +4,8 @@ import { api, errorMessage, fileUrl } from "../lib/api";
 import type { PageMeta } from "../lib/types";
 import { useStore, childrenOf, pageTitle } from "../state/store";
 import { findKey } from "../editor/extensions/pages3";
+import { Glass } from "../glass/Glass";
+import { LAYER } from "../glass/materials";
 import { Icon } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
 import { PageIcon, relTime } from "../ui/misc";
@@ -48,7 +50,7 @@ export function FindBar({ editor, replace: startReplace, onClose }: { editor: Ed
   const at = count ? (st?.index ?? 0) + 1 : 0;
 
   return (
-    <div className="find-bar" role="search">
+    <Glass className="find-bar" contentClassName="find-body" material="regular" layer={LAYER.popover} radius="16px" role="search">
       <div className="find-row">
         <Icon name="search" size={14} />
         <input
@@ -112,7 +114,7 @@ export function FindBar({ editor, replace: startReplace, onClose }: { editor: Ed
           </button>
         </div>
       )}
-    </div>
+    </Glass>
   );
 }
 
@@ -147,7 +149,7 @@ export function StatusBar({ editor, saving, savedAt, locked }: { editor: Editor 
   }, [editor]);
   const minutes = Math.max(1, Math.round(stats.words / 200));
   return (
-    <div className="status-bar" aria-live="polite">
+    <Glass className="status-bar" contentClassName="status-row" material="clear" layer={LAYER.chrome} radius="var(--r-capsule)" aria-live="polite">
       {locked && (
         <span className="sb-item sb-lock">
           <Icon name="lock" size={11} />
@@ -158,7 +160,7 @@ export function StatusBar({ editor, saving, savedAt, locked }: { editor: Editor 
       <span className="sb-item">{stats.chars.toLocaleString()} characters</span>
       <span className="sb-item">{minutes} min read</span>
       <span className="sb-item sb-save">{saving ? "Saving" : savedAt ? `Saved ${relTime(savedAt)}` : ""}</span>
-    </div>
+    </Glass>
   );
 }
 
@@ -178,10 +180,19 @@ export function StickyTitle({ page, titleEl }: { page: PageMeta; titleEl: React.
   }, [titleEl]);
   return (
     <div className={`sticky-title ${on ? "is-on" : ""}`} aria-hidden={!on}>
-      <button className="sticky-title-btn" onClick={() => titleEl.current?.closest(".pane-scroll")?.scrollTo({ top: 0, behavior: "smooth" })}>
+      <Glass
+        as="button"
+        interactive
+        material="control"
+        layer={LAYER.floating}
+        radius="var(--r-capsule)"
+        className="sticky-title-btn"
+        contentClassName="sticky-title-row"
+        onClick={() => titleEl.current?.closest(".pane-scroll")?.scrollTo({ top: 0, behavior: "smooth" })}
+      >
         <PageIcon icon={page.icon} size={16} />
         <span className="bidi">{pageTitle(page)}</span>
-      </button>
+      </Glass>
     </div>
   );
 }

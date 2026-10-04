@@ -133,6 +133,11 @@
   --text-1: var(--text-on-light);
   --text-2: rgba(30, 30, 34, 0.62);
   --text-3: rgba(30, 30, 34, 0.42);
+  --text-4: rgba(30, 30, 34, 0.32);
+  --hairline: rgba(0, 0, 0, 0.08);
+  --hairline-strong: rgba(0, 0, 0, 0.12);
+  --fill-1: rgba(0, 0, 0, 0.04);
+  --fill-2: rgba(0, 0, 0, 0.07);
 }
 
 /* ---- Interaction states ------------------------------------------------- */
@@ -276,17 +281,11 @@
 .gg-btn.is-active { background: rgba(255, 255, 255, 0.14); }
 .glass[data-tone="light"] .gg-btn:hover:not(:disabled) { background: rgba(0, 0, 0, 0.06); }
 
-/* ---- Guaranteed frost for sheets, menus and panels -----------------------
-   Dense surfaces carry reading content, so they never depend on the optical
-   pipeline alone: if the SVG backdrop filter is unavailable (some WebView2
-   and GPU combinations), this plain blur still keeps what is behind them
-   from competing with their text. */
-.glass[data-material="dense"] > .g-tint {
-  -webkit-backdrop-filter: blur(26px) saturate(1.5);
-  backdrop-filter: blur(26px) saturate(1.5);
-}
-/* Regular and prominent glass rely on the optical pipeline alone, so the
-   refraction stays crisp (an extra blur here would smear it). */
+/* ---- Dense surfaces (sheets, menus, panels) -----------------------------
+   Their frost comes from the optical pipeline itself (dense material: heavy
+   blur, high opacity). When a surface cannot use the SVG lens (nested glass,
+   transformed subtree), the scene gives it a CSS blur instead, so a second
+   blur layer here would only cost a backdrop pass. */
 :root[data-glass="solid"] .glass > .g-tint { -webkit-backdrop-filter: none; backdrop-filter: none; }
 
 /* ==========================================================================

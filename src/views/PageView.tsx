@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type HTMLAttributes, type ReactNode } from "react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { api, errorMessage, fileUrl, isTauri } from "../lib/api";
 import type { Page } from "../lib/types";
@@ -6,6 +6,8 @@ import { useStore, childrenOf, pageTitle } from "../state/store";
 import { emit, on } from "../lib/bus";
 import { PageEditor, type PageEditorHandle } from "../editor/PageEditor";
 import { insertPaths } from "../editor/media";
+import { Glass } from "../glass/Glass";
+import { LAYER } from "../glass/materials";
 import { IconButton } from "../ui/Button";
 import { Icon } from "../ui/Icon";
 import { Avatar, EmptyState, PageIcon, relTime, Spinner } from "../ui/misc";
@@ -215,7 +217,7 @@ function LoadedPage({ page, paneId, reload }: { page: Page; paneId: string; relo
       <div className="page-column">
         <header className="page-head">
           <div className="page-head-top">
-            <nav className="crumbs" aria-label="Location">
+            <HeadCapsule glass={!!meta.cover} as="nav" className="crumbs" aria-label="Location">
               {page.breadcrumbs.map((c) => (
                 <span key={c.id} className="crumb">
                   <button className="crumb-btn bidi" onClick={(e) => openPage(c.id, e.ctrlKey ? "tab" : e.altKey ? "right" : "current")}>
@@ -226,8 +228,8 @@ function LoadedPage({ page, paneId, reload }: { page: Page; paneId: string; relo
                 </span>
               ))}
               {meta.archived && <span className="tag">Archived</span>}
-            </nav>
-            <div className="page-actions">
+            </HeadCapsule>
+            <HeadCapsule glass={!!meta.cover} className="page-actions">
               <span className="save-state" aria-live="polite">
                 {saving ? "Saving" : savedAt ? `Edited ${relTime(savedAt)}` : ""}
               </span>
@@ -287,7 +289,7 @@ function LoadedPage({ page, paneId, reload }: { page: Page; paneId: string; relo
                   )
                 }
               />
-            </div>
+            </HeadCapsule>
           </div>
 
           <div className="page-head-adds">
@@ -444,4 +446,24 @@ function autosize(el: HTMLTextAreaElement | null) {
   if (!el) return;
   el.style.height = "0px";
   el.style.height = `${el.scrollHeight}px`;
+}
+
+/**
+ * The crumbs and page actions: plain on a page, a glass capsule when they sit
+ * on a cover image (the engine then picks light or dark ink for the cover).
+ */
+function HeadCapsule({ glass, as = "div", className, children, ...rest }: { glass: boolean; as?: "div" | "nav"; className: string; children: ReactNode } & HTMLAttributes<HTMLElement>) {
+  if (!glass) {
+    const Tag = as;
+    return (
+      <Tag className={className} {...rest}>
+        {children}
+      </Tag>
+    );
+  }
+  return (
+    <Glass as={as} className={`${className} is-glass`} contentClassName={`${className}-row`} material="control" layer={LAYER.chrome} radius="var(--r-capsule)" {...rest}>
+      {children}
+    </Glass>
+  );
 }

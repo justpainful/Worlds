@@ -111,16 +111,6 @@
 }
 .pf-primary:hover { background: #fff; }
 .pf-primary:active { transform: scale(0.96); }
-.pf-round.icon-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  color: var(--text-1);
-  background: rgba(255, 255, 255, 0.1);
-  -webkit-backdrop-filter: blur(20px) saturate(1.5);
-  backdrop-filter: blur(20px) saturate(1.5);
-}
-.pf-round.icon-btn:hover { background: rgba(255, 255, 255, 0.17); }
 
 .pf-names { margin-top: 14px; display: flex; flex-direction: column; gap: 3px; transform: translateY(calc(var(--pf-p) * -8px)); }
 .pf-name { margin: 0; display: flex; align-items: center; gap: 10px; font: 700 34px/1.12 var(--font-ui); letter-spacing: -0.02em; color: var(--text-1); }
@@ -278,21 +268,8 @@ button.pf-link:hover { color: var(--text-1); text-decoration: underline; text-un
 .pf-edit-cell.is-over { transform: scale(0.98); }
 .pf-edit-cell.is-over::after { content: ""; position: absolute; inset: -4px; border-radius: 28px; border: 1.5px dashed rgba(var(--accent-rgb), 0.7); pointer-events: none; }
 .pf-edit-cell.is-hidden > .pblock { opacity: 0.4; }
-.pf-edit-bar {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 3px;
-  border-radius: 999px;
-  background: rgba(18, 18, 20, 0.72);
-  -webkit-backdrop-filter: blur(16px) saturate(1.4);
-  backdrop-filter: blur(16px) saturate(1.4);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
-}
+.pf-edit-bar { position: absolute; top: 10px; right: 10px; z-index: 3; }
+.pf-edit-row { display: flex; align-items: center; gap: 2px; padding: 3px; }
 .pf-edit-grip { display: grid; place-items: center; width: 26px; height: 26px; color: var(--text-3); cursor: grab; }
 .pf-edit-btn { display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; font: var(--t-caption); color: var(--text-2); }
 .pf-edit-btn:hover { background: rgba(255, 255, 255, 0.1); color: var(--text-1); }

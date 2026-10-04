@@ -1,4 +1,4 @@
-import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { forwardRef, type ButtonHTMLAttributes, type MouseEvent, type ReactNode } from "react";
 import { Glass } from "../glass/Glass";
 import { LAYER } from "../glass/materials";
 import { Icon, type IconName } from "./Icon";
@@ -97,7 +97,7 @@ export function GlassGroup({ items, layer = LAYER.chrome, className = "", materi
 interface GlassButtonProps {
   icon?: IconName;
   children?: ReactNode;
-  onClick?: () => void;
+  onClick?: (e: MouseEvent<HTMLElement>) => void;
   disabled?: boolean;
   prominent?: boolean;
   size?: "compact" | "standard" | "large";
@@ -138,7 +138,7 @@ export function GlassButton({
       onKeyDown={(e) => {
         if (!disabled && (e.key === "Enter" || e.key === " ")) {
           e.preventDefault();
-          onClick?.();
+          (e.currentTarget as HTMLElement).click();
         }
       }}
     >

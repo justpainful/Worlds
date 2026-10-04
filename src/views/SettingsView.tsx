@@ -172,6 +172,9 @@ function Appearance() {
             ]}
           />
         </Row>
+        <Row label="Adapt to performance" hint="Steps Full glass down to Reduced while frames are slow, and back up once they are smooth.">
+          <Toggle checked={settings["appearance.glassAdaptive"] !== false} onChange={(v) => set("appearance.glassAdaptive", v)} label="Adapt to performance" />
+        </Row>
         <Row label="Liquid Glass background" hint="Optional. Your banner's light sits behind the profile and Home, and the content rests on one large glass sheet.">
           <Segmented
             value={settings["appearance.glassBackground"] === true ? "on" : "off"}
@@ -429,6 +432,9 @@ function Advanced() {
     <Group title="Advanced">
       <Row label="Developer tools" hint="Adds the Material Lab to the command palette for tuning glass.">
         <Toggle checked={!!settings["advanced.developer"]} onChange={(v) => set("advanced.developer", v)} label="Developer tools" />
+      </Row>
+      <Row label="Performance overlay" hint="Frame time, glass surfaces and lenses, sampling cost, memory and startup time, in a corner of the window.">
+        <Toggle checked={!!settings["advanced.perfOverlay"]} onChange={(v) => set("advanced.perfOverlay", v)} label="Performance overlay" />
       </Row>
       <Row label="Reset layout" hint="Closes all tabs and panes and returns to Home.">
         <Button

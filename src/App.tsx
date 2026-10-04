@@ -14,9 +14,12 @@ import { AiHost } from "./ai/AiPanel";
 import { LightboxHost } from "./editor/views/Pages3Views";
 import { installContextMenu } from "./shell/ContextMenu";
 import { AutomationHost } from "./automations/AutomationEditor";
+import { markReady, startMonitor } from "./perf/monitor";
+import { PerfOverlay } from "./perf/PerfOverlay";
 
 export function App() {
   const ready = useStore((s) => s.ready);
+  const perfOverlay = useStore((s) => !!s.settings["advanced.perfOverlay"]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -27,7 +30,11 @@ export function App() {
     useStore
       .getState()
       .init()
-      .then(() => applyAppearance())
+      .then(() => {
+        applyAppearance();
+        markReady();
+        startMonitor();
+      })
       .catch((e) => setError(errorMessage(e)))
       // The window starts hidden to avoid a flash; it must always be revealed.
       .finally(() => restoreAndShow());
@@ -158,6 +165,7 @@ export function App() {
       <AiHost />
       <LightboxHost />
       <AutomationHost />
+      {perfOverlay && <PerfOverlay />}
     </WindowFrame>
   );
 }

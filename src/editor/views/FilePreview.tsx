@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { api, errorMessage } from "../../lib/api";
 import { Icon } from "../../ui/Icon";
 import { Spinner } from "../../ui/misc";
+import { GlassButton } from "../../ui/Button";
 
 export type PreviewInfo =
   | { kind: "pdf"; url: string }
@@ -105,8 +106,8 @@ function SlidesViewer({ slides, ratio, name }: { slides: string[]; ratio: number
     }}>
       <div className="fp-stage" style={{ aspectRatio: String(ratio) }}>
         <img src={slides[i]} alt={`Slide ${i + 1}`} draggable={false} />
-        <button className="fp-nav prev" aria-label="Previous slide" disabled={i === 0} onClick={() => go(i - 1)}><Icon name="back" size={18} /></button>
-        <button className="fp-nav next" aria-label="Next slide" disabled={i === slides.length - 1} onClick={() => go(i + 1)}><Icon name="forward" size={18} /></button>
+        <GlassButton className="fp-nav prev" icon="back" label="Previous slide" disabled={i === 0} onClick={() => go(i - 1)} />
+        <GlassButton className="fp-nav next" icon="forward" label="Next slide" disabled={i === slides.length - 1} onClick={() => go(i + 1)} />
       </div>
       <div className="fp-bar">
         <span className="fp-count">{i + 1} / {slides.length}</span>

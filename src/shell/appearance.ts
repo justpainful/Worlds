@@ -1,6 +1,7 @@
 import { useStore } from "../state/store";
 import { glassScene } from "../glass/scene";
 import type { QualityTier } from "../glass/materials";
+import { setAdaptiveQuality } from "../perf/monitor";
 
 export const ACCENTS: { name: string; hex: string }[] = [
   { name: "Sand", hex: "#d2a46e" },
@@ -27,6 +28,7 @@ export function applyAppearance() {
   root.style.setProperty("--accent-rgb", accent.join(", "));
   const quality = (settings["appearance.glass"] as QualityTier) ?? "full";
   glassScene.setQuality(quality);
+  setAdaptiveQuality(settings["appearance.glassAdaptive"] !== false);
   const motion = (settings["appearance.motion"] as string) ?? "system";
   if (motion === "reduced") root.dataset.motion = "reduced";
   else delete root.dataset.motion;

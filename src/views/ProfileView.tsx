@@ -6,7 +6,7 @@ import type { Attachment, Profile } from "../lib/types";
 import { useStore, pageTitle } from "../state/store";
 import { Glass } from "../glass/Glass";
 import { LAYER } from "../glass/materials";
-import { Button, IconButton } from "../ui/Button";
+import { Button, GlassButton, IconButton } from "../ui/Button";
 import { Icon } from "../ui/Icon";
 import { menuAt } from "../ui/Menu";
 import { Modal } from "../ui/Modal";
@@ -248,8 +248,8 @@ export function ProfileView() {
               <button className="pf-primary" onClick={() => setEditing(true)}>
                 Edit Profile
               </button>
-              <IconButton icon="share" label="Copy profile card" size="standard" className="pf-round" onClick={share} />
-              <IconButton icon="more" label="More" size="standard" className="pf-round" onClick={(e) => moreMenu(e.currentTarget)} />
+              <GlassButton icon="share" label="Copy profile card" layer={LAYER.chrome} onClick={share} />
+              <GlassButton icon="more" label="More" layer={LAYER.chrome} onClick={(e) => moreMenu(e.currentTarget)} />
             </div>
           </header>
 
@@ -503,7 +503,7 @@ function BlocksSection({
               <BlockFrame block={{ ...b, size: "12x1" }} selected={selected === b.id} onClick={() => setSelected(b.id)} className="is-editing">
                 <BlockBody block={b} live={live} />
               </BlockFrame>
-              <div className="pf-edit-bar">
+              <Glass className="pf-edit-bar" contentClassName="pf-edit-row" material="control" layer={LAYER.floating} radius="var(--r-capsule)">
                 {i < FEATURED && <span className="pf-featured">Featured</span>}
                 <span className="pf-edit-grip" data-tip="Drag to reorder">
                   <Icon name="grip" size={14} />
@@ -525,7 +525,7 @@ function BlocksSection({
                 <button className="pf-edit-btn is-danger" data-tip="Remove" onClick={() => setDraft(draft.filter((x) => x.id !== b.id))}>
                   <Icon name="minimize" size={13} />
                 </button>
-              </div>
+              </Glass>
             </div>
           );
         })}

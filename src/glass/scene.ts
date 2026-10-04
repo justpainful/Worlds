@@ -87,6 +87,20 @@ export interface Surface {
    * transformed subtree take the path that still sees the scene.
    */
   flat: boolean;
+  /** On screen (with a margin). Off-screen glass skips its backdrop pass. */
+  visible: boolean;
+}
+
+/** What the glass costs right now (performance overlay, auto quality). */
+export interface GlassStats {
+  surfaces: number;
+  lenses: number;
+  flat: number;
+  hidden: number;
+  sampleMs: number;
+  layoutMs: number;
+  quality: QualityTier;
+  autoReduced: boolean;
 }
 
 let seq = 0;
@@ -101,6 +115,11 @@ class GlassScene {
   private scrollTimer = 0;
   private sampleTimer = 0;
   quality: QualityTier = "full";
+  /** Set by the frame monitor while frames are slow; lifts on its own. */
+  autoReduced = false;
+  private io: IntersectionObserver | null = null;
+  private lastSampleMs = 0;
+  private lastLayoutMs = 0;
   inactive = false;
   scrolling = false;
   canvas: [number, number, number] = [0, 0, 0];
@@ -119,6 +138,19 @@ class GlassScene {
     document.documentElement.style.setProperty("--g-noise-tile", `url(${noiseTile()})`);
 
     this.ro = new ResizeObserver(() => this.invalidate());
+    // Glass that is scrolled away or in a hidden tab does no backdrop work.
+    this.io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          const id = (e.target as HTMLElement).dataset.glassId;
+          const s = id ? this.surfaces.get(id) : undefined;
+          if (!s || s.visible === e.isIntersecting) continue;
+          s.visible = e.isIntersecting;
+          this.applyOptics(s);
+        }
+      },
+      { rootMargin: "200px" },
+    );
     window.addEventListener("resize", () => this.invalidate());
     window.addEventListener("scroll", this.onScroll, { capture: true, passive: true });
     const rt = window.matchMedia("(prefers-reduced-transparency: reduce)");
@@ -158,6 +190,7 @@ class GlassScene {
       overlap: 0,
       nested: !!el.parentElement?.closest(".glass"),
       flat: false,
+      visible: true,
       hover: false,
       press: false,
       current: { ...base },
@@ -168,6 +201,7 @@ class GlassScene {
     el.dataset.glassId = id;
     this.surfaces.set(id, s);
     this.ro?.observe(el);
+    this.io?.observe(el);
     this.buildFilter(s);
     this.applyStatic(s);
     this.invalidate();
@@ -202,6 +236,7 @@ class GlassScene {
   unregister(s: Surface) {
     this.surfaces.delete(s.id);
     this.ro?.unobserve(s.el);
+    this.io?.unobserve(s.el);
     s.filter?.remove();
     this.invalidate();
   }
@@ -228,7 +263,36 @@ class GlassScene {
 
   private effectiveQuality(): QualityTier {
     if (window.matchMedia("(prefers-reduced-transparency: reduce)").matches) return "solid";
+    if (this.autoReduced && this.quality === "full") return "reduced";
     return this.quality;
+  }
+
+  /** Step down to Reduced while frames are slow (never below the user's choice). */
+  setAutoReduced(on: boolean) {
+    if (this.autoReduced === on) return;
+    this.autoReduced = on;
+    this.applyQuality();
+  }
+
+  stats(): GlassStats {
+    let lenses = 0;
+    let flat = 0;
+    let hidden = 0;
+    for (const s of this.surfaces.values()) {
+      if (!s.visible) hidden++;
+      else if (s.flat) flat++;
+      else lenses++;
+    }
+    return {
+      surfaces: this.surfaces.size,
+      lenses,
+      flat,
+      hidden,
+      sampleMs: this.lastSampleMs,
+      layoutMs: this.lastLayoutMs,
+      quality: this.effectiveQuality(),
+      autoReduced: this.autoReduced,
+    };
   }
 
   private applyQuality() {
@@ -331,6 +395,10 @@ class GlassScene {
   private applyOptics(s: Surface) {
     const q = this.effectiveQuality();
     const o = s.current;
+    if (!s.visible) {
+      s.optics.style.backdropFilter = "none";
+      return;
+    }
     if (q === "full" && s.mapsKey && !s.flat) {
       s.optics.style.backdropFilter = `url(#wg-${s.id})`;
     } else if (q === "reduced" || (q === "full" && s.flat)) {
@@ -508,6 +576,7 @@ class GlassScene {
   };
 
   private layout() {
+    const t0 = performance.now();
     const list = [...this.surfaces.values()];
     for (const s of list) {
       s.rect = s.el.getBoundingClientRect();
@@ -545,6 +614,7 @@ class GlassScene {
         ix.style.display = "none";
       }
     }
+    this.lastLayoutMs = performance.now() - t0;
     this.sampleAll(true);
   }
 
@@ -560,10 +630,12 @@ class GlassScene {
   private sampleAll(force: boolean) {
     if (this.scrolling || document.hidden) return;
     const now = performance.now();
+    const t0 = now;
     if (!force) for (const s of this.surfaces.values()) this.checkPath(s);
     for (const s of this.surfaces.values()) {
       if (s.opts.sample === false) continue;
       if (!force && now - s.lastSample < 1200) continue;
+      if (!s.visible) continue;
       const rect = s.el.getBoundingClientRect();
       if (rect.width === 0 || rect.bottom < 0 || rect.top > window.innerHeight) continue;
       s.lastSample = now;
@@ -598,6 +670,7 @@ class GlassScene {
         this.applyOptics(s);
       }
     }
+    this.lastSampleMs = performance.now() - t0;
     this.kick();
   }
 
