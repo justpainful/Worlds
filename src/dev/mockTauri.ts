@@ -174,6 +174,14 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
         chats.unshift({ id: chatId, title: a.request.prompt.slice(0, 40), pageId: null, createdAt: Date.now(), updatedAt: Date.now(), messageCount: 0 });
       }
       chatMessages[chatId].push({ id: id(), role: "user", content: a.request.prompt, steps: [], opId: null, meta: {}, createdAt: Date.now() });
+      if (new URLSearchParams(location.search).has("fastai")) {
+        // The whole run finishes before ai_run returns (tests the early-event path).
+        chatMessages[chatId].push({ id: id(), role: "assistant", content: "Done already.", steps: [{ tool: "pages_read", ok: true }], opId: runId, meta: { changeCount: 0 }, createdAt: Date.now() });
+        emit("worlds://ai", { runId, kind: "tool", tool: "pages_read" });
+        emit("worlds://ai", { runId, kind: "tool_result", error: false });
+        emit("worlds://ai", { runId, kind: "done", chatId, text: "ok" });
+        return { runId, chatId };
+      }
       setTimeout(() => emit("worlds://ai", { runId, kind: "tool", tool: "pages_read" }), 400);
       setTimeout(() => emit("worlds://ai", { runId, kind: "tool_result", error: false }), 900);
       setTimeout(() => emit("worlds://ai", { runId, kind: "text", text: "Here is a short summary of the page." }), 1300);

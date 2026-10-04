@@ -146,6 +146,23 @@ export function chatsChanged() {
   window.dispatchEvent(new Event("worlds:chats"));
 }
 
+type AiEvent = { runId: string; kind: string; tool?: string; text?: string; error?: boolean; chatId?: string; pages?: { id: string }[] };
+
+/**
+ * Run events can arrive before `ai_run` has returned the run id (a fast tool
+ * call, or a run that fails at once). They wait here, briefly, and are
+ * replayed as soon as the run is known, so no step is lost and a run that
+ * finished early never leaves the chat stuck on "working".
+ */
+const early = new Map<string, { at: number; events: AiEvent[] }>();
+function holdEarly(e: AiEvent) {
+  const now = Date.now();
+  for (const [id, v] of early) if (now - v.at > 60_000) early.delete(id);
+  const slot = early.get(e.runId) ?? { at: now, events: [] };
+  slot.events.push(e);
+  early.set(e.runId, slot);
+}
+
 interface Live {
   runId: string;
   steps: { tool: string; ok: boolean | null }[];
@@ -194,31 +211,42 @@ export function useChat(initialChatId: string | null) {
     load(chatId);
   }, [chatId, load]);
 
-  useEffect(() => {
-    const un = listen<{ runId: string; kind: string; tool?: string; text?: string; error?: boolean; chatId?: string; pages?: { id: string }[] }>("worlds://ai", (e) => {
-      const p = e.payload;
+  /** Apply one run event to the live state (kept in a ref so replays chain correctly). */
+  const apply = useCallback(
+    (p: AiEvent) => {
       const cur = liveRef.current;
-      if (!cur || cur.runId !== p.runId) return;
-      if (p.kind === "tool") setLive({ ...cur, steps: [...cur.steps, { tool: p.tool ?? "", ok: null }] });
-      else if (p.kind === "text" && p.text) setLive({ ...cur, text: cur.text ? `${cur.text}\n\n${p.text}` : p.text });
+      if (!cur || cur.runId !== p.runId) return false;
+      let next: Live | null = cur;
+      if (p.kind === "tool") next = { ...cur, steps: [...cur.steps, { tool: p.tool ?? "", ok: null }] };
+      else if (p.kind === "text" && p.text) next = { ...cur, text: cur.text ? `${cur.text}\n\n${p.text}` : p.text };
       else if (p.kind === "tool_result") {
         const steps = [...cur.steps];
         const idx = steps.map((s) => s.ok).lastIndexOf(null);
         if (idx >= 0) steps[idx] = { ...steps[idx], ok: !p.error };
-        setLive({ ...cur, steps });
+        next = { ...cur, steps };
       } else if (p.kind === "done" || p.kind === "error") {
-        setLive(null);
+        next = null;
         if (p.chatId) load(p.chatId);
         chatsChanged();
         const s = useStore.getState();
         s.refreshPages();
         for (const pg of p.pages ?? []) s.bumpExternal(pg.id);
       }
+      liveRef.current = next;
+      setLive(next);
+      return true;
+    },
+    [load],
+  );
+
+  useEffect(() => {
+    const un = listen<AiEvent>("worlds://ai", (e) => {
+      if (!apply(e.payload)) holdEarly(e.payload);
     });
     return () => {
       un.then((f) => f());
     };
-  }, [load]);
+  }, [apply]);
 
   const setChatId = useCallback((id: string | null) => {
     setChatIdState(id);
@@ -227,7 +255,8 @@ export function useChat(initialChatId: string | null) {
 
   const send = useCallback(
     async (prompt: string, pageId: string | null, attachments: ChatAttachment[] = [], opts: { newChat?: boolean } = {}) => {
-      if ((!prompt.trim() && !attachments.length) || liveRef.current) return;
+      // A previous failure must not block the next message; only a run in progress does.
+      if ((!prompt.trim() && !attachments.length) || liveRef.current?.status === "running") return;
       const text = prompt.trim() || (attachments.length === 1 ? "Take a look at this file." : "Take a look at these files.");
       const optimistic: AiMessage = { id: `tmp-${Date.now()}`, role: "user", content: text, steps: [], opId: null, meta: { pageId, attachments }, createdAt: Date.now() };
       if (opts.newChat) {
@@ -235,23 +264,37 @@ export function useChat(initialChatId: string | null) {
         setTitle("");
       } else setMessages((m) => [...m, optimistic]);
       try {
+        // Mark the run as starting so a double Enter cannot send twice.
+        liveRef.current = { runId: "", steps: [], status: "running" };
+        setLive(liveRef.current);
         const { runId, chatId: cid } = await api.aiRun({ prompt: text, pageId, chatId: opts.newChat ? null : chatId, attachments: attachments.map((a) => a.id) });
-        setLive({ runId, steps: [], status: "running" });
+        liveRef.current = { runId, steps: [], status: "running" };
+        setLive(liveRef.current);
+        // Events that raced ahead of the run id.
+        const held = early.get(runId);
+        early.delete(runId);
+        for (const ev of held?.events ?? []) apply(ev);
         if (cid !== chatId) {
           setChatId(cid);
           chatsChanged();
         }
       } catch (e) {
-        setLive({ runId: "", steps: [], status: "error", error: errorMessage(e) });
+        liveRef.current = { runId: "", steps: [], status: "error", error: errorMessage(e) };
+        setLive(liveRef.current);
       }
     },
-    [chatId, setChatId],
+    [chatId, setChatId, apply],
   );
 
   const stop = useCallback(async () => {
     const cur = liveRef.current;
     if (!cur) return;
-    await api.aiCancel(cur.runId);
+    try {
+      if (cur.runId) await api.aiCancel(cur.runId);
+    } catch (e) {
+      useStore.getState().toast({ message: `Could not stop Claude: ${errorMessage(e)}`, tone: "error" });
+    }
+    liveRef.current = null;
     setLive(null);
     if (chatId) load(chatId);
   }, [chatId, load]);
@@ -636,6 +679,24 @@ export function ModelButton() {
 // Composer: text, page context, #conversation references
 // ---------------------------------------------------------------------------
 
+/** Unsent text per conversation, so closing the panel never loses a draft. */
+const draftKey = (chatId: string | null) => `worlds.ai.draft.${chatId ?? "new"}`;
+function readDraft(chatId: string | null): string {
+  try {
+    return localStorage.getItem(draftKey(chatId)) ?? "";
+  } catch {
+    return "";
+  }
+}
+function writeDraft(chatId: string | null, text: string) {
+  try {
+    if (text.trim()) localStorage.setItem(draftKey(chatId), text);
+    else localStorage.removeItem(draftKey(chatId));
+  } catch {
+    /* storage unavailable: drafts are a convenience */
+  }
+}
+
 interface ChatRef {
   id: string;
   title: string;
@@ -703,8 +764,20 @@ export function Composer({
     return () => ro.disconnect();
   }, []);
 
+  // Drafts follow the conversation; an explicit prompt (from a page or the
+  // palette) wins over a saved draft.
+  const draftChat = useRef(currentChatId);
   useEffect(() => {
-    setText(initialPrompt);
+    draftChat.current = currentChatId;
+    if (!initialPrompt) setText(readDraft(currentChatId));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentChatId]);
+  useEffect(() => {
+    if (draftChat.current === currentChatId) writeDraft(currentChatId, text);
+  }, [text, currentChatId]);
+
+  useEffect(() => {
+    setText(initialPrompt || readDraft(currentChatId));
     requestAnimationFrame(() => {
       input.current?.focus();
       const l = input.current?.value.length ?? 0;
