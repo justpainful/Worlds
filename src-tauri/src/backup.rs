@@ -105,6 +105,14 @@ pub fn verify(path: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Cheap launch-time check: the file is a SQLite database whose schema can be
+/// read. (The full page-by-page check runs in the background, see `daily`.)
+pub fn readable(path: &Path) -> Result<()> {
+    let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX)?;
+    let _: i64 = conn.query_row("SELECT COUNT(*) FROM sqlite_master", [], |r| r.get(0))?;
+    Ok(())
+}
+
 /// Stage a restore for the next launch.
 pub fn schedule_restore(data_dir: &Path, file: &str) -> Result<()> {
     let path = checked(data_dir, file)?;
@@ -157,7 +165,7 @@ pub fn prepare(db_path: &Path, data_dir: &Path) -> Result<Option<String>> {
         return Ok(None);
     }
     // 2. A database that cannot be read: recover from the newest good backup.
-    if let Err(e) = verify(db_path) {
+    if let Err(e) = readable(db_path) {
         for b in list(data_dir) {
             let p = backups_dir(data_dir).join(&b.file);
             if verify(&p).is_ok() {
@@ -180,11 +188,23 @@ pub fn prepare(db_path: &Path, data_dir: &Path) -> Result<Option<String>> {
     Ok(None)
 }
 
-/// A daily copy, taken after launch.
+/// A daily copy, taken after launch, off the startup path. The full integrity
+/// check runs first: a damaged database is never copied over good backups,
+/// and the problem is recorded for Settings > Storage.
 pub fn daily(conn: &Connection, data_dir: &Path) -> Result<Option<BackupInfo>> {
     let last = list(data_dir).into_iter().find(|b| b.reason == "daily").map(|b| b.created_at).unwrap_or(0);
     if db::now() - last < DAY {
         return Ok(None);
+    }
+    let check: String = conn.query_row("PRAGMA quick_check", [], |r| r.get(0))?;
+    let health = if check == "ok" {
+        serde_json::json!({ "ok": true, "at": db::now() })
+    } else {
+        serde_json::json!({ "ok": false, "at": db::now(), "detail": check })
+    };
+    db::set_setting(conn, "storage.health", &health)?;
+    if check != "ok" {
+        bail!("integrity check failed: {check}");
     }
     backup_conn(conn, data_dir, "daily").map(Some)
 }

@@ -390,6 +390,7 @@ function StorageSettings() {
     }
   };
   const restorable = state?.backups.filter((b) => b.reason !== "damaged") ?? [];
+  const health = useStore((s) => s.settings["storage.health"] as { ok: boolean; at: number; detail?: string } | undefined);
 
   return (
     <>
@@ -402,6 +403,11 @@ function StorageSettings() {
         title="Backups"
         note="Worlds copies the database once a day, before every update to its storage format, and whenever you ask. Restoring takes effect the next time Worlds starts."
       >
+        {health && !health.ok && (
+          <Row label="The database needs attention" hint={`The last check found a problem${health.detail ? `: ${health.detail}` : ""}. Restore the newest backup below, or keep working and back up now.`}>
+            <Icon name="warning" size={18} />
+          </Row>
+        )}
         {state?.pendingRestore && (
           <Row label="Restore waiting" hint="It will be applied the next time Worlds starts.">
             <Button variant="plain" onClick={() => api.backupCancelRestore().then(load)}>Cancel</Button>
