@@ -156,7 +156,10 @@ class GlassScene {
     const rt = window.matchMedia("(prefers-reduced-transparency: reduce)");
     rt.addEventListener("change", () => this.applyQuality());
     // Periodic gentle resample keeps adaptation current as content changes.
-    this.sampleTimer = window.setInterval(() => this.sampleAll(false), 1400);
+    // A slow background pass catches content that changes in place (images
+    // loading, text streaming in); navigation and layout changes resample at
+    // once through resampleSoon() and invalidate().
+    this.sampleTimer = window.setInterval(() => this.sampleAll(false), 3000);
   }
 
   // ---------------------------------------------------------------------
@@ -302,6 +305,13 @@ class GlassScene {
       this.applyOptics(s);
       this.applyAdaptive(s);
     }
+  }
+
+  private resampleTimer = 0;
+  /** The content under the glass changed (a new page or view): adapt now. */
+  resampleSoon() {
+    window.clearTimeout(this.resampleTimer);
+    this.resampleTimer = window.setTimeout(() => this.sampleAll(true), 140);
   }
 
   invalidate() {
@@ -634,7 +644,7 @@ class GlassScene {
     if (!force) for (const s of this.surfaces.values()) this.checkPath(s);
     for (const s of this.surfaces.values()) {
       if (s.opts.sample === false) continue;
-      if (!force && now - s.lastSample < 1200) continue;
+      if (!force && now - s.lastSample < 2800) continue;
       if (!s.visible) continue;
       const rect = s.el.getBoundingClientRect();
       if (rect.width === 0 || rect.bottom < 0 || rect.top > window.innerHeight) continue;

@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import type { Route } from "../state/store";
+import { glassScene } from "../glass/scene";
 import { PageView } from "./PageView";
 import { HomeView } from "./HomeView";
 import { TemplatesView } from "./TemplatesView";
@@ -11,7 +13,14 @@ import { TrashView } from "./TrashView";
 import { MaterialLab } from "./MaterialLab";
 import { ChatView } from "./ChatView";
 
-export function RouteView({ route, paneId }: { route: Route; paneId: string; tabId: string }) {
+export function RouteView(props: { route: Route; paneId: string; tabId: string }) {
+  const key = JSON.stringify(props.route);
+  // New content under the toolbar glass: let it adapt right away.
+  useEffect(() => glassScene.resampleSoon(), [key]);
+  return <RouteBody {...props} />;
+}
+
+function RouteBody({ route, paneId }: { route: Route; paneId: string; tabId: string }) {
   switch (route.kind) {
     case "page":
       return <PageView pageId={route.pageId} paneId={paneId} />;

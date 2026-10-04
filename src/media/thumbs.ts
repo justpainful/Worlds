@@ -36,10 +36,27 @@ async function make(src: string, width: number): Promise<string | null> {
   return out ? URL.createObjectURL(out) : null;
 }
 
+/** Most thumbnails kept at once; the least recently used are released. */
+const MAX_THUMBS = 600;
+
+function evict() {
+  while (cache.size > MAX_THUMBS) {
+    const [oldKey, oldJob] = cache.entries().next().value!;
+    cache.delete(oldKey);
+    // Give anything still showing it a moment to be replaced before releasing.
+    oldJob.then((u) => u?.startsWith("blob:") && window.setTimeout(() => URL.revokeObjectURL(u), 30_000));
+  }
+}
+
 export function thumbnail(src: string, width: number): Promise<string | null> {
   const key = `${width}|${src}`;
   const hit = cache.get(key);
-  if (hit) return hit;
+  if (hit) {
+    // Map order is insertion order: re-insert to mark it recently used.
+    cache.delete(key);
+    cache.set(key, hit);
+    return hit;
+  }
   const job = new Promise<string | null>((resolve) => {
     queue.push(() => {
       make(src, width)
@@ -53,6 +70,7 @@ export function thumbnail(src: string, width: number): Promise<string | null> {
     pump();
   });
   cache.set(key, job);
+  evict();
   return job;
 }
 
