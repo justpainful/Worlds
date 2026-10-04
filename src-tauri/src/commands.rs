@@ -252,6 +252,27 @@ pub async fn attachment_import_bytes(
     with_conn!(state, |c| store::add_attachment_bytes(&c, page_id.as_deref(), &name, &bytes))
 }
 
+/// Same as `attachment_import_bytes`, but the file arrives as the raw request
+/// body (no JSON number array), so large pastes stay fast. The name and page
+/// travel in percent-encoded headers.
+#[tauri::command]
+pub async fn attachment_import_raw(state: State<'_, AppState>, request: tauri::ipc::Request<'_>) -> CmdResult<store::Attachment> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("expected the file bytes as the request body".into());
+    };
+    let header = |k: &str| {
+        request
+            .headers()
+            .get(k)
+            .and_then(|v| v.to_str().ok())
+            .map(|v| percent_encoding::percent_decode_str(v).decode_utf8_lossy().to_string())
+            .filter(|v| !v.is_empty())
+    };
+    let name = header("x-worlds-name").unwrap_or_else(|| "file".into());
+    let page_id = header("x-worlds-page");
+    with_conn!(state, |c| store::add_attachment_bytes(&c, page_id.as_deref(), &name, bytes))
+}
+
 #[tauri::command]
 pub async fn media_recent(state: State<'_, AppState>, limit: Option<i64>) -> CmdResult<Vec<store::Attachment>> {
     with_conn!(state, |c| store::recent_media(&c, limit.unwrap_or(60)))

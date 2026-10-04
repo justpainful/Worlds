@@ -200,6 +200,15 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
     case "backup_restore": case "backup_cancel_restore": return null;
     case "discord_status": return { state: "connected", bot: { tag: "Worlds Bot#0001" }, config: {} };
     case "preview_prepare": return { kind: "none" };
+    case "attachment_import_raw": {
+      // Keep the bytes as a blob URL so the editor can show what was pasted.
+      const name: string = a.name;
+      const kind = /\.gif$/i.test(name) ? "gif" : /\.(png|jpe?g|webp)$/i.test(name) ? "image" : /\.(mp4|webm|mov)$/i.test(name) ? "video" : "file";
+      const mime = kind === "gif" ? "image/gif" : kind === "image" ? "image/png" : kind === "video" ? "video/mp4" : "application/octet-stream";
+      const aid = id();
+      ASSET[aid] = URL.createObjectURL(new Blob([new Uint8Array(a.bytes)], { type: mime }));
+      return { id: aid, pageId: a.pageId, kind, fileName: name, mime, size: a.bytes.length, width: 64, height: 64, createdAt: Date.now() };
+    }
     case "attachment_get": return null;
     default:
       console.warn("[mock] unhandled", cmd, a);
@@ -215,7 +224,13 @@ if (import.meta.env.DEV && !("__TAURI_INTERNALS__" in window) && new URLSearchPa
   (window as any).__WORLDS_MOCK__ = true;
   (window as any).__TAURI_INTERNALS__ = {
     metadata: { currentWindow: { label: "main" }, currentWebview: { windowLabel: "main", label: "main" } },
-    invoke: (cmd: string, args: any) => handle(cmd, args),
+    invoke: (cmd: string, args: any, opts?: { headers?: Record<string, string> }) =>
+      handle(
+        cmd,
+        cmd === "attachment_import_raw"
+          ? { bytes: args, name: decodeURIComponent(opts?.headers?.["x-worlds-name"] ?? "file"), pageId: decodeURIComponent(opts?.headers?.["x-worlds-page"] ?? "") || null }
+          : args,
+      ),
     transformCallback: (cb: (v: any) => void) => {
       const n = cbSeq++;
       callbacks.set(n, cb);

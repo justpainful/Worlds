@@ -133,6 +133,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::bootstrap,
             commands::backups_list,
+            commands::attachment_import_raw,
             commands::backup_now,
             commands::backup_restore,
             commands::backup_cancel_restore,

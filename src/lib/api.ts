@@ -91,8 +91,11 @@ export const api = {
   profileStats: () => invoke<import("../profile/BlockView").ProfileStats>("profile_stats"),
   mediaRecent: (limit = 60) => invoke<Attachment[]>("media_recent", { limit }),
   importFile: (pageId: string | null, path: string) => invoke<Attachment>("attachment_import", { pageId, path }),
+  /** Raw binary IPC: the file is the request body, not a JSON array of numbers. */
   importBytes: (pageId: string | null, name: string, bytes: Uint8Array) =>
-    invoke<Attachment>("attachment_import_bytes", { pageId, name, bytes: Array.from(bytes) }),
+    invoke<Attachment>("attachment_import_raw", bytes, {
+      headers: { "x-worlds-name": encodeURIComponent(name), "x-worlds-page": pageId ? encodeURIComponent(pageId) : "" },
+    }),
   attachment: (id: string) => invoke<Attachment | null>("attachment_get", { id }),
   attachmentPath: (id: string) => invoke<string>("attachment_path", { id }),
   pageAppendMarkdown: (pageId: string, markdown: string) => invoke<number>("page_append_markdown", { pageId, markdown }),
