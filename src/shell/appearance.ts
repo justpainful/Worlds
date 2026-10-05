@@ -28,7 +28,7 @@ export function applyAppearance() {
   root.style.setProperty("--accent-rgb", accent.join(", "));
   const quality = (settings["appearance.glass"] as QualityTier) ?? "full";
   glassScene.setQuality(quality);
-  const tone = (settings["appearance.glassTone"] as "auto" | "light" | "dark") ?? "auto";
+  const tone = (settings["appearance.glassTone"] as "auto" | "light" | "dark") ?? "light";
   const frost = typeof settings["appearance.glassFrost"] === "number" ? (settings["appearance.glassFrost"] as number) : 1;
   glassScene.setLook(tone, frost);
   setAdaptiveQuality(settings["appearance.glassAdaptive"] !== false);

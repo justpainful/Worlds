@@ -526,7 +526,7 @@ class GlassScene {
     const against = forced !== "auto" && light !== lp > 0.62;
     // Clear glass: a whisper of neutral grey (measured from the reference),
     // or a solid body only when the tone is forced against the backdrop.
-    const body: [number, number, number] = against ? (light ? [242, 242, 244] : [36, 36, 40]) : light ? [205, 205, 207] : [72, 72, 78];
+    const body: [number, number, number] = against ? (light ? [236, 236, 240] : [36, 36, 40]) : light ? [205, 205, 207] : [72, 72, 78];
     const tintK = s.opts.selected ? spec.tintSelected : spec.tint;
     // Light glass keeps only a hint of the colour behind it (milky white, as
     // in Apple's light appearance); dark glass takes on more of the scene.
@@ -547,7 +547,8 @@ class GlassScene {
     if (s.opts.selected) opacity += 0.04;
     if (this.inactive) opacity += 0.03;
     if (spec !== MATERIALS.dense) opacity = clamp(opacity * this.frost, 0.04, 0.96);
-    if (against) opacity = Math.max(opacity, light ? 0.86 : 0.72);
+    // Forced tone over the opposite backdrop: a frosted body, still translucent.
+    if (against) opacity = clamp(Math.max(opacity, (light ? 0.33 : 0.6) * this.frost), 0, 0.94);
     if (solid) opacity = 0.94;
     s.opacity = opacity;
 
