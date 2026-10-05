@@ -10,6 +10,7 @@
     "tauri": "tauri",
     "app:dev": "tauri dev",
     "app:build": "tauri build",
+    "cloud:deploy": "node services/deploy.mjs",
     "app:install": "tauri build && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1",
     "app": "tauri build --debug --no-bundle && node scripts/run-debug.mjs",
     "test": "vitest run"

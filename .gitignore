@@ -15,3 +15,7 @@ private/
 
 # Local visual lab assets (reference images are not ours to publish)
 .lab/
+
+# Cloudflare deploy state (ids and keys made by services/deploy.mjs)
+services/.deploy/
+services/*/wrangler.deploy.toml

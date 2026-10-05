@@ -18,6 +18,10 @@ export interface Env {
   /** Optional HTTP endpoint that delivers sign-in emails ({ to, subject, text }). */
   EMAIL_WEBHOOK_URL?: string;
   EMAIL_WEBHOOK_SECRET?: string;
+  /** Resend (resend.com) API key: the simplest hosted sender. */
+  RESEND_API_KEY?: string;
+  /** From address for sign-in emails, e.g. "Worlds <login@example.com>". */
+  EMAIL_FROM?: string;
 }
 
 export type ActorKind = "user" | "ai-on-behalf-of-user" | "automation" | "system";

@@ -37,6 +37,23 @@ export class WebhookEmailSender implements EmailSender {
   }
 }
 
+/** Sends through Resend's HTTP API. Without a verified domain Resend only
+ * delivers to the account owner's own address (from onboarding@resend.dev). */
+export class ResendEmailSender implements EmailSender {
+  constructor(
+    private apiKey: string,
+    private from: string,
+  ) {}
+  async send(msg: EmailMessage): Promise<void> {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${this.apiKey}` },
+      body: JSON.stringify({ from: this.from, to: [msg.to], subject: msg.subject, text: msg.text }),
+    });
+    if (!res.ok) throw new Error(`email service answered ${res.status}`);
+  }
+}
+
 let override: EmailSender | null = null;
 
 /** Tests may install their own sender. */
@@ -47,8 +64,9 @@ export function setEmailSender(s: EmailSender | null): void {
 export function emailSender(env: Env): EmailSender {
   if (override) return override;
   if (env.EMAIL_WEBHOOK_URL) return new WebhookEmailSender(env.EMAIL_WEBHOOK_URL, env.EMAIL_WEBHOOK_SECRET);
+  if (env.RESEND_API_KEY) return new ResendEmailSender(env.RESEND_API_KEY, env.EMAIL_FROM || "Worlds <onboarding@resend.dev>");
   if (env.ENVIRONMENT === "development" || env.ENVIRONMENT === "test") return new DevEmailSender();
-  throw new Error("No email sender configured (set EMAIL_WEBHOOK_URL)");
+  throw new Error("No email sender configured (set RESEND_API_KEY or EMAIL_WEBHOOK_URL)");
 }
 
 export function codeEmail(code: string): { subject: string; text: string } {
