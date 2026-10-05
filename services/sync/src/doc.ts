@@ -487,6 +487,8 @@ export class DocRoom extends DurableObject<Env> {
   private notifyMentions(before: ReturnType<typeof commentsJSON>, after: ReturnType<typeof commentsJSON>, from: string) {
     const added = addedComments(before, after);
     if (!added.length) return;
+    const person = after.people[from] as { name?: unknown } | undefined;
+    const fromName = typeof person?.name === "string" ? person.name.slice(0, 80) : "";
     const workspaceId = this.workspaceId;
     const docId = this.docId;
     const access = accessFor(this.env);
@@ -508,6 +510,7 @@ export class DocRoom extends DurableObject<Env> {
             threadId: a.threadId,
             commentId: a.comment.id,
             from,
+            fromName,
             excerpt: a.comment.body.slice(0, 200),
             createdAt: a.comment.createdAt || Date.now(),
           });

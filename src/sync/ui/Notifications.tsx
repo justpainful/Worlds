@@ -68,7 +68,7 @@ export function NotificationsPopover({ anchor, onClose }: { anchor: HTMLElement;
               <span className="np-mark" aria-hidden />
               <span className="np-text">
                 <span className="np-line bidi">
-                  <strong>{(n as Notice & { fromName?: string }).fromName || "Someone"}</strong> {n.kind === "mention" ? "mentioned you" : "replied"}
+                  <strong>{n.fromName || "Someone"}</strong> {n.kind === "mention" ? "mentioned you" : "replied"}
                   {page ? (
                     <>
                       {" in "}

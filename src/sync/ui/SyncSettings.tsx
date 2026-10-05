@@ -71,7 +71,7 @@ export function SyncSettings({ pageId, onClose }: { pageId: string; onClose: () 
         <p className="ss-note">For testing between two computers before shared workspaces arrive. Pages stay on this computer and keep working offline.</p>
         <label className="ss-field">
           <span>Sync server</span>
-          <input className="field" value={server} placeholder="http://localhost:8787" spellCheck={false} onChange={(e) => setServer(e.target.value)} />
+          <input className="field" value={server} placeholder="http://localhost:8790" spellCheck={false} onChange={(e) => setServer(e.target.value)} />
           {!serverOk && <em className="ss-error">Enter a full http or https address.</em>}
         </label>
         <label className="ss-field">

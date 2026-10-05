@@ -20,6 +20,7 @@ export interface Notice {
   threadId: string;
   commentId: string;
   from: string;
+  fromName?: string;
   excerpt: string;
   createdAt: number;
   readAt?: number | null;

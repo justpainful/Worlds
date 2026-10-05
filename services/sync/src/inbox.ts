@@ -13,6 +13,8 @@ export interface Notification {
   threadId: string;
   commentId: string;
   from: string;
+  /** The author's display name from the page's people directory, when known. */
+  fromName?: string;
   excerpt: string;
   createdAt: number;
   readAt?: number | null;

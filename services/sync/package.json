@@ -4,7 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --env local --port 8790",
+    "dev:identity": "wrangler dev -c dev/identity.toml --port 8791 --persist-to .wrangler/identity-state",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit -p .",
     "test": "vitest run"

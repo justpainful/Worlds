@@ -4,7 +4,7 @@
  * The accounts work plugs in here with `configureSync({ getToken, user,
  * serverUrl })`. Until then the app's defaults (appConfig.ts) read two
  * settings, which is enough to test two PCs against a sync service:
- *   sync.serverUrl  e.g. http://localhost:8787
+ *   sync.serverUrl  e.g. http://localhost:8790
  *   sync.devToken   an access token minted by the identity service
  */
 
