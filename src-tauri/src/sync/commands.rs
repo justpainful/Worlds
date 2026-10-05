@@ -161,3 +161,21 @@ pub async fn sync_attachment_store(state: State<'_, AppState>, request: tauri::i
     let mime = header("x-worlds-mime").unwrap_or_default();
     with(&state, |c| store_attachment(c, &id, page_id.as_deref(), &name, &mime, bytes))
 }
+
+/// An access token for the sync service, from the signed-in account (the
+/// accounts work keeps the refresh token in the OS credential store). With
+/// `force`, a new one is minted even if the cached one is still valid.
+#[tauri::command]
+pub async fn sync_access_token(state: State<'_, AppState>, force: bool) -> CmdResult<Value> {
+    let secrets = crate::account::secrets::KeyringStore;
+    match crate::account::client::access_token(&state.db, &secrets, force).await {
+        Ok((_identity_url, token)) => {
+            let user_id = {
+                let c = state.conn();
+                c.query_row("SELECT user_id FROM account WHERE id = 1", [], |r| r.get::<_, String>(0)).optional().map_err(err)?
+            };
+            Ok(serde_json::json!({ "token": token, "userId": user_id }))
+        }
+        Err(e) => Err(format!("{e}")),
+    }
+}

@@ -14,6 +14,7 @@ import {
   CH_COMMENTS,
   CH_CONTENT,
   CLOSE_REVOKED,
+  MSG_AUTH_REFRESH,
   MSG_AWARENESS,
   MSG_SYNC,
   MSG_UPDATE,
@@ -100,6 +101,8 @@ export class FakeSyncServer {
   up = true;
   connects = 0;
   tokens: (string | null)[] = [];
+  /** Tokens handed to open connections (MSG_AUTH_REFRESH). */
+  refreshed: string[] = [];
 
   /** Socket factory for a provider acting as `userId`. */
   socketFor(userId: string) {
@@ -173,6 +176,8 @@ export class FakeSyncServer {
       const payload = decoding.readVarUint8Array(d);
       const ok = this.write(conn, ch, payload);
       conn.send(encodeAck(batch, ok ? ACK_OK : ACK_DENIED, ok ? "" : `${conn.level} access cannot write`));
+    } else if (type === MSG_AUTH_REFRESH) {
+      this.refreshed.push(decoding.readVarString(d));
     } else if (type === MSG_AWARENESS) {
       const update = decoding.readVarUint8Array(d);
       const dd = decoding.createDecoder(update);

@@ -6,6 +6,7 @@ import { accessFor, atLeast, normalizeLevel } from "./access";
 import { completeUpload, describe, HASH_RE, planUpload, serveBlob } from "./attachments";
 import { AuthError, safeEqual, type TokenClaims, tokenFrom, verifyToken } from "./auth";
 import type { Env } from "./env";
+import { applyEvent, parseEvent, validSignature } from "./events";
 import { cors, json, problem } from "./http";
 import { type AccessLevel, CH_COMMENTS, CH_CONTENT, PROTOCOL } from "./protocol";
 
@@ -62,6 +63,25 @@ async function route(request: Request, env: Env): Promise<Response> {
       ? await env.DOCS.getByName(`${b.workspaceId}/${b.docId}`).revoke(input)
       : await env.HUBS.getByName(b.workspaceId).revoke(b.workspaceId, input);
     return json({ ok: true, affected: closed });
+  }
+
+  // Access change events from the identity service (signed webhook).
+  if (url.pathname === "/internal/events") {
+    if (method !== "POST") return problem(405, "method not allowed");
+    const body = await request.text();
+    if (!env.SYNC_WEBHOOK_SECRET || !(await validSignature(env.SYNC_WEBHOOK_SECRET, body, request.headers.get("x-worlds-signature")))) {
+      return problem(403, "forbidden");
+    }
+    let parsed: unknown = null;
+    try {
+      parsed = JSON.parse(body);
+    } catch {
+      /* answered below */
+    }
+    const ev = parseEvent(parsed);
+    // Unknown event types are acknowledged so the sender does not retry them forever.
+    if (!ev) return json({ ok: true, ignored: true });
+    return json({ ok: true, affected: await applyEvent(env, ev) });
   }
 
   // Signed blob routes: no bearer token, the signature is the capability.
@@ -161,6 +181,19 @@ export default {
       return cors(request, env.ALLOWED_ORIGINS, await route(request, env));
     } catch (e) {
       return cors(request, env.ALLOWED_ORIGINS, problem(500, e instanceof Error ? e.message : "internal error"));
+    }
+  },
+
+  /** The identity service's REVOCATIONS queue, when this Worker consumes it. */
+  async queue(batch: MessageBatch<unknown>, env: Env): Promise<void> {
+    for (const msg of batch.messages) {
+      const ev = parseEvent(msg.body);
+      try {
+        if (ev) await applyEvent(env, ev);
+        msg.ack();
+      } catch {
+        msg.retry();
+      }
     }
   },
 } satisfies ExportedHandler<Env>;

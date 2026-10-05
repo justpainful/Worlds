@@ -45,7 +45,7 @@ const text = new TextEncoder();
 
 /** JWKS cache shared by every request in this isolate. */
 const cache = new Map<string, { keys: Map<string, CryptoKey>; fetchedAt: number }>();
-const JWKS_TTL_MS = 10 * 60 * 1000;
+const JWKS_TTL_MS = 5 * 60 * 1000;
 const JWKS_REFRESH_MIN_MS = 30 * 1000;
 
 async function importKey(jwk: Jwk): Promise<CryptoKey | null> {

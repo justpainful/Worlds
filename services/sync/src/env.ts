@@ -30,6 +30,8 @@ export interface Env {
   JWT_AUDIENCE?: string;
   /** Shared secret for POST /internal/revoke. */
   INTERNAL_SECRET: string;
+  /** HMAC key for access change events from the identity service (POST /internal/events). */
+  SYNC_WEBHOOK_SECRET?: string;
   /** HMAC secret for signed attachment URLs. */
   SIGNING_SECRET: string;
   /** Allowed CORS origins, comma separated, or "*". */

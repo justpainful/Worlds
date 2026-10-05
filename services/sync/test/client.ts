@@ -39,11 +39,11 @@ export async function mintToken(sub: string, opts: { dev?: string; exp?: number;
 }
 
 export async function grant(userId: string, workspaceId: string, docId: string | null, level: AccessLevel) {
-  await env.IDENTITY.fetch("https://identity/grant", { method: "POST", body: JSON.stringify({ userId, workspaceId, docId, level }) });
+  await env.IDENTITY_CONTROL.fetch("https://identity/grant", { method: "POST", body: JSON.stringify({ userId, workspaceId, docId, level }) });
 }
 
 export async function identityDown(on: boolean) {
-  await env.IDENTITY.fetch("https://identity/fail", { method: "POST", body: JSON.stringify({ on }) });
+  await env.IDENTITY_CONTROL.fetch("https://identity/fail", { method: "POST", body: JSON.stringify({ on }) });
 }
 
 let unique = 0;

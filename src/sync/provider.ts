@@ -29,9 +29,21 @@ import {
   MSG_NOTICE,
   MSG_SYNC,
   PROTOCOL,
+  encodeAuthRefresh,
   encodeAwareness,
   encodeUpdate,
 } from "./protocol";
+
+/** Seconds since epoch when a JWT expires, if it says. */
+export function tokenExpiry(token: string): number | null {
+  try {
+    const part = token.split(".")[1];
+    const json = JSON.parse(atob(part.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((part.length + 3) % 4))) as { exp?: unknown };
+    return typeof json.exp === "number" ? json.exp : null;
+  } catch {
+    return null;
+  }
+}
 
 export const ORIGIN_REMOTE = "worlds-remote";
 export const ORIGIN_LOAD = "worlds-load";
@@ -134,6 +146,7 @@ export class WorldsProvider {
   private refreshToken = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private pingTimer: ReturnType<typeof setInterval> | null = null;
+  private tokenTimer: ReturnType<typeof setTimeout> | null = null;
   private lastMessageAt = 0;
   private stopped = false;
   private revoked = false;
@@ -269,8 +282,10 @@ export class WorldsProvider {
   private clearTimers() {
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     if (this.pingTimer) clearInterval(this.pingTimer);
+    if (this.tokenTimer) clearTimeout(this.tokenTimer);
     this.reconnectTimer = null;
     this.pingTimer = null;
+    this.tokenTimer = null;
   }
 
   // -------------------------------------------------------------------------
@@ -390,6 +405,7 @@ export class WorldsProvider {
       if (this.awareness.getLocalState() !== null) {
         s.send(encodeAwareness(awarenessProtocol.encodeAwarenessUpdate(this.awareness, [this.awareness.clientID])));
       }
+      this.scheduleTokenRefresh(token!);
       this.pingTimer = setInterval(() => {
         if (Date.now() - this.lastMessageAt > this.o.silenceMs) s.close(4000, "silent");
         else if (s.readyState === OPEN) s.send("ping");
@@ -409,10 +425,32 @@ export class WorldsProvider {
     };
   }
 
+  /**
+   * Access tokens are short lived (15 minutes). Hand the open connection a
+   * fresh one a minute before expiry instead of reconnecting.
+   */
+  private scheduleTokenRefresh(token: string) {
+    if (this.tokenTimer) clearTimeout(this.tokenTimer);
+    const exp = tokenExpiry(token);
+    if (!exp) return;
+    const wait = Math.max(1_000, exp * 1000 - Date.now() - 60_000);
+    this.tokenTimer = setTimeout(async () => {
+      this.tokenTimer = null;
+      const s = this.socket;
+      if (!s || s.readyState !== OPEN) return;
+      const next = await this.o.getToken(true).catch(() => null);
+      if (!next || this.socket !== s || s.readyState !== OPEN) return;
+      s.send(encodeAuthRefresh(next));
+      this.scheduleTokenRefresh(next);
+    }, wait);
+  }
+
   private onClosed(code: number, reason: string, opened: boolean) {
     this.socket = null;
     if (this.pingTimer) clearInterval(this.pingTimer);
+    if (this.tokenTimer) clearTimeout(this.tokenTimer);
     this.pingTimer = null;
+    this.tokenTimer = null;
     this.handshake = [false, false];
     this.received = [false, false];
     this.pending.clear(); // unacknowledged entries stay in the outbox and are resent

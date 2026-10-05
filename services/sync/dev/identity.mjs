@@ -40,13 +40,20 @@ async function mint(sub, dev, ttl) {
   return `${head}.${body}.${b64url(sig)}`;
 }
 
-export default class DevIdentity extends WorkerEntrypoint {
+/** The same named entrypoint as services/identity (docs/contracts/identity.md). */
+export class IdentityRPC extends WorkerEntrypoint {
   async checkAccess({ userId, workspaceId, docId }) {
     const g = grants(this.env);
     const level = (await g.get(`${userId}|${workspaceId}|${docId}`)) ?? (await g.get(`${userId}|${workspaceId}|*`)) ?? this.env.DEFAULT_LEVEL ?? "edit";
     return { level };
   }
 
+  async listDocs() {
+    return [];
+  }
+}
+
+export default class DevIdentity extends WorkerEntrypoint {
   async fetch(request) {
     const url = new URL(request.url);
     if (url.pathname === "/.well-known/jwks.json") {

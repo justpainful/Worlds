@@ -1,13 +1,14 @@
 // In-test fake of the identity service. It speaks the same Service Binding
-// RPC contract as the real one: checkAccess({ userId, workspaceId, docId }).
-// Tests change grants through its fetch handler.
+// RPC contract as the real one (docs/contracts/identity.md): the named
+// entrypoint IdentityRPC with checkAccess({ userId, workspaceId, docId }).
+// Tests change grants through the default fetch handler.
 import { WorkerEntrypoint } from "cloudflare:workers";
 
 const grants = new Map();
 let failing = false;
 let calls = 0;
 
-export default class FakeIdentity extends WorkerEntrypoint {
+export class IdentityRPC extends WorkerEntrypoint {
   async checkAccess({ userId, workspaceId, docId }) {
     calls++;
     if (failing) throw new Error("identity unavailable");
@@ -15,6 +16,12 @@ export default class FakeIdentity extends WorkerEntrypoint {
     return { level };
   }
 
+  async listDocs() {
+    return [];
+  }
+}
+
+export default {
   async fetch(request) {
     const url = new URL(request.url);
     if (url.pathname === "/grant") {
@@ -28,5 +35,5 @@ export default class FakeIdentity extends WorkerEntrypoint {
     }
     if (url.pathname === "/calls") return Response.json({ calls });
     return new Response("not found", { status: 404 });
-  }
-}
+  },
+};

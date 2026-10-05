@@ -11,6 +11,7 @@ import * as decoding from "lib0/decoding";
 import * as encoding from "lib0/encoding";
 import * as Y from "yjs";
 import { accessFor } from "./access";
+import { AuthError, verifyToken } from "./auth";
 import { addedComments, commentsJSON, validateCommentsChange } from "./comments";
 import { type Env, num } from "./env";
 import {
@@ -25,6 +26,7 @@ import {
   CLOSE_REVOKED,
   CLOSE_TOO_LARGE,
   CLOSE_UNAUTHORIZED,
+  MSG_AUTH_REFRESH,
   MSG_AWARENESS,
   MSG_QUERY_AWARENESS,
   MSG_SYNC,
@@ -305,6 +307,8 @@ export class DocRoom extends DurableObject<Env> {
     if (this.awareness.size) server.send(encodeAwareness(this.awarenessSnapshot()));
 
     await this.env.HUBS.getByName(workspaceId).register(workspaceId, docId);
+    // Lets a device revocation find this connection without knowing the workspace.
+    await this.env.INBOXES.getByName(session.userId).noteLive(workspaceId, docId);
     const headers = new Headers();
     if (h.get("x-worlds-subprotocol")) headers.set("Sec-WebSocket-Protocol", h.get("x-worlds-subprotocol")!);
     return new Response(null, { status: 101, webSocket: client, headers });
@@ -359,6 +363,10 @@ export class DocRoom extends DurableObject<Env> {
         }
         case MSG_QUERY_AWARENESS: {
           send(ws, encodeAwareness(this.awarenessSnapshot()));
+          return;
+        }
+        case MSG_AUTH_REFRESH: {
+          await this.refreshToken(ws, decoding.readVarString(d));
           return;
         }
       }
@@ -426,18 +434,78 @@ export class DocRoom extends DurableObject<Env> {
       }
       return s;
     }
+    return this.applyLevel(ws, level);
+  }
+
+  /** Put a freshly checked level into effect on one socket. Returns null when it closed. */
+  private applyLevel(ws: WebSocket, level: AccessLevel): Session | null {
     // The socket may have been revoked while we waited.
     if (ws.readyState !== WebSocket.OPEN) return null;
     const cur = ws.deserializeAttachment() as Session;
     if (level === "none") {
       send(ws, encodeNotice("revoked", "Access to this page was removed"));
       ws.close(CLOSE_REVOKED, "access revoked");
+      this.dropSocket(ws);
       return null;
     }
     const next = { ...cur, level, checkedAt: Date.now() };
     ws.serializeAttachment(next);
     if (level !== cur.level) send(ws, encodeAuthState(level, cur.userId));
     return next;
+  }
+
+  /** A fresh token for an open socket: same user and device, later expiry. */
+  private async refreshToken(ws: WebSocket, token: string) {
+    const s = ws.deserializeAttachment() as Session;
+    try {
+      const c = await verifyToken(token, { jwksUrl: this.env.JWKS_URL, issuer: this.env.JWT_ISSUER, audience: this.env.JWT_AUDIENCE });
+      if (c.sub !== s.userId || c.dev !== s.deviceId) throw new AuthError("token for another user or device");
+      if (ws.readyState !== WebSocket.OPEN) return;
+      ws.serializeAttachment({ ...(ws.deserializeAttachment() as Session), exp: c.exp });
+      send(ws, encodeAuthState(s.level, s.userId));
+    } catch (e) {
+      if (e instanceof AuthError) {
+        send(ws, encodeNotice("unauthorized", e.message));
+        ws.close(CLOSE_UNAUTHORIZED, "token refused");
+      }
+    }
+  }
+
+  /**
+   * Re-run checkAccess now for the matching sockets (an access change event).
+   * Closes those that lost access and tells the others their new level.
+   */
+  async recheck(input: { userIds: string[] | null }): Promise<number> {
+    let n = 0;
+    const access = accessFor(this.env);
+    for (const ws of this.ctx.getWebSockets()) {
+      const s = ws.deserializeAttachment() as Session | null;
+      if (!s || ws.readyState !== WebSocket.OPEN || (input.userIds && !input.userIds.includes(s.userId))) continue;
+      let level: AccessLevel;
+      try {
+        level = (await access.checkAccess({ userId: s.userId, workspaceId: this.workspaceId, docId: this.docId })).level;
+      } catch {
+        // Unreachable identity service: check on the next write instead.
+        ws.serializeAttachment({ ...s, checkedAt: 0 });
+        continue;
+      }
+      n++;
+      this.applyLevel(ws, level);
+    }
+    return n;
+  }
+
+  /** Close every connection (the workspace was deleted). */
+  async closeAll(reason: string): Promise<number> {
+    let n = 0;
+    for (const ws of this.ctx.getWebSockets()) {
+      if (ws.readyState !== WebSocket.OPEN) continue;
+      n++;
+      send(ws, encodeNotice("revoked", reason));
+      ws.close(CLOSE_REVOKED, reason);
+      this.dropSocket(ws);
+    }
+    return n;
   }
 
   /** Apply a client write after checking rights. Persisted before broadcast or ack. */

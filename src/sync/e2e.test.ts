@@ -19,8 +19,8 @@ import { createThread, listThreads, upsertPerson } from "./comments";
 import { listVersions, restoreInto, saveVersion, versionState } from "./versions";
 
 const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {};
-const SYNC = env.WORLDS_SYNC_URL ?? "http://127.0.0.1:8790";
-const IDENTITY = env.WORLDS_IDENTITY_URL ?? "http://127.0.0.1:8791";
+const SYNC = env.WORLDS_SYNC_URL ?? "http://localhost:8790";
+const IDENTITY = env.WORLDS_IDENTITY_URL ?? "http://localhost:8791";
 const enabled = !!env.WORLDS_SYNC_E2E;
 
 const p = (bid: string, text: string): JSONContent => ({ type: "paragraph", attrs: { bid }, content: [{ type: "text", text }] });

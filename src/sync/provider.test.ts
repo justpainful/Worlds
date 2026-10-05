@@ -225,6 +225,19 @@ describe("WorldsProvider", () => {
     expect(server.connects).toBe(before);
   });
 
+  it("hands the open connection a fresh token before the old one expires", async () => {
+    const server = new FakeSyncServer();
+    server.levels.set("ann", "edit");
+    const jwt = (exp: number) => `h.${btoa(JSON.stringify({ sub: "ann", exp })).replace(/=+$/, "")}.s`;
+    let n = 0;
+    const a = await provider(server, "ann", undefined, {
+      getToken: async () => jwt(Math.floor(Date.now() / 1000) + 61 + n++ * 1000),
+    });
+    await synced(a.p);
+    await until(() => server.refreshed.length === 1, "token refreshed in place", 4000);
+    expect(server.connects).toBe(1);
+  });
+
   it("tells a revoked user apart from a network failure after failed upgrades", async () => {
     const server = new FakeSyncServer();
     server.levels.set("ann", "none");

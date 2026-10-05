@@ -27,6 +27,7 @@ bucket_name = "worlds-attachments"
 [[services]]
 binding = "IDENTITY"
 service = "worlds-identity"
+entrypoint = "IdentityRPC"
 
 [vars]
 JWKS_URL = "https://identity.example.invalid/.well-known/jwks.json"
@@ -37,8 +38,9 @@ ACCESS_TTL_MS = "30000"
 PART_SIZE = "8388608"
 
 # Secrets (set with `wrangler secret put`, never committed):
-#   INTERNAL_SECRET  shared with the identity service for POST /internal/revoke
+#   INTERNAL_SECRET  bearer for the operator tool POST /internal/revoke
 #   SIGNING_SECRET   HMAC key for signed attachment URLs
+#   SYNC_WEBHOOK_SECRET  HMAC key for access change events from the identity service
 
 # Local development (`pnpm dev`): same bindings, but the identity binding
 # points at the local stand-in in dev/identity.toml.
@@ -64,9 +66,10 @@ bucket_name = "worlds-attachments-local"
 [[env.local.services]]
 binding = "IDENTITY"
 service = "worlds-identity-dev"
+entrypoint = "IdentityRPC"
 
 [env.local.vars]
-JWKS_URL = "http://127.0.0.1:8791/.well-known/jwks.json"
+JWKS_URL = "http://localhost:8791/.well-known/jwks.json"
 ALLOWED_ORIGINS = "*"
 COMPACT_EVERY = "500"
 VERSION_INTERVAL_MS = "600000"

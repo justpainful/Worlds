@@ -18,6 +18,7 @@ export default defineConfig({
         bindings: {
           JWKS_URL,
           INTERNAL_SECRET: "test-internal-secret",
+          SYNC_WEBHOOK_SECRET: "test-webhook-secret",
           SIGNING_SECRET: "test-signing-secret",
           COMPACT_EVERY: "5",
           ACCESS_TTL_MS: "1",
@@ -28,6 +29,8 @@ export default defineConfig({
           if (request.url === JWKS_URL) return new Response(JSON.stringify({ keys: [publicJwk] }), { headers: { "content-type": "application/json" } });
           return new Response("blocked in tests", { status: 502 });
         },
+        // Tests change grants through the fake's default fetch handler.
+        serviceBindings: { IDENTITY_CONTROL: "worlds-identity" },
         workers: [{ name: "worlds-identity", modules: true, scriptPath: "./test/fake-identity.mjs", compatibilityDate: "2026-08-15" }],
       },
     }),

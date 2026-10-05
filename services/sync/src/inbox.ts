@@ -37,6 +37,12 @@ export class UserInbox extends DurableObject<Env> {
           payload TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS notifications_created ON notifications(created_at);
+        CREATE TABLE IF NOT EXISTS live_docs (
+          workspace_id TEXT NOT NULL,
+          doc_id TEXT NOT NULL,
+          seen_at INTEGER NOT NULL,
+          PRIMARY KEY (workspace_id, doc_id)
+        );
       `);
     });
   }
@@ -54,6 +60,25 @@ export class UserInbox extends DurableObject<Env> {
     const items = rows.map((r) => ({ ...(JSON.parse(String(r.payload)) as Notification), readAt: r.read_at === null ? null : Number(r.read_at) }));
     const unread = Number(this.sql.exec("SELECT COUNT(*) AS n FROM notifications WHERE read_at IS NULL").one().n);
     return { items, unread };
+  }
+
+  /** Remember a document this user connected to (for device revocations). */
+  async noteLive(workspaceId: string, docId: string): Promise<void> {
+    this.sql.exec(
+      "INSERT INTO live_docs (workspace_id, doc_id, seen_at) VALUES (?, ?, ?) ON CONFLICT(workspace_id, doc_id) DO UPDATE SET seen_at = excluded.seen_at",
+      workspaceId,
+      docId,
+      Date.now(),
+    );
+  }
+
+  /** Documents this user connected to recently (sockets last at most a day). */
+  async liveDocs(): Promise<{ workspaceId: string; docId: string }[]> {
+    this.sql.exec("DELETE FROM live_docs WHERE seen_at < ?", Date.now() - 7 * 24 * 3600 * 1000);
+    return this.sql
+      .exec("SELECT workspace_id, doc_id FROM live_docs")
+      .toArray()
+      .map((r) => ({ workspaceId: String(r.workspace_id), docId: String(r.doc_id) }));
   }
 
   async markRead(ids: string[] | null): Promise<number> {

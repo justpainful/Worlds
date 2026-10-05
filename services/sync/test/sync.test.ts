@@ -117,7 +117,7 @@ describe("live sync", () => {
     await a.connect();
     await synced(a);
     a.content.getText("t").insert(0, "persist me");
-    await until(() => a.acks.size >= 2, "edit ack");
+    await until(() => a.acks.size >= 3, "edit ack"); // two handshake acks (one per channel) and the edit
     a.disconnect();
     const stub = env.DOCS.getByName(`${ws}/${doc}`);
     await evictDurableObject(stub, { webSockets: "close" });

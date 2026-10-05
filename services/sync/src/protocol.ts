@@ -19,6 +19,8 @@ export const MSG_AUTH_STATE = 3;
 export const MSG_UPDATE = 4;
 export const MSG_ACK = 5;
 export const MSG_NOTICE = 6;
+/** Client to server: a fresh access token for the open connection. */
+export const MSG_AUTH_REFRESH = 7;
 
 /** Sub-documents multiplexed on one connection. */
 export const CH_CONTENT = 0;
@@ -57,6 +59,13 @@ export function encodeUpdate(batchId: number, channel: number, update: Uint8Arra
   encoding.writeVarUint(e, batchId);
   encoding.writeVarUint(e, channel);
   encoding.writeVarUint8Array(e, update);
+  return encoding.toUint8Array(e);
+}
+
+export function encodeAuthRefresh(token: string): Uint8Array {
+  const e = encoding.createEncoder();
+  encoding.writeVarUint(e, MSG_AUTH_REFRESH);
+  encoding.writeVarString(e, token);
   return encoding.toUint8Array(e);
 }
 

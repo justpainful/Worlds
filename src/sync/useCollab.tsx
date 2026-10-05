@@ -50,7 +50,7 @@ export function useCollab(page: Page, opts: { onSaved?: (at: number) => void } =
   // mode is settled once per open page: views around the editor keep the
   // editor they were handed, so a later change reopens the page instead.
   const guess = isSharedPage(page);
-  const [settled, setSettled] = useState<{ pageId: string; shared: boolean } | null>(null);
+  const [settled, setSettled] = useState<{ pageId: string; shared: boolean; workspaceId: string | null } | null>(null);
   const known = settled?.pageId === page.id;
   const shared = known ? settled.shared : guess;
   const [session, setSession] = useState<CollabSession | null>(null);
@@ -73,13 +73,13 @@ export function useCollab(page: Page, opts: { onSaved?: (at: number) => void } =
           const next = m.shared || guess;
           if (first === null) {
             first = next;
-            setSettled({ pageId: page.id, shared: next });
+            setSettled({ pageId: page.id, shared: next, workspaceId: m.workspaceId });
           } else if (next !== first) {
             alive = false;
             reopenPage(page.id);
           }
         })
-        .catch(() => alive && first === null && ((first = guess), setSettled({ pageId: page.id, shared: guess })));
+        .catch(() => alive && first === null && ((first = guess), setSettled({ pageId: page.id, shared: guess, workspaceId: null })));
     const onMode = (e: Event) => (e as CustomEvent<{ pageId: string }>).detail?.pageId === page.id && check();
     const onChanged = (e: Event) => {
       const list = (e as CustomEvent<{ pageId: string | null; kind: string }[]>).detail ?? [];
@@ -95,9 +95,11 @@ export function useCollab(page: Page, opts: { onSaved?: (at: number) => void } =
     };
   }, [page.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // The workspace comes from the page row (Team workspace) once known.
+  const workspaceId = (known ? settled.workspaceId : null) ?? (page as Page & { workspaceId?: string | null }).workspaceId ?? null;
   useEffect(() => {
-    if (!shared) return;
-    const ws = workspaceFor({ workspaceId: (page as Page & { workspaceId?: string | null }).workspaceId ?? null });
+    if (!shared || !known) return;
+    const ws = workspaceFor({ workspaceId });
     const s = acquireSession(page.id, ws);
     setSession(s);
     let last = s.mirroredAt;
@@ -112,7 +114,7 @@ export function useCollab(page: Page, opts: { onSaved?: (at: number) => void } =
       setSession(null);
       releaseSession(s);
     };
-  }, [shared, page.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [shared, known, workspaceId, page.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const live = shared && !!session && ready;
   const extensions = useMemo(() => (live && session ? collabExtensions(session) : []), [live, session, generation]); // eslint-disable-line react-hooks/exhaustive-deps
