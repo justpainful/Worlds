@@ -7,6 +7,7 @@ import { newId, now, randomDigits, randomToken, sha256B64url, sha256Hex, timingS
 import { codeEmail, emailSender } from "../lib/email";
 import { ApiError, bad, body, normalizeEmail, optStr, str, unauthorized } from "../lib/http";
 import { clientIp, rateLimit } from "../lib/ratelimit";
+import { normalizeUsername, suggestUsername, usernameMessage, usernameProblem, usernameTaken } from "../lib/usernames";
 import { authenticationOptions, registrationOptions, webauthn } from "../lib/webauthn";
 
 export const CODE_TTL_MS = 10 * 60 * 1000;
@@ -18,21 +19,52 @@ const HOUR = 3_600_000;
 
 export const auth = new Hono<AppEnv>();
 
-interface UserRow {
+export interface UserRow {
   id: string;
   email: string;
   display_name: string;
+  username: string | null;
+  username_auto: number;
   avatar_url: string | null;
   created_at: number;
 }
 
+export const USER_COLS = "id, email, display_name, username, username_auto, avatar_url, created_at";
+
 export function userView(u: UserRow) {
-  return { id: u.id, email: u.email, displayName: u.display_name, avatarUrl: u.avatar_url, createdAt: u.created_at };
+  return {
+    id: u.id,
+    email: u.email,
+    displayName: u.display_name,
+    username: u.username,
+    usernameAuto: u.username_auto === 1,
+    avatarUrl: u.avatar_url,
+    createdAt: u.created_at,
+  };
 }
 
-async function userById(db: D1Database, id: string): Promise<UserRow | null> {
-  return db.prepare("SELECT id, email, display_name, avatar_url, created_at FROM users WHERE id = ?1").bind(id).first<UserRow>();
+/** Every account has a username; one made before usernames gets one now. */
+export async function withUsername(db: D1Database, u: UserRow): Promise<UserRow> {
+  if (u.username) return u;
+  const name = await suggestUsername(db, [u.display_name, u.email.split("@")[0]]);
+  await db.prepare("UPDATE users SET username = ?1, username_auto = 1 WHERE id = ?2 AND username IS NULL").bind(name, u.id).run();
+  return (await db.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?1`).bind(u.id).first<UserRow>())!;
 }
+
+export async function userById(db: D1Database, id: string): Promise<UserRow | null> {
+  const u = await db.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?1`).bind(id).first<UserRow>();
+  return u && withUsername(db, u);
+}
+
+/** Is a username free? Public, so the app can check while someone types. */
+auth.get("/username/:name", async (c) => {
+  await rateLimit(c.env.DB, `username-check:ip:${clientIp(c.req.raw)}`, 120, 10 * 60 * 1000);
+  const name = normalizeUsername(c.req.param("name"));
+  const problem = usernameProblem(name);
+  if (problem) return c.json({ username: name, valid: false, available: false, reason: problem, message: usernameMessage(problem) });
+  const taken = await usernameTaken(c.env.DB, name);
+  return c.json({ username: name, valid: true, available: !taken, reason: taken ? "taken" : null, message: taken ? "That username is taken." : null });
+});
 
 // ---------------------------------------------------------------------------
 // Email one-time codes: new devices, recovery, and creating an account.
@@ -79,14 +111,26 @@ auth.post("/email/verify", async (c) => {
   const used = await c.env.DB.prepare("UPDATE email_codes SET consumed_at = ?1 WHERE id = ?2 AND consumed_at IS NULL").bind(now(), row.id).run();
   if (!used.meta.changes) throw bad("invalid_code", "That code is no longer valid. Ask for a new one.");
 
-  let user = await c.env.DB.prepare("SELECT id, email, display_name, avatar_url, created_at FROM users WHERE email = ?1").bind(row.email).first<UserRow>();
+  let user = await c.env.DB.prepare(`SELECT ${USER_COLS} FROM users WHERE email = ?1`).bind(row.email).first<UserRow>();
   let created = false;
+  if (user) user = await withUsername(c.env.DB, user);
   if (!user) {
     const t = now();
     const id = newId();
     const name = optStr(b.displayName, "displayName", 80) ?? row.email.split("@")[0];
+    // The person's own handle when it is valid and free; otherwise the system picks one
+    // (marked automatic, so the app can still claim the handle later).
+    let username: string | null = null;
+    if (typeof b.username === "string" && b.username.trim()) {
+      const wanted = normalizeUsername(b.username);
+      if (!usernameProblem(wanted) && !(await usernameTaken(c.env.DB, wanted))) username = wanted;
+    }
+    const auto = username ? 0 : 1;
+    username ??= await suggestUsername(c.env.DB, [name, row.email.split("@")[0]]);
     await c.env.DB.batch([
-      c.env.DB.prepare("INSERT INTO users (id, email, display_name, email_verified_at, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?4, ?4)").bind(id, row.email, name, t),
+      c.env.DB.prepare(
+        "INSERT INTO users (id, email, display_name, username, username_auto, email_verified_at, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6, ?6)",
+      ).bind(id, row.email, name, username, auto, t),
       auditStmt(c.env.DB, { action: "account.created", actorUserId: id, actorKind: "user", targetType: "user", targetId: id, meta: { method: "email" } }),
     ]);
     user = (await userById(c.env.DB, id))!;

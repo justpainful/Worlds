@@ -81,8 +81,11 @@ async function account(action: string, a: Args): Promise<unknown> {
       view = { ...view, status: "signed_out", account: null, workspaces: [], activeWorkspaceId: null };
       return view;
     case "updateProfile":
-      if (view.account) view = { ...view, account: { ...view.account, displayName: a.displayName } };
-      return { displayName: a.displayName };
+      if (a.username === "taken") throw new Error("That username is taken.");
+      if (view.account && a.displayName) view = { ...view, account: { ...view.account, displayName: a.displayName } };
+      return { displayName: a.displayName ?? view.account?.displayName, username: a.username };
+    case "checkUsername":
+      return { username: a.username, valid: true, available: a.username !== "taken", reason: a.username === "taken" ? "taken" : null, message: a.username === "taken" ? "That username is taken." : null };
     case "devices":
       return [
         { id: "d-1", name: "Worlds on DESKTOP", platform: "windows", createdAt: t0 - 86_400_000 * 20, lastSeenAt: Date.now(), current: true },

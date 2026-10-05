@@ -18,6 +18,7 @@ pub mod commands;
 #[cfg(test)]
 mod e2e;
 pub mod permissions;
+pub mod profile_link;
 pub mod secrets;
 pub mod state;
 pub mod sync;

@@ -36,6 +36,7 @@ function SignedIn() {
   const run = useAccount((s) => s.run);
   const open = useAccount((s) => s.open);
   const account = view.account!;
+  const username = useStore((s) => s.profile?.handle);
   const expired = view.status === "expired";
   const [name, setName] = useState(account.displayName);
   const [editing, setEditing] = useState(false);
@@ -83,7 +84,7 @@ function SignedIn() {
                     setName(account.displayName);
                   }
                   if (e.key === "Enter" && name.trim()) {
-                    const r = await run(() => accountApi.updateProfile(name.trim()));
+                    const r = await run(() => accountApi.updateProfile({ displayName: name.trim() }));
                     if (r) useAccount.getState().load();
                     setEditing(false);
                   }
@@ -92,7 +93,7 @@ function SignedIn() {
             ) : (
               <div className="acct-me-name bidi">{account.displayName || "No name yet"}</div>
             )}
-            <div className="acct-me-sub isolate">{account.email}</div>
+            <div className="acct-me-sub isolate">{username ? `@${username}  ·  ${account.email}` : account.email}</div>
           </div>
           {!editing && !expired && (
             <Button variant="plain" size="compact" onClick={() => setEditing(true)}>

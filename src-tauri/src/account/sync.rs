@@ -115,6 +115,8 @@ pub async fn sync_all(db: &Mutex<Connection>, secrets: &dyn SecretStore) -> Resu
 
 async fn sync_inner(db: &Mutex<Connection>, secrets: &dyn SecretStore) -> Result<(), ApiError> {
     let me = authed(db, secrets, Method::GET, "/me", None, None).await?;
+    // The profile on this PC and the account stay one person.
+    let me = super::profile_link::reconcile(db, secrets, me, false).await?;
     {
         let c = lock(db);
         if let Ok(Some(mut a)) = state::account(&c) {

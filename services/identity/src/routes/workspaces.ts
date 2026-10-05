@@ -135,13 +135,13 @@ workspaces.get("/:id/members", async (c) => {
   const id = c.req.param("id");
   await roleIn(c, id);
   const { results } = await c.env.DB.prepare(
-    `SELECT m.user_id, m.role, m.joined_at, u.display_name, u.email, u.avatar_url
+    `SELECT m.user_id, m.role, m.joined_at, u.display_name, u.username, u.email, u.avatar_url
      FROM members m JOIN users u ON u.id = m.user_id WHERE m.workspace_id = ?1
      ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 WHEN 'member' THEN 2 ELSE 3 END, u.display_name COLLATE NOCASE`,
   )
     .bind(id)
-    .all<{ user_id: string; role: Role; joined_at: number; display_name: string; email: string; avatar_url: string | null }>();
-  return c.json(results.map((m) => ({ userId: m.user_id, role: m.role, joinedAt: m.joined_at, displayName: m.display_name, email: m.email, avatarUrl: m.avatar_url })));
+    .all<{ user_id: string; role: Role; joined_at: number; display_name: string; username: string | null; email: string; avatar_url: string | null }>();
+  return c.json(results.map((m) => ({ userId: m.user_id, role: m.role, joinedAt: m.joined_at, displayName: m.display_name, username: m.username, email: m.email, avatarUrl: m.avatar_url })));
 });
 
 workspaces.patch("/:id/members/:userId", async (c) => {

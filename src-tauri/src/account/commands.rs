@@ -7,6 +7,7 @@
 
 use super::client::{self, authed, ApiError};
 use super::permissions::{page_level, Level};
+use super::profile_link;
 use super::secrets::{b64url, pkce, random_bytes, DeviceKey, KeyringStore, SecretStore};
 use super::state::{self, Account};
 use super::sync;
@@ -222,12 +223,17 @@ async fn run(app: &tauri::AppHandle, db: &Mutex<Connection>, secrets: &dyn Secre
         "emailVerify" => {
             let base = base_url(db)?;
             let key = local(DeviceKey::generate())?;
+            // A new account starts as this profile: its name and its handle.
+            let (name, handle) = profile_link::sign_up_fields(db);
+            let display_name = a.get("displayName").and_then(Value::as_str).map(str::to_string).filter(|n| !n.trim().is_empty()).or(name);
             let body = json!({
                 "challengeId": s(a, "challengeId")?, "code": s(a, "code")?,
-                "displayName": a.get("displayName"), "device": device_body(&key),
+                "displayName": display_name, "username": handle, "device": device_body(&key),
             });
             let tokens = client::send(&base, Method::POST, "/auth/email/verify", Some(&body), None, None).await?;
             local(complete_sign_in(db, secrets, &base, &key, &tokens))?;
+            let created = tokens.get("created").and_then(Value::as_bool).unwrap_or(false);
+            let _ = profile_link::reconcile(db, secrets, tokens.get("user").cloned().unwrap_or(json!({})), created).await;
             let _ = sync::sync_all(db, secrets).await;
             let mut v = local(view(&lock(db)))?;
             v["created"] = tokens.get("created").cloned().unwrap_or(json!(false));
@@ -250,6 +256,7 @@ async fn run(app: &tauri::AppHandle, db: &Mutex<Connection>, secrets: &dyn Secre
             let body = json!({ "code": code, "codeVerifier": verifier, "device": device_body(&key) });
             let tokens = client::send(&base, Method::POST, "/auth/token", Some(&body), None, None).await?;
             local(complete_sign_in(db, secrets, &base, &key, &tokens))?;
+            let _ = profile_link::reconcile(db, secrets, tokens.get("user").cloned().unwrap_or(json!({})), false).await;
             let _ = sync::sync_all(db, secrets).await;
             local(view(&lock(db)))
         }
@@ -282,13 +289,28 @@ async fn run(app: &tauri::AppHandle, db: &Mutex<Connection>, secrets: &dyn Secre
         // ---- profile, devices, passkeys
         "me" => Ok(authed(db, secrets, Method::GET, "/me", None, None).await?),
         "updateProfile" => {
-            let v = authed(db, secrets, Method::PATCH, "/me", Some(&json!({ "displayName": s(a, "displayName")? })), None).await?;
+            // Name and/or username; the profile on this PC follows the account.
+            let mut body = serde_json::Map::new();
+            if let Some(n) = a.get("displayName").and_then(Value::as_str) {
+                body.insert("displayName".into(), json!(n));
+            }
+            if let Some(u) = a.get("username").and_then(Value::as_str) {
+                body.insert("username".into(), json!(profile_link::normalize(u)));
+            }
+            let v = authed(db, secrets, Method::PATCH, "/me", Some(&Value::Object(body)), None).await?;
+            profile_link::write_local(db, &v);
             let c = lock(db);
             if let Ok(Some(mut acc)) = state::account(&c) {
                 acc.display_name = v.get("displayName").and_then(Value::as_str).unwrap_or("").to_string();
                 let _ = state::save_account(&c, &acc);
             }
             Ok(v)
+        }
+        "checkUsername" => {
+            let base = base_url(db)?;
+            let name = profile_link::normalize(s(a, "username")?);
+            let enc = percent_encoding::utf8_percent_encode(&name, percent_encoding::NON_ALPHANUMERIC).to_string();
+            Ok(client::send(&base, Method::GET, &format!("/auth/username/{enc}"), None, None, None).await?)
         }
         "devices" => Ok(authed(db, secrets, Method::GET, "/me/devices", None, None).await?),
         "revokeDevice" => Ok(authed(db, secrets, Method::DELETE, &format!("/me/devices/{}", s(a, "deviceId")?), None, None).await?),

@@ -152,7 +152,10 @@ export const accountApi = {
   signOut: () => call<AccountView>("signOut"),
   sync: () => call<AccountView>("sync"),
 
-  updateProfile: (displayName: string) => call<{ displayName: string }>("updateProfile", { displayName }),
+  /** Name and/or username of the account; the profile on this PC follows. */
+  updateProfile: (patch: { displayName?: string; username?: string }) => call<{ displayName: string; username: string }>("updateProfile", patch),
+  checkUsername: (username: string) =>
+    call<{ username: string; valid: boolean; available: boolean; reason: string | null; message: string | null }>("checkUsername", { username }),
   devices: () => call<Device[]>("devices"),
   revokeDevice: (deviceId: string) => call<unknown>("revokeDevice", { deviceId }),
   passkeys: () => call<Passkey[]>("passkeys"),

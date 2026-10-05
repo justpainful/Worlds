@@ -441,3 +441,9 @@ button.pf-link:hover { color: var(--text-1); text-decoration: underline; text-un
 .pbi-photo-actions button:disabled { opacity: 0.35; }
 .pbi-photo-add { aspect-ratio: 1; border-radius: 10px; display: grid; place-items: center; border: 1.5px dashed rgba(255, 255, 255, 0.18); color: var(--text-3); }
 .pbi-photo-add:hover { color: var(--text-1); background: var(--fill-1); }
+
+/* Username: one line under the field says what is wrong, or that it is free. */
+.pbi-row .field-hint { margin: 6px 2px 0; font: var(--t-small); color: var(--text-3); }
+.pbi-row .field-hint.is-error { color: var(--danger, #ff6961); }
+.pbi-row .field-hint.is-ok { color: var(--success, #30d158); }
+.field.is-invalid { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger, #ff6961) 70%, transparent); }

@@ -1,4 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { accountApi } from "../../account/api";
+import { useAccount } from "../../account/store";
+import { normalizeUsername, usernameProblem } from "../../account/usernames";
+import { errorMessage } from "../../lib/api";
 import type { Profile } from "../../lib/types";
 import { Button, IconButton } from "../../ui/Button";
 import { Icon } from "../../ui/Icon";
@@ -23,11 +27,45 @@ export function EditProfile({
   onAdjust: (f: "avatar" | "banner") => void;
 }) {
   const [d, setD] = useState<Profile>(profile);
+  // Signed in, the profile and the account are one person: the username is
+  // required, must be free, and is saved to the account first.
+  const signedIn = useAccount((s) => s.view?.status === "active");
+  const handle = d.handle ?? "";
+  const changed = handle !== (profile.handle ?? "");
+  const problem = handle ? usernameProblem(handle) : signedIn ? "A username is required." : null;
+  const [check, setCheck] = useState<{ name: string; ok: boolean; message: string | null } | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  useEffect(() => {
+    setSaveError(null);
+    if (!signedIn || !changed || problem) return setCheck(null);
+    let live = true;
+    const t = window.setTimeout(() => {
+      accountApi
+        .checkUsername(handle)
+        .then((r) => live && setCheck({ name: handle, ok: r.valid && r.available, message: r.message }))
+        .catch(() => live && setCheck(null));
+    }, 350);
+    return () => {
+      live = false;
+      window.clearTimeout(t);
+    };
+  }, [handle, signedIn, changed, problem]);
+  const taken = check?.name === handle && !check.ok;
+  const hint = problem ?? (taken ? check?.message ?? "That username is taken." : check?.name === handle && check.ok ? "Available" : null);
   const setLink = (i: number, patch: Partial<Link>) => setD({ ...d, links: (d.links ?? []).map((l, j) => (j === i ? { ...l, ...patch } : l)) });
   const commit = async () => {
     const links = (d.links ?? [])
       .map((l) => ({ label: l.label.trim(), url: /^https?:\/\//.test(l.url.trim()) ? l.url.trim() : l.url.trim() ? `https://${l.url.trim()}` : "" }))
       .filter((l) => l.url);
+    if (problem || taken) return;
+    if (signedIn && (changed || d.displayName !== profile.displayName)) {
+      try {
+        await accountApi.updateProfile({ displayName: d.displayName.trim() || undefined, username: changed ? handle : undefined });
+      } catch (e) {
+        setSaveError(errorMessage(e));
+        return;
+      }
+    }
     const ok = await onSave({ displayName: d.displayName, handle: d.handle, bio: d.bio, status: d.status, location: d.location, links });
     if (ok) onClose();
   };
@@ -41,7 +79,7 @@ export function EditProfile({
           <Button variant="quiet" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="tinted" icon="check" onClick={commit}>
+          <Button variant="tinted" icon="check" disabled={!!problem || taken} onClick={commit}>
             Save
           </Button>
         </>
@@ -72,8 +110,18 @@ export function EditProfile({
             <input className="field bidi" dir="auto" value={d.displayName} onChange={(e) => setD({ ...d, displayName: e.target.value })} />
           </label>
           <label className="pbi-row">
-            <span className="field-label">Handle</span>
-            <input className="field" dir="ltr" value={d.handle ?? ""} placeholder="handle" onChange={(e) => setD({ ...d, handle: e.target.value.replace(/\s/g, "") || null })} />
+            <span className="field-label">Username</span>
+            <input
+              className={`field ${hint && hint !== "Available" ? "is-invalid" : ""}`}
+              dir="ltr"
+              value={handle}
+              placeholder="username"
+              maxLength={21}
+              onChange={(e) => setD({ ...d, handle: normalizeUsername(e.target.value) || null })}
+            />
+            {hint && <span className={`field-hint ${hint === "Available" ? "is-ok" : "is-error"}`}>{hint}</span>}
+            {signedIn && !hint && !saveError && <span className="field-hint">Also your account username.</span>}
+            {saveError && <span className="field-hint is-error">{saveError}</span>}
           </label>
         </div>
         <label className="pbi-row">

@@ -4,16 +4,15 @@ import { revokeDevice } from "../domain/sessions";
 import { audit, listAudit } from "../lib/audit";
 import { emit, requireAuth } from "../lib/auth";
 import { now } from "../lib/crypto";
-import { bad, body, notFound, optStr, str } from "../lib/http";
-import { userView } from "./auth";
+import { bad, body, conflict, notFound, optStr, str } from "../lib/http";
+import { checkUsername, usernameTaken } from "../lib/usernames";
+import { userById, userView } from "./auth";
 
 export const me = new Hono<AppEnv>();
 me.use("*", requireAuth);
 
 me.get("/", async (c) => {
-  const u = await c.env.DB.prepare("SELECT id, email, display_name, avatar_url, created_at FROM users WHERE id = ?1")
-    .bind(c.get("caller").userId)
-    .first<{ id: string; email: string; display_name: string; avatar_url: string | null; created_at: number }>();
+  const u = await userById(c.env.DB, c.get("caller").userId);
   if (!u) throw notFound();
   return c.json(userView(u));
 });
@@ -24,16 +23,23 @@ me.patch("/", async (c) => {
   const name = optStr(b.displayName, "displayName", 80);
   const avatar = b.avatarUrl === null ? null : optStr(b.avatarUrl, "avatarUrl", 500);
   if (avatar && !/^https:\/\//.test(avatar)) throw bad("invalid_avatar", "avatarUrl must be an https URL");
+  // A username is required and cannot be cleared, only changed to another free one.
+  const username = b.username === undefined ? undefined : checkUsername(b.username);
+  if (username && (await usernameTaken(c.env.DB, username, caller.userId))) throw conflict("username_taken", "That username is taken.");
+  if (username) {
+    try {
+      await c.env.DB.prepare("UPDATE users SET username = ?1, username_auto = 0, updated_at = ?2 WHERE id = ?3").bind(username, now(), caller.userId).run();
+    } catch {
+      throw conflict("username_taken", "That username is taken.");
+    }
+  }
   await c.env.DB.prepare(
     "UPDATE users SET display_name = COALESCE(?1, display_name), avatar_url = CASE WHEN ?2 = 1 THEN ?3 ELSE avatar_url END, updated_at = ?4 WHERE id = ?5",
   )
     .bind(name ?? null, b.avatarUrl !== undefined ? 1 : 0, avatar ?? null, now(), caller.userId)
     .run();
   await audit(c.env.DB, { action: "account.updated", actorUserId: caller.userId, actorKind: caller.actor, deviceId: caller.deviceId, targetType: "user", targetId: caller.userId });
-  const u = await c.env.DB.prepare("SELECT id, email, display_name, avatar_url, created_at FROM users WHERE id = ?1")
-    .bind(caller.userId)
-    .first<{ id: string; email: string; display_name: string; avatar_url: string | null; created_at: number }>();
-  return c.json(userView(u!));
+  return c.json(userView((await userById(c.env.DB, caller.userId))!));
 });
 
 me.get("/devices", async (c) => {
