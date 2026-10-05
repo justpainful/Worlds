@@ -1,0 +1,41 @@
+name = "worlds-sync"
+main = "src/index.ts"
+compatibility_date = "2026-08-15"
+compatibility_flags = ["nodejs_compat"]
+
+[[durable_objects.bindings]]
+name = "DOCS"
+class_name = "DocRoom"
+
+[[durable_objects.bindings]]
+name = "HUBS"
+class_name = "WorkspaceHub"
+
+[[durable_objects.bindings]]
+name = "INBOXES"
+class_name = "UserInbox"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["DocRoom", "WorkspaceHub", "UserInbox"]
+
+[[r2_buckets]]
+binding = "BLOBS"
+bucket_name = "worlds-attachments"
+
+# The identity service (services/identity) exposes checkAccess() over RPC.
+[[services]]
+binding = "IDENTITY"
+service = "worlds-identity"
+
+[vars]
+JWKS_URL = "https://identity.example.invalid/.well-known/jwks.json"
+ALLOWED_ORIGINS = "*"
+COMPACT_EVERY = "500"
+VERSION_INTERVAL_MS = "600000"
+ACCESS_TTL_MS = "30000"
+PART_SIZE = "8388608"
+
+# Secrets (set with `wrangler secret put`, never committed):
+#   INTERNAL_SECRET  shared with the identity service for POST /internal/revoke
+#   SIGNING_SECRET   HMAC key for signed attachment URLs

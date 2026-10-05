@@ -1,0 +1,38 @@
+name: Sync service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/sync/**"
+      - ".github/workflows/sync.yml"
+  pull_request:
+    paths:
+      - "services/sync/**"
+      - ".github/workflows/sync.yml"
+
+concurrency:
+  group: sync-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/sync
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: services/sync/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Tests (Workers runtime)
+        run: pnpm test
