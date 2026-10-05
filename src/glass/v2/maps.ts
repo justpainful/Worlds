@@ -5,8 +5,10 @@
  *   lens    displacement (R = x, G = y, 0.5 = none), padded box
  *   frost   alpha = share of the frost branch, padded box
  *   mask    alpha = coverage of the outline, padded box (cuts the optics)
- *   light   white alpha: Fresnel x environment + specular + bevel highlight
+ *   light   white alpha: Fresnel x environment + specular + bevel highlight (baked at max exposure)
  *   shade   black alpha: the bevel facing away from the key light
+ *   edge    black alpha: the outer interface (scaled per scene by the layer)
+ *   debug   optional views: normals, Fresnel, outer interface, inner rim, lighting
  *
  * Phase 1 builds them synchronously; the function is pure apart from the
  * canvas so it can move to a Worker with OffscreenCanvas.
@@ -22,6 +24,15 @@ export interface MapsInput {
   merge?: number;
   dpr: number;
   profile: ProfileV2;
+  debug?: boolean;
+}
+
+export interface DebugMaps {
+  normal: string;
+  fresnel: string;
+  outer: string;
+  rim: string;
+  lighting: string;
 }
 
 export interface MapsV2 {
@@ -34,6 +45,9 @@ export interface MapsV2 {
   mask: string;
   light: string;
   shade: string;
+  edge: string;
+  glow: string;
+  debug?: DebugMaps;
   ms: number;
 }
 
@@ -54,7 +68,7 @@ export function padFor(p: ProfileV2): number {
 
 export function buildMaps(inp: MapsInput): MapsV2 {
   const p = inp.profile;
-  const key = JSON.stringify([inp.w, inp.h, Math.round(inp.r), inp.shapes ?? null, inp.merge ?? 0, inp.dpr, p]);
+  const key = JSON.stringify([inp.w, inp.h, Math.round(inp.r), inp.shapes ?? null, inp.merge ?? 0, inp.dpr, p, !!inp.debug]);
   const hit = cache.get(key);
   if (hit) return hit;
   const t0 = performance.now();
@@ -97,6 +111,14 @@ export function buildMaps(inp: MapsInput): MapsV2 {
   const LH = Math.ceil(inp.h * s);
   const light = image(LW, LH);
   const shade = image(LW, LH);
+  const edge = image(LW, LH);
+  const glow = image(LW, LH);
+  const dbg = inp.debug ? { normal: image(LW, LH), fresnel: image(LW, LH), outer: image(LW, LH), rim: image(LW, LH), lighting: image(LW, LH) } : null;
+  const grey = (im: ReturnType<typeof image>, i: number, v: number) => {
+    const g = Math.round(255 * Math.min(1, Math.max(0, v)));
+    im.img.data[i] = im.img.data[i + 1] = im.img.data[i + 2] = g;
+    im.img.data[i + 3] = 255;
+  };
   for (let py = 0; py < LH; py++) {
     for (let px = 0; px < LW; px++) {
       const x = (px + 0.5) / s;
@@ -105,14 +127,34 @@ export function buildMaps(inp: MapsInput): MapsV2 {
       const pt = surfaceAt(sdf, spec, x, y);
       const cover = Math.min(1, Math.max(0, 0.5 + pt.d * s));
       if (cover <= 0) continue;
-      const l = lighting(p, pt);
+      const l = lighting(p, pt, 1 / s);
       light.img.data[i] = light.img.data[i + 1] = light.img.data[i + 2] = 255;
       light.img.data[i + 3] = Math.round(255 * l.light * cover);
       shade.img.data[i + 3] = Math.round(255 * l.shade * cover);
+      edge.img.data[i + 3] = Math.round(255 * l.edge * cover);
+      glow.img.data[i] = glow.img.data[i + 1] = glow.img.data[i + 2] = 255;
+      glow.img.data[i + 3] = Math.round(255 * l.glow * cover);
+      if (dbg) {
+        dbg.normal.img.data[i] = Math.round(255 * (0.5 + 0.5 * pt.N[0]));
+        dbg.normal.img.data[i + 1] = Math.round(255 * (0.5 - 0.5 * pt.N[1]));
+        dbg.normal.img.data[i + 2] = Math.round(255 * pt.N[2]);
+        dbg.normal.img.data[i + 3] = 255;
+        grey(dbg.fresnel, i, l.fresnel * 4);
+        grey(dbg.outer, i, l.edge / Math.max(0.01, p.outerEdgeAlpha));
+        grey(dbg.rim, i, l.rim);
+        grey(dbg.lighting, i, Math.min(1, l.light + l.glow));
+      }
     }
   }
   light.ctx.putImageData(light.img, 0, 0);
   shade.ctx.putImageData(shade.img, 0, 0);
+  edge.ctx.putImageData(edge.img, 0, 0);
+  glow.ctx.putImageData(glow.img, 0, 0);
+  let debug: DebugMaps | undefined;
+  if (dbg) {
+    for (const im of Object.values(dbg)) im.ctx.putImageData(im.img, 0, 0);
+    debug = { normal: dbg.normal.c.toDataURL(), fresnel: dbg.fresnel.c.toDataURL(), outer: dbg.outer.c.toDataURL(), rim: dbg.rim.c.toDataURL(), lighting: dbg.lighting.c.toDataURL() };
+  }
 
   const maps: MapsV2 = {
     key,
@@ -123,6 +165,9 @@ export function buildMaps(inp: MapsInput): MapsV2 {
     mask: mask.c.toDataURL(),
     light: light.c.toDataURL(),
     shade: shade.c.toDataURL(),
+    edge: edge.c.toDataURL(),
+    glow: glow.c.toDataURL(),
+    debug,
     ms: performance.now() - t0,
   };
   if (cache.size > 64) cache.delete(cache.keys().next().value!);

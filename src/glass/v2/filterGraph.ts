@@ -6,7 +6,7 @@
  *   A     = refracted branch: blur(bent, edgeFrostSigma), with a little scatter
  *   B     = frost branch: blur(bent, bodyFrostSigma)
  *   glass = A * (1 - w) + B * w          (w = frost weight: 0 at the optical edge)
- *   out   = colour response (saturation, contrast, adaptive neutral tint)
+ *   out   = body tonal shaping: chroma and contrast compressed toward the local scene tone
  */
 import type { ProfileV2 } from "./profile";
 
@@ -110,10 +110,10 @@ export function updateFilter(f: FilterV2, p: ProfileV2, st: FilterState) {
   set(f.aMix, "k3", p.scatterMix.toFixed(4));
   set(f.b, "stdDeviation", String(p.bodyFrostSigma));
   set(f.sat, "in", st.view === "glass" ? "glass" : st.view === "A" ? "A" : st.view === "B" ? "B" : "wview");
-  set(f.sat, "values", String(p.saturation));
+  set(f.sat, "values", String(st.view === "w" ? 1 : p.bodySaturation));
   // y = x (1 - t) c + t T + (1 - t) 0.5 (1 - c)
   const t = st.view === "w" ? 0 : st.tint.amount;
-  const c = st.view === "w" ? 1 : p.contrast;
+  const c = st.view === "w" ? 1 : p.bodyContrast;
   f.funcs.forEach((fn, i) => {
     set(fn, "slope", ((1 - t) * c).toFixed(4));
     set(fn, "intercept", ((t * st.tint.rgb[i]) / 255 + (1 - t) * 0.5 * (1 - c)).toFixed(4));

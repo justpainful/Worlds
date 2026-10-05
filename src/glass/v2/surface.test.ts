@@ -11,15 +11,23 @@ const at = (x: number, y: number) => surfaceAt(sdf, spec, x, y);
 const mag = (x: number, y: number) => Math.hypot(...displacement(spec, at(x, y), 1));
 
 describe("V2 surface: one height field drives everything", () => {
-  it("tilts the normal by edgeTiltDeg at the edge and is flat in the middle", () => {
+  it("tilts the macro bevel by edgeTiltDeg, the lip to rimTiltDeg, and is flat in the middle", () => {
     const edge = at(61, 0.001);
-    const tilt = (Math.acos(edge.N[2]) * 180) / Math.PI;
-    expect(tilt).toBeGreaterThan(p.edgeTiltDeg - 3);
-    expect(tilt).toBeLessThan(p.edgeTiltDeg + 3);
+    const deg = (z: number) => (Math.acos(z) * 180) / Math.PI;
+    expect(deg(edge.Nm[2])).toBeGreaterThan(p.edgeTiltDeg - 3);
+    expect(deg(edge.Nm[2])).toBeLessThan(p.edgeTiltDeg + 3);
+    expect(deg(edge.N[2])).toBeGreaterThan(p.rimTiltDeg - 3);
+    // past the lip the full normal is the macro normal again
+    expect(at(61, p.rimWidth + 0.5).N[2]).toBeCloseTo(at(61, p.rimWidth + 0.5).Nm[2], 5);
     expect(at(61, 20).N[2]).toBeGreaterThan(0.999);
   });
 
-  it("displaces 3.4px at the edge, about 1.35px mid-band and about 0.2px near the middle", () => {
+  it("draws a thin outer interface only at the very edge", () => {
+    expect(lighting(p, at(61, 0.1)).edge).toBeGreaterThan(0.5 * p.outerEdgeAlpha);
+    expect(lighting(p, at(61, 2)).edge).toBe(0);
+  });
+
+  it("displaces edgeDisplacement at the edge, midDisplacement mid-band and at most centerDisplacement near the middle", () => {
     expect(mag(61, 0.001)).toBeCloseTo(p.edgeDisplacement, 1);
     expect(mag(61, p.lensWidth / 2)).toBeCloseTo(p.midDisplacement, 1);
     // the dome alone, at the edge of the flat field
@@ -43,10 +51,11 @@ describe("V2 surface: one height field drives everything", () => {
   });
 
   it("lights the edge facing the key (upper left) more than the opposite edge, and leaves the middle clear", () => {
-    // 1px inside the outline, on the upper-left and lower-right of the end caps
-    const ul = lighting(p, at(20 - 19 * Math.SQRT1_2, 20 - 19 * Math.SQRT1_2)).light;
-    const lr = lighting(p, at(W - 20 + 19 * Math.SQRT1_2, 20 + 19 * Math.SQRT1_2)).light;
-    expect(ul).toBeGreaterThan(lr * 3);
+    // on the lip (just inside the outer interface), upper-left vs lower-right of the end caps
+    const r = 20 - (p.outerEdgeWidth + 0.3);
+    const ulP = lighting(p, at(20 - r * Math.SQRT1_2, 20 - r * Math.SQRT1_2));
+    const lrP = lighting(p, at(W - 20 + r * Math.SQRT1_2, 20 + r * Math.SQRT1_2));
+    expect(ulP.light + ulP.glow).toBeGreaterThan(1.5 * (lrP.light + lrP.glow));
     expect(lighting(p, at(61, 20)).light).toBeLessThan(0.01);
   });
 

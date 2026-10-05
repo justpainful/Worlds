@@ -4,10 +4,7 @@
 .lg2 {
   position: relative;
   border-radius: 999px;
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, var(--lg2-c-a, 0.04)),
-    0 3px 10px rgba(0, 0, 0, var(--lg2-b-a, 0.045)),
-    0 8px 24px rgba(0, 0, 0, var(--lg2-a-a, 0.025));
+  box-shadow: var(--lg2-shadow, 0 1px 2px rgba(0, 0, 0, 0.04));
 }
 .lg2 > .lg2-layer {
   position: absolute;
@@ -21,8 +18,10 @@
   -webkit-mask: var(--lg2-mask) 0 0 / 100% 100% no-repeat;
   mask: var(--lg2-mask) 0 0 / 100% 100% no-repeat;
 }
+.lg2 > .lg2-edge { background: var(--lg2-edge) 0 0 / 100% 100% no-repeat; opacity: var(--lg2-edge-k, 1); }
 .lg2 > .lg2-shade { background: var(--lg2-shade) 0 0 / 100% 100% no-repeat; }
-.lg2 > .lg2-light { background: var(--lg2-light) 0 0 / 100% 100% no-repeat; }
+.lg2 > .lg2-glow { background: var(--lg2-glow) 0 0 / 100% 100% no-repeat; opacity: var(--lg2-glow-k, 1); }
+.lg2 > .lg2-light { background: var(--lg2-light) 0 0 / 100% 100% no-repeat; opacity: var(--lg2-exposure, 1); }
 .lg2 > .lg2-content { position: relative; height: 100%; }
 
 /* Ink: decided by the glass from what is behind it. */

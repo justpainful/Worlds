@@ -5,14 +5,16 @@
  * the shape's signed distance field (SDF):
  *
  *   d  = distance inside the edge            nO = outward in-plane direction (SDF gradient)
- *   q  = clamp(d / W, 0, 1)                  W  = lens width
- *   height = Hb * (1 - (1 - q)^P)  +  Hd * (1 - rx^2 - ry^2) * fade(q)
- *            bevel                     a very low dome over the flat field only
- *   N  = normalize(-grad(height), 1)
+ *   macro bevel  Hb * (1 - (1 - d/W)^P)       the thick-glass slope that bends the backdrop
+ *   micro lip    Hr * (1 - (1 - (d - Wo)/Wr)^2) the rounded edge of the glass (about 1px), just inside the interface
+ *   dome         Hd * (1 - rx^2 - ry^2)       a very low dome over the flat field only
  *
- * From N: refraction (displacement along the slope), Schlick Fresnel, a
- * synthetic low-frequency environment seen in the reflection vector,
- * specular, and the shading of the bevel. No per-effect curves.
+ *   N      = normalize(-grad(all three), 1)   lights the surface (Fresnel, environment, specular)
+ *   Nmacro = normalize(-grad(bevel + dome), 1)  bends the backdrop (the lip is too thin to)
+ *
+ * The outer interface is the outermost sliver of the shape where the glass
+ * meets the scene: a darker hairline on bright scenes, weaker where the edge
+ * faces the light.
  *
  * Pure functions with no DOM, so they can be unit-tested and moved to a Worker.
  */
@@ -66,8 +68,11 @@ export interface SurfaceSpec {
   W: number; // lens width (px)
   P: number; // bevel curve power
   Hb: number; // bevel height (px)
+  Wr: number; // micro lip width (px)
+  Wo: number; // outer interface width (px): the lip starts just inside it
+  Hr: number; // micro lip height (px)
   Hd: number; // dome height (px)
-  K: number; // displacement per unit slope at the edge
+  K: number; // displacement per unit slope
   gamma: number; // displacement = K * slope^gamma (gamma set by midDisplacement)
   cx: number;
   cy: number;
@@ -83,29 +88,37 @@ export function surfaceSpec(p: ProfileV2, w: number, h: number): SurfaceSpec {
   const edgeSlope = Math.tan((p.edgeTiltDeg * Math.PI) / 180);
   const Hb = (edgeSlope * W) / P;
   // Displacement grows with the slope; its exponent makes the mid-band value come out at midDisplacement.
-  // slope(q = 0.5) / slope(0) = 0.5^(P - 1)
-  const midRatio = Math.pow(0.5, P - 1);
+  const midRatio = Math.pow(0.5, P - 1); // slope(q = 0.5) / slope(0)
   const gamma = Math.log(p.midDisplacement / p.edgeDisplacement) / Math.log(midRatio);
   const K = (p.edgeDisplacement * t) / Math.pow(edgeSlope, gamma);
-  // Dome: lives only in the flat field (faded in over q 0.6..1, so the bevel alone sets the edge and
-  // mid-band values); its slope where the flat field starts gives centerDisplacement.
+  // Micro lip: its own slope at the very edge reaches rimTiltDeg (on top of the bevel).
+  const Wr = p.rimWidth;
+  const lipSlope = Wr > 0 ? Math.max(0, Math.tan((p.rimTiltDeg * Math.PI) / 180) - edgeSlope) : 0;
+  const Hr = (lipSlope * Wr) / 2;
+  // Dome: lives only in the flat field (faded in over q 0.6..1); its slope where the flat field
+  // starts gives centerDisplacement.
   const hx = w / 2;
   const hy = h / 2;
   const half = Math.min(hx, hy);
   const rFlat = Math.max(0.25, (half - W) / half);
   const domeSlopeNeeded = Math.pow((p.centerDisplacement * t) / K, 1 / gamma);
   const Hd = (domeSlopeNeeded * half) / (2 * rFlat); // |grad(Hd(1 - r^2))| = 2 Hd r / half
-  return { W, P, Hb, Hd, K, gamma, cx: hx, cy: hy, hx, hy };
+  return { W, P, Hb, Wr, Wo: p.outerEdgeAlpha > 0 ? p.outerEdgeWidth : 0, Hr, Hd, K, gamma, cx: hx, cy: hy, hx, hy };
 }
 
 export interface SurfacePoint {
   /** distance inside the outline (negative outside) */
   d: number;
-  /** grad(height) in the plane (px of height per px) */
+  /** outward in-plane direction */
+  nOx: number;
+  nOy: number;
+  /** grad(height) of the macro surface (bevel + dome): what bends the backdrop */
   gx: number;
   gy: number;
-  /** surface normal toward the viewer */
+  /** full surface normal (with the micro lip): what catches the light */
   N: Vec3;
+  /** macro normal */
+  Nm: Vec3;
   /** optical depth 0 at the edge, 1 at the end of the bevel */
   q: number;
 }
@@ -119,18 +132,21 @@ export function surfaceAt(sdf: (x: number, y: number) => number, s: SurfaceSpec,
   const nOx = ex / el;
   const nOy = ey / el;
   const q = Math.min(1, Math.max(0, d / s.W));
-  // Bevel: height rises inward, so its gradient points along -nO.
-  const dh = d >= 0 && q < 1 ? (s.Hb * s.P * Math.pow(1 - q, s.P - 1)) / s.W : 0;
-  // Dome: Hd * (1 - rx^2 - ry^2), gradient -2 Hd (rx / hx, ry / hy).
+  // Heights rise inward, so their gradients point along -nO.
+  const dBevel = d >= 0 && q < 1 ? (s.Hb * s.P * Math.pow(1 - q, s.P - 1)) / s.W : 0;
+  const qr = s.Wr > 0 ? Math.min(1, Math.max(0, (d - s.Wo) / s.Wr)) : 1;
+  const dLip = d >= 0 && qr < 1 ? (2 * s.Hr * (1 - qr)) / s.Wr : 0;
+  const dome = smoothstep(0.6, 1, q);
   const rx = (x - s.cx) / s.hx;
   const ry = (y - s.cy) / s.hy;
-  const dome = smoothstep(0.6, 1, q);
-  const gx = -dh * nOx + (dome * -2 * s.Hd * rx) / s.hx;
-  const gy = -dh * nOy + (dome * -2 * s.Hd * ry) / s.hy;
-  return { d, gx, gy, N: norm3(-gx, -gy, 1), q };
+  const gx = -dBevel * nOx + (dome * -2 * s.Hd * rx) / s.hx;
+  const gy = -dBevel * nOy + (dome * -2 * s.Hd * ry) / s.hy;
+  const fx = gx - dLip * nOx;
+  const fy = gy - dLip * nOy;
+  return { d, nOx, nOy, gx, gy, N: norm3(-fx, -fy, 1), Nm: norm3(-gx, -gy, 1), q };
 }
 
-/** Sampling offset of the refraction at a point (px). Along the slope; sign picks inward or outward. */
+/** Sampling offset of the refraction at a point (px). Along the macro slope; sign picks inward or outward. */
 export function displacement(s: SurfaceSpec, pt: SurfacePoint, sign: 1 | -1): [number, number] {
   const slope = Math.hypot(pt.gx, pt.gy);
   if (slope < 1e-6) return [0, 0];
@@ -147,16 +163,22 @@ export function frostWeight(p: ProfileV2, q: number): number {
 
 // ---------------------------------------------------------------- light
 
-/** The global synthetic environment: broad upper-left key, weak lower-right fill, a soft top strip. */
+/** The global synthetic environment: an upper-left key, a weak lower-right fill, a soft top strip. */
 export const KEY: Vec3 = norm3(-0.45, -0.85, 0.3);
 export const FILL: Vec3 = norm3(0.55, 0.7, 0.3);
 const V: Vec3 = [0, 0, 1];
 
-export function environment(R: Vec3): number {
-  const key = Math.pow(Math.max(0, dot(R, KEY)), 3);
-  const fill = 0.15 * Math.pow(Math.max(0, dot(R, FILL)), 3);
-  const strip = 0.25 * smoothstep(-0.55, -0.85, R[1]);
-  return key + fill + strip;
+/**
+ * Radiance seen along a reflection vector R. `facing` (0..1) is how much the
+ * reflecting edge faces the key; grazing reflections (R pointing into the
+ * screen) see a bright horizon, strongest on the key side.
+ */
+export function environment(p: ProfileV2, R: Vec3, facing = 0.5): number {
+  const key = Math.pow(Math.max(0, dot(R, KEY)), p.keyPower);
+  const fill = 0.15 * Math.pow(Math.max(0, dot(R, FILL)), p.keyPower);
+  const strip = p.stripStrength * smoothstep(-0.55, -0.85, R[1]);
+  const horizon = p.horizonStrength * smoothstep(-0.2, -0.75, R[2]) * (p.horizonCounter + (1 - p.horizonCounter) * facing);
+  return key + fill + strip + horizon;
 }
 
 export function fresnel(p: ProfileV2, N: Vec3): number {
@@ -164,8 +186,33 @@ export function fresnel(p: ProfileV2, N: Vec3): number {
   return p.fresnelF0 + (1 - p.fresnelF0) * Math.pow(1 - c, p.fresnelPower);
 }
 
-/** White light (alpha) and shade (black alpha) on the surface at a point. */
-export function lighting(p: ProfileV2, pt: SurfacePoint): { light: number; shade: number } {
+/** In-plane facing toward the key light: 1 facing it, 0 facing away. */
+function keyFacing(nOx: number, nOy: number): number {
+  const l = Math.hypot(KEY[0], KEY[1]);
+  return clamp01(0.5 + 0.5 * ((nOx * KEY[0] + nOy * KEY[1]) / l));
+}
+
+/** Highest exposure the light map is baked for; the layer's opacity brings it down per scene. */
+export function maxExposure(p: ProfileV2): number {
+  return Math.max(p.fresnelExposure.light, p.fresnelExposure.mid, p.fresnelExposure.dark, 1);
+}
+
+export interface Lighting {
+  /** white alpha (baked at maxExposure) */
+  light: number;
+  /** black alpha: bevel facing away from the key */
+  shade: number;
+  /** black alpha of the outer interface (on bright scenes) */
+  edge: number;
+  /** white alpha: scene light carried through the bevel (scaled by scene lightness at runtime) */
+  glow: number;
+  /** parts, for the debug views */
+  fresnel: number;
+  rim: number;
+}
+
+/** White light, shade and the outer interface at a point. */
+export function lighting(p: ProfileV2, pt: SurfacePoint, pxSize = 0.5): Lighting {
   const N = pt.N;
   const nz = N[2];
   const R: Vec3 = [2 * nz * N[0], 2 * nz * N[1], 2 * nz * nz - 1];
@@ -177,17 +224,20 @@ export function lighting(p: ProfileV2, pt: SurfacePoint): { light: number; shade
   const flatSpecF = Math.pow(Math.max(0, Hf[2]), p.specularExponent);
   const specK = Math.max(0, Math.pow(Math.max(0, dot(N, Hk)), p.specularExponent) - flatSpecK);
   const specF = Math.max(0, Math.pow(Math.max(0, dot(N, Hf)), p.specularExponent) - flatSpecF);
-  const bevel = 1 - nz; // how far the surface leans; 0 on the flat field
-  const lx = KEY[0];
-  const ly = KEY[1];
-  const ll = Math.hypot(lx, ly);
-  const nl = Math.hypot(N[0], N[1]) || 1;
-  const facing = (N[0] * lx + N[1] * ly) / (nl * ll); // -1..1, in-plane facing toward the key
-  const light =
-    p.fresnelGain * F * environment(R) +
-    p.specularGain * specK +
-    p.secondarySpecular * specF +
-    p.innerHighlight * Math.max(0, dot(N, KEY)) * bevel;
-  const shade = p.innerShade * Math.max(0, -facing) * bevel;
-  return { light: Math.min(1, light), shade: Math.min(1, shade) };
+  const bevel = 1 - pt.Nm[2]; // how far the macro surface leans; 0 on the flat field
+  const facing = keyFacing(pt.nOx, pt.nOy);
+  const fres = p.fresnelGain * F * environment(p, R, facing);
+  // The outermost sliver belongs to the interface: light starts just inside it.
+  const inside = p.outerEdgeAlpha > 0 ? smoothstep(p.outerEdgeWidth * 0.5, p.outerEdgeWidth + pxSize, pt.d) : 1;
+  const raw = fres + p.specularGain * specK + p.secondarySpecular * specF;
+  const light = Math.min(1, raw * inside * maxExposure(p));
+  // The bevel glow is scene light carried through the glass: its own layer, strong on bright
+  // scenes and faint on dark ones (no broad sheen over black).
+  const glow = Math.min(1, p.innerHighlight * Math.max(0, dot(N, KEY)) * bevel * inside);
+  const shade = Math.min(1, p.innerShade * Math.max(0, 1 - 2 * facing) * bevel);
+  // Outer interface: a hairline at the very edge, lighter where the edge faces the key.
+  const band = pt.d >= 0 ? 1 - smoothstep(p.outerEdgeWidth * 0.6, p.outerEdgeWidth + pxSize, pt.d) : 0;
+  const edge = p.outerEdgeAlpha * band * (0.7 + 0.3 * (1 - facing));
+  const rim = p.rimWidth > 0 ? 1 - smoothstep(0, p.rimWidth + pxSize, pt.d) : 0;
+  return { light, shade, edge, glow, fresnel: fres, rim: rim * inside };
 }
