@@ -46,7 +46,7 @@ export function MenuHost() {
   return createPortal(<MenuPanel key={open.key} x={open.x} y={open.y} items={open.items} onClose={hide} origin={open.origin} minWidth={open.minWidth} from={open.from} />, document.body);
 }
 
-function MenuPanel({ x, y, items, onClose, origin, minWidth, from, depth = 0 }: { x: number; y: number; items: MenuItem[]; onClose: () => void; origin?: string; minWidth?: number; from?: DOMRect; depth?: number }) {
+function MenuPanel({ x, y, items, onClose, origin, minWidth, from: _from, depth = 0 }: { x: number; y: number; items: MenuItem[]; onClose: () => void; origin?: string; minWidth?: number; from?: DOMRect; depth?: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ x, y, ready: false });
   const [active, setActive] = useState(-1);
@@ -103,8 +103,8 @@ function MenuPanel({ x, y, items, onClose, origin, minWidth, from, depth = 0 }: 
         ref={ref}
         material="menu"
         layer={LAYER.menu + depth}
-        className={`menu-panel ${pos.ready ? "is-in" : ""} ${from ? "is-morph" : ""}`}
-        morphFrom={pos.ready ? from : null}
+        // Morphing out of the anchor is off until the static material is right (Liquid Glass V2, phase 7).
+        className={`menu-panel ${pos.ready ? "is-in" : ""}`}
         style={{ left: pos.x, top: pos.y, transformOrigin: origin ?? "top left", minWidth }}
         role="menu"
         radius="var(--r-lg)"

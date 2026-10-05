@@ -24,6 +24,7 @@ import "./styles/system.css";
 import { installSpringTokens } from "./motion/spring";
 import { App } from "./App";
 import { GlassLab } from "./dev/GlassLab";
+import { GlassLabV2 } from "./dev/GlassLabV2";
 
 installSpringTokens();
 
@@ -36,6 +37,6 @@ if ("__TAURI_INTERNALS__" in window) {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    {import.meta.env.DEV && location.search.includes("glasslab") ? <GlassLab /> : <App />}
+    {import.meta.env.DEV && location.search.includes("glasslab2") ? <GlassLabV2 /> : import.meta.env.DEV && location.search.includes("glasslab") ? <GlassLab /> : <App />}
   </StrictMode>,
 );
