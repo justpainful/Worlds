@@ -10,6 +10,7 @@ import { Icon, type IconName } from "../ui/Icon";
 import { PageIcon, relTime } from "../ui/misc";
 import { pageOps } from "./pageActions";
 import { isResource } from "../resources/kinds";
+import { addStream, createResource, uploadFiles } from "../resources/create";
 
 interface Cmd {
   id: string;
@@ -57,6 +58,12 @@ function commands(): Cmd[] {
   const list: Cmd[] = [
     { id: "new", title: "Create Page", icon: "add", hint: "Ctrl+N", keywords: "new page", run: (w) => s.createPage({}, w) },
     { id: "home", title: "Go Home", icon: "home", run: (w) => s.open({ kind: "home" }, w) },
+    { id: "new-document", title: "New Document", icon: "text", keywords: "word write doc paper", run: () => createResource("document") },
+    { id: "new-presentation", title: "New Presentation", icon: "monitor", keywords: "slides deck powerpoint keynote", run: () => createResource("presentation") },
+    { id: "new-project", title: "New Project", icon: "folder", keywords: "folder organize", run: () => createResource("project") },
+    { id: "new-gallery", title: "New Gallery", icon: "image", keywords: "photos album pictures videos", run: () => createResource("gallery") },
+    { id: "upload", title: "Upload Files", icon: "upload", keywords: "import add file pdf video image", run: () => uploadFiles() },
+    { id: "stream", title: "Add Stream Link", icon: "link", keywords: "m3u8 hls live video url", run: () => addStream() },
     { id: "templates", title: "Templates", icon: "template", keywords: "new from template", run: (w) => s.open({ kind: "templates" }, w) },
     { id: "automations", title: "Automations", icon: "automation", run: (w) => s.open({ kind: "automations" }, w) },
     { id: "auto-new", title: "Create Automation", icon: "schedule", keywords: "schedule discord send", run: () => emit("automation:new", { pageId: page?.id ?? null }) },
