@@ -9,8 +9,10 @@
  * syncing in the background until they are acknowledged.
  */
 import type { JSONContent } from "@tiptap/core";
+import { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 import { newBlockId } from "../editor/extensions/blockIds";
+import { AttachmentSync, directoryOf, type AttachmentDeps } from "./attachments";
 import { upsertPerson } from "./comments";
 import { type SyncUser, onSyncConfigChange, syncConfig } from "./config";
 import { type LocalStore, MemoryLocalStore, type MirrorOutcome, TauriLocalStore } from "./localStore";
@@ -30,6 +32,8 @@ export interface SessionOptions {
   mirrorDelayMs?: number;
   /** Called after the block rows changed from the document. */
   onMirrored?: (updatedAt: number | null) => void;
+  /** Local file access for attachment sync (the app uses Tauri; tests inject). */
+  attachments?: Pick<AttachmentDeps, "readLocal" | "storeLocal"> & Partial<AttachmentDeps>;
 }
 
 type Listener = () => void;
@@ -39,6 +43,8 @@ export class CollabSession {
   readonly workspaceId: string;
   content!: Y.Doc;
   comments!: Y.Doc;
+  /** Presence for this page; outlives provider restarts (server or account changes). */
+  awareness!: Awareness;
   provider!: WorldsProvider;
   /** Bumps when the documents are rebuilt (the editor must rebind). */
   generation = 0;
@@ -58,6 +64,8 @@ export class CollabSession {
   private again = false;
   private destroyed = false;
   private starting: Promise<void> | null = null;
+  private files: AttachmentSync | null = null;
+  private filesTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(o: SessionOptions) {
     this.o = o;
@@ -87,15 +95,20 @@ export class CollabSession {
     return this.starting;
   }
 
-  private async build(): Promise<void> {
+  private async build(reuseDocs = false): Promise<void> {
     const cfg = syncConfig();
-    this.content = new Y.Doc();
-    this.comments = new Y.Doc();
+    if (!reuseDocs) {
+      this.awareness?.destroy();
+      this.content = new Y.Doc();
+      this.comments = new Y.Doc();
+      this.awareness = new Awareness(this.content);
+    }
     const opts: ProviderOptions = {
       pageId: this.pageId,
       workspaceId: this.workspaceId,
       content: this.content,
       comments: this.comments,
+      awareness: this.awareness,
       store: this.o.store,
       serverUrl: cfg.serverUrl(),
       getToken: (refresh) => syncConfig().getToken(refresh),
@@ -109,38 +122,83 @@ export class CollabSession {
         if (info.state === "synced" && this.ready) this.scheduleMirror();
         this.emit();
       }),
-      p.onReset(() => void this.rebuild()),
+      p.onReset(() => void this.rebuild("docs")),
       p.onRevoked(() => void this.o.store.purge(this.pageId).catch(() => undefined)),
     );
     const onContent = (_u: Uint8Array, origin: unknown) => {
-      if (origin !== ORIGIN_LOAD && this.ready) this.scheduleMirror();
+      if (origin !== ORIGIN_LOAD && this.ready) {
+        this.scheduleMirror();
+        this.scheduleFiles();
+      }
     };
     this.content.on("update", onContent);
     this.unsubs.push(() => this.content.off("update", onContent));
+    const serverUrl = opts.serverUrl;
+    const fileAccess = this.o.attachments ?? appFileAccess(this.pageId);
+    this.files =
+      serverUrl && fileAccess
+        ? new AttachmentSync(this.content, {
+            serverUrl,
+            getToken: () => opts.getToken(false),
+            workspaceId: this.workspaceId,
+            docId: this.pageId,
+            ...fileAccess,
+          })
+        : null;
     await p.init();
     this.info = p.info;
-    await this.initialMirror();
+    if (!reuseDocs) await this.initialMirror();
     const u = this.user;
-    p.awareness.setLocalStateField("user", { id: u.id, name: u.name, color: u.color });
+    this.awareness.setLocalStateField("user", { id: u.id, name: u.name, color: u.color });
     this.ready = true;
     this.emit();
+    this.scheduleFiles(0);
   }
 
-  /** Drop the documents and build them again from the local replica. */
-  async rebuild() {
+  /** Upload this page's new attachments and fetch the ones this computer lacks. */
+  private scheduleFiles(delay = 1500) {
+    if (!this.files) return;
+    if (this.filesTimer) clearTimeout(this.filesTimer);
+    this.filesTimer = setTimeout(() => {
+      this.filesTimer = null;
+      void this.syncFiles();
+    }, delay);
+  }
+
+  syncFiles(): Promise<void> {
+    if (!this.files || !this.ready || this.destroyed) return Promise.resolve();
+    return this.files.run(blocksFromY(this.content), this.canEdit).catch(() => undefined);
+  }
+
+  /** The attachment directory of the shared document (id -> hash, size, type, name). */
+  attachmentDirectory() {
+    return directoryOf(this.content);
+  }
+
+  /**
+   * "docs": drop the documents and build them again from the local replica
+   * (after a refused write; the editor rebinds). "connection": keep the
+   * documents and the editor, restart only the provider (server or account
+   * changed).
+   */
+  async rebuild(kind: "docs" | "connection" = "docs") {
     if (this.destroyed) return;
     await this.mirroring;
     this.teardown();
-    this.ready = false;
-    this.generation++;
-    this.emit();
-    this.starting = this.build();
+    if (kind === "docs") {
+      this.ready = false;
+      this.generation++;
+      this.emit();
+    }
+    this.starting = this.build(kind === "connection");
     await this.starting;
   }
 
   private teardown() {
     if (this.mirrorTimer) clearTimeout(this.mirrorTimer);
+    if (this.filesTimer) clearTimeout(this.filesTimer);
     this.mirrorTimer = null;
+    this.filesTimer = null;
     for (const u of this.unsubs.splice(0)) u();
     this.provider?.destroy();
   }
@@ -151,6 +209,8 @@ export class CollabSession {
     await this.flush().catch(() => undefined);
     this.destroyed = true;
     this.teardown();
+    this.awareness?.setLocalState(null);
+    this.awareness?.destroy();
     this.listeners.clear();
   }
 
@@ -310,6 +370,40 @@ export class CollabSession {
 }
 
 // ---------------------------------------------------------------------------
+// Attachment file access in the app (Tauri)
+// ---------------------------------------------------------------------------
+
+function appFileAccess(pageId: string): (Pick<AttachmentDeps, "readLocal" | "storeLocal"> & Partial<AttachmentDeps>) | null {
+  if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window) || !(localStore() instanceof TauriLocalStore)) return null;
+  const tauri = () => import("@tauri-apps/api/core");
+  const meta = async (id: string) => (await tauri()).invoke<{ fileName: string; mime: string } | null>("attachment_get", { id });
+  return {
+    hasLocal: async (id) => !!(await meta(id)),
+    readLocal: async (id) => {
+      const m = await meta(id);
+      if (!m) return null;
+      const r = await fetch(`http://wfile.localhost/${id}`);
+      if (!r.ok) return null;
+      return { fileName: m.fileName, mime: m.mime, bytes: new Uint8Array(await r.arrayBuffer()) };
+    },
+    storeLocal: async (id, info, bytes) => {
+      const enc = encodeURIComponent;
+      await (await tauri()).invoke("sync_attachment_store", bytes, {
+        headers: { "x-worlds-id": enc(id), "x-worlds-page": enc(pageId), "x-worlds-name": enc(info.fileName), "x-worlds-mime": enc(info.mime) },
+      });
+    },
+    progress: async (id, status, info) => {
+      const { invoke } = await tauri();
+      if (status === "uploading" && !info?.partsDone) await invoke("sync_attachment_enqueue", { attachmentId: id, pageId, workspaceId: null }).catch(() => undefined);
+      await invoke("sync_attachment_update", {
+        attachmentId: id,
+        progress: { status, sha256: info?.sha256 ?? null, size: info?.size ?? null, partsDone: info?.partsDone ?? null, error: info?.error ?? null },
+      }).catch(() => undefined);
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
 
@@ -399,5 +493,5 @@ export function releaseSession(session: CollabSession, graceMs = 4000) {
 
 /** Rebuild every open session (server or account changed). */
 onSyncConfigChange(() => {
-  for (const { session } of sessions.values()) void session.rebuild();
+  for (const { session } of sessions.values()) void session.rebuild("connection");
 });

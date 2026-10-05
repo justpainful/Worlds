@@ -214,6 +214,7 @@ pub fn run() {
             sync::commands::sync_attachment_enqueue,
             sync::commands::sync_attachment_queue,
             sync::commands::sync_attachment_update,
+            sync::commands::sync_attachment_store,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Worlds");

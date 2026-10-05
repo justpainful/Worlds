@@ -14,6 +14,7 @@ import { useStore } from "../state/store";
 import { collabExtensions } from "./extensions";
 import { startSyncManager, workspaceFor } from "./manager";
 import { acquireSession, localStore, releaseSession, type CollabSession } from "./session";
+import { StableEditor } from "./stableEditor";
 import { CollabChrome, startComment } from "./ui/CollabChrome";
 import { useSessionInfo, useSessionReady } from "./ui/hooks";
 import { SyncSettings } from "./ui/SyncSettings";
@@ -32,6 +33,8 @@ export interface Collab {
   editable: boolean;
   /** Save now (shared pages: mirror and persist). */
   flush: () => Promise<void>;
+  /** The editor to hand to surrounding views (null until it is the final one). */
+  expose: (editor: Editor | null) => Editor | null;
   render: (editor: Editor | null) => ReactNode;
 }
 
@@ -42,25 +45,41 @@ export function isSharedPage(page: Page): boolean {
 }
 
 export function useCollab(page: Page, opts: { onSaved?: (at: number) => void } = {}): Collab {
-  // The loaded page says whether it is shared; the store has the last word,
-  // so a page switches mode without reopening when sharing changes.
-  const [stored, setStored] = useState<{ pageId: string; shared: boolean } | null>(null);
-  const shared = stored?.pageId === page.id ? stored.shared : isSharedPage(page);
+  // The loaded page says whether it is shared; the local store confirms it
+  // (a page can be in a Team workspace before the loaded copy knows). The
+  // mode is settled once per open page: views around the editor keep the
+  // editor they were handed, so a later change reopens the page instead.
+  const guess = isSharedPage(page);
+  const [settled, setSettled] = useState<{ pageId: string; shared: boolean } | null>(null);
+  const known = settled?.pageId === page.id;
+  const shared = known ? settled.shared : guess;
   const [session, setSession] = useState<CollabSession | null>(null);
   const { ready, generation } = useSessionReady(session);
   const info = useSessionInfo(session);
   const onSaved = useRef(opts.onSaved);
   onSaved.current = opts.onSaved;
+  const stable = useRef<StableEditor | null>(null);
 
   useEffect(() => startSyncManager(), []);
 
   useEffect(() => {
     let alive = true;
+    let first: boolean | null = null;
     const check = () =>
       void localStore()
         .pageMode(page.id)
-        .then((m) => alive && setStored({ pageId: page.id, shared: m.shared }))
-        .catch(() => undefined);
+        .then((m) => {
+          if (!alive) return;
+          const next = m.shared || guess;
+          if (first === null) {
+            first = next;
+            setSettled({ pageId: page.id, shared: next });
+          } else if (next !== first) {
+            alive = false;
+            reopenPage(page.id);
+          }
+        })
+        .catch(() => alive && first === null && ((first = guess), setSettled({ pageId: page.id, shared: guess })));
     const onMode = (e: Event) => (e as CustomEvent<{ pageId: string }>).detail?.pageId === page.id && check();
     const onChanged = (e: Event) => {
       const list = (e as CustomEvent<{ pageId: string | null; kind: string }[]>).detail ?? [];
@@ -74,7 +93,7 @@ export function useCollab(page: Page, opts: { onSaved?: (at: number) => void } =
       window.removeEventListener("worlds:sync-mode", onMode);
       window.removeEventListener("worlds:changed", onChanged);
     };
-  }, [page.id]);
+  }, [page.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!shared) return;
@@ -98,10 +117,11 @@ export function useCollab(page: Page, opts: { onSaved?: (at: number) => void } =
   const live = shared && !!session && ready;
   const extensions = useMemo(() => (live && session ? collabExtensions(session) : []), [live, session, generation]); // eslint-disable-line react-hooks/exhaustive-deps
   const canEdit = !!session && session.canEdit;
+  const pending = !known || (shared && !live);
 
   return {
     shared,
-    pending: shared && !live,
+    pending,
     key: !shared ? "blocks" : live ? `yjs:${generation}` : "pending",
     extensions,
     starterKit: shared ? { undoRedo: false } : {},
@@ -109,8 +129,29 @@ export function useCollab(page: Page, opts: { onSaved?: (at: number) => void } =
     flush: async () => {
       await session?.flush();
     },
+    expose: (editor) => {
+      if (pending || !editor) return null;
+      if (!shared) return editor;
+      if (!stable.current) stable.current = new StableEditor(editor);
+      else stable.current.swap(editor);
+      return stable.current.proxy;
+    },
     render: (editor) => <CollabRoot pageId={page.id} session={live ? session : null} editor={live ? editor : null} level={info?.level ?? null} />,
   };
+}
+
+/** Open the page again (its editing mode changed while it was open). */
+function reopenPage(pageId: string) {
+  const st = useStore.getState();
+  const paneId = st.layout.activePaneId;
+  st.open({ kind: "home" }, "current", paneId);
+  requestAnimationFrame(() => {
+    const now = useStore.getState();
+    now.goBack(paneId);
+    const tab = now.layout.panes.find((p) => p.id === paneId);
+    const route = tab?.tabs.find((t) => t.id === tab.activeTabId)?.route as { kind: string; pageId?: string } | undefined;
+    if (route?.kind !== "page" || route.pageId !== pageId) now.openPage(pageId, "current");
+  });
 }
 
 function CollabRoot({ pageId, session, editor, level }: { pageId: string; session: CollabSession | null; editor: Editor | null; level: string | null }) {

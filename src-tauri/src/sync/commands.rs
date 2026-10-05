@@ -139,3 +139,25 @@ pub async fn sync_attachment_queue(state: State<'_, AppState>) -> CmdResult<Vec<
 pub async fn sync_attachment_update(state: State<'_, AppState>, attachment_id: String, progress: AttachmentProgress) -> CmdResult<()> {
     with(&state, |c| attachment_update(c, &attachment_id, &progress))
 }
+
+/// An attachment from another computer, as the raw request body; id, page,
+/// name and type travel in percent-encoded headers.
+#[tauri::command]
+pub async fn sync_attachment_store(state: State<'_, AppState>, request: tauri::ipc::Request<'_>) -> CmdResult<store::Attachment> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("expected the file bytes as the request body".into());
+    };
+    let header = |k: &str| {
+        request
+            .headers()
+            .get(k)
+            .and_then(|v| v.to_str().ok())
+            .map(|v| percent_encoding::percent_decode_str(v).decode_utf8_lossy().to_string())
+            .filter(|v| !v.is_empty())
+    };
+    let id = header("x-worlds-id").unwrap_or_default();
+    let page_id = header("x-worlds-page");
+    let name = header("x-worlds-name").unwrap_or_else(|| "file".into());
+    let mime = header("x-worlds-mime").unwrap_or_default();
+    with(&state, |c| store_attachment(c, &id, page_id.as_deref(), &name, &mime, bytes))
+}

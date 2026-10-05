@@ -352,7 +352,7 @@ export const PageEditor = forwardRef<
   }
 
   useImperativeHandle(ref, () => ({
-    editor: collab.pending ? null : editor,
+    editor: collab.expose(editor),
     flush,
     focusStart: () => editor?.chain().focus("start").run(),
   }));

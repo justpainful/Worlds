@@ -29,7 +29,7 @@ export function usePresence(session: CollabSession | null): Peer[] {
   const [peers, setPeers] = useState<Peer[]>([]);
   useEffect(() => {
     if (!session || !ready) return;
-    const aw = session.provider.awareness;
+    const aw = session.awareness;
     const read = () => {
       const me = aw.clientID;
       const byUser = new Map<string, Peer>();

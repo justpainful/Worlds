@@ -49,7 +49,9 @@ afterAll(async () => {
   for (const s of open) await s.close();
 });
 
-function computer(user: string, pageId: string, net = { online: true, watchers: new Set<(o: boolean) => void>() }) {
+type Files = Map<string, { fileName: string; mime: string; bytes: Uint8Array }>;
+
+function computer(user: string, pageId: string, net = { online: true, watchers: new Set<(o: boolean) => void>() }, files: Files = new Map()) {
   const store = new MemoryLocalStore();
   let tok: string | null = null;
   const s = new CollabSession({
@@ -59,6 +61,10 @@ function computer(user: string, pageId: string, net = { online: true, watchers: 
     user: () => ({ id: user, name: user[0].toUpperCase() + user.slice(1), color: "#64a8ff" }),
     firstSyncWaitMs: 3000,
     mirrorDelayMs: 20,
+    attachments: {
+      readLocal: async (id) => files.get(id) ?? null,
+      storeLocal: async (id, info, bytes) => void files.set(id, { fileName: info.fileName, mime: info.mime, bytes }),
+    },
     provider: {
       serverUrl: SYNC,
       getToken: async (refresh) => (tok && !refresh ? tok : (tok = await token(user))),
@@ -72,7 +78,7 @@ function computer(user: string, pageId: string, net = { online: true, watchers: 
     },
   });
   open.push(s);
-  return { s, store, net };
+  return { s, store, net, files };
 }
 
 describe.skipIf(!enabled)("live sync end to end", { timeout: 60_000 }, () => {
@@ -131,6 +137,31 @@ describe.skipIf(!enabled)("live sync end to end", { timeout: 60_000 }, () => {
     await until(() => texts(ann.store.blocks.get(page))[0] === "Final Draft 0 1 2 3 4 5 6 7 8 9", "ann has ben's offline edits");
     await until(() => texts(ben.store.blocks.get(page))[0] === "Final Draft 0 1 2 3 4 5 6 7 8 9", "ben has ann's edit");
     await until(async () => (await ben.store.outbox(null)).length === 0, "ben's outbox drained");
+  });
+
+  it("attachments travel between computers: resumable upload, verified download, same id", async () => {
+    const page = `page${run}d`;
+    const big = new Uint8Array(9 * 1024 * 1024).map((_, i) => (i * 31 + 7) & 255); // two parts
+    const small = new TextEncoder().encode("minutes.txt contents");
+    const annFiles: Files = new Map([
+      ["att-big", { fileName: "demo.mp4", mime: "video/mp4", bytes: big }],
+      ["att-small", { fileName: "minutes.txt", mime: "text/plain", bytes: small }],
+    ]);
+    const ann = computer("ann", page, undefined, annFiles);
+    ann.store.blocks.set(page, [
+      p("b1", "Files"),
+      { type: "video", attrs: { bid: "v1", attachmentId: "att-big" } },
+      { type: "file", attrs: { bid: "f1", attachmentId: "att-small", name: "minutes.txt" } },
+    ]);
+    await ann.s.start();
+    await until(() => ann.s.attachmentDirectory().size === 2, "ann uploaded both", 30_000);
+    const ben = computer("ben", page);
+    await ben.s.start();
+    await until(() => ben.files.size === 2, "ben downloaded both", 30_000);
+    expect(ben.files.get("att-small")!.bytes).toEqual(small);
+    expect(ben.files.get("att-big")!.bytes.byteLength).toBe(big.byteLength);
+    expect(ben.files.get("att-big")!.bytes).toEqual(big);
+    expect(ben.files.get("att-big")!.fileName).toBe("demo.mp4");
   });
 
   it("comments with mentions notify, viewers stay read-only, revocation disconnects", async () => {

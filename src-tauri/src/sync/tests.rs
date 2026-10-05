@@ -268,6 +268,28 @@ fn mirror_adopt_records_a_seed_without_writing() {
 }
 
 #[test]
+fn attachments_from_other_computers_keep_their_id() {
+    let conn = fresh("store-attachment");
+    let id = page(&conn, "Pictures");
+    let dir = temp_dir("files");
+    let bytes = b"hello from another computer";
+    let a = store_attachment_in(&conn, &dir, "0192abcdef", Some(&id), "notes/../report.txt", "text/plain", bytes).unwrap();
+    assert_eq!(a.id, "0192abcdef");
+    assert_eq!(a.file_name, "report.txt");
+    assert_eq!(a.size, bytes.len() as i64);
+    assert_eq!(std::fs::read(dir.join(&a.rel_path)).unwrap(), bytes);
+    // Idempotent, and never queued for upload again.
+    store_attachment_in(&conn, &dir, "0192abcdef", Some(&id), "x.txt", "text/plain", b"other").unwrap();
+    assert_eq!(std::fs::read(dir.join(&a.rel_path)).unwrap(), bytes);
+    assert!(attachment_queue(&conn, 3).unwrap().is_empty());
+    // Ids never become paths.
+    assert!(store_attachment_in(&conn, &dir, "../evil", None, "a.txt", "text/plain", b"x").is_err());
+    // Something named like an image has to be one.
+    let fake = store_attachment_in(&conn, &dir, "fakeimg", None, "a.png", "image/png", b"not a png").unwrap();
+    assert_eq!(fake.mime, "application/octet-stream");
+}
+
+#[test]
 fn attachment_queue_tracks_resumable_uploads() {
     let conn = fresh("attach");
     let id = page(&conn, "Files");

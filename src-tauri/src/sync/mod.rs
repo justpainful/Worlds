@@ -639,3 +639,70 @@ pub fn attachment_update(conn: &Connection, attachment_id: &str, p: &AttachmentP
     )?;
     Ok(())
 }
+
+/// Keep an attachment that arrived from another computer under its original
+/// id, so the shared page's nodes resolve to it here too. Does nothing when
+/// the attachment is already present.
+pub fn store_attachment(
+    conn: &Connection,
+    id: &str,
+    page_id: Option<&str>,
+    file_name: &str,
+    mime: &str,
+    bytes: &[u8],
+) -> Result<store::Attachment> {
+    store_attachment_in(conn, &crate::db::attachments_dir(), id, page_id, file_name, mime, bytes)
+}
+
+pub(crate) fn store_attachment_in(
+    conn: &Connection,
+    dir: &std::path::Path,
+    id: &str,
+    page_id: Option<&str>,
+    file_name: &str,
+    mime: &str,
+    bytes: &[u8],
+) -> Result<store::Attachment> {
+    if id.is_empty() || id.len() > 64 || !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') {
+        return Err(anyhow!("invalid attachment id"));
+    }
+    if let Some(a) = store::get_attachment(conn, id)? {
+        return Ok(a);
+    }
+    if bytes.len() > store::MAX_ATTACHMENT_BYTES {
+        return Err(anyhow!("the file is larger than 1 GB"));
+    }
+    let file_name = store::clean_file_name(file_name);
+    let ext = std::path::Path::new(&file_name)
+        .extension()
+        .and_then(|e| e.to_str())
+        .filter(|e| e.len() <= 10 && e.chars().all(|c| c.is_ascii_alphanumeric()))
+        .map(|e| format!(".{}", e.to_lowercase()))
+        .unwrap_or_default();
+    let mut mime = if mime.is_empty() || mime.len() > 255 { "application/octet-stream".to_string() } else { mime.to_string() };
+    let vector_or_new = matches!(ext.as_str(), ".svg" | ".heic" | ".heif" | ".avif" | ".ico");
+    if mime.starts_with("image/") && !vector_or_new && imagesize::blob_size(bytes).is_err() {
+        mime = "application/octet-stream".into();
+    }
+    let month = chrono::Local::now().format("%Y-%m").to_string();
+    let rel = format!("{month}/{id}{ext}");
+    let abs = dir.join(&rel);
+    std::fs::create_dir_all(abs.parent().ok_or_else(|| anyhow!("bad path"))?)?;
+    std::fs::write(&abs, bytes)?;
+    let (w, h) = match imagesize::blob_size(bytes) {
+        Ok(s) if mime.starts_with("image/") => (Some(s.width as i64), Some(s.height as i64)),
+        _ => (None, None),
+    };
+    conn.execute(
+        "INSERT INTO attachments (id, page_id, kind, file_name, mime, size, rel_path, width, height, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        params![id, page_id, store::kind_for_mime(&mime), file_name, mime, bytes.len() as i64, rel, w, h, now()],
+    )?;
+    // Arrived from the server: nothing to upload.
+    conn.execute(
+        "INSERT INTO sync_attachment_queue (attachment_id, page_id, status, created_at, updated_at) VALUES (?1, ?2, 'done', ?3, ?3)
+         ON CONFLICT(attachment_id) DO UPDATE SET status = 'done'",
+        params![id, page_id, now()],
+    )?;
+    store::get_attachment(conn, id)?.ok_or_else(|| anyhow!("attachment vanished"))
+}

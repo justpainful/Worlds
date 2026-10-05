@@ -31,17 +31,22 @@ export function SyncSettings({ pageId, onClose }: { pageId: string; onClose: () 
   const serverOk = !server || /^https?:\/\/[^\s]+$/.test(server.trim());
   const who = tokenSubject(token.trim());
 
-  const save = () => {
+  const persist = () => {
     setSetting("sync.serverUrl", server.trim());
     setSetting("sync.devToken", token.trim());
     setSetting("sync.workspaceId", workspace.trim() || "default");
+  };
+  const save = () => {
+    persist();
     onClose();
   };
 
   const toggleShare = async () => {
-    if (!mode) return;
+    if (!mode || !serverOk) return;
     setBusy(true);
     try {
+      // The page reopens in its new mode: keep what was typed here.
+      persist();
       setMode(await localStore().setShared(pageId, !mode.flagged));
       announceModeChange(pageId);
     } catch (e) {

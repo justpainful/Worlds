@@ -136,7 +136,8 @@ export function collabExtensions(session: CollabSession): AnyExtension[] {
   return [
     Collaboration.configure({ document: session.content, field: FRAGMENT }),
     CollaborationCaret.configure({
-      provider: session.provider,
+      // Presence belongs to the session, so it survives provider restarts.
+      provider: { awareness: session.awareness },
       user: { id: user.id, name: user.name, color: user.color },
       render: caret,
       selectionRender: (u: Record<string, unknown>) => ({

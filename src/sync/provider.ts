@@ -72,6 +72,8 @@ export interface ProviderOptions {
   docId?: string;
   content: Y.Doc;
   comments: Y.Doc;
+  /** Presence, when the caller keeps it across providers (defaults to a new one). */
+  awareness?: awarenessProtocol.Awareness;
   store: LocalStore;
   /** https://... base of the sync service, or null for local only. */
   serverUrl: string | null;
@@ -117,7 +119,8 @@ export class WorldsProvider {
   readonly pageId: string;
   readonly docs: Y.Doc[];
   readonly awareness: awarenessProtocol.Awareness;
-  private o: Required<Omit<ProviderOptions, "docId" | "fetcher">> & { docId: string; fetcher: typeof fetch | null };
+  private o: Required<Omit<ProviderOptions, "docId" | "fetcher" | "awareness">> & { docId: string; fetcher: typeof fetch | null };
+  private ownsAwareness: boolean;
   private socket: SocketLike | null = null;
   private chain: Promise<unknown> = Promise.resolve();
   private pending = new Map<number, Pending>();
@@ -159,7 +162,8 @@ export class WorldsProvider {
       watchOnline: opts.watchOnline ?? defaultWatchOnline,
     };
     this.docs = [opts.content, opts.comments];
-    this.awareness = new awarenessProtocol.Awareness(opts.content);
+    this.ownsAwareness = !opts.awareness;
+    this.awareness = opts.awareness ?? new awarenessProtocol.Awareness(opts.content);
     this.info = { state: "offline", level: null, unacked: 0, error: null, attention: null, lastSyncedAt: null, remote: !!opts.serverUrl };
   }
 
@@ -195,10 +199,14 @@ export class WorldsProvider {
     this.stopped = true;
     this.unwatchOnline();
     this.clearTimers();
-    this.awareness.setLocalState(null); // tells peers we left
+    if (this.ownsAwareness) this.awareness.setLocalState(null); // tells peers we left
     this.docs.forEach((doc, channel) => this.docListeners[channel] && doc.off("update", this.docListeners[channel]));
     this.awareness.off("update", this.onAwarenessUpdate);
-    this.awareness.destroy();
+    if (this.ownsAwareness) this.awareness.destroy();
+    else {
+      const others = [...this.awareness.getStates().keys()].filter((id) => id !== this.awareness.clientID);
+      awarenessProtocol.removeAwarenessStates(this.awareness, others, this);
+    }
     const s = this.socket;
     this.socket = null;
     if (s) {
