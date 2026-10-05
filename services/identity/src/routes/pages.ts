@@ -51,7 +51,7 @@ async function signin() {
   const redirect = q.get("redirect_uri"), state = q.get("state"), challenge = q.get("code_challenge");
   if (!loopback(redirect || "") || !state || !challenge) return say("This link is incomplete. Start again from Worlds.", true);
   const { challengeId, options } = await post("/auth/passkey/login/options", {});
-  const cred = await navigator.credentials.get({ publicKey: { ...options, challenge: unb64(options.challenge),
+  const cred = await navigator.credentials.get({ publicKey: { ...options, hints: ["client-device"], challenge: unb64(options.challenge),
     allowCredentials: (options.allowCredentials || []).map((c) => ({ ...c, id: unb64(c.id) })) } });
   const r = cred.response;
   const response = { id: cred.id, rawId: b64(cred.rawId), type: cred.type, clientExtensionResults: cred.getClientExtensionResults(),
@@ -66,7 +66,7 @@ async function add() {
   const ticket = q.get("ticket");
   if (!ticket) return say("This link is incomplete. Start again from Worlds.", true);
   const { challengeId, options } = await post("/auth/passkey/register/options", { ticket });
-  const cred = await navigator.credentials.create({ publicKey: { ...options, challenge: unb64(options.challenge),
+  const cred = await navigator.credentials.create({ publicKey: { ...options, hints: ["client-device"], challenge: unb64(options.challenge),
     user: { ...options.user, id: unb64(options.user.id) }, excludeCredentials: (options.excludeCredentials || []).map((c) => ({ ...c, id: unb64(c.id) })) } });
   const r = cred.response;
   const response = { id: cred.id, rawId: b64(cred.rawId), type: cred.type, clientExtensionResults: cred.getClientExtensionResults(),
