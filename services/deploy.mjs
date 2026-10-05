@@ -14,7 +14,12 @@ import { generateKeyPairSync, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline/promises";
+import { Writable } from "node:stream";
 import { fileURLToPath } from "node:url";
+
+// Windows runs npx through the shell; the arguments here are fixed, so the
+// DEP0190 notice is noise.
+process.noDeprecation = true;
 
 const here = dirname(fileURLToPath(import.meta.url));
 const ID_DIR = join(here, "identity");
@@ -66,10 +71,17 @@ function writeConfig(dir, edits, extra = "") {
 }
 
 function deploy(dir, label) {
-  const r = wrangler(dir, ["deploy", "-c", "wrangler.deploy.toml"]);
+  let r = wrangler(dir, ["deploy", "-c", "wrangler.deploy.toml"], { quiet: true });
+  if (!r.ok && /workers\.dev subdomain/i.test(r.out)) {
+    // A new Cloudflare account has no workers.dev name yet: let Wrangler ask for one.
+    say("   Your Cloudflare account needs a workers.dev name (one time).");
+    say("   Answer Y, then type any short name, for example worlds-yourname.");
+    if (!wrangler(dir, ["deploy", "-c", "wrangler.deploy.toml"], { interactive: true }).ok)
+      fail("No workers.dev name was set. Run this again, or pick one in dash.cloudflare.com under Workers & Pages.");
+    r = wrangler(dir, ["deploy", "-c", "wrangler.deploy.toml"], { quiet: true });
+  }
   if (!r.ok) {
-    if (/workers\.dev subdomain/i.test(r.out))
-      fail("Cloudflare needs a workers.dev name first. Open dash.cloudflare.com, go to Workers & Pages, pick any name it offers, then run this again.");
+    say(r.out);
     fail(`${label} did not deploy (see above).`);
   }
   const url = r.out.match(/https:\/\/[a-z0-9-]+\.[a-z0-9-]+\.workers\.dev/i)?.[0];
@@ -100,8 +112,20 @@ if (!state.resendKey) {
   say("   Worlds emails a 6-digit code when someone signs in. It sends them through Resend (free).");
   say("   1) Make a free account at https://resend.com");
   say("   2) Open API Keys, press Create API Key, and copy it.");
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  state.resendKey = (await rl.question("   Paste the Resend API key here: ")).trim();
+  // The key is not echoed while it is pasted.
+  let muted = false;
+  const output = new Writable({
+    write(chunk, _enc, cb) {
+      if (!muted) process.stdout.write(chunk);
+      cb();
+    },
+  });
+  const rl = createInterface({ input: process.stdin, output, terminal: true });
+  process.stdout.write("   Paste the Resend API key here (it stays hidden): ");
+  muted = true;
+  state.resendKey = (await rl.question("")).trim();
+  muted = false;
+  process.stdout.write("\n");
   const from = (await rl.question("   Sender address (press Enter to use Resend's test sender): ")).trim();
   rl.close();
   if (!state.resendKey.startsWith("re_")) fail("That does not look like a Resend key (they start with re_).");
