@@ -226,6 +226,13 @@
 .ss-share > div { flex: 1; display: flex; flex-direction: column; gap: 2px; font: var(--t-small); color: var(--text-3); }
 .ss-share strong { font: var(--t-ui-strong); color: var(--text-1); }
 
+/* ---- Shared history ----------------------------------------------------- */
+.versions-list { display: flex; flex-direction: column; gap: 4px; max-height: 50vh; overflow: auto; }
+.version-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--r-xs); }
+.version-row:hover { background: var(--fill-1); }
+.version-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font: var(--t-small); color: var(--text-3); }
+.version-text strong { font: var(--t-ui-strong); color: var(--text-1); }
+
 @media print {
   .collab-actions, .comments-panel, .notif-popover, .comment-affordance, .collab-caret { display: none !important; }
   .comment-anchor { background: none; border: none; }

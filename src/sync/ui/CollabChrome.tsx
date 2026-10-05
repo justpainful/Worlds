@@ -14,6 +14,7 @@ import { CommentsPanel } from "./CommentsPanel";
 import { useCommentsUi } from "./commentsUi";
 import { useComments, usePresence, useSessionInfo, type Peer } from "./hooks";
 import { NotificationsPopover } from "./Notifications";
+import { VersionsSheet } from "./VersionsSheet";
 
 export type StatusKind = "synced" | "syncing" | "offline" | "attention";
 
@@ -147,6 +148,7 @@ export function CollabChrome({
   const panelOpen = useCommentsUi((s) => s.pageId === session.pageId);
   const host = useActionsHost(wrap);
   const [bell, setBell] = useState<HTMLElement | null>(null);
+  const [history, setHistory] = useState(false);
   const status = statusOf(info);
   const open = threads.filter((t) => !t.resolved).length;
 
@@ -160,6 +162,7 @@ export function CollabChrome({
       ...(info?.level ? [{ kind: "label" as const, label: LEVEL_TEXT[info.level] ?? info.level }] : []),
       { kind: "separator" },
       { label: "Sync Now", icon: "refresh", disabled: !info?.remote, onSelect: () => session.provider.reconnect() },
+      { label: "Shared History", icon: "history", disabled: !info?.remote, onSelect: () => setHistory(true) },
       { label: "Live Sync Settings", icon: "settings", onSelect: onSettings },
     ];
     void localStore()
@@ -207,6 +210,7 @@ export function CollabChrome({
       {editor && wrap && !editor.isDestroyed && <CommentAffordance editor={editor} session={session} wrap={wrap} />}
       <CommentsPanel session={session} editor={editor} />
       {bell && <NotificationsPopover anchor={bell} onClose={() => setBell(null)} />}
+      {history && <VersionsSheet session={session} onClose={() => setHistory(false)} />}
       {status.kind === "attention" && info?.level === "none" && <RevokedNote />}
     </>
   );

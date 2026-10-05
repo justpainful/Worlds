@@ -16,6 +16,7 @@ import { MemoryLocalStore } from "./localStore";
 import { fragmentOf } from "./mirror";
 import { CollabSession } from "./session";
 import { createThread, listThreads, upsertPerson } from "./comments";
+import { listVersions, restoreInto, saveVersion, versionState } from "./versions";
 
 const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {};
 const SYNC = env.WORLDS_SYNC_URL ?? "http://127.0.0.1:8790";
@@ -108,6 +109,19 @@ describe.skipIf(!enabled)("live sync end to end", { timeout: 60_000 }, () => {
     ann.store.externalWrite(page, [...(ann.store.blocks.get(page) ?? []), p("b3", "Action items")]);
     await ann.s.reconcile();
     await until(() => texts(ben.store.blocks.get(page)).includes("Action items"), "Claude's block reaches Ben");
+
+    // Shared history: a labelled version with its authors, then a restore
+    // that reaches the other computer as an ordinary edit.
+    const tok = await token("ann");
+    const vapi = { serverUrl: SYNC, getToken: async () => tok, workspaceId: WS, docId: page };
+    const v = await saveVersion(vapi, "Before cleanup");
+    expect(v.authors.sort()).toEqual(["ann", "ben"]);
+    const t0 = (fragmentOf(ann.s.content).get(0) as Y.XmlElement).get(0) as Y.XmlText;
+    t0.delete(0, t0.length);
+    await until(() => texts(ben.store.blocks.get(page))[0] === "", "deletion reaches ben");
+    restoreInto(ann.s.content, await versionState(vapi, v.id));
+    await until(() => texts(ben.store.blocks.get(page))[0] === "Agenda for Monday", "restore reaches ben");
+    expect((await listVersions(vapi)).some((x) => x.id === v.id && x.label === "Before cleanup")).toBe(true);
 
     // Presence.
     await until(() => [...ben.s.provider.awareness.getStates().values()].some((st) => (st as { user?: { id?: string } }).user?.id === "ann"), "ann's presence at ben");
