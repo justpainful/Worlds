@@ -23,6 +23,8 @@ export default defineConfig(async () => {
     ],
     test: {
       setupFiles: ["./test/setup.ts"],
+      // Each test signs several people up through the real flow; leave room on slow CI machines.
+      testTimeout: 30_000,
     },
   };
 });

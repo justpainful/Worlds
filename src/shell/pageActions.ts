@@ -3,6 +3,7 @@ import type { PageMeta } from "../lib/types";
 import { useStore, childrenOf, pageTitle } from "../state/store";
 import type { MenuItem } from "../ui/Menu";
 import { isResource } from "../resources/kinds";
+import { openShareSheet } from "../account/store";
 
 export const renameRequests = new EventTarget();
 export function requestRename(pageId: string) {
@@ -123,6 +124,7 @@ export function pageMenu(p: PageMeta, opts: { paneId?: string; inPage?: boolean 
   items.push(
     { label: "Duplicate", icon: "duplicate", onSelect: () => pageOps.duplicate(p) },
     { label: "Move to", icon: "move", submenu: moveTargets(p) },
+    { label: "Share", icon: "share", onSelect: () => openShareSheet(p.id) },
     { label: "Save as Template", icon: "template", onSelect: () => pageOps.saveAsTemplate(p) },
     { kind: "separator" },
     { label: p.archived ? "Unarchive" : "Archive", icon: p.archived ? "unarchive" : "archive", onSelect: () => pageOps.archive(p) },

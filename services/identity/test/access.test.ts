@@ -193,6 +193,40 @@ describe("sharing pages", () => {
   });
 });
 
+describe("page invite links", () => {
+  it("let anyone with full access invite a guest straight onto one page", async () => {
+    const w = await setup();
+    // A plain member cannot make workspace links, nor page links without full access.
+    expect((await api("POST", `/workspaces/${w.id}/invites`, { token: w.member.accessToken, body: { role: "guest" } })).status).toBe(403);
+    expect((await api("POST", `/workspaces/${w.id}/invites`, { token: w.member.accessToken, body: { role: "guest", pageId: "handbook", level: "view" } })).status).toBe(403);
+    await api("PUT", `/workspaces/${w.id}/pages/handbook/permissions`, { token: w.owner.accessToken, body: { principalType: "user", principalId: w.member.userId, level: "full" } });
+    // Guests cannot get full access through a link, and members only through roles the inviter may grant.
+    expect((await api("POST", `/workspaces/${w.id}/invites`, { token: w.member.accessToken, body: { role: "guest", pageId: "handbook", level: "full" } })).status).toBe(400);
+    expect((await api("POST", `/workspaces/${w.id}/invites`, { token: w.member.accessToken, body: { role: "member", pageId: "handbook", level: "view" } })).status).toBe(403);
+    const inv = await api("POST", `/workspaces/${w.id}/invites`, { token: w.member.accessToken, body: { role: "guest", pageId: "handbook", level: "comment", expiresInHours: 48, maxUses: 1 } });
+    expect(inv.status).toBe(201);
+    expect(inv.json).toMatchObject({ pageId: "handbook", level: "comment", maxUses: 1 });
+
+    const list = await api("GET", `/workspaces/${w.id}/invites?pageId=handbook`, { token: w.member.accessToken });
+    expect(list.json.map((i: { id: string }) => i.id)).toEqual([inv.json.id]);
+
+    const visitor = await signUp("Visitor");
+    const acc = await api("POST", `/invites/${inv.json.token}/accept`, { token: visitor.accessToken });
+    expect(acc.status).toBe(200);
+    expect(acc.json).toMatchObject({ pageId: "handbook", workspace: { role: "guest" } });
+    expect(await rpc().checkAccess({ userId: visitor.userId, workspaceId: w.id, docId: "salaries" })).toEqual({ level: "comment" });
+    expect(await rpc().checkAccess({ userId: visitor.userId, workspaceId: w.id, docId: "roadmap" })).toEqual({ level: "none" });
+
+    // The person who made the link can turn it off; it is single use anyway.
+    const late = await signUp("Late");
+    expect((await api("POST", `/invites/${inv.json.token}/accept`, { token: late.accessToken })).status).toBe(410);
+    expect((await api("DELETE", `/workspaces/${w.id}/invites/${inv.json.id}`, { token: w.member.accessToken })).status).toBe(200);
+    const other = await w.add("member", "Other");
+    const inv2 = await api("POST", `/workspaces/${w.id}/invites`, { token: w.owner.accessToken, body: { role: "guest", pageId: "roadmap", level: "view" } });
+    expect((await api("DELETE", `/workspaces/${w.id}/invites/${inv2.json.id}`, { token: other.accessToken })).status).toBe(403);
+  });
+});
+
 describe("Service Binding contract", () => {
   it("checkAccess returns the effective level for users, groups and overrides", async () => {
     const w = await setup();

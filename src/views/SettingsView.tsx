@@ -14,8 +14,10 @@ import { SearchField } from "../ui/SearchField";
 import { ACCENTS } from "../shell/appearance";
 import { BridgeCard } from "./IntegrationsView";
 import { Select, DIRECTION_OPTIONS, LANGUAGE_OPTIONS } from "../ui/Select";
+import { AccountSettings } from "../account/AccountSettings";
 
 const SECTIONS: { id: string; label: string; tile: string; group: number; keywords: string }[] = [
+  { id: "account", label: "Account", tile: "team", group: 0, keywords: "sign in passkey email devices workspaces team members sign out server" },
   { id: "appearance", label: "Appearance", tile: "design", group: 0, keywords: "theme accent language glass transparency window motion density background liquid" },
   { id: "editor", label: "Editor", tile: "writing", group: 0, keywords: "direction rtl arabic spell check paragraph" },
   { id: "ai", label: "Claude", tile: "claude", group: 1, keywords: "ai model effort spark orbit nova instructions mcp" },
@@ -65,6 +67,7 @@ export function SettingsView({ section = "appearance" }: { section?: string }) {
           <ProductIcon name={current.tile} size={34} />
           <h1>{current.label}</h1>
         </header>
+        {active === "account" && <AccountSettings />}
         {active === "appearance" && <Appearance />}
         {active === "editor" && <EditorSettings />}
         {active === "ai" && <AiSettings />}

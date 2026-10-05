@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { ProductIcon, type ProductIconName } from "../ui/ProductIcon";
 import { useStore, childrenOf, pageTitle, type Route } from "../state/store";
+import { WorkspaceSwitcher } from "../account/WorkspaceSwitcher";
+import { useWorkspacePages } from "../account/store";
 import type { PageMeta } from "../lib/types";
 import { Icon, type IconName } from "../ui/Icon";
 import { IconButton } from "../ui/Button";
@@ -44,7 +46,7 @@ function useActiveRoute(): Route | null {
 
 export function Sidebar() {
   const sidebar = useStore((s) => s.sidebar);
-  const pages = useStore((s) => s.pages);
+  const pages = useWorkspacePages(useStore((s) => s.pages));
   const profile = useStore((s) => s.profile);
   const pendingCount = useStore((s) => s.pendingCount);
   const open = useStore((s) => s.open);
@@ -100,6 +102,7 @@ export function Sidebar() {
           <IconButton icon="edit" label="New" shortcut="Ctrl+N for a page" onClick={(e) => newResourceMenu(e.currentTarget)} />
         </div>
 
+        <WorkspaceSwitcher />
         <nav className="side-nav">
           {nav("home", "Home", { kind: "home" }, undefined, "home")}
           {nav("assistant", "Claude", { kind: "chat" }, undefined, "claude")}

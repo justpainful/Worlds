@@ -332,6 +332,11 @@ workspaces.put("/:id/groups/:gid/members", async (c) => {
 // Invite links
 // ---------------------------------------------------------------------------
 
+/**
+ * Create an invite link. A link for a page (from its Share sheet) also gives
+ * the person that page at `level`: anyone with full access to the page may
+ * invite guests that way; other roles follow the workspace invite rules.
+ */
 workspaces.post("/:id/invites", async (c) => {
   const caller = c.get("caller");
   const id = c.req.param("id");
@@ -339,8 +344,18 @@ workspaces.post("/:id/invites", async (c) => {
   const b = await body(c.req);
   const role = b.role ?? "member";
   if (!isRole(role)) throw bad("invalid_role");
-  if (!canInvite(actorRole, role)) throw forbidden("forbidden", "You cannot invite people with this role.");
-  const hours = b.expiresInHours === undefined ? 168 : Number(b.expiresInHours);
+  const pageId = optStr(b.pageId, "pageId", 64) ?? null;
+  let pageLevel: Level | null = null;
+  if (pageId) {
+    await pageExists(c, id, pageId);
+    if ((await myLevel(c, id, pageId)) !== "full") throw forbidden("forbidden", "You need full access to invite people to this page.");
+    pageLevel = isLevel(b.level) ? b.level : "edit";
+    if (pageLevel === "none" || (role === "guest" && pageLevel === "full")) throw bad("invalid_level", "Guests can get at most Edit.");
+    if (role !== "guest" && !canInvite(actorRole, role)) throw forbidden("forbidden", "You cannot invite people with this role.");
+  } else if (!canInvite(actorRole, role)) {
+    throw forbidden("forbidden", "You cannot invite people with this role.");
+  }
+  const hours = b.expiresInHours === undefined || b.expiresInHours === null ? 168 : Number(b.expiresInHours);
   if (!Number.isFinite(hours) || hours <= 0 || hours > 720) throw bad("invalid_expiry", "Links expire after 1 hour to 30 days.");
   const maxUses = b.maxUses === undefined || b.maxUses === null ? null : Number(b.maxUses);
   if (maxUses !== null && (!Number.isInteger(maxUses) || maxUses < 1 || maxUses > 1000)) throw bad("invalid_max_uses", "maxUses must be between 1 and 1000.");
@@ -351,32 +366,46 @@ workspaces.post("/:id/invites", async (c) => {
   await commit(
     c,
     [
-      c.env.DB.prepare("INSERT INTO invites (id, workspace_id, token_hash, role, created_by, created_at, expires_at, max_uses) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)").bind(
-        inviteId,
-        id,
-        await sha256Hex(token),
-        role,
-        caller.userId,
-        t,
-        expiresAt,
-        maxUses,
-      ),
+      c.env.DB.prepare(
+        "INSERT INTO invites (id, workspace_id, token_hash, role, created_by, created_at, expires_at, max_uses, page_id, page_level) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+      ).bind(inviteId, id, await sha256Hex(token), role, caller.userId, t, expiresAt, maxUses, pageId, pageLevel),
     ],
-    [auditOf(caller, id, { action: "invite.created", targetType: "invite", targetId: inviteId, meta: { role, expiresAt, maxUses } })],
+    [auditOf(caller, id, { action: "invite.created", targetType: "invite", targetId: inviteId, meta: { role, expiresAt, maxUses, pageId, pageLevel } })],
     [],
   );
   const url = `${c.env.PUBLIC_URL.replace(/\/$/, "")}/join/${token}`;
-  return c.json({ id: inviteId, token, url, role, expiresAt, maxUses, uses: 0, createdAt: t }, 201);
+  return c.json({ id: inviteId, token, url, role, expiresAt, maxUses, uses: 0, createdAt: t, pageId, level: pageLevel, active: true, revokedAt: null }, 201);
 });
 
+type InviteListRow = {
+  id: string;
+  role: Role;
+  created_by: string;
+  created_at: number;
+  expires_at: number;
+  max_uses: number | null;
+  uses: number;
+  revoked_at: number | null;
+  page_id: string | null;
+  page_level: string | null;
+};
+
+/** Owners and admins see every link; with ?pageId, anyone with full access sees that page's links. */
 workspaces.get("/:id/invites", async (c) => {
   const id = c.req.param("id");
-  if (!canManageInvites(await roleIn(c, id))) throw forbidden();
+  const role = await roleIn(c, id);
+  const pageId = c.req.query("pageId");
+  if (pageId) {
+    if ((await myLevel(c, id, pageId)) !== "full") throw forbidden();
+  } else if (!canManageInvites(role)) {
+    throw forbidden();
+  }
   const { results } = await c.env.DB.prepare(
-    "SELECT id, role, created_by, created_at, expires_at, max_uses, uses, revoked_at FROM invites WHERE workspace_id = ?1 ORDER BY created_at DESC LIMIT 100",
+    `SELECT id, role, created_by, created_at, expires_at, max_uses, uses, revoked_at, page_id, page_level FROM invites
+     WHERE workspace_id = ?1 AND (?2 IS NULL OR page_id = ?2) ORDER BY created_at DESC LIMIT 100`,
   )
-    .bind(id)
-    .all<{ id: string; role: Role; created_by: string; created_at: number; expires_at: number; max_uses: number | null; uses: number; revoked_at: number | null }>();
+    .bind(id, pageId ?? null)
+    .all<InviteListRow>();
   const t = now();
   return c.json(
     results.map((i) => ({
@@ -388,16 +417,22 @@ workspaces.get("/:id/invites", async (c) => {
       maxUses: i.max_uses,
       uses: i.uses,
       revokedAt: i.revoked_at,
+      pageId: i.page_id,
+      level: i.page_level,
       active: !i.revoked_at && i.expires_at > t && (i.max_uses === null || i.uses < i.max_uses),
     })),
   );
 });
 
+/** Owners and admins revoke any link; whoever made a link can revoke it too. Immediate. */
 workspaces.delete("/:id/invites/:inviteId", async (c) => {
   const caller = c.get("caller");
   const id = c.req.param("id");
   const inviteId = c.req.param("inviteId");
-  if (!canManageInvites(await roleIn(c, id))) throw forbidden();
+  const role = await roleIn(c, id);
+  const inv = await c.env.DB.prepare("SELECT created_by FROM invites WHERE id = ?1 AND workspace_id = ?2").bind(inviteId, id).first<{ created_by: string }>();
+  if (!inv) throw notFound("invite_not_found", "Invite not found.");
+  if (!canManageInvites(role) && inv.created_by !== caller.userId) throw forbidden();
   const res = await commit(
     c,
     [c.env.DB.prepare("UPDATE invites SET revoked_at = ?1 WHERE id = ?2 AND workspace_id = ?3 AND revoked_at IS NULL").bind(now(), inviteId, id)],
@@ -408,11 +443,24 @@ workspaces.delete("/:id/invites/:inviteId", async (c) => {
   return c.json({ ok: true });
 });
 
-type InviteRow = { id: string; workspace_id: string; role: Role; expires_at: number; max_uses: number | null; uses: number; revoked_at: number | null; name: string };
+type InviteRow = {
+  id: string;
+  workspace_id: string;
+  role: Role;
+  expires_at: number;
+  max_uses: number | null;
+  uses: number;
+  revoked_at: number | null;
+  page_id: string | null;
+  page_level: string | null;
+  name: string;
+};
 
 async function inviteByToken(db: D1Database, token: string): Promise<InviteRow | null> {
   return db
-    .prepare("SELECT i.id, i.workspace_id, i.role, i.expires_at, i.max_uses, i.uses, i.revoked_at, w.name FROM invites i JOIN workspaces w ON w.id = i.workspace_id WHERE i.token_hash = ?1")
+    .prepare(
+      "SELECT i.id, i.workspace_id, i.role, i.expires_at, i.max_uses, i.uses, i.revoked_at, i.page_id, i.page_level, w.name FROM invites i JOIN workspaces w ON w.id = i.workspace_id WHERE i.token_hash = ?1",
+    )
     .bind(await sha256Hex(token))
     .first<InviteRow>();
 }
@@ -438,8 +486,18 @@ invites.get("/:token", async (c) => {
   const i = await inviteByToken(c.env.DB, c.req.param("token"));
   const problem = inviteProblem(i);
   if (!i || problem) return c.json({ valid: false, reason: problem, message: INVITE_MESSAGES[problem!] });
-  return c.json({ valid: true, workspace: { id: i.workspace_id, name: i.name }, role: i.role, expiresAt: i.expires_at });
+  return c.json({ valid: true, workspace: { id: i.workspace_id, name: i.name }, role: i.role, expiresAt: i.expires_at, pageLevel: i.page_level });
 });
+
+/** The page grant that comes with a page invite (never replaces an explicit entry). */
+function pageGrant(c: C, i: InviteRow, userId: string): D1PreparedStatement[] {
+  if (!i.page_id || !i.page_level || !isLevel(i.page_level)) return [];
+  return [
+    c.env.DB.prepare(
+      "INSERT OR IGNORE INTO page_permissions (workspace_id, page_id, principal_type, principal_id, level, granted_by, created_at) VALUES (?1, ?2, 'user', ?3, ?4, ?5, ?6)",
+    ).bind(i.workspace_id, i.page_id, userId, i.page_level, `invite:${i.id}`, now()),
+  ];
+}
 
 invites.post("/:token/accept", requireAuth, async (c) => {
   const caller = c.get("caller");
@@ -448,7 +506,11 @@ invites.post("/:token/accept", requireAuth, async (c) => {
   const problem = inviteProblem(i);
   if (!i || problem) throw new ApiError(410, problem!, INVITE_MESSAGES[problem!]);
   const existing = await c.env.DB.prepare("SELECT role FROM members WHERE workspace_id = ?1 AND user_id = ?2").bind(i.workspace_id, caller.userId).first<{ role: Role }>();
-  if (existing) return c.json({ workspace: await workspaceView(c.env.DB, i.workspace_id, existing.role), alreadyMember: true });
+  if (existing) {
+    const grant = pageGrant(c, i, caller.userId);
+    if (grant.length) await commit(c, grant, [auditOf(caller, i.workspace_id, { action: "permission.set", targetType: "page", targetId: i.page_id, meta: { via: "invite", invite: i.id } })], []);
+    return c.json({ workspace: await workspaceView(c.env.DB, i.workspace_id, existing.role), alreadyMember: true, pageId: i.page_id });
+  }
   const t = now();
   // Claim one use atomically; expiry, revocation and max uses are re-checked in the same statement.
   const claim = await c.env.DB.prepare(
@@ -459,11 +521,14 @@ invites.post("/:token/accept", requireAuth, async (c) => {
   if (!claim.meta.changes) throw new ApiError(410, "invite_used_up", INVITE_MESSAGES.invite_used_up);
   await commit(
     c,
-    [c.env.DB.prepare("INSERT OR IGNORE INTO members (workspace_id, user_id, role, joined_at, invited_by) VALUES (?1, ?2, ?3, ?4, ?5)").bind(i.workspace_id, caller.userId, i.role, t, i.id)],
-    [auditOf(caller, i.workspace_id, { action: "member.joined", targetType: "invite", targetId: i.id, meta: { role: i.role } })],
+    [
+      c.env.DB.prepare("INSERT OR IGNORE INTO members (workspace_id, user_id, role, joined_at, invited_by) VALUES (?1, ?2, ?3, ?4, ?5)").bind(i.workspace_id, caller.userId, i.role, t, i.id),
+      ...pageGrant(c, i, caller.userId),
+    ],
+    [auditOf(caller, i.workspace_id, { action: "member.joined", targetType: "invite", targetId: i.id, meta: { role: i.role, pageId: i.page_id, pageLevel: i.page_level } })],
     [],
   );
-  return c.json({ workspace: await workspaceView(c.env.DB, i.workspace_id, i.role), alreadyMember: false });
+  return c.json({ workspace: await workspaceView(c.env.DB, i.workspace_id, i.role), alreadyMember: false, pageId: i.page_id });
 });
 
 // ---------------------------------------------------------------------------

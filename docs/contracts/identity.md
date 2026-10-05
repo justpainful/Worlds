@@ -103,8 +103,8 @@ Desktop passkey flow: the app listens on a loopback port, opens `GET /passkey?mo
 | `POST /workspaces/:id/leave` | anyone but the Owner | |
 | `POST /workspaces/:id/transfer { userId }` | Owner | old Owner becomes Admin |
 | `GET, POST /workspaces/:id/groups`, `PATCH, DELETE /workspaces/:id/groups/:gid`, `PUT /workspaces/:id/groups/:gid/members { userIds }` | write: Owner, Admin | |
-| `POST /workspaces/:id/invites { role, expiresInHours?, maxUses? }` | Owner (any role but owner), Admin (member, guest) | default 7 days, at most 30 days |
-| `GET /workspaces/:id/invites`, `DELETE /workspaces/:id/invites/:inviteId` | Owner, Admin | revocation is immediate |
+| `POST /workspaces/:id/invites { role, expiresInHours?, maxUses?, pageId?, level? }` | Owner (any role but owner), Admin (member, guest); with `pageId`: anyone with full access on the page may invite a guest | default 7 days, at most 30 days. A page link also grants `level` on that page when accepted |
+| `GET /workspaces/:id/invites[?pageId]`, `DELETE /workspaces/:id/invites/:inviteId` | Owner, Admin; with `pageId`: full access on the page; delete: also whoever made the link | revocation is immediate |
 | `GET /invites/:token` | anyone | preview: `{ valid, workspace, role, expiresAt }` or `{ valid: false, reason }` |
 | `POST /invites/:token/accept` | signed in | |
 | `PUT /workspaces/:id/tree { nodes: [{ id, parentId }], removed?: [id] }` | per node | upserts; unmentioned pages stay. Adding needs edit on the parent (Members may add top-level pages), moving needs edit on page and new parent, removing needs full. Returns `{ applied, rejected: [{ id, reason }] }` |

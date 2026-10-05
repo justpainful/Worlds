@@ -405,9 +405,15 @@ async fn run(app: &tauri::AppHandle, db: &Mutex<Connection>, secrets: &dyn Secre
             )
             .await?)
         }
-        "invites" => Ok(authed(db, secrets, Method::GET, &format!("/workspaces/{}/invites", s(a, "workspaceId")?), None, None).await?),
+        "invites" => {
+            let query = a.get("pageId").and_then(Value::as_str).map(|p| format!("?pageId={p}")).unwrap_or_default();
+            Ok(authed(db, secrets, Method::GET, &format!("/workspaces/{}/invites{query}", s(a, "workspaceId")?), None, None).await?)
+        }
         "createInvite" => {
-            let body = json!({ "role": s(a, "role")?, "expiresInHours": a.get("expiresInHours"), "maxUses": a.get("maxUses") });
+            let body = json!({
+                "role": s(a, "role")?, "expiresInHours": a.get("expiresInHours"), "maxUses": a.get("maxUses"),
+                "pageId": a.get("pageId"), "level": a.get("level"),
+            });
             Ok(authed(db, secrets, Method::POST, &format!("/workspaces/{}/invites", s(a, "workspaceId")?), Some(&body), None).await?)
         }
         "revokeInvite" => Ok(authed(
