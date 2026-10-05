@@ -174,6 +174,8 @@ const READ_TOOLS: &[&str] = &[
     "tables_read",
     "tables_to_csv",
     "blocks_list_by_type",
+    "resources_list",
+    "presentations_read",
 ];
 
 /// Destructive page operations need full access in a Team workspace.
@@ -207,8 +209,18 @@ fn pages_named(conn: &Connection, a: &Value) -> Result<Vec<String>> {
             push_str(&mut pages, i.get("parentId"));
         }
     }
+    // Generic ids name a page only when such a page exists (automations and chats use "id" too).
+    let mut maybe = Vec::new();
+    for k in ["id", "resourceId"] {
+        push_str(&mut maybe, a.get(k));
+    }
+    for id in maybe {
+        if conn.query_row("SELECT 1 FROM pages WHERE id = ?1", [&id], |_| Ok(())).optional()?.is_some() {
+            pages.push(id);
+        }
+    }
     let mut blocks = Vec::new();
-    for k in ["blockId", "afterBlockId", "blockIds"] {
+    for k in ["blockId", "afterBlockId", "blockIds", "slideId"] {
         push_str(&mut blocks, a.get(k));
     }
     for b in blocks.iter().filter(|b| b.as_str() != "start") {

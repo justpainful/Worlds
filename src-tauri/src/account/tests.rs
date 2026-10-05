@@ -276,6 +276,10 @@ fn claude_cannot_read_a_page_the_user_cannot_see() {
     )
     .unwrap();
     assert!(guarded_tool_call(&conn, "blocks_read", &json!({ "blockId": b[0] }), |_| Ok(json!({}))).is_err());
+    // Resource tools name the page as "id".
+    assert!(guarded_tool_call(&conn, "presentations_read", &json!({ "id": child }), |_| Ok(json!({}))).is_err());
+    // An "id" that is not a page (an automation, a chat) is not a page check.
+    assert!(guarded_tool_call(&conn, "automations_toggle", &json!({ "id": "automation-1" }), |_| Ok(json!({}))).is_ok());
     // A page the user can see is fine.
     assert!(guarded_tool_call(&conn, "pages_read", &json!({ "pageId": root }), |_| Ok(json!({ "ok": true }))).is_ok());
 }
