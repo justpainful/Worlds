@@ -85,7 +85,7 @@ export function GlassGroup({ items, layer = LAYER.chrome, className = "", materi
               disabled={it.disabled}
               onClick={it.onClick}
             >
-              <Icon name={it.icon} size={19} />
+              <Icon name={it.icon} size={21} />
             </button>
           </span>
         ))}

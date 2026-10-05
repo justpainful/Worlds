@@ -1,7 +1,9 @@
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { api, errorMessage, fileUrl } from "../../lib/api";
 import { openAttachment } from "../../lib/links";
-import { useStore } from "../../state/store";
+import { pageTitle, useStore } from "../../state/store";
+import { menuAt } from "../../ui/Menu";
+import { createResource } from "../create";
 import { Button } from "../../ui/Button";
 import { EmptyState, formatBytes, Spinner } from "../../ui/misc";
 import { canPreview, FilePreview } from "../../editor/views/FilePreview";
@@ -14,6 +16,37 @@ interface FileMeta {
   mime: string;
   size: number;
   kind?: string;
+}
+
+/** Put this file's picture or video into a gallery (it stays a file too). */
+function addToGallery(anchor: HTMLElement, f: FileMeta) {
+  const s = useStore.getState();
+  const galleries = Object.values(s.pages).filter((p) => p.kind === "gallery" && !p.deletedAt);
+  const add = async (galleryId: string) => {
+    try {
+      const g = await api.page(galleryId);
+      if (!g) return;
+      const blocks = g.blocks.map((b) => ({ id: b.id, content: b.content }));
+      const bid = Array.from(crypto.getRandomValues(new Uint8Array(13)), (b) => b.toString(16).padStart(2, "0")).join("");
+      blocks.push({ id: bid, content: { type: "galleryItem", attrs: { bid, attachmentId: f.attachmentId, name: f.name, mime: f.mime, size: f.size, kind: f.kind ?? "image", caption: "" } } });
+      await api.saveBlocks(galleryId, blocks, g.updatedAt);
+      s.toast({ message: `Added to ${pageTitle(s.pages[galleryId])}`, tone: "success", action: { label: "Open", run: () => s.openPage(galleryId, "current") } });
+    } catch (e) {
+      s.toast({ message: errorMessage(e), tone: "error" });
+    }
+  };
+  menuAt(anchor, [
+    ...galleries.map((g) => ({ label: pageTitle(g), icon: "image" as const, onSelect: () => add(g.id) })),
+    ...(galleries.length ? [{ kind: "separator" as const }] : []),
+    {
+      label: "New Gallery",
+      icon: "add" as const,
+      onSelect: async () => {
+        const g = await createResource("gallery", { where: "current" });
+        if (g) await add(g.id);
+      },
+    },
+  ]);
 }
 
 /** A file kept in Worlds: the file itself, previewed in place, with its details. */
@@ -41,6 +74,9 @@ export function FileView({ id }: { id: string }) {
         actions={
           f && (
             <>
+              {(isImage || isVideo) && (
+                <Button variant="quiet" icon="image" onClick={(e) => addToGallery(e.currentTarget, f)}>Add to Gallery</Button>
+              )}
               <Button variant="quiet" icon="folderOpen" onClick={reveal}>Show in Explorer</Button>
               <Button variant="plain" icon="openExternal" onClick={() => openAttachment(f.attachmentId)}>Open</Button>
             </>

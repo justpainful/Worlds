@@ -115,6 +115,10 @@ class GlassScene {
   private scrollTimer = 0;
   private sampleTimer = 0;
   quality: QualityTier = "full";
+  /** Tone chosen in Settings: follow the backdrop, or always light or dark glass. */
+  tone: "auto" | "light" | "dark" = "auto";
+  /** Body density multiplier from Settings (1 = default; lower is clearer). */
+  frost = 1;
   /** Set by the frame monitor while frames are slow; lifts on its own. */
   autoReduced = false;
   private io: IntersectionObserver | null = null;
@@ -257,6 +261,14 @@ class GlassScene {
     document.documentElement.classList.toggle("is-inactive", !active);
     for (const s of this.surfaces.values()) this.retarget(s);
     this.kick();
+  }
+
+  /** Appearance choices from Settings: forced tone and how frosted the body is. */
+  setLook(tone: "auto" | "light" | "dark", frost: number) {
+    if (tone === this.tone && frost === this.frost) return;
+    this.tone = tone;
+    this.frost = frost;
+    for (const s of this.surfaces.values()) this.applyAdaptive(s);
   }
 
   setQuality(q: QualityTier) {
@@ -501,29 +513,42 @@ class GlassScene {
     const a = s.ambient;
     const lp = Math.pow(a.luminance, 1 / 2.2);
     const busy = a.variance;
-    const light = lp > 0.62;
+    // The user can fix the tone (Settings > Appearance); automatic follows the backdrop.
+    // Dense reading surfaces (menus, sheets) keep their own tone so text stays legible.
+    const forced = spec === MATERIALS.dense ? "auto" : this.tone;
+    const light = forced === "light" ? true : forced === "dark" ? false : lp > 0.62;
     const solid = this.effectiveQuality() === "solid";
 
     const spill = clamp(spec.spill.base + a.chroma * 0.08, spec.spill.min, spec.spill.max);
     // Dark appearance uses a milky grey body, so glass reads as a bright lens over dark content.
-    const body: [number, number, number] = light ? [250, 250, 252] : [120, 120, 128];
+    // A tone forced against the backdrop (light glass on dark content, dark
+    // glass on bright content) needs a body solid enough for its own ink.
+    const against = forced !== "auto" && light !== lp > 0.62;
+    // Clear glass: a whisper of neutral grey (measured from the reference),
+    // or a solid body only when the tone is forced against the backdrop.
+    const body: [number, number, number] = against ? (light ? [236, 236, 240] : [36, 36, 40]) : light ? [205, 205, 207] : [72, 72, 78];
     const tintK = s.opts.selected ? spec.tintSelected : spec.tint;
-    const k = spill + tintK * 0.5;
+    // Light glass keeps only a hint of the colour behind it (milky white, as
+    // in Apple's light appearance); dark glass takes on more of the scene.
+    const k = (spill + tintK * 0.5) * 0.5;
     s.tintRgb = [lerp(body[0], a.r, k), lerp(body[1], a.g, k), lerp(body[2], a.b, k)];
 
     let opacity = clamp(
-      spec.opacity.base + busy * 0.05 + (light ? 0.05 : 0) + (lp < 0.04 ? -0.015 : 0),
+      spec.opacity.base + busy * 0.05 + (lp < 0.04 ? -0.015 : 0),
       spec.opacity.min,
-      spec.opacity.max + (light ? 0.08 : 0),
+      spec.opacity.max,
     );
     // Mid-brightness backdrops are where neither ink reads well: the glass
     // commits to its tone with a denser body there instead of staying grey.
     const mid = clamp(1 - Math.abs(lp - 0.56) / 0.26, 0, 1);
-    opacity += mid * 0.2;
+    opacity += mid * (spec === MATERIALS.dense ? 0.2 : 0.08);
     if (!s.nested) opacity += 0.03 * s.overlap;
     if (s.press) opacity += 0.04;
     if (s.opts.selected) opacity += 0.04;
     if (this.inactive) opacity += 0.03;
+    if (spec !== MATERIALS.dense) opacity = clamp(opacity * this.frost, 0.04, 0.96);
+    // Forced tone over the opposite backdrop: a frosted body, still translucent.
+    if (against) opacity = clamp(Math.max(opacity, (light ? 0.33 : 0.6) * this.frost), 0, 0.94);
     if (solid) opacity = 0.94;
     s.opacity = opacity;
 

@@ -87,6 +87,16 @@ fn collect_text(node: &Value, out: &mut String) {
         }
         "embed" => out.push_str(attr_str(node, "url").unwrap_or("")),
         "discordMessage" => out.push_str(attr_str(node, "content").unwrap_or("")),
+        "mathInline" | "mathBlock" => out.push_str(attr_str(node, "latex").unwrap_or("")),
+        "mermaid" => out.push_str(attr_str(node, "code").unwrap_or("")),
+        "chart" => out.push_str(attr_str(node, "title").unwrap_or("")),
+        "tab" => {
+            out.push_str(attr_str(node, "title").unwrap_or(""));
+            for k in children(node) {
+                out.push('\n');
+                collect_text(k, out);
+            }
+        }
         _ => {
             let kids = children(node);
             let block_kids = kids.iter().any(|k| is_block_type(node_type(k)));
@@ -101,7 +111,7 @@ fn collect_text(node: &Value, out: &mut String) {
 }
 
 fn is_block_type(t: &str) -> bool {
-    !matches!(t, "text" | "hardBreak" | "pageMention")
+    !matches!(t, "text" | "hardBreak" | "pageMention" | "mathInline")
 }
 
 /// Walk a node and collect page references: (target_page_id, kind).
@@ -469,6 +479,7 @@ pub fn inline_markdown(nodes: &[Value]) -> String {
             }
             "hardBreak" => out.push('\n'),
             "pageMention" => out.push_str(&format!("@[{}](page:{})", attr_str(n, "label").unwrap_or(""), attr_str(n, "id").unwrap_or(""))),
+            "mathInline" => out.push_str(&format!("${}$", attr_str(n, "latex").unwrap_or(""))),
             _ => out.push_str(&inline_markdown(children(n))),
         }
     }
@@ -547,6 +558,14 @@ pub fn to_markdown(node: &Value) -> String {
             }
         }
         "toc" => "[table of contents]".into(),
+        "mathBlock" => format!("$$\n{}\n$$", attr_str(node, "latex").unwrap_or("")),
+        "mermaid" => format!("```mermaid\n{}\n```", attr_str(node, "code").unwrap_or("")),
+        "chart" => format!("[chart: {}]", attr_str(node, "title").filter(|t| !t.is_empty()).unwrap_or("from a table")),
+        "tabs" => kids.iter().map(to_markdown).filter(|s| !s.is_empty()).collect::<Vec<_>>().join("\n\n"),
+        "tab" => {
+            let body: Vec<String> = kids.iter().map(to_markdown).filter(|s| !s.is_empty()).collect();
+            format!("### {}\n\n{}", attr_str(node, "title").unwrap_or("Tab"), body.join("\n\n"))
+        }
         "gallery" => format!("[gallery: {} pictures]", attr(node, "images").and_then(Value::as_array).map(|a| a.len()).unwrap_or(0)),
         "collection" => format!(
             "[collection: {} ({}, {} view)]",

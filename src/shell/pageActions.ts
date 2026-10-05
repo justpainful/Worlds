@@ -3,6 +3,7 @@ import type { PageMeta } from "../lib/types";
 import { useStore, childrenOf, pageTitle } from "../state/store";
 import type { MenuItem } from "../ui/Menu";
 import { isResource } from "../resources/kinds";
+import { openShareSheet, sameWorkspace } from "../account/store";
 
 export const renameRequests = new EventTarget();
 export function requestRename(pageId: string) {
@@ -85,7 +86,7 @@ function isDescendant(id: string, ancestor: string): boolean {
 function moveTargets(p: PageMeta): MenuItem[] {
   const pages = useStore.getState().pages;
   const candidates = Object.values(pages)
-    .filter((x) => isResource(x) && !x.deletedAt && !x.archived && x.id !== p.id && x.id !== p.parentId && !isDescendant(x.id, p.id))
+    .filter((x) => isResource(x) && !x.deletedAt && !x.archived && x.id !== p.id && x.id !== p.parentId && !isDescendant(x.id, p.id) && sameWorkspace(x.id, p.id))
     .sort((a, b) => (b.openedAt ?? b.updatedAt) - (a.openedAt ?? a.updatedAt))
     .slice(0, 12);
   const items: MenuItem[] = [];
@@ -123,6 +124,7 @@ export function pageMenu(p: PageMeta, opts: { paneId?: string; inPage?: boolean 
   items.push(
     { label: "Duplicate", icon: "duplicate", onSelect: () => pageOps.duplicate(p) },
     { label: "Move to", icon: "move", submenu: moveTargets(p) },
+    { label: "Share", icon: "share", onSelect: () => openShareSheet(p.id) },
     { label: "Save as Template", icon: "template", onSelect: () => pageOps.saveAsTemplate(p) },
     { kind: "separator" },
     { label: p.archived ? "Unarchive" : "Archive", icon: p.archived ? "unarchive" : "archive", onSelect: () => pageOps.archive(p) },

@@ -289,178 +289,135 @@
 :root[data-glass="solid"] .glass > .g-tint { -webkit-backdrop-filter: none; backdrop-filter: none; }
 
 /* ==========================================================================
-   Material v3: one piece of thick, polished glass.
+   Material v6: clear liquid glass (reference: macOS 26 Mail toolbar,
+   matched by measurement in the ?glasslab harness).
 
-   Built as a single body, not stacked effects:
-     shell     the backdrop pipeline (refraction + blur, scene.ts)
-     body      translucent fill whose face is lit from above and whose
-               floor falls into soft shade: that gradient is the thickness
-     edge      ONE hairline stroke whose brightness varies around the
-               shape (bright toward the light, a softer catch on the far
-               side, nearly gone on the flanks); no inner strokes, no glow
-     lift      a two-layer shadow: a tight contact shadow plus a wide,
-               soft falloff, so the piece floats just above the page
-     light     the pointer moves a broad, soft specular sheen across the
-               face and turns the edge light a few degrees; nothing that
-               reads as a line ever travels around the shape
+   The body is clear: it shows what is behind it, softened and bent at the
+   edge, with only a whisper of grey. The glass is drawn by its edge:
+     hairline   a fine darker line just outside the shape
+     bezel      a crisp bright line on the top and bottom, faint on the ends
+     glow       light gathered inside the edge, deeper at the top, shorter
+                at the bottom, barely on the ends
+     lift       a very soft shadow below
+   Tone only chooses the ink and how bright the edge light is; it never
+   paints the body white.
    ========================================================================== */
 
 .glass {
-  --g-face: 0.085;
-  --g-floor: 0.14;
-  --g-sheen: 0.075;
+  --g-band: 0.08;        /* slightly deeper glass in the upper middle */
+  --g-glint: 0.06;       /* pointer glint strength */
+  --g-hair: rgba(0, 0, 0, 0.35);
+  /* Dark tone: the same edge at the same visible contrast over dark content. */
+  --g-rim-top: 0.42;
+  --g-rim-side: 0.12;
+  --g-rim-bottom: 0.28;
+  --g-glow-top: 0.16;
+  --g-glow-bottom: 0.14;
+  --g-glow-side: 0.14;
   box-shadow:
-    0 0.5px 1.5px rgba(0, 0, 0, 0.16),
-    0 var(--g-shadow-y) var(--g-shadow-blur) calc(var(--g-shadow-blur) * -0.3) rgba(0, 0, 0, var(--g-shadow-a));
+    0 0 0 0.5px var(--g-hair),
+    0 3px 8px -2px rgba(0, 0, 0, calc(var(--g-shadow-a) * 0.6));
+}
+.glass[data-tone="light"] {
+  box-shadow:
+    0 0 0 0.5px var(--g-hair),
+    0 2px 6px -1px rgba(0, 0, 0, 0.06);
 }
 
 .glass > .g-tint {
   background:
-    /* moving specular: a wide soft sheen, never a line */
-    radial-gradient(80% 140% at var(--px) var(--py), rgba(255, 255, 255, calc(var(--g-sheen) * var(--spot))), transparent 62%),
-    /* face lit from above */
-    radial-gradient(130% 80% at 50% -10%, rgba(255, 255, 255, var(--g-face)), transparent 62%),
-    /* floor: the far side of a thick piece of glass falls into shade */
-    radial-gradient(140% 70% at 50% 112%, rgba(0, 0, 0, var(--g-floor)), transparent 66%),
+    radial-gradient(70% 120% at var(--px) var(--py), rgba(255, 255, 255, calc(var(--g-glint) * var(--spot))), transparent 58%),
+    linear-gradient(to bottom, transparent 0%, rgba(var(--g-tint-rgb), var(--g-band)) 25%, rgba(var(--g-tint-rgb), var(--g-band)) 40%, transparent 62%),
     linear-gradient(rgba(0, 0, 0, var(--g-dim)), rgba(0, 0, 0, var(--g-dim))),
     rgba(var(--g-tint-rgb), var(--g-opacity));
-  box-shadow: none;
+  box-shadow:
+    inset 0 11px 8px -8px rgba(255, 255, 255, var(--g-glow-top)),
+    inset 0 -8.5px 6px -6px rgba(255, 255, 255, var(--g-glow-bottom)),
+    inset 0 0 3px rgba(255, 255, 255, var(--g-glow-side));
 }
 
-/* The single edge. Its light turns only a little with the pointer. */
 .glass > .g-rim {
-  --rim-k: 1;
-  --rim-turn: calc((var(--light-angle) - 180deg) * 0.4);
   padding: 1px;
-  background: conic-gradient(
-    from var(--rim-turn) at 50% 50%,
-    rgba(255, 255, 255, calc(var(--rim-top) * 0.95 * var(--rim-k))) 0deg,
-    rgba(255, 255, 255, calc(var(--rim-top) * 0.55 * var(--rim-k))) 40deg,
-    rgba(255, 255, 255, calc(var(--rim-side) * 0.35 * var(--rim-k))) 90deg,
-    rgba(255, 255, 255, calc(var(--rim-bottom) * 2.2 * var(--rim-k))) 165deg,
-    rgba(255, 255, 255, calc(var(--rim-bottom) * 2.2 * var(--rim-k))) 195deg,
-    rgba(255, 255, 255, calc(var(--rim-side) * 0.35 * var(--rim-k))) 270deg,
-    rgba(255, 255, 255, calc(var(--rim-top) * 0.55 * var(--rim-k))) 320deg,
-    rgba(255, 255, 255, calc(var(--rim-top) * 0.95 * var(--rim-k))) 360deg
-  );
+  background:
+    radial-gradient(60px circle at var(--px) var(--py), rgba(255, 255, 255, calc(0.3 * var(--spot))), transparent 70%),
+    linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, var(--g-rim-top)) 0%,
+      rgba(255, 255, 255, var(--g-rim-side)) 36%,
+      rgba(255, 255, 255, var(--g-rim-side)) 64%,
+      rgba(255, 255, 255, var(--g-rim-bottom)) 100%
+    );
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
 }
-.is-inactive .glass > .g-rim { --rim-k: 0.6; }
 
-/* Over bright backdrops the piece turns milky white with dark ink, and its
-   edge reads as a fine darker line, as in Apple's light appearance. */
+/* Light tone: the measured reference values. */
 .glass[data-tone="light"] {
-  --g-face: 0.22;
-  --g-floor: 0.07;
-  --g-sheen: 0.18;
+  --g-hair: rgba(0, 0, 0, 0.05);
+  --g-rim-top: 1;
+  --g-rim-side: 0.3;
+  --g-rim-bottom: 1;
+  --g-glow-top: 0.55;
+  --g-glow-bottom: 0.6;
+  --g-glow-side: 0.75;
+  --g-glint: 0.1;
+}
+
+/* States move light and depth, not lines. */
+.glass-interactive[data-state="hover"] { --g-glow-top: 0.3; --g-glint: 0.09; }
+.glass[data-tone="light"].glass-interactive[data-state="hover"] { --g-glow-top: 0.55; }
+.glass-interactive[data-state="press"] { --g-glow-top: 0.12; --g-glow-bottom: 0.3; }
+.glass-interactive[data-state="press"] > .g-tint {
   box-shadow:
-    0 0.5px 1.5px rgba(0, 0, 0, 0.12),
-    0 var(--g-shadow-y) var(--g-shadow-blur) calc(var(--g-shadow-blur) * -0.3) rgba(0, 0, 0, calc(var(--g-shadow-a) * 0.75));
+    inset 0 2px 6px -2px rgba(0, 0, 0, 0.14),
+    inset 0 -5px 5px -5px rgba(255, 255, 255, var(--g-glow-bottom));
 }
-.glass[data-tone="light"] > .g-rim {
-  background: conic-gradient(
-    from var(--rim-turn) at 50% 50%,
-    rgba(255, 255, 255, 0.95) 0deg,
-    rgba(255, 255, 255, 0.6) 50deg,
-    rgba(0, 0, 0, 0.07) 100deg,
-    rgba(0, 0, 0, 0.1) 180deg,
-    rgba(0, 0, 0, 0.07) 260deg,
-    rgba(255, 255, 255, 0.6) 310deg,
-    rgba(255, 255, 255, 0.95) 360deg
-  );
+.is-inactive .glass { --g-rim-top: 0.4; --g-glow-top: 0.14; --g-glint: 0; }
+.is-inactive .glass[data-tone="light"] { --g-rim-top: 0.8; --g-glow-top: 0.3; }
+
+/* Menus, sheets and panels: denser bodies (the engine's dense material) and
+   a deeper lift; the same edge. */
+.glass[data-material="dense"] {
+  --g-band: 0;
+  --g-glint: 0;
+  --g-rim-top: 0.32;
+  --g-rim-side: 0.12;
+  --g-rim-bottom: 0.18;
+  --g-glow-top: 0.1;
+  --g-glow-bottom: 0.06;
+  --g-glow-side: 0.03;
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.5),
+    0 2px 4px rgba(0, 0, 0, 0.18),
+    0 24px 60px -16px rgba(0, 0, 0, 0.55);
 }
-
-/* Pressing pushes the face in: the top light dims, the floor deepens. */
-.glass-interactive[data-state="press"] { --g-face: 0.04; --g-floor: 0.2; }
-.glass-interactive[data-state="press"] > .g-tint { box-shadow: none; }
-.glass-interactive[data-state="hover"] { --g-face: 0.11; }
-
-/* Glass inside glass: the container stays calm, the inner piece is a lens. */
-.glass:has(> .g-content .glass) { --g-sheen: 0.05; }
-.glass .glass { --g-face: 0.1; --g-floor: 0.08; }
-
-/* ---- Grouped controls (Mail toolbar pattern) ------------------------------ */
-.glass-group-row { padding: 0 3px; }
-.glass-group-row > .gg-sep { width: 0.5px; height: 18px; margin: 0 1px; background: rgba(255, 255, 255, 0.11); }
-.glass[data-tone="light"] .glass-group-row > .gg-sep { background: rgba(0, 0, 0, 0.1); }
-.gg-btn { width: 42px; height: 38px; }
-.gg-btn .icon { filter: none; }
-
-/* ==========================================================================
-   Material v4: physically believable glass.
-
-   One light, from the upper left, for every surface.
-     body      a milky, slightly brightening glass (not a dark veil): the
-               backdrop shows through refracted and lifted, with a faint
-               scattering haze; the floor only darkens a little
-     specular  a fixed, asymmetric highlight under the light (upper left)
-               plus a broad sheen the pointer slides across the face
-     edge      one hairline: bright where the light hits (upper left), a
-               soft caustic catch at the opposite lower corner, almost gone
-               on the flanks. It never moves with the pointer.
-     lens      nested selections (tabs, segmented) have no edge at all;
-               they are a lighter, slightly raised piece of the same glass
-   ========================================================================== */
-
-.glass {
-  --g-face: 0.06;
-  --g-floor: 0.07;
-  --g-sheen: 0.11;
-  --g-haze: 0.045;
-  --g-spec: 0.14;
+.glass[data-material="dense"][data-tone="light"] {
+  --g-rim-top: 1;
+  --g-rim-side: 0.5;
+  --g-rim-bottom: 0.8;
+  --g-glow-top: 0.35;
+  --g-glow-bottom: 0.25;
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.12),
+    0 2px 4px rgba(0, 0, 0, 0.05),
+    0 24px 60px -16px rgba(0, 0, 0, 0.3);
 }
 
-.glass > .g-tint {
-  background:
-    /* pointer sheen: broad and soft; only its position and strength change */
-    radial-gradient(90% 150% at var(--px) var(--py), rgba(255, 255, 255, calc(var(--g-sheen) * var(--spot))), transparent 60%),
-    /* fixed specular under the light, upper left, asymmetric */
-    radial-gradient(55% 75% at 24% -6%, rgba(255, 255, 255, var(--g-spec)), transparent 70%),
-    /* face lit from above */
-    radial-gradient(140% 85% at 40% -12%, rgba(255, 255, 255, var(--g-face)), transparent 64%),
-    /* a little shade toward the far edge: thickness, not a dark veil */
-    radial-gradient(150% 70% at 60% 116%, rgba(0, 0, 0, var(--g-floor)), transparent 64%),
-    /* scattering haze: glass lifts what is behind it */
-    linear-gradient(rgba(255, 255, 255, var(--g-haze)), rgba(255, 255, 255, var(--g-haze))),
-    linear-gradient(rgba(0, 0, 0, var(--g-dim)), rgba(0, 0, 0, var(--g-dim))),
-    rgba(var(--g-tint-rgb), var(--g-opacity));
-}
+/* Glass inside glass belongs to the same material: the inner piece is a
+   quiet lens without a second bezel or silhouette. */
+.glass .glass { --g-hair: transparent; --g-glint: 0; --g-glow-side: 0; }
+.glass .glass > .g-rim { opacity: 0.5; }
+.tab-lens > .g-rim { display: none; }
 
-/* The one edge. Fixed to the light: bright upper left, caustic lower right. */
-.glass > .g-rim {
-  padding: 1px;
-  background: conic-gradient(
-    from -50deg at 50% 50%,
-    rgba(255, 255, 255, calc(var(--rim-top) * 1.55 * var(--rim-k))) 0deg,
-    rgba(255, 255, 255, calc(var(--rim-top) * 0.6 * var(--rim-k))) 45deg,
-    rgba(255, 255, 255, calc(var(--rim-side) * 0.25 * var(--rim-k))) 95deg,
-    rgba(255, 255, 255, calc(var(--rim-bottom) * 2.6 * var(--rim-k))) 175deg,
-    rgba(255, 255, 255, calc(var(--rim-side) * 0.25 * var(--rim-k))) 255deg,
-    rgba(255, 255, 255, calc(var(--rim-top) * 0.6 * var(--rim-k))) 315deg,
-    rgba(255, 255, 255, calc(var(--rim-top) * 1.55 * var(--rim-k))) 360deg
-  );
-}
-.glass[data-tone="light"] > .g-rim {
-  background: conic-gradient(
-    from -50deg at 50% 50%,
-    rgba(255, 255, 255, 1) 0deg,
-    rgba(255, 255, 255, 0.55) 50deg,
-    rgba(0, 0, 0, 0.06) 110deg,
-    rgba(0, 0, 0, 0.09) 175deg,
-    rgba(0, 0, 0, 0.06) 250deg,
-    rgba(255, 255, 255, 0.55) 310deg,
-    rgba(255, 255, 255, 1) 360deg
-  );
-}
-.glass[data-tone="light"] { --g-face: 0.2; --g-floor: 0.04; --g-sheen: 0.2; --g-haze: 0.12; --g-spec: 0.32; }
-
-/* States move light, not lines. */
-.glass-interactive[data-state="hover"] { --g-face: 0.085; --g-haze: 0.06; }
-.glass-interactive[data-state="press"] { --g-face: 0.03; --g-floor: 0.12; --g-spec: 0.08; }
-
-/* Nested selections: no edge, no capsule-in-capsule; a lighter raised lens. */
-.tab-lens > .g-rim, .segmented-lens > .g-rim { display: none; }
-.tab-lens, .segmented-lens { --g-face: 0.12; --g-haze: 0.09; --g-spec: 0.16; --g-floor: 0.04; }
-.glass[data-tone="light"] .tab-lens, .glass[data-tone="light"] .segmented-lens { --g-haze: 0.3; }
+/* ---- Grouped controls (Mail toolbar pattern) ------------------------------
+   Square cells as tall as the capsule; hairline separators that take no
+   width, so a three-action capsule is exactly three cells wide. */
+.glass-group-row { padding: 0 1px; }
+.glass-group-row .gg-sep { display: block; flex: none; align-self: center; width: 1px; height: 22px; margin: 0 -0.5px; border-radius: 1px; position: relative; z-index: 1; background: rgba(255, 255, 255, 0.14) !important; }
+.glass[data-tone="light"] .glass-group-row .gg-sep { background: rgba(0, 0, 0, 0.08) !important; }
+.gg-btn { width: 40px; height: 40px; }
+.glass[data-tone="light"] .gg-btn, .glass[data-tone="light"] .glass-btn-inner { color: #000; }
+.glass[data-tone="light"] .gg-btn .icon, .glass[data-tone="light"] .win-btn .icon, .glass[data-tone="light"] .glass-btn-inner .icon { stroke-width: 1.65; }
+.glass[data-tone="light"] .win-btn { color: #000; }
+.glass[data-tone="light"] .gg-btn:disabled { color: rgba(0, 0, 0, 0.28); }

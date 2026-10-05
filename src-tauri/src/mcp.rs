@@ -21,6 +21,7 @@ mod more2;
 mod page_content;
 mod page_structure;
 mod profile_history;
+mod resources;
 mod tasks_tables;
 mod workspace;
 
@@ -69,7 +70,8 @@ pub fn run_stdio(args: &[String]) -> Result<()> {
                 let result = {
                     let tx = conn.unchecked_transaction();
                     match tx {
-                        Ok(tx) => match call_tool(&tx, &ctx, name, &a) {
+                        // Claude acts with the signed-in user's rights (Team workspaces).
+                        Ok(tx) => match crate::account::guarded_tool_call(&tx, name, &a, |c| call_tool(c, &ctx, name, &a)) {
                             Ok(v) => tx.commit().map(|_| v).map_err(anyhow::Error::from),
                             Err(e) => Err(e),
                         },
@@ -183,6 +185,7 @@ fn tool_list() -> Vec<Value> {
     .into_iter()
     .chain(more::tools())
     .chain(more2::tools())
+    .chain(resources::tools())
     .collect()
 }
 
@@ -713,6 +716,9 @@ fn call_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Valu
         }
         _ => {
             if let Some(v) = more::call(conn, ctx, name, a)? {
+                return Ok(v);
+            }
+            if let Some(v) = resources::call(conn, ctx, name, a)? {
                 return Ok(v);
             }
             match more2::call(conn, ctx, name, a)? {

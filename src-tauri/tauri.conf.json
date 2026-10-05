@@ -31,13 +31,13 @@
     "security": {
       "csp": {
         "default-src": "'self'",
-        "script-src": "'self'",
+        "script-src": "'self' 'wasm-unsafe-eval'",
         "style-src": "'self' 'unsafe-inline'",
         "img-src": "'self' data: blob: http://wfile.localhost wfile: https:",
         "media-src": "'self' data: blob: http://wfile.localhost wfile: https: http:",
         "font-src": "'self' data:",
         "connect-src": "'self' ipc: http://ipc.localhost http://wfile.localhost wfile: https: http:",
-        "frame-src": "http://wfile.localhost wfile: blob:",
+        "frame-src": "http://wfile.localhost wfile: blob: https:",
         "object-src": "'none'",
         "base-uri": "'self'",
         "form-action": "'none'"

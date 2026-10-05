@@ -32,6 +32,11 @@ percent-encoding = "2"
 unicode-bidi = "0.3"
 dirs = "6"
 base64 = "0.22"
+# Accounts: tokens in the OS credential store, device key, PKCE.
+keyring = { version = "3", features = ["windows-native", "apple-native", "linux-native"] }
+ed25519-dalek = "2"
+sha2 = "0.10"
+getrandom = "0.3"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.60", features = ["Win32_Foundation", "Win32_Graphics_Dwm", "Win32_UI_WindowsAndMessaging", "Win32_System_Console", "Win32_System_JobObjects", "Win32_System_Threading", "Win32_Security", "Win32_UI_Controls"] }

@@ -14,8 +14,10 @@ import { SearchField } from "../ui/SearchField";
 import { ACCENTS } from "../shell/appearance";
 import { BridgeCard } from "./IntegrationsView";
 import { Select, DIRECTION_OPTIONS, LANGUAGE_OPTIONS } from "../ui/Select";
+import { AccountSettings } from "../account/AccountSettings";
 
 const SECTIONS: { id: string; label: string; tile: string; group: number; keywords: string }[] = [
+  { id: "account", label: "Account", tile: "team", group: 0, keywords: "sign in passkey email devices workspaces team members sign out server" },
   { id: "appearance", label: "Appearance", tile: "design", group: 0, keywords: "theme accent language glass transparency window motion density background liquid" },
   { id: "editor", label: "Editor", tile: "writing", group: 0, keywords: "direction rtl arabic spell check paragraph" },
   { id: "ai", label: "Claude", tile: "claude", group: 1, keywords: "ai model effort spark orbit nova instructions mcp" },
@@ -65,6 +67,7 @@ export function SettingsView({ section = "appearance" }: { section?: string }) {
           <ProductIcon name={current.tile} size={34} />
           <h1>{current.label}</h1>
         </header>
+        {active === "account" && <AccountSettings />}
         {active === "appearance" && <Appearance />}
         {active === "editor" && <EditorSettings />}
         {active === "ai" && <AiSettings />}
@@ -169,6 +172,30 @@ function Appearance() {
               { value: "full", label: "Full" },
               { value: "reduced", label: "Reduced" },
               { value: "solid", label: "Solid" },
+            ]}
+          />
+        </Row>
+        <Row label="Glass tone" hint="Automatic picks light or dark glass from what is behind it. Light keeps buttons and bars white everywhere; Dark keeps them dark. Menus and sheets always stay readable.">
+          <Segmented
+            value={(settings["appearance.glassTone"] as string) ?? "light"}
+            onChange={(v) => set("appearance.glassTone", v)}
+            label="Glass tone"
+            options={[
+              { value: "auto", label: "Automatic" },
+              { value: "light", label: "Light" },
+              { value: "dark", label: "Dark" },
+            ]}
+          />
+        </Row>
+        <Row label="Glass density" hint="Clearer shows more of what is behind the glass; Frosted gives it a fuller, more solid body.">
+          <Segmented
+            value={String((settings["appearance.glassFrost"] as number) ?? 1)}
+            onChange={(v) => set("appearance.glassFrost", Number(v))}
+            label="Glass density"
+            options={[
+              { value: "0.6", label: "Clearer" },
+              { value: "1", label: "Balanced" },
+              { value: "1.8", label: "Frosted" },
             ]}
           />
         </Row>

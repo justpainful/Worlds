@@ -135,7 +135,7 @@ export const ImageNode = atom("image", mediaAttrs, ImageView).extend({
 });
 export const VideoNode = atom("video", mediaAttrs, VideoView);
 export const FileNode = atom("file", mediaAttrs, FileView);
-export const Embed = atom("embed", { url: { default: "" }, title: { default: "" } }, EmbedView);
+export const Embed = atom("embed", { url: { default: "" }, title: { default: "" }, mode: { default: "player" } }, EmbedView);
 export const DiscordMessage = atom(
   "discordMessage",
   {

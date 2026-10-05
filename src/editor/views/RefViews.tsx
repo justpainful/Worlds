@@ -7,6 +7,7 @@ import { describeDestination, describeTrigger, STATUS_LABEL } from "../../lib/au
 import { useStore } from "../../state/store";
 import { Icon } from "../../ui/Icon";
 import { relTime, formatDateTime } from "../../ui/misc";
+import { embedFor, sandboxFor } from "../embeds";
 
 function host(url: string) {
   try {
@@ -16,21 +17,56 @@ function host(url: string) {
   }
 }
 
-export function EmbedView({ node, selected }: ReactNodeViewProps) {
+export function EmbedView({ node, selected, updateAttributes }: ReactNodeViewProps) {
   const url = node.attrs.url as string;
+  const info = embedFor(url);
+  const asCard = !info || node.attrs.mode === "card";
+  if (asCard) {
+    return (
+      <NodeViewWrapper className={`embed-card ${selected ? "is-selected" : ""}`} data-drag-handle contentEditable={false}>
+        <span className="embed-icon">
+          <Icon name="globe" size={18} />
+        </span>
+        <span className="embed-main">
+          <span className="embed-title isolate">{node.attrs.title || host(url)}</span>
+          <span className="embed-url isolate" dir="ltr">{url}</span>
+        </span>
+        {info && (
+          <button className="chip-btn" onClick={() => updateAttributes({ mode: "player" })}>
+            <Icon name="play" size={13} />
+            Show {info.label}
+          </button>
+        )}
+        <button className="chip-btn" onClick={() => openExternal(url)}>
+          <Icon name="external" size={13} />
+          Open
+        </button>
+      </NodeViewWrapper>
+    );
+  }
   return (
-    <NodeViewWrapper className={`embed-card ${selected ? "is-selected" : ""}`} data-drag-handle contentEditable={false}>
-      <span className="embed-icon">
-        <Icon name="globe" size={18} />
-      </span>
-      <span className="embed-main">
-        <span className="embed-title isolate">{node.attrs.title || host(url)}</span>
-        <span className="embed-url isolate" dir="ltr">{url}</span>
-      </span>
-      <button className="chip-btn" onClick={() => openExternal(url)}>
-        <Icon name="external" size={13} />
-        Open
-      </button>
+    <NodeViewWrapper className={`embed-frame is-${info.provider} ${selected ? "is-selected" : ""}`} data-drag-handle contentEditable={false}>
+      <div className="embed-frame-bar">
+        <span className="embed-frame-label">{info.label}</span>
+        <span className="embed-url isolate" dir="ltr">{host(url)}</span>
+        <span className="grow" />
+        <button className="chip-btn" onClick={() => updateAttributes({ mode: "card" })}>Show as link</button>
+        <button className="chip-btn" onClick={() => openExternal(url)}>
+          <Icon name="external" size={13} />
+          Open
+        </button>
+      </div>
+      <div className="embed-frame-box" style={info.ratio ? { aspectRatio: String(info.ratio) } : { height: info.height }}>
+        <iframe
+          src={info.src}
+          title={node.attrs.title || info.label}
+          loading="lazy"
+          sandbox={sandboxFor(info.provider)}
+          referrerPolicy="strict-origin-when-cross-origin"
+          allow="autoplay; encrypted-media; fullscreen; picture-in-picture; clipboard-write"
+          allowFullScreen
+        />
+      </div>
     </NodeViewWrapper>
   );
 }

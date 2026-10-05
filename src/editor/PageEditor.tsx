@@ -20,6 +20,7 @@ import { Collection, Column, Columns, Toggle } from "./extensions/pages2";
 import { BackgroundColor, Color, FindReplace, Gallery, TextStyle, Toc, WikiLink } from "./extensions/pages3";
 import { openLightbox } from "./views/Pages3Views";
 import { documentExtensions } from "./extensions/document";
+import { Chart, MathBlock, MathInline, Mermaid, Tab, Tabs } from "./extensions/pages4";
 
 /** Apple-like text and background colours. */
 export const TEXT_COLORS: { name: string; value: string | null }[] = [
@@ -174,6 +175,12 @@ export const PageEditor = forwardRef<
         Toggle,
         Collection,
         PageMention,
+        MathInline,
+        MathBlock,
+        Mermaid,
+        Chart,
+        Tabs,
+        Tab,
         ...(variant === "document" ? documentExtensions : []),
         SlashCommand.configure({ getContext: () => ({ pageId }) }),
         WorldsContext.configure({ pageId }),

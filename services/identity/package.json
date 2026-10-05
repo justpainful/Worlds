@@ -1,0 +1,27 @@
+{
+  "name": "worlds-identity",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Worlds identity service: accounts, passkeys, devices, sessions, workspaces and page permissions.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:migrate:local": "wrangler d1 migrations apply worlds-identity --local",
+    "db:migrate:remote": "wrangler d1 migrations apply worlds-identity --remote",
+    "keygen": "node scripts/keygen.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@simplewebauthn/server": "^14.0.3",
+    "hono": "^4.13.12"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.22.0",
+    "@cloudflare/workers-types": "^5.20261004.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.147.0"
+  }
+}

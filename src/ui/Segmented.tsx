@@ -72,31 +72,44 @@ export function Segmented<T extends string>({
     requestAnimationFrame(() => track.current?.querySelector<HTMLElement>(`[data-value="${CSS.escape(next.value)}"]`)?.focus());
   };
 
-  // A quiet track; the selection is the only piece of glass, a soft raised lens.
+  // One piece of glass carved into segments: the capsule is the glass, thin
+  // inset separators divide it, and the selection is a soft inner lens of the
+  // same material (no second bezel, no capsule in a capsule).
   return (
-    <div className={`segmented segmented-${size}`} role="radiogroup" aria-label={label} onKeyDown={onKey}>
+    <Glass
+      material="control"
+      layer={layer}
+      radius="var(--r-capsule)"
+      className={`segmented segmented-${size}`}
+      contentClassName="segmented-body"
+      role="radiogroup"
+      aria-label={label}
+      onKeyDown={onKey}
+    >
       <div className="segmented-track" ref={track}>
         <div className="segmented-lens-wrap" aria-hidden>
-          <Glass ref={lens} material="control" layer={layer + 0.5} selected className="segmented-lens" radius="var(--r-capsule)" responsive={false} />
+          <div ref={lens} className="segmented-lens" />
         </div>
-        {options.map((o) => (
-          <button
-            key={o.value}
-            type="button"
-            role="radio"
-            aria-checked={o.value === value}
-            tabIndex={o.value === value ? 0 : -1}
-            aria-label={o.label ?? o.value}
-            data-value={o.value}
-            data-tip={!o.label ? o.value : undefined}
-            className={`segmented-item ${o.value === value ? "is-selected" : ""}`}
-            onClick={() => onChange(o.value)}
-          >
-            {o.icon && <Icon name={o.icon} size={15} />}
-            {o.label && <span>{o.label}</span>}
-          </button>
+        {options.map((o, i) => (
+          <span key={o.value} className="segmented-cell">
+            {i > 0 && <span className={`segmented-sep ${i === idx || i - 1 === idx ? "is-hidden" : ""}`} aria-hidden />}
+            <button
+              type="button"
+              role="radio"
+              aria-checked={o.value === value}
+              tabIndex={o.value === value ? 0 : -1}
+              aria-label={o.label ?? o.value}
+              data-value={o.value}
+              data-tip={!o.label ? o.value : undefined}
+              className={`segmented-item ${o.value === value ? "is-selected" : ""}`}
+              onClick={() => onChange(o.value)}
+            >
+              {o.icon && <Icon name={o.icon} size={16} />}
+              {o.label && <span>{o.label}</span>}
+            </button>
+          </span>
         ))}
       </div>
-    </div>
+    </Glass>
   );
 }

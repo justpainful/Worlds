@@ -1,0 +1,40 @@
+# Worlds identity service. Every id below is a placeholder: create your own
+# D1 database (and optionally a queue), then paste their ids here. See docs/contracts/identity.md.
+name = "worlds-identity"
+main = "src/index.ts"
+compatibility_date = "2026-08-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ENVIRONMENT = "development"
+# WebAuthn relying party. In production this is the domain that serves /passkey.
+WEBAUTHN_RP_ID = "localhost"
+WEBAUTHN_RP_NAME = "Worlds"
+WEBAUTHN_ORIGIN = "http://localhost:8787"
+# Public base URL of this service (used in invite links).
+PUBLIC_URL = "http://localhost:8787"
+ACCESS_TOKEN_TTL_SECONDS = "900"
+REFRESH_TOKEN_TTL_DAYS = "60"
+# Where access change events are POSTed when no queue is bound (optional).
+SYNC_WEBHOOK_URL = ""
+
+[[d1_databases]]
+binding = "DB"
+database_name = "worlds-identity"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+# Access change events for the sync service. Uncomment after creating the
+# queue with `wrangler queues create worlds-revocations`.
+# [[queues.producers]]
+# binding = "REVOCATIONS"
+# queue = "worlds-revocations"
+
+[triggers]
+# Retries undelivered access change events and clears expired rows.
+crons = ["*/5 * * * *"]
+
+# Secrets (wrangler secret put NAME), or .dev.vars for local development:
+#   JWT_PRIVATE_JWK      Ed25519 private key as a JWK (pnpm keygen prints one)
+#   SYNC_WEBHOOK_SECRET  HMAC key for webhook signatures
+#   EMAIL_WEBHOOK_URL    optional HTTP endpoint that delivers sign-in emails

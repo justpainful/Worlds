@@ -12,3 +12,6 @@ private/
 .cargo/
 .claude/
 *.tsbuildinfo
+
+# Local visual lab assets (reference images are not ours to publish)
+.lab/
