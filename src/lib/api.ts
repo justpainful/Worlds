@@ -121,6 +121,11 @@ export const api = {
   aiStatus: () =>
     invoke<{ available: boolean; version?: string; path?: string; mcpRegistered?: boolean }>("ai_status"),
   aiRegisterMcp: () => invoke<string>("ai_register_mcp"),
+  /** Long-lived Claude Code token kept in Windows Credential Manager (never returned to the UI). */
+  aiTokenStatus: () => invoke<{ saved: boolean }>("ai_token_status"),
+  aiTokenOpenSetup: () => invoke<void>("ai_token_open_setup"),
+  aiTokenSave: (token: string) => invoke<void>("ai_token_save", { token }),
+  aiTokenClear: () => invoke<void>("ai_token_clear"),
 
   // Automations
   automations: () => invoke<Automation[]>("automations_list"),

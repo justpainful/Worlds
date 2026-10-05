@@ -24,6 +24,48 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
 static RUNNING: Mutex<Option<HashMap<String, u32>>> = Mutex::new(None);
 
+// ---------------------------------------------------------------------------
+// Staying signed in
+//
+// Claude Code's normal login is short-lived and refreshes itself; when two
+// runs refresh at once, or another Claude app refreshes the same login, one
+// of them loses and the user is signed out. `claude setup-token` issues a
+// long-lived token (about a year) for the user's own subscription. Worlds
+// keeps it in Windows Credential Manager and gives it to every run as
+// CLAUDE_CODE_OAUTH_TOKEN, so nothing needs refreshing.
+// ---------------------------------------------------------------------------
+
+const TOKEN_KEY: &str = "claude.oauth-token";
+static TOKEN: Mutex<Option<Option<String>>> = Mutex::new(None);
+
+fn saved_token() -> Option<String> {
+    let mut t = TOKEN.lock().unwrap_or_else(|e| e.into_inner());
+    if t.is_none() {
+        use crate::account::secrets::SecretStore;
+        *t = Some(crate::account::secrets::KeyringStore.get(TOKEN_KEY).ok().flatten());
+    }
+    t.clone().flatten()
+}
+
+fn set_saved_token(v: Option<&str>) -> Result<()> {
+    use crate::account::secrets::SecretStore;
+    let store = crate::account::secrets::KeyringStore;
+    match v {
+        Some(v) => store.set(TOKEN_KEY, v)?,
+        None => store.delete(TOKEN_KEY)?,
+    }
+    *TOKEN.lock().unwrap_or_else(|e| e.into_inner()) = Some(v.map(str::to_string));
+    Ok(())
+}
+
+/// Messages Claude Code prints when its login is gone or expired.
+fn is_signed_out(text: &str) -> bool {
+    let t = text.to_lowercase();
+    ["/login", "please run", "oauth", "invalid api key", "authentication", "not logged in", "token has expired", "401"]
+        .iter()
+        .any(|k| t.contains(k))
+}
+
 pub fn claude_path(conn: &rusqlite::Connection) -> Option<PathBuf> {
     if let Some(p) = db::get_setting(conn, "ai.claudePath").ok().flatten().and_then(|v| v.as_str().map(PathBuf::from)) {
         if p.exists() {
@@ -80,6 +122,10 @@ fn prepare_claude(cmd: &mut tokio::process::Command) {
     if inherited_host {
         // Only the host session sets these; a user's own config lives in settings files.
         cmd.env_remove("ANTHROPIC_BASE_URL");
+    }
+    // The long-lived token, when the user saved one: no refreshing, no sign-outs.
+    if let Some(token) = saved_token() {
+        cmd.env("CLAUDE_CODE_OAUTH_TOKEN", token);
     }
     #[cfg(windows)]
     cmd.creation_flags(0x0800_0000);
@@ -564,6 +610,9 @@ async fn run_claude(
             let _ = e.read_to_string(&mut err).await;
         }
         if !status.success() {
+            if is_signed_out(&err) || is_signed_out(&final_text) {
+                bail!("claude_signed_out: Claude Code is signed out. Open Settings, Claude, and choose Stay Signed In.");
+            }
             bail!("Claude Code exited ({}): {}", status, err.trim().lines().last().unwrap_or("no output"));
         }
         result = json!({ "text": final_text });
@@ -684,6 +733,70 @@ pub async fn ai_status(state: State<'_, AppState>) -> CmdResult<Value> {
         c.output().await.map(|o| o.status.success()).unwrap_or(false)
     };
     Ok(json!({ "available": out.status.success(), "version": version, "path": path, "mcpRegistered": registered }))
+}
+
+/// Whether a long-lived token is saved (never returns the token).
+#[tauri::command]
+pub async fn ai_token_status() -> CmdResult<Value> {
+    Ok(json!({ "saved": saved_token().is_some() }))
+}
+
+/// Opens a console running `claude setup-token`, where the user signs in once
+/// in the browser and copies the token it prints.
+#[tauri::command]
+pub async fn ai_token_open_setup(state: State<'_, AppState>) -> CmdResult<()> {
+    let path = claude_path(&state.conn()).ok_or("Claude Code not found")?;
+    #[cfg(windows)]
+    {
+        let mut c = std::process::Command::new("cmd");
+        c.args(["/c", "start", "Claude sign-in", "cmd", "/k"]).arg(&path).arg("setup-token");
+        for (key, _) in std::env::vars_os() {
+            let k = key.to_string_lossy();
+            if k.starts_with("CLAUDE_CODE_") || k == "CLAUDECODE" || k == "CLAUDE_PID" {
+                c.env_remove(&key);
+            }
+        }
+        c.spawn().map_err(|e| format!("Could not open the sign-in window: {e}"))?;
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = path;
+        return Err("Run `claude setup-token` in a terminal, then paste the token here.".into());
+    }
+    Ok(())
+}
+
+/// Saves the token after checking that Claude Code accepts it.
+#[tauri::command]
+pub async fn ai_token_save(state: State<'_, AppState>, token: String) -> CmdResult<()> {
+    let token = token.trim().to_string();
+    if !token.starts_with("sk-ant-") || token.len() < 40 || token.chars().any(char::is_whitespace) {
+        return Err("That does not look like a Claude token. Copy the whole line that starts with sk-ant-.".into());
+    }
+    let path = claude_path(&state.conn()).ok_or("Claude Code not found")?;
+    let mut cmd = tokio::process::Command::new(&path);
+    cmd.args(["-p", "Reply with the single word OK.", "--model", "haiku", "--max-turns", "1", "--tools", ""])
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    prepare_claude(&mut cmd);
+    cmd.env("CLAUDE_CODE_OAUTH_TOKEN", &token);
+    let out = tokio::time::timeout(std::time::Duration::from_secs(60), cmd.output())
+        .await
+        .map_err(|_| "Claude Code did not answer in time. Try again.".to_string())?
+        .map_err(|e| e.to_string())?;
+    if !out.status.success() {
+        let err = String::from_utf8_lossy(&out.stderr);
+        let msg = err.trim().lines().last().unwrap_or("").to_string();
+        return Err(if is_signed_out(&err) { "Claude did not accept that token. Create a new one and paste it again.".into() } else { format!("Claude Code could not use the token: {msg}") });
+    }
+    set_saved_token(Some(&token)).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn ai_token_clear() -> CmdResult<()> {
+    set_saved_token(None).map_err(|e| e.to_string())
 }
 
 /// Make the Worlds tools available to Claude Code sessions (user scope).

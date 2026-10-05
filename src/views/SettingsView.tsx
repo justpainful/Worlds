@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { StaySignedIn } from "../ai/StaySignedIn";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { enable as enableAutostart, disable as disableAutostart, isEnabled as autostartEnabled } from "@tauri-apps/plugin-autostart";
 import { IntelligenceControls } from "../ai/models";
@@ -277,6 +278,9 @@ function AiSettings() {
       <Group title="Claude Code" note="Worlds does not call a model provider itself. It runs your local Claude Code with every built-in tool disabled and only the Worlds tools enabled.">
         <Row label="Status" hint={status?.path}>
           {!status ? <Spinner /> : status.available ? <span className="ok-text"><Icon name="success" size={14} /> {status.version}</span> : <span className="bad-text">Not found on this PC</span>}
+        </Row>
+        <Row label="Stay signed in" hint="One sign-in that lasts about a year.">
+          <StaySignedIn />
         </Row>
         <Row label="Model and effort" hint="Spark with Glance keeps everyday edits fast and inexpensive.">
           <IntelligenceControls />

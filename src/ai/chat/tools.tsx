@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { Icon, type IconName } from "../../ui/Icon";
+import { StaySignedIn } from "../StaySignedIn";
 
 // ---------------------------------------------------------------------------
 // Tool labels
@@ -51,23 +51,17 @@ export const TOOL_LABEL: Record<string, [string, IconName]> = {
   chats_read: ["Reading an earlier chat", "assistant"],
 };
 
-export const isAuthError = (t?: string | null) => !!t && /failed to authenticate|oauth|not logged in|please run \/login|invalid api key/i.test(t);
+export const isAuthError = (t?: string | null) => !!t && /claude_signed_out|failed to authenticate|oauth|not logged in|please run \/login|invalid api key/i.test(t);
 
-/** Claude Code's own sign-in expired: Worlds cannot (and should not) log in for the user. */
+/** Claude Code is signed out: offer to stay signed in for good (a long-lived token). */
 export function AuthHelp() {
-  const [copied, setCopied] = useState(false);
   return (
     <div className="warn warn-warn ai-auth">
       <Icon name="lock" size={14} />
       <div>
-        <div><strong>Claude Code needs you to sign in again.</strong></div>
-        <div>Worlds runs your local Claude Code, and its login has expired. Open a terminal, run the command below, finish the sign-in in your browser, then ask again.</div>
-        <div className="ai-auth-cmd">
-          <code dir="ltr">claude auth login</code>
-          <button className="chip-btn" onClick={() => { navigator.clipboard.writeText("claude auth login"); setCopied(true); }}>
-            {copied ? "Copied" : "Copy"}
-          </button>
-        </div>
+        <div><strong>Claude Code is signed out.</strong></div>
+        <div>Sign in once with a long-lived token and Worlds keeps you signed in.</div>
+        <StaySignedIn compact />
       </div>
     </div>
   );

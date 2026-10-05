@@ -328,3 +328,14 @@
 .ai-panel-head .glass-group { height: 38px; }
 .ai-panel-head .glass-group .gg-btn { width: 38px; height: 38px; }
 .tool-chip { display: inline-flex; align-items: center; gap: 4px; padding: 0.05em 0.5em 0.05em 0.3em; margin: 0 1px; border-radius: 7px; background: rgba(255, 255, 255, 0.1); color: var(--text-1); font-weight: 600; vertical-align: baseline; }
+
+/* Stay signed in (long-lived Claude Code token) */
+.stay-signed-in { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.stay-signed-in:not(.is-compact) { align-items: flex-end; }
+.stay-signed-in .ok-text { display: inline-flex; align-items: center; gap: 6px; }
+.ssi-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.ssi-steps li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ssi-hint { font: var(--t-small); color: var(--text-3); }
+.ssi-paste .field { width: 260px; max-width: 100%; }
+.stay-signed-in.is-compact { margin-top: 8px; }
+.ssi-error { font: var(--t-small); }

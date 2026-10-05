@@ -186,6 +186,10 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
     case "session_save": case "client_log": case "window_set_transparency": return null;
     case "data_dir": return "C:\\mock";
     case "ai_status": return { available: true, version: "2.1.288 (Claude Code)", mcpRegistered: true };
+    case "ai_token_status": return { saved: false };
+    case "ai_token_open_setup": return null;
+    case "ai_token_save": if (!String(a?.token ?? "").startsWith("sk-ant-")) throw "That does not look like a Claude token. Copy the whole line that starts with sk-ant-."; return null;
+    case "ai_token_clear": return null;
     case "ai_chats": return [...chats].sort((x, y) => y.updatedAt - x.updatedAt);
     case "ai_chat": return { id: a.id, messages: chatMessages[a.id] ?? [] };
     case "ai_chat_delete": return null;
