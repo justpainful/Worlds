@@ -70,9 +70,9 @@ export interface GroupItem {
  * Related actions in one glass capsule, separated by hairlines
  * (the macOS 26 Mail toolbar pattern). Single actions get a round capsule.
  */
-export function GlassGroup({ items, layer = LAYER.chrome, className = "", material = "bar" }: { items: GroupItem[]; layer?: number; className?: string; material?: "bar" | "clear" | "control" }) {
+export function GlassGroup({ items, layer = LAYER.chrome, className = "", material = "bar", v2 }: { items: GroupItem[]; layer?: number; className?: string; material?: "bar" | "clear" | "control"; v2?: boolean }) {
   return (
-    <Glass material={material} layer={layer} className={`glass-group ${items.length === 1 ? "is-single" : ""} ${className}`} radius="var(--r-capsule)">
+    <Glass v2={v2} material={material} layer={layer} className={`glass-group ${items.length === 1 ? "is-single" : ""} ${className}`} radius="var(--r-capsule)">
       <div className="glass-group-row">
         {items.map((it, i) => (
           <span key={it.label} style={{ display: "contents" }}>
@@ -105,6 +105,8 @@ interface GlassButtonProps {
   className?: string;
   label?: string;
   selected?: boolean;
+  /** Drawn by Liquid Glass V2 when its development flag is on. */
+  v2?: boolean;
 }
 
 /** Important actions: a real glass control with the full state model. */
@@ -119,9 +121,11 @@ export function GlassButton({
   className = "",
   label,
   selected,
+  v2,
 }: GlassButtonProps) {
   return (
     <Glass
+      v2={v2}
       as="button"
       material={prominent ? "bar" : "control"}
       layer={layer}

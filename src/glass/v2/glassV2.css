@@ -33,3 +33,9 @@
 .lg2-btn { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 20px; color: inherit; }
 .lg2-sep { flex: none; width: 1px; height: 22px; margin: 0 -0.5px; position: relative; z-index: 1; background: rgba(255, 255, 255, 0.14); }
 .lg2[data-tone="light"] .lg2-sep { background: rgba(0, 0, 0, 0.08); }
+
+/* In the app (phase 2, behind the development flag): a V2 surface also carries
+   .glass for the ink, grouping and nesting rules; the old engine's lift and
+   transitions do not apply to it. */
+.glass.lg2 { box-shadow: var(--lg2-shadow, none); transition: none; --g-r: 999px; }
+.glass.lg2 > .g-content { position: relative; height: 100%; pointer-events: auto; }

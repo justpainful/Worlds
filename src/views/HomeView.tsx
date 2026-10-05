@@ -74,7 +74,7 @@ export function HomeView() {
           <h1 className="home-title">{greeting}</h1>
           <p className="home-sub">Start with a blank page, or pick a template.</p>
           <div className="home-hero-actions">
-            <GlassButton icon="add" prominent size="large" onClick={(e) => newResourceMenu(e.currentTarget)} layer={LAYER.floating}>
+            <GlassButton v2 icon="add" prominent size="large" onClick={(e) => newResourceMenu(e.currentTarget)} layer={LAYER.floating}>
               New
             </GlassButton>
           </div>
@@ -91,6 +91,7 @@ export function HomeView() {
         <h1 className="home-title">{greeting}</h1>
         <div className="home-controls">
           <Glass
+            v2
             as="button"
             material="bar"
             interactive
@@ -107,6 +108,7 @@ export function HomeView() {
             </span>
           </Glass>
           <Segmented
+            v2
             value={view}
             onChange={(v) => setSetting("home.view", v)}
             label="Layout"
@@ -116,7 +118,7 @@ export function HomeView() {
               { value: "list", icon: "listView" },
             ]}
           />
-          <GlassButton icon="add" prominent onClick={(e) => newResourceMenu(e.currentTarget, { align: "end" })}>New</GlassButton>
+          <GlassButton v2 icon="add" prominent onClick={(e) => newResourceMenu(e.currentTarget, { align: "end" })}>New</GlassButton>
         </div>
       </div>
 

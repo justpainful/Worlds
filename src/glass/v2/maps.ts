@@ -53,6 +53,9 @@ export interface MapsV2 {
 
 const cache = new Map<string, MapsV2>();
 
+/** Map generation record (phase 2 measurements): every build and every cache hit. */
+export const mapStats = { builds: [] as { w: number; h: number; ms: number; at: number }[], hits: 0 };
+
 function image(w: number, h: number) {
   const c = document.createElement("canvas");
   c.width = Math.max(1, w);
@@ -70,7 +73,10 @@ export function buildMaps(inp: MapsInput): MapsV2 {
   const p = inp.profile;
   const key = JSON.stringify([inp.w, inp.h, Math.round(inp.r), inp.shapes ?? null, inp.merge ?? 0, inp.dpr, p, !!inp.debug]);
   const hit = cache.get(key);
-  if (hit) return hit;
+  if (hit) {
+    mapStats.hits++;
+    return hit;
+  }
   const t0 = performance.now();
   const shapes = inp.shapes?.length ? inp.shapes : [{ x: 0, y: 0, w: inp.w, h: inp.h, r: inp.r }];
   const sdf = makeSdf(shapes, inp.merge ?? 0);
@@ -172,5 +178,6 @@ export function buildMaps(inp: MapsInput): MapsV2 {
   };
   if (cache.size > 64) cache.delete(cache.keys().next().value!);
   cache.set(key, maps);
+  mapStats.builds.push({ w: inp.w, h: inp.h, ms: maps.ms, at: t0 });
   return maps;
 }

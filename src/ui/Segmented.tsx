@@ -23,12 +23,15 @@ export function Segmented<T extends string>({
   size = "compact",
   layer = LAYER.floating,
   label,
+  v2,
 }: {
   value: T;
   options: SegmentOption<T>[];
   onChange: (v: T) => void;
   size?: "compact" | "standard";
   layer?: number;
+  /** Drawn by Liquid Glass V2 when its development flag is on. */
+  v2?: boolean;
   label?: string;
 }) {
   const track = useRef<HTMLDivElement>(null);
@@ -77,6 +80,7 @@ export function Segmented<T extends string>({
   // same material (no second bezel, no capsule in a capsule).
   return (
     <Glass
+      v2={v2}
       material="control"
       layer={layer}
       radius="var(--r-capsule)"

@@ -269,16 +269,17 @@ function PaneToolbar({ pane, tab, showWindowControls, count }: { pane: Pane; tab
     <div className="pane-toolbar-wrap" data-drag-zone>
       <div className="tb-row">
         {isFirstPane && sidebarCollapsed && (
-          <GlassGroup items={[{ icon: "sidebarOpen", label: "Show sidebar", shortcut: "Ctrl+Shift+L", onClick: toggleSidebar }]} />
+          <GlassGroup v2 items={[{ icon: "sidebarOpen", label: "Show sidebar", shortcut: "Ctrl+Shift+L", onClick: toggleSidebar }]} />
         )}
         <GlassGroup
+          v2
           className="tb-nav"
           items={[
             { icon: "back", label: "Back", shortcut: "Alt+←", disabled: tab.back.length === 0, onClick: () => goBack(pane.id) },
             { icon: "forward", label: "Forward", shortcut: "Alt+→", disabled: tab.forward.length === 0, onClick: () => goForward(pane.id) },
           ]}
         />
-        <Glass material="bar" layer={LAYER.chrome} className="tb-tabs" radius="var(--r-capsule)">
+        <Glass v2 material="bar" layer={LAYER.chrome} className="tb-tabs" radius="var(--r-capsule)">
           <div
             className="tab-strip"
             ref={strip}
@@ -347,6 +348,7 @@ function PaneToolbar({ pane, tab, showWindowControls, count }: { pane: Pane; tab
         </Glass>
         <div className="tb-fill" />
         <GlassGroup
+          v2
           items={[
             ...(count < 3 ? [{ icon: "splitRight" as const, label: "Split right", onClick: () => open(tab.route, "right", pane.id) }] : []),
             ...(count > 1 ? [{ icon: "close" as const, label: "Close pane", onClick: () => closePane(pane.id) }] : []),

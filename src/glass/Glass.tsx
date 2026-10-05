@@ -13,6 +13,10 @@ import {
 import { glassEngine, type Surface } from "./engine";
 import type { GlassShape } from "./optics";
 import { INTERACTION, LAYER, type Material } from "./profiles";
+import { GLASS_V2 } from "./v2/flag";
+import { GlassV2 } from "./v2/GlassV2";
+import { regularToolbarV2 } from "./v2/profile";
+import type { Shape } from "./v2/surface";
 
 export interface GlassProps extends HTMLAttributes<HTMLDivElement> {
   material?: Material;
@@ -31,6 +35,8 @@ export interface GlassProps extends HTMLAttributes<HTMLDivElement> {
   merge?: number;
   /** Grow out of this rect (viewport px) when it appears: a menu out of its button. */
   morphFrom?: DOMRect | null;
+  /** A small toolbar control of the material V2 is calibrated for: drawn by V2 when its development flag is on. */
+  v2?: boolean;
 }
 
 /**
@@ -48,7 +54,50 @@ export interface GlassProps extends HTMLAttributes<HTMLDivElement> {
  * surface (decided from the real DOM, so portals are judged correctly)
  * becomes a fill of that surface: no optics, no rim, no shadow.
  */
-export const Glass = forwardRef<HTMLDivElement, GlassProps>(function Glass(
+export const Glass = forwardRef<HTMLDivElement, GlassProps>(function Glass({ v2, ...props }, ref) {
+  return v2 && GLASS_V2 ? <GlassBridgeV2 ref={ref} {...props} /> : <GlassV1 ref={ref} {...props} />;
+});
+
+/**
+ * Phase 2 validation: the same props drawn by V2 at rest. It keeps the .glass
+ * class (ink, grouping and nesting rules still apply: a Glass inside it becomes
+ * a fill) but has no hover, press or morph of its own yet.
+ */
+const GlassBridgeV2 = forwardRef<HTMLDivElement, Omit<GlassProps, "v2">>(function GlassBridgeV2(
+  { material = "bar", layer = LAYER.chrome, interactive: _interactive, selected, disabled, sample: _sample, radius, as = "div", shapes, merge, morphFrom: _morphFrom, className = "", contentClassName = "", onKeyDown, children, ...rest },
+  ref,
+) {
+  const button = as === "button";
+  return (
+    <GlassV2
+      ref={ref}
+      profile={regularToolbarV2}
+      radius={radius}
+      shapes={shapes as Shape[] | undefined}
+      merge={merge}
+      className={`glass glass-v2 ${className}`}
+      contentClassName={`g-content ${contentClassName}`}
+      data-layer={layer}
+      data-material={material}
+      data-selected={selected || undefined}
+      aria-disabled={disabled || undefined}
+      role={button ? "button" : undefined}
+      tabIndex={button ? (disabled ? -1 : 0) : undefined}
+      onKeyDown={(e) => {
+        onKeyDown?.(e);
+        if (button && !e.defaultPrevented && !disabled && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          e.currentTarget.click();
+        }
+      }}
+      {...rest}
+    >
+      {children}
+    </GlassV2>
+  );
+});
+
+const GlassV1 = forwardRef<HTMLDivElement, Omit<GlassProps, "v2">>(function GlassV1(
   {
     material = "bar",
     layer = LAYER.chrome,

@@ -113,7 +113,8 @@ function refresh(s: Live, rebuild = false) {
     // Body lift on light and mid scenes only.
     lift: (p.bodyLift / 255) * Math.min(1, k * 1.6),
   });
-  s.optics.style.backdropFilter = debugV2.optics ? `url(#${s.filter.id})` : "none";
+  // (While the phase 2 backdrop probe runs, it owns the optics filter.)
+  if (!document.documentElement.dataset.lg2Probe) s.optics.style.backdropFilter = debugV2.optics ? `url(#${s.filter.id})` : "none";
   s.light.style.display = s.shade.style.display = s.edge.style.display = s.glow.style.display = debugV2.lighting ? "" : "none";
 }
 
