@@ -302,6 +302,8 @@
   mask-image: linear-gradient(#000 55%, transparent);
 }
 .pane:has(> .pane-scroll.is-scrolled)::after { opacity: 1; }
+/* A cover under the toolbar gets the same soft edge, as in the reference. */
+.pane:has(> .pane-scroll .page-cover)::after { opacity: 1; }
 
 /* ---- Sidebar sizing: product icons read as icons, not specks ------------- */
 .side-item, .tree-row { height: 36px; gap: 10px; font-size: 14px; border-radius: 11px; }

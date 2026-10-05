@@ -89,7 +89,9 @@
    Glass variants: one material, tuned per role.
    (subtle = clear, regular, prominent, control, toolbar, floating, selection)
    ========================================================================== */
-.glass { box-shadow: var(--g-elev, var(--elev-2)); }
+/* Silhouette hairline (material v5) plus the lift for each role. Light glass
+   and dense surfaces set their own, lighter or deeper, shadows in glass.css. */
+.glass:not([data-tone="light"]):not([data-material="dense"]) { box-shadow: 0 0 0 0.5px var(--g-hair, rgba(0, 0, 0, 0.42)), var(--g-elev, var(--elev-2)); }
 .glass[data-material="clear"] { --g-elev: var(--elev-1); }
 .glass[data-material="control"] { --g-elev: var(--elev-1); }
 .glass[data-material="prominent"] { --g-elev: var(--elev-2); }
@@ -99,7 +101,6 @@
 .modal-panel, .ai-panel, .palette { --g-elev: var(--elev-5); }
 .tab-lens, .segmented-lens { --g-elev: 0 0.5px 1px rgba(0, 0, 0, 0.3), 0 2px 6px -1px rgba(0, 0, 0, 0.3); }
 .glass .glass { --g-elev: 0 0.5px 1px rgba(0, 0, 0, 0.28), 0 2px 6px -2px rgba(0, 0, 0, 0.32); }
-.glass-interactive[data-state="hover"] { box-shadow: var(--g-elev, var(--elev-2)), 0 0 0 0.5px rgba(255, 255, 255, 0.02); }
 .glass-interactive[data-state="press"] { --g-elev: var(--elev-1); }
 
 /* ==========================================================================
@@ -199,7 +200,7 @@
 .segmented-item:hover { color: var(--text-2); }
 .segmented-item.is-selected { color: var(--text-1); font-weight: 620; }
 .segmented-item:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-.segmented-lens { --g-opacity: 0.34 !important; }
+
 .glass .segmented { background: rgba(255, 255, 255, 0.05); }
 
 /* ==========================================================================
@@ -399,7 +400,7 @@ button:focus-visible, [role="button"]:focus-visible, [role="tab"]:focus-visible,
 /* Optical centering: arrows and chevrons sit a hair toward their point. */
 .gg-btn .lucide-chevron-left, .tb-nav .lucide-chevron-left { transform: translateX(-0.5px); }
 .gg-btn .lucide-chevron-right, .tb-nav .lucide-chevron-right { transform: translateX(0.5px); }
-.glass-group-row > .gg-sep { height: 16px; background: rgba(255, 255, 255, 0.09) !important; }
+
 
 /* A search field that is a piece of glass (toolbar-level search, as on Home). */
 .sf-piece { height: 38px; min-width: 240px; cursor: default; color: var(--text-2); }
@@ -422,3 +423,34 @@ button:focus-visible, [role="button"]:focus-visible, [role="tab"]:focus-visible,
 .glass-btn-icon.glass-btn-compact { width: 32px; }
 .glass-btn-icon.glass-btn-standard { width: 38px; }
 .glass-btn-icon.glass-btn-large { width: 46px; }
+
+/* ---- Segmented: one carved glass capsule (material v5) ------------------- */
+.segmented.glass { display: inline-flex; flex: none; background: none; }
+.segmented-body { display: flex; }
+.segmented-track { position: relative; display: flex; align-items: center; padding: 3px; gap: 0; }
+.segmented-compact .segmented-track { height: 32px; }
+.segmented-standard .segmented-track { height: 38px; }
+.segmented-lens-wrap { position: absolute; inset: 3px auto 3px 0; pointer-events: none; }
+.segmented-lens {
+  position: absolute; top: 0; bottom: 0; left: 0;
+  border-radius: var(--r-capsule);
+  transform-origin: center;
+  will-change: transform, width;
+  /* a denser patch of the same glass: lighter body, a whisper of top light */
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.11));
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.28), 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+.glass[data-tone="light"] .segmented-lens {
+  background: linear-gradient(to bottom, #fff, rgba(255, 255, 255, 0.92));
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+.segmented-cell { display: flex; align-items: center; height: 100%; }
+.segmented-sep { width: 1px; height: 50%; border-radius: 1px; background: rgba(255, 255, 255, 0.14); transition: opacity 160ms ease; }
+.glass[data-tone="light"] .segmented-sep { background: rgba(0, 0, 0, 0.13); }
+.segmented-sep.is-hidden { opacity: 0; }
+.segmented-item { position: relative; z-index: 1; height: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 14px; border-radius: var(--r-capsule); color: var(--text-2); font: var(--t-ui); font-size: 13px; font-weight: 560; white-space: nowrap; }
+.segmented-item:hover { color: var(--text-1); }
+.segmented-item.is-selected { color: var(--text-1); font-weight: 650; }
+.glass[data-tone="light"] .segmented-item { color: rgba(0, 0, 0, 0.6); }
+.glass[data-tone="light"] .segmented-item.is-selected, .glass[data-tone="light"] .segmented-item:hover { color: rgba(0, 0, 0, 0.9); }
+.home-controls .segmented-standard .segmented-track { height: 40px; }
