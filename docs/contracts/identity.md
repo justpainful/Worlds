@@ -108,7 +108,7 @@ Desktop passkey flow: the app listens on a loopback port, opens `GET /passkey?mo
 | `GET /invites/:token` | anyone | preview: `{ valid, workspace, role, expiresAt }` or `{ valid: false, reason }` |
 | `POST /invites/:token/accept` | signed in | |
 | `PUT /workspaces/:id/tree { nodes: [{ id, parentId }], removed?: [id] }` | per node | upserts; unmentioned pages stay. Adding needs edit on the parent (Members may add top-level pages), moving needs edit on page and new parent, removing needs full. Returns `{ applied, rejected: [{ id, reason }] }` |
-| `GET /workspaces/:id/access` | members | `{ role, defaultLevel, docs: [{ docId, level }] }` for offline caching |
+| `GET /workspaces/:id/access` | members | `{ role, defaultLevel, docs: [{ docId, level }] }` for every mirrored page, `none` included, for offline caching |
 | `GET /workspaces/:id/pages/:pageId/permissions` | view on the page | `{ myLevel, inherit, mirrored, entries: [{ principalType, principalId, level, pageId, inherited }] }` |
 | `PUT /workspaces/:id/pages/:pageId/permissions { principalType, principalId, level }` | full on the page | |
 | `DELETE /workspaces/:id/pages/:pageId/permissions/:type/:principalId` | full on the page | |

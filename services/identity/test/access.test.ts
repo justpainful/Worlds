@@ -224,7 +224,9 @@ describe("Service Binding contract", () => {
     expect(await rpc().listDocs({ userId: w.owner.userId, workspaceId: w.id })).toHaveLength(4);
     const access = await api("GET", `/workspaces/${w.id}/access`, { token: w.guest.accessToken });
     expect(access.json).toMatchObject({ role: "guest", defaultLevel: "edit" });
-    expect(access.json.docs).toHaveLength(3);
+    // The app's cache gets every mirrored page, including the ones it cannot open.
+    expect(access.json.docs).toHaveLength(4);
+    expect(access.json.docs.find((d: { docId: string }) => d.docId === "roadmap").level).toBe("none");
   });
 
   it("access drops to none the moment a member is removed, and an event is queued", async () => {

@@ -37,7 +37,7 @@ pub fn open(path: &Path) -> Result<Connection> {
     Ok(conn)
 }
 
-const MIGRATIONS: &[&str] = &[
+pub(crate) const MIGRATIONS: &[&str] = &[
     // 1: core model
     r#"
     CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);
@@ -243,6 +243,91 @@ const MIGRATIONS: &[&str] = &[
     // 4: avatar crop ("x,y,zoom")
     r#"
     ALTER TABLE profile ADD COLUMN avatar_crop TEXT;
+    "#,
+    // 5: accounts and team workspaces (a local cache of the identity service;
+    // tokens live in Windows Credential Manager, never here), plus who owns
+    // and last changed each page. Personal workspace = workspace_id NULL.
+    r#"
+    CREATE TABLE account (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        user_id TEXT NOT NULL,
+        email TEXT NOT NULL,
+        display_name TEXT NOT NULL DEFAULT '',
+        avatar_url TEXT,
+        device_id TEXT NOT NULL,
+        device_name TEXT NOT NULL DEFAULT '',
+        server_url TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'active',
+        access_expires_at INTEGER,
+        signed_in_at INTEGER NOT NULL,
+        last_sync_at INTEGER,
+        last_error TEXT
+    );
+
+    CREATE TABLE account_workspaces (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        role TEXT NOT NULL,
+        owner_id TEXT,
+        default_level TEXT NOT NULL DEFAULT 'edit',
+        member_count INTEGER NOT NULL DEFAULT 1,
+        synced_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE account_members (
+        workspace_id TEXT NOT NULL REFERENCES account_workspaces(id) ON DELETE CASCADE,
+        user_id TEXT NOT NULL,
+        display_name TEXT NOT NULL DEFAULT '',
+        email TEXT,
+        role TEXT NOT NULL,
+        PRIMARY KEY (workspace_id, user_id)
+    );
+
+    CREATE TABLE account_page_access (
+        workspace_id TEXT NOT NULL REFERENCES account_workspaces(id) ON DELETE CASCADE,
+        page_id TEXT NOT NULL,
+        level TEXT NOT NULL,
+        PRIMARY KEY (workspace_id, page_id)
+    );
+
+    ALTER TABLE pages ADD COLUMN workspace_id TEXT;
+    ALTER TABLE pages ADD COLUMN created_by TEXT;
+    ALTER TABLE pages ADD COLUMN updated_by TEXT;
+    CREATE INDEX pages_workspace ON pages(workspace_id);
+
+    -- New pages join their parent's workspace; new top-level pages join the
+    -- active Team workspace (setting account.activeWorkspace). Templates stay personal.
+    CREATE TRIGGER pages_assign_workspace AFTER INSERT ON pages
+    WHEN NEW.workspace_id IS NULL AND NEW.kind <> 'template'
+    BEGIN
+        UPDATE pages SET workspace_id = COALESCE(
+            (SELECT p.workspace_id FROM pages p WHERE p.id = NEW.parent_id),
+            CASE WHEN NEW.parent_id IS NULL THEN (
+                SELECT w.id FROM account_workspaces w
+                WHERE w.id = (SELECT json_extract(s.value, '$') FROM settings s WHERE s.key = 'account.activeWorkspace')
+            ) END)
+        WHERE id = NEW.id;
+    END;
+
+    -- Authorship: the signed-in user, or the local profile without an account.
+    CREATE TRIGGER pages_created_by AFTER INSERT ON pages
+    WHEN NEW.created_by IS NULL
+    BEGIN
+        UPDATE pages SET
+            created_by = COALESCE((SELECT user_id FROM account WHERE id = 1), (SELECT id FROM profile LIMIT 1)),
+            updated_by = COALESCE(NEW.updated_by, (SELECT user_id FROM account WHERE id = 1), (SELECT id FROM profile LIMIT 1))
+        WHERE id = NEW.id;
+    END;
+
+    -- Every local write (UI, Claude through MCP, the automation runner) records
+    -- a change row; stamp the author there. Writes applied from elsewhere use
+    -- another origin and set updated_by themselves.
+    CREATE TRIGGER changes_stamp_author AFTER INSERT ON changes
+    WHEN NEW.page_id IS NOT NULL AND NEW.origin IN ('ui', 'mcp', 'runner')
+    BEGIN
+        UPDATE pages SET updated_by = COALESCE((SELECT user_id FROM account WHERE id = 1), (SELECT id FROM profile LIMIT 1))
+        WHERE id = NEW.page_id;
+    END;
     "#,
 ];
 

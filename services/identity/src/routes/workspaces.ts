@@ -1,7 +1,7 @@
 import { Hono, type Context } from "hono";
 import type { AppEnv, Caller } from "../env";
 import { atLeast, canChangeRole, canInvite, canLeave, canManageGroups, canManageInvites, canManageWorkspace, canReadAudit, canRemove, isLevel, isRole, type Level, type Role } from "../domain/roles";
-import { chainOf, descendants, listDocs, loadAcl, loadSubject, resolve, type WorkspaceAcl } from "../domain/access";
+import { chainOf, descendants, loadAcl, loadSubject, resolve, type WorkspaceAcl } from "../domain/access";
 import { auditStmt, listAudit, type AuditEntry } from "../lib/audit";
 import { emit, requireAuth } from "../lib/auth";
 import { newId, now, randomToken, sha256Hex } from "../lib/crypto";
@@ -558,12 +558,19 @@ workspaces.put("/:id/tree", async (c) => {
   return c.json({ applied: stmts.length > 0, rejected });
 });
 
-/** listDocs for the caller, used by the app to cache its rights offline. */
+/**
+ * The caller's level on every mirrored page, "none" included, so the app can
+ * cache its rights and enforce them offline (a missing entry would otherwise
+ * fall back to the parent's level).
+ */
 workspaces.get("/:id/access", async (c) => {
   const id = c.req.param("id");
   const role = await roleIn(c, id);
   const w = await workspaceView(c.env.DB, id, role);
-  return c.json({ role, defaultLevel: w.defaultLevel, docs: await listDocs(c.env.DB, { userId: c.get("caller").userId, workspaceId: id }) });
+  const acl = await loadAcl(c.env.DB, id);
+  const subject = await loadSubject(c.env.DB, id, c.get("caller").userId);
+  const docs = [...acl.tree.keys()].map((docId) => ({ docId, level: resolve(acl, subject, docId) }));
+  return c.json({ role, defaultLevel: w.defaultLevel, docs });
 });
 
 /** True when making `parentId` the parent of `id` would put `id` above itself. */

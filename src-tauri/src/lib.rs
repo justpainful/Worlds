@@ -1,3 +1,4 @@
+pub mod account;
 pub mod ai;
 pub mod automations;
 pub mod backup;
@@ -128,10 +129,12 @@ pub fn run() {
 
             spawn_change_watcher(handle.clone());
             automations::spawn_scheduler(handle.clone());
+            account::sync::spawn(handle.clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             commands::bootstrap,
+            account::commands::account,
             commands::backups_list,
             commands::attachment_import_raw,
             commands::backup_now,

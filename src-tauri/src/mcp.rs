@@ -70,7 +70,8 @@ pub fn run_stdio(args: &[String]) -> Result<()> {
                 let result = {
                     let tx = conn.unchecked_transaction();
                     match tx {
-                        Ok(tx) => match call_tool(&tx, &ctx, name, &a) {
+                        // Claude acts with the signed-in user's rights (Team workspaces).
+                        Ok(tx) => match crate::account::guarded_tool_call(&tx, name, &a, |c| call_tool(c, &ctx, name, &a)) {
                             Ok(v) => tx.commit().map(|_| v).map_err(anyhow::Error::from),
                             Err(e) => Err(e),
                         },
