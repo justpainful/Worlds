@@ -186,6 +186,12 @@ export class MemoryLocalStore implements LocalStore {
   blocks = new Map<string, JSONContent[]>();
   /** Fails every call while set (simulates a broken IPC). */
   broken = false;
+  /** Where block rows come from the first time a page is asked about (browser mock). */
+  rowsSource: ((pageId: string) => Promise<JSONContent[]>) | null = null;
+
+  private async rows(pageId: string) {
+    if (!this.blocks.has(pageId) && this.rowsSource) this.blocks.set(pageId, await this.rowsSource(pageId).catch(() => []));
+  }
 
   private key(pageId: string, channel: number) {
     return `${pageId}#${channel}`;
@@ -280,6 +286,7 @@ export class MemoryLocalStore implements LocalStore {
     return `${JSON.stringify(this.blocks.get(pageId) ?? []).length}:${hash(JSON.stringify(this.blocks.get(pageId) ?? []))}`;
   }
   async mirrorCheck(pageId: string): Promise<MirrorCheck> {
+    await this.rows(pageId);
     const d = this.doc(pageId, 0);
     const currentRev = this.rev(pageId);
     return {

@@ -46,6 +46,7 @@ import { Glass } from "../glass/Glass";
 import { LAYER } from "../glass/materials";
 import { Icon, type IconName } from "../ui/Icon";
 import { menuAt, useMenu, type MenuItem } from "../ui/Menu";
+import { useCollab } from "../sync/useCollab";
 
 export interface PageEditorHandle {
   editor: Editor | null;
@@ -107,6 +108,8 @@ export const PageEditor = forwardRef<
   const external = useStore((s) => s.externalRevision[pageId] ?? 0);
   const [hovered, setHovered] = useState<{ node: PMNode; pos: number } | null>(null);
   const show = useMenu((s) => s.show);
+  // Live collaboration: shared pages edit through Yjs; personal pages are untouched.
+  const collab = useCollab(page, { onSaved });
 
   const editor = useEditor(
     {
@@ -116,6 +119,7 @@ export const PageEditor = forwardRef<
           link: { openOnClick: false, autolink: true, HTMLAttributes: { rel: "noopener", class: "link" } },
           dropcursor: { color: "rgba(var(--accent-rgb), 0.9)", width: 2 },
           codeBlock: { HTMLAttributes: { class: "code-block", dir: "ltr" } },
+          ...collab.starterKit,
         }),
         TaskList,
         TaskItem.configure({ nested: true }),
@@ -173,8 +177,10 @@ export const PageEditor = forwardRef<
         ...(variant === "document" ? documentExtensions : []),
         SlashCommand.configure({ getContext: () => ({ pageId }) }),
         WorldsContext.configure({ pageId }),
+        ...collab.extensions,
       ],
-      content: docFrom(page),
+      content: collab.key.startsWith("yjs") ? undefined : docFrom(page),
+      editable: collab.editable,
       editorProps: {
         attributes: { class: "prose", spellcheck: "true" },
         handlePaste: (_view, event) => {
@@ -225,7 +231,7 @@ export const PageEditor = forwardRef<
         saveTimer.current = window.setTimeout(() => flush(), 450);
       },
     },
-    [pageId],
+    [pageId, collab.key],
   );
   const editorRef = useRef<Editor | null>(null);
   editorRef.current = editor;
@@ -235,6 +241,7 @@ export const PageEditor = forwardRef<
   const merging = useRef<Promise<boolean> | null>(null);
 
   async function flush(): Promise<void> {
+    if (collab.shared) return collab.flush();
     const ed = editorRef.current;
     window.clearTimeout(saveTimer.current);
     // Never save a block list that predates a merge in progress.
@@ -294,6 +301,7 @@ export const PageEditor = forwardRef<
    * so a last save that hits a conflict is merged rather than dropped.
    */
   async function pullAndMerge(): Promise<void> {
+    if (collab.shared) return; // shared pages fold outside writes into the Yjs document
     if (merging.current) {
       await merging.current;
       return;
@@ -344,7 +352,7 @@ export const PageEditor = forwardRef<
   }
 
   useImperativeHandle(ref, () => ({
-    editor,
+    editor: collab.pending ? null : editor,
     flush,
     focusStart: () => editor?.chain().focus("start").run(),
   }));
@@ -521,6 +529,7 @@ export const PageEditor = forwardRef<
 
   return (
     <div className="editor-wrap" onDoubleClick={onDoubleClick}>
+      {collab.render(editor)}
       <DragHandle
         editor={editor}
         onNodeChange={({ node, pos }) => setHovered(node ? { node, pos } : null)}

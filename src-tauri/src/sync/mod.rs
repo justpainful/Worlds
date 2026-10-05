@@ -157,7 +157,8 @@ pub fn set_shared(conn: &Connection, page_id: &str, shared: bool) -> Result<Page
     }
     sync.as_object_mut().unwrap().insert("shared".into(), Value::Bool(shared));
     conn.execute("UPDATE pages SET metadata = ?1 WHERE id = ?2", params![meta.to_string(), page_id])?;
-    mark_change(conn, Some(page_id), "page", "ui")?;
+    // Not "ui": open views of the page reload and switch editing mode.
+    mark_change(conn, Some(page_id), "page", "sync")?;
     page_mode(conn, page_id)
 }
 
@@ -523,6 +524,17 @@ pub fn mirror_write(conn: &Connection, page_id: &str, blocks: Vec<BlockInput>, b
     if current_rev != base_rev {
         let current = current_blocks(&tx, page_id)?;
         return Ok(MirrorOutcome::Conflict { current_rev, current });
+    }
+    // The first mirror on this device replaces rows written before the page
+    // was shared: keep them restorable.
+    let first: bool = tx
+        .query_row("SELECT mirror_rev IS NULL FROM sync_docs WHERE page_id = ?1 AND channel = ?2", params![page_id, CHANNEL_CONTENT], |r| {
+            r.get(0)
+        })
+        .optional()?
+        .unwrap_or(true);
+    if first && !current_blocks(&tx, page_id)?.is_empty() {
+        store::snapshot(&tx, page_id, "user", None, Some("Before live sync"))?;
     }
     let r = store::save_blocks(&tx, &Ctx::user(), page_id, blocks)?;
     let rev = blocks_rev(&tx, page_id)?;

@@ -212,6 +212,8 @@ fn mirror_refuses_to_overwrite_unseen_block_changes() {
     // The editor mirrors its Yjs document into the rows.
     let w = mirror_write(&conn, &id, vec![para("b1", "one"), para("b2", "two")], &start.current_rev, b"state-1").unwrap();
     let MirrorOutcome::Written { rev, .. } = w else { panic!("expected a write") };
+    // Nothing to keep yet: the page was empty before its first mirror.
+    assert!(store::list_versions(&conn, &id).unwrap().iter().all(|v| v.label.as_deref() != Some("Before live sync")));
     let ok = mirror_check(&conn, &id).unwrap();
     assert_eq!(ok.mirror_rev.as_deref(), Some(rev.as_str()));
     assert_eq!(ok.current_rev, rev);
@@ -253,6 +255,15 @@ fn mirror_adopt_records_a_seed_without_writing() {
     assert!(matches!(mirror_adopt(&conn, &id, &c.current_rev, b"seeded").unwrap(), MirrorOutcome::Written { .. }));
     let after = mirror_check(&conn, &id).unwrap();
     assert!(after.current.is_none());
+    // A first mirror over existing rows keeps them as a version.
+    let other = page(&conn, "Adopted from server");
+    let tx = conn.unchecked_transaction().unwrap();
+    store::save_blocks(&tx, &Ctx::user(), &other, vec![para("old", "local only")]).unwrap();
+    tx.commit().unwrap();
+    let c = mirror_check(&conn, &other).unwrap();
+    mirror_write(&conn, &other, vec![para("srv", "from the server")], &c.current_rev, b"s").unwrap();
+    let versions = store::list_versions(&conn, &other).unwrap();
+    assert!(versions.iter().any(|v| v.label.as_deref() == Some("Before live sync")));
     assert!(matches!(mirror_adopt(&conn, &id, "stale", b"x").unwrap(), MirrorOutcome::Conflict { .. }));
 }
 
