@@ -100,6 +100,24 @@ export function slashItems(): SlashItem[] {
       },
     },
 
+    { id: "embed-youtube", title: "YouTube, Spotify or Maps", subtitle: "Plays inside the page", icon: "play", group: "Media", keywords: "youtube spotify maps google vimeo soundcloud figma loom pdf video music embed", run: async (e, r) => {
+        block(e, r).run();
+        const url = await promptText({ title: "Paste a link", placeholder: "https://www.youtube.com/watch?v=", validate: (v) => (/^https?:\/\/\S+$/.test(v) ? null : "Enter a full URL") });
+        if (url) e.chain().focus().insertAtom("embed", { url }).run();
+      } },
+
+    // Knowledge
+    { id: "math", title: "Equation", subtitle: "LaTeX on its own line", icon: "text", group: "Knowledge", hint: "$$", keywords: "latex math formula katex tex", run: (e, r) => block(e, r).insertMath("", true).run() },
+    { id: "math-inline", title: "Inline Equation", subtitle: "LaTeX inside the text", icon: "text", group: "Knowledge", hint: "$x$", keywords: "latex math formula inline", run: (e, r) => e.chain().focus().deleteRange(r).insertMath("", false).run() },
+    { id: "mermaid", title: "Diagram", subtitle: "Mermaid flowcharts, sequences, timelines", icon: "layers", group: "Knowledge", keywords: "mermaid flowchart sequence gantt diagram graph mindmap", run: (e, r) => block(e, r).insertMermaid().run() },
+    { id: "chart", title: "Chart", subtitle: "Pie, bars or lines from a table on this page", icon: "activity", group: "Knowledge", keywords: "chart graph pie bar line plot data", run: (e, r) => {
+        const hasTable = (() => { let t = false; e.state.doc.forEach((n) => { if (n.type.name === "table") t = true; }); return t; })();
+        const c = block(e, r);
+        if (!hasTable) c.insertTable({ rows: 4, cols: 2, withHeaderRow: true });
+        c.insertChart().run();
+      } },
+    { id: "tabs", title: "Tabs", subtitle: "Switch between sections in place", icon: "tabs", group: "Layout", keywords: "tabs tabbed sections switch", run: (e, r) => block(e, r).insertTabs().run() },
+
     // AI
     { id: "prompt", title: "Prompt", subtitle: "Reusable instruction for Claude", icon: "prompt", group: "Assistant", run: (e, r) => block(e, r).setPrompt().run() },
     {
