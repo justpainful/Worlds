@@ -1,5 +1,5 @@
 import { configDefaults, defineConfig, mergeConfig } from "vitest/config";
-import viteConfig from "./vite.config";
+import viteConfig from "./vite.config.ts";
 
 // Services under services/ have their own toolchains and test runners (for
 // example the Workers pool for services/sync); the app's suite skips them.
