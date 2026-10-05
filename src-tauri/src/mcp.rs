@@ -21,6 +21,7 @@ mod more2;
 mod page_content;
 mod page_structure;
 mod profile_history;
+mod resources;
 mod tasks_tables;
 mod workspace;
 
@@ -183,6 +184,7 @@ fn tool_list() -> Vec<Value> {
     .into_iter()
     .chain(more::tools())
     .chain(more2::tools())
+    .chain(resources::tools())
     .collect()
 }
 
@@ -713,6 +715,9 @@ fn call_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Valu
         }
         _ => {
             if let Some(v) = more::call(conn, ctx, name, a)? {
+                return Ok(v);
+            }
+            if let Some(v) = resources::call(conn, ctx, name, a)? {
                 return Ok(v);
             }
             match more2::call(conn, ctx, name, a)? {

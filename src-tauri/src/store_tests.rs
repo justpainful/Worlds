@@ -156,3 +156,52 @@ fn attachment_names_are_plain_names() {
     assert_eq!(store::clean_file_name("   "), "file");
     assert_eq!(store::clean_file_name("\u{0}\u{7}x.pdf"), "x.pdf");
 }
+
+#[test]
+fn resource_kinds_are_validated_and_searchable() {
+    let (dir, conn) = temp_db("kinds");
+    // Unknown kinds are refused; every known kind is accepted.
+    assert!(store::create_page(&conn, &Ctx::user(), NewPage { kind: Some("spreadsheet".into()), ..Default::default() }).is_err());
+    for k in ["document", "presentation", "project", "gallery", "file", "stream"] {
+        let p =
+            store::create_page(&conn, &Ctx::user(), NewPage { title: Some(format!("A {k}")), kind: Some(k.into()), ..Default::default() })
+                .unwrap();
+        assert_eq!(p.kind, k);
+        assert!(store::is_resource(&p.kind));
+    }
+    assert!(!store::is_resource("template"));
+
+    // Slide text is indexed like block text.
+    let deck = store::create_page(
+        &conn,
+        &Ctx::user(),
+        NewPage { title: Some("Deck".into()), kind: Some("presentation".into()), ..Default::default() },
+    )
+    .unwrap();
+    let slide = json!({ "type": "slide", "attrs": { "layout": "title", "notes": "remember the zebra", "elements": [{ "id": "e1", "type": "text", "text": "Quarterly kiwi numbers" }] } });
+    store::insert_blocks(&conn, &Ctx::user(), &deck.id, None, vec![slide]).unwrap();
+    store::index_page(&conn, &deck.id).unwrap();
+    assert!(store::search(&conn, "kiwi", 10, false).unwrap().iter().any(|h| h.page_id == deck.id));
+    assert!(store::search(&conn, "zebra", 10, false).unwrap().iter().any(|h| h.page_id == deck.id));
+
+    // A stream's link is searchable through its metadata.
+    let stream =
+        store::create_page(&conn, &Ctx::user(), NewPage { title: Some("Live".into()), kind: Some("stream".into()), ..Default::default() })
+            .unwrap();
+    store::set_page_meta(
+        &conn,
+        &Ctx::user(),
+        &stream.id,
+        "stream",
+        json!({ "url": "https://cdn.example.com/channel-forty/index.m3u8", "format": "hls" }),
+    )
+    .unwrap();
+    assert!(store::search(&conn, "channel-forty", 10, false).unwrap().iter().any(|h| h.page_id == stream.id));
+    // Metadata keys are written one at a time and never clobber each other.
+    store::set_page_meta(&conn, &Ctx::user(), &stream.id, "look", json!({ "full": true })).unwrap();
+    let meta: String = conn.query_row("SELECT metadata FROM pages WHERE id = ?1", [&stream.id], |r| r.get(0)).unwrap();
+    let meta: Value = serde_json::from_str(&meta).unwrap();
+    assert_eq!(meta["stream"]["format"], "hls");
+    assert_eq!(meta["look"]["full"], true);
+    let _ = std::fs::remove_dir_all(&dir);
+}
