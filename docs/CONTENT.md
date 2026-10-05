@@ -43,3 +43,21 @@ Moving a resource into a project sets `parent_id`. Linking keeps it where it is 
 4. Gallery, file and stream polish (thumbnails, ordering, info, player).
 5. Project overview (status, dates, sections by kind, links, activity).
 6. Claude/MCP per-kind tools.
+
+## Status
+
+Done and persisted:
+- Model and kinds.
+- New menu, palette commands and upload as File resources.
+- Every kind in the sidebar, search, recent, favorites and trash.
+- Document editor: paper, page setup, styles that inherit, print/PDF.
+- Presentation editor: navigator, canvas with snapping and resizing, notes, present mode.
+- Gallery, File and Stream (HLS) views.
+- Project overview with links and activity.
+- Claude/MCP tools per kind, with tests.
+
+Later:
+- DASH playback.
+- Word (.docx) and PowerPoint (.pptx) export.
+- Exact pagination of long documents (today: page guides on screen, real pages when printed).
+- Presentation transitions and themes.
