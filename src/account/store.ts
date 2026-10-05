@@ -75,6 +75,24 @@ export function startAccount() {
   s.load();
   listen("worlds://account", () => useAccount.getState().load()).catch(() => {});
   window.addEventListener("worlds:changed", () => useAccount.getState().load());
+  // Opening a Team page you cannot edit: say so once, plainly.
+  const told = new Set<string>();
+  useStore.subscribe((st, prev) => {
+    if (st.layout === prev.layout) return;
+    const pane = st.layout.panes.find((p) => p.id === st.layout.activePaneId);
+    const route = pane?.tabs.find((t) => t.id === pane.activeTabId)?.route;
+    if (route?.kind !== "page" || told.has(route.pageId) || !useAccount.getState().pageWs[route.pageId]) return;
+    const pageId = route.pageId;
+    accountApi.pageLevel(pageId).then((level) => {
+      if (level === "full" || level === "edit" || told.has(pageId)) return;
+      told.add(pageId);
+      const message =
+        level === "none"
+          ? "You do not have access to this page in its Team workspace. Claude cannot open it either."
+          : `You can ${level === "comment" ? "comment on" : "view"} this page. Changes you make here are not shared.`;
+      useStore.getState().toast({ message, tone: "info", action: { label: "Sharing", run: () => openShareSheet(pageId) } });
+    }, () => {});
+  });
   // New or moved pages: refresh which workspace each page is in, and when
   // the shape of a Team tree changed, push it soon (in the background).
   let timer = 0;
