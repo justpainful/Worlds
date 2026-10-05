@@ -126,7 +126,7 @@ fn migration_5_upgrades_a_version_4_database_and_keeps_its_pages() {
     }
     let conn = db::open(&path).unwrap();
     let v: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
-    assert_eq!(v, 5);
+    assert_eq!(v, db::schema_version());
     // Existing data is untouched: Personal, no invented authorship.
     assert_eq!(col(&conn, "old-page", "title"), Some("From v4".into()));
     assert_eq!(col(&conn, "old-page", "workspace_id"), None);
@@ -139,7 +139,7 @@ fn migration_5_upgrades_a_version_4_database_and_keeps_its_pages() {
     drop(conn);
     let conn = db::open(&path).unwrap();
     let v: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
-    assert_eq!(v, 5);
+    assert_eq!(v, db::schema_version());
 }
 
 #[test]
