@@ -4,6 +4,7 @@ import { useStore, pageTitle } from "../state/store";
 import { EmptyState, PageIcon, relTime } from "../ui/misc";
 import { confirmDialog } from "../ui/Modal";
 import { Icon } from "../ui/Icon";
+import { isResource } from "../resources/kinds";
 
 export function TrashView() {
   const pages = useStore((s) => s.pages);
@@ -16,7 +17,7 @@ export function TrashView() {
         .sort((a, b) => (b.deletedAt ?? 0) - (a.deletedAt ?? 0)),
     [pages],
   );
-  const archived = useMemo(() => Object.values(pages).filter((p) => p.archived && !p.deletedAt && p.kind === "page"), [pages]);
+  const archived = useMemo(() => Object.values(pages).filter((p) => p.archived && !p.deletedAt && isResource(p)), [pages]);
 
   const restore = async (id: string) => {
     try {

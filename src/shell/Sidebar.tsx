@@ -8,6 +8,8 @@ import { Avatar, PageIcon } from "../ui/misc";
 import { useMenu, menuAt } from "../ui/Menu";
 import { pageMenu, renameRequests } from "./pageActions";
 import { api, errorMessage } from "../lib/api";
+import { isResource } from "../resources/kinds";
+import { newResourceMenu } from "../resources/create";
 
 const ROW_H = 30;
 
@@ -55,7 +57,7 @@ export function Sidebar() {
   const pinned = useMemo(
     () =>
       Object.values(pages)
-        .filter((p) => p.pinned && !p.deletedAt && p.kind === "page")
+        .filter((p) => p.pinned && !p.deletedAt && isResource(p))
         .sort((a, b) => (a.pinOrder ?? 0) - (b.pinOrder ?? 0)),
     [pages],
   );
@@ -95,7 +97,7 @@ export function Sidebar() {
           <IconButton icon="sidebarClose" label="Hide sidebar" shortcut="Ctrl+\" onClick={toggleSidebar} />
           <div className="side-top-spacer" data-tauri-drag-region />
           <IconButton icon="search" label="Search" shortcut="Ctrl+K" onClick={() => setPalette(true, "all")} />
-          <IconButton icon="edit" label="New page" shortcut="Ctrl+N" onClick={() => createPage({}, "current")} />
+          <IconButton icon="edit" label="New" shortcut="Ctrl+N for a page" onClick={(e) => newResourceMenu(e.currentTarget)} />
         </div>
 
         <nav className="side-nav">

@@ -59,6 +59,32 @@ fn collect_text(node: &Value, out: &mut String) {
             }
         }
         "pageLink" => out.push_str(attr_str(node, "title").unwrap_or("")),
+        // Presentation slides keep their text in positioned elements; notes count too.
+        "slide" => {
+            let elements = attr(node, "elements").and_then(Value::as_array).cloned().unwrap_or_default();
+            for el in elements {
+                if let Some(t) = el.get("text").and_then(Value::as_str) {
+                    if !out.is_empty() {
+                        out.push('\n');
+                    }
+                    out.push_str(t);
+                }
+            }
+            if let Some(n) = attr_str(node, "notes").filter(|n| !n.is_empty()) {
+                out.push('\n');
+                out.push_str(n);
+            }
+        }
+        "galleryItem" => {
+            for k in ["caption", "name"] {
+                if let Some(t) = attr_str(node, k).filter(|t| !t.is_empty()) {
+                    if !out.is_empty() {
+                        out.push(' ');
+                    }
+                    out.push_str(t);
+                }
+            }
+        }
         "embed" => out.push_str(attr_str(node, "url").unwrap_or("")),
         "discordMessage" => out.push_str(attr_str(node, "content").unwrap_or("")),
         _ => {

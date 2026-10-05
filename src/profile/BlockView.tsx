@@ -11,6 +11,7 @@ import { SmartImage } from "../ui/SmartImage";
 import { dynamicSource, FRAME_SHAPES, parseFocus, sizeOf, type FrameBlock, type ImageFit, type ImageSide, type ProfileBlock } from "./blocks";
 import { useImageInfo } from "../media/crop";
 import { BRIDGE } from "../discord/bridge";
+import { isResource } from "../resources/kinds";
 
 export interface LiveData {
   stats: ProfileStats | null;
@@ -141,7 +142,7 @@ function Dynamic({ block, live }: { block: Extract<ProfileBlock, { type: "dynami
   const openPage = useStore((s) => s.openPage);
   const now = useNow();
   const latest = useMemo(
-    () => Object.values(pages).filter((p) => !p.deletedAt && p.kind === "page").sort((a, b) => b.updatedAt - a.updatedAt)[0],
+    () => Object.values(pages).filter((p) => !p.deletedAt && isResource(p)).sort((a, b) => b.updatedAt - a.updatedAt)[0],
     [pages],
   );
   switch (dynamicSource(block.source)) {

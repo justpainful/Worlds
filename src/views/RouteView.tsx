@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import type { Route } from "../state/store";
 import { glassScene } from "../glass/scene";
-import { PageView } from "./PageView";
+import { ResourceView } from "../resources/views/ResourceView";
 import { HomeView } from "./HomeView";
 import { TemplatesView } from "./TemplatesView";
 import { AutomationsView } from "./AutomationsView";
@@ -23,7 +23,7 @@ export function RouteView(props: { route: Route; paneId: string; tabId: string }
 function RouteBody({ route, paneId }: { route: Route; paneId: string; tabId: string }) {
   switch (route.kind) {
     case "page":
-      return <PageView pageId={route.pageId} paneId={paneId} />;
+      return <ResourceView pageId={route.pageId} paneId={paneId} />;
     case "home":
       return <HomeView />;
     case "templates":

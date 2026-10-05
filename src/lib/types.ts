@@ -56,6 +56,9 @@ export interface AiMessage {
   createdAt: number;
 }
 
+/** What a resource is. A Page is one kind among several (docs/CONTENT.md). */
+export type ResourceKind = "page" | "document" | "presentation" | "project" | "gallery" | "file" | "stream";
+
 export interface PageMeta {
   id: string;
   title: string;
@@ -64,7 +67,7 @@ export interface PageMeta {
   parentId: string | null;
   sortKey: number;
   ownerId: string | null;
-  kind: "page" | "template";
+  kind: ResourceKind | "template";
   templateCategory: string | null;
   pinned: boolean;
   pinOrder: number | null;

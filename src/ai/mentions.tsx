@@ -3,6 +3,7 @@ import { useStore, pageTitle } from "../state/store";
 import { Popover } from "../ui/Menu";
 import { PageIcon } from "../ui/misc";
 import { ProductIcon } from "../ui/ProductIcon";
+import { isResource } from "../resources/kinds";
 
 /** A group of Worlds tools the user can point Claude at with @. */
 export interface ToolRef {
@@ -81,7 +82,7 @@ export function MentionMenu({
     }));
     const pageRows: Row[] = q
       ? Object.values(pages)
-          .filter((p) => p.kind === "page" && !p.deletedAt && pageTitle(p).toLowerCase().includes(q))
+          .filter((p) => isResource(p) && !p.deletedAt && pageTitle(p).toLowerCase().includes(q))
           .sort((a, b) => b.updatedAt - a.updatedAt)
           .slice(0, 6)
           .map((p) => ({ key: `page:${p.id}`, section: "Pages", label: pageTitle(p), icon: { page: p.icon }, pick: { kind: "page", id: p.id, title: pageTitle(p) } }))

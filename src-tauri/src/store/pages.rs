@@ -126,6 +126,7 @@ pub fn create_page(conn: &Connection, ctx: &Ctx, new: NewPage) -> Result<PageMet
     let t = now();
     let sort = next_sort_key(conn, new.parent_id.as_deref(), new.after_id.as_deref())?;
     let kind = new.kind.clone().unwrap_or_else(|| "page".into());
+    validate_kind(&kind)?;
     conn.execute(
         "INSERT INTO pages (id, title, icon, parent_id, sort_key, owner_id, kind, template_category,
                             metadata, instructions, created_at, updated_at, opened_at)

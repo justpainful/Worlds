@@ -13,12 +13,13 @@ import { pageMenu } from "../shell/pageActions";
 import { LAYER } from "../glass/materials";
 import { Glass } from "../glass/Glass";
 import { GlassBackdrop } from "../profile/GlassBackdrop";
+import { isResource } from "../resources/kinds";
+import { newResourceMenu } from "../resources/create";
 
 type View = "grid" | "list";
 
 export function HomeView() {
   const pages = useStore((s) => s.pages);
-  const createPage = useStore((s) => s.createPage);
   const setPalette = useStore((s) => s.setPalette);
   const open = useStore((s) => s.open);
   const settings = useStore((s) => s.settings);
@@ -33,7 +34,7 @@ export function HomeView() {
     return () => window.removeEventListener("worlds:changed", load);
   }, []);
 
-  const all = useMemo(() => Object.values(pages).filter((p) => p.kind === "page" && !p.deletedAt && !p.archived), [pages]);
+  const all = useMemo(() => Object.values(pages).filter((p) => isResource(p) && !p.deletedAt && !p.archived), [pages]);
   const templates = useMemo(
     () => Object.values(pages).filter((p) => p.kind === "template" && !p.deletedAt).sort((a, b) => a.sortKey - b.sortKey),
     [pages],
@@ -73,8 +74,8 @@ export function HomeView() {
           <h1 className="home-title">{greeting}</h1>
           <p className="home-sub">Start with a blank page, or pick a template.</p>
           <div className="home-hero-actions">
-            <GlassButton icon="add" prominent size="large" onClick={() => createPage({}, "current")} layer={LAYER.floating}>
-              New Page
+            <GlassButton icon="add" prominent size="large" onClick={(e) => newResourceMenu(e.currentTarget)} layer={LAYER.floating}>
+              New
             </GlassButton>
           </div>
         </div>
@@ -115,7 +116,7 @@ export function HomeView() {
               { value: "list", icon: "listView" },
             ]}
           />
-          <GlassButton icon="add" prominent onClick={() => createPage({}, "current")}>New</GlassButton>
+          <GlassButton icon="add" prominent onClick={(e) => newResourceMenu(e.currentTarget, { align: "end" })}>New</GlassButton>
         </div>
       </div>
 

@@ -59,7 +59,7 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
         }
         "pages_recent" => {
             let mut all: Vec<store::PageMeta> =
-                store::list_pages(conn, false)?.into_iter().filter(|p| p.kind == "page" && !p.archived).collect();
+                store::list_pages(conn, false)?.into_iter().filter(|p| store::is_resource(&p.kind) && !p.archived).collect();
             if os(a, "by") == Some("opened") {
                 all.sort_by_key(|p| std::cmp::Reverse(p.opened_at.unwrap_or(0)));
             } else {
@@ -75,8 +75,10 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
         "pages_stale" => {
             let days = a.get("days").and_then(Value::as_i64).unwrap_or(60);
             let cutoff = crate::db::now() - days * 86_400_000;
-            let mut list: Vec<store::PageMeta> =
-                store::list_pages(conn, false)?.into_iter().filter(|p| p.kind == "page" && !p.archived && p.updated_at < cutoff).collect();
+            let mut list: Vec<store::PageMeta> = store::list_pages(conn, false)?
+                .into_iter()
+                .filter(|p| store::is_resource(&p.kind) && !p.archived && p.updated_at < cutoff)
+                .collect();
             list.sort_by_key(|p| p.updated_at);
             let n = a.get("limit").and_then(Value::as_u64).unwrap_or(30) as usize;
             json!(list.iter().take(n).map(|p| json!({ "id": p.id, "title": p.title, "updatedAt": p.updated_at, "daysIdle": (crate::db::now() - p.updated_at) / 86_400_000 })).collect::<Vec<_>>())
@@ -93,8 +95,10 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
             let parent = os(a, "parentId");
             let by = s(a, "by")?;
             let desc = a.get("descending").and_then(Value::as_bool).unwrap_or(false);
-            let mut kids: Vec<store::PageMeta> =
-                store::list_pages(conn, false)?.into_iter().filter(|p| p.parent_id.as_deref() == parent && p.kind == "page").collect();
+            let mut kids: Vec<store::PageMeta> = store::list_pages(conn, false)?
+                .into_iter()
+                .filter(|p| p.parent_id.as_deref() == parent && store::is_resource(&p.kind))
+                .collect();
             let key = |p: &store::PageMeta| -> String {
                 match by {
                     "title" => p.title.to_lowercase(),
@@ -261,7 +265,7 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
         "archive_list" => {
             let list: Vec<Value> = store::list_pages(conn, false)?
                 .into_iter()
-                .filter(|p| p.archived && p.kind == "page")
+                .filter(|p| p.archived && store::is_resource(&p.kind))
                 .map(|p| json!({ "id": p.id, "title": p.title, "updatedAt": p.updated_at }))
                 .collect();
             json!(list)

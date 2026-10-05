@@ -274,7 +274,9 @@ fn page_meta(r: &Row) -> rusqlite::Result<PageMeta> {
 
 /// Merge one key (properties or look) into a page's metadata without touching the rest.
 pub fn set_page_meta(conn: &Connection, ctx: &Ctx, id: &str, key: &str, value: Value) -> Result<PageMeta> {
-    if !matches!(key, "properties" | "look") {
+    // One key of the metadata object at a time, so no editor can overwrite
+    // what another part of the app keeps there.
+    if !matches!(key, "properties" | "look" | "doc" | "deck" | "project" | "gallery" | "file" | "stream") {
         bail!("unknown page setting {key}");
     }
     let value = if key == "properties" {
@@ -295,6 +297,9 @@ pub fn set_page_meta(conn: &Connection, ctx: &Ctx, id: &str, key: &str, value: V
         &format!("UPDATE pages SET metadata = json_set(metadata, '$.{key}', json(?1)), updated_at = ?2 WHERE id = ?3"),
         params![value.to_string(), now(), id],
     )?;
+    if matches!(key, "stream" | "project" | "doc") {
+        index_page(conn, id)?;
+    }
     if key == "properties" && !ctx.is_user() {
         record(conn, ctx, Some(id), "properties", "Updated properties", None, None, None, json!({}))?;
     }
@@ -340,6 +345,7 @@ const ATTACHMENT_COLS: &str = "id, page_id, kind, file_name, mime, size, rel_pat
 mod attachments;
 mod blocks;
 mod history;
+mod kinds;
 mod pages;
 mod profile;
 mod search;
@@ -348,6 +354,7 @@ mod templates;
 pub use attachments::*;
 pub use blocks::*;
 pub use history::*;
+pub use kinds::*;
 pub use pages::*;
 pub use profile::*;
 pub use search::*;

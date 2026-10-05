@@ -14,6 +14,7 @@ import { DiscordPreview, useBotName } from "../discord/DiscordPreview";
 import { describeTrigger } from "../lib/automationText";
 import { EmbedColorPicker, type EmbedColor } from "../discord/EmbedColorPicker";
 import { loadPageColor } from "../discord/DiscordComposer";
+import { isTextKind } from "../resources/kinds";
 
 const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
 
@@ -82,7 +83,7 @@ export function AutomationEditor({ pageId, automation, onClose }: { pageId: stri
   const candidates = useMemo(() => {
     const q = pageQuery.toLowerCase();
     return Object.values(pages)
-      .filter((p) => p.kind === "page" && !p.deletedAt && (!q || pageTitle(p).toLowerCase().includes(q)))
+      .filter((p) => isTextKind(p.kind) && !p.deletedAt && (!q || pageTitle(p).toLowerCase().includes(q)))
       .sort((a, b) => (b.openedAt ?? b.updatedAt) - (a.openedAt ?? a.updatedAt))
       .slice(0, 8);
   }, [pages, pageQuery]);

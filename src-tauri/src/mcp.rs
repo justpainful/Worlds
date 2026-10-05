@@ -216,7 +216,7 @@ fn call_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Valu
             let root = os(a, "parentId");
             let mut out = Vec::new();
             fn walk(all: &[store::PageMeta], parent: Option<&str>, depth: usize, inc: bool, out: &mut Vec<Value>) {
-                for p in all.iter().filter(|p| p.parent_id.as_deref() == parent && p.kind == "page" && (inc || !p.archived)) {
+                for p in all.iter().filter(|p| p.parent_id.as_deref() == parent && store::is_resource(&p.kind) && (inc || !p.archived)) {
                     out.push(json!({ "id": p.id, "title": p.title, "icon": p.icon, "depth": depth, "pinned": p.pinned, "archived": p.archived, "updatedAt": p.updated_at }));
                     if depth < 12 {
                         walk(all, Some(&p.id), depth + 1, inc, out);

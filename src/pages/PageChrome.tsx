@@ -11,6 +11,7 @@ import { Modal } from "../ui/Modal";
 import { PageIcon, relTime } from "../ui/misc";
 import { ProductIcon } from "../ui/ProductIcon";
 import { propsOf, propText } from "./properties";
+import { isResource } from "../resources/kinds";
 
 const toast = (message: string, tone: "error" | "success" | "info" = "info") => useStore.getState().toast({ message, tone });
 
@@ -373,7 +374,7 @@ export function RelatedPages({ page }: { page: PageMeta }) {
     const tags = new Set(propsOf(page).flatMap((p) => (Array.isArray(p.value) ? p.value.map((v) => String(v).toLowerCase()) : [])));
     const words = new Set(pageTitle(page).toLowerCase().split(/\s+/).filter((w) => w.length > 3));
     return Object.values(pages)
-      .filter((p) => p.id !== page.id && p.kind === "page" && !p.deletedAt && !p.archived && p.parentId !== page.id && page.parentId !== p.id)
+      .filter((p) => p.id !== page.id && isResource(p) && !p.deletedAt && !p.archived && p.parentId !== page.id && page.parentId !== p.id)
       .map((p) => {
         let score = 0;
         for (const pr of propsOf(p)) if (Array.isArray(pr.value)) for (const v of pr.value) if (tags.has(String(v).toLowerCase())) score += 3;

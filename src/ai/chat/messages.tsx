@@ -11,6 +11,7 @@ import { ProductIcon } from "../../ui/ProductIcon";
 import { Markdown } from "../markdown";
 import { TOOL_LABEL, isAuthError, AuthHelp } from "./tools";
 import { type Live } from "./useChat";
+import { isResource } from "../../resources/kinds";
 
 // ---------------------------------------------------------------------------
 // Messages
@@ -211,7 +212,7 @@ export function MessageView({
 
   const pickPage = (el: HTMLElement) => {
     const recent = Object.values(useStore.getState().pages)
-      .filter((p) => p.kind === "page" && !p.deletedAt)
+      .filter((p) => isResource(p) && !p.deletedAt)
       .sort((a, b) => (b.openedAt ?? b.updatedAt) - (a.openedAt ?? a.updatedAt))
       .slice(0, 10);
     menuAt(

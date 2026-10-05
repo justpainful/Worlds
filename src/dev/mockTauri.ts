@@ -53,6 +53,8 @@ const profile: any = {
 
 const pages: Record<string, any> = {};
 const blocks: Record<string, any[]> = {};
+const metadata: Record<string, any> = {};
+
 function addPage(title: string, icon: string | null, lines: string[], extra: any = {}) {
   const pid = id();
   pages[pid] = {
@@ -128,14 +130,36 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
     return null;
   }
   if (cmd.startsWith("plugin:")) return cmd.endsWith("is_enabled") ? false : null;
-  const page = (pid: string) => pages[pid] && { ...pages[pid], metadata: {}, instructions: [], blocks: (blocks[pid] ?? []).map((c, i) => ({ id: c.attrs.bid, pageId: pid, type: c.type, order: i, content: c, properties: {}, direction: "auto", createdAt: now, updatedAt: now })), backlinks: [], attachments: [], breadcrumbs: [] };
+  const page = (pid: string) => pages[pid] && { ...pages[pid], metadata: metadata[pid] ?? {}, instructions: [], blocks: (blocks[pid] ?? []).map((c, i) => ({ id: c.attrs.bid, pageId: pid, type: c.type, order: i, content: c, properties: {}, direction: "auto", createdAt: now, updatedAt: now })), backlinks: [], attachments: [], breadcrumbs: [] };
   switch (cmd) {
     case "bootstrap": return { profile, pages: Object.values(pages), settings, dataDir: "C:\\mock" };
     case "launch_info": return { hidden: false };
     case "pages_list": return Object.values(pages);
     case "page_get": return page(a.id) ?? null;
-    case "page_create": { const pid = addPage(a.page.title ?? "", a.page.icon ?? null, []); return pages[pid]; }
-    case "page_update": Object.assign(pages[a.id], a.patch); return pages[a.id];
+    case "page_create": {
+      const pid = addPage(a.page.title ?? "", a.page.icon ?? null, [], { kind: a.page.kind ?? "page", parentId: a.page.parentId ?? null });
+      metadata[pid] = a.page.metadata ?? {};
+      return pages[pid];
+    }
+    case "page_update": {
+      const { metadata: md, ...rest } = a.patch;
+      if (md) metadata[a.id] = md;
+      Object.assign(pages[a.id], rest, { updatedAt: Date.now() });
+      return pages[a.id];
+    }
+    case "page_meta_set": {
+      metadata[a.id] = { ...(metadata[a.id] ?? {}), [a.key]: a.value };
+      pages[a.id].updatedAt = Date.now();
+      return pages[a.id];
+    }
+    case "attachment_import": {
+      const name: string = a.path.split(/[\\/]/).pop();
+      const ext = name.split(".").pop()!.toLowerCase();
+      const mime = ext === "gif" ? "image/gif" : ["png", "jpg", "jpeg", "webp"].includes(ext) ? "image/png" : ["mp4", "webm"].includes(ext) ? "video/mp4" : ext === "pdf" ? "application/pdf" : "application/octet-stream";
+      const aid = id();
+      ASSET[aid] = mime.startsWith("image/") ? ASSET["mock-ref-5"] : "";
+      return { id: aid, pageId: a.pageId, kind: mime.startsWith("image/") ? (ext === "gif" ? "gif" : "image") : mime.startsWith("video/") ? "video" : "file", fileName: name, mime, size: 123456, width: 800, height: 600, createdAt: Date.now() };
+    }
     case "blocks_save": {
       // Same rule as the real backend: a save based on an older sync is refused.
       if (a.base != null && pages[a.pageId] && pages[a.pageId].updatedAt > a.base) throw "conflict: the page changed since it was loaded";

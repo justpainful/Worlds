@@ -14,6 +14,7 @@ import { ProductIcon } from "../../ui/ProductIcon";
 import { LAYER } from "../../glass/materials";
 import { uploadFiles, uploadPaths } from "./uploads";
 import { AttachmentStrip, ModelButton } from "./messages";
+import { isResource } from "../../resources/kinds";
 
 // ---------------------------------------------------------------------------
 // Composer: text, page context, #conversation references
@@ -415,7 +416,7 @@ export function PagePicker({ anchor, onPick, onClose }: { anchor: DOMRect; onPic
   const list = useMemo(
     () =>
       Object.values(pages)
-        .filter((p) => p.kind === "page" && !p.deletedAt && (!q.trim() || pageTitle(p).toLowerCase().includes(q.trim().toLowerCase())))
+        .filter((p) => isResource(p) && !p.deletedAt && (!q.trim() || pageTitle(p).toLowerCase().includes(q.trim().toLowerCase())))
         .sort((a, b) => (b.openedAt ?? b.updatedAt) - (a.openedAt ?? a.updatedAt))
         .slice(0, 10),
     [pages, q],

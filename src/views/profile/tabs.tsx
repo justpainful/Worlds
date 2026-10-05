@@ -8,6 +8,7 @@ import { EmptyState, PageIcon, relTime } from "../../ui/misc";
 import { type ProfileStats } from "../../profile/BlockView";
 import { useThumb } from "../../media/thumbs";
 import { hostOf, useClock, fmt } from "./shared";
+import { isResource } from "../../resources/kinds";
 
 // ---------------------------------------------------------------------------
 // Tabs
@@ -19,7 +20,7 @@ export function PagesTab() {
   const list = useMemo(
     () =>
       Object.values(pages)
-        .filter((p) => !p.deletedAt && p.kind === "page")
+        .filter((p) => !p.deletedAt && isResource(p))
         .sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.updatedAt - a.updatedAt)
         .slice(0, 12),
     [pages],

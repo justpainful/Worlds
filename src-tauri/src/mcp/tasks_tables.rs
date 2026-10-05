@@ -16,7 +16,7 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
             let limit = a.get("limit").and_then(Value::as_u64).unwrap_or(200) as usize;
             let pages: Vec<store::PageMeta> = match os(a, "pageId") {
                 Some(p) => vec![page_meta(conn, p)?],
-                None => store::list_pages(conn, false)?.into_iter().filter(|p| p.kind == "page" && !p.archived).collect(),
+                None => store::list_pages(conn, false)?.into_iter().filter(|p| store::is_resource(&p.kind) && !p.archived).collect(),
             };
             let (mut open, mut done) = (0usize, 0usize);
             let mut items = Vec::new();
@@ -52,7 +52,7 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
                 None => {
                     let t = want_text.clone().ok_or_else(|| anyhow!("give blockId (+ index) or text"))?;
                     let mut found = Vec::new();
-                    for p in store::list_pages(conn, false)?.into_iter().filter(|p| p.kind == "page" && !p.archived) {
+                    for p in store::list_pages(conn, false)?.into_iter().filter(|p| store::is_resource(&p.kind) && !p.archived) {
                         for b in store::blocks_of(conn, &p.id)? {
                             if b.block_type == "taskList" && content::plain_text(&b.content).to_lowercase().contains(&t) {
                                 found.push(b);

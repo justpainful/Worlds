@@ -19,6 +19,7 @@ import { Callout, Prompt, PageLink, ImageNode, VideoNode, FileNode, Embed, Disco
 import { Collection, Column, Columns, Toggle } from "./extensions/pages2";
 import { BackgroundColor, Color, FindReplace, Gallery, TextStyle, Toc, WikiLink } from "./extensions/pages3";
 import { openLightbox } from "./views/Pages3Views";
+import { documentExtensions } from "./extensions/document";
 
 /** Apple-like text and background colours. */
 export const TEXT_COLORS: { name: string; value: string | null }[] = [
@@ -87,8 +88,11 @@ export function whenSaved(pageId: string): Promise<void> {
   return inflight.get(pageId) ?? Promise.resolve();
 }
 
-export const PageEditor = forwardRef<PageEditorHandle, { page: Page; onSaved?: (at: number) => void; onSaving?: (s: boolean) => void }>(function PageEditor(
-  { page, onSaved, onSaving },
+export const PageEditor = forwardRef<
+  PageEditorHandle,
+  { page: Page; onSaved?: (at: number) => void; onSaving?: (s: boolean) => void; variant?: "page" | "document" }
+>(function PageEditor(
+  { page, onSaved, onSaving, variant = "page" },
   ref,
 ) {
   const pageId = page.id;
@@ -147,7 +151,7 @@ export const PageEditor = forwardRef<PageEditorHandle, { page: Page; onSaved?: (
               return "";
             }
             if (node.type.name === "heading") return `Heading ${node.attrs.level}`;
-            if (ed.state.doc.childCount === 1 && node.type.name === "paragraph") return "Start writing, or press / for blocks and @ for pages";
+            if (ed.state.doc.childCount === 1 && node.type.name === "paragraph") return variant === "document" ? "Start writing" : "Start writing, or press / for blocks and @ for pages";
             return "Press / for blocks";
           },
         }),
@@ -166,6 +170,7 @@ export const PageEditor = forwardRef<PageEditorHandle, { page: Page; onSaved?: (
         Toggle,
         Collection,
         PageMention,
+        ...(variant === "document" ? documentExtensions : []),
         SlashCommand.configure({ getContext: () => ({ pageId }) }),
         WorldsContext.configure({ pageId }),
       ],

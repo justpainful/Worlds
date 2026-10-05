@@ -19,6 +19,7 @@ import "./styles/profile.css";
 import "./styles/settings.css";
 import "./styles/pages.css";
 import "./styles/editor.css";
+import "./styles/resources.css";
 import "./styles/system.css";
 import { installSpringTokens } from "./motion/spring";
 import { App } from "./App";

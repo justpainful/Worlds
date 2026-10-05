@@ -18,6 +18,7 @@ import {
   STATUS_OPTIONS,
   type Property,
 } from "../../pages/properties";
+import { isResource } from "../../resources/kinds";
 
 // ---------------------------------------------------------------------------
 // Toggle
@@ -132,7 +133,7 @@ export function CollectionView({ node, updateAttributes, editor, selected }: Rea
         (p) =>
           !p.deletedAt &&
           !p.archived &&
-          p.kind === "page" &&
+          isResource(p) &&
           p.id !== pageId &&
           (a.source === "all" || (a.tag && (propsOf(p).some((x) => Array.isArray(x.value) && x.value.some((v) => v.toLowerCase() === a.tag.toLowerCase())) || false))),
       );

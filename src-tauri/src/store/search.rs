@@ -5,8 +5,11 @@ use super::*;
 // ---------------------------------------------------------------------------
 
 pub fn index_page(conn: &Connection, page_id: &str) -> Result<()> {
-    let (title, deleted): (String, Option<i64>) =
-        conn.query_row("SELECT title, deleted_at FROM pages WHERE id = ?1", [page_id], |r| Ok((r.get(0)?, r.get(1)?)))?;
+    let (title, deleted, metadata): (String, Option<i64>, String) =
+        conn.query_row("SELECT title, deleted_at, metadata FROM pages WHERE id = ?1", [page_id], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?))
+        })?;
+    let meta_text = metadata_text(&serde_json::from_str(&metadata).unwrap_or(Value::Null));
     let texts: Vec<(String, String)> = conn
         .prepare("SELECT type, text FROM blocks WHERE page_id = ?1 ORDER BY sort_key")?
         .query_map([page_id], |r| Ok((r.get(0)?, r.get(1)?)))?
@@ -17,6 +20,9 @@ pub fn index_page(conn: &Connection, page_id: &str) -> Result<()> {
         .collect::<rusqlite::Result<_>>()?;
     let mut body: Vec<&str> = texts.iter().map(|(_, t)| t.as_str()).collect();
     body.extend(att.iter().map(String::as_str));
+    if !meta_text.is_empty() {
+        body.push(&meta_text);
+    }
     let body = body.join("\n");
     let preview: String = texts
         .iter()
@@ -40,7 +46,7 @@ pub fn search(conn: &Connection, query: &str, limit: i64, include_templates: boo
     if q.is_empty() {
         return Ok(Vec::new());
     }
-    let kind_filter = if include_templates { "" } else { "AND p.kind = 'page'" };
+    let kind_filter = if include_templates { "" } else { "AND p.kind != 'template'" };
     let mut hits: Vec<SearchHit> = Vec::new();
     let map = |r: &Row| -> rusqlite::Result<SearchHit> {
         Ok(SearchHit {

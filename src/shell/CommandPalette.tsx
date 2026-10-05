@@ -9,6 +9,7 @@ import { LAYER } from "../glass/materials";
 import { Icon, type IconName } from "../ui/Icon";
 import { PageIcon, relTime } from "../ui/misc";
 import { pageOps } from "./pageActions";
+import { isResource } from "../resources/kinds";
 
 interface Cmd {
   id: string;
@@ -136,7 +137,7 @@ function Palette({ mode, onClose }: { mode: "all" | "pages" | "commands"; onClos
     if (mode !== "commands") {
       if (!query) {
         const recent = Object.values(pages)
-          .filter((p) => p.kind === "page" && !p.deletedAt && !p.archived)
+          .filter((p) => isResource(p) && !p.deletedAt && !p.archived)
           .sort((a, b) => (b.openedAt ?? b.updatedAt) - (a.openedAt ?? a.updatedAt))
           .slice(0, 6);
         for (const p of recent) {

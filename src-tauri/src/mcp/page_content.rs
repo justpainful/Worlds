@@ -13,7 +13,7 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
         "time_now" => now_local(),
         "workspace_overview" => {
             let all = store::list_pages(conn, false)?;
-            let pages: Vec<&store::PageMeta> = all.iter().filter(|p| p.kind == "page").collect();
+            let pages: Vec<&store::PageMeta> = all.iter().filter(|p| store::is_resource(&p.kind)).collect();
             let mut recent: Vec<&store::PageMeta> = pages.iter().copied().filter(|p| !p.archived).collect();
             recent.sort_by_key(|p| std::cmp::Reverse(p.updated_at));
             let automations: i64 = conn.query_row("SELECT COUNT(*) FROM automations", [], |r| r.get(0)).unwrap_or(0);
@@ -96,7 +96,7 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
             let max = a.get("maxDepth").and_then(Value::as_u64).unwrap_or(8) as usize;
             let mut out = Vec::new();
             fn walk(all: &[store::PageMeta], parent: Option<&str>, depth: usize, max: usize, out: &mut Vec<Value>) {
-                for p in all.iter().filter(|p| p.parent_id.as_deref() == parent && p.kind == "page" && !p.archived) {
+                for p in all.iter().filter(|p| p.parent_id.as_deref() == parent && store::is_resource(&p.kind) && !p.archived) {
                     out.push(json!({ "id": p.id, "title": p.title, "icon": p.icon, "depth": depth, "properties": p.properties }));
                     if depth < max {
                         walk(all, Some(&p.id), depth + 1, max, out);
@@ -148,7 +148,11 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
             let limit = a.get("limit").and_then(Value::as_u64).unwrap_or(30) as usize;
             let pages: Vec<String> = match os(a, "pageId") {
                 Some(p) => vec![p.to_string()],
-                None => store::list_pages(conn, false)?.into_iter().filter(|p| !p.archived && p.kind == "page").map(|p| p.id).collect(),
+                None => store::list_pages(conn, false)?
+                    .into_iter()
+                    .filter(|p| !p.archived && store::is_resource(&p.kind))
+                    .map(|p| p.id)
+                    .collect(),
             };
             let mut hits = Vec::new();
             'outer: for pid in pages {

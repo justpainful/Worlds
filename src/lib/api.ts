@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { mockFileUrl as mockAsset } from "../dev/mockTauri";
 import type {
   Attachment, Automation, AutomationSpec, Destination, HistoryEntry, Page, PageMeta, PendingAction, Profile,
-  Rendered, RenderOptions, Run, SearchHit, Version, DiscordInventory, BridgeState, AiChat, AiMessage,
+  Rendered, RenderOptions, Run, SearchHit, Version, DiscordInventory, BridgeState, AiChat, AiMessage, ResourceKind,
 } from "./types";
 import type { JSONContent } from "@tiptap/core";
 
@@ -20,7 +20,9 @@ export interface NewPage {
   icon?: string | null;
   parentId?: string | null;
   afterId?: string | null;
-  kind?: "page" | "template";
+  kind?: ResourceKind | "template";
+  /** Kind-specific data (file, stream, project, doc settings). */
+  metadata?: Record<string, unknown>;
   markdown?: string;
   blocks?: JSONContent[];
 }
@@ -65,7 +67,7 @@ export const api = {
   updatePage: (id: string, patch: PagePatch) => invoke<PageMeta>("page_update", { id, patch }),
   /** Merge one key into a page's metadata (properties, look). */
   pageMarkdown: (id: string) => invoke<string>("page_markdown", { id }),
-  setPageMeta: (id: string, key: "properties" | "look", value: unknown) => invoke<PageMeta>("page_meta_set", { id, key, value }),
+  setPageMeta: (id: string, key: "properties" | "look" | "doc" | "deck" | "project" | "gallery" | "file" | "stream", value: unknown) => invoke<PageMeta>("page_meta_set", { id, key, value }),
   movePage: (id: string, parentId: string | null, beforeId: string | null) =>
     invoke<PageMeta>("page_move", { id, parentId, beforeId }),
   deletePage: (id: string) => invoke<void>("page_delete", { id }),

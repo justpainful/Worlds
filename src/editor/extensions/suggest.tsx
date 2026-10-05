@@ -10,6 +10,7 @@ import { Icon, type IconName } from "../../ui/Icon";
 import { PageIcon } from "../../ui/misc";
 import { useStore, pageTitle } from "../../state/store";
 import { slashItems, type SlashItem } from "../slashItems";
+import { isResource } from "../../resources/kinds";
 
 // ---------------------------------------------------------------------------
 // Generic list
@@ -250,7 +251,7 @@ export const PageMention = Mention.extend({
       const pages = useStore.getState().pages;
       const q = query.toLowerCase().trim();
       const list: MentionItem[] = Object.values(pages)
-        .filter((p) => p.kind === "page" && !p.deletedAt)
+        .filter((p) => isResource(p) && !p.deletedAt)
         .map((p) => ({ p, t: pageTitle(p).toLowerCase() }))
         .filter(({ t }) => !q || t.includes(q))
         .sort((a, b) => {

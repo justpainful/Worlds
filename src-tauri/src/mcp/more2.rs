@@ -211,7 +211,7 @@ pub(super) fn scope_pages(conn: &Connection, a: &Value) -> Result<Vec<store::Pag
         return Ok(all.into_iter().filter(|p| p.parent_id.as_deref() == Some(parent)).collect());
     }
     if a.get("all").and_then(Value::as_bool).unwrap_or(false) {
-        return Ok(all.into_iter().filter(|p| p.kind == "page").collect());
+        return Ok(all.into_iter().filter(|p| store::is_resource(&p.kind)).collect());
     }
     bail!("say which pages: pageIds, parentId or all")
 }

@@ -449,7 +449,7 @@ export function childrenOf(pages: Record<string, PageMeta>, parentId: string | n
     .filter(
       (p) =>
         p.parentId === parentId &&
-        p.kind === "page" &&
+        p.kind !== "template" &&
         !p.deletedAt &&
         (opts.archived ? true : !p.archived),
     )
@@ -458,5 +458,8 @@ export function childrenOf(pages: Record<string, PageMeta>, parentId: string | n
 
 export function pageTitle(p: PageMeta | undefined | null): string {
   if (!p) return "Missing page";
-  return p.title.trim() || "Untitled";
+  if (p.title.trim()) return p.title.trim();
+  // Untitled things still say what they are.
+  const kind: Record<string, string> = { document: "document", presentation: "presentation", project: "project", gallery: "gallery", file: "file", stream: "stream" };
+  return kind[p.kind] ? `Untitled ${kind[p.kind]}` : "Untitled";
 }
