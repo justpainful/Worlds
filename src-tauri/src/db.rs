@@ -244,6 +244,18 @@ const MIGRATIONS: &[&str] = &[
     r#"
     ALTER TABLE profile ADD COLUMN avatar_crop TEXT;
     "#,
+    // 5: workspace and author fields (owned by the accounts work; this entry
+    // mirrors its agreed contract so the sync migration below has a base).
+    r#"
+    ALTER TABLE pages ADD COLUMN workspace_id TEXT;
+    ALTER TABLE pages ADD COLUMN created_by TEXT;
+    ALTER TABLE pages ADD COLUMN updated_by TEXT;
+    "#,
+    // 6: live sync. Per-page Yjs state (snapshot + local update log), the
+    // outbox of local updates not yet acknowledged by the server, server
+    // cursors, and the attachment upload queue. The local database stays
+    // the full source of truth; these tables only add what sync needs.
+    crate::sync::MIGRATION,
 ];
 
 /// The schema version this build expects (the number of migrations).

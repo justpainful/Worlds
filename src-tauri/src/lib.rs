@@ -12,6 +12,7 @@ pub mod protocol;
 pub mod store;
 #[cfg(test)]
 mod store_tests;
+pub mod sync;
 pub mod templates;
 pub mod window_style;
 
@@ -193,6 +194,26 @@ pub fn run() {
             discord::discord_send,
             discord::pending_actions,
             discord::pending_resolve,
+            sync::commands::sync_page_mode,
+            sync::commands::sync_set_shared,
+            sync::commands::sync_load,
+            sync::commands::sync_append,
+            sync::commands::sync_compact,
+            sync::commands::sync_purge,
+            sync::commands::sync_outbox,
+            sync::commands::sync_outbox_ack,
+            sync::commands::sync_outbox_ack_upto,
+            sync::commands::sync_outbox_reject,
+            sync::commands::sync_outbox_fail,
+            sync::commands::sync_outbox_max,
+            sync::commands::sync_cursor_set,
+            sync::commands::sync_status,
+            sync::commands::sync_mirror_check,
+            sync::commands::sync_mirror_adopt,
+            sync::commands::sync_mirror_write,
+            sync::commands::sync_attachment_enqueue,
+            sync::commands::sync_attachment_queue,
+            sync::commands::sync_attachment_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Worlds");
