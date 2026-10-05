@@ -85,7 +85,7 @@ const chatMessages: Record<string, any[]> = {
   ],
 };
 
-const settings: Record<string, unknown> = { "advanced.developer": true, "advanced.perfOverlay": new URLSearchParams(location.search).has("perf") };
+const settings: Record<string, unknown> = { "advanced.developer": true, "advanced.perfOverlay": new URLSearchParams(location.search).has("perf"), "appearance.glassTone": new URLSearchParams(location.search).get("tone") ?? "auto" };
 const callbacks = new Map<number, (v: any) => void>();
 const listeners = new Map<string, number[]>();
 let cbSeq = 1;

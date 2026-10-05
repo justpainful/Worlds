@@ -172,6 +172,30 @@ function Appearance() {
             ]}
           />
         </Row>
+        <Row label="Glass tone" hint="Automatic picks light or dark glass from what is behind it. Light keeps buttons and bars white everywhere; Dark keeps them dark. Menus and sheets always stay readable.">
+          <Segmented
+            value={(settings["appearance.glassTone"] as string) ?? "auto"}
+            onChange={(v) => set("appearance.glassTone", v)}
+            label="Glass tone"
+            options={[
+              { value: "auto", label: "Automatic" },
+              { value: "light", label: "Light" },
+              { value: "dark", label: "Dark" },
+            ]}
+          />
+        </Row>
+        <Row label="Glass density" hint="Clearer shows more of what is behind the glass; Frosted gives it a fuller, more solid body.">
+          <Segmented
+            value={String((settings["appearance.glassFrost"] as number) ?? 1)}
+            onChange={(v) => set("appearance.glassFrost", Number(v))}
+            label="Glass density"
+            options={[
+              { value: "0.6", label: "Clearer" },
+              { value: "1", label: "Balanced" },
+              { value: "1.8", label: "Frosted" },
+            ]}
+          />
+        </Row>
         <Row label="Adapt to performance" hint="Steps Full glass down to Reduced while frames are slow, and back up once they are smooth.">
           <Toggle checked={settings["appearance.glassAdaptive"] !== false} onChange={(v) => set("appearance.glassAdaptive", v)} label="Adapt to performance" />
         </Row>
