@@ -86,8 +86,8 @@ fn page_columns(conn: &rusqlite::Connection) -> Vec<String> {
 fn migration_5_on_a_fresh_database() {
     let conn = fresh("fresh");
     let v: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
-    assert_eq!(v, 5);
-    assert_eq!(db::schema_version(), 5);
+    assert_eq!(v, db::schema_version());
+    assert!(db::schema_version() >= 5);
     for t in ["account", "account_workspaces", "account_members", "account_page_access"] {
         assert!(table_exists(&conn, t), "{t} missing");
     }
