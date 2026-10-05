@@ -415,3 +415,10 @@ button:focus-visible, [role="button"]:focus-visible, [role="tab"]:focus-visible,
    must not add glass work of its own. */
 .perf-overlay { position: fixed; left: 14px; bottom: 14px; z-index: 9000; padding: 8px 10px; border-radius: 10px; background: rgba(12, 12, 14, 0.92); color: #cfe9d6; font: 500 11px/1.5 var(--font-mono, ui-monospace, monospace); pointer-events: none; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4); }
 .perf-overlay .is-bad { color: #ff9f8a; }
+
+/* Glass buttons: the content fills the body so icons sit dead centre, and
+   icon-only buttons are true circles at every size. */
+.glass-btn > .g-content { flex: 1; display: flex; min-width: 0; }
+.glass-btn-icon.glass-btn-compact { width: 32px; }
+.glass-btn-icon.glass-btn-standard { width: 38px; }
+.glass-btn-icon.glass-btn-large { width: 46px; }
