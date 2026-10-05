@@ -88,6 +88,8 @@ export interface FilterState {
   displacement: boolean;
   view: DebugView;
   tint: { amount: number; rgb: [number, number, number] };
+  /** added to the transmitted body (0..1) */
+  lift: number;
 }
 
 function set(el: Element, k: string, v: string) {
@@ -116,6 +118,6 @@ export function updateFilter(f: FilterV2, p: ProfileV2, st: FilterState) {
   const c = st.view === "w" ? 1 : p.bodyContrast;
   f.funcs.forEach((fn, i) => {
     set(fn, "slope", ((1 - t) * c).toFixed(4));
-    set(fn, "intercept", ((t * st.tint.rgb[i]) / 255 + (1 - t) * 0.5 * (1 - c)).toFixed(4));
+    set(fn, "intercept", ((t * st.tint.rgb[i]) / 255 + (1 - t) * 0.5 * (1 - c) + (st.view === "w" ? 0 : st.lift)).toFixed(4));
   });
 }

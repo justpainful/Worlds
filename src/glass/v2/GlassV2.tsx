@@ -93,7 +93,7 @@ function refresh(s: Live, rebuild = false) {
   const k = lightness(s.ambient);
   st.setProperty("--lg2-exposure", (byScene(p.fresnelExposure, k) / maxExposure(p)).toFixed(3));
   // The outer interface reads on bright scenes and fades on dark ones.
-  st.setProperty("--lg2-edge-k", (0.2 + 0.8 * k).toFixed(3));
+  st.setProperty("--lg2-edge-k", byScene(p.outerEdgeExposure, k).toFixed(3));
   // Bevel glow is scene light carried through the glass.
   st.setProperty("--lg2-glow-k", (0.12 + 0.88 * k).toFixed(3));
   const tint = tintFor(p, s.ambient);
@@ -110,6 +110,8 @@ function refresh(s: Live, rebuild = false) {
     displacement: debugV2.displacement,
     view: debugV2.frost ? debugV2.view : debugV2.view === "glass" ? "A" : debugV2.view,
     tint,
+    // Body lift on light and mid scenes only.
+    lift: (p.bodyLift / 255) * Math.min(1, k * 1.6),
   });
   s.optics.style.backdropFilter = debugV2.optics ? `url(#${s.filter.id})` : "none";
   s.light.style.display = s.shade.style.display = s.edge.style.display = s.glow.style.display = debugV2.lighting ? "" : "none";

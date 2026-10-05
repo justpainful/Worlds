@@ -6,7 +6,8 @@
  *
  *   d  = distance inside the edge            nO = outward in-plane direction (SDF gradient)
  *   macro bevel  Hb * (1 - (1 - d/W)^P)       the thick-glass slope that bends the backdrop
- *   micro lip    Hr * (1 - (1 - (d - Wo)/Wr)^2) the rounded edge of the glass (about 1px), just inside the interface
+ *   micro lip    a rounded edge about 1px wide just inside the interface; its slope rises to
+ *                a peak at rimPeakPosition across the lip and falls back to the bevel
  *   dome         Hd * (1 - rx^2 - ry^2)       a very low dome over the flat field only
  *
  *   N      = normalize(-grad(all three), 1)   lights the surface (Fresnel, environment, specular)
@@ -70,7 +71,8 @@ export interface SurfaceSpec {
   Hb: number; // bevel height (px)
   Wr: number; // micro lip width (px)
   Wo: number; // outer interface width (px): the lip starts just inside it
-  Hr: number; // micro lip height (px)
+  lipSlope: number; // peak slope of the micro lip
+  lipPeak: number; // where across the lip it peaks (0..1)
   Hd: number; // dome height (px)
   K: number; // displacement per unit slope
   gamma: number; // displacement = K * slope^gamma (gamma set by midDisplacement)
@@ -94,7 +96,6 @@ export function surfaceSpec(p: ProfileV2, w: number, h: number): SurfaceSpec {
   // Micro lip: its own slope at the very edge reaches rimTiltDeg (on top of the bevel).
   const Wr = p.rimWidth;
   const lipSlope = Wr > 0 ? Math.max(0, Math.tan((p.rimTiltDeg * Math.PI) / 180) - edgeSlope) : 0;
-  const Hr = (lipSlope * Wr) / 2;
   // Dome: lives only in the flat field (faded in over q 0.6..1); its slope where the flat field
   // starts gives centerDisplacement.
   const hx = w / 2;
@@ -103,7 +104,7 @@ export function surfaceSpec(p: ProfileV2, w: number, h: number): SurfaceSpec {
   const rFlat = Math.max(0.25, (half - W) / half);
   const domeSlopeNeeded = Math.pow((p.centerDisplacement * t) / K, 1 / gamma);
   const Hd = (domeSlopeNeeded * half) / (2 * rFlat); // |grad(Hd(1 - r^2))| = 2 Hd r / half
-  return { W, P, Hb, Wr, Wo: p.outerEdgeAlpha > 0 ? p.outerEdgeWidth : 0, Hr, Hd, K, gamma, cx: hx, cy: hy, hx, hy };
+  return { W, P, Hb, Wr, Wo: p.outerEdgeAlpha > 0 ? p.outerEdgeWidth : 0, lipSlope, lipPeak: p.rimPeakPosition, Hd, K, gamma, cx: hx, cy: hy, hx, hy };
 }
 
 export interface SurfacePoint {
@@ -135,7 +136,7 @@ export function surfaceAt(sdf: (x: number, y: number) => number, s: SurfaceSpec,
   // Heights rise inward, so their gradients point along -nO.
   const dBevel = d >= 0 && q < 1 ? (s.Hb * s.P * Math.pow(1 - q, s.P - 1)) / s.W : 0;
   const qr = s.Wr > 0 ? Math.min(1, Math.max(0, (d - s.Wo) / s.Wr)) : 1;
-  const dLip = d >= 0 && qr < 1 ? (2 * s.Hr * (1 - qr)) / s.Wr : 0;
+  const dLip = d >= 0 && qr < 1 ? s.lipSlope * lipShape(qr, s.lipPeak) : 0;
   const dome = smoothstep(0.6, 1, q);
   const rx = (x - s.cx) / s.hx;
   const ry = (y - s.cy) / s.hy;
@@ -144,6 +145,14 @@ export function surfaceAt(sdf: (x: number, y: number) => number, s: SurfaceSpec,
   const fx = gx - dLip * nOx;
   const fy = gy - dLip * nOy;
   return { d, nOx, nOy, gx, gy, N: norm3(-fx, -fy, 1), Nm: norm3(-gx, -gy, 1), q };
+}
+
+/** Lip slope across the lip (0..1), normalised to 1 at its peak. Peak 0 is a linear fall from the
+ * outer start (a quarter-round); a later peak rises smoothly to it and falls back smoothly. */
+export function lipShape(qr: number, peak: number): number {
+  if (peak <= 0) return 1 - qr;
+  if (qr < peak) return Math.sin((Math.PI / 2) * (qr / peak));
+  return Math.cos((Math.PI / 2) * ((qr - peak) / (1 - peak)));
 }
 
 /** Sampling offset of the refraction at a point (px). Along the macro slope; sign picks inward or outward. */
@@ -233,7 +242,10 @@ export function lighting(p: ProfileV2, pt: SurfacePoint, pxSize = 0.5): Lighting
   const light = Math.min(1, raw * inside * maxExposure(p));
   // The bevel glow is scene light carried through the glass: its own layer, strong on bright
   // scenes and faint on dark ones (no broad sheen over black).
-  const glow = Math.min(1, p.innerHighlight * Math.max(0, dot(N, KEY)) * bevel * inside);
+  // Counter side: the weak fill light on the bevel, only just inside the lip, decaying fast.
+  const past = Math.max(0, pt.d - (p.outerEdgeAlpha > 0 ? p.outerEdgeWidth : 0) - p.rimWidth * 0.5);
+  const counter = p.counterGlow * Math.max(0, dot(N, FILL)) * bevel * Math.exp(-past / Math.max(0.1, p.counterGlowWidth));
+  const glow = Math.min(1, (p.innerHighlight * Math.max(0, dot(N, KEY)) * bevel + counter) * inside);
   const shade = Math.min(1, p.innerShade * Math.max(0, 1 - 2 * facing) * bevel);
   // Outer interface: a hairline at the very edge, lighter where the edge faces the key.
   const band = pt.d >= 0 ? 1 - smoothstep(p.outerEdgeWidth * 0.6, p.outerEdgeWidth + pxSize, pt.d) : 0;

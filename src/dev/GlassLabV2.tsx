@@ -8,7 +8,7 @@
  */
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { GlassV2, debugV2, mapsOf, setDebugV2, statsV2, type DebugV2 } from "../glass/v2/GlassV2";
-import { regularToolbarV2, regularToolbarV2Phase1, type ProfileV2 } from "../glass/v2/profile";
+import { regularToolbarV2, regularToolbarV2Phase1, regularToolbarV2Phase1_1, type ProfileV2 } from "../glass/v2/profile";
 import { displacement, makeSdf, surfaceAt, surfaceSpec } from "../glass/v2/surface";
 import { GlassGroup } from "../ui/Button";
 import { Icon, type IconName } from "../ui/Icon";
@@ -145,8 +145,8 @@ function DebugMaps() {
   const [maps, setMaps] = useState<Record<string, string>>({});
   useEffect(() => {
     const t = setTimeout(() => {
-      const el = document.querySelector('[data-panel="4"] .lab2-group:nth-of-type(1)') ?? null;
-      const groups = [...document.querySelectorAll('[data-panel="4"] .lab2-group')];
+      const el = document.querySelector('[data-panel="12"] .lab2-group:nth-of-type(1)') ?? null;
+      const groups = [...document.querySelectorAll('[data-panel="12"] .lab2-group')];
       const m = mapsOf(groups.find((g) => mapsOf(g)?.debug) ?? el);
       if (m?.debug) setMaps({ "outer interface": m.debug.outer, "inner rim": m.debug.rim, "surface normal": m.debug.normal, "displacement (lens map, padded)": m.lens, "Fresnel output (x4)": m.debug.fresnel, "final lighting": m.debug.lighting });
     }, 1500);
@@ -197,22 +197,41 @@ export function GlassLabV2() {
     ["P 2.9 (candidate)", { ...regularToolbarV2, surfaceCurvePower: 2.9 }, "#1a7f37"],
     ["P 3.2", { ...regularToolbarV2, surfaceCurvePower: 3.2 }, "#2f5bd3"],
   ];
-  const sections: [string, ReactNode][] = [
-    ["1", <Panel key="1" id="1" title="1 Target reference (macOS 26 Mail)" bg={{ background: `url(/.lab/ref.jpg) 0 ${-BAND}px / 630px 340px no-repeat` }} engine={{ kind: "none" }} />],
-    ["2", <Panel key="2" id="2" title="2 Old engine, same backdrop" bg={backdrop} engine={{ kind: "old" }} />],
-    ["3", <Panel key="3" id="3" title="3 V2 phase 1 (before), same backdrop" bg={backdrop} engine={v2(regularToolbarV2Phase1)} />],
-    ["4", <Panel key="4" id="4" title="4 V2 phase 1.1 candidate, same backdrop" bg={backdrop} engine={v2(candidate)} />],
-    ["5", <Panel key="5" id="5" title="5 Candidate over white" bg={{ background: "#fff" }} engine={v2(candidate)} />],
-    ["6", <Panel key="6" id="6" title="6 Candidate over #1c1c1e" bg={{ background: "#1c1c1e" }} engine={v2(candidate)} />],
-    ["7", <Panel key="7" id="7" title="7 Candidate over #000" bg={{ background: "#000" }} engine={v2(candidate)} />],
-    ["8", <Panel key="8" id="8" title="8 Candidate over colourful content" bg={colourful} engine={v2(candidate)} />],
-    ["9", <Panel key="9" id="9" title="9 Candidate over vertical 6px stripes" bg={stripes(90)} engine={v2(candidate)} />],
-    ["10", <Panel key="10" id="10" title="10 Candidate over horizontal 6px stripes" bg={stripes(0)} engine={v2(candidate)} />],
-    ...curves.slice(1).flatMap(([name, p], i): [string, ReactNode][] => [
-      [`c${i}v`, <Panel key={`c${i}v`} id={`c${i}v`} title={`Curve ${name}: vertical stripes`} bg={stripes(90)} engine={v2(p)} />],
-      [`c${i}h`, <Panel key={`c${i}h`} id={`c${i}h`} title={`Curve ${name}: horizontal stripes`} bg={stripes(0)} engine={v2(p)} />],
+  const set = q.get("set") ?? "main";
+  const P = (id: string, title: string, bg: CSSProperties, engine: Engine): [string, ReactNode] => [id, <Panel key={id} id={id} title={title} bg={bg} engine={engine} />];
+  const target = P("1", "1 macOS target", { background: `url(/.lab/ref.jpg) 0 ${-BAND}px / 630px 340px no-repeat` }, { kind: "none" });
+  const variant = (o: Partial<ProfileV2>): ProfileV2 => ({ ...candidate, ...o });
+  const sets: Record<string, [string, ReactNode][]> = {
+    main: [
+      target,
+      P("11", "2 V2 phase 1.1", backdrop, v2(regularToolbarV2Phase1_1)),
+      P("12", "3 V2 phase 1.2 candidate", backdrop, v2(candidate)),
+      P("5", "Phase 1.2 over white", { background: "#fff" }, v2(candidate)),
+      P("6", "Phase 1.2 over #1c1c1e", { background: "#1c1c1e" }, v2(candidate)),
+      P("7", "Phase 1.2 over #000", { background: "#000" }, v2(candidate)),
+      P("8", "Phase 1.2 over colourful content", colourful, v2(candidate)),
+      P("9", "Phase 1.2 over vertical 6px stripes", stripes(90), v2(candidate)),
+      P("10", "Phase 1.2 over horizontal 6px stripes", stripes(0), v2(candidate)),
+    ],
+    counter: [target, ...[0.78, 0.83, 0.88].map((hc) => P(`hc${hc}`, `horizonCounter ${hc}`, backdrop, v2(variant({ horizonCounter: hc }))))],
+    refr: (
+      [
+        ["A", 2.6, 0.95],
+        ["B", 2.5, 0.9],
+        ["C", 2.35, 0.9],
+      ] as const
+    ).flatMap(([n, e, m]): [string, ReactNode][] => [
+      P(`r${n}v`, `${n}: edge ${e} / mid ${m}, vertical stripes`, stripes(90), v2(variant({ edgeDisplacement: e, midDisplacement: m }))),
+      P(`r${n}h`, `${n}: edge ${e} / mid ${m}, horizontal stripes`, stripes(0), v2(variant({ edgeDisplacement: e, midDisplacement: m }))),
+      P(`r${n}c`, `${n}: edge ${e} / mid ${m}, reference backdrop`, backdrop, v2(variant({ edgeDisplacement: e, midDisplacement: m }))),
     ]),
-  ];
+    old: [
+      target,
+      P("2", "Old engine", backdrop, { kind: "old" }),
+      P("3", "V2 phase 1", backdrop, v2(regularToolbarV2Phase1)),
+    ],
+  };
+  const sections: [string, ReactNode][] = sets[set] ?? sets.main;
   return (
     <div className="lab2">
       <style>{`
@@ -246,7 +265,7 @@ export function GlassLabV2() {
         </button>
       </div>
       {sections.filter(([k]) => !only || k === only || (only.endsWith("*") && k.startsWith(only.slice(0, -1)))).map(([, el]) => el)}
-      {(!only || only === "graphs") && (
+      {(!only || only === "graphs") && set === "main" && (
         <section className="lab2-panel" data-panel="graphs">
           <h3>Surface profile (macro bevel, top edge of a 40px capsule)</h3>
           <CurvePlot profiles={curves} />
@@ -257,7 +276,7 @@ export function GlassLabV2() {
           </div>
         </section>
       )}
-      {(!only || only === "4" || only === "maps") && (
+      {(!only || only === "12" || only === "maps") && set === "main" && (
         <section className="lab2-panel">
           <h3>Debug views of the candidate (reply group, device pixels)</h3>
           <DebugMaps />

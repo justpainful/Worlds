@@ -16,7 +16,9 @@ describe("V2 surface: one height field drives everything", () => {
     const deg = (z: number) => (Math.acos(z) * 180) / Math.PI;
     expect(deg(edge.Nm[2])).toBeGreaterThan(p.edgeTiltDeg - 3);
     expect(deg(edge.Nm[2])).toBeLessThan(p.edgeTiltDeg + 3);
-    expect(deg(edge.N[2])).toBeGreaterThan(p.rimTiltDeg - 3);
+    // the lip peaks rimPeakPosition of the way across it, just inside the outer interface
+    const peak = at(61, p.outerEdgeWidth + p.rimPeakPosition * p.rimWidth);
+    expect(deg(peak.N[2])).toBeGreaterThan(p.rimTiltDeg - 3);
     // past the lip the full normal is the macro normal again
     expect(at(61, p.rimWidth + 0.5).N[2]).toBeCloseTo(at(61, p.rimWidth + 0.5).Nm[2], 5);
     expect(at(61, 20).N[2]).toBeGreaterThan(0.999);
@@ -52,10 +54,11 @@ describe("V2 surface: one height field drives everything", () => {
 
   it("lights the edge facing the key (upper left) more than the opposite edge, and leaves the middle clear", () => {
     // on the lip (just inside the outer interface), upper-left vs lower-right of the end caps
-    const r = 20 - (p.outerEdgeWidth + 0.3);
+    const r = 20 - (p.outerEdgeWidth + p.rimPeakPosition * p.rimWidth);
     const ulP = lighting(p, at(20 - r * Math.SQRT1_2, 20 - r * Math.SQRT1_2));
     const lrP = lighting(p, at(W - 20 + r * Math.SQRT1_2, 20 + r * Math.SQRT1_2));
-    expect(ulP.light + ulP.glow).toBeGreaterThan(1.5 * (lrP.light + lrP.glow));
+    // the counter side is close (the reference has a bright lower rim) but never brighter
+    expect(ulP.light).toBeGreaterThanOrEqual(lrP.light);
     expect(lighting(p, at(61, 20)).light).toBeLessThan(0.01);
   });
 

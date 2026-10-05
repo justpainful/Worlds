@@ -45,9 +45,13 @@ export interface ProfileV2 {
    * so refraction uses the macro surface only. 0 width turns it off. */
   rimWidth: number;
   rimTiltDeg: number;
+  /** Where across the lip its slope (and so the rim light) peaks: 0 at its outer start, 0.5 mid-lip. */
+  rimPeakPosition: number;
   /** Outer interface: the darker sliver where the glass meets the scene (alpha on bright scenes). */
   outerEdgeWidth: number;
   outerEdgeAlpha: number;
+  /** Outer interface strength by scene lightness (the hairline matters on bright scenes). */
+  outerEdgeExposure: SceneTriple;
 
   /** Schlick Fresnel, and its output exposure by scene lightness (the equation never changes). */
   fresnelF0: number;
@@ -65,6 +69,9 @@ export interface ProfileV2 {
   specularExponent: number;
   secondarySpecular: number;
   innerHighlight: number;
+  /** Short counter-side glow just inside the lip (the fill light on the bevel), and its decay length (px). */
+  counterGlow: number;
+  counterGlowWidth: number;
   innerShade: number;
 
   /** Body tonal shaping: compress chroma and contrast toward the local scene tone. */
@@ -73,6 +80,8 @@ export interface ProfileV2 {
   neutralization: SceneTriple;
   /** Lightness offset of the neutral target away from the scene's own tone (0 = pure compression). */
   neutralOffset: number;
+  /** Lift of the transmitted body on light and mid scenes, in /255 levels (dark scenes untouched). */
+  bodyLift: number;
   environmentColorSpill: number;
 
   /** Shadows (y, blur in px; opacity). */
@@ -82,7 +91,63 @@ export interface ProfileV2 {
 }
 
 /** Phase 1.1: optical boundary, body presence, gentler refraction. */
+/** Phase 1.2: reference calibration (spatial placement and exposure only). */
 export const regularToolbarV2: ProfileV2 = {
+  opticalThickness: 1,
+
+  bodyFrostSigma: 2.2,
+  edgeFrostSigma: 0.55,
+  scatterSigma: 0.9,
+  scatterMix: 0.055,
+  transmissionMix: 0.72,
+  frostMix: 0.28,
+
+  lensWidth: 13,
+  surfaceCurvePower: 2.9,
+  edgeDisplacement: 2.5,
+  midDisplacement: 0.9,
+  centerDisplacement: 0.14,
+  edgeTiltDeg: 55,
+  refractionSign: 1,
+
+  rimWidth: 1.2,
+  rimTiltDeg: 78,
+  rimPeakPosition: 0.4,
+  outerEdgeWidth: 0.5,
+  outerEdgeAlpha: 0.06,
+  outerEdgeExposure: { light: 1, mid: 0.47, dark: 0.09 },
+
+  fresnelF0: 0.045,
+  fresnelPower: 5,
+  fresnelGain: 0.95,
+  fresnelExposure: { light: 1.25, mid: 1, dark: 0.5 },
+
+  keyPower: 5,
+  stripStrength: 0.12,
+  horizonStrength: 3.4,
+  horizonCounter: 0.88,
+  specularGain: 0.13,
+  specularExponent: 40,
+  secondarySpecular: 0.035,
+  innerHighlight: 1.4,
+  counterGlow: 2.2,
+  counterGlowWidth: 2.5,
+  innerShade: 0.04,
+
+  bodySaturation: 0.965,
+  bodyContrast: 0.935,
+  neutralization: { light: 0.045, mid: 0.058, dark: 0.038 },
+  neutralOffset: 0.02,
+  bodyLift: 7,
+  environmentColorSpill: 0.04,
+
+  contactShadow: [1, 1.5, 0.02],
+  bodyShadow: [2, 6, 0.02],
+  ambientShadow: [5, 14, 0.02],
+};
+
+/** Phase 1.1 as reviewed (frozen). */
+export const regularToolbarV2Phase1_1: ProfileV2 = {
   opticalThickness: 1,
 
   bodyFrostSigma: 2.2,
@@ -102,8 +167,10 @@ export const regularToolbarV2: ProfileV2 = {
 
   rimWidth: 1.0,
   rimTiltDeg: 78,
+  rimPeakPosition: 0,
   outerEdgeWidth: 0.5,
   outerEdgeAlpha: 0.06,
+  outerEdgeExposure: { light: 1, mid: 0.6, dark: 0.2 },
 
   fresnelF0: 0.045,
   fresnelPower: 5,
@@ -118,12 +185,15 @@ export const regularToolbarV2: ProfileV2 = {
   specularExponent: 40,
   secondarySpecular: 0.035,
   innerHighlight: 1.4,
+  counterGlow: 0,
+  counterGlowWidth: 1,
   innerShade: 0.04,
 
   bodySaturation: 0.94,
   bodyContrast: 0.935,
   neutralization: { light: 0.045, mid: 0.058, dark: 0.038 },
   neutralOffset: 0.02,
+  bodyLift: 0,
   environmentColorSpill: 0.04,
 
   contactShadow: [1, 1.5, 0.04],
@@ -141,7 +211,10 @@ export const regularToolbarV2Phase1: ProfileV2 = {
   centerDisplacement: 0.2,
   edgeTiltDeg: 65,
   rimWidth: 0,
+  rimPeakPosition: 0,
   outerEdgeAlpha: 0,
+  counterGlow: 0,
+  bodyLift: 0,
   fresnelExposure: { light: 1, mid: 1, dark: 1 },
   keyPower: 3,
   stripStrength: 0.25,
