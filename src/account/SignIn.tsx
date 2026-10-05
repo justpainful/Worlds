@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { errorMessage } from "../lib/api";
+import { useStore } from "../state/store";
 import { Button } from "../ui/Button";
 import { Icon } from "../ui/Icon";
 import { accountApi, type AccountView } from "./api";
@@ -31,7 +32,7 @@ export function SignInFlow({ start = "choose", onDone, onCancel }: { start?: "ch
     if (step.kind === "code") codeRef.current?.focus();
   }, [step.kind]);
 
-  if (view && !view.configured) return <ServerNeeded />;
+  if (view && !view.configured) return <ServerNeeded onClose={onCancel ?? onDone} />;
 
   const act = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -232,7 +233,7 @@ export function SignInFlow({ start = "choose", onDone, onCancel }: { start?: "ch
   );
 }
 
-function ServerNeeded() {
+function ServerNeeded({ onClose }: { onClose: () => void }) {
   return (
     <div className="acct-flow">
       <div className="acct-hero-icon">
@@ -242,6 +243,21 @@ function ServerNeeded() {
       <p className="acct-text">
         This copy of Worlds has no account server. Everything works on this PC. To use accounts, add a server address in Settings, Account.
       </p>
+      <div className="acct-actions is-stacked">
+        <Button variant="tinted" size="large" autoFocus onClick={onClose}>
+          OK
+        </Button>
+        <Button
+          variant="plain"
+          size="large"
+          onClick={() => {
+            onClose();
+            useStore.getState().open({ kind: "settings", section: "account" }, "tab");
+          }}
+        >
+          Open Account Settings
+        </Button>
+      </div>
     </div>
   );
 }

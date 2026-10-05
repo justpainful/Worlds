@@ -381,12 +381,12 @@
 .glass[data-material="dense"] {
   --g-band: 0;
   --g-glint: 0;
-  --g-rim-top: 0.32;
-  --g-rim-side: 0.12;
-  --g-rim-bottom: 0.18;
-  --g-glow-top: 0.1;
-  --g-glow-bottom: 0.06;
-  --g-glow-side: 0.03;
+  --g-rim-top: 0.16;
+  --g-rim-side: 0.05;
+  --g-rim-bottom: 0.08;
+  --g-glow-top: 0.08;
+  --g-glow-bottom: 0.04;
+  --g-glow-side: 0.02;
   box-shadow:
     0 0 0 0.5px rgba(0, 0, 0, 0.5),
     0 2px 4px rgba(0, 0, 0, 0.18),

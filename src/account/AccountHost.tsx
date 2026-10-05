@@ -20,7 +20,8 @@ export function AccountHost() {
   // Decided once, from the first account state: signing in during onboarding keeps it open for its last step.
   const [firstRun, setFirstRun] = useState<boolean | null>(null);
   useEffect(() => {
-    if (firstRun === null && view) setFirstRun(!onboarded && view.status === "signed_out");
+    // Without an account server there is nothing to choose: start on this PC quietly.
+    if (firstRun === null && view) setFirstRun(!onboarded && view.status === "signed_out" && view.configured);
   }, [view, onboarded, firstRun]);
 
   if (firstRun && !onboarded) return <Onboarding />;
