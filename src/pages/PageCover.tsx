@@ -4,7 +4,7 @@ import { api, errorMessage, fileUrl } from "../lib/api";
 import type { PageMeta } from "../lib/types";
 import { useStore } from "../state/store";
 import { Glass } from "../glass/Glass";
-import { LAYER } from "../glass/materials";
+import { LAYER } from "../glass/profiles";
 import { Icon } from "../ui/Icon";
 import { SmartImage } from "../ui/SmartImage";
 import { bannerHeight, cropStyle, effectiveCrop, formatCrop, useImageInfo } from "../media/crop";

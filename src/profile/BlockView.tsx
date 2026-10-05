@@ -3,7 +3,7 @@ import { openExternal } from "../lib/links";
 import { fileUrl } from "../lib/api";
 import { useStore, pageTitle } from "../state/store";
 import { Glass } from "../glass/Glass";
-import { LAYER } from "../glass/materials";
+import { LAYER } from "../glass/profiles";
 import { Icon } from "../ui/Icon";
 import { PageIcon, relTime } from "../ui/misc";
 import { RefIcon } from "../ui/ProductIcon";
@@ -47,12 +47,12 @@ export function BlockFrame({ block, children, onClick, selected, className = "" 
   if (block.style === "soft" || block.style === "tinted") {
     return (
       <Glass
-        material={block.style === "tinted" ? "regular" : "clear"}
+        material={block.style === "tinted" ? "bar" : "clear"}
         layer={LAYER.chrome}
         className={cls}
         style={style}
         radius="24px"
-        responsive={false}
+       
         onClick={click}
       >
         {children}

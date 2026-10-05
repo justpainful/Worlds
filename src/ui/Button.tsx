@@ -1,6 +1,6 @@
 import { forwardRef, type ButtonHTMLAttributes, type MouseEvent, type ReactNode } from "react";
 import { Glass } from "../glass/Glass";
-import { LAYER } from "../glass/materials";
+import { LAYER } from "../glass/profiles";
 import { Icon, type IconName } from "./Icon";
 
 interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -70,7 +70,7 @@ export interface GroupItem {
  * Related actions in one glass capsule, separated by hairlines
  * (the macOS 26 Mail toolbar pattern). Single actions get a round capsule.
  */
-export function GlassGroup({ items, layer = LAYER.chrome, className = "", material = "regular" }: { items: GroupItem[]; layer?: number; className?: string; material?: "regular" | "clear" | "control" }) {
+export function GlassGroup({ items, layer = LAYER.chrome, className = "", material = "bar" }: { items: GroupItem[]; layer?: number; className?: string; material?: "bar" | "clear" | "control" }) {
   return (
     <Glass material={material} layer={layer} className={`glass-group ${items.length === 1 ? "is-single" : ""} ${className}`} radius="var(--r-capsule)">
       <div className="glass-group-row">
@@ -123,7 +123,7 @@ export function GlassButton({
   return (
     <Glass
       as="button"
-      material={prominent ? "prominent" : "control"}
+      material={prominent ? "bar" : "control"}
       layer={layer}
       interactive
       disabled={disabled}

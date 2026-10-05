@@ -5,7 +5,7 @@
  */
 import { useEffect } from "react";
 import { GlassGroup } from "../ui/Button";
-import { glassScene } from "../glass/scene";
+import { glassEngine } from "../glass/engine";
 import type { IconName } from "../ui/Icon";
 
 const noop = () => {};
@@ -23,11 +23,15 @@ export function GlassLab() {
   const tone = q.get("tone");
   const extra = q.get("css") ?? "";
   useEffect(() => {
-    if (tone === "light" || tone === "dark") glassScene.setLook(tone, 1);
+    if (tone === "light" || tone === "dark") glassEngine.setLook(tone, 1);
   }, [tone]);
   return (
     <div className="glass-lab" style={{ position: "fixed", inset: 0, overflow: "hidden" }}>
-      <img src="/.lab/bg.png" alt="" style={{ position: "absolute", left: 0, top: 0, width: 630, height: 340 }} />
+      {q.get("bg") ? (
+        <div style={{ position: "absolute", inset: 0, background: `#${q.get("bg")}` }} />
+      ) : (
+        <img src="/.lab/bg.png" alt="" style={{ position: "absolute", left: 0, top: 0, width: 630, height: 340 }} />
+      )}
       <style>{`.glass-lab .glass-group { height: 40px; } .glass-lab .glass, .glass-lab .glass * { transition: none !important; } ${extra}`}</style>
       {GROUPS.map((gr, i) => (
         <div key={i} className="lab-slot" style={{ position: "absolute", left: gr.x, top: 104, width: gr.w, height: 40 }}>

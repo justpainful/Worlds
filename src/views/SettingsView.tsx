@@ -177,7 +177,7 @@ function Appearance() {
         </Row>
         <Row label="Glass tone" hint="Automatic picks light or dark glass from what is behind it. Light keeps buttons and bars white everywhere; Dark keeps them dark. Menus and sheets always stay readable.">
           <Segmented
-            value={(settings["appearance.glassTone"] as string) ?? "light"}
+            value={(settings["appearance.glassTone"] as string) ?? "auto"}
             onChange={(v) => set("appearance.glassTone", v)}
             label="Glass tone"
             options={[

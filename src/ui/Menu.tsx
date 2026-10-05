@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "re
 import { createPortal } from "react-dom";
 import { create } from "zustand";
 import { Glass } from "../glass/Glass";
-import { LAYER } from "../glass/materials";
+import { LAYER } from "../glass/profiles";
 import { Icon, type IconName } from "./Icon";
 
 export type MenuItem =
@@ -21,31 +21,32 @@ export type MenuItem =
   | { kind: "label"; label: string };
 
 interface MenuState {
-  open: { x: number; y: number; items: MenuItem[]; origin?: string; minWidth?: number; key: number } | null;
-  show: (x: number, y: number, items: MenuItem[], origin?: string, minWidth?: number) => void;
+  open: { x: number; y: number; items: MenuItem[]; origin?: string; minWidth?: number; from?: DOMRect; key: number } | null;
+  show: (x: number, y: number, items: MenuItem[], origin?: string, minWidth?: number, from?: DOMRect) => void;
   hide: () => void;
 }
 
 export const useMenu = create<MenuState>((set) => ({
   open: null,
-  show: (x, y, items, origin, minWidth) => set({ open: { x, y, items, origin, minWidth, key: Date.now() } }),
+  show: (x, y, items, origin, minWidth, from) => set({ open: { x, y, items, origin, minWidth, from, key: Date.now() } }),
   hide: () => set({ open: null }),
 }));
 
 /** Open a menu below an anchor element. */
 export function menuAt(el: HTMLElement, items: MenuItem[], align: "start" | "end" = "start", matchWidth = false) {
   const r = el.getBoundingClientRect();
-  useMenu.getState().show(align === "start" ? r.left : r.right, r.bottom + 6, items, align === "end" ? "top right" : "top left", matchWidth ? r.width : undefined);
+  // The menu grows out of the control that opened it.
+  useMenu.getState().show(align === "start" ? r.left : r.right, r.bottom + 6, items, align === "end" ? "top right" : "top left", matchWidth ? r.width : undefined, r);
 }
 
 export function MenuHost() {
   const open = useMenu((s) => s.open);
   const hide = useMenu((s) => s.hide);
   if (!open) return null;
-  return createPortal(<MenuPanel key={open.key} x={open.x} y={open.y} items={open.items} onClose={hide} origin={open.origin} minWidth={open.minWidth} />, document.body);
+  return createPortal(<MenuPanel key={open.key} x={open.x} y={open.y} items={open.items} onClose={hide} origin={open.origin} minWidth={open.minWidth} from={open.from} />, document.body);
 }
 
-function MenuPanel({ x, y, items, onClose, origin, minWidth, depth = 0 }: { x: number; y: number; items: MenuItem[]; onClose: () => void; origin?: string; minWidth?: number; depth?: number }) {
+function MenuPanel({ x, y, items, onClose, origin, minWidth, from, depth = 0 }: { x: number; y: number; items: MenuItem[]; onClose: () => void; origin?: string; minWidth?: number; from?: DOMRect; depth?: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ x, y, ready: false });
   const [active, setActive] = useState(-1);
@@ -100,9 +101,10 @@ function MenuPanel({ x, y, items, onClose, origin, minWidth, depth = 0 }: { x: n
     <>
       <Glass
         ref={ref}
-        material="dense"
+        material="menu"
         layer={LAYER.menu + depth}
-        className={`menu-panel ${pos.ready ? "is-in" : ""}`}
+        className={`menu-panel ${pos.ready ? "is-in" : ""} ${from ? "is-morph" : ""}`}
+        morphFrom={pos.ready ? from : null}
         style={{ left: pos.x, top: pos.y, transformOrigin: origin ?? "top left", minWidth }}
         role="menu"
         radius="var(--r-lg)"
@@ -190,7 +192,7 @@ export function Popover({
   return createPortal(
     <Glass
       ref={ref}
-      material="dense"
+      material="menu"
       layer={LAYER.popover}
       className={`popover ${pos.ready ? "is-in" : ""} ${className}`}
       style={{ left: pos.x, top: pos.y, width }}

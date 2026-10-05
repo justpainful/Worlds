@@ -5,7 +5,7 @@ import { useStore } from "../../state/store";
 import { PageEditor, type PageEditorHandle } from "../../editor/PageEditor";
 import type { ParagraphStyle } from "../../editor/extensions/document";
 import { Glass } from "../../glass/Glass";
-import { LAYER } from "../../glass/materials";
+import { LAYER } from "../../glass/profiles";
 import { Button } from "../../ui/Button";
 import { Icon, type IconName } from "../../ui/Icon";
 import { menuAt, Popover } from "../../ui/Menu";
@@ -211,7 +211,7 @@ function DocToolbar({ editor }: { editor: Editor }) {
 
   return (
     <div className="doc-toolbar-wrap">
-      <Glass material="regular" layer={LAYER.floating} radius="var(--r-capsule)" className="doc-toolbar" contentClassName="doc-toolbar-row">
+      <Glass material="bar" layer={LAYER.floating} radius="var(--r-capsule)" className="doc-toolbar" contentClassName="doc-toolbar-row">
         <button
           className="dt-select"
           onMouseDown={(e) => e.preventDefault()}

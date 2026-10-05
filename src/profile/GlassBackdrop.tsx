@@ -22,7 +22,7 @@ export function GlassBackdrop() {
   return (
     <div className="glass-backdrop" aria-hidden style={{ ["--banner-rgb" as string]: tone.rgb, ["--banner-deep" as string]: tone.deep }}>
       <div className="glass-backdrop-light">{still && <img src={still} alt="" />}</div>
-      <Glass material="regular" layer={0.5} className="glass-backdrop-sheet" responsive={false} />
+      <Glass material="sheet" layer={0.5} className="glass-backdrop-sheet" />
     </div>
   );
 }

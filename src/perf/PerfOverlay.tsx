@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { glassScene, type GlassStats } from "../glass/scene";
+import { glassEngine, type GlassStats } from "../glass/engine";
 import { longFrames, startupMs } from "./monitor";
 
 interface Sample {
@@ -35,7 +35,7 @@ export function PerfOverlay() {
         avg,
         p95: ts[Math.floor(ts.length * 0.95)] ?? avg,
         heap: mem ? mem.usedJSHeapSize / 1048576 : null,
-        glass: glassScene.stats(),
+        glass: glassEngine.stats(),
         long: longFrames,
       });
     }, 500);

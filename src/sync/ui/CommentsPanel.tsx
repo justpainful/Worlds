@@ -2,7 +2,7 @@ import type { Editor } from "@tiptap/core";
 import { useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Glass } from "../../glass/Glass";
-import { LAYER } from "../../glass/materials";
+import { LAYER } from "../../glass/profiles";
 import { IconButton } from "../../ui/Button";
 import { Icon } from "../../ui/Icon";
 import { relTime } from "../../ui/misc";
@@ -51,7 +51,7 @@ export function CommentsPanel({ session, editor }: { session: CollabSession; edi
   };
 
   return createPortal(
-    <Glass material="regular" layer={LAYER.floating} className="comments-panel" radius="var(--r-popover)" role="complementary" aria-label="Comments">
+    <Glass material="bar" layer={LAYER.floating} className="comments-panel" radius="var(--r-popover)" role="complementary" aria-label="Comments">
       <header className="cp-head">
         <span className="cp-title">Comments</span>
         <span className="cp-spacer" />

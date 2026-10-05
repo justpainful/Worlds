@@ -5,50 +5,62 @@ import {
   useImperativeHandle,
   useLayoutEffect,
   useRef,
+  useState,
   type CSSProperties,
   type HTMLAttributes,
   type PointerEvent as RPointerEvent,
 } from "react";
-import { glassScene, type Surface } from "./scene";
-import { LAYER, type MaterialName } from "./materials";
-import type { GlassShape } from "./maps";
+import { glassEngine, type Surface } from "./engine";
+import type { GlassShape } from "./optics";
+import { INTERACTION, LAYER, type Material } from "./profiles";
 
 export interface GlassProps extends HTMLAttributes<HTMLDivElement> {
-  material?: MaterialName;
+  material?: Material;
   layer?: number;
-  /** Interactive controls get hover / press / release / drag states. */
+  /** Controls respond to hover and press with the material itself. */
   interactive?: boolean;
   selected?: boolean;
   disabled?: boolean;
-  /** Track pointer for directional lighting even when not interactive. */
-  responsive?: boolean;
+  /** Measure the scene behind (default true). */
   sample?: boolean;
   radius?: number | string;
   as?: "div" | "button" | "nav" | "header" | "section";
   contentClassName?: string;
-  /** Merged glass: several shapes melted into one body (local px). */
+  /** Several shapes melted into one body (local px). */
   shapes?: GlassShape[];
   merge?: number;
+  /** Grow out of this rect (viewport px) when it appears: a menu out of its button. */
+  morphFrom?: DOMRect | null;
 }
 
 /**
- * A Liquid Glass surface. Layer order inside the element:
- *   optics (backdrop pipeline) → tint/spill/fresnel → clip(intersection) → rim → content
- * Content never passes through the optics, so text on glass is never distorted.
+ * A piece of Liquid Glass. Layers, bottom to top:
+ *   optics   the backdrop pass (lens, frost, scatter, colour), clipped to the shape
+ *   env      the scene's colour, reflected faintly along the edge
+ *   shade    inner shadow away from the light
+ *   light    rim, Fresnel and specular
+ *   glow     light spreading from a press
+ *   content  never passes through the optics, so text on glass stays sharp
+ * Nothing animates the surface element itself: a transform there would cut
+ * the optics off from the scene, so motion moves the layers together.
+ *
+ * Glass never sits on glass. A Glass whose element ends up inside another
+ * surface (decided from the real DOM, so portals are judged correctly)
+ * becomes a fill of that surface: no optics, no rim, no shadow.
  */
 export const Glass = forwardRef<HTMLDivElement, GlassProps>(function Glass(
   {
-    material = "regular",
+    material = "bar",
     layer = LAYER.chrome,
     interactive = false,
     selected = false,
     disabled = false,
-    responsive = true,
-    sample,
+    sample = true,
     radius,
     as = "div",
     shapes,
     merge,
+    morphFrom,
     className = "",
     contentClassName = "",
     style,
@@ -56,24 +68,35 @@ export const Glass = forwardRef<HTMLDivElement, GlassProps>(function Glass(
     onPointerEnter,
     onPointerLeave,
     onPointerDown,
-    onPointerMove,
     ...rest
   },
   ref,
 ) {
-  const el = useRef<HTMLDivElement>(null);
+  const root = useRef<HTMLDivElement>(null);
   const optics = useRef<HTMLSpanElement>(null);
-  const inter = useRef<HTMLSpanElement>(null);
+  const light = useRef<HTMLSpanElement>(null);
+  const shade = useRef<HTMLSpanElement>(null);
+  const env = useRef<HTMLSpanElement>(null);
+  const glow = useRef<HTMLSpanElement>(null);
   const surface = useRef<Surface | null>(null);
+  const [fill, setFill] = useState(false);
   const hover = useRef(false);
   const press = useRef(false);
-  useImperativeHandle(ref, () => el.current!, []);
+  useImperativeHandle(ref, () => root.current!, []);
 
+  const opts = { material, layer, selected, shapes, merge, sample };
   useLayoutEffect(() => {
-    if (!el.current || !optics.current || !inter.current) return;
-    surface.current = glassScene.register(el.current, optics.current, inter.current, { material, layer, selected, sample, shapes, merge });
+    if (!root.current || !optics.current || !light.current || !shade.current || !env.current) return;
+    if (root.current.parentElement?.closest(".glass:not(.glass-fill)")) {
+      setFill(true);
+      return;
+    }
+    surface.current = glassEngine.register(
+      { root: root.current, optics: optics.current, light: light.current, shade: shade.current, env: env.current },
+      opts,
+    );
     return () => {
-      if (surface.current) glassScene.unregister(surface.current);
+      if (surface.current) glassEngine.unregister(surface.current);
       surface.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -81,76 +104,110 @@ export const Glass = forwardRef<HTMLDivElement, GlassProps>(function Glass(
 
   const shapesKey = shapes ? JSON.stringify(shapes) : "";
   useEffect(() => {
-    if (surface.current) glassScene.update(surface.current, { material, layer, selected, sample, shapes, merge });
-    if (shapes) glassScene.invalidate();
+    if (surface.current) glassEngine.update(surface.current, opts);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [material, layer, selected, sample, shapesKey, merge]);
 
+  // Morph: the layers start as the source's outline and grow into this shape (once).
+  const morphed = useRef(false);
+  useLayoutEffect(() => {
+    const el = root.current;
+    if (!el || !morphFrom || morphed.current || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    morphed.current = true;
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    const top = Math.max(0, morphFrom.top - r.top);
+    const left = Math.max(0, morphFrom.left - r.left);
+    const bottom = Math.max(0, r.bottom - morphFrom.bottom);
+    const right = Math.max(0, r.right - morphFrom.right);
+    const rad = Math.min(morphFrom.width, morphFrom.height) / 2;
+    el.style.setProperty("--g-morph", `inset(${top}px ${right}px ${bottom}px ${left}px round ${rad}px)`);
+    // The optics are cut by the shape's mask: start that mask shrunk onto the source.
+    const pad = parseFloat(el.style.getPropertyValue("--g-pad")) || 0;
+    const sx = morphFrom.width / r.width;
+    const sy = morphFrom.height / r.height;
+    el.style.setProperty("--g-mpos", `${(morphFrom.left - r.left + pad - pad * sx).toFixed(1)}px ${(morphFrom.top - r.top + pad - pad * sy).toFixed(1)}px`);
+    el.style.setProperty("--g-msize", `${((r.width + 2 * pad) * sx).toFixed(1)}px ${((r.height + 2 * pad) * sy).toFixed(1)}px`);
+    el.dataset.morph = "from";
+    // Commit the start outline, then let the transitions carry it to the shape.
+    void el.offsetWidth;
+    el.dataset.morph = "to";
+    const done = window.setTimeout(() => {
+      delete el.dataset.morph;
+      el.style.removeProperty("--g-morph");
+      el.style.removeProperty("--g-mpos");
+      el.style.removeProperty("--g-msize");
+    }, INTERACTION.morphMs + 40);
+    return () => {
+      // (Effects can run twice in development: let the second run start again.)
+      window.clearTimeout(done);
+      morphed.current = false;
+    };
+  }, [morphFrom]);
+
   const setState = useCallback(() => {
-    const node = el.current;
-    if (!node) return;
-    const state = disabled ? "disabled" : press.current ? "press" : hover.current ? "hover" : "idle";
-    node.dataset.state = state;
-    if (surface.current) glassScene.setInteraction(surface.current, hover.current && !disabled, press.current && !disabled);
+    const el = root.current;
+    if (!el) return;
+    el.dataset.state = disabled ? "disabled" : press.current ? "press" : hover.current ? "hover" : "idle";
+    if (surface.current) glassEngine.setInteraction(surface.current, hover.current && !disabled, press.current && !disabled);
   }, [disabled]);
 
   useEffect(() => {
     setState();
   }, [disabled, setState]);
 
-  const track = (e: RPointerEvent<HTMLDivElement>) => {
-    const node = el.current;
-    if (!node) return;
-    const r = node.getBoundingClientRect();
-    const x = (e.clientX - r.left) / r.width;
-    const y = (e.clientY - r.top) / r.height;
-    node.style.setProperty("--px", `${(x * 100).toFixed(1)}%`);
-    node.style.setProperty("--py", `${(y * 100).toFixed(1)}%`);
-    // Bias the light direction slightly toward the pointer.
-    const angle = 180 + Math.max(-1, Math.min(1, (x - 0.5) * 2)) * -22;
-    node.style.setProperty("--light-angle", `${angle.toFixed(1)}deg`);
-    if (surface.current) glassScene.lightAt(surface.current, x, y);
+  /** Light starts where the pointer acts and spreads inside the body, then settles. */
+  const bloom = (e: RPointerEvent<HTMLDivElement>, strong: boolean) => {
+    const el = root.current;
+    const g = glow.current;
+    if (!el || !g) return;
+    const r = el.getBoundingClientRect();
+    g.style.setProperty("--gx", `${(e.clientX - r.left).toFixed(1)}px`);
+    g.style.setProperty("--gy", `${(e.clientY - r.top).toFixed(1)}px`);
+    g.dataset.bloom = strong ? "press" : "hover";
+    g.getAnimations().forEach((a) => a.cancel());
+    g.animate(
+      [
+        { opacity: 0, transform: "scale(0.6)" },
+        { opacity: strong ? 1 : 0.45, transform: "scale(1)", offset: 0.3 },
+        { opacity: 0, transform: "scale(1.15)" },
+      ],
+      { duration: INTERACTION.glow.inMs + INTERACTION.glow.outMs, easing: "cubic-bezier(.2,.7,.3,1)" },
+    );
   };
 
-  const handlers = {
-    onPointerEnter: (e: RPointerEvent<HTMLDivElement>) => {
-      if (responsive || interactive) track(e);
-      if (interactive) {
-        hover.current = true;
-        setState();
-      }
-      el.current?.style.setProperty("--spot", "1");
-      onPointerEnter?.(e);
-    },
-    onPointerMove: (e: RPointerEvent<HTMLDivElement>) => {
-      if (responsive || interactive) track(e);
-      onPointerMove?.(e);
-    },
-    onPointerLeave: (e: RPointerEvent<HTMLDivElement>) => {
-      hover.current = false;
-      press.current = false;
-      el.current?.style.setProperty("--spot", "0");
-      el.current?.style.removeProperty("--light-angle");
-      if (surface.current) glassScene.lightAt(surface.current, null, null);
-      setState();
-      onPointerLeave?.(e);
-    },
-    onPointerDown: (e: RPointerEvent<HTMLDivElement>) => {
-      if (interactive && !disabled && e.button === 0) {
-        press.current = true;
-        setState();
-        const up = () => {
+  const handlers = interactive
+    ? {
+        onPointerEnter: (e: RPointerEvent<HTMLDivElement>) => {
+          hover.current = true;
+          setState();
+          if (!disabled) bloom(e, false);
+          onPointerEnter?.(e);
+        },
+        onPointerLeave: (e: RPointerEvent<HTMLDivElement>) => {
+          hover.current = false;
           press.current = false;
           setState();
-          window.removeEventListener("pointerup", up);
-          window.removeEventListener("pointercancel", up);
-        };
-        window.addEventListener("pointerup", up);
-        window.addEventListener("pointercancel", up);
+          onPointerLeave?.(e);
+        },
+        onPointerDown: (e: RPointerEvent<HTMLDivElement>) => {
+          if (!disabled && e.button === 0) {
+            press.current = true;
+            setState();
+            bloom(e, true);
+            const up = () => {
+              press.current = false;
+              setState();
+              removeEventListener("pointerup", up);
+              removeEventListener("pointercancel", up);
+            };
+            addEventListener("pointerup", up);
+            addEventListener("pointercancel", up);
+          }
+          onPointerDown?.(e);
+        },
       }
-      onPointerDown?.(e);
-    },
-  };
+    : { onPointerEnter, onPointerLeave, onPointerDown };
 
   const Tag = as as "div";
   const st: CSSProperties = { ...style };
@@ -158,8 +215,8 @@ export const Glass = forwardRef<HTMLDivElement, GlassProps>(function Glass(
 
   return (
     <Tag
-      ref={el}
-      className={`glass ${interactive ? "glass-interactive" : ""} ${className}`}
+      ref={root}
+      className={`${fill ? "glass-fill" : "glass"} ${interactive ? "glass-interactive" : ""} ${className}`}
       data-layer={layer}
       data-material={material}
       data-selected={selected || undefined}
@@ -168,14 +225,13 @@ export const Glass = forwardRef<HTMLDivElement, GlassProps>(function Glass(
       {...handlers}
       {...rest}
     >
-      {shapes && <span className="g-shadow" aria-hidden />}
-      <span ref={optics} className="g-optics" aria-hidden />
-      <span className="g-tint" aria-hidden />
-      <span className="g-clip" aria-hidden>
-        <span ref={inter} className="g-intersect" style={{ display: "none" }} />
-      </span>
-      <span className="g-rim" aria-hidden />
-      <div className={`g-content ${contentClassName}`}>{children}</div>
+      {shapes && <span className="g-layer g-cast" aria-hidden />}
+      <span ref={optics} className="g-layer g-optics" aria-hidden />
+      <span ref={env} className="g-layer g-env" aria-hidden />
+      <span ref={shade} className="g-layer g-shade" aria-hidden />
+      <span ref={light} className="g-layer g-light" aria-hidden />
+      <span ref={glow} className="g-layer g-glow" aria-hidden />
+      <div className={`g-layer g-content ${contentClassName}`}>{children}</div>
     </Tag>
   );
 });

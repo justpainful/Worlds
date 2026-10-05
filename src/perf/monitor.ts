@@ -4,7 +4,7 @@
  * Full to Reduced until frames are smooth again. The user's own quality
  * choice is never exceeded.
  */
-import { glassScene } from "../glass/scene";
+import { glassEngine } from "../glass/engine";
 
 const WINDOW = 3000;
 const SLOW_FRAMES = 4;
@@ -25,7 +25,7 @@ export function markReady() {
 
 export function setAdaptiveQuality(on: boolean) {
   enabled = on;
-  if (!on) glassScene.setAutoReduced(false);
+  if (!on) glassEngine.setAutoReduced(false);
 }
 
 function onSlow(at: number) {
@@ -33,14 +33,14 @@ function onSlow(at: number) {
   lastSlow = at;
   slow = slow.filter((t) => at - t < WINDOW);
   slow.push(at);
-  if (enabled && slow.length >= SLOW_FRAMES && !glassScene.autoReduced) {
-    glassScene.setAutoReduced(true);
+  if (enabled && slow.length >= SLOW_FRAMES && !glassEngine.autoReduced) {
+    glassEngine.setAutoReduced(true);
   }
   window.clearTimeout(recoverTimer);
   recoverTimer = window.setTimeout(function check() {
     if (performance.now() - lastSlow >= RECOVER_AFTER) {
       slow = [];
-      glassScene.setAutoReduced(false);
+      glassEngine.setAutoReduced(false);
     } else {
       recoverTimer = window.setTimeout(check, RECOVER_AFTER);
     }

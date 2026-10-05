@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Glass } from "../glass/Glass";
-import { LAYER } from "../glass/materials";
+import { LAYER } from "../glass/profiles";
 import { IconButton } from "./Button";
 
 /** Glass sheet over a dimming scrim. Escape / scrim click closes. */
@@ -45,7 +45,7 @@ export function Modal({
       <div className="modal-scrim" onPointerDown={onClose} />
       <Glass
         ref={panel}
-        material="dense"
+        material="sheet"
         layer={LAYER.modal}
         className={`modal-panel ${className}`}
         style={{ width }}

@@ -5,7 +5,7 @@ import { api, errorMessage, fileUrl } from "../lib/api";
 import type { Automation, HistoryEntry, Page, PageMeta, Version } from "../lib/types";
 import { useStore } from "../state/store";
 import { Glass } from "../glass/Glass";
-import { LAYER } from "../glass/materials";
+import { LAYER } from "../glass/profiles";
 import { Segmented } from "../ui/Segmented";
 import { IconButton, Button } from "../ui/Button";
 import { Icon } from "../ui/Icon";
@@ -41,7 +41,7 @@ export function Inspector({
   }, [onClose]);
   if (!host) return null;
   return createPortal(
-    <Glass material="dense" layer={LAYER.floating} className="inspector" radius="var(--r-float)">
+    <Glass material="sheet" layer={LAYER.floating} className="inspector" radius="var(--r-float)">
       <div className="inspector-head">
         <Segmented
           value={panel}

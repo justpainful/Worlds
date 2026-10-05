@@ -186,7 +186,7 @@
 /* ---- Suggestions (/ and @) ---------------------------------------------- */
 .suggest-host { position: fixed; z-index: 3000; }
 .suggest { width: 320px; }
-.suggest > :is(.g-optics, .g-tint, .g-rim, .g-clip, .g-content) { animation: suggest-in 160ms var(--spring-snappy); }
+.suggest > .g-layer { animation: suggest-in 160ms var(--spring-snappy); }
 @keyframes suggest-in { from { transform: translateY(-4px) scale(0.98); } }
 .sg-list { max-height: 340px; overflow-y: auto; padding: 6px; }
 .sg-group { padding: 8px 10px 4px; font: var(--t-caption); color: var(--text-3); }
@@ -265,11 +265,11 @@
 .fp-stage { position: relative; width: 100%; border-radius: 12px; overflow: hidden; background: #000; box-shadow: 0 2px 14px rgba(0, 0, 0, 0.35); }
 .fp-stage img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .fp-nav { position: absolute !important; top: calc(50% - 19px); width: 38px; height: 38px; }
-.fp-nav > * { opacity: 0; transition: opacity var(--d-hover); }
+.fp-nav { --g-fade: 0; }
 .fp-stage:not(:hover) .fp-nav, .fp-nav[aria-disabled="true"] { box-shadow: none; pointer-events: none; }
 .fp-nav.prev { left: 12px; }
 .fp-nav.next { right: 12px; }
-.fp-stage:hover .fp-nav:not([aria-disabled="true"]) > * { opacity: 1; }
+.fp-stage:hover .fp-nav:not([aria-disabled="true"]) { --g-fade: 1; }
 .fp-bar { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
 .fp-count { font: var(--t-small); color: var(--text-3); min-width: 54px; font-variant-numeric: tabular-nums; }
 .fp-thumbs { flex: 1; display: flex; gap: 6px; overflow-x: auto; padding: 2px; scrollbar-width: thin; }

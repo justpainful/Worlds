@@ -7,7 +7,7 @@ import { emit, on } from "../lib/bus";
 import { PageEditor, whenSaved, type PageEditorHandle } from "../editor/PageEditor";
 import { insertPaths } from "../editor/media";
 import { Glass } from "../glass/Glass";
-import { LAYER } from "../glass/materials";
+import { LAYER } from "../glass/profiles";
 import { IconButton } from "../ui/Button";
 import { Icon } from "../ui/Icon";
 import { Avatar, EmptyState, PageIcon, relTime, Spinner } from "../ui/misc";

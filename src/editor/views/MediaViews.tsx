@@ -10,7 +10,7 @@ import { formatBytes } from "../../ui/misc";
 import { SmartImage } from "../../ui/SmartImage";
 import { FilePreview, canPreview } from "./FilePreview";
 import { Glass } from "../../glass/Glass";
-import { LAYER } from "../../glass/materials";
+import { LAYER } from "../../glass/profiles";
 
 async function reveal(id: string) {
   try {
@@ -51,7 +51,7 @@ function MediaToolbar({ attrs, update, onDelete, extra }: { attrs: Record<string
   );
   const display = attrs.display as number;
   return (
-    <Glass material="dense" layer={LAYER.floating} className="media-toolbar" radius="var(--r-capsule)" contentEditable={false}>
+    <Glass material="menu" layer={LAYER.floating} className="media-toolbar" radius="var(--r-capsule)" contentEditable={false}>
       <div className="mt-row">
         {btn("alignLeft", "Align left", attrs.align === "left" && display !== 0, () => update({ align: "left", display: display === 0 ? 100 : display }))}
         {btn("alignCenter", "Center", attrs.align === "center" && display !== 0, () => update({ align: "center", display: display === 0 ? 100 : display }))}

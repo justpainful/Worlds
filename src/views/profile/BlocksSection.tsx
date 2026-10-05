@@ -1,6 +1,6 @@
 import { useEffect, useState, type DragEvent } from "react";
 import { Glass } from "../../glass/Glass";
-import { LAYER } from "../../glass/materials";
+import { LAYER } from "../../glass/profiles";
 import { Button } from "../../ui/Button";
 import { Icon } from "../../ui/Icon";
 import { RefIcon } from "../../ui/ProductIcon";
@@ -173,7 +173,7 @@ export function BlocksSection({
       </div>
 
       {customizing && sel && (
-        <Glass material="dense" layer={LAYER.popover} className="pf-inspector" radius="26px">
+        <Glass material="sheet" layer={LAYER.popover} className="pf-inspector" radius="26px">
           <BlockInspector
             block={sel}
             onChange={(nb) => setDraft(draft.map((x) => (x.id === nb.id ? nb : x)))}

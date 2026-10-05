@@ -4,7 +4,7 @@ import type { Destination, DiscordInventory } from "../lib/types";
 import { Segmented } from "../ui/Segmented";
 import { Icon } from "../ui/Icon";
 import { EmptyState } from "../ui/misc";
-import { LAYER } from "../glass/materials";
+import { LAYER } from "../glass/profiles";
 
 type Kind = "channel" | "thread" | "dm";
 

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import type { Route } from "../state/store";
-import { glassScene } from "../glass/scene";
+import { glassEngine } from "../glass/engine";
 import { ResourceView } from "../resources/views/ResourceView";
 import { HomeView } from "./HomeView";
 import { TemplatesView } from "./TemplatesView";
@@ -16,7 +16,7 @@ import { ChatView } from "./ChatView";
 export function RouteView(props: { route: Route; paneId: string; tabId: string }) {
   const key = JSON.stringify(props.route);
   // New content under the toolbar glass: let it adapt right away.
-  useEffect(() => glassScene.resampleSoon(), [key]);
+  useEffect(() => glassEngine.resampleSoon(), [key]);
   return <RouteBody {...props} />;
 }
 

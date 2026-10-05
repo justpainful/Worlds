@@ -8,7 +8,7 @@ import { Panes } from "./shell/Panes";
 import { CommandPalette } from "./shell/CommandPalette";
 import { MenuHost } from "./ui/Menu";
 import { Toasts, TooltipHost } from "./ui/misc";
-import { glassScene } from "./glass/scene";
+import { glassEngine } from "./glass/engine";
 import { applyAppearance } from "./shell/appearance";
 import { AiHost } from "./ai/AiPanel";
 import { LightboxHost } from "./editor/views/Pages3Views";
@@ -140,7 +140,7 @@ export function App() {
   useEffect(() => installContextMenu(), []);
 
   useEffect(() => {
-    glassScene.init();
+    glassEngine.init();
   }, []);
 
   if (error) {

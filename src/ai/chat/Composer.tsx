@@ -11,7 +11,7 @@ import { PageIcon, relTime, Spinner } from "../../ui/misc";
 import { Glass } from "../../glass/Glass";
 import { MentionMenu, type MentionPick, type ToolRef } from "../mentions";
 import { ProductIcon } from "../../ui/ProductIcon";
-import { LAYER } from "../../glass/materials";
+import { LAYER } from "../../glass/profiles";
 import { uploadFiles, uploadPaths } from "./uploads";
 import { AttachmentStrip, ModelButton } from "./messages";
 import { isResource } from "../../resources/kinds";
@@ -254,7 +254,7 @@ export function Composer({
     <div className={`ai-composer ai-composer-${size} ${busy ? "is-busy" : ""} ${focused ? "is-focused" : ""}`} ref={root}>
       <div className="composer-shell" ref={shell}>
         <span className={`ai-glow ${busy ? "is-working" : focused ? "is-focus" : ""}`} aria-hidden />
-        <Glass material="dense" layer={LAYER.popover + 0.3} className="composer-glass" shapes={shapes} merge={14} responsive={false}>
+        <Glass material="menu" layer={LAYER.popover + 0.3} className="composer-glass" shapes={shapes} merge={14}>
           <span />
         </Glass>
         <button className="composer-plus" aria-label="Add" data-tip="Files, a page, or another chat" onClick={(e) => plusMenu(e.currentTarget)}>

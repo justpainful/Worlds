@@ -5,7 +5,7 @@ import { ReactRenderer } from "@tiptap/react";
 import Mention from "@tiptap/extension-mention";
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Glass } from "../../glass/Glass";
-import { LAYER } from "../../glass/materials";
+import { LAYER } from "../../glass/profiles";
 import { Icon, type IconName } from "../../ui/Icon";
 import { PageIcon } from "../../ui/misc";
 import { useStore, pageTitle } from "../../state/store";
@@ -62,7 +62,7 @@ const SuggestList = forwardRef<ListHandle, ListProps>(function SuggestList({ ite
   }));
   let lastGroup: string | undefined;
   return (
-    <Glass material="dense" layer={LAYER.menu} className="suggest" radius="var(--r-lg)">
+    <Glass material="menu" layer={LAYER.menu} className="suggest" radius="var(--r-lg)">
       <div className="sg-list scroll" ref={list} role="listbox">
         {items.length === 0 && <div className="sg-empty">{empty}</div>}
         {items.map((it, i) => {

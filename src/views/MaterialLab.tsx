@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Glass } from "../glass/Glass";
-import { LAYER, type MaterialName } from "../glass/materials";
+import { LAYER, type Material } from "../glass/profiles";
 import { Segmented } from "../ui/Segmented";
 import { GlassButton } from "../ui/Button";
 
@@ -18,7 +18,7 @@ const LOREM =
 /** Internal tuning surface for the material system (developer mode only). */
 export function MaterialLab() {
   const [bg, setBg] = useState("saturated");
-  const [mat, setMat] = useState<MaterialName>("regular");
+  const [mat, setMat] = useState<Material>("bar");
   const backdrop = BACKDROPS.find((b) => b.id === bg)!;
   return (
     <div className="view view-wide lab">
@@ -32,8 +32,8 @@ export function MaterialLab() {
         <Segmented value={bg} onChange={setBg} options={BACKDROPS.map((b) => ({ value: b.id, label: b.label }))} label="Backdrop" />
         <Segmented
           value={mat}
-          onChange={(v) => setMat(v as MaterialName)}
-          options={(["clear", "regular", "prominent", "control", "dense"] as MaterialName[]).map((m) => ({ value: m, label: m[0].toUpperCase() + m.slice(1) }))}
+          onChange={(v) => setMat(v as Material)}
+          options={(["control", "bar", "menu", "sheet", "clear"] as Material[]).map((m) => ({ value: m, label: m[0].toUpperCase() + m.slice(1) }))}
           label="Material"
         />
       </div>
@@ -54,7 +54,7 @@ export function MaterialLab() {
             <div className="lab-label">Glass A · {mat}</div>
             <p className="lab-label-sub bidi">حدثنا Nova8 إلى v2.4.1.</p>
           </Glass>
-          <Glass material="regular" layer={LAYER.popover} className="lab-panel-b" radius="var(--r-float)">
+          <Glass material="bar" layer={LAYER.popover} className="lab-panel-b" radius="var(--r-float)">
             <div className="lab-label">Glass B overlaps A</div>
             <p className="lab-label-sub">The overlap must read thicker and refract A.</p>
           </Glass>

@@ -1,6 +1,6 @@
 /* ---- Claude panel ------------------------------------------------------ */
 .ai-panel { position: fixed; z-index: 2400; right: 26px; bottom: 26px; width: 430px; max-height: min(640px, calc(100vh - 80px)); }
-.ai-panel > :is(.g-optics, .g-tint, .g-rim, .g-clip, .g-content) { animation: ai-in var(--d-panel) var(--spring-snappy); }
+.ai-panel > .g-layer { animation: ai-in var(--d-panel) var(--spring-snappy); }
 .ai-panel > .g-content { display: flex; flex-direction: column; max-height: inherit; }
 @keyframes ai-in { from { transform: translateY(18px) scale(0.97); } }
 .ai-head { display: flex; align-items: center; gap: 9px; padding: 12px 10px 6px 16px; }

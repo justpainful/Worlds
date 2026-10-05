@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Glass } from "../../glass/Glass";
-import { LAYER } from "../../glass/materials";
+import { LAYER } from "../../glass/profiles";
 import { Icon } from "../../ui/Icon";
 import { relTime } from "../../ui/misc";
 import { useStore } from "../../state/store";
@@ -44,7 +44,7 @@ export function NotificationsPopover({ anchor, onClose }: { anchor: HTMLElement;
 
   if (!pos) return null;
   return createPortal(
-    <Glass ref={panel} material="dense" layer={LAYER.popover} className="notif-popover" radius="var(--r-popover)" style={{ top: pos.top, right: pos.right }} role="dialog" aria-label="Notifications">
+    <Glass ref={panel} material="menu" layer={LAYER.popover} className="notif-popover" radius="var(--r-popover)" style={{ top: pos.top, right: pos.right }} role="dialog" aria-label="Notifications">
       <header className="np-head">
         <span className="np-title">Notifications</span>
         <span className="cp-spacer" />

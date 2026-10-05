@@ -44,7 +44,7 @@ import { insertBlobs, pickAndInsert } from "./media";
 import { mergeBlocks } from "./merge";
 import { promptText } from "./prompt";
 import { Glass } from "../glass/Glass";
-import { LAYER } from "../glass/materials";
+import { LAYER } from "../glass/profiles";
 import { Icon, type IconName } from "../ui/Icon";
 import { menuAt, useMenu, type MenuItem } from "../ui/Menu";
 import { useCollab } from "../sync/useCollab";
@@ -581,7 +581,7 @@ export const PageEditor = forwardRef<
           return state.doc.textBetween(selection.from, selection.to, " ").trim().length > 0;
         }}
       >
-        <Glass material="dense" layer={LAYER.popover} className="bubble" radius="var(--r-capsule)">
+        <Glass material="menu" layer={LAYER.popover} className="bubble" radius="var(--r-capsule)">
           <div className="bubble-row">
             <button
               className="bb-btn bb-text"
@@ -657,7 +657,7 @@ export const PageEditor = forwardRef<
         options={{ placement: "top-end", offset: 8 }}
         shouldShow={({ editor: ed, state }) => ed.isActive("table") && state.selection.empty}
       >
-        <Glass material="dense" layer={LAYER.popover} className="bubble" radius="var(--r-capsule)">
+        <Glass material="menu" layer={LAYER.popover} className="bubble" radius="var(--r-capsule)">
           <div className="bubble-row">
             <button className="bb-btn bb-text" onMouseDown={(e) => e.preventDefault()} onClick={() => editor.chain().focus().addRowAfter().run()}>+ Row</button>
             <button className="bb-btn bb-text" onMouseDown={(e) => e.preventDefault()} onClick={() => editor.chain().focus().addColumnAfter().run()}>+ Column</button>

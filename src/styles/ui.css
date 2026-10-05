@@ -247,10 +247,10 @@ input[type="time"].field, input[type="datetime-local"].field, input[type="number
   max-width: 320px;
   --g-scale: 0.96;
 }
-.menu-panel > * { opacity: 0; transition: opacity 140ms var(--ease-out); }
+.menu-panel { --g-fade: 0; }
 .menu-panel.is-in { --g-scale: 1; }
-.menu-panel:not(.is-in) > :is(.g-optics, .g-tint, .g-rim, .g-clip, .g-content) { transform: scale(var(--g-scale)); }
-.menu-panel.is-in > * { opacity: 1; }
+.menu-panel:not(.is-in):not(.is-morph) > .g-layer { transform: scale(var(--g-scale)); }
+.menu-panel.is-in { --g-fade: 1; }
 .menu-items { padding: 6px; display: flex; flex-direction: column; }
 .menu-item {
   display: flex;
@@ -276,10 +276,10 @@ input[type="time"].field, input[type="datetime-local"].field, input[type="number
 .menu-label { padding: 6px 10px 4px; font: var(--t-caption); color: var(--text-3); }
 
 .popover { position: fixed; z-index: 2500; --g-scale: 0.97; }
-.popover > * { opacity: 0; transition: opacity 150ms var(--ease-out); }
+.popover { --g-fade: 0; }
 .popover.is-in { --g-scale: 1; }
-.popover:not(.is-in) > :is(.g-optics, .g-tint, .g-rim, .g-clip, .g-content) { transform: scale(var(--g-scale)); }
-.popover.is-in > * { opacity: 1; }
+.popover:not(.is-in) > .g-layer { transform: scale(var(--g-scale)); }
+.popover.is-in { --g-fade: 1; }
 
 /* ---- Modal -------------------------------------------------------------- */
 .modal-root { position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center; padding: 32px; }
@@ -294,10 +294,10 @@ input[type="time"].field, input[type="datetime-local"].field, input[type="number
   --g-lift: 8px;
 }
 .modal-panel > .g-content { display: flex; flex-direction: column; width: 100%; max-height: calc(100vh - 64px); }
-.modal-panel > * { opacity: 0; transition: opacity 200ms var(--ease-out); }
+.modal-panel { --g-fade: 0; }
 .modal-root.is-in .modal-panel { --g-scale: 1; --g-lift: 0px; --g-td: var(--spring-soft-d, 420ms); --g-te: var(--spring-soft); }
-.modal-root:not(.is-in) .modal-panel > :is(.g-optics, .g-tint, .g-rim, .g-clip, .g-content) { transform: translateY(var(--g-lift)) scale(var(--g-scale)); }
-.modal-root.is-in .modal-panel > * { opacity: 1; }
+.modal-root:not(.is-in) .modal-panel > .g-layer { transform: translateY(var(--g-lift)) scale(var(--g-scale)); }
+.modal-root.is-in .modal-panel { --g-fade: 1; }
 .modal-head { display: flex; align-items: center; gap: 12px; padding: 16px 16px 6px 24px; }
 .modal-title { flex: 1; font: var(--t-h3); font-size: 16.5px; letter-spacing: -0.01em; }
 .modal-body { padding: 10px 24px 20px; overflow: auto; }
@@ -307,7 +307,7 @@ input[type="time"].field, input[type="datetime-local"].field, input[type="number
 /* ---- Toasts ------------------------------------------------------------- */
 .toasts { position: fixed; z-index: 4000; left: 0; right: 0; bottom: 26px; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
 .toast { pointer-events: auto; }
-.toast > :is(.g-optics, .g-tint, .g-rim, .g-clip, .g-content) { animation: toast-in var(--d-panel) var(--spring-snappy); }
+.toast > .g-layer { animation: toast-in var(--d-panel) var(--spring-snappy); }
 .toast-row { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 8px 0 18px; font: var(--t-ui); max-width: 560px; }
 .toast-row > span { padding: 11px 10px 11px 0; }
 .toast-error .icon { color: var(--red); }

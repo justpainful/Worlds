@@ -8,7 +8,7 @@ import { Button } from "../ui/Button";
 import { Segmented } from "../ui/Segmented";
 import { Icon } from "../ui/Icon";
 import { EmptyState, PageIcon, Spinner } from "../ui/misc";
-import { LAYER } from "../glass/materials";
+import { LAYER } from "../glass/profiles";
 import { DestinationPicker } from "../discord/DestinationPicker";
 import { DiscordPreview, useBotName } from "../discord/DiscordPreview";
 import { describeTrigger } from "../lib/automationText";

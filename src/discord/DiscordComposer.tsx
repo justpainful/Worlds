@@ -7,7 +7,7 @@ import { Button } from "../ui/Button";
 import { Icon } from "../ui/Icon";
 import { Segmented } from "../ui/Segmented";
 import { EmptyState, Spinner } from "../ui/misc";
-import { LAYER } from "../glass/materials";
+import { LAYER } from "../glass/profiles";
 import { DiscordPreview, useBotName } from "./DiscordPreview";
 import { DestinationPicker } from "./DestinationPicker";
 import { BRIDGE, bridgeExplain } from "./bridge";

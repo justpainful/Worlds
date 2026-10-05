@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { on } from "../lib/bus";
 import { useStore, pageTitle } from "../state/store";
 import { Glass } from "../glass/Glass";
-import { LAYER } from "../glass/materials";
+import { LAYER } from "../glass/profiles";
 import { GlassGroup } from "../ui/Button";
 import { Icon } from "../ui/Icon";
 import { Popover } from "../ui/Menu";
@@ -128,7 +128,7 @@ function QuickAsk({
         <div className="quick-ask-field">
           <span className="ai-glow is-focus is-large" aria-hidden />
           <Glass
-            material="dense"
+            material="sheet"
             layer={LAYER.modal}
             className="quick-ask-glass"
             radius="32px"
@@ -238,7 +238,7 @@ function AiPanel({
 
   return (
     <Glass
-      material="dense"
+      material="sheet"
       layer={LAYER.popover}
       className="ai-panel"
       radius="30px"

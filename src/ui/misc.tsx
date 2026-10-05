@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { fileUrl } from "../lib/api";
 import { useStore } from "../state/store";
 import { Glass } from "../glass/Glass";
-import { LAYER } from "../glass/materials";
+import { LAYER } from "../glass/profiles";
 import { Icon, type IconName } from "./Icon";
 
 /** Empty states show the matching product icon when one exists, like Apple apps. */
@@ -90,7 +90,7 @@ export function Toasts() {
   return createPortal(
     <div className="toasts" aria-live="polite">
       {toasts.map((t) => (
-        <Glass key={t.id} material="dense" layer={LAYER.menu} className={`toast toast-${t.tone ?? "info"}`} radius="var(--r-capsule)">
+        <Glass key={t.id} material="menu" layer={LAYER.menu} className={`toast toast-${t.tone ?? "info"}`} radius="var(--r-capsule)">
           <div className="toast-row">
             {t.tone === "error" && <Icon name="warning" size={15} />}
             {t.tone === "success" && <Icon name="success" size={15} />}

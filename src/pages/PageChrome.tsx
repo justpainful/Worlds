@@ -5,7 +5,7 @@ import type { PageMeta } from "../lib/types";
 import { useStore, childrenOf, pageTitle } from "../state/store";
 import { findKey } from "../editor/extensions/pages3";
 import { Glass } from "../glass/Glass";
-import { LAYER } from "../glass/materials";
+import { LAYER } from "../glass/profiles";
 import { Icon } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
 import { PageIcon, relTime } from "../ui/misc";
@@ -51,7 +51,7 @@ export function FindBar({ editor, replace: startReplace, onClose }: { editor: Ed
   const at = count ? (st?.index ?? 0) + 1 : 0;
 
   return (
-    <Glass className="find-bar" contentClassName="find-body" material="regular" layer={LAYER.popover} radius="16px" role="search">
+    <Glass className="find-bar" contentClassName="find-body" material="bar" layer={LAYER.popover} radius="16px" role="search">
       <div className="find-row">
         <Icon name="search" size={14} />
         <input

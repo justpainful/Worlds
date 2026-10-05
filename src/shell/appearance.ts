@@ -1,6 +1,6 @@
 import { useStore } from "../state/store";
-import { glassScene } from "../glass/scene";
-import type { QualityTier } from "../glass/materials";
+import { glassEngine } from "../glass/engine";
+import type { QualityTier } from "../glass/profiles";
 import { setAdaptiveQuality } from "../perf/monitor";
 
 export const ACCENTS: { name: string; hex: string }[] = [
@@ -27,10 +27,10 @@ export function applyAppearance() {
   root.style.setProperty("--accent", `rgb(${accent.join(",")})`);
   root.style.setProperty("--accent-rgb", accent.join(", "));
   const quality = (settings["appearance.glass"] as QualityTier) ?? "full";
-  glassScene.setQuality(quality);
-  const tone = (settings["appearance.glassTone"] as "auto" | "light" | "dark") ?? "light";
+  glassEngine.setQuality(quality);
+  const tone = (settings["appearance.glassTone"] as "auto" | "light" | "dark") ?? "auto";
   const frost = typeof settings["appearance.glassFrost"] === "number" ? (settings["appearance.glassFrost"] as number) : 1;
-  glassScene.setLook(tone, frost);
+  glassEngine.setLook(tone, frost);
   setAdaptiveQuality(settings["appearance.glassAdaptive"] !== false);
   const motion = (settings["appearance.motion"] as string) ?? "system";
   if (motion === "reduced") root.dataset.motion = "reduced";

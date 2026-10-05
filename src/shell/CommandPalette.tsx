@@ -5,7 +5,7 @@ import { emit } from "../lib/bus";
 import type { SearchHit } from "../lib/types";
 import { useStore, pageTitle, type OpenWhere, type Route } from "../state/store";
 import { Glass } from "../glass/Glass";
-import { LAYER } from "../glass/materials";
+import { LAYER } from "../glass/profiles";
 import { Icon, type IconName } from "../ui/Icon";
 import { PageIcon, relTime } from "../ui/misc";
 import { pageOps } from "./pageActions";
@@ -225,7 +225,7 @@ function Palette({ mode, onClose }: { mode: "all" | "pages" | "commands"; onClos
   return createPortal(
     <div className={`palette-root ${shown ? "is-in" : ""}`}>
       <div className="palette-scrim" onPointerDown={onClose} />
-      <Glass material="dense" layer={LAYER.modal} className="palette" radius="var(--r-float)" role="dialog" aria-label="Command palette">
+      <Glass material="menu" layer={LAYER.modal} className="palette" radius="var(--r-float)" role="dialog" aria-label="Command palette">
         <div className="pal-input-row">
           <Icon name={searching ? "loading" : "search"} size={18} className={searching ? "spin" : ""} />
           <input

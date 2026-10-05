@@ -9,9 +9,9 @@
 .page-cover-wrap { position: relative; }
 .page-cover-actions { position: absolute; z-index: 6; top: 68px; right: 22px; }
 .page-cover-actions-row { display: flex; gap: 2px; padding: 3px; }
-.page-cover-actions > * { opacity: 0; transition: opacity 160ms ease; }
+.page-cover-actions { --g-fade: 0; }
 /* Shown while the pointer is anywhere over the cover or on the buttons themselves. */
-.page-cover-wrap:hover .page-cover-actions > *, .page-cover-actions:hover > *, .page-cover-actions:focus-within > * { opacity: 1; }
+.page-cover-wrap:hover .page-cover-actions, .page-cover-actions:hover, .page-cover-actions:focus-within { --g-fade: 1; }
 .page-cover-actions button { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; color: var(--text-1); font: var(--t-small); font-weight: 550; }
 .page-cover-actions button:hover { background: rgba(255, 255, 255, 0.12); }
 .glass[data-tone="light"] .page-cover-actions-row button:hover { background: rgba(0, 0, 0, 0.06); }
@@ -185,10 +185,12 @@
   opacity: 1;
 }
 .sticky-title-row { display: inline-flex; align-items: center; gap: 8px; height: 100%; padding: 0 14px 0 11px; }
-.sticky-title-btn > * { opacity: 0; transform: translateY(-14px) scale(0.94); transition: transform 360ms var(--spring-snappy), opacity 180ms ease; }
+.sticky-title-btn { --g-fade: 0; }
+.sticky-title-btn > .g-layer { transform: translateY(-14px) scale(0.94); transition: transform 360ms var(--spring-snappy); }
 .sticky-title-btn span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sticky-title.is-on { pointer-events: auto; }
-.sticky-title.is-on .sticky-title-btn > * { transform: none; opacity: 1; }
+.sticky-title.is-on .sticky-title-btn { --g-fade: 1; }
+.sticky-title.is-on .sticky-title-btn > .g-layer { transform: none; }
 
 /* ---- Find bar ------------------------------------------------------------ */
 .find-bar {
@@ -222,8 +224,8 @@
 }
 .status-row { display: flex; align-items: center; gap: 2px; padding: 4px 6px; }
 /* Quiet until hovered; dimming the layers, not the surface, keeps the lens live. */
-.status-bar > * { opacity: 0.45; transition: opacity 200ms ease; }
-.status-bar:hover > * { opacity: 1; }
+.status-bar { --g-fade: 0.45; }
+.status-bar:hover { --g-fade: 1; }
 .sb-item { padding: 0 8px; font: var(--t-caption); color: var(--text-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .sb-item + .sb-item { border-inline-start: 0.5px solid rgba(255, 255, 255, 0.1); }
 .sb-lock { display: inline-flex; align-items: center; gap: 4px; color: #f2c94c; }
@@ -237,8 +239,9 @@
 
 /* ---- Focus mode -------------------------------------------------------------- */
 :root.is-focus-mode .sidebar { width: 0 !important; overflow: hidden; }
-:root.is-focus-mode .pane-toolbar-wrap { opacity: 0; transition: opacity 240ms ease; }
-:root.is-focus-mode .pane-toolbar-wrap:hover { opacity: 1; }
+/* Faded through the glass layers: opacity here would cut the toolbar glass off from the page. */
+:root.is-focus-mode .pane-toolbar-wrap { --g-fade: 0; }
+:root.is-focus-mode .pane-toolbar-wrap:hover { --g-fade: 1; }
 .page-view.is-focus .page-head-top, .page-view.is-focus .props, .page-view.is-focus .page-foot, .page-view.is-focus .outline, .page-view.is-focus .page-head-adds { opacity: 0; pointer-events: none; transition: opacity 240ms ease; }
 .page-view.is-focus .ProseMirror > * { opacity: 0.38; transition: opacity 260ms ease; }
 .page-view.is-focus .ProseMirror > *:focus-within, .page-view.is-focus .ProseMirror > *:hover { opacity: 1; }

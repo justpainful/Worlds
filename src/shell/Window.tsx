@@ -2,9 +2,9 @@ import { useEffect, type ReactNode } from "react";
 import { getCurrentWindow, PhysicalPosition, PhysicalSize, availableMonitors } from "@tauri-apps/api/window";
 import { api, isTauri } from "../lib/api";
 import { useStore } from "../state/store";
-import { glassScene } from "../glass/scene";
+import { glassEngine } from "../glass/engine";
 import { Glass } from "../glass/Glass";
-import { LAYER } from "../glass/materials";
+import { LAYER } from "../glass/profiles";
 import { Icon } from "../ui/Icon";
 
 interface SavedWindow {
@@ -75,7 +75,7 @@ export function useWindowState() {
     const sync = async () => {
       const max = await win.isMaximized();
       setWindowState(useStore.getState().windowActive, max);
-      glassScene.invalidate();
+      glassEngine.invalidate();
     };
     const unsubs: Promise<() => void>[] = [
       win.onResized(() => {
@@ -85,7 +85,7 @@ export function useWindowState() {
       win.onMoved(() => save()),
       win.onFocusChanged(({ payload }) => {
         setWindowState(payload, useStore.getState().maximized);
-        glassScene.setActive(payload);
+        glassEngine.setActive(payload);
       }),
     ];
     sync();

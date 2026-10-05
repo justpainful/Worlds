@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type DragEvent } from "react";
 import { useStore, pageTitle, type Pane, type Route, type Tab } from "../state/store";
 import { Glass } from "../glass/Glass";
-import { LAYER } from "../glass/materials";
+import { LAYER } from "../glass/profiles";
 import { GlassGroup, IconButton } from "../ui/Button";
 import { Icon, type IconName } from "../ui/Icon";
 import { PageIcon } from "../ui/misc";
@@ -9,7 +9,7 @@ import { menuAt, useMenu, type MenuItem } from "../ui/Menu";
 import { useLens } from "../motion/useLens";
 import { RouteView } from "../views/RouteView";
 import { WindowControls } from "./Window";
-import { glassScene } from "../glass/scene";
+import { glassEngine } from "../glass/engine";
 
 export function Panes() {
   const layout = useStore((s) => s.layout);
@@ -41,7 +41,7 @@ export function Panes() {
       w[i] = a;
       w[i + 1] = b;
       setWidths(w);
-      glassScene.invalidate();
+      glassEngine.invalidate();
     };
     const up = () => {
       window.removeEventListener("pointermove", move);
@@ -65,7 +65,7 @@ export function Panes() {
               onPointerDown={(e) => startDrag(i - 1, e)}
               onDoubleClick={() => setWidths(layout.panes.map(() => 1 / layout.panes.length))}
             >
-              <Glass material="clear" layer={LAYER.floating} className="split-grip" radius="var(--r-capsule)" responsive={false} />
+              <Glass material="clear" layer={LAYER.floating} className="split-grip" radius="var(--r-capsule)" />
             </div>
           )}
           <PaneView
@@ -278,7 +278,7 @@ function PaneToolbar({ pane, tab, showWindowControls, count }: { pane: Pane; tab
             { icon: "forward", label: "Forward", shortcut: "Alt+→", disabled: tab.forward.length === 0, onClick: () => goForward(pane.id) },
           ]}
         />
-        <Glass material="regular" layer={LAYER.chrome} className="tb-tabs" radius="var(--r-capsule)">
+        <Glass material="bar" layer={LAYER.chrome} className="tb-tabs" radius="var(--r-capsule)">
           <div
             className="tab-strip"
             ref={strip}
@@ -297,7 +297,7 @@ function PaneToolbar({ pane, tab, showWindowControls, count }: { pane: Pane; tab
             data-tauri-drag-region
           >
             <div className="tab-lens-wrap" aria-hidden>
-              <Glass ref={lens} material="control" layer={LAYER.chrome + 0.5} selected className="tab-lens" radius="var(--r-capsule)" responsive={false} />
+              <Glass ref={lens} material="control" layer={LAYER.chrome + 0.5} selected className="tab-lens" radius="var(--r-capsule)" />
             </div>
             {pane.tabs.map((t, i) => {
               const lbl = routeLabel(t.route, pages);

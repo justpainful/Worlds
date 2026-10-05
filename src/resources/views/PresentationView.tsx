@@ -4,7 +4,7 @@ import { api, errorMessage } from "../../lib/api";
 import type { Page } from "../../lib/types";
 import { useStore } from "../../state/store";
 import { Glass } from "../../glass/Glass";
-import { LAYER } from "../../glass/materials";
+import { LAYER } from "../../glass/profiles";
 import { Button } from "../../ui/Button";
 import { Icon, type IconName } from "../../ui/Icon";
 import { menuAt, type MenuItem } from "../../ui/Menu";
@@ -329,7 +329,7 @@ function Deck({ page }: { page: Page }) {
         actions={<Button variant="tinted" icon="play" onClick={() => setPresenting(true)}>Present</Button>}
       />
       <div className="doc-toolbar-wrap dk-toolbar-wrap">
-        <Glass material="regular" layer={LAYER.floating} radius="var(--r-capsule)" className="doc-toolbar" contentClassName="doc-toolbar-row">
+        <Glass material="bar" layer={LAYER.floating} radius="var(--r-capsule)" className="doc-toolbar" contentClassName="doc-toolbar-row">
           {tb("text", "Text box", addText)}
           {tb("image", "Picture", () => addMedia("image"))}
           {tb("video", "Video", () => addMedia("video"))}

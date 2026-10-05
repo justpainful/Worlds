@@ -1,6 +1,6 @@
 /* ---- Inspector ---------------------------------------------------------- */
 .inspector { position: absolute; z-index: 25; top: 60px; right: 10px; bottom: 10px; width: 350px; }
-.inspector > :is(.g-optics, .g-tint, .g-rim, .g-clip, .g-content) { animation: inspector-in var(--d-panel) var(--spring-snappy); }
+.inspector > .g-layer { animation: inspector-in var(--d-panel) var(--spring-snappy); }
 .inspector > .g-content { display: flex; flex-direction: column; }
 @keyframes inspector-in { from { transform: translateX(24px) scale(0.98); } }
 .inspector-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 10px 8px 14px; }

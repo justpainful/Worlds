@@ -5,7 +5,7 @@ import { api, errorMessage, fileUrl } from "../../lib/api";
 import type { Profile } from "../../lib/types";
 import { useStore } from "../../state/store";
 import { Glass } from "../../glass/Glass";
-import { LAYER } from "../../glass/materials";
+import { LAYER } from "../../glass/profiles";
 import { GlassButton, IconButton } from "../../ui/Button";
 import { Icon } from "../../ui/Icon";
 import { menuAt } from "../../ui/Menu";
@@ -186,7 +186,7 @@ export function ProfileView() {
 
       {/* Compact glass toolbar after scrolling past the banner */}
       <div className={`pf-compact ${compact ? "is-on" : ""}`}>
-        <Glass material="dense" layer={LAYER.chrome + 0.2} className="pf-compact-bar" radius="var(--r-capsule)">
+        <Glass material="menu" layer={LAYER.chrome + 0.2} className="pf-compact-bar" radius="var(--r-capsule)">
           <button className="pf-compact-id" onClick={() => root.current?.closest(".pane-scroll")?.scrollTo({ top: 0, behavior: "smooth" })}>
             <Avatar id={profile.avatar} name={profile.displayName} size={28} />
             <span className="bidi">{profile.displayName || "Your profile"}</span>
@@ -211,7 +211,7 @@ export function ProfileView() {
       </div>
 
       <div className="pf-body">
-        {glassBg && <Glass material="regular" layer={0.5} className="pf-sheet" radius="34px 34px 0 0" responsive={false} />}
+        {glassBg && <Glass material="sheet" layer={0.5} className="pf-sheet" radius="34px 34px 0 0" />}
         <div className="pf-column">
           <header className="pf-id">
             <button className="pf-avatar" onClick={() => pick("avatar")} aria-label="Change avatar">

@@ -7,7 +7,7 @@ import { useStore } from "../../state/store";
 import { Icon } from "../../ui/Icon";
 import { menuAt } from "../../ui/Menu";
 import { Glass } from "../../glass/Glass";
-import { LAYER } from "../../glass/materials";
+import { LAYER } from "../../glass/profiles";
 
 // ---------------------------------------------------------------------------
 // Table of contents
@@ -170,7 +170,7 @@ export function LightboxHost() {
   return createPortal(
     <div className="lightbox" onClick={() => setState(null)}>
       <img src={im.src ?? fileUrl(im.attachmentId)} alt={im.name} onClick={(e) => e.stopPropagation()} />
-      <Glass className="lightbox-bar" contentClassName="lightbox-row" material="regular" layer={LAYER.modal} radius="var(--r-capsule)" onClick={(e) => e.stopPropagation()}>
+      <Glass className="lightbox-bar" contentClassName="lightbox-row" material="bar" layer={LAYER.modal} radius="var(--r-capsule)" onClick={(e) => e.stopPropagation()}>
         {state.images.length > 1 && (
           <button onClick={() => step(-1)} aria-label="Previous">
             <Icon name="back" size={16} />

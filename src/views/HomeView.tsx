@@ -10,7 +10,7 @@ import { Icon } from "../ui/Icon";
 import { EmptyState, PageIcon, relTime } from "../ui/misc";
 import { useMenu } from "../ui/Menu";
 import { pageMenu } from "../shell/pageActions";
-import { LAYER } from "../glass/materials";
+import { LAYER } from "../glass/profiles";
 import { Glass } from "../glass/Glass";
 import { GlassBackdrop } from "../profile/GlassBackdrop";
 import { isResource } from "../resources/kinds";
@@ -92,7 +92,7 @@ export function HomeView() {
         <div className="home-controls">
           <Glass
             as="button"
-            material="regular"
+            material="bar"
             interactive
             layer={LAYER.floating}
             className="sf-piece"

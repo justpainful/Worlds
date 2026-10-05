@@ -12,7 +12,7 @@ import "../styles/ui.css";
 import "../styles/shell.css";
 import "../styles/system.css";
 import { Glass } from "../glass/Glass";
-import { LAYER } from "../glass/materials";
+import { LAYER } from "../glass/profiles";
 import { GlassGroup } from "../ui/Button";
 import { Icon } from "../ui/Icon";
 import { installSpringTokens } from "../motion/spring";
@@ -38,7 +38,7 @@ function Row({ back }: { back: (typeof BACKS)[number] }) {
             { icon: "forward", label: "Forward", onClick: () => {} },
           ]}
         />
-        <Glass material="regular" layer={LAYER.chrome} radius="var(--r-capsule)" style={{ height: 44, width: 220 }}>
+        <Glass material="bar" layer={LAYER.chrome} radius="var(--r-capsule)" style={{ height: 44, width: 220 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, height: "100%", padding: "0 16px", font: "600 14px var(--font-ui)" }}>
             <Icon name="home" size={16} /> Home
           </div>
@@ -49,7 +49,7 @@ function Row({ back }: { back: (typeof BACKS)[number] }) {
             { icon: "more", label: "More", onClick: () => {} },
           ]}
         />
-        <Glass material="regular" layer={LAYER.chrome} radius="22px" style={{ height: 64, width: 140 }} />
+        <Glass material="bar" layer={LAYER.chrome} radius="22px" style={{ height: 64, width: 140 }} />
       </div>
       <span style={{ position: "absolute", right: 10, bottom: 6, font: "600 11px monospace", color: "#888" }}>{back.name}</span>
     </div>

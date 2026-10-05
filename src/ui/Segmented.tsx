@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 import { Glass } from "../glass/Glass";
-import { LAYER } from "../glass/materials";
+import { LAYER } from "../glass/profiles";
 import { Spring, SPRING_SNAPPY, prefersReducedMotion } from "../motion/spring";
 import { Icon, type IconName } from "./Icon";
 

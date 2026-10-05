@@ -101,7 +101,7 @@
   max-height: none;
   animation: none;
 }
-.ai-panel > :is(.g-optics, .g-tint, .g-rim, .g-clip, .g-content) { transform-origin: 100% 100%; animation: ai-panel-in 460ms var(--spring-snappy); }
+.ai-panel > .g-layer { transform-origin: 100% 100%; animation: ai-panel-in 460ms var(--spring-snappy); }
 .ai-panel > .g-content { height: 100%; max-height: none; }
 @keyframes ai-panel-in { from { transform: translateY(24px) scale(0.94); opacity: 0; } }
 .ai-panel-head { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; padding: 12px 12px 4px; }
