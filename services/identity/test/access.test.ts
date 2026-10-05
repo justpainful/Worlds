@@ -144,6 +144,21 @@ describe("page tree mirror", () => {
     expect((await rpc().listDocs({ userId: w.owner.userId, workspaceId: w.id })).map((d) => d.docId)).toEqual(["roadmap"]);
   });
 
+  it("never moves a page whose parent the caller cannot see", async () => {
+    const w = await setup();
+    // The guest can see Salaries but not its parent, so their device has it at the top level.
+    await api("PUT", `/workspaces/${w.id}/pages/salaries/permissions`, { token: w.owner.accessToken, body: { principalType: "user", principalId: w.guest.userId, level: "edit" } });
+    const r = await api("PUT", `/workspaces/${w.id}/tree`, { token: w.guest.accessToken, body: { nodes: [{ id: "salaries", parentId: null }] } });
+    expect(r.json).toEqual({ applied: false, rejected: [] });
+    const still = await env.DB.prepare("SELECT parent_id FROM pages WHERE workspace_id = ?1 AND id = 'salaries'").bind(w.id).first<{ parent_id: string }>();
+    expect(still!.parent_id).toBe("policies");
+    // Leaving a parent needs edit on it too.
+    await api("PUT", `/workspaces/${w.id}/pages/policies/permissions`, { token: w.owner.accessToken, body: { principalType: "user", principalId: w.member.userId, level: "view" } });
+    await api("PUT", `/workspaces/${w.id}/pages/salaries/permissions`, { token: w.owner.accessToken, body: { principalType: "user", principalId: w.member.userId, level: "edit" } });
+    const m = await api("PUT", `/workspaces/${w.id}/tree`, { token: w.member.accessToken, body: { nodes: [{ id: "salaries", parentId: "roadmap" }] } });
+    expect(m.json.rejected).toEqual([{ id: "salaries", reason: "no_edit" }]);
+  });
+
   it("moving a page announces an access change for its subtree", async () => {
     const w = await setup();
     await api("PUT", `/workspaces/${w.id}/tree`, { token: w.member.accessToken, body: { nodes: [{ id: "policies", parentId: "roadmap" }] } });

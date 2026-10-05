@@ -107,7 +107,7 @@ Desktop passkey flow: the app listens on a loopback port, opens `GET /passkey?mo
 | `GET /workspaces/:id/invites[?pageId]`, `DELETE /workspaces/:id/invites/:inviteId` | Owner, Admin; with `pageId`: full access on the page; delete: also whoever made the link | revocation is immediate |
 | `GET /invites/:token` | anyone | preview: `{ valid, workspace, role, expiresAt }` or `{ valid: false, reason }` |
 | `POST /invites/:token/accept` | signed in | |
-| `PUT /workspaces/:id/tree { nodes: [{ id, parentId }], removed?: [id] }` | per node | upserts; unmentioned pages stay. Adding needs edit on the parent (Members may add top-level pages), moving needs edit on page and new parent, removing needs full. Returns `{ applied, rejected: [{ id, reason }] }` |
+| `PUT /workspaces/:id/tree { nodes: [{ id, parentId }], removed?: [id] }` | per node | upserts; unmentioned pages stay. Adding needs edit on the parent (Members may add top-level pages), moving needs edit on the page, its old parent and its new parent, removing needs full. A page reported at the top level by someone who cannot see its parent is left where it is. Returns `{ applied, rejected: [{ id, reason }] }` |
 | `GET /workspaces/:id/access` | members | `{ role, defaultLevel, docs: [{ docId, level }] }` for every mirrored page, `none` included, for offline caching |
 | `GET /workspaces/:id/pages/:pageId/permissions` | view on the page | `{ myLevel, inherit, mirrored, entries: [{ principalType, principalId, level, pageId, inherited }] }` |
 | `PUT /workspaces/:id/pages/:pageId/permissions { principalType, principalId, level }` | full on the page | |

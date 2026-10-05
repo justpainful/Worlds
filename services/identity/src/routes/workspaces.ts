@@ -584,7 +584,11 @@ workspaces.put("/:id/tree", async (c) => {
       }
       stmts.push(c.env.DB.prepare("INSERT INTO pages (workspace_id, id, parent_id, created_by, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)").bind(id, n.id, parentId, caller.userId, t));
     } else {
-      if (!atLeast(level(n.id), "edit") || !parentOk) {
+      // A device that cannot see the current parent does not have it locally
+      // and reports the page at the top level: that is not a move, skip it.
+      if (cur.parentId && level(cur.parentId) === "none") continue;
+      // Moving takes edit on the page, on where it leaves and on where it goes.
+      if (!atLeast(level(n.id), "edit") || !parentOk || (cur.parentId && !atLeast(level(cur.parentId), "edit"))) {
         rejected.push({ id: n.id, reason: "no_edit" });
         continue;
       }

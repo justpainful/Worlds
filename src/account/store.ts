@@ -6,7 +6,7 @@ import { errorMessage, isTauri } from "../lib/api";
 import type { PageMeta } from "../lib/types";
 import { useStore } from "../state/store";
 import { accountApi, type AccountView, type Workspace } from "./api";
-import { scopePages } from "./scope";
+import { scopePages, workspaceOf } from "./scope";
 
 export type Sheet =
   | { kind: "signin"; start?: "choose" | "create" | "signin" }
@@ -75,18 +75,47 @@ export function startAccount() {
   s.load();
   listen("worlds://account", () => useAccount.getState().load()).catch(() => {});
   window.addEventListener("worlds:changed", () => useAccount.getState().load());
-  // New or moved pages: refresh which workspace each page is in.
+  // New or moved pages: refresh which workspace each page is in, and when
+  // the shape of a Team tree changed, push it soon (in the background).
   let timer = 0;
+  let pushTimer = 0;
+  let lastShape = "";
   useStore.subscribe((st, prev) => {
     if (st.pages === prev.pages) return;
     window.clearTimeout(timer);
     timer = window.setTimeout(() => {
       accountApi.pageWorkspaces().then(
-        (pageWs) => useAccount.setState({ pageWs, fetchedAt: Date.now() }),
+        (pageWs) => {
+          useAccount.setState({ pageWs, fetchedAt: Date.now() });
+          const pages = useStore.getState().pages;
+          const shape = Object.keys(pageWs)
+            .sort()
+            .map((id) => `${id}:${pages[id]?.parentId ?? ""}:${pageWs[id]}`)
+            .join("|");
+          if (shape === lastShape) return;
+          const first = lastShape === "";
+          lastShape = shape;
+          if (first || useAccount.getState().view?.status !== "active") return;
+          window.clearTimeout(pushTimer);
+          pushTimer = window.setTimeout(() => {
+            accountApi.sync().then(
+              (v) => useAccount.getState().apply(v),
+              () => {},
+            );
+          }, 4000);
+        },
         () => {},
       );
     }, 120);
   });
+}
+
+/** True when both pages are in the same workspace (moves never cross workspaces). */
+export function sameWorkspace(a: string, b: string): boolean {
+  const { pageWs, fetchedAt, view } = useAccount.getState();
+  const pages = useStore.getState().pages;
+  const active = view?.activeWorkspaceId ?? null;
+  return workspaceOf(pages, pageWs, fetchedAt, active, a) === workspaceOf(pages, pageWs, fetchedAt, active, b);
 }
 
 export function activeWorkspace(v: AccountView | null): Workspace | null {

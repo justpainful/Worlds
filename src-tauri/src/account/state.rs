@@ -270,7 +270,9 @@ pub fn move_page_tree(conn: &Connection, page_id: &str, workspace_id: Option<&st
 /// The tree of one workspace as the server mirrors it: (page id, parent id within the workspace).
 pub fn workspace_tree(conn: &Connection, workspace_id: &str) -> Result<Vec<(String, Option<String>)>> {
     let mut stmt = conn.prepare(
-        "SELECT c.id, CASE WHEN p.workspace_id = c.workspace_id THEN c.parent_id END
+        // A parent that is not on this device (shared with others, not with us) is
+        // kept as is; a parent in another workspace (or Personal) is cut.
+        "SELECT c.id, CASE WHEN p.id IS NULL OR p.workspace_id = c.workspace_id THEN c.parent_id END
          FROM pages c LEFT JOIN pages p ON p.id = c.parent_id
          WHERE c.workspace_id = ?1 AND c.kind <> 'template'
          ORDER BY c.created_at",

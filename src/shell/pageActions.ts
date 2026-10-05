@@ -3,7 +3,7 @@ import type { PageMeta } from "../lib/types";
 import { useStore, childrenOf, pageTitle } from "../state/store";
 import type { MenuItem } from "../ui/Menu";
 import { isResource } from "../resources/kinds";
-import { openShareSheet } from "../account/store";
+import { openShareSheet, sameWorkspace } from "../account/store";
 
 export const renameRequests = new EventTarget();
 export function requestRename(pageId: string) {
@@ -86,7 +86,7 @@ function isDescendant(id: string, ancestor: string): boolean {
 function moveTargets(p: PageMeta): MenuItem[] {
   const pages = useStore.getState().pages;
   const candidates = Object.values(pages)
-    .filter((x) => isResource(x) && !x.deletedAt && !x.archived && x.id !== p.id && x.id !== p.parentId && !isDescendant(x.id, p.id))
+    .filter((x) => isResource(x) && !x.deletedAt && !x.archived && x.id !== p.id && x.id !== p.parentId && !isDescendant(x.id, p.id) && sameWorkspace(x.id, p.id))
     .sort((a, b) => (b.openedAt ?? b.updatedAt) - (a.openedAt ?? a.updatedAt))
     .slice(0, 12);
   const items: MenuItem[] = [];
