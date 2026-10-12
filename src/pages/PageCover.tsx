@@ -3,8 +3,7 @@ import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { api, errorMessage, fileUrl } from "../lib/api";
 import type { PageMeta } from "../lib/types";
 import { useStore } from "../state/store";
-import { Glass } from "../glass/Glass";
-import { LAYER } from "../glass/profiles";
+import { Tonal } from "../ui/tonal/Tonal";
 import { Icon } from "../ui/Icon";
 import { SmartImage } from "../ui/SmartImage";
 import { bannerHeight, cropStyle, effectiveCrop, formatCrop, useImageInfo } from "../media/crop";
@@ -64,7 +63,7 @@ export function PageCover({ page }: { page: PageMeta }) {
         <SmartImage src={src} animated alt="" className="page-cover-img" style={cropStyle(crop)} />
       </div>
       {/* Outside the fading mask, in the corner nothing overlaps, so it never vanishes under the pointer. */}
-      <Glass className="page-cover-actions" contentClassName="page-cover-actions-row" material="control" layer={LAYER.chrome} radius="var(--r-capsule)">
+      <Tonal className="page-cover-actions" contentClassName="page-cover-actions-row" radius="var(--r-capsule)">
         <button onClick={() => pickCover(page)}>
           <Icon name="image" size={13} />
           Change
@@ -85,7 +84,7 @@ export function PageCover({ page }: { page: PageMeta }) {
           <Icon name="close" size={13} />
           Remove
         </button>
-      </Glass>
+      </Tonal>
       {adjust && (
         <CropEditor
           title="Cover area"

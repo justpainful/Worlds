@@ -1,0 +1,97 @@
+/* ==========================================================================
+   Tonal controls: opaque capsules coloured by the scene behind them
+   (scene.ts sets --tn-fill, --tn-hover, --tn-thumb and data-tone).
+   Depth comes from the shadow only: no outline, no inner ring, no optics.
+   ========================================================================== */
+
+.tonal.tonal {
+  --tn-fill: hsl(240 5% 19%);
+  --tn-hover: hsl(240 5% 23.5%);
+  --tn-thumb: hsl(240 5% 28%);
+  --tn-sheen: 0.05;
+  --tn-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.42), 0 3px 10px rgba(0, 0, 0, 0.2);
+  /* buttons inside are concentric with the capsule (.gg-btn reads --g-r) */
+  --g-r: 999px;
+
+  position: relative;
+  border-radius: 999px;
+  background-color: var(--tn-fill);
+  /* a soft top light baked into the fill (not a line) */
+  background-image: linear-gradient(to bottom, rgba(255, 255, 255, var(--tn-sheen)), rgba(255, 255, 255, 0) 60%);
+  box-shadow: var(--tn-shadow);
+  opacity: var(--g-fade, 1);
+  color: rgba(255, 255, 255, 0.93);
+  --text-1: rgba(255, 255, 255, 0.93);
+  --text-2: rgba(255, 255, 255, 0.64);
+  --text-3: rgba(255, 255, 255, 0.46);
+  --text-4: rgba(255, 255, 255, 0.3);
+  --hairline: rgba(255, 255, 255, 0.1);
+  --hairline-strong: rgba(255, 255, 255, 0.14);
+  --fill-1: rgba(255, 255, 255, 0.05);
+  --fill-2: rgba(255, 255, 255, 0.08);
+  --fill-3: rgba(255, 255, 255, 0.12);
+  transition:
+    background-color 300ms var(--ease-out),
+    box-shadow 220ms var(--ease-out),
+    color 220ms var(--ease-out),
+    opacity 170ms var(--ease-out),
+    transform 380ms cubic-bezier(0.3, 1.35, 0.55, 1);
+}
+
+.tonal.tonal[data-tone="light"] {
+  --tn-sheen: 0;
+  --tn-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.07), 0 1px 2px rgba(0, 0, 0, 0.07), 0 4px 14px rgba(0, 0, 0, 0.07);
+  color: rgba(0, 0, 0, 0.86);
+  --text-1: rgba(0, 0, 0, 0.86);
+  --text-2: rgba(0, 0, 0, 0.6);
+  --text-3: rgba(0, 0, 0, 0.44);
+  --text-4: rgba(0, 0, 0, 0.3);
+  --hairline: rgba(0, 0, 0, 0.08);
+  --hairline-strong: rgba(0, 0, 0, 0.12);
+  --fill-1: rgba(0, 0, 0, 0.04);
+  --fill-2: rgba(0, 0, 0, 0.07);
+  --fill-3: rgba(0, 0, 0, 0.1);
+}
+
+.tonal > .tn-content { position: relative; height: 100%; }
+.tonal[aria-disabled="true"] > .tn-content { opacity: 0.42; }
+.is-inactive-window .tonal > .tn-content { opacity: 0.7; }
+
+.tonal:focus-visible { outline: none; box-shadow: var(--focus-ring), var(--tn-shadow); }
+
+/* ---- Whole-control response (single actions: New, Search) --------------- */
+.tonal-interactive:not([aria-disabled="true"]):hover { background-color: var(--tn-hover); }
+.tonal-interactive:not([aria-disabled="true"]):active { transform: scale(0.965); transition-duration: 300ms, 220ms, 220ms, 170ms, 90ms; }
+
+/* ---- Inside a control: hover and selection are the same tone ------------- */
+.tonal .gg-btn:hover:not(:disabled) { background: var(--tn-hover); }
+.tonal .gg-btn.is-active { background: var(--tn-thumb); }
+.tonal .glass-group-row .gg-sep { background: rgba(255, 255, 255, 0.12); }
+.tonal[data-tone="light"] .glass-group-row .gg-sep { background: rgba(0, 0, 0, 0.1); }
+
+.tonal :is(.segmented-lens, .tab-lens) {
+  background: var(--tn-thumb);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+  border-radius: 999px;
+}
+.tonal[data-tone="light"] :is(.segmented-lens, .tab-lens) {
+  background: #fff;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.14);
+}
+.tonal .segmented-sep { background: rgba(255, 255, 255, 0.13); }
+.tonal[data-tone="light"] .segmented-sep { background: rgba(0, 0, 0, 0.12); }
+.tonal .segmented-item { color: var(--text-2); }
+.tonal .segmented-item:hover, .tonal .segmented-item.is-selected { color: var(--text-1); }
+
+.tonal .tab:hover:not(.is-active) { background: var(--tn-hover); }
+.tonal .page-cover-actions-row button:hover { background: var(--tn-hover); }
+.tonal .sf-kbd { background: var(--fill-2); color: var(--text-3); }
+
+@media (prefers-reduced-motion: reduce) {
+  .tonal-interactive:active { transform: none; }
+}
+
+@media (prefers-contrast: more) {
+  .tonal.tonal { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4); }
+  .tonal.tonal[data-tone="light"] { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45); }
+}

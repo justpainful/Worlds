@@ -11,7 +11,7 @@ import { EmptyState, PageIcon, relTime } from "../ui/misc";
 import { useMenu } from "../ui/Menu";
 import { pageMenu } from "../shell/pageActions";
 import { LAYER } from "../glass/profiles";
-import { Glass } from "../glass/Glass";
+import { Tonal } from "../ui/tonal/Tonal";
 import { GlassBackdrop } from "../profile/GlassBackdrop";
 import { isResource } from "../resources/kinds";
 import { newResourceMenu } from "../resources/create";
@@ -74,7 +74,7 @@ export function HomeView() {
           <h1 className="home-title">{greeting}</h1>
           <p className="home-sub">Start with a blank page, or pick a template.</p>
           <div className="home-hero-actions">
-            <GlassButton v2 icon="add" prominent size="large" onClick={(e) => newResourceMenu(e.currentTarget)} layer={LAYER.floating}>
+            <GlassButton icon="add" prominent size="large" onClick={(e) => newResourceMenu(e.currentTarget)} layer={LAYER.floating}>
               New
             </GlassButton>
           </div>
@@ -89,13 +89,10 @@ export function HomeView() {
       <GlassBackdrop />
       <div className="home-top">
         <h1 className="home-title">{greeting}</h1>
-        <div className="home-controls">
-          <Glass
-            v2
+        <div className="home-controls" data-tonal-group>
+          <Tonal
             as="button"
-            material="bar"
             interactive
-            layer={LAYER.floating}
             className="sf-piece"
             radius="var(--r-capsule)"
             onClick={() => setPalette(true, "pages")}
@@ -106,9 +103,8 @@ export function HomeView() {
               <span className="sf-piece-text">Search</span>
               <kbd className="sf-kbd">Ctrl K</kbd>
             </span>
-          </Glass>
+          </Tonal>
           <Segmented
-            v2
             value={view}
             onChange={(v) => setSetting("home.view", v)}
             label="Layout"
@@ -118,7 +114,7 @@ export function HomeView() {
               { value: "list", icon: "listView" },
             ]}
           />
-          <GlassButton v2 icon="add" prominent onClick={(e) => newResourceMenu(e.currentTarget, { align: "end" })}>New</GlassButton>
+          <GlassButton icon="add" prominent onClick={(e) => newResourceMenu(e.currentTarget, { align: "end" })}>New</GlassButton>
         </div>
       </div>
 

@@ -3,8 +3,7 @@ import { getCurrentWindow, PhysicalPosition, PhysicalSize, availableMonitors } f
 import { api, isTauri } from "../lib/api";
 import { useStore } from "../state/store";
 import { glassEngine } from "../glass/engine";
-import { Glass } from "../glass/Glass";
-import { LAYER } from "../glass/profiles";
+import { Tonal } from "../ui/tonal/Tonal";
 import { Icon } from "../ui/Icon";
 
 interface SavedWindow {
@@ -139,7 +138,7 @@ export function WindowControls() {
   if (!isTauri) return null;
   const win = getCurrentWindow();
   return (
-    <Glass material="clear" layer={LAYER.floating} className="win-controls" radius="var(--r-capsule)">
+    <Tonal className="win-controls" radius="var(--r-capsule)">
       <div className="win-controls-row">
         <button className="win-btn" aria-label="Minimize" onClick={() => win.minimize()}>
           <Icon name="minimize" size={14} />
@@ -151,6 +150,6 @@ export function WindowControls() {
           <Icon name="close" size={15} />
         </button>
       </div>
-    </Glass>
+    </Tonal>
   );
 }

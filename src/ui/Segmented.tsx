@@ -1,6 +1,5 @@
 import { useLayoutEffect, useRef } from "react";
-import { Glass } from "../glass/Glass";
-import { LAYER } from "../glass/profiles";
+import { Tonal } from "./tonal/Tonal";
 import { Spring, SPRING_SNAPPY, prefersReducedMotion } from "../motion/spring";
 import { Icon, type IconName } from "./Icon";
 
@@ -11,27 +10,24 @@ export interface SegmentOption<T extends string> {
 }
 
 /**
- * Segmented control. One continuous glass field holds every option; the
- * selection is a denser control-glass lens that travels between options on
- * a spring and stretches along its motion (velocity-driven), so the group
- * reads as one connected piece of material, not separate buttons.
+ * Segmented control. One Tonal capsule holds every option; the selection is
+ * a raised thumb of the same tone that travels between options on a spring
+ * and stretches along its motion (velocity-driven), so the group reads as one
+ * connected control, not separate buttons.
  */
 export function Segmented<T extends string>({
   value,
   options,
   onChange,
   size = "compact",
-  layer = LAYER.floating,
   label,
-  v2,
 }: {
   value: T;
   options: SegmentOption<T>[];
   onChange: (v: T) => void;
   size?: "compact" | "standard";
+  /** Accepted from the glass era and ignored. */
   layer?: number;
-  /** Drawn by Liquid Glass V2 when its development flag is on. */
-  v2?: boolean;
   label?: string;
 }) {
   const track = useRef<HTMLDivElement>(null);
@@ -79,10 +75,7 @@ export function Segmented<T extends string>({
   // inset separators divide it, and the selection is a soft inner lens of the
   // same material (no second bezel, no capsule in a capsule).
   return (
-    <Glass
-      v2={v2}
-      material="control"
-      layer={layer}
+    <Tonal
       radius="var(--r-capsule)"
       className={`segmented segmented-${size}`}
       contentClassName="segmented-body"
@@ -114,6 +107,6 @@ export function Segmented<T extends string>({
           </span>
         ))}
       </div>
-    </Glass>
+    </Tonal>
   );
 }

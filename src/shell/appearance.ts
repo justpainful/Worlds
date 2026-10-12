@@ -2,6 +2,7 @@ import { useStore } from "../state/store";
 import { glassEngine } from "../glass/engine";
 import type { QualityTier } from "../glass/profiles";
 import { setAdaptiveQuality } from "../perf/monitor";
+import { setTonalLook } from "../ui/tonal/scene";
 
 export const ACCENTS: { name: string; hex: string }[] = [
   { name: "Sand", hex: "#d2a46e" },
@@ -31,6 +32,7 @@ export function applyAppearance() {
   const tone = (settings["appearance.glassTone"] as "auto" | "light" | "dark") ?? "auto";
   const frost = typeof settings["appearance.glassFrost"] === "number" ? (settings["appearance.glassFrost"] as number) : 1;
   glassEngine.setLook(tone, frost);
+  setTonalLook(tone);
   setAdaptiveQuality(settings["appearance.glassAdaptive"] !== false);
   const motion = (settings["appearance.motion"] as string) ?? "system";
   if (motion === "reduced") root.dataset.motion = "reduced";

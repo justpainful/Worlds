@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type DragEvent } from "react";
 import { useStore, pageTitle, type Pane, type Route, type Tab } from "../state/store";
 import { Glass } from "../glass/Glass";
+import { Tonal } from "../ui/tonal/Tonal";
 import { LAYER } from "../glass/profiles";
 import { GlassGroup, IconButton } from "../ui/Button";
 import { Icon, type IconName } from "../ui/Icon";
@@ -267,19 +268,18 @@ function PaneToolbar({ pane, tab, showWindowControls, count }: { pane: Pane; tab
 
   return (
     <div className="pane-toolbar-wrap" data-drag-zone>
-      <div className="tb-row">
+      <div className="tb-row" data-tonal-group>
         {isFirstPane && sidebarCollapsed && (
-          <GlassGroup v2 items={[{ icon: "sidebarOpen", label: "Show sidebar", shortcut: "Ctrl+Shift+L", onClick: toggleSidebar }]} />
+          <GlassGroup items={[{ icon: "sidebarOpen", label: "Show sidebar", shortcut: "Ctrl+Shift+L", onClick: toggleSidebar }]} />
         )}
         <GlassGroup
-          v2
           className="tb-nav"
           items={[
             { icon: "back", label: "Back", shortcut: "Alt+←", disabled: tab.back.length === 0, onClick: () => goBack(pane.id) },
             { icon: "forward", label: "Forward", shortcut: "Alt+→", disabled: tab.forward.length === 0, onClick: () => goForward(pane.id) },
           ]}
         />
-        <Glass v2 material="bar" layer={LAYER.chrome} className="tb-tabs" radius="var(--r-capsule)">
+        <Tonal className="tb-tabs" radius="var(--r-capsule)">
           <div
             className="tab-strip"
             ref={strip}
@@ -298,7 +298,7 @@ function PaneToolbar({ pane, tab, showWindowControls, count }: { pane: Pane; tab
             data-tauri-drag-region
           >
             <div className="tab-lens-wrap" aria-hidden>
-              <Glass ref={lens} material="control" layer={LAYER.chrome + 0.5} selected className="tab-lens" radius="var(--r-capsule)" />
+              <div ref={lens} className="tab-lens" />
             </div>
             {pane.tabs.map((t, i) => {
               const lbl = routeLabel(t.route, pages);
@@ -345,10 +345,9 @@ function PaneToolbar({ pane, tab, showWindowControls, count }: { pane: Pane; tab
             })}
             <IconButton icon="add" label="New tab" shortcut="Ctrl+T" className="tab-add" onClick={() => open({ kind: "home" }, "tab", pane.id)} />
           </div>
-        </Glass>
+        </Tonal>
         <div className="tb-fill" />
         <GlassGroup
-          v2
           items={[
             ...(count < 3 ? [{ icon: "splitRight" as const, label: "Split right", onClick: () => open(tab.route, "right", pane.id) }] : []),
             ...(count > 1 ? [{ icon: "close" as const, label: "Close pane", onClick: () => closePane(pane.id) }] : []),

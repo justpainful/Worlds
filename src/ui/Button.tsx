@@ -1,6 +1,5 @@
 import { forwardRef, type ButtonHTMLAttributes, type MouseEvent, type ReactNode } from "react";
-import { Glass } from "../glass/Glass";
-import { LAYER } from "../glass/profiles";
+import { Tonal } from "./tonal/Tonal";
 import { Icon, type IconName } from "./Icon";
 
 interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -67,12 +66,13 @@ export interface GroupItem {
 }
 
 /**
- * Related actions in one glass capsule, separated by hairlines
- * (the macOS 26 Mail toolbar pattern). Single actions get a round capsule.
+ * Related actions in one Tonal capsule, separated by hairlines
+ * (the macOS 26 Mail toolbar grouping). Single actions get a round capsule.
+ * `layer` and `material` are accepted from the glass era and ignored.
  */
-export function GlassGroup({ items, layer = LAYER.chrome, className = "", material = "bar", v2 }: { items: GroupItem[]; layer?: number; className?: string; material?: "bar" | "clear" | "control"; v2?: boolean }) {
+export function GlassGroup({ items, className = "" }: { items: GroupItem[]; layer?: number; className?: string; material?: "bar" | "clear" | "control" }) {
   return (
-    <Glass v2={v2} material={material} layer={layer} className={`glass-group ${items.length === 1 ? "is-single" : ""} ${className}`} radius="var(--r-capsule)">
+    <Tonal className={`glass-group ${items.length === 1 ? "is-single" : ""} ${className}`} radius="var(--r-capsule)">
       <div className="glass-group-row">
         {items.map((it, i) => (
           <span key={it.label} style={{ display: "contents" }}>
@@ -90,7 +90,7 @@ export function GlassGroup({ items, layer = LAYER.chrome, className = "", materi
           </span>
         ))}
       </div>
-    </Glass>
+    </Tonal>
   );
 }
 
@@ -105,11 +105,9 @@ interface GlassButtonProps {
   className?: string;
   label?: string;
   selected?: boolean;
-  /** Drawn by Liquid Glass V2 when its development flag is on. */
-  v2?: boolean;
 }
 
-/** Important actions: a real glass control with the full state model. */
+/** Important actions: a Tonal control that answers hover and press as a whole. */
 export function GlassButton({
   icon,
   children,
@@ -117,22 +115,17 @@ export function GlassButton({
   disabled,
   prominent,
   size = "standard",
-  layer = LAYER.floating,
   className = "",
   label,
   selected,
-  v2,
 }: GlassButtonProps) {
   return (
-    <Glass
-      v2={v2}
+    <Tonal
       as="button"
-      material={prominent ? "bar" : "control"}
-      layer={layer}
       interactive
       disabled={disabled}
       selected={selected}
-      className={`glass-btn glass-btn-${size} ${children ? "" : "glass-btn-icon"} ${className}`}
+      className={`glass-btn glass-btn-${size} ${children ? "" : "glass-btn-icon"} ${prominent ? "is-prominent" : ""} ${className}`}
       onClick={disabled ? undefined : onClick}
       aria-label={label}
       data-tip={!children ? label : undefined}
@@ -150,6 +143,6 @@ export function GlassButton({
         {icon && <Icon name={icon} size={size === "large" ? 20 : 18} />}
         {children && <span>{children}</span>}
       </span>
-    </Glass>
+    </Tonal>
   );
 }
