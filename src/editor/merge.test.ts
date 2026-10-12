@@ -27,6 +27,20 @@ describe("mergeBlocks", () => {
     expect(new Set(merged.map((m) => m.attrs!.bid)).size).toBe(merged.length);
   });
 
+  it("keeps what I typed into a block the server never stored (a new page's first line)", () => {
+    // The editor makes the empty first paragraph itself; it is in the baseline but not stored.
+    const empty = p("x", "");
+    const local = [p("x", "Hello world")];
+    const { merged, dirty } = mergeBlocks(base([empty]), local, []);
+    expect(texts(merged)).toEqual(["Hello world"]);
+    expect(dirty).toBe(true);
+  });
+
+  it("still drops a block the server deleted when I did not touch it", () => {
+    const { merged } = mergeBlocks(base([a, b]), [a, b], [a]);
+    expect(texts(merged)).toEqual(["one"]);
+  });
+
   it("keeps a block I deleted deleted, unless the server changed it", () => {
     expect(texts(mergeBlocks(base([a, b, c]), [a, c], [a, b, c]).merged)).toEqual(["one", "three"]);
     expect(texts(mergeBlocks(base([a, b, c]), [a, c], [a, p("b", "edited"), c]).merged)).toEqual(["one", "edited", "three"]);

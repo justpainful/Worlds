@@ -13,7 +13,9 @@ const key = (n: JSONContent) => (n.attrs?.bid as string | undefined) ?? "";
  * Blocks the user did not touch take the server version; blocks the user
  * changed keep the local version; blocks the user added stay after their
  * local predecessor; blocks deleted on either side stay deleted unless the
- * other side changed them.
+ * other side changed them (a block missing on the server that the user edited
+ * is kept: the empty first line of a new page is never stored, and dropping
+ * it would lose what was typed into it).
  */
 export function mergeBlocks(baseline: Map<string, string>, local: JSONContent[], server: JSONContent[]): { merged: JSONContent[]; dirty: boolean } {
   const localById = new Map(local.map((n) => [key(n), n]));
@@ -34,10 +36,11 @@ export function mergeBlocks(baseline: Map<string, string>, local: JSONContent[],
     }
     merged.push(changedLocally(l) ? l : s);
   }
-  // Local additions (not on server, not in baseline): insert after predecessor.
+  // Local additions (not on server, not in baseline) and local edits to blocks
+  // the server no longer has: insert after predecessor.
   local.forEach((l, i) => {
     const id = key(l);
-    if (serverIds.has(id) || baseline.has(id)) return;
+    if (serverIds.has(id) || (baseline.has(id) && !changedLocally(l))) return;
     let at = merged.length;
     for (let j = i - 1; j >= 0; j--) {
       const pid = key(local[j]);
