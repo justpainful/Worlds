@@ -26,7 +26,7 @@ const STATUS: { value: ProjectMeta["status"]; label: string }[] = [
   { value: "done", label: "Done" },
 ];
 
-const ORDER: ResourceKind[] = ["document", "presentation", "page", "gallery", "file", "stream", "project"];
+const ORDER: ResourceKind[] = ["document", "presentation", "drawing", "page", "gallery", "file", "stream", "project"];
 
 /**
  * A project gathers resources: the ones that live in it (its children) and

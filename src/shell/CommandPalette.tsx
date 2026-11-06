@@ -60,6 +60,7 @@ function commands(): Cmd[] {
     { id: "home", title: "Go Home", icon: "home", run: (w) => s.open({ kind: "home" }, w) },
     { id: "new-document", title: "New Document", icon: "text", keywords: "word write doc paper", run: () => createResource("document") },
     { id: "new-presentation", title: "New Presentation", icon: "monitor", keywords: "slides deck powerpoint keynote", run: () => createResource("presentation") },
+    { id: "new-drawing", title: "New Drawing", icon: "edit", keywords: "paint canvas brush draw رسم فرشاة", run: () => createResource("drawing") },
     { id: "new-project", title: "New Project", icon: "folder", keywords: "folder organize", run: () => createResource("project") },
     { id: "new-gallery", title: "New Gallery", icon: "image", keywords: "photos album pictures videos", run: () => createResource("gallery") },
     { id: "upload", title: "Upload Files", icon: "upload", keywords: "import add file pdf video image", run: () => uploadFiles() },

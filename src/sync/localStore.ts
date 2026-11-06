@@ -27,6 +27,8 @@ export interface OutboxItem {
   data: Uint8Array;
   attempts: number;
 }
+export interface RejectedSnapshotInfo { id: string; channel: number; reason: string; createdAt: number; size: number }
+export interface RejectedPage { items: RejectedSnapshotInfo[]; next: { createdAt: number; id: string } | null }
 
 export interface CursorInput {
   serverVector?: Uint8Array;
@@ -73,6 +75,9 @@ export interface LocalStore {
   ack(ids: number[]): Promise<void>;
   ackUpto(pageId: string, channel: number, upto: number): Promise<void>;
   reject(ids: number[], reason: string): Promise<void>;
+  archiveRejection(pageId: string, channel: number, archiveId: string, owner: string, snapshot: Uint8Array, empty: Uint8Array, reason: string): Promise<void>;
+  rejected(pageId: string, owner: string, before?: RejectedPage["next"]): Promise<RejectedPage>;
+  rejectedSnapshot(pageId: string, id: string, owner: string): Promise<Uint8Array>;
   fail(ids: number[], error: string): Promise<void>;
   setCursor(pageId: string, channel: number, c: CursorInput): Promise<void>;
   status(pageId: string): Promise<PageStatus>;
@@ -139,6 +144,13 @@ export class TauriLocalStore implements LocalStore {
   async reject(ids: number[], reason: string) {
     if (ids.length) await invoke("sync_outbox_reject", { ids, reason });
   }
+  archiveRejection(pageId: string, channel: number, archiveId: string, owner: string, snapshot: Uint8Array, empty: Uint8Array, reason: string) {
+    return invoke<void>("sync_archive_rejection", { pageId, channel, archiveId, owner, data: toB64(snapshot), empty: toB64(empty), reason });
+  }
+  rejected(pageId: string, owner: string, before?: RejectedPage["next"]) {
+    return invoke<RejectedPage>("sync_rejected_list", { pageId, owner, beforeTime: before?.createdAt ?? null, beforeId: before?.id ?? null });
+  }
+  async rejectedSnapshot(pageId: string, archiveId: string, owner: string) { return fromB64(await invoke<string>("sync_rejected_read", { pageId, archiveId, owner })); }
   async fail(ids: number[], error: string) {
     if (ids.length) await invoke("sync_outbox_fail", { ids, error });
   }
@@ -186,6 +198,7 @@ export class MemoryLocalStore implements LocalStore {
   blocks = new Map<string, JSONContent[]>();
   /** Fails every call while set (simulates a broken IPC). */
   broken = false;
+  rejections: (RejectedSnapshotInfo & { pageId: string; owner: string; data: Uint8Array })[] = [];
   /** Where block rows come from the first time a page is asked about (browser mock). */
   rowsSource: ((pageId: string) => Promise<JSONContent[]>) | null = null;
 
@@ -261,6 +274,20 @@ export class MemoryLocalStore implements LocalStore {
   async reject(ids: number[], reason: string) {
     for (const o of this.outboxRows) if (ids.includes(o.id)) Object.assign(o, { state: "rejected", error: reason });
   }
+  async archiveRejection(pageId: string, channel: number, archiveId: string, owner: string, snapshot: Uint8Array, empty: Uint8Array, reason: string) {
+    this.check(); const prior = this.rejections.find((r) => r.id === archiveId);
+    if (prior && (prior.pageId !== pageId || prior.channel !== channel || prior.owner !== owner)) throw new Error("Refused-edit archive identifier was reused");
+    const row = { id: archiveId, pageId, channel, owner, data: snapshot.slice(), reason, createdAt: prior?.createdAt ?? Date.now(), size: snapshot.length };
+    if (prior) Object.assign(prior, row); else this.rejections.push(row);
+    for (const o of this.outboxRows) if (o.pageId === pageId && o.channel === channel && o.state === "pending") Object.assign(o, { state: "rejected", error: reason });
+    this.doc(pageId, channel).snapshot = empty.slice(); this.updates = this.updates.filter((u) => u.pageId !== pageId || u.channel !== channel);
+  }
+  async rejected(pageId: string, owner: string, before?: RejectedPage["next"]): Promise<RejectedPage> {
+    this.check(); const rows = this.rejections.filter((r) => r.pageId === pageId && r.owner === owner && (!before || r.createdAt < before.createdAt || r.createdAt === before.createdAt && r.id < before.id)).sort((a,b) => b.createdAt-a.createdAt || (a.id < b.id ? 1 : -1));
+    const items = rows.slice(0,100).map(({id,channel,reason,createdAt,size}) => ({id,channel,reason,createdAt,size}));
+    return { items, next: rows.length > 100 ? { id: items[99].id, createdAt: items[99].createdAt } : null };
+  }
+  async rejectedSnapshot(pageId: string, id: string, owner: string) { this.check(); const row = this.rejections.find((r) => r.pageId === pageId && r.id === id && r.owner === owner); if (!row) throw new Error("Refused-edit archive is unavailable"); return row.data.slice(); }
   async fail(ids: number[], error: string) {
     for (const o of this.outboxRows) if (ids.includes(o.id)) Object.assign(o, { attempts: o.attempts + 1, error });
   }

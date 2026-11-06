@@ -1,0 +1,23 @@
+import { useState } from "react";
+import { Button } from "../ui/Button";
+import type { SelectionKind,SelectionMode,SelectionOperation } from "./pixelSelection";
+import type { PixelSelection } from "./selectionController";
+interface Props{kind:SelectionKind;mode:SelectionMode;setKind:(kind:SelectionKind)=>void;setMode:(mode:SelectionMode)=>void;selection:PixelSelection|null;busy:boolean;error:string|null;arabic:boolean;run:(operation:SelectionOperation)=>void;clear:()=>void;cancel:()=>void;tolerance:number;setTolerance:(n:number)=>void;sourceLocked?:boolean;merged:boolean;setMerged:(v:boolean)=>void;contiguous:boolean;setContiguous:(v:boolean)=>void}
+export function SelectionControls(p:Props){
+  const t=(en:string,ar:string)=>p.arabic?ar:en,[grow,setGrow]=useState(0),[feather,setFeather]=useState(0);
+  const kinds:{id:SelectionKind;en:string;ar:string}[]=[{id:"rect",en:"Rectangle",ar:"مستطيل"},{id:"ellipse",en:"Ellipse",ar:"بيضاوي"},{id:"lasso",en:"Freehand",ar:"حر"},{id:"polygon",en:"Polygon",ar:"مضلع"},{id:"magic",en:"Color region",ar:"منطقة لونية"}];
+  const modes:{id:SelectionMode;en:string;ar:string}[]=[{id:"replace",en:"Replace",ar:"استبدال"},{id:"add",en:"Add",ar:"إضافة"},{id:"subtract",en:"Subtract",ar:"طرح"},{id:"intersect",en:"Intersect",ar:"تقاطع"}];
+  return <div className="drawing-pixel-selection-controls">
+    <label className="drawing-field"><span>{t("Area selection","تحديد منطقة")}</span><select value={p.kind} onChange={e=>p.setKind(e.target.value as SelectionKind)}>{kinds.map(k=><option key={k.id} value={k.id}>{t(k.en,k.ar)}</option>)}</select></label>
+    <div className="drawing-selection-modes" role="group" aria-label={t("Selection combination","دمج التحديد")}>{modes.map(m=><Button key={m.id} size="compact" variant="quiet" aria-pressed={p.mode===m.id} onClick={()=>p.setMode(m.id)}>{t(m.en,m.ar)}</Button>)}</div>
+    <p className="drawing-selection-help">{p.kind==="polygon"?t("Click vertices, then Enter or double-click to close. Escape cancels.","انقر الرؤوس، ثم Enter أو نقرتين للإغلاق. Escape للإلغاء."):t("Shift adds, Alt subtracts, Shift+Alt intersects.","Shift للإضافة، Alt للطرح، وكلاهما للتقاطع.")}</p>
+    {p.kind==="magic"&&<><label className="drawing-field"><span>{t("Tolerance","التسامح")}</span><input type="number" min="0" max="255" value={p.tolerance} onChange={e=>p.setTolerance(e.target.valueAsNumber)}/></label><label className="drawing-check"><input type="checkbox" checked={p.contiguous} onChange={e=>p.setContiguous(e.target.checked)}/>{t("Connected pixels","بكسلات متصلة")}</label><label className="drawing-check"><input type="checkbox" disabled={p.sourceLocked} checked={p.merged} onChange={e=>p.setMerged(e.target.checked)}/>{t("Sample visible layers","عينة من الطبقات الظاهرة")}</label></>}
+    <div className="drawing-step-actions"><Button size="compact" onClick={()=>p.run({kind:"all"})}>{t("Select all pixels","تحديد كل البكسلات")}</Button><Button size="compact" onClick={()=>p.run({kind:"invert"})}>{t("Invert","عكس التحديد")}</Button><Button size="compact" disabled={!p.selection&&!p.busy} onClick={p.clear}>{t("Clear selection","إلغاء التحديد")}</Button></div>
+    <label className="drawing-field"><span>{t("Grow (+) / shrink (-), pixels","توسيع (+) أو تقليص (-)، بالبكسل")}</span><input type="number" min="-128" max="128" step="1" value={Number.isFinite(grow)?grow:""} onChange={e=>setGrow(e.target.valueAsNumber)}/></label>
+    <label className="drawing-field"><span>{t("Feather radius, pixels","نصف قطر تنعيم الحواف، بالبكسل")}</span><input type="number" min="0" max="128" step="1" value={Number.isFinite(feather)?feather:""} onChange={e=>setFeather(e.target.valueAsNumber)}/></label>
+    <Button size="compact" disabled={!p.selection||p.busy||!Number.isFinite(grow)||!Number.isFinite(feather)||Math.abs(grow)>128||feather<0||feather>128} onClick={()=>p.run({kind:"edges",grow,feather})}>{t("Apply to selection edges","تطبيق على حواف التحديد")}</Button>
+    <p role="status">{p.busy?t("Updating selection","جارٍ تحديث التحديد"):p.selection?`${p.selection.pixels.toLocaleString("en-US")} ${t("selected pixels","بكسل محدد")}`:t("No pixel selection","لا يوجد تحديد بكسلات")}</p>
+    {p.busy&&<Button size="compact" onClick={p.cancel}>{t("Cancel selection update","إلغاء تحديث التحديد")}</Button>}
+    {p.error&&<p role="alert">{p.error.includes("dimensions")?t("The frame exceeds the 64-million-pixel processing limit or has invalid dimensions.","أبعاد الإطار غير صالحة أو تتجاوز حد المعالجة البالغ 64 مليون بكسل."):t("The selection could not be updated. Check its bounds and try again.","تعذر تحديث التحديد. تحقق من حدوده وأعد المحاولة.")}</p>}
+  </div>;
+}

@@ -1,5 +1,6 @@
 import { SELF } from "cloudflare:test";
 import { afterEach, describe, expect, it } from "vitest";
+import * as Y from "yjs";
 import { ACK_OK, CLOSE_REVOKED, CLOSE_UNAUTHORIZED, encodeAuthRefresh } from "../src/protocol";
 import { BASE, grant, mintToken, TestClient, uid, until } from "./client";
 
@@ -14,6 +15,14 @@ async function connected(user: string, ws: string, doc: string, dev?: string) {
   const res = await c.connect({ token: await mintToken(user, { dev }) });
   expect(res.status).toBe(101);
   await until(() => c.synced[0] && c.synced[1], "synced");
+  if (c.level === "edit" || c.level === "full") {
+    // A received sync response does not prove the client's initial uploads have
+    // finished. Drain them before changing grants so the webhook, rather than
+    // an in-flight handshake write, is the operation which closes this socket.
+    const barrier = c.send(0, Y.encodeStateAsUpdate(c.content));
+    await until(() => c.acks.has(barrier), "handshake writes acknowledged");
+    expect(c.acks.get(barrier)?.status).toBe(ACK_OK);
+  }
   return c;
 }
 

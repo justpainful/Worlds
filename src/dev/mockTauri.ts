@@ -1,3 +1,5 @@
+import {validateDrawingDocument} from "../drawing/canonical";
+import {mockHistoryCandidate} from "../drawing/undo";
 /**
  * Development-only stand-in for the Tauri backend, so the interface can be
  * reviewed in a plain browser (http://localhost:1420/?mock). It implements
@@ -6,6 +8,14 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { appendOperation, edit, newDrawing, sceneChanges } from "../drawing/operations";
+import type { DrawingDocument } from "../drawing/model";
+import type { LibraryPublication } from "../drawing/library";
+import { DEFAULT_EXPORT_RULES, canDrawingExport, type DrawingExportPolicy } from "../drawing/exportPolicy";
+const exportPolicies:Record<string,DrawingExportPolicy>={};
+const drawings: Record<string, DrawingDocument> = {};
+const drawingLibrary: Record<string, LibraryPublication[]> = {};
+const drawingVersions: Record<string, { id: string; label: string; revision: number; author: string; createdAt: number; scene: DrawingDocument["scene"] }[]> = {};
 const now = Date.now();
 const id = () => Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2);
 
@@ -136,11 +146,91 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
     case "launch_info": return { hidden: false };
     case "pages_list": return Object.values(pages);
     case "page_get": return page(a.id) ?? null;
+    case "drawing_load": return drawings[a.pageId] ??= newDrawing();
+    case "drawing_export_policy_cached": return {policy:exportPolicies[a.pageId]??{revision:0,rules:{...DEFAULT_EXPORT_RULES}},level:"full",shared:false};
+    case "drawing_export_policy": {let policy=exportPolicies[a.pageId]??{revision:0,rules:{...DEFAULT_EXPORT_RULES}};if(a.update){if(a.update.expectedRevision!==policy.revision)throw new Error("The export policy changed");policy=exportPolicies[a.pageId]={revision:policy.revision+1,rules:{...a.update.rules}};}return {policy,level:"full",shared:false};}
+    case "drawing_export_requirements": return false;
+    case "drawing_export_check": if(!canDrawingExport(exportPolicies[a.context.pageId]??{revision:0,rules:{...DEFAULT_EXPORT_RULES}},"full",a.context.kind))throw new Error("Export is unavailable");return null;
+    case "drawing_apply": return drawings[a.pageId] = appendOperation(drawings[a.pageId] ??= newDrawing(), a.operation, profile.id);
+    case "drawing_package_stage":{const pid=addPage(a.name,'pi:paintbrush',[],{kind:'drawing'}),token=id();metadata[pid]={sync:{shared:false},packageStage:{token,owner:profile.id}};pages[pid].archived=true;drawings[pid]=newDrawing();return{page:pages[pid],token};}
+    case "drawing_package_abort":{if(metadata[a.pageId]?.packageStage?.token!==a.token)return false;const d=drawings[a.pageId];if(d&&(d.revision||Object.keys(d.scene.nodes).length))throw Error('Import stage changed');delete drawings[a.pageId];delete drawingVersions[a.pageId];delete metadata[a.pageId];delete pages[a.pageId];return true;}
+    case "drawing_package_install":{if(metadata[a.pageId]?.packageStage?.token!==a.token||(drawings[a.pageId]?.revision??0)!==0)throw Error('Import stage changed');validateDrawingDocument(a.document);const prepared=a.experiments.map((e:any)=>{validateDrawingDocument({revision:0,seed:e.scene,scene:e.scene,operations:[]});return structuredClone(e);});drawings[a.pageId]=structuredClone(a.document);const imported=[];
+      for(const e of prepared){const base=id(),pid=addPage(e.name,'pi:paintbrush',[],{kind:'drawing'}),versions=new Map((drawingVersions[a.pageId]??[]).map(v=>[v.id,id()]));(drawingVersions[a.pageId]??=[]).push({id:base,revision:0,label:'Imported comparison base',author:profile.id,createdAt:Date.now(),scene:e.base});const scene=structuredClone(e.scene),remap=(s:any)=>{for(const step of Object.values(s.steps)as any[])if(step.pinnedVersionId)step.pinnedVersionId=versions.get(step.pinnedVersionId);};remap(scene);drawingVersions[pid]=(drawingVersions[a.pageId]??[]).filter(v=>versions.has(v.id)).map(v=>{const copy=structuredClone(v);copy.id=versions.get(v.id)!;remap(copy.scene);return copy;});const aliases=Object.fromEntries(Object.entries(e.versionAliases as Record<string,string>).map(([key,value])=>[versions.get(key)!,value])),info={sourceId:a.pageId,baseVersionId:base,author:profile.id,createdAt:Date.now(),description:e.description,status:e.status,versionAliases:aliases};metadata[pid]={sync:{shared:false},experiment:info};drawings[pid]={revision:0,seed:scene,scene,operations:[],experiment:info};imported.push(pages[pid]);}
+      pages[a.pageId].archived=false;delete metadata[a.pageId].packageStage;return{page:pages[a.pageId],experiments:imported};}
+    case "drawing_history_import": {
+      const before=drawings[a.pageId]??=newDrawing();if(before.revision||before.operations.length||Object.keys(before.scene.nodes).length||Object.keys(before.scene.assets).length||(pages[a.pageId]?.metadata as any)?.sync?.shared)throw new Error("History can only be imported into a new local drawing with no edits");
+      validateDrawingDocument(a.document);drawings[a.pageId]=structuredClone(a.document);return drawings[a.pageId];
+    }
+    case "drawing_history_toggle": {
+      if(a.actor!==profile.id)throw new Error("Undo belongs to another signed-in account");const doc=drawings[a.pageId]??=newDrawing(),old=doc.operations.find(op=>op.id===a.requestId);
+      if(old){if(old.type!=="toggle"||old.actor!==a.actor||old.base!==a.expectedRevision||old.enabled!==a.redo)throw new Error("Undo request identifier was reused");return{document:doc,operationId:old.id,window:mockHistoryCandidate(doc,profile.id,a.redo).window};}
+      if(doc.revision!==a.expectedRevision)throw new Error("history-stale: The drawing changed before Undo. Review the current drawing and try again.");const choice=mockHistoryCandidate(doc,profile.id,a.redo);if(!choice.target)return{document:doc,operationId:null,window:choice.window};
+      const operation={id:a.requestId,actor:profile.id,base:doc.revision,at:Date.now(),label:a.redo?"Redo":"Undo",type:"toggle" as const,target:choice.target.id,enabled:a.redo};const document=drawings[a.pageId]=appendOperation(doc,operation);return{document,operationId:operation.id,window:choice.window};
+    }
+    case "drawing_versions": return drawingVersions[a.pageId] ?? [];
+    case "drawing_version_save": { const doc = drawings[a.pageId] ??= newDrawing(), version = { id: id(), label: a.label, revision: doc.revision, author: profile.id, createdAt: Date.now(), scene: structuredClone(doc.scene) }; (drawingVersions[a.pageId] ??= []).push(version); return version; }
+    case "drawing_version_scene": return drawingVersions[a.pageId]?.find((v) => v.id === a.versionId)?.scene;
+    case "drawing_version_restore": {
+      const before = drawings[a.pageId] ??= newDrawing(), prior = before.operations.find((op) => op.id === a.restoreId);
+      if (prior) return { operationId: a.restoreId, backupId: a.restoreId, document: before };
+      if (before.revision !== a.expectedRevision) throw new Error("The drawing changed after this preview");
+      const target = drawingVersions[a.pageId]?.find((v) => v.id === a.versionId)?.scene;
+      if (!target) throw new Error("Saved version is unavailable");
+      if (JSON.stringify(before.scene) === JSON.stringify(target)) throw new Error("This version already matches the current drawing");
+      const operation = { ...edit(profile.id, before.revision, a.label, sceneChanges(before.scene, target)), id: a.restoreId };
+      const next = appendOperation(before, operation);
+      (drawingVersions[a.pageId] ??= []).push({ id: a.restoreId, label: a.backupLabel, revision: before.revision, author: profile.id, createdAt: Date.now(), scene: structuredClone(before.scene) });
+      drawings[a.pageId] = next; return { operationId: a.restoreId, backupId: a.restoreId, document: next };
+    }
+    case "drawing_version_import": { const version = { id: a.versionId, revision: 0, label: a.label, author: profile.id, createdAt: Date.now(), scene: structuredClone(a.scene) }; (drawingVersions[a.pageId] ??= []).push(version); return { id: a.versionId }; }
+    case "drawing_materialize_assets": return structuredClone(a.scene);
+    case "drawing_experiment_create": {
+      const source = drawings[a.pageId] ??= newDrawing(), version = { id: id(), label: `Experiment base: ${a.name}`, revision: source.revision, author: profile.id, createdAt: Date.now(), scene: structuredClone(source.scene) };
+      (drawingVersions[a.pageId] ??= []).push(version);
+      const pid = addPage(a.name, "pi:paintbrush", [], { kind: "drawing", parentId: a.pageId });
+      const info = { sourceId: a.pageId, baseVersionId: version.id, author: profile.id, createdAt: Date.now(), description: a.description, status: "draft" as const };
+      metadata[pid] = { experiment: info }; drawings[pid] = { revision: 0, seed: structuredClone(source.scene), scene: structuredClone(source.scene), operations: [], experiment: info };
+      return pages[pid];
+    }
+    case "drawing_experiments": return Object.values(pages).filter((page) => metadata[page.id]?.experiment?.sourceId === a.pageId && !page.deletedAt).map((page) => ({ page, experiment: metadata[page.id].experiment }));
+    case "drawing_library_list": return Object.values(drawingLibrary).flatMap((versions) => { const item = versions.at(-1)!.item; return pages[item.page.id]?.deletedAt ? [] : [{ ...item, page: pages[item.page.id] }]; });
+    case "drawing_library_read": { const versions = drawingLibrary[a.itemId], chosen = versions?.find((v) => v.version === (a.version ?? versions.at(-1)!.version)); if (!chosen || pages[a.itemId]?.deletedAt) throw new Error("Library item unavailable"); return structuredClone({ ...chosen, item: { ...versions.at(-1)!.item, page: pages[a.itemId] } }); }
+    case "drawing_library_instantiate": {
+      const publication = drawingLibrary[a.itemId]?.find((v) => v.version === a.version);
+      if (!publication || publication.item.kind !== "template" || pages[a.itemId]?.deletedAt) throw new Error("Choose an available drawing template");
+      const pid = addPage(publication.item.page.title, "pi:paintbrush", [], { kind: "drawing" }), scene = structuredClone(publication.scene);
+      drawings[pid] = { revision: 0, seed: structuredClone(scene), scene, operations: [] };
+      return pages[pid];
+    }
+    case "drawing_library_publish": {
+      const input = a.input, old = input.itemId ? drawingLibrary[input.itemId]?.at(-1) : undefined;
+      if (input.itemId && (!old || old.version !== input.expectedVersion)) throw new Error("Library changed. Refresh before publishing another version");
+      const pid = old?.item.page.id ?? addPage(input.name, "pi:paintbrush", [], { kind: "drawing" }), version = (old?.version ?? 0) + 1, createdAt = Date.now();
+      pages[pid].title = input.name;
+      const publication: LibraryPublication = { item: { page: pages[pid], kind: input.kind, tags: input.tags, sourceId: input.sourceId, owner: profile.id, scope: input.scope, workspaceId: input.scope === "workspace" ? "mock-team" : null, version, canEdit: true, canDelete: true, versions: [{ version, createdAt, author: profile.id }, ...(old?.item.versions ?? [])] }, version, scene: structuredClone(input.scene), payload: structuredClone(input.payload) };
+      (drawingLibrary[pid] ??= []).push(publication);
+      drawings[pid] ??= { revision: 0, seed: structuredClone(input.scene), scene: structuredClone(input.scene), operations: [] }; return structuredClone(publication);
+    }
+    case "drawing_library_remove": { if (pages[a.itemId]) pages[a.itemId].deletedAt = Date.now(); return; }
+    case "drawing_reference_search": return Object.values(pages).filter((p) => !p.deletedAt && !p.archived && p.title.toLowerCase().includes(a.query.toLowerCase()) && (!a.editable || ["page", "document", "presentation"].includes(p.kind))).slice(0, 100);
+    case "sync_page_mode":return {shared:!!metadata[a.pageId]?.sync?.shared,workspaceId:null,flagged:false};
+    case "drawing_reference_read": {
+      if(a.offline&&metadata[a.sourceId]?.sync?.shared)return{state:"offline",checkedAt:Date.now()};
+      const page = pages[a.sourceId]; if (!page || page.deletedAt) return { state: "unavailable", checkedAt: Date.now() };
+      let tasksDone = 0, tasksTotal = 0; const count = (node: any) => { if (node.type === "taskItem") { tasksTotal++; if (node.attrs?.checked) tasksDone++; } (node.content ?? []).forEach(count); }; (blocks[a.sourceId] ?? []).forEach(count);
+      return { state: "ready", sourceId: a.sourceId, title: page.title, kind: page.kind, excerpt: page.preview, updatedAt: page.updatedAt, checkedAt: Date.now(), tasksDone, tasksTotal };
+    }
+    case "drawing_reference_task": {
+      const pid = addPage(a.title, "pi:checklist", [], { parentId: a.pageId });
+      blocks[pid] = [{ type: "taskList", attrs: { bid: id() }, content: [{ type: "taskItem", attrs: { checked: false }, content: [{ type: "paragraph", content: [{ type: "text", text: a.title }] }] }] }, { type: "drawingEmbed", attrs: { bid: id(), pageId: a.pageId, frameId: a.frameId, camera: a.camera, versionId: null } }]; return pages[pid];
+    }
+    case "drawing_embed_insert": { (blocks[a.targetId] ??= []).push({ type: "drawingEmbed", attrs: { bid: id(), pageId: a.pageId, frameId: a.frameId, camera: a.camera, versionId: a.versionId } }); return; }
     case "page_create": {
       const pid = addPage(a.page.title ?? "", a.page.icon ?? null, [], { kind: a.page.kind ?? "page", parentId: a.page.parentId ?? null });
       metadata[pid] = a.page.metadata ?? {};
       return pages[pid];
     }
+    case "page_delete": {const page=pages[a.id];if(page){page.deletedAt=Date.now();page.updatedAt=Date.now();}return;}
     case "page_update": {
       const { metadata: md, ...rest } = a.patch;
       if (md) metadata[a.id] = md;
@@ -159,6 +249,11 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
       const aid = id();
       ASSET[aid] = mime.startsWith("image/") ? ASSET["mock-ref-5"] : "";
       return { id: aid, pageId: a.pageId, kind: mime.startsWith("image/") ? (ext === "gif" ? "gif" : "image") : mime.startsWith("video/") ? "video" : "file", fileName: name, mime, size: 123456, width: 800, height: 600, createdAt: Date.now() };
+    }
+    case "attachment_import_raw": {
+      const aid = id(), bytes = new Uint8Array(a.bytes), blob = new Blob([bytes]);
+      ASSET[aid] = URL.createObjectURL(blob);
+      return { id: aid, pageId: a.pageId, kind: "image", fileName: a.name, mime: "image/png", size: bytes.byteLength, width: null, height: null, createdAt: Date.now() };
     }
     case "blocks_save": {
       // Same rule as the real backend: a save based on an older sync is refused.
@@ -238,6 +333,7 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
       return { id: aid, pageId: a.pageId, kind, fileName: name, mime, size: a.bytes.length, width: 64, height: 64, createdAt: Date.now() };
     }
     case "attachment_get": return null;
+    case "drawing_sync_pending_pages": return [];
     default:
       console.warn("[mock] unhandled", cmd, a);
       return null;

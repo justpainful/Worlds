@@ -40,6 +40,7 @@ export async function applyEvent(env: Env, ev: AccessEvent): Promise<number> {
       return n;
     case "device.revoked":
     case "session.revoked":
+      await env.INBOXES.getByName(ev.userId).revokeDevice(ev.deviceId, Math.floor(((ev as Partial<EventEnvelope>).at ?? Date.now()) / 1000), ev.type === "device.revoked");
       for (const { workspaceId, docId } of await env.INBOXES.getByName(ev.userId).liveDocs()) {
         n += await room(env, workspaceId, docId).revoke({ userId: ev.userId, deviceId: ev.deviceId });
       }

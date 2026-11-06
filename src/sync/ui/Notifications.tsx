@@ -7,6 +7,7 @@ import { relTime } from "../../ui/misc";
 import { useStore } from "../../state/store";
 import { markNotificationsRead, refreshNotifications, useNotifications, type Notice } from "../manager";
 import { useCommentsUi } from "./commentsUi";
+import { openDrawingComment } from "../../drawing/navigation";
 
 /** Mentions and replies, newest first, under the bell. */
 export function NotificationsPopover({ anchor, onClose }: { anchor: HTMLElement; onClose: () => void }) {
@@ -14,6 +15,8 @@ export function NotificationsPopover({ anchor, onClose }: { anchor: HTMLElement;
   const panel = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
   const pages = useStore((s) => s.pages);
+  const language = useStore((s) => s.profile?.language), arabic = language === "ar" || language === "auto" && navigator.language.startsWith("ar");
+  const t = (en: string, ar: string) => arabic ? ar : en;
 
   useLayoutEffect(() => {
     const r = anchor.getBoundingClientRect();
@@ -37,20 +40,20 @@ export function NotificationsPopover({ anchor, onClose }: { anchor: HTMLElement;
 
   const openNotice = (n: Notice) => {
     void markNotificationsRead([n.id]);
-    useStore.getState().openPage(n.docId, "current");
-    useCommentsUi.getState().openThread(n.docId, n.threadId);
+    if (useStore.getState().pages[n.docId]?.kind === "drawing") openDrawingComment(n.docId, n.threadId);
+    else { useStore.getState().openPage(n.docId, "current"); useCommentsUi.getState().openThread(n.docId, n.threadId); }
     onClose();
   };
 
   if (!pos) return null;
   return createPortal(
-    <Glass ref={panel} material="menu" layer={LAYER.popover} className="notif-popover" radius="var(--r-popover)" style={{ top: pos.top, right: pos.right }} role="dialog" aria-label="Notifications">
+    <Glass ref={panel} material="menu" layer={LAYER.popover} className="notif-popover" radius="var(--r-popover)" style={{ top: pos.top, right: pos.right }} role="dialog" dir={arabic ? "rtl" : "ltr"} aria-label={t("Notifications", "الإشعارات")}>
       <header className="np-head">
-        <span className="np-title">Notifications</span>
+        <span className="np-title">{t("Notifications", "الإشعارات")}</span>
         <span className="cp-spacer" />
         {unread > 0 && (
           <button type="button" className="cp-link" onClick={() => void markNotificationsRead(null)}>
-            Mark all as read
+            {t("Mark all as read", "تحديد الكل كمقروء")}
           </button>
         )}
       </header>
@@ -58,7 +61,7 @@ export function NotificationsPopover({ anchor, onClose }: { anchor: HTMLElement;
         {items.length === 0 && (
           <div className="cp-empty">
             <Icon name="bell" size={22} />
-            <p>{error ? "Notifications are unavailable right now." : loadedAt ? "Mentions and replies show up here." : "Connect to a sync server to get mentions."}</p>
+            <p>{error ? t("Notifications are unavailable right now.", "الإشعارات غير متاحة حاليًا.") : loadedAt ? t("Mentions and replies show up here.", "تظهر الإشارات والردود هنا.") : t("Connect to a sync server to get mentions.", "اتصل بخادم المزامنة لاستقبال الإشارات.")}</p>
           </div>
         )}
         {items.map((n) => {
@@ -68,11 +71,11 @@ export function NotificationsPopover({ anchor, onClose }: { anchor: HTMLElement;
               <span className="np-mark" aria-hidden />
               <span className="np-text">
                 <span className="np-line bidi">
-                  <strong>{n.fromName || "Someone"}</strong> {n.kind === "mention" ? "mentioned you" : "replied"}
+                  <strong>{n.fromName || t("Someone", "عضو")}</strong> {n.kind === "mention" ? t("mentioned you", "أشار إليك") : t("replied", "ردّ")}
                   {page ? (
                     <>
-                      {" in "}
-                      <strong>{page.title || "Untitled"}</strong>
+                      {t(" in ", " في ")}
+                      <strong>{page.title || t("Untitled", "بلا عنوان")}</strong>
                     </>
                   ) : null}
                 </span>

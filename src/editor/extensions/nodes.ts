@@ -4,6 +4,7 @@ import { CalloutView, PromptView } from "../views/TextBlocks";
 import { PageLinkView } from "../views/PageLinkView";
 import { ImageView, VideoView, FileView } from "../views/MediaViews";
 import { EmbedView, DiscordMessageView, ScheduleView } from "../views/RefViews";
+import { DrawingEmbedView } from "../views/DrawingEmbedView";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -104,6 +105,7 @@ export const PageLink = atom("pageLink", { pageId: { default: null }, title: { d
     };
   },
 });
+export const DrawingEmbed = atom("drawingEmbed", { pageId: { default: null }, frameId: { default: null }, camera: { default: null }, versionId: { default: null } }, DrawingEmbedView);
 
 const mediaAttrs = {
   attachmentId: { default: null },

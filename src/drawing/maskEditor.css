@@ -1,0 +1,13 @@
+.drawing-mask-dialog.is-arabic { font-family:"IBM Plex Sans Arabic",sans-serif;font-size:15.5px;line-height:1.7;letter-spacing:0; }
+.drawing-mask-controls { border:0;padding:0;min-inline-size:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 14px; }
+.drawing-mask-controls .drawing-field { min-width:0; }
+.drawing-mask-controls .drawing-step-actions,.drawing-mask-controls .drawing-selection-help { grid-column:1 / -1; }
+.drawing-mask-surfaces { display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-block:12px; }
+.drawing-mask-surfaces.isolated { grid-template-columns:minmax(0,1fr); }
+.drawing-mask-work { position:relative;height:340px;background:#000000;touch-action:none;overflow:hidden; }
+.drawing-mask-work>canvas,.drawing-mask-work>svg { position:absolute;inset:0;width:100%;height:100%;pointer-events:none; }
+.drawing-mask-work:focus-visible { outline:2px solid var(--accent);outline-offset:2px; }
+.drawing-mask-surfaces>.drawing-library-preview { height:340px; }
+@media(max-width:650px) { .drawing-mask-controls { grid-template-columns:minmax(0,1fr) minmax(0,1fr); } .drawing-mask-surfaces { grid-template-columns:minmax(0,1fr); } .drawing-mask-work,.drawing-mask-surfaces>.drawing-library-preview { height:260px; } }
+
+.drawing-mask-dialog.is-arabic .drawing-selection-help { font-size:14px; }

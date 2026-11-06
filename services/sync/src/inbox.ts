@@ -37,6 +37,7 @@ export class UserInbox extends DurableObject<Env> {
           payload TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS notifications_created ON notifications(created_at);
+        CREATE TABLE IF NOT EXISTS revoked_devices (device_id TEXT PRIMARY KEY, revoked_before INTEGER NOT NULL, permanent INTEGER NOT NULL);
         CREATE TABLE IF NOT EXISTS live_docs (
           workspace_id TEXT NOT NULL,
           doc_id TEXT NOT NULL,
@@ -50,6 +51,15 @@ export class UserInbox extends DurableObject<Env> {
   async add(n: Notification): Promise<void> {
     this.sql.exec("INSERT OR IGNORE INTO notifications (id, created_at, read_at, payload) VALUES (?, ?, NULL, ?)", n.id, n.createdAt, JSON.stringify(n));
     this.sql.exec("DELETE FROM notifications WHERE id IN (SELECT id FROM notifications ORDER BY created_at DESC LIMIT -1 OFFSET ?)", MAX_KEPT);
+  }
+
+  async revokeDevice(deviceId: string, issuedBefore: number, permanent: boolean): Promise<void> {
+    this.sql.exec("INSERT INTO revoked_devices(device_id, revoked_before, permanent) VALUES (?, ?, ?) ON CONFLICT(device_id) DO UPDATE SET revoked_before = MAX(revoked_before, excluded.revoked_before), permanent = MAX(permanent, excluded.permanent)", deviceId, issuedBefore, permanent ? 1 : 0);
+  }
+
+  async tokenRevoked(deviceId: string, issuedAt: number): Promise<boolean> {
+    const row = [...this.sql.exec("SELECT revoked_before, permanent FROM revoked_devices WHERE device_id = ?", deviceId)][0];
+    return !!row && (Number(row.permanent) === 1 || issuedAt <= Number(row.revoked_before));
   }
 
   async list(opts: { before?: number; limit?: number } = {}): Promise<{ items: Notification[]; unread: number }> {

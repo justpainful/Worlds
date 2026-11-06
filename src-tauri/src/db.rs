@@ -3,7 +3,7 @@
 //! Both the UI process and the `--mcp` tool process open the same database
 //! (WAL mode), so every writer appends to `changes` and readers watch it.
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use rusqlite::Connection;
 use std::path::{Path, PathBuf};
 
@@ -33,6 +33,14 @@ pub fn open(path: &Path) -> Result<Connection> {
          PRAGMA foreign_keys = ON;
          PRAGMA busy_timeout = 5000;",
     )?;
+    let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
+    if version > schema_version() { bail!("This database needs a newer Worlds version"); }
+    // This gate also covers headless MCP and background connections. A failed
+    // startup backup must never be followed by an unprotected migration.
+    if version > 0 && version < schema_version() {
+        let parent = path.parent().unwrap_or_else(|| Path::new("."));
+        crate::backup::backup_conn(&conn,parent,&format!("pre-migration-v{version}-{}",new_id())).context("keep the database before migrating")?;
+    }
     migrate(&conn)?;
     Ok(conn)
 }
@@ -334,6 +342,115 @@ pub(crate) const MIGRATIONS: &[&str] = &[
     // cursors, and the attachment upload queue. The local database stays
     // the full source of truth; these tables only add what sync needs.
     crate::sync::MIGRATION,
+    // 7: drawing scenes and immutable operation journal, separate from text blocks.
+    r#"
+    CREATE TABLE drawing_documents (
+        page_id TEXT PRIMARY KEY REFERENCES pages(id) ON DELETE CASCADE,
+        revision INTEGER NOT NULL DEFAULT 0,
+        seed TEXT NOT NULL,
+        scene TEXT NOT NULL,
+        search_text TEXT NOT NULL DEFAULT '',
+        thumbnail_id TEXT,
+        updated_at INTEGER NOT NULL
+    );
+    CREATE TABLE drawing_operations (
+        page_id TEXT NOT NULL REFERENCES drawing_documents(page_id) ON DELETE CASCADE,
+        id TEXT NOT NULL,
+        revision INTEGER NOT NULL,
+        actor TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY(page_id, id),
+        UNIQUE(page_id, revision)
+    );
+    CREATE TABLE drawing_versions (
+        id TEXT PRIMARY KEY,
+        page_id TEXT NOT NULL REFERENCES pages(id) ON DELETE CASCADE,
+        revision INTEGER NOT NULL,
+        label TEXT NOT NULL,
+        author TEXT NOT NULL,
+        scene TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+    );
+    CREATE INDEX drawing_versions_page ON drawing_versions(page_id, created_at);
+    "#,
+    // 8: versioned reusable drawing material. Page permissions govern every item.
+    r#"
+    CREATE TABLE drawing_library_items (
+        page_id TEXT PRIMARY KEY REFERENCES pages(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL,
+        tags TEXT NOT NULL DEFAULT '[]',
+        source_id TEXT,
+        owner TEXT NOT NULL,
+        current_version INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE TABLE drawing_library_versions (
+        page_id TEXT NOT NULL REFERENCES drawing_library_items(page_id) ON DELETE CASCADE,
+        version INTEGER NOT NULL,
+        snapshot_id TEXT NOT NULL REFERENCES drawing_versions(id),
+        payload TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        author TEXT NOT NULL,
+        PRIMARY KEY(page_id, version)
+    );
+    "#,
+    // 9: drawing-specific shared replica and durable operation outbox.
+    r#"
+    CREATE TABLE drawing_sync_state (
+        page_id TEXT PRIMARY KEY REFERENCES pages(id) ON DELETE CASCADE,
+        server_url TEXT NOT NULL,
+        workspace_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        basis TEXT NOT NULL,
+        remote TEXT,
+        incoming TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        last_error TEXT,
+        updated_at INTEGER NOT NULL
+    );
+    CREATE TABLE drawing_sync_outbox (
+        sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+        page_id TEXT NOT NULL REFERENCES pages(id) ON DELETE CASCADE,
+        operation_id TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        preconditions TEXT NOT NULL,
+        UNIQUE(page_id, operation_id)
+    );
+    CREATE INDEX drawing_sync_outbox_page ON drawing_sync_outbox(page_id, sequence);
+    CREATE TABLE drawing_sync_recoveries (
+        id TEXT PRIMARY KEY,
+        page_id TEXT NOT NULL REFERENCES pages(id) ON DELETE CASCADE,
+        document TEXT NOT NULL,
+        pending TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+    );
+    CREATE TABLE drawing_sync_originals (
+        attachment_id TEXT PRIMARY KEY REFERENCES attachments(id) ON DELETE CASCADE,
+        page_id TEXT NOT NULL REFERENCES pages(id) ON DELETE CASCADE,
+        sha256 TEXT NOT NULL,
+        size INTEGER NOT NULL,
+        verified_at INTEGER NOT NULL
+    );
+    "#,
+    // 10: full causal snapshots of refused edits, independent from the active replica.
+    r#"
+    CREATE TABLE sync_rejected_snapshots (
+        id TEXT PRIMARY KEY,
+        page_id TEXT NOT NULL REFERENCES pages(id) ON DELETE CASCADE,
+        channel INTEGER NOT NULL,
+        owner_id TEXT NOT NULL,
+        data BLOB NOT NULL,
+        reason TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+    );
+    CREATE INDEX sync_rejected_page ON sync_rejected_snapshots(page_id, owner_id, created_at DESC, id DESC);
+    "#,
+    // 11: bounded author Undo queries use the canonical disk journal directly.
+    r#"
+    CREATE INDEX IF NOT EXISTS drawing_undo_edits ON drawing_operations(page_id,actor,revision DESC) WHERE json_extract(payload,'$.type')='edit';
+    CREATE INDEX IF NOT EXISTS drawing_undo_toggles ON drawing_operations(page_id,actor,json_extract(payload,'$.target'),revision DESC) WHERE json_extract(payload,'$.type')='toggle';
+    "#,
 ];
 
 /// The schema version this build expects (the number of migrations).

@@ -1,0 +1,92 @@
+import { env, evictDurableObject, SELF } from "cloudflare:test";
+import { describe, expect, it } from "vitest";
+import { BASE, grant, mintToken, uid } from "./client";
+import { appendOperation, edit, newDrawing, putNode } from "../../../src/drawing/operations";
+import { newNode } from "../../../src/drawing/model";
+import { drawingPreconditions } from "../../../src/drawing/canonical";
+import type { DrawingWireState } from "../../../src/drawing/wire";
+import { blobKey } from "../src/attachments";
+import type { DrawingLease } from "../src/drawing-leases";
+import { pixelGuard } from "../../../src/drawing/pixelGuard";
+async function fixture() {
+  const ws = uid("ws"), doc = uid("drawing"), alice = uid("alice"), bob = uid("bob"), viewer = uid("viewer");
+  await grant(alice, ws, doc, "edit"); await grant(bob, ws, doc, "edit"); await grant(viewer, ws, doc, "view");
+  const call = async (user: string, path: string, method = "GET", body?: unknown) => SELF.fetch(`${BASE}/v1/workspaces/${ws}/docs/${doc}/drawing/${path}`, { method, headers: { authorization: `Bearer ${await mintToken(user)}`, "content-type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
+  const initial = newDrawing();
+  const res = await call(alice, "state", "PUT", { document: initial, localActor: "local", attachments: {}, versions: {} }); expect(res.status).toBe(200);
+  const { state } = await res.json<{ state: DrawingWireState }>();
+  return { ws, doc, alice, bob, viewer, call, initial, generation: state.generation };
+}
+describe("authoritative mixed drawing stream", () => {
+  it("requires a source layer fence for pixel edits and refuses stale offline source membership",async()=>{
+    const{initial,alice,bob,call,generation}=await fixture(),layer=initial.scene.layerOrder[0];
+    const guarded=edit(alice,0,"Guarded delete",[]);guarded.pixelGuard=pixelGuard(initial.scene,initial.scene.defaultFrameId,layer,"current");
+    const payload={generation,operation:guarded,preconditions:drawingPreconditions(initial.scene,guarded),attachments:{},versions:{}};
+    expect((await call(alice,"operations","POST",payload)).status).toBe(423);
+    const shape=newNode("shape",layer,initial.scene.defaultFrameId);shape.shape="rect";
+    expect((await call(bob,"operations","POST",{generation,operation:edit(bob,0,"New source",putNode(initial.scene,shape)),attachments:{},versions:{}})).status).toBe(200);
+    const lease=(await(await call(alice,"leases","POST",{action:"acquire",target:`layer:${layer}`,requestId:"pixel-layer-guard"})).json<{lease:DrawingLease}>()).lease;
+    expect((await call(alice,"operations","POST",{...payload,leases:[lease]})).status).toBe(409);
+    const state=await(await call(alice,"state")).json<{capabilities:{pixelSourceGuards:number};state:DrawingWireState}>();expect(state.capabilities.pixelSourceGuards).toBe(2);expect(state.state.revision).toBe(1);
+  });
+  it("refuses a whole-version restore after its preview even when a new root reservation is valid", async () => {
+    const {initial,alice,bob,call,generation}=await fixture(),layer=initial.scene.layerOrder[0];
+    const restore=edit(alice,0,"Restore",[{type:"patch",collection:"layers",id:layer,fields:{name:"Restored"}}]);
+    restore.versionRestore={versionId:crypto.randomUUID(),expectedRevision:0,backupId:restore.id};
+    const node=newNode("shape",layer,initial.scene.defaultFrameId);node.shape="rect";
+    expect((await call(bob,"operations","POST",{generation,operation:edit(bob,0,"New shape",putNode(initial.scene,node)),attachments:{},versions:{}})).status).toBe(200);
+    const lease=(await(await call(alice,"leases","POST",{action:"acquire",target:"drawing:root",requestId:"stale-restore"})).json<{lease:DrawingLease}>()).lease;
+    const denied=await call(alice,"operations","POST",{generation,operation:restore,preconditions:drawingPreconditions(initial.scene,restore),leases:[lease],attachments:{},versions:{}});
+    expect(denied.status).toBe(409);
+    const state=(await(await call(alice,"state")).json<{state:DrawingWireState}>()).state;expect(state.revision).toBe(1);expect(state.document!.scene.nodes[node.id]).toEqual(node);expect(state.document!.scene.layers[layer].name).toBe(initial.scene.layers[layer].name);
+  });
+  it("converges concurrent completed elements and idempotent retries, then survives room eviction", async () => {
+    const f = await fixture(), { initial, alice, bob, call, generation } = f;
+    const a = newNode("shape", initial.scene.layerOrder[0], initial.scene.defaultFrameId), b = newNode("shape", initial.scene.layerOrder[0], initial.scene.defaultFrameId); a.shape = b.shape = "rect";
+    const first = edit(alice, 0, "Alice", putNode(initial.scene, a)), second = edit(bob, 0, "Bob", putNode(initial.scene, b));
+    const body = (operation: typeof first) => ({ generation, operation, attachments: {}, versions: {} });
+    const writes = await Promise.all([call(alice, "operations", "POST", body(first)), call(bob, "operations", "POST", body(second))]); expect(writes.map((r) => r.status)).toEqual([200, 200]);
+    expect((await call(alice, "operations", "POST", body(first))).status).toBe(200);
+    let state = (await (await call(bob, "state")).json<{ state: DrawingWireState }>()).state;
+    expect(state.document!.revision).toBe(2); expect(new Set(state.document!.scene.nodeOrder)).toEqual(new Set([a.id, b.id]));
+    const changed = { ...first, label: "Different request with same ID" }; expect((await call(alice, "operations", "POST", body(changed))).status).toBe(409);
+    await evictDurableObject(env.DOCS.getByName(`${f.ws}/${f.doc}`));
+    state = (await (await call(bob, "state")).json<{ state: DrawingWireState }>()).state; expect(state.document!.scene.nodes[a.id]).toEqual(a); expect(state.document!.operations.map((o) => o.base)).toEqual([0, 1]);
+    const delta = (await (await call(alice, `state?generation=${generation}&after=1`)).json<{ state: DrawingWireState }>()).state; expect(delta.document).toBeUndefined(); expect(delta.operations).toHaveLength(1);
+  });
+  it("requires a current fenced lease for edits and author-only undo, and preserves other authors", async () => {
+    const f = await fixture(), { initial, alice, bob, viewer, call, generation } = f;
+    const node = newNode("shape", initial.scene.layerOrder[0], initial.scene.defaultFrameId); node.shape = "rect";
+    const create = edit(alice, 0, "Create", putNode(initial.scene, node));
+    const send = (user: string, operation: unknown, leases: unknown[] = []) => call(user, "operations", "POST", { generation, operation, leases, attachments: {}, versions: {} });
+    expect((await send(alice, create)).status).toBe(200);
+    const move = edit(bob, 1, "Move", [{ type: "patch", collection: "nodes", id: node.id, fields: { x: 250 } }]); expect((await send(bob, move)).status).toBe(423); expect((await send(viewer, { ...move, actor: viewer })).status).toBe(403);
+    const lease = (await (await call(bob, "leases", "POST", { action: "acquire", target: `node:${node.id}`, requestId: "move-shape" })).json<{ lease: DrawingLease }>()).lease;
+    expect((await send(bob, move, [lease])).status).toBe(200);
+    const invalidUndo = { id: crypto.randomUUID(), actor: bob, base: 2, at: Date.now(), label: "Undo someone else", type: "toggle", target: create.id, enabled: false };
+    expect((await send(bob, invalidUndo, [lease])).status).toBe(400);
+    await call(bob, "leases", "POST", { ...lease, action: "release" });
+    const stale = edit(bob, 2, "Stale lease", [{ type: "patch", collection: "nodes", id: node.id, fields: { y: 250 } }]); expect((await send(bob, stale, [lease])).status).toBe(423);
+    const ownUndo = { ...invalidUndo, id: crypto.randomUUID(), label: "Undo my movement", target: move.id };
+    const next = (await (await call(bob, "leases", "POST", { action: "acquire", target: `node:${node.id}`, requestId: "undo-my-move" })).json<{ lease: DrawingLease }>()).lease;
+    expect((await send(bob, ownUndo, [next])).status).toBe(200);
+    const state = (await (await call(alice, "state")).json<{ state: DrawingWireState }>()).state; expect(state.document!.scene.nodes[node.id].x).toBe(node.x);
+  });
+  it("refuses missing originals and preserves pinned version dependencies", async () => {
+    const f = await fixture(), { initial, alice, call, generation } = f, aid = crypto.randomUUID(), original = crypto.randomUUID();
+    const bytes = new Uint8Array([1, 2, 3]), hash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map((n) => n.toString(16).padStart(2, "0")).join("");
+    const info = { sha256: hash, size: 3, mime: "application/octet-stream", fileName: "original.bin" };
+    const node = newNode("image", initial.scene.layerOrder[0], initial.scene.defaultFrameId); node.assetId = aid;
+    const op = edit(alice, 0, "Original", [{ type: "put", collection: "assets", id: aid, value: { id: aid, attachmentId: original, name: "Original", mime: info.mime, width: 1, height: 1 } }, ...putNode(initial.scene, node)]);
+    const send = (attachments: unknown) => call(alice, "operations", "POST", { generation, operation: op, attachments, versions: {} });
+    expect((await send({})).status).toBe(400); expect((await send({ [original]: info })).status).toBe(400);
+    await env.BLOBS.put(blobKey(f.ws, hash), bytes); expect((await send({ [original]: info })).status).toBe(200);
+    const doc = appendOperation(initial, op), vid = crypto.randomUUID(), sid = crypto.randomUUID(), frameId = doc.scene.defaultFrameId;
+    const step = { id: sid, title: "عرض", body: "", frameId, camera: { x: 0, y: 0, w: 1280, h: 720 }, hiddenNodeIds: [], transition: "cut", duration: null, pinnedVersionId: vid };
+    const addStep = edit(alice, 1, "Pinned step", [{ type: "put", collection: "steps", id: sid, value: step }, { type: "order", list: "stepOrder", ids: [sid] }]);
+    const post = (versions: unknown) => call(alice, "operations", "POST", { generation, operation: addStep, attachments: {}, versions });
+    expect((await post({})).status).toBe(400);
+    expect((await post({ [vid]: { scene: doc.scene, label: "Pinned", author: alice, createdAt: Date.now(), revision: 1 } })).status).toBe(200);
+    const state = (await (await call(alice, "state")).json<{ state: DrawingWireState }>()).state; expect(state.versions[vid].scene.assets[aid].attachmentId).toBe(original);
+  });
+});

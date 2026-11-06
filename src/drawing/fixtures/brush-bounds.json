@@ -1,0 +1,14 @@
+[
+  { "name": "rotated ellipse", "brush": { "kind": "hard", "size": 100, "angle": 90, "roundness": 0.2 }, "samples": [{ "x": 0, "y": 0 }], "bounds": [-12, -52, 24, 104] },
+  { "name": "largest spray", "brush": { "kind": "spray", "size": 2048 }, "samples": [{ "x": 0, "y": 0 }], "bounds": [-1068.6666666666667, -1068.6666666666667, 2137.3333333333335, 2137.3333333333335] },
+  { "name": "tiny crayon", "brush": { "kind": "crayon", "size": 1 }, "samples": [{ "x": 0, "y": 0 }], "bounds": [-2.8, -2.8, 5.6, 5.6] },
+  { "name": "rotated pencil grain", "brush": { "kind": "natural-pencil", "size": 100, "angle": 90, "roundness": 0.5 }, "samples": [{ "x": 0, "y": 0 }], "bounds": [-30.25, -58.5, 60.5, 117] },
+  { "name": "tiny watercolor outline", "brush": { "kind": "watercolor", "size": 1 }, "samples": [{ "x": 0, "y": 0 }], "bounds": [-2.7, -2.7, 5.4, 5.4] },
+  { "name": "rotated square tip", "brush": { "kind": "texture", "size": 100, "angle": 45 }, "samples": [{ "x": 0, "y": 0 }], "bounds": [-72.71067811865476, -72.71067811865476, 145.4213562373095, 145.4213562373095] },
+  { "name": "uniform pen ignores tip ellipse", "brush": { "kind": "marker", "size": 100, "angle": 45, "roundness": 0.1 }, "samples": [{ "x": 0, "y": 0 }], "bounds": [-52, -52, 104, 104] },
+  { "name": "normalized extremes", "brush": { "kind": "hard", "size": 99999, "angle": 999, "roundness": -1 }, "samples": [{ "x": 0, "y": 0 }], "bounds": [-1026, -53.2, 2052, 106.4] },
+  { "name": "negative and multi-point coordinates", "brush": { "kind": "hard", "size": 10 }, "samples": [{ "x": -300, "y": 90 }, { "x": 50, "y": -20 }], "bounds": [-307, -27, 364, 124] },
+  { "name": "empty stroke uses stored box", "brush": { "kind": "hard", "size": 100 }, "samples": [], "bounds": [0, 0, 20, 20] },
+  { "name": "brushless stroke uses stored box", "samples": [{ "x": -100, "y": -100 }], "bounds": [0, 0, 20, 20] },
+  { "name": "nonuniform display scale keeps original texture footprint", "brush": { "kind": "texture", "size": 100, "angle": 45 }, "samples": [{ "x": 0, "y": 0 }], "geometrySize": { "w": 20, "h": 20 }, "nodeSize": { "w": 40, "h": 10 }, "bounds": [-145.4213562373095, -36.35533905932738, 290.842712474619, 72.71067811865476] }
+]

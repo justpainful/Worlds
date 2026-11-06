@@ -12,6 +12,7 @@
  */
 import * as Y from "yjs";
 import type { AccessLevel } from "./protocol";
+import { validDrawingAnchor } from "../../../src/drawing/collaborationTypes";
 
 export interface CommentJSON {
   id: string;
@@ -48,6 +49,17 @@ export function commentsJSON(doc: Y.Doc): CommentsJSON {
     roots: [...doc.share.keys()],
   };
 }
+export function validCommentStructure(doc: Y.Doc): boolean {
+  for (const key of doc.share.keys()) if (key !== "threads" && key !== "people") return false;
+  const threads = doc.share.get("threads"), people = doc.share.get("people");
+  if (threads !== undefined && !(threads instanceof Y.Map) || people !== undefined && !(people instanceof Y.Map)) return false;
+  if (threads instanceof Y.Map) for (const thread of threads.values()) {
+    if (!(thread instanceof Y.Map)) return false;
+    const comments = thread.get("comments"); if (comments !== undefined && !(comments instanceof Y.Array)) return false;
+    if (comments instanceof Y.Array && comments.toArray().some((comment) => !(comment instanceof Y.Map))) return false;
+  }
+  return true;
+}
 
 const THREAD_OPEN_FIELDS = new Set(["resolved", "resolvedBy", "resolvedAt", "comments"]);
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
@@ -62,12 +74,27 @@ export function validateCommentsChange(before: CommentsJSON, after: CommentsJSON
     if (root !== "threads" && root !== "people") return `unknown root "${root}"`;
   }
   for (const key of new Set([...Object.keys(before.people), ...Object.keys(after.people)])) {
+    const person = after.people[key] as { name?: unknown; color?: unknown } | undefined;
+    if (person && (typeof person !== "object" || typeof person.name !== "string" || person.name.length > 80 || person.color !== undefined && (typeof person.color !== "string" || !/^#[a-f\d]{6}$/i.test(person.color)))) return "invalid person entry";
     if (!same(before.people[key], after.people[key]) && key !== userId) return "people entries are written by their owner";
   }
   const ids = new Set([...Object.keys(before.threads), ...Object.keys(after.threads)]);
+  if (Object.keys(after.threads).length > 10000) return "too many comment threads";
   for (const id of ids) {
     const b = before.threads[id];
     const a = after.threads[id];
+    if (Object.hasOwn(after.threads, id) && (!a || typeof a !== "object" || Array.isArray(a))) return "invalid comment thread";
+    const validId = (value: unknown) => typeof value === "string" && value.length > 0 && value.length <= 160 && !["__proto__", "constructor", "prototype"].includes(value);
+    const date = (value: unknown) => typeof value === "number" && Number.isFinite(value) && Math.abs(value) <= 8.64e15;
+    if (a) {
+      if (!validId(id) || a.id !== id || !validId(a.createdBy) || !date(a.createdAt) || a.quote !== undefined && (typeof a.quote !== "string" || a.quote.length > 280) || a.comments !== undefined && (!Array.isArray(a.comments) || a.comments.length > 10000)) return "invalid comment thread";
+      const seen = new Set<string>();
+      for (const c of a.comments ?? []) {
+        if (!c || !validId(c.id) || seen.has(c.id) || !validId(c.author) || typeof c.body !== "string" || c.body.length > 10000 || !date(c.createdAt) || c.editedAt !== undefined && !date(c.editedAt) || c.mentions !== undefined && (!Array.isArray(c.mentions) || c.mentions.length > 100 || !c.mentions.every(validId))) return "invalid comment body or metadata";
+        seen.add(c.id);
+      }
+    }
+    if (a && a.anchor && (a.anchor as { kind?: unknown }).kind === "drawing" && !validDrawingAnchor(a.anchor)) return "invalid drawing comment anchor";
     if (!b && a) {
       if (a.createdBy !== userId) return "threads are created by their author";
       if ((a.comments ?? []).some((c) => c.author !== userId)) return "comments are written by their author";

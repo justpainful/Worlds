@@ -6,11 +6,14 @@ import { GalleryView } from "./GalleryView";
 import { PresentationView } from "./PresentationView";
 import { ProjectView } from "./ProjectView";
 import { StreamView } from "./StreamView";
+import { DrawingView } from "../../drawing/DrawingView";
 
 /** Opens a resource with the view made for its kind. */
 export function ResourceView({ pageId, paneId }: { pageId: string; paneId: string }) {
   const kind = useStore((s) => s.pages[pageId]?.kind);
   switch (kind) {
+    case "drawing":
+      return <DrawingView key={pageId} id={pageId} paneId={paneId} />;
     case "document":
       return <DocumentView key={pageId} id={pageId} />;
     case "presentation":

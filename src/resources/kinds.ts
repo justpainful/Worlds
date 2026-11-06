@@ -16,6 +16,7 @@ export const KIND_INFO: Record<ResourceKind, KindInfo> = {
   page: { label: "Page", plural: "Pages", icon: "pages", blurb: "Notes, ideas and anything in blocks" },
   document: { label: "Document", plural: "Documents", icon: "document", blurb: "A formatted document on paper pages" },
   presentation: { label: "Presentation", plural: "Presentations", icon: "presentation", blurb: "Slides to present" },
+  drawing: { label: "Drawing", plural: "Drawings", icon: "paintbrush", blurb: "Draw, edit images and explain visually" },
   project: { label: "Project", plural: "Projects", icon: "briefcase", blurb: "Gather documents, files and pages in one place" },
   gallery: { label: "Gallery", plural: "Galleries", icon: "image", blurb: "Photos, videos and GIFs together" },
   file: { label: "File", plural: "Files", icon: "file", blurb: "A picture, video, PDF or document from your PC" },
@@ -23,7 +24,7 @@ export const KIND_INFO: Record<ResourceKind, KindInfo> = {
 };
 
 /** Creatable from New, in menu order. */
-export const NEW_KINDS: ResourceKind[] = ["page", "document", "presentation", "project", "gallery"];
+export const NEW_KINDS: ResourceKind[] = ["page", "document", "presentation", "drawing", "project", "gallery"];
 
 /** Anything the user browses and works with (templates are blueprints). */
 export function isResource(p: Pick<PageMeta, "kind">): boolean {

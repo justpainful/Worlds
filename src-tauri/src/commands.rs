@@ -155,7 +155,9 @@ pub async fn page_purge(state: State<'_, AppState>, id: String) -> CmdResult<()>
 
 #[tauri::command]
 pub async fn page_duplicate(state: State<'_, AppState>, id: String, deep: Option<bool>) -> CmdResult<store::PageMeta> {
-    with_conn!(state, |c| store::duplicate_page(&c, &Ctx::user(), &id, deep.unwrap_or(true), None, None))
+    let plan=crate::drawing_copy::Plan::tree(&state.conn(),&id,deep.unwrap_or(true)).map_err(err)?;
+    let permit=crate::drawing_copy::authorize_app(&state,plan).await.map_err(err)?;
+    with_conn!(state, |c| store::duplicate_page_authorized(&c, &Ctx::user(), &id, deep.unwrap_or(true), None, None,Some(&permit)))
 }
 
 #[tauri::command]
@@ -298,9 +300,11 @@ pub async fn template_instantiate(
     parent_id: Option<String>,
     title: Option<String>,
 ) -> CmdResult<store::PageMeta> {
+    let plan=crate::drawing_copy::Plan::tree(&state.conn(),&template_id,true).map_err(err)?;
+    let permit=crate::drawing_copy::authorize_app(&state,plan).await.map_err(err)?;
     with_conn!(state, |c| {
         let tx = c.unchecked_transaction()?;
-        let p = store::instantiate_template(&tx, &Ctx::user(), &template_id, parent_id.as_deref(), title.as_deref())?;
+        let p = store::instantiate_template_authorized(&tx, &Ctx::user(), &template_id, parent_id.as_deref(), title.as_deref(),Some(&permit))?;
         tx.commit()?;
         Ok(p)
     })
@@ -308,7 +312,9 @@ pub async fn template_instantiate(
 
 #[tauri::command]
 pub async fn template_save(state: State<'_, AppState>, page_id: String) -> CmdResult<store::PageMeta> {
-    with_conn!(state, |c| store::save_as_template(&c, &Ctx::user(), &page_id))
+    let plan=crate::drawing_copy::Plan::tree(&state.conn(),&page_id,true).map_err(err)?;
+    let permit=crate::drawing_copy::authorize_app(&state,plan).await.map_err(err)?;
+    with_conn!(state, |c| store::save_as_template_authorized(&c, &Ctx::user(), &page_id,Some(&permit)))
 }
 
 #[tauri::command]

@@ -1,0 +1,7 @@
+# Static SVG support
+
+SVG import uses a closed allowlist of static shapes, text, local gradients, clips, masks and embedded PNG/JPEG/WebP images. It rejects DTD/entity declarations, scripts, events, CSS, foreign content, external URLs, animation and use expansion. UTF-8 input is limited to32MiB,4096 elements,64 levels and the existing64-million-pixel image area. The incoming XML is parsed inertly, rebuilt, decoded as an image, then rasterized to a PNG original. Incoming XML is never attached to the workspace or inserted into the live DOM. Existing preview/Cancel/Apply and owned-original semantics apply to that PNG.
+
+SVG export is explicitly labeled a flattened image. It wraps a freshly rendered PNG inside a minimal standalone SVG with exact pixel dimensions. It retains visible transparency and excludes hidden originals, document metadata, live links and font files. Text and paths are pixels rather than editable SVG geometry. PNG payload is capped at24MiB so the standalone result remains within the input limit. Existing image export authorization and frozen-scene behavior remain authoritative.
+
+Browser acceptance harness: scripts/drawing-svg-smoke.html?mock. Unit tests cover pre-parser refusal, output payload/dimensions and cancellation. The browser harness exercises the real XML parser, sanitizer, decoder, PNG ownership, exact alpha pixels, self-reimport, active-content refusal and decode cancellation. Native file-dialog acceptance is separate.

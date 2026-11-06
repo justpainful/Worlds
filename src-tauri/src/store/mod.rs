@@ -274,9 +274,10 @@ fn page_meta(r: &Row) -> rusqlite::Result<PageMeta> {
 
 /// Merge one key (properties or look) into a page's metadata without touching the rest.
 pub fn set_page_meta(conn: &Connection, ctx: &Ctx, id: &str, key: &str, value: Value) -> Result<PageMeta> {
+    if key == "experiment" { crate::account::permissions::require(conn, id, crate::account::permissions::Level::Edit)?; }
     // One key of the metadata object at a time, so no editor can overwrite
     // what another part of the app keeps there.
-    if !matches!(key, "properties" | "look" | "doc" | "deck" | "project" | "gallery" | "file" | "stream") {
+    if !matches!(key, "properties" | "look" | "doc" | "deck" | "project" | "gallery" | "file" | "stream" | "experiment") {
         bail!("unknown page setting {key}");
     }
     let value = if key == "properties" {
@@ -297,7 +298,7 @@ pub fn set_page_meta(conn: &Connection, ctx: &Ctx, id: &str, key: &str, value: V
         &format!("UPDATE pages SET metadata = json_set(metadata, '$.{key}', json(?1)), updated_at = ?2 WHERE id = ?3"),
         params![value.to_string(), now(), id],
     )?;
-    if matches!(key, "stream" | "project" | "doc") {
+    if matches!(key, "stream" | "project" | "doc" | "experiment") {
         index_page(conn, id)?;
     }
     if key == "properties" && !ctx.is_user() {

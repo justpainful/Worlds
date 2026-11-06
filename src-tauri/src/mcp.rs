@@ -67,17 +67,19 @@ pub fn run_stdio(args: &[String]) -> Result<()> {
             "tools/call" => {
                 let name = params.get("name").and_then(Value::as_str).unwrap_or("");
                 let a = params.get("arguments").cloned().unwrap_or(json!({}));
-                let result = {
+                let result = (|| -> Result<Value> {
+                    let plan=crate::drawing_copy::Plan::tool(&conn,name,&a)?;
+                    let permit=crate::drawing_copy::authorize_stdio(plan)?;
                     let tx = conn.unchecked_transaction();
                     match tx {
                         // Claude acts with the signed-in user's rights (Team workspaces).
-                        Ok(tx) => match crate::account::guarded_tool_call(&tx, name, &a, |c| call_tool(c, &ctx, name, &a)) {
+                        Ok(tx) => match crate::account::guarded_tool_call(&tx, name, &a, |c| call_tool(c, &ctx, name, &a,Some(&permit))) {
                             Ok(v) => tx.commit().map(|_| v).map_err(anyhow::Error::from),
                             Err(e) => Err(e),
                         },
                         Err(e) => Err(e.into()),
                     }
-                };
+                })();
                 match result {
                     Ok(v) => {
                         let text = if v.is_string() { v.as_str().unwrap().to_string() } else { serde_json::to_string_pretty(&v)? };
@@ -201,7 +203,7 @@ fn md_nodes(md: &str) -> Result<Vec<Value>> {
     Ok(nodes)
 }
 
-fn call_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Value> {
+fn call_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value, permit: Option<&crate::drawing_copy::Permit>) -> Result<Value> {
     match name {
         "pages_search" => {
             let hits = store::search(conn, s(a, "query")?, a.get("limit").and_then(Value::as_i64).unwrap_or(15), false)?;
@@ -411,7 +413,7 @@ fn call_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Valu
             Ok(json!(t))
         }
         "templates_instantiate" => {
-            let p = store::instantiate_template(conn, ctx, s(a, "templateId")?, os(a, "parentId"), os(a, "title"))?;
+            let p = store::instantiate_template_authorized(conn, ctx, s(a, "templateId")?, os(a, "parentId"), os(a, "title"),permit)?;
             Ok(json!({ "pageId": p.id, "title": p.title }))
         }
         "automations_list" => Ok(json!(crate::automations::list(conn)?)),
@@ -636,7 +638,7 @@ fn call_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Valu
         }
         "pages_duplicate" => {
             let deep = a.get("deep").and_then(Value::as_bool).unwrap_or(true);
-            let p = store::duplicate_page(conn, ctx, s(a, "pageId")?, deep, None, None)?;
+            let p = store::duplicate_page_authorized(conn, ctx, s(a, "pageId")?, deep, None, None,permit)?;
             Ok(json!({ "pageId": p.id, "title": p.title }))
         }
         "pages_delete" => {
@@ -661,7 +663,7 @@ fn call_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Valu
             Ok(json!({ "added": r.added, "changed": r.changed, "removed": r.removed }))
         }
         "templates_create_from_page" => {
-            let t = store::save_as_template(conn, ctx, s(a, "pageId")?)?;
+            let t = store::save_as_template_authorized(conn, ctx, s(a, "pageId")?,permit)?;
             Ok(json!({ "templateId": t.id, "title": t.title }))
         }
         "chats_search" => {
@@ -718,7 +720,7 @@ fn call_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Valu
             if let Some(v) = more::call(conn, ctx, name, a)? {
                 return Ok(v);
             }
-            if let Some(v) = resources::call(conn, ctx, name, a)? {
+            if let Some(v) = resources::call(conn, ctx, name, a,permit)? {
                 return Ok(v);
             }
             match more2::call(conn, ctx, name, a)? {

@@ -112,6 +112,7 @@ export class CollabSession {
       store: this.o.store,
       serverUrl: cfg.serverUrl(),
       getToken: (refresh) => syncConfig().getToken(refresh),
+      rejectionOwner: cfg.user().id,
       ...this.o.provider,
     };
     const p = new WorldsProvider(opts);

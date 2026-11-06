@@ -15,7 +15,7 @@ import type { Page } from "../lib/types";
 import { useStore } from "../state/store";
 import { emit, on } from "../lib/bus";
 import { BlockIds, newBlockId } from "./extensions/blockIds";
-import { Callout, Prompt, PageLink, ImageNode, VideoNode, FileNode, Embed, DiscordMessage, Schedule } from "./extensions/nodes";
+import { Callout, Prompt, PageLink, DrawingEmbed, ImageNode, VideoNode, FileNode, Embed, DiscordMessage, Schedule } from "./extensions/nodes";
 import { Collection, Column, Columns, Toggle } from "./extensions/pages2";
 import { BackgroundColor, Color, FindReplace, Gallery, TextStyle, Toc, WikiLink } from "./extensions/pages3";
 import { openLightbox } from "./views/Pages3Views";
@@ -164,6 +164,7 @@ export const PageEditor = forwardRef<
         Callout,
         Prompt,
         PageLink,
+        DrawingEmbed,
         ImageNode,
         VideoNode,
         FileNode,

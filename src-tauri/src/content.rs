@@ -122,7 +122,7 @@ pub fn collect_refs(node: &Value, out: &mut Vec<(String, &'static str)>) {
                 out.push((id.to_string(), "mention"));
             }
         }
-        "pageLink" => {
+        "pageLink" | "drawingEmbed" => {
             if let Some(id) = attr_str(node, "pageId") {
                 out.push((id.to_string(), "link"));
             }

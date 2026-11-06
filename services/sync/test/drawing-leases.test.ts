@@ -1,0 +1,44 @@
+import { env, evictDurableObject, runInDurableObject, SELF } from "cloudflare:test";
+import { describe, expect, it } from "vitest";
+import { BASE, grant, mintToken, uid } from "./client";
+import type { DrawingLease } from "../src/drawing-leases";
+import { applyEvent } from "../src/events";
+describe("drawing lease authority", () => {
+  it("allows a newer session after session revocation and keeps device revocation permanent", async () => {
+    const inbox = env.INBOXES.getByName(uid("revocation"));
+    await inbox.revokeDevice("device", 100, false);
+    expect(await inbox.tokenRevoked("device", 100)).toBe(true);
+    expect(await inbox.tokenRevoked("device", 101)).toBe(false);
+    await inbox.revokeDevice("device", 50, false);
+    expect(await inbox.tokenRevoked("device", 100)).toBe(true);
+    await inbox.revokeDevice("device", 100, true); await evictDurableObject(inbox);
+    expect(await inbox.tokenRevoked("device", 1000)).toBe(true);
+    expect(await inbox.tokenRevoked("other", 1)).toBe(false);
+  });
+  it("persists monotonic fences, keeps tokens private and rejects replaced proofs and downgraded editors", async () => {
+    const ws = uid("ws"), doc = uid("drawing"); await grant("alice", ws, doc, "edit"); await grant("bob", ws, doc, "edit"); await grant("viewer", ws, doc, "view");
+    const url = `${BASE}/v1/workspaces/${ws}/docs/${doc}/drawing/leases`;
+    const call = async (user: string, body?: unknown) => SELF.fetch(url, { method: body ? "POST" : "GET", headers: { authorization: `Bearer ${await mintToken(user)}`, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+    const request = { action: "acquire", target: "node:shape", requestId: "acquire-one" };
+    const acquired = await call("alice", request); expect(acquired.status).toBe(200); const { lease } = await acquired.json<{ lease: DrawingLease }>();
+    expect((await (await call("alice", request)).json<{ lease: DrawingLease }>()).lease.token).toBe(lease.token);
+    expect((await call("bob", { ...request, requestId: "bob-request" })).status).toBe(409);
+    expect((await call("viewer", request)).status).toBe(403);
+    const listing = await (await call("viewer")).text(); expect(listing).not.toContain(lease.token); expect(listing).not.toContain("requestId");
+    const room = env.DOCS.getByName(`${ws}/${doc}`); await evictDurableObject(room);
+    expect(await env.HUBS.getByName(ws).liveDocs()).toContain(doc);
+    const proof = { target: lease.target, token: lease.token, fence: lease.fence };
+    expect((await call("alice", { ...proof, action: "renew" })).status).toBe(200);
+    expect((await call("bob", { ...proof, action: "renew" })).status).toBe(409);
+    await runInDurableObject(room, async (_instance, state) => { state.storage.sql.exec("UPDATE drawing_leases SET data = json_set(data, '$.expiresAt', 0)"); });
+    const next = await (await call("bob", { ...request, requestId: "bob-request" })).json<{ lease: DrawingLease }>(); expect(next.lease.fence).toBeGreaterThan(lease.fence);
+    expect((await call("alice", { ...proof, action: "release" })).status).toBe(409);
+    await grant("bob", ws, doc, "view");
+    expect((await call("bob", { action: "renew", target: next.lease.target, token: next.lease.token, fence: next.lease.fence })).status).toBe(403);
+    await room.recheck({ userIds: ["bob"] });
+    const final = await (await call("alice")).json<{ leases: unknown[] }>(); expect(final.leases).toHaveLength(0);
+    await applyEvent(env, { type: "device.revoked", userId: "alice", deviceId: "alice-device" });
+    expect((await call("alice", { ...request, requestId: "after-revoked" })).status).toBe(401);
+    expect(await env.INBOXES.getByName("alice").tokenRevoked("other-device", Math.floor(Date.now() / 1000))).toBe(false);
+  });
+});

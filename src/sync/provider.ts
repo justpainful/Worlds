@@ -62,6 +62,7 @@ export interface SyncInfo {
   lastSyncedAt: number | null;
   /** Whether a sync service is configured at all. */
   remote: boolean;
+  resetting?: boolean;
 }
 
 export interface SocketLike {
@@ -90,6 +91,7 @@ export interface ProviderOptions {
   /** https://... base of the sync service, or null for local only. */
   serverUrl: string | null;
   getToken: (refresh?: boolean) => Promise<string | null>;
+  rejectionOwner?: string;
   createSocket?: SocketFactory;
   /** HTTP probe used to tell "signed out" or "no access" from "offline". */
   fetcher?: typeof fetch;
@@ -155,6 +157,9 @@ export class WorldsProvider {
   private resetListeners = new Set<(channel: number, reason: string) => void>();
   private revokeListeners = new Set<() => void>();
   private noticeListeners = new Set<(code: string, message: string) => void>();
+  private unsaved = new Set<number>();
+  private resets = new Map<number, { id: string; reason: string; dirty: boolean; running: Promise<void> | null }>();
+  private saveRetryTimer: ReturnType<typeof setTimeout> | null = null;
   private docListeners: ((update: Uint8Array, origin: unknown) => void)[] = [];
   info: SyncInfo;
 
@@ -163,6 +168,7 @@ export class WorldsProvider {
     this.o = {
       ...opts,
       docId: opts.docId ?? opts.pageId,
+      rejectionOwner: opts.rejectionOwner ?? "",
       createSocket: opts.createSocket ?? defaultSocket,
       fetcher: opts.fetcher ?? (typeof fetch === "function" ? fetch.bind(globalThis) : null),
       minBackoffMs: opts.minBackoffMs ?? 500,
@@ -212,6 +218,7 @@ export class WorldsProvider {
     this.stopped = true;
     this.unwatchOnline();
     this.clearTimers();
+    if (this.saveRetryTimer) clearTimeout(this.saveRetryTimer);
     if (this.ownsAwareness) this.awareness.setLocalState(null); // tells peers we left
     this.docs.forEach((doc, channel) => this.docListeners[channel] && doc.off("update", this.docListeners[channel]));
     this.awareness.off("update", this.onAwarenessUpdate);
@@ -232,6 +239,30 @@ export class WorldsProvider {
   /** Wait until every local change so far is in the local replica. */
   async persisted(): Promise<void> {
     await this.chain;
+    if (this.unsaved.size) throw new Error("Some changes are still in memory because local storage is unavailable");
+  }
+  pauseNetworking() { this.o.serverUrl = null; this.clearTimers(); this.socket?.close(4000, "networking paused"); }
+  /** Retry a full CRDT checkpoint, including any update whose append failed.
+   * It contains Yjs tombstones and causal history, not only visible JSON. */
+  async retryPersistence(): Promise<void> {
+    if (this.saveRetryTimer) clearTimeout(this.saveRetryTimer); this.saveRetryTimer = null;
+    for (const [channel, reset] of this.resets) await this.rejectChannel(channel, reset.reason);
+    const running = this.chain.then(async () => {
+      for (const channel of [...this.unsaved]) {
+        await this.o.store.append(this.pageId, channel, Y.encodeStateAsUpdate(this.docs[channel]), "local", true);
+        this.unsaved.delete(channel);
+      }
+      const status = await this.o.store.status(this.pageId);
+      this.refresh({ unacked: status.pending, error: null });
+      if (this.socket) this.socket.close(4000, "local persistence recovered");
+      else this.connectSoon(0);
+    });
+    this.chain = running.catch(() => { this.scheduleSaveRetry(); });
+    await running;
+  }
+  private scheduleSaveRetry() {
+    if (this.stopped || this.saveRetryTimer) return;
+    this.saveRetryTimer = setTimeout(() => { this.saveRetryTimer = null; void this.retryPersistence().catch(() => {}); }, 2000);
   }
 
   onChange(fn: Listener): () => void {
@@ -259,6 +290,7 @@ export class WorldsProvider {
   }
 
   private computeState(): SyncState {
+    if (this.unsaved.size) return "error";
     if (this.revoked) return "error";
     if (!this.o.serverUrl) return "offline";
     if (!this.socket) return this.info.state === "error" ? "error" : "offline";
@@ -294,6 +326,7 @@ export class WorldsProvider {
 
   private onDocUpdate(channel: number, update: Uint8Array, origin: unknown) {
     if (origin === ORIGIN_LOAD) return;
+    const reset = this.resets.get(channel); if (reset) { reset.dirty = true; this.unsaved.add(channel); return; }
     const remote = origin === ORIGIN_REMOTE;
     const kind = remote ? "remote" : origin === ORIGIN_FOLD ? "external" : "local";
     const step = this.chain.then(async () => {
@@ -304,6 +337,7 @@ export class WorldsProvider {
       return r;
     });
     this.chain = step.catch((e) => {
+      this.unsaved.add(channel); this.scheduleSaveRetry();
       this.refresh({ state: "error", error: `Could not save locally: ${e instanceof Error ? e.message : String(e)}` });
     });
     if (remote) return;
@@ -311,7 +345,7 @@ export class WorldsProvider {
     this.refresh({ unacked: this.info.unacked + 1 });
     void step
       .then((r) => {
-        if (r.outboxId !== null && this.handshake[channel] && this.socket?.readyState === OPEN) this.send(channel, update, { channel, outboxIds: [r.outboxId] });
+        if (!this.unsaved.size && r.outboxId !== null && this.handshake[channel] && this.socket?.readyState === OPEN) this.send(channel, update, { channel, outboxIds: [r.outboxId] });
       })
       .catch(() => undefined)
       .finally(() => {
@@ -372,7 +406,7 @@ export class WorldsProvider {
       token = null;
     }
     this.refreshToken = false;
-    if (this.stopped || this.socket) return;
+    if (this.stopped || this.socket || !this.o.serverUrl) return;
     if (!token) {
       this.refresh({ state: "error", error: "Sign in to sync this page" });
       this.connectSoon(Math.max(this.backoff(), 5000));
@@ -556,6 +590,7 @@ export class WorldsProvider {
   /** The server told us what it has: send everything it lacks, acknowledged. */
   private async onServerStep1(channel: number, serverVector: Uint8Array) {
     await this.chain; // every local change is in the outbox first
+    if (this.unsaved.size) return;
     const s = this.socket;
     if (!s || s.readyState !== OPEN) return;
     const upto = await this.o.store.outboxMax(this.pageId, channel);
@@ -570,6 +605,7 @@ export class WorldsProvider {
     const p = this.pending.get(id);
     if (!p) return;
     this.pending.delete(id);
+    if (this.resets.has(p.channel) && status === ACK_OK) return;
     if (status === ACK_OK) {
       if (p.upto !== undefined) await this.o.store.ackUpto(this.pageId, p.channel, p.upto);
       else await this.o.store.ack(p.outboxIds ?? []);
@@ -586,14 +622,27 @@ export class WorldsProvider {
    * the refused changes aside in the outbox, drop the diverged replica of
    * that channel, and let the owner rebuild it from the server.
    */
-  private async rejectChannel(channel: number, reason: string) {
-    await this.chain;
-    const ids = (await this.o.store.outbox(this.pageId)).filter((o) => o.channel === channel).map((o) => o.id);
-    await this.o.store.reject(ids, reason);
-    await this.o.store.compact(this.pageId, channel, Y.encodeStateAsUpdate(new Y.Doc()), Number.MAX_SAFE_INTEGER);
-    const s = await this.o.store.status(this.pageId).catch(() => null);
-    this.refresh({ unacked: s?.pending ?? 0, attention: `Some changes were not accepted: ${reason}` });
-    for (const fn of this.resetListeners) fn(channel, reason);
+  private rejectChannel(channel: number, reason: string): Promise<void> {
+    let reset = this.resets.get(channel);
+    if (reset?.running) return reset.running;
+    if (!reset) { reset = { id: crypto.randomUUID(), reason, dirty: true, running: null }; this.resets.set(channel,reset); this.unsaved.add(channel); this.pauseNetworking(); this.refresh({state:"error",error:"Keeping refused edits before reconnecting",resetting:true}); }
+    const captured = reset;
+    const running = this.chain.then(async () => {
+      let s: Awaited<ReturnType<LocalStore["status"]>> | null = null;
+      do {
+        captured.dirty = false;
+        const empty = new Y.Doc(); const emptyBytes = Y.encodeStateAsUpdate(empty); empty.destroy();
+        await this.o.store.archiveRejection(this.pageId,channel,captured.id,this.o.rejectionOwner,Y.encodeStateAsUpdate(this.docs[channel]),emptyBytes,captured.reason);
+        s = await this.o.store.status(this.pageId).catch(() => null);
+      } while (captured.dirty);
+      this.unsaved.delete(channel); this.resets.delete(channel);
+      this.refresh({unacked:s?.pending ?? 0,attention:`Some changes were not accepted: ${reason}`});
+      for (const fn of this.resetListeners) fn(channel,reason);
+    });
+    captured.running = running;
+    const clear = () => { if (captured.running === running) captured.running = null; }; void running.then(clear,clear);
+    this.chain = running.catch((e) => { this.refresh({state:"error",error:`Could not keep refused edits: ${e instanceof Error ? e.message : String(e)}`}); this.scheduleSaveRetry(); });
+    return running;
   }
 
   // -------------------------------------------------------------------------

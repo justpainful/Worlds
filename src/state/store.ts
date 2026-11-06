@@ -460,6 +460,6 @@ export function pageTitle(p: PageMeta | undefined | null): string {
   if (!p) return "Missing page";
   if (p.title.trim()) return p.title.trim();
   // Untitled things still say what they are.
-  const kind: Record<string, string> = { document: "document", presentation: "presentation", project: "project", gallery: "gallery", file: "file", stream: "stream" };
+  const kind: Record<string, string> = { document: "document", presentation: "presentation", drawing: "drawing", project: "project", gallery: "gallery", file: "file", stream: "stream" };
   return kind[p.kind] ? `Untitled ${kind[p.kind]}` : "Untitled";
 }

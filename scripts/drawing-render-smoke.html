@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>Drawing raster verification</title>
+<style>body{font:16px system-ui;margin:24px;color:#202023;background:#f8f8fa}canvas{max-width:48%;height:auto;border:1px solid #aaa}pre{white-space:pre-wrap}button{font:inherit;padding:8px}</style>
+<h1>Drawing raster verification</h1>
+<p>Streaming pigment, independent tile compositing, whole-stroke reference and cache replay. Synthetic data only.</p>
+<button id="run">Run raster checks</button><a id="download" hidden download="drawing-raster-checks.json">Download results</a><pre id="result">Not run</pre><div id="images"></div>
+<script type="module">
+import { DrawingRenderer } from "/src/drawing/renderer.ts";
+import { strokeDabs } from "/src/drawing/brush.ts";
+import { DEFAULT_BRUSH, newNode } from "/src/drawing/model.ts";
+import { newDrawing } from "/src/drawing/operations.ts";
+import { api } from "/src/lib/api.ts";
+import { contains } from "/src/drawing/geometry.ts";
+import { exportNodeVisible } from "/src/drawing/exportScope.ts";
+import { tileCompositor, tileCompositorSnapshot } from "/src/drawing/tileCompositor.ts";
+const W=4096,H=2048,S=512;
+const surface=(w=W,h=H)=>{const c=document.createElement("canvas");c.width=w;c.height=h;return c;};
+const sample=(x,y)=>({x,y,pressure:1,tiltX:0,tiltY:0,time:x});
+const read=c=>c.getContext("2d").getImageData(0,0,c.width,c.height).data;
+function prefilter(source,lx,ly){
+  let image=source;
+  for(const axis of ["y","x"])for(let level=0;level<(axis==="x"?lx:ly);level++){
+    const w=axis==="x"?Math.ceil(image.width/2):image.width,h=axis==="y"?Math.ceil(image.height/2):image.height,bytes=read(image),out=surface(w,h),pixels=out.getContext("2d",{willReadFrequently:true}).createImageData(w,h);
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      const sx=axis==="x"?x*2:x,sy=axis==="y"?y*2:y,indices=[(sy*image.width+sx)*4,axis==="x"?sx+1<image.width?(sy*image.width+sx+1)*4:-1:sy+1<image.height?((sy+1)*image.width+sx)*4:-1],at=(y*w+x)*4;
+      const alphas=indices.map(i=>i<0?0:bytes[i+3]),a=Math.round((alphas[0]+alphas[1])/2);pixels.data[at+3]=a;
+      for(let c=0;c<3;c++)if(a){const pigment=indices.map((i,k)=>i<0?0:Math.round(bytes[i+c]*alphas[k]/255));pixels.data[at+c]=Math.round(Math.round((pigment[0]+pigment[1])/2)*255/a);}
+    }
+    out.getContext("2d").putImageData(pixels,0,0);if(image!==source)image.width=image.height=0;image=out;
+  }
+  return image;
+}
+// Keep the final sampler separate from the readable mip backing. Otherwise
+// Canvas may silently apply another mip filter when scaling a CPU-backed image.
+function linearSource(source){const staged=surface(source.width,source.height);staged.getContext("2d").drawImage(source,0,0);return staged;}
+function compare(a,b){let differentPixels=0,maxAlphaError=0,maxPremultipliedError=0,maxFractionalError=0;const examples=[];for(let i=0;i<a.length;i+=4){const alpha=Math.abs(a[i+3]-b[i+3]);maxAlphaError=Math.max(maxAlphaError,alpha);let delta=alpha,fractional=alpha;for(let c=0;c<3;c++){const av=a[i+c]*a[i+3]/255,bv=b[i+c]*b[i+3]/255;delta=Math.max(delta,Math.abs(Math.round(av)-Math.round(bv)));fractional=Math.max(fractional,Math.abs(av-bv));}maxPremultipliedError=Math.max(maxPremultipliedError,delta);maxFractionalError=Math.max(maxFractionalError,fractional);if(delta>2){differentPixels++;if(examples.length<4)examples.push({x:i/4%W,y:Math.floor(i/4/W),actual:Array.from(a.slice(i,i+4)),expected:Array.from(b.slice(i,i+4))});}}return{differentPixels,maxAlphaError,maxPremultipliedError,maxFractionalError,examples};}
+const output=document.querySelector("#result"),images=document.querySelector("#images"),button=document.querySelector("#run"),download=document.querySelector("#download");
+button.onclick=async()=>{
+  button.disabled=true;download.hidden=true;const results=[];output.textContent="Running";
+  const cases=[
+    {name:"2048 spray across two tile batches",brush:{kind:"spray",size:2048,spacing:0.2,hardness:1},samples:[sample(1024,1024),sample(3000,1024)]},
+    {name:"crayon pigment across seams",brush:{kind:"crayon",size:100,spacing:0.15},samples:[sample(500,500),sample(2800,1400)]},
+    {name:"rotated soft brush",brush:{kind:"soft",size:70,spacing:0.12,hardness:0.2},samples:[sample(500,500),sample(3000,1500)],rotation:12,flipX:true},
+    {name:"uniform highlighter across tile batches",brush:{kind:"highlighter",size:120,opacity:0.35},samples:[sample(100,200),sample(3000,1400),sample(600,1400)]},
+    {name:"zoomed clipped spray",brush:{kind:"spray",size:180,spacing:0.1},samples:[sample(200,100),sample(3200,1400)],view:{x:1200,y:500,w:W/0.65,h:H/0.65,scale:0.65}},
+    {name:"rotated eraser keeps destination semantics",brush:{kind:"soft",size:100,spacing:0.1},samples:[sample(500,500),sample(3000,1500)],rotation:12,erase:true,background:W},
+    {name:"fractional alpha lock keeps destination alpha",brush:{kind:"hard",size:180,spacing:0.2},samples:[sample(200,500),sample(3200,1200)],alphaLock:true,background:1700,view:{x:17.5,y:0,w:W/0.75,h:H/0.75,scale:0.75}},
+    {name:"masked zoomed spray",brush:{kind:"spray",size:120,spacing:0.1},samples:[sample(200,500),sample(3200,1200)],mask:true,view:{x:800,y:200,w:W/0.75,h:H/0.75,scale:0.75}},
+    {name:"transformed brush retains layer opacity",brush:{kind:"soft",size:120,spacing:0.15},samples:[sample(300,500),sample(3100,1400)],rotation:7,layerOpacity:0.45},
+    {name:"nonuniform content scale preserves original pigment",brush:{kind:"soft",size:120,hardness:0.2,spacing:0.15},samples:[sample(300,500),sample(3100,1400)],rotation:12,flipX:true,scaleX:0.7,scaleY:0.4},
+    {name:"nonuniform uniform-pen content scale",brush:{kind:"highlighter",size:120,opacity:0.35},samples:[sample(300,500),sample(3100,1400),sample(1000,1200)],rotation:7,scaleX:0.65,scaleY:0.5},
+    {name:"scaled linked mask follows the original content",brush:{kind:"spray",size:120,spacing:0.1},samples:[sample(200,500),sample(3200,1200)],mask:true,linkedMask:true,maskWidth:1200,rotation:7,scaleX:0.7,scaleY:0.4},
+    {name:"far zoom uses area-filtered canonical pigment",brush:{kind:"spray",size:120,spacing:0.1},samples:[sample(200,500),sample(3200,1200)],view:{x:-800,y:-400,w:W/0.025,h:H/0.025,scale:0.025}},
+    {name:"anisotropic crayon content shrink retains pigment",brush:{kind:"crayon",size:80,spacing:0.15},samples:[sample(500,500),sample(3100,1400)],rotation:17,scaleX:0.01,scaleY:0.5},
+    {name:"large world translation with content minification",brush:{kind:"hard",size:120,spacing:0.15},samples:[sample(500,500),sample(3100,1400)],nodeX:1e8,nodeY:-2e8,scaleX:0.01,scaleY:0.01,view:{x:1e8-400,y:-2e8-200,w:W/0.65,h:H/0.65,scale:0.65}},
+    {name:"extreme one-axis shrink remains bounded",brush:{kind:"hard",size:120,spacing:0.15},samples:[sample(2000,1000)],scaleX:1,scaleY:0.000001},
+  ];
+  function publish(){const record={streamingPassed:results.filter(r=>typeof r.tileDifferences==="number").every(r=>r.tileDifferences===0)&&results.filter(r=>typeof r.mipTileDifferences==="number").every(r=>r.mipTileDifferences===0),compositionPassed:results.filter(r=>r.composition).every(r=>r.composition.differentPixels===0),fullRasterAcceptance:results.filter(r=>r.untiled).every(r=>r.untiled.differentPixels===0),resourcePassed:results.filter(r=>r.cache).every(r=>r.cache.pixels>=0&&r.cache.pixels<=r.cache.pixelLimit&&r.cache.spatial<=r.cache.spatialLimit&&r.maximumPatchPixels<=2048*2048&&r.mipReplayWithoutRepaint&&r.lod.x===r.lod.expectedX&&r.lod.y===r.lod.expectedY),criteria:"Premultiplied RGBA8 comparison, each channel error <=2. Fractional premultiplication error also reported. Canonical tile/mip and cache checks require exact bytes. LOD reference independently reduces the whole source on the global grid, Y then X, in aligned 2:1 passes.",results};output.textContent=JSON.stringify(record,null,2);return record;}
+  try{
+    for(const test of cases.filter(test=>!new URLSearchParams(location.search).has("only")||test.name===new URLSearchParams(location.search).get("only"))){
+      const renderer=new DrawingRenderer({tileBackend:new URLSearchParams(location.search).has("canvas")?"canvas":"auto"}),scene=newDrawing().scene,node=newNode("stroke",scene.layerOrder[0],null,{x:test.nodeX??0,y:test.nodeY??0,w:W,h:H});
+      node.samples=test.samples;node.seed=42;node.rotation=test.rotation??0;node.flipX=test.flipX??false;node.erase=!!test.erase;node.alphaLock=!!test.alphaLock;
+      if(test.scaleX||test.scaleY){node.geometrySize={w:W,h:H};node.w=W*(test.scaleX??1);node.h=H*(test.scaleY??1);}
+      node.brush={...DEFAULT_BRUSH,pressureSize:false,color:"#e5a821",...test.brush};node.opacity=0.8;scene.nodes[node.id]=node;scene.nodeOrder=[node.id];scene.layers[node.layerId].opacity=test.layerOpacity??1;
+      const view=test.view??{x:0,y:0,w:W,h:H,scale:1};
+      if(test.background){const bg=newNode("shape",node.layerId,null,{x:0,y:0,w:test.background,h:H});bg.paint.fill="#335577";bg.paint.stroke="transparent";scene.nodes[bg.id]=bg;scene.nodeOrder.unshift(bg.id);}
+      if(test.mask){scene.masks.mask={id:"mask",name:"Mask",enabled:true,inverted:false,linked:!!test.linkedMask,x:0,y:0,w:test.maskWidth??W,h:H,base:0.5,strokes:[]};node.maskId="mask";}
+      const actual=surface(),flat=surface(),glyph=surface(),whole=surface();renderer.render(actual,scene,view,{background:false});
+      // Independent direct formula in viewport-relative coordinates. Avoid both
+      // Canvas's stepwise transforms and the production composition helper.
+      const rad=node.rotation*Math.PI/180,cs=Math.cos(rad),sn=Math.sin(rad),fx=node.flipX?-1:1,fy=node.flipY?-1:1,sx=node.w/(node.geometrySize?.w??node.w),sy=node.h/(node.geometrySize?.h??node.h);
+      const matrix=new DOMMatrix([view.scale*cs*fx*sx,view.scale*sn*fx*sx,-view.scale*sn*fy*sy,view.scale*cs*fy*sy,view.scale*(node.x-view.x+node.w/2-cs*fx*node.w/2+sn*fy*node.h/2),view.scale*(node.y-view.y+node.h/2-sn*fx*node.w/2-cs*fy*node.h/2)]);
+      const mi=matrix.inverse(),lx=Math.max(0,Math.floor(Math.log2(Math.max(1,Math.hypot(mi.a,mi.c)/2)))),ly=Math.max(0,Math.floor(Math.log2(Math.max(1,Math.hypot(mi.b,mi.d)/2))));
+      let maskConstruction;
+      if(test.linkedMask){
+        const a=surface(),b=surface(),ac=a.getContext("2d"),bc=b.getContext("2d");ac.setTransform(matrix);bc.setTransform(view.scale,0,0,view.scale,-view.x*view.scale,-view.y*view.scale);bc.translate(node.w/2,node.h/2);bc.rotate(node.rotation*Math.PI/180);bc.scale(node.flipX?-1:1,1);bc.translate(-node.w/2,-node.h/2);bc.scale(node.w/node.geometrySize.w,node.h/node.geometrySize.h);
+        for(const ctx of [ac,bc]){ctx.fillStyle="rgba(255,255,255,0.5)";ctx.fillRect(0,0,test.maskWidth??W,H);}
+        const coeff=m=>[m.a,m.b,m.c,m.d,m.e,m.f];maskConstruction={expected:coeff(matrix),canvasSteps:coeff(bc.getTransform()),pixels:compare(read(a),read(b))};a.width=a.height=b.width=b.height=0;
+      }
+      const aligned=Math.abs(matrix.a)===1&&Math.abs(matrix.d)===1&&matrix.b===0&&matrix.c===0&&Number.isInteger(matrix.e)&&Number.isInteger(matrix.f);
+      const dabs=strokeDabs(node.samples,node.brush,node.seed),tiles=new Map(),tileExamples=[];let tileDifferences=0;
+      for(let y=0;y<H/S;y++)for(let x=0;x<W/S;x++){
+        const pad=node.brush.kind==="crayon"||node.brush.kind==="natural-pencil"?Math.ceil(Math.max(16,node.brush.size*(node.brush.kind==="crayon"?0.035:0.065)+2)):0;
+        const raw=surface(S+2*pad,S+2*pad),tc=raw.getContext("2d");tc.translate(pad-x*S,pad-y*S);renderer.paintDabs(tc,dabs,node.brush,scene,{x:x*S-pad,y:y*S-pad,w:S+2*pad,h:S+2*pad});const tile=surface(S,S);tile.getContext("2d",{willReadFrequently:true}).putImageData(tc.getImageData(pad,pad,S,S),0,0);raw.width=raw.height=0;tiles.set(`${x}:${y}`,tile);
+        const cached=renderer.strokes.get(`${node.id}:${x}:${y}`)?.canvas;if(cached){const a=read(cached),b=read(tile);for(let i=0;i<a.length;i++)if(a[i]!==b[i]){tileDifferences++;if(tileExamples.length<6)tileExamples.push({tile:[x,y],pixel:[Math.floor(i/4)%S,Math.floor(i/4/S)],channel:i%4,actual:a[i],expected:b[i]});}}
+      }
+      renderer.paintDabs(flat.getContext("2d"),dabs,node.brush,scene,{x:0,y:0,w:W,h:H});const wc=whole.getContext("2d");wc.setTransform(matrix);wc.drawImage(flat,0,0);
+      const stitched=surface(),sc=stitched.getContext("2d");for(let y=0;y<H/S;y++)for(let x=0;x<W/S;x++)sc.drawImage(tiles.get(`${x}:${y}`),x*S,y*S);
+      const gc=glyph.getContext("2d");gc.setTransform(matrix);gc.drawImage(stitched,0,0);stitched.width=stitched.height=0;
+      let mipTileDifferences=null;
+      if(lx||ly){
+        // Independently reduce a whole source image, never the renderer's tiles.
+        // The final comparison keeps the same per-channel tolerance of two.
+        const canonical=surface();canonical.getContext("2d",{willReadFrequently:true});for(const [id,tile]of tiles){const [x,y]=id.split(":").map(Number);canonical.getContext("2d").drawImage(tile,x*S,y*S);}const a=prefilter(canonical,lx,ly),b=prefilter(flat,lx,ly),m=new DOMMatrix([matrix.a*2**lx,matrix.b*2**lx,matrix.c*2**ly,matrix.d*2**ly,matrix.e,matrix.f]);
+        for(const [target,source]of [[glyph,a],[whole,b]]){const ctx=target.getContext("2d"),staged=linearSource(source);ctx.resetTransform();ctx.clearRect(0,0,W,H);ctx.setTransform(m);ctx.drawImage(staged,0,0);staged.width=staged.height=0;}
+        mipTileDifferences=0;const prefix=`${node.id}:lod:${lx}:${ly}:`;for(const[id,entry]of renderer.strokes){if(!id.startsWith(prefix))continue;const[x,y]=id.slice(prefix.length).split(":").map(Number),actual=read(entry.canvas),expected=a.getContext("2d").getImageData(x*S,y*S,S,S).data;for(let i=0;i<actual.length;i++)if(actual[i]!==expected[i])mipTileDifferences++;}
+        canonical.width=canonical.height=0;if(a!==canonical)a.width=a.height=0;if(b!==flat)b.width=b.height=0;
+      }
+      const compose=source=>{
+        const layer=surface(),lc=layer.getContext("2d"),out=surface();
+        if(test.mask){
+          // A grayscale mask is an independent alpha image. Applying a partial
+          // destination-in fill directly also blends geometric AA coverage and
+          // is not the same operation at the mask edge. Multiply pixel alpha
+          // explicitly here, independently of the renderer's image compositor.
+          const mask=surface(),mc=mask.getContext("2d");if(test.linkedMask)mc.setTransform(matrix);else mc.setTransform(view.scale,0,0,view.scale,-view.x*view.scale,-view.y*view.scale);mc.fillStyle="rgba(255,255,255,0.5)";mc.fillRect(0,0,test.maskWidth??W,H);
+          const ctx=source.getContext("2d"),pixels=ctx.getImageData(0,0,W,H),alpha=read(mask);for(let i=3;i<pixels.data.length;i+=4)pixels.data[i]=Math.round(pixels.data[i]*alpha[i]/255);ctx.resetTransform();ctx.clearRect(0,0,W,H);ctx.putImageData(pixels,0,0);mask.width=mask.height=0;
+        }
+        if(test.background){lc.setTransform(view.scale,0,0,view.scale,-view.x*view.scale,-view.y*view.scale);lc.fillStyle="#335577";lc.fillRect(0,0,test.background,H);lc.resetTransform();}
+        lc.globalAlpha=node.opacity*node.brush.opacity;lc.globalCompositeOperation=node.erase?"destination-out":node.alphaLock?"source-atop":"source-over";lc.drawImage(source,0,0);
+        out.getContext("2d").globalAlpha=test.layerOpacity??1;out.getContext("2d").drawImage(layer,0,0);layer.width=layer.height=0;return out;
+      };
+      const uniform=node.brush.kind==="highlighter"||node.brush.kind==="marker";
+      if(uniform){
+        for(const canvas of [glyph,whole]){const pc=canvas.getContext("2d");pc.resetTransform();pc.clearRect(0,0,W,H);pc.globalCompositeOperation="source-over";pc.setTransform(matrix);pc.strokeStyle=node.brush.color;pc.fillStyle=node.brush.color;pc.lineWidth=node.brush.size;pc.lineJoin="round";pc.lineCap=node.brush.kind==="highlighter"?"butt":"round";pc.beginPath();node.samples.forEach((p,i)=>i?pc.lineTo(p.x,p.y):pc.moveTo(p.x,p.y));pc.stroke();}
+        tileDifferences=null;
+      }
+      const expected=compose(glyph),untiled=compose(whole),pixels=read(actual),replay=surface(),generation=renderer.rasterDiagnostics.mipTilesGenerated;renderer.render(replay,scene,view,{background:false});const replayBytes=read(replay);let cacheDifferences=0;for(let i=0;i<pixels.length;i++)if(pixels[i]!==replayBytes[i])cacheDifferences++;
+      const result={name:test.name,backend:renderer.rasterDiagnostics.backend,lod:{x:renderer.rasterDiagnostics.levelX,y:renderer.rasterDiagnostics.levelY,expectedX:lx,expectedY:ly},matrix:renderer.rasterDiagnostics.sourceMatrix,referenceMatrix:[matrix.a,matrix.b,matrix.c,matrix.d,matrix.e,matrix.f],cache:renderer.cacheDiagnostics,gpu:tileCompositorSnapshot(),mipTileDifferences,mipReplayWithoutRepaint:generation===renderer.rasterDiagnostics.mipTilesGenerated,maximumPatchPixels:renderer.rasterDiagnostics.maxPatchPixels,uniformPath:uniform,tileDifferences,tileExamples,composition:compare(pixels,read(expected)),untiled:compare(pixels,read(untiled)),cacheDifferences,...(maskConstruction?{maskConstruction}:{})};results.push(result);
+      for(const old of images.querySelectorAll("canvas"))old.width=old.height=0;images.replaceChildren(actual,untiled);
+      for(const c of [flat,glyph,whole,expected,replay,...tiles.values()])c.width=c.height=0;renderer.dispose();publish();await new Promise(resolve=>requestAnimationFrame(resolve));
+    }
+    if(new URLSearchParams(location.search).has("mock")){
+      const tip=surface(16,16);tip.getContext("2d").fillStyle="#ff0000";tip.getContext("2d").fillRect(0,0,16,16);const blob=await new Promise(resolve=>tip.toBlob(resolve,"image/png")),attachment=await api.importBytes(null,"synthetic-tip.png",new Uint8Array(await blob.arrayBuffer()));
+      const renderer=new DrawingRenderer(),scene=newDrawing().scene,node=newNode("stroke",scene.layerOrder[0],null,{x:0,y:0,w:512,h:512});scene.assets.tip={id:"tip",attachmentId:attachment.id,name:"Tip",mime:"image/png",width:16,height:16};node.brush={...DEFAULT_BRUSH,kind:"texture",size:64,color:"#0000ff",tipAssetId:"tip"};node.samples=[sample(256,256)];scene.nodes[node.id]=node;scene.nodeOrder=[node.id];
+      const before=surface(512,512),after=surface(512,512),view={x:0,y:0,w:512,h:512,scale:1};renderer.render(before,scene,view,{background:false});await renderer.prepare(scene);renderer.render(after,scene,view,{background:false});const p=(c)=>Array.from(c.getContext("2d").getImageData(256,256,1,1).data);const first=p(before),loaded=p(after);results.push({name:"asynchronous textured tip invalidates cached fallback",first,loaded,passed:first[2]>first[0]&&loaded[0]>loaded[2]});for(const c of [tip,before,after])c.width=c.height=0;renderer.dispose();
+      for(const config of [{kind:"texture",size:100,angle:45,rotation:0,flipX:false},{kind:"texture",size:100,angle:45,rotation:30,flipX:true},{kind:"crayon",size:100,angle:25,rotation:17,flipX:false},{kind:"natural-pencil",size:100,angle:90,rotation:0,flipX:true}]){
+        const r=new DrawingRenderer(),s=newDrawing().scene,n=newNode("stroke",s.layerOrder[0],null,{x:130,y:140,w:20,h:20});s.assets.tip={id:"tip",attachmentId:attachment.id,name:"Tip",mime:"image/png",width:16,height:16};
+        n.brush={...DEFAULT_BRUSH,...config,pressureSize:false,tipAssetId:config.kind==="texture"?"tip":undefined,color:"#3355aa"};n.rotation=config.rotation;n.flipX=config.flipX;n.samples=[sample(0,0)];n.seed=42;s.nodes[n.id]=n;s.nodeOrder=[n.id];const original=JSON.stringify(n);await r.prepare(s);
+        const actual=surface(400,300),expected=surface(400,300),source=surface(512,512),v={x:0,y:0,w:400,h:300,scale:1};r.render(actual,s,v,{background:false});
+        const sc=source.getContext("2d");sc.translate(256,256);r.paintDabs(sc,strokeDabs(n.samples,n.brush,n.seed),n.brush,s,{x:-256,y:-256,w:512,h:512});const ec=expected.getContext("2d");ec.translate(140,150);ec.rotate(n.rotation*Math.PI/180);ec.scale(n.flipX?-1:1,1);ec.translate(-10,-10);ec.drawImage(source,-256,-256);
+        const comparison=compare(read(actual),read(expected));let overhangPixels=0,hitPixel=null,hitAlpha=0;const bytes=read(actual);for(let y=0;y<300;y++)for(let x=0;x<400;x++)if((x<130||x>=150||y<140||y>=160)&&bytes[(y*400+x)*4+3]){overhangPixels++;if(bytes[(y*400+x)*4+3]>hitAlpha){hitAlpha=bytes[(y*400+x)*4+3];hitPixel={x,y};}}
+        const hit=config.rotation===0&&!config.flipX?contains(n,{x:65,y:140}):true,scope=config.rotation===0&&!config.flipX?exportNodeVisible(s,n,s.defaultFrameId,{x:60,y:130,w:10,h:20},true):true;
+        const paintedHit=!!hitPixel&&r.hitTest(s,hitPixel)?.id===n.id;
+        results.push({name:`legacy ${config.kind} overhang rotation ${config.rotation} flip ${config.flipX}`,comparison,overhangPixels,hit,paintedHit,scope,unchanged:JSON.stringify(n)===original,passed:comparison.differentPixels===0&&overhangPixels>0&&hit&&paintedHit&&scope&&JSON.stringify(n)===original});for(const c of [actual,expected,source])c.width=c.height=0;r.dispose();
+      }
+      {
+        const r=new DrawingRenderer({tileBackend:new URLSearchParams(location.search).has("canvas")?"canvas":"auto"}),s=newDrawing().scene,n=newNode("stroke",s.layerOrder[0],null,{x:400,y:400,w:0.2,h:0.2});n.geometrySize={w:20,h:20};n.rotation=30;n.flipX=true;n.brush={...DEFAULT_BRUSH,kind:"texture",size:100,angle:45,pressureSize:false,tipAssetId:"tip"};n.samples=[sample(0,0)];n.seed=42;s.assets.tip={id:"tip",attachmentId:attachment.id,name:"Tip",mime:"image/png",width:16,height:16};s.nodes[n.id]=n;s.nodeOrder=[n.id];await r.prepare(s);
+        const actual=surface(256,256),expected=surface(256,256),source=surface(1024,1024);source.getContext("2d").translate(512,512);r.paintDabs(source.getContext("2d"),strokeDabs(n.samples,n.brush,n.seed),n.brush,s,{x:-512,y:-512,w:1024,h:1024});r.render(actual,s,{x:360,y:360,w:256,h:256,scale:1},{background:false});const reduced=prefilter(source,5,5),staged=linearSource(reduced),m=new DOMMatrix().translate(-360,-360).translate(400.1,400.1).rotate(30).scale(-1,1).translate(-0.1,-0.1).scale(0.32,0.32);expected.getContext("2d").setTransform(m);expected.getContext("2d").drawImage(staged,-16,-16);const comparison=compare(read(actual),read(expected));results.push({name:"negative-source texture overhang survives LOD",comparison,lod:{...r.rasterDiagnostics},passed:comparison.differentPixels===0&&r.rasterDiagnostics.levelX===5&&r.rasterDiagnostics.levelY===5});for(const c of [actual,expected,source,reduced,staged])c.width=c.height=0;r.dispose();
+      }
+    }
+    {
+      const renderer=new DrawingRenderer(),scene=newDrawing().scene,node=newNode("stroke",scene.layerOrder[0],null,{x:0,y:0,w:512,h:512}),view={x:0,y:0,w:512,h:512,scale:1};
+      node.brush={...DEFAULT_BRUSH,kind:"highlighter",size:40,opacity:0.35};node.samples=[sample(64,64),sample(448,448),sample(64,448),sample(448,64)];scene.nodes[node.id]=node;scene.nodeOrder=[node.id];
+      const one=surface(512,512),two=surface(512,512);renderer.render(one,scene,view,{background:false});const alpha=(c,x,y)=>c.getContext("2d").getImageData(x,y,1,1).data[3],cross=alpha(one,256,256),plain=alpha(one,128,128);
+      const second=structuredClone(node);second.id+="-second";scene.nodes[second.id]=second;scene.nodeOrder.push(second.id);renderer.render(two,scene,view,{background:false});const accumulated=alpha(two,256,256),expected=Math.round(cross+cross*(1-cross/255));
+      results.push({name:"highlighter self-crossing stays uniform and separate strokes accumulate",cross,plain,accumulated,expected,passed:cross>0&&cross===plain&&Math.abs(accumulated-expected)<=1&&accumulated>cross});
+      node.brush.kind="marker";node.brush.size=64;node.samples=[sample(256,256)];scene.nodeOrder=[node.id];renderer.render(one,scene,view,{background:false});const roundCorner=alpha(one,226,226);
+      node.brush.kind="highlighter";renderer.render(two,scene,view,{background:false});const chiselCorner=alpha(two,226,226);
+      results.push({name:"single-point round marker and chisel highlighter have distinct tips",roundCorner,chiselCorner,passed:roundCorner===0&&chiselCorner>0});for(const c of [one,two])c.width=c.height=0;renderer.dispose();
+    }
+    {
+      const renderer=new DrawingRenderer(),scene=newDrawing().scene,node=newNode("stroke",scene.layerOrder[0],null,{x:0,y:0,w:512,h:512}),view={x:0,y:0,w:512,h:512,scale:1};
+      node.brush={...DEFAULT_BRUSH,kind:"highlighter",size:80,opacity:0.5,flow:0.4,pressureCurve:2};node.samples=[{...sample(64,256),pressure:0.25},sample(448,256)];const originalSamples=JSON.stringify(node.samples);scene.nodes[node.id]=node;scene.nodeOrder=[node.id];
+      const canvas=surface(512,512),alpha=(x,y)=>canvas.getContext("2d").getImageData(x,y,1,1).data[3];renderer.render(canvas,scene,view,{background:false});const narrow=alpha(96,276),wide=alpha(416,276),centre=alpha(96,256);
+      node.brush.pressureSize=false;renderer.render(canvas,scene,view,{background:false});const constant=alpha(96,276);
+      results.push({name:"highlighter pressure curve changes width while constant flow preserves uniform alpha",narrow,wide,centre,constant,passed:narrow===0&&wide===51&&centre===51&&constant===51&&JSON.stringify(node.samples)===originalSamples});
+      node.samples=[sample(64,256),sample(256,256),sample(448,256)];node.brush.taperStart=node.brush.taperEnd=0.5;renderer.render(canvas,scene,view,{background:false});const tapered=alpha(96,276),middle=alpha(256,276);
+      results.push({name:"highlighter taper follows the stroke without accumulating opacity",tapered,middle,passed:tapered===0&&middle===51});
+      node.samples=[{...sample(256,256),pressure:0.25}];node.brush.pressureSize=true;node.brush.kind="marker";renderer.render(canvas,scene,view,{background:false});const dotCentre=alpha(256,256),dotOutside=alpha(264,256);results.push({name:"single pen-pressure marker mark uses the mapped width",dotCentre,dotOutside,passed:dotCentre>0&&dotOutside===0});canvas.width=canvas.height=0;renderer.dispose();
+    }
+    {
+      const r=new DrawingRenderer(),s=newDrawing().scene,n=newNode("stroke",s.layerOrder[0],null,{x:64,y:64,w:16,h:16}),c=surface(160,160);
+      n.brush={...DEFAULT_BRUSH,kind:"soft",size:40,hardness:1,pressureSize:false,color:"#ff0000"};n.samples=[sample(0,0)];s.nodes[n.id]=n;s.nodeOrder=[n.id];r.render(c,s,{x:0,y:0,w:160,h:160,scale:1},{background:false});const pixel=Array.from(c.getContext("2d").getImageData(64,64,1,1).data);results.push({name:"soft brush at full hardness remains visible",pixel,passed:pixel[0]===255&&pixel[3]===255});r.dispose();c.width=c.height=0;
+    }
+    if(!new URLSearchParams(location.search).has("only")){
+      const r=new DrawingRenderer({tileBackend:new URLSearchParams(location.search).has("canvas")?"canvas":"auto"}),s=newDrawing().scene,c=surface(512,512),v={x:0,y:0,w:512,h:512,scale:1};
+      for(let i=0;i<150;i++){const n=newNode("stroke",s.layerOrder[0],null,{x:0,y:0,w:512,h:512});n.rotation=7;n.opacity=0.01;n.brush={...DEFAULT_BRUSH,size:128,color:"#3355aa",pressureSize:false};n.samples=[sample(256,256)];n.seed=42;s.nodes[n.id]=n;s.nodeOrder.push(n.id);}
+      r.render(c,s,v,{background:false});const before=read(c),firstCount=r.rasterDiagnostics.canonicalTilesGenerated;r.render(c,s,v,{background:false});const after=read(c),comparison=compare(before,after),cpu=r.cacheDiagnostics,gpu=tileCompositorSnapshot(),repaint=r.rasterDiagnostics.canonicalTilesGenerated>firstCount;r.dispose();const released=tileCompositorSnapshot();results.push({name:"cache eviction replays 150 independent transformed strokes",comparison,cpu,gpu,repaint,released,passed:comparison.differentPixels===0&&cpu.pixels<=cpu.pixelLimit&&gpu.bytes<=gpu.limit&&repaint&&released.bytes===0&&released.owners===0});c.width=c.height=0;publish();
+    }
+    if(!new URLSearchParams(location.search).has("only")&&!new URLSearchParams(location.search).has("canvas")){
+      const r=new DrawingRenderer(),s=newDrawing().scene,n=newNode("stroke",s.layerOrder[0],null,{x:0,y:0,w:512,h:512});n.brush={...DEFAULT_BRUSH,size:60,color:"#3355aa",pressureSize:false};n.samples=[sample(100,100),sample(400,400)];n.seed=42;s.nodes[n.id]=n;s.nodeOrder=[n.id];const c=surface(512,512),reference=surface(512,512),source=surface(512,512),view={x:0,y:0,w:512/0.75,h:512/0.75,scale:0.75};r.paintDabs(source.getContext("2d"),strokeDabs(n.samples,n.brush,n.seed),n.brush,s,{x:0,y:0,w:512,h:512});reference.getContext("2d").scale(0.75,0.75);reference.getContext("2d").drawImage(source,0,0);r.render(c,s,view,{background:false});const gpu=tileCompositor(),gl=gpu?.canvas.getContext("webgl2"),extension=gl?.getExtension("WEBGL_lose_context");
+      if(extension){
+        // Yield past event dispatch before requesting restoration: the browser
+        // marks the context restorable after the cancelled lost event returns.
+        // https://registry.khronos.org/webgl/specs/latest/1.0/#5.15.2
+        const event=name=>new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error(name+" timed out; "+JSON.stringify(tileCompositorSnapshot())+"; error="+gl.getError())),10000);gpu.canvas.addEventListener(name,event=>{clearTimeout(timer);setTimeout(()=>resolve({cancelled:event.defaultPrevented}),0);},{once:true});});
+        const lost=event("webglcontextlost");extension.loseContext();const loss=await lost;r.render(c,s,view,{background:false});const fallback=compare(read(c),read(reference)),fallbackBackend=r.rasterDiagnostics.backend,restored=event("webglcontextrestored");extension.restoreContext();await restored;r.render(c,s,view,{background:false});const recovered=compare(read(c),read(reference)),recoveredBackend=r.rasterDiagnostics.backend;r.dispose();const released=tileCompositorSnapshot();results.push({name:"actual WebGL context loss falls back and restores",loss,fallback,fallbackBackend,recovered,recoveredBackend,released,passed:loss.cancelled&&fallback.differentPixels===0&&fallbackBackend==="canvas"&&recovered.differentPixels===0&&recoveredBackend==="gpu"&&released.bytes===0});
+      }
+      else{r.dispose();results.push({name:"actual WebGL context loss falls back and restores",skipped:true,reason:"WEBGL_lose_context is unavailable"});}for(const a of[c,reference,source])a.width=a.height=0;
+    }
+    const record=publish();record.completed=true;record.semanticPassed=results.filter(r=>r.passed!==undefined).every(r=>r.passed);record.texturePassed=results.filter(r=>r.first).every(r=>r.passed);output.textContent=JSON.stringify(record,null,2);download.href=URL.createObjectURL(new Blob([JSON.stringify(record,null,2)],{type:"application/json"}));download.hidden=false;
+  }catch(error){output.textContent=JSON.stringify({passed:false,results,error:String(error)},null,2);}
+  finally{button.disabled=false;}
+};
+</script></html>

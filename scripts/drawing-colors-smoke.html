@@ -1,0 +1,14 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Color sampling verification</title><h1>Color sampling verification</h1><button id="run">Run color checks</button><a id="download" hidden download="drawing-color-checks.json">Download results</a><pre id="result">Not run</pre>
+<script type="module">
+import '/src/dev/mockTauri.ts';
+import {newScene,newLayer,newNode} from '/src/drawing/model.ts';
+import {sampleDrawingColor} from '/src/drawing/colorSample.ts';
+document.querySelector('#run').onclick=async()=>{
+ const s=newScene(),f=s.frames[s.defaultFrameId],l=newLayer('Half opacity multiply'),cases=[];Object.assign(f,{w:32,h:32,background:'#ff0000'});Object.assign(l,{opacity:.5,blend:'multiply'});s.layers[l.id]=l;s.layerOrder.push(l.id);const n=newNode('shape',l.id,f.id,{x:4,y:4,w:16,h:16});n.shape='rect';n.paint.fill='#0000ff80';n.paint.strokeWidth=0;s.nodes[n.id]=n;s.nodeOrder.push(n.id);const before=JSON.stringify(s);
+ const check=(name,passed,detail)=>cases.push({name,passed,detail});
+ try{for(const [name,p,merged,expected]of [['current source retains half-alpha pigment',{x:8,y:8},false,'#0000ff80'],['merged source applies multiply and half layer opacity',{x:8,y:8},true,'#bf0000'],['empty current source stays transparent',{x:30,y:30},false,'#00000000'],['empty merged source includes frame background',{x:30,y:30},true,'#ff0000']]){const color=await sampleDrawingColor(s,p,f.id,l.id,merged,new AbortController().signal);check(name,color===expected,{actual:color,expected});}
+ const c=new AbortController(),task=sampleDrawingColor(s,{x:8,y:8},f.id,l.id,true,c.signal);c.abort();let refused=false;try{await task;}catch(e){refused=e.name==='AbortError';}check('cancel during preparation discards the result',refused);check('sampling does not mutate source or history',before===JSON.stringify(s));
+ }catch(e){check('unexpected error',false,String(e));}
+ const result={passed:cases.every(c=>c.passed),cases,limitations:['Actual production renderer and sampling helper; synthetic browser scene. Native UI/physical pen not exercised.']},out=document.querySelector('#result'),link=document.querySelector('#download');out.textContent=JSON.stringify(result,null,2);link.href=URL.createObjectURL(new Blob([out.textContent],{type:'application/json'}));link.hidden=false;
+};
+</script></html>

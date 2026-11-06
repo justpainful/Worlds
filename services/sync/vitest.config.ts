@@ -11,6 +11,7 @@ const privateJwk = { ...privateKey.export({ format: "jwk" }), kid: KID };
 const JWKS_URL = "https://identity.test/.well-known/jwks.json";
 
 export default defineConfig({
+  resolve: { dedupe: ["yjs"] },
   plugins: [
     cloudflareTest({
       wrangler: { configPath: "./wrangler.toml" },
@@ -36,6 +37,9 @@ export default defineConfig({
     }),
   ],
   test: {
+    // The fake identity service's outage switch is shared across files. Keep
+    // files isolated in time; multi-client concurrency stays inside each test.
+    fileParallelism: false,
     testTimeout: 30_000,
   },
 });

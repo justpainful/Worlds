@@ -65,6 +65,31 @@ async function provider(
 }
 
 const synced = (...ps: WorldsProvider[]) => until(() => ps.every((p) => p.info.state === "synced"), "synced");
+describe("local storage failure", () => {
+  it("archives full causal context and late input before resetting, and preserves everything when archiving fails", async () => {
+    const server = new FakeSyncServer(); server.levels.set("alice","edit"); const n = net(), a = await provider(server,"alice",undefined,{net:n,rejectionOwner:"alice"}); await synced(a.p);
+    a.text().insert(0,"Acknowledged context. "); await synced(a.p); setOnline(n,false); a.text().insert(a.text().length,"Refused change. "); await a.p.persisted(); server.levels.set("alice","view");
+    const archive = a.store.archiveRejection.bind(a.store); let release!: () => void, started = false;
+    const gate = new Promise<void>((resolve) => {release=resolve;}); a.store.archiveRejection = async () => {started=true;await gate;throw new Error("disk full during archive");};
+    const resets: number[]=[];a.p.onReset((ch)=>resets.push(ch));setOnline(n,true);await until(()=>started,"archive started");
+    a.text().insert(a.text().length,"Late input.");release();await until(()=>!!a.p.info.error?.includes("disk full during archive"),"archive failure");
+    expect(resets).toHaveLength(0);expect(a.store.rejections).toHaveLength(0);await expect(a.p.persisted()).rejects.toThrow("still in memory");expect(server.text()).toBe("Acknowledged context. ");
+    let savedOnce=false,releaseReply!:()=>void;const replyGate=new Promise<void>((resolve)=>{releaseReply=resolve;});
+    a.store.archiveRejection=async(...args)=>{await archive(...args);if(!savedOnce){savedOnce=true;await replyGate;}};
+    const retry=a.p.retryPersistence();await until(()=>savedOnce,"archive persisted before reply");a.text().insert(a.text().length," More input.");releaseReply();await retry;expect(resets).toEqual([CH_CONTENT]);expect(a.store.rejections).toHaveLength(1);
+    const saved=a.store.rejections[0],doc=new Y.Doc();Y.applyUpdate(doc,await a.store.rejectedSnapshot("page1",saved.id,"alice"));expect(doc.getText("t").toString()).toBe("Acknowledged context. Refused change. Late input. More input.");doc.destroy();
+    expect((await a.store.rejected("page1","another-account")).items).toHaveLength(0);expect((await a.store.status("page1")).pending).toBe(0);
+  });
+  it("retains failed CRDT updates, blocks network transmission, and retries a durable checkpoint", async () => {
+    const server = new FakeSyncServer(); server.levels.set("alice", "edit");
+    const a = await provider(server, "alice"); await synced(a.p);
+    a.store.broken = true; a.text().insert(0, "Kept through disk failure");
+    await expect(a.p.persisted()).rejects.toThrow("still in memory");
+    expect(a.p.info.state).toBe("error"); expect(server.text()).toBe("");
+    a.store.broken = false; await a.p.retryPersistence(); await synced(a.p);
+    expect(server.text()).toBe("Kept through disk failure"); expect(await a.store.outbox("page1")).toHaveLength(0);
+  });
+});
 
 describe("WorldsProvider", () => {
   it("keeps offline edits in the outbox and drains it when back online", async () => {

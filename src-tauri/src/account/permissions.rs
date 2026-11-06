@@ -121,6 +121,9 @@ pub fn require(conn: &Connection, page_id: &str, need: Level) -> Result<()> {
 
 /// Tools that only read. Everything else is treated as a write.
 const READ_TOOLS: &[&str] = &[
+    "drawing_library_list",
+    "drawing_library_read",
+    "drawing_reference_read",
     "pages_search",
     "pages_list",
     "pages_read",
@@ -176,6 +179,8 @@ const READ_TOOLS: &[&str] = &[
     "blocks_list_by_type",
     "resources_list",
     "presentations_read",
+    "drawings_read",
+    "drawings_versions",
 ];
 
 /// Destructive page operations need full access in a Team workspace.

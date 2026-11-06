@@ -12,11 +12,17 @@ pub fn instantiate_template(
     parent_id: Option<&str>,
     title: Option<&str>,
 ) -> Result<PageMeta> {
+    instantiate_template_authorized(conn,ctx,template_id,parent_id,title,None)
+}
+pub fn instantiate_template_authorized(conn: &Connection, ctx: &Ctx, template_id: &str, parent_id: Option<&str>, title: Option<&str>, permit: Option<&crate::drawing_copy::Permit>) -> Result<PageMeta> {
+    if conn.is_autocommit() {let tx=conn.unchecked_transaction()?;let page=instantiate_template_authorized(&tx,ctx,template_id,parent_id,title,permit)?;tx.commit()?;return Ok(page);}
     let t = require_page(conn, template_id)?;
     if t.kind != "template" {
         bail!("not a template");
     }
-    let page = duplicate_page(conn, ctx, template_id, true, Some("page"), Some(parent_id))?;
+    let template = get_page(conn, template_id)?.ok_or_else(|| anyhow!("template not found"))?;
+    let resource_kind = template.metadata.get("templateResourceKind").and_then(Value::as_str).unwrap_or("page");
+    let page = duplicate_page_authorized(conn, ctx, template_id, true, Some(resource_kind), Some(parent_id),permit)?;
     let today = chrono::Local::now().format("%Y-%m-%d").to_string();
     let final_title = title.map(str::to_string).unwrap_or_else(|| t.title.replace("{{date}}", &today));
     // Fill {{date}} tokens in blocks.
@@ -40,7 +46,15 @@ pub fn instantiate_template(
 }
 
 pub fn save_as_template(conn: &Connection, ctx: &Ctx, page_id: &str) -> Result<PageMeta> {
-    let t = duplicate_page(conn, ctx, page_id, true, Some("template"), Some(None))?;
+    save_as_template_authorized(conn,ctx,page_id,None)
+}
+pub fn save_as_template_authorized(conn: &Connection, ctx: &Ctx, page_id: &str, permit: Option<&crate::drawing_copy::Permit>) -> Result<PageMeta> {
+    if conn.is_autocommit() {let tx=conn.unchecked_transaction()?;let page=save_as_template_authorized(&tx,ctx,page_id,permit)?;tx.commit()?;return Ok(page);}
+    let source = require_page(conn, page_id)?;
+    let t = duplicate_page_authorized(conn, ctx, page_id, true, Some("template"), Some(None),permit)?;
+    if source.kind == "drawing" {
+        conn.execute("UPDATE pages SET metadata = json_remove(json_set(metadata, '$.templateResourceKind', 'drawing'), '$.experiment') WHERE id = ?1", [&t.id])?;
+    }
     conn.execute("UPDATE pages SET template_category = 'Custom' WHERE id = ?1", [&t.id])?;
     require_page(conn, &t.id)
 }

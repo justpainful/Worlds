@@ -31,7 +31,7 @@ function caret(user: Record<string, unknown>): HTMLElement {
 
 function anchorRange(state: EditorState, anchor: Anchor | null): { from: number; to: number } | null {
   const ys = ySyncPluginKey.getState(state) as { doc: Y.Doc; type: Y.XmlFragment; binding: { mapping: Map<unknown, unknown> } | null } | undefined;
-  if (!ys?.binding || !anchor) return null;
+  if (!ys?.binding || !anchor || !("start" in anchor)) return null;
   try {
     const from = relativePositionToAbsolutePosition(ys.doc, ys.type, Y.createRelativePositionFromJSON(anchor.start), ys.binding.mapping as never);
     const to = relativePositionToAbsolutePosition(ys.doc, ys.type, Y.createRelativePositionFromJSON(anchor.end), ys.binding.mapping as never);

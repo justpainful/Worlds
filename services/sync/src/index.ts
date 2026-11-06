@@ -9,6 +9,7 @@ import type { Env } from "./env";
 import { applyEvent, parseEvent, validSignature } from "./events";
 import { cors, json, problem } from "./http";
 import { type AccessLevel, CH_COMMENTS, CH_CONTENT, PROTOCOL } from "./protocol";
+import type { DrawingWireSeed, DrawingWireWrite } from "../../../src/drawing/wire";
 
 export { DocRoom } from "./doc";
 export { WorkspaceHub } from "./hub";
@@ -20,7 +21,9 @@ async function authenticate(request: Request, env: Env): Promise<TokenClaims | R
   const token = tokenFrom(request);
   if (!token) return problem(401, "missing access token");
   try {
-    return await verifyToken(token, { jwksUrl: env.JWKS_URL, issuer: env.JWT_ISSUER, audience: env.JWT_AUDIENCE });
+    const claims = await verifyToken(token, { jwksUrl: env.JWKS_URL, issuer: env.JWT_ISSUER, audience: env.JWT_AUDIENCE });
+    if (await env.INBOXES.getByName(claims.sub).tokenRevoked(claims.dev, claims.iat)) return problem(401, "device or session revoked");
+    return claims;
   } catch (e) {
     if (e instanceof AuthError) return problem(401, e.message);
     return problem(503, "could not verify token");
@@ -41,6 +44,14 @@ async function readJson(request: Request): Promise<unknown> {
   } catch {
     return null;
   }
+}
+async function readDrawingJson(request: Request): Promise<unknown> {
+  const limit = 64 * 1024 * 1024;
+  if (Number(request.headers.get("content-length") ?? 0) > limit) throw new Error("Drawing request exceeds the size limit");
+  if (!request.body) return null;
+  const reader = request.body.getReader(), decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }); let length = 0, body = "";
+  try { for (;;) { const { value, done } = await reader.read(); if (done) break; length += value.byteLength; if (length > limit) throw new Error("Drawing request exceeds the size limit"); body += decoder.decode(value, { stream: true }); } body += decoder.decode(); return JSON.parse(body); }
+  catch (e) { await reader.cancel(); throw e; }
 }
 
 async function route(request: Request, env: Env): Promise<Response> {
@@ -125,6 +136,41 @@ async function route(request: Request, env: Env): Promise<Response> {
   if (level instanceof Response) return level;
   if (level === "none") return problem(403, "no access to this document");
   const room = env.DOCS.getByName(`${workspaceId}/${docId}`);
+
+  if(rest[0]==="drawing"&&rest.length===2&&["export-policy","export-authorize"].includes(rest[1])){
+    if(rest[1]==="export-policy"&&method==="GET"){const result=await room.drawingExportPolicy(workspaceId,docId,userId,claims.dev,claims.iat);return json(result,result.ok?200:result.status);}
+    if(rest[1]==="export-policy"&&method!=="PUT"||rest[1]==="export-authorize"&&method!=="POST")return problem(405,"method not allowed");
+    const body=await readJson(request);if(!body||typeof body!=="object")return problem(400,"invalid export request");if(JSON.stringify(body).length>1024*1024)return problem(413,"export request too large");
+    const result=rest[1]==="export-policy"?await room.drawingExportPolicy(workspaceId,docId,userId,claims.dev,claims.iat,body as import("../../../src/drawing/exportPolicy").DrawingExportPolicyUpdate):await room.drawingExportAuthorize(workspaceId,docId,userId,claims.dev,claims.iat,body);
+    return json(result,result.ok?200:result.status);
+  }
+
+  if (rest[0] === "drawing" && rest[1] === "state" && rest.length === 2) {
+    if (method === "GET") {
+      const after = url.searchParams.has("after") ? Number(url.searchParams.get("after")) : undefined, generation = url.searchParams.get("generation") ?? undefined;
+      if (after !== undefined && (!Number.isSafeInteger(after) || after < 0)) return problem(400, "invalid drawing cursor");
+      const result = await room.drawingRead(workspaceId, docId, userId, claims.dev, claims.iat, generation, after); return json(result, result.ok ? 200 : result.status);
+    }
+    if (method !== "PUT") return problem(405, "method not allowed");
+    if (!atLeast(level, "edit")) return problem(403, "edit access required");
+    try { const result = await room.drawingInitialize(workspaceId, docId, userId, claims.dev, claims.iat, await readDrawingJson(request) as DrawingWireSeed); return json(result, result.ok ? 200 : result.status); }
+    catch (e) { return problem(400, e instanceof Error ? e.message : "invalid drawing request"); }
+  }
+  if (rest[0] === "drawing" && rest[1] === "operations" && rest.length === 2 && method === "POST") {
+    if (!atLeast(level, "edit")) return problem(403, "edit access required");
+    try { const result = await room.drawingApply(workspaceId, docId, userId, claims.dev, claims.iat, await readDrawingJson(request) as DrawingWireWrite); return json(result, result.ok ? 200 : result.status); }
+    catch (e) { return problem(400, e instanceof Error ? e.message : "invalid drawing operation"); }
+  }
+
+  if (rest[0] === "drawing" && rest[1] === "leases" && rest.length === 2) {
+    if (method === "GET") { const result = await room.drawingLeases(workspaceId, docId, userId); return json(result, result.ok ? 200 : result.status); }
+    if (method !== "POST") return problem(405, "method not allowed");
+    if (!atLeast(level, "edit")) return problem(403, "edit access required");
+    if (Number(request.headers.get("content-length") ?? 0) > 4096) return problem(413, "drawing lease request too large");
+    const body = await readJson(request); if (JSON.stringify(body).length > 4096) return problem(413, "drawing lease request too large");
+    const result = await room.drawingLease(workspaceId, docId, userId, claims.dev, claims.iat, body);
+    return json(result, result.ok ? 200 : result.status);
+  }
 
   if (rest[0] === "sync" && rest.length === 1 && method === "GET") {
     if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") return problem(426, "expected websocket upgrade");

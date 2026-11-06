@@ -13,6 +13,15 @@ use serde_json::{json, Value};
 pub fn tools() -> Vec<Value> {
     let id = json!({ "type": "string" });
     vec![
+        tool("drawings_read", "Read a drawing's revision, editable scene, frames, layers, elements and operation journal.", json!({ "id": id }), &["id"]),
+        tool("drawings_apply", "Apply one validated, revision-checked drawing operation. Read first. Uses the signed-in user's rights and retains undo history.", json!({ "id": id, "operation": { "type": "object" } }), &["id", "operation"]),
+        tool("drawings_versions", "List saved drawing versions.", json!({ "id": id }), &["id"]),
+        tool("drawing_library_list", "List reusable drawing material visible in this drawing's personal and shared libraries.", json!({ "id": id }), &["id"]),
+        tool("drawing_library_read", "Read an authorized immutable library publication, editable scene and settings. Optional version chooses an older publication.", json!({ "id": id, "version": { "type": "integer" } }), &["id"]),
+        tool("drawing_library_publish", "Publish reusable drawing material. Read first; updates require itemId and expectedVersion. Input includes sourceId, name, kind, scope, tags, scene and payload. Keeps originals independent.", json!({ "input": { "type": "object" } }), &["input"]),
+        tool("drawing_library_remove", "Move a library item to Trash. Inserted copies stay available.", json!({ "id": id }), &["id"]),
+        tool("drawing_reference_read", "Read the current user's authorized source preview. Denied, missing and deleted sources return the same unavailable state without a title.", json!({ "id": id }), &["id"]),
+        tool("drawing_region_task", "Create a real task page with a drawing region preview and return link. Requires edit on the drawing.", json!({ "id": id, "frameId": id, "camera": { "type": "object" }, "title": { "type": "string" } }), &["id", "frameId", "camera", "title"]),
         tool(
             "resources_list",
             "List resources of any kind (page, document, presentation, project, gallery, file, stream) with id, title, kind and parent. Optional filters: kind, parentId.",
@@ -127,8 +136,21 @@ fn slide_texts(content: &Value) -> Vec<Value> {
         .unwrap_or_default()
 }
 
-pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Option<Value>> {
+pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value, permit: Option<&crate::drawing_copy::Permit>) -> Result<Option<Value>> {
     let out = match name {
+        "drawings_read" => crate::drawing::load(conn, s(a, "id")?)?,
+        "drawings_versions" => crate::drawing::versions(conn, s(a, "id")?)?,
+        "drawing_library_list" => crate::drawing_library::list(conn, s(a, "id")?)?,
+        "drawing_library_read" => crate::drawing_library::read(conn, s(a, "id")?, a["version"].as_i64())?,
+        "drawing_library_publish" => crate::drawing_library::publish_authorized(conn, serde_json::from_value(a["input"].clone())?,permit)?,
+        "drawing_library_remove" => { crate::drawing_library::remove(conn, s(a, "id")?)?; json!({ "removed": true }) }
+        "drawing_reference_read" => crate::drawing_references::read(conn, s(a, "id")?)?,
+        "drawing_region_task" => json!(crate::drawing_references::create_task(conn, s(a, "id")?, s(a, "frameId")?, a["camera"].clone(), s(a, "title")?)?),
+        "drawings_apply" => {
+            let mut op = a.get("operation").cloned().ok_or_else(|| anyhow!("missing drawing operation"))?;
+            op["actor"] = json!(store::profile(conn)?.id);
+            crate::drawing::apply(conn, ctx, s(a, "id")?, op)?
+        }
         "resources_list" => {
             let kind = os(a, "kind");
             let parent = os(a, "parentId");
@@ -148,6 +170,7 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
             let metadata = match kind {
                 "document" => json!({ "doc": { "size": "A4", "orientation": "portrait" } }),
                 "presentation" => json!({ "deck": { "aspect": "16:9" } }),
+                "drawing" => json!({}),
                 "project" => json!({ "project": { "status": "active", "description": "", "links": [] } }),
                 "gallery" => json!({ "gallery": { "view": "grid" } }),
                 "stream" => {
@@ -172,6 +195,7 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
             let icon = match kind {
                 "document" => "pi:document",
                 "presentation" => "pi:presentation",
+                "drawing" => "pi:paintbrush",
                 "project" => "pi:briefcase",
                 "gallery" => "pi:image",
                 _ => "pi:film",

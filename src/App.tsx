@@ -16,6 +16,7 @@ import { installContextMenu } from "./shell/ContextMenu";
 import { AutomationHost } from "./automations/AutomationEditor";
 import { markReady, startMonitor } from "./perf/monitor";
 import { PerfOverlay } from "./perf/PerfOverlay";
+import { startDrawingSyncManager } from "./drawing/syncManager";
 
 export function App() {
   const ready = useStore((s) => s.ready);
@@ -42,6 +43,7 @@ export function App() {
 
   useEffect(() => {
     if (!ready) return;
+    startDrawingSyncManager();
     const unsubs: Promise<() => void>[] = [];
     // Writes from the MCP tool server or the automation runner.
     unsubs.push(

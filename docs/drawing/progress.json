@@ -1,0 +1,305 @@
+{
+  "auditedAt": "2026-11-06",
+  "scopeFingerprint": "4dce9a2b37fbe5c4f725f1ad00ca2e2946f4059a8eede13d0b9aff21a6f68a20",
+  "total": 232,
+  "verified": 127,
+  "implemented": 63,
+  "partial": 35,
+  "pending": 7,
+  "remaining": 105,
+  "percent": 54.74,
+  "majorAxes": 29,
+  "closedAxes": 0,
+  "groups": [
+    {
+      "id": "R01",
+      "title": "تكامل الرسم داخل وورلدز",
+      "total": 8,
+      "verified": 2,
+      "implemented": 4,
+      "partial": 2,
+      "pending": 0,
+      "percent": 25
+    },
+    {
+      "id": "R02",
+      "title": "الواجهة والتفاعل",
+      "total": 6,
+      "verified": 3,
+      "implemented": 2,
+      "partial": 1,
+      "pending": 0,
+      "percent": 50
+    },
+    {
+      "id": "R03",
+      "title": "محرك الرسم",
+      "total": 8,
+      "verified": 5,
+      "implemented": 1,
+      "partial": 2,
+      "pending": 0,
+      "percent": 62.5
+    },
+    {
+      "id": "R04",
+      "title": "الفرشاة والإدخال",
+      "total": 9,
+      "verified": 3,
+      "implemented": 6,
+      "partial": 0,
+      "pending": 0,
+      "percent": 33.33
+    },
+    {
+      "id": "R05",
+      "title": "الممحاة والتعبئة",
+      "total": 8,
+      "verified": 3,
+      "implemented": 3,
+      "partial": 2,
+      "pending": 0,
+      "percent": 37.5
+    },
+    {
+      "id": "R06",
+      "title": "الألوان والتدرجات",
+      "total": 7,
+      "verified": 6,
+      "implemented": 0,
+      "partial": 1,
+      "pending": 0,
+      "percent": 85.71
+    },
+    {
+      "id": "R07",
+      "title": "التحديد والتحويل",
+      "total": 13,
+      "verified": 10,
+      "implemented": 2,
+      "partial": 1,
+      "pending": 0,
+      "percent": 76.92
+    },
+    {
+      "id": "R08",
+      "title": "الأشكال والمسارات",
+      "total": 8,
+      "verified": 3,
+      "implemented": 3,
+      "partial": 2,
+      "pending": 0,
+      "percent": 37.5
+    },
+    {
+      "id": "R09",
+      "title": "النص العربي والإنجليزي",
+      "total": 7,
+      "verified": 5,
+      "implemented": 1,
+      "partial": 1,
+      "pending": 0,
+      "percent": 71.43
+    },
+    {
+      "id": "R10",
+      "title": "الطبقات",
+      "total": 8,
+      "verified": 3,
+      "implemented": 3,
+      "partial": 2,
+      "pending": 0,
+      "percent": 37.5
+    },
+    {
+      "id": "R11",
+      "title": "تعديل الصور",
+      "total": 7,
+      "verified": 4,
+      "implemented": 1,
+      "partial": 2,
+      "pending": 0,
+      "percent": 57.14
+    },
+    {
+      "id": "F01",
+      "title": "العالم والإطارات",
+      "total": 9,
+      "verified": 4,
+      "implemented": 4,
+      "partial": 1,
+      "pending": 0,
+      "percent": 44.44
+    },
+    {
+      "id": "F02",
+      "title": "روابط وورلدز والمهام",
+      "total": 9,
+      "verified": 7,
+      "implemented": 2,
+      "partial": 0,
+      "pending": 0,
+      "percent": 77.78
+    },
+    {
+      "id": "F03",
+      "title": "الشروحات والروابط المكانية",
+      "total": 9,
+      "verified": 7,
+      "implemented": 2,
+      "partial": 0,
+      "pending": 0,
+      "percent": 77.78
+    },
+    {
+      "id": "F04",
+      "title": "الأقنعة والتنقيح",
+      "total": 7,
+      "verified": 4,
+      "implemented": 0,
+      "partial": 3,
+      "pending": 0,
+      "percent": 57.14
+    },
+    {
+      "id": "F05",
+      "title": "التجارب والمقارنة",
+      "total": 7,
+      "verified": 5,
+      "implemented": 2,
+      "partial": 0,
+      "pending": 0,
+      "percent": 71.43
+    },
+    {
+      "id": "F06",
+      "title": "الخطوات والعرض",
+      "total": 8,
+      "verified": 2,
+      "implemented": 5,
+      "partial": 1,
+      "pending": 0,
+      "percent": 25
+    },
+    {
+      "id": "F07",
+      "title": "المكتبة القابلة لإعادة الاستخدام",
+      "total": 10,
+      "verified": 7,
+      "implemented": 2,
+      "partial": 0,
+      "pending": 1,
+      "percent": 70
+    },
+    {
+      "id": "F08",
+      "title": "التعاون والصلاحيات",
+      "total": 11,
+      "verified": 9,
+      "implemented": 1,
+      "partial": 1,
+      "pending": 0,
+      "percent": 81.82
+    },
+    {
+      "id": "F09",
+      "title": "الليزر",
+      "total": 4,
+      "verified": 2,
+      "implemented": 1,
+      "partial": 1,
+      "pending": 0,
+      "percent": 50
+    },
+    {
+      "id": "F10",
+      "title": "تصحيح الأشكال تلقائيًا",
+      "total": 4,
+      "verified": 2,
+      "implemented": 1,
+      "partial": 1,
+      "pending": 0,
+      "percent": 50
+    },
+    {
+      "id": "R18",
+      "title": "قلم التحديد",
+      "total": 6,
+      "verified": 3,
+      "implemented": 2,
+      "partial": 1,
+      "pending": 0,
+      "percent": 50
+    },
+    {
+      "id": "R19",
+      "title": "أنواع الفرش والألوان",
+      "total": 5,
+      "verified": 1,
+      "implemented": 4,
+      "partial": 0,
+      "pending": 0,
+      "percent": 20
+    },
+    {
+      "id": "R12",
+      "title": "الحفظ والاسترجاع",
+      "total": 9,
+      "verified": 7,
+      "implemented": 1,
+      "partial": 1,
+      "pending": 0,
+      "percent": 77.78
+    },
+    {
+      "id": "R13",
+      "title": "الاستيراد والتصدير",
+      "total": 14,
+      "verified": 9,
+      "implemented": 3,
+      "partial": 2,
+      "pending": 0,
+      "percent": 64.29
+    },
+    {
+      "id": "R14",
+      "title": "اختصارات لوحة المفاتيح",
+      "total": 6,
+      "verified": 1,
+      "implemented": 5,
+      "partial": 0,
+      "pending": 0,
+      "percent": 16.67
+    },
+    {
+      "id": "R15",
+      "title": "تكامل Rust وMCP والمزامنة",
+      "total": 8,
+      "verified": 6,
+      "implemented": 1,
+      "partial": 1,
+      "pending": 0,
+      "percent": 75
+    },
+    {
+      "id": "R16",
+      "title": "الأداء وحدود الذاكرة",
+      "total": 8,
+      "verified": 4,
+      "implemented": 1,
+      "partial": 2,
+      "pending": 1,
+      "percent": 50
+    },
+    {
+      "id": "R17",
+      "title": "التحقق النهائي",
+      "total": 9,
+      "verified": 0,
+      "implemented": 0,
+      "partial": 4,
+      "pending": 5,
+      "percent": 0
+    }
+  ]
+}

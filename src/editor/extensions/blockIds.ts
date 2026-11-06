@@ -15,6 +15,7 @@ export const BLOCK_TYPES = [
   "callout",
   "prompt",
   "pageLink",
+  "drawingEmbed",
   "image",
   "video",
   "file",

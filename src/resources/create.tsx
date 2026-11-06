@@ -17,6 +17,7 @@ const LINE_ICON: Record<ResourceKind, IconName> = {
   page: "page",
   document: "text",
   presentation: "monitor",
+  drawing: "appearance",
   project: "folder",
   gallery: "image",
   file: "upload",

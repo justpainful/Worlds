@@ -57,7 +57,7 @@ export interface AiMessage {
 }
 
 /** What a resource is. A Page is one kind among several (docs/CONTENT.md). */
-export type ResourceKind = "page" | "document" | "presentation" | "project" | "gallery" | "file" | "stream";
+export type ResourceKind = "page" | "document" | "presentation" | "project" | "gallery" | "file" | "stream" | "drawing";
 
 export interface PageMeta {
   id: string;

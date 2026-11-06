@@ -6,6 +6,13 @@ pub mod commands;
 pub mod content;
 pub mod db;
 pub mod discord;
+pub mod drawing;
+pub mod drawing_copy;
+pub mod drawing_export;
+pub mod drawing_library;
+pub mod drawing_package;
+pub mod drawing_references;
+pub mod drawing_sync;
 pub mod jobs;
 pub mod mcp;
 pub mod preview;
@@ -145,6 +152,42 @@ pub fn run() {
             commands::pages_list,
             commands::page_get,
             commands::page_create,
+            drawing::drawing_load,
+            drawing::drawing_apply,
+            drawing::drawing_history_toggle,
+            drawing::drawing_history_import,
+            drawing_package::drawing_package_stage,
+            drawing_package::drawing_package_abort,
+            drawing_package::drawing_package_install,
+            drawing_export::drawing_export_raw,
+            drawing_export::drawing_export_requirements,
+            drawing_export::drawing_export_policy,
+            drawing_export::drawing_export_policy_cached,
+            drawing_export::drawing_export_check,
+            drawing::drawing_versions,
+            drawing::drawing_version_save,
+            drawing::drawing_version_import,
+            drawing::drawing_version_scene,
+            drawing::drawing_version_restore,
+            drawing::drawing_materialize_assets,
+            drawing::drawing_experiment_create,
+            drawing::drawing_experiments,
+            drawing_library::drawing_library_list,
+            drawing_library::drawing_library_read,
+            drawing_library::drawing_library_publish,
+            drawing_library::drawing_library_instantiate,
+            drawing_library::drawing_library_remove,
+            drawing_references::drawing_reference_read,
+            drawing_references::drawing_reference_task,
+            drawing_references::drawing_embed_insert,
+            drawing_references::drawing_reference_search,
+            drawing_sync::drawing_sync_open,
+            drawing_sync::drawing_sync_recover,
+            drawing_sync::drawing_sync_pending_pages,
+            drawing_sync::drawing_sync_snapshot,
+            drawing_sync::drawing_sync_accept,
+            drawing_sync::drawing_sync_error,
+            drawing_sync::drawing_sync_store_original,
             commands::page_update,
             commands::page_move,
             commands::page_delete,
@@ -211,6 +254,9 @@ pub fn run() {
             sync::commands::sync_outbox_ack,
             sync::commands::sync_outbox_ack_upto,
             sync::commands::sync_outbox_reject,
+            sync::commands::sync_archive_rejection,
+            sync::commands::sync_rejected_list,
+            sync::commands::sync_rejected_read,
             sync::commands::sync_outbox_fail,
             sync::commands::sync_outbox_max,
             sync::commands::sync_cursor_set,

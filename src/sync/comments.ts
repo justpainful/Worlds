@@ -6,6 +6,7 @@
 import * as Y from "yjs";
 import { newBlockId } from "../editor/extensions/blockIds";
 import type { SyncUser } from "./config";
+import type { DrawingCommentAnchor } from "../drawing/collaborationTypes";
 
 export interface CommentData {
   id: string;
@@ -17,11 +18,12 @@ export interface CommentData {
   deleted?: boolean;
 }
 
-export interface Anchor {
+export interface TextAnchor {
   /** Yjs relative positions (JSON) in the content document. */
   start: unknown;
   end: unknown;
 }
+export type Anchor = TextAnchor | DrawingCommentAnchor;
 
 export interface ThreadData {
   id: string;
@@ -47,6 +49,7 @@ const peopleOf = (doc: Y.Doc) => doc.getMap<{ name: string; color: string }>("pe
 export function listThreads(doc: Y.Doc): ThreadData[] {
   const out: ThreadData[] = [];
   threadsOf(doc).forEach((t, id) => {
+    if (!(t instanceof Y.Map)) return;
     const j = t.toJSON() as Partial<ThreadData>;
     out.push({
       id,
@@ -57,14 +60,14 @@ export function listThreads(doc: Y.Doc): ThreadData[] {
       resolved: !!j.resolved,
       resolvedBy: j.resolvedBy ?? null,
       resolvedAt: j.resolvedAt ?? null,
-      comments: (j.comments ?? []).map((c) => ({ ...c, mentions: c.mentions ?? [] })),
+      comments: (Array.isArray(j.comments) ? j.comments : []).filter((c) => c && typeof c.id === "string" && typeof c.author === "string" && typeof c.body === "string").map((c) => ({ ...c, mentions: Array.isArray(c.mentions) ? c.mentions.filter((id) => typeof id === "string") : [] })),
     });
   });
   return out.sort((a, b) => a.createdAt - b.createdAt);
 }
 
 export function listPeople(doc: Y.Doc): Person[] {
-  return [...peopleOf(doc).entries()].map(([id, p]) => ({ id, name: p.name, color: p.color }));
+  return [...peopleOf(doc).entries()].filter(([, p]) => p && typeof p.name === "string").map(([id, p]) => ({ id, name: p.name.slice(0, 80), color: /^#[a-f\d]{6}$/i.test(p.color) ? p.color : "#6e6e73" }));
 }
 
 /** Record the user's display name for mentions (own entry only). */

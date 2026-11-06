@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Glass } from "../glass/Glass";
 import { LAYER } from "../glass/profiles";
@@ -24,22 +24,33 @@ export function Modal({
 }) {
   const [shown, setShown] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
+  const titleId = useId(), close = useRef(onClose); close.current = onClose;
   useEffect(() => {
-    const raf = requestAnimationFrame(() => setShown(true));
     const prev = document.activeElement as HTMLElement | null;
+    const topmost = () => { const roots = document.querySelectorAll(".modal-root"); return panel.current?.closest(".modal-root") === roots[roots.length - 1]; };
+    const focusable = () => [...(panel.current?.querySelectorAll<HTMLElement>('button, input, select, textarea, a[href], [tabindex]') ?? [])].filter((el) => el.tabIndex >= 0 && !el.matches(':disabled, [aria-disabled="true"]') && el.getClientRects().length > 0);
+    const raf = requestAnimationFrame(() => { setShown(true); if (topmost() && !panel.current?.contains(document.activeElement)) (focusable()[0] ?? panel.current)?.focus(); });
     const onKey = (e: KeyboardEvent) => {
+      if (!topmost() || e.defaultPrevented) return;
+      // Portaled menus and popovers handle their own Escape before the sheet.
+      if (e.key === "Escape" && document.querySelector(".popover, .menu-panel")) return;
       if (e.key === "Escape") {
-        e.stopPropagation();
-        onClose();
+        e.preventDefault(); e.stopImmediatePropagation(); close.current();
+      } else if (e.key === "Tab") {
+        const controls = focusable(), current = document.activeElement, index = controls.indexOf(current as HTMLElement);
+        if (!controls.length) { e.preventDefault(); panel.current?.focus(); }
+        else if (e.shiftKey && index <= 0) { e.preventDefault(); controls.at(-1)?.focus(); }
+        else if (!e.shiftKey && (index === -1 || index === controls.length - 1)) { e.preventDefault(); controls[0].focus(); }
       }
     };
-    window.addEventListener("keydown", onKey);
+    const keepFocus = (e: FocusEvent) => { if (e.target instanceof Element && e.target.closest(".popover, .menu-panel")) return; if (topmost() && e.target instanceof Node && !panel.current?.contains(e.target)) (focusable()[0] ?? panel.current)?.focus(); };
+    document.addEventListener("keydown", onKey, true); document.addEventListener("focusin", keepFocus);
     return () => {
       cancelAnimationFrame(raf);
-      window.removeEventListener("keydown", onKey);
-      prev?.focus?.();
+      document.removeEventListener("keydown", onKey, true); document.removeEventListener("focusin", keepFocus);
+      if (prev?.isConnected) prev.focus();
     };
-  }, [onClose]);
+  }, []);
   return createPortal(
     <div className={`modal-root ${shown ? "is-in" : ""}`}>
       <div className="modal-scrim" onPointerDown={onClose} />
@@ -52,10 +63,13 @@ export function Modal({
         radius="var(--r-float)"
         role="dialog"
         aria-modal
+        aria-labelledby={title ? titleId : undefined}
+        aria-label={title ? undefined : "Dialog"}
+        tabIndex={-1}
       >
         {!bare && (title || true) && (
           <header className="modal-head">
-            <div className="modal-title bidi">{title}</div>
+            <div id={titleId} className="modal-title bidi">{title}</div>
             <IconButton icon="close" label="Close" onClick={onClose} />
           </header>
         )}

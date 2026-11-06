@@ -79,6 +79,7 @@ export async function markNotificationsRead(ids: string[] | null): Promise<void>
 
 /** Open a shared page's session in the background, run `fn`, let it go. */
 async function withSession(pageId: string, fn: (s: ReturnType<typeof acquireSession>) => Promise<void>) {
+  if (useStore.getState().pages[pageId]?.kind === "drawing") return;
   const store = localStore();
   const mode = await store.pageMode(pageId).catch(() => null);
   if (!mode?.shared) return;

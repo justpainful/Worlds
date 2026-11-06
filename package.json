@@ -13,7 +13,8 @@
     "cloud:deploy": "node services/deploy.mjs",
     "app:install": "tauri build && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1",
     "app": "tauri build --debug --no-bundle && node scripts/run-debug.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "drawing:progress": "node scripts/drawing-progress.mjs"
   },
   "dependencies": {
     "@floating-ui/dom": "^1.8.0",

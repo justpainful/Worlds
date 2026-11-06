@@ -1,0 +1,21 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Frame archive verification</title>
+<h1>Frame archive verification</h1><button id="run">Run frame checks</button><a id="zip" hidden download="drawing-frame-colors.zip">Download archive</a><a id="download" hidden download="drawing-frame-checks.json">Download results</a><pre id="result">Not run</pre>
+<script type="module">
+import '/src/dev/mockTauri.ts';
+import {newScene,newFrame,newNode} from '/src/drawing/model.ts';
+import {exportFrameArchive} from '/src/drawing/frameArchive.ts';
+const output=document.querySelector('#result'),download=document.querySelector('#download'),zip=document.querySelector('#zip');
+document.querySelector('#run').onclick=async()=>{
+ const cases=[]; const s=newScene(),a=s.frames[s.defaultFrameId],b=newFrame('ثانٍ:/أزرق',{x:100,y:0,w:24,h:16});Object.assign(a,{name:'أول:/أحمر',w:32,h:20,background:'#ff0000'}); b.background='#0000ff';s.frames[b.id]=b;s.frameOrder.push(b.id);
+ const n=newNode('shape',s.layerOrder[0],a.id,{x:4,y:4,w:8,h:8});n.paint.fill='#00ff00';n.paint.strokeWidth=0;s.nodes[n.id]=n;s.nodeOrder.push(n.id);
+ const before=JSON.stringify(s),progress=[];
+ try{const result=await exportFrameArchive(s,[b.id,a.id],2,true,new AbortController().signal,(done,total)=>progress.push([done,total]));zip.href=URL.createObjectURL(result.blob);zip.hidden=false;
+ const preview=await createImageBitmap(result.preview);cases.push({name:'first preview is first document frame, not selection order',passed:preview.width===64&&preview.height===40});preview.close();
+ cases.push({name:'progress reports each rendered frame',passed:JSON.stringify(progress)==='[[1,2],[2,2]]'});
+ const cancel=new AbortController();let aborted=false;try{await exportFrameArchive(s,[a.id,b.id],1,true,cancel.signal,()=>cancel.abort());}catch(e){aborted=e.name==='AbortError';}cases.push({name:'cancel during real rendering rejects without returning archive',passed:aborted});
+ for(const ids of [[],['missing']]){let refused=false;try{await exportFrameArchive(s,ids,1,true,new AbortController().signal);}catch{refused=true;}cases.push({name:'empty or missing frames refused',ids,passed:refused});}
+ cases.push({name:'render, cancel and refusal preserve complete source',passed:JSON.stringify(s)===before});
+ }catch(e){cases.push({name:'unexpected error',passed:false,error:String(e)});}
+ const result={passed:cases.every(c=>c.passed),cases,expectedFrames:[{size:[64,40],background:[255,0,0,255],shape:{point:[12,12],color:[0,255,0,255]}},{size:[48,32],background:[0,0,255,255]}],limitations:['Synthetic browser backend; no native UI acceptance.']};output.textContent=JSON.stringify(result,null,2);download.href=URL.createObjectURL(new Blob([output.textContent],{type:'application/json'}));download.hidden=false;
+};
+</script></html>
