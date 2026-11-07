@@ -6,4 +6,4 @@ Implemented preview building blocks are ImageIO thumbnail decoding with dimensio
 
 DOCX, XLSX, XLS, ODS, PPTX, presentation conversion, GIF animation, arbitrary encodings, SVG, HLS, and the full range supported by the original application are not implemented. Classification is only a hint and does not authenticate content. There is no import, attachment database mutation, account authorization, gallery workflow, or UI in this module. CSV cells are plain data and formulas are not evaluated.
 
-Tests use isolated temporary data and exercise traversal, symlink rejection, bounded reads, plain CSV, real image decoding and temporary-copy cleanup. They have not been compiled or executed on Apple. The module is not added to Package.swift or the app.
+Tests use isolated temporary data and exercise traversal, symlink rejection, bounded reads, plain CSV, real image decoding and temporary-copy cleanup. Six tests passed on macOS in Actions run 42387357673. The module is included in SwiftPM but is not connected to app navigation.

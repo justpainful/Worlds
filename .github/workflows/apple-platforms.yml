@@ -173,9 +173,46 @@ jobs:
             write-simulator.xcresult/
           if-no-files-found: warn
 
+  collaboration-xcframework:
+    name: Build shared collaboration XCFramework
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          xcodebuild -version
+      - uses: dtolnay/rust-toolchain@1.99.1
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios,aarch64-apple-darwin,x86_64-apple-darwin
+      - name: Build and archive collaboration bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p logs shared-artifact
+          bash Apple/RustCollaboration/scripts/build-apple.sh 2>&1 | tee logs/collaboration-build.log
+          test -d Apple/WorldsCore/Artifacts/WorldsRustCollaboration.xcframework
+          tar -czf shared-artifact/collaboration-xcframework.tar.gz -C Apple/WorldsCore/Artifacts WorldsRustCollaboration.xcframework
+          (cd shared-artifact && shasum -a 256 collaboration-xcframework.tar.gz > SHA256SUMS)
+          git rev-parse HEAD > shared-artifact/source-revision
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Worlds-shared-collaboration-xcframework
+          path: shared-artifact/
+          if-no-files-found: error
+          retention-days: 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-shared-collaboration-build-logs
+          path: logs/
+          if-no-files-found: warn
+
   collaboration-bridge:
     name: Rust collaboration bridge tests
     runs-on: macos-26
+    needs: collaboration-xcframework
     timeout-minutes: 45
     env:
       WORLDS_REQUIRE_COLLABORATION: "1"
@@ -185,15 +222,18 @@ jobs:
         run: |
           sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
           xcodebuild -version
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/download-artifact@v4
         with:
-          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios,aarch64-apple-darwin,x86_64-apple-darwin
-      - name: Build required collaboration XCFramework
+          name: Worlds-shared-collaboration-xcframework
+          path: shared-artifact
+      - name: Verify and restore collaboration XCFramework
         shell: bash
         run: |
-          set -o pipefail
-          mkdir -p logs
-          bash Apple/RustCollaboration/scripts/build-apple.sh 2>&1 | tee logs/collaboration-build.log
+          set -euo pipefail
+          test "$(cat shared-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd shared-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p logs Apple/WorldsCore/Artifacts
+          tar -xzf shared-artifact/collaboration-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
           test -d Apple/WorldsCore/Artifacts/WorldsRustCollaboration.xcframework
       - name: Discover collaboration tests
         shell: bash
@@ -239,6 +279,7 @@ jobs:
   collaboration-local-worker:
     name: Rust collaboration with isolated local sync Worker
     runs-on: macos-26
+    needs: collaboration-xcframework
     timeout-minutes: 45
     env:
       WORLDS_REQUIRE_COLLABORATION: "1"
@@ -253,17 +294,28 @@ jobs:
           node-version: 22
           cache: pnpm
           cache-dependency-path: services/sync/pnpm-lock.yaml
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.99.1
+      - name: Select Xcode
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          xcodebuild -version
+      - uses: actions/download-artifact@v4
         with:
-          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios,aarch64-apple-darwin,x86_64-apple-darwin
-      - name: Select Xcode and build required collaboration bridge
+          name: Worlds-shared-collaboration-xcframework
+          path: shared-artifact
+      - name: Verify and restore collaboration XCFramework
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat shared-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd shared-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p logs Apple/WorldsCore/Artifacts
+          tar -xzf shared-artifact/collaboration-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
+          test -d Apple/WorldsCore/Artifacts/WorldsRustCollaboration.xcframework
+      - name: Discover required live Swift test
         shell: bash
         run: |
           set -o pipefail
-          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
-          mkdir -p logs
-          bash Apple/RustCollaboration/scripts/build-apple.sh 2>&1 | tee logs/local-collaboration-build.log
-          test -d Apple/WorldsCore/Artifacts/WorldsRustCollaboration.xcframework
           swift test --package-path Apple/WorldsCore list 2>&1 | tee logs/local-swift-discovery.log
           grep -q 'testLiveSwiftSessionsConvergeReconnectAndArchiveRefusal' logs/local-swift-discovery.log
       - name: Install isolated Worker dependencies

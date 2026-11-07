@@ -4,7 +4,7 @@
 
 This is a first implementation, not a complete native rich-text editor. It does not yet support structural editing, selection across nodes, lossless editing from arbitrary attributed strings, font colors, font sizes, lists with native markers, native table editing, images, embedded content, collaboration cursors, every Tiptap extension, or full accessibility behavior. Unknown leaf nodes render as object placeholders but their source is retained. Editing a text node to an empty string is allowed by this model; callers must validate whether a particular ProseMirror extension permits it. Attribute rendering does not imply all original marks are visually supported.
 
-The corpus tests include Arabic, emoji, lists, tables, custom attributes, unknown marks and unknown leaf nodes. They have not been compiled or executed on Apple platforms. The module is not yet included in Package.swift or linked to any UI, by request.
+The corpus tests include Arabic, emoji, lists, tables, custom attributes, unknown marks and unknown leaf nodes. Seven tests passed on macOS in Actions run 42387357673. Later structural changes still need another run. The module is included in SwiftPM but is not connected to the app's editor.
 
 StructuralEditing adds conservative split, merge and cross-node replacements for compatible text-only sibling paragraphs in documents, list items, task items, cells, headers and blockquotes. It rejects unknown metadata on destructive cross-node edits and opaque structures rather than discarding them; empty paragraphs and cross-container changes remain unsupported. These operations have not been tested on Apple.
 

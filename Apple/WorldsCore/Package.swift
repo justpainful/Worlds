@@ -31,6 +31,7 @@ let package = Package(
         .library(name: "WorldsMediaViews", targets: ["WorldsMediaViews"]),
         .library(name: "WorldsScreenDrawing", targets: ["WorldsScreenDrawing"]),
         .library(name: "WorldsOfficePreview", targets: ["WorldsOfficePreview"]),
+        .library(name: "WorldsGallery", targets: ["WorldsGallery"]),
     ],
     dependencies: [.package(url: "https://github.com/weichsel/ZIPFoundation.git", exact: "0.9.20")],
     targets: [
@@ -50,12 +51,13 @@ let package = Package(
         .target(name: "WorldsMediaViews", dependencies: ["WorldsMedia"], exclude: ["README.md"]),
         .target(name: "WorldsScreenDrawing", exclude: ["README.md", "DESIGN.md"], linkerSettings: [.linkedFramework("ScreenCaptureKit", .when(platforms: [.macOS]))]),
         .target(name: "WorldsOfficePreview", dependencies: ["WorldsMedia", .product(name: "ZIPFoundation", package: "ZIPFoundation")], exclude: ["README.md"]),
+        .target(name: "WorldsGallery", dependencies: ["WorldsModels"], exclude: ["README.md"]),
         .testTarget(name: "WorldsModelsTests", dependencies: ["WorldsModels"]),
         .testTarget(name: "WorldsSyncWireTests", dependencies: ["WorldsSyncWire"]),
         .testTarget(name: "WorldsPersistenceTests", dependencies: ["WorldsPersistence"], resources: [.copy("worlds-v1-fixture.db")], linkerSettings: [.linkedLibrary("sqlite3")]),
         .testTarget(name: "WorldsIdentityTests", dependencies: ["WorldsIdentity"]),
         .testTarget(name: "WorldsRichTextTests", dependencies: ["WorldsRichText", "WorldsModels"]),
-        .testTarget(name: "WorldsDrawingTests", dependencies: ["WorldsDrawing", "WorldsModels"], resources: [.copy("original-stroke-fixture.json"), .copy("original-shapes-fixture.json"), .copy("original-pressure-fixture.json")]),
+        .testTarget(name: "WorldsDrawingTests", dependencies: ["WorldsDrawing", "WorldsModels"], resources: [.copy("original-stroke-fixture.json"), .copy("original-shapes-fixture.json"), .copy("original-pressure-fixture.json"), .copy("original-journal-fixture.json")]),
         .testTarget(name: "WorldsPresentationsTests", dependencies: ["WorldsPresentations", "WorldsModels"]),
         .testTarget(name: "WorldsMediaTests", dependencies: ["WorldsMedia"]),
         .testTarget(name: "WorldsSearchTests", dependencies: ["WorldsSearch"], resources: [.copy("worlds-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]),
@@ -66,6 +68,7 @@ let package = Package(
         .testTarget(name: "WorldsMediaViewsTests", dependencies: ["WorldsMediaViews", "WorldsMedia"]),
         .testTarget(name: "WorldsScreenDrawingTests", dependencies: ["WorldsScreenDrawing"]),
         .testTarget(name: "WorldsOfficePreviewTests", dependencies: ["WorldsOfficePreview", "WorldsMedia"], resources: [.copy("Fixtures")]),
+        .testTarget(name: "WorldsGalleryTests", dependencies: ["WorldsGallery", "WorldsModels"]),
     ]
 )
 

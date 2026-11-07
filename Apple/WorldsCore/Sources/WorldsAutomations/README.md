@@ -12,4 +12,4 @@ Collaboration notifications are a separate system. `services/sync/src/inbox.ts` 
 
 iOS and iPadOS do not promise exact arbitrary recurring background execution. BackgroundTasks are system scheduled and cannot be used as a guarantee that a due Discord action will execute on time. A reliable parity solution needs a compatible external scheduler or clearly exposed limits and user consent. There is no Apple Discord bridge, approval execution, scheduler registration, AI transform, notification feed client, push delivery or cross-process consistency implementation in this module. Do not enable unattended sends or mark automations complete from these models alone.
 
-The module and XCTest files have not been built or executed here because Swift and Xcode are unavailable. SwiftPM must add `WorldsAutomations`, link `sqlite3`, add its test target and include `automation-fixture.db` as a resource. No changes to Package.swift were made in this task.
+The module and its test fixture are included in SwiftPM. The first Apple CI run containing them has not completed; the scheduler and approval workflows remain unverified.

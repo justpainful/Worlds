@@ -30,7 +30,7 @@ final class ScreenDrawingTests: XCTestCase {
         var doc = ScreenDrawingDocument()
         doc.begin(tool: .pen, ink: ink, width: .nan, lifetime: 3, sample: .init(point: .zero, pressure: 1))
         XCTAssertNil(doc.current)
-        doc.begin(tool: .pen, ink: ink, width: 4, lifetime: 3, sample: .init(point: CGPoint(x: .infinity,y: 0), pressure: 1))
+        doc.begin(tool: .pen, ink: ink, width: 4, lifetime: 3, sample: .init(point: CGPoint(x: CGFloat.infinity,y: 0), pressure: 1))
         XCTAssertNil(doc.current)
     }
     @MainActor
@@ -49,3 +49,4 @@ final class ScreenDrawingTests: XCTestCase {
     }
 }
 #endif
+
