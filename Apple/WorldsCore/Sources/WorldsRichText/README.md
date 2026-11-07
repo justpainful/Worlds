@@ -1,0 +1,7 @@
+# Rich text engine scope
+
+`RichTextDocument` keeps the ProseMirror document tree as its canonical data and projects text into UTF-16 ranges linked to source-node paths. The input and output use the same JSON tree, including unknown nodes, marks and attributes. Targeted text edits and explicit mark replacement leave unrelated nodes untouched and reject invalid paths and Unicode boundaries. Lists and table cells are currently projected with newline and tab separators. On Apple systems, `attributedString()` renders basic bold, italic, underline, strike, safe links and text direction.
+
+This is a first implementation, not a complete native rich-text editor. It does not yet support structural editing, selection across nodes, lossless editing from arbitrary attributed strings, font colors, font sizes, lists with native markers, native table editing, images, embedded content, collaboration cursors, every Tiptap extension, or full accessibility behavior. Unknown leaf nodes render as object placeholders but their source is retained. Editing a text node to an empty string is allowed by this model; callers must validate whether a particular ProseMirror extension permits it. Attribute rendering does not imply all original marks are visually supported.
+
+The corpus tests include Arabic, emoji, lists, tables, custom attributes, unknown marks and unknown leaf nodes. They have not been compiled or executed on Apple platforms. The module is not yet included in Package.swift or linked to any UI, by request.

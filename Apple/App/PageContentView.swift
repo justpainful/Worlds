@@ -28,6 +28,7 @@ struct PageContentView: View {
             VStack(alignment: .leading, spacing: 16) {
                 Text(page.title.isEmpty ? "Untitled" : page.title)
                     .font(.title.weight(.semibold))
+                    .accessibilityAddTraits(.isHeader)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if page.blocks.isEmpty {
                     Text("This page has no content.")
@@ -53,7 +54,12 @@ struct PageContentView: View {
             .frame(maxWidth: 760, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
+        #if os(macOS)
         .navigationTitle(page.title.isEmpty ? "Untitled" : page.title)
+        #else
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
     }
 }
 

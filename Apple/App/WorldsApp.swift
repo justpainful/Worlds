@@ -25,11 +25,15 @@ private struct WorldsLibraryView: View {
                 if loading {
                     ProgressView("Opening database")
                 } else if !loaded {
-                    ContentUnavailableView(
-                        "Open your Worlds database",
-                        systemImage: "externaldrive",
-                        description: Text("Choose a local Worlds database to view its personal pages.")
-                    )
+                    ContentUnavailableView {
+                        Label("Open your Worlds database", systemImage: "externaldrive")
+                    } description: {
+                        Text("Choose a local Worlds database to view its personal pages.")
+                    } actions: {
+                        Button("Open Database") { showImporter = true }
+                            .buttonStyle(.borderedProminent)
+                            .accessibilityIdentifier("open-database")
+                    }
                 } else if pages.isEmpty {
                     ContentUnavailableView(
                         "No personal pages",
@@ -51,9 +55,11 @@ private struct WorldsLibraryView: View {
                             }
                             .padding(.vertical, 4)
                         }
+                        .accessibilityIdentifier("page.\(page.id)")
                     }
                 }
             }
+            .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 360)
             .navigationTitle("Pages")
             .toolbar {
                 ToolbarItem {

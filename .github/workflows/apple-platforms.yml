@@ -116,9 +116,123 @@ jobs:
           path: logs/
           if-no-files-found: warn
 
+  native-writes:
+    name: Rust bridge and native write tests
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      WORLDS_REQUIRE_NATIVE_WRITES: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          xcodebuild -version
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build required XCFramework
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p logs
+          bash Apple/RustStore/scripts/build-apple.sh 2>&1 | tee logs/rust-xcframework.log
+          test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
+      - name: Discover required write tests
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path Apple/WorldsCore list 2>&1 | tee logs/write-tests-discovery.log
+          grep -q 'NativePersonalStoreTests' logs/write-tests-discovery.log
+          grep -q 'testSQLiteLinkageAndFTSAvailability' logs/write-tests-discovery.log
+      - name: Test write bridge on macOS
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path Apple/WorldsCore --filter NativePersonalStoreTests 2>&1 | tee logs/write-tests-macos.log
+          grep -q 'testSQLiteLinkageAndFTSAvailability' logs/write-tests-macos.log
+      - name: Test write bridge on iOS simulator
+        shell: bash
+        run: |
+          set -o pipefail
+          cd Apple/WorldsCore
+          xcodebuild -scheme WorldsCore-Package \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.5' \
+            -only-testing:WorldsNativeWritesTests/NativePersonalStoreTests \
+            -resultBundlePath "$GITHUB_WORKSPACE/write-simulator.xcresult" \
+            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$GITHUB_WORKSPACE/logs/write-tests-ios.log"
+          grep -q 'testSQLiteLinkageAndFTSAvailability' "$GITHUB_WORKSPACE/logs/write-tests-ios.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-native-write-test-results
+          path: |
+            logs/
+            write-simulator.xcresult/
+          if-no-files-found: warn
+
+  collaboration-bridge:
+    name: Rust collaboration bridge tests
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      WORLDS_REQUIRE_COLLABORATION: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          xcodebuild -version
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios,aarch64-apple-darwin,x86_64-apple-darwin
+      - name: Build required collaboration XCFramework
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p logs
+          bash Apple/RustCollaboration/scripts/build-apple.sh 2>&1 | tee logs/collaboration-build.log
+          test -d Apple/WorldsCore/Artifacts/WorldsRustCollaboration.xcframework
+      - name: Discover collaboration tests
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path Apple/WorldsCore list 2>&1 | tee logs/collaboration-discovery.log
+          grep -q 'testNativeFixtureStateVectorAndIncrement' logs/collaboration-discovery.log
+          grep -q 'testMalformedUpdatesFailWithoutFreeingTheDocument' logs/collaboration-discovery.log
+          grep -q 'testSessionAcknowledgesHandshakeWatermark' logs/collaboration-discovery.log
+      - name: Test collaboration bridge on macOS
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path Apple/WorldsCore --filter WorldsCollaborationTests 2>&1 | tee logs/collaboration-macos.log
+          grep -q 'testNativeFixtureStateVectorAndIncrement' logs/collaboration-macos.log
+          grep -q 'testMalformedUpdatesFailWithoutFreeingTheDocument' logs/collaboration-macos.log
+          grep -q 'testSessionAcknowledgesHandshakeWatermark' logs/collaboration-macos.log
+      - name: Test collaboration bridge on iOS simulator
+        shell: bash
+        run: |
+          set -o pipefail
+          cd Apple/WorldsCore
+          xcodebuild -scheme WorldsCore-Package \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.5' \
+            -only-testing:WorldsCollaborationTests \
+            -resultBundlePath "$GITHUB_WORKSPACE/collaboration-simulator.xcresult" \
+            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
+          grep -q 'testNativeFixtureStateVectorAndIncrement' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
+          grep -q 'testMalformedUpdatesFailWithoutFreeingTheDocument' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
+          grep -q 'testSessionAcknowledgesHandshakeWatermark' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-collaboration-test-results
+          path: |
+            logs/
+            collaboration-simulator.xcresult/
+          if-no-files-found: warn
+
   ui-tests:
     name: UI tests ${{ matrix.device }}
     runs-on: macos-26
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -139,8 +253,10 @@ jobs:
           sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
           xcodebuild -version
           xcrun simctl list devices available
-      - name: Install project generator
-        run: brew install xcodegen
+      - name: Install project generator and timeout utility
+        run: |
+          brew install xcodegen
+          command -v gtimeout >/dev/null || brew install coreutils
       - name: Generate project
         run: xcodegen generate --spec Apple/project.yml
       - name: Run UI automation and retain results
@@ -148,7 +264,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p logs results
-          xcodebuild -project Apple/Worlds.xcodeproj -scheme '${{ matrix.scheme }}' \
+          gtimeout --kill-after=30s 15m xcodebuild -project Apple/Worlds.xcodeproj -scheme '${{ matrix.scheme }}' \
             -configuration Debug -destination '${{ matrix.destination }}' \
             -derivedDataPath "$RUNNER_TEMP/WorldsUI" \
             -resultBundlePath "$GITHUB_WORKSPACE/results/${{ matrix.device }}.xcresult" \

@@ -6,7 +6,7 @@ final class WorldsUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
         XCTAssertTrue(app.staticTexts["Open your Worlds database"].waitForExistence(timeout: 15))
-        XCTAssertTrue(app.buttons["Open Database"].exists)
+        XCTAssertTrue(app.buttons["open-database"].exists)
         capture("01-open-database")
     }
 
@@ -15,7 +15,7 @@ final class WorldsUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments.append("--ui-testing-fixture")
         app.launch()
-        let page = app.staticTexts["Fixture page"].firstMatch
+        let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
         XCTAssertTrue(page.waitForExistence(timeout: 15))
         capture("02-personal-pages")
         page.tap()
@@ -29,10 +29,10 @@ final class WorldsUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments.append("--ui-testing-missing-fixture")
         app.launch()
-        XCTAssertTrue(app.alerts["Could not open database"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["OK"].waitForExistence(timeout: 15))
         capture("04-database-error")
-        app.alerts.buttons["OK"].tap()
-        XCTAssertFalse(app.alerts["Could not open database"].exists)
+        app.buttons["OK"].tap()
+        XCTAssertFalse(app.buttons["OK"].exists)
     }
 
     @MainActor

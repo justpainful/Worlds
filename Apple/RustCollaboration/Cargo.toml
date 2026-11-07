@@ -9,3 +9,4 @@ crate-type = ["rlib", "staticlib"]
 
 [dependencies]
 yrs = { version = "=0.28.1", features = ["sync"] }
+rusqlite = { version = "0.37", features = ["bundled"] }

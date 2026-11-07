@@ -8,3 +8,11 @@ The v11 fixture in `tests/fixtures/worlds-v11.db` contains synthetic data only a
 
 `cargo test --offline` succeeded on Windows for nine tests, including two inherited from the source content module. Build output lives under `target/`, which is ignored. No test result should be interpreted as permission to enable writes in the UI.
 
+
+## Apple build and Swift bridge
+
+Run `bash Apple/RustStore/scripts/build-apple.sh` on a Mac with Xcode and Rust installed. It builds iOS device, Apple Silicon and Intel simulator, and Apple Silicon and Intel macOS static slices, then creates `Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework`. The artifact is ignored by Git and must be rebuilt in CI before package resolution. Set `WORLDS_REQUIRE_NATIVE_WRITES=1` in jobs that require the bridge so a missing artifact fails package resolution. Without the artifact, the package exposes read-only targets and has no native write product.
+
+The experimental `WorldsNativeWrites` target manages the security-scoped URL for the duration of a call, releases every FFI response, and reports stale revisions as conflicts. It does not coordinate an iCloud file provider, does not acquire authorization for shared workspaces, and is not wired into the app. Do not enable write controls until integration, permission and device verification are complete.
+
+`WorldsNativeWritesTests` uses an isolated synthetic fixture. It checks FFI writes and conflicts, the Rust and Swift SQLite versions, the Rust FTS5 compile option, and a Swift SQLite MATCH query after a Rust write. A matching version is a useful check, not proof that all link or ABI conflicts are absent. These Apple tests and the XCFramework script have not been run in the Windows environment.

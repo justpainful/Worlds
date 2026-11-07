@@ -119,6 +119,7 @@ pub fn trash_page(path: &Path, page: &str, base: i64) -> Result<()> {
 #[derive(serde::Deserialize)]
 #[serde(tag = "operation", rename_all = "snake_case")]
 enum Request {
+    SqliteInfo,
     SaveBlocks { path: String, page: String, base: i64, blocks: Vec<BlockInput> },
     RenamePage { path: String, page: String, base: i64, title: String },
     CreatePage { path: String, title: String, parent: Option<String> },
@@ -128,6 +129,11 @@ enum Request {
 fn dispatch(bytes: &[u8]) -> Result<Value> {
     let request: Request = serde_json::from_slice(bytes)?;
     match request {
+        Request::SqliteInfo => {
+            let connection = Connection::open_in_memory()?;
+            let fts5: i64 = connection.query_row("SELECT sqlite_compileoption_used('ENABLE_FTS5')", [], |row| row.get(0))?;
+            Ok(serde_json::json!({ "version": rusqlite::version(), "fts5": fts5 == 1 }))
+        }
         Request::SaveBlocks { path, page, base, blocks } => save_blocks(Path::new(&path), &page, base, blocks),
         Request::RenamePage { path, page, base, title } => rename_page(Path::new(&path), &page, base, title),
         Request::CreatePage { path, title, parent } => create_page(Path::new(&path), title, parent),
@@ -251,6 +257,8 @@ mod tests {
         drop(c); std::fs::remove_file(path).unwrap();
     }
 }
+
+
 
 
 
