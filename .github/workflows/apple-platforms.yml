@@ -199,6 +199,7 @@ jobs:
           grep -q 'testNativeFixtureStateVectorAndIncrement' logs/collaboration-discovery.log
           grep -q 'testMalformedUpdatesFailWithoutFreeingTheDocument' logs/collaboration-discovery.log
           grep -q 'testSessionAcknowledgesHandshakeWatermark' logs/collaboration-discovery.log
+          grep -q 'testSQLiteStoreOnWorldsV11Fixture' logs/collaboration-discovery.log
       - name: Test collaboration bridge on macOS
         shell: bash
         run: |
@@ -207,6 +208,7 @@ jobs:
           grep -q 'testNativeFixtureStateVectorAndIncrement' logs/collaboration-macos.log
           grep -q 'testMalformedUpdatesFailWithoutFreeingTheDocument' logs/collaboration-macos.log
           grep -q 'testSessionAcknowledgesHandshakeWatermark' logs/collaboration-macos.log
+          grep -q 'testSQLiteStoreOnWorldsV11Fixture' logs/collaboration-macos.log
       - name: Test collaboration bridge on iOS simulator
         shell: bash
         run: |
@@ -220,6 +222,7 @@ jobs:
           grep -q 'testNativeFixtureStateVectorAndIncrement' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testMalformedUpdatesFailWithoutFreeingTheDocument' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testSessionAcknowledgesHandshakeWatermark' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
+          grep -q 'testSQLiteStoreOnWorldsV11Fixture' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -227,6 +230,64 @@ jobs:
           path: |
             logs/
             collaboration-simulator.xcresult/
+          if-no-files-found: warn
+
+  collaboration-local-worker:
+    name: Rust collaboration with isolated local sync Worker
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: services/sync/pnpm-lock.yaml
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install isolated Worker dependencies
+        working-directory: services/sync
+        run: pnpm install --frozen-lockfile
+      - name: Run isolated local service integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p logs
+          cd services/sync
+          pnpm exec wrangler dev -c dev/identity.toml --port 18791 --ip 127.0.0.1 --persist-to "$RUNNER_TEMP/identity" > "$GITHUB_WORKSPACE/logs/local-identity.log" 2>&1 &
+          identity_pid=$!
+          pnpm exec wrangler dev --env local --port 18790 --ip 127.0.0.1 --persist-to "$RUNNER_TEMP/sync" --var JWKS_URL:http://127.0.0.1:18791/.well-known/jwks.json > "$GITHUB_WORKSPACE/logs/local-sync.log" 2>&1 &
+          sync_pid=$!
+          trap 'kill "$identity_pid" "$sync_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for attempt in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:18791/.well-known/jwks.json >/dev/null 2>&1; then ready=1; break; fi
+            sleep 1
+          done
+          test "$ready" = 1
+          editor_token=$(curl -fsS 'http://127.0.0.1:18791/dev/token?sub=editor' | jq -er .token)
+          viewer_token=$(curl -fsS 'http://127.0.0.1:18791/dev/token?sub=viewer' | jq -er .token)
+          curl -fsS -X POST http://127.0.0.1:18791/dev/grant -H 'Content-Type: application/json' \
+            --data '{"userId":"viewer","workspaceId":"fixture-workspace","docId":null,"level":"view"}' >/dev/null
+          ready=0
+          for attempt in $(seq 1 90); do
+            if curl -fsS -H "Authorization: Bearer $editor_token" http://127.0.0.1:18790/v1/workspaces/fixture-workspace/docs/probe/versions >/dev/null 2>&1; then ready=1; break; fi
+            sleep 1
+          done
+          test "$ready" = 1
+          cd "$GITHUB_WORKSPACE"
+          WORLDS_LIVE_SYNC_URL=ws://127.0.0.1:18790 \
+          WORLDS_LIVE_EDITOR_TOKEN="$editor_token" WORLDS_LIVE_VIEWER_TOKEN="$viewer_token" \
+            cargo test --locked --manifest-path Apple/RustCollaboration/Cargo.toml --test live_service -- --ignored --nocapture \
+            2>&1 | tee logs/collaboration-local-worker.log
+          grep -q 'live_native_replica_offline_merge_reconnect_and_refusal ... ok' logs/collaboration-local-worker.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-local-collaboration-worker-logs
+          path: logs/
           if-no-files-found: warn
 
   ui-tests:

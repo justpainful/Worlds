@@ -49,6 +49,18 @@ impl SyncStore {
         if role == "member" && rank(&default) >= required { Ok(()) } else { Err(StoreError::Denied) }
     }
 
+    // Archiving after access removal protects local edits. The account and
+    // original page binding must still match; archive contents are not exposed here.
+    fn authorize_archive(&self, channel: i64) -> Result<()> {
+        valid_channel(channel)?;
+        let current: Option<String> = self.conn.query_row("SELECT user_id FROM account WHERE id=1 AND status='active'", [], |r| r.get(0)).optional()?;
+        if current.as_deref() != Some(&self.user) { return Err(StoreError::Denied); }
+        let ws: Option<Option<String>> = self.conn.query_row("SELECT workspace_id FROM pages WHERE id=?1", [&self.page], |r| r.get(0)).optional()?;
+        if ws.flatten().as_deref() != Some(&self.workspace) { return Err(StoreError::Denied); }
+        let owner: Option<String> = self.conn.query_row("SELECT user_id FROM drawing_sync_state WHERE page_id=?1", [&self.page], |r| r.get(0)).optional()?;
+        if owner.as_deref().is_some_and(|id| id != self.user) { return Err(StoreError::Denied); }
+        Ok(())
+    }
     fn check(&self, channel: i64, local: bool) -> Result<()> {
         valid_channel(channel)?;
         self.authorize(if local && channel == 0 { 3 } else if local { 2 } else { 1 })
@@ -90,9 +102,9 @@ impl SyncStore {
     }
     /// This operation intentionally does not expose archived data or re-enable syncing.
     pub fn reject(&mut self, channel: i64, archive_id: &str, state: &[u8], reason: &str) -> Result<()> {
-        if archive_id.is_empty() || state.len() > 64*1024*1024 || reason.len() > 10_000 { return Err(StoreError::Invalid); }
+        if uuid::Uuid::parse_str(archive_id).is_err() || state.len() > 64*1024*1024 || reason.len() > 10_000 { return Err(StoreError::Invalid); }
         let tx = self.conn.unchecked_transaction()?;
-        self.check(channel,false)?;
+        self.authorize_archive(channel)?;
         let existing: Option<(String,String,i64)> = tx.query_row("SELECT page_id,owner_id,channel FROM sync_rejected_snapshots WHERE id=?1", [archive_id], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?))).optional()?;
         if existing.is_some_and(|v| v != (self.page.clone(), self.user.clone(), channel)) { return Err(StoreError::Denied); }
         let t = now();
@@ -105,4 +117,6 @@ impl SyncStore {
         Ok(())
     }
 }
+
+
 

@@ -1,0 +1,9 @@
+# WorldsMedia scope
+
+This module models the camelCase attachment record exposed by the Rust store. `AttachmentVault` opens stored relative paths beneath the user-selected attachment root using directory-relative `openat` calls, rejects traversal and symlink components, checks for a regular file, enforces size limits, and keeps the root's security scope active while the descriptor is in use. Reads validate the actual file size and bound memory. Access to a trusted root and its permissions is still the host application's responsibility. Hard links inside a trusted root are not identified as external content.
+
+Implemented preview building blocks are ImageIO thumbnail decoding with dimensions and frame count, PDFKit documents, bounded UTF-8 text, bounded CSV and TSV parsing, and AVFoundation assets backed by a private temporary copy. Image previews show the first frame only. Creating an AVURLAsset does not prove that a codec is playable; the caller must check playback availability. The temporary media lease must live until playback ends. No file-provider coordination or remote attachment transfer is provided.
+
+DOCX, XLSX, XLS, ODS, PPTX, presentation conversion, GIF animation, arbitrary encodings, SVG, HLS, and the full range supported by the original application are not implemented. Classification is only a hint and does not authenticate content. There is no import, attachment database mutation, account authorization, gallery workflow, or UI in this module. CSV cells are plain data and formulas are not evaluated.
+
+Tests use isolated temporary data and exercise traversal, symlink rejection, bounded reads, plain CSV, real image decoding and temporary-copy cleanup. They have not been compiled or executed on Apple. The module is not added to Package.swift or the app.

@@ -41,7 +41,7 @@ fn rejection_preserves_owner_snapshot_and_marks_only_channel() {
     let path=fixture();
     let mut s=SyncStore::open(&path,"p","u","w").unwrap();
     s.append(0,b"a",true).unwrap(); s.append(1,b"b",true).unwrap();
-    s.reject(0,"archive",b"full-state","denied").unwrap();
+    s.reject(0,"f1f468d2-3b01-4fe0-a2de-df352089d21d",b"full-state","denied").unwrap();
     assert_eq!(s.load(0).unwrap(),vec![vec![0,0]]);
     assert_eq!(s.max_pending(0).unwrap(),None);
     assert!(s.max_pending(1).unwrap().is_some());
@@ -76,4 +76,34 @@ fn cached_rights_limit_content_and_allow_comments() {
     s.append(1,b"x",true).unwrap();
     assert!(SyncStore::open(&path,"p","u","other").is_err());
     drop(db);drop(s);std::fs::remove_file(path).unwrap();
+}
+
+
+#[test]
+fn ffi_original_schema_and_revoked_access_archive() {
+    use std::ffi::CString;
+    use worlds_collaboration::*;
+    let src=std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../WorldsCore/Tests/WorldsCollaborationTests/worlds-collab-v11.db");
+    let path=std::env::temp_dir().join(format!("worlds-ffi-{}-{}.db",std::process::id(),std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+    std::fs::copy(src,&path).unwrap();
+    let path_s=CString::new(path.to_str().unwrap()).unwrap();
+    let page=CString::new("fixture-page").unwrap(); let user=CString::new("fixture-user").unwrap(); let workspace=CString::new("fixture-workspace").unwrap();
+    let id=CString::new("f1f468d2-3b01-4fe0-a2de-df352089d21d").unwrap(); let reason=CString::new("denied").unwrap();
+    let mut store=std::ptr::null_mut();
+    unsafe {
+        assert_eq!(worlds_store_open(path_s.as_ptr(),page.as_ptr(),user.as_ptr(),workspace.as_ptr(),&mut store),0);
+        assert_eq!(worlds_store_append(store,0,[0u8,0].as_ptr(),2,1),0);
+        let mut vector=WorldsBuffer{data:std::ptr::null_mut(),len:0};
+        assert_eq!(worlds_store_load(store,0,&mut vector),0);
+        assert_eq!(&std::slice::from_raw_parts(vector.data,vector.len)[..8],&1u64.to_le_bytes());
+        worlds_buffer_free(vector);
+        let db=Connection::open(&path).unwrap();
+        db.execute("DELETE FROM account_workspaces WHERE id='fixture-workspace'",[]).unwrap();
+        assert_eq!(worlds_store_reject(store,0,id.as_ptr(),[0u8,0].as_ptr(),2,reason.as_ptr()),0);
+        let state:String=db.query_row("SELECT state FROM sync_outbox",[],|r|r.get(0)).unwrap(); assert_eq!(state,"rejected");
+        db.execute("UPDATE account SET user_id='other'",[]).unwrap();
+        assert_eq!(worlds_store_reject(store,0,id.as_ptr(),[0u8,0].as_ptr(),2,reason.as_ptr()),3);
+        drop(db);worlds_store_free(store);
+    }
+    std::fs::remove_file(path).unwrap();
 }

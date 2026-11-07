@@ -44,6 +44,7 @@ private actor FixtureSocket: CollaborationSocket {
     func send(_ data: Data) async throws {
         switch try WorldsSyncWire.decode(data) {
         case let .sync(channel, kind, _) where kind == 0:
+            if channel == 0 { try deliver(WorldsSyncWire.encode(.authState(level: "edit", userID: "user"))) }
             try deliver(WorldsSyncWire.encode(.sync(channel: channel, kind: 0, payload: Data([0]))))
         case let .update(batchID, _, _):
             try deliver(WorldsSyncWire.encode(.acknowledgement(batchID: batchID, status: 0, reason: "")))
@@ -70,7 +71,7 @@ extension WorldsCollaborationTests {
     func testSessionAcknowledgesHandshakeWatermark() async throws {
         let store = FixtureStore()
         let socket = FixtureSocket()
-        let session = try CollaborationSession(pageID: "p", workspaceID: "w", documentID: "p",
+        let session = try CollaborationSession(pageID: "p", workspaceID: "w", documentID: "p", expectedUserID: "user",
             serverURL: URL(string: "https://example.invalid")!, store: store,
             tokenProvider: { _ in "fixture-token" }, socketFactory: { _, _ in socket })
         let run = Task { try await session.run() }
@@ -85,3 +86,31 @@ extension WorldsCollaborationTests {
         XCTAssertEqual(acknowledged, 7)
     }
 }
+
+extension WorldsCollaborationTests {
+    func testSQLiteStoreOnWorldsV11Fixture() async throws {
+        let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-v11", withExtension: "db"))
+        let destination = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-collab-\(UUID().uuidString).db")
+        try FileManager.default.copyItem(at: source, to: destination)
+        defer { try? FileManager.default.removeItem(at: destination) }
+        let store = try SQLiteCollaborationStore(databaseURL: destination, pageID: "fixture-page", userID: "fixture-user", workspaceID: "fixture-workspace")
+        let update = Data([0, 0])
+        try await store.appendLocal(pageID: "fixture-page", channel: 0, update: update)
+        let pending = try await store.maximumPendingID(pageID: "fixture-page", channel: 0)
+        let watermark = try XCTUnwrap(pending)
+        try await store.appendLocal(pageID: "fixture-page", channel: 0, update: update)
+        try await store.acknowledge(pageID: "fixture-page", channel: 0, through: watermark)
+        let later = try await store.maximumPendingID(pageID: "fixture-page", channel: 0)
+        XCTAssertGreaterThan(try XCTUnwrap(later), watermark)
+        let reopened = try SQLiteCollaborationStore(databaseURL: destination, pageID: "fixture-page", userID: "fixture-user", workspaceID: "fixture-workspace")
+        let updates = try await reopened.load(pageID: "fixture-page", channel: 0)
+        XCTAssertEqual(updates, [update, update])
+        try await reopened.archiveRejection(pageID: "fixture-page", channel: 0, state: update, reason: "denied")
+        let remaining = try await store.maximumPendingID(pageID: "fixture-page", channel: 0)
+        XCTAssertNil(remaining)
+        let reset = try await store.load(pageID: "fixture-page", channel: 0)
+        XCTAssertEqual(reset, [update])
+        XCTAssertThrowsError(try SQLiteCollaborationStore(databaseURL: destination, pageID: "fixture-page", userID: "other", workspaceID: "fixture-workspace"))
+    }
+}
+

@@ -29,10 +29,15 @@ final class WorldsUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments.append("--ui-testing-missing-fixture")
         app.launch()
-        XCTAssertTrue(app.buttons["OK"].waitForExistence(timeout: 15))
+        #if os(macOS)
+        let dismiss = app.sheets.buttons["OK"]
+        #else
+        let dismiss = app.alerts.buttons["OK"]
+        #endif
+        XCTAssertTrue(dismiss.waitForExistence(timeout: 15))
         capture("04-database-error")
-        app.buttons["OK"].tap()
-        XCTAssertFalse(app.buttons["OK"].exists)
+        dismiss.tap()
+        XCTAssertFalse(dismiss.exists)
     }
 
     @MainActor

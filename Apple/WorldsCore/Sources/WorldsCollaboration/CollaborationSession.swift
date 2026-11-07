@@ -51,6 +51,7 @@ public actor CollaborationSession {
     public typealias SocketFactory = @Sendable (_ url: URL, _ token: String) async throws -> any CollaborationSocket
     private struct Pending { let channel: UInt64; let through: Int64? }
     private let pageID: String
+    private let expectedUserID: String
     private let endpoint: URL
     private let store: any CollaborationStore
     private let tokenProvider: TokenProvider
@@ -64,17 +65,18 @@ public actor CollaborationSession {
     private var failed = false
     private var generation: UInt64 = 0
     private var localWriteInFlight = false
+    private var verifiedIdentity = false
     public private(set) var accessLevel: String?
     public private(set) var lastNotice: String?
 
-    public init(pageID: String, workspaceID: String, documentID: String, serverURL: URL,
+    public init(pageID: String, workspaceID: String, documentID: String, expectedUserID: String, serverURL: URL,
                 store: any CollaborationStore, tokenProvider: @escaping TokenProvider,
                 socketFactory: @escaping SocketFactory = { URLSessionCollaborationSocket(url: $0, token: $1) }) throws {
         guard let scheme = serverURL.scheme?.lowercased(), ["https", "http"].contains(scheme),
               let host = serverURL.host, serverURL.query == nil, serverURL.fragment == nil,
               serverURL.user == nil, serverURL.password == nil,
               scheme == "https" || ["localhost", "127.0.0.1", "::1"].contains(host),
-              !workspaceID.isEmpty, !documentID.isEmpty,
+              !workspaceID.isEmpty, !documentID.isEmpty, !expectedUserID.isEmpty,
               workspaceID.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-" || $0 == "_") }),
               documentID.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-" || $0 == "_") }) else { throw CollaborationError.invalidEndpoint }
         var parts = URLComponents(url: serverURL, resolvingAgainstBaseURL: false)!
@@ -82,7 +84,7 @@ public actor CollaborationSession {
         parts.path = parts.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         parts.path = "/" + ([parts.path, "v1", "workspaces", workspaceID, "docs", documentID, "sync"].filter { !$0.isEmpty }.joined(separator: "/"))
         guard let endpoint = parts.url else { throw CollaborationError.invalidEndpoint }
-        self.endpoint = endpoint; self.pageID = pageID; self.store = store
+        self.endpoint = endpoint; self.pageID = pageID; self.expectedUserID = expectedUserID; self.store = store
         self.tokenProvider = tokenProvider; self.socketFactory = socketFactory
     }
 
@@ -104,7 +106,7 @@ public actor CollaborationSession {
                 let token = try await tokenProvider(forceRefresh)
                 forceRefresh = false
                 let opened = try await socketFactory(endpoint, token)
-                connection = opened; socket = opened; pending.removeAll()
+                connection = opened; socket = opened; pending.removeAll(); verifiedIdentity = false
                 for channel: UInt64 in [0, 1] {
                     guard let doc = documents[channel] else { throw CollaborationError.notStarted }
                     try await opened.send(WorldsSyncWire.encode(.sync(channel: channel, kind: 0, payload: doc.vector())))
@@ -161,6 +163,7 @@ public actor CollaborationSession {
         case let .sync(channel, kind, payload):
             guard let doc = documents[channel] else { throw CollaborationError.invalidChannel }
             if kind == 0 {
+                guard verifiedIdentity else { failed = true; throw CollaborationError.accessRevoked }
                 guard !localWriteInFlight else { throw CollaborationError.notStarted }
                 let through = try await store.maximumPendingID(pageID: pageID, channel: channel)
                 guard !localWriteInFlight else { throw CollaborationError.notStarted }
@@ -184,11 +187,15 @@ public actor CollaborationSession {
                 try await store.archiveRejection(pageID: pageID, channel: item.channel, state: full, reason: reason)
                 throw CollaborationError.rejected(reason)
             }
-        case let .authState(level, _): accessLevel = level
+        case let .authState(level, userID):
+            guard userID == expectedUserID else { failed = true; throw CollaborationError.accessRevoked }
+            verifiedIdentity = true
+            accessLevel = level
         case let .notice(code, message): lastNotice = "\(code): \(message)"
         case .awareness, .queryAwareness: break
         default: throw CollaborationError.invalidFrame
         }
     }
 }
+
 

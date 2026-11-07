@@ -109,3 +109,97 @@ pub unsafe extern "C" fn worlds_buffer_free(buffer: WorldsBuffer) {
     }
 }
 pub mod store;
+
+pub struct CollaborationStoreHandle(Mutex<store::SyncStore>);
+fn store_error(error: store::StoreError) -> i32 {
+    match error { store::StoreError::Denied => 3, store::StoreError::Schema(_) => 4, store::StoreError::Invalid => 1, _ => 2 }
+}
+unsafe fn ffi_str<'a>(p: *const std::ffi::c_char) -> Result<&'a str, i32> {
+    if p.is_null() { return Err(1); }
+    let s = unsafe { std::ffi::CStr::from_ptr(p) }.to_str().map_err(|_| 1)?;
+    if s.len() > 16_384 { Err(1) } else { Ok(s) }
+}
+unsafe fn ffi_bytes<'a>(p: *const u8, len: usize) -> Result<&'a [u8], i32> {
+    if len > MAX_INPUT || (p.is_null() && len != 0) { return Err(1); }
+    Ok(if len == 0 { &[] } else { unsafe { slice::from_raw_parts(p, len) } })
+}
+/// # Safety
+/// Each input must be a valid NUL-terminated UTF-8 string. `out` must be writable.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn worlds_store_open(path: *const std::ffi::c_char, page: *const std::ffi::c_char,
+    user: *const std::ffi::c_char, workspace: *const std::ffi::c_char, out: *mut *mut CollaborationStoreHandle) -> i32 {
+    boundary(|| {
+        if out.is_null() { return Err(1); }
+        unsafe { out.write(std::ptr::null_mut()); }
+        let (path,page,user,workspace) = unsafe { (ffi_str(path)?,ffi_str(page)?,ffi_str(user)?,ffi_str(workspace)?) };
+        let store = store::SyncStore::open(std::path::Path::new(path),page,user,workspace).map_err(store_error)?;
+        unsafe { out.write(Box::into_raw(Box::new(CollaborationStoreHandle(Mutex::new(store))))); }
+        Ok(())
+    })
+}
+/// # Safety
+/// Handle must be null or a live handle returned by worlds_store_open, freed once with no calls in flight.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn worlds_store_free(handle: *mut CollaborationStoreHandle) {
+    if !handle.is_null() { unsafe { drop(Box::from_raw(handle)); } }
+}
+/// # Safety
+/// Valid handle and writable output are required. Buffer contains little-endian u64 count, followed by u64 length and bytes per update.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn worlds_store_load(handle: *const CollaborationStoreHandle, channel: i64, out: *mut WorldsBuffer) -> i32 {
+    boundary(|| {
+        if handle.is_null() || out.is_null() { return Err(1); }
+        let guard = unsafe { &*handle }.0.lock().map_err(|_| 2)?;
+        let updates = guard.load(channel).map_err(store_error)?;
+        let mut data = Vec::new();
+        data.extend_from_slice(&(updates.len() as u64).to_le_bytes());
+        for update in updates {
+            data.extend_from_slice(&(update.len() as u64).to_le_bytes()); data.extend_from_slice(&update);
+        }
+        write_result(out, data)
+    })
+}
+/// # Safety
+/// Handle and input byte range must remain valid. `local` is 0 or 1.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn worlds_store_append(handle: *const CollaborationStoreHandle, channel: i64, data: *const u8, len: usize, local: i32) -> i32 {
+    boundary(|| {
+        if handle.is_null() || !(0..=1).contains(&local) { return Err(1); }
+        let bytes = unsafe { ffi_bytes(data,len)? };
+        let mut guard = unsafe { &*handle }.0.lock().map_err(|_| 2)?;
+        guard.append(channel,bytes,local == 1).map_err(store_error)
+    })
+}
+/// # Safety
+/// Handle and writable output must be valid. A result of -1 means no pending rows.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn worlds_store_max_pending(handle: *const CollaborationStoreHandle, channel: i64, out: *mut i64) -> i32 {
+    boundary(|| {
+        if handle.is_null() || out.is_null() { return Err(1); }
+        let guard = unsafe { &*handle }.0.lock().map_err(|_| 2)?;
+        let id = guard.max_pending(channel).map_err(store_error)?.unwrap_or(-1);
+        unsafe { out.write(id); } Ok(())
+    })
+}
+/// # Safety
+/// Handle must be valid and not concurrently freed.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn worlds_store_ack(handle: *const CollaborationStoreHandle, channel: i64, through: i64) -> i32 {
+    boundary(|| {
+        if handle.is_null() || through < 0 { return Err(1); }
+        let guard = unsafe { &*handle }.0.lock().map_err(|_| 2)?;
+        guard.acknowledge(channel,through).map_err(store_error)
+    })
+}
+/// # Safety
+/// All pointers must be valid for the call; ID and reason are NUL-terminated UTF-8.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn worlds_store_reject(handle: *const CollaborationStoreHandle, channel: i64,
+    id: *const std::ffi::c_char, data: *const u8, len: usize, reason: *const std::ffi::c_char) -> i32 {
+    boundary(|| {
+        if handle.is_null() { return Err(1); }
+        let (id, data, reason) = unsafe { (ffi_str(id)?,ffi_bytes(data,len)?,ffi_str(reason)?) };
+        let mut guard = unsafe { &*handle }.0.lock().map_err(|_| 2)?;
+        guard.reject(channel,id,data,reason).map_err(store_error)
+    })
+}

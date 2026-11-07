@@ -12,6 +12,7 @@ struct WorldsApp: App {
 }
 
 private struct WorldsLibraryView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @State private var pages: [StoredPage] = []
     @State private var selectedID: String?
     @State private var showImporter = false
@@ -32,6 +33,7 @@ private struct WorldsLibraryView: View {
                     } actions: {
                         Button("Open Database") { showImporter = true }
                             .buttonStyle(.borderedProminent)
+                            .foregroundStyle(colorScheme == .dark ? Color.black : Color.white)
                             .accessibilityIdentifier("open-database")
                     }
                 } else if pages.isEmpty {
@@ -78,6 +80,7 @@ private struct WorldsLibraryView: View {
                 ContentUnavailableView("Select a page", systemImage: "doc.text")
             }
         }
+        .tint(WorldsPalette.accent(for: colorScheme))
         .task {
             #if DEBUG
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-fixture"),

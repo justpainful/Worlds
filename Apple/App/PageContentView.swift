@@ -21,6 +21,7 @@ private struct PageNode: Decodable {
 }
 
 struct PageContentView: View {
+    @Environment(\.colorScheme) private var colorScheme
     let page: StoredPage
 
     var body: some View {
@@ -54,6 +55,7 @@ struct PageContentView: View {
             .frame(maxWidth: 760, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
+        .background(WorldsPalette.paper(for: colorScheme))
         #if os(macOS)
         .navigationTitle(page.title.isEmpty ? "Untitled" : page.title)
         #else
