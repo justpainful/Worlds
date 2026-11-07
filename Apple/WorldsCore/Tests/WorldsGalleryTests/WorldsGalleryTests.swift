@@ -11,9 +11,9 @@ private actor GalleryFixtureRepository: GalleryRepository {
     func readAuthorizedGallery(id: String) async throws -> GallerySnapshot {
         guard id == snapshot.id else { throw GalleryError.permissionDenied }; return snapshot
     }
-    func commitAuthorizedGallery(id: String, expectedRevision: Int64, blocks: [JSONValue], metadata: JSONValue, attachmentIDs: [String]) async throws -> GallerySnapshot {
+    func commitAuthorizedGallery(id: String, expectedRevision: Int64, expectedBlocks: [JSONValue], expectedMetadata: JSONValue, blocks: [JSONValue], metadata: JSONValue, attachmentIDs: [String]) async throws -> GallerySnapshot {
         guard id == snapshot.id, Set(attachmentIDs).isSubset(of: accessible) else { throw GalleryError.permissionDenied }
-        guard snapshot.revision == expectedRevision else { throw GalleryError.conflict }
+        guard snapshot.revision == expectedRevision, snapshot.blocks == expectedBlocks, snapshot.metadata == expectedMetadata else { throw GalleryError.conflict }
         snapshot = GallerySnapshot(id: id, kind: snapshot.kind, revision: snapshot.revision + 1, blocks: blocks, metadata: metadata)
         return snapshot
     }

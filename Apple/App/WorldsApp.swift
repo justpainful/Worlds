@@ -70,7 +70,6 @@ private struct WorldsLibraryView: View {
                     }
                 }
             }
-            .searchable(text: $searchQuery, prompt: "Search personal pages")
             .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 360)
             .navigationTitle("Pages")
             .toolbar {
@@ -90,6 +89,7 @@ private struct WorldsLibraryView: View {
                 ContentUnavailableView("Select a page", systemImage: "doc.text")
             }
         }
+        .searchable(text: $searchQuery, placement: .sidebar, prompt: "Search personal pages")
         .tint(WorldsPalette.accent(for: colorScheme))
         .task {
             #if DEBUG

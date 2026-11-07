@@ -7,3 +7,9 @@ Implemented preview building blocks are ImageIO thumbnail decoding with dimensio
 DOCX, XLSX, XLS, ODS, PPTX, presentation conversion, GIF animation, arbitrary encodings, SVG, HLS, and the full range supported by the original application are not implemented. Classification is only a hint and does not authenticate content. There is no import, attachment database mutation, account authorization, gallery workflow, or UI in this module. CSV cells are plain data and formulas are not evaluated.
 
 Tests use isolated temporary data and exercise traversal, symlink rejection, bounded reads, plain CSV, real image decoding and temporary-copy cleanup. Six tests passed on macOS in Actions run 42387357673. The module is included in SwiftPM but is not connected to app navigation.
+
+## Isolated import staging
+
+`AttachmentImport.stage` makes a private, bounded temporary copy of a selected regular file, holds security-scoped access during the copy, rejects a symlink at the selected path, and removes the temporary directory when the returned lease is released. It follows the original 1 GiB limit and display-name cleanup, with tests using temporary files. The implementation does not use `NSFileCoordinator`, does not guarantee a consistent snapshot if the source changes during copying, and does not validate parent path symlinks or hard links. A security scope is not an authorization decision.
+
+This is preparation only: it does not insert attachment metadata, store under the original month/ID path, compute the original MIME and image dimensions, index a page, synchronize files, export, or check workspace authorization. Do not connect it to user data until those operations have an audited, transactional integration and appropriate permission checks. The temporary file is not durable and may be removed when its lease deinitializes. Tests have been written but require execution on an Apple runner; they have not been run in this Windows environment.

@@ -6,5 +6,7 @@ Native views defer committing marked text until composition ends and translate t
 
 The save contract is an injected asynchronous protocol with a base revision. It does not open a database or implement authorization; the host must enforce conflicts and persistence. A successful save does not discard edits made while the save was in progress. End-to-end saving into a real Worlds database has not been tested. The editor is not connected to the app and must not be enabled until integration, IME and data-preservation checks pass.
 
-Tests use synthetic data and cover selected UTF-16 boundaries, paragraph splits and merges, conservative rejection, marks, undo/redo and an isolated persistence stub. They have not yet been executed on Apple.
+Tests use synthetic data and cover selected UTF-16 boundaries, paragraph splits and merges, conservative rejection, marks, undo/redo and an isolated persistence stub. Five earlier editor tests passed on macOS in Actions run 42387357673; the later nested-editing changes are awaiting Apple CI.
 
+
+A native text edit or marked-text composition sets `nativeEditPending`, which prevents a new save until the text surface has committed or cancelled it. This guard has a unit test but has not been validated against actual Japanese, Chinese, Korean or Arabic input methods. The host must also prevent closing or discarding a view while composition is pending, including when composition starts while a previous save is in flight. A persisted prior state is not proof that the current marked text is saved.

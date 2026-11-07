@@ -25,3 +25,9 @@ The macOS opening and page-detail screenshots from run 42386428057 were inspecte
 The iPad opening and page-detail screenshots from the same run were inspected in portrait. The accent is visible and the fixture content fits; this remains a read-only, sparse screen. Landscape, split view, smaller windows and dark mode have not been reviewed.
 
 The iPhone opening and page-detail screenshots from run 42386428057 were inspected. The accent is visible, the duplicate title is absent, and the fixture content fits this screen. The screen remains sparse and read-only. Other sizes, dark mode, complex content and editing remain unreviewed.
+
+The macOS search-result and empty-result screenshots from run 42388460952 were inspected. The personal result and empty state fit the captured standard window; the search field is positioned at the far right of the toolbar while results appear in the left sidebar, which needs usability review. The UI test passed this isolated scenario. Search on other devices, shared workspaces, complex results and accessibility variants remains unverified.
+
+Two iPhone search screenshots from that run were inspected. The result and empty state fit above the keyboard. The empty-state capture shows partially rendered keyboard glyphs, so it must be recaptured after the keyboard settles before visual approval. These captures predate the sidebar search-placement adjustment.
+
+Two iPad portrait search screenshots from that run were inspected. The result and empty state remain visible above the keyboard and fit within the sidebar at the captured size. The detail area remains empty until selection. Other orientations, long result sets, RTL and large text still need inspection.

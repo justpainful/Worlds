@@ -63,11 +63,14 @@ private struct NativeTextSurface: UIViewRepresentable {
         init(model: NativeEditorModel) { self.model = model }
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
             pendingNativeChange = true
+            model.setNativeEditPending(true)
             return true
         }
         func textViewDidChange(_ textView: UITextView) {
-            guard !updating, textView.markedTextRange == nil else { return }
+            guard !updating else { return }
+            if textView.markedTextRange != nil { pendingNativeChange = true; model.setNativeEditPending(true); return }
             pendingNativeChange = false
+            defer { model.setNativeEditPending(false) }
             do { try model.commitNativeText(textView.text ?? "", selection: textView.selectedRange) }
             catch {
                 updating = true
@@ -78,8 +81,10 @@ private struct NativeTextSurface: UIViewRepresentable {
             }
         }
         func textViewDidChangeSelection(_ textView: UITextView) {
-            guard !updating, textView.markedTextRange == nil else { return }
+            guard !updating else { return }
+            if textView.markedTextRange != nil { pendingNativeChange = true; model.setNativeEditPending(true); return }
             if pendingNativeChange && textView.text != model.projection.text { textViewDidChange(textView) }
+            if pendingNativeChange && textView.text == model.projection.text { pendingNativeChange = false; model.setNativeEditPending(false) }
             if !pendingNativeChange { model.selection = textView.selectedRange }
         }
     }
@@ -125,11 +130,14 @@ private struct NativeTextSurface: NSViewRepresentable {
         init(model: NativeEditorModel) { self.model = model }
         func textView(_ textView: NSTextView, shouldChangeTextIn affectedCharRange: NSRange, replacementString: String?) -> Bool {
             pendingNativeChange = true
+            model.setNativeEditPending(true)
             return true
         }
         func textDidChange(_ notification: Notification) {
-            guard !updating, let view = notification.object as? NSTextView, !view.hasMarkedText() else { return }
+            guard !updating, let view = notification.object as? NSTextView else { return }
+            if view.hasMarkedText() { pendingNativeChange = true; model.setNativeEditPending(true); return }
             pendingNativeChange = false
+            defer { model.setNativeEditPending(false) }
             do { try model.commitNativeText(view.string, selection: view.selectedRange()) }
             catch {
                 updating = true
@@ -140,12 +148,12 @@ private struct NativeTextSurface: NSViewRepresentable {
             }
         }
         func textViewDidChangeSelection(_ notification: Notification) {
-            guard !updating, let view = notification.object as? NSTextView, !view.hasMarkedText() else { return }
+            guard !updating, let view = notification.object as? NSTextView else { return }
+            if view.hasMarkedText() { pendingNativeChange = true; model.setNativeEditPending(true); return }
             if pendingNativeChange && view.string != model.projection.text { textDidChange(notification) }
+            if pendingNativeChange && view.string == model.projection.text { pendingNativeChange = false; model.setNativeEditPending(false) }
             if !pendingNativeChange { model.selection = view.selectedRange() }
         }
     }
 }
 #endif
-
-

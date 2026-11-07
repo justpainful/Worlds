@@ -33,6 +33,13 @@ private struct Request: Encodable, Sendable {
     var title: String? = nil
     var parent: String? = nil
     var blocks: [NativeBlockInput]? = nil
+    var expected: [NativeBlockInput]? = nil
+    var expectedMetadata: JSONValue? = nil
+    var metadata: JSONValue? = nil
+    enum CodingKeys: String, CodingKey {
+        case operation, path, page, base, title, parent, blocks, expected, metadata
+        case expectedMetadata = "expected_metadata"
+    }
 }
 private struct Response: Decodable {
     let ok: Bool
@@ -57,6 +64,19 @@ public actor NativePersonalStore {
     }
     public func saveBlocks(pageID: String, base: Int64, blocks: [NativeBlockInput]) async throws -> JSONValue {
         try await call(Request(operation: "save_blocks", path: url.path, page: pageID, base: base, blocks: blocks))
+    }
+    /// Requires the original ordered block contents and verifies them atomically.
+    public func saveBlocksChecked(pageID: String, base: Int64, expected: [NativeBlockInput], blocks: [NativeBlockInput]) async throws -> JSONValue {
+        try await call(Request(operation: "save_blocks_checked", path: url.path, page: pageID, base: base, blocks: blocks, expected: expected))
+    }
+    public func readResource(id: String) async throws -> JSONValue {
+        try await call(Request(operation: "read_resource", path: url.path, page: id))
+    }
+    public func saveProject(id: String, base: Int64, expectedMetadata: JSONValue, metadata: JSONValue) async throws -> JSONValue {
+        try await call(Request(operation: "save_project", path: url.path, page: id, base: base, expectedMetadata: expectedMetadata, metadata: metadata))
+    }
+    public func saveGallery(id: String, base: Int64, expectedMetadata: JSONValue, metadata: JSONValue, expected: [NativeBlockInput], blocks: [NativeBlockInput]) async throws -> JSONValue {
+        try await call(Request(operation: "save_gallery", path: url.path, page: id, base: base, blocks: blocks, expected: expected, expectedMetadata: expectedMetadata, metadata: metadata))
     }
     public func trashPage(id: String, base: Int64) async throws {
         _ = try await call(Request(operation: "trash_page", path: url.path, page: id, base: base))

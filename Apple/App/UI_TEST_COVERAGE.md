@@ -15,3 +15,5 @@ Screenshots are XCTest attachments, retained in the result bundle and exported b
 - `07-search-no-results`: query without matching results.
 
 The tests exercise selection of a page and closing the error alert. They do not automate choosing a file in the system picker, editing, collaboration, authentication, shared pages, all content types, RTL, Dynamic Type, different appearances, older operating systems, multiple window sizes, physical devices, or performance. A successful test or screenshot capture does not mean a human reviewed an image. A visual review and corrections remain required.
+
+In run 42389924247, the macOS search-results screen capture showed the desktop without the app window even though the interaction test passed. That image is invalid for visual review. macOS captures now activate the app and capture its window directly; this change still requires a new CI run and visual inspection.

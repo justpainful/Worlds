@@ -2,6 +2,8 @@ use anyhow::{bail, Result};
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use serde_json::Value;
 use std::path::Path;
+mod resource_ops;
+mod automation_ops;
 
 #[path = "../../../src-tauri/src/content.rs"]
 mod content;
@@ -78,6 +80,40 @@ pub fn save_blocks(path: &Path, page: &str, base: i64, blocks: Vec<BlockInput>) 
     Ok(serde_json::to_value(result)?)
 }
 
+/// Full content and ordering are compared in the same write transaction.
+/// Millisecond timestamps alone cannot detect reordered rows or equal-time writes.
+pub fn save_blocks_checked(path: &Path, page: &str, base: i64, expected: Vec<BlockInput>, blocks: Vec<BlockInput>) -> Result<Value> {
+    use std::collections::HashSet;
+    let mut conn = open_existing(path)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+    require_personal(&tx, page)?;
+    let (kind, current_at): (String,i64) = tx.query_row("SELECT kind,updated_at FROM pages WHERE id=?1", [page], |r| Ok((r.get(0)?,r.get(1)?)))?;
+    if kind != "page" && kind != "document" { bail!("only page and document blocks are supported") }
+    if current_at != base { bail!("conflict: page revision changed") }
+    let current: Vec<(String,String)> = tx.prepare("SELECT id,content FROM blocks WHERE page_id=?1 ORDER BY sort_key")?
+        .query_map([page], |r| Ok((r.get(0)?,r.get(1)?)))?.collect::<rusqlite::Result<_>>()?;
+    if current.len() != expected.len() { bail!("conflict: block count changed") }
+    for ((id, json), old) in current.iter().zip(expected.iter()) {
+        let value: Value = serde_json::from_str(json)?;
+        if id != &old.id || value != old.content { bail!("conflict: block content or order changed") }
+    }
+    let mut ids = HashSet::new();
+    for block in &blocks {
+        if block.id.is_empty() || !ids.insert(block.id.clone()) || !block.content.is_object() { bail!("invalid block ID or content") }
+        if block.content.pointer("/attrs/bid").and_then(Value::as_str) != Some(block.id.as_str()) { bail!("invalid block identity") }
+        let owner: Option<String> = tx.query_row("SELECT page_id FROM blocks WHERE id=?1", [&block.id], |r| r.get(0)).optional()?;
+        if owner.as_deref().is_some_and(|other| other != page) { bail!("conflict: block ID belongs to another page") }
+    }
+    store::snapshot_before_user_edit(&tx, page)?;
+    let input = blocks.into_iter().map(|block| store::BlockInput { id: block.id, content: block.content }).collect();
+    let result = store::save_blocks(&tx, &store::Ctx::user(), page, input)?;
+    if !result.remapped.is_empty() { bail!("conflict: block identifiers were remapped") }
+    let saved_at: i64 = tx.query_row("SELECT updated_at FROM pages WHERE id=?1", [page], |r| r.get(0))?;
+    let mut result = serde_json::to_value(result)?;
+    result["updatedAt"] = Value::from(saved_at);
+    tx.commit()?;
+    Ok(result)
+}
 pub fn rename_page(path: &Path, page: &str, base: i64, title: String) -> Result<Value> {
     let mut conn = open_existing(path)?;
     let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
@@ -120,7 +156,14 @@ pub fn trash_page(path: &Path, page: &str, base: i64) -> Result<()> {
 #[serde(tag = "operation", rename_all = "snake_case")]
 enum Request {
     SqliteInfo,
+    AutomationDue { path: String },
+    AutomationClaim { path: String, automation_id: String, expected_due: i64 },
+    AutomationDecline { path: String, action_id: String },
+    ReadResource { path: String, page: String },
+    SaveProject { path: String, page: String, base: i64, expected_metadata: Value, metadata: Value },
+    SaveGallery { path: String, page: String, base: i64, expected_metadata: Value, metadata: Value, expected: Vec<BlockInput>, blocks: Vec<BlockInput> },
     SaveBlocks { path: String, page: String, base: i64, blocks: Vec<BlockInput> },
+    SaveBlocksChecked { path: String, page: String, base: i64, expected: Vec<BlockInput>, blocks: Vec<BlockInput> },
     RenamePage { path: String, page: String, base: i64, title: String },
     CreatePage { path: String, title: String, parent: Option<String> },
     TrashPage { path: String, page: String, base: i64 },
@@ -134,7 +177,14 @@ fn dispatch(bytes: &[u8]) -> Result<Value> {
             let fts5: i64 = connection.query_row("SELECT sqlite_compileoption_used('ENABLE_FTS5')", [], |row| row.get(0))?;
             Ok(serde_json::json!({ "version": rusqlite::version(), "fts5": fts5 == 1 }))
         }
+        Request::AutomationDue { path } => automation_ops::due(Path::new(&path), db::now()),
+        Request::AutomationClaim { path, automation_id, expected_due } => automation_ops::claim(Path::new(&path), &automation_id, expected_due, db::now()),
+        Request::AutomationDecline { path, action_id } => automation_ops::decline(Path::new(&path), &action_id, db::now()),
+        Request::ReadResource { path, page } => resource_ops::read_resource(Path::new(&path), &page),
+        Request::SaveProject { path, page, base, expected_metadata, metadata } => resource_ops::save_project(Path::new(&path), &page, base, expected_metadata, metadata),
+        Request::SaveGallery { path, page, base, expected_metadata, metadata, expected, blocks } => resource_ops::save_gallery(Path::new(&path), &page, base, expected_metadata, metadata, expected, blocks),
         Request::SaveBlocks { path, page, base, blocks } => save_blocks(Path::new(&path), &page, base, blocks),
+        Request::SaveBlocksChecked { path, page, base, expected, blocks } => save_blocks_checked(Path::new(&path), &page, base, expected, blocks),
         Request::RenamePage { path, page, base, title } => rename_page(Path::new(&path), &page, base, title),
         Request::CreatePage { path, title, parent } => create_page(Path::new(&path), title, parent),
         Request::TrashPage { path, page, base } => { trash_page(Path::new(&path), &page, base)?; Ok(Value::Null) }
@@ -237,6 +287,61 @@ mod tests {
         assert!(rename_page(&path,"fixture-page",i64::MAX,"wrong".into()).is_err());
         std::fs::remove_file(path).unwrap();
     }
+    fn current_blocks(path:&Path) -> Vec<BlockInput> {
+        let c=Connection::open(path).unwrap();
+        let mut q=c.prepare("SELECT id,content FROM blocks WHERE page_id='fixture-page' ORDER BY sort_key").unwrap();
+        q.query_map([],|r| Ok(BlockInput{id:r.get(0)?,content:serde_json::from_str::<Value>(&r.get::<_,String>(1)?).unwrap()})).unwrap().map(|r|r.unwrap()).collect()
+    }
+    fn with_bid(mut blocks:Vec<BlockInput>) -> Vec<BlockInput> {
+        for block in &mut blocks { content::set_block_id(&mut block.content,&block.id); }
+        blocks
+    }
+    #[test]
+    fn checked_save_rejects_equal_timestamp_conflict_without_writes() {
+        let path=fixture(); let expected=current_blocks(&path); let submitted=with_bid(current_blocks(&path));
+        let c=Connection::open(&path).unwrap();
+        c.execute("UPDATE blocks SET content=?1 WHERE id='fixture-block'",[r#"{"type":"paragraph","content":[{"type":"text","text":"concurrent"}]}"#]).unwrap();drop(c);
+        assert!(save_blocks_checked(&path,"fixture-page",1700000000001,expected,submitted).unwrap_err().to_string().contains("conflict"));
+        let c=Connection::open(&path).unwrap(); let raw:String=c.query_row("SELECT content FROM blocks WHERE id='fixture-block'",[],|r|r.get(0)).unwrap();
+        assert!(raw.contains("concurrent")); assert_eq!(c.query_row("SELECT count(*) FROM versions",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        drop(c);std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn checked_save_rejects_reorder_and_cross_page_id() {
+        let path=fixture(); let c=Connection::open(&path).unwrap();
+        c.execute("INSERT INTO blocks(id,page_id,type,sort_key,content,text,direction,created_at,updated_at) SELECT 'second',page_id,type,1,content,text,direction,created_at,updated_at FROM blocks WHERE id='fixture-block'",[]).unwrap();
+        drop(c);let expected=current_blocks(&path);let submitted=with_bid(current_blocks(&path));
+        let c=Connection::open(&path).unwrap();c.execute("UPDATE blocks SET sort_key=-1 WHERE id='second'",[]).unwrap();drop(c);
+        assert!(save_blocks_checked(&path,"fixture-page",1700000000001,expected,submitted).is_err());
+        let c=Connection::open(&path).unwrap();
+        c.execute("INSERT INTO pages(id,title,created_at,updated_at) VALUES('other','Other',1,1)",[]).unwrap();
+        c.execute("INSERT INTO blocks(id,page_id,type,sort_key,content,text,direction,created_at,updated_at) SELECT 'foreign','other',type,1,content,text,direction,created_at,updated_at FROM blocks WHERE id='fixture-block'",[]).unwrap();drop(c);
+        let expected=current_blocks(&path);let mut submitted=with_bid(current_blocks(&path));
+        submitted.push(BlockInput{id:"foreign".into(),content:serde_json::json!({"type":"paragraph","attrs":{"bid":"foreign"}})});
+        assert!(save_blocks_checked(&path,"fixture-page",1700000000001,expected,submitted).is_err());
+        let c=Connection::open(&path).unwrap();let owner:String=c.query_row("SELECT page_id FROM blocks WHERE id='foreign'",[],|r|r.get(0)).unwrap();assert_eq!(owner,"other");
+        drop(c);std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn checked_save_rejects_page_shared_after_snapshot() {
+        let path=fixture(); let expected=current_blocks(&path); let submitted=with_bid(current_blocks(&path));
+        let c=Connection::open(&path).unwrap();
+        c.execute("UPDATE pages SET workspace_id='team' WHERE id='fixture-page'",[]).unwrap(); drop(c);
+        assert!(save_blocks_checked(&path,"fixture-page",1700000000001,expected,submitted).is_err());
+        let c=Connection::open(&path).unwrap();
+        assert_eq!(c.query_row("SELECT count(*) FROM versions",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        assert_eq!(c.query_row("SELECT count(*) FROM blocks WHERE page_id='fixture-page'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        drop(c);std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn checked_save_is_atomic_on_invalid_identity_and_returns_real_revision() {
+        let path=fixture();let expected=current_blocks(&path);let mut submitted=with_bid(current_blocks(&path));
+        submitted.push(BlockInput{id:"fixture-block".into(),content:serde_json::json!({"type":"paragraph","attrs":{"bid":"fixture-block"}})});
+        assert!(save_blocks_checked(&path,"fixture-page",1700000000001,expected,submitted).is_err());
+        let result=save_blocks_checked(&path,"fixture-page",1700000000001,current_blocks(&path),with_bid(current_blocks(&path))).unwrap();
+        let c=Connection::open(&path).unwrap();let at:i64=c.query_row("SELECT updated_at FROM pages WHERE id='fixture-page'",[],|r|r.get(0)).unwrap();assert_eq!(result["updatedAt"],at);
+        drop(c);std::fs::remove_file(path).unwrap();
+    }
     #[test]
     fn ffi_returns_error_for_invalid_request() {
         let bytes = b"invalid json";
@@ -257,11 +362,3 @@ mod tests {
         drop(c); std::fs::remove_file(path).unwrap();
     }
 }
-
-
-
-
-
-
-
-

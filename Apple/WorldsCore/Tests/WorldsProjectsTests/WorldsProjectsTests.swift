@@ -25,9 +25,17 @@ private actor SQLiteFixtureRepository: ProjectRepository {
         let metadata = try JSONDecoder().decode(JSONValue.self, from: Data(String(cString: rawJSON).utf8))
         return ProjectRecord(id: String(cString: rawID), kind: String(cString: rawKind), metadata: metadata, revision: sqlite3_column_int64(statement,3))
     }
-    func compareAndSwapProject(id: String, expectedRevision: Int64, metadata: JSONValue) async throws -> ProjectRecord {
+    func compareAndSwapProject(id: String, expectedRevision: Int64, expectedMetadata: JSONValue, metadata: JSONValue) async throws -> ProjectRecord {
         guard sqlite3_exec(db, "BEGIN IMMEDIATE", nil, nil, nil) == SQLITE_OK else { throw ProjectError.invalidMetadata }
         do {
+            var check: OpaquePointer?
+            guard sqlite3_prepare_v2(db, "SELECT metadata FROM pages WHERE id=?1", -1, &check, nil) == SQLITE_OK, let check else { throw ProjectError.invalidMetadata }
+            let checkTransient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+            sqlite3_bind_text(check, 1, id, -1, checkTransient)
+            guard sqlite3_step(check) == SQLITE_ROW, let raw = sqlite3_column_text(check, 0) else { sqlite3_finalize(check); throw ProjectError.conflict }
+            let current = try JSONDecoder().decode(JSONValue.self, from: Data(String(cString: raw).utf8))
+            sqlite3_finalize(check)
+            guard current == expectedMetadata else { throw ProjectError.conflict }
             var statement: OpaquePointer?
             guard sqlite3_prepare_v2(db, "UPDATE pages SET metadata=?1,updated_at=updated_at+1 WHERE id=?2 AND kind='project' AND updated_at=?3", -1, &statement, nil) == SQLITE_OK, let statement else { throw ProjectError.invalidMetadata }
             defer { sqlite3_finalize(statement) }

@@ -66,6 +66,9 @@ extension RichTextDocument {
         if !right.isEmpty { var node = endNode; node["text"] = .string(right); suffix.append(.object(node)) }
         suffix.append(contentsOf: endChildren.dropFirst(b[1] + 1))
         let lines = replacement.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(of: "\r", with: "\n").components(separatedBy: "\n")
+        if lines.count > 1 || a[0] != b[0] {
+            guard selected.allSatisfy(safeParagraphStructure) else { throw StructuralEditError.unknownMetadata }
+        }
         var result: [JSONValue] = []
         for (index, line) in lines.enumerated() {
             var block = selected[0]
@@ -135,6 +138,16 @@ private func replaceChildren(_ source: inout JSONValue, path: ArraySlice<Int>, c
     source = .object(object)
 }
 private func safeToSplit(_ node: [String: JSONValue]) -> Bool {
-    guard Set(node.keys).isSubset(of: ["type", "text", "marks"]) else { return false }
-    return node["marks"] == nil || node["marks"]?.arrayForEdit != nil
+    // Unknown marks may encode non-duplicable identity or semantics. Splitting
+    // them without understanding their rules could corrupt data.
+    return safeToReplace(node)
+}
+
+
+private func safeParagraphStructure(_ block: [String: JSONValue]) -> Bool {
+    guard Set(block.keys).isSubset(of: ["type", "attrs", "content"]) else { return false }
+    guard let attrs = block["attrs"] else { return true }
+    if attrs == .null { return true }
+    guard let object = attrs.objectForEdit else { return false }
+    return Set(object.keys).isSubset(of: ["bid", "dir", "textAlign"])
 }

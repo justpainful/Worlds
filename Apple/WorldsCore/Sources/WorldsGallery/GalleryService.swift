@@ -19,7 +19,7 @@ public enum GalleryChange: Sendable {
 /// item must never delete its attachment or alter a different resource.
 public protocol GalleryRepository: Sendable {
     func readAuthorizedGallery(id: String) async throws -> GallerySnapshot
-    func commitAuthorizedGallery(id: String, expectedRevision: Int64, blocks: [JSONValue], metadata: JSONValue, attachmentIDs: [String]) async throws -> GallerySnapshot
+    func commitAuthorizedGallery(id: String, expectedRevision: Int64, expectedBlocks: [JSONValue], expectedMetadata: JSONValue, blocks: [JSONValue], metadata: JSONValue, attachmentIDs: [String]) async throws -> GallerySnapshot
 }
 public actor GalleryService {
     private let repository: any GalleryRepository
@@ -37,7 +37,6 @@ public actor GalleryService {
         case .caption(let id, let text): try document.setCaption(itemID: id, caption: text)
         case .view(let value): try document.setView(value)
         }
-        return try await repository.commitAuthorizedGallery(id: galleryID, expectedRevision: expectedRevision, blocks: document.blocks, metadata: document.metadata, attachmentIDs: Array(Set(originalAttachments + document.attachmentIDs)).sorted())
+        return try await repository.commitAuthorizedGallery(id: galleryID, expectedRevision: expectedRevision, expectedBlocks: current.blocks, expectedMetadata: current.metadata, blocks: document.blocks, metadata: document.metadata, attachmentIDs: Array(Set(originalAttachments + document.attachmentIDs)).sorted())
     }
 }
-

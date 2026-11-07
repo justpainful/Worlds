@@ -132,8 +132,9 @@ private func drawNode(_ node: [String: JSONValue], context: CGContext) throws ->
               !samples.isEmpty, samples.count <= 65536,
               let brushKind = brush["kind"]?.stringValue, ["hard", "pencil", "ink", "marker", "highlighter"].contains(brushKind) else { throw PreviewError.unsupported("Brush type is not implemented") }
         let points = try samples.map { value -> (CGPoint, CGFloat) in
-            guard let sample = value.objectValue, let px = number(sample, "x"), let py = number(sample, "y"),
-                  let pressure = number(sample, "pressure"), (0...1).contains(pressure) else { throw PreviewError.malformed }
+            guard let sample = value.objectValue, let px = number(sample, "x"), let py = number(sample, "y") else { throw PreviewError.malformed }
+            let pressure = sample["pressure"] == nil ? 1 : number(sample, "pressure")
+            guard let pressure, (0...1).contains(pressure) else { throw PreviewError.malformed }
             return (CGPoint(x: px, y: py), pressure)
         }
         let curve = number(brush, "pressureCurve") ?? 1
@@ -164,7 +165,3 @@ private func drawNode(_ node: [String: JSONValue], context: CGContext) throws ->
     }
     throw PreviewError.unsupported("Element type is not implemented")
 }
-
-
-
-

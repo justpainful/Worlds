@@ -6,5 +6,4 @@ This is a first implementation, not a complete native rich-text editor. It does 
 
 The corpus tests include Arabic, emoji, lists, tables, custom attributes, unknown marks and unknown leaf nodes. Seven tests passed on macOS in Actions run 42387357673. Later structural changes still need another run. The module is included in SwiftPM but is not connected to the app's editor.
 
-StructuralEditing adds conservative split, merge and cross-node replacements for compatible text-only sibling paragraphs in documents, list items, task items, cells, headers and blockquotes. It rejects unknown metadata on destructive cross-node edits and opaque structures rather than discarding them; empty paragraphs and cross-container changes remain unsupported. These operations have not been tested on Apple.
-
+StructuralEditing adds conservative split, merge and cross-node replacements for compatible text-only sibling paragraphs in documents, list items, task items, cells, headers and blockquotes. It rejects unknown marks and metadata on structural edits and opaque structures rather than duplicating or discarding them; empty paragraphs and cross-container changes remain unsupported. These operations have not been tested on Apple.

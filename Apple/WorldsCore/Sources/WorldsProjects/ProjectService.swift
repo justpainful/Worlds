@@ -15,7 +15,7 @@ public struct ProjectRecord: Sendable, Equatable {
 /// atomically in one transaction. This module does not implement real storage.
 public protocol ProjectRepository: Sendable {
     func readProject(id: String) async throws -> ProjectRecord
-    func compareAndSwapProject(id: String, expectedRevision: Int64, metadata: JSONValue) async throws -> ProjectRecord
+    func compareAndSwapProject(id: String, expectedRevision: Int64, expectedMetadata: JSONValue, metadata: JSONValue) async throws -> ProjectRecord
 }
 
 public actor ProjectService {
@@ -28,6 +28,6 @@ public actor ProjectService {
         guard current.revision == expectedRevision else { throw ProjectError.conflict }
         var project = try ProjectMetadata(source: current.metadata)
         try project.apply(change, projectID: projectID, resources: authorizedResources)
-        return try await repository.compareAndSwapProject(id: projectID, expectedRevision: expectedRevision, metadata: project.source)
+        return try await repository.compareAndSwapProject(id: projectID, expectedRevision: expectedRevision, expectedMetadata: current.metadata, metadata: project.source)
     }
 }

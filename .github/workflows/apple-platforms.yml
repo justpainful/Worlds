@@ -29,6 +29,10 @@ jobs:
           set -o pipefail
           mkdir -p logs
           swift test --package-path Apple/WorldsCore 2>&1 | tee logs/swift-test.log
+          grep -q 'testSaveWaitsForNativeTextComposition' logs/swift-test.log
+          grep -q 'testStagesAndCleansUpAnIsolatedFile' logs/swift-test.log
+          grep -q 'testBoundsAndSymlink' logs/swift-test.log
+          grep -q 'testOriginalNameCleaning' logs/swift-test.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -140,6 +144,11 @@ jobs:
           mkdir -p logs
           bash Apple/RustStore/scripts/build-apple.sh 2>&1 | tee logs/rust-xcframework.log
           test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
+      - name: Test Rust store on macOS
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo test --locked --manifest-path Apple/RustStore/Cargo.toml 2>&1 | tee logs/rust-store-tests.log
       - name: Discover required write tests
         shell: bash
         run: |
@@ -164,6 +173,93 @@ jobs:
             -resultBundlePath "$GITHUB_WORKSPACE/write-simulator.xcresult" \
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$GITHUB_WORKSPACE/logs/write-tests-ios.log"
           grep -q 'testSQLiteLinkageAndFTSAvailability' "$GITHUB_WORKSPACE/logs/write-tests-ios.log"
+      - name: Discover editor persistence tests
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path Apple/WorldsCore list 2>&1 | tee logs/editor-persistence-discovery.log
+          grep -q 'testEditorSavePreservesUnknownNodeAndAttributes' logs/editor-persistence-discovery.log
+          grep -q 'testConflictAtSameTimestampKeepsDirtyEditorAndDatabase' logs/editor-persistence-discovery.log
+          grep -q 'testRejectsPageBecomingSharedBeforeSave' logs/editor-persistence-discovery.log
+          grep -q 'testTwoEditorSessionsRejectStaleSnapshot' logs/editor-persistence-discovery.log
+          grep -q 'testRejectsReorderedBlocksWithoutTimestampChange' logs/editor-persistence-discovery.log
+      - name: Test editor persistence on macOS
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path Apple/WorldsCore --filter WorldsEditorPersistenceTests 2>&1 | tee logs/editor-persistence-macos.log
+          grep -q 'testEditorSavePreservesUnknownNodeAndAttributes' logs/editor-persistence-macos.log
+          grep -q 'testConflictAtSameTimestampKeepsDirtyEditorAndDatabase' logs/editor-persistence-macos.log
+          grep -q 'testRejectsPageBecomingSharedBeforeSave' logs/editor-persistence-macos.log
+          grep -q 'testTwoEditorSessionsRejectStaleSnapshot' logs/editor-persistence-macos.log
+          grep -q 'testRejectsReorderedBlocksWithoutTimestampChange' logs/editor-persistence-macos.log
+      - name: Test editor persistence on iOS simulator
+        shell: bash
+        run: |
+          set -o pipefail
+          cd Apple/WorldsCore
+          xcodebuild -scheme WorldsCore-Package \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.5' \
+            -only-testing:WorldsEditorPersistenceTests \
+            -resultBundlePath "$GITHUB_WORKSPACE/editor-persistence-simulator.xcresult" \
+            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$GITHUB_WORKSPACE/logs/editor-persistence-ios.log"
+          grep -q 'testEditorSavePreservesUnknownNodeAndAttributes' "$GITHUB_WORKSPACE/logs/editor-persistence-ios.log"
+          grep -q 'testConflictAtSameTimestampKeepsDirtyEditorAndDatabase' "$GITHUB_WORKSPACE/logs/editor-persistence-ios.log"
+          grep -q 'testRejectsPageBecomingSharedBeforeSave' "$GITHUB_WORKSPACE/logs/editor-persistence-ios.log"
+          grep -q 'testTwoEditorSessionsRejectStaleSnapshot' "$GITHUB_WORKSPACE/logs/editor-persistence-ios.log"
+          grep -q 'testRejectsReorderedBlocksWithoutTimestampChange' "$GITHUB_WORKSPACE/logs/editor-persistence-ios.log"
+      - name: Discover resource repository tests
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path Apple/WorldsCore list 2>&1 | tee logs/resource-repositories-discovery.log
+          grep -q 'testProjectUsesNativeStoreAndRejectsSameTimestampChange' logs/resource-repositories-discovery.log
+          grep -q 'testGalleryUsesNativeStoreAndKeepsAttachment' logs/resource-repositories-discovery.log
+      - name: Test resource repositories on macOS
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path Apple/WorldsCore --filter WorldsResourceRepositoriesTests 2>&1 | tee logs/resource-repositories-macos.log
+          grep -q 'testProjectUsesNativeStoreAndRejectsSameTimestampChange' logs/resource-repositories-macos.log
+          grep -q 'testGalleryUsesNativeStoreAndKeepsAttachment' logs/resource-repositories-macos.log
+      - name: Test resource repositories on iOS simulator
+        shell: bash
+        run: |
+          set -o pipefail
+          cd Apple/WorldsCore
+          xcodebuild -scheme WorldsCore-Package \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.5' \
+            -only-testing:WorldsResourceRepositoriesTests \
+            -resultBundlePath "$GITHUB_WORKSPACE/resource-repositories-simulator.xcresult" \
+            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$GITHUB_WORKSPACE/logs/resource-repositories-ios.log"
+          grep -q 'testProjectUsesNativeStoreAndRejectsSameTimestampChange' "$GITHUB_WORKSPACE/logs/resource-repositories-ios.log"
+          grep -q 'testGalleryUsesNativeStoreAndKeepsAttachment' "$GITHUB_WORKSPACE/logs/resource-repositories-ios.log"
+      - name: Discover native automation tests
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path Apple/WorldsCore list 2>&1 | tee logs/automation-discovery.log
+          grep -q 'testIsolatedScheduleClaimRestartAndDecline' logs/automation-discovery.log
+          grep -q 'testMissedScheduleIsSkippedWithoutApproval' logs/automation-discovery.log
+      - name: Test native automation on macOS
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path Apple/WorldsCore --filter NativeAutomationDriverTests 2>&1 | tee logs/automation-macos.log
+          grep -q 'testIsolatedScheduleClaimRestartAndDecline' logs/automation-macos.log
+          grep -q 'testMissedScheduleIsSkippedWithoutApproval' logs/automation-macos.log
+      - name: Test native automation on iOS simulator
+        shell: bash
+        run: |
+          set -o pipefail
+          cd Apple/WorldsCore
+          xcodebuild -scheme WorldsCore-Package \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.5' \
+            -only-testing:WorldsAutomationsTests/NativeAutomationDriverTests \
+            -resultBundlePath "$GITHUB_WORKSPACE/automation-simulator.xcresult" \
+            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$GITHUB_WORKSPACE/logs/automation-ios.log"
+          grep -q 'testIsolatedScheduleClaimRestartAndDecline' "$GITHUB_WORKSPACE/logs/automation-ios.log"
+          grep -q 'testMissedScheduleIsSkippedWithoutApproval' "$GITHUB_WORKSPACE/logs/automation-ios.log"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -171,6 +267,9 @@ jobs:
           path: |
             logs/
             write-simulator.xcresult/
+            editor-persistence-simulator.xcresult/
+            resource-repositories-simulator.xcresult/
+            automation-simulator.xcresult/
           if-no-files-found: warn
 
   collaboration-xcframework:

@@ -6,4 +6,6 @@ Removal removes only the gallery block; it does not delete an attachment. The mo
 
 The parser requires an ID and the standard attachmentId, name, mime, size and kind attributes for every galleryItem. Unknown attributes are preserved; legacy or malformed entries missing required fields fail closed pending compatibility analysis. The original GalleryView rewrites the gallery as galleryItem blocks only, while this module deliberately retains non-gallery blocks to avoid dropping unknown content.
 
-Tests use an isolated in-memory repository and synthetic image, video and audio records to check round-trip preservation, reorder, removal, attachment retention, conflicts and access denial. They have not been compiled or run on Apple. The module is included in SwiftPM locally but is not connected to the app.
+Tests use an isolated in-memory repository and synthetic image, video and audio records to check round-trip preservation, reorder, removal, attachment retention, conflicts and access denial. Four tests passed on macOS in Actions run 42389924247. The module is included in SwiftPM but is not connected to the app.
+
+An experimental RustStore adapter now exists in WorldsResourceRepositories. It compares complete block and metadata baselines and checks personal attachment owners inside the same transaction. It has not been linked to the app or verified on Apple; attachment import remains unavailable.

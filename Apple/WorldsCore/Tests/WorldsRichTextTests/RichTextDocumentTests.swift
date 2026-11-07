@@ -87,8 +87,8 @@ final class RichTextDocumentTests: XCTestCase {
         XCTAssertThrowsError(try protected.replaceParagraphSelection(NSRange(location: 1, length: 0), with: "\n"))
         XCTAssertEqual(protected.source, before)
     }
-    func testNestedListSplitPreservesUnknownMarksAndAttributes() throws {
-        let json = #"{"type":"doc","content":[{"type":"bulletList","attrs":{"custom":9},"content":[{"type":"listItem","attrs":{"custom":"keep"},"content":[{"type":"paragraph","attrs":{"dir":"rtl"},"content":[{"type":"text","text":"أهلا","marks":[{"type":"future","attrs":{"tag":"keep"}}]}]}]}]}]}"#
+    func testNestedListSplitPreservesMarksAndUnknownContainerAttributes() throws {
+        let json = #"{"type":"doc","content":[{"type":"bulletList","attrs":{"custom":9},"content":[{"type":"listItem","attrs":{"custom":"keep"},"content":[{"type":"paragraph","attrs":{"dir":"rtl"},"content":[{"type":"text","text":"أهلا","marks":[{"type":"bold"}]}]}]}]}]}"#
         var document = try RichTextDocument(json: Data(json.utf8))
         try document.replaceParagraphSelection(NSRange(location: 2, length: 0), with: "\n")
         XCTAssertEqual(document.project().text, "أه\nلا")
@@ -108,6 +108,11 @@ final class RichTextDocumentTests: XCTestCase {
         try document.replaceParagraphSelection(NSRange(location: 1, length: 0), with: "\n")
         XCTAssertEqual(document.project().text, "a\nbc\tdef")
     }
+    func testSplitRejectsUnknownParagraphIdentityAttributes() throws {
+        let input = #"{"type":"doc","content":[{"type":"paragraph","attrs":{"bid":"a","futureIdentity":"unique"},"content":[{"type":"text","text":"abcd"}]}]}"#
+        var document = try RichTextDocument(json: Data(input.utf8))
+        let before = document.source
+        XCTAssertThrowsError(try document.replaceParagraphSelection(NSRange(location: 2, length: 0), with: "\n"))
+        XCTAssertEqual(document.source, before)
+    }
 }
-
-

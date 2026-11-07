@@ -59,6 +59,20 @@ final class NativeEditorTests: XCTestCase {
         XCTAssertFalse(model.dirty)
         XCTAssertEqual(try JSONDecoder().decode(JSONValue.self, from: XCTUnwrap(state.0)), model.document.source)
     }
+    func testSaveWaitsForNativeTextComposition() async throws {
+        let model = try makeModel()
+        let store = FixturePersistence()
+        _ = try model.replace(range: NSRange(location: 0, length: 1), with: "أ")
+        model.setNativeEditPending(true)
+        do { try await model.save(using: store); XCTFail("Pending input must not be saved") }
+        catch NativeEditorError.nativeEditPending { } catch { XCTFail("Unexpected error: \(error)") }
+        XCTAssertTrue(model.dirty)
+        let state = await store.state()
+        XCTAssertNil(state.0)
+        model.setNativeEditPending(false)
+        try await model.save(using: store)
+        XCTAssertFalse(model.dirty)
+    }
     func testCommittedNativeTextSplitsParagraphAndUndo() throws {
         let json = #"{"type":"doc","content":[{"type":"paragraph","attrs":{"bid":"a"},"content":[{"type":"text","text":"abcd"}]}]}"#
         let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 1)
@@ -91,5 +105,3 @@ final class NativeEditorTests: XCTestCase {
         XCTAssertEqual(model.projection.text, "A👋B")
     }
 }
-
-

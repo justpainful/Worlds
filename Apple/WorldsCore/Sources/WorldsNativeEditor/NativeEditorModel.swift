@@ -4,13 +4,14 @@ import WorldsModels
 import WorldsRichText
 
 public enum NativeEditorError: Error, LocalizedError, Equatable {
-    case crossesUnsupportedBoundary, unsupportedFormatting, invalidSelection, saveInProgress
+    case crossesUnsupportedBoundary, unsupportedFormatting, invalidSelection, saveInProgress, nativeEditPending
     public var errorDescription: String? {
         switch self {
         case .crossesUnsupportedBoundary: return "This edit crosses a block or unsupported element."
         case .unsupportedFormatting: return "Select one complete text segment to change its formatting."
         case .invalidSelection: return "The selected text is unavailable."
         case .saveInProgress: return "A save is already in progress."
+        case .nativeEditPending: return "Finish the current text composition before saving."
         }
     }
 }
@@ -27,6 +28,7 @@ public final class NativeEditorModel: ObservableObject {
     @Published public var selection: NSRange = NSRange(location: 0, length: 0)
     @Published public private(set) var dirty = false
     @Published public private(set) var saving = false
+    @Published public private(set) var nativeEditPending = false
     @Published public private(set) var errorMessage: String?
     public let undoManager = UndoManager()
     public private(set) var baseRevision: Int64
@@ -133,9 +135,11 @@ public final class NativeEditorModel: ObservableObject {
     public func undo() { undoManager.undo() }
     public func redo() { undoManager.redo() }
     public func report(_ error: Error) { errorMessage = error.localizedDescription }
+    public func setNativeEditPending(_ value: Bool) { nativeEditPending = value }
 
     public func save(using persistence: any EditorPersistence) async throws {
         guard !saving else { throw NativeEditorError.saveInProgress }
+        guard !nativeEditPending else { throw NativeEditorError.nativeEditPending }
         saving = true
         defer { saving = false }
         let source = document.source
@@ -159,9 +163,3 @@ public final class NativeEditorModel: ObservableObject {
         selection = NSRange(location: min(selection.location, projection.text.utf16.count), length: 0)
     }
 }
-
-
-
-
-
-
