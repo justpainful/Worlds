@@ -1,0 +1,46 @@
+# Backend and service audit
+
+Date: 2026-11-07
+
+## Scope and source state
+
+This is a partial implementation audit, not a complete feature parity inventory. Evidence was read from the original checkout at `original local checkout`, whose HEAD was `185ee9a1019c8b7bc685d22dabf1b699579189cc` on `main`. The Apple worktree had the same HEAD at review time. The original checkout contains substantial uncommitted drawing work. In particular, `src-tauri/Cargo.toml`, `src-tauri/src/lib.rs`, `src/lib/api.ts`, `src/drawing/collaboration.ts`, and `src/drawing/transport.ts` were modified, while `src-tauri/src/screen_drawing.rs` was untracked. The drawing transport details below include that working-tree state and are not necessarily present in the committed revision. Other source paths cited below were not listed as modified at the time of inspection. Existing untracked QA artifacts were not treated as proof of the current product state.
+
+Source inspection is evidence of implementation only. No service deployment, credential, runtime behavior, Apple build, compatibility, or test result was verified during this audit. Line references can move as the source changes.
+
+## Local data and history
+
+- `src-tauri/src/db.rs:10` resolves the data directory, `worlds.db`, and separate attachment directory. It opens SQLite with WAL, foreign keys and busy timeout, checks `user_version`, and makes a backup before migration. `src-tauri/src/backup.rs` contains integrity checking and backup logic.
+- The database migrations in `src-tauri/src/db.rs:51` onward create tables for profile, pages, blocks, references, attachments, history, versions, automations, runs, settings, changes, pending actions, Discord messages, AI chats and messages. FTS5 indexes pages. Later migrations add account caches and multiple drawing, drawing operation, library and sync tables.
+- `src-tauri/src/store/` implements page, block, attachment, search, history, profile and template operations. UI and MCP operate on the same store, with writes recorded through the changes mechanism. Preservation requires reviewing actual schemas, migrations, attachment paths, history, FTS and transaction semantics rather than replacing the store with an unrelated SwiftData model.
+- `src-tauri/Cargo.toml` depends on Tauri throughout the current crate. It builds `staticlib`, `cdylib` and `rlib`, but that does not demonstrate a reusable Apple library. Shared Rust extraction, SQLite binary support and safe FFI boundaries need investigation on Apple targets.
+
+## Identity, authentication and access
+
+- `services/identity/src/index.ts:30` mounts identity routes for auth, user, workspaces, invitations and pages. `services/identity/src/routes/auth.ts` implements email challenge, passkey registration and login, one-time token exchange, refresh and logout. The identity service uses Hono and WebAuthn server dependencies in its package manifest.
+- `src-tauri/src/account/secrets.rs` stores the refresh token and Ed25519 device seed with the keyring abstraction. It computes PKCE S256 challenges and signs a versioned refresh message containing the device ID, timestamp and token digest. `account/client.rs` keeps access tokens in memory and serializes token refresh. A Swift implementation must preserve the exact server contract, secret lifecycle, device identity and refresh behavior. Use Apple Keychain and compatible signing, subject to validation against the live service.
+- `src-tauri/src/account/sync.rs` pushes changed workspace page trees and pulls account, member and page access caches. Sync failures mark the account offline instead of blocking startup.
+- `src-tauri/src/account/permissions.rs` defines none, view, comment, edit and full. Personal pages are unrestricted; team access depends on signed-in membership, owner/admin or member/guest roles, cached page access, ancestor inheritance and default access. `src-tauri/src/mcp.rs:76` checks guarded tool calls inside a transaction. Keep both server checks and local checks, including inherited permissions and revoked access.
+- `src-tauri/src/account/e2e.rs` is an end-to-end test module, not encryption. Its documented tests are ignored by default and need a running identity service. Their presence does not establish current service health.
+
+## Collaboration, sync and files
+
+- `src/sync/provider.ts` persists local Yjs edits before sending, synchronizes content and comments documents, drains the outbox with acknowledgements, relays presence, reconnects and preserves rejected changes. `src/sync/protocol.ts` and `services/sync/src/protocol.ts` specify binary lib0 frames for `worlds-sync.v1`, awareness, authentication state and refresh, update, ack, notices and two channels. Access revocation and retry have distinct close codes.
+- `src/sync/mirror.ts` describes the y-prosemirror `default` XML fragment used by the editor. It mirrors shared content to block rows for search, history, MCP and Claude, and folds changes from those writers back into the CRDT while preserving concurrent edits. `src-tauri/src/sync/mod.rs` and `sync/commands.rs` persist replicas, updates, outboxes, cursors, rejected snapshots and attachment queues. A JSON-only synchronization replacement would lose protocol and causal-history compatibility. Native CRDT integration, editor schema fidelity, awareness, rejected-write recovery, and interoperation need direct validation.
+- Drawings have a distinct synchronization path: `src-tauri/src/drawing_sync.rs` queues operations with preconditions and account binding; `services/sync/src/index.ts` exposes drawing state, operation and lease endpoints. `src/drawing/transport.ts` validates generations, revisions, immutable dependencies and operation history. This client file is modified in the original working tree. Drawing assets, checkpoint recovery and export permissions require their own compatibility work and must not be assumed covered by page Yjs sync.
+- `services/sync/src/index.ts` also handles signed blobs, notification inboxes, page state, versions and attachments. Service-side permission checks protect document routes. `services/sync/wrangler.toml` declares Durable Objects for documents, workspaces and inboxes, an R2 bucket, and identity-service binding. `services/identity/wrangler.toml` declares D1. Their checked-in configuration contains development values and placeholders, so actual deployed URLs, secrets, bindings and availability remain unverified.
+
+## AI, MCP, automations and Discord
+
+- `src-tauri/src/ai.rs` locates and launches the local Claude Code executable with streaming JSON, a strict Worlds MCP configuration and built-in tools disabled. It stores a Claude OAuth token through the secret store, persists chats/messages, and supports cancellation and an automation transform. A token-backed fake chat is not feature parity. The current executable and stdio process approach has no demonstrated iOS implementation; macOS packaging, iOS platform restrictions, provider integration and account authorization need separate resolution.
+- `src-tauri/src/mcp.rs` implements a JSON-RPC stdio server over the same store. Its operations carry actor and operation identifiers; writes are grouped for history and undo. Discord sends and edits requested by MCP are queued for approval. Tool definitions cover pages, blocks, tasks, tables, history and Discord; complete tool-by-tool auditing remains outstanding.
+- `src-tauri/src/automations.rs` defines once, daily, weekly, monthly and manual triggers, local calendar scheduling, grace handling, run history, optional Claude transform and Discord actions. Its scheduler is an in-process task, so it does not run when the process is unavailable. iOS background execution cannot be assumed to provide identical timing. The existing behavior, missed-run policy, consent and any delivery limitation must remain visible.
+- `src-tauri/src/discord/mod.rs` renders, previews and delivers messages, maintains pending actions and resolves approval. `src-tauri/src/discord/bridge.rs` uses an SSH bridge to the bot host, with the bot token retained there. Transport, host credentials, native background restrictions and approval flows need platform-specific analysis.
+
+## Work still required
+
+1. Trace every Tauri command and MCP tool to its implementation, UI caller, persistent representation and API contract, and add each to the feature parity matrix.
+2. Read all database migrations and all service routes, permission revocation paths, attachment transfer and drawing wire formats. Compare the original working tree with HEAD feature by feature, and agree on the source revision to port without discarding local changes.
+3. Verify the deployed identity and sync endpoints, runtime configuration and availability without exposing secrets. Establish isolated test tenants and representative real data.
+4. Establish Apple-compatible implementations or justified shared libraries for the native editor, CRDT protocol, SQLite, Claude integration, automation execution and SSH bridge. Record unresolved platform restrictions without reporting those features as complete.
+5. Run interoperability, migration, access revocation, concurrency, offline recovery and attachment tests on actual Apple builds. No such tests were run for this report.
