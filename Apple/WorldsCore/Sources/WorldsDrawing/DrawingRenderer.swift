@@ -130,18 +130,41 @@ private func drawNode(_ node: [String: JSONValue], context: CGContext) throws ->
         guard let brush = node["brush"]?.objectValue, let ink = (brush["color"]?.stringValue).flatMap(color),
               let size = number(brush, "size"), size > 0, let samples = node["samples"]?.arrayValue,
               !samples.isEmpty, samples.count <= 65536,
-              let brushKind = brush["kind"]?.stringValue, ["hard", "pencil", "ink", "marker"].contains(brushKind) else { throw PreviewError.unsupported("Brush type is not implemented") }
-        let points = try samples.map { value -> CGPoint in
-            guard let sample = value.objectValue, let px = number(sample, "x"), let py = number(sample, "y") else { throw PreviewError.malformed }
-            return CGPoint(x: px, y: py)
+              let brushKind = brush["kind"]?.stringValue, ["hard", "pencil", "ink", "marker", "highlighter"].contains(brushKind) else { throw PreviewError.unsupported("Brush type is not implemented") }
+        let points = try samples.map { value -> (CGPoint, CGFloat) in
+            guard let sample = value.objectValue, let px = number(sample, "x"), let py = number(sample, "y"),
+                  let pressure = number(sample, "pressure"), (0...1).contains(pressure) else { throw PreviewError.malformed }
+            return (CGPoint(x: px, y: py), pressure)
         }
-        context.setStrokeColor(ink); context.setFillColor(ink); context.setLineWidth(size)
-        context.setLineCap(.round); context.setLineJoin(.round)
-        if points.count == 1 { context.fillEllipse(in: CGRect(x: points[0].x-size/2, y: points[0].y-size/2, width: size, height: size)) }
-        else { context.move(to: points[0]); for point in points.dropFirst() { context.addLine(to: point) }; context.strokePath() }
+        let curve = number(brush, "pressureCurve") ?? 1
+        let flow = number(brush, "flow") ?? 1
+        let brushOpacity = number(brush, "opacity") ?? 1
+        guard (0.1...4).contains(curve), (0...1).contains(flow), (0...1).contains(brushOpacity) else { throw PreviewError.malformed }
+        context.setStrokeColor(ink); context.setFillColor(ink)
+        context.setLineCap(brushKind == "highlighter" ? .butt : .round); context.setLineJoin(.round)
+        func pressure(_ raw: CGFloat) -> CGFloat { pow(max(0.01,min(1,raw)),curve) }
+        func width(_ raw: CGFloat) -> CGFloat { max(0.2,size * (brush["pressureSize"]?.boolValue == true ? pressure(raw) : 1)) }
+        func alpha(_ raw: CGFloat) -> CGFloat {
+            let value=pressure(raw)
+            return opacity * brushOpacity * flow * (brush["pressureOpacity"]?.boolValue == true ? value : 1) * (brush["pressureFlow"]?.boolValue == true ? value : 1)
+        }
+        if points.count == 1 {
+            let (point, force) = points[0], diameter=width(force)
+            context.setAlpha(alpha(force))
+            context.fillEllipse(in: CGRect(x: point.x-diameter/2, y: point.y-diameter/2, width: diameter, height: diameter))
+        } else {
+            for i in 1..<points.count {
+                let (previous, previousForce)=points[i-1], (point, force)=points[i]
+                context.setLineWidth((width(previousForce)+width(force))/2)
+                context.setAlpha((alpha(previousForce)+alpha(force))/2)
+                context.move(to: previous); context.addLine(to: point); context.strokePath()
+            }
+        }
         return "Brush preview approximates pressure, flow, spacing and smoothing"
     }
     throw PreviewError.unsupported("Element type is not implemented")
 }
+
+
 
 
