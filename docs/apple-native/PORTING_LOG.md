@@ -24,6 +24,8 @@ Run [42385501910](https://github.com/justpainful/Worlds/actions/runs/42385501910
 
 Run [42386428057](https://github.com/justpainful/Worlds/actions/runs/42386428057) passed all three app build checks, all nine current UI tests and both Rust bridge jobs on macOS and iOS simulator. The new core suite passed 40 of 41 tests; the search snippet assertion did not account for the original trigram snippet truncation and has been corrected locally. The isolated service job failed while starting the identity Worker because an address was already in use. The exact port was not identified; startup sequencing, separate inspector ports and diagnostics have been added locally and require a new run. These results do not establish full feature parity or an installable release.
 
+In [run 42387357673](https://github.com/justpainful/Worlds/actions/runs/42387357673), 53 Swift core tests passed. The isolated local Worker job passed its Rust integration and Swift session integration checks, including convergence, reconnect, acknowledgements and rejected updates. This validates only the isolated scenarios and does not establish collaboration UI, presence, production service availability or full editor parity. Other jobs were still running when recorded.
+
 ## 2026-11-07: Audit started
 
 - Created isolated worktree on branch `feat/native-apple-platforms` at commit `185ee9a1019c8b7bc685d22dabf1b699579189cc`. The original Windows checkout has existing tracked modifications and untracked files, including drawing work. They have not been moved or deleted.

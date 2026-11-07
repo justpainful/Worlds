@@ -65,7 +65,7 @@ public struct ClaudeResult: Sendable {
 
 public enum ClaudeExecutable {
     /// Returns an executable file only; this function never runs it.
-    public static func discover(configured: URL? = nil, environment: [String: String] = ProcessInfo.processInfo.environment, home: URL = FileManager.default.homeDirectoryForCurrentUser) -> URL? {
+    public static func discover(configured: URL? = nil, environment: [String: String] = ProcessInfo.processInfo.environment, home: URL = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)) -> URL? {
         var candidates: [URL] = []
         if let configured { candidates.append(configured) }
         for item in (environment["PATH"] ?? "").split(separator: ":") where !item.isEmpty {
@@ -80,4 +80,5 @@ public enum ClaudeExecutable {
         }
     }
 }
+
 

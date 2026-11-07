@@ -27,6 +27,7 @@ let package = Package(
         .library(name: "WorldsAI", targets: ["WorldsAI"]),
         .library(name: "WorldsNativeEditor", targets: ["WorldsNativeEditor"]),
         .library(name: "WorldsAutomations", targets: ["WorldsAutomations"]),
+        .library(name: "WorldsProjects", targets: ["WorldsProjects"]),
     ],
     targets: [
         .target(name: "WorldsModels"),
@@ -41,6 +42,7 @@ let package = Package(
         .target(name: "WorldsAI", dependencies: ["WorldsModels"], exclude: ["README.md"]),
         .target(name: "WorldsNativeEditor", dependencies: ["WorldsModels", "WorldsRichText"], exclude: ["README.md"]),
         .target(name: "WorldsAutomations", dependencies: ["WorldsModels"], exclude: ["README.md"], linkerSettings: [.linkedLibrary("sqlite3")]),
+        .target(name: "WorldsProjects", dependencies: ["WorldsModels"], exclude: ["README.md"]),
         .testTarget(name: "WorldsModelsTests", dependencies: ["WorldsModels"]),
         .testTarget(name: "WorldsSyncWireTests", dependencies: ["WorldsSyncWire"]),
         .testTarget(name: "WorldsPersistenceTests", dependencies: ["WorldsPersistence"], resources: [.copy("worlds-v1-fixture.db")], linkerSettings: [.linkedLibrary("sqlite3")]),
@@ -53,6 +55,7 @@ let package = Package(
         .testTarget(name: "WorldsAITests", dependencies: ["WorldsAI", "WorldsModels"], resources: [.copy("Fixtures")]),
         .testTarget(name: "WorldsNativeEditorTests", dependencies: ["WorldsNativeEditor", "WorldsModels", "WorldsRichText"]),
         .testTarget(name: "WorldsAutomationsTests", dependencies: ["WorldsAutomations", "WorldsModels"], resources: [.copy("automation-fixture.db")], linkerSettings: [.linkedLibrary("sqlite3")]),
+        .testTarget(name: "WorldsProjectsTests", dependencies: ["WorldsProjects", "WorldsModels"], resources: [.copy("worlds-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]),
     ]
 )
 
