@@ -1,6 +1,7 @@
 import Foundation
 import XCTest
 import WorldsMedia
+import AVFoundation
 @testable import WorldsMediaViews
 
 @MainActor
@@ -53,4 +54,30 @@ final class MediaPreviewModelTests: XCTestCase {
         model = nil
         XCTAssertFalse(FileManager.default.fileExists(atPath: share.path))
     }
+    #if DEBUG
+    func testOpenedVideoReportsPlaybackFailureAndIgnoresFailureAfterClose() async throws {
+        let directory = try root()
+        let url = directory.appendingPathComponent("clip.mp4")
+        try Data("fixture".utf8).write(to: url)
+        let attachment = WorldsAttachment(id: "video", pageId: "page", kind: "file", fileName: "clip.mp4", mime: "video/mp4", size: 7, relPath: "clip.mp4", width: nil, height: nil, createdAt: 1)
+        let first = OpenedVideoModel(attachment: attachment, openedFile: try AttachmentVault(root: directory).open(attachment))
+        let item = AVPlayerItem(asset: AVMutableComposition())
+        first.installFixturePlayer(item)
+        NotificationCenter.default.post(name: .AVPlayerItemFailedToPlayToEndTime, object: item,
+                                        userInfo: [AVPlayerItemFailedToPlayToEndTimeErrorKey: NSError(domain: "fixture", code: 1, userInfo: [NSLocalizedDescriptionKey: "synthetic playback failure"])])
+        for _ in 0..<100 {
+            if case .failure = first.state { break }
+            await Task.yield()
+        }
+        guard case .failure(let message) = first.state else { return XCTFail("Playback failure was not reported") }
+        XCTAssertEqual(message, "synthetic playback failure")
+        let second = OpenedVideoModel(attachment: attachment, openedFile: try AttachmentVault(root: directory).open(attachment))
+        let closedItem = AVPlayerItem(asset: AVMutableComposition())
+        second.installFixturePlayer(closedItem)
+        second.close()
+        NotificationCenter.default.post(name: .AVPlayerItemFailedToPlayToEndTime, object: closedItem)
+        await Task.yield()
+        if case .failure = second.state { XCTFail("Closed preview must ignore late failures") }
+    }
+    #endif
 }

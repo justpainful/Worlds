@@ -31,6 +31,28 @@ private actor IdentityFixtureTransport: IdentityTransport {
     }
 }
 
+private actor AccountFixtureTransport: IdentityTransport {
+    let profileID: String
+    init(profileID: String) { self.profileID = profileID }
+    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        let json: String
+        switch request.url!.path {
+        case "/auth/email/verify":
+            json = #"{"accessToken":"fixture-access","accessTokenExpiresAt":9999999999999,"refreshToken":"fixture-refresh","refreshTokenExpiresAt":9999999999999,"userId":"user","deviceId":"device"}"#
+        case "/me":
+            guard request.value(forHTTPHeaderField: "Authorization") == "Bearer fixture-access" else { throw URLError(.userAuthenticationRequired) }
+            json = """
+            {"id":"\(profileID)","email":"fixture@example.test","displayName":"Fixture","username":"fixture","usernameAuto":false,"avatarUrl":null,"createdAt":1}
+            """
+        case "/workspaces":
+            guard request.value(forHTTPHeaderField: "Authorization") == "Bearer fixture-access" else { throw URLError(.userAuthenticationRequired) }
+            json = #"[{"id":"space","name":"Workspace","ownerId":"user","defaultLevel":"view","createdAt":1,"memberCount":1,"role":"owner"}]"#
+        default: throw URLError(.badURL)
+        }
+        return (Data(json.utf8), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
+}
+
 final class IdentityContinuityTests: XCTestCase {
     private func directory() throws -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-identity-\(UUID().uuidString)", isDirectory: true)
@@ -100,6 +122,31 @@ final class IdentityContinuityTests: XCTestCase {
         _ = try await refresh.value
         _ = try await coordinator.signOut()
         XCTAssertNil(try secrets.load())
+    }
+
+    func testAccountSnapshotUsesAuthenticatedServiceResponses() async throws {
+        let coordinator = try IdentitySessionCoordinator(baseURL: URL(string: "https://identity.test")!, lockDirectory: directory(), transport: AccountFixtureTransport(profileID: "user"), secrets: MemorySecrets())
+        _ = try await coordinator.verifyEmail(challengeID: "test", code: "000000", deviceName: "Test", platform: "macos")
+        let account = try await coordinator.accountSnapshot()
+        XCTAssertEqual(account.profile.id, "user")
+        XCTAssertEqual(account.workspaces.map(\.id), ["space"])
+    }
+    func testAccountSnapshotRejectsDifferentUser() async throws {
+        let coordinator = try IdentitySessionCoordinator(baseURL: URL(string: "https://identity.test")!, lockDirectory: directory(), transport: AccountFixtureTransport(profileID: "someone-else"), secrets: MemorySecrets())
+        _ = try await coordinator.verifyEmail(challengeID: "test", code: "000000", deviceName: "Test", platform: "macos")
+        do { _ = try await coordinator.accountSnapshot(); XCTFail("Mismatched account must be rejected") }
+        catch IdentityContinuityError.accountMismatch { }
+    }
+    func testStoredSessionAvailabilityTracksLocalSignOut() async throws {
+        let coordinator = try IdentitySessionCoordinator(baseURL: URL(string: "https://identity.test")!, lockDirectory: directory(), transport: IdentityFixtureTransport(mode: .offlineLogout), secrets: MemorySecrets())
+        let initiallySignedIn = try await coordinator.hasStoredSession()
+        XCTAssertFalse(initiallySignedIn)
+        _ = try await coordinator.verifyEmail(challengeID: "test", code: "000000", deviceName: "Test", platform: "macos")
+        let afterSignIn = try await coordinator.hasStoredSession()
+        XCTAssertTrue(afterSignIn)
+        _ = try await coordinator.signOut()
+        let afterSignOut = try await coordinator.hasStoredSession()
+        XCTAssertFalse(afterSignOut)
     }
 
 }

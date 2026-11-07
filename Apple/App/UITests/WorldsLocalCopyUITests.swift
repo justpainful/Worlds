@@ -20,6 +20,7 @@ final class WorldsLocalCopyUITests: XCTestCase {
         XCTAssertTrue(description.waitForExistence(timeout: 20)); description.tap()
         #if os(macOS)
         description.typeKey("a", modifierFlags: .command)
+        description.typeKey(.delete, modifierFlags: [])
         #else
         description.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
         description.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 100))

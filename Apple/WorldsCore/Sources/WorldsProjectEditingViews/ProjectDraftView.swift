@@ -129,6 +129,12 @@ public struct ProjectDraftView: View {
                 Button("Done") { focusedField = nil }
                     .accessibilityIdentifier("project-dismiss-keyboard")
             }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") {
+                    focusedField = nil
+                    Task { if await model.save() { onSaved() } }
+                }.disabled(model.busy || !model.ready)
+            }
             #endif
             ToolbarItem(placement: .cancellationAction) {
                 Button("Close") {
@@ -151,7 +157,9 @@ public struct ProjectDraftView: View {
     @ViewBuilder private var editorActions: some View {
         Button("Undo") { Task { await model.undo() } }.disabled(model.busy || !model.ready || !model.canUndo || model.hasUnstagedChanges)
         Button("Redo") { Task { await model.redo() } }.disabled(model.busy || !model.ready || !model.canRedo || model.hasUnstagedChanges)
+        #if os(macOS)
         Button("Save") { Task { if await model.save() { onSaved() } } }.disabled(model.busy || !model.ready)
+        #endif
     }
 
 }

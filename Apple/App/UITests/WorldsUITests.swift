@@ -37,6 +37,8 @@ final class WorldsUITests: XCTestCase {
         let result = app.descendants(matching: .any)["search-result.search-personal"].firstMatch
         XCTAssertTrue(result.waitForExistence(timeout: 20))
         XCTAssertFalse(app.descendants(matching: .any)["search-result.search-shared"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["search-result.search-template"].firstMatch.waitForExistence(timeout: 20))
+        XCTAssertTrue(app.descendants(matching: .any)["search-template-kind"].firstMatch.exists)
         capture("05-personal-search-results", app: app)
         result.tap()
         XCTAssertTrue(app.staticTexts["Read only"].waitForExistence(timeout: 15))

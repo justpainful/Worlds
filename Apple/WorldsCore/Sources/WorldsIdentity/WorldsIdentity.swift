@@ -287,6 +287,16 @@ public actor WorldsIdentityClient {
         access = (tokens.accessToken, tokens.accessTokenExpiresAt)
     }
 
+    /// Identifies the durable session without exposing its token or device key.
+    /// An interrupted token rotation requires sign-in again.
+    public func currentUserID() throws -> String {
+        guard !operationInProgress, refreshTask == nil else { throw IdentityError.busy }
+        guard let bytes = try secrets.load() else { throw IdentityError.signedOut }
+        let saved = try JSONDecoder().decode(SavedSession.self, from: bytes)
+        guard saved.refreshInFlight != true, !saved.userID.isEmpty else { throw IdentityError.signedOut }
+        return saved.userID
+    }
+
     public func accessToken(forceRefresh: Bool = false) async throws -> String {
         guard !operationInProgress else { throw IdentityError.busy }
         let now = Int64(Date().timeIntervalSince1970 * 1000)

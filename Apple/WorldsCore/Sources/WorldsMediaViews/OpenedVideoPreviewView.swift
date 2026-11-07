@@ -46,7 +46,7 @@ private final class OneShotAttachment: @unchecked Sendable {
 private struct VideoLease: @unchecked Sendable { let value: TemporaryMediaFile }
 
 @MainActor
-private final class OpenedVideoModel: ObservableObject {
+final class OpenedVideoModel: ObservableObject {
     enum State { case loading, playing(AVPlayer), failure(String) }
     @Published private(set) var state: State = .loading
     let name: String
@@ -56,6 +56,8 @@ private final class OpenedVideoModel: ObservableObject {
     private var started = false
     private var closed = false
     private var generation = UUID()
+    private var statusObservation: NSKeyValueObservation?
+    private var endFailureObserver: NSObjectProtocol?
 
     init(attachment: WorldsAttachment, openedFile: AttachmentFile) {
         name = attachment.fileName
@@ -79,17 +81,59 @@ private final class OpenedVideoModel: ObservableObject {
             }.value
             guard generation == token else { return }
             lease = result.value
-            state = .playing(AVPlayer(url: result.value.url))
+            let item = AVPlayerItem(url: result.value.url)
+            installPlayer(item, token: token)
         } catch {
             guard generation == token else { return }
             state = .failure(error.localizedDescription)
         }
     }
 
+    private func installPlayer(_ item: AVPlayerItem, token: UUID) {
+        state = .playing(AVPlayer(playerItem: item))
+        observeFailure(item, token: token)
+    }
+
+    #if DEBUG
+    func installFixturePlayer(_ item: AVPlayerItem) {
+        guard !closed else { return }
+        installPlayer(item, token: generation)
+    }
+    #endif
+
     func close() {
         closed = true
         generation = UUID()
+        removeObservers()
         if case .playing(let player) = state { player.pause() }
         lease = nil
+    }
+
+    private func observeFailure(_ item: AVPlayerItem, token: UUID) {
+        statusObservation = item.observe(\.status, options: [.initial, .new]) { [weak self] observed, _ in
+            guard observed.status == .failed else { return }
+            let message = observed.error?.localizedDescription ?? "Video playback failed."
+            Task { @MainActor [weak self] in self?.playbackFailed(message, token: token) }
+        }
+        endFailureObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemFailedToPlayToEndTime, object: item, queue: nil) { [weak self] notification in
+            let message = (notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error)?.localizedDescription ?? "Video playback failed."
+            Task { @MainActor [weak self] in self?.playbackFailed(message, token: token) }
+        }
+    }
+
+    private func playbackFailed(_ message: String, token: UUID) {
+        guard !closed, generation == token else { return }
+        generation = UUID()
+        if case .playing(let player) = state { player.pause() }
+        removeObservers()
+        lease = nil
+        state = .failure(message)
+    }
+
+    private func removeObservers() {
+        statusObservation?.invalidate()
+        statusObservation = nil
+        if let endFailureObserver { NotificationCenter.default.removeObserver(endFailureObserver) }
+        endFailureObserver = nil
     }
 }

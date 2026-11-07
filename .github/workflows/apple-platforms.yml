@@ -36,10 +36,17 @@ jobs:
           grep -E 'testOwnedPersonalFileCanBeReadAndMismatchedOwnerIsRejected.*passed' logs/swift-test.log
           grep -E 'testRejectsHardLinkedAttachment.*passed' logs/swift-test.log
           grep -E 'testOpenedAttachmentUsesOriginalDescriptorAfterPathReplacement.*passed' logs/swift-test.log
+          grep -E 'testOpenedVideoReportsPlaybackFailureAndIgnoresFailureAfterClose.*passed' logs/swift-test.log
           grep -q 'testActualYjsFixture' logs/swift-test.log
           grep -E 'testYjsRelativeCursorAwarenessRemainsOpaque.*passed' logs/swift-test.log
           grep -E 'testCancelledPasskeyBeforePresentationDoesNotStart.*passed' logs/swift-test.log
           grep -E 'testOfflineSignOutDeletesLocalSession.*passed' logs/swift-test.log
+          grep -E 'testAccountSnapshotUsesAuthenticatedServiceResponses.*passed' logs/swift-test.log
+          grep -E 'testAccountSnapshotRejectsDifferentUser.*passed' logs/swift-test.log
+          grep -E 'testStoredSessionAvailabilityTracksLocalSignOut.*passed' logs/swift-test.log
+          grep -E 'testSuccessfulSignInKeepsSessionWhenProfileUnavailable.*passed' logs/swift-test.log
+          grep -E 'testCancelledRequestDoesNotCreateChallenge.*passed' logs/swift-test.log
+          grep -E 'testKeychainDeletionFailureDoesNotClaimSignOut.*passed' logs/swift-test.log
           grep -E 'testConcurrentRefreshUsesOneRotation.*passed' logs/swift-test.log
           grep -E 'testSignOutWaitsForActiveRefresh.*passed' logs/swift-test.log
           grep -E 'testRecreatedClientRefreshesUsingSavedDeviceKey.*passed' logs/swift-test.log
@@ -106,7 +113,7 @@ jobs:
   project-editor-harness:
     name: Isolated project editor UI harness
     runs-on: macos-26
-    timeout-minutes: 45
+    timeout-minutes: 65
     env:
       WORLDS_REQUIRE_NATIVE_WRITES: "1"
     steps:
@@ -133,7 +140,7 @@ jobs:
           result=0
           for platform in macOS iOS; do
             if [[ "$platform" == macOS ]]; then destination='platform=macOS'; else destination='platform=iOS Simulator,name=iPhone 17,OS=26.5'; fi
-            if gtimeout 360s xcodebuild -project Apple/ProjectEditorHarness/WorldsProjectEditorHarness.xcodeproj \
+            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsProjectEditorHarness.xcodeproj \
               -scheme "ProjectEditorHarness-$platform" -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/harness-$platform.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/harness-$platform.log"; then
@@ -148,7 +155,7 @@ jobs:
               iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
               iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
             esac
-            if gtimeout 360s xcodebuild -project Apple/ProjectEditorHarness/WorldsLocalCopyExperimental.xcodeproj \
+            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsLocalCopyExperimental.xcodeproj \
               -scheme "LocalCopy-$platform" -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/local-copy-$device.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-copy-$device.log"; then

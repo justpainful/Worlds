@@ -64,6 +64,7 @@ private struct WorldsLibraryView: View {
     @State private var searchError: String?
     @State private var searching = false
     @State private var searchedQuery: String?
+    @State private var searchRequest = UUID()
     #if WORLDS_EXPERIMENTAL_LOCAL_COPY
     @State private var copyContext: LocalCopyContext?
     @State private var copyCoordinator: LocalProjectImportCoordinator?
@@ -325,6 +326,10 @@ private struct WorldsLibraryView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(hit.title.isEmpty ? "Untitled" : hit.title)
                                 .font(.body.weight(.medium))
+                            if hit.kind == "template" {
+                                Text("Template · View only").font(.caption).foregroundStyle(.secondary)
+                                    .accessibilityIdentifier("search-template-kind")
+                            }
                             if !hit.snippet.isEmpty {
                                 Text(highlightedSnippet(hit))
                                     .font(.caption)
@@ -356,6 +361,8 @@ private struct WorldsLibraryView: View {
 
     @MainActor
     private func search() async {
+        let request = UUID()
+        searchRequest = request
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else {
             searchHits = []
@@ -373,7 +380,7 @@ private struct WorldsLibraryView: View {
         do {
             try await Task.sleep(for: .milliseconds(250))
             let results = try await searchEngine.search(query)
-            guard !Task.isCancelled, generation == databaseGeneration,
+            guard !Task.isCancelled, request == searchRequest, generation == databaseGeneration,
                   query == searchQuery.trimmingCharacters(in: .whitespacesAndNewlines) else { return }
             let allowed = Set(pages.map(\.id))
             searchHits = results.filter { allowed.contains($0.pageId) }
@@ -383,7 +390,7 @@ private struct WorldsLibraryView: View {
         } catch is CancellationError {
             return
         } catch {
-            guard !Task.isCancelled, generation == databaseGeneration,
+            guard !Task.isCancelled, request == searchRequest, generation == databaseGeneration,
                   query == searchQuery.trimmingCharacters(in: .whitespacesAndNewlines) else { return }
             searchHits = []
             searchError = error.localizedDescription
@@ -418,6 +425,7 @@ private struct WorldsLibraryView: View {
                 searchError = error.localizedDescription
             }
             databaseGeneration = UUID()
+            searchRequest = UUID()
             openedVideoDatabase = videoSource
             searchQuery = ""
             searchHits = []

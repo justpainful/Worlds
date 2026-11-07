@@ -58,7 +58,7 @@ struct PageContentView: View {
                 }
                 Text("Read only")
                     .font(.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
                     .worldsGlass()

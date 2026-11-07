@@ -6,6 +6,8 @@ Source inspected: local Windows working tree at commit `185ee9a1019c8b7bc685d22d
 
 The authentication, collaboration and permissions traces and remaining verification are detailed in [AUTH_COLLAB_AUDIT.md](AUTH_COLLAB_AUDIT.md).
 
+The focused navigation, reader, project, file and media traces are in [READER_RESOURCE_PARITY.md](READER_RESOURCE_PARITY.md). This detail can be newer than the high-level rows below; neither is a completed inventory.
+
 Status below refers to the Apple port. `Planned but Not Implemented` does not assert the source feature is fully working. `Blocked with Documented Reason` identifies a technical dependency needing a compatible implementation, not permission to omit the feature. Tests listed are required acceptance tests, not results.
 
 | Feature | Source behavior and evidence | Storage and integration | Native approach and required verification | Apple status |

@@ -4,7 +4,7 @@ import Darwin
 import WorldsIdentity
 
 public enum IdentityContinuityError: Error, Equatable {
-    case invalidServer, invalidDirectory, lockUnavailable, busy, signedOut, system(Int32)
+    case invalidServer, invalidDirectory, lockUnavailable, busy, signedOut, accountMismatch, system(Int32)
 }
 
 /// Stable scope includes scheme, host, effective port, and the service base path.
@@ -71,6 +71,33 @@ public struct IdentitySessionSummary: Sendable {
     }
 }
 public enum IdentitySignOutResult: Sendable { case revokedRemotely, localOnly }
+
+/// Mirrors the authenticated identity service's GET /me response.
+public struct IdentityAccountProfile: Decodable, Sendable {
+    public let id: String
+    public let email: String
+    public let displayName: String
+    public let username: String?
+    public let usernameAuto: Bool
+    public let avatarUrl: String?
+    public let createdAt: Int64
+}
+
+/// Server-provided membership is display data, not a local authorization grant.
+public struct IdentityWorkspace: Decodable, Sendable {
+    public let id: String
+    public let name: String
+    public let ownerId: String
+    public let defaultLevel: String
+    public let createdAt: Int64
+    public let memberCount: Int
+    public let role: String
+}
+
+public struct IdentityAccountSnapshot: Sendable {
+    public let profile: IdentityAccountProfile
+    public let workspaces: [IdentityWorkspace]
+}
 /// The wrapped client is private, preventing accidental bypass by this owner.
 /// The host must create one coordinator per scope and use the same lock directory
 /// for every process that can access the corresponding Keychain item.
@@ -112,10 +139,30 @@ public actor IdentitySessionCoordinator {
         activeRequests += 1; defer { activeRequests -= 1 }
         return try await client.accessToken(forceRefresh: forceRefresh)
     }
+    /// Reports only whether a usable durable session is present, without network access.
+    public func hasStoredSession() async throws -> Bool {
+        guard !locallySignedOut, !changingSession else { return false }
+        do { _ = try await client.currentUserID(); return true }
+        catch IdentityError.signedOut { return false }
+    }
     public func request(path: String, method: String = "GET", body: Data? = nil, actor: String? = nil) async throws -> Data {
         guard !locallySignedOut, !changingSession else { throw IdentityContinuityError.signedOut }
         activeRequests += 1; defer { activeRequests -= 1 }
         return try await client.authenticatedRequest(path: path, method: method, body: body, actor: actor)
+    }
+    /// Fetches real service data without persisting or treating it as an ACL.
+    /// The two requests are separate and do not form a server-side snapshot.
+    public func accountSnapshot() async throws -> IdentityAccountSnapshot {
+        guard !locallySignedOut, !changingSession else { throw IdentityContinuityError.signedOut }
+        activeRequests += 1; defer { activeRequests -= 1 }
+        let expected = try await client.currentUserID()
+        let profileData = try await client.authenticatedRequest(path: "/me")
+        let profile = try JSONDecoder().decode(IdentityAccountProfile.self, from: profileData)
+        guard !profile.id.isEmpty, profile.id == expected else { throw IdentityContinuityError.accountMismatch }
+        let workspaceData = try await client.authenticatedRequest(path: "/workspaces")
+        let workspaces = try JSONDecoder().decode([IdentityWorkspace].self, from: workspaceData)
+        guard try await client.currentUserID() == expected else { throw IdentityContinuityError.accountMismatch }
+        return IdentityAccountSnapshot(profile: profile, workspaces: workspaces)
     }
     /// Local credentials are erased even when remote revocation fails.
     /// `localOnly` means the server session may still exist until it expires.

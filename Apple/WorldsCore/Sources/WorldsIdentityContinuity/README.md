@@ -13,3 +13,12 @@ Fixtures use an in-memory secret store and an injected fake transport. Tests cov
 Sign-out rejects concurrent authenticated work as busy, attempts remote revocation, then deletes the local Keychain item even if the network fails. A `localOnly` result means remote revocation was not confirmed. Deletion errors propagate: if deletion fails, the persisted credential may survive a restart. The wrapped client is inaccessible through this coordinator, and session summaries omit refresh tokens. A failed or uncertain rotation requires sign-in again.
 
 Review limitations: the lock is advisory. A same-user process able to replace the lock file after it is opened can lock a different inode; checking the link count on open does not prevent replacement later. Directory checks and opening are not an atomic walk of all path components; `O_NOFOLLOW` protects only the final component. URL aliases to the same service may produce different scopes. The public initializer uses only a scope-specific Keychain item; injected stores are restricted to isolated tests. None of these mechanisms proves isolation against a malicious same-user process. Security review and actual cross-process and crash tests are required before integration. The new offline sign-out and refresh/sign-out race fixtures also remain unexecuted.
+
+`accountSnapshot()` now fetches the authenticated service's `/me` and
+`/workspaces` endpoints, checks the profile ID against the durable session and
+prevents session-changing operations while the requests are active. It never
+stores access tokens in the returned data. Workspace roles are display data,
+not authorization, and the two service responses are not an atomic server
+snapshot. The isolated transport tests are not evidence of deployed-service,
+Keychain entitlement or device behavior; this API remains disconnected from
+the product UI pending those checks.
