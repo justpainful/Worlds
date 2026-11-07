@@ -5,7 +5,7 @@ use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug)]
-pub enum StoreError { Sql(rusqlite::Error), Denied, Invalid, Schema(i64) }
+pub enum StoreError { Sql(rusqlite::Error), Denied, Invalid, Conflict, Schema(i64) }
 impl From<rusqlite::Error> for StoreError { fn from(e: rusqlite::Error) -> Self { Self::Sql(e) } }
 type Result<T> = std::result::Result<T, StoreError>;
 fn now() -> i64 { SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis() as i64 }
@@ -87,6 +87,34 @@ impl SyncStore {
         tx.execute("UPDATE sync_docs SET updated_at=?3 WHERE page_id=?1 AND channel=?2",params![self.page,channel,t])?;
         tx.commit()?;
         Ok(())
+    }
+
+    /// Rebuild and compare the complete CRDT state under an immediate SQLite transaction,
+    /// then append both log and outbox atomically. The service still enforces live rights.
+    pub fn insert_plain_checked(&mut self, base: &[u8], block_index: u32, block_id: &str, expected: &str, offset: u32, insert: &str) -> Result<Vec<u8>> {
+        use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
+        use yrs::updates::decoder::Decode;
+        if base.len() > 64 * 1024 * 1024 { return Err(StoreError::Invalid); }
+        let tx = rusqlite::Transaction::new_unchecked(&self.conn, rusqlite::TransactionBehavior::Immediate)?;
+        self.check(0, true)?;
+        let updates = self.load(0)?;
+        let current = Doc::new();
+        for bytes in updates {
+            let update = Update::decode_v1(&bytes).map_err(|_| StoreError::Invalid)?;
+            current.transact_mut().apply_update(update).map_err(|_| StoreError::Invalid)?;
+        }
+        let proposed = Doc::new();
+        proposed.transact_mut().apply_update(Update::decode_v1(base).map_err(|_| StoreError::Invalid)?).map_err(|_| StoreError::Invalid)?;
+        let canonical = |doc: &Doc| doc.transact().encode_state_as_update_v1(&StateVector::default());
+        if canonical(&current) != canonical(&proposed) { return Err(StoreError::Conflict); }
+        let update = crate::editor::prepare_plain_insert(base, block_index, block_id, expected, offset, insert).map_err(|_| StoreError::Invalid)?;
+        let t = now();
+        tx.execute("INSERT OR IGNORE INTO sync_docs(page_id,channel,created_at,updated_at) VALUES(?1,0,?2,?2)", params![self.page,t])?;
+        tx.execute("INSERT INTO sync_updates(page_id,channel,data,origin,created_at) VALUES(?1,0,?2,'local',?3)", params![self.page,update,t])?;
+        tx.execute("INSERT INTO sync_outbox(page_id,channel,data,created_at) VALUES(?1,0,?2,?3)", params![self.page,update,t])?;
+        tx.execute("UPDATE sync_docs SET updated_at=?2 WHERE page_id=?1 AND channel=0", params![self.page,t])?;
+        tx.commit()?;
+        Ok(update)
     }
 
     pub fn max_pending(&self, channel: i64) -> Result<Option<i64>> {

@@ -13,6 +13,12 @@ public final class NativeCRDTDocument: @unchecked Sendable {
         self.handle = handle
     }
     deinit { worlds_doc_free(handle) }
+    public func clientID() throws -> UInt64 {
+        lock.lock(); defer { lock.unlock() }
+        var id: UInt64 = 0
+        guard worlds_doc_client_id(handle, &id) == 0 else { throw CRDTError.poisoned }
+        return id
+    }
     public func apply(_ update: Data) throws {
         lock.lock(); defer { lock.unlock() }
         let code = update.withUnsafeBytes { bytes in

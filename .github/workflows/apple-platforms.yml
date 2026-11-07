@@ -33,10 +33,41 @@ jobs:
           grep -q 'testStagesAndCleansUpAnIsolatedFile' logs/swift-test.log
           grep -q 'testBoundsAndSymlink' logs/swift-test.log
           grep -q 'testOriginalNameCleaning' logs/swift-test.log
+          grep -q 'testActualYjsFixture' logs/swift-test.log
+          grep -q 'testExchangeClocksAndLeave' logs/swift-test.log
+          grep -q 'testExpiryHeartbeatAndLocalReassertion' logs/swift-test.log
+          grep -q 'testMalformedJSONDoesNotApplyPartialUpdate' logs/swift-test.log
+          grep -q 'testRejectsRemoteClientIDCollisionWithoutOverwritingLocalState' logs/swift-test.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: WorldsCore-test-log
+          path: logs/
+          if-no-files-found: warn
+
+  rust-mcp-compatibility:
+    name: MCP Rust compatibility tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.99.1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: Apple/RustMCP
+      - name: Run MCP compatibility tests
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p logs
+          cargo test --locked --manifest-path Apple/RustMCP/Cargo.toml 2>&1 | tee logs/rust-mcp-tests.log
+          grep -q 'actual_permission_gate_denies_hidden_and_write_before_dispatch ... ok' logs/rust-mcp-tests.log
+          grep -q 'actual_permission_gate_rejects_unexpected_touched_page_and_rolls_back ... ok' logs/rust-mcp-tests.log
+          grep -q 'actual_result_filter_removes_hidden_page ... ok' logs/rust-mcp-tests.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-rust-mcp-test-log
           path: logs/
           if-no-files-found: warn
 
@@ -260,6 +291,29 @@ jobs:
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$GITHUB_WORKSPACE/logs/automation-ios.log"
           grep -q 'testIsolatedScheduleClaimRestartAndDecline' "$GITHUB_WORKSPACE/logs/automation-ios.log"
           grep -q 'testMissedScheduleIsSkippedWithoutApproval' "$GITHUB_WORKSPACE/logs/automation-ios.log"
+      - name: Discover presentation persistence tests
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path Apple/WorldsCore list 2>&1 | tee logs/presentation-persistence-discovery.log
+          grep -q 'testSaveKeepsOpaqueAndConflictingSessionFails' logs/presentation-persistence-discovery.log
+      - name: Test presentation persistence on macOS
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path Apple/WorldsCore --filter WorldsPresentationPersistenceTests 2>&1 | tee logs/presentation-persistence-macos.log
+          grep -q 'testSaveKeepsOpaqueAndConflictingSessionFails' logs/presentation-persistence-macos.log
+      - name: Test presentation persistence on iOS simulator
+        shell: bash
+        run: |
+          set -o pipefail
+          cd Apple/WorldsCore
+          xcodebuild -scheme WorldsCore-Package \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.5' \
+            -only-testing:WorldsPresentationPersistenceTests \
+            -resultBundlePath "$GITHUB_WORKSPACE/presentation-persistence-simulator.xcresult" \
+            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$GITHUB_WORKSPACE/logs/presentation-persistence-ios.log"
+          grep -q 'testSaveKeepsOpaqueAndConflictingSessionFails' "$GITHUB_WORKSPACE/logs/presentation-persistence-ios.log"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -270,6 +324,7 @@ jobs:
             editor-persistence-simulator.xcresult/
             resource-repositories-simulator.xcresult/
             automation-simulator.xcresult/
+            presentation-persistence-simulator.xcresult/
           if-no-files-found: warn
 
   collaboration-xcframework:
@@ -343,6 +398,8 @@ jobs:
           grep -q 'testMalformedUpdatesFailWithoutFreeingTheDocument' logs/collaboration-discovery.log
           grep -q 'testSessionAcknowledgesHandshakeWatermark' logs/collaboration-discovery.log
           grep -q 'testSQLiteStoreOnWorldsV11Fixture' logs/collaboration-discovery.log
+          grep -q 'testRejectsSyncBeforeIdentityVerification' logs/collaboration-discovery.log
+          grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' logs/collaboration-discovery.log
       - name: Test collaboration bridge on macOS
         shell: bash
         run: |
@@ -352,6 +409,8 @@ jobs:
           grep -q 'testMalformedUpdatesFailWithoutFreeingTheDocument' logs/collaboration-macos.log
           grep -q 'testSessionAcknowledgesHandshakeWatermark' logs/collaboration-macos.log
           grep -q 'testSQLiteStoreOnWorldsV11Fixture' logs/collaboration-macos.log
+          grep -q 'testRejectsSyncBeforeIdentityVerification' logs/collaboration-macos.log
+          grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' logs/collaboration-macos.log
       - name: Test collaboration bridge on iOS simulator
         shell: bash
         run: |
@@ -366,6 +425,8 @@ jobs:
           grep -q 'testMalformedUpdatesFailWithoutFreeingTheDocument' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testSessionAcknowledgesHandshakeWatermark' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testSQLiteStoreOnWorldsV11Fixture' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
+          grep -q 'testRejectsSyncBeforeIdentityVerification' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
+          grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -417,6 +478,7 @@ jobs:
           set -o pipefail
           swift test --package-path Apple/WorldsCore list 2>&1 | tee logs/local-swift-discovery.log
           grep -q 'testLiveSwiftSessionsConvergeReconnectAndArchiveRefusal' logs/local-swift-discovery.log
+          grep -q 'testLiveAwarenessExchangeAndDisconnect' logs/local-swift-discovery.log
       - name: Install isolated Worker dependencies
         working-directory: services/sync
         run: pnpm install --frozen-lockfile
@@ -462,12 +524,21 @@ jobs:
             cargo test --locked --manifest-path Apple/RustCollaboration/Cargo.toml --test live_service -- --ignored --nocapture \
             2>&1 | tee logs/collaboration-local-worker.log
           grep -q 'live_native_replica_offline_merge_reconnect_and_refusal ... ok' logs/collaboration-local-worker.log
+          cargo test --locked --manifest-path Apple/RustCollaboration/Cargo.toml --test editor -- --nocapture \
+            2>&1 | tee logs/collaboration-editor-rust.log
+          grep -q 'concurrent_insertions_converge_without_losing_either_edit ... ok' logs/collaboration-editor-rust.log
+          grep -q 'rejects_stale_content_surrogate_boundaries_and_rich_formatting ... ok' logs/collaboration-editor-rust.log
+          cargo test --locked --manifest-path Apple/RustCollaboration/Cargo.toml --test store -- --nocapture \
+            2>&1 | tee logs/collaboration-store-rust.log
+          grep -q 'editor_transaction_rejects_stale_and_rolls_back_outbox_failure ... ok' logs/collaboration-store-rust.log
+          grep -q 'editor_ffi_commits_and_reports_stale_base ... ok' logs/collaboration-store-rust.log
           WORLDS_LIVE_SYNC_URL=ws://127.0.0.1:18790 \
           WORLDS_LIVE_EDITOR_TOKEN="$editor_token" WORLDS_LIVE_VIEWER_TOKEN="$viewer_token" \
             swift test --package-path Apple/WorldsCore --filter LiveWorkerTests \
             2>&1 | tee logs/collaboration-live-swift.log
           grep -q 'testLiveSwiftSessionsConvergeReconnectAndArchiveRefusal' logs/collaboration-live-swift.log
-          grep -Eq 'Executed 1 test, with 0 failures' logs/collaboration-live-swift.log
+          grep -q 'testLiveAwarenessExchangeAndDisconnect' logs/collaboration-live-swift.log
+          grep -Eq 'Executed 2 tests, with 0 failures' logs/collaboration-live-swift.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -515,6 +586,7 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/WorldsUI" \
             -resultBundlePath "$GITHUB_WORKSPACE/results/${{ matrix.device }}.xcresult" \
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee logs/ui-${{ matrix.device }}.log
+          grep -Eq 'testRightToLeftNavigationAndReading.*passed' logs/ui-${{ matrix.device }}.log
       - name: Export screenshot attachments
         if: always()
         shell: bash
@@ -533,4 +605,122 @@ jobs:
             screenshots/
             logs/
             Apple/App/UI_TEST_COVERAGE.md
+          if-no-files-found: warn
+
+  package-ios:
+    name: Package incomplete Worlds ${{ matrix.device }}
+    runs-on: macos-26
+    timeout-minutes: 20
+    needs: [core-tests, rust-mcp-compatibility, ios, macos, native-writes, collaboration-bridge, collaboration-local-worker, ui-tests]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - device: iPhone
+            family: 1
+          - device: iPad
+            family: 2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select pinned Xcode and generate project
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          xcodebuild -version
+          brew install xcodegen
+          xcodegen generate --spec Apple/project.yml
+      - name: Build and package unsigned device app
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p logs deliverables "$RUNNER_TEMP/package/Payload"
+          xcodebuild -project Apple/Worlds.xcodeproj -scheme Worlds-iOS \
+            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/WorldsPackage" TARGETED_DEVICE_FAMILY=${{ matrix.family }} \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tee logs/ios-package.log
+          app="$RUNNER_TEMP/WorldsPackage/Build/Products/Release-iphoneos/Worlds.app"
+          test -d "$app"
+          test ! -e "$app/worlds-v1-fixture.db"
+          test ! -e "$app/search-ui-fixture.db"
+          ditto "$app" "$RUNNER_TEMP/package/Payload/Worlds.app"
+          (cd "$RUNNER_TEMP/package" && zip -qry "$GITHUB_WORKSPACE/deliverables/Worlds-${{ matrix.device }}-Unsigned.ipa" Payload)
+          xcodebuild -project Apple/Worlds.xcodeproj -scheme Worlds-iOS \
+            -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/WorldsSimulatorPackage" TARGETED_DEVICE_FAMILY=${{ matrix.family }} \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tee logs/ios-simulator-package.log
+          simulator_app="$RUNNER_TEMP/WorldsSimulatorPackage/Build/Products/Release-iphonesimulator/Worlds.app"
+          test -d "$simulator_app"
+          test ! -e "$simulator_app/worlds-v1-fixture.db"
+          test ! -e "$simulator_app/search-ui-fixture.db"
+          ditto -c -k --sequesterRsrc --keepParent "$simulator_app" "deliverables/Worlds-${{ matrix.device }}-Simulator.zip"
+          cat > deliverables/README-INCOMPLETE.txt <<'EOF'
+          This is an incomplete development build, not feature parity with Worlds.
+          The IPA is unsigned and cannot be installed directly on a physical device.
+          It requires appropriate signing and provisioning before device installation.
+          A passing build and automated tests do not establish complete visual review.
+          EOF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Worlds-${{ matrix.device }}-INCOMPLETE-unsigned
+          path: deliverables/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-${{ matrix.device }}-package-build-log
+          path: logs/
+          if-no-files-found: warn
+
+  package-macos:
+    name: Package incomplete Worlds macOS
+    runs-on: macos-26
+    timeout-minutes: 20
+    needs: [core-tests, rust-mcp-compatibility, ios, macos, native-writes, collaboration-bridge, collaboration-local-worker, ui-tests]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select pinned Xcode and generate project
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          xcodebuild -version
+          brew install xcodegen
+          xcodegen generate --spec Apple/project.yml
+      - name: Build and package unsigned macOS app
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p logs deliverables
+          xcodebuild -project Apple/Worlds.xcodeproj -scheme Worlds-macOS \
+            -configuration Release -destination 'generic/platform=macOS' \
+            -derivedDataPath "$RUNNER_TEMP/WorldsPackage" CODE_SIGNING_ALLOWED=NO build \
+            2>&1 | tee logs/macos-package.log
+          app="$RUNNER_TEMP/WorldsPackage/Build/Products/Release/Worlds.app"
+          test -d "$app"
+          test ! -e "$app/Contents/Resources/worlds-v1-fixture.db"
+          test ! -e "$app/Contents/Resources/search-ui-fixture.db"
+          ditto "$app" deliverables/Worlds-macOS-Unsigned.app
+          ditto -c -k --sequesterRsrc --keepParent deliverables/Worlds-macOS-Unsigned.app deliverables/Worlds-macOS-Unsigned.zip
+          hdiutil create -volname Worlds -srcfolder deliverables/Worlds-macOS-Unsigned.app -ov -format UDZO deliverables/Worlds-macOS-Unsigned.dmg
+          cat > deliverables/README-INCOMPLETE.txt <<'EOF'
+          This is an incomplete development build, not feature parity with Worlds.
+          The macOS app is unsigned and not notarized. Gatekeeper may block it.
+          Use the ZIP or DMG to preserve the application bundle and permissions.
+          A passing build and automated tests do not establish complete visual review.
+          EOF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Worlds-macOS-INCOMPLETE-unsigned
+          path: |
+            deliverables/Worlds-macOS-Unsigned.zip
+            deliverables/Worlds-macOS-Unsigned.dmg
+            deliverables/README-INCOMPLETE.txt
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Worlds-macOS-INCOMPLETE-app-bundle
+          path: deliverables/Worlds-macOS-Unsigned.app/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-macOS-package-build-log
+          path: logs/
           if-no-files-found: warn

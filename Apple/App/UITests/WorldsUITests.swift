@@ -63,6 +63,35 @@ final class WorldsUITests: XCTestCase {
     }
 
     @MainActor
+    func testRightToLeftNavigationAndReading() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["--ui-testing-fixture", "--ui-testing-rtl"]
+        app.launch()
+        let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
+        XCTAssertTrue(page.waitForExistence(timeout: 20))
+        page.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["page-content"].firstMatch.waitForExistence(timeout: 20))
+        XCTAssertTrue(app.staticTexts["Hello Worlds"].exists)
+        capture("08-rtl-page-content", app: app)
+    }
+
+    @MainActor
+    func testClearingSearchReturnsToPageList() throws {
+        let app = XCUIApplication()
+        app.launchArguments.append("--ui-testing-search-fixture")
+        app.launch()
+        XCTAssertTrue(app.descendants(matching: .any)["page.search-personal"].firstMatch.waitForExistence(timeout: 20))
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 20))
+        search.tap()
+        search.typeText("geometry")
+        XCTAssertTrue(app.descendants(matching: .any)["search-result.search-personal"].firstMatch.waitForExistence(timeout: 20))
+        search.tap()
+        search.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 8))
+        XCTAssertTrue(app.descendants(matching: .any)["page.search-personal"].firstMatch.waitForExistence(timeout: 20))
+    }
+
+    @MainActor
     func testDatabaseError() throws {
         let app = XCUIApplication()
         app.launchArguments.append("--ui-testing-missing-fixture")

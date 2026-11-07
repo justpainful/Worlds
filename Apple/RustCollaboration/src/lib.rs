@@ -15,6 +15,10 @@ impl Default for CollaborationDoc {
     fn default() -> Self { Self(Mutex::new(Doc::new())) }
 }
 impl CollaborationDoc {
+    pub fn client_id(&self) -> Result<u64, &'static str> {
+        let doc = self.0.lock().map_err(|_| "document poisoned")?;
+        Ok(doc.client_id().get())
+    }
     pub fn apply(&self, bytes: &[u8]) -> Result<(), &'static str> {
         if bytes.len() > MAX_INPUT { return Err("input too large"); }
         let update = Update::decode_v1(bytes).map_err(|_| "invalid update")?;
@@ -47,6 +51,18 @@ fn boundary(f: impl FnOnce() -> Result<(), i32>) -> i32 {
 #[unsafe(no_mangle)]
 pub extern "C" fn worlds_doc_new() -> *mut CollaborationDoc {
     catch_unwind(|| Box::into_raw(Box::new(CollaborationDoc::default()))).unwrap_or(std::ptr::null_mut())
+}
+
+/// # Safety
+/// `doc` must be live and `out` must point to writable memory.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn worlds_doc_client_id(doc: *const CollaborationDoc, out: *mut u64) -> i32 {
+    boundary(|| {
+        if doc.is_null() || out.is_null() { return Err(1); }
+        let id = unsafe { &*doc }.client_id().map_err(|_| 2)?;
+        unsafe { out.write(id); }
+        Ok(())
+    })
 }
 
 /// # Safety
@@ -112,7 +128,7 @@ pub mod store;
 
 pub struct CollaborationStoreHandle(Mutex<store::SyncStore>);
 fn store_error(error: store::StoreError) -> i32 {
-    match error { store::StoreError::Denied => 3, store::StoreError::Schema(_) => 4, store::StoreError::Invalid => 1, _ => 2 }
+    match error { store::StoreError::Denied => 3, store::StoreError::Conflict => 5, store::StoreError::Schema(_) => 4, store::StoreError::Invalid => 1, _ => 2 }
 }
 unsafe fn ffi_str<'a>(p: *const std::ffi::c_char) -> Result<&'a str, i32> {
     if p.is_null() { return Err(1); }
@@ -171,6 +187,24 @@ pub unsafe extern "C" fn worlds_store_append(handle: *const CollaborationStoreHa
     })
 }
 /// # Safety
+/// Handle, input ranges, NUL-terminated strings, and writable output must be valid.
+/// A successful result owns an update that must be released with worlds_buffer_free.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn worlds_store_insert_plain_checked(handle: *const CollaborationStoreHandle,
+    base: *const u8, base_len: usize, block_index: u32, block_id: *const std::ffi::c_char,
+    expected: *const std::ffi::c_char, offset: u32, insert: *const std::ffi::c_char, out: *mut WorldsBuffer) -> i32 {
+    boundary(|| {
+        if handle.is_null() || out.is_null() { return Err(1); }
+        let base = unsafe { ffi_bytes(base, base_len)? };
+        let block_id = unsafe { ffi_str(block_id)? };
+        let expected = unsafe { ffi_str(expected)? };
+        let insert = unsafe { ffi_str(insert)? };
+        let mut store = unsafe { &*handle }.0.lock().map_err(|_| 2)?;
+        let update = store.insert_plain_checked(base, block_index, block_id, expected, offset, insert).map_err(store_error)?;
+        write_result(out, update)
+    })
+}
+/// # Safety
 /// Handle and writable output must be valid. A result of -1 means no pending rows.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn worlds_store_max_pending(handle: *const CollaborationStoreHandle, channel: i64, out: *mut i64) -> i32 {
@@ -203,3 +237,5 @@ pub unsafe extern "C" fn worlds_store_reject(handle: *const CollaborationStoreHa
         guard.reject(channel,id,data,reason).map_err(store_error)
     })
 }
+
+pub mod editor;

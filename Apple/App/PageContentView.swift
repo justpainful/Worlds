@@ -22,6 +22,8 @@ private struct PageNode: Decodable {
 
 struct PageContentView: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let page: StoredPage
 
     var body: some View {
@@ -39,7 +41,7 @@ struct PageContentView: View {
                     if let data = block.contentJSON.data(using: .utf8),
                        let node = try? JSONDecoder().decode(PageNode.self, from: data) {
                         NodeView(node: node)
-                            .environment(\.layoutDirection, block.direction == "rtl" ? .rightToLeft : .leftToRight)
+                            .environment(\.layoutDirection, direction(for: block.direction))
                     } else {
                         UnsupportedNodeView(name: block.type)
                     }
@@ -51,10 +53,11 @@ struct PageContentView: View {
                     .padding(.vertical, 8)
                     .worldsGlass()
             }
-            .padding(24)
+            .padding(dynamicTypeSize.isAccessibilitySize ? 16 : 24)
             .frame(maxWidth: 760, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
+        .accessibilityIdentifier("page-content")
         .background(WorldsPalette.paper(for: colorScheme))
         #if os(macOS)
         .navigationTitle(page.title.isEmpty ? "Untitled" : page.title)
@@ -62,6 +65,13 @@ struct PageContentView: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         #endif
+    }
+    private func direction(for value: String) -> LayoutDirection {
+        switch value {
+        case "rtl": return .rightToLeft
+        case "ltr": return .leftToRight
+        default: return layoutDirection
+        }
     }
 }
 
@@ -79,6 +89,7 @@ private struct NodeView: View {
         case "heading":
             Text(inlineContent(node))
                 .font(headingFont(node.attrs?.level))
+                .accessibilityAddTraits(.isHeader)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
         case "bulletList", "orderedList":

@@ -2,7 +2,7 @@ import Foundation
 import WorldsRustCollaboration
 
 public enum CollaborationStorageError: Error, Equatable {
-    case invalidInput, database, denied, unsupportedSchema, invalidResult
+    case invalidInput, database, denied, unsupportedSchema, invalidResult, conflict
 }
 
 /// Bound to one existing Worlds page, signed-in account and workspace.
@@ -37,6 +37,7 @@ public actor SQLiteCollaborationStore: CollaborationStore {
         case 1: throw CollaborationStorageError.invalidInput
         case 3: throw CollaborationStorageError.denied
         case 4: throw CollaborationStorageError.unsupportedSchema
+        case 5: throw CollaborationStorageError.conflict
         default: throw CollaborationStorageError.database
         }
     }
@@ -81,6 +82,27 @@ public actor SQLiteCollaborationStore: CollaborationStore {
             worlds_store_append(handle, channel, bytes.bindMemory(to: UInt8.self).baseAddress, bytes.count, local ? 1 : 0)
         }
         try Self.check(result)
+    }
+    /// Experimental isolated operation. A caller must separately check live service rights.
+    /// The returned update was already persisted in both the replica log and outbox.
+    public func insertPlainChecked(base: Data, blockIndex: UInt32, blockID: String,
+                                   expected: String, offset: UInt32, insertion: String) throws -> Data {
+        guard ![blockID, expected, insertion].contains(where: { $0.utf8.contains(0) }) else { throw CollaborationStorageError.invalidInput }
+        var output = WorldsBuffer(data: nil, len: 0)
+        let status = base.withUnsafeBytes { bytes in
+            blockID.withCString { id in
+                expected.withCString { text in
+                    insertion.withCString { replacement in
+                        worlds_store_insert_plain_checked(handle, bytes.bindMemory(to: UInt8.self).baseAddress, bytes.count,
+                                                          blockIndex, id, text, offset, replacement, &output)
+                    }
+                }
+            }
+        }
+        try Self.check(status)
+        defer { worlds_buffer_free(output) }
+        guard let pointer = output.data else { throw CollaborationStorageError.invalidResult }
+        return Data(bytes: pointer, count: output.len)
     }
     public func appendLocal(pageID: String, channel: UInt64, update: Data) async throws {
         try append(pageID: pageID, channel: channel, update: update, local: true)

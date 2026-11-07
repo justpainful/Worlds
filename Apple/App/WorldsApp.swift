@@ -7,7 +7,15 @@ import WorldsSearch
 struct WorldsApp: App {
     var body: some Scene {
         WindowGroup {
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-rtl") {
+                WorldsLibraryView().environment(\.layoutDirection, .rightToLeft)
+            } else {
+                WorldsLibraryView()
+            }
+            #else
             WorldsLibraryView()
+            #endif
         }
     }
 }
@@ -57,6 +65,13 @@ private struct WorldsLibraryView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(page.title.isEmpty ? "Untitled" : page.title)
                                     .font(.body.weight(.medium))
+                                if let parentID = page.parentID,
+                                   let parent = pages.first(where: { $0.id == parentID }), !parent.title.isEmpty {
+                                    Text(parent.title)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                }
                                 if !page.preview.isEmpty {
                                     Text(page.preview)
                                         .font(.caption)
@@ -67,6 +82,7 @@ private struct WorldsLibraryView: View {
                             .padding(.vertical, 4)
                         }
                         .accessibilityIdentifier("page.\(page.id)")
+                        .accessibilityHint("Opens page")
                     }
                 }
             }
@@ -151,6 +167,7 @@ private struct WorldsLibraryView: View {
                         .padding(.vertical, 4)
                     }
                     .accessibilityIdentifier("search-result.\(hit.pageId)")
+                    .accessibilityHint("Opens page")
                 }
             }
         }

@@ -17,6 +17,7 @@ let package = Package(
     products: [
         .library(name: "WorldsModels", targets: ["WorldsModels"]),
         .library(name: "WorldsSyncWire", targets: ["WorldsSyncWire"]),
+        .library(name: "WorldsAwareness", targets: ["WorldsAwareness"]),
         .library(name: "WorldsPersistence", targets: ["WorldsPersistence"]),
         .library(name: "WorldsIdentity", targets: ["WorldsIdentity"]),
         .library(name: "WorldsRichText", targets: ["WorldsRichText"]),
@@ -37,6 +38,7 @@ let package = Package(
     targets: [
         .target(name: "WorldsModels"),
         .target(name: "WorldsSyncWire"),
+        .target(name: "WorldsAwareness", dependencies: ["WorldsSyncWire"], exclude: ["README.md"]),
         .target(name: "WorldsPersistence", exclude: ["README.md"], linkerSettings: [.linkedLibrary("sqlite3")]),
         .target(name: "WorldsIdentity", exclude: ["README.md"], linkerSettings: [.linkedFramework("Security")]),
         .target(name: "WorldsRichText", dependencies: ["WorldsModels"], exclude: ["README.md"]),
@@ -54,6 +56,7 @@ let package = Package(
         .target(name: "WorldsGallery", dependencies: ["WorldsModels"], exclude: ["README.md"]),
         .testTarget(name: "WorldsModelsTests", dependencies: ["WorldsModels"]),
         .testTarget(name: "WorldsSyncWireTests", dependencies: ["WorldsSyncWire"]),
+        .testTarget(name: "WorldsAwarenessTests", dependencies: ["WorldsAwareness", "WorldsSyncWire"]),
         .testTarget(name: "WorldsPersistenceTests", dependencies: ["WorldsPersistence"], resources: [.copy("worlds-v1-fixture.db")], linkerSettings: [.linkedLibrary("sqlite3")]),
         .testTarget(name: "WorldsIdentityTests", dependencies: ["WorldsIdentity"]),
         .testTarget(name: "WorldsRichTextTests", dependencies: ["WorldsRichText", "WorldsModels"]),
@@ -79,6 +82,9 @@ if rustStoreAvailable {
     package.targets.append(.binaryTarget(name: "WorldsRustStore", path: rustStorePath))
     package.targets.append(.target(name: "WorldsNativeWrites", dependencies: ["WorldsRustStore", "WorldsModels"], linkerSettings: [.linkedFramework("Security"), .linkedFramework("SystemConfiguration"), .linkedLibrary("resolv"), .linkedLibrary("iconv")]))
     package.targets.append(.testTarget(name: "WorldsNativeWritesTests", dependencies: ["WorldsNativeWrites", "WorldsModels", "WorldsRustStore"], resources: [.copy("worlds-v11.db")]))
+    package.products.append(.library(name: "WorldsPresentationPersistence", targets: ["WorldsPresentationPersistence"]))
+    package.targets.append(.target(name: "WorldsPresentationPersistence", dependencies: ["WorldsModels", "WorldsNativeWrites", "WorldsPresentations"], exclude: ["README.md"]))
+    package.targets.append(.testTarget(name: "WorldsPresentationPersistenceTests", dependencies: ["WorldsPresentationPersistence", "WorldsPresentations"], resources: [.copy("worlds-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]))
     package.products.append(.library(name: "WorldsEditorPersistence", targets: ["WorldsEditorPersistence"]))
     package.targets.append(.target(name: "WorldsEditorPersistence", dependencies: ["WorldsModels", "WorldsPersistence", "WorldsRichText", "WorldsNativeEditor", "WorldsNativeWrites"], exclude: ["README.md"]))
     package.targets.append(.testTarget(name: "WorldsEditorPersistenceTests", dependencies: ["WorldsEditorPersistence", "WorldsModels", "WorldsPersistence", "WorldsRichText", "WorldsNativeEditor", "WorldsNativeWrites"], resources: [.copy("editor-fixture.db")], linkerSettings: [.linkedLibrary("sqlite3")]))
@@ -94,7 +100,7 @@ if rustStoreAvailable {
 if collaborationAvailable {
     package.products.append(.library(name: "WorldsCollaboration", targets: ["WorldsCollaboration"]))
     package.targets.append(.binaryTarget(name: "WorldsRustCollaboration", path: collaborationPath))
-    package.targets.append(.target(name: "WorldsCollaboration", dependencies: ["WorldsRustCollaboration", "WorldsSyncWire"], exclude: ["README.md"], linkerSettings: [.linkedFramework("Security"), .linkedFramework("SystemConfiguration"), .linkedLibrary("resolv"), .linkedLibrary("iconv")]))
+    package.targets.append(.target(name: "WorldsCollaboration", dependencies: ["WorldsRustCollaboration", "WorldsSyncWire", "WorldsAwareness"], exclude: ["README.md"], linkerSettings: [.linkedFramework("Security"), .linkedFramework("SystemConfiguration"), .linkedLibrary("resolv"), .linkedLibrary("iconv")]))
     package.targets.append(.testTarget(name: "WorldsCollaborationTests", dependencies: ["WorldsCollaboration", "WorldsSyncWire"], resources: [.copy("worlds-collab-v11.db"), .copy("worlds-collab-editor-v11.db"), .copy("worlds-collab-viewer-v11.db")]))
 }
 

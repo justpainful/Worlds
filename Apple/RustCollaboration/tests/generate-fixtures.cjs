@@ -24,3 +24,17 @@ Y.applyUpdate(a, Y.encodeStateAsUpdate(b, Y.encodeStateVector(base)));
 write('merged.bin', Y.encodeStateAsUpdate(a));
 write('merged.txt', a.getText('shared').toString());
 write('xml.txt', fragment.toString());
+
+// Minimal editor fixture used to test UTF-16 offsets and concurrent inserts.
+const plain = new Y.Doc(); plain.clientID = 1001;
+const plainP = new Y.XmlElement('paragraph'), plainText = new Y.XmlText();
+plain.getXmlFragment('default').insert(0, [plainP]); plainP.setAttribute('bid', 'block-1'); plainP.insert(0, [plainText]);
+plainText.insert(0, 'Hello 🌍');
+write('plain-editor.bin', Y.encodeStateAsUpdate(plain));
+
+// Matching stable block ID plus a real Yjs formatting mark.
+const rich = new Y.Doc(); rich.clientID = 1002;
+const richP = new Y.XmlElement('paragraph'), richText = new Y.XmlText();
+rich.getXmlFragment('default').insert(0, [richP]); richP.setAttribute('bid', 'block-1'); richP.insert(0, [richText]);
+richText.insert(0, 'Yjs rich text', { bold: true });
+write('rich-editor.bin', Y.encodeStateAsUpdate(rich));

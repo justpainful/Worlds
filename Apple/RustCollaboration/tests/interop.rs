@@ -69,3 +69,16 @@ fn rejects_truncated_inputs_and_handles_ffi_ownership() {
 }
 
 use yrs::updates::encoder::Encode;
+
+#[test]
+fn exported_client_id_matches_document() {
+    let doc = worlds_collaboration::worlds_doc_new();
+    assert!(!doc.is_null());
+    let mut id = u64::MAX;
+    assert_eq!(unsafe { worlds_collaboration::worlds_doc_client_id(doc, &mut id) }, 0);
+    assert!(id <= 9_007_199_254_740_991);
+    let mut second = u64::MAX;
+    assert_eq!(unsafe { worlds_collaboration::worlds_doc_client_id(doc, &mut second) }, 0);
+    assert_eq!(id, second);
+    unsafe { worlds_collaboration::worlds_doc_free(doc); }
+}

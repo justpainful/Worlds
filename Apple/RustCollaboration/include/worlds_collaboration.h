@@ -14,6 +14,7 @@ typedef struct { uint8_t *data; size_t len; } WorldsBuffer;
    Pointers and byte ranges passed to these functions must remain valid. */
 WorldsDoc *worlds_doc_new(void);
 void worlds_doc_free(WorldsDoc *doc);
+int32_t worlds_doc_client_id(const WorldsDoc *doc, uint64_t *out);
 int32_t worlds_doc_apply(const WorldsDoc *doc, const uint8_t *data, size_t len);
 int32_t worlds_doc_state_vector(const WorldsDoc *doc, WorldsBuffer *out);
 int32_t worlds_doc_diff(const WorldsDoc *doc, const uint8_t *state_vector, size_t len, WorldsBuffer *out);
@@ -27,6 +28,11 @@ void worlds_store_free(WorldsStore *store);
    The output is freed using worlds_buffer_free. */
 int32_t worlds_store_load(const WorldsStore *store, int64_t channel, WorldsBuffer *out);
 int32_t worlds_store_append(const WorldsStore *store, int64_t channel, const uint8_t *data, size_t len, int32_t local);
+/* Experimental: compare complete base and permissions, then commit log and outbox together.
+   Status 5 means stale base. Output must be freed on success. */
+int32_t worlds_store_insert_plain_checked(const WorldsStore *store, const uint8_t *base, size_t base_len,
+    uint32_t block_index, const char *block_id, const char *expected, uint32_t offset,
+    const char *insert, WorldsBuffer *out);
 int32_t worlds_store_max_pending(const WorldsStore *store, int64_t channel, int64_t *out);
 int32_t worlds_store_ack(const WorldsStore *store, int64_t channel, int64_t through);
 int32_t worlds_store_reject(const WorldsStore *store, int64_t channel, const char *archive_id, const uint8_t *state, size_t len, const char *reason);

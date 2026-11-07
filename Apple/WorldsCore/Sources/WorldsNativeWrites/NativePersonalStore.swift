@@ -72,6 +72,12 @@ public actor NativePersonalStore {
     public func readResource(id: String) async throws -> JSONValue {
         try await call(Request(operation: "read_resource", path: url.path, page: id))
     }
+    public func readPresentation(id: String) async throws -> JSONValue {
+        try await call(Request(operation: "read_presentation", path: url.path, page: id))
+    }
+    public func savePresentation(id: String, base: Int64, expectedMetadata: JSONValue, expected: [NativeBlockInput], blocks: [NativeBlockInput]) async throws -> JSONValue {
+        try await call(Request(operation: "save_presentation", path: url.path, page: id, base: base, blocks: blocks, expected: expected, expectedMetadata: expectedMetadata))
+    }
     public func saveProject(id: String, base: Int64, expectedMetadata: JSONValue, metadata: JSONValue) async throws -> JSONValue {
         try await call(Request(operation: "save_project", path: url.path, page: id, base: base, expectedMetadata: expectedMetadata, metadata: metadata))
     }

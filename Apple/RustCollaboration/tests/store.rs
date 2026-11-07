@@ -107,3 +107,49 @@ fn ffi_original_schema_and_revoked_access_archive() {
     }
     std::fs::remove_file(path).unwrap();
 }
+
+#[test]
+fn editor_transaction_rejects_stale_and_rolls_back_outbox_failure() {
+    let path = fixture();
+    let base = include_bytes!("fixtures/plain-editor.bin");
+    let mut store = SyncStore::open(&path, "p", "u", "w").unwrap();
+    store.append(0, base, false).unwrap();
+    let db = Connection::open(&path).unwrap();
+    db.execute_batch("CREATE TRIGGER fail_editor BEFORE INSERT ON sync_outbox BEGIN SELECT RAISE(ABORT,'failure'); END;").unwrap();
+    assert!(store.insert_plain_checked(base, 0, "block-1", "Hello 🌍", 6, "Alice ").is_err());
+    assert_eq!(store.load(0).unwrap().len(), 1);
+    assert_eq!(store.max_pending(0).unwrap(), None);
+    db.execute_batch("DROP TRIGGER fail_editor;").unwrap();
+    let update = store.insert_plain_checked(base, 0, "block-1", "Hello 🌍", 6, "Alice ").unwrap();
+    assert!(!update.is_empty());
+    assert_eq!(store.load(0).unwrap().len(), 2);
+    assert!(store.max_pending(0).unwrap().is_some());
+    assert!(matches!(store.insert_plain_checked(base, 0, "block-1", "Hello 🌍", 6, "Bob "), Err(StoreError::Conflict)));
+    drop(store);
+    let mut reopened = SyncStore::open(&path, "p", "u", "w").unwrap();
+    assert_eq!(reopened.load(0).unwrap().len(), 2);
+    db.execute("UPDATE account_workspaces SET default_level='view' WHERE id='w'", []).unwrap();
+    assert!(matches!(reopened.insert_plain_checked(base, 0, "block-1", "Hello 🌍", 6, "x"), Err(StoreError::Denied)));
+    drop(db); drop(reopened); std::fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn editor_ffi_commits_and_reports_stale_base() {
+    use std::ffi::CString;
+    use worlds_collaboration::*;
+    let path = fixture(); let base = include_bytes!("fixtures/plain-editor.bin");
+    let mut setup = SyncStore::open(&path, "p", "u", "w").unwrap();
+    setup.append(0, base, false).unwrap(); drop(setup);
+    let strings: Vec<CString> = [path.to_str().unwrap(), "p", "u", "w", "block-1", "Hello 🌍", "Alice "].iter().map(|s| CString::new(*s).unwrap()).collect();
+    let mut handle = std::ptr::null_mut();
+    unsafe {
+        assert_eq!(worlds_store_open(strings[0].as_ptr(), strings[1].as_ptr(), strings[2].as_ptr(), strings[3].as_ptr(), &mut handle), 0);
+        let mut out = WorldsBuffer { data: std::ptr::null_mut(), len: 0 };
+        assert_eq!(worlds_store_insert_plain_checked(handle, base.as_ptr(), base.len(), 0, strings[4].as_ptr(), strings[5].as_ptr(), 6, strings[6].as_ptr(), &mut out), 0);
+        assert!(out.len > 0); worlds_buffer_free(out);
+        let mut stale = WorldsBuffer { data: std::ptr::null_mut(), len: 0 };
+        assert_eq!(worlds_store_insert_plain_checked(handle, base.as_ptr(), base.len(), 0, strings[4].as_ptr(), strings[5].as_ptr(), 6, strings[6].as_ptr(), &mut stale), 5);
+        assert!(stale.data.is_null()); worlds_store_free(handle);
+    }
+    std::fs::remove_file(path).unwrap();
+}

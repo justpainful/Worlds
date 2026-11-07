@@ -101,5 +101,49 @@ final class LiveWorkerTests: XCTestCase {
         let recovered = try await v.load(pageID: page, channel: 0)
         XCTAssertEqual(recovered, [Data([0, 0])])
     }
+    func testLiveAwarenessExchangeAndDisconnect() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard env["WORLDS_REQUIRE_LIVE_SERVICE"] == "1" else { throw XCTSkip("Local Worker integration was not requested") }
+        guard env["WORLDS_LIVE_SYNC_URL"] == "ws://127.0.0.1:18790",
+              let editor = env["WORLDS_LIVE_EDITOR_TOKEN"], !editor.isEmpty,
+              let viewer = env["WORLDS_LIVE_VIEWER_TOKEN"], !viewer.isEmpty else { return XCTFail("Local Worker credentials are required") }
+        let paths = try [fixture("editor"), fixture("viewer")]
+        defer { for path in paths { try? FileManager.default.removeItem(at: path) } }
+        let a = try makeStore(paths[0], user: "editor"), b = try makeStore(paths[1], user: "viewer")
+        let doc = "awareness" + UUID().uuidString.replacingOccurrences(of: "-", with: "")
+        let alice = try makeSession(a, user: "editor", token: editor, document: doc)
+        let bob = try makeSession(b, user: "viewer", token: viewer, document: doc)
+        try await alice.setPresence(name: "Alice", color: "#123456")
+        try await bob.setPresence(name: "Bob", color: "#654321")
+        let arun = Task { try await alice.run() }, brun = Task { try await bob.run() }
+        var seen = false
+        for _ in 0..<100 {
+            let peers = await bob.presenceSnapshot()
+            if peers.values.contains(where: { $0.json.contains("Alice") && $0.json.contains("editor") }) { seen = true; break }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        XCTAssertTrue(seen, "Authenticated Alice should appear to Bob")
+        await alice.stop(); try await arun.value
+        var removed = false
+        for _ in 0..<100 {
+            let peers = await bob.presenceSnapshot()
+            if !peers.values.contains(where: { $0.json.contains("Alice") }) { removed = true; break }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        XCTAssertTrue(removed, "Alice should disappear after socket closes")
+        let reopened = try makeSession(a, user: "editor", token: editor, document: doc)
+        try await reopened.setPresence(name: "Alice", color: "#123456")
+        let rerun = Task { try await reopened.run() }
+        var returned = false
+        for _ in 0..<100 {
+            let peers = await bob.presenceSnapshot()
+            if peers.values.contains(where: { $0.json.contains("Alice") }) { returned = true; break }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        await reopened.stop(); await bob.stop()
+        try await rerun.value; try await brun.value
+        XCTAssertTrue(returned, "Alice should reappear after reconnecting")
+    }
+
 }
 

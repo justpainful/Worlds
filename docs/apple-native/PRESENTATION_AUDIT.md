@@ -1,0 +1,11 @@
+# Presentation path audit
+
+Source inspected at Windows checkout commit 185ee9a1019c8b7bc685d22dabf1b699579189cc, including any local changes. This is source inspection, not execution or an exhaustive parity audit.
+
+`src/resources/views/PresentationView.tsx:37-46` loads the page and selects blocks of type slide. `src/resources/deck/model.ts:145-156` maps each slide to a block with ID, layout, background, notes and elements. `model.ts:7-59` defines a 1280 by 720 coordinate space, text/image/video/shape elements and layout fields. Layout changes in `model.ts:126-137` retain typed matching placeholder text and user-created elements by specific rules.
+
+`PresentationView.tsx:75-112` persists the full slide list via `saveBlocks` and the last timestamp, displaying a save error or reloading on conflict. The save path maps only slide blocks; behavior of pages containing unrelated blocks must not be assumed safe. `PresentationView.tsx:116-175` records up to 120 slide-list snapshots for undo, creates, duplicates, deletes and reorders slides. Duplication generates fresh slide and element IDs. The editor also manages selection, movement, resizing, alignment, clipboard, background attachments and speaker notes; navigation and fullscreen presentation live in `src/resources/deck/Navigator.tsx` and `Present.tsx`. Trace those implementations and their failures before claiming parity.
+
+No dedicated deck export operation is present in the inspected presentation view or deck directory. This does not establish that other application-wide export paths do not include presentations; trace them separately before asserting export coverage.
+
+Native status: `WorldsPresentations` retains open slide JSON and exposes selected in-memory mutations plus a partial renderer. The separate `WorldsPresentationSession` adds bounded in-memory undo, reorder, insertion and removal. It is not integrated into the app or package, not tested on Apple, and does not implement slide duplication, assets, layout change, rich editing, export, persistence, permission checks, collaboration or conflict handling. The existing experimental native renderer does not fully render media. The native persistence path must retain unrelated page blocks and use a conflict-safe transaction before any user data can be written.

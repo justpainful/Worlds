@@ -114,3 +114,50 @@ extension WorldsCollaborationTests {
     }
 }
 
+
+private actor PrematureSyncSocket: CollaborationSocket {
+    private var sent = false
+    func send(_ data: Data) async throws {}
+    func receive() async throws -> Data? {
+        if !sent {
+            sent = true
+            return try WorldsSyncWire.encode(.sync(channel: 0, kind: 2, payload: Data([0, 0])))
+        }
+        throw CancellationError()
+    }
+    func close() async {}
+    func closeCode() async -> Int { 0 }
+}
+
+extension WorldsCollaborationTests {
+    func testRejectsSyncBeforeIdentityVerification() async throws {
+        let store = FixtureStore(), socket = PrematureSyncSocket()
+        let session = try CollaborationSession(pageID: "p", workspaceID: "w", documentID: "p", expectedUserID: "user",
+            serverURL: URL(string: "https://example.invalid")!, store: store,
+            tokenProvider: { _ in "fixture-token" }, socketFactory: { _, _ in socket })
+        do { try await session.run(); XCTFail("Unverified server data must be rejected") }
+        catch CollaborationError.accessRevoked { }
+        catch { XCTFail("Unexpected error: \(error)") }
+    }
+}
+
+extension WorldsCollaborationTests {
+    func testCheckedEditorWritePersistsAndRejectsStaleBase() async throws {
+        let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-editor-v11", withExtension: "db"))
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-edit-\(UUID().uuidString).db")
+        try FileManager.default.copyItem(at: source, to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = try SQLiteCollaborationStore(databaseURL: url, pageID: "fixture-page", userID: "editor", workspaceID: "fixture-workspace")
+        let base = try XCTUnwrap(Data(base64Encoded: "AQTpBwAHAQdkZWZhdWx0AwlwYXJhZ3JhcGgoAOkHAANiaWQBdwdibG9jay0xBwDpBwAGBADpBwIKSGVsbG8g8J+MjQA="))
+        try await store.appendRemote(pageID: "fixture-page", channel: 0, update: base)
+        let update = try await store.insertPlainChecked(base: base, blockIndex: 0, blockID: "block-1", expected: "Hello 🌍", offset: 6, insertion: "Alice ")
+        XCTAssertFalse(update.isEmpty)
+        do { _ = try await store.insertPlainChecked(base: base, blockIndex: 0, blockID: "block-1", expected: "Hello 🌍", offset: 6, insertion: "Bob "); XCTFail("Stale base must be rejected") }
+        catch CollaborationStorageError.conflict { } catch { XCTFail("Unexpected error: \(error)") }
+        let reopened = try SQLiteCollaborationStore(databaseURL: url, pageID: "fixture-page", userID: "editor", workspaceID: "fixture-workspace")
+        let updates = try await reopened.load(pageID: "fixture-page", channel: 0)
+        XCTAssertEqual(updates.count, 2)
+        let pending = try await reopened.maximumPendingID(pageID: "fixture-page", channel: 0)
+        XCTAssertNotNil(pending)
+    }
+}
