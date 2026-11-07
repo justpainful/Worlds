@@ -284,6 +284,11 @@ private struct WorldsLibraryView: View {
 
     private var sidebarSelection: Binding<String?> {
         Binding(get: { selectedID }, set: { newSelection in
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-fixture") {
+                print("[Worlds fixture navigation] selection \(selectedID ?? "nil") -> \(newSelection ?? "nil")")
+            }
+            #endif
             // SwiftUI can write the current selection back while updating a
             // split view. Preserve link history unless selection really changed.
             guard selectedID != newSelection else { return }

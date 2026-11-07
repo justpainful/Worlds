@@ -41,14 +41,15 @@ private actor FixtureStore: CheckedPlainEditorStore {
 
 private actor FixtureSocket: CollaborationSocket {
     let level: String
-    init(level: String = "edit") { self.level = level }
+    let userID: String
+    init(level: String = "edit", userID: String = "user") { self.level = level; self.userID = userID }
     private var queue: [Data] = []
     private var waiting: CheckedContinuation<Data?, Error>?
     private var closed = false
     func send(_ data: Data) async throws {
         switch try WorldsSyncWire.decode(data) {
         case let .sync(channel, kind, _) where kind == 0:
-            if channel == 0 { try deliver(WorldsSyncWire.encode(.authState(level: level, userID: "user"))) }
+            if channel == 0 { try deliver(WorldsSyncWire.encode(.authState(level: level, userID: userID))) }
             try deliver(WorldsSyncWire.encode(.sync(channel: channel, kind: 0, payload: Data([0]))))
         case let .update(batchID, _, _):
             try deliver(WorldsSyncWire.encode(.acknowledgement(batchID: batchID, status: 0, reason: "")))
@@ -140,6 +141,82 @@ private actor PrematureSyncSocket: CollaborationSocket {
     }
     func close() async {}
     func closeCode() async -> Int { 0 }
+}
+
+private actor FailedConnectionLog {
+    private(set) var starts: [Date] = []
+    private(set) var failures = 0
+    func next() -> any CollaborationSocket { starts.append(Date()); return FailingConnection(log: self) }
+    func failed() { failures += 1 }
+}
+private struct FailingConnection: CollaborationSocket {
+    let log: FailedConnectionLog
+    func send(_ data: Data) async throws { }
+    func receive() async throws -> Data? { await log.failed(); throw URLError(.networkConnectionLost) }
+    func close() async { }
+    func closeCode() async -> Int { 0 }
+}
+private actor ReconnectingFactory {
+    private(set) var count = 0
+    let log = FailedConnectionLog()
+    let working = FixtureSocket(userID: "editor")
+    func next() -> any CollaborationSocket {
+        count += 1
+        if count == 1 { return FailingConnection(log: log) }
+        return working
+    }
+}
+
+extension WorldsCollaborationTests {
+    func testDurableOutboxResentAfterFailedConnection() async throws {
+        let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-editor-v11", withExtension: "db"))
+        let copy = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-reconnect-\(UUID().uuidString).db")
+        try FileManager.default.copyItem(at: source, to: copy)
+        defer { try? FileManager.default.removeItem(at: copy) }
+        let store = try SQLiteCollaborationStore(databaseURL: copy, pageID: "fixture-page", userID: "editor", workspaceID: "fixture-workspace")
+        try await store.appendLocal(pageID: "fixture-page", channel: 0, update: Data([0, 0]))
+        let initial = try await store.maximumPendingID(pageID: "fixture-page", channel: 0)
+        XCTAssertNotNil(initial)
+        let factory = ReconnectingFactory()
+        let session = try CollaborationSession(pageID: "fixture-page", workspaceID: "fixture-workspace", documentID: "fixture-page", expectedUserID: "editor",
+            serverURL: URL(string: "https://example.invalid")!, store: store,
+            tokenProvider: { _ in "fixture-token" }, socketFactory: { _, _ in await factory.next() })
+        let run = Task { try await session.run() }
+        var acknowledged = false
+        for _ in 0..<200 {
+            if try await store.maximumPendingID(pageID: "fixture-page", channel: 0) == nil { acknowledged = true; break }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        await session.stop(); try await run.value
+        XCTAssertTrue(acknowledged)
+        let attempts = await factory.count
+        XCTAssertGreaterThanOrEqual(attempts, 2)
+        let reopened = try SQLiteCollaborationStore(databaseURL: copy, pageID: "fixture-page", userID: "editor", workspaceID: "fixture-workspace")
+        let updates = try await reopened.load(pageID: "fixture-page", channel: 0)
+        XCTAssertTrue(updates.contains(Data([0, 0])))
+    }
+
+    func testUnauthenticatedReconnectBacksOffAndStopInterruptsWait() async throws {
+        let log = FailedConnectionLog()
+        let session = try CollaborationSession(pageID: "p", workspaceID: "w", documentID: "p", expectedUserID: "user",
+            serverURL: URL(string: "https://example.invalid")!, store: FixtureStore(),
+            tokenProvider: { _ in "fixture-token" }, socketFactory: { _, _ in await log.next() })
+        let run = Task { try await session.run() }
+        var completed = false
+        for _ in 0..<250 {
+            if await log.failures >= 3 { completed = true; break }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        guard completed else { await session.stop(); _ = try? await run.value; return XCTFail("Connections did not retry") }
+        let times = await log.starts
+        XCTAssertGreaterThanOrEqual(times[1].timeIntervalSince(times[0]), 0.8)
+        XCTAssertGreaterThanOrEqual(times[2].timeIntervalSince(times[1]), 1.7)
+        try await Task.sleep(for: .milliseconds(50))
+        let stoppedAt = Date()
+        await session.stop()
+        try await run.value
+        XCTAssertLessThan(Date().timeIntervalSince(stoppedAt), 1.0, "stop should cancel the retry delay")
+    }
 }
 
 extension WorldsCollaborationTests {

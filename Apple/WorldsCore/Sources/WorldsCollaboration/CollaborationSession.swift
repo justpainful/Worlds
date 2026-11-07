@@ -93,6 +93,7 @@ public actor CollaborationSession {
     private var revoked = false
     private var failed = false
     private var generation: UInt64 = 0
+    private var retryTask: Task<Void, Error>?
     private var localWriteInFlight = false
     private var verifiedIdentity = false
     public private(set) var accessLevel: String?
@@ -160,13 +161,15 @@ public actor CollaborationSession {
                     guard let doc = documents[channel] else { throw CollaborationError.notStarted }
                     try await opened.send(WorldsSyncWire.encode(.sync(channel: channel, kind: 0, payload: doc.vector())))
                 }
-                attempt = 0
                 while !stopped && !failed && generation == runID {
                     guard let data = try await opened.receive() else { throw CollaborationError.invalidFrame }
                     guard !stopped, generation == runID else { break }
                     try await handle(data, via: opened)
                 }
             } catch {
+                // Only an authenticated connection resets backoff. Opening a
+                // socket that immediately fails is not a successful session.
+                if verifiedIdentity { attempt = 0 }
                 if let connection {
                     let closeCode = await connection.closeCode()
                     if closeCode == WorldsSyncWire.closeRevoked { revoked = true }
@@ -179,13 +182,22 @@ public actor CollaborationSession {
                 if failed { throw error }
                 attempt = min(attempt + 1, 6)
                 let delay = UInt64(min(30.0, 0.5 * pow(2.0, Double(attempt))))
-                try await Task.sleep(for: .seconds(delay))
+                let waiting = Task { try await Task.sleep(for: .seconds(delay)) }
+                retryTask = waiting
+                do { try await waiting.value }
+                catch {
+                    retryTask = nil
+                    if stopped || generation != runID { return }
+                    throw error
+                }
+                retryTask = nil
             }
         }
     }
 
     public func stop() async {
         stopped = true; generation &+= 1
+        retryTask?.cancel()
         if let socket {
             if verifiedIdentity, let update = try? awareness?.setLocal(nil, at: Date().timeIntervalSince1970) {
                 try? await socket.send(WorldsSyncWire.encode(.awareness(update)))

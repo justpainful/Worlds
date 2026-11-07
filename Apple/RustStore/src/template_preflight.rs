@@ -122,6 +122,56 @@ pub(crate) fn inspect_known_references(path: &Path, root: &str, destination: Opt
     Ok(())
 }
 
+/// Experimental exact-source execution for a deliberately restricted,
+/// reference-free subset. Never exported through FFI or wired to product UI.
+/// Everything else is refused before invoking the original implementation.
+pub(crate) fn instantiate_plain_text(path: &Path, root: &str, destination: Option<&str>) -> Result<String> {
+    let mut connection = super::open_existing(path)?;
+    let tx = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+    inspect_in_snapshot(&tx, root, destination)?;
+    let mut pending = vec![root.to_owned()];
+    while let Some(id) = pending.pop() {
+        let (kind, metadata, cover, icon): (String, String, Option<String>, Option<String>) = tx.query_row(
+            "SELECT kind,metadata,cover,icon FROM pages WHERE id=?1", [&id], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?)))?;
+        if (id == root && kind != "template") || (id != root && kind != "page") { bail!("unsupported template resource kind") }
+        let metadata: serde_json::Value = serde_json::from_str(&metadata)?;
+        if metadata.as_object().is_none_or(|o| !o.is_empty()) { bail!("unsupported template metadata") }
+        if cover.is_some() || icon.as_deref().is_some_and(|i| i.starts_with("img:")) { bail!("template visual asset unavailable") }
+        let count: i64 = tx.query_row("SELECT (SELECT count(*) FROM attachments WHERE page_id=?1)+(SELECT count(*) FROM refs WHERE source_page=?1)+(SELECT count(*) FROM drawing_documents WHERE page_id=?1)", [&id], |r|r.get(0))?;
+        if count != 0 { bail!("template assets or references unavailable") }
+        let mut blocks = tx.prepare("SELECT content,properties,direction FROM blocks WHERE page_id=?1")?;
+        for row in blocks.query_map([&id], |r| Ok((r.get::<_,String>(0)?,r.get::<_,String>(1)?,r.get::<_,String>(2)?)))? {
+            let (content, properties, direction) = row?;
+            if content.len() > MAX_METADATA_BYTES || properties != "{}" || direction != "auto" { bail!("unsupported block properties") }
+            let valid: i64 = tx.query_row("SELECT CASE WHEN json_valid(?1) THEN NOT EXISTS(SELECT 1 FROM json_tree(?1) WHERE typeof(key)='text' GROUP BY parent,key HAVING COUNT(*)>1) ELSE 0 END", [&content], |r| r.get(0))?;
+            if valid != 1 { bail!("invalid or ambiguous block content") }
+            validate_plain_paragraph(&serde_json::from_str(&content)?)?;
+        }
+        let mut children = tx.prepare("SELECT id FROM pages WHERE parent_id=?1 AND deleted_at IS NULL ORDER BY sort_key")?;
+        for child in children.query_map([&id], |r| r.get::<_,String>(0))? { pending.push(child?); }
+    }
+    let page = super::store::instantiate_template(&tx, &super::store::Ctx::user(), root, destination, None)?;
+    let id = page.id;
+    tx.commit()?;
+    Ok(id)
+}
+
+fn validate_plain_paragraph(value: &serde_json::Value) -> Result<()> {
+    let object = value.as_object().ok_or_else(||anyhow::anyhow!("unsupported paragraph"))?;
+    if object.get("type").and_then(|x|x.as_str()) != Some("paragraph") || object.keys().any(|k| !matches!(k.as_str(), "type" | "attrs" | "content")) { bail!("unsupported block type") }
+    if let Some(attrs) = object.get("attrs") {
+        let attrs = attrs.as_object().ok_or_else(||anyhow::anyhow!("unsupported paragraph attributes"))?;
+        if attrs.keys().any(|k| k != "bid") || attrs.get("bid").is_some_and(|x|x.as_str().is_none_or(str::is_empty)) { bail!("unsupported paragraph attributes") }
+    }
+    if let Some(content) = object.get("content") {
+        for item in content.as_array().ok_or_else(||anyhow::anyhow!("unsupported paragraph content"))? {
+            let text = item.as_object().ok_or_else(||anyhow::anyhow!("unsupported paragraph content"))?;
+            if text.get("type").and_then(|x|x.as_str()) != Some("text") || text.get("text").and_then(|x|x.as_str()).is_none() || text.keys().any(|k| k != "type" && k != "text") { bail!("unsupported text formatting") }
+        }
+    }
+    Ok(())
+}
+
 fn require_reference_page(c: &Connection, id: &str) -> Result<()> {
     if id.is_empty() || id.contains('\0') { bail!("invalid referenced page") }
     super::require_personal(c, id)
@@ -262,6 +312,60 @@ mod tests {
         drop(c);
         let before = std::fs::read(&path).unwrap();
         inspect_known_references(&path,"empty",None).unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), before);
+        std::fs::remove_file(path).unwrap();
+    }
+    fn text_template(path: &Path) {
+        let c = Connection::open(path).unwrap();
+        c.execute_batch(r#"
+        INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('simple','Lesson {{date}}','template','{}',1,1);
+        INSERT INTO pages(id,title,kind,metadata,parent_id,created_at,updated_at) VALUES('simple-child','Child','page','{}','simple',1,1);
+        INSERT INTO blocks(id,page_id,type,sort_key,content,properties,direction,text,created_at,updated_at)
+        VALUES('simple-block','simple','paragraph',0,'{"type":"paragraph","content":[{"type":"text","text":"Hello {{date}}"}]}','{}','auto','Hello {{date}}',1,1),
+              ('child-block','simple-child','paragraph',0,'{"type":"paragraph","content":[{"type":"text","text":"Child {{date}}"}]}','{}','auto','Child {{date}}',1,1);
+        "#).unwrap();
+    }
+    #[test]
+    fn copies_supported_tree_using_original_template_operation() {
+        let path = fixture(); text_template(&path);
+        let id = instantiate_plain_text(&path,"simple",None).unwrap();
+        let c = Connection::open(&path).unwrap();
+        let (kind,title,metadata): (String,String,String) = c.query_row("SELECT kind,title,metadata FROM pages WHERE id=?1",[&id],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).unwrap();
+        assert_eq!(kind,"page");
+        assert!(title.starts_with("Lesson ") && !title.contains("{{date}}"));
+        assert_eq!(serde_json::from_str::<serde_json::Value>(&metadata).unwrap()["fromTemplate"],"simple");
+        let block: String = c.query_row("SELECT content FROM blocks WHERE page_id=?1",[&id],|r|r.get(0)).unwrap();
+        assert!(block.contains("Hello ") && !block.contains("{{date}}"));
+        let children: i64 = c.query_row("SELECT count(*) FROM pages WHERE parent_id=?1 AND title='Child'",[&id],|r|r.get(0)).unwrap();
+        assert_eq!(children,1);
+        let child_content: String = c.query_row("SELECT b.content FROM blocks b JOIN pages p ON p.id=b.page_id WHERE p.parent_id=?1 AND p.title='Child'",[&id],|r|r.get(0)).unwrap();
+        // The original replaces tokens in root blocks, not descendant blocks.
+        assert!(child_content.contains("Child {{date}}"));
+        let original: String = c.query_row("SELECT content FROM blocks WHERE id='simple-block'",[],|r|r.get(0)).unwrap();
+        assert!(original.contains("{{date}}"));
+        drop(c); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn rolls_back_parent_history_and_blocks_if_child_creation_fails() {
+        let path = fixture(); text_template(&path);
+        let c = Connection::open(&path).unwrap();
+        c.execute_batch("CREATE TRIGGER stop_template_child BEFORE INSERT ON pages WHEN NEW.title='Child' BEGIN SELECT RAISE(ABORT,'injected child failure'); END;").unwrap();
+        let before: (i64,i64,i64,i64,i64) = c.query_row("SELECT (SELECT count(*) FROM pages),(SELECT count(*) FROM blocks),(SELECT count(*) FROM history),(SELECT count(*) FROM changes),(SELECT count(*) FROM pages_fts)",[],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?))).unwrap();
+        drop(c);
+        assert!(instantiate_plain_text(&path,"simple",None).is_err());
+        let c = Connection::open(&path).unwrap();
+        let after: (i64,i64,i64,i64,i64) = c.query_row("SELECT (SELECT count(*) FROM pages),(SELECT count(*) FROM blocks),(SELECT count(*) FROM history),(SELECT count(*) FROM changes),(SELECT count(*) FROM pages_fts)",[],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?))).unwrap();
+        assert_eq!(after,before);
+        drop(c); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn refuses_unsupported_content_before_creating_a_copy() {
+        let path = fixture(); text_template(&path);
+        let c = Connection::open(&path).unwrap();
+        c.execute("UPDATE blocks SET content=?1 WHERE id='simple-block'", [r#"{"type":"paragraph","content":[{"type":"text","text":"secret","marks":[{"type":"bold"}]}]}"#]).unwrap();
+        drop(c);
+        let before = std::fs::read(&path).unwrap();
+        assert!(instantiate_plain_text(&path,"simple",None).is_err());
         assert_eq!(std::fs::read(&path).unwrap(), before);
         std::fs::remove_file(path).unwrap();
     }

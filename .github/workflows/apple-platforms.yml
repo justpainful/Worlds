@@ -115,6 +115,7 @@ jobs:
 
   project-editor-harness:
     name: Isolated project editor UI harness
+    needs: [ruststore-xcframework]
     runs-on: macos-26
     timeout-minutes: 65
     env:
@@ -123,13 +124,18 @@ jobs:
       - uses: actions/checkout@v4
       - name: Select Xcode
         run: sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Build required RustStore
+      - uses: actions/download-artifact@v4
+        with:
+          name: Worlds-shared-ruststore-xcframework
+          path: ruststore-artifact
+      - name: Verify and restore RustStore
         shell: bash
         run: |
-          set -o pipefail
-          mkdir -p logs
-          bash Apple/RustStore/scripts/build-apple.sh 2>&1 | tee logs/harness-rust-build.log
+          set -euo pipefail
+          test "$(cat ruststore-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd ruststore-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p logs Apple/WorldsCore/Artifacts
+          tar -xzf ruststore-artifact/ruststore-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
           test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
       - name: Generate isolated project
         run: |
@@ -650,6 +656,8 @@ jobs:
           grep -q 'testRejectsSyncBeforeIdentityVerification' logs/collaboration-discovery.log
           grep -q 'testDefaultTransportRejectsRedirectBeforeBearerCanBeForwarded' logs/collaboration-discovery.log
           grep -q 'testRejectsAmbiguousServiceBasePathsBeforeConnecting' logs/collaboration-discovery.log
+          grep -q 'testUnauthenticatedReconnectBacksOffAndStopInterruptsWait' logs/collaboration-discovery.log
+          grep -q 'testDurableOutboxResentAfterFailedConnection' logs/collaboration-discovery.log
           grep -q 'testDefaultSocketLifecycleWithLocalRefusal' logs/collaboration-discovery.log
           grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' logs/collaboration-discovery.log
           grep -q 'testViewerCannotPrepareEditorWrite' logs/collaboration-discovery.log
@@ -677,6 +685,8 @@ jobs:
           grep -q 'testRejectsSyncBeforeIdentityVerification' logs/collaboration-macos.log
           grep -q 'testDefaultTransportRejectsRedirectBeforeBearerCanBeForwarded' logs/collaboration-macos.log
           grep -q 'testRejectsAmbiguousServiceBasePathsBeforeConnecting' logs/collaboration-macos.log
+          grep -q 'testUnauthenticatedReconnectBacksOffAndStopInterruptsWait' logs/collaboration-macos.log
+          grep -q 'testDurableOutboxResentAfterFailedConnection' logs/collaboration-macos.log
           grep -q 'testDefaultSocketLifecycleWithLocalRefusal' logs/collaboration-macos.log
           grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' logs/collaboration-macos.log
           grep -q 'testViewerCannotPrepareEditorWrite' logs/collaboration-macos.log
@@ -698,6 +708,8 @@ jobs:
           grep -q 'testRejectsSyncBeforeIdentityVerification' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testDefaultTransportRejectsRedirectBeforeBearerCanBeForwarded' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testRejectsAmbiguousServiceBasePathsBeforeConnecting' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
+          grep -q 'testUnauthenticatedReconnectBacksOffAndStopInterruptsWait' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
+          grep -q 'testDurableOutboxResentAfterFailedConnection' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testDefaultSocketLifecycleWithLocalRefusal' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testViewerCannotPrepareEditorWrite' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"

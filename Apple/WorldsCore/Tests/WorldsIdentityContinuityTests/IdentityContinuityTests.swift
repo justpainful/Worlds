@@ -17,6 +17,13 @@ private final class BlockingSecrets: IdentitySecretStore, @unchecked Sendable {
     let entered = DispatchSemaphore(value: 0)
     let release = DispatchSemaphore(value: 0)
     func blockNextLoad() { lock.lock(); shouldBlock = true; lock.unlock() }
+    func waitForEntry() async -> Bool {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global().async {
+                continuation.resume(returning: self.entered.wait(timeout: .now() + 2) == .success)
+            }
+        }
+    }
     func load() throws -> Data? {
         lock.lock(); let block = shouldBlock; shouldBlock = false; let value = data; lock.unlock()
         if block { entered.signal(); release.wait() }
@@ -170,7 +177,7 @@ final class IdentityContinuityTests: XCTestCase {
         secrets.blockNextLoad()
         let check = Task { try await coordinator.hasStoredSession() }
         defer { secrets.release.signal() }
-        let entered = await Task.detached { secrets.entered.wait(timeout: .now() + 2) == .success }.value
+        let entered = await secrets.waitForEntry()
         guard entered else { return XCTFail("Session check did not start") }
         do { _ = try await coordinator.signOut(); XCTFail("Sign-out must not race the stored session check") }
         catch IdentityContinuityError.busy { }
