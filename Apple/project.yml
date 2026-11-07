@@ -1,0 +1,60 @@
+name: Worlds
+options:
+  minimumXcodeGenVersion: 2.42.0
+  deploymentTarget:
+    iOS: "17.0"
+    macOS: "14.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    GENERATE_INFOPLIST_FILE: YES
+    PRODUCT_NAME: Worlds
+    CODE_SIGNING_ALLOWED: NO
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: "0.1.0"
+packages:
+  WorldsCore:
+    path: WorldsCore
+targets:
+  Worlds-iOS:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+        excludes:
+          - DESIGN.md
+    dependencies:
+      - package: WorldsCore
+        product: WorldsModels
+      - package: WorldsCore
+        product: WorldsSyncWire
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.worlds.native.ios
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+  Worlds-macOS:
+    type: application
+    platform: macOS
+    sources:
+      - path: App
+        excludes:
+          - DESIGN.md
+    dependencies:
+      - package: WorldsCore
+        product: WorldsModels
+      - package: WorldsCore
+        product: WorldsSyncWire
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.worlds.native.macos
+schemes:
+  Worlds-iOS:
+    build:
+      targets:
+        Worlds-iOS: all
+  Worlds-macOS:
+    build:
+      targets:
+        Worlds-macOS: all

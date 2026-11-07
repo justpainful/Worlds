@@ -1,0 +1,115 @@
+name: Apple platforms
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apple-platforms-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core-tests:
+    name: Swift core tests
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select and inspect Xcode
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          xcodebuild -version
+          swift --version
+      - name: Run Swift package tests
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p logs
+          swift test --package-path Apple/WorldsCore 2>&1 | tee logs/swift-test.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: WorldsCore-test-log
+          path: logs/
+          if-no-files-found: warn
+
+  ios:
+    name: Worlds-${{ matrix.device }} build check
+    runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - device: iPhone
+            family: 1
+          - device: iPad
+            family: 2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select and inspect Xcode
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          xcodebuild -version
+          xcodebuild -showsdks
+      - name: Install project generator
+        run: brew install xcodegen
+      - name: Generate project
+        run: xcodegen generate --spec Apple/project.yml
+      - name: Build simulator
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p logs
+          xcodebuild -project Apple/Worlds.xcodeproj -scheme Worlds-iOS \
+            -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/WorldsSimulator" \
+            TARGETED_DEVICE_FAMILY=${{ matrix.family }} CODE_SIGNING_ALLOWED=NO build \
+            2>&1 | tee logs/${{ matrix.device }}-simulator.log
+      - name: Build unsigned device target
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild -project Apple/Worlds.xcodeproj -scheme Worlds-iOS \
+            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/WorldsDevice" \
+            TARGETED_DEVICE_FAMILY=${{ matrix.family }} CODE_SIGNING_ALLOWED=NO build \
+            2>&1 | tee logs/${{ matrix.device }}-device.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-${{ matrix.device }}-build-logs
+          path: logs/
+          if-no-files-found: warn
+
+  macos:
+    name: Worlds-macOS build check
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select and inspect Xcode
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          xcodebuild -version
+          xcodebuild -showsdks
+      - name: Install project generator
+        run: brew install xcodegen
+      - name: Generate project
+        run: xcodegen generate --spec Apple/project.yml
+      - name: Build unsigned application target
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p logs
+          xcodebuild -project Apple/Worlds.xcodeproj -scheme Worlds-macOS \
+            -configuration Release -destination 'generic/platform=macOS' \
+            -derivedDataPath "$RUNNER_TEMP/WorldsMac" CODE_SIGNING_ALLOWED=NO build \
+            2>&1 | tee logs/macos.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-macOS-build-logs
+          path: logs/
+          if-no-files-found: warn

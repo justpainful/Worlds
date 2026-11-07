@@ -1,5 +1,13 @@
 # Apple native porting log
 
+## 2026-11-07: Native core started
+
+- Added a Swift 6 package with open JSON editor values, resource summary and block models, plus round-trip compatibility tests. These models do not yet implement storage or the editor.
+- Added binary `worlds-sync.v1` frame encoding and decoding with golden examples from the existing lib0 format. This is framing only: Yjs, network transport, persistence, awareness lifecycle and collaboration are not yet implemented.
+- Added a detailed source-based drawing inventory and an initial native design brief.
+- Prepared a macOS CI workflow for package tests and native build checks. The Windows host cannot run Swift or Xcode; no Apple build or test has yet passed. Intermediate empty applications must not be distributed as completed products.
+- The 29 grouped rows in the preliminary parity matrix still contain zero complete, verified native features. The inventory is not exhaustive, so this is not a defensible whole-project percentage.
+
 ## 2026-11-07: Audit started
 
 - Created isolated worktree on branch `feat/native-apple-platforms` at commit `185ee9a1019c8b7bc685d22dabf1b699579189cc`. The original Windows checkout has existing tracked modifications and untracked files, including drawing work. They have not been moved or deleted.
