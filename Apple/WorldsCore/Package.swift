@@ -30,7 +30,9 @@ let package = Package(
         .library(name: "WorldsProjects", targets: ["WorldsProjects"]),
         .library(name: "WorldsMediaViews", targets: ["WorldsMediaViews"]),
         .library(name: "WorldsScreenDrawing", targets: ["WorldsScreenDrawing"]),
+        .library(name: "WorldsOfficePreview", targets: ["WorldsOfficePreview"]),
     ],
+    dependencies: [.package(url: "https://github.com/weichsel/ZIPFoundation.git", exact: "0.9.20")],
     targets: [
         .target(name: "WorldsModels"),
         .target(name: "WorldsSyncWire"),
@@ -47,6 +49,7 @@ let package = Package(
         .target(name: "WorldsProjects", dependencies: ["WorldsModels"], exclude: ["README.md"]),
         .target(name: "WorldsMediaViews", dependencies: ["WorldsMedia"], exclude: ["README.md"]),
         .target(name: "WorldsScreenDrawing", exclude: ["README.md", "DESIGN.md"], linkerSettings: [.linkedFramework("ScreenCaptureKit", .when(platforms: [.macOS]))]),
+        .target(name: "WorldsOfficePreview", dependencies: ["WorldsMedia", .product(name: "ZIPFoundation", package: "ZIPFoundation")], exclude: ["README.md"]),
         .testTarget(name: "WorldsModelsTests", dependencies: ["WorldsModels"]),
         .testTarget(name: "WorldsSyncWireTests", dependencies: ["WorldsSyncWire"]),
         .testTarget(name: "WorldsPersistenceTests", dependencies: ["WorldsPersistence"], resources: [.copy("worlds-v1-fixture.db")], linkerSettings: [.linkedLibrary("sqlite3")]),
@@ -62,6 +65,7 @@ let package = Package(
         .testTarget(name: "WorldsProjectsTests", dependencies: ["WorldsProjects", "WorldsModels"], resources: [.copy("worlds-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]),
         .testTarget(name: "WorldsMediaViewsTests", dependencies: ["WorldsMediaViews", "WorldsMedia"]),
         .testTarget(name: "WorldsScreenDrawingTests", dependencies: ["WorldsScreenDrawing"]),
+        .testTarget(name: "WorldsOfficePreviewTests", dependencies: ["WorldsOfficePreview", "WorldsMedia"], resources: [.copy("Fixtures")]),
     ]
 )
 
