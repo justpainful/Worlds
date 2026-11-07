@@ -3,6 +3,7 @@ use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use serde_json::Value;
 use std::path::Path;
 mod resource_ops;
+mod isolated_import;
 mod automation_ops;
 
 #[path = "../../../src-tauri/src/content.rs"]
@@ -176,6 +177,7 @@ pub fn trash_page(path: &Path, page: &str, base: i64) -> Result<()> {
 #[serde(tag = "operation", rename_all = "snake_case")]
 enum Request {
     SqliteInfo,
+    ImportLocalSnapshot { source: String, private_root: String },
     ValidateDrawingScene { scene: Value },
     LoadPersonalDrawing { path: String, page: String },
     ApplyPersonalDrawing { path: String, page: String, change: Value },
@@ -197,6 +199,10 @@ enum Request {
 fn dispatch(bytes: &[u8]) -> Result<Value> {
     let request: Request = serde_json::from_slice(bytes)?;
     match request {
+        Request::ImportLocalSnapshot { source, private_root } => {
+            let path = isolated_import::import(Path::new(&source), Path::new(&private_root))?;
+            Ok(serde_json::json!({"path": path.to_str().ok_or_else(|| anyhow::anyhow!("non-UTF-8 destination"))?}))
+        },
         Request::LoadPersonalDrawing { path, page } => drawing::load_personal(Path::new(&path), &page),
         Request::ApplyPersonalDrawing { path, page, change } => drawing::apply_personal(Path::new(&path), &page, change),
         Request::ValidateDrawingScene { scene } => { drawing::drawing_scene::validate_scene(&scene)?; Ok(Value::Null) }

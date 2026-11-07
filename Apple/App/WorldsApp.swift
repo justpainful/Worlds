@@ -33,15 +33,17 @@ private struct UITestingAppearance: ViewModifier {
         content
             .environment(\.layoutDirection, args.contains("--ui-testing-rtl") ? .rightToLeft : direction)
             .environment(\.dynamicTypeSize, args.contains("--ui-testing-large-text") ? .accessibility3 : textSize)
-            .preferredColorScheme(args.contains("--ui-testing-dark") ? .dark : nil)
+            .preferredColorScheme(args.contains("--ui-testing-dark") ? .dark : (args.contains("--ui-testing-light") ? .light : nil))
     }
 }
 #endif
 
 private struct WorldsLibraryView: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var pages: [StoredPage] = []
     @State private var selectedID: String?
+    @State private var returnStack: [String] = []
     @State private var showImporter = false
     @State private var loaded = false
     @State private var loading = false
@@ -81,7 +83,9 @@ private struct WorldsLibraryView: View {
                     pageList
                 }
             }
-            .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 360)
+            .navigationSplitViewColumnWidth(min: dynamicTypeSize.isAccessibilitySize ? 320 : 240,
+                                            ideal: dynamicTypeSize.isAccessibilitySize ? 360 : 280,
+                                            max: dynamicTypeSize.isAccessibilitySize ? 440 : 360)
             .navigationTitle("Pages")
             .toolbar {
                 ToolbarItem {
@@ -94,14 +98,33 @@ private struct WorldsLibraryView: View {
                 }
             }
         } detail: {
-            if let selectedPageID = selectedID, let page = pages.first(where: { $0.id == selectedPageID }) {
-                if ["project", "gallery", "presentation", "file"].contains(page.kind) {
-                    ResourceContentView(page: page, pages: pages) { selectedID = $0 }
+            Group {
+                if let selectedPageID = selectedID, let page = pages.first(where: { $0.id == selectedPageID }) {
+                    if ["project", "gallery", "presentation", "file"].contains(page.kind) {
+                        ResourceContentView(page: page, pages: pages) { target in
+                            guard target != page.id else { return }
+                            returnStack.append(page.id)
+                            selectedID = target
+                        }
+                    } else {
+                        PageContentView(page: page)
+                    }
                 } else {
-                    PageContentView(page: page)
+                    ContentUnavailableView("Select a page", systemImage: "doc.text")
                 }
-            } else {
-                ContentUnavailableView("Select a page", systemImage: "doc.text")
+            }
+            .toolbar {
+                if let previous = returnStack.last, let page = pages.first(where: { $0.id == previous }) {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            _ = returnStack.popLast()
+                            selectedID = previous
+                        } label: {
+                            Label("Return to \(page.title.isEmpty ? "Untitled" : page.title)", systemImage: "arrow.backward")
+                        }
+                        .accessibilityIdentifier("return-to-linked-page")
+                    }
+                }
             }
         }
         .searchable(text: $searchQuery, placement: .sidebar, prompt: "Search personal pages")
@@ -141,14 +164,19 @@ private struct WorldsLibraryView: View {
         }
     }
 
+    private var sidebarSelection: Binding<String?> {
+        Binding(get: { selectedID }, set: { selectedID = $0; returnStack.removeAll() })
+    }
+
     private var pageList: some View {
-        List(pages, selection: $selectedID) { page in
+        List(pages, selection: sidebarSelection) { page in
             NavigationLink(value: page.id) {
                 PageListRow(page: page, parentTitle: parentTitle(for: page))
             }
             .accessibilityIdentifier("page.\(page.id)")
             .accessibilityHint("Opens page")
         }
+        .accessibilityIdentifier("personal-page-list")
     }
 
     private func parentTitle(for page: StoredPage) -> String? {
@@ -168,7 +196,7 @@ private struct WorldsLibraryView: View {
                 ContentUnavailableView.search(text: searchQuery)
                     .accessibilityIdentifier("search-empty")
             } else {
-                List(searchHits, selection: $selectedID) { hit in
+                List(searchHits, selection: sidebarSelection) { hit in
                     NavigationLink(value: hit.pageId) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(hit.title.isEmpty ? "Untitled" : hit.title)
@@ -257,6 +285,7 @@ private struct WorldsLibraryView: View {
             searchedQuery = nil
             pages = snapshot.pages
             selectedID = nil
+            returnStack.removeAll()
             loaded = true
         } catch {
             errorMessage = error.localizedDescription

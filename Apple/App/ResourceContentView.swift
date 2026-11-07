@@ -57,7 +57,7 @@ struct ResourceContentView: View {
                 default: Text("This resource type is not available in the reader.")
                 }
                 Label("Read only", systemImage: "eye")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.body).foregroundStyle(.secondary)
             }
             .padding(dynamicTypeSize.isAccessibilitySize ? 16 : 24)
             .frame(maxWidth: 760, alignment: .leading)
@@ -87,7 +87,7 @@ struct ResourceContentView: View {
                 let linked = linkedPages(info.links ?? [])
                 if !linked.isEmpty { pageLinks("Linked pages", linked) }
                 if (info.links ?? []).contains(where: { id in !pages.contains(where: { $0.id == id }) }) {
-                    Text("Some linked pages are unavailable in this snapshot.").font(.caption).foregroundStyle(.secondary)
+                    Text("Some linked pages are unavailable in this snapshot.").font(.body).foregroundStyle(.secondary)
                 }
             } else { Text("Project details are unavailable.").foregroundStyle(.secondary) }
             let children = pages.filter { $0.parentID == page.id && $0.kind != "template" && !$0.archived }
@@ -158,7 +158,7 @@ struct ResourceContentView: View {
     }
     private func detail(_ label: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(label).font(.caption).foregroundStyle(.secondary)
+            Text(label).font(.body).foregroundStyle(.secondary)
             Text(value).textSelection(.enabled)
         }.frame(maxWidth: .infinity, alignment: .leading)
     }

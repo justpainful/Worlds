@@ -168,11 +168,16 @@ final class WorldsUITests: XCTestCase {
         capture("11-project-summary", app: app)
         link.tap()
         XCTAssertTrue(app.staticTexts["Read the warning"].waitForExistence(timeout: 15))
+        let returnButton = app.buttons["return-to-linked-page"]
+        XCTAssertTrue(returnButton.waitForExistence(timeout: 10))
+        returnButton.tap()
+        XCTAssertTrue(app.staticTexts["Prepare the lesson"].waitForExistence(timeout: 15))
+        capture("19-return-to-project", app: app)
     }
 
     @MainActor
     func testArabicProjectSummary() throws {
-        let app = try openResource("resource-ar-project", rightToLeft: true)
+        let app = try openResource("resource-ar-project", rightToLeft: true, light: true)
         XCTAssertTrue(app.staticTexts["مَشْرُوع الرِّيَاضِيَّات: lesson ١٢٣"].waitForExistence(timeout: 15))
         let link = app.buttons["resource-page.reader-fixture"]
         XCTAssertTrue(link.waitForExistence(timeout: 10))
@@ -180,6 +185,32 @@ final class WorldsUITests: XCTestCase {
         capture("15-project-summary-rtl", app: app)
         link.tap()
         XCTAssertTrue(app.staticTexts["Read the warning"].waitForExistence(timeout: 15))
+    }
+
+    @MainActor
+    func testLargeTextSidebarCanReachLastPage() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["--ui-testing-reader-fixture", "--ui-testing-rtl", "--ui-testing-large-text", "--ui-testing-dark"]
+        app.launch()
+        let list = app.descendants(matching: .any)["personal-page-list"].firstMatch
+        XCTAssertTrue(list.waitForExistence(timeout: 30))
+        let last = app.descendants(matching: .any)["page.resource-archived"].firstMatch
+        for _ in 0..<6 {
+            if last.exists && last.isHittable { break }
+            list.swipeUp()
+        }
+        XCTAssertTrue(last.waitForExistence(timeout: 10))
+        XCTAssertTrue(last.isHittable)
+        capture("20-large-text-sidebar-bottom-rtl", app: app)
+    }
+
+    @MainActor
+    func testArabicProjectDark() throws {
+        let app = try openResource("resource-ar-project", rightToLeft: true, dark: true)
+        XCTAssertTrue(app.staticTexts["مَشْرُوع الرِّيَاضِيَّات: lesson ١٢٣"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Status"].exists)
+        XCTAssertTrue(app.staticTexts["Read only"].exists)
+        capture("18-project-dark-rtl", app: app)
     }
 
     @MainActor
@@ -220,12 +251,13 @@ final class WorldsUITests: XCTestCase {
     }
 
     @MainActor
-    private func openResource(_ id: String, rightToLeft: Bool = false, largeText: Bool = false, dark: Bool = false) throws -> XCUIApplication {
+    private func openResource(_ id: String, rightToLeft: Bool = false, largeText: Bool = false, dark: Bool = false, light: Bool = false) throws -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments.append("--ui-testing-reader-fixture")
         if rightToLeft { app.launchArguments.append("--ui-testing-rtl") }
         if largeText { app.launchArguments.append("--ui-testing-large-text") }
         if dark { app.launchArguments.append("--ui-testing-dark") }
+        if light { app.launchArguments.append("--ui-testing-light") }
         app.launch()
         let row = app.descendants(matching: .any)["page.\(id)"].firstMatch
         if !row.waitForExistence(timeout: 10) { app.swipeUp() }

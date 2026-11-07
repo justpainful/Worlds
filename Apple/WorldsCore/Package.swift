@@ -26,6 +26,7 @@ let package = Package(
         .library(name: "WorldsDrawingStorage", targets: ["WorldsDrawingStorage"]),
         .library(name: "WorldsPresentations", targets: ["WorldsPresentations"]),
         .library(name: "WorldsMedia", targets: ["WorldsMedia"]),
+        .library(name: "WorldsLocalImport", targets: ["WorldsLocalImport"]),
         .library(name: "WorldsSearch", targets: ["WorldsSearch"]),
         .library(name: "WorldsAI", targets: ["WorldsAI"]),
         .library(name: "WorldsAIConversation", targets: ["WorldsAIConversation"]),
@@ -51,6 +52,7 @@ let package = Package(
         .target(name: "WorldsDrawingStorage", linkerSettings: [.linkedLibrary("sqlite3")]),
         .target(name: "WorldsPresentations", dependencies: ["WorldsModels"], exclude: ["README.md"]),
         .target(name: "WorldsMedia", exclude: ["README.md"]),
+        .target(name: "WorldsLocalImport", dependencies: rustStoreAvailable ? ["WorldsRustStore"] : [], linkerSettings: rustStoreAvailable ? [.linkedLibrary("sqlite3"), .linkedFramework("Security"), .linkedFramework("SystemConfiguration"), .linkedLibrary("resolv"), .linkedLibrary("iconv")] : [.linkedLibrary("sqlite3")]),
         .target(name: "WorldsSearch", exclude: ["README.md"], linkerSettings: [.linkedLibrary("sqlite3")]),
         .target(name: "WorldsAI", dependencies: ["WorldsModels"], exclude: ["README.md"]),
         .target(name: "WorldsAIConversation", dependencies: ["WorldsAI", "WorldsModels"], exclude: ["README.md"], linkerSettings: [.linkedLibrary("sqlite3")]),
@@ -73,6 +75,7 @@ let package = Package(
         .testTarget(name: "WorldsDrawingTests", dependencies: ["WorldsDrawing", "WorldsModels"], resources: [.copy("original-stroke-fixture.json"), .copy("original-shapes-fixture.json"), .copy("original-pressure-fixture.json"), .copy("original-journal-fixture.json"), .copy("original-dabs-fixture.json")]),
         .testTarget(name: "WorldsPresentationsTests", dependencies: ["WorldsPresentations", "WorldsModels"]),
         .testTarget(name: "WorldsMediaTests", dependencies: ["WorldsMedia"]),
+        .testTarget(name: "WorldsLocalImportTests", dependencies: rustStoreAvailable ? ["WorldsLocalImport", "WorldsRustStore"] : ["WorldsLocalImport"], linkerSettings: [.linkedLibrary("sqlite3")]),
         .testTarget(name: "WorldsFileAccessTests", dependencies: ["WorldsPersistence", "WorldsMedia"], resources: [.copy("worlds-v1-fixture.db")], linkerSettings: [.linkedLibrary("sqlite3")]),
         .testTarget(name: "WorldsSearchTests", dependencies: ["WorldsSearch"], resources: [.copy("worlds-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]),
         .testTarget(name: "WorldsAIConversationTests", dependencies: ["WorldsAIConversation", "WorldsAI"], linkerSettings: [.linkedLibrary("sqlite3")]),
@@ -108,6 +111,8 @@ if rustStoreAvailable {
     package.products.append(.library(name: "WorldsEditorPersistence", targets: ["WorldsEditorPersistence"]))
     package.targets.append(.target(name: "WorldsEditorPersistence", dependencies: ["WorldsModels", "WorldsPersistence", "WorldsRichText", "WorldsNativeEditor", "WorldsNativeWrites"], exclude: ["README.md"]))
     package.targets.append(.testTarget(name: "WorldsEditorPersistenceTests", dependencies: ["WorldsEditorPersistence", "WorldsModels", "WorldsPersistence", "WorldsRichText", "WorldsNativeEditor", "WorldsNativeWrites"], resources: [.copy("editor-fixture.db")], linkerSettings: [.linkedLibrary("sqlite3")]))
+    package.products.append(.library(name: "WorldsProjectEditingViews", targets: ["WorldsProjectEditingViews"]))
+    package.targets.append(.target(name: "WorldsProjectEditingViews", dependencies: ["WorldsProjectEditing", "WorldsProjects"], exclude: ["README.md"]))
     package.products.append(.library(name: "WorldsProjectEditing", targets: ["WorldsProjectEditing"]))
     package.targets.append(.target(name: "WorldsProjectEditing", dependencies: ["WorldsProjects", "WorldsModels"], exclude: ["README.md"]))
     package.targets.append(.testTarget(name: "WorldsProjectEditingTests", dependencies: ["WorldsProjectEditing", "WorldsResourceRepositories", "WorldsNativeWrites", "WorldsProjects", "WorldsModels"], resources: [.copy("worlds-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]))

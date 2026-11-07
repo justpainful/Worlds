@@ -206,6 +206,100 @@ mod tests {
         std::fs::remove_file(path).unwrap();
     }
     #[test]
+    fn project_save_rechecks_sharing_after_draft_opened() {
+        let path = fixture();
+        let original = read_resource(&path, "p").unwrap();
+        let mut changed = original["metadata"].clone();
+        changed["project"]["description"] = json!("draft");
+        let c = Connection::open(&path).unwrap();
+        c.execute("UPDATE pages SET workspace_id='team' WHERE id='p'", []).unwrap();
+        drop(c);
+        assert!(save_project(&path, "p", 100, original["metadata"].clone(), changed).is_err());
+        let c = Connection::open(&path).unwrap();
+        let (metadata, workspace): (String, String) = c.query_row("SELECT metadata, workspace_id FROM pages WHERE id='p'", [], |r| Ok((r.get(0)?, r.get(1)?))).unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&metadata).unwrap(), original["metadata"]);
+        assert_eq!(workspace, "team");
+        assert_eq!(c.query_row("SELECT count(*) FROM changes WHERE page_id='p'", [], |r| r.get::<_, i64>(0)).unwrap(), 0);
+        drop(c); std::fs::remove_file(path).unwrap();
+    }
+    // Documents why the path-based bridge must remain disconnected from UI.
+    // Both databases intentionally have the same project CAS baseline.
+    #[test]
+    fn path_bridge_does_not_bind_draft_to_database_identity() {
+        let path = fixture();
+        let original = read_resource(&path, "p").unwrap();
+        let displaced = path.with_extension("original.db");
+        let replacement = path.with_extension("replacement.db");
+        std::fs::copy(&path, &replacement).unwrap();
+        let c = Connection::open(&replacement).unwrap();
+        c.execute("UPDATE pages SET title='replacement marker' WHERE id='fixture-page'", []).unwrap();
+        drop(c);
+        std::fs::rename(&path, &displaced).unwrap();
+        std::fs::rename(&replacement, &path).unwrap();
+        let mut changed = original["metadata"].clone();
+        changed["project"]["description"] = json!("written to replacement");
+        save_project(&path, "p", 100, original["metadata"].clone(), changed).unwrap();
+        let new = read_resource(&path, "p").unwrap();
+        let old = read_resource(&displaced, "p").unwrap();
+        assert_eq!(new["metadata"]["project"]["description"], "written to replacement");
+        assert_eq!(old["metadata"], original["metadata"]);
+        std::fs::remove_file(path).unwrap();
+        std::fs::remove_file(displaced).unwrap();
+    }
+    // A diagnostic only: pathname identity checks have a TOCTOU window and
+    // cannot make an SQLite VFS safe against concurrent path replacement.
+    #[cfg(unix)]
+    #[test]
+    fn identity_probe_rejects_swapped_main_wal_and_shm_before_write() {
+        use std::os::unix::fs::MetadataExt;
+        fn identity(path: &Path) -> (u64, u64) {
+            let meta = std::fs::symlink_metadata(path).unwrap();
+            assert!(meta.file_type().is_file());
+            (meta.dev(), meta.ino())
+        }
+        let path = fixture();
+        let c = Connection::open(&path).unwrap();
+        let mode: String = c.query_row("PRAGMA journal_mode=WAL", [], |r| r.get(0)).unwrap();
+        assert_eq!(mode, "wal");
+        c.execute("UPDATE pages SET title='fixture WAL' WHERE id='fixture-page'", []).unwrap();
+        let wal = std::path::PathBuf::from(format!("{}-wal", path.display()));
+        let shm = std::path::PathBuf::from(format!("{}-shm", path.display()));
+        let paths = [&path, &wal, &shm];
+        let baseline: Vec<_> = paths.iter().map(|p| identity(p)).collect();
+        for (index, current) in paths.iter().enumerate() {
+            let displaced = std::path::PathBuf::from(format!("{}.displaced", current.display()));
+            std::fs::rename(current, &displaced).unwrap();
+            std::fs::copy(&displaced, current).unwrap();
+            // Fail before executing any mutation. Restore the live sidecars
+            // before the SQLite connection is closed.
+            assert_ne!(identity(current), baseline[index]);
+            std::fs::remove_file(current).unwrap();
+            std::fs::rename(&displaced, current).unwrap();
+            assert_eq!(identity(current), baseline[index]);
+        }
+        assert_eq!(c.query_row("SELECT title FROM pages WHERE id='fixture-page'", [], |r| r.get::<_, String>(0)).unwrap(), "fixture WAL");
+        drop(c); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn project_save_rechecks_existing_link_after_it_becomes_shared() {
+        let path = fixture();
+        let c = Connection::open(&path).unwrap();
+        c.execute("UPDATE pages SET metadata=json_set(metadata,'$.project.links',json('[\"fixture-page\"]')) WHERE id='p'", []).unwrap();
+        drop(c);
+        let original = read_resource(&path, "p").unwrap();
+        let mut changed = original["metadata"].clone();
+        changed["project"]["description"] = json!("draft");
+        let c = Connection::open(&path).unwrap();
+        c.execute("UPDATE pages SET workspace_id='team' WHERE id='fixture-page'", []).unwrap();
+        drop(c);
+        assert!(save_project(&path, "p", 100, original["metadata"].clone(), changed).is_err());
+        let c = Connection::open(&path).unwrap();
+        let metadata: String = c.query_row("SELECT metadata FROM pages WHERE id='p'", [], |r| r.get(0)).unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&metadata).unwrap(), original["metadata"]);
+        assert_eq!(c.query_row("SELECT count(*) FROM changes WHERE page_id='p'", [], |r| r.get::<_, i64>(0)).unwrap(), 0);
+        drop(c); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
     fn gallery_refuses_same_timestamp_block_change_and_unknown_block_loss() {
         let path=fixture();
         let old=read_resource(&path,"g").unwrap(); let base=old["revision"].as_i64().unwrap();

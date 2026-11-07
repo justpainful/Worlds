@@ -57,7 +57,7 @@ struct PageContentView: View {
                     }
                 }
                 Text("Read only")
-                    .font(.caption)
+                    .font(.body)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)

@@ -1,0 +1,7 @@
+# Isolated project editor UI harness
+
+This separate XcodeGen project exists only for UI integration testing. It creates a synthetic Worlds schema-v11 source in a new temporary directory, then uses the actual NativeSQLiteBackup and LocalProjectImportCoordinator to import a separate copy into another temporary child directory. It cannot select or open the user's database and is not a product target or release artifact. The UI test imports that copy, edits it, waits for the actual save callback, closes and reopens the editor, checks the saved value, and compares source database bytes before and after the edit. The current test and targets are unverified on Apple and may require accessibility or simulator adjustments.
+
+Before generating this project, build the RustStore XCFramework from source and resolve the local WorldsCore package. Use `xcodegen generate --spec Apple/ProjectEditorHarness/project.yml`, then run the relevant harness scheme with XCUITest on a macOS or simulator runner. CI must retain the xcresult and logs when tests fail. Do not ship this harness or its fixture in production artifacts. This does not prove security-scoped access, live database identity, shared-workspace authorization, or UI behavior in the product.
+
+The test-created temporary root is left to the OS temporary-file cleanup; it is not the user Application Support directory. The fixture contains no personal data. Real file-provider scopes and live WAL access require separate Apple tests.
