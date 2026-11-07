@@ -5,13 +5,11 @@ import WorldsSearch
 
 @main
 struct WorldsApp: App {
-    @SceneBuilder var body: some Scene {
+    var body: some Scene {
         #if os(macOS) && DEBUG
-        if ProcessInfo.processInfo.arguments.contains("--ui-testing-large-window") {
-            WindowGroup { rootView }.defaultSize(width: 1100, height: 780)
-        } else {
-            WindowGroup { rootView }
-        }
+        WindowGroup { rootView }
+            .defaultSize(width: ProcessInfo.processInfo.arguments.contains("--ui-testing-large-window") ? 1100 : 800,
+                         height: ProcessInfo.processInfo.arguments.contains("--ui-testing-large-window") ? 780 : 600)
         #else
         WindowGroup { rootView }
         #endif

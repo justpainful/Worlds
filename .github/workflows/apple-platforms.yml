@@ -35,6 +35,13 @@ jobs:
           grep -q 'testOriginalNameCleaning' logs/swift-test.log
           grep -q 'testActualYjsFixture' logs/swift-test.log
           grep -q 'testReadOpaqueRoundTripAndRejectShared' logs/swift-test.log
+          grep -E 'testUnexpectedToolIsRecordedAsErrorWithoutPermission.*passed' logs/swift-test.log
+          grep -E 'testAnotherStoreCannotAccessExistingConversation.*passed' logs/swift-test.log
+          grep -E 'testUnmatchedRunCannotFinishOrReleaseReservation.*passed' logs/swift-test.log
+          grep -E 'testEventLimitsFailAndPreserveBoundedOutput.*passed' logs/swift-test.log
+          grep -E 'testFailedAssistantSaveRollsBackAndCanRetry.*passed' logs/swift-test.log
+          grep -E 'testStreamingAndCancellation.*passed' logs/swift-test.log
+          grep -E 'testLoadFailurePreventsSendingAndKeepsDraft.*passed' logs/swift-test.log
           grep -q 'testOriginalDabGeometryAndSeededSpray' logs/swift-test.log
           grep -q 'testRejectsUnboundedWork' logs/swift-test.log
           grep -q 'testExchangeClocksAndLeave' logs/swift-test.log

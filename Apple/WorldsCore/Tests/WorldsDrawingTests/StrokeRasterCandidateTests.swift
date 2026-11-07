@@ -16,10 +16,10 @@ final class StrokeRasterCandidateTests: XCTestCase {
         XCTAssertGreaterThan(alpha, 100)
         XCTAssertLessThan(alpha, 155)
     }
-    func testUnsupportedHighlighterPressureFailsClosed() {
+    func testUnsupportedHighlighterPressureFailsClosed() throws {
         var brush = ToolBrush(); brush.kind = "highlighter"; brush.pressureSize = true
         var bytes = [UInt8](repeating: 0, count: 16 * 16 * 4)
-        bytes.withUnsafeMutableBytes { buffer in
+        try bytes.withUnsafeMutableBytes { buffer in
             guard let context = CGContext(data: buffer.baseAddress, width: 16, height: 16, bitsPerComponent: 8, bytesPerRow: 64, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return XCTFail("Missing context") }
             XCTAssertThrowsError(try StrokeRasterCandidate.draw(samples: [ToolSample(x: 1, y: 1, pressure: 0.5, time: 0)], brush: brush, seed: 1, color: CGColor(red: 0, green: 0, blue: 0, alpha: 1), in: context))
         }
