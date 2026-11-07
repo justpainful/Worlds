@@ -29,6 +29,7 @@ let package = Package(
         .library(name: "WorldsAutomations", targets: ["WorldsAutomations"]),
         .library(name: "WorldsProjects", targets: ["WorldsProjects"]),
         .library(name: "WorldsMediaViews", targets: ["WorldsMediaViews"]),
+        .library(name: "WorldsScreenDrawing", targets: ["WorldsScreenDrawing"]),
     ],
     targets: [
         .target(name: "WorldsModels"),
@@ -45,6 +46,7 @@ let package = Package(
         .target(name: "WorldsAutomations", dependencies: ["WorldsModels"], exclude: ["README.md"], linkerSettings: [.linkedLibrary("sqlite3")]),
         .target(name: "WorldsProjects", dependencies: ["WorldsModels"], exclude: ["README.md"]),
         .target(name: "WorldsMediaViews", dependencies: ["WorldsMedia"], exclude: ["README.md"]),
+        .target(name: "WorldsScreenDrawing", exclude: ["README.md", "DESIGN.md"], linkerSettings: [.linkedFramework("ScreenCaptureKit", .when(platforms: [.macOS]))]),
         .testTarget(name: "WorldsModelsTests", dependencies: ["WorldsModels"]),
         .testTarget(name: "WorldsSyncWireTests", dependencies: ["WorldsSyncWire"]),
         .testTarget(name: "WorldsPersistenceTests", dependencies: ["WorldsPersistence"], resources: [.copy("worlds-v1-fixture.db")], linkerSettings: [.linkedLibrary("sqlite3")]),
@@ -59,6 +61,7 @@ let package = Package(
         .testTarget(name: "WorldsAutomationsTests", dependencies: ["WorldsAutomations", "WorldsModels"], resources: [.copy("automation-fixture.db")], linkerSettings: [.linkedLibrary("sqlite3")]),
         .testTarget(name: "WorldsProjectsTests", dependencies: ["WorldsProjects", "WorldsModels"], resources: [.copy("worlds-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]),
         .testTarget(name: "WorldsMediaViewsTests", dependencies: ["WorldsMediaViews", "WorldsMedia"]),
+        .testTarget(name: "WorldsScreenDrawingTests", dependencies: ["WorldsScreenDrawing"]),
     ]
 )
 
