@@ -72,6 +72,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.worlds.native.ios.uitests
+        PRODUCT_NAME: Worlds-iOS-UITests
+        PRODUCT_MODULE_NAME: WorldsIOSUITests
         TEST_TARGET_NAME: Worlds-iOS
   Worlds-macOS-UITests:
     type: bundle.ui-testing
@@ -83,6 +85,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.worlds.native.macos.uitests
+        PRODUCT_NAME: Worlds-macOS-UITests
+        PRODUCT_MODULE_NAME: WorldsMacOSUITests
         TEST_TARGET_NAME: Worlds-macOS
 schemes:
   Worlds-iOS:
