@@ -184,6 +184,8 @@ jobs:
         run: |
           set -o pipefail
           cargo test --locked --manifest-path Apple/RustStore/Cargo.toml 2>&1 | tee logs/rust-store-tests.log
+          grep -q 'owned_asset_file_required_and_failures_roll_back ... ok' logs/rust-store-tests.log
+          grep -q 'symlinked_attachment_is_rejected ... ok' logs/rust-store-tests.log
       - name: Discover required write tests
         shell: bash
         run: |
@@ -341,6 +343,29 @@ jobs:
             -resultBundlePath "$GITHUB_WORKSPACE/drawing-validation-simulator.xcresult" \
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$GITHUB_WORKSPACE/logs/drawing-validation-ios.log"
           grep -q 'testOriginalSceneFixtureAndInvalidFrame' "$GITHUB_WORKSPACE/logs/drawing-validation-ios.log"
+      - name: Discover drawing write tests
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path Apple/WorldsCore list 2>&1 | tee logs/drawing-writes-discovery.log
+          grep -q 'testPersonalDrawingOriginalSaveAndConflict' logs/drawing-writes-discovery.log
+      - name: Test drawing writes on macOS
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path Apple/WorldsCore --filter WorldsDrawingNativeWritesTests 2>&1 | tee logs/drawing-writes-macos.log
+          grep -q 'testPersonalDrawingOriginalSaveAndConflict' logs/drawing-writes-macos.log
+      - name: Test drawing writes on iOS simulator
+        shell: bash
+        run: |
+          set -o pipefail
+          cd Apple/WorldsCore
+          xcodebuild -scheme WorldsCore-Package \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.5' \
+            -only-testing:WorldsDrawingNativeWritesTests \
+            -resultBundlePath "$GITHUB_WORKSPACE/drawing-writes-simulator.xcresult" \
+            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$GITHUB_WORKSPACE/logs/drawing-writes-ios.log"
+          grep -q 'testPersonalDrawingOriginalSaveAndConflict' "$GITHUB_WORKSPACE/logs/drawing-writes-ios.log"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -353,6 +378,7 @@ jobs:
             automation-simulator.xcresult/
             presentation-persistence-simulator.xcresult/
             drawing-validation-simulator.xcresult/
+            drawing-writes-simulator.xcresult/
           if-no-files-found: warn
 
   collaboration-xcframework:

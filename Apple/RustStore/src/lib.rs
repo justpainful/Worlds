@@ -15,7 +15,7 @@ mod templates;
 // These non-editor dependencies must not silently grant access.
 mod account { pub mod permissions {
     use anyhow::{bail, Result}; use rusqlite::Connection;
-    pub enum Level { Edit }
+    pub enum Level { View, Edit }
     pub fn require(_: &Connection, _: &str, _: Level) -> Result<()> { bail!("workspace authorization unavailable") }
 } }
 mod drawing_copy {
@@ -26,6 +26,15 @@ mod drawing_copy {
 mod drawing;
 // Publication validation needs library ownership dependencies which are not
 // available in this isolated target; refuse instead of weakening validation.
+// A personal-only bridge must refuse, rather than silently omit, a sync outbox.
+mod drawing_sync {
+    use anyhow::{bail, Result}; use rusqlite::Connection; use serde_json::Value;
+    pub fn check_bound_identity(conn: &Connection, page: &str) -> Result<()> {
+        let bound: bool = conn.query_row("SELECT EXISTS(SELECT 1 FROM drawing_sync_state WHERE page_id=?1)", [page], |r| r.get(0))?;
+        if bound { bail!("drawing sync binding unavailable") } Ok(())
+    }
+    pub fn queue_local(conn: &Connection, page: &str, _: &Value, _: &Value) -> Result<()> { check_bound_identity(conn, page) }
+}
 mod drawing_library {
     use anyhow::{bail, Result}; use serde_json::Value;
     pub fn validate_scene_publication(_: &Value) -> Result<()> { bail!("drawing library publication validation unavailable") }
@@ -161,6 +170,8 @@ pub fn trash_page(path: &Path, page: &str, base: i64) -> Result<()> {
 enum Request {
     SqliteInfo,
     ValidateDrawingScene { scene: Value },
+    LoadPersonalDrawing { path: String, page: String },
+    ApplyPersonalDrawing { path: String, page: String, change: Value },
     AutomationDue { path: String },
     AutomationClaim { path: String, automation_id: String, expected_due: i64 },
     AutomationDecline { path: String, action_id: String },
@@ -179,6 +190,8 @@ enum Request {
 fn dispatch(bytes: &[u8]) -> Result<Value> {
     let request: Request = serde_json::from_slice(bytes)?;
     match request {
+        Request::LoadPersonalDrawing { path, page } => drawing::load_personal(Path::new(&path), &page),
+        Request::ApplyPersonalDrawing { path, page, change } => drawing::apply_personal(Path::new(&path), &page, change),
         Request::ValidateDrawingScene { scene } => { drawing::drawing_scene::validate_scene(&scene)?; Ok(Value::Null) }
         Request::SqliteInfo => {
             let connection = Connection::open_in_memory()?;

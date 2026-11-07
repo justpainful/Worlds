@@ -88,6 +88,8 @@ struct PageContentView: View {
 private struct NodeView: View {
     @Environment(\.layoutDirection) private var inheritedDirection
     let node: PageNode
+    var fillsWidth = true
+    var allowsSelection = true
 
     var body: some View {
         nodeBody.environment(\.layoutDirection, nodeDirection)
@@ -108,15 +110,15 @@ private struct NodeView: View {
             Text(inlineContent(node))
                 .font(paragraphFont(node.attrs?.pstyle))
                 .multilineTextAlignment(textAlignment(node.attrs?.textAlign))
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: frameAlignment(node.attrs?.textAlign))
+                .textSelection(allowsSelection ? .enabled : .disabled)
+                .frame(maxWidth: fillsWidth ? .infinity : nil, alignment: frameAlignment(node.attrs?.textAlign))
         case "heading":
             Text(inlineContent(node))
                 .font(headingFont(node.attrs?.level))
                 .multilineTextAlignment(textAlignment(node.attrs?.textAlign))
                 .accessibilityAddTraits(.isHeader)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: frameAlignment(node.attrs?.textAlign))
+                .textSelection(allowsSelection ? .enabled : .disabled)
+                .frame(maxWidth: fillsWidth ? .infinity : nil, alignment: frameAlignment(node.attrs?.textAlign))
         case "callout":
             VStack(alignment: .leading, spacing: 8) {
                 Label(node.attrs?.tone?.capitalized ?? "Note", systemImage: "text.bubble")
@@ -262,13 +264,27 @@ private struct ToggleNodeView: View {
     }
     var body: some View {
         let items = node.content ?? []
-        DisclosureGroup(isExpanded: $isOpen) {
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(Array(items.dropFirst().enumerated()), id: \.offset) { _, child in NodeView(node: child) }
-            }.frame(maxWidth: .infinity, alignment: .leading)
-        } label: {
-            if let first = items.first { NodeView(node: first) }
-            else { Text("Toggle") }
+        VStack(alignment: .leading, spacing: 8) {
+            Button {
+                isOpen.toggle()
+            } label: {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Image(systemName: isOpen ? "chevron.down" : "chevron.forward")
+                        .font(.caption.weight(.semibold))
+                        .accessibilityHidden(true)
+                    if let first = items.first { NodeView(node: first, fillsWidth: false, allowsSelection: false) }
+                    else { Text("Toggle") }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("reader-toggle")
+            .accessibilityValue(isOpen ? "Expanded" : "Collapsed")
+            if isOpen {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(Array(items.dropFirst().enumerated()), id: \.offset) { _, child in NodeView(node: child) }
+                }.frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
     }
 }

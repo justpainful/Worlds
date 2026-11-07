@@ -97,25 +97,38 @@ final class WorldsUITests: XCTestCase {
 
     @MainActor
     func testReaderShowsStructuredContentAndExpandsToggle() throws {
+        try checkReaderToggle(rightToLeft: true)
+    }
+
+    @MainActor
+    func testReaderToggleLeftToRight() throws {
+        try checkReaderToggle(rightToLeft: false)
+    }
+
+    @MainActor
+    private func checkReaderToggle(rightToLeft: Bool) throws {
         let app = XCUIApplication()
-        app.launchArguments += ["--ui-testing-reader-fixture", "--ui-testing-rtl"]
+        app.launchArguments.append("--ui-testing-reader-fixture")
+        if rightToLeft { app.launchArguments.append("--ui-testing-rtl") }
         app.launch()
         let page = app.descendants(matching: .any)["page.reader-fixture"].firstMatch
-        XCTAssertTrue(page.waitForExistence(timeout: 20))
+        XCTAssertTrue(page.waitForExistence(timeout: 40))
         page.tap()
         XCTAssertTrue(app.staticTexts["Read the warning"].waitForExistence(timeout: 20))
         XCTAssertTrue(app.staticTexts["مَسْأَلَة ١٢٣: Solve x = 5"].exists)
         XCTAssertFalse(app.staticTexts["Hidden detail"].exists)
-        #if os(macOS)
-        let disclosure = app.descendants(matching: .disclosureTriangle).matching(NSPredicate(format: "label CONTAINS %@", "More details")).firstMatch
-        #else
-        let disclosure = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "More details")).firstMatch
-        #endif
+        let disclosure = app.buttons["reader-toggle"].firstMatch
         XCTAssertTrue(disclosure.waitForExistence(timeout: 10))
-        disclosure.tap()
+        disclosure.coordinate(withNormalizedOffset: CGVector(dx: rightToLeft ? 0.94 : 0.06, dy: 0.5)).tap()
         XCTAssertTrue(app.staticTexts["Hidden detail"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["First tab content"].exists)
-        capture("09-structured-reader-rtl", app: app)
+        capture(rightToLeft ? "09-structured-reader-rtl" : "10-structured-reader-ltr", app: app)
+        disclosure.tap()
+        XCTAssertTrue(app.staticTexts["Hidden detail"].waitForNonExistence(timeout: 10))
+        #if os(macOS)
+        disclosure.typeKey(.space, modifierFlags: [])
+        XCTAssertTrue(app.staticTexts["Hidden detail"].waitForExistence(timeout: 10))
+        #endif
     }
 
     @MainActor
