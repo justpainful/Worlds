@@ -23,8 +23,12 @@ mod drawing_copy {
     pub struct Permit;
     pub fn require_current(_: &Connection, _: &str, _: Option<&Permit>) -> Result<()> { bail!("drawing copy unavailable") }
 }
-mod drawing { use anyhow::{bail, Result}; use rusqlite::Connection;
-    pub fn duplicate_into(_: &Connection, _: &str, _: &str) -> Result<()> { bail!("drawing copy unavailable") }
+mod drawing;
+// Publication validation needs library ownership dependencies which are not
+// available in this isolated target; refuse instead of weakening validation.
+mod drawing_library {
+    use anyhow::{bail, Result}; use serde_json::Value;
+    pub fn validate_scene_publication(_: &Value) -> Result<()> { bail!("drawing library publication validation unavailable") }
 }
 mod db {
     use anyhow::Result; use rusqlite::{params, Connection}; use std::path::PathBuf;
@@ -156,6 +160,7 @@ pub fn trash_page(path: &Path, page: &str, base: i64) -> Result<()> {
 #[serde(tag = "operation", rename_all = "snake_case")]
 enum Request {
     SqliteInfo,
+    ValidateDrawingScene { scene: Value },
     AutomationDue { path: String },
     AutomationClaim { path: String, automation_id: String, expected_due: i64 },
     AutomationDecline { path: String, action_id: String },
@@ -174,6 +179,7 @@ enum Request {
 fn dispatch(bytes: &[u8]) -> Result<Value> {
     let request: Request = serde_json::from_slice(bytes)?;
     match request {
+        Request::ValidateDrawingScene { scene } => { drawing::drawing_scene::validate_scene(&scene)?; Ok(Value::Null) }
         Request::SqliteInfo => {
             let connection = Connection::open_in_memory()?;
             let fts5: i64 = connection.query_row("SELECT sqlite_compileoption_used('ENABLE_FTS5')", [], |row| row.get(0))?;

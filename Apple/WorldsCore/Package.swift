@@ -81,6 +81,9 @@ let package = Package(
 // The write bridge is present only after building the native XCFramework.
 // Read-only clients continue to build before the optional binary exists.
 if rustStoreAvailable {
+    package.products.append(.library(name: "WorldsDrawingValidation", targets: ["WorldsDrawingValidation"]))
+    package.targets.append(.target(name: "WorldsDrawingValidation", dependencies: ["WorldsRustStore"], exclude: ["README.md"], linkerSettings: [.linkedLibrary("sqlite3"), .linkedFramework("Security"), .linkedFramework("SystemConfiguration"), .linkedLibrary("resolv"), .linkedLibrary("iconv")]))
+    package.targets.append(.testTarget(name: "WorldsDrawingValidationTests", dependencies: ["WorldsDrawingValidation"], resources: [.copy("original-journal-fixture.json")]))
     package.products.append(.library(name: "WorldsNativeWrites", targets: ["WorldsNativeWrites"]))
     package.targets.append(.binaryTarget(name: "WorldsRustStore", path: rustStorePath))
     package.targets.append(.target(name: "WorldsNativeWrites", dependencies: ["WorldsRustStore", "WorldsModels"], linkerSettings: [.linkedFramework("Security"), .linkedFramework("SystemConfiguration"), .linkedLibrary("resolv"), .linkedLibrary("iconv")]))

@@ -92,17 +92,19 @@ public actor SQLiteCollaborationStore: CheckedPlainEditorStore {
     private func insertPlainSynchronously(base: Data, blockIndex: UInt32, blockID: String,
                                           expected: String, offset: UInt32, insertion: String) throws -> Data {
         guard ![blockID, expected, insertion].contains(where: { $0.utf8.contains(0) }) else { throw CollaborationStorageError.invalidInput }
+        // All C inputs and the output remain in this synchronous stack frame.
+        // No pointer or inout storage is captured by nested Swift closures.
+        guard let id = strdup(blockID) else { throw CollaborationStorageError.invalidResult }
+        defer { free(id) }
+        guard let text = strdup(expected) else { throw CollaborationStorageError.invalidResult }
+        defer { free(text) }
+        guard let replacement = strdup(insertion) else { throw CollaborationStorageError.invalidResult }
+        defer { free(replacement) }
+        let storage = base as NSData
+        let bytes = storage.bytes.assumingMemoryBound(to: UInt8.self)
         var output = WorldsBuffer(data: nil, len: 0)
-        let status = base.withUnsafeBytes { bytes in
-            blockID.withCString { id in
-                expected.withCString { text in
-                    insertion.withCString { replacement in
-                        worlds_store_insert_plain_checked(handle, bytes.bindMemory(to: UInt8.self).baseAddress, bytes.count,
-                                                          blockIndex, id, text, offset, replacement, &output)
-                    }
-                }
-            }
-        }
+        let status = worlds_store_insert_plain_checked(handle, bytes, storage.length,
+                                                       blockIndex, id, text, offset, replacement, &output)
         try Self.check(status)
         defer { worlds_buffer_free(output) }
         guard let pointer = output.data else { throw CollaborationStorageError.invalidResult }

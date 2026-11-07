@@ -318,6 +318,29 @@ jobs:
             -resultBundlePath "$GITHUB_WORKSPACE/presentation-persistence-simulator.xcresult" \
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$GITHUB_WORKSPACE/logs/presentation-persistence-ios.log"
           grep -q 'testSaveKeepsOpaqueAndConflictingSessionFails' "$GITHUB_WORKSPACE/logs/presentation-persistence-ios.log"
+      - name: Discover drawing validation tests
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path Apple/WorldsCore list 2>&1 | tee logs/drawing-validation-discovery.log
+          grep -q 'testOriginalSceneFixtureAndInvalidFrame' logs/drawing-validation-discovery.log
+      - name: Test drawing validation on macOS
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path Apple/WorldsCore --filter WorldsDrawingValidationTests 2>&1 | tee logs/drawing-validation-macos.log
+          grep -q 'testOriginalSceneFixtureAndInvalidFrame' logs/drawing-validation-macos.log
+      - name: Test drawing validation on iOS simulator
+        shell: bash
+        run: |
+          set -o pipefail
+          cd Apple/WorldsCore
+          xcodebuild -scheme WorldsCore-Package \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.5' \
+            -only-testing:WorldsDrawingValidationTests \
+            -resultBundlePath "$GITHUB_WORKSPACE/drawing-validation-simulator.xcresult" \
+            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$GITHUB_WORKSPACE/logs/drawing-validation-ios.log"
+          grep -q 'testOriginalSceneFixtureAndInvalidFrame' "$GITHUB_WORKSPACE/logs/drawing-validation-ios.log"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -329,6 +352,7 @@ jobs:
             resource-repositories-simulator.xcresult/
             automation-simulator.xcresult/
             presentation-persistence-simulator.xcresult/
+            drawing-validation-simulator.xcresult/
           if-no-files-found: warn
 
   collaboration-xcframework:

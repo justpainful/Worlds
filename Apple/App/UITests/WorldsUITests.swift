@@ -106,7 +106,11 @@ final class WorldsUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Read the warning"].waitForExistence(timeout: 20))
         XCTAssertTrue(app.staticTexts["مَسْأَلَة ١٢٣: Solve x = 5"].exists)
         XCTAssertFalse(app.staticTexts["Hidden detail"].exists)
+        #if os(macOS)
+        let disclosure = app.descendants(matching: .disclosureTriangle).matching(NSPredicate(format: "label CONTAINS %@", "More details")).firstMatch
+        #else
         let disclosure = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "More details")).firstMatch
+        #endif
         XCTAssertTrue(disclosure.waitForExistence(timeout: 10))
         disclosure.tap()
         XCTAssertTrue(app.staticTexts["Hidden detail"].waitForExistence(timeout: 10))
