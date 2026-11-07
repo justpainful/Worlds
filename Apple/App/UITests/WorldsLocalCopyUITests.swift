@@ -11,7 +11,11 @@ final class WorldsLocalCopyUITests: XCTestCase {
         let project = app.descendants(matching: .any)["page.harness-project"].firstMatch
         XCTAssertTrue(project.waitForExistence(timeout: 20)); project.tap()
         let edit = app.buttons["edit-local-project"]
-        XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
+        XCTAssertTrue(edit.waitForExistence(timeout: 20))
+        let notice = app.descendants(matching: .any)["local-copy-notice"].firstMatch
+        XCTAssertFalse(edit.frame.intersects(notice.frame), "The copy notice must not cover the edit action")
+        XCTAssertTrue(edit.isHittable)
+        edit.tap()
         let description = app.descendants(matching: .any)["project-description"].firstMatch
         XCTAssertTrue(description.waitForExistence(timeout: 20)); description.tap()
         #if os(macOS)

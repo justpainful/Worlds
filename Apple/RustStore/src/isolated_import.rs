@@ -142,6 +142,30 @@ mod tests {
         std::fs::remove_dir_all(root.parent().unwrap()).unwrap();
     }
     #[test]
+    fn personal_block_edit_in_copy_preserves_original_database() {
+        let (source, root) = setup();
+        let copy = import(&source, &root).unwrap();
+        let db = Connection::open(&copy).unwrap();
+        let revision: i64 = db.query_row("SELECT updated_at FROM pages WHERE id='fixture-page'", [], |r| r.get(0)).unwrap();
+        let (id, raw): (String, String) = db.query_row("SELECT id,content FROM blocks WHERE page_id='fixture-page' ORDER BY sort_key LIMIT 1", [], |r| Ok((r.get(0)?, r.get(1)?))).unwrap();
+        let original: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        drop(db);
+        let mut changed = original.clone();
+        if !changed.get("attrs").is_some_and(serde_json::Value::is_object) { changed["attrs"] = serde_json::json!({}); }
+        changed["attrs"]["bid"] = serde_json::json!(id);
+        changed["experimentalCopyChange"] = serde_json::json!(true);
+        crate::save_blocks_checked(&copy, "fixture-page", revision,
+            vec![crate::BlockInput { id: id.clone(), content: original.clone() }],
+            vec![crate::BlockInput { id: id.clone(), content: changed.clone() }]).unwrap();
+        let source_db = Connection::open(&source).unwrap();
+        let source_json: String = source_db.query_row("SELECT content FROM blocks WHERE id=?1", [&id], |r| r.get(0)).unwrap();
+        assert_eq!(serde_json::from_str::<serde_json::Value>(&source_json).unwrap(), original);
+        let copy_db = Connection::open(&copy).unwrap();
+        let copy_json: String = copy_db.query_row("SELECT content FROM blocks WHERE id=?1", [&id], |r| r.get(0)).unwrap();
+        assert_eq!(serde_json::from_str::<serde_json::Value>(&copy_json).unwrap(), changed);
+        drop(source_db); drop(copy_db); std::fs::remove_dir_all(root.parent().unwrap()).unwrap();
+    }
+    #[test]
     fn import_does_not_copy_attachment_files_or_grant_shared_access() {
         let (source, root) = setup();
         let outside = root.parent().unwrap().join("private-image.png");

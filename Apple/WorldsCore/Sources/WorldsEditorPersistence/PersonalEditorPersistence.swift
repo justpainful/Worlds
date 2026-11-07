@@ -11,11 +11,14 @@ public enum EditorBridgeError: Error, Equatable {
 
 /// Experimental personal-page bridge. Construct only from an atomic read snapshot.
 public actor PersonalEditorPersistence: EditorPersistence {
+    private static let editableNodeTypes: Set<String> = ["paragraph", "heading", "blockquote", "codeBlock", "bulletList", "orderedList", "taskList", "listItem", "taskItem", "table", "tableRow", "tableCell", "tableHeader", "text", "hardBreak"]
+    private static let editableMarkTypes: Set<String> = ["bold", "italic", "underline", "strike", "link"]
     public nonisolated let initialDocument: RichTextDocument
     public nonisolated let initialRevision: Int64
     private let pageID: String
     private let store: NativePersonalStore
     private var baseline: [NativeBlockInput]
+    private var opaqueRoots: [JSONValue]
     private var expectedRevision: Int64
     private var saving = false
     private var invalidated = false
@@ -52,6 +55,36 @@ public actor PersonalEditorPersistence: EditorPersistence {
         pageID = page.id
         self.store = store
         baseline = original
+        opaqueRoots = Self.opaqueValues(in: editable)
+    }
+
+    private static func opaqueValues(in roots: [JSONValue]) -> [JSONValue] {
+        var result: [JSONValue] = []
+        func append(_ node: JSONValue, owner: JSONValue, kind: String) {
+            result.append(.object(["owner": owner, "kind": .string(kind), "value": node]))
+        }
+        func visit(_ value: JSONValue, owner: JSONValue) {
+            guard case .object(let node) = value, case .string(let type)? = node["type"], editableNodeTypes.contains(type) else {
+                append(value, owner: owner, kind: "node"); return
+            }
+            if let marks = node["marks"] {
+                if case .array(let entries) = marks {
+                    for mark in entries {
+                        guard case .object(let data) = mark, case .string(let name)? = data["type"], editableMarkTypes.contains(name) else {
+                            append(mark, owner: owner, kind: "mark"); continue
+                        }
+                    }
+                } else { append(marks, owner: owner, kind: "marks") }
+            }
+            if case .array(let children)? = node["content"] { children.forEach { visit($0, owner: owner) } }
+        }
+        for root in roots {
+            let owner: JSONValue
+            if case .object(let node) = root, case .object(let attrs)? = node["attrs"], let id = attrs["bid"] { owner = id }
+            else { owner = .null }
+            visit(root, owner: owner)
+        }
+        return result
     }
 
     /// Read and write use the same URL. No caller-supplied snapshot can be paired with another store.
@@ -68,6 +101,9 @@ public actor PersonalEditorPersistence: EditorPersistence {
         let value = try JSONDecoder().decode(JSONValue.self, from: documentJSON)
         guard case .object(let root) = value, Set(root.keys) == Set(["type", "content"]),
               root["type"] == .string("doc"), case .array(let nodes)? = root["content"] else { throw EditorBridgeError.invalidDocument }
+        // Unknown descendants and marks must remain intact and attached to the
+        // same top-level block even for a caller submitting arbitrary JSON.
+        guard Self.opaqueValues(in: nodes) == opaqueRoots else { throw EditorBridgeError.invalidBlock }
         var updated: [NativeBlockInput] = []
         var ids = Set<String>()
         for value in nodes {
@@ -87,6 +123,7 @@ public actor PersonalEditorPersistence: EditorPersistence {
             }
             expectedRevision = revision
             baseline = updated
+            opaqueRoots = Self.opaqueValues(in: nodes)
             return revision
         } catch {
             // A transport/decoding error may happen after commit. Require a fresh snapshot.

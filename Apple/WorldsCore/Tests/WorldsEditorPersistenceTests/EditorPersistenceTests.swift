@@ -107,4 +107,49 @@ final class EditorPersistenceTests: XCTestCase {
         do { try await model.save(using: bridge); XCTFail("Shared-page write must fail") } catch { }
         XCTAssertTrue(model.dirty)
     }
+
+    func testRejectsDroppingUnknownRootBlockBeforeWriting() async throws {
+        let url = try fixture()
+        try exec("INSERT INTO blocks(id,page_id,type,sort_key,content,text,direction,created_at,updated_at) SELECT 'future',page_id,'futureWidget',10,'{\"type\":\"futureWidget\",\"attrs\":{\"bid\":\"future\"},\"payload\":{\"keep\":true}}','',direction,created_at,updated_at FROM blocks WHERE id='fixture-block'", url: url)
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        guard case .object(var root) = bridge.initialDocument.source,
+              case .array(let content)? = root["content"] else { return XCTFail("Missing document") }
+        root["content"] = .array(content.filter { node in
+            guard case .object(let object) = node else { return true }
+            return object["type"] != .string("futureWidget")
+        })
+        let input = try JSONEncoder().encode(JSONValue.object(root))
+        do { _ = try await bridge.save(documentJSON: input, basedOn: bridge.initialRevision); XCTFail("Unknown block must be preserved") }
+        catch EditorBridgeError.invalidBlock { }
+        let snapshot = try await WorldsDatabase(url: url).snapshot()
+        let page = try XCTUnwrap(snapshot.pages.first(where: { $0.id == "fixture-page" }))
+        XCTAssertTrue(page.blocks.contains(where: { $0.id == "future" && $0.contentJSON.contains("futureWidget") }))
+    }
+
+    func testRejectsDroppingUnknownNestedNodeOrItsContainingBlock() async throws {
+        let url = try fixture()
+        try exec("UPDATE blocks SET content=json_insert(content,'$.content[#]',json('{\"type\":\"futureInline\",\"attrs\":{\"payload\":42}}')) WHERE id='fixture-block'", url: url)
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        guard case .object(let originalRoot) = bridge.initialDocument.source,
+              case .array(let nodes)? = originalRoot["content"],
+              case .object(var block) = nodes.first,
+              case .array(let children)? = block["content"] else { return XCTFail("Missing fixture content") }
+        var removedNodeRoot = originalRoot
+        block["content"] = .array(children.filter { value in
+            guard case .object(let node) = value else { return true }
+            return node["type"] != .string("futureInline")
+        })
+        removedNodeRoot["content"] = .array([.object(block)])
+        var removedBlockRoot = originalRoot
+        removedBlockRoot["content"] = .array([])
+        for root in [removedNodeRoot, removedBlockRoot] {
+            do {
+                _ = try await bridge.save(documentJSON: JSONEncoder().encode(JSONValue.object(root)), basedOn: bridge.initialRevision)
+                XCTFail("Unknown descendant must remain")
+            } catch EditorBridgeError.invalidBlock { }
+        }
+        let snapshot = try await WorldsDatabase(url: url).snapshot()
+        let page = try XCTUnwrap(snapshot.pages.first(where: { $0.id == "fixture-page" }))
+        XCTAssertTrue(page.blocks[0].contentJSON.contains("futureInline"))
+    }
 }

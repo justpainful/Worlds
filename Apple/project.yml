@@ -41,6 +41,14 @@ targets:
         product: WorldsPersistence
       - package: WorldsCore
         product: WorldsSearch
+      - package: WorldsCore
+        product: WorldsLocalImport
+      - package: WorldsCore
+        product: WorldsNativeWrites
+      - package: WorldsCore
+        product: WorldsResourceRepositories
+      - package: WorldsCore
+        product: WorldsProjectEditingViews
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.worlds.native.ios
@@ -71,6 +79,14 @@ targets:
         product: WorldsPersistence
       - package: WorldsCore
         product: WorldsSearch
+      - package: WorldsCore
+        product: WorldsLocalImport
+      - package: WorldsCore
+        product: WorldsNativeWrites
+      - package: WorldsCore
+        product: WorldsResourceRepositories
+      - package: WorldsCore
+        product: WorldsProjectEditingViews
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.worlds.native.macos

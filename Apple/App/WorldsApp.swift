@@ -168,7 +168,7 @@ private struct WorldsLibraryView: View {
             }
         }
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
-        .safeAreaInset(edge: .top) {
+        .safeAreaInset(edge: .bottom) {
             if copyContext != nil { LocalCopyNotice() }
         }
         .confirmationDialog("Create an independent local copy?", isPresented: $showCopyExplanation) {
@@ -258,7 +258,13 @@ private struct WorldsLibraryView: View {
     }
 
     private var sidebarSelection: Binding<String?> {
-        Binding(get: { selectedID }, set: { selectedID = $0; returnStack.removeAll() })
+        Binding(get: { selectedID }, set: { newSelection in
+            // SwiftUI can write the current selection back while updating a
+            // split view. Preserve link history unless selection really changed.
+            guard selectedID != newSelection else { return }
+            selectedID = newSelection
+            returnStack.removeAll()
+        })
     }
 
     private var pageList: some View {
@@ -269,6 +275,7 @@ private struct WorldsLibraryView: View {
             .accessibilityIdentifier("page.\(page.id)")
             .accessibilityHint("Opens page")
         }
+        .contentMargins(.bottom, dynamicTypeSize.isAccessibilitySize ? 24 : 8, for: .scrollContent)
         .accessibilityIdentifier("personal-page-list")
     }
 

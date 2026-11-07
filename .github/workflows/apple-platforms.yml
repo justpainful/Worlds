@@ -122,7 +122,7 @@ jobs:
           test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
       - name: Generate isolated project
         run: |
-          brew install xcodegen
+          brew install xcodegen coreutils
           xcodegen generate --spec Apple/ProjectEditorHarness/project.yml
           xcodegen generate --spec Apple/ProjectEditorHarness/local-copy-experimental.yml
       - name: Exercise editor on macOS and iOS simulator
@@ -132,7 +132,7 @@ jobs:
           result=0
           for platform in macOS iOS; do
             if [[ "$platform" == macOS ]]; then destination='platform=macOS'; else destination='platform=iOS Simulator,name=iPhone 17,OS=26.5'; fi
-            if xcodebuild -project Apple/ProjectEditorHarness/WorldsProjectEditorHarness.xcodeproj \
+            if gtimeout 360s xcodebuild -project Apple/ProjectEditorHarness/WorldsProjectEditorHarness.xcodeproj \
               -scheme "ProjectEditorHarness-$platform" -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/harness-$platform.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/harness-$platform.log"; then
@@ -143,7 +143,7 @@ jobs:
           done
           for platform in macOS iOS; do
             if [[ "$platform" == macOS ]]; then destination='platform=macOS'; else destination='platform=iOS Simulator,name=iPhone 17,OS=26.5'; fi
-            if xcodebuild -project Apple/ProjectEditorHarness/WorldsLocalCopyExperimental.xcodeproj \
+            if gtimeout 360s xcodebuild -project Apple/ProjectEditorHarness/WorldsLocalCopyExperimental.xcodeproj \
               -scheme "LocalCopy-$platform" -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/local-copy-$platform.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-copy-$platform.log"; then
@@ -189,9 +189,46 @@ jobs:
           path: logs/
           if-no-files-found: warn
 
+  ruststore-xcframework:
+    name: Build shared RustStore XCFramework
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select pinned Xcode
+        run: sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+      - uses: dtolnay/rust-toolchain@1.99.1
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios,aarch64-apple-darwin,x86_64-apple-darwin
+      - name: Build and archive RustStore
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p logs ruststore-artifact
+          bash Apple/RustStore/scripts/build-apple.sh 2>&1 | tee logs/ruststore-build.log
+          test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
+          tar -czf ruststore-artifact/ruststore-xcframework.tar.gz -C Apple/WorldsCore/Artifacts WorldsRustStore.xcframework
+          (cd ruststore-artifact && shasum -a 256 ruststore-xcframework.tar.gz > SHA256SUMS)
+          git rev-parse HEAD > ruststore-artifact/source-revision
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Worlds-shared-ruststore-xcframework
+          path: ruststore-artifact/
+          if-no-files-found: error
+          retention-days: 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-shared-ruststore-build-logs
+          path: logs/
+          if-no-files-found: warn
+
   ios:
     name: Worlds-${{ matrix.device }} build check
     runs-on: macos-26
+    env:
+      WORLDS_REQUIRE_NATIVE_WRITES: "1"
+    needs: ruststore-xcframework
     strategy:
       fail-fast: false
       matrix:
@@ -202,6 +239,19 @@ jobs:
             family: 2
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Worlds-shared-ruststore-xcframework
+          path: ruststore-artifact
+      - name: Verify and restore RustStore
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat ruststore-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd ruststore-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p Apple/WorldsCore/Artifacts
+          tar -xzf ruststore-artifact/ruststore-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
+          test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
       - name: Select and inspect Xcode
         run: |
           sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
@@ -224,6 +274,7 @@ jobs:
           test ! -e "$RUNNER_TEMP/WorldsSimulator/Build/Products/Release-iphonesimulator/Worlds.app/worlds-v1-fixture.db"
           test ! -e "$RUNNER_TEMP/WorldsSimulator/Build/Products/Release-iphonesimulator/Worlds.app/search-ui-fixture.db"
           test ! -e "$RUNNER_TEMP/WorldsSimulator/Build/Products/Release-iphonesimulator/Worlds.app/reader-ui-fixture.db"
+          test ! -e "$RUNNER_TEMP/WorldsSimulator/Build/Products/Release-iphonesimulator/Worlds.app/worlds-v11.db"
       - name: Build unsigned device target
         shell: bash
         run: |
@@ -236,6 +287,7 @@ jobs:
           test ! -e "$RUNNER_TEMP/WorldsDevice/Build/Products/Release-iphoneos/Worlds.app/worlds-v1-fixture.db"
           test ! -e "$RUNNER_TEMP/WorldsDevice/Build/Products/Release-iphoneos/Worlds.app/search-ui-fixture.db"
           test ! -e "$RUNNER_TEMP/WorldsDevice/Build/Products/Release-iphoneos/Worlds.app/reader-ui-fixture.db"
+          test ! -e "$RUNNER_TEMP/WorldsDevice/Build/Products/Release-iphoneos/Worlds.app/worlds-v11.db"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -246,8 +298,24 @@ jobs:
   macos:
     name: Worlds-macOS build check
     runs-on: macos-26
+    env:
+      WORLDS_REQUIRE_NATIVE_WRITES: "1"
+    needs: ruststore-xcframework
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Worlds-shared-ruststore-xcframework
+          path: ruststore-artifact
+      - name: Verify and restore RustStore
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat ruststore-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd ruststore-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p Apple/WorldsCore/Artifacts
+          tar -xzf ruststore-artifact/ruststore-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
+          test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
       - name: Select and inspect Xcode
         run: |
           sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
@@ -269,6 +337,7 @@ jobs:
           test ! -e "$RUNNER_TEMP/WorldsMac/Build/Products/Release/Worlds.app/Contents/Resources/worlds-v1-fixture.db"
           test ! -e "$RUNNER_TEMP/WorldsMac/Build/Products/Release/Worlds.app/Contents/Resources/search-ui-fixture.db"
           test ! -e "$RUNNER_TEMP/WorldsMac/Build/Products/Release/Worlds.app/Contents/Resources/reader-ui-fixture.db"
+          test ! -e "$RUNNER_TEMP/WorldsMac/Build/Products/Release/Worlds.app/Contents/Resources/worlds-v11.db"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -310,6 +379,7 @@ jobs:
           grep -q 'project_edit_in_copy_does_not_edit_original ... ok' logs/rust-store-tests.log
           grep -q 'import_does_not_copy_attachment_files_or_grant_shared_access ... ok' logs/rust-store-tests.log
           grep -q 'ffi_import_request_copies_live_wal ... ok' logs/rust-store-tests.log
+          grep -q 'personal_block_edit_in_copy_preserves_original_database ... ok' logs/rust-store-tests.log
           grep -q 'asset_scan_includes_nested_history_references ... ok' logs/rust-store-tests.log
           grep -q 'refuses_symlink_components_and_parent_escape ... ok' logs/rust-store-tests.log
           grep -q 'open_handle_does_not_pin_future_path_contents ... ok' logs/rust-store-tests.log
@@ -336,6 +406,8 @@ jobs:
           grep -q 'testRejectsPageBecomingSharedBeforeSave' logs/editor-persistence-discovery.log
           grep -q 'testTwoEditorSessionsRejectStaleSnapshot' logs/editor-persistence-discovery.log
           grep -q 'testRejectsReorderedBlocksWithoutTimestampChange' logs/editor-persistence-discovery.log
+          grep -q 'testRejectsDroppingUnknownRootBlockBeforeWriting' logs/editor-persistence-discovery.log
+          grep -q 'testRejectsDroppingUnknownNestedNodeOrItsContainingBlock' logs/editor-persistence-discovery.log
       - name: Test editor persistence on macOS
         shell: bash
         run: |
@@ -346,6 +418,8 @@ jobs:
           grep -q 'testRejectsPageBecomingSharedBeforeSave' logs/editor-persistence-macos.log
           grep -q 'testTwoEditorSessionsRejectStaleSnapshot' logs/editor-persistence-macos.log
           grep -q 'testRejectsReorderedBlocksWithoutTimestampChange' logs/editor-persistence-macos.log
+          grep -q 'testRejectsDroppingUnknownRootBlockBeforeWriting' logs/editor-persistence-macos.log
+          grep -q 'testRejectsDroppingUnknownNestedNodeOrItsContainingBlock' logs/editor-persistence-macos.log
       - name: Build experimental project editor views
         shell: bash
         run: |
@@ -459,6 +533,8 @@ jobs:
           grep -E "Test Case .*testRejectsPageBecomingSharedBeforeSave.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testTwoEditorSessionsRejectStaleSnapshot.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testRejectsReorderedBlocksWithoutTimestampChange.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testRejectsDroppingUnknownRootBlockBeforeWriting.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testRejectsDroppingUnknownNestedNodeOrItsContainingBlock.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testProjectUsesNativeStoreAndRejectsSameTimestampChange.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testUndoAndFullBaselineConflictOnRealStore.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testNativeBackupImportsCommittedWALWithoutChangingSource.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
@@ -752,6 +828,9 @@ jobs:
   ui-tests:
     name: UI tests ${{ matrix.device }}
     runs-on: macos-26
+    env:
+      WORLDS_REQUIRE_NATIVE_WRITES: "1"
+    needs: ruststore-xcframework
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -768,6 +847,19 @@ jobs:
             destination: 'platform=macOS'
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Worlds-shared-ruststore-xcframework
+          path: ruststore-artifact
+      - name: Verify and restore RustStore
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat ruststore-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd ruststore-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p Apple/WorldsCore/Artifacts
+          tar -xzf ruststore-artifact/ruststore-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
+          test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
       - name: Select Xcode
         run: |
           sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
@@ -825,8 +917,10 @@ jobs:
   package-ios:
     name: Package incomplete Worlds ${{ matrix.device }}
     runs-on: macos-26
+    env:
+      WORLDS_REQUIRE_NATIVE_WRITES: "1"
     timeout-minutes: 20
-    needs: [core-tests, rust-mcp-compatibility, ios, macos, native-writes, collaboration-bridge, collaboration-local-worker, ui-tests]
+    needs: [ruststore-xcframework, core-tests, rust-mcp-compatibility, ios, macos, native-writes, collaboration-bridge, collaboration-local-worker, ui-tests]
     strategy:
       fail-fast: false
       matrix:
@@ -837,6 +931,19 @@ jobs:
             family: 2
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Worlds-shared-ruststore-xcframework
+          path: ruststore-artifact
+      - name: Verify and restore RustStore
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat ruststore-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd ruststore-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p Apple/WorldsCore/Artifacts
+          tar -xzf ruststore-artifact/ruststore-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
+          test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
       - name: Select pinned Xcode and generate project
         run: |
           sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
@@ -857,6 +964,7 @@ jobs:
           test ! -e "$app/worlds-v1-fixture.db"
           test ! -e "$app/search-ui-fixture.db"
           test ! -e "$app/reader-ui-fixture.db"
+          test ! -e "$app/worlds-v11.db"
           ditto "$app" "$RUNNER_TEMP/package/Payload/Worlds.app"
           (cd "$RUNNER_TEMP/package" && zip -qry "$GITHUB_WORKSPACE/deliverables/Worlds-${{ matrix.device }}-Unsigned.ipa" Payload)
           xcodebuild -project Apple/Worlds.xcodeproj -scheme Worlds-iOS \
@@ -868,6 +976,7 @@ jobs:
           test ! -e "$simulator_app/worlds-v1-fixture.db"
           test ! -e "$simulator_app/search-ui-fixture.db"
           test ! -e "$simulator_app/reader-ui-fixture.db"
+          test ! -e "$simulator_app/worlds-v11.db"
           ditto -c -k --sequesterRsrc --keepParent "$simulator_app" "deliverables/Worlds-${{ matrix.device }}-Simulator.zip"
           cat > deliverables/README-INCOMPLETE.txt <<'EOF'
           This is an incomplete development build, not feature parity with Worlds.
@@ -890,10 +999,25 @@ jobs:
   package-macos:
     name: Package incomplete Worlds macOS
     runs-on: macos-26
+    env:
+      WORLDS_REQUIRE_NATIVE_WRITES: "1"
     timeout-minutes: 20
-    needs: [core-tests, rust-mcp-compatibility, ios, macos, native-writes, collaboration-bridge, collaboration-local-worker, ui-tests]
+    needs: [ruststore-xcframework, core-tests, rust-mcp-compatibility, ios, macos, native-writes, collaboration-bridge, collaboration-local-worker, ui-tests]
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Worlds-shared-ruststore-xcframework
+          path: ruststore-artifact
+      - name: Verify and restore RustStore
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat ruststore-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd ruststore-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p Apple/WorldsCore/Artifacts
+          tar -xzf ruststore-artifact/ruststore-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
+          test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
       - name: Select pinned Xcode and generate project
         run: |
           sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
@@ -914,6 +1038,7 @@ jobs:
           test ! -e "$app/Contents/Resources/worlds-v1-fixture.db"
           test ! -e "$app/Contents/Resources/search-ui-fixture.db"
           test ! -e "$app/Contents/Resources/reader-ui-fixture.db"
+          test ! -e "$app/Contents/Resources/worlds-v11.db"
           ditto "$app" deliverables/Worlds-macOS-Unsigned.app
           ditto -c -k --sequesterRsrc --keepParent deliverables/Worlds-macOS-Unsigned.app deliverables/Worlds-macOS-Unsigned.zip
           hdiutil create -volname Worlds -srcfolder deliverables/Worlds-macOS-Unsigned.app -ov -format UDZO deliverables/Worlds-macOS-Unsigned.dmg

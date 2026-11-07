@@ -72,6 +72,7 @@ final class LocalProjectImportTests: XCTestCase {
         let (source, root) = try fixture()
         let first = LocalProjectImportCoordinator(testRoot: root, backup: FixtureBackup(schemaVersion: 11, fail: false))
         let saved = try await first.importCopy(from: source)
+        let savedBytes = try Data(contentsOf: saved.databaseURL)
         let unfinished = root.appendingPathComponent("worlds-import-\(UUID().uuidString.lowercased())", isDirectory: true)
         try FileManager.default.createDirectory(at: unfinished, withIntermediateDirectories: false)
         try Data().write(to: unfinished.appendingPathComponent(".incomplete"))
@@ -89,7 +90,7 @@ final class LocalProjectImportTests: XCTestCase {
         XCTAssertEqual(inventory.rejectedCount, 3)
         let restored = try await second.restoreCopy(id: saved.id)
         XCTAssertEqual(restored.databaseURL, saved.databaseURL)
-        XCTAssertEqual(try Data(contentsOf: restored.databaseURL), try Data(contentsOf: source))
+        XCTAssertEqual(try Data(contentsOf: restored.databaseURL), savedBytes)
     }
 
     #if canImport(WorldsRustStore)

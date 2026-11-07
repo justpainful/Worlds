@@ -161,6 +161,8 @@ final class WorldsUITests: XCTestCase {
         let app = try openResource("resource-project")
         XCTAssertTrue(app.staticTexts["Prepare the lesson"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.staticTexts["Some linked pages are unavailable in this snapshot."].exists)
+        XCTAssertTrue(app.staticTexts["This project links to itself."].exists)
+        XCTAssertFalse(app.buttons["resource-page.resource-project"].exists)
         XCTAssertTrue(app.buttons["resource-page.resource-child"].exists)
         XCTAssertFalse(app.buttons["resource-page.resource-archived"].exists)
         let link = app.buttons["resource-page.reader-fixture"]
@@ -195,12 +197,17 @@ final class WorldsUITests: XCTestCase {
         let list = app.descendants(matching: .any)["personal-page-list"].firstMatch
         XCTAssertTrue(list.waitForExistence(timeout: 30))
         let last = app.descendants(matching: .any)["page.resource-archived"].firstMatch
-        for _ in 0..<6 {
-            if last.exists && last.isHittable { break }
+        XCTAssertTrue(last.waitForExistence(timeout: 10))
+        // Hittable can mean only a small portion is visible. Move the list
+        // first, then require the entire row to fit inside its visible frame.
+        list.swipeUp()
+        for _ in 0..<5 {
+            if last.isHittable && list.frame.insetBy(dx: 0, dy: 1).contains(last.frame) { break }
             list.swipeUp()
         }
-        XCTAssertTrue(last.waitForExistence(timeout: 10))
         XCTAssertTrue(last.isHittable)
+        XCTAssertTrue(list.frame.insetBy(dx: 0, dy: 1).contains(last.frame),
+                      "The last row must be fully visible after scrolling. List: \(list.frame), row: \(last.frame)")
         capture("20-large-text-sidebar-bottom-rtl", app: app)
     }
 

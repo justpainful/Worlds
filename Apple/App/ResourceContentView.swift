@@ -87,6 +87,9 @@ struct ResourceContentView: View {
                 if let description = info.description, !description.isEmpty { Text(description).textSelection(.enabled) }
                 let linked = linkedPages(info.links ?? [])
                 if !linked.isEmpty { pageLinks("Linked pages", linked) }
+                if (info.links ?? []).contains(page.id) {
+                    Text("This project links to itself.").font(.body).foregroundStyle(.secondary)
+                }
                 if (info.links ?? []).contains(where: { id in !pages.contains(where: { $0.id == id }) }) {
                     Text("Some linked pages are unavailable in this snapshot.").font(.body).foregroundStyle(.secondary)
                 }
@@ -153,7 +156,7 @@ struct ResourceContentView: View {
     private func linkedPages(_ ids: [String]) -> [StoredPage] {
         var seen = Set<String>()
         return ids.compactMap { id in
-            guard seen.insert(id).inserted else { return nil }
+            guard id != page.id, seen.insert(id).inserted else { return nil }
             return pages.first(where: { $0.id == id })
         }
     }

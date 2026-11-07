@@ -7,3 +7,11 @@ This module adapts a `WorldsPersistence` personal-page snapshot to `WorldsNative
 The adapter opens its snapshot and its write store from the same database URL, using one consistent `WorldsDatabase.snapshot()` read. The path can still be replaced externally; sandbox file coordination and stable file identity require further review. After any failed save, the adapter requires a new snapshot because an invalid or lost response can occur after commit. The editor retains its unsaved tree and exposes the error. A caller must present conflict recovery rather than silently discard that tree. The Rust transaction repeats all personal-page checks; the snapshot's filtering alone is not authorization.
 
 Rust tests run locally against isolated schema v11 fixtures and cover same-timestamp content changes, reordered rows, duplicate/cross-page IDs, shared-page changes and rollback. Swift integration tests cover unknown nodes and marks, same-timestamp conflicts, reordered blocks, two competing editor sessions and a page becoming shared, using a separate fixture. They have not been compiled or executed on Apple. SwiftPM must add this module with `WorldsNativeEditor`, `WorldsNativeWrites`, `WorldsPersistence`, `WorldsRichText` and `WorldsModels`, and add `editor-fixture.db` as a test resource linked with SQLite. App UI must not enable saving until CI, IME, permission, crash recovery and data-preservation reviews are complete.
+
+The bridge rejects removal, alteration or reordering of unknown nodes and marks,
+including descendants of supported blocks, and binds them to their original
+top-level block. This does not guarantee that an unknown mark remains on the
+same text node within that block, or preserve every unknown attribute on a
+known node when a caller supplies arbitrary JSON. A Rust fixture test verifies that editing a personal block in
+an imported independent database leaves the source database unchanged; this
+does not establish native input or Apple user-interface behavior.
