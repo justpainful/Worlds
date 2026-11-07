@@ -18,6 +18,12 @@ public enum IdentityCrypto {
             .replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
     }
 
+    public static func decodeBase64URL(_ value: String) -> Data? {
+        guard value.utf8.allSatisfy({ (65...90).contains($0) || (97...122).contains($0) || (48...57).contains($0) || $0 == 45 || $0 == 95 }) else { return nil }
+        var encoded = value.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        encoded += String(repeating: "=", count: (4 - encoded.count % 4) % 4)
+        return Data(base64Encoded: encoded)
+    }
     public static func pkceChallenge(verifier: String) -> String {
         base64URL(Data(SHA256.hash(data: Data(verifier.utf8))))
     }
@@ -114,10 +120,20 @@ public protocol IdentityTransport: Sendable {
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse)
 }
 
+private final class RejectIdentityRedirects: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest, completionHandler: @escaping @Sendable (URLRequest?) -> Void) {
+        completionHandler(nil)
+    }
+}
+
 public struct URLSessionIdentityTransport: IdentityTransport {
-    public init() {}
+    private let session: URLSession
+    public init() {
+        session = URLSession(configuration: .ephemeral, delegate: RejectIdentityRedirects(), delegateQueue: nil)
+    }
     public func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw IdentityError.invalidResponse }
         return (data, http)
     }
@@ -219,6 +235,39 @@ public actor WorldsIdentityClient {
         return tokens
     }
 
+    /// Obtain a server challenge and constrain it to the caller's trusted RP ID.
+    public func passkeyChallenge(expectedRelyingPartyID: String) async throws -> PasskeyChallenge {
+        struct Empty: Encodable {}
+        struct Envelope: Decodable { let challengeId: String; let options: Options }
+        struct Options: Decodable { let challenge: String; let rpId: String; let userVerification: String? }
+        let result: Envelope = try await post("/auth/passkey/login/options", Empty(), as: Envelope.self)
+        guard result.options.rpId == expectedRelyingPartyID,
+              let challenge = IdentityCrypto.decodeBase64URL(result.options.challenge),
+              challenge.count >= 16, challenge.count <= 1024 else { throw IdentityError.invalidResponse }
+        return PasskeyChallenge(challengeID: result.challengeId, relyingPartyID: result.options.rpId, challenge: challenge)
+    }
+
+    /// Complete an Apple assertion with the service's one-time PKCE handoff.
+    public func completePasskey(challenge: PasskeyChallenge, assertion: PasskeyAssertion,
+                                deviceName: String, platform: String) async throws -> TokenSet {
+        struct Handoff: Encodable { let codeChallenge: String }
+        struct Payload: Encodable {
+            let challengeId: String; let response: PasskeyAssertion.WebAuthnResponse; let handoff: Handoff
+        }
+        struct Code: Decodable { let code: String }
+        guard !operationInProgress, refreshTask == nil else { throw IdentityError.busy }
+        operationInProgress = true
+        defer { operationInProgress = false }
+        let pkce = PKCE()
+        let handoff: Code = try await post("/auth/passkey/login/verify",
+            Payload(challengeId: challenge.challengeID, response: assertion.webAuthnResponse,
+                    handoff: Handoff(codeChallenge: pkce.challenge)), as: Code.self)
+        let key = Curve25519.Signing.PrivateKey()
+        let device = DeviceDescription(name: deviceName, platform: platform, publicKey: IdentityCrypto.base64URL(key.publicKey.rawRepresentation))
+        let tokens: TokenSet = try await post("/auth/token", ExchangeBody(code: handoff.code, codeVerifier: pkce.verifier, device: device), as: TokenSet.self)
+        try save(tokens, key: key.rawRepresentation)
+        return tokens
+    }
     private func save(_ tokens: TokenSet, key: Data) throws {
         guard !tokens.accessToken.isEmpty, !tokens.refreshToken.isEmpty, !tokens.userId.isEmpty, !tokens.deviceId.isEmpty else { throw IdentityError.invalidResponse }
         let session = SavedSession(userID: tokens.userId, deviceID: tokens.deviceId, refreshToken: tokens.refreshToken, signingKey: key)
@@ -267,6 +316,7 @@ public actor WorldsIdentityClient {
             return tokens.accessToken
         } catch {
             refreshTask = nil
+            access = nil
             if case IdentityError.http(status: 401, code: _, message: _) = error {
                 access = nil
                 try? secrets.delete()
@@ -301,5 +351,7 @@ public actor WorldsIdentityClient {
         access = nil
     }
 }
+
+
 
 

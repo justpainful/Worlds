@@ -10,6 +10,7 @@ settings:
     GENERATE_INFOPLIST_FILE: YES
     PRODUCT_NAME: Worlds
     CODE_SIGNING_ALLOWED: NO
+    "EXCLUDED_SOURCE_FILE_NAMES[config=Release]": worlds-v1-fixture.db
     CURRENT_PROJECT_VERSION: 1
     MARKETING_VERSION: "0.1.0"
 packages:
@@ -23,6 +24,10 @@ targets:
       - path: App
         excludes:
           - DESIGN.md
+          - UI_TEST_COVERAGE.md
+          - UITests
+      - path: WorldsCore/Tests/WorldsPersistenceTests/worlds-v1-fixture.db
+        buildPhase: resources
     dependencies:
       - package: WorldsCore
         product: WorldsModels
@@ -43,6 +48,10 @@ targets:
       - path: App
         excludes:
           - DESIGN.md
+          - UI_TEST_COVERAGE.md
+          - UITests
+      - path: WorldsCore/Tests/WorldsPersistenceTests/worlds-v1-fixture.db
+        buildPhase: resources
     dependencies:
       - package: WorldsCore
         product: WorldsModels
@@ -53,12 +62,44 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.worlds.native.macos
+  Worlds-iOS-UITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - App/UITests
+    dependencies:
+      - target: Worlds-iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.worlds.native.ios.uitests
+        TEST_TARGET_NAME: Worlds-iOS
+  Worlds-macOS-UITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - App/UITests
+    dependencies:
+      - target: Worlds-macOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.worlds.native.macos.uitests
+        TEST_TARGET_NAME: Worlds-macOS
 schemes:
   Worlds-iOS:
     build:
       targets:
         Worlds-iOS: all
+        Worlds-iOS-UITests: [test]
+    test:
+      config: Debug
+      targets:
+        - Worlds-iOS-UITests
   Worlds-macOS:
     build:
       targets:
         Worlds-macOS: all
+        Worlds-macOS-UITests: [test]
+    test:
+      config: Debug
+      targets:
+        - Worlds-macOS-UITests

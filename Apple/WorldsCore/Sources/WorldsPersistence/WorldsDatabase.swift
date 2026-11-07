@@ -70,7 +70,6 @@ public actor WorldsDatabase {
         }
         do {
             sqlite3_busy_timeout(handle, 5000)
-            sqlite3_enable_load_extension(handle, 0)
             try Self.exec(handle, "PRAGMA query_only = ON")
             try Self.exec(handle, "PRAGMA trusted_schema = OFF")
             let schema = try Self.scalarInt(handle, "PRAGMA user_version")

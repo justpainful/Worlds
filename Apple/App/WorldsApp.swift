@@ -72,6 +72,16 @@ private struct WorldsLibraryView: View {
                 ContentUnavailableView("Select a page", systemImage: "doc.text")
             }
         }
+        .task {
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-fixture"),
+               let fixture = Bundle.main.url(forResource: "worlds-v1-fixture", withExtension: "db") {
+                await open(fixture)
+            } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-missing-fixture") {
+                await open(Bundle.main.bundleURL.appendingPathComponent("missing-ui-fixture.db"))
+            }
+            #endif
+        }
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [.data]) { result in
             switch result {
             case .success(let url):

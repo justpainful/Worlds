@@ -68,6 +68,7 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/WorldsSimulator" \
             TARGETED_DEVICE_FAMILY=${{ matrix.family }} CODE_SIGNING_ALLOWED=NO build \
             2>&1 | tee logs/${{ matrix.device }}-simulator.log
+          test ! -e "$RUNNER_TEMP/WorldsSimulator/Build/Products/Release-iphonesimulator/Worlds.app/worlds-v1-fixture.db"
       - name: Build unsigned device target
         shell: bash
         run: |
@@ -107,9 +108,67 @@ jobs:
             -configuration Release -destination 'generic/platform=macOS' \
             -derivedDataPath "$RUNNER_TEMP/WorldsMac" CODE_SIGNING_ALLOWED=NO build \
             2>&1 | tee logs/macos.log
+          test ! -e "$RUNNER_TEMP/WorldsMac/Build/Products/Release/Worlds.app/Contents/Resources/worlds-v1-fixture.db"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: Worlds-macOS-build-logs
           path: logs/
+          if-no-files-found: warn
+
+  ui-tests:
+    name: UI tests ${{ matrix.device }}
+    runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - device: iPhone
+            scheme: Worlds-iOS
+            destination: 'platform=iOS Simulator,name=iPhone 17,OS=26.5'
+          - device: iPad
+            scheme: Worlds-iOS
+            destination: 'platform=iOS Simulator,name=iPad (A16),OS=26.5'
+          - device: macOS
+            scheme: Worlds-macOS
+            destination: 'platform=macOS'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          xcodebuild -version
+          xcrun simctl list devices available
+      - name: Install project generator
+        run: brew install xcodegen
+      - name: Generate project
+        run: xcodegen generate --spec Apple/project.yml
+      - name: Run UI automation and retain results
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p logs results
+          xcodebuild -project Apple/Worlds.xcodeproj -scheme '${{ matrix.scheme }}' \
+            -configuration Debug -destination '${{ matrix.destination }}' \
+            -derivedDataPath "$RUNNER_TEMP/WorldsUI" \
+            -resultBundlePath "$GITHUB_WORKSPACE/results/${{ matrix.device }}.xcresult" \
+            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee logs/ui-${{ matrix.device }}.log
+      - name: Export screenshot attachments
+        if: always()
+        shell: bash
+        run: |
+          result="results/${{ matrix.device }}.xcresult"
+          if [ -d "$result" ]; then
+            mkdir -p screenshots
+            xcrun xcresulttool export attachments --path "$result" --output-path screenshots
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-${{ matrix.device }}-UI-results
+          path: |
+            results/
+            screenshots/
+            logs/
+            Apple/App/UI_TEST_COVERAGE.md
           if-no-files-found: warn

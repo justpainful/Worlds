@@ -79,6 +79,20 @@ final class WorldsIdentityTests: XCTestCase {
         XCTAssertTrue(String(decoding: saved, as: UTF8.self).contains("wr_rotated"))
     }
 
+    func testPasskeyAssertionUsesWebAuthnWireShape() throws {
+        let assertion = PasskeyAssertion(credentialID: Data([255, 254]), clientDataJSON: Data([1, 2]),
+                                         authenticatorData: Data([3]), signature: Data([4]), userID: Data([5]))
+        let encoded = try JSONEncoder().encode(assertion.webAuthnResponse)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        XCTAssertEqual(object["id"] as? String, "__4")
+        XCTAssertEqual(object["rawId"] as? String, "__4")
+        XCTAssertEqual(object["type"] as? String, "public-key")
+        let response = try XCTUnwrap(object["response"] as? [String: String])
+        XCTAssertEqual(response["clientDataJSON"], "AQI")
+        XCTAssertEqual(response["authenticatorData"], "Aw")
+        XCTAssertEqual(response["signature"], "BA")
+        XCTAssertEqual(response["userHandle"], "BQ")
+    }
     func testRejectsInvalidServerAndCallbackState() async throws {
         XCTAssertThrowsError(try WorldsIdentityClient(baseURL: URL(string: "http://example.com")!))
         let client = try WorldsIdentityClient(baseURL: URL(string: "https://identity.example")!, secrets: MemorySecrets(), transport: FakeIdentity())
@@ -88,3 +102,4 @@ final class WorldsIdentityTests: XCTestCase {
         } catch IdentityError.invalidResponse {} catch { XCTFail("Unexpected error: \(error)") }
     }
 }
+

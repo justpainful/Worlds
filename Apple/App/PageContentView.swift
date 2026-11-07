@@ -165,10 +165,13 @@ private func inlineContent(_ node: PageNode) -> AttributedString {
             case "italic": intent.insert(.emphasized)
             case "strike": intent.insert(.strikethrough)
             case "code": intent.insert(.code)
+            case "underline": text.underlineStyle = .single
             case "link":
                 if let href = mark.attrs?.href, let url = URL(string: href),
                    ["https", "http", "mailto"].contains(url.scheme?.lowercased() ?? "") {
                     text.link = url
+                } else {
+                    unsupported.append("link")
                 }
             default:
                 unsupported.append(mark.type)
