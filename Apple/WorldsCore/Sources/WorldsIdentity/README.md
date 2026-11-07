@@ -10,3 +10,5 @@ The module is included in SwiftPM and its isolated macOS tests passed in Actions
 
 
 `ApplePasskeyAuthorization` now cancels an active system request when its Swift task is cancelled and ignores callbacks from an older authorization controller. The pre-presentation cancellation test requires no user interaction. Separate synthetic tests cover reopening a saved device session and refusing replay after an interrupted refresh. These additions await Apple CI and do not establish actual passkey, keychain or device behavior. Apple documents cancellation callbacks at https://developer.apple.com/documentation/authenticationservices/asauthorizationcontroller/cancel().
+
+Synthetic tests now cover concurrent in-process refresh coalescing, persistence failure after rotation and refusal to replay the uncertain old token. Authenticated request paths reject ambiguous dot segments, encoded separators and NULs before sending, while query values remain supported. These changes await Apple CI. Device Keychain behavior, cross-process ownership and actual service interaction remain unverified.

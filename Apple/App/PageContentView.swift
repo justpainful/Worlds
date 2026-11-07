@@ -266,7 +266,6 @@ private struct ReaderTextSelection: ViewModifier {
 private struct ToggleNodeView: View {
     let node: PageNode
     @State private var isOpen: Bool
-    @FocusState private var toggleFocused: Bool
     init(node: PageNode) {
         self.node = node
         _isOpen = State(initialValue: node.attrs?.open ?? true)
@@ -274,8 +273,10 @@ private struct ToggleNodeView: View {
     var body: some View {
         let items = node.content ?? []
         VStack(alignment: .leading, spacing: 8) {
+            #if os(macOS)
+            MacReaderToggle(title: items.first.map { String(inlineContent($0).characters) } ?? "Toggle", isOpen: $isOpen)
+            #else
             Button {
-                toggleFocused = true
                 isOpen.toggle()
             } label: {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -288,10 +289,9 @@ private struct ToggleNodeView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .focusable()
-            .focused($toggleFocused)
             .accessibilityIdentifier("reader-toggle")
             .accessibilityValue(isOpen ? "Expanded" : "Collapsed")
+            #endif
             if isOpen {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(Array(items.dropFirst().enumerated()), id: \.offset) { _, child in NodeView(node: child) }
@@ -300,6 +300,49 @@ private struct ToggleNodeView: View {
         }
     }
 }
+
+#if os(macOS)
+import AppKit
+
+/// NSButton does not always take keyboard focus on click. This control does so
+/// explicitly, while retaining native button activation and accessibility.
+private final class FocusedReaderButton: NSButton {
+    override var acceptsFirstResponder: Bool { true }
+    override func mouseDown(with event: NSEvent) {
+        window?.makeFirstResponder(self)
+        super.mouseDown(with: event)
+    }
+}
+
+private struct MacReaderToggle: NSViewRepresentable {
+    @Environment(\.layoutDirection) private var direction
+    let title: String
+    @Binding var isOpen: Bool
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+    func makeNSView(context: Context) -> FocusedReaderButton {
+        let button = FocusedReaderButton(title: title, target: context.coordinator, action: #selector(Coordinator.activate(_:)))
+        button.isBordered = false
+        button.setButtonType(.momentaryPushIn)
+        button.font = NSFont.preferredFont(forTextStyle: .body)
+        button.setAccessibilityIdentifier("reader-toggle")
+        return button
+    }
+    func updateNSView(_ button: FocusedReaderButton, context: Context) {
+        context.coordinator.parent = self
+        button.title = title
+        let symbol = isOpen ? "chevron.down" : (direction == .rightToLeft ? "chevron.left" : "chevron.right")
+        button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
+        button.toolTip = title
+        button.imagePosition = direction == .rightToLeft ? .imageRight : .imageLeft
+        button.setAccessibilityValue(isOpen ? "Expanded" : "Collapsed")
+    }
+    final class Coordinator: NSObject {
+        var parent: MacReaderToggle
+        init(_ parent: MacReaderToggle) { self.parent = parent }
+        @objc func activate(_ sender: NSButton) { parent.isOpen.toggle() }
+    }
+}
+#endif
 
 private struct TabsNodeView: View {
     let node: PageNode

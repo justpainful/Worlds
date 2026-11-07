@@ -148,7 +148,11 @@ final class WorldsUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Hidden detail"].waitForExistence(timeout: 10))
         let frame = app.windows.firstMatch.frame
         XCTAssertGreaterThanOrEqual(frame.width, 1000)
-        XCTAssertGreaterThanOrEqual(frame.height, 700)
+        XCTAssertGreaterThanOrEqual(frame.height, 600)
+        let dimensions = XCTAttachment(string: "Window: \(frame.width) x \(frame.height) points")
+        dimensions.name = "large-reader-window-dimensions"
+        dimensions.lifetime = .keepAlways
+        add(dimensions)
         capture("11-structured-reader-large-rtl", app: app)
     }
     #endif

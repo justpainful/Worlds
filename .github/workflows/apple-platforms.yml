@@ -39,6 +39,9 @@ jobs:
           grep -E 'testCancelledPasskeyBeforePresentationDoesNotStart.*passed' logs/swift-test.log
           grep -E 'testRecreatedClientRefreshesUsingSavedDeviceKey.*passed' logs/swift-test.log
           grep -E 'testInterruptedRotationIsNotReplayedAfterClientRecreation.*passed' logs/swift-test.log
+          grep -E 'testFailedRotationSaveDoesNotReplayPreviousToken.*passed' logs/swift-test.log
+          grep -E 'testConcurrentRefreshRequestsShareOneRotation.*passed' logs/swift-test.log
+          grep -E 'testRejectsAmbiguousAuthenticatedPaths.*passed' logs/swift-test.log
           grep -q 'testReadOpaqueRoundTripAndRejectShared' logs/swift-test.log
           grep -E 'testLegacyAndMalformedSyncMetadataAreFilteredConsistently.*passed' logs/swift-test.log
           grep -E 'testAmbiguousSyncMetadataCannotLeakFTSOrParentTitle.*passed' logs/swift-test.log
@@ -82,6 +85,7 @@ jobs:
             -resultBundlePath "$GITHUB_WORKSPACE/drawing-visual-comparison.xcresult" \
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$GITHUB_WORKSPACE/logs/drawing-visual-comparison.log"
           grep -E 'Test Case .*testSourceCanvasAndNativeStrokePixels.*passed' "$GITHUB_WORKSPACE/logs/drawing-visual-comparison.log"
+          grep -E 'Test Case .*testPressureSensitiveHighlighterRemainsUnsupported.*passed' "$GITHUB_WORKSPACE/logs/drawing-visual-comparison.log"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -533,6 +537,8 @@ jobs:
           grep -q 'testLiveCheckedEditorsConvergeAfterReconnect' logs/local-swift-discovery.log
           grep -q 'testDiagnosticDefaultTransportLoopbackHandshake' logs/local-swift-discovery.log
           grep -q 'testDiagnosticSharedSessionLoopbackHandshake' logs/local-swift-discovery.log
+          grep -q 'testDiagnosticSingleClientWithPresence' logs/local-swift-discovery.log
+          grep -q 'testDiagnosticTwoClientsWithoutPresence' logs/local-swift-discovery.log
       - name: Install isolated Worker dependencies
         working-directory: services/sync
         run: pnpm install --frozen-lockfile
@@ -587,7 +593,7 @@ jobs:
           grep -q 'editor_transaction_rejects_stale_and_rolls_back_outbox_failure ... ok' logs/collaboration-store-rust.log
           grep -q 'editor_ffi_commits_and_reports_stale_base ... ok' logs/collaboration-store-rust.log
           diagnostic_status=0
-          for diagnostic in testDiagnosticDefaultTransportLoopbackHandshake testDiagnosticSharedSessionLoopbackHandshake; do
+          for diagnostic in testDiagnosticDefaultTransportLoopbackHandshake testDiagnosticSharedSessionLoopbackHandshake testDiagnosticSingleClientWithPresence testDiagnosticTwoClientsWithoutPresence; do
             if WORLDS_LIVE_SYNC_URL=ws://127.0.0.1:18790 \
               WORLDS_LIVE_EDITOR_TOKEN="$editor_token" WORLDS_LIVE_VIEWER_TOKEN="$viewer_token" \
               swift test --package-path Apple/WorldsCore --filter "$diagnostic" \

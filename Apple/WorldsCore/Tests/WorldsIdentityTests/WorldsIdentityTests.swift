@@ -67,6 +67,29 @@ private actor InterruptedRefreshTransport: IdentityTransport {
     }
 }
 
+private enum SyntheticStorageError: Error { case full }
+private final class FailingRotationSecrets: IdentitySecretStore, @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: Data?
+    private var saves = 0
+    func load() throws -> Data? { lock.lock(); defer { lock.unlock() }; return value }
+    func save(_ data: Data) throws {
+        lock.lock(); defer { lock.unlock() }
+        saves += 1
+        if saves == 3 { throw SyntheticStorageError.full }
+        value = data
+    }
+    func delete() throws { lock.lock(); defer { lock.unlock() }; value = nil }
+}
+private actor DelayedRefreshTransport: IdentityTransport {
+    let source: FakeIdentity
+    init(source: FakeIdentity) { self.source = source }
+    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        if request.url?.path == "/auth/refresh" { try await Task.sleep(for: .milliseconds(150)) }
+        return try await source.send(request)
+    }
+}
+
 final class WorldsIdentityTests: XCTestCase {
     func testPKCERFCVectorAndRefreshMessage() {
         XCTAssertEqual(IdentityCrypto.pkceChallenge(verifier: "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"), "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM")
@@ -154,6 +177,47 @@ final class WorldsIdentityTests: XCTestCase {
         catch IdentityError.signedOut { } catch { XCTFail("Unexpected error: \(error)") }
         let count = await source.refreshCount
         XCTAssertEqual(count, 0)
+    }
+
+    func testFailedRotationSaveDoesNotReplayPreviousToken() async throws {
+        let transport = FakeIdentity(), secrets = FailingRotationSecrets()
+        let url = try XCTUnwrap(URL(string: "https://identity.example"))
+        let first = try WorldsIdentityClient(baseURL: url, secrets: secrets, transport: transport)
+        _ = try await first.verifyEmail(challengeID: "fixture", code: "123456", deviceName: "Test", platform: "macos")
+        do { _ = try await first.accessToken(forceRefresh: true); XCTFail("Synthetic keychain failure must fail") }
+        catch SyntheticStorageError.full { } catch { XCTFail("Unexpected error: \(error)") }
+        let restored = try WorldsIdentityClient(baseURL: url, secrets: secrets, transport: transport)
+        do { _ = try await restored.accessToken(forceRefresh: true); XCTFail("Prior token must not be replayed") }
+        catch IdentityError.signedOut { } catch { XCTFail("Unexpected error: \(error)") }
+        let count = await transport.refreshCount
+        XCTAssertEqual(count, 1)
+    }
+    func testConcurrentRefreshRequestsShareOneRotation() async throws {
+        let source = FakeIdentity(), secrets = MemorySecrets()
+        let transport = DelayedRefreshTransport(source: source)
+        let client = try WorldsIdentityClient(baseURL: XCTUnwrap(URL(string: "https://identity.example")), secrets: secrets, transport: transport)
+        _ = try await client.verifyEmail(challengeID: "fixture", code: "123456", deviceName: "Test", platform: "macos")
+        let results = try await withThrowingTaskGroup(of: String.self, returning: [String].self) { group in
+            for _ in 0..<8 { group.addTask { try await client.accessToken(forceRefresh: true) } }
+            var results: [String] = []
+            for try await token in group { results.append(token) }
+            return results
+        }
+        XCTAssertEqual(results.count, 8)
+        XCTAssertEqual(Set(results), ["access"])
+        let count = await source.refreshCount
+        XCTAssertEqual(count, 1)
+    }
+
+    func testRejectsAmbiguousAuthenticatedPaths() async throws {
+        let source = FakeIdentity(), secrets = MemorySecrets()
+        let client = try WorldsIdentityClient(baseURL: XCTUnwrap(URL(string: "https://identity.example")), secrets: secrets, transport: source)
+        _ = try await client.verifyEmail(challengeID: "fixture", code: "123456", deviceName: "Test", platform: "macos")
+        for path in ["/../other", "/%2e%2e/other", "/folder/%2fsecret", "/folder/%255csecret", "/folder/%00"] {
+            do { _ = try await client.authenticatedRequest(path: path); XCTFail("Unsafe path must fail") }
+            catch IdentityError.invalidPath { } catch { XCTFail("Unexpected error: \(error)") }
+        }
+        _ = try await client.authenticatedRequest(path: "/me?next=%2F")
     }
 
 }

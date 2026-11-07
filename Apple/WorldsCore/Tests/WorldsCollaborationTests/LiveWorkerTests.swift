@@ -102,19 +102,31 @@ final class LiveWorkerTests: XCTestCase {
         XCTAssertEqual(recovered, [Data([0, 0])])
     }
     func testLiveAwarenessExchangeAndDisconnect() async throws {
+        func trace(_ message: String) { FileHandle.standardError.write(Data("awareness-diagnostic: \(message)\n".utf8)) }
+        trace("begin")
         let env = ProcessInfo.processInfo.environment
         guard env["WORLDS_REQUIRE_LIVE_SERVICE"] == "1" else { throw XCTSkip("Local Worker integration was not requested") }
         guard env["WORLDS_LIVE_SYNC_URL"] == "ws://127.0.0.1:18790",
               let editor = env["WORLDS_LIVE_EDITOR_TOKEN"], !editor.isEmpty,
               let viewer = env["WORLDS_LIVE_VIEWER_TOKEN"], !viewer.isEmpty else { return XCTFail("Local Worker credentials are required") }
+        trace("copy fixtures")
         let paths = try [fixture("editor"), fixture("viewer")]
+        trace("fixtures copied")
         defer { for path in paths { try? FileManager.default.removeItem(at: path) } }
-        let a = try makeStore(paths[0], user: "editor"), b = try makeStore(paths[1], user: "viewer")
+        trace("open editor store")
+        let a = try makeStore(paths[0], user: "editor")
+        trace("open viewer store")
+        let b = try makeStore(paths[1], user: "viewer")
+        trace("stores open")
         let doc = "awareness" + UUID().uuidString.replacingOccurrences(of: "-", with: "")
+        trace("create sessions")
         let alice = try makeSession(a, user: "editor", token: editor, document: doc)
         let bob = try makeSession(b, user: "viewer", token: viewer, document: doc)
+        trace("set Alice presence")
         try await alice.setPresence(name: "Alice", color: "#123456")
+        trace("set Bob presence")
         try await bob.setPresence(name: "Bob", color: "#654321")
+        trace("start sessions")
         let arun = Task { try await alice.run() }, brun = Task { try await bob.run() }
         var seen = false
         for _ in 0..<100 {
@@ -122,7 +134,9 @@ final class LiveWorkerTests: XCTestCase {
             if peers.values.contains(where: { $0.json.contains("Alice") && $0.json.contains("editor") }) { seen = true; break }
             try await Task.sleep(for: .milliseconds(100))
         }
+        trace("finished first presence wait")
         XCTAssertTrue(seen, "Authenticated Alice should appear to Bob")
+        trace("stop Alice")
         await alice.stop(); try await arun.value
         var removed = false
         for _ in 0..<100 {
@@ -130,7 +144,9 @@ final class LiveWorkerTests: XCTestCase {
             if !peers.values.contains(where: { $0.json.contains("Alice") }) { removed = true; break }
             try await Task.sleep(for: .milliseconds(100))
         }
+        trace("finished removal wait")
         XCTAssertTrue(removed, "Alice should disappear after socket closes")
+        trace("create replacement session")
         let reopened = try makeSession(a, user: "editor", token: editor, document: doc)
         try await reopened.setPresence(name: "Alice", color: "#123456")
         let rerun = Task { try await reopened.run() }
@@ -140,6 +156,7 @@ final class LiveWorkerTests: XCTestCase {
             if peers.values.contains(where: { $0.json.contains("Alice") }) { returned = true; break }
             try await Task.sleep(for: .milliseconds(100))
         }
+        trace("stop replacement and Bob")
         await reopened.stop(); await bob.stop()
         try await rerun.value; try await brun.value
         XCTAssertTrue(returned, "Alice should reappear after reconnecting")
@@ -235,5 +252,52 @@ final class TransportDiagnosticsTests: XCTestCase {
     }
     func testDiagnosticDefaultTransportLoopbackHandshake() async throws { try await diagnosticTransport(useSharedSession: false) }
     func testDiagnosticSharedSessionLoopbackHandshake() async throws { try await diagnosticTransport(useSharedSession: true) }
+
+    private func diagnosticPresenceIsolation(dual: Bool) async throws {
+        func trace(_ value: String) { FileHandle.standardError.write(Data("awareness-isolation: \(value)\n".utf8)) }
+        let env = ProcessInfo.processInfo.environment
+        guard env["WORLDS_REQUIRE_LIVE_SERVICE"] == "1" else { throw XCTSkip("Local Worker integration was not requested") }
+        guard env["WORLDS_LIVE_SYNC_URL"] == "ws://127.0.0.1:18790",
+              let editor = env["WORLDS_LIVE_EDITOR_TOKEN"], !editor.isEmpty,
+              let viewer = env["WORLDS_LIVE_VIEWER_TOKEN"], !viewer.isEmpty else { return XCTFail("Local fixture tokens are required") }
+        let names = dual ? ["editor", "viewer"] : ["editor"]
+        var paths: [URL] = []
+        defer { for path in paths { try? FileManager.default.removeItem(at: path) } }
+        for name in names {
+            let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-\(name)-v11", withExtension: "db"))
+            let path = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-isolation-\(UUID().uuidString).db")
+            try FileManager.default.copyItem(at: source, to: path); paths.append(path)
+        }
+        let doc = "isolation" + UUID().uuidString.replacingOccurrences(of: "-", with: "")
+        let page = "fixture-page", workspace = "fixture-workspace", server = URL(string: "http://127.0.0.1:18790")!
+        trace("open first store")
+        let a = try SQLiteCollaborationStore(databaseURL: paths[0], pageID: page, userID: "editor", workspaceID: workspace)
+        let alice = try CollaborationSession(pageID: page, workspaceID: workspace, documentID: doc, expectedUserID: "editor", serverURL: server, store: a, tokenProvider: { _ in editor })
+        var bob: CollaborationSession?
+        if dual {
+            trace("open second store")
+            let b = try SQLiteCollaborationStore(databaseURL: paths[1], pageID: page, userID: "viewer", workspaceID: workspace)
+            bob = try CollaborationSession(pageID: page, workspaceID: workspace, documentID: doc, expectedUserID: "viewer", serverURL: server, store: b, tokenProvider: { _ in viewer })
+        } else {
+            trace("set one presence")
+            try await alice.setPresence(name: "Alice", color: "#123456")
+        }
+        trace("start sessions")
+        let arun = Task { try await alice.run() }
+        let brun: Task<Void, Error>? = bob.map { session in Task { try await session.run() } }
+        var connected = false
+        for _ in 0..<100 {
+            let alevel = await alice.accessLevel
+            let blevel = await bob?.accessLevel
+            if alevel == "edit", !dual || blevel == "view" { connected = true; break }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        trace(connected ? "authenticated" : "timeout")
+        await alice.stop(); if let bob { await bob.stop() }
+        try await arun.value; if let brun { try await brun.value }
+        XCTAssertTrue(connected)
+    }
+    func testDiagnosticSingleClientWithPresence() async throws { try await diagnosticPresenceIsolation(dual: false) }
+    func testDiagnosticTwoClientsWithoutPresence() async throws { try await diagnosticPresenceIsolation(dual: true) }
 
 }

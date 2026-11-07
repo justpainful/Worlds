@@ -177,9 +177,21 @@ public actor WorldsIdentityClient {
         self.transport = transport
     }
 
+    /// Reject paths that a proxy or server could normalize outside the service base.
+    private static func safePath(_ value: String) -> Bool {
+        guard let decoded = value.removingPercentEncoding,
+              !decoded.contains("\\"), !decoded.utf8.contains(0), !decoded.contains("%"),
+              !decoded.contains("//"), !decoded.split(separator: "/", omittingEmptySubsequences: false).contains("."),
+              !decoded.split(separator: "/", omittingEmptySubsequences: false).contains("..") else { return false }
+        let lower = value.lowercased()
+        return !lower.contains("%2f") && !lower.contains("%5c")
+    }
+
     private static func request(base: URL, path: String, method: String, body: Data?, token: String? = nil,
                                 actor: String? = nil) throws -> URLRequest {
-        guard path.hasPrefix("/"), !path.hasPrefix("//"), !path.contains("#"), !path.contains("\\") else { throw IdentityError.invalidPath }
+        let pathOnly = String(path.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false)[0])
+        guard path.hasPrefix("/"), !path.hasPrefix("//"), !path.contains("#"), !path.contains("\\"),
+              Self.safePath(pathOnly), Self.safePath(base.path) else { throw IdentityError.invalidPath }
         guard let url = URL(string: base.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + path),
               url.host == base.host, url.scheme == base.scheme else { throw IdentityError.invalidPath }
         var request = URLRequest(url: url)
