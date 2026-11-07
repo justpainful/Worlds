@@ -126,7 +126,7 @@ final class WorldsUITests: XCTestCase {
         disclosure.tap()
         XCTAssertTrue(app.staticTexts["Hidden detail"].waitForNonExistence(timeout: 10))
         #if os(macOS)
-        XCTAssertTrue(disclosure.hasKeyboardFocus)
+        XCTAssertTrue(disclosure.debugDescription.contains("Keyboard Focused"), disclosure.debugDescription)
         disclosure.typeKey(.space, modifierFlags: [])
         XCTAssertTrue(app.staticTexts["Hidden detail"].waitForExistence(timeout: 10))
         #endif
@@ -152,6 +152,57 @@ final class WorldsUITests: XCTestCase {
         capture("11-structured-reader-large-rtl", app: app)
     }
     #endif
+    @MainActor
+    func testProjectSummaryAndLinkedPage() throws {
+        let app = try openResource("resource-project")
+        XCTAssertTrue(app.staticTexts["Prepare the lesson"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Some linked pages are unavailable in this snapshot."].exists)
+        let link = app.buttons["resource-page.reader-fixture"]
+        XCTAssertTrue(link.waitForExistence(timeout: 10))
+        capture("11-project-summary", app: app)
+        link.tap()
+        XCTAssertTrue(app.staticTexts["Read the warning"].waitForExistence(timeout: 15))
+    }
+
+    @MainActor
+    func testGallerySummary() throws {
+        let app = try openResource("resource-gallery")
+        XCTAssertTrue(app.staticTexts["diagram.png"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Reference diagram"].exists)
+        capture("12-gallery-summary", app: app)
+    }
+
+    @MainActor
+    func testPresentationSummary() throws {
+        let app = try openResource("resource-deck")
+        XCTAssertTrue(app.staticTexts["A real fixture slide"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Slide 1"].exists)
+        XCTAssertTrue(app.staticTexts["Unsupported presentation content"].exists)
+        XCTAssertTrue(app.staticTexts["Explain the example"].exists)
+        capture("13-presentation-summary", app: app)
+    }
+
+    @MainActor
+    func testFileSummary() throws {
+        let app = try openResource("resource-file")
+        XCTAssertTrue(app.staticTexts["lesson.pdf"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["application/pdf"].exists)
+        capture("14-file-summary", app: app)
+    }
+
+    @MainActor
+    private func openResource(_ id: String) throws -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments.append("--ui-testing-reader-fixture")
+        app.launch()
+        let row = app.descendants(matching: .any)["page.\(id)"].firstMatch
+        if !row.waitForExistence(timeout: 10) { app.swipeUp() }
+        XCTAssertTrue(row.waitForExistence(timeout: 15))
+        row.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["resource-content"].firstMatch.waitForExistence(timeout: 15))
+        return app
+    }
+
     @MainActor
     func testDatabaseError() throws {
         let app = XCUIApplication()

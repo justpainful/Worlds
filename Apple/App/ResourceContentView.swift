@@ -1,0 +1,154 @@
+import SwiftUI
+import WorldsPersistence
+
+private struct ResourceMetadata: Decodable {
+    struct Project: Decodable {
+        let status: String?
+        let start: String?
+        let due: String?
+        let description: String?
+        let links: [String]?
+    }
+    struct File: Decodable {
+        let name: String?
+        let mime: String?
+        let size: Int64?
+    }
+    let project: Project?
+    let file: File?
+}
+private struct ResourceBlock: Decodable {
+    struct Attributes: Decodable {
+        struct Element: Decodable { let type: String?; let text: String? }
+        let name: String?
+        let caption: String?
+        let mime: String?
+        let notes: String?
+        let elements: [Element]?
+    }
+    let type: String?
+    let attrs: Attributes?
+}
+
+/// Read-only summary over the same personal-page snapshot used by navigation.
+/// No attachment path or user data is modified by this view.
+struct ResourceContentView: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    let page: StoredPage
+    let pages: [StoredPage]
+    let openPage: (String) -> Void
+
+    private var metadata: ResourceMetadata? { try? JSONDecoder().decode(ResourceMetadata.self, from: Data(page.metadataJSON.utf8)) }
+    private var blocks: [(String, ResourceBlock?)] {
+        page.blocks.map { block in (block.id, try? JSONDecoder().decode(ResourceBlock.self, from: Data(block.contentJSON.utf8))) }
+    }
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                Text(page.title.isEmpty ? "Untitled" : page.title)
+                    .font(.title.weight(.semibold)).accessibilityAddTraits(.isHeader)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                switch page.kind {
+                case "project": project
+                case "gallery": gallery
+                case "presentation": presentation
+                case "file": file
+                default: Text("This resource type is not available in the reader.")
+                }
+                Label("Read only", systemImage: "eye")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            .padding(dynamicTypeSize.isAccessibilitySize ? 16 : 24)
+            .frame(maxWidth: 760, alignment: .leading)
+            .frame(maxWidth: .infinity)
+        }
+        .background(WorldsPalette.paper(for: colorScheme))
+        .accessibilityIdentifier("resource-content")
+        .navigationTitle(page.title.isEmpty ? "Untitled" : page.title)
+    }
+    private var project: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let info = metadata?.project {
+                if let status = info.status { detail("Status", status.capitalized) }
+                if let start = info.start { detail("Start", start) }
+                if let due = info.due { detail("Due", due) }
+                if let description = info.description, !description.isEmpty { Text(description).textSelection(.enabled) }
+                let linked = linkedPages(info.links ?? [])
+                if !linked.isEmpty { pageLinks("Linked pages", linked) }
+                if (info.links ?? []).contains(where: { id in !pages.contains(where: { $0.id == id }) }) {
+                    Text("Some linked pages are unavailable in this snapshot.").font(.caption).foregroundStyle(.secondary)
+                }
+            } else { Text("Project details are unavailable.").foregroundStyle(.secondary) }
+            let children = pages.filter { $0.parentID == page.id && $0.kind != "template" }
+            if !children.isEmpty { pageLinks("Pages inside, including archived", children) }
+        }
+    }
+    private var gallery: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Media previews are unavailable in this reader.").foregroundStyle(.secondary)
+            if blocks.isEmpty { Text("This gallery has no items.").foregroundStyle(.secondary) }
+            ForEach(Array(blocks.enumerated()), id: \.offset) { _, pair in
+                if let block = pair.1, block.type == "galleryItem" {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Label(block.attrs?.name ?? "Gallery item details unavailable", systemImage: "photo")
+                        if let caption = block.attrs?.caption, !caption.isEmpty { Text(caption).foregroundStyle(.secondary) }
+                    }
+                } else { Text("Unsupported gallery content").foregroundStyle(.secondary) }
+            }
+        }
+    }
+    private var presentation: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Slide text and notes are shown below. Visual slide rendering is unavailable.").foregroundStyle(.secondary)
+            if blocks.isEmpty { Text("This presentation has no slides.").foregroundStyle(.secondary) }
+            ForEach(Array(blocks.enumerated()), id: \.offset) { index, pair in
+                if let block = pair.1, block.type == "slide" {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Slide \(blocks.prefix(index + 1).filter { $0.1?.type == "slide" }.count)").font(.headline).accessibilityAddTraits(.isHeader)
+                        ForEach(Array((block.attrs?.elements ?? []).enumerated()), id: \.offset) { _, element in
+                            if element.type == "text", let text = element.text { Text(text).textSelection(.enabled) }
+                            else { Text("Visual element unavailable").font(.caption).foregroundStyle(.secondary) }
+                        }
+                        if let notes = block.attrs?.notes, !notes.isEmpty { detail("Speaker notes", notes) }
+                    }
+                } else { Text("Unsupported presentation content").foregroundStyle(.secondary) }
+            }
+        }
+    }
+    private var file: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let info = metadata?.file {
+                if let name = info.name { detail("File", name) }
+                if let mime = info.mime { detail("Type", mime) }
+                if let size = info.size, size >= 0 { detail("Size", ByteCountFormatter.string(fromByteCount: size, countStyle: .file)) }
+                Text("File preview is unavailable in this reader.").foregroundStyle(.secondary)
+            } else { Text("File details are unavailable.").foregroundStyle(.secondary) }
+        }
+    }
+    private func linkedPages(_ ids: [String]) -> [StoredPage] {
+        var seen = Set<String>()
+        return ids.compactMap { id in
+            guard seen.insert(id).inserted else { return nil }
+            return pages.first(where: { $0.id == id })
+        }
+    }
+    private func detail(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label).font(.caption).foregroundStyle(.secondary)
+            Text(value).textSelection(.enabled)
+        }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+    private func pageLinks(_ label: String, _ entries: [StoredPage]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(label).font(.headline).accessibilityAddTraits(.isHeader)
+            ForEach(entries) { item in
+                Button { openPage(item.id) } label: {
+                    Label(item.title.isEmpty ? "Untitled" : item.title, systemImage: "doc.text")
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("resource-page.\(item.id)")
+            }
+        }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+}

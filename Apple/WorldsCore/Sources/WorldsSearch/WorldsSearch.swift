@@ -93,7 +93,7 @@ public actor WorldsSearch {
     private static func personal(alias: String, schema: Int) -> String {
         let workspace = schema >= 5 ? "\(alias).workspace_id IS NULL AND " : ""
         // CASE avoids extracting from malformed JSON. Unknown sync values fail closed.
-        return workspace + "CASE WHEN json_valid(\(alias).metadata) THEN CASE WHEN json_type(\(alias).metadata) != 'object' THEN 0 WHEN json_type(\(alias).metadata,'$.sync') IS NULL THEN 1 WHEN json_type(\(alias).metadata,'$.sync') = 'object' AND (json_type(\(alias).metadata,'$.sync.shared') IS NULL OR json_type(\(alias).metadata,'$.sync.shared') = 'false') THEN 1 ELSE 0 END ELSE 0 END = 1"
+        return workspace + "CASE WHEN json_valid(\(alias).metadata) THEN CASE WHEN json_type(\(alias).metadata) != 'object' THEN 0 WHEN (SELECT COUNT(*) FROM json_each(\(alias).metadata) WHERE key='sync') > 1 THEN 0 WHEN json_type(\(alias).metadata,'$.sync') IS NULL THEN 1 WHEN json_type(\(alias).metadata,'$.sync') = 'object' AND (SELECT COUNT(*) FROM json_each(\(alias).metadata,'$.sync') WHERE key='shared') <= 1 AND (json_type(\(alias).metadata,'$.sync.shared') IS NULL OR json_type(\(alias).metadata,'$.sync.shared') = 'false') THEN 1 ELSE 0 END ELSE 0 END = 1"
     }
     private func queryRows(_ sql: String, text: String, limit: Int) throws -> [WorldsSearchHit] {
         let statement = try Self.prepare(db, sql)

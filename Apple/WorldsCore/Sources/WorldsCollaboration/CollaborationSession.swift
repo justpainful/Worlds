@@ -27,13 +27,25 @@ public protocol CollaborationSocket: Sendable {
     func closeCode() async -> Int
 }
 
+final class RejectCollaborationRedirects: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest, completionHandler: @escaping @Sendable (URLRequest?) -> Void) {
+        completionHandler(nil)
+    }
+}
+
 public struct URLSessionCollaborationSocket: CollaborationSocket {
     private let task: URLSessionWebSocketTask
-    public init(url: URL, token: String, session: URLSession = .shared) {
+    // A caller-supplied session must independently reject redirects. The
+    // default session never forwards bearer credentials to a redirected URL.
+    private let session: URLSession
+    public init(url: URL, token: String, session: URLSession? = nil) {
         var request = URLRequest(url: url)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue(WorldsSyncWire.subprotocolName, forHTTPHeaderField: "Sec-WebSocket-Protocol")
-        task = session.webSocketTask(with: request)
+        let selected = session ?? URLSession(configuration: .ephemeral, delegate: RejectCollaborationRedirects(), delegateQueue: nil)
+        self.session = selected
+        task = selected.webSocketTask(with: request)
         task.resume()
     }
     public func send(_ data: Data) async throws { try await task.send(.data(data)) }

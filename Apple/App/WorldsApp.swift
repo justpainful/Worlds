@@ -108,7 +108,11 @@ private struct WorldsLibraryView: View {
             }
         } detail: {
             if let selectedID, let page = pages.first(where: { $0.id == selectedID }) {
-                PageContentView(page: page)
+                if ["project", "gallery", "presentation", "file"].contains(page.kind) {
+                    ResourceContentView(page: page, pages: pages) { selectedID = $0 }
+                } else {
+                    PageContentView(page: page)
+                }
             } else {
                 ContentUnavailableView("Select a page", systemImage: "doc.text")
             }

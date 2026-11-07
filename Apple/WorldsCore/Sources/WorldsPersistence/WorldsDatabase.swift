@@ -56,6 +56,18 @@ public enum WorldsDatabaseError: Error, LocalizedError {
 public actor WorldsDatabase {
     nonisolated(unsafe) private let db: OpaquePointer
     private let version: Int
+    // A missing sync field or missing shared flag is a legacy personal page.
+    // Any malformed shape or non-boolean shared flag is excluded.
+    private static let personalMetadata = """
+    CASE WHEN json_valid(p.metadata) THEN
+      json_type(p.metadata) = 'object' AND
+      (SELECT COUNT(*) FROM json_each(p.metadata) WHERE key = 'sync') <= 1 AND
+      (json_type(p.metadata, '$.sync') IS NULL OR
+       (json_type(p.metadata, '$.sync') = 'object' AND
+        (SELECT COUNT(*) FROM json_each(p.metadata, '$.sync') WHERE key = 'shared') <= 1 AND
+        (json_type(p.metadata, '$.sync.shared') IS NULL OR json_type(p.metadata, '$.sync.shared') = 'false')))
+    ELSE 0 END
+    """
 
     public init(url: URL) throws {
         guard url.isFileURL, !url.path.isEmpty, !url.path.utf8.contains(0) else {
@@ -88,11 +100,11 @@ public actor WorldsDatabase {
     public func snapshot(includeDeleted: Bool = false) throws -> WorldsSnapshot {
         try Self.exec(db, "BEGIN DEFERRED TRANSACTION")
         do {
-            var clauses: [String] = []
+            var clauses: [String] = [Self.personalMetadata]
             if !includeDeleted { clauses.append("deleted_at IS NULL") }
             if version >= 5 { clauses.append("workspace_id IS NULL") }
             let filter = clauses.isEmpty ? "" : " WHERE " + clauses.joined(separator: " AND ")
-            let sql = "SELECT id, title, kind, parent_id, preview, updated_at, metadata FROM pages" + filter + " ORDER BY sort_key, created_at"
+            let sql = "SELECT id, title, kind, parent_id, preview, updated_at, metadata FROM pages p" + filter + " ORDER BY sort_key, created_at"
             let statement = try Self.prepare(db, sql)
             defer { sqlite3_finalize(statement) }
             var pages: [StoredPage] = []
@@ -102,8 +114,6 @@ public actor WorldsDatabase {
                 guard status == SQLITE_ROW else { throw Self.error(db) }
                 let id = try Self.text(statement, 0, "page.id")
                 let metadata = try Self.text(statement, 6, "page.metadata")
-                guard let object = try? JSONSerialization.jsonObject(with: Data(metadata.utf8)) as? [String: Any] else { throw WorldsDatabaseError.invalidData("page.metadata") }
-                if let sync = object["sync"] as? [String: Any], sync["shared"] as? Bool == true { continue }
                 pages.append(StoredPage(
                     id: id, title: try Self.text(statement, 1, "page.title"),
                     kind: try Self.text(statement, 2, "page.kind"),
@@ -142,7 +152,7 @@ public actor WorldsDatabase {
     /// Reads the original history table. Shared rows are filtered in SQL.
     public func personalHistory(pageID: String, limit: Int = 100) throws -> [StoredHistoryEntry] {
         let workspace = version >= 5 ? " AND p.workspace_id IS NULL" : ""
-        let sql = "SELECT h.id,h.kind,h.actor,h.summary,h.before,h.after,h.created_at FROM history h JOIN pages p ON p.id=h.page_id WHERE p.id=?1" + workspace + " AND CASE WHEN json_valid(p.metadata) THEN COALESCE(json_extract(p.metadata,'$.sync.shared'),0) != 1 ELSE 0 END ORDER BY h.id DESC LIMIT ?2"
+        let sql = "SELECT h.id,h.kind,h.actor,h.summary,h.before,h.after,h.created_at FROM history h JOIN pages p ON p.id=h.page_id WHERE p.id=?1" + workspace + " AND (" + Self.personalMetadata + ") ORDER BY h.id DESC LIMIT ?2"
         let stmt = try Self.prepare(db, sql)
         defer { sqlite3_finalize(stmt) }
         let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)

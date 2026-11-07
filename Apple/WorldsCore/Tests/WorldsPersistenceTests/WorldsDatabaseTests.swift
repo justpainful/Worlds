@@ -74,6 +74,37 @@ final class WorldsDatabaseTests: XCTestCase {
         XCTAssertThrowsError(try WorldsDatabase(url: url))
         XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
     }
+    func testLegacyAndMalformedSyncMetadataAreFilteredConsistently() async throws {
+        let url = try fixture()
+        try execute(url, """
+        UPDATE pages SET metadata='{}' WHERE id='fixture-page';
+        INSERT INTO pages(id,title,metadata,created_at,updated_at) VALUES
+          ('legacy','Legacy','{"other":1}',1,1),
+          ('syncempty','Legacy sync','{"sync":{}}',1,1),
+          ('private','Personal','{"sync":{"shared":false}}',1,1),
+          ('shared','Shared','{"sync":{"shared":true}}',1,1),
+          ('numeric','Numeric','{"sync":{"shared":0}}',1,1),
+          ('string','String','{"sync":{"shared":"false"}}',1,1),
+          ('nullflag','Null flag','{"sync":{"shared":null}}',1,1),
+          ('nullsync','Null sync','{"sync":null}',1,1),
+          ('array','Array sync','{"sync":[]}',1,1),
+          ('dupsync','Duplicate sync','{"sync":{"shared":false},"sync":{"shared":true}}',1,1),
+          ('dupflag','Duplicate flag','{"sync":{"shared":false,"shared":true}}',1,1),
+          ('invalid','Broken','{',1,1),
+          ('nonobject','Nonobject','[]',1,1);
+        INSERT INTO history(page_id,actor,kind,summary,created_at)
+          SELECT id,'user','edit','example',1 FROM pages;
+        """)
+        let database = try WorldsDatabase(url: url)
+        let visible = try await database.snapshot()
+        let expected: Set<String> = ["fixture-page", "legacy", "syncempty", "private"]
+        XCTAssertEqual(Set(visible.pages.map(\.id)), expected)
+        for id in ["fixture-page", "legacy", "syncempty", "private", "shared", "numeric", "string", "nullflag", "nullsync", "array", "dupsync", "dupflag", "invalid", "nonobject"] {
+            let history = try await database.personalHistory(pageID: id)
+            XCTAssertEqual(!history.isEmpty, expected.contains(id), "History eligibility differs for \(id)")
+        }
+    }
+
 }
 
 

@@ -29,3 +29,5 @@ Run 42393652964: the macOS structured-reader test failed before its screenshot b
 Run 42393652964: the iPhone structured reader RTL test passed. Its full-resolution screenshot showed the Arabic diacritics, mixed Arabic and English text, and the expanded section without obvious clipping at that size. This does not establish complete Arabic, accessibility, dark mode or device coverage.
 
 Run 42397870778: the owner inspected the iPad A16 portrait RTL reader screenshot at 1640 x 2360 pixels. The expanded section is visible and the chevron sits beside its title. This covers one portrait size and one mixed Arabic and English fixture; landscape, Split View, dark mode and other sizes remain unreviewed.
+
+Run 42400251630: the experimental drawing comparison passed against five 64 x 64 Canvas references using an initial normalized RGBA MAE threshold of 0.02. Measured MAE: hard, ink and pencil 0.002252 each; highlighter 0.001973; layers 0.002524. The result covers only these synthetic stroke samples and does not establish drawing parity, larger scales, all brushes or interactive rendering. Source and native PNG attachments are retained in the drawing comparison xcresult.

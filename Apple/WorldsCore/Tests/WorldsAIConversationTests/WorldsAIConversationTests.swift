@@ -56,8 +56,9 @@ final class WorldsAIConversationTests: XCTestCase {
     func testUnexpectedToolIsRecordedAsErrorWithoutPermission() async throws {
         let store = try SQLiteConversationStore(database: fixture())
         let coordinator = ConversationCoordinator(store: store, runner: FakeConversationRunner(.unexpectedTool))
-        let opened = try await store.begin(chatID: nil, prompt: "First", runID: UUID())
-        try await store.finish(chatID: opened.chatID, runID: UUID(), text: "seed", steps: [], isError: true, sessionOK: false)
+        let seedID = UUID()
+        let opened = try await store.begin(chatID: nil, prompt: "First", runID: seedID)
+        try await store.finish(chatID: opened.chatID, runID: seedID, text: "seed", steps: [], isError: true, sessionOK: false)
         do { _ = try await coordinator.run(runID: UUID(), chatID: opened.chatID, prompt: "Next", systemPrompt: "", onEvent: { _ in }); XCTFail("Unexpected tool must fail") }
         catch ConversationError.unexpectedTool { } catch { XCTFail("Unexpected error: \(error)") }
         let messages = try await store.messages(chatID: opened.chatID)
@@ -66,8 +67,9 @@ final class WorldsAIConversationTests: XCTestCase {
     }
     func testCancellationKeepsUserAndFailureRecord() async throws {
         let store = try SQLiteConversationStore(database: fixture())
-        let opened = try await store.begin(chatID: nil, prompt: "First", runID: UUID())
-        try await store.finish(chatID: opened.chatID, runID: UUID(), text: "seed", steps: [], isError: true, sessionOK: false)
+        let seedID = UUID()
+        let opened = try await store.begin(chatID: nil, prompt: "First", runID: seedID)
+        try await store.finish(chatID: opened.chatID, runID: seedID, text: "seed", steps: [], isError: true, sessionOK: false)
         let coordinator = ConversationCoordinator(store: store, runner: FakeConversationRunner(.slow))
         let id = UUID()
         let task = Task { try await coordinator.run(runID: id, chatID: opened.chatID, prompt: "Next", systemPrompt: "", onEvent: { _ in }) }
@@ -85,13 +87,14 @@ final class WorldsAIConversationTests: XCTestCase {
     }
     func testFailedAssistantSaveRollsBackAndCanRetry() async throws {
         let url = try fixture(), store = try SQLiteConversationStore(database: url)
-        let chat = try await store.begin(chatID: nil, prompt: "Question", runID: UUID())
+        let id = UUID()
+        let chat = try await store.begin(chatID: nil, prompt: "Question", runID: id)
         var ptr: OpaquePointer?
         guard sqlite3_open(url.path, &ptr) == SQLITE_OK, let db = ptr else { return XCTFail("Could not open fixture") }
         defer { sqlite3_close_v2(db) }
         XCTAssertEqual(sqlite3_exec(db, "CREATE TRIGGER fail_result BEFORE INSERT ON ai_messages WHEN NEW.role='assistant' BEGIN SELECT RAISE(ABORT,'disk'); END;", nil, nil, nil), SQLITE_OK)
-        let id = UUID()
-        do { try await store.finish(chatID: chat.chatID, runID: id, text: "result", steps: [], isError: false, sessionOK: true); XCTFail("Injected fault must fail") } catch { }
+        do { try await store.finish(chatID: chat.chatID, runID: id, text: "result", steps: [], isError: false, sessionOK: true); XCTFail("Injected fault must fail") }
+        catch ConversationStorageError.database { } catch { XCTFail("Unexpected error: \(error)") }
         let before = try await store.messages(chatID: chat.chatID)
         XCTAssertEqual(before.map(\.role), ["user"])
         XCTAssertEqual(sqlite3_exec(db, "DROP TRIGGER fail_result", nil, nil, nil), SQLITE_OK)

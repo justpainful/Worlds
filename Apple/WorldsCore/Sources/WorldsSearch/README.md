@@ -6,3 +6,5 @@ Pages with workspace IDs, explicitly shared sync metadata, malformed metadata or
 
 Tests use an isolated synthetic database derived from the eleven original schema migrations. They cover FTS, Arabic, short titles, archive, trash, templates, permissions, highlights and read-only behavior. Four tests passed on macOS in Actions run 42387357673. The module is included in SwiftPM and a personal-search UI has been added; that UI is awaiting its first complete CI run and visual review.
 
+
+The personal filter excludes duplicate `sync` or `shared` keys as ambiguous. It applies to FTS hits, title fallback and parent titles. The new synthetic XCTest awaits Apple CI.

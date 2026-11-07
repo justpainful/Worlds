@@ -57,6 +57,37 @@ final class WorldsSearchTests: XCTestCase {
         _ = try await search.search("geometry")
         XCTAssertEqual(try Data(contentsOf: url), before)
     }
+    func testAmbiguousSyncMetadataCannotLeakFTSOrParentTitle() async throws {
+        let url = try database()
+        var handle: OpaquePointer?
+        guard sqlite3_open(url.path, &handle) == SQLITE_OK, let db = handle else { return XCTFail("Fixture open failed") }
+        let sql = #"""
+        INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES
+        ('dupsync','Secret geometry parent','page','{"sync":{"shared":false},"sync":{"shared":true}}',1,20),
+        ('dupflag','Secret geometry duplicate','page','{"sync":{"shared":false,"shared":true}}',1,19),
+        ('dupother','Secret geometry reverse','page','{"sync":{"shared":true,"shared":false}}',1,18),
+        ('legacy','Legacy geometry','page','{"sync":{}}',1,17);
+        INSERT INTO pages(id,title,kind,metadata,parent_id,created_at,updated_at) VALUES
+        ('child','Public geometry child','page','{}','dupsync',1,16);
+        INSERT INTO pages_fts(page_id,title,body) VALUES
+        ('dupsync','Secret geometry parent','geometry'),('dupflag','Secret geometry duplicate','geometry'),
+        ('dupother','Secret geometry reverse','geometry'),('legacy','Legacy geometry','geometry'),('child','Public geometry child','geometry');
+        """#
+        let status = sqlite3_exec(db, sql, nil, nil, nil)
+        sqlite3_close(db)
+        XCTAssertEqual(status, SQLITE_OK)
+        let search = try WorldsSearch(url: url)
+        let fts = try await search.search("geometry")
+        XCTAssertTrue(fts.contains { $0.pageId == "legacy" })
+        XCTAssertFalse(fts.contains { ["dupsync", "dupflag", "dupother"].contains($0.pageId) })
+        XCTAssertTrue(fts.contains { $0.pageId == "child" })
+        XCTAssertNil(fts.first { $0.pageId == "child" }?.parentTitle)
+        let fallback = try await search.search("Se")
+        XCTAssertFalse(fallback.contains { ["dupsync", "dupflag", "dupother"].contains($0.pageId) })
+        let legacyFallback = try await search.search("Le")
+        XCTAssertTrue(legacyFallback.contains { $0.pageId == "legacy" })
+    }
+
 }
 
 

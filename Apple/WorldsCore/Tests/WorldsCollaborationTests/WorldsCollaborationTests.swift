@@ -184,3 +184,22 @@ extension WorldsCollaborationTests {
         XCTAssertEqual(writes, 0)
     }
 }
+
+private final class RedirectProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private var rejected = false
+    func record(_ value: Bool) { lock.lock(); defer { lock.unlock() }; rejected = value }
+    func result() -> Bool { lock.lock(); defer { lock.unlock() }; return rejected }
+}
+
+extension WorldsCollaborationTests {
+    func testDefaultTransportRejectsRedirectBeforeBearerCanBeForwarded() throws {
+        let from = try XCTUnwrap(URL(string: "https://identity.example.invalid/socket"))
+        let to = try XCTUnwrap(URL(string: "https://other.example.invalid/socket"))
+        let response = try XCTUnwrap(HTTPURLResponse(url: from, statusCode: 302, httpVersion: nil, headerFields: ["Location": to.absoluteString]))
+        var request = URLRequest(url: to); request.setValue("Bearer synthetic", forHTTPHeaderField: "Authorization")
+        let task = URLSession.shared.dataTask(with: from), probe = RedirectProbe()
+        RejectCollaborationRedirects().urlSession(.shared, task: task, willPerformHTTPRedirection: response, newRequest: request) { next in probe.record(next == nil) }
+        XCTAssertTrue(probe.result())
+    }
+}

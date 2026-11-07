@@ -4,6 +4,8 @@ Status: inventory in progress. This is not yet an exhaustive audit and source in
 
 Source inspected: local Windows working tree at commit `185ee9a1019c8b7bc685d22dabf1b699579189cc` plus its pre-existing uncommitted changes. The Apple branch starts at that commit and does not contain those uncommitted changes. In particular, drawing and screen annotation include local modifications and untracked files; parity must be assessed against both versions without publishing private data or overwriting the Windows workspace.
 
+The authentication, collaboration and permissions traces and remaining verification are detailed in [AUTH_COLLAB_AUDIT.md](AUTH_COLLAB_AUDIT.md).
+
 Status below refers to the Apple port. `Planned but Not Implemented` does not assert the source feature is fully working. `Blocked with Documented Reason` identifies a technical dependency needing a compatible implementation, not permission to omit the feature. Tests listed are required acceptance tests, not results.
 
 | Feature | Source behavior and evidence | Storage and integration | Native approach and required verification | Apple status |
