@@ -16,3 +16,5 @@ chrono = "0.4"
 mime_guess = "2"
 imagesize = "0.13"
 unicode-bidi = "0.3"
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

@@ -110,14 +110,14 @@ private struct NodeView: View {
             Text(inlineContent(node))
                 .font(paragraphFont(node.attrs?.pstyle))
                 .multilineTextAlignment(textAlignment(node.attrs?.textAlign))
-                .textSelection(allowsSelection ? .enabled : .disabled)
+                .modifier(ReaderTextSelection(enabled: allowsSelection))
                 .frame(maxWidth: fillsWidth ? .infinity : nil, alignment: frameAlignment(node.attrs?.textAlign))
         case "heading":
             Text(inlineContent(node))
                 .font(headingFont(node.attrs?.level))
                 .multilineTextAlignment(textAlignment(node.attrs?.textAlign))
                 .accessibilityAddTraits(.isHeader)
-                .textSelection(allowsSelection ? .enabled : .disabled)
+                .modifier(ReaderTextSelection(enabled: allowsSelection))
                 .frame(maxWidth: fillsWidth ? .infinity : nil, alignment: frameAlignment(node.attrs?.textAlign))
         case "callout":
             VStack(alignment: .leading, spacing: 8) {
@@ -252,6 +252,14 @@ private struct NodeView: View {
         case 2: return .title3.weight(.semibold)
         default: return .headline
         }
+    }
+}
+
+private struct ReaderTextSelection: ViewModifier {
+    let enabled: Bool
+    @ViewBuilder func body(content: Content) -> some View {
+        if enabled { content.textSelection(.enabled) }
+        else { content.textSelection(.disabled) }
     }
 }
 

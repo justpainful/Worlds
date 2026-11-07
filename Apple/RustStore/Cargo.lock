@@ -540,6 +540,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "imagesize",
+ "libc",
  "mime_guess",
  "rusqlite",
  "serde",

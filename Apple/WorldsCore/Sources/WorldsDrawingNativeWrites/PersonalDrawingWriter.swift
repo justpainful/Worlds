@@ -12,7 +12,7 @@ public actor PersonalDrawingWriter {
     /// Returns the original Rust response envelope as UTF-8 JSON.
     public func load(pageID: String) throws -> Data { try call(operation: "load_personal_drawing", pageID: pageID, change: nil) }
     /// The transaction uses the original Windows drawing operation implementation.
-    /// The current bridge refuses sync bindings, version restores and unsupported asset ownership.
+    /// The current bridge refuses sync bindings, version restores and asset-backed scenes.
     public func apply(pageID: String, changeJSON: Data) throws -> Data {
         guard (try JSONSerialization.jsonObject(with: changeJSON)) is [String: Any] else { throw DrawingWriteError.invalidInput }
         return try call(operation: "apply_personal_drawing", pageID: pageID, change: changeJSON)

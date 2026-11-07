@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 import SQLite3
 import XCTest
 @testable import WorldsDrawingNativeWrites
@@ -18,7 +19,22 @@ final class WorldsDrawingNativeWritesTests: XCTestCase {
         let status = sqlite3_exec(db, "UPDATE pages SET kind='drawing' WHERE id='fixture-page'; INSERT INTO profile(id,display_name,created_at,updated_at) VALUES('artist','Artist',1,1);", nil, nil, nil)
         sqlite3_close_v2(db)
         XCTAssertEqual(status, SQLITE_OK)
-        let store = try PersonalDrawingWriter(database: url)
+        // Resolve the actual file after copying, including any system temp aliases.
+        // The production writer still rejects symlink components.
+        let resolved = url.withUnsafeFileSystemRepresentation { path in path.flatMap { realpath($0, nil) } }
+        let resolvedPointer = try XCTUnwrap(resolved, "Could not resolve the isolated fixture path")
+        defer { free(resolvedPointer) }
+        let canonical = URL(fileURLWithPath: String(cString: resolvedPointer))
+        var component = canonical
+        while true {
+            var details = stat()
+            XCTAssertEqual(lstat(component.path, &details), 0, "Cannot inspect fixture component: \(component.path)")
+            XCTAssertNotEqual(details.st_mode & mode_t(S_IFMT), mode_t(S_IFLNK), "Fixture component is a symlink: \(component.path)")
+            let parent = component.deletingLastPathComponent()
+            if parent.path == component.path { break }
+            component = parent
+        }
+        let store = try PersonalDrawingWriter(database: canonical)
         let before = try value(await store.load(pageID: "fixture-page"))
         let scene = try XCTUnwrap(before["scene"] as? [String: Any])
         let layer = try XCTUnwrap((scene["layerOrder"] as? [String])?.first)

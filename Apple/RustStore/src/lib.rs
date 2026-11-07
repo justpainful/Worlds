@@ -24,6 +24,7 @@ mod drawing_copy {
     pub fn require_current(_: &Connection, _: &str, _: Option<&Permit>) -> Result<()> { bail!("drawing copy unavailable") }
 }
 mod drawing;
+mod attachment_open;
 // Publication validation needs library ownership dependencies which are not
 // available in this isolated target; refuse instead of weakening validation.
 // A personal-only bridge must refuse, rather than silently omit, a sync outbox.

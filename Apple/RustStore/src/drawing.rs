@@ -29,22 +29,16 @@ fn validate_owned_assets(conn: &Connection, database: &Path, page: &str, scene: 
     use std::path::Component;
     let assets = scene["assets"].as_object().ok_or_else(|| anyhow::anyhow!("invalid assets"))?;
     if assets.is_empty() { return Ok(()); }
-    let root_path = database.parent().ok_or_else(|| anyhow::anyhow!("invalid database path"))?.join("attachments");
-    reject_symlink_ancestors(&root_path)?;
-    let root = root_path.canonicalize()?;
-    if !root.is_dir() { bail!("attachment directory unavailable") }
+    let root = database.parent().ok_or_else(|| anyhow::anyhow!("invalid database path"))?.join("attachments");
     for item in assets.values() {
         let id = item["attachmentId"].as_str().ok_or_else(|| anyhow::anyhow!("missing attachment ID"))?;
         let original = store::get_attachment(conn, id)?.ok_or_else(|| anyhow::anyhow!("missing original attachment"))?;
         if original.page_id.as_deref() != Some(page) { bail!("asset is not owned by the drawing") }
         let relative = Path::new(&original.rel_path);
         if relative.as_os_str().is_empty() || !relative.components().all(|part| matches!(part, Component::Normal(_))) { bail!("invalid attachment path") }
-        let path = root.join(relative);
-        reject_symlink_ancestors(&path)?;
-        let resolved = path.canonicalize()?;
-        if !resolved.starts_with(&root) { bail!("attachment escapes its directory") }
-        let metadata = std::fs::metadata(resolved)?;
-        if !metadata.is_file() || original.size < 0 || metadata.len() != original.size as u64 { bail!("original attachment missing or changed") }
+        let file = crate::attachment_open::open_confined(&root, relative)?;
+        let metadata = file.metadata()?;
+        if original.size < 0 || metadata.len() != original.size as u64 { bail!("original attachment missing or changed") }
     }
     Ok(())
 }
@@ -66,6 +60,10 @@ pub fn apply_personal(path: &Path, page: &str, operation: Value) -> Result<Value
     if !operation["versionRestore"].is_null() { bail!("version restore is unavailable") }
     let doc = drawing_persistence::apply(&tx, &store::Ctx::user(), page, operation)?;
     validate_owned_assets(&tx, path, page, &doc["scene"])?;
+    // An open descriptor cannot ensure that a stored path will still name that
+    // inode after commit, or prevent mutation through another writable handle.
+    // Keep asset writes disabled until the storage ownership model handles both.
+    if doc["scene"]["assets"].as_object().is_some_and(|assets| !assets.is_empty()) { bail!("asset-backed drawing writes are disabled") }
     tx.commit()?; Ok(doc)
 }
 pub fn duplicate_into(_: &Connection, _: &str, _: &str) -> Result<()> { bail!("drawing copy unavailable") }
@@ -149,23 +147,22 @@ mod tests {
         std::fs::write(&file, [1u8,2,3]).unwrap();
         conn.execute("INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,width,height,created_at) VALUES('a','fixture-page','image','asset.png','image/png',3,'2026-01/asset.png',1,1,1)", []).unwrap();
         let add = json!({"id":"asset-add","actor":"artist","base":0,"at":1,"label":"Add original","type":"edit","changes":[{"type":"put","collection":"assets","id":"asset","value":{"id":"asset","attachmentId":"a","mime":"image/png","width":1,"height":1}}]});
-        let saved = super::apply_personal(&path,"fixture-page",add).unwrap();
-        assert_eq!(saved["revision"],1);
-        assert_eq!(saved["scene"]["assets"]["asset"]["attachmentId"],"a");
-        let edit = json!({"id":"after-asset","actor":"artist","base":1,"at":2,"label":"Edit","type":"edit","changes":[]});
+        let mut scene = super::drawing_scene::initial_scene("fixture-page");
+        scene["assets"]["asset"] = json!({"id":"asset","attachmentId":"a","mime":"image/png","width":1,"height":1});
+        #[cfg(unix)] assert!(super::validate_owned_assets(&conn,&path,"fixture-page",&scene).is_ok());
+        assert!(super::apply_personal(&path,"fixture-page",add.clone()).is_err());
+        assert_eq!(super::load_personal(&path,"fixture-page").unwrap()["revision"],0);
         std::fs::remove_file(&file).unwrap();
-        assert!(super::apply_personal(&path,"fixture-page",edit.clone()).is_err());
-        assert_eq!(super::load_personal(&path,"fixture-page").unwrap(),saved);
+        assert!(super::validate_owned_assets(&conn,&path,"fixture-page",&scene).is_err());
         std::fs::write(&file, [1u8,2,3]).unwrap();
         conn.execute("UPDATE attachments SET page_id=NULL WHERE id='a'", []).unwrap();
-        assert!(super::apply_personal(&path,"fixture-page",edit.clone()).is_err());
+        assert!(super::validate_owned_assets(&conn,&path,"fixture-page",&scene).is_err());
         conn.execute("UPDATE attachments SET page_id='fixture-page',rel_path='../outside' WHERE id='a'", []).unwrap();
-        assert!(super::apply_personal(&path,"fixture-page",edit).is_err());
-        assert_eq!(super::load_personal(&path,"fixture-page").unwrap(),saved);
+        assert!(super::validate_owned_assets(&conn,&path,"fixture-page",&scene).is_err());
+        assert_eq!(super::load_personal(&path,"fixture-page").unwrap()["revision"],0);
         conn.execute("UPDATE attachments SET rel_path='2026-01/asset.png' WHERE id='a'", []).unwrap();
         conn.execute("INSERT INTO drawing_sync_state(page_id,server_url,workspace_id,user_id,basis,updated_at) VALUES('fixture-page','https://example.test','w','u','{}',1)", []).unwrap();
-        let denied = json!({"id":"sync-denied","actor":"artist","base":1,"at":3,"label":"Shared","type":"edit","changes":[]});
-        assert!(super::apply_personal(&path,"fixture-page",denied).is_err());
+        assert!(super::apply_personal(&path,"fixture-page",add).is_err());
         drop(conn); std::fs::remove_dir_all(directory).unwrap();
     }
     #[cfg(unix)]
