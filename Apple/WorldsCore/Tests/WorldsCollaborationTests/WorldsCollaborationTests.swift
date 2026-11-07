@@ -203,3 +203,12 @@ extension WorldsCollaborationTests {
         XCTAssertTrue(probe.result())
     }
 }
+
+extension WorldsCollaborationTests {
+    func testDefaultSocketLifecycleWithLocalRefusal() async throws {
+        let url = try XCTUnwrap(URL(string: "ws://127.0.0.1:1/socket"))
+        let first = URLSessionCollaborationSocket(url: url, token: "synthetic")
+        let second = URLSessionCollaborationSocket(url: url, token: "synthetic")
+        await first.close(); await second.close()
+    }
+}

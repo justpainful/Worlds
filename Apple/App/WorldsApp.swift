@@ -68,30 +68,7 @@ private struct WorldsLibraryView: View {
                         description: Text("This database has no personal pages available to show.")
                     )
                 } else {
-                    List(pages, selection: $selectedID) { page in
-                        NavigationLink(value: page.id) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(page.title.isEmpty ? "Untitled" : page.title)
-                                    .font(.body.weight(.medium))
-                                if let parentID = page.parentID,
-                                   let parent = pages.first(where: { $0.id == parentID }), !parent.title.isEmpty {
-                                    Text(parent.title)
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
-                                }
-                                if !page.preview.isEmpty {
-                                    Text(page.preview)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(2)
-                                }
-                            }
-                            .padding(.vertical, 4)
-                        }
-                        .accessibilityIdentifier("page.\(page.id)")
-                        .accessibilityHint("Opens page")
-                    }
+                    pageList
                 }
             }
             .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 360)
@@ -152,6 +129,23 @@ private struct WorldsLibraryView: View {
         } message: {
             Text(errorMessage ?? "")
         }
+    }
+
+    private var pageList: some View {
+        List(pages, selection: $selectedID) { page in
+            NavigationLink(value: page.id) {
+                PageListRow(page: page, parentTitle: parentTitle(for: page))
+            }
+            .accessibilityIdentifier("page.\(page.id)")
+            .accessibilityHint("Opens page")
+        }
+    }
+
+    private func parentTitle(for page: StoredPage) -> String? {
+        guard let parentID = page.parentID,
+              let title = pages.first(where: { $0.id == parentID })?.title,
+              !title.isEmpty else { return nil }
+        return title
     }
 
     private var searchResults: some View {
@@ -257,5 +251,23 @@ private struct WorldsLibraryView: View {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+}
+
+private struct PageListRow: View {
+    let page: StoredPage
+    let parentTitle: String?
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(page.title.isEmpty ? "Untitled" : page.title)
+                .font(.body.weight(.medium))
+            if let parentTitle {
+                Text(parentTitle).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+            }
+            if !page.preview.isEmpty {
+                Text(page.preview).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+            }
+        }
+        .padding(.vertical, 4)
     }
 }
