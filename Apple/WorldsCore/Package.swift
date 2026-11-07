@@ -21,6 +21,7 @@ let package = Package(
         .library(name: "WorldsIdentity", targets: ["WorldsIdentity"]),
         .library(name: "WorldsRichText", targets: ["WorldsRichText"]),
         .library(name: "WorldsDrawing", targets: ["WorldsDrawing"]),
+        .library(name: "WorldsPresentations", targets: ["WorldsPresentations"]),
     ],
     targets: [
         .target(name: "WorldsModels"),
@@ -29,12 +30,14 @@ let package = Package(
         .target(name: "WorldsIdentity", exclude: ["README.md"], linkerSettings: [.linkedFramework("Security")]),
         .target(name: "WorldsRichText", dependencies: ["WorldsModels"], exclude: ["README.md"]),
         .target(name: "WorldsDrawing", dependencies: ["WorldsModels"], exclude: ["README.md"]),
+        .target(name: "WorldsPresentations", dependencies: ["WorldsModels"], exclude: ["README.md"]),
         .testTarget(name: "WorldsModelsTests", dependencies: ["WorldsModels"]),
         .testTarget(name: "WorldsSyncWireTests", dependencies: ["WorldsSyncWire"]),
         .testTarget(name: "WorldsPersistenceTests", dependencies: ["WorldsPersistence"], resources: [.copy("worlds-v1-fixture.db")], linkerSettings: [.linkedLibrary("sqlite3")]),
         .testTarget(name: "WorldsIdentityTests", dependencies: ["WorldsIdentity"]),
         .testTarget(name: "WorldsRichTextTests", dependencies: ["WorldsRichText", "WorldsModels"]),
         .testTarget(name: "WorldsDrawingTests", dependencies: ["WorldsDrawing", "WorldsModels"]),
+        .testTarget(name: "WorldsPresentationsTests", dependencies: ["WorldsPresentations", "WorldsModels"]),
     ]
 )
 
@@ -55,6 +58,7 @@ if collaborationAvailable {
     package.products.append(.library(name: "WorldsCollaboration", targets: ["WorldsCollaboration"]))
     package.targets.append(.binaryTarget(name: "WorldsRustCollaboration", path: collaborationPath))
     package.targets.append(.target(name: "WorldsCollaboration", dependencies: ["WorldsRustCollaboration", "WorldsSyncWire"], exclude: ["README.md"], linkerSettings: [.linkedFramework("Security"), .linkedFramework("SystemConfiguration"), .linkedLibrary("resolv"), .linkedLibrary("iconv")]))
-    package.targets.append(.testTarget(name: "WorldsCollaborationTests", dependencies: ["WorldsCollaboration", "WorldsSyncWire"]))
+    package.targets.append(.testTarget(name: "WorldsCollaborationTests", dependencies: ["WorldsCollaboration", "WorldsSyncWire"], resources: [.copy("worlds-collab-v11.db")]))
 }
+
 
