@@ -30,6 +30,10 @@ targetTemplates:
       - package: WorldsCore
         product: WorldsSearch
       - package: WorldsCore
+        product: WorldsMedia
+      - package: WorldsCore
+        product: WorldsMediaViews
+      - package: WorldsCore
         product: WorldsLocalImport
       - package: WorldsCore
         product: WorldsNativeWrites

@@ -152,4 +152,35 @@ final class EditorPersistenceTests: XCTestCase {
         let page = try XCTUnwrap(snapshot.pages.first(where: { $0.id == "fixture-page" }))
         XCTAssertTrue(page.blocks[0].contentJSON.contains("futureInline"))
     }
+
+    func testRejectsLostAttributesAndMovedUnknownMark() async throws {
+        let url = try fixture()
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        guard case .object(let originalRoot) = bridge.initialDocument.source,
+              case .array(let nodes)? = originalRoot["content"],
+              case .object(let originalBlock) = nodes.first,
+              case .object(var attrs)? = originalBlock["attrs"],
+              case .array(let children)? = originalBlock["content"],
+              case .object(var text) = children.first, let marks = text["marks"] else { return XCTFail("Missing fixture metadata") }
+        attrs.removeValue(forKey: "custom")
+        var changedBlock = originalBlock
+        changedBlock["attrs"] = .object(attrs)
+        var lostAttributes = originalRoot
+        lostAttributes["content"] = .array([.object(changedBlock)])
+        text.removeValue(forKey: "marks")
+        var movedBlock = originalBlock
+        movedBlock["content"] = .array([.object(text), .object(["type": .string("text"), "text": .string(""), "marks": marks])])
+        var movedMark = originalRoot
+        movedMark["content"] = .array([.object(movedBlock)])
+        for root in [lostAttributes, movedMark] {
+            do {
+                _ = try await bridge.save(documentJSON: JSONEncoder().encode(JSONValue.object(root)), basedOn: bridge.initialRevision)
+                XCTFail("Protected metadata must not be lost or moved")
+            } catch EditorBridgeError.invalidBlock { }
+        }
+        let snapshot = try await WorldsDatabase(url: url).snapshot()
+        let page = try XCTUnwrap(snapshot.pages.first(where: { $0.id == "fixture-page" }))
+        XCTAssertTrue(page.blocks[0].contentJSON.contains("futureMark"))
+        XCTAssertTrue(page.blocks[0].contentJSON.contains("preserve"))
+    }
 }

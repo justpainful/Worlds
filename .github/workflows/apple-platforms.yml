@@ -35,6 +35,7 @@ jobs:
           grep -q 'testOriginalNameCleaning' logs/swift-test.log
           grep -E 'testOwnedPersonalFileCanBeReadAndMismatchedOwnerIsRejected.*passed' logs/swift-test.log
           grep -E 'testRejectsHardLinkedAttachment.*passed' logs/swift-test.log
+          grep -E 'testOpenedAttachmentUsesOriginalDescriptorAfterPathReplacement.*passed' logs/swift-test.log
           grep -q 'testActualYjsFixture' logs/swift-test.log
           grep -E 'testYjsRelativeCursorAwarenessRemainsOpaque.*passed' logs/swift-test.log
           grep -E 'testCancelledPasskeyBeforePresentationDoesNotStart.*passed' logs/swift-test.log
@@ -105,7 +106,7 @@ jobs:
   project-editor-harness:
     name: Isolated project editor UI harness
     runs-on: macos-26
-    timeout-minutes: 35
+    timeout-minutes: 45
     env:
       WORLDS_REQUIRE_NATIVE_WRITES: "1"
     steps:
@@ -141,13 +142,20 @@ jobs:
               result=1
             fi
           done
-          for platform in macOS iOS; do
-            if [[ "$platform" == macOS ]]; then destination='platform=macOS'; else destination='platform=iOS Simulator,name=iPhone 17,OS=26.5'; fi
+          for device in macOS iPhone iPad; do
+            case "$device" in
+              macOS) platform=macOS; destination='platform=macOS' ;;
+              iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
+              iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
+            esac
             if gtimeout 360s xcodebuild -project Apple/ProjectEditorHarness/WorldsLocalCopyExperimental.xcodeproj \
               -scheme "LocalCopy-$platform" -destination "$destination" \
-              -resultBundlePath "$GITHUB_WORKSPACE/local-copy-$platform.xcresult" \
-              CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-copy-$platform.log"; then
-              grep -E 'testPersonalProjectEditAndReopenInLocalCopy.*passed' "logs/local-copy-$platform.log" || result=1
+              -resultBundlePath "$GITHUB_WORKSPACE/local-copy-$device.xcresult" \
+              CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-copy-$device.log"; then
+              grep -E 'testPersonalProjectEditAndReopenInLocalCopy.*passed' "logs/local-copy-$device.log" || result=1
+              if [[ "$platform" == iOS ]]; then
+                grep -E 'testLargeTextRTLKeyboardAndSaveRemainReachable.*passed' "logs/local-copy-$device.log" || result=1
+              fi
             else
               result=1
             fi
@@ -408,6 +416,7 @@ jobs:
           grep -q 'testRejectsReorderedBlocksWithoutTimestampChange' logs/editor-persistence-discovery.log
           grep -q 'testRejectsDroppingUnknownRootBlockBeforeWriting' logs/editor-persistence-discovery.log
           grep -q 'testRejectsDroppingUnknownNestedNodeOrItsContainingBlock' logs/editor-persistence-discovery.log
+          grep -q 'testRejectsLostAttributesAndMovedUnknownMark' logs/editor-persistence-discovery.log
       - name: Test editor persistence on macOS
         shell: bash
         run: |
@@ -420,6 +429,7 @@ jobs:
           grep -q 'testRejectsReorderedBlocksWithoutTimestampChange' logs/editor-persistence-macos.log
           grep -q 'testRejectsDroppingUnknownRootBlockBeforeWriting' logs/editor-persistence-macos.log
           grep -q 'testRejectsDroppingUnknownNestedNodeOrItsContainingBlock' logs/editor-persistence-macos.log
+          grep -q 'testRejectsLostAttributesAndMovedUnknownMark' logs/editor-persistence-macos.log
       - name: Build experimental project editor views
         shell: bash
         run: |
@@ -535,6 +545,7 @@ jobs:
           grep -E "Test Case .*testRejectsReorderedBlocksWithoutTimestampChange.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testRejectsDroppingUnknownRootBlockBeforeWriting.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testRejectsDroppingUnknownNestedNodeOrItsContainingBlock.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testRejectsLostAttributesAndMovedUnknownMark.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testProjectUsesNativeStoreAndRejectsSameTimestampChange.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testUndoAndFullBaselineConflictOnRealStore.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testNativeBackupImportsCommittedWALWithoutChangingSource.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"

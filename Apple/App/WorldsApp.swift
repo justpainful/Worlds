@@ -54,6 +54,10 @@ private struct WorldsLibraryView: View {
     @State private var errorMessage: String?
     @State private var searchEngine: WorldsSearch?
     @State private var databaseGeneration = UUID()
+    @State private var openedVideoDatabase: VideoDatabaseSource?
+    #if WORLDS_EXPERIMENTAL_PERSONAL_VIDEO
+    @State private var videoRequest: PersonalVideoRequest?
+    #endif
     @State private var openRequest = UUID()
     @State private var searchQuery = ""
     @State private var searchHits: [WorldsSearchHit] = []
@@ -132,7 +136,7 @@ private struct WorldsLibraryView: View {
             Group {
                 if let selectedPageID = selectedID, let page = pages.first(where: { $0.id == selectedPageID }) {
                     if ["project", "gallery", "presentation", "file"].contains(page.kind) {
-                        ResourceContentView(page: page, pages: pages, projectEditingAvailable: projectEditingAvailable(for: page)) { target in
+                        ResourceContentView(page: page, pages: pages, projectEditingAvailable: projectEditingAvailable(for: page), openVideo: videoAction(for: page)) { target in
                             guard target != page.id else { return }
                             returnStack.append(page.id)
                             selectedID = target
@@ -188,6 +192,11 @@ private struct WorldsLibraryView: View {
             }
         }
         #endif
+        #if WORLDS_EXPERIMENTAL_PERSONAL_VIDEO
+        .sheet(item: $videoRequest) { request in
+            PersonalVideoView(databaseURL: request.source.url, databaseIdentity: request.source.identity, pageID: request.id)
+        }
+        #endif
         .searchable(text: $searchQuery, placement: .sidebar, prompt: "Search personal pages")
         .tint(WorldsPalette.accent(for: colorScheme))
         .task {
@@ -241,6 +250,18 @@ private struct WorldsLibraryView: View {
         }
     }
 
+    private func videoAction(for page: StoredPage) -> (() -> Void)? {
+        #if WORLDS_EXPERIMENTAL_PERSONAL_VIDEO
+        guard page.kind == "file", let source = openedVideoDatabase else { return nil }
+        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+        guard copyContext == nil else { return nil }
+        #endif
+        return { videoRequest = PersonalVideoRequest(id: page.id, source: source) }
+        #else
+        return nil
+        #endif
+    }
+
     private func projectEditingAvailable(for page: StoredPage) -> Bool {
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
         page.kind == "project" && copyContext != nil
@@ -250,11 +271,14 @@ private struct WorldsLibraryView: View {
     }
 
     private var databaseActionsDisabled: Bool {
+        var disabled = loading
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
-        loading || editingProject != nil
-        #else
-        loading
+        disabled = disabled || editingProject != nil
         #endif
+        #if WORLDS_EXPERIMENTAL_PERSONAL_VIDEO
+        disabled = disabled || videoRequest != nil
+        #endif
+        return disabled
     }
 
     private var sidebarSelection: Binding<String?> {
@@ -377,9 +401,15 @@ private struct WorldsLibraryView: View {
         let hasAccess = url.startAccessingSecurityScopedResource()
         defer { if hasAccess { url.stopAccessingSecurityScopedResource() } }
         do {
+            let identityBefore = VideoDatabaseIdentity.read(url)
             let database = try WorldsDatabase(url: url)
             let snapshot = try await database.snapshot()
             guard openRequest == request else { return false }
+            let identityAfter = VideoDatabaseIdentity.read(url)
+            let videoSource: VideoDatabaseSource?
+            if let identityBefore, identityAfter == identityBefore {
+                videoSource = VideoDatabaseSource(url: url, identity: identityBefore)
+            } else { videoSource = nil }
             do {
                 searchEngine = try WorldsSearch(url: url)
                 searchError = nil
@@ -388,6 +418,7 @@ private struct WorldsLibraryView: View {
                 searchError = error.localizedDescription
             }
             databaseGeneration = UUID()
+            openedVideoDatabase = videoSource
             searchQuery = ""
             searchHits = []
             searchedQuery = nil
@@ -472,4 +503,13 @@ private struct ProjectEditorRequest: Identifiable {
     let context: LocalCopyContext
     let generation: UUID
 }
+#endif
+
+private struct VideoDatabaseSource {
+    let url: URL
+    let identity: VideoDatabaseIdentity
+}
+
+#if WORLDS_EXPERIMENTAL_PERSONAL_VIDEO
+private struct PersonalVideoRequest: Identifiable { let id: String; let source: VideoDatabaseSource }
 #endif

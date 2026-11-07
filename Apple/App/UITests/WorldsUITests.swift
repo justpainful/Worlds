@@ -197,14 +197,12 @@ final class WorldsUITests: XCTestCase {
         let list = app.descendants(matching: .any)["personal-page-list"].firstMatch
         XCTAssertTrue(list.waitForExistence(timeout: 30))
         let last = app.descendants(matching: .any)["page.resource-archived"].firstMatch
-        XCTAssertTrue(last.waitForExistence(timeout: 10))
-        // Hittable can mean only a small portion is visible. Move the list
-        // first, then require the entire row to fit inside its visible frame.
-        list.swipeUp()
-        for _ in 0..<5 {
-            if last.isHittable && list.frame.insetBy(dx: 0, dy: 1).contains(last.frame) { break }
+        // List may create offscreen rows lazily, so scroll before querying the last row.
+        for _ in 0..<6 {
+            if last.exists && last.isHittable && list.frame.insetBy(dx: 0, dy: 1).contains(last.frame) { break }
             list.swipeUp()
         }
+        XCTAssertTrue(last.waitForExistence(timeout: 10))
         XCTAssertTrue(last.isHittable)
         XCTAssertTrue(list.frame.insetBy(dx: 0, dy: 1).contains(last.frame),
                       "The last row must be fully visible after scrolling. List: \(list.frame), row: \(last.frame)")

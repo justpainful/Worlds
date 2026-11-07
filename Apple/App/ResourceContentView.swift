@@ -38,6 +38,7 @@ struct ResourceContentView: View {
     let page: StoredPage
     let pages: [StoredPage]
     var projectEditingAvailable: Bool = false
+    var openVideo: (() -> Void)? = nil
     let openPage: (String) -> Void
 
     private var metadata: ResourceMetadata? { try? JSONDecoder().decode(ResourceMetadata.self, from: Data(page.metadataJSON.utf8)) }
@@ -136,7 +137,13 @@ struct ResourceContentView: View {
                 if let name = info.name { detail("File", name) }
                 if let mime = info.mime { detail("Type", mime) }
                 if let size = info.size, size >= 0 { detail("Size", ByteCountFormatter.string(fromByteCount: size, countStyle: .file)) }
-                Text("File preview is unavailable in this reader.").foregroundStyle(.secondary)
+                if info.mime?.lowercased().hasPrefix("video/") == true, let openVideo {
+                    Button("Open video", systemImage: "play.rectangle", action: openVideo)
+                        .accessibilityIdentifier("open-personal-video")
+                    Text("Choose the Worlds folder to open this personal video.").foregroundStyle(.secondary)
+                } else {
+                    Text("File preview is unavailable in this reader.").foregroundStyle(.secondary)
+                }
             } else { Text("File details are unavailable.").foregroundStyle(.secondary) }
         }
     }

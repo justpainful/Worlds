@@ -60,29 +60,53 @@ public actor PersonalEditorPersistence: EditorPersistence {
 
     private static func opaqueValues(in roots: [JSONValue]) -> [JSONValue] {
         var result: [JSONValue] = []
-        func append(_ node: JSONValue, owner: JSONValue, kind: String) {
-            result.append(.object(["owner": owner, "kind": .string(kind), "value": node]))
+        func append(_ node: JSONValue, owner: JSONValue, path: String, kind: String) {
+            result.append(.object(["owner": owner, "path": .string(path), "kind": .string(kind), "value": node]))
         }
-        func visit(_ value: JSONValue, owner: JSONValue) {
+        func visit(_ value: JSONValue, owner: JSONValue, path: String) {
             guard case .object(let node) = value, case .string(let type)? = node["type"], editableNodeTypes.contains(type) else {
-                append(value, owner: owner, kind: "node"); return
+                append(value, owner: owner, path: path, kind: "node"); return
+            }
+            var extras = node
+            for key in ["type", "attrs", "content", "marks"] { extras.removeValue(forKey: key) }
+            if type == "text", case .string(_)? = node["text"] { extras.removeValue(forKey: "text") }
+            if !extras.isEmpty { append(.object(extras), owner: owner, path: path, kind: "extra:\(type)") }
+            if let attributes = node["attrs"] {
+                if case .object(var object) = attributes {
+                    if path.isEmpty { object.removeValue(forKey: "bid") }
+                    if !object.isEmpty { append(.object(object), owner: owner, path: path, kind: "attrs:\(type)") }
+                } else { append(attributes, owner: owner, path: path, kind: "attrs:\(type)") }
             }
             if let marks = node["marks"] {
                 if case .array(let entries) = marks {
-                    for mark in entries {
+                    for (index, mark) in entries.enumerated() {
+                        let markPath = path + "/mark/\(index)"
                         guard case .object(let data) = mark, case .string(let name)? = data["type"], editableMarkTypes.contains(name) else {
-                            append(mark, owner: owner, kind: "mark"); continue
+                            append(mark, owner: owner, path: markPath, kind: "mark"); continue
                         }
+                        // Link href is editable. Every extra property is opaque;
+                        // protect the whole mark when such properties exist.
+                        var additional = data
+                        additional.removeValue(forKey: "type")
+                        if name == "link", case .object(var attrs)? = additional["attrs"] {
+                            attrs.removeValue(forKey: "href")
+                            if attrs.isEmpty { additional.removeValue(forKey: "attrs") }
+                        }
+                        if !additional.isEmpty { append(mark, owner: owner, path: markPath, kind: "mark") }
                     }
-                } else { append(marks, owner: owner, kind: "marks") }
+                } else { append(marks, owner: owner, path: path, kind: "marks") }
             }
-            if case .array(let children)? = node["content"] { children.forEach { visit($0, owner: owner) } }
+            if let content = node["content"] {
+                if case .array(let children) = content {
+                    for (index, child) in children.enumerated() { visit(child, owner: owner, path: path + "/\(index)") }
+                } else { append(content, owner: owner, path: path, kind: "content:\(type)") }
+            }
         }
         for root in roots {
             let owner: JSONValue
             if case .object(let node) = root, case .object(let attrs)? = node["attrs"], let id = attrs["bid"] { owner = id }
             else { owner = .null }
-            visit(root, owner: owner)
+            visit(root, owner: owner, path: "")
         }
         return result
     }
@@ -101,8 +125,7 @@ public actor PersonalEditorPersistence: EditorPersistence {
         let value = try JSONDecoder().decode(JSONValue.self, from: documentJSON)
         guard case .object(let root) = value, Set(root.keys) == Set(["type", "content"]),
               root["type"] == .string("doc"), case .array(let nodes)? = root["content"] else { throw EditorBridgeError.invalidDocument }
-        // Unknown descendants and marks must remain intact and attached to the
-        // same top-level block even for a caller submitting arbitrary JSON.
+        // Refuse edits that change protected data or its structural position.
         guard Self.opaqueValues(in: nodes) == opaqueRoots else { throw EditorBridgeError.invalidBlock }
         var updated: [NativeBlockInput] = []
         var ids = Set<String>()

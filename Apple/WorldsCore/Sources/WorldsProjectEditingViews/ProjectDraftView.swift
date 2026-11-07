@@ -81,6 +81,8 @@ private final class ProjectDraftModel: ObservableObject {
 public struct ProjectDraftView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var model: ProjectDraftModel
+    private enum Field: Hashable { case start, due, description }
+    @FocusState private var focusedField: Field?
     @State private var confirmReload = false
     @State private var confirmClose = false
     private let onSaved: @MainActor () -> Void
@@ -97,9 +99,10 @@ public struct ProjectDraftView: View {
                     Text("Planned").tag("planned"); Text("Active").tag("active")
                     Text("Paused").tag("paused"); Text("Done").tag("done")
                 }
-                TextField("Start (YYYY-MM-DD)", text: $model.start)
-                TextField("Due (YYYY-MM-DD)", text: $model.due)
+                TextField("Start (YYYY-MM-DD)", text: $model.start).focused($focusedField, equals: .start)
+                TextField("Due (YYYY-MM-DD)", text: $model.due).focused($focusedField, equals: .due)
                 TextField("Description", text: $model.descriptionText, axis: .vertical)
+                    .focused($focusedField, equals: .description)
                     .accessibilityIdentifier("project-description")
                 if model.didSave && !model.hasUnstagedChanges { Text("Project saved").accessibilityIdentifier("project-saved") }
                 Button("Stage changes") { Task { await model.stage() } }.disabled(model.busy || !model.ready || !model.hasUnstagedChanges)
@@ -113,9 +116,20 @@ public struct ProjectDraftView: View {
                 Button("Reload project") { confirmReload = true }
             }
         }
+        #if os(macOS)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        #endif
         .disabled(model.busy || model.loading)
         .interactiveDismissDisabled(model.busy || (model.hasSession && (model.hasUnstagedChanges || model.canUndo || !model.ready)))
         .toolbar {
+            #if os(iOS)
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { focusedField = nil }
+                    .accessibilityIdentifier("project-dismiss-keyboard")
+            }
+            #endif
             ToolbarItem(placement: .cancellationAction) {
                 Button("Close") {
                     if model.hasSession && (model.hasUnstagedChanges || model.canUndo || !model.ready) { confirmClose = true }

@@ -8,10 +8,11 @@ The adapter opens its snapshot and its write store from the same database URL, u
 
 Rust tests run locally against isolated schema v11 fixtures and cover same-timestamp content changes, reordered rows, duplicate/cross-page IDs, shared-page changes and rollback. Swift integration tests cover unknown nodes and marks, same-timestamp conflicts, reordered blocks, two competing editor sessions and a page becoming shared, using a separate fixture. They have not been compiled or executed on Apple. SwiftPM must add this module with `WorldsNativeEditor`, `WorldsNativeWrites`, `WorldsPersistence`, `WorldsRichText` and `WorldsModels`, and add `editor-fixture.db` as a test resource linked with SQLite. App UI must not enable saving until CI, IME, permission, crash recovery and data-preservation reviews are complete.
 
-The bridge rejects removal, alteration or reordering of unknown nodes and marks,
-including descendants of supported blocks, and binds them to their original
-top-level block. This does not guarantee that an unknown mark remains on the
-same text node within that block, or preserve every unknown attribute on a
-known node when a caller supplies arbitrary JSON. A Rust fixture test verifies that editing a personal block in
+The Swift bridge conservatively rejects removal, alteration or structural
+movement of unknown nodes, unknown marks, node attributes and additional node
+fields. Known marks with extra fields are protected as a whole. This can reject
+otherwise valid structural editing when protected data shifts position. This
+guard applies to this Swift bridge, not arbitrary direct Rust store calls, and
+has not yet been verified on Apple. A Rust fixture test verifies that editing a personal block in
 an imported independent database leaves the source database unchanged; this
 does not establish native input or Apple user-interface behavior.

@@ -72,4 +72,15 @@ final class WorldsMediaTests: XCTestCase {
         lease = nil
         XCTAssertFalse(FileManager.default.fileExists(atPath: copied.path))
     }
+    func testOpenedAttachmentUsesOriginalDescriptorAfterPathReplacement() throws {
+        let root = try workspace()
+        let path = root.appendingPathComponent("clip.mp4")
+        try Data("original".utf8).write(to: path)
+        let opened = try AttachmentVault(root: root).open(attachment("clip.mp4", name: "clip.mp4"))
+        try FileManager.default.moveItem(at: path, to: root.appendingPathComponent("old.mp4"))
+        try Data("replacement".utf8).write(to: path)
+        let copy = try opened.playbackCopy(fileExtension: "mp4")
+        XCTAssertEqual(try Data(contentsOf: copy.url), Data("original".utf8))
+        XCTAssertEqual(try Data(contentsOf: path), Data("replacement".utf8))
+    }
 }
