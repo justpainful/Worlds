@@ -62,8 +62,14 @@ public struct RichTextDocument: Sendable, Equatable {
     public mutating func replaceText(at path: RichTextPath, range: NSRange, with replacement: String) throws {
         try updateNode(&source, path: ArraySlice(path.indices)) { node in
             guard case .string("text")? = node["type"], case .string(let current)? = node["text"] else { throw RichTextError.notTextNode }
-            guard let range = Range(range, in: current) else { throw RichTextError.invalidRange }
-            node["text"] = .string(current.replacingCharacters(in: range, with: replacement))
+            let utf16 = current.utf16
+            guard range.location != NSNotFound, range.location >= 0, range.length >= 0,
+                  range.location <= utf16.count, range.length <= utf16.count - range.location,
+                  let lower16 = utf16.index(utf16.startIndex, offsetBy: range.location, limitedBy: utf16.endIndex),
+                  let upper16 = utf16.index(lower16, offsetBy: range.length, limitedBy: utf16.endIndex),
+                  let lower = String.Index(lower16, within: current),
+                  let upper = String.Index(upper16, within: current) else { throw RichTextError.invalidRange }
+            node["text"] = .string(current.replacingCharacters(in: lower..<upper, with: replacement))
         }
     }
 
