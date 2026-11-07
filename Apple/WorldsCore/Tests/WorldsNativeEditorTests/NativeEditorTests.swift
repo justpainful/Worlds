@@ -1,0 +1,73 @@
+import Foundation
+import XCTest
+import WorldsModels
+import WorldsRichText
+@testable import WorldsNativeEditor
+
+private actor FixturePersistence: EditorPersistence {
+    private(set) var lastJSON: Data?
+    private(set) var lastBase: Int64?
+    func save(documentJSON: Data, basedOn: Int64) async throws -> Int64 {
+        lastJSON = documentJSON; lastBase = basedOn; return basedOn + 1
+    }
+    func state() -> (Data?, Int64?) { (lastJSON, lastBase) }
+}
+
+@MainActor
+final class NativeEditorTests: XCTestCase {
+    private func makeModel() throws -> NativeEditorModel {
+        let json = #"{"type":"doc","content":[{"type":"paragraph","attrs":{"dir":"rtl"},"content":[{"type":"text","text":"مرحبا 👋","marks":[{"type":"future","attrs":{"keep":true}}]}]},{"type":"futureWidget","attrs":{"keep":true}}]}"#
+        return try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 3)
+    }
+    func testEditingUndoRedoAndUnknownData() throws {
+        let model = try makeModel()
+        let original = model.document.source
+        _ = try model.replace(range: NSRange(location: 0, length: 5), with: "أهلًا")
+        XCTAssertTrue(model.dirty)
+        XCTAssertTrue(model.projection.text.hasPrefix("أهلًا"))
+        XCTAssertEqual(model.projection.spans[0].marks.count, 1)
+        model.undo()
+        XCTAssertEqual(model.document.source, original)
+        XCTAssertFalse(model.dirty)
+        model.redo()
+        XCTAssertTrue(model.projection.text.hasPrefix("أهلًا"))
+    }
+    func testRejectsStructureAndPreservesDocument() throws {
+        let model = try makeModel()
+        let original = model.document.source
+        XCTAssertThrowsError(try model.replace(range: NSRange(location: 0, length: model.projection.text.utf16.count), with: "x"))
+        XCTAssertThrowsError(try model.replace(range: NSRange(location: 0, length: 0), with: "\n"))
+        XCTAssertEqual(model.document.source, original)
+    }
+    func testFormattingPreservesUnknownMark() throws {
+        let model = try makeModel()
+        let span = try XCTUnwrap(model.projection.spans.first)
+        try model.toggleMark("bold", selection: span.range)
+        XCTAssertEqual(model.projection.spans[0].marks.count, 2)
+        try model.toggleMark("bold", selection: span.range)
+        XCTAssertEqual(model.projection.spans[0].marks, span.marks)
+        XCTAssertThrowsError(try model.toggleMark("bold", selection: NSRange(location: 0, length: 1)))
+    }
+    func testSaveUsesAbstractPersistenceAndBaseRevision() async throws {
+        let model = try makeModel()
+        let store = FixturePersistence()
+        _ = try model.replace(range: NSRange(location: 0, length: 1), with: "أ")
+        try await model.save(using: store)
+        let state = await store.state()
+        XCTAssertEqual(state.1, 3)
+        XCTAssertEqual(model.baseRevision, 4)
+        XCTAssertFalse(model.dirty)
+        XCTAssertEqual(try JSONDecoder().decode(JSONValue.self, from: XCTUnwrap(state.0)), model.document.source)
+    }
+    func testCommittedNativeTextSplitsParagraphAndUndo() throws {
+        let json = #"{"type":"doc","content":[{"type":"paragraph","attrs":{"bid":"a"},"content":[{"type":"text","text":"abcd"}]}]}"#
+        let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 1)
+        try model.commitNativeText("ab\ncd", selection: NSRange(location: 3, length: 0))
+        XCTAssertEqual(model.projection.text, "ab\ncd")
+        model.undo()
+        XCTAssertEqual(model.projection.text, "abcd")
+        model.redo()
+        XCTAssertEqual(model.projection.text, "ab\ncd")
+    }
+}
+

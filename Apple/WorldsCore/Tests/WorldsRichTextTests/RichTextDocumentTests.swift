@@ -62,4 +62,30 @@ final class RichTextDocumentTests: XCTestCase {
         XCTAssertGreaterThan(doc.attributedString().length, 0)
     }
     #endif
+    func testSplitAndMergeParagraphsPreserveOtherBlocks() throws {
+        let json = #"{"type":"doc","content":[{"type":"paragraph","attrs":{"bid":"original","dir":"rtl"},"content":[{"type":"text","text":"abcd","marks":[{"type":"bold"}]}]},{"type":"futureWidget","attrs":{"keep":true}}]}"#
+        var document = try RichTextDocument(json: Data(json.utf8))
+        try document.replaceParagraphSelection(NSRange(location: 2, length: 0), with: "\n")
+        XCTAssertEqual(document.project().text, "ab\ncd\n\u{fffc}")
+        guard case .object(let splitRoot) = document.source, case .array(let blocks)? = splitRoot["content"],
+              case .object(let first) = blocks[0], case .object(let second) = blocks[1],
+              case .object(let firstAttrs)? = first["attrs"], case .object(let secondAttrs)? = second["attrs"] else { return XCTFail("Missing split blocks") }
+        XCTAssertNotEqual(firstAttrs["bid"], secondAttrs["bid"])
+        XCTAssertEqual(firstAttrs["dir"], secondAttrs["dir"])
+        try document.replaceParagraphSelection(NSRange(location: 2, length: 1), with: "")
+        XCTAssertEqual(document.project().text, "abcd\n\u{fffc}")
+    }
+    func testUTF16OffsetsAndUnknownMarksFailClosed() throws {
+        let json = #"{"type":"doc","content":[{"type":"paragraph","attrs":{"bid":"a"},"content":[{"type":"text","text":"A👋B"}]}]}"#
+        var document = try RichTextDocument(json: Data(json.utf8))
+        XCTAssertThrowsError(try document.replaceParagraphSelection(NSRange(location: 2, length: 0), with: "x"))
+        try document.replaceParagraphSelection(NSRange(location: 1, length: 2), with: "🙂")
+        XCTAssertEqual(document.project().text, "A🙂B")
+        let unknown = #"{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"abc","marks":[{"type":"future"}]}]}]}"#
+        var protected = try RichTextDocument(json: Data(unknown.utf8))
+        let before = protected.source
+        XCTAssertThrowsError(try protected.replaceParagraphSelection(NSRange(location: 1, length: 0), with: "\n"))
+        XCTAssertEqual(protected.source, before)
+    }
 }
+

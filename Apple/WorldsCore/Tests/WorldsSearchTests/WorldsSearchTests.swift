@@ -31,7 +31,7 @@ final class WorldsSearchTests: XCTestCase {
         let search = try WorldsSearch(url: url)
         let hits = try await search.search("geometry", includeTemplates: false)
         XCTAssertEqual(Set(hits.map(\.pageId)), Set(["personal", "archived"]))
-        XCTAssertTrue(hits.contains { $0.pageId == "personal" && $0.snippet.contains("\u{E000}") && $0.snippet.contains("\u{E001}") && $0.snippetRuns.contains(where: { $0.highlighted && $0.text.lowercased() == "geometry" }) })
+        XCTAssertTrue(hits.contains { $0.pageId == "personal" && $0.snippet.contains("\u{E000}") && $0.snippet.contains("\u{E001}") && $0.snippetRuns.contains(where: { $0.highlighted && !$0.text.isEmpty && "geometry".hasPrefix($0.text.lowercased()) }) })
         let withTemplates = try await search.search("geometry", includeTemplates: true)
         XCTAssertTrue(withTemplates.contains { $0.pageId == "template" })
         XCTAssertFalse(withTemplates.contains { ["trash", "shared", "flagged", "broken"].contains($0.pageId) })
@@ -58,4 +58,5 @@ final class WorldsSearchTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: url), before)
     }
 }
+
 

@@ -22,6 +22,8 @@ The `RustCollaboration` experiment uses yrs for Yjs-compatible updates and state
 
 Run [42385501910](https://github.com/justpainful/Worlds/actions/runs/42385501910) passed all three application build checks, all iPhone and iPad UI tests, and four Rust write-bridge tests each on macOS and iPhone simulator. The macOS UI test failed on an ambiguous OK button; the selector was corrected locally. Core tests reported two assertions from an edit boundary splitting an emoji; boundary validation was corrected locally. The collaboration XCFramework build failed because a carriage return was appended to the output path; the script was corrected locally. All three corrections require another run. No release artifact was produced.
 
+Run [42386428057](https://github.com/justpainful/Worlds/actions/runs/42386428057) passed all three app build checks, all nine current UI tests and both Rust bridge jobs on macOS and iOS simulator. The new core suite passed 40 of 41 tests; the search snippet assertion did not account for the original trigram snippet truncation and has been corrected locally. The isolated service job failed while starting the identity Worker because an address was already in use. The exact port was not identified; startup sequencing, separate inspector ports and diagnostics have been added locally and require a new run. These results do not establish full feature parity or an installable release.
+
 ## 2026-11-07: Audit started
 
 - Created isolated worktree on branch `feat/native-apple-platforms` at commit `185ee9a1019c8b7bc685d22dabf1b699579189cc`. The original Windows checkout has existing tracked modifications and untracked files, including drawing work. They have not been moved or deleted.

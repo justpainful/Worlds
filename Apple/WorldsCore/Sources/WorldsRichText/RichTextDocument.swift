@@ -35,7 +35,7 @@ public struct RichTextProjection: Sendable {
 /// The source tree remains canonical. Projection never rewrites an unknown node,
 /// mark, attribute or extension payload, so a round trip preserves their data.
 public struct RichTextDocument: Sendable, Equatable {
-    public private(set) var source: JSONValue
+    public internal(set) var source: JSONValue
 
     public init(source: JSONValue) throws {
         guard case .object(let root) = source,
@@ -176,4 +176,5 @@ extension RichTextDocument {
     }
 }
 #endif
+
 

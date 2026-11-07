@@ -235,7 +235,10 @@ jobs:
   collaboration-local-worker:
     name: Rust collaboration with isolated local sync Worker
     runs-on: macos-26
-    timeout-minutes: 20
+    timeout-minutes: 45
+    env:
+      WORLDS_REQUIRE_COLLABORATION: "1"
+      WORLDS_REQUIRE_LIVE_SERVICE: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -247,6 +250,18 @@ jobs:
           cache: pnpm
           cache-dependency-path: services/sync/pnpm-lock.yaml
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios,aarch64-apple-darwin,x86_64-apple-darwin
+      - name: Select Xcode and build required collaboration bridge
+        shell: bash
+        run: |
+          set -o pipefail
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          mkdir -p logs
+          bash Apple/RustCollaboration/scripts/build-apple.sh 2>&1 | tee logs/local-collaboration-build.log
+          test -d Apple/WorldsCore/Artifacts/WorldsRustCollaboration.xcframework
+          swift test --package-path Apple/WorldsCore list 2>&1 | tee logs/local-swift-discovery.log
+          grep -q 'testLiveSwiftSessionsConvergeReconnectAndArchiveRefusal' logs/local-swift-discovery.log
       - name: Install isolated Worker dependencies
         working-directory: services/sync
         run: pnpm install --frozen-lockfile
@@ -256,17 +271,22 @@ jobs:
           set -euo pipefail
           mkdir -p logs
           cd services/sync
-          pnpm exec wrangler dev -c dev/identity.toml --port 18791 --ip 127.0.0.1 --persist-to "$RUNNER_TEMP/identity" > "$GITHUB_WORKSPACE/logs/local-identity.log" 2>&1 &
+          pnpm exec wrangler dev -c dev/identity.toml --port 18791 --inspector-port 19891 --ip 127.0.0.1 --persist-to "$RUNNER_TEMP/identity" > "$GITHUB_WORKSPACE/logs/local-identity.log" 2>&1 &
           identity_pid=$!
-          pnpm exec wrangler dev --env local --port 18790 --ip 127.0.0.1 --persist-to "$RUNNER_TEMP/sync" --var JWKS_URL:http://127.0.0.1:18791/.well-known/jwks.json > "$GITHUB_WORKSPACE/logs/local-sync.log" 2>&1 &
-          sync_pid=$!
-          trap 'kill "$identity_pid" "$sync_pid" 2>/dev/null || true' EXIT
+          sync_pid=""
+          trap 'kill "$identity_pid" ${sync_pid:+"$sync_pid"} 2>/dev/null || true' EXIT
           ready=0
           for attempt in $(seq 1 90); do
             if curl -fsS http://127.0.0.1:18791/.well-known/jwks.json >/dev/null 2>&1; then ready=1; break; fi
             sleep 1
           done
-          test "$ready" = 1
+          if [ "$ready" != 1 ]; then
+            echo "Local service readiness failed; listening ports follow" >&2
+            lsof -nP -iTCP -sTCP:LISTEN >&2 || true
+            exit 1
+          fi
+          pnpm exec wrangler dev --env local --port 18790 --inspector-port 19890 --ip 127.0.0.1 --persist-to "$RUNNER_TEMP/sync" --var JWKS_URL:http://127.0.0.1:18791/.well-known/jwks.json > "$GITHUB_WORKSPACE/logs/local-sync.log" 2>&1 &
+          sync_pid=$!
           editor_token=$(curl -fsS 'http://127.0.0.1:18791/dev/token?sub=editor' | jq -er .token)
           viewer_token=$(curl -fsS 'http://127.0.0.1:18791/dev/token?sub=viewer' | jq -er .token)
           curl -fsS -X POST http://127.0.0.1:18791/dev/grant -H 'Content-Type: application/json' \
@@ -276,13 +296,23 @@ jobs:
             if curl -fsS -H "Authorization: Bearer $editor_token" http://127.0.0.1:18790/v1/workspaces/fixture-workspace/docs/probe/versions >/dev/null 2>&1; then ready=1; break; fi
             sleep 1
           done
-          test "$ready" = 1
+          if [ "$ready" != 1 ]; then
+            echo "Local service readiness failed; listening ports follow" >&2
+            lsof -nP -iTCP -sTCP:LISTEN >&2 || true
+            exit 1
+          fi
           cd "$GITHUB_WORKSPACE"
           WORLDS_LIVE_SYNC_URL=ws://127.0.0.1:18790 \
           WORLDS_LIVE_EDITOR_TOKEN="$editor_token" WORLDS_LIVE_VIEWER_TOKEN="$viewer_token" \
             cargo test --locked --manifest-path Apple/RustCollaboration/Cargo.toml --test live_service -- --ignored --nocapture \
             2>&1 | tee logs/collaboration-local-worker.log
           grep -q 'live_native_replica_offline_merge_reconnect_and_refusal ... ok' logs/collaboration-local-worker.log
+          WORLDS_LIVE_SYNC_URL=ws://127.0.0.1:18790 \
+          WORLDS_LIVE_EDITOR_TOKEN="$editor_token" WORLDS_LIVE_VIEWER_TOKEN="$viewer_token" \
+            swift test --package-path Apple/WorldsCore --filter LiveWorkerTests \
+            2>&1 | tee logs/collaboration-live-swift.log
+          grep -q 'testLiveSwiftSessionsConvergeReconnectAndArchiveRefusal' logs/collaboration-live-swift.log
+          grep -Eq 'Executed 1 test, with 0 failures' logs/collaboration-live-swift.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:

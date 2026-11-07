@@ -1,0 +1,9 @@
+# WorldsNativeEditor scope
+
+This experimental SwiftUI wrapper uses UITextView on iOS and NSTextView on macOS. Edits inside individual text nodes preserve their original marks and metadata. A constrained structural path can split and merge compatible top-level, text-only paragraphs and edit across ordinary text nodes. It generates a fresh block ID for a split. Unsupported inline nodes, incompatible block metadata and unknown marks in a structural edit cause the whole operation to fail without changing the canonical tree. Empty paragraphs and edits spanning tables, lists or custom blocks remain unsupported. Formatting toggles apply only to one complete text node.
+
+Native views defer committing marked text until composition ends and translate the committed text through a UTF-16 diff. The algorithm is experimental and has not been verified using real IMEs. Unsupported committed changes restore the canonical view. Native built-in undo is disabled to avoid duplicate operations; toolbar undo and redo restore canonical source trees through a separate UndoManager. Keyboard undo shortcuts, clipboard behavior, rich-text paste, accessibility, RTL and Dynamic Type require device verification. Pasted rich styling is not preserved.
+
+The save contract is an injected asynchronous protocol with a base revision. It does not open a database or implement authorization; the host must enforce conflicts and persistence. A successful save does not discard edits made while the save was in progress. End-to-end saving into a real Worlds database has not been tested. The editor is not connected to the app and must not be enabled until integration, IME and data-preservation checks pass.
+
+Tests use synthetic data and cover selected UTF-16 boundaries, paragraph splits and merges, conservative rejection, marks, undo/redo and an isolated persistence stub. They have not yet been executed on Apple.

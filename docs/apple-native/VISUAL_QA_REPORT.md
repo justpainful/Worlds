@@ -19,3 +19,9 @@ The iPhone page-content screenshot from the newer run 42385501910 was inspected.
 Four macOS screenshots from the newer run 42385501910 were inspected: initial window, page list, page detail and error. The sidebar width and open action are improved at the captured standard window size, and the fixture content appears. The identity, other window sizes, dark appearance and larger text remain unreviewed. The alert is visible, but its test still failed because two accessibility elements were named OK; the test adjustment awaits another run.
 
 Four iPad portrait screenshots from run 42385501910 were inspected after the accessibility correction. Opening, page selection, page content and the error state fit the captured size, and the three UI tests passed. The app remains visually generic, and other orientations, sizes, content types and appearance modes remain unreviewed.
+
+The macOS opening and page-detail screenshots from run 42386428057 were inspected. The opening action uses the updated warm accent and the standard-window layout remains readable. The selected sidebar row still uses the system blue, and the interface remains mostly generic; this is not a complete identity review. Dark mode, smaller windows and the other states in this run still need inspection.
+
+The iPad opening and page-detail screenshots from the same run were inspected in portrait. The accent is visible and the fixture content fits; this remains a read-only, sparse screen. Landscape, split view, smaller windows and dark mode have not been reviewed.
+
+The iPhone opening and page-detail screenshots from run 42386428057 were inspected. The accent is visible, the duplicate title is absent, and the fixture content fits this screen. The screen remains sparse and read-only. Other sizes, dark mode, complex content and editing remain unreviewed.

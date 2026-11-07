@@ -1,0 +1,138 @@
+import Foundation
+import Combine
+import WorldsModels
+import WorldsRichText
+
+public enum NativeEditorError: Error, LocalizedError, Equatable {
+    case crossesUnsupportedBoundary, unsupportedFormatting, invalidSelection, saveInProgress
+    public var errorDescription: String? {
+        switch self {
+        case .crossesUnsupportedBoundary: return "This edit crosses a block or unsupported element."
+        case .unsupportedFormatting: return "Select one complete text segment to change its formatting."
+        case .invalidSelection: return "The selected text is unavailable."
+        case .saveInProgress: return "A save is already in progress."
+        }
+    }
+}
+
+/// The app supplies authorization, durable storage and conflict handling.
+/// Implementations must reject a stale base rather than overwrite newer data.
+public protocol EditorPersistence: Sendable {
+    func save(documentJSON: Data, basedOn: Int64) async throws -> Int64
+}
+
+@MainActor
+public final class NativeEditorModel: ObservableObject {
+    @Published public private(set) var document: RichTextDocument
+    @Published public var selection: NSRange = NSRange(location: 0, length: 0)
+    @Published public private(set) var dirty = false
+    @Published public private(set) var saving = false
+    @Published public private(set) var errorMessage: String?
+    public let undoManager = UndoManager()
+    public private(set) var baseRevision: Int64
+    private var generation: UInt64 = 0
+    private var savedSource: JSONValue
+
+    public init(document: RichTextDocument, baseRevision: Int64) {
+        self.document = document; self.baseRevision = baseRevision; self.savedSource = document.source
+        self.undoManager.groupsByEvent = false
+    }
+    public var projection: RichTextProjection { document.project() }
+    public var attributedText: NSAttributedString { document.attributedString() }
+
+    /// Structural edits and line insertion are rejected until block editing is supported.
+    @discardableResult
+    public func replace(range: NSRange, with replacement: String) throws -> NSRange {
+        guard !replacement.contains("\u{fffc}") else { throw NativeEditorError.crossesUnsupportedBoundary }
+        guard range.location != NSNotFound, range.location >= 0, range.length >= 0,
+              range.location <= Int.max - range.length else { throw NativeEditorError.invalidSelection }
+        let before = document
+        let matches = projection.spans.filter { span in
+            range.location >= span.range.location && NSMaxRange(range) <= NSMaxRange(span.range)
+        }
+        if matches.count == 1, let span = matches.first, !replacement.contains("\n"), !replacement.contains("\r") {
+            let local = NSRange(location: range.location - span.range.location, length: range.length)
+            try document.replaceText(at: span.path, range: local, with: replacement)
+        } else {
+            try document.replaceParagraphSelection(range, with: replacement)
+        }
+        registerRestore(before)
+        generation &+= 1
+        dirty = document.source != savedSource
+        let caret = NSRange(location: range.location + replacement.utf16.count, length: 0)
+        selection = caret; errorMessage = nil
+        return caret
+    }
+
+    /// Applies the committed text from a native input method as a single diff.
+    /// No source data is changed until the native marked-text session ends.
+    public func commitNativeText(_ text: String, selection: NSRange) throws {
+        let old = projection.text
+        if old == text { self.selection = selection; return }
+        let lhs = Array(old.utf16), rhs = Array(text.utf16)
+        var prefix = 0
+        while prefix < lhs.count, prefix < rhs.count, lhs[prefix] == rhs[prefix] { prefix += 1 }
+        func boundary(_ value: String, _ offset: Int) -> String.Index? {
+            guard let utf = value.utf16.index(value.utf16.startIndex, offsetBy: offset, limitedBy: value.utf16.endIndex) else { return nil }
+            return String.Index(utf, within: value)
+        }
+        while prefix > 0 && (boundary(old, prefix) == nil || boundary(text, prefix) == nil) { prefix -= 1 }
+        var suffix = 0
+        while suffix < lhs.count - prefix, suffix < rhs.count - prefix, lhs[lhs.count - 1 - suffix] == rhs[rhs.count - 1 - suffix] { suffix += 1 }
+        while suffix > 0 && (boundary(old, lhs.count - suffix) == nil || boundary(text, rhs.count - suffix) == nil) { suffix -= 1 }
+        guard let start = boundary(text, prefix), let end = boundary(text, rhs.count - suffix) else { throw NativeEditorError.invalidSelection }
+        _ = try replace(range: NSRange(location: prefix, length: lhs.count - prefix - suffix), with: String(text[start..<end]))
+        if selection.location != NSNotFound, selection.location >= 0, selection.length >= 0,
+           selection.location <= text.utf16.count, selection.length <= text.utf16.count - selection.location { self.selection = selection }
+    }
+    /// Formatting applies only to a complete text node, preserving every
+    /// unrelated and unknown mark. Partial-node formatting requires splitting.
+    public func toggleMark(_ name: String, selection range: NSRange) throws {
+        guard ["bold", "italic", "underline", "strike"].contains(name) else { throw NativeEditorError.unsupportedFormatting }
+        guard let span = projection.spans.first(where: { $0.range == range && range.length > 0 }) else { throw NativeEditorError.unsupportedFormatting }
+        var marks = span.marks
+        func markType(_ value: JSONValue) -> String? {
+            guard case .object(let object) = value, case .string(let type)? = object["type"] else { return nil }
+            return type
+        }
+        if marks.contains(where: { markType($0) == name }) { marks.removeAll { markType($0) == name } }
+        else { marks.append(.object(["type": .string(name)])) }
+        let before = document
+        try document.setMarks(at: span.path, marks: marks)
+        registerRestore(before)
+        generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
+    }
+    public func undo() { undoManager.undo() }
+    public func redo() { undoManager.redo() }
+    public func report(_ error: Error) { errorMessage = error.localizedDescription }
+
+    public func save(using persistence: any EditorPersistence) async throws {
+        guard !saving else { throw NativeEditorError.saveInProgress }
+        saving = true
+        defer { saving = false }
+        let source = document.source
+        let encoded = try document.json()
+        let revision = try await persistence.save(documentJSON: encoded, basedOn: baseRevision)
+        baseRevision = revision
+        savedSource = source
+        dirty = document.source != savedSource
+    }
+    private func registerRestore(_ before: RichTextDocument) {
+        let group = !undoManager.isUndoing && !undoManager.isRedoing
+        if group { undoManager.beginUndoGrouping() }
+        undoManager.registerUndo(withTarget: self) { target in MainActor.assumeIsolated { target.restore(before) } }
+        if group { undoManager.endUndoGrouping() }
+    }
+    private func restore(_ prior: RichTextDocument) {
+        let current = document
+        registerRestore(current)
+        document = prior
+        generation &+= 1; dirty = document.source != savedSource
+        selection = NSRange(location: min(selection.location, projection.text.utf16.count), length: 0)
+    }
+}
+
+
+
+
+
