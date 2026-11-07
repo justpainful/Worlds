@@ -78,6 +78,14 @@ final class WorldsProjectsTests: XCTestCase {
         try project.apply(.unlink("linked"), projectID: "p", resources: resources)
         XCTAssertTrue(project.links.isEmpty)
     }
+    func testDuplicateLinksCannotBeUnlinkedOrModifiedSilently() throws {
+        let source: JSONValue = .object(["project": .object(["links": .array([.string("a"), .string("a")])])])
+        var project = try ProjectMetadata(source: source)
+        XCTAssertThrowsError(try project.apply(.unlink("a"), projectID: "p", resources: [resource("a")]))
+        XCTAssertEqual(project.source, source)
+        XCTAssertThrowsError(try project.apply(.link("b"), projectID: "p", resources: [resource("b")]))
+        XCTAssertEqual(project.source, source)
+    }
     func testStatusAndCalendarDates() throws {
         var project = ProjectMetadata.newProject
         try project.apply(.status("done"), projectID: "p", resources: [])

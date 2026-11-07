@@ -5,6 +5,7 @@ import WorldsModels
 import WorldsPersistence
 import WorldsNativeWrites
 import WorldsNativeEditor
+import WorldsLocalImport
 @testable import WorldsEditorPersistence
 
 final class EditorPersistenceTests: XCTestCase {
@@ -23,6 +24,33 @@ final class EditorPersistenceTests: XCTestCase {
         defer { sqlite3_close_v2(db) }
         guard sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK else { throw EditorBridgeError.unavailable }
     }
+    #if DEBUG
+    @MainActor
+    func testImportedLocalPageEditSurvivesReopenAndPreservesSource() async throws {
+        let source = try fixture().resolvingSymlinksInPath()
+        try exec("UPDATE blocks SET properties='{\"plugin\":{\"keep\":true}}' WHERE id='fixture-block'", url: source)
+        let originalReader = try WorldsDatabase(url: source)
+        let before = try await originalReader.snapshot()
+        let original = try XCTUnwrap(before.pages.first(where: { $0.id == "fixture-page" }))
+        let root = source.deletingLastPathComponent().appendingPathComponent("local-copies", isDirectory: true)
+        let importer = try LocalProjectImportCoordinator.isolatedTestCoordinator(root: root, backup: NativeSQLiteBackup())
+        let copy = try await importer.importCopy(from: source)
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: copy.databaseURL, pageID: original.id)
+        let model = NativeEditorModel(document: bridge.initialDocument, baseRevision: bridge.initialRevision)
+        _ = try model.replace(range: NSRange(location: 6, length: 6), with: "Swift")
+        try await model.save(using: bridge)
+        let restored = try await importer.restoreCopy(id: copy.id)
+        let reopened = try await PersonalEditorPersistence.open(databaseURL: restored.databaseURL, pageID: original.id)
+        XCTAssertTrue(reopened.initialDocument.project().text.contains("Hello Swift"))
+        let copySnapshot = try await WorldsDatabase(url: restored.databaseURL).snapshot()
+        let saved = try XCTUnwrap(copySnapshot.pages.first(where: { $0.id == original.id }))
+        XCTAssertTrue(saved.blocks[0].propertiesJSON.contains("plugin"))
+        XCTAssertTrue(saved.blocks[0].contentJSON.contains("futureMark"))
+        XCTAssertTrue(saved.blocks[0].contentJSON.contains("futureNodeFlag"))
+        let after = try await originalReader.snapshot()
+        XCTAssertEqual(after.pages.first(where: { $0.id == original.id }), original)
+    }
+    #endif
     @MainActor
     func testEditorSavePreservesUnknownNodeAndAttributes() async throws {
         let url = try fixture()

@@ -87,7 +87,9 @@ private func checkedLinks(_ value: JSONValue?) throws -> [String] {
     guard let value else { return [] }
     guard case .array(let list) = value else { throw ProjectError.invalidLinks }
     let strings = list.compactMap(\.projectString)
-    guard strings.count == list.count else { throw ProjectError.invalidLinks }
+    // Unlinking by ID removes every match. Reject ambiguous legacy duplicates
+    // instead of silently removing more entries than the user selected.
+    guard strings.count == list.count, Set(strings).count == strings.count else { throw ProjectError.invalidLinks }
     return strings
 }
 private func validDate(_ value: String) -> Bool {

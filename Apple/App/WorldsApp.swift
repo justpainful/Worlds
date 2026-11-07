@@ -162,7 +162,7 @@ private struct WorldsLibraryView: View {
                 #if WORLDS_EXPERIMENTAL_LOCAL_COPY
                 if let id = selectedID, let context = copyContext, pages.contains(where: { $0.id == id && $0.kind == "project" }) {
                     ToolbarItem(placement: .primaryAction) {
-                        Button("Edit project", systemImage: "pencil") { editingProject = ProjectEditorRequest(id: id, context: context, generation: databaseGeneration) }
+                        Button("Edit project", systemImage: "pencil") { editingProject = ProjectEditorRequest(id: id, context: context, generation: databaseGeneration, candidates: projectLinkCandidates()) }
                             .accessibilityIdentifier("edit-local-project")
                             .disabled(loading)
                     }
@@ -196,7 +196,7 @@ private struct WorldsLibraryView: View {
         }
         .sheet(item: $editingProject) { request in
             NavigationStack {
-                ProjectDraftView(projectID: request.id, repository: request.context.repository) {
+                ProjectDraftView(projectID: request.id, repository: request.context.repository, candidates: request.candidates, allowsLinkEditing: projectLinkEditingEnabled) {
                     Task { await refreshCopy(id: request.context.copy.id, generation: request.generation) }
                 }
             }
@@ -473,6 +473,19 @@ private struct WorldsLibraryView: View {
     }
 
     #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+    private var projectLinkEditingEnabled: Bool {
+        #if WORLDS_EXPERIMENTAL_PROJECT_LINKS
+        true
+        #else
+        false
+        #endif
+    }
+    private func projectLinkCandidates() -> [ProjectLinkCandidate] {
+        pages.map { page in
+            ProjectLinkCandidate(id: page.id, title: page.title, kind: page.kind, parentID: page.parentID,
+                                 archived: page.archived, sortKey: page.sortKey, createdAt: page.createdAt, updatedAt: page.updatedAt)
+        }
+    }
     @MainActor private func coordinator() throws -> LocalProjectImportCoordinator {
         if let copyCoordinator { return copyCoordinator }
         let created = try LocalProjectImportCoordinator(backup: NativeSQLiteBackup())
@@ -537,6 +550,7 @@ private struct ProjectEditorRequest: Identifiable {
     let id: String
     let context: LocalCopyContext
     let generation: UUID
+    let candidates: [ProjectLinkCandidate]
 }
 #endif
 

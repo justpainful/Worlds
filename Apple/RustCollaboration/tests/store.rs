@@ -1,8 +1,26 @@
 use rusqlite::Connection;
 use worlds_collaboration::store::{StoreError,SyncStore};
+use std::sync::atomic::{AtomicU64, Ordering};
 
-fn fixture() -> std::path::PathBuf {
-    let path = std::env::temp_dir().join(format!("worlds-collab-{}-{}.db",std::process::id(),std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+static NEXT_FIXTURE: AtomicU64 = AtomicU64::new(0);
+struct FixturePath { directory: std::path::PathBuf, path: std::path::PathBuf }
+impl AsRef<std::path::Path> for FixturePath { fn as_ref(&self) -> &std::path::Path { &self.path } }
+impl std::ops::Deref for FixturePath { type Target = std::path::Path; fn deref(&self) -> &Self::Target { &self.path } }
+impl Drop for FixturePath { fn drop(&mut self) { let _ = std::fs::remove_dir_all(&self.directory); } }
+fn isolated_path() -> FixturePath {
+    loop {
+        let sequence = NEXT_FIXTURE.fetch_add(1, Ordering::Relaxed);
+        let directory = std::env::temp_dir().join(format!("worlds-collab-fixture-{}-{sequence}",std::process::id()));
+        match std::fs::create_dir(&directory) {
+            Ok(()) => return FixturePath { path: directory.join("worlds.db"), directory },
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => panic!("could not create isolated fixture directory: {error}"),
+        }
+    }
+}
+
+fn fixture() -> FixturePath {
+    let path = isolated_path();
     let db=Connection::open(&path).unwrap();
     db.execute_batch("PRAGMA user_version=11;
 CREATE TABLE pages(id TEXT PRIMARY KEY,workspace_id TEXT,parent_id TEXT,deleted_at INTEGER);
@@ -17,6 +35,19 @@ CREATE TABLE sync_rejected_snapshots(id TEXT PRIMARY KEY,page_id TEXT,channel IN
 INSERT INTO pages VALUES('p','w',NULL,NULL); INSERT INTO account VALUES(1,'u','active');
 INSERT INTO account_workspaces VALUES('w','member','edit');").unwrap();
     path
+}
+
+#[test]
+fn parallel_fixtures_have_distinct_databases_and_survive_peer_cleanup() {
+    let workers: Vec<_> = (0..24).map(|_| std::thread::spawn(fixture)).collect();
+    let mut paths: Vec<_> = workers.into_iter().map(|worker| worker.join().unwrap()).collect();
+    let unique: std::collections::HashSet<_> = paths.iter().map(|item| item.path.clone()).collect();
+    assert_eq!(unique.len(), paths.len());
+    let survivor = paths.pop().unwrap();
+    let store = SyncStore::open(&survivor, "p", "u", "w").unwrap();
+    drop(paths);
+    assert!(store.load(0).unwrap().is_empty());
+    drop(store);
 }
 
 #[test]
@@ -84,7 +115,7 @@ fn ffi_original_schema_and_revoked_access_archive() {
     use std::ffi::CString;
     use worlds_collaboration::*;
     let src=std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../WorldsCore/Tests/WorldsCollaborationTests/worlds-collab-v11.db");
-    let path=std::env::temp_dir().join(format!("worlds-ffi-{}-{}.db",std::process::id(),std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+    let path=isolated_path();
     std::fs::copy(src,&path).unwrap();
     let path_s=CString::new(path.to_str().unwrap()).unwrap();
     let page=CString::new("fixture-page").unwrap(); let user=CString::new("fixture-user").unwrap(); let workspace=CString::new("fixture-workspace").unwrap();

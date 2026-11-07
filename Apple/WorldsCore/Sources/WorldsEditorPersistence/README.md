@@ -16,3 +16,10 @@ guard applies to this Swift bridge, not arbitrary direct Rust store calls, and
 has not yet been verified on Apple. A Rust fixture test verifies that editing a personal block in
 an imported independent database leaves the source database unchanged; this
 does not establish native input or Apple user-interface behavior.
+
+The checked Rust save also refuses to delete a block whose separate
+`blocks.properties` value is nonempty, malformed or not an object. It checks
+the current value in the same transaction as the write, including changes since
+the editor snapshot. Editing a retained block does not overwrite that column.
+This deliberately rejects some otherwise valid deletions until those properties
+can be represented and edited safely.

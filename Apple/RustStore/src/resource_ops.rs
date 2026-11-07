@@ -62,7 +62,11 @@ fn validate_new_project(c: &Connection, id: &str, old: &Value, next: &Value) -> 
         }
     }
     if object.get("description").is_some_and(|v|!v.is_string()) { bail!("invalid description") }
-    let previous: HashSet<&str> = old.pointer("/project/links").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str).collect();
+    let mut previous = HashSet::new();
+    for value in old.pointer("/project/links").and_then(Value::as_array).into_iter().flatten() {
+        let target = value.as_str().ok_or_else(||anyhow::anyhow!("invalid old project link"))?;
+        if !previous.insert(target) { bail!("ambiguous old project links") }
+    }
     let mut seen = HashSet::new();
     if let Some(links) = object.get("links") {
         for value in links.as_array().ok_or_else(||anyhow::anyhow!("invalid links"))? {
@@ -204,6 +208,57 @@ mod tests {
         assert!(save_project(&path,"p",100,original["metadata"].clone(),changed).is_err());
         assert_eq!(read_resource(&path,"p").unwrap()["metadata"],original["metadata"]);
         std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn new_project_link_rechecks_target_kind_parent_and_deletion() {
+        for mutation in [
+            "UPDATE pages SET kind='template' WHERE id='fixture-page'",
+            "UPDATE pages SET parent_id='p',archived=0 WHERE id='fixture-page'",
+            "UPDATE pages SET deleted_at=1 WHERE id='fixture-page'",
+        ] {
+            let path=fixture();
+            let original=read_resource(&path,"p").unwrap();
+            let mut replacement=original["metadata"].clone();
+            replacement["project"]["links"]=json!(["fixture-page"]);
+            let c=Connection::open(&path).unwrap(); c.execute(mutation,[]).unwrap(); drop(c);
+            assert!(save_project(&path,"p",100,original["metadata"].clone(),replacement).is_err(),"{mutation}");
+            let c=Connection::open(&path).unwrap();
+            let raw:String=c.query_row("SELECT metadata FROM pages WHERE id='p'",[],|r|r.get(0)).unwrap();
+            assert_eq!(serde_json::from_str::<Value>(&raw).unwrap(),original["metadata"]);
+            assert_eq!(c.query_row("SELECT count(*) FROM changes WHERE page_id='p'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+            drop(c); std::fs::remove_file(path).unwrap();
+        }
+    }
+    #[test]
+    fn removed_existing_link_does_not_silently_disappear_from_project() {
+        let path=fixture();
+        let c=Connection::open(&path).unwrap();
+        c.execute("UPDATE pages SET metadata=json_set(metadata,'$.project.links',json('[\"fixture-page\"]')) WHERE id='p'",[]).unwrap();
+        drop(c);
+        let original=read_resource(&path,"p").unwrap();
+        let mut replacement=original["metadata"].clone(); replacement["project"]["description"]=json!("draft");
+        let c=Connection::open(&path).unwrap();
+        c.execute("UPDATE pages SET deleted_at=1 WHERE id='fixture-page'",[]).unwrap(); drop(c);
+        assert!(save_project(&path,"p",100,original["metadata"].clone(),replacement).is_err());
+        let c=Connection::open(&path).unwrap();
+        let raw:String=c.query_row("SELECT metadata FROM pages WHERE id='p'",[],|r|r.get(0)).unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&raw).unwrap(),original["metadata"]);
+        assert_eq!(c.query_row("SELECT count(*) FROM changes WHERE page_id='p'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        drop(c); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn duplicate_existing_links_cannot_be_silently_removed() {
+        let path=fixture();
+        let c=Connection::open(&path).unwrap();
+        c.execute("UPDATE pages SET metadata=json_set(metadata,'$.project.links',json('[\"fixture-page\",\"fixture-page\"]')) WHERE id='p'",[]).unwrap(); drop(c);
+        let original=read_resource(&path,"p").unwrap();
+        let mut replacement=original["metadata"].clone(); replacement["project"]["links"]=json!([]);
+        assert!(save_project(&path,"p",100,original["metadata"].clone(),replacement).is_err());
+        let c=Connection::open(&path).unwrap();
+        let raw:String=c.query_row("SELECT metadata FROM pages WHERE id='p'",[],|r|r.get(0)).unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&raw).unwrap(),original["metadata"]);
+        assert_eq!(c.query_row("SELECT count(*) FROM changes WHERE page_id='p'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        drop(c); std::fs::remove_file(path).unwrap();
     }
     #[test]
     fn project_save_rechecks_sharing_after_draft_opened() {

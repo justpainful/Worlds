@@ -38,6 +38,89 @@ final class WorldsLocalCopyUITests: XCTestCase {
         capture(app, named: "local-copy-project-reopened")
     }
 
+    #if WORLDS_EXPERIMENTAL_PROJECT_LINKS
+    @MainActor func testUnavailableLinkExplainsAndReloadsWithoutDiscard() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-unavailable-link"]
+        app.launch()
+        let project = app.descendants(matching: .any)["page.harness-project"].firstMatch
+        XCTAssertTrue(project.waitForExistence(timeout: 30)); project.tap()
+        let edit = app.buttons["edit-local-project"]
+        XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
+        let message = app.descendants(matching: .any)["project-editing-error"].firstMatch
+        XCTAssertTrue(message.waitForExistence(timeout: 20))
+        XCTAssertTrue(message.label.contains("project or a linked page is unavailable"))
+        XCTAssertFalse(app.buttons["project-link-menu"].exists)
+        capture(app, named: "local-copy-unavailable-link")
+        let reload = app.buttons["Reload project"]
+        XCTAssertTrue(reload.waitForExistence(timeout: 10)); reload.tap()
+        XCTAssertTrue(message.waitForExistence(timeout: 20))
+        XCTAssertFalse(app.buttons["Discard"].exists)
+        app.buttons["Close"].tap()
+    }
+
+    @MainActor func testDuplicateLinksAreNotRemovedSilently() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-duplicate-links"]
+        app.launch()
+        let project = app.descendants(matching: .any)["page.harness-project"].firstMatch
+        XCTAssertTrue(project.waitForExistence(timeout: 30)); project.tap()
+        let edit = app.buttons["edit-local-project"]
+        XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
+        let links = app.buttons.matching(identifier: "project-unlink.fixture-page")
+        XCTAssertTrue(links.firstMatch.waitForExistence(timeout: 20))
+        #if os(iOS)
+        for _ in 0..<4 where !links.firstMatch.isHittable { app.swipeUp() }
+        #endif
+        links.firstMatch.tap()
+        let message = app.descendants(matching: .any)["project-editing-error"].firstMatch
+        XCTAssertTrue(message.waitForExistence(timeout: 20))
+        XCTAssertTrue(message.label.contains("malformed or duplicated"))
+        XCTAssertEqual(links.count, 2)
+        capture(app, named: "local-copy-duplicate-links-rejected")
+        app.buttons["Close"].tap()
+        XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
+        XCTAssertTrue(links.firstMatch.waitForExistence(timeout: 20))
+        XCTAssertEqual(links.count, 2)
+    }
+
+    @MainActor func testPersonalProjectLinksPersistAndUnlink() throws {
+        let app = XCUIApplication()
+        app.launchArguments.append("--ui-testing-local-copy-fixture")
+        app.launch()
+        let project = app.descendants(matching: .any)["page.harness-project"].firstMatch
+        XCTAssertTrue(project.waitForExistence(timeout: 30)); project.tap()
+        let edit = app.buttons["edit-local-project"]
+        XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
+        let menu = app.buttons["project-link-menu"]
+        XCTAssertTrue(menu.waitForExistence(timeout: 20))
+        #if os(iOS)
+        for _ in 0..<4 where !menu.isHittable { app.swipeUp() }
+        #endif
+        XCTAssertTrue(menu.isHittable); menu.tap()
+        let candidate = app.buttons["project-link.fixture-page"]
+        XCTAssertTrue(candidate.waitForExistence(timeout: 10)); candidate.tap()
+        let unlink = app.buttons["project-unlink.fixture-page"]
+        XCTAssertTrue(unlink.waitForExistence(timeout: 15))
+        capture(app, named: "local-copy-project-link-staged")
+        app.buttons["Save"].tap()
+        XCTAssertTrue(app.staticTexts["project-saved"].waitForExistence(timeout: 20))
+        app.buttons["Close"].tap()
+        XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
+        XCTAssertTrue(unlink.waitForExistence(timeout: 20))
+        #if os(iOS)
+        for _ in 0..<4 where !unlink.isHittable { app.swipeUp() }
+        #endif
+        XCTAssertTrue(unlink.isHittable); unlink.tap()
+        app.buttons["Save"].tap()
+        XCTAssertTrue(app.staticTexts["project-saved"].waitForExistence(timeout: 20))
+        app.buttons["Close"].tap()
+        XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
+        XCTAssertTrue(menu.waitForExistence(timeout: 20))
+        XCTAssertFalse(unlink.exists)
+    }
+
+    #endif
     #if os(iOS)
     @MainActor func testLargeTextRTLKeyboardAndSaveRemainReachable() throws {
         let app = XCUIApplication()

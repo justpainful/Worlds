@@ -113,10 +113,10 @@ pub fn save_blocks_checked(path: &Path, page: &str, base: i64, expected: Vec<Blo
     let (kind, current_at): (String,i64) = tx.query_row("SELECT kind,updated_at FROM pages WHERE id=?1", [page], |r| Ok((r.get(0)?,r.get(1)?)))?;
     if kind != "page" && kind != "document" { bail!("only page and document blocks are supported") }
     if current_at != base { bail!("conflict: page revision changed") }
-    let current: Vec<(String,String)> = tx.prepare("SELECT id,content FROM blocks WHERE page_id=?1 ORDER BY sort_key")?
-        .query_map([page], |r| Ok((r.get(0)?,r.get(1)?)))?.collect::<rusqlite::Result<_>>()?;
+    let current: Vec<(String,String,String)> = tx.prepare("SELECT id,content,properties FROM blocks WHERE page_id=?1 ORDER BY sort_key")?
+        .query_map([page], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?)))?.collect::<rusqlite::Result<_>>()?;
     if current.len() != expected.len() { bail!("conflict: block count changed") }
-    for ((id, json), old) in current.iter().zip(expected.iter()) {
+    for ((id, json, _), old) in current.iter().zip(expected.iter()) {
         let value: Value = serde_json::from_str(json)?;
         if id != &old.id || value != old.content { bail!("conflict: block content or order changed") }
     }
@@ -126,6 +126,18 @@ pub fn save_blocks_checked(path: &Path, page: &str, base: i64, expected: Vec<Blo
         if block.content.pointer("/attrs/bid").and_then(Value::as_str) != Some(block.id.as_str()) { bail!("invalid block identity") }
         let owner: Option<String> = tx.query_row("SELECT page_id FROM blocks WHERE id=?1", [&block.id], |r| r.get(0)).optional()?;
         if owner.as_deref().is_some_and(|other| other != page) { bail!("conflict: block ID belongs to another page") }
+    }
+    // Native editor has no representation for the separate properties column.
+    // Never delete a block with nonempty or malformed properties, including
+    // properties changed since the initial read. The check and write share the
+    // same immediate transaction.
+    for (id, _, raw) in &current {
+        if !ids.contains(id) {
+            let properties: Value = serde_json::from_str(raw).unwrap_or(Value::Null);
+            if !properties.as_object().is_some_and(|object| object.is_empty()) {
+                bail!("unsupported edit: block has properties that cannot be discarded")
+            }
+        }
     }
     store::snapshot_before_user_edit(&tx, page)?;
     let input = blocks.into_iter().map(|block| store::BlockInput { id: block.id, content: block.content }).collect();
@@ -393,6 +405,34 @@ mod tests {
         assert_eq!(c.query_row("SELECT count(*) FROM versions",[],|r|r.get::<_,i64>(0)).unwrap(),0);
         assert_eq!(c.query_row("SELECT count(*) FROM blocks WHERE page_id='fixture-page'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
         drop(c);std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn checked_save_preserves_nonempty_or_malformed_block_properties() {
+        for properties in [r#"{"plugin":{"keep":true}}"#, "invalid-json", "[]"] {
+            let path=fixture(); let expected=current_blocks(&path);
+            let c=Connection::open(&path).unwrap();
+            c.execute("UPDATE blocks SET properties=?1 WHERE id='fixture-block'",[properties]).unwrap(); drop(c);
+            let error=save_blocks_checked(&path,"fixture-page",1700000000001,expected,vec![]).unwrap_err();
+            assert!(error.to_string().contains("properties"));
+            let c=Connection::open(&path).unwrap();
+            let persisted:String=c.query_row("SELECT properties FROM blocks WHERE id='fixture-block'",[],|r|r.get(0)).unwrap();
+            assert_eq!(persisted,properties);
+            assert_eq!(c.query_row("SELECT count(*) FROM versions",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+            drop(c); std::fs::remove_file(path).unwrap();
+        }
+    }
+    #[test]
+    fn checked_save_retains_block_properties_when_editing_content() {
+        let path=fixture();
+        let c=Connection::open(&path).unwrap();
+        c.execute("UPDATE blocks SET properties=?1 WHERE id='fixture-block'",[r#"{"plugin":{"keep":true}}"#]).unwrap(); drop(c);
+        let expected=current_blocks(&path); let mut next=with_bid(current_blocks(&path));
+        next[0].content["content"][0]["text"] = serde_json::json!("Updated");
+        save_blocks_checked(&path,"fixture-page",1700000000001,expected,next).unwrap();
+        let c=Connection::open(&path).unwrap();
+        let properties:String=c.query_row("SELECT properties FROM blocks WHERE id='fixture-block'",[],|r|r.get(0)).unwrap();
+        assert_eq!(properties,r#"{"plugin":{"keep":true}}"#);
+        drop(c); std::fs::remove_file(path).unwrap();
     }
     #[test]
     fn checked_save_is_atomic_on_invalid_identity_and_returns_real_revision() {

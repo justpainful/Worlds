@@ -48,4 +48,34 @@ final class WorldsProjectEditingTests: XCTestCase {
         XCTAssertEqual(metadata["unknown"], .object(["keep": .bool(true)]))
         do { _ = try await ProjectEditingSession.open(repository: repository, projectID: "shared"); XCTFail("Shared page must be rejected") } catch { }
     }
+    private func fixtureResource() -> ProjectResource {
+        ProjectResource(id: "fixture-page", title: "Fixture page", kind: "page", parentID: nil,
+                        archived: false, deletedAt: nil, sortKey: 0, createdAt: 1, updatedAt: 1)
+    }
+    func testLinkUnlinkAndReopenRealProject() async throws {
+        let path = try database()
+        let repository = NativeResourceRepository(store: try NativePersonalStore(url: path))
+        let session = try await ProjectEditingSession.open(repository: repository, projectID: "project")
+        try await session.change(.link("fixture-page"), authorizedResources: [fixtureResource()])
+        _ = try await session.save()
+        let reopened = try await ProjectEditingSession.open(repository: repository, projectID: "project")
+        let linked = await reopened.current(); XCTAssertEqual(linked.links, ["fixture-page"])
+        try await reopened.change(.unlink("fixture-page"), authorizedResources: [fixtureResource()])
+        _ = try await reopened.save()
+        let again = try await ProjectEditingSession.open(repository: repository, projectID: "project")
+        let unlinked = await again.current(); XCTAssertTrue(unlinked.links.isEmpty)
+        guard case .object(let metadata) = unlinked.source else { return XCTFail("Missing metadata") }
+        XCTAssertEqual(metadata["unknown"], .object(["keep": .bool(true)]))
+    }
+    func testLinkRejectedIfTargetBecomesSharedBeforeSave() async throws {
+        let path = try database()
+        let repository = NativeResourceRepository(store: try NativePersonalStore(url: path))
+        let session = try await ProjectEditingSession.open(repository: repository, projectID: "project")
+        try await session.change(.link("fixture-page"), authorizedResources: [fixtureResource()])
+        try execute(path, "UPDATE pages SET workspace_id='team' WHERE id='fixture-page'")
+        do { _ = try await session.save(); XCTFail("Shared target must be rejected") } catch { }
+        let reopened = try await ProjectEditingSession.open(repository: repository, projectID: "project")
+        let current = await reopened.current(); XCTAssertTrue(current.links.isEmpty)
+    }
+
 }

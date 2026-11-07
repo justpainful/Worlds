@@ -113,7 +113,7 @@ if rustStoreAvailable {
     package.targets.append(.testTarget(name: "WorldsPresentationPersistenceTests", dependencies: ["WorldsPresentationPersistence", "WorldsPresentations"], resources: [.copy("worlds-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]))
     package.products.append(.library(name: "WorldsEditorPersistence", targets: ["WorldsEditorPersistence"]))
     package.targets.append(.target(name: "WorldsEditorPersistence", dependencies: ["WorldsModels", "WorldsPersistence", "WorldsRichText", "WorldsNativeEditor", "WorldsNativeWrites"], exclude: ["README.md"]))
-    package.targets.append(.testTarget(name: "WorldsEditorPersistenceTests", dependencies: ["WorldsEditorPersistence", "WorldsModels", "WorldsPersistence", "WorldsRichText", "WorldsNativeEditor", "WorldsNativeWrites"], resources: [.copy("editor-fixture.db")], linkerSettings: [.linkedLibrary("sqlite3")]))
+    package.targets.append(.testTarget(name: "WorldsEditorPersistenceTests", dependencies: ["WorldsEditorPersistence", "WorldsModels", "WorldsPersistence", "WorldsRichText", "WorldsNativeEditor", "WorldsNativeWrites", "WorldsLocalImport", "WorldsRustStore"], resources: [.copy("editor-fixture.db")], linkerSettings: [.linkedLibrary("sqlite3")]))
     package.products.append(.library(name: "WorldsProjectEditingViews", targets: ["WorldsProjectEditingViews"]))
     package.targets.append(.target(name: "WorldsProjectEditingViews", dependencies: ["WorldsProjectEditing", "WorldsProjects"], exclude: ["README.md"]))
     package.products.append(.library(name: "WorldsProjectEditing", targets: ["WorldsProjectEditing"]))
