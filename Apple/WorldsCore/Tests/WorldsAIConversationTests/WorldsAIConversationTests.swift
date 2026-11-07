@@ -170,4 +170,36 @@ final class WorldsAIConversationTests: XCTestCase {
         }
     }
 
+    func testSessionReplacementCannotResumeReadOrComplete() async throws {
+        let url = try fixture(), store = try SQLiteConversationStore(database: url), id = UUID()
+        let chat = try await store.begin(chatID: nil, prompt: "Question", runID: id)
+        var handle: OpaquePointer?
+        guard sqlite3_open(url.path, &handle) == SQLITE_OK, let db = handle else { return XCTFail("Fixture open failed") }
+        defer { sqlite3_close_v2(db) }
+        let replacement = UUID().uuidString.lowercased()
+        XCTAssertEqual(sqlite3_exec(db, "UPDATE ai_chats SET session_id='\(replacement)' WHERE id='\(chat.chatID)'", nil, nil, nil), SQLITE_OK)
+        do { _ = try await store.messages(chatID: chat.chatID); XCTFail("Replaced session must not be read") }
+        catch ConversationStorageError.unavailable { } catch { XCTFail("Unexpected error: \(error)") }
+        do { try await store.finish(chatID: chat.chatID, runID: id, text: "wrong", steps: [], isError: false, sessionOK: true); XCTFail("Replaced session must not be completed") }
+        catch ConversationStorageError.unavailable { } catch { XCTFail("Unexpected error: \(error)") }
+        XCTAssertEqual(sqlite3_exec(db, "UPDATE ai_chats SET session_id='\(chat.sessionID)' WHERE id='\(chat.chatID)'", nil, nil, nil), SQLITE_OK)
+        try await store.finish(chatID: chat.chatID, runID: id, text: "saved", steps: [], isError: false, sessionOK: true)
+        let rows = try await store.messages(chatID: chat.chatID)
+        XCTAssertEqual(rows.map(\.content), ["Question", "saved"])
+    }
+    func testRecreatedStoreRefusesUnprovenConversationOwnership() async throws {
+        let url = try fixture()
+        func makeCompletedChat() async throws -> String {
+            let first = try SQLiteConversationStore(database: url)
+            let id = UUID()
+            let opened = try await first.begin(chatID: nil, prompt: "private", runID: id)
+            try await first.finish(chatID: opened.chatID, runID: id, text: "answer", steps: [], isError: false, sessionOK: true)
+            return opened.chatID
+        }
+        let chatID = try await makeCompletedChat()
+        let restored = try SQLiteConversationStore(database: url)
+        do { _ = try await restored.messages(chatID: chatID); XCTFail("Ownership must be established before recovery") }
+        catch ConversationStorageError.unavailable { } catch { XCTFail("Unexpected error: \(error)") }
+    }
+
 }

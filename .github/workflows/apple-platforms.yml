@@ -47,9 +47,12 @@ jobs:
           grep -E 'testRejectsAmbiguousAuthenticatedPaths.*passed' logs/swift-test.log
           grep -q 'testReadOpaqueRoundTripAndRejectShared' logs/swift-test.log
           grep -E 'testLegacyAndMalformedSyncMetadataAreFilteredConsistently.*passed' logs/swift-test.log
+          grep -E 'testSnapshotRetainsArchivedState.*passed' logs/swift-test.log
           grep -E 'testAmbiguousSyncMetadataCannotLeakFTSOrParentTitle.*passed' logs/swift-test.log
           grep -E 'testUnexpectedToolIsRecordedAsErrorWithoutPermission.*passed' logs/swift-test.log
           grep -E 'testAnotherStoreCannotAccessExistingConversation.*passed' logs/swift-test.log
+          grep -E 'testSessionReplacementCannotResumeReadOrComplete.*passed' logs/swift-test.log
+          grep -E 'testRecreatedStoreRefusesUnprovenConversationOwnership.*passed' logs/swift-test.log
           grep -E 'testUnmatchedRunCannotFinishOrReleaseReservation.*passed' logs/swift-test.log
           grep -E 'testEventLimitsFailAndPreserveBoundedOutput.*passed' logs/swift-test.log
           grep -E 'testFailedAssistantSaveRollsBackAndCanRetry.*passed' logs/swift-test.log
@@ -686,6 +689,7 @@ jobs:
           grep -Eq 'testRightToLeftNavigationAndReading.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testReaderShowsStructuredContentAndExpandsToggle.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testProjectSummaryAndLinkedPage.*passed' logs/ui-${{ matrix.device }}.log
+          grep -Eq 'testArabicProjectSummary.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testGallerySummary.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testPresentationSummary.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testFileSummary.*passed' logs/ui-${{ matrix.device }}.log

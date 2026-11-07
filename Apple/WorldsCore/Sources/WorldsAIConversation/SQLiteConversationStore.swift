@@ -13,6 +13,7 @@ public actor SQLiteConversationStore: ConversationStore {
     private var activeChats: Set<String> = []
     private var activeRuns: [String: UUID] = [:]
     private var ownedChats: Set<String> = []
+    private var ownedSessions: [String: String] = [:]
     private var acceptedRuns: [UUID: String] = [:]
     public init(database: URL) throws {
         guard database.isFileURL, !database.path.utf8.contains(0) else { throw ConversationStorageError.invalidDatabase }
@@ -78,7 +79,7 @@ public actor SQLiteConversationStore: ConversationStore {
                 try Self.bind(q, [chatID]); guard sqlite3_step(q) == SQLITE_ROW, let text = sqlite3_column_text(q, 0) else { throw ConversationStorageError.unavailable }
                 guard ownedChats.contains(chatID), !activeChats.contains(chatID) else { throw ConversationStorageError.unavailable }
                 id = chatID; session = String(cString: text); resume = sqlite3_column_int64(q, 1) > 0
-                guard UUID(uuidString: session) != nil else { throw ConversationStorageError.invalidData }
+                guard UUID(uuidString: session) != nil, ownedSessions[chatID] == session else { throw ConversationStorageError.unavailable }
             } else {
                 id = UUID().uuidString.lowercased(); session = UUID().uuidString.lowercased(); resume = false
                 let line = prompt.split(whereSeparator: \.isNewline).first(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty }).map(String.init)?.trimmingCharacters(in: .whitespaces) ?? ""
@@ -90,6 +91,7 @@ public actor SQLiteConversationStore: ConversationStore {
             return ConversationRun(chatID: id, sessionID: session, resume: resume)
         }
         ownedChats.insert(opened.chatID)
+        ownedSessions[opened.chatID] = opened.sessionID
         activeChats.insert(opened.chatID)
         activeRuns[opened.chatID] = runID
         acceptedRuns[runID] = opened.chatID
@@ -98,11 +100,11 @@ public actor SQLiteConversationStore: ConversationStore {
     /// Available only for runs accepted by this store instance.
     public func acceptedChatID(runID: UUID) -> String? { acceptedRuns[runID] }
     public func messages(chatID: String) throws -> [StoredConversationMessage] {
-        guard ownedChats.contains(chatID) else { throw ConversationStorageError.unavailable }
+        guard ownedChats.contains(chatID), let session = ownedSessions[chatID] else { throw ConversationStorageError.unavailable }
         return try transaction {
-            let page = try Self.prepare(db, "SELECT 1 FROM ai_chats WHERE id=?1 AND page_id IS NULL")
+            let page = try Self.prepare(db, "SELECT 1 FROM ai_chats WHERE id=?1 AND page_id IS NULL AND session_id=?2")
             defer { sqlite3_finalize(page) }
-            try Self.bind(page, [chatID])
+            try Self.bind(page, [chatID, session])
             guard sqlite3_step(page) == SQLITE_ROW else { throw ConversationStorageError.unavailable }
             let q = try Self.prepare(db, "SELECT id,role,content,steps,op_id,meta,created_at FROM ai_messages WHERE chat_id=?1 ORDER BY created_at,rowid")
             defer { sqlite3_finalize(q) }; try Self.bind(q, [chatID])
@@ -122,15 +124,15 @@ public actor SQLiteConversationStore: ConversationStore {
         }
     }
     public func finish(chatID: String, runID: UUID, text: String, steps: [ConversationStep], isError: Bool, sessionOK: Bool) throws {
-        guard activeChats.contains(chatID), activeRuns[chatID] == runID, acceptedRuns[runID] == chatID, text.utf8.count <= 8 * 1024 * 1024, steps.count <= 20_000 else { throw ConversationStorageError.invalidData }
+        guard activeChats.contains(chatID), activeRuns[chatID] == runID, acceptedRuns[runID] == chatID, let session = ownedSessions[chatID], text.utf8.count <= 8 * 1024 * 1024, steps.count <= 20_000 else { throw ConversationStorageError.invalidData }
         let json = try JSONEncoder().encode(steps)
         guard let encoded = String(data: json, encoding: .utf8) else { throw ConversationStorageError.invalidData }
         let meta = "{\"sessionOk\":\(sessionOK ? "true" : "false"),\"isError\":\(isError ? "true" : "false")}"
         try transaction {
             // Recheck ownership and enforce one assistant result per run.
-            let q = try Self.prepare(db, "SELECT COUNT(*) FROM ai_chats WHERE id=?1 AND page_id IS NULL AND NOT EXISTS(SELECT 1 FROM ai_messages WHERE chat_id=?1 AND op_id=?2)")
+            let q = try Self.prepare(db, "SELECT COUNT(*) FROM ai_chats WHERE id=?1 AND page_id IS NULL AND session_id=?3 AND NOT EXISTS(SELECT 1 FROM ai_messages WHERE chat_id=?1 AND op_id=?2)")
             defer { sqlite3_finalize(q) }
-            try Self.bind(q, [chatID,runID.uuidString.lowercased()])
+            try Self.bind(q, [chatID,runID.uuidString.lowercased(),session])
             guard sqlite3_step(q) == SQLITE_ROW, sqlite3_column_int(q, 0) == 1 else { throw ConversationStorageError.unavailable }
             try insert(chat: chatID, role: "assistant", content: text, steps: encoded, operation: runID.uuidString.lowercased(), meta: meta)
         }

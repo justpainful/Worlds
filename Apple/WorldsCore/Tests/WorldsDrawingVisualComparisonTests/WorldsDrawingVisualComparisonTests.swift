@@ -65,6 +65,10 @@ final class WorldsDrawingVisualComparisonTests: XCTestCase {
         guard CGImageDestinationFinalize(destination) else { throw NSError(domain: "DrawingComparison", code: 1) }
         return data as Data
     }
+    private func srgb(_ red: Double, _ green: Double, _ blue: Double) throws -> CGColor {
+        let space = try XCTUnwrap(CGColorSpace(name: CGColorSpace.sRGB))
+        return try XCTUnwrap(CGColor(colorSpace: space, components: [red / 255, green / 255, blue / 255, 1]))
+    }
     private func samples() -> [ToolSample] {
         [ToolSample(x: 8, y: 20, pressure: 0.25, time: 0), ToolSample(x: 30, y: 28, pressure: 0.8, time: 1), ToolSample(x: 55, y: 20, pressure: 1, time: 2)]
     }
@@ -80,7 +84,7 @@ final class WorldsDrawingVisualComparisonTests: XCTestCase {
         return try bitmap(dimension) { context in
             let scale = CGFloat(dimension) / 64
             context.translateBy(x: 0, y: CGFloat(dimension)); context.scaleBy(x: scale, y: -scale)
-            try StrokeRasterCandidate.draw(samples: samples(), brush: brush, seed: 123, color: CGColor(red: 32/255, green: 32/255, blue: 35/255, alpha: 1), in: context)
+            try StrokeRasterCandidate.draw(samples: samples(), brush: brush, seed: 123, color: try srgb(32, 32, 35), in: context)
         }
     }
     private func renderLayers(_ dimension: Int) throws -> [UInt8] {
@@ -91,7 +95,7 @@ final class WorldsDrawingVisualComparisonTests: XCTestCase {
                 var brush = ToolBrush(); brush.kind = "hard"; brush.size = 10; brush.opacity = 0.6; brush.flow = 0.7; brush.spacing = 0.25
                 brush.pressureSize = true; brush.pressureOpacity = true
                 let points = [ToolSample(x: 8, y: index == 0 ? 20 : 26, pressure: 0.25, time: 0), ToolSample(x: 30, y: index == 0 ? 28 : 20, pressure: 0.8, time: 1), ToolSample(x: 55, y: index == 0 ? 20 : 26, pressure: 1, time: 2)]
-                let color = index == 0 ? CGColor(red: 238/255, green: 68/255, blue: 34/255, alpha: 1) : CGColor(red: 0, green: 102/255, blue: 204/255, alpha: 1)
+                let color = try (index == 0 ? srgb(238, 68, 34) : srgb(0, 102, 204))
                 context.saveGState(); context.setAlpha(index == 0 ? 0.6 : 0.5); context.beginTransparencyLayer(auxiliaryInfo: nil)
                 try StrokeRasterCandidate.draw(samples: points, brush: brush, seed: 123, color: color, in: context)
                 context.endTransparencyLayer(); context.restoreGState()

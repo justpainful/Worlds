@@ -43,6 +43,14 @@ final class WorldsDatabaseTests: XCTestCase {
         XCTAssertEqual(Set(includingDeleted.pages.map(\.id)), Set(["personal", "trash"]))
     }
 
+    func testSnapshotRetainsArchivedState() async throws {
+        let url = try fixture()
+        try execute(url, "UPDATE pages SET archived=1 WHERE id='fixture-page'")
+        let database = try WorldsDatabase(url: url)
+        let snapshot = try await database.snapshot()
+        XCTAssertEqual(snapshot.pages.first?.archived, true)
+    }
+
     func testExcludesMetadataFlaggedSharedPages() async throws {
         let url = try fixture()
         try execute(url, "UPDATE pages SET metadata = '{\"sync\":{\"shared\":true}}'")

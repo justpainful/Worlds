@@ -161,11 +161,21 @@ final class WorldsUITests: XCTestCase {
         let app = try openResource("resource-project")
         XCTAssertTrue(app.staticTexts["Prepare the lesson"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.staticTexts["Some linked pages are unavailable in this snapshot."].exists)
+        XCTAssertTrue(app.buttons["resource-page.resource-child"].exists)
+        XCTAssertFalse(app.buttons["resource-page.resource-archived"].exists)
         let link = app.buttons["resource-page.reader-fixture"]
         XCTAssertTrue(link.waitForExistence(timeout: 10))
         capture("11-project-summary", app: app)
         link.tap()
         XCTAssertTrue(app.staticTexts["Read the warning"].waitForExistence(timeout: 15))
+    }
+
+    @MainActor
+    func testArabicProjectSummary() throws {
+        let app = try openResource("resource-ar-project", rightToLeft: true)
+        XCTAssertTrue(app.staticTexts["مَشْرُوع الرِّيَاضِيَّات: lesson ١٢٣"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["resource-page.reader-fixture"].exists)
+        capture("15-project-summary-rtl", app: app)
     }
 
     @MainActor
@@ -195,9 +205,10 @@ final class WorldsUITests: XCTestCase {
     }
 
     @MainActor
-    private func openResource(_ id: String) throws -> XCUIApplication {
+    private func openResource(_ id: String, rightToLeft: Bool = false) throws -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments.append("--ui-testing-reader-fixture")
+        if rightToLeft { app.launchArguments.append("--ui-testing-rtl") }
         app.launch()
         let row = app.descendants(matching: .any)["page.\(id)"].firstMatch
         if !row.waitForExistence(timeout: 10) { app.swipeUp() }

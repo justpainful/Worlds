@@ -70,9 +70,14 @@ struct ResourceContentView: View {
     private var project: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let info = metadata?.project {
-                if let status = info.status { detail("Status", status.capitalized) }
-                if let start = info.start { detail("Start", start) }
-                if let due = info.due { detail("Due", due) }
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 12) { projectFacts(info) }
+                } else {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .top, spacing: 20) { projectFacts(info) }
+                        VStack(alignment: .leading, spacing: 12) { projectFacts(info) }
+                    }
+                }
                 if let description = info.description, !description.isEmpty { Text(description).textSelection(.enabled) }
                 let linked = linkedPages(info.links ?? [])
                 if !linked.isEmpty { pageLinks("Linked pages", linked) }
@@ -80,8 +85,8 @@ struct ResourceContentView: View {
                     Text("Some linked pages are unavailable in this snapshot.").font(.caption).foregroundStyle(.secondary)
                 }
             } else { Text("Project details are unavailable.").foregroundStyle(.secondary) }
-            let children = pages.filter { $0.parentID == page.id && $0.kind != "template" }
-            if !children.isEmpty { pageLinks("Pages inside, including archived", children) }
+            let children = pages.filter { $0.parentID == page.id && $0.kind != "template" && !$0.archived }
+            if !children.isEmpty { pageLinks("Pages inside", children) }
         }
     }
     private var gallery: some View {
@@ -91,7 +96,7 @@ struct ResourceContentView: View {
             ForEach(Array(blocks.enumerated()), id: \.offset) { _, pair in
                 if let block = pair.1, block.type == "galleryItem" {
                     VStack(alignment: .leading, spacing: 4) {
-                        Label(block.attrs?.name ?? "Gallery item details unavailable", systemImage: "photo")
+                        Label(block.attrs?.name ?? "Gallery item details unavailable", systemImage: mediaSymbol(block.attrs?.mime))
                         if let caption = block.attrs?.caption, !caption.isEmpty { Text(caption).foregroundStyle(.secondary) }
                     }
                 } else { Text("Unsupported gallery content").foregroundStyle(.secondary) }
@@ -126,6 +131,19 @@ struct ResourceContentView: View {
             } else { Text("File details are unavailable.").foregroundStyle(.secondary) }
         }
     }
+    @ViewBuilder
+    private func projectFacts(_ info: ResourceMetadata.Project) -> some View {
+        if let status = info.status { detail("Status", status.capitalized).frame(minWidth: 90) }
+        if let start = info.start { detail("Start", start).frame(minWidth: 90) }
+        if let due = info.due { detail("Due", due).frame(minWidth: 90) }
+    }
+    private func mediaSymbol(_ mime: String?) -> String {
+        guard let mime else { return "doc" }
+        if mime.hasPrefix("image/") { return "photo" }
+        if mime.hasPrefix("video/") { return "film" }
+        if mime.hasPrefix("audio/") { return "waveform" }
+        return "doc"
+    }
     private func linkedPages(_ ids: [String]) -> [StoredPage] {
         var seen = Set<String>()
         return ids.compactMap { id in
@@ -144,7 +162,13 @@ struct ResourceContentView: View {
             Text(label).font(.headline).accessibilityAddTraits(.isHeader)
             ForEach(entries) { item in
                 Button { openPage(item.id) } label: {
-                    Label(item.title.isEmpty ? "Untitled" : item.title, systemImage: "doc.text")
+                    HStack(spacing: 10) {
+                        Label(item.title.isEmpty ? "Untitled" : item.title, systemImage: "doc.text")
+                        Spacer(minLength: 8)
+                        Image(systemName: "chevron.forward").font(.caption.weight(.semibold)).foregroundStyle(.secondary).accessibilityHidden(true)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("resource-page.\(item.id)")

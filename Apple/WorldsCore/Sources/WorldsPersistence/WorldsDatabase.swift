@@ -15,6 +15,7 @@ public struct StoredPage: Sendable, Equatable, Identifiable {
     public let title: String
     public let kind: String
     public let parentID: String?
+    public let archived: Bool
     public let preview: String
     public let updatedAt: Int64
     public let metadataJSON: String
@@ -119,7 +120,7 @@ public actor WorldsDatabase {
             if !includeDeleted { clauses.append("deleted_at IS NULL") }
             if version >= 5 { clauses.append("workspace_id IS NULL") }
             let filter = clauses.isEmpty ? "" : " WHERE " + clauses.joined(separator: " AND ")
-            let sql = "SELECT id, title, kind, parent_id, preview, updated_at, metadata FROM pages p" + filter + " ORDER BY sort_key, created_at"
+            let sql = "SELECT id, title, kind, parent_id, preview, updated_at, metadata, archived FROM pages p" + filter + " ORDER BY sort_key, created_at"
             let statement = try Self.prepare(db, sql)
             defer { sqlite3_finalize(statement) }
             var pages: [StoredPage] = []
@@ -133,6 +134,7 @@ public actor WorldsDatabase {
                     id: id, title: try Self.text(statement, 1, "page.title"),
                     kind: try Self.text(statement, 2, "page.kind"),
                     parentID: try Self.optionalText(statement, 3, "page.parent_id"),
+                    archived: sqlite3_column_int(statement, 7) != 0,
                     preview: try Self.text(statement, 4, "page.preview"),
                     updatedAt: sqlite3_column_int64(statement, 5),
                     metadataJSON: metadata,
