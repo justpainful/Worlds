@@ -1,6 +1,6 @@
 # Apple native feature parity matrix
 
-Status: inventory in progress. This is not yet an exhaustive audit and source inspection is not runtime verification. No Apple implementation or test is claimed by this document.
+Status: inventory in progress. This is not yet an exhaustive audit and source inspection is not runtime verification. The Apple application and core have partial implementations; no complete end-to-end feature is claimed.
 
 Source inspected: local Windows working tree at commit `185ee9a1019c8b7bc685d22dabf1b699579189cc` plus its pre-existing uncommitted changes. The Apple branch starts at that commit and does not contain those uncommitted changes. In particular, drawing and screen annotation include local modifications and untracked files; parity must be assessed against both versions without publishing private data or overwriting the Windows workspace.
 
@@ -9,7 +9,7 @@ Status below refers to the Apple port. `Planned but Not Implemented` does not as
 | Feature | Source behavior and evidence | Storage and integration | Native approach and required verification | Apple status |
 | --- | --- | --- | --- | --- |
 | Workspace and navigation | Home, tabs, panes, resource routing: `src/views/RouteView.tsx`, `src/shell`, `src/state` | Local SQLite and shared workspace services | Adaptive native navigation; verify navigation, history, multiple windows and resizing | Planned but Not Implemented |
-| Pages and block editor | Blocks, formatting, lists, tables, columns, embeds: `src/editor`, `src/pages` | SQLite blocks; shared documents use Yjs | Native rich editor preserving block schema and editing behavior; round-trip and editing tests | Planned but Not Implemented |
+| Pages and block editor | Blocks, formatting, lists, tables, columns, embeds: `src/editor`, `src/pages` | SQLite blocks; shared documents use Yjs | Partial native read-only block rendering and Rust write experiment; rich editing, safe integration and complete behavior remain. Requires round-trip and editing tests | Partially Implemented |
 | Documents | Formatted paper pages: `src/resources/views`, `src/editor` | Page and block storage | Native paginated editing preserving layout; formatting and export tests | Planned but Not Implemented |
 | Presentations | Slide editing and presentation mode: `src/resources/views/PresentationView.tsx` | Resource blocks | Native slide editor and playback; edit, navigation and export tests | Planned but Not Implemented |
 | Projects | Group related resources and activity: `src/resources/views/ProjectView.tsx` | SQLite resources and relationships | Native project view and relationship operations; CRUD tests | Planned but Not Implemented |
@@ -24,8 +24,8 @@ Status below refers to the Apple port. `Planned but Not Implemented` does not as
 | Templates | Template route and creation: `src/views/TemplatesView.tsx` | Resource and template storage | Native template workflow; creation and persistence tests | Planned but Not Implemented |
 | AI chat and editing | Claude chat, streamed tool events, cancellation: `src/ai/chat`, `src/lib/api.ts` | Claude Code child process and MCP stdio in Rust | Find a supported iOS-compatible execution architecture and retain permissions; end-to-end tests | Blocked with Documented Reason |
 | MCP tools and integrations | Tool access with permission checks: `src-tauri/src/mcp.rs` | Local MCP transport and authorization | Preserve tool semantics and permissions on each platform; authorization and integration tests | Blocked with Documented Reason |
-| Account and authentication | Passkeys, PKCE and device-bound Ed25519: `src-tauri/src/account` | Keyring secrets, memory access token, identity service | AuthenticationServices, Keychain and compatible signing; refresh and recovery tests | Planned but Not Implemented |
-| Collaboration and sync | Yjs updates, awareness, outbox and mirror: `src/sync`, `src-tauri/src/sync` | Binary `worlds-sync.v1` WebSocket, SQLite and Cloudflare | Compatible Yjs implementation and wire protocol, not replacement JSON sync; cross-client convergence and offline tests | Blocked with Documented Reason |
+| Account and authentication | Passkeys, PKCE and device-bound Ed25519: `src-tauri/src/account` | Keyring secrets, memory access token, identity service | Partial native identity client and passkey code; UI, service configuration, device validation and recovery remain | Partially Implemented |
+| Collaboration and sync | Yjs updates, awareness, outbox and mirror: `src/sync`, `src-tauri/src/sync` | Binary `worlds-sync.v1` WebSocket, SQLite and Cloudflare | Partial wire codec and Yjs-compatible Rust experiment; native integration, editing, transport, awareness, permissions and offline recovery remain | Partially Implemented |
 | Permissions and approvals | Workspace roles and page access; Discord approval: `src-tauri/src/account/permissions.rs`, `src/discord` | Server ACL and local queues | Preserve server enforcement and approval workflow; negative authorization tests | Planned but Not Implemented |
 | Automations and schedules | Once, daily, weekly and monthly schedules: `src/automations`, `src/views/AutomationsView.tsx` | Application process and storage | Design platform-appropriate background execution with explicit system limits; scheduling and approval tests | Blocked with Documented Reason |
 | Activity and trash | Activity and trash routes: `src/views/ActivityView.tsx`, `TrashView.tsx` | Local storage | Restore and permanent-delete flows; persistence and permissions tests | Planned but Not Implemented |
