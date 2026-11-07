@@ -141,7 +141,9 @@ public actor IdentitySessionCoordinator {
     }
     /// Reports only whether a usable durable session is present, without network access.
     public func hasStoredSession() async throws -> Bool {
-        guard !locallySignedOut, !changingSession else { return false }
+        guard !changingSession else { throw IdentityContinuityError.busy }
+        guard !locallySignedOut else { return false }
+        activeRequests += 1; defer { activeRequests -= 1 }
         do { _ = try await client.currentUserID(); return true }
         catch IdentityError.signedOut { return false }
     }

@@ -72,6 +72,15 @@ private actor FixtureSocket: CollaborationSocket {
 }
 
 extension WorldsCollaborationTests {
+    func testRejectsAmbiguousServiceBasePathsBeforeConnecting() throws {
+        let store = FixtureStore()
+        for value in ["https://example.invalid/a/../private", "https://example.invalid/a/%2e%2e/private", "https://example.invalid/a%2fb", "https://example.invalid/a//b"] {
+            let url = try XCTUnwrap(URL(string: value))
+            XCTAssertThrowsError(try CollaborationSession(pageID: "p", workspaceID: "w", documentID: "p", expectedUserID: "user", serverURL: url, store: store, tokenProvider: { _ in "fixture-token" }), value)
+        }
+        XCTAssertNoThrow(try CollaborationSession(pageID: "p", workspaceID: "w", documentID: "p", expectedUserID: "user", serverURL: URL(string: "https://example.invalid/base")!, store: store, tokenProvider: { _ in "fixture-token" }))
+    }
+
     func testSessionAcknowledgesHandshakeWatermark() async throws {
         let store = FixtureStore()
         let socket = FixtureSocket()

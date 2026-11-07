@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import WorldsSyncWire
 @testable import WorldsCollaboration
 
 /// Runs only against the repository's local Worker and its disposable identity stand-in.
@@ -9,6 +10,28 @@ final class LiveWorkerTests: XCTestCase {
     private let base = Data(base64Encoded: "AQbpBwAEAQZzaGFyZWQKSGVsbG8g8J+MjQcBB2RlZmF1bHQDCXBhcmFncmFwaAcA6QcIBgYA6QcJBGJvbGQEdHJ1ZYTpBwoNWWpzIHJpY2ggdGV4dIbpBxcEYm9sZARudWxsAA==")!
     private let alice = Data(base64Encoded: "AQHRDwDE6QcF6QcGBkFsaWNlIAA=")!
     private let bob = Data(base64Encoded: "AQHSDwDE6QcF6QcGBEJvYiAA")!
+
+    #if DEBUG
+    func testLiveWorkerPongDoesNotCloseBinaryTransport() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard env["WORLDS_REQUIRE_LIVE_SERVICE"] == "1" else { throw XCTSkip("Local Worker integration was not requested") }
+        guard env["WORLDS_LIVE_SYNC_URL"] == "ws://127.0.0.1:18790", let token = env["WORLDS_LIVE_EDITOR_TOKEN"], !token.isEmpty else {
+            return XCTFail("Local Worker credentials are required")
+        }
+        let document = "pong" + UUID().uuidString.replacingOccurrences(of: "-", with: "")
+        let url = try XCTUnwrap(URL(string: "ws://127.0.0.1:18790/v1/workspaces/fixture-workspace/docs/\(document)/sync"))
+        let socket = URLSessionCollaborationSocket(url: url, token: token)
+        defer { Task { await socket.close() } }
+        try await socket.sendFixturePing()
+        try await socket.send(WorldsSyncWire.encode(.queryAwareness))
+        var observed = false
+        for _ in 0..<6 {
+            guard let data = try await socket.receive() else { return XCTFail("Text pong closed the binary receive loop") }
+            if case .awareness = try WorldsSyncWire.decode(data) { observed = true; break }
+        }
+        XCTAssertTrue(observed, "Expected an awareness response after the pong")
+    }
+    #endif
 
     private func fixture(_ identity: String) throws -> URL {
         let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-\(identity)-v11", withExtension: "db"))

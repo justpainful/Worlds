@@ -14,6 +14,10 @@ The input code is cleared from view state before verification. Cancellation of
 an in-flight network operation can leave server-side outcome uncertain, so the
 UI does not present a cancel button while verification or sign-out is active.
 Closing the containing view does not guarantee the server operation is undone.
+When verification is cancelled or the connection fails before a response, the
+challenge is discarded and the person is asked to request a new code: the
+service may already have consumed the original. A session revoked immediately
+after verification is shown as expired rather than as a successful sign-in.
 The view is not wired into the product and needs a documented service
 configuration, signed Apple Keychain and lifecycle checks, and successful UI
 and service tests. Passkeys are deliberately omitted until the actual Apple

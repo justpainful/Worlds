@@ -343,10 +343,20 @@ private struct WorldsLibraryView: View {
                         .padding(.vertical, 4)
                     }
                     .accessibilityIdentifier("search-result.\(hit.pageId)")
+                    .accessibilityLabel(searchAccessibilityLabel(hit))
                     .accessibilityHint("Opens page")
                 }
             }
         }
+    }
+
+    private func searchAccessibilityLabel(_ hit: WorldsSearchHit) -> String {
+        var parts = [hit.title.isEmpty ? "Untitled" : hit.title]
+        if hit.kind == "template" { parts.append("Template · View only") }
+        let snippet = hit.snippetRuns.map(\.text).joined()
+        if !snippet.isEmpty { parts.append(snippet) }
+        if let parent = hit.parentTitle, !parent.isEmpty { parts.append(parent) }
+        return parts.joined(separator: ", ")
     }
 
     private func highlightedSnippet(_ hit: WorldsSearchHit) -> AttributedString {

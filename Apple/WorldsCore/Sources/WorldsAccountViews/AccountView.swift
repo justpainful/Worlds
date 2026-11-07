@@ -118,8 +118,17 @@ final class AccountModel: ObservableObject {
             self.challenge = nil
             // Authentication succeeded even if the subsequent profile request fails.
             do { snapshot = try await coordinator.fetchAccount() }
+            catch IdentityError.signedOut { hasSession = false; notice = "The session expired. Sign in again." }
+            catch IdentityContinuityError.signedOut { hasSession = false; notice = "The session expired. Sign in again." }
             catch { notice = "Signed in, but account details could not be loaded."; self.error = error.localizedDescription }
-        } catch is CancellationError { notice = "The request was cancelled. Try signing in again if necessary." }
+        } catch is CancellationError {
+            self.challenge = nil
+            notice = "Verification may have been interrupted. Request a new code."
+        }
+        catch is URLError {
+            self.challenge = nil
+            notice = "The verification result is unknown. Request a new code."
+        }
         catch { self.error = error.localizedDescription }
     }
     func refresh(isRestore: Bool = false) async {

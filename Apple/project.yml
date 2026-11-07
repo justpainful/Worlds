@@ -55,6 +55,7 @@ targets:
         product: WorldsProjectEditingViews
     settings:
       base:
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) WORLDS_EXPERIMENTAL_LOCAL_COPY"
         PRODUCT_BUNDLE_IDENTIFIER: app.worlds.native.ios
         TARGETED_DEVICE_FAMILY: "1,2"
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
@@ -97,6 +98,7 @@ targets:
         product: WorldsProjectEditingViews
     settings:
       base:
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) WORLDS_EXPERIMENTAL_LOCAL_COPY"
         PRODUCT_BUNDLE_IDENTIFIER: app.worlds.native.macos
   Worlds-iOS-UITests:
     type: bundle.ui-testing

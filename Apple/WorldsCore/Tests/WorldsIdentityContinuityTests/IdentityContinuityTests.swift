@@ -10,6 +10,21 @@ private final class MemorySecrets: IdentitySecretStore, @unchecked Sendable {
     func save(_ value: Data) throws { lock.lock(); defer { lock.unlock() }; data = value }
     func delete() throws { lock.lock(); defer { lock.unlock() }; data = nil }
 }
+private final class BlockingSecrets: IdentitySecretStore, @unchecked Sendable {
+    private let lock = NSLock()
+    private var data: Data?
+    private var shouldBlock = false
+    let entered = DispatchSemaphore(value: 0)
+    let release = DispatchSemaphore(value: 0)
+    func blockNextLoad() { lock.lock(); shouldBlock = true; lock.unlock() }
+    func load() throws -> Data? {
+        lock.lock(); let block = shouldBlock; shouldBlock = false; let value = data; lock.unlock()
+        if block { entered.signal(); release.wait() }
+        return value
+    }
+    func save(_ value: Data) throws { lock.lock(); data = value; lock.unlock() }
+    func delete() throws { lock.lock(); data = nil; lock.unlock() }
+}
 private actor IdentityFixtureTransport: IdentityTransport {
     enum Mode: Equatable { case success, interrupted, offlineLogout }
     let mode: Mode
@@ -147,6 +162,23 @@ final class IdentityContinuityTests: XCTestCase {
         _ = try await coordinator.signOut()
         let afterSignOut = try await coordinator.hasStoredSession()
         XCTAssertFalse(afterSignOut)
+    }
+    func testSignOutCannotRaceStoredSessionCheck() async throws {
+        let secrets = BlockingSecrets()
+        let coordinator = try IdentitySessionCoordinator(baseURL: URL(string: "https://identity.test")!, lockDirectory: directory(), transport: IdentityFixtureTransport(mode: .offlineLogout), secrets: secrets)
+        _ = try await coordinator.verifyEmail(challengeID: "test", code: "000000", deviceName: "Test", platform: "macos")
+        secrets.blockNextLoad()
+        let check = Task { try await coordinator.hasStoredSession() }
+        defer { secrets.release.signal() }
+        let entered = await Task.detached { secrets.entered.wait(timeout: .now() + 2) == .success }.value
+        guard entered else { return XCTFail("Session check did not start") }
+        do { _ = try await coordinator.signOut(); XCTFail("Sign-out must not race the stored session check") }
+        catch IdentityContinuityError.busy { }
+        secrets.release.signal()
+        let present = try await check.value
+        XCTAssertTrue(present)
+        _ = try await coordinator.signOut()
+        XCTAssertNil(try secrets.load())
     }
 
 }

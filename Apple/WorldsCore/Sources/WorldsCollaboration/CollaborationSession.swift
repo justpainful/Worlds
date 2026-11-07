@@ -50,14 +50,21 @@ public struct URLSessionCollaborationSocket: CollaborationSocket {
     }
     public func send(_ data: Data) async throws { try await task.send(.data(data)) }
     public func receive() async throws -> Data? {
-        switch try await task.receive() {
-        case .data(let data): return data
-        case .string: return nil
-        @unknown default: return nil
+        // Desktop ignores text control messages such as the Worker's pong.
+        // They are not a closed socket and must not trigger reconnect.
+        while true {
+            switch try await task.receive() {
+            case .data(let data): return data
+            case .string: continue
+            @unknown default: return nil
+            }
         }
     }
     public func close() async { task.cancel(with: .goingAway, reason: nil) }
     public func closeCode() async -> Int { task.closeCode.rawValue }
+    #if DEBUG
+    func sendFixturePing() async throws { try await task.send(.string("ping")) }
+    #endif
 }
 
 public enum CollaborationError: Error {
@@ -101,7 +108,10 @@ public actor CollaborationSession {
               !workspaceID.isEmpty, !documentID.isEmpty, !expectedUserID.isEmpty,
               workspaceID.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-" || $0 == "_") }),
               documentID.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-" || $0 == "_") }) else { throw CollaborationError.invalidEndpoint }
-        var parts = URLComponents(url: serverURL, resolvingAgainstBaseURL: false)!
+        guard var parts = URLComponents(url: serverURL, resolvingAgainstBaseURL: false),
+              !parts.percentEncodedPath.contains("%"), !parts.path.contains("\\"),
+              !parts.path.contains("//"), !parts.path.split(separator: "/").contains("."),
+              !parts.path.split(separator: "/").contains("..") else { throw CollaborationError.invalidEndpoint }
         parts.scheme = scheme == "https" ? "wss" : "ws"
         parts.path = parts.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         parts.path = "/" + ([parts.path, "v1", "workspaces", workspaceID, "docs", documentID, "sync"].filter { !$0.isEmpty }.joined(separator: "/"))

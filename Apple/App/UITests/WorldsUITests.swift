@@ -37,8 +37,9 @@ final class WorldsUITests: XCTestCase {
         let result = app.descendants(matching: .any)["search-result.search-personal"].firstMatch
         XCTAssertTrue(result.waitForExistence(timeout: 20))
         XCTAssertFalse(app.descendants(matching: .any)["search-result.search-shared"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["search-result.search-template"].firstMatch.waitForExistence(timeout: 20))
-        XCTAssertTrue(app.descendants(matching: .any)["search-template-kind"].firstMatch.exists)
+        let template = app.descendants(matching: .any)["search-result.search-template"].firstMatch
+        XCTAssertTrue(template.waitForExistence(timeout: 20))
+        XCTAssertTrue(template.label.contains("Template · View only"), "Template result must announce that it opens read-only")
         capture("05-personal-search-results", app: app)
         result.tap()
         XCTAssertTrue(app.staticTexts["Read only"].waitForExistence(timeout: 15))

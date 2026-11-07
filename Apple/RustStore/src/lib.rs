@@ -5,6 +5,8 @@ use std::path::Path;
 mod resource_ops;
 mod isolated_import;
 mod automation_ops;
+#[allow(dead_code)]
+mod template_preflight;
 
 #[path = "../../../src-tauri/src/content.rs"]
 mod content;

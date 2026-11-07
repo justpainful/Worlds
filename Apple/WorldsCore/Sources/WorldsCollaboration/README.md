@@ -11,3 +11,11 @@ Presence, editing Tiptap XML, local update generation, block mirroring, attachme
 
 
 `LiveWorkerTests/testLiveSwiftSessionsConvergeReconnectAndArchiveRefusal` exercises the Swift sessions with the real local Worker and test identity when `WORLDS_REQUIRE_LIVE_SERVICE=1`. It refuses any service URL except `ws://127.0.0.1:18790` and requires local editor/viewer tokens in the environment. The test creates independent copies of the original-schema SQLite fixture. It has not yet run on macOS and must not be reported as passing until CI supplies evidence.
+
+The WebSocket transport now ignores text messages, including the Worker's pong,
+instead of treating them as a closed connection. A local Worker integration
+case sends ping and then requests awareness; it has not yet run after this
+change. Endpoint base paths containing percent escapes, backslashes, repeated
+separators or dot segments are refused before constructing a request carrying a
+bearer token. These checks do not implement network heartbeat scheduling or
+resolve the remaining collaboration authorization and recovery limitations.
