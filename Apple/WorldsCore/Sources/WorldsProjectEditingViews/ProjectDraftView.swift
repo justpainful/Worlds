@@ -104,10 +104,9 @@ public struct ProjectDraftView: View {
                 if model.didSave && !model.hasUnstagedChanges { Text("Project saved").accessibilityIdentifier("project-saved") }
                 Button("Stage changes") { Task { await model.stage() } }.disabled(model.busy || !model.ready || !model.hasUnstagedChanges)
                 Text("Undo and redo apply to staged changes before saving.").font(.caption).foregroundStyle(.secondary)
-                HStack {
-                    Button("Undo") { Task { await model.undo() } }.disabled(model.busy || !model.ready || !model.canUndo || model.hasUnstagedChanges)
-                    Button("Redo") { Task { await model.redo() } }.disabled(model.busy || !model.ready || !model.canRedo || model.hasUnstagedChanges)
-                    Button("Save") { Task { if await model.save() { onSaved() } } }.disabled(model.busy || !model.ready)
+                ViewThatFits(in: .horizontal) {
+                    HStack { editorActions }
+                    VStack(alignment: .leading, spacing: 12) { editorActions }
                 }
             }
             if !model.ready && !model.loading {
@@ -135,4 +134,10 @@ public struct ProjectDraftView: View {
         .navigationTitle("Edit project")
         .task { await model.load() }
     }
+    @ViewBuilder private var editorActions: some View {
+        Button("Undo") { Task { await model.undo() } }.disabled(model.busy || !model.ready || !model.canUndo || model.hasUnstagedChanges)
+        Button("Redo") { Task { await model.redo() } }.disabled(model.busy || !model.ready || !model.canRedo || model.hasUnstagedChanges)
+        Button("Save") { Task { if await model.save() { onSaved() } } }.disabled(model.busy || !model.ready)
+    }
+
 }

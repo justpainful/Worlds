@@ -8,7 +8,7 @@ private struct FixtureBackup: LocalSQLiteBackup {
     let fail: Bool
     func importSnapshot(source: URL, privateRoot: URL) async throws -> URL {
         if fail { throw CancellationError() }
-        let folder = privateRoot.appendingPathComponent("worlds-import-\(UUID().uuidString)", isDirectory: true)
+        let folder = privateRoot.appendingPathComponent("worlds-import-\(UUID().uuidString.lowercased())", isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
         let destination = folder.appendingPathComponent("worlds.db")
         try FileManager.default.copyItem(at: source, to: destination)
@@ -66,6 +66,30 @@ final class LocalProjectImportTests: XCTestCase {
         do { _ = try await coordinator.importCopy(from: source); XCTFail("Expected cancellation") }
         catch is CancellationError { }
         XCTAssertEqual(try Data(contentsOf: source), sourceBytes)
+    }
+
+    func testRestoresOnlyValidatedCopiesAfterCoordinatorRecreated() async throws {
+        let (source, root) = try fixture()
+        let first = LocalProjectImportCoordinator(testRoot: root, backup: FixtureBackup(schemaVersion: 11, fail: false))
+        let saved = try await first.importCopy(from: source)
+        let unfinished = root.appendingPathComponent("worlds-import-\(UUID().uuidString.lowercased())", isDirectory: true)
+        try FileManager.default.createDirectory(at: unfinished, withIntermediateDirectories: false)
+        try Data().write(to: unfinished.appendingPathComponent(".incomplete"))
+        try FileManager.default.copyItem(at: source, to: unfinished.appendingPathComponent("worlds.db"))
+        let broken = root.appendingPathComponent("worlds-import-\(UUID().uuidString.lowercased())", isDirectory: true)
+        try FileManager.default.createDirectory(at: broken, withIntermediateDirectories: false)
+        try Data("not a database".utf8).write(to: broken.appendingPathComponent("worlds.db"))
+        let brokenMarker = root.appendingPathComponent("worlds-import-\(UUID().uuidString.lowercased())", isDirectory: true)
+        try FileManager.default.createDirectory(at: brokenMarker, withIntermediateDirectories: false)
+        try FileManager.default.copyItem(at: source, to: brokenMarker.appendingPathComponent("worlds.db"))
+        try FileManager.default.createSymbolicLink(at: brokenMarker.appendingPathComponent(".incomplete"), withDestinationURL: brokenMarker.appendingPathComponent("missing"))
+        let second = LocalProjectImportCoordinator(testRoot: root, backup: FixtureBackup(schemaVersion: 11, fail: false))
+        let inventory = try await second.listCopies()
+        XCTAssertEqual(inventory.copies.map(\.id), [saved.id])
+        XCTAssertEqual(inventory.rejectedCount, 3)
+        let restored = try await second.restoreCopy(id: saved.id)
+        XCTAssertEqual(restored.databaseURL, saved.databaseURL)
+        XCTAssertEqual(try Data(contentsOf: restored.databaseURL), try Data(contentsOf: source))
     }
 
     #if canImport(WorldsRustStore)

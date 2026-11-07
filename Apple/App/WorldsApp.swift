@@ -2,6 +2,10 @@ import SwiftUI
 import UniformTypeIdentifiers
 import WorldsPersistence
 import WorldsSearch
+#if WORLDS_EXPERIMENTAL_LOCAL_COPY
+import WorldsLocalImport
+import WorldsProjectEditingViews
+#endif
 
 @main
 struct WorldsApp: App {
@@ -49,11 +53,21 @@ private struct WorldsLibraryView: View {
     @State private var loading = false
     @State private var errorMessage: String?
     @State private var searchEngine: WorldsSearch?
+    @State private var databaseGeneration = UUID()
+    @State private var openRequest = UUID()
     @State private var searchQuery = ""
     @State private var searchHits: [WorldsSearchHit] = []
     @State private var searchError: String?
     @State private var searching = false
     @State private var searchedQuery: String?
+    #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+    @State private var copyContext: LocalCopyContext?
+    @State private var copyCoordinator: LocalProjectImportCoordinator?
+    @State private var copyImportSelected = false
+    @State private var showCopyExplanation = false
+    @State private var showLocalCopies = false
+    @State private var editingProject: ProjectEditorRequest?
+    #endif
 
     var body: some View {
         NavigationSplitView {
@@ -66,7 +80,12 @@ private struct WorldsLibraryView: View {
                     } description: {
                         Text("Choose a local Worlds database to view its personal pages.")
                     } actions: {
-                        Button("Open Database") { showImporter = true }
+                        Button("Open Database") {
+                            #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+                            copyImportSelected = false
+                            #endif
+                            showImporter = true
+                        }
                             .buttonStyle(.borderedProminent)
                             .foregroundStyle(colorScheme == .dark ? Color.black : Color.white)
                             .accessibilityIdentifier("open-database")
@@ -90,18 +109,30 @@ private struct WorldsLibraryView: View {
             .toolbar {
                 ToolbarItem {
                     Button {
+                        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+                        copyImportSelected = false
+                        #endif
                         showImporter = true
                     } label: {
                         Label("Open Database", systemImage: "folder")
                     }
-                    .disabled(loading)
+                    .disabled(databaseActionsDisabled)
                 }
+                #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+                ToolbarItem {
+                    Menu {
+                        Button("Create local copy") { showCopyExplanation = true }
+                        Button("Open local copy") { openCopyPicker() }
+                    } label: { Label("Local copies", systemImage: "doc.on.doc") }
+                    .disabled(databaseActionsDisabled)
+                }
+                #endif
             }
         } detail: {
             Group {
                 if let selectedPageID = selectedID, let page = pages.first(where: { $0.id == selectedPageID }) {
                     if ["project", "gallery", "presentation", "file"].contains(page.kind) {
-                        ResourceContentView(page: page, pages: pages) { target in
+                        ResourceContentView(page: page, pages: pages, projectEditingAvailable: projectEditingAvailable(for: page)) { target in
                             guard target != page.id else { return }
                             returnStack.append(page.id)
                             selectedID = target
@@ -114,6 +145,15 @@ private struct WorldsLibraryView: View {
                 }
             }
             .toolbar {
+                #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+                if let id = selectedID, let context = copyContext, pages.contains(where: { $0.id == id && $0.kind == "project" }) {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Edit project", systemImage: "pencil") { editingProject = ProjectEditorRequest(id: id, context: context, generation: databaseGeneration) }
+                            .accessibilityIdentifier("edit-local-project")
+                            .disabled(loading)
+                    }
+                }
+                #endif
                 if let previous = returnStack.last, let page = pages.first(where: { $0.id == previous }) {
                     ToolbarItem(placement: .primaryAction) {
                         Button {
@@ -127,9 +167,41 @@ private struct WorldsLibraryView: View {
                 }
             }
         }
+        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+        .safeAreaInset(edge: .top) {
+            if copyContext != nil { LocalCopyNotice() }
+        }
+        .confirmationDialog("Create an independent local copy?", isPresented: $showCopyExplanation) {
+            Button("Choose database") { copyImportSelected = true; showImporter = true }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Changes remain in the copy and do not sync to the original. Attachments are not copied. Shared records may be present but cannot be edited here.")
+        }
+        .sheet(isPresented: $showLocalCopies) {
+            if let copyCoordinator { LocalCopyPicker(coordinator: copyCoordinator) { copy in Task { await activateCopy(copy) } } }
+        }
+        .sheet(item: $editingProject) { request in
+            NavigationStack {
+                ProjectDraftView(projectID: request.id, repository: request.context.repository) {
+                    Task { await refreshCopy(id: request.context.copy.id, generation: request.generation) }
+                }
+            }
+        }
+        #endif
         .searchable(text: $searchQuery, placement: .sidebar, prompt: "Search personal pages")
         .tint(WorldsPalette.accent(for: colorScheme))
         .task {
+            #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-local-copy-fixture") {
+                do {
+                    let (importer, source) = try LocalCopyUITestFixture.make()
+                    copyCoordinator = importer
+                    let copy = try await importer.importCopy(from: source)
+                    await activateCopy(copy)
+                } catch { errorMessage = error.localizedDescription }
+                return
+            }
+            #endif
             #if DEBUG
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-reader-fixture"),
                let fixture = Bundle.main.url(forResource: "reader-ui-fixture", withExtension: "db") {
@@ -149,7 +221,12 @@ private struct WorldsLibraryView: View {
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [.data]) { result in
             switch result {
             case .success(let url):
+                #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+                if copyImportSelected { Task { await importLocalCopy(url) } }
+                else { Task { await open(url) } }
+                #else
                 Task { await open(url) }
+                #endif
             case .failure(let error):
                 errorMessage = error.localizedDescription
             }
@@ -162,6 +239,22 @@ private struct WorldsLibraryView: View {
         } message: {
             Text(errorMessage ?? "")
         }
+    }
+
+    private func projectEditingAvailable(for page: StoredPage) -> Bool {
+        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+        page.kind == "project" && copyContext != nil
+        #else
+        false
+        #endif
+    }
+
+    private var databaseActionsDisabled: Bool {
+        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+        loading || editingProject != nil
+        #else
+        loading
+        #endif
     }
 
     private var sidebarSelection: Binding<String?> {
@@ -243,12 +336,14 @@ private struct WorldsLibraryView: View {
             if loaded && searchError == nil { searchError = "Open a database to search." }
             return
         }
+        let generation = databaseGeneration
         searching = true
         searchError = nil
         do {
             try await Task.sleep(for: .milliseconds(250))
             let results = try await searchEngine.search(query)
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, generation == databaseGeneration,
+                  query == searchQuery.trimmingCharacters(in: .whitespacesAndNewlines) else { return }
             let allowed = Set(pages.map(\.id))
             searchHits = results.filter { allowed.contains($0.pageId) }
             searchedQuery = query
@@ -257,22 +352,27 @@ private struct WorldsLibraryView: View {
         } catch is CancellationError {
             return
         } catch {
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, generation == databaseGeneration,
+                  query == searchQuery.trimmingCharacters(in: .whitespacesAndNewlines) else { return }
             searchHits = []
             searchError = error.localizedDescription
             searching = false
         }
     }
 
+    @discardableResult
     @MainActor
-    private func open(_ url: URL) async {
+    private func open(_ url: URL, preserveLocalCopy: Bool = false) async -> Bool {
+        let request = UUID()
+        openRequest = request
         loading = true
-        defer { loading = false }
+        defer { if openRequest == request { loading = false } }
         let hasAccess = url.startAccessingSecurityScopedResource()
         defer { if hasAccess { url.stopAccessingSecurityScopedResource() } }
         do {
             let database = try WorldsDatabase(url: url)
             let snapshot = try await database.snapshot()
+            guard openRequest == request else { return false }
             do {
                 searchEngine = try WorldsSearch(url: url)
                 searchError = nil
@@ -280,6 +380,7 @@ private struct WorldsLibraryView: View {
                 searchEngine = nil
                 searchError = error.localizedDescription
             }
+            databaseGeneration = UUID()
             searchQuery = ""
             searchHits = []
             searchedQuery = nil
@@ -287,10 +388,57 @@ private struct WorldsLibraryView: View {
             selectedID = nil
             returnStack.removeAll()
             loaded = true
+            #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+            if !preserveLocalCopy { copyContext = nil }
+            #endif
+            return true
         } catch {
+            guard openRequest == request else { return false }
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+    @MainActor private func coordinator() throws -> LocalProjectImportCoordinator {
+        if let copyCoordinator { return copyCoordinator }
+        let created = try LocalProjectImportCoordinator(backup: NativeSQLiteBackup())
+        copyCoordinator = created
+        return created
+    }
+    @MainActor private func openCopyPicker() {
+        do { _ = try coordinator(); showLocalCopies = true }
+        catch { errorMessage = error.localizedDescription }
+    }
+    @MainActor private func importLocalCopy(_ url: URL) async {
+        loading = true
+        do {
+            let copy = try await coordinator().importCopy(from: url)
+            loading = false
+            await activateCopy(copy)
+        } catch { loading = false; errorMessage = localCopyErrorMessage(error) }
+    }
+    @MainActor private func activateCopy(_ copy: LocalProjectCopy) async {
+        do {
+            let context = try LocalCopyContext(copy: copy)
+            if await open(copy.databaseURL, preserveLocalCopy: true) { copyContext = context }
+        } catch { errorMessage = error.localizedDescription }
+    }
+    @MainActor private func refreshCopy(id: UUID, generation: UUID) async {
+        guard let current = copyContext, current.copy.id == id, databaseGeneration == generation else { return }
+        do {
+            let database = try WorldsDatabase(url: current.copy.databaseURL)
+            let snapshot = try await database.snapshot()
+            guard copyContext?.copy.id == id, databaseGeneration == generation else { return }
+            pages = snapshot.pages
+            if let selectedID, !pages.contains(where: { $0.id == selectedID }) { self.selectedID = nil }
+            if !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { await search() }
+        } catch {
+            guard copyContext?.copy.id == id, databaseGeneration == generation else { return }
             errorMessage = error.localizedDescription
         }
     }
+    #endif
 }
 
 private struct PageListRow: View {
@@ -310,3 +458,11 @@ private struct PageListRow: View {
         .padding(.vertical, 4)
     }
 }
+
+#if WORLDS_EXPERIMENTAL_LOCAL_COPY
+private struct ProjectEditorRequest: Identifiable {
+    let id: String
+    let context: LocalCopyContext
+    let generation: UUID
+}
+#endif

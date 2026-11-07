@@ -98,3 +98,8 @@ deletion of a potentially active import. Cancellation or validation
 failure after a successful backup can also leave an orphan copy; no unsafe
 recursive cleanup of unknown directories is attempted. Swift integration
 tests, including committed WAL from a live connection, await an Apple run.
+An experimental inventory can reopen a copy by UUID after restarting and
+reports the number of rejected candidates, including incomplete or damaged
+copies. It does not retain or reopen the original source URL. Every restored
+copy is revalidated, but this is not a substitute for per-project personal
+access checks. Inventory and restoration tests also await an Apple run.

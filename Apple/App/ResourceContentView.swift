@@ -37,6 +37,7 @@ struct ResourceContentView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let page: StoredPage
     let pages: [StoredPage]
+    var projectEditingAvailable: Bool = false
     let openPage: (String) -> Void
 
     private var metadata: ResourceMetadata? { try? JSONDecoder().decode(ResourceMetadata.self, from: Data(page.metadataJSON.utf8)) }
@@ -56,7 +57,7 @@ struct ResourceContentView: View {
                 case "file": file
                 default: Text("This resource type is not available in the reader.")
                 }
-                Label("Read only", systemImage: "eye")
+                Label(projectEditingAvailable ? "Project editing available in local copy" : "Read only", systemImage: projectEditingAvailable ? "pencil" : "eye")
                     .font(.body).foregroundStyle(.secondary)
             }
             .padding(dynamicTypeSize.isAccessibilitySize ? 16 : 24)

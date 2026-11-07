@@ -11,8 +11,16 @@ public protocol LocalSQLiteBackup: Sendable {
 
 public struct LocalProjectCopy: Sendable {
     public let databaseURL: URL
+    /// Persist this identifier to reopen this copy; it does not identify the source.
+    public let id: UUID
     /// A copy is independent: external attachments and synchronization are absent.
     public let isIndependentCopy = true
+}
+
+public struct LocalCopyInventory: Sendable {
+    public let copies: [LocalProjectCopy]
+    /// Candidate directories that failed validation, including incomplete imports.
+    public let rejectedCount: Int
 }
 
 public enum LocalImportError: Error {
@@ -60,9 +68,40 @@ public actor LocalProjectImportCoordinator {
         defer { if scoped { source.stopAccessingSecurityScopedResource() } }
         let destination = try await backup.importSnapshot(source: source, privateRoot: root)
         try Task.checkCancellation()
+        return try validatedCopy(destination)
+    }
+
+    /// Reopens an existing local copy after restart without accessing its source.
+    public func restoreCopy(id: UUID) throws -> LocalProjectCopy {
+        try prepareContainer()
+        let directory = root.appendingPathComponent("worlds-import-\(id.uuidString.lowercased())", isDirectory: true)
+        return try validatedCopy(directory.appendingPathComponent("worlds.db"))
+    }
+
+    /// Does not remove malformed, incomplete or otherwise inaccessible copies.
+    public func listCopies() throws -> LocalCopyInventory {
+        try prepareContainer()
+        let entries = try FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)
+        var copies: [LocalProjectCopy] = []
+        var rejected = 0
+        for entry in entries where entry.lastPathComponent.hasPrefix("worlds-import-") {
+            do {
+                let copy = try validatedCopy(entry.appendingPathComponent("worlds.db"))
+                copies.append(copy)
+            } catch { rejected += 1 }
+        }
+        copies.sort { $0.id.uuidString < $1.id.uuidString }
+        return LocalCopyInventory(copies: copies, rejectedCount: rejected)
+    }
+
+    private func validatedCopy(_ destination: URL) throws -> LocalProjectCopy {
         try validateLocation(destination)
         try validateDatabase(destination)
-        return LocalProjectCopy(databaseURL: destination)
+        let directory = destination.deletingLastPathComponent().lastPathComponent
+        guard let id = UUID(uuidString: String(directory.dropFirst("worlds-import-".count))) else {
+            throw LocalImportError.invalidBackup
+        }
+        return LocalProjectCopy(databaseURL: destination, id: id)
     }
 
     private func prepareContainer() throws {
@@ -82,10 +121,16 @@ public actor LocalProjectImportCoordinator {
     private func validateLocation(_ url: URL) throws {
         guard url.isFileURL, url.lastPathComponent == "worlds.db" else { throw LocalImportError.invalidBackup }
         let dir = url.deletingLastPathComponent()
+        let name = dir.lastPathComponent
+        let suffix = String(name.dropFirst("worlds-import-".count))
+        var markerStat = stat()
+        let markerPath = dir.appendingPathComponent(".incomplete").path
+        let markerResult = markerPath.withCString { lstat($0, &markerStat) }
+        let markerAbsent = markerResult == -1 && errno == ENOENT
         guard dir.deletingLastPathComponent().standardizedFileURL == root.standardizedFileURL,
-              !FileManager.default.fileExists(atPath: dir.appendingPathComponent(".incomplete").path),
-              dir.lastPathComponent.hasPrefix("worlds-import-"),
-              UUID(uuidString: String(dir.lastPathComponent.dropFirst("worlds-import-".count))) != nil,
+              markerAbsent,
+              name.hasPrefix("worlds-import-"), let id = UUID(uuidString: suffix),
+              suffix == id.uuidString.lowercased(),
               url.standardizedFileURL.path == url.resolvingSymlinksInPath().standardizedFileURL.path else {
             throw LocalImportError.invalidBackup
         }
