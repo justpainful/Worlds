@@ -117,7 +117,7 @@ private func projectNode(_ value: JSONValue, path: [Int], direction: String?, bl
         for (index, child) in children.enumerated() {
             if index > 0 {
                 if type == "tableRow" { text += "\t" }
-                else if ["doc", "bulletList", "orderedList", "taskList", "table", "listItem", "taskItem", "blockquote"].contains(type) { text += "\n" }
+                else if ["doc", "bulletList", "orderedList", "taskList", "table", "listItem", "taskItem", "blockquote", "tableCell", "tableHeader"].contains(type) { text += "\n" }
             }
             projectNode(child, path: path + [index], direction: currentDirection, blockType: currentBlock, text: &text, spans: &spans)
         }
@@ -176,5 +176,6 @@ extension RichTextDocument {
     }
 }
 #endif
+
 
 

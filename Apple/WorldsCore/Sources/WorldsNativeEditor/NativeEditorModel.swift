@@ -102,6 +102,34 @@ public final class NativeEditorModel: ObservableObject {
         registerRestore(before)
         generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
     }
+    /// Change only a complete text node's link. Unknown marks and attributes on
+    /// an existing link survive. URL activation remains the host's decision.
+    public func setLink(_ url: URL?, selection range: NSRange) throws {
+        guard let span = projection.spans.first(where: { $0.range == range && range.length > 0 }) else { throw NativeEditorError.unsupportedFormatting }
+        if let url {
+            guard let scheme = url.scheme?.lowercased(), ["https", "http", "mailto"].contains(scheme) else { throw NativeEditorError.unsupportedFormatting }
+        }
+        var marks = span.marks
+        let links = marks.indices.filter { index in
+            guard case .object(let mark) = marks[index], case .string("link")? = mark["type"] else { return false }
+            return true
+        }
+        guard links.count <= 1 else { throw NativeEditorError.unsupportedFormatting }
+        if let url {
+            var link: [String: JSONValue] = ["type": .string("link")]
+            if let index = links.first, case .object(let existing) = marks[index] { link = existing }
+            if let raw = link["attrs"], case .object = raw {} else if link["attrs"] != nil { throw NativeEditorError.unsupportedFormatting }
+            var attrs: [String: JSONValue] = [:]
+            if case .object(let existing)? = link["attrs"] { attrs = existing }
+            attrs["href"] = .string(url.absoluteString)
+            link["attrs"] = .object(attrs)
+            if let index = links.first { marks[index] = .object(link) } else { marks.append(.object(link)) }
+        } else if let index = links.first { marks.remove(at: index) }
+        let before = document
+        try document.setMarks(at: span.path, marks: marks)
+        registerRestore(before)
+        generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
+    }
     public func undo() { undoManager.undo() }
     public func redo() { undoManager.redo() }
     public func report(_ error: Error) { errorMessage = error.localizedDescription }
@@ -131,6 +159,7 @@ public final class NativeEditorModel: ObservableObject {
         selection = NSRange(location: min(selection.location, projection.text.utf16.count), length: 0)
     }
 }
+
 
 
 

@@ -69,5 +69,27 @@ final class NativeEditorTests: XCTestCase {
         model.redo()
         XCTAssertEqual(model.projection.text, "ab\ncd")
     }
+    func testLinkEditPreservesUnknownMarksAndAttributesWithUndo() throws {
+        let json = #"{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"link","marks":[{"type":"link","attrs":{"href":"https://old.example","custom":"keep"}},{"type":"future","attrs":{"x":1}}]}]}]}"#
+        let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 1)
+        let before = model.document.source
+        try model.setLink(URL(string: "https://new.example"), selection: NSRange(location: 0, length: 4))
+        let marks = model.projection.spans[0].marks
+        guard case .object(let link) = marks[0], case .object(let attrs)? = link["attrs"] else { return XCTFail("Missing link") }
+        XCTAssertEqual(attrs["custom"], .string("keep"))
+        XCTAssertEqual(attrs["href"], .string("https://new.example"))
+        XCTAssertEqual(marks.count, 2)
+        model.undo()
+        XCTAssertEqual(model.document.source, before)
+    }
+    func testCommittedEmojiDiffPreservesUTF16Boundaries() throws {
+        let json = #"{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"A👋B"}]}]}"#
+        let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 1)
+        try model.commitNativeText("A🙂B", selection: NSRange(location: 3, length: 0))
+        XCTAssertEqual(model.projection.text, "A🙂B")
+        model.undo()
+        XCTAssertEqual(model.projection.text, "A👋B")
+    }
 }
+
 

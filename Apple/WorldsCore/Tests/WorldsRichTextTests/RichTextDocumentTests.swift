@@ -87,5 +87,27 @@ final class RichTextDocumentTests: XCTestCase {
         XCTAssertThrowsError(try protected.replaceParagraphSelection(NSRange(location: 1, length: 0), with: "\n"))
         XCTAssertEqual(protected.source, before)
     }
+    func testNestedListSplitPreservesUnknownMarksAndAttributes() throws {
+        let json = #"{"type":"doc","content":[{"type":"bulletList","attrs":{"custom":9},"content":[{"type":"listItem","attrs":{"custom":"keep"},"content":[{"type":"paragraph","attrs":{"dir":"rtl"},"content":[{"type":"text","text":"أهلا","marks":[{"type":"future","attrs":{"tag":"keep"}}]}]}]}]}]}"#
+        var document = try RichTextDocument(json: Data(json.utf8))
+        try document.replaceParagraphSelection(NSRange(location: 2, length: 0), with: "\n")
+        XCTAssertEqual(document.project().text, "أه\nلا")
+        XCTAssertEqual(document.project().spans.count, 2)
+        XCTAssertEqual(document.project().spans[0].marks, document.project().spans[1].marks)
+        guard case .object(let root) = document.source, case .array(let top)? = root["content"],
+              case .object(let list) = top[0], case .object(let attrs)? = list["attrs"] else { return XCTFail("Missing list") }
+        XCTAssertEqual(attrs["custom"], .integer(9))
+    }
+    func testTableCellEditsCannotCrossCellBoundary() throws {
+        let json = #"{"type":"doc","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colspan":1},"content":[{"type":"paragraph","content":[{"type":"text","text":"abc"}]}]},{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"def"}]}]}]}]}]}"#
+        var document = try RichTextDocument(json: Data(json.utf8))
+        XCTAssertEqual(document.project().text, "abc\tdef")
+        let before = document.source
+        XCTAssertThrowsError(try document.replaceParagraphSelection(NSRange(location: 2, length: 3), with: "x"))
+        XCTAssertEqual(document.source, before)
+        try document.replaceParagraphSelection(NSRange(location: 1, length: 0), with: "\n")
+        XCTAssertEqual(document.project().text, "a\nbc\tdef")
+    }
 }
+
 

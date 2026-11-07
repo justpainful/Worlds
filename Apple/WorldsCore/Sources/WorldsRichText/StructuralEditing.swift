@@ -6,8 +6,8 @@ public enum StructuralEditError: Error, Equatable, Sendable {
 }
 
 extension RichTextDocument {
-    /// Replaces a selection across text-only top-level paragraphs. Other block
-    /// types and opaque inline nodes are rejected instead of being rewritten.
+    /// Replaces a selection across text-only paragraphs under one supported
+    /// parent. Opaque inline nodes and cross-container edits are rejected.
     /// Splits receive new block IDs; merges require matching non-ID metadata.
     public mutating func replaceParagraphSelection(_ range: NSRange, with replacement: String) throws {
         let projection = project()
@@ -15,12 +15,20 @@ extension RichTextDocument {
               range.location <= projection.text.utf16.count,
               range.length <= projection.text.utf16.count - range.location else { throw StructuralEditError.invalidRange }
         let end = range.location + range.length
-        let candidates = projection.spans.filter { $0.path.indices.count == 2 }
+        let candidates = projection.spans.filter { $0.path.indices.count >= 2 }
         guard let start = candidates.last(where: { $0.range.location <= range.location && NSMaxRange($0.range) >= range.location }),
               let finish = candidates.first(where: { $0.range.location <= end && NSMaxRange($0.range) >= end }) else { throw StructuralEditError.unsupportedStructure }
-        let a = start.path.indices, b = finish.path.indices
-        guard a[0] <= b[0], a[0] != b[0] || a[1] <= b[1],
-              case .object(var root) = source, case .array(var blocks)? = root["content"], b[0] < blocks.count else { throw StructuralEditError.unsupportedStructure }
+        let startPath = start.path.indices, endPath = finish.path.indices
+        let parentPath = Array(startPath.dropLast(2))
+        guard parentPath == Array(endPath.dropLast(2)),
+              let firstBlock = startPath.dropLast().last, let lastBlock = endPath.dropLast().last,
+              let firstChild = startPath.last, let lastChild = endPath.last,
+              firstBlock <= lastBlock, firstBlock != lastBlock || firstChild <= lastChild,
+              let container = valueAtPath(source, path: parentPath)?.objectForEdit,
+              case .string(let parentType)? = container["type"],
+              ["doc", "listItem", "taskItem", "tableCell", "tableHeader", "blockquote"].contains(parentType),
+              case .array(var blocks)? = container["content"], lastBlock < blocks.count else { throw StructuralEditError.unsupportedStructure }
+        let a = [firstBlock, firstChild], b = [lastBlock, lastChild]
         var selected: [[String: JSONValue]] = []
         for index in a[0]...b[0] {
             guard case .object(let block) = blocks[index], case .string("paragraph")? = block["type"],
@@ -37,7 +45,7 @@ extension RichTextDocument {
         let localStart = range.location - start.range.location
         let localEnd = end - finish.range.location
         guard let leftIndex = utf16Index(startText, localStart), let rightIndex = utf16Index(endText, localEnd) else { throw StructuralEditError.invalidRange }
-        if range.length == 0, !safeToReplace(startNode) { throw StructuralEditError.unknownMetadata }
+        if range.length == 0, !safeToSplit(startNode) { throw StructuralEditError.unknownMetadata }
         if range.length > 0 {
             for blockIndex in a[0]...b[0] {
                 let children = selected[blockIndex - a[0]]["content"]!.arrayForEdit!
@@ -63,8 +71,10 @@ extension RichTextDocument {
             var block = selected[0]
             if index > 0 {
                 var attrs = block["attrs"]?.objectForEdit ?? [:]
-                attrs["bid"] = .string(UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased())
-                block["attrs"] = .object(attrs)
+                if parentType == "doc" || attrs["bid"] != nil {
+                    attrs["bid"] = .string(UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased())
+                    block["attrs"] = .object(attrs)
+                }
             }
             var children: [JSONValue] = index == 0 ? prefix : []
             if !line.isEmpty {
@@ -77,8 +87,9 @@ extension RichTextDocument {
             result.append(.object(block))
         }
         blocks.replaceSubrange(a[0]...b[0], with: result)
-        root["content"] = .array(blocks)
-        source = .object(root)
+        var updated = source
+        try replaceChildren(&updated, path: ArraySlice(parentPath), children: blocks)
+        source = updated
     }
 }
 
@@ -105,3 +116,25 @@ private func safeToReplace(_ node: [String: JSONValue]) -> Bool {
     return list.allSatisfy { value in guard let object = value.objectForEdit, case .string(let name)? = object["type"] else { return false }; return known.contains(name) && Set(object.keys) == ["type"] }
 }
 
+
+private func valueAtPath(_ source: JSONValue, path: [Int]) -> JSONValue? {
+    var value = source
+    for index in path {
+        guard let children = value.objectForEdit?["content"]?.arrayForEdit, index >= 0, index < children.count else { return nil }
+        value = children[index]
+    }
+    return value
+}
+private func replaceChildren(_ source: inout JSONValue, path: ArraySlice<Int>, children: [JSONValue]) throws {
+    guard var object = source.objectForEdit else { throw StructuralEditError.unsupportedStructure }
+    if let index = path.first {
+        guard var current = object["content"]?.arrayForEdit, index >= 0, index < current.count else { throw StructuralEditError.unsupportedStructure }
+        try replaceChildren(&current[index], path: path.dropFirst(), children: children)
+        object["content"] = .array(current)
+    } else { object["content"] = .array(children) }
+    source = .object(object)
+}
+private func safeToSplit(_ node: [String: JSONValue]) -> Bool {
+    guard Set(node.keys).isSubset(of: ["type", "text", "marks"]) else { return false }
+    return node["marks"] == nil || node["marks"]?.arrayForEdit != nil
+}

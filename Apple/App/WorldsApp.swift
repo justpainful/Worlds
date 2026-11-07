@@ -25,6 +25,7 @@ private struct WorldsLibraryView: View {
     @State private var searchHits: [WorldsSearchHit] = []
     @State private var searchError: String?
     @State private var searching = false
+    @State private var searchedQuery: String?
 
     var body: some View {
         NavigationSplitView {
@@ -126,7 +127,7 @@ private struct WorldsLibraryView: View {
         Group {
             if let searchError {
                 ContentUnavailableView("Search unavailable", systemImage: "exclamationmark.magnifyingglass", description: Text(searchError))
-            } else if searching {
+            } else if searching || searchedQuery != searchQuery.trimmingCharacters(in: .whitespacesAndNewlines) {
                 ProgressView("Searching")
             } else if searchHits.isEmpty {
                 ContentUnavailableView.search(text: searchQuery)
@@ -170,6 +171,7 @@ private struct WorldsLibraryView: View {
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else {
             searchHits = []
+            searchedQuery = nil
             searching = false
             return
         }
@@ -185,6 +187,7 @@ private struct WorldsLibraryView: View {
             guard !Task.isCancelled else { return }
             let allowed = Set(pages.map(\.id))
             searchHits = results.filter { allowed.contains($0.pageId) }
+            searchedQuery = query
             searchError = nil
             searching = false
         } catch is CancellationError {
@@ -215,6 +218,7 @@ private struct WorldsLibraryView: View {
             }
             searchQuery = ""
             searchHits = []
+            searchedQuery = nil
             pages = snapshot.pages
             selectedID = nil
             loaded = true
