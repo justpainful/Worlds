@@ -65,7 +65,12 @@ struct ResourceContentView: View {
         }
         .background(WorldsPalette.paper(for: colorScheme))
         .accessibilityIdentifier("resource-content")
+        #if os(macOS)
         .navigationTitle(page.title.isEmpty ? "Untitled" : page.title)
+        #else
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
     }
     private var project: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -164,7 +169,6 @@ struct ResourceContentView: View {
                 Button { openPage(item.id) } label: {
                     HStack(spacing: 10) {
                         Label(item.title.isEmpty ? "Untitled" : item.title, systemImage: "doc.text")
-                        Spacer(minLength: 8)
                         Image(systemName: "chevron.forward").font(.caption.weight(.semibold)).foregroundStyle(.secondary).accessibilityHidden(true)
                     }
                     .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)

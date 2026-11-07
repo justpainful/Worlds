@@ -36,6 +36,7 @@ jobs:
           grep -E 'testOwnedPersonalFileCanBeReadAndMismatchedOwnerIsRejected.*passed' logs/swift-test.log
           grep -E 'testRejectsHardLinkedAttachment.*passed' logs/swift-test.log
           grep -q 'testActualYjsFixture' logs/swift-test.log
+          grep -E 'testYjsRelativeCursorAwarenessRemainsOpaque.*passed' logs/swift-test.log
           grep -E 'testCancelledPasskeyBeforePresentationDoesNotStart.*passed' logs/swift-test.log
           grep -E 'testOfflineSignOutDeletesLocalSession.*passed' logs/swift-test.log
           grep -E 'testConcurrentRefreshUsesOneRotation.*passed' logs/swift-test.log
@@ -468,6 +469,18 @@ jobs:
           grep -q 'testDefaultSocketLifecycleWithLocalRefusal' logs/collaboration-discovery.log
           grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' logs/collaboration-discovery.log
           grep -q 'testViewerCannotPrepareEditorWrite' logs/collaboration-discovery.log
+      - name: Discover and test collaboration editor on macOS
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path Apple/WorldsCore list 2>&1 | tee logs/collaboration-editor-discovery.log
+          for name in testPlansSinglePlainInsertionWithoutMutatingDocument testRejectsMarkedTextNonInsertionAndSurrogateSplit testRejectsDuplicateIDsAndRichText; do
+            grep -q "$name" logs/collaboration-editor-discovery.log
+          done
+          swift test --package-path Apple/WorldsCore --filter WorldsCollaborationEditorTests 2>&1 | tee logs/collaboration-editor-macos.log
+          for name in testPlansSinglePlainInsertionWithoutMutatingDocument testRejectsMarkedTextNonInsertionAndSurrogateSplit testRejectsDuplicateIDsAndRichText; do
+            grep -E "Test Case .*${name}.*passed" logs/collaboration-editor-macos.log
+          done
       - name: Test collaboration bridge on macOS
         shell: bash
         run: |
@@ -490,6 +503,7 @@ jobs:
           xcodebuild -scheme WorldsCore-Package \
             -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.5' \
             -only-testing:WorldsCollaborationTests \
+            -only-testing:WorldsCollaborationEditorTests \
             -resultBundlePath "$GITHUB_WORKSPACE/collaboration-simulator.xcresult" \
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testNativeFixtureStateVectorAndIncrement' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
@@ -501,6 +515,9 @@ jobs:
           grep -q 'testDefaultSocketLifecycleWithLocalRefusal' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testViewerCannotPrepareEditorWrite' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
+          for name in testPlansSinglePlainInsertionWithoutMutatingDocument testRejectsMarkedTextNonInsertionAndSurrogateSplit testRejectsDuplicateIDsAndRichText; do
+            grep -E "Test Case .*${name}.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -690,6 +707,7 @@ jobs:
           grep -Eq 'testReaderShowsStructuredContentAndExpandsToggle.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testProjectSummaryAndLinkedPage.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testArabicProjectSummary.*passed' logs/ui-${{ matrix.device }}.log
+          grep -Eq 'testProjectLargeTextDarkRTL.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testGallerySummary.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testPresentationSummary.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testFileSummary.*passed' logs/ui-${{ matrix.device }}.log

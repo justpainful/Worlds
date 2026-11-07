@@ -174,8 +174,23 @@ final class WorldsUITests: XCTestCase {
     func testArabicProjectSummary() throws {
         let app = try openResource("resource-ar-project", rightToLeft: true)
         XCTAssertTrue(app.staticTexts["مَشْرُوع الرِّيَاضِيَّات: lesson ١٢٣"].waitForExistence(timeout: 15))
-        XCTAssertTrue(app.buttons["resource-page.reader-fixture"].exists)
+        let link = app.buttons["resource-page.reader-fixture"]
+        XCTAssertTrue(link.waitForExistence(timeout: 10))
+        XCTAssertGreaterThanOrEqual(link.frame.height, 44)
         capture("15-project-summary-rtl", app: app)
+        link.tap()
+        XCTAssertTrue(app.staticTexts["Read the warning"].waitForExistence(timeout: 15))
+    }
+
+    @MainActor
+    func testProjectLargeTextDarkRTL() throws {
+        let app = try openResource("resource-ar-project", rightToLeft: true, largeText: true, dark: true)
+        let description = app.staticTexts["مَشْرُوع الرِّيَاضِيَّات: lesson ١٢٣"]
+        XCTAssertTrue(description.waitForExistence(timeout: 15))
+        capture("16-project-large-text-dark-rtl", app: app)
+        if !description.isHittable { app.swipeUp() }
+        XCTAssertTrue(description.isHittable)
+        capture("17-project-large-text-dark-rtl-content", app: app)
     }
 
     @MainActor
@@ -205,10 +220,12 @@ final class WorldsUITests: XCTestCase {
     }
 
     @MainActor
-    private func openResource(_ id: String, rightToLeft: Bool = false) throws -> XCUIApplication {
+    private func openResource(_ id: String, rightToLeft: Bool = false, largeText: Bool = false, dark: Bool = false) throws -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments.append("--ui-testing-reader-fixture")
         if rightToLeft { app.launchArguments.append("--ui-testing-rtl") }
+        if largeText { app.launchArguments.append("--ui-testing-large-text") }
+        if dark { app.launchArguments.append("--ui-testing-dark") }
         app.launch()
         let row = app.descendants(matching: .any)["page.\(id)"].firstMatch
         if !row.waitForExistence(timeout: 10) { app.swipeUp() }

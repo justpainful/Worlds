@@ -1,0 +1,5 @@
+# Experimental collaborative insertion adapter
+
+This module translates a UTF-16 insertion in a `RichTextDocument` projection into a checked `CollaborationSession.insertPlain` call. It accepts only one unformatted top-level paragraph containing a single ordinary text node with a unique block ID, a zero-length selection, a valid Unicode boundary, and no marked-text composition. It does not mutate the document or show an optimistic result. The session must establish live edit permission and persist the CRDT update plus outbox before applying it.
+
+The adapter is not a native editor binding: it cannot reconstruct a current editor tree from Yjs XML, apply remote edits to the view, map relative cursor positions, handle deletion or formatted/nested content, resolve conflicts, or coordinate real IMEs. It must not be connected to product UI. The planner tests are synthetic and have not run on Apple. A future end-to-end test must use the same document and relative positions as the live editor; the existing Worker test exercises the lower-level session directly, not this adapter.

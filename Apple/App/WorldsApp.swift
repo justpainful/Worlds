@@ -17,16 +17,26 @@ struct WorldsApp: App {
 
     @ViewBuilder private var rootView: some View {
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("--ui-testing-rtl") {
-            WorldsLibraryView().environment(\.layoutDirection, .rightToLeft)
-        } else {
-            WorldsLibraryView()
-        }
+        WorldsLibraryView().modifier(UITestingAppearance())
         #else
         WorldsLibraryView()
         #endif
     }
 }
+
+#if DEBUG
+private struct UITestingAppearance: ViewModifier {
+    @Environment(\.layoutDirection) private var direction
+    @Environment(\.dynamicTypeSize) private var textSize
+    func body(content: Content) -> some View {
+        let args = ProcessInfo.processInfo.arguments
+        content
+            .environment(\.layoutDirection, args.contains("--ui-testing-rtl") ? .rightToLeft : direction)
+            .environment(\.dynamicTypeSize, args.contains("--ui-testing-large-text") ? .accessibility3 : textSize)
+            .preferredColorScheme(args.contains("--ui-testing-dark") ? .dark : nil)
+    }
+}
+#endif
 
 private struct WorldsLibraryView: View {
     @Environment(\.colorScheme) private var colorScheme

@@ -121,6 +121,9 @@ if rustStoreAvailable {
 // CI sets WORLDS_REQUIRE_COLLABORATION=1 so missing binaries fail package resolution.
 // The application does not depend on this experimental module.
 if collaborationAvailable {
+    package.products.append(.library(name: "WorldsCollaborationEditor", targets: ["WorldsCollaborationEditor"]))
+    package.targets.append(.target(name: "WorldsCollaborationEditor", dependencies: ["WorldsModels", "WorldsRichText", "WorldsCollaboration"], exclude: ["README.md"]))
+    package.targets.append(.testTarget(name: "WorldsCollaborationEditorTests", dependencies: ["WorldsCollaborationEditor", "WorldsModels", "WorldsRichText", "WorldsCollaboration"]))
     package.products.append(.library(name: "WorldsCollaboration", targets: ["WorldsCollaboration"]))
     package.targets.append(.binaryTarget(name: "WorldsRustCollaboration", path: collaborationPath))
     package.targets.append(.target(name: "WorldsCollaboration", dependencies: ["WorldsRustCollaboration", "WorldsSyncWire", "WorldsAwareness"], exclude: ["README.md"], linkerSettings: [.linkedFramework("Security"), .linkedFramework("SystemConfiguration"), .linkedLibrary("resolv"), .linkedLibrary("iconv")]))
