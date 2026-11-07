@@ -10,7 +10,7 @@ settings:
     GENERATE_INFOPLIST_FILE: YES
     PRODUCT_NAME: Worlds
     CODE_SIGNING_ALLOWED: NO
-    "EXCLUDED_SOURCE_FILE_NAMES[config=Release]": worlds-v1-fixture.db
+    "EXCLUDED_SOURCE_FILE_NAMES[config=Release]": "worlds-v1-fixture.db search-ui-fixture.db"
     CURRENT_PROJECT_VERSION: 1
     MARKETING_VERSION: "0.1.0"
 packages:
@@ -28,6 +28,8 @@ targets:
           - UITests
       - path: WorldsCore/Tests/WorldsPersistenceTests/worlds-v1-fixture.db
         buildPhase: resources
+      - path: App/UITests/Fixtures/search-ui-fixture.db
+        buildPhase: resources
     dependencies:
       - package: WorldsCore
         product: WorldsModels
@@ -35,6 +37,8 @@ targets:
         product: WorldsSyncWire
       - package: WorldsCore
         product: WorldsPersistence
+      - package: WorldsCore
+        product: WorldsSearch
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.worlds.native.ios
@@ -52,6 +56,8 @@ targets:
           - UITests
       - path: WorldsCore/Tests/WorldsPersistenceTests/worlds-v1-fixture.db
         buildPhase: resources
+      - path: App/UITests/Fixtures/search-ui-fixture.db
+        buildPhase: resources
     dependencies:
       - package: WorldsCore
         product: WorldsModels
@@ -59,6 +65,8 @@ targets:
         product: WorldsSyncWire
       - package: WorldsCore
         product: WorldsPersistence
+      - package: WorldsCore
+        product: WorldsSearch
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.worlds.native.macos

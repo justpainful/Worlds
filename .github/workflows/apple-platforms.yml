@@ -69,6 +69,7 @@ jobs:
             TARGETED_DEVICE_FAMILY=${{ matrix.family }} CODE_SIGNING_ALLOWED=NO build \
             2>&1 | tee logs/${{ matrix.device }}-simulator.log
           test ! -e "$RUNNER_TEMP/WorldsSimulator/Build/Products/Release-iphonesimulator/Worlds.app/worlds-v1-fixture.db"
+          test ! -e "$RUNNER_TEMP/WorldsSimulator/Build/Products/Release-iphonesimulator/Worlds.app/search-ui-fixture.db"
       - name: Build unsigned device target
         shell: bash
         run: |
@@ -109,6 +110,7 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/WorldsMac" CODE_SIGNING_ALLOWED=NO build \
             2>&1 | tee logs/macos.log
           test ! -e "$RUNNER_TEMP/WorldsMac/Build/Products/Release/Worlds.app/Contents/Resources/worlds-v1-fixture.db"
+          test ! -e "$RUNNER_TEMP/WorldsMac/Build/Products/Release/Worlds.app/Contents/Resources/search-ui-fixture.db"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

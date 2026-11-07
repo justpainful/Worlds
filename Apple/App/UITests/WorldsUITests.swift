@@ -25,6 +25,40 @@ final class WorldsUITests: XCTestCase {
     }
 
     @MainActor
+    func testPersonalSearchAndNavigation() throws {
+        let app = XCUIApplication()
+        app.launchArguments.append("--ui-testing-search-fixture")
+        app.launch()
+        XCTAssertTrue(app.descendants(matching: .any)["page.search-personal"].firstMatch.waitForExistence(timeout: 20))
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 20))
+        search.tap()
+        search.typeText("geometry")
+        let result = app.descendants(matching: .any)["search-result.search-personal"].firstMatch
+        XCTAssertTrue(result.waitForExistence(timeout: 20))
+        XCTAssertFalse(app.descendants(matching: .any)["search-result.search-shared"].exists)
+        capture("05-personal-search-results")
+        result.tap()
+        XCTAssertTrue(app.staticTexts["Read only"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["geometry lesson"].exists)
+        capture("06-search-result-page")
+    }
+
+    @MainActor
+    func testSearchEmptyState() throws {
+        let app = XCUIApplication()
+        app.launchArguments.append("--ui-testing-search-fixture")
+        app.launch()
+        XCTAssertTrue(app.descendants(matching: .any)["page.search-personal"].firstMatch.waitForExistence(timeout: 20))
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 20))
+        search.tap()
+        search.typeText("notfoundxyz")
+        XCTAssertTrue(app.descendants(matching: .any)["search-empty"].firstMatch.waitForExistence(timeout: 20))
+        capture("07-search-no-results")
+    }
+
+    @MainActor
     func testDatabaseError() throws {
         let app = XCUIApplication()
         app.launchArguments.append("--ui-testing-missing-fixture")

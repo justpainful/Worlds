@@ -1,6 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import WorldsPersistence
+import WorldsSearch
 
 @main
 struct WorldsApp: App {
@@ -19,6 +20,11 @@ private struct WorldsLibraryView: View {
     @State private var loaded = false
     @State private var loading = false
     @State private var errorMessage: String?
+    @State private var searchEngine: WorldsSearch?
+    @State private var searchQuery = ""
+    @State private var searchHits: [WorldsSearchHit] = []
+    @State private var searchError: String?
+    @State private var searching = false
 
     var body: some View {
         NavigationSplitView {
@@ -36,6 +42,8 @@ private struct WorldsLibraryView: View {
                             .foregroundStyle(colorScheme == .dark ? Color.black : Color.white)
                             .accessibilityIdentifier("open-database")
                     }
+                } else if !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    searchResults
                 } else if pages.isEmpty {
                     ContentUnavailableView(
                         "No personal pages",
@@ -61,6 +69,7 @@ private struct WorldsLibraryView: View {
                     }
                 }
             }
+            .searchable(text: $searchQuery, prompt: "Search personal pages")
             .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 360)
             .navigationTitle("Pages")
             .toolbar {
@@ -83,7 +92,10 @@ private struct WorldsLibraryView: View {
         .tint(WorldsPalette.accent(for: colorScheme))
         .task {
             #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("--ui-testing-fixture"),
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-search-fixture"),
+               let fixture = Bundle.main.url(forResource: "search-ui-fixture", withExtension: "db") {
+                await open(fixture)
+            } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-fixture"),
                let fixture = Bundle.main.url(forResource: "worlds-v1-fixture", withExtension: "db") {
                 await open(fixture)
             } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-missing-fixture") {
@@ -91,6 +103,7 @@ private struct WorldsLibraryView: View {
             }
             #endif
         }
+        .task(id: searchQuery) { await search() }
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [.data]) { result in
             switch result {
             case .success(let url):
@@ -109,6 +122,81 @@ private struct WorldsLibraryView: View {
         }
     }
 
+    private var searchResults: some View {
+        Group {
+            if let searchError {
+                ContentUnavailableView("Search unavailable", systemImage: "exclamationmark.magnifyingglass", description: Text(searchError))
+            } else if searching {
+                ProgressView("Searching")
+            } else if searchHits.isEmpty {
+                ContentUnavailableView.search(text: searchQuery)
+                    .accessibilityIdentifier("search-empty")
+            } else {
+                List(searchHits, selection: $selectedID) { hit in
+                    NavigationLink(value: hit.pageId) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(hit.title.isEmpty ? "Untitled" : hit.title)
+                                .font(.body.weight(.medium))
+                            if !hit.snippet.isEmpty {
+                                Text(highlightedSnippet(hit))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(3)
+                            }
+                            if let parent = hit.parentTitle, !parent.isEmpty {
+                                Text(parent).font(.caption2).foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .accessibilityIdentifier("search-result.\(hit.pageId)")
+                }
+            }
+        }
+    }
+
+    private func highlightedSnippet(_ hit: WorldsSearchHit) -> AttributedString {
+        var result = AttributedString()
+        for run in hit.snippetRuns {
+            var text = AttributedString(run.text)
+            if run.highlighted { text.inlinePresentationIntent = .stronglyEmphasized }
+            result.append(text)
+        }
+        return result
+    }
+
+    @MainActor
+    private func search() async {
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else {
+            searchHits = []
+            searching = false
+            return
+        }
+        guard let searchEngine else {
+            if loaded && searchError == nil { searchError = "Open a database to search." }
+            return
+        }
+        searching = true
+        searchError = nil
+        do {
+            try await Task.sleep(for: .milliseconds(250))
+            let results = try await searchEngine.search(query)
+            guard !Task.isCancelled else { return }
+            let allowed = Set(pages.map(\.id))
+            searchHits = results.filter { allowed.contains($0.pageId) }
+            searchError = nil
+            searching = false
+        } catch is CancellationError {
+            return
+        } catch {
+            guard !Task.isCancelled else { return }
+            searchHits = []
+            searchError = error.localizedDescription
+            searching = false
+        }
+    }
+
     @MainActor
     private func open(_ url: URL) async {
         loading = true
@@ -118,6 +206,15 @@ private struct WorldsLibraryView: View {
         do {
             let database = try WorldsDatabase(url: url)
             let snapshot = try await database.snapshot()
+            do {
+                searchEngine = try WorldsSearch(url: url)
+                searchError = nil
+            } catch {
+                searchEngine = nil
+                searchError = error.localizedDescription
+            }
+            searchQuery = ""
+            searchHits = []
             pages = snapshot.pages
             selectedID = nil
             loaded = true
