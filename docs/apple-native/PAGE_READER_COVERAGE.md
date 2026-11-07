@@ -9,3 +9,5 @@ Source behavior was inspected in `src/editor/extensions/nodes.ts`, `pages2.ts`, 
 The toggle uses a native SwiftUI button containing both its indicator and title, with an accessibility value for expanded or collapsed state. This change addresses a macOS run where clicking the disclosure label focused it without opening the content. It requires new interaction tests and visual review on Apple platforms.
 
 On macOS the disclosure header uses an AppKit button that explicitly becomes first responder on mouse click, while iOS uses SwiftUI Button. Native keyboard activation, focus indication, very long header layout and RTL alignment require rechecking on Apple. The macOS title uses plain attributed content converted to text, so its original rich styling is not reproduced.
+
+The macOS toggle now uses semantic primary text color for its title and symbol, with a symbol sized to the body font. This addresses low contrast in the previous screenshot but awaits a fresh light and dark visual review and focus regression test.

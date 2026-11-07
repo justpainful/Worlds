@@ -65,6 +65,12 @@ fn require_personal(c: &Connection, id: &str) -> Result<()> {
         "SELECT workspace_id,metadata,deleted_at FROM pages WHERE id=?1", [id],
         |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?))).optional()?;
     let (workspace, metadata, deleted) = row.ok_or_else(|| anyhow::anyhow!("page unavailable"))?;
+    // JSON parsers disagree about duplicate object keys. Reject them at every
+    // depth before authorization or a read-modify-write can discard data.
+    let unambiguous: i64 = c.query_row(
+        "SELECT CASE WHEN json_valid(?1) THEN NOT EXISTS(SELECT 1 FROM json_tree(?1) WHERE typeof(key)='text' GROUP BY parent,key HAVING COUNT(*) > 1) ELSE 0 END",
+        [&metadata], |r| r.get(0))?;
+    if unambiguous != 1 { bail!("invalid or ambiguous metadata") }
     let value: Value = serde_json::from_str(&metadata)?;
     if !value.is_object() { bail!("invalid metadata") }
     if let Some(sync) = value.get("sync") {
@@ -246,6 +252,29 @@ mod tests {
         let path = std::env::temp_dir().join(format!("worlds-isolated-{}.db", uuid::Uuid::new_v4()));
         std::fs::copy(original, &path).unwrap();
         path
+    }
+    #[test]
+    fn rejects_duplicate_metadata_at_any_depth_before_personal_access() {
+        let path = fixture();
+        let cases = [r#"{"sync":{"shared":true,"shared":false}}"#, r#"{"sync":{"shared":true},"sync":{"shared":false}}"#, r#"{"other":{"x":1,"x":2}}"#];
+        for metadata in cases {
+            let c = Connection::open(&path).unwrap();
+            c.execute("UPDATE pages SET metadata=?1 WHERE id='fixture-page'", [metadata]).unwrap();
+            assert!(require_personal(&c, "fixture-page").is_err());
+            drop(c);
+            assert!(rename_page(&path, "fixture-page", 1700000000001, "Unsafe".into()).is_err());
+            let c = Connection::open(&path).unwrap();
+            let after: String = c.query_row("SELECT metadata FROM pages WHERE id='fixture-page'", [], |r| r.get(0)).unwrap();
+            assert_eq!(after, metadata);
+        }
+        let c = Connection::open(&path).unwrap();
+        let title: String = c.query_row("SELECT title FROM pages WHERE id='fixture-page'", [], |r| r.get(0)).unwrap();
+        assert_ne!(title, "Unsafe");
+        for metadata in [r#"{}"#, r#"{"sync":{}}"#, r#"{"sync":{"shared":false}}"#] {
+            c.execute("UPDATE pages SET metadata=?1 WHERE id='fixture-page'", [metadata]).unwrap();
+            assert!(require_personal(&c, "fixture-page").is_ok());
+        }
+        drop(c); std::fs::remove_file(path).unwrap();
     }
     #[test]
     fn save_updates_rust_store_indexes_and_history_and_rejects_conflicts() {

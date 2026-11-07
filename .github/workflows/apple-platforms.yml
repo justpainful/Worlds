@@ -37,6 +37,9 @@ jobs:
           grep -E 'testRejectsHardLinkedAttachment.*passed' logs/swift-test.log
           grep -q 'testActualYjsFixture' logs/swift-test.log
           grep -E 'testCancelledPasskeyBeforePresentationDoesNotStart.*passed' logs/swift-test.log
+          grep -E 'testOfflineSignOutDeletesLocalSession.*passed' logs/swift-test.log
+          grep -E 'testConcurrentRefreshUsesOneRotation.*passed' logs/swift-test.log
+          grep -E 'testSignOutWaitsForActiveRefresh.*passed' logs/swift-test.log
           grep -E 'testRecreatedClientRefreshesUsingSavedDeviceKey.*passed' logs/swift-test.log
           grep -E 'testInterruptedRotationIsNotReplayedAfterClientRecreation.*passed' logs/swift-test.log
           grep -E 'testFailedRotationSaveDoesNotReplayPreviousToken.*passed' logs/swift-test.log
@@ -271,6 +274,16 @@ jobs:
           grep -q 'testRejectsPageBecomingSharedBeforeSave' logs/editor-persistence-macos.log
           grep -q 'testTwoEditorSessionsRejectStaleSnapshot' logs/editor-persistence-macos.log
           grep -q 'testRejectsReorderedBlocksWithoutTimestampChange' logs/editor-persistence-macos.log
+      - name: Discover and test project editing on macOS
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path Apple/WorldsCore list 2>&1 | tee logs/project-editing-discovery.log
+          grep -q 'testUndoAndFullBaselineConflictOnRealStore' logs/project-editing-discovery.log
+          grep -q 'testSavePreservesUnknownMetadataAndRefusesShared' logs/project-editing-discovery.log
+          swift test --package-path Apple/WorldsCore --filter WorldsProjectEditingTests 2>&1 | tee logs/project-editing-macos.log
+          grep -E 'testUndoAndFullBaselineConflictOnRealStore.*passed' logs/project-editing-macos.log
+          grep -E 'testSavePreservesUnknownMetadataAndRefusesShared.*passed' logs/project-editing-macos.log
       - name: Discover resource repository tests
         shell: bash
         run: |
@@ -345,6 +358,7 @@ jobs:
             -only-testing:WorldsNativeWritesTests/NativePersonalStoreTests \
             -only-testing:WorldsEditorPersistenceTests \
             -only-testing:WorldsResourceRepositoriesTests \
+            -only-testing:WorldsProjectEditingTests \
             -only-testing:WorldsAutomationsTests/NativeAutomationDriverTests \
             -only-testing:WorldsPresentationPersistenceTests \
             -only-testing:WorldsDrawingValidationTests \
@@ -358,6 +372,8 @@ jobs:
           grep -E "Test Case .*testTwoEditorSessionsRejectStaleSnapshot.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testRejectsReorderedBlocksWithoutTimestampChange.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testProjectUsesNativeStoreAndRejectsSameTimestampChange.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testUndoAndFullBaselineConflictOnRealStore.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testSavePreservesUnknownMetadataAndRefusesShared.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testGalleryUsesNativeStoreAndKeepsAttachment.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testIsolatedScheduleClaimRestartAndDecline.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testMissedScheduleIsSkippedWithoutApproval.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"

@@ -329,9 +329,14 @@ private struct MacReaderToggle: NSViewRepresentable {
     }
     func updateNSView(_ button: FocusedReaderButton, context: Context) {
         context.coordinator.parent = self
-        button.title = title
+        let font = NSFont.preferredFont(forTextStyle: .body)
+        button.font = font
+        button.attributedTitle = NSAttributedString(string: title, attributes: [.font: font, .foregroundColor: NSColor.labelColor])
+        button.setAccessibilityLabel(title)
+        button.contentTintColor = .labelColor
         let symbol = isOpen ? "chevron.down" : (direction == .rightToLeft ? "chevron.left" : "chevron.right")
-        button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
+        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
+        button.image = image?.withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: font.pointSize, weight: .semibold))
         button.toolTip = title
         button.imagePosition = direction == .rightToLeft ? .imageRight : .imageLeft
         button.setAccessibilityValue(isOpen ? "Expanded" : "Collapsed")

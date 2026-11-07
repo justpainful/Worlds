@@ -24,4 +24,14 @@ final class StrokeRasterCandidateTests: XCTestCase {
             XCTAssertThrowsError(try StrokeRasterCandidate.draw(samples: [ToolSample(x: 1, y: 1, pressure: 0.5, time: 0)], brush: brush, seed: 1, color: CGColor(red: 0, green: 0, blue: 0, alpha: 1), in: context))
         }
     }
+    func testDabCrossingTileBoundaryFailsClosed() throws {
+        let brush = ToolBrush()
+        let samples = [ToolSample(x: 510, y: 20, pressure: 1, time: 0), ToolSample(x: 514, y: 20, pressure: 1, time: 1)]
+        var bytes = [UInt8](repeating: 0, count: 32 * 32 * 4)
+        try bytes.withUnsafeMutableBytes { buffer in
+            let context = try XCTUnwrap(CGContext(data: buffer.baseAddress, width: 32, height: 32, bitsPerComponent: 8, bytesPerRow: 128, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+            XCTAssertThrowsError(try StrokeRasterCandidate.draw(samples: samples, brush: brush, seed: 1, color: CGColor(gray: 0, alpha: 1), in: context))
+        }
+    }
+
 }
