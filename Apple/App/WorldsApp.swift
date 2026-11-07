@@ -65,6 +65,9 @@ private struct WorldsLibraryView: View {
     @State private var searching = false
     @State private var searchedQuery: String?
     @State private var searchRequest = UUID()
+    #if WORLDS_EXPERIMENTAL_ACCOUNT
+    @State private var showAccount = false
+    #endif
     #if WORLDS_EXPERIMENTAL_LOCAL_COPY
     @State private var copyContext: LocalCopyContext?
     @State private var copyCoordinator: LocalProjectImportCoordinator?
@@ -112,6 +115,12 @@ private struct WorldsLibraryView: View {
                                             max: dynamicTypeSize.isAccessibilitySize ? 440 : 360)
             .navigationTitle("Pages")
             .toolbar {
+                #if WORLDS_EXPERIMENTAL_ACCOUNT
+                ToolbarItem {
+                    Button { showAccount = true } label: { Label("Account", systemImage: "person.crop.circle") }
+                        .disabled(databaseActionsDisabled)
+                }
+                #endif
                 ToolbarItem {
                     Button {
                         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
@@ -197,6 +206,9 @@ private struct WorldsLibraryView: View {
         .sheet(item: $videoRequest) { request in
             PersonalVideoView(databaseURL: request.source.url, databaseIdentity: request.source.identity, pageID: request.id)
         }
+        #endif
+        #if WORLDS_EXPERIMENTAL_ACCOUNT
+        .sheet(isPresented: $showAccount) { AccountHostView() }
         #endif
         .searchable(text: $searchQuery, placement: .sidebar, prompt: "Search personal pages")
         .tint(WorldsPalette.accent(for: colorScheme))

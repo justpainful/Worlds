@@ -22,3 +22,16 @@ The view is not wired into the product and needs a documented service
 configuration, signed Apple Keychain and lifecycle checks, and successful UI
 and service tests. Passkeys are deliberately omitted until the actual Apple
 associated domain, RP origin, entitlement and deployed ceremony are verified.
+
+Windows reads the non-secret `account.serverUrl` setting, then the build-time
+`WORLDS_IDENTITY_URL`, and falls back to localhost only in debug builds. No
+production service address was found in the repository. The experimental
+Apple host accepts a user-entered address or the optional `WorldsIdentityURL`
+Info.plist string; it does not invent a production default. HTTPS is required
+for release, with HTTP loopback accepted only by the debug host. App Transport
+Security and device networking may still prevent local development connections.
+The host uses a scope-specific Keychain item and an application-support lock;
+these remain subject to the continuity module's documented lock and lifecycle
+limitations. Setting the URL does not connect, migrate the Windows account
+cache, or validate that a server is the intended deployment. The feature flag
+must remain off until Apple and real-service verification succeeds.

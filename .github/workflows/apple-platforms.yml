@@ -47,6 +47,8 @@ jobs:
           grep -E 'testSuccessfulSignInKeepsSessionWhenProfileUnavailable.*passed' logs/swift-test.log
           grep -E 'testCancelledRequestDoesNotCreateChallenge.*passed' logs/swift-test.log
           grep -E 'testKeychainDeletionFailureDoesNotClaimSignOut.*passed' logs/swift-test.log
+          grep -E 'testExplicitAddressOverridesBuildDefault.*passed' logs/swift-test.log
+          grep -E 'testMissingAndUnsafeAddressesAreRejected.*passed' logs/swift-test.log
           grep -E 'testExpiredSessionAfterVerificationIsNotShownAsSignedIn.*passed' logs/swift-test.log
           grep -E 'testUncertainVerificationRequiresNewCode.*passed' logs/swift-test.log
           grep -E 'testSignOutCannotRaceStoredSessionCheck.*passed' logs/swift-test.log
@@ -114,10 +116,14 @@ jobs:
           if-no-files-found: warn
 
   project-editor-harness:
-    name: Isolated project editor UI harness
+    name: Isolated project editor UI harness (${{ matrix.group }})
     needs: [ruststore-xcframework]
     runs-on: macos-26
-    timeout-minutes: 65
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [macOS, mobile]
     env:
       WORLDS_REQUIRE_NATIVE_WRITES: "1"
     steps:
@@ -137,54 +143,98 @@ jobs:
           mkdir -p logs Apple/WorldsCore/Artifacts
           tar -xzf ruststore-artifact/ruststore-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
           test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
-      - name: Generate isolated project
+      - name: Generate isolated projects
         run: |
           brew install xcodegen coreutils
           xcodegen generate --spec Apple/ProjectEditorHarness/project.yml
           xcodegen generate --spec Apple/ProjectEditorHarness/local-copy-experimental.yml
-      - name: Exercise editor on macOS and iOS simulator
+      - name: Exercise isolated editor
+        shell: bash
+        run: |
+          set -o pipefail
+          result=0
+          run_case() {
+            local case_name="$1" project="$2" scheme="$3" destination="$4" kind="$5"
+            if gtimeout --kill-after=30s 600s xcodebuild -project "Apple/ProjectEditorHarness/$project.xcodeproj" \
+              -scheme "$scheme" -destination "$destination" \
+              -resultBundlePath "$GITHUB_WORKSPACE/$case_name.xcresult" \
+              CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/$case_name.log"; then
+              if [[ "$kind" == harness ]]; then
+                grep -E 'testEditSaveAndReopenIsolatedProject.*passed' "logs/$case_name.log" || result=1
+              else
+                grep -E 'testPersonalProjectEditAndReopenInLocalCopy.*passed' "logs/$case_name.log" || result=1
+                if [[ "$kind" == local-ios ]]; then
+                  grep -E 'testLargeTextRTLKeyboardAndSaveRemainReachable.*passed' "logs/$case_name.log" || result=1
+                fi
+              fi
+            else
+              result=1
+            fi
+          }
+          if [[ "${{ matrix.group }}" == macOS ]]; then
+            run_case harness-macOS WorldsProjectEditorHarness ProjectEditorHarness-macOS 'platform=macOS' harness
+            run_case local-copy-macOS WorldsLocalCopyExperimental LocalCopy-macOS 'platform=macOS' local-mac
+          else
+            run_case harness-iPhone WorldsProjectEditorHarness ProjectEditorHarness-iOS 'platform=iOS Simulator,name=iPhone 17,OS=26.5' harness
+            run_case local-copy-iPhone WorldsLocalCopyExperimental LocalCopy-iOS 'platform=iOS Simulator,name=iPhone 17,OS=26.5' local-ios
+            run_case local-copy-iPad WorldsLocalCopyExperimental LocalCopy-iOS 'platform=iOS Simulator,name=iPad (A16),OS=26.5' local-ios
+          fi
+          test "$result" = 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-project-editor-${{ matrix.group }}-results
+          path: |
+            logs/
+            harness-*.xcresult/
+            local-copy-*.xcresult/
+          if-no-files-found: warn
+
+  experimental-account-build:
+    name: Experimental account compilation
+    runs-on: macos-26
+    needs: [ruststore-xcframework]
+    timeout-minutes: 20
+    env:
+      WORLDS_REQUIRE_NATIVE_WRITES: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Worlds-shared-ruststore-xcframework
+          path: ruststore-artifact
+      - name: Verify and restore RustStore
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat ruststore-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd ruststore-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p logs Apple/WorldsCore/Artifacts
+          tar -xzf ruststore-artifact/ruststore-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
+          test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
+      - name: Generate application project
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          brew install xcodegen
+          xcodegen generate --spec Apple/project.yml
+      - name: Compile experimental account on macOS and iOS Simulator
         shell: bash
         run: |
           set -o pipefail
           result=0
           for platform in macOS iOS; do
-            if [[ "$platform" == macOS ]]; then destination='platform=macOS'; else destination='platform=iOS Simulator,name=iPhone 17,OS=26.5'; fi
-            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsProjectEditorHarness.xcodeproj \
-              -scheme "ProjectEditorHarness-$platform" -destination "$destination" \
-              -resultBundlePath "$GITHUB_WORKSPACE/harness-$platform.xcresult" \
-              CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/harness-$platform.log"; then
-              grep -E 'testEditSaveAndReopenIsolatedProject.*passed' "logs/harness-$platform.log" || result=1
-            else
-              result=1
-            fi
-          done
-          for device in macOS iPhone iPad; do
-            case "$device" in
-              macOS) platform=macOS; destination='platform=macOS' ;;
-              iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
-              iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
-            esac
-            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsLocalCopyExperimental.xcodeproj \
-              -scheme "LocalCopy-$platform" -destination "$destination" \
-              -resultBundlePath "$GITHUB_WORKSPACE/local-copy-$device.xcresult" \
-              CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-copy-$device.log"; then
-              grep -E 'testPersonalProjectEditAndReopenInLocalCopy.*passed' "logs/local-copy-$device.log" || result=1
-              if [[ "$platform" == iOS ]]; then
-                grep -E 'testLargeTextRTLKeyboardAndSaveRemainReachable.*passed' "logs/local-copy-$device.log" || result=1
-              fi
-            else
-              result=1
-            fi
+            if [[ "$platform" == macOS ]]; then destination='generic/platform=macOS'; else destination='generic/platform=iOS Simulator'; fi
+            if ! xcodebuild -project Apple/Worlds.xcodeproj -scheme "Worlds-$platform" \
+              -configuration Debug -destination "$destination" \
+              'SWIFT_ACTIVE_COMPILATION_CONDITIONS=$(inherited) DEBUG WORLDS_EXPERIMENTAL_LOCAL_COPY WORLDS_EXPERIMENTAL_ACCOUNT' \
+              CODE_SIGNING_ALLOWED=NO build 2>&1 | tee "logs/account-$platform-build.log"; then result=1; fi
           done
           test "$result" = 0
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: Worlds-project-editor-harness-results
-          path: |
-            logs/
-            harness-*.xcresult/
-            local-copy-*.xcresult/
+          name: Worlds-experimental-account-build-logs
+          path: logs/
           if-no-files-found: warn
 
   rust-mcp-compatibility:

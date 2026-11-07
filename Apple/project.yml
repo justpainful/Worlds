@@ -42,6 +42,10 @@ targets:
       - package: WorldsCore
         product: WorldsSearch
       - package: WorldsCore
+        product: WorldsAccountViews
+      - package: WorldsCore
+        product: WorldsIdentityContinuity
+      - package: WorldsCore
         product: WorldsMedia
       - package: WorldsCore
         product: WorldsMediaViews
@@ -84,6 +88,10 @@ targets:
         product: WorldsPersistence
       - package: WorldsCore
         product: WorldsSearch
+      - package: WorldsCore
+        product: WorldsAccountViews
+      - package: WorldsCore
+        product: WorldsIdentityContinuity
       - package: WorldsCore
         product: WorldsMedia
       - package: WorldsCore
