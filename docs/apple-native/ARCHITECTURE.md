@@ -1,0 +1,9 @@
+# Apple architecture
+
+Status: implementation in progress. This document records current boundaries and open decisions, not a statement of feature parity.
+
+`Apple/WorldsCore` is a Swift 6 package targeting iOS 17 and macOS 14. `WorldsModels` describes existing resource and block data and retains unknown JSON editor values. `WorldsSyncWire` handles the binary envelope of `worlds-sync.v1`; Yjs, awareness lifecycle, durable outboxes and transport remain necessary. `WorldsPersistence` reads the existing SQLite schema without migration or writes; shared workspace rows are excluded pending proper authorization and synchronization. `WorldsIdentity` contains an initial identity-service client, PKCE and device key operations, and Keychain storage. Authentication UI, passkeys and actual service validation remain incomplete.
+
+`Apple/App` is a SwiftUI entry point shared by the platform targets defined in `Apple/project.yml`. The active interface is being connected to local data. It does not yet provide the original editor or full resource operations. `WorldsGlass` uses the system glass API where available and native materials on earlier releases; its appearance has not been reviewed on actual devices.
+
+The original application uses SQLite, Tauri commands, Cloudflare identity and synchronization services, and Yjs. No replacement backend or incompatible synchronization protocol has been adopted. A complete port still requires rich editing, storage mutations that maintain history and indexes, CRDT interoperability, service integration, AI, drawing and platform-specific behavior. See `FEATURE_PARITY_MATRIX.md` and the separate audits for evidence and unresolved questions.

@@ -1,0 +1,7 @@
+# WorldsPersistence scope
+
+This module opens existing databases read-only. It does not implement writes, page or block CRUD, migrations, history recording, operation undo, shared workspace permissions, synchronization, attachment handling, FTS5 indexing, or the original full-text search. `searchPersonalTitles` is a limited title lookup and must not be presented as full Worlds search. `pageChangedSince` is an advisory read, not an atomic compare-and-write and cannot protect a subsequent save. History reads return a subset of the original fields.
+
+Writing directly without the original `store` invariants would leave history, change feeds, references, previews, search indexes and shared replicas inconsistent. Keep editing and save UI disabled until a compatible transactional writer exists. SQLite handles WAL only if its sidecars and filesystem permissions are available. The module excludes workspace rows and explicit `metadata.sync.shared` rows; it does not authenticate a user or validate cached permissions. A SQLite database imported from another user may contain personal data. Access must be granted by the user and controlled by the host application.
+
+The schema version gate is tied to the eleven Rust migrations examined here and must be updated by reviewing future migrations. A database fixture was created from migration 1, not exported from a real person's data. XCTest cases are provided but have not been executed in the Windows development environment.

@@ -4,7 +4,7 @@ import XCTest
 
 final class ResourceCompatibilityTests: XCTestCase {
     func testRichBlockRetainsUnknownNestedNodesAndArabic() throws {
-        let source = #"{"id":"b1","pageId":"p1","type":"futureBlock","order":1.5,"content":{"type":"futureNode","attrs":{"color":"#abcdef","nested":{"flag":true,"nothing":null}},"content":[{"type":"text","text":"مرحبا"}]},"properties":{"extension":{"version":2}},"direction":"rtl","createdAt":1730000000000,"updatedAt":1730000000001}"#
+        let source = ##"{"id":"b1","pageId":"p1","type":"futureBlock","order":1.5,"content":{"type":"futureNode","attrs":{"color":"#abcdef","nested":{"flag":true,"nothing":null}},"content":[{"type":"text","text":"مرحبا"}]},"properties":{"extension":{"version":2}},"direction":"rtl","createdAt":1730000000000,"updatedAt":1730000000001}"##
         let original = Data(source.utf8)
         let block = try JSONDecoder().decode(ResourceBlock.self, from: original)
         let encoded = try JSONEncoder().encode(block)

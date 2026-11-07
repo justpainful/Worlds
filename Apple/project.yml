@@ -28,6 +28,8 @@ targets:
         product: WorldsModels
       - package: WorldsCore
         product: WorldsSyncWire
+      - package: WorldsCore
+        product: WorldsPersistence
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.worlds.native.ios
@@ -46,6 +48,8 @@ targets:
         product: WorldsModels
       - package: WorldsCore
         product: WorldsSyncWire
+      - package: WorldsCore
+        product: WorldsPersistence
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.worlds.native.macos

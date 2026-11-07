@@ -8,6 +8,10 @@
 - Prepared a macOS CI workflow for package tests and native build checks. The Windows host cannot run Swift or Xcode; no Apple build or test has yet passed. Intermediate empty applications must not be distributed as completed products.
 - The 29 grouped rows in the preliminary parity matrix still contain zero complete, verified native features. The inventory is not exhaustive, so this is not a defensible whole-project percentage.
 
+### First CI run
+
+[Actions run 42383880774](https://github.com/justpainful/Worlds/actions/runs/42383880774) built the initial empty iPhone, iPad and macOS targets, but the Swift package test job failed to compile a raw string in a test fixture. That syntax was corrected locally and must be rerun. These successful target builds are infrastructure evidence only; they do not validate the actual application, UI or feature parity.
+
 ## 2026-11-07: Audit started
 
 - Created isolated worktree on branch `feat/native-apple-platforms` at commit `185ee9a1019c8b7bc685d22dabf1b699579189cc`. The original Windows checkout has existing tracked modifications and untracked files, including drawing work. They have not been moved or deleted.

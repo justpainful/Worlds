@@ -1,0 +1,203 @@
+import Foundation
+import SQLite3
+
+public struct StoredBlock: Sendable, Equatable {
+    public let id: String
+    public let type: String
+    public let contentJSON: String
+    public let propertiesJSON: String
+    public let direction: String
+    public let sortKey: Double
+}
+
+public struct StoredPage: Sendable, Equatable, Identifiable {
+    public let id: String
+    public let title: String
+    public let kind: String
+    public let parentID: String?
+    public let preview: String
+    public let updatedAt: Int64
+    public let metadataJSON: String
+    public let blocks: [StoredBlock]
+}
+
+public struct WorldsSnapshot: Sendable, Equatable {
+    public let schemaVersion: Int
+    public let pages: [StoredPage]
+}
+
+public struct StoredHistoryEntry: Sendable, Equatable, Identifiable {
+    public let id: Int64
+    public let kind: String
+    public let actor: String
+    public let summary: String
+    public let beforeJSON: String?
+    public let afterJSON: String?
+    public let createdAt: Int64
+}
+public enum WorldsDatabaseError: Error, LocalizedError {
+    case invalidURL
+    case sqlite(String)
+    case unsupportedSchema(Int)
+    case invalidData(String)
+    public var errorDescription: String? {
+        switch self {
+        case .invalidURL: return "Choose a local database file."
+        case .sqlite(let message): return "Database access failed: \(message)"
+        case .unsupportedSchema(let version): return "Unsupported Worlds database schema: \(version)."
+        case .invalidData(let field): return "Invalid database value: \(field)."
+        }
+    }
+}
+
+/// Read-only access to personal data. Shared workspace rows are intentionally
+/// excluded until the native client can enforce the original access rules.
+/// Opening does not create or migrate a database. WAL sidecars must be available.
+public actor WorldsDatabase {
+    nonisolated(unsafe) private let db: OpaquePointer
+    private let version: Int
+
+    public init(url: URL) throws {
+        guard url.isFileURL, !url.path.isEmpty, !url.path.utf8.contains(0) else {
+            throw WorldsDatabaseError.invalidURL
+        }
+        var handle: OpaquePointer?
+        let status = sqlite3_open_v2(url.path, &handle, SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX, nil)
+        guard status == SQLITE_OK, let handle else {
+            let message = handle.map { String(cString: sqlite3_errmsg($0)) } ?? "Could not open file"
+            if let handle { sqlite3_close_v2(handle) }
+            throw WorldsDatabaseError.sqlite(message)
+        }
+        do {
+            sqlite3_busy_timeout(handle, 5000)
+            sqlite3_enable_load_extension(handle, 0)
+            try Self.exec(handle, "PRAGMA query_only = ON")
+            try Self.exec(handle, "PRAGMA trusted_schema = OFF")
+            let schema = try Self.scalarInt(handle, "PRAGMA user_version")
+            guard (1...11).contains(schema) else { throw WorldsDatabaseError.unsupportedSchema(schema) }
+            self.db = handle
+            self.version = schema
+        } catch {
+            sqlite3_close_v2(handle)
+            throw error
+        }
+    }
+
+    deinit { sqlite3_close_v2(db) }
+
+    /// Reads pages and their blocks in a single SQLite snapshot transaction.
+    public func snapshot(includeDeleted: Bool = false) throws -> WorldsSnapshot {
+        try Self.exec(db, "BEGIN DEFERRED TRANSACTION")
+        do {
+            var clauses: [String] = []
+            if !includeDeleted { clauses.append("deleted_at IS NULL") }
+            if version >= 5 { clauses.append("workspace_id IS NULL") }
+            let filter = clauses.isEmpty ? "" : " WHERE " + clauses.joined(separator: " AND ")
+            let sql = "SELECT id, title, kind, parent_id, preview, updated_at, metadata FROM pages" + filter + " ORDER BY sort_key, created_at"
+            let statement = try Self.prepare(db, sql)
+            defer { sqlite3_finalize(statement) }
+            var pages: [StoredPage] = []
+            while true {
+                let status = sqlite3_step(statement)
+                if status == SQLITE_DONE { break }
+                guard status == SQLITE_ROW else { throw Self.error(db) }
+                let id = try Self.text(statement, 0, "page.id")
+                let metadata = try Self.text(statement, 6, "page.metadata")
+                guard let object = try? JSONSerialization.jsonObject(with: Data(metadata.utf8)) as? [String: Any] else { throw WorldsDatabaseError.invalidData("page.metadata") }
+                if let sync = object["sync"] as? [String: Any], sync["shared"] as? Bool == true { continue }
+                pages.append(StoredPage(
+                    id: id, title: try Self.text(statement, 1, "page.title"),
+                    kind: try Self.text(statement, 2, "page.kind"),
+                    parentID: try Self.optionalText(statement, 3, "page.parent_id"),
+                    preview: try Self.text(statement, 4, "page.preview"),
+                    updatedAt: sqlite3_column_int64(statement, 5),
+                    metadataJSON: metadata,
+                    blocks: try blocks(pageID: id)))
+            }
+            try Self.exec(db, "COMMIT")
+            return WorldsSnapshot(schemaVersion: version, pages: pages)
+        } catch {
+            try? Self.exec(db, "ROLLBACK")
+            throw error
+        }
+    }
+
+    /// Returns whether the persisted page was updated after the caller's base.
+    /// A missing or non-personal page is rejected, never treated as unchanged.
+    public func pageChangedSince(id: String, base: Int64) throws -> Bool {
+        let current = try snapshot(includeDeleted: true)
+        guard let page = current.pages.first(where: { $0.id == id }) else {
+            throw WorldsDatabaseError.invalidData("page unavailable")
+        }
+        return page.updatedAt > base
+    }
+
+    /// Simple title-only lookup. This is not the original FTS5 search.
+    public func searchPersonalTitles(_ query: String, limit: Int = 30) throws -> [StoredPage] {
+        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty, limit > 0 else { return [] }
+        let data = try snapshot()
+        return Array(data.pages.filter { $0.title.localizedCaseInsensitiveContains(query) }
+            .sorted { $0.updatedAt > $1.updatedAt }.prefix(min(limit, 1000)))
+    }
+    /// Reads the original history table. Shared rows are filtered in SQL.
+    public func personalHistory(pageID: String, limit: Int = 100) throws -> [StoredHistoryEntry] {
+        let workspace = version >= 5 ? " AND p.workspace_id IS NULL" : ""
+        let sql = "SELECT h.id,h.kind,h.actor,h.summary,h.before,h.after,h.created_at FROM history h JOIN pages p ON p.id=h.page_id WHERE p.id=?1" + workspace + " AND CASE WHEN json_valid(p.metadata) THEN COALESCE(json_extract(p.metadata,'$.sync.shared'),0) != 1 ELSE 0 END ORDER BY h.id DESC LIMIT ?2"
+        let stmt = try Self.prepare(db, sql)
+        defer { sqlite3_finalize(stmt) }
+        let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        guard sqlite3_bind_text(stmt, 1, pageID, -1, transient) == SQLITE_OK,
+              sqlite3_bind_int(stmt, 2, Int32(max(1, min(limit, 1000)))) == SQLITE_OK else { throw Self.error(db) }
+        var entries: [StoredHistoryEntry] = []
+        while true {
+            let status = sqlite3_step(stmt)
+            if status == SQLITE_DONE { return entries }
+            guard status == SQLITE_ROW else { throw Self.error(db) }
+            entries.append(StoredHistoryEntry(id: sqlite3_column_int64(stmt, 0), kind: try Self.text(stmt, 1, "history.kind"), actor: try Self.text(stmt, 2, "history.actor"), summary: try Self.text(stmt, 3, "history.summary"), beforeJSON: try Self.optionalText(stmt, 4, "history.before"), afterJSON: try Self.optionalText(stmt, 5, "history.after"), createdAt: sqlite3_column_int64(stmt, 6)))
+        }
+    }
+    private func blocks(pageID: String) throws -> [StoredBlock] {
+        let stmt = try Self.prepare(db, "SELECT id, type, content, properties, direction, sort_key FROM blocks WHERE page_id = ?1 ORDER BY sort_key")
+        defer { sqlite3_finalize(stmt) }
+        let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        guard sqlite3_bind_text(stmt, 1, pageID, -1, transient) == SQLITE_OK else { throw Self.error(db) }
+        var blocks: [StoredBlock] = []
+        while true {
+            let result = sqlite3_step(stmt)
+            if result == SQLITE_DONE { return blocks }
+            guard result == SQLITE_ROW else { throw Self.error(db) }
+            blocks.append(StoredBlock(id: try Self.text(stmt, 0, "block.id"), type: try Self.text(stmt, 1, "block.type"), contentJSON: try Self.text(stmt, 2, "block.content"), propertiesJSON: try Self.text(stmt, 3, "block.properties"), direction: try Self.text(stmt, 4, "block.direction"), sortKey: sqlite3_column_double(stmt, 5)))
+        }
+    }
+
+    private static func text(_ stmt: OpaquePointer, _ index: Int32, _ field: String) throws -> String {
+        guard sqlite3_column_type(stmt, index) == SQLITE_TEXT, let bytes = sqlite3_column_text(stmt, index) else { throw WorldsDatabaseError.invalidData(field) }
+        let count = Int(sqlite3_column_bytes(stmt, index))
+        guard let value = String(bytes: UnsafeBufferPointer(start: bytes, count: count), encoding: .utf8) else { throw WorldsDatabaseError.invalidData(field) }
+        return value
+    }
+    private static func optionalText(_ stmt: OpaquePointer, _ index: Int32, _ field: String) throws -> String? {
+        if sqlite3_column_type(stmt, index) == SQLITE_NULL { return nil }
+        return try text(stmt, index, field)
+    }
+    private static func error(_ db: OpaquePointer) -> WorldsDatabaseError { .sqlite(String(cString: sqlite3_errmsg(db))) }
+    private static func prepare(_ db: OpaquePointer, _ sql: String) throws -> OpaquePointer {
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK, let statement else { throw error(db) }
+        return statement
+    }
+    private static func exec(_ db: OpaquePointer, _ sql: String) throws {
+        guard sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK else { throw error(db) }
+    }
+    private static func scalarInt(_ db: OpaquePointer, _ sql: String) throws -> Int {
+        let statement = try prepare(db, sql)
+        defer { sqlite3_finalize(statement) }
+        guard sqlite3_step(statement) == SQLITE_ROW else { throw error(db) }
+        return Int(sqlite3_column_int(statement, 0))
+    }
+}
+
+
+
+

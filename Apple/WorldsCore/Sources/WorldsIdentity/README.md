@@ -1,0 +1,9 @@
+# Worlds Identity
+
+`WorldsIdentityClient` implements email challenge and verification, PKCE code exchange, device-bound Ed25519 refresh, access token caching, authenticated JSON requests, and remote logout. A single Keychain item holds the refresh token, device ID, user ID and signing seed. Access tokens are held in memory. Refresh is shared inside one client actor and a successful rotation is saved before it is returned.
+
+The server expects `worlds-refresh.v1:<deviceId>:<epoch milliseconds>:<lowercase SHA-256 token hex>`, signed as raw Ed25519 and encoded as unpadded base64url. Its passkey web page currently only accepts a loopback HTTP redirect. `PKCE` supplies verifier, challenge and state, and `exchange` validates state, but opening a browser, creating a loopback listener and native passkey ceremonies are not implemented here. Do not present passkey sign-in as complete on any Apple platform.
+
+The caller configures the service URL and chooses the device name and platform. HTTPS is required except for localhost, 127.0.0.1 and ::1 development endpoints. Keychain data is scoped to the current device and is not migrated from the Windows credential manager. Each client and process needs independent session ownership: the actor does not coordinate rotation with other client instances or processes. Creating multiple clients for the same Keychain account can cause refresh-token reuse and server revocation. If the server rotates a token but network delivery or Keychain persistence fails, the original token may be unusable. Recovery requires signing in again; do not silently replay it.
+
+This module has not been built or run against an Apple SDK or a deployed identity service. Its XCTest fixtures use an injected fake transport and in-memory secret store; they do not establish Keychain entitlements, browser callbacks, production service health or device behavior. Swift package integration is owned by the parent task.
