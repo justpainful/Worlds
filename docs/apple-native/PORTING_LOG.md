@@ -12,6 +12,10 @@
 
 [Actions run 42383880774](https://github.com/justpainful/Worlds/actions/runs/42383880774) built the initial empty iPhone, iPad and macOS targets, but the Swift package test job failed to compile a raw string in a test fixture. That syntax was corrected locally and must be rerun. These successful target builds are infrastructure evidence only; they do not validate the actual application, UI or feature parity.
 
+The next run, [42384093677](https://github.com/justpainful/Worlds/actions/runs/42384093677), failed because Apple SDK SQLite does not expose `sqlite3_enable_load_extension`; the unnecessary call was removed. In [42384342918](https://github.com/justpainful/Worlds/actions/runs/42384342918), the Swift package test job passed 16 tests with no failures; app and UI jobs were still running when recorded. The tests do not establish live Keychain, service, passkey, device or collaboration behavior.
+
+An independent Rust store experiment reuses original store code for selected personal-page writes, with a C interface and nine locally passing Windows tests. It is not linked to the Apple app, built for Apple, or ready for real data. The application remains read-only pending interoperability, security and platform validation.
+
 ## 2026-11-07: Audit started
 
 - Created isolated worktree on branch `feat/native-apple-platforms` at commit `185ee9a1019c8b7bc685d22dabf1b699579189cc`. The original Windows checkout has existing tracked modifications and untracked files, including drawing work. They have not been moved or deleted.

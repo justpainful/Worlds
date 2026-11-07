@@ -1,11 +1,7 @@
 import XCTest
 
-@MainActor
 final class WorldsUITests: XCTestCase {
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-    }
-
+    @MainActor
     func testOpeningScreen() throws {
         let app = XCUIApplication()
         app.launch()
@@ -14,6 +10,7 @@ final class WorldsUITests: XCTestCase {
         capture("01-open-database")
     }
 
+    @MainActor
     func testPersonalPageNavigation() throws {
         let app = XCUIApplication()
         app.launchArguments.append("--ui-testing-fixture")
@@ -27,6 +24,7 @@ final class WorldsUITests: XCTestCase {
         capture("03-page-content")
     }
 
+    @MainActor
     func testDatabaseError() throws {
         let app = XCUIApplication()
         app.launchArguments.append("--ui-testing-missing-fixture")
@@ -37,6 +35,7 @@ final class WorldsUITests: XCTestCase {
         XCTAssertFalse(app.alerts["Could not open database"].exists)
     }
 
+    @MainActor
     private func capture(_ name: String) {
         let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         attachment.name = name
