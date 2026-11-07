@@ -62,6 +62,7 @@ let package = Package(
         .testTarget(name: "WorldsPersistenceTests", dependencies: ["WorldsPersistence"], resources: [.copy("worlds-v1-fixture.db")], linkerSettings: [.linkedLibrary("sqlite3")]),
         .testTarget(name: "WorldsIdentityTests", dependencies: ["WorldsIdentity"]),
         .testTarget(name: "WorldsRichTextTests", dependencies: ["WorldsRichText", "WorldsModels"]),
+        .testTarget(name: "WorldsDrawingVisualComparisonTests", dependencies: ["WorldsDrawing"], resources: [.copy("CanvasReferences")]),
         .testTarget(name: "WorldsDrawingTests", dependencies: ["WorldsDrawing", "WorldsModels"], resources: [.copy("original-stroke-fixture.json"), .copy("original-shapes-fixture.json"), .copy("original-pressure-fixture.json"), .copy("original-journal-fixture.json"), .copy("original-dabs-fixture.json")]),
         .testTarget(name: "WorldsPresentationsTests", dependencies: ["WorldsPresentations", "WorldsModels"]),
         .testTarget(name: "WorldsMediaTests", dependencies: ["WorldsMedia"]),

@@ -266,6 +266,7 @@ private struct ReaderTextSelection: ViewModifier {
 private struct ToggleNodeView: View {
     let node: PageNode
     @State private var isOpen: Bool
+    @FocusState private var toggleFocused: Bool
     init(node: PageNode) {
         self.node = node
         _isOpen = State(initialValue: node.attrs?.open ?? true)
@@ -274,6 +275,7 @@ private struct ToggleNodeView: View {
         let items = node.content ?? []
         VStack(alignment: .leading, spacing: 8) {
             Button {
+                toggleFocused = true
                 isOpen.toggle()
             } label: {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -286,6 +288,8 @@ private struct ToggleNodeView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .focusable()
+            .focused($toggleFocused)
             .accessibilityIdentifier("reader-toggle")
             .accessibilityValue(isOpen ? "Expanded" : "Collapsed")
             if isOpen {

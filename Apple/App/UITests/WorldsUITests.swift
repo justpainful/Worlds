@@ -126,11 +126,32 @@ final class WorldsUITests: XCTestCase {
         disclosure.tap()
         XCTAssertTrue(app.staticTexts["Hidden detail"].waitForNonExistence(timeout: 10))
         #if os(macOS)
+        XCTAssertTrue(disclosure.hasKeyboardFocus)
         disclosure.typeKey(.space, modifierFlags: [])
         XCTAssertTrue(app.staticTexts["Hidden detail"].waitForExistence(timeout: 10))
         #endif
     }
 
+    #if os(macOS)
+    @MainActor
+    func testLargeReaderWindow() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["--ui-testing-reader-fixture", "--ui-testing-rtl", "--ui-testing-large-window"]
+        app.launch()
+        let page = app.descendants(matching: .any)["page.reader-fixture"].firstMatch
+        XCTAssertTrue(page.waitForExistence(timeout: 40))
+        page.tap()
+        XCTAssertTrue(app.staticTexts["Read the warning"].waitForExistence(timeout: 20))
+        let disclosure = app.buttons["reader-toggle"].firstMatch
+        XCTAssertTrue(disclosure.waitForExistence(timeout: 10))
+        disclosure.tap()
+        XCTAssertTrue(app.staticTexts["Hidden detail"].waitForExistence(timeout: 10))
+        let frame = app.windows.firstMatch.frame
+        XCTAssertGreaterThanOrEqual(frame.width, 1000)
+        XCTAssertGreaterThanOrEqual(frame.height, 700)
+        capture("11-structured-reader-large-rtl", app: app)
+    }
+    #endif
     @MainActor
     func testDatabaseError() throws {
         let app = XCUIApplication()

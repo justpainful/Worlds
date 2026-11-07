@@ -28,7 +28,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p logs
-          swift test --package-path Apple/WorldsCore 2>&1 | tee logs/swift-test.log
+          swift test --package-path Apple/WorldsCore --skip WorldsDrawingVisualComparisonTests 2>&1 | tee logs/swift-test.log
           grep -q 'testSaveWaitsForNativeTextComposition' logs/swift-test.log
           grep -q 'testStagesAndCleansUpAnIsolatedFile' logs/swift-test.log
           grep -q 'testBoundsAndSymlink' logs/swift-test.log
@@ -46,6 +46,35 @@ jobs:
         with:
           name: WorldsCore-test-log
           path: logs/
+          if-no-files-found: warn
+
+  drawing-visual-comparison:
+    name: Drawing visual comparison (experimental)
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+      - name: Compare Canvas references on macOS
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p "$GITHUB_WORKSPACE/logs"
+          cd Apple/WorldsCore
+          xcodebuild -scheme WorldsCore-Package \
+            -destination 'platform=macOS' \
+            -only-testing:WorldsDrawingVisualComparisonTests \
+            -resultBundlePath "$GITHUB_WORKSPACE/drawing-visual-comparison.xcresult" \
+            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$GITHUB_WORKSPACE/logs/drawing-visual-comparison.log"
+          grep -E 'Test Case .*testSourceCanvasAndNativeStrokePixels.*passed' "$GITHUB_WORKSPACE/logs/drawing-visual-comparison.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-drawing-visual-comparison
+          path: |
+            logs/
+            drawing-visual-comparison.xcresult/
           if-no-files-found: warn
 
   rust-mcp-compatibility:
@@ -188,6 +217,7 @@ jobs:
           cargo test --locked --manifest-path Apple/RustStore/Cargo.toml 2>&1 | tee logs/rust-store-tests.log
           grep -q 'owned_asset_file_required_and_failures_roll_back ... ok' logs/rust-store-tests.log
           grep -q 'symlinked_attachment_is_rejected ... ok' logs/rust-store-tests.log
+          grep -q 'asset_scan_includes_nested_history_references ... ok' logs/rust-store-tests.log
           grep -q 'refuses_symlink_components_and_parent_escape ... ok' logs/rust-store-tests.log
           grep -q 'open_handle_does_not_pin_future_path_contents ... ok' logs/rust-store-tests.log
       - name: Discover required write tests
@@ -591,6 +621,9 @@ jobs:
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee logs/ui-${{ matrix.device }}.log
           grep -Eq 'testRightToLeftNavigationAndReading.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testReaderShowsStructuredContentAndExpandsToggle.*passed' logs/ui-${{ matrix.device }}.log
+          if [[ "${{ matrix.device }}" == "macOS" ]]; then
+            grep -Eq 'testLargeReaderWindow.*passed' logs/ui-${{ matrix.device }}.log
+          fi
       - name: Export screenshot attachments
         if: always()
         shell: bash

@@ -42,6 +42,29 @@ fn validate_owned_assets(conn: &Connection, database: &Path, page: &str, scene: 
     }
     Ok(())
 }
+// Assets may survive in history or saved versions after removal from the current
+// scene. Refuse the entire write if any persisted JSON still references one.
+fn contains_asset_reference(value: &Value) -> bool {
+    match value {
+        Value::Object(fields) => fields.iter().any(|(key, item)| {
+            (key == "assets" && !item.as_object().is_some_and(|v| v.is_empty())) ||
+            (matches!(key.as_str(), "attachmentId" | "assetId" | "tipAssetId") && !item.is_null() && item.as_str() != Some("")) ||
+            contains_asset_reference(item)
+        }),
+        Value::Array(items) => items.iter().any(contains_asset_reference),
+        _ => false,
+    }
+}
+fn reject_asset_dependencies(conn: &Connection, page: &str, doc: &Value) -> Result<()> {
+    if contains_asset_reference(doc) { bail!("asset-backed drawing writes are disabled") }
+    let mut query = conn.prepare("SELECT scene FROM drawing_versions WHERE page_id=?1")?;
+    let versions = query.query_map([page], |row| row.get::<_, String>(0))?;
+    for version in versions {
+        let parsed: Value = serde_json::from_str(&version?)?;
+        if contains_asset_reference(&parsed) { bail!("drawing version references an asset") }
+    }
+    Ok(())
+}
 #[path = "../../../src-tauri/src/drawing_persistence.rs"]
 mod drawing_persistence;
 
@@ -59,11 +82,8 @@ pub fn apply_personal(path: &Path, page: &str, operation: Value) -> Result<Value
     require_drawing(&tx, page, Level::Edit)?;
     if !operation["versionRestore"].is_null() { bail!("version restore is unavailable") }
     let doc = drawing_persistence::apply(&tx, &store::Ctx::user(), page, operation)?;
-    validate_owned_assets(&tx, path, page, &doc["scene"])?;
-    // An open descriptor cannot ensure that a stored path will still name that
-    // inode after commit, or prevent mutation through another writable handle.
-    // Keep asset writes disabled until the storage ownership model handles both.
-    if doc["scene"]["assets"].as_object().is_some_and(|assets| !assets.is_empty()) { bail!("asset-backed drawing writes are disabled") }
+    // Do not follow asset paths at all while durable identity remains unsolved.
+    reject_asset_dependencies(&tx, page, &doc)?;
     tx.commit()?; Ok(doc)
 }
 pub fn duplicate_into(_: &Connection, _: &str, _: &str) -> Result<()> { bail!("drawing copy unavailable") }
@@ -124,6 +144,13 @@ mod tests {
         assert_eq!(super::apply_personal(&target,"fixture-page",op).unwrap(),after);
         let stale = json!({"id":"op-2","actor":"artist","base":0,"at":2,"label":"Stale","type":"edit","changes":[]});
         assert!(super::apply_personal(&target,"fixture-page",stale).is_err());
+        // A deleted current asset can still be required by a saved version.
+        conn.execute("INSERT INTO drawing_versions(id,page_id,revision,label,author,scene,created_at) VALUES('v','fixture-page',0,'old','artist',?1,1)",
+            [json!({"assets":{"a":{"attachmentId":"original"}}}).to_string()]).unwrap();
+        let blocked = json!({"id":"blocked","actor":"artist","base":1,"at":3,"label":"Blocked","type":"edit","changes":[]});
+        assert!(super::apply_personal(&target,"fixture-page",blocked).is_err());
+        assert_eq!(super::load_personal(&target,"fixture-page").unwrap(),after);
+        conn.execute("DELETE FROM drawing_versions WHERE id='v'", []).unwrap();
         conn.execute_batch("CREATE TRIGGER refuse_drawing BEFORE INSERT ON drawing_operations BEGIN SELECT RAISE(ABORT,'disk error'); END;").unwrap();
         let rejected = json!({"id":"op-3","actor":"artist","base":1,"at":3,"label":"Refused","type":"edit","changes":[{"type":"patch","collection":"layers","id":layer,"fields":{"name":"Lost"}}]});
         assert!(super::apply_personal(&target,"fixture-page",rejected).is_err());
@@ -175,6 +202,13 @@ mod tests {
         symlink(directory.join("original"),directory.join("attachments/link")).unwrap();
         assert!(super::reject_symlink_ancestors(&directory.join("attachments/link")).is_err());
         std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn asset_scan_includes_nested_history_references() {
+        assert!(super::contains_asset_reference(&json!({"operations":[{"changes":[{"value":{"attachmentId":"original"}}]}]})));
+        assert!(super::contains_asset_reference(&json!({"seed":{"nodes":{"n":{"brush":{"tipAssetId":"tip"}}}}})));
+        assert!(!super::contains_asset_reference(&json!({"scene":{"assets":{},"nodes":{}}})));
     }
 
 }

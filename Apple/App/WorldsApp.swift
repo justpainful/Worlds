@@ -5,18 +5,28 @@ import WorldsSearch
 
 @main
 struct WorldsApp: App {
-    var body: some Scene {
-        WindowGroup {
-            #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("--ui-testing-rtl") {
-                WorldsLibraryView().environment(\.layoutDirection, .rightToLeft)
-            } else {
-                WorldsLibraryView()
-            }
-            #else
-            WorldsLibraryView()
-            #endif
+    @SceneBuilder var body: some Scene {
+        #if os(macOS) && DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing-large-window") {
+            WindowGroup { rootView }.defaultSize(width: 1100, height: 780)
+        } else {
+            WindowGroup { rootView }
         }
+        #else
+        WindowGroup { rootView }
+        #endif
+    }
+
+    @ViewBuilder private var rootView: some View {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing-rtl") {
+            WorldsLibraryView().environment(\.layoutDirection, .rightToLeft)
+        } else {
+            WorldsLibraryView()
+        }
+        #else
+        WorldsLibraryView()
+        #endif
     }
 }
 
