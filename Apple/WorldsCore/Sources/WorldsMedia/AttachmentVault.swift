@@ -110,6 +110,7 @@ public struct AttachmentVault {
             }
             var statInfo = stat()
             guard fstat(fd, &statInfo) == 0, (statInfo.st_mode & S_IFMT) == S_IFREG else { throw MediaError.notAFile }
+            guard statInfo.st_nlink == 1 else { throw MediaError.inaccessible }
             guard statInfo.st_size >= 0, statInfo.st_size <= maxSize else { throw MediaError.tooLarge }
             return AttachmentFile(root: root, scoped: scoped, descriptor: fd, size: statInfo.st_size)
         } catch {

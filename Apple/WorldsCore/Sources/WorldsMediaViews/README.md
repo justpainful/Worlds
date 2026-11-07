@@ -7,3 +7,5 @@ Sharing is initiated explicitly: the module makes a private temporary copy and p
 DOCX, XLSX, ODS, PPTX, SVG, HLS, arbitrary encodings, large-file streaming, animated GIF playback, file-provider coordination and remote attachment transfer are not implemented. Codec compatibility depends on AVFoundation. The attachment record and its root must already be authorized by the host. The module does not enforce shared-workspace ACLs or connect to app navigation.
 
 Synthetic model tests do not verify visible UI layout, image zoom gestures, PDF interaction, system share-sheet lifetime, audio controls or playback on actual devices. This module is included in SwiftPM but is not connected to the app; its Apple build and tests are still pending.
+
+The preview view now defaults `allowsSharing` to false. Enabling sharing still requires the host to establish recipient and lease lifetime behavior.

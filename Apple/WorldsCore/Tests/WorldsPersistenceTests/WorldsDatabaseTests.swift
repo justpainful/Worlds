@@ -69,6 +69,24 @@ final class WorldsDatabaseTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: url), before)
     }
 
+    func testFileAttachmentRequiresMatchingPersonalOwnerAndMetadata() async throws {
+        let url = try fixture()
+        try execute(url, #"UPDATE pages SET kind='file',metadata='{"file":{"attachmentId":"owned"}}' WHERE id='fixture-page'; INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('owned','fixture-page','file','test.txt','text/plain',4,'2026-01/test.txt',1),('unowned',NULL,'file','other.txt','text/plain',3,'2026-01/other.txt',1);"#)
+        let database = try WorldsDatabase(url: url)
+        let allowed = try await database.personalFileAttachment(pageID: "fixture-page")
+        XCTAssertEqual(allowed?.id, "owned")
+        XCTAssertEqual(allowed?.relPath, "2026-01/test.txt")
+        try execute(url, #"UPDATE pages SET metadata='{"file":{"attachmentId":"unowned"}}' WHERE id='fixture-page'"#)
+        let unowned = try await database.personalFileAttachment(pageID: "fixture-page")
+        XCTAssertNil(unowned)
+        try execute(url, #"UPDATE pages SET metadata='{"file":{"attachmentId":"owned","attachmentId":"unowned"}}' WHERE id='fixture-page'"#)
+        let ambiguous = try await database.personalFileAttachment(pageID: "fixture-page")
+        XCTAssertNil(ambiguous)
+        try execute(url, #"UPDATE pages SET metadata='{"sync":{"shared":true},"file":{"attachmentId":"owned"}}' WHERE id='fixture-page'"#)
+        let shared = try await database.personalFileAttachment(pageID: "fixture-page")
+        XCTAssertNil(shared)
+    }
+
     func testMissingFileIsNotCreated() throws {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         XCTAssertThrowsError(try WorldsDatabase(url: url))

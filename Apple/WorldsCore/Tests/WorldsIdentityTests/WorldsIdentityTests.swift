@@ -1,6 +1,11 @@
 import Foundation
 import XCTest
 import CryptoKit
+#if os(macOS)
+import AppKit
+#elseif canImport(UIKit)
+import UIKit
+#endif
 @testable import WorldsIdentity
 
 private final class MemorySecrets: IdentitySecretStore, @unchecked Sendable {
@@ -53,6 +58,15 @@ private actor FakeIdentity: IdentityTransport {
     }
 }
 
+private actor InterruptedRefreshTransport: IdentityTransport {
+    let source: FakeIdentity
+    init(source: FakeIdentity) { self.source = source }
+    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        if request.url?.path == "/auth/refresh" { throw URLError(.networkConnectionLost) }
+        return try await source.send(request)
+    }
+}
+
 final class WorldsIdentityTests: XCTestCase {
     func testPKCERFCVectorAndRefreshMessage() {
         XCTAssertEqual(IdentityCrypto.pkceChallenge(verifier: "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"), "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM")
@@ -101,5 +115,46 @@ final class WorldsIdentityTests: XCTestCase {
             XCTFail("Mismatched state must fail")
         } catch IdentityError.invalidResponse {} catch { XCTFail("Unexpected error: \(error)") }
     }
+    @MainActor
+    func testCancelledPasskeyBeforePresentationDoesNotStart() async throws {
+        #if os(macOS)
+        let anchor = NSWindow()
+        #else
+        let anchor = UIWindow(frame: .zero)
+        #endif
+        let authorization = ApplePasskeyAuthorization(anchor: anchor)
+        let challenge = PasskeyChallenge(challengeID: "fixture", relyingPartyID: "example.invalid", challenge: Data(repeating: 1, count: 32))
+        let task = Task { @MainActor in try await authorization.assert(challenge) }
+        task.cancel()
+        do { _ = try await task.value; XCTFail("Cancelled authorization must fail") }
+        catch is CancellationError { } catch { XCTFail("Unexpected error: \(error)") }
+    }
+
+    func testRecreatedClientRefreshesUsingSavedDeviceKey() async throws {
+        let transport = FakeIdentity(), secrets = MemorySecrets()
+        let url = try XCTUnwrap(URL(string: "https://identity.example"))
+        let first = try WorldsIdentityClient(baseURL: url, secrets: secrets, transport: transport)
+        _ = try await first.verifyEmail(challengeID: "fixture", code: "123456", deviceName: "Test", platform: "macos")
+        let restored = try WorldsIdentityClient(baseURL: url, secrets: secrets, transport: transport)
+        let access = try await restored.accessToken(forceRefresh: true)
+        XCTAssertEqual(access, "access")
+        let valid = await transport.validSignature
+        let count = await transport.refreshCount
+        XCTAssertTrue(valid); XCTAssertEqual(count, 1)
+    }
+    func testInterruptedRotationIsNotReplayedAfterClientRecreation() async throws {
+        let source = FakeIdentity(), secrets = MemorySecrets()
+        let url = try XCTUnwrap(URL(string: "https://identity.example"))
+        let interrupted = try WorldsIdentityClient(baseURL: url, secrets: secrets, transport: InterruptedRefreshTransport(source: source))
+        _ = try await interrupted.verifyEmail(challengeID: "fixture", code: "123456", deviceName: "Test", platform: "macos")
+        do { _ = try await interrupted.accessToken(forceRefresh: true); XCTFail("Network interruption must fail") }
+        catch is URLError { } catch { XCTFail("Unexpected error: \(error)") }
+        let restored = try WorldsIdentityClient(baseURL: url, secrets: secrets, transport: source)
+        do { _ = try await restored.accessToken(forceRefresh: true); XCTFail("Uncertain token must not be replayed") }
+        catch IdentityError.signedOut { } catch { XCTFail("Unexpected error: \(error)") }
+        let count = await source.refreshCount
+        XCTAssertEqual(count, 0)
+    }
+
 }
 

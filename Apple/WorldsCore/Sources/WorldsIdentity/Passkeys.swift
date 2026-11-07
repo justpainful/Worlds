@@ -59,26 +59,42 @@ public final class ApplePasskeyAuthorization: NSObject, @preconcurrency ASAuthor
     private let anchor: ASPresentationAnchor
     private var controller: ASAuthorizationController?
     private var continuation: CheckedContinuation<PasskeyAssertion, Error>?
+    private var requestID: UUID?
 
     public init(anchor: ASPresentationAnchor) { self.anchor = anchor }
 
     public func assert(_ challenge: PasskeyChallenge) async throws -> PasskeyAssertion {
-        guard continuation == nil else { throw IdentityError.busy }
-        return try await withCheckedThrowingContinuation { continuation in
-            self.continuation = continuation
-            let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: challenge.relyingPartyID)
-            let request = provider.createCredentialAssertionRequest(challenge: challenge.challenge)
-            let controller = ASAuthorizationController(authorizationRequests: [request])
-            self.controller = controller
-            controller.delegate = self
-            controller.presentationContextProvider = self
-            controller.performRequests()
+        guard requestID == nil else { throw IdentityError.busy }
+        let id = UUID()
+        requestID = id
+        defer { if requestID == id, continuation == nil { requestID = nil } }
+        return try await withTaskCancellationHandler {
+            try Task.checkCancellation()
+            return try await withCheckedThrowingContinuation { continuation in
+                self.continuation = continuation
+                let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: challenge.relyingPartyID)
+                let request = provider.createCredentialAssertionRequest(challenge: challenge.challenge)
+                let controller = ASAuthorizationController(authorizationRequests: [request])
+                self.controller = controller
+                controller.delegate = self
+                controller.presentationContextProvider = self
+                controller.performRequests()
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in self?.cancel(requestID: id) }
         }
+    }
+    private func cancel(requestID id: UUID) {
+        guard requestID == id else { return }
+        let active = controller
+        finish(.failure(CancellationError()))
+        active?.cancel()
     }
 
     public func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor { anchor }
 
     public func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        guard controller === self.controller else { return }
         guard let credential = authorization.credential as? ASAuthorizationPlatformPublicKeyCredentialAssertion,
               let authenticatorData = credential.rawAuthenticatorData,
               let signature = credential.signature else {
@@ -90,6 +106,7 @@ public final class ApplePasskeyAuthorization: NSObject, @preconcurrency ASAuthor
     }
 
     public func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        guard controller === self.controller else { return }
         finish(.failure(error))
     }
 
@@ -97,6 +114,7 @@ public final class ApplePasskeyAuthorization: NSObject, @preconcurrency ASAuthor
         let pending = continuation
         continuation = nil
         controller = nil
+        requestID = nil
         pending?.resume(with: result)
     }
 }

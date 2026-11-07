@@ -21,6 +21,21 @@ public struct StoredPage: Sendable, Equatable, Identifiable {
     public let blocks: [StoredBlock]
 }
 
+/// Attachment metadata only. The caller must separately authorize and open
+/// the matching attachments directory, and must not treat this as an ACL lease.
+public struct StoredFileAttachment: Sendable, Equatable {
+    public let id: String
+    public let pageID: String
+    public let kind: String
+    public let fileName: String
+    public let mime: String
+    public let size: Int64
+    public let relPath: String
+    public let width: Int64?
+    public let height: Int64?
+    public let createdAt: Int64
+}
+
 public struct WorldsSnapshot: Sendable, Equatable {
     public let schemaVersion: Int
     public let pages: [StoredPage]
@@ -129,6 +144,45 @@ public actor WorldsDatabase {
             try? Self.exec(db, "ROLLBACK")
             throw error
         }
+    }
+
+    /// Reads only an attachment owned by the same personal, live file page.
+    /// Ownership and metadata are checked in one SQLite read transaction.
+    public func personalFileAttachment(pageID: String) throws -> StoredFileAttachment? {
+        guard !pageID.isEmpty, !pageID.utf8.contains(0) else { throw WorldsDatabaseError.invalidData("page.id") }
+        let workspace = version >= 5 ? " AND p.workspace_id IS NULL" : ""
+        let sql = """
+        SELECT a.id, a.page_id, a.kind, a.file_name, a.mime, a.size, a.rel_path, a.width, a.height, a.created_at
+        FROM pages p JOIN attachments a ON a.page_id = p.id
+        WHERE p.id = ?1 AND p.kind = 'file' AND p.deleted_at IS NULL \(workspace)
+          AND CASE WHEN (\(Self.personalMetadata)) THEN
+            (SELECT COUNT(*) FROM json_each(p.metadata) WHERE key = 'file') = 1 AND
+            CASE WHEN json_type(p.metadata, '$.file') = 'object' THEN
+              (SELECT COUNT(*) FROM json_each(p.metadata, '$.file') WHERE key = 'attachmentId') = 1 AND
+              json_type(p.metadata, '$.file.attachmentId') = 'text' AND
+              a.id = json_extract(p.metadata, '$.file.attachmentId')
+            ELSE 0 END
+          ELSE 0 END
+        LIMIT 1
+        """
+        try Self.exec(db, "BEGIN DEFERRED TRANSACTION")
+        do {
+            let stmt = try Self.prepare(db, sql); defer { sqlite3_finalize(stmt) }
+            let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+            guard sqlite3_bind_text(stmt, 1, pageID, -1, transient) == SQLITE_OK else { throw Self.error(db) }
+            let status = sqlite3_step(stmt)
+            let value: StoredFileAttachment?
+            if status == SQLITE_DONE { value = nil }
+            else if status == SQLITE_ROW {
+                guard sqlite3_column_type(stmt, 5) == SQLITE_INTEGER,
+                      sqlite3_column_type(stmt, 9) == SQLITE_INTEGER,
+                      [7, 8].allSatisfy({ sqlite3_column_type(stmt, Int32($0)) == SQLITE_NULL || sqlite3_column_type(stmt, Int32($0)) == SQLITE_INTEGER }) else { throw WorldsDatabaseError.invalidData("attachment.metadata") }
+                let size = sqlite3_column_int64(stmt, 5)
+                guard size >= 0 else { throw WorldsDatabaseError.invalidData("attachment.size") }
+                value = StoredFileAttachment(id: try Self.text(stmt, 0, "attachment.id"), pageID: try Self.text(stmt, 1, "attachment.page_id"), kind: try Self.text(stmt, 2, "attachment.kind"), fileName: try Self.text(stmt, 3, "attachment.file_name"), mime: try Self.text(stmt, 4, "attachment.mime"), size: size, relPath: try Self.text(stmt, 6, "attachment.rel_path"), width: sqlite3_column_type(stmt, 7) == SQLITE_NULL ? nil : sqlite3_column_int64(stmt, 7), height: sqlite3_column_type(stmt, 8) == SQLITE_NULL ? nil : sqlite3_column_int64(stmt, 8), createdAt: sqlite3_column_int64(stmt, 9))
+            } else { throw Self.error(db) }
+            try Self.exec(db, "COMMIT"); return value
+        } catch { try? Self.exec(db, "ROLLBACK"); throw error }
     }
 
     /// Returns whether the persisted page was updated after the caller's base.

@@ -33,6 +33,14 @@ final class WorldsMediaTests: XCTestCase {
         XCTAssertThrowsError(try vault.open(attachment("link/secret.txt")))
         XCTAssertThrowsError(try vault.open(attachment("file")))
     }
+    func testRejectsHardLinkedAttachment() throws {
+        let root = try workspace()
+        let outside = try workspace()
+        let source = outside.appendingPathComponent("source.txt")
+        try Data("secret".utf8).write(to: source)
+        try FileManager.default.linkItem(at: source, to: root.appendingPathComponent("hardlink.txt"))
+        XCTAssertThrowsError(try AttachmentVault(root: root).open(attachment("hardlink.txt")))
+    }
     func testCSVParsesQuotedValuesAndDoesNotEvaluateFormulas() throws {
         let root = try workspace()
         try Data("name,note\r\n\"A,B\",\"hello\nworld\"\r\n=1+1,ok".utf8).write(to: root.appendingPathComponent("a.csv"))

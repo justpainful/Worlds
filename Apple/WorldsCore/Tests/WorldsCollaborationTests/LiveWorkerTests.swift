@@ -197,3 +197,43 @@ final class LiveWorkerTests: XCTestCase {
 
 }
 
+final class TransportDiagnosticsTests: XCTestCase {
+    /// Diagnostic A/B on an isolated local Worker and disposable fixture tokens.
+    /// The shared session is never used by product code or non-loopback endpoints.
+    private func diagnosticTransport(useSharedSession: Bool) async throws {
+        let trace: @Sendable (String) -> Void = { message in FileHandle.standardError.write(Data("transport-diagnostic: \(message)\n".utf8)) }
+        let env = ProcessInfo.processInfo.environment
+        guard env["WORLDS_REQUIRE_LIVE_SERVICE"] == "1" else { throw XCTSkip("Local Worker integration was not requested") }
+        guard env["WORLDS_LIVE_SYNC_URL"] == "ws://127.0.0.1:18790", let token = env["WORLDS_LIVE_EDITOR_TOKEN"], !token.isEmpty else { return XCTFail("Local-only fixture token required") }
+        trace("fixture")
+        let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-editor-v11", withExtension: "db"))
+        let path = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-diagnostic-\(UUID().uuidString).db")
+        try FileManager.default.copyItem(at: source, to: path)
+        defer { try? FileManager.default.removeItem(at: path) }
+        let page = "fixture-page", workspace = "fixture-workspace"
+        let store = try SQLiteCollaborationStore(databaseURL: path, pageID: page, userID: "editor", workspaceID: workspace)
+        let documentID = "diagnostic" + UUID().uuidString.replacingOccurrences(of: "-", with: "")
+        trace(useSharedSession ? "create shared-session client" : "create hardened-session client")
+        let session = try CollaborationSession(pageID: page, workspaceID: workspace, documentID: documentID, expectedUserID: "editor",
+            serverURL: URL(string: "http://127.0.0.1:18790")!, store: store, tokenProvider: { _ in token },
+            socketFactory: { url, token in
+                guard url.host == "127.0.0.1", url.port == 18790 else { throw CollaborationError.invalidEndpoint }
+                trace(useSharedSession ? "open shared-session socket" : "open hardened-session socket")
+                if useSharedSession { return URLSessionCollaborationSocket(url: url, token: token, session: .shared) }
+                return URLSessionCollaborationSocket(url: url, token: token)
+            })
+        trace("start run")
+        let run = Task { try await session.run() }
+        var connected = false
+        for _ in 0..<100 {
+            if await session.accessLevel == "edit" { connected = true; break }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        trace(connected ? "authenticated" : "authentication timeout")
+        await session.stop(); try await run.value
+        XCTAssertTrue(connected, "Local diagnostic did not authenticate")
+    }
+    func testDiagnosticDefaultTransportLoopbackHandshake() async throws { try await diagnosticTransport(useSharedSession: false) }
+    func testDiagnosticSharedSessionLoopbackHandshake() async throws { try await diagnosticTransport(useSharedSession: true) }
+
+}

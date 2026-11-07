@@ -8,3 +8,5 @@ The caller configures the service URL and chooses the device name and platform. 
 
 The module is included in SwiftPM and its isolated macOS tests passed in Actions run 42387357673. They use an injected fake transport and in-memory secret store; they do not establish Keychain entitlements, browser callbacks, production service health or device behavior. An iOS-only compile issue was fixed later and awaits another run.
 
+
+`ApplePasskeyAuthorization` now cancels an active system request when its Swift task is cancelled and ignores callbacks from an older authorization controller. The pre-presentation cancellation test requires no user interaction. Separate synthetic tests cover reopening a saved device session and refusing replay after an interrupted refresh. These additions await Apple CI and do not establish actual passkey, keychain or device behavior. Apple documents cancellation callbacks at https://developer.apple.com/documentation/authenticationservices/asauthorizationcontroller/cancel().

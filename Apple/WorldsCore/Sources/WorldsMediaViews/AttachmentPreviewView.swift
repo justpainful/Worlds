@@ -7,7 +7,9 @@ public struct AttachmentPreviewView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var model: MediaPreviewModel
     @State private var sharePresented = false
-    public init(attachment: WorldsAttachment, attachmentsRoot: URL) {
+    private let allowsSharing: Bool
+    public init(attachment: WorldsAttachment, attachmentsRoot: URL, allowsSharing: Bool = false) {
+        self.allowsSharing = allowsSharing
         _model = StateObject(wrappedValue: MediaPreviewModel(attachment: attachment, attachmentsRoot: attachmentsRoot))
     }
     public var body: some View {
@@ -17,10 +19,12 @@ public struct AttachmentPreviewView: View {
                 Spacer(minLength: 8)
                 Text(model.attachment.fileName).lineLimit(1).truncationMode(.middle)
                 Spacer(minLength: 8)
-                Button("Share", systemImage: "square.and.arrow.up") {
-                    Task { await model.prepareShare(); if model.shareURL != nil && model.shareError == nil { sharePresented = true } }
+                if allowsSharing {
+                    Button("Share", systemImage: "square.and.arrow.up") {
+                        Task { await model.prepareShare(); if model.shareURL != nil && model.shareError == nil { sharePresented = true } }
+                    }
+                    .disabled(model.preparingShare)
                 }
-                .disabled(model.preparingShare)
             }
             .padding()
             Divider()
