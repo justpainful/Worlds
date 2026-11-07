@@ -34,6 +34,7 @@ jobs:
           grep -q 'testBoundsAndSymlink' logs/swift-test.log
           grep -q 'testOriginalNameCleaning' logs/swift-test.log
           grep -q 'testActualYjsFixture' logs/swift-test.log
+          grep -q 'testReadOpaqueRoundTripAndRejectShared' logs/swift-test.log
           grep -q 'testExchangeClocksAndLeave' logs/swift-test.log
           grep -q 'testExpiryHeartbeatAndLocalReassertion' logs/swift-test.log
           grep -q 'testMalformedJSONDoesNotApplyPartialUpdate' logs/swift-test.log
@@ -105,6 +106,7 @@ jobs:
             2>&1 | tee logs/${{ matrix.device }}-simulator.log
           test ! -e "$RUNNER_TEMP/WorldsSimulator/Build/Products/Release-iphonesimulator/Worlds.app/worlds-v1-fixture.db"
           test ! -e "$RUNNER_TEMP/WorldsSimulator/Build/Products/Release-iphonesimulator/Worlds.app/search-ui-fixture.db"
+          test ! -e "$RUNNER_TEMP/WorldsSimulator/Build/Products/Release-iphonesimulator/Worlds.app/reader-ui-fixture.db"
       - name: Build unsigned device target
         shell: bash
         run: |
@@ -116,6 +118,7 @@ jobs:
             2>&1 | tee logs/${{ matrix.device }}-device.log
           test ! -e "$RUNNER_TEMP/WorldsDevice/Build/Products/Release-iphoneos/Worlds.app/worlds-v1-fixture.db"
           test ! -e "$RUNNER_TEMP/WorldsDevice/Build/Products/Release-iphoneos/Worlds.app/search-ui-fixture.db"
+          test ! -e "$RUNNER_TEMP/WorldsDevice/Build/Products/Release-iphoneos/Worlds.app/reader-ui-fixture.db"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -148,6 +151,7 @@ jobs:
             2>&1 | tee logs/macos.log
           test ! -e "$RUNNER_TEMP/WorldsMac/Build/Products/Release/Worlds.app/Contents/Resources/worlds-v1-fixture.db"
           test ! -e "$RUNNER_TEMP/WorldsMac/Build/Products/Release/Worlds.app/Contents/Resources/search-ui-fixture.db"
+          test ! -e "$RUNNER_TEMP/WorldsMac/Build/Products/Release/Worlds.app/Contents/Resources/reader-ui-fixture.db"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -400,6 +404,7 @@ jobs:
           grep -q 'testSQLiteStoreOnWorldsV11Fixture' logs/collaboration-discovery.log
           grep -q 'testRejectsSyncBeforeIdentityVerification' logs/collaboration-discovery.log
           grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' logs/collaboration-discovery.log
+          grep -q 'testViewerCannotPrepareEditorWrite' logs/collaboration-discovery.log
       - name: Test collaboration bridge on macOS
         shell: bash
         run: |
@@ -411,6 +416,7 @@ jobs:
           grep -q 'testSQLiteStoreOnWorldsV11Fixture' logs/collaboration-macos.log
           grep -q 'testRejectsSyncBeforeIdentityVerification' logs/collaboration-macos.log
           grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' logs/collaboration-macos.log
+          grep -q 'testViewerCannotPrepareEditorWrite' logs/collaboration-macos.log
       - name: Test collaboration bridge on iOS simulator
         shell: bash
         run: |
@@ -427,6 +433,7 @@ jobs:
           grep -q 'testSQLiteStoreOnWorldsV11Fixture' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testRejectsSyncBeforeIdentityVerification' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
+          grep -q 'testViewerCannotPrepareEditorWrite' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -479,6 +486,7 @@ jobs:
           swift test --package-path Apple/WorldsCore list 2>&1 | tee logs/local-swift-discovery.log
           grep -q 'testLiveSwiftSessionsConvergeReconnectAndArchiveRefusal' logs/local-swift-discovery.log
           grep -q 'testLiveAwarenessExchangeAndDisconnect' logs/local-swift-discovery.log
+          grep -q 'testLiveCheckedEditorsConvergeAfterReconnect' logs/local-swift-discovery.log
       - name: Install isolated Worker dependencies
         working-directory: services/sync
         run: pnpm install --frozen-lockfile
@@ -538,7 +546,8 @@ jobs:
             2>&1 | tee logs/collaboration-live-swift.log
           grep -q 'testLiveSwiftSessionsConvergeReconnectAndArchiveRefusal' logs/collaboration-live-swift.log
           grep -q 'testLiveAwarenessExchangeAndDisconnect' logs/collaboration-live-swift.log
-          grep -Eq 'Executed 2 tests, with 0 failures' logs/collaboration-live-swift.log
+          grep -q 'testLiveCheckedEditorsConvergeAfterReconnect' logs/collaboration-live-swift.log
+          grep -Eq 'Executed 3 tests, with 0 failures' logs/collaboration-live-swift.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -587,6 +596,7 @@ jobs:
             -resultBundlePath "$GITHUB_WORKSPACE/results/${{ matrix.device }}.xcresult" \
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee logs/ui-${{ matrix.device }}.log
           grep -Eq 'testRightToLeftNavigationAndReading.*passed' logs/ui-${{ matrix.device }}.log
+          grep -Eq 'testReaderShowsStructuredContentAndExpandsToggle.*passed' logs/ui-${{ matrix.device }}.log
       - name: Export screenshot attachments
         if: always()
         shell: bash
@@ -641,6 +651,7 @@ jobs:
           test -d "$app"
           test ! -e "$app/worlds-v1-fixture.db"
           test ! -e "$app/search-ui-fixture.db"
+          test ! -e "$app/reader-ui-fixture.db"
           ditto "$app" "$RUNNER_TEMP/package/Payload/Worlds.app"
           (cd "$RUNNER_TEMP/package" && zip -qry "$GITHUB_WORKSPACE/deliverables/Worlds-${{ matrix.device }}-Unsigned.ipa" Payload)
           xcodebuild -project Apple/Worlds.xcodeproj -scheme Worlds-iOS \
@@ -651,6 +662,7 @@ jobs:
           test -d "$simulator_app"
           test ! -e "$simulator_app/worlds-v1-fixture.db"
           test ! -e "$simulator_app/search-ui-fixture.db"
+          test ! -e "$simulator_app/reader-ui-fixture.db"
           ditto -c -k --sequesterRsrc --keepParent "$simulator_app" "deliverables/Worlds-${{ matrix.device }}-Simulator.zip"
           cat > deliverables/README-INCOMPLETE.txt <<'EOF'
           This is an incomplete development build, not feature parity with Worlds.
@@ -696,6 +708,7 @@ jobs:
           test -d "$app"
           test ! -e "$app/Contents/Resources/worlds-v1-fixture.db"
           test ! -e "$app/Contents/Resources/search-ui-fixture.db"
+          test ! -e "$app/Contents/Resources/reader-ui-fixture.db"
           ditto "$app" deliverables/Worlds-macOS-Unsigned.app
           ditto -c -k --sequesterRsrc --keepParent deliverables/Worlds-macOS-Unsigned.app deliverables/Worlds-macOS-Unsigned.zip
           hdiutil create -volname Worlds -srcfolder deliverables/Worlds-macOS-Unsigned.app -ov -format UDZO deliverables/Worlds-macOS-Unsigned.dmg

@@ -8,6 +8,16 @@ private struct PageNode: Decodable {
         let start: Int?
         let href: String?
         let checked: Bool?
+        let open: Bool?
+        let active: Int?
+        let tone: String?
+        let label: String?
+        let title: String?
+        let latex: String?
+        let code: String?
+        let dir: String?
+        let textAlign: String?
+        let pstyle: String?
     }
     struct Mark: Decodable {
         let type: String
@@ -76,22 +86,67 @@ struct PageContentView: View {
 }
 
 private struct NodeView: View {
+    @Environment(\.layoutDirection) private var inheritedDirection
     let node: PageNode
 
-    @ViewBuilder
     var body: some View {
+        nodeBody.environment(\.layoutDirection, nodeDirection)
+    }
+
+    private var nodeDirection: LayoutDirection {
+        switch node.attrs?.dir {
+        case "rtl": return .rightToLeft
+        case "ltr": return .leftToRight
+        default: return inheritedDirection
+        }
+    }
+
+    @ViewBuilder
+    private var nodeBody: some View {
         switch node.type {
         case "paragraph":
             Text(inlineContent(node))
-                .font(.body)
+                .font(paragraphFont(node.attrs?.pstyle))
+                .multilineTextAlignment(textAlignment(node.attrs?.textAlign))
                 .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: frameAlignment(node.attrs?.textAlign))
         case "heading":
             Text(inlineContent(node))
                 .font(headingFont(node.attrs?.level))
+                .multilineTextAlignment(textAlignment(node.attrs?.textAlign))
                 .accessibilityAddTraits(.isHeader)
                 .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: frameAlignment(node.attrs?.textAlign))
+        case "callout":
+            VStack(alignment: .leading, spacing: 8) {
+                Label(node.attrs?.tone?.capitalized ?? "Note", systemImage: "text.bubble")
+                    .font(.caption.weight(.semibold))
+                children
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
+        case "prompt":
+            VStack(alignment: .leading, spacing: 8) {
+                Text(node.attrs?.label ?? "Prompt").font(.caption.weight(.semibold))
+                children
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        case "columns":
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 16) { columnViews }
+                VStack(alignment: .leading, spacing: 16) { columnViews }
+            }
+        case "column", "tab":
+            children
+        case "toggle":
+            ToggleNodeView(node: node)
+        case "tabs":
+            TabsNodeView(node: node)
+        case "mathBlock":
+            sourceContent(label: "Equation source", source: node.attrs?.latex)
+        case "mermaid":
+            sourceContent(label: "Diagram source", source: node.attrs?.code)
         case "bulletList", "orderedList":
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(Array((node.content ?? []).enumerated()), id: \.offset) { index, item in
@@ -144,6 +199,19 @@ private struct NodeView: View {
         }
     }
 
+    private var columnViews: some View {
+        ForEach(Array((node.content ?? []).enumerated()), id: \.offset) { _, child in
+            NodeView(node: child).frame(minWidth: 180, maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func sourceContent(label: String, source: String?) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label).font(.caption).foregroundStyle(.secondary)
+            Text(source ?? "").font(.system(.body, design: .monospaced)).textSelection(.enabled)
+        }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     private var children: some View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(Array((node.content ?? []).enumerated()), id: \.offset) { _, child in
@@ -153,12 +221,81 @@ private struct NodeView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    private func paragraphFont(_ style: String?) -> Font {
+        switch style {
+        case "title": return .title.weight(.semibold)
+        case "subtitle": return .title3
+        case "caption": return .caption
+        default: return .body
+        }
+    }
+    private func textAlignment(_ value: String?) -> TextAlignment {
+        switch value {
+        case "center": return .center
+        case "left": return nodeDirection == .rightToLeft ? .trailing : .leading
+        case "right": return nodeDirection == .rightToLeft ? .leading : .trailing
+        default: return .leading
+        }
+    }
+    private func frameAlignment(_ value: String?) -> Alignment {
+        switch textAlignment(value) {
+        case .center: return .center
+        case .trailing: return .trailing
+        default: return .leading
+        }
+    }
     private func headingFont(_ level: Int?) -> Font {
         switch level {
         case 1: return .title2.weight(.semibold)
         case 2: return .title3.weight(.semibold)
         default: return .headline
         }
+    }
+}
+
+private struct ToggleNodeView: View {
+    let node: PageNode
+    @State private var isOpen: Bool
+    init(node: PageNode) {
+        self.node = node
+        _isOpen = State(initialValue: node.attrs?.open ?? true)
+    }
+    var body: some View {
+        let items = node.content ?? []
+        DisclosureGroup(isExpanded: $isOpen) {
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(Array(items.dropFirst().enumerated()), id: \.offset) { _, child in NodeView(node: child) }
+            }.frame(maxWidth: .infinity, alignment: .leading)
+        } label: {
+            if let first = items.first { NodeView(node: first) }
+            else { Text("Toggle") }
+        }
+    }
+}
+
+private struct TabsNodeView: View {
+    let node: PageNode
+    @State private var selected: Int
+    init(node: PageNode) {
+        self.node = node
+        let count = node.content?.count ?? 0
+        let active = node.attrs?.active ?? 0
+        _selected = State(initialValue: active >= 0 && active < count ? active : 0)
+    }
+    var body: some View {
+        let tabs = node.content ?? []
+        VStack(alignment: .leading, spacing: 12) {
+            if tabs.isEmpty {
+                Text("No tabs").foregroundStyle(.secondary)
+            } else {
+                Picker("Tab", selection: $selected) {
+                    ForEach(tabs.indices, id: \.self) { index in
+                        Text(tabs[index].attrs?.title ?? "Tab").tag(index)
+                    }
+                }.pickerStyle(.menu)
+                if tabs.indices.contains(selected) { NodeView(node: tabs[selected]) }
+            }
+        }.frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -203,9 +340,11 @@ private func inlineContent(_ node: PageNode) -> AttributedString {
         return text
     }
     if node.type == "hardBreak" { return AttributedString("\n") }
+    if node.type == "mathInline" { return AttributedString("$" + (node.attrs?.latex ?? "") + "$") }
+    if node.type == "pageMention" { return AttributedString("@" + (node.attrs?.label ?? "")) }
     var result = AttributedString()
     for child in node.content ?? [] {
-        if child.type == "text" || child.type == "hardBreak" {
+        if ["text", "hardBreak", "mathInline", "pageMention"].contains(child.type ?? "") {
             result.append(inlineContent(child))
         } else {
             result.append(AttributedString("[Unsupported content: \(child.type ?? "unknown")]") )

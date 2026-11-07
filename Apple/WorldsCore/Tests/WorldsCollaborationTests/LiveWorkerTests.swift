@@ -145,5 +145,55 @@ final class LiveWorkerTests: XCTestCase {
         XCTAssertTrue(returned, "Alice should reappear after reconnecting")
     }
 
+    func testLiveCheckedEditorsConvergeAfterReconnect() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard env["WORLDS_REQUIRE_LIVE_SERVICE"] == "1" else { throw XCTSkip("Local Worker integration was not requested") }
+        guard env["WORLDS_LIVE_SYNC_URL"] == "ws://127.0.0.1:18790",
+              let token = env["WORLDS_LIVE_EDITOR_TOKEN"], !token.isEmpty else { return XCTFail("Local Worker identity is required") }
+        let paths = try [fixture("editor"), fixture("editor")]
+        defer { for path in paths { try? FileManager.default.removeItem(at: path) } }
+        let a = try makeStore(paths[0], user: "editor"), b = try makeStore(paths[1], user: "editor")
+        let base = try XCTUnwrap(Data(base64Encoded: "AQTpBwAHAQdkZWZhdWx0AwlwYXJhZ3JhcGgoAOkHAANiaWQBdwdibG9jay0xBwDpBwAGBADpBwIKSGVsbG8g8J+MjQA="))
+        try await a.appendLocal(pageID: page, channel: 0, update: base)
+        let docID = "edit" + UUID().uuidString.replacingOccurrences(of: "-", with: "")
+        let alice = try makeSession(a, user: "editor", token: token, document: docID)
+        let bob = try makeSession(b, user: "editor", token: token, document: docID)
+        let arun = Task { try await alice.run() }, brun = Task { try await bob.run() }
+        let initial = try NativeCRDTDocument(); try initial.apply(base)
+        var ready = false
+        for _ in 0..<200 {
+            let da = try await document(a), db = try await document(b)
+            if await alice.accessLevel == "edit", await bob.accessLevel == "edit",
+               try equivalent(da, initial), try equivalent(db, initial),
+               try await a.maximumPendingID(pageID: page, channel: 0) == nil { ready = true; break }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        guard ready else { await alice.stop(); await bob.stop(); _ = try? await arun.value; _ = try? await brun.value; return XCTFail("Clients did not synchronize the base") }
+        try await alice.insertPlain(blockIndex: 0, blockID: "block-1", expected: "Hello 🌍", offset: 6, insertion: "Alice ")
+        let afterAlice = try NativeCRDTDocument()
+        for update in try await a.load(pageID: page, channel: 0) { try afterAlice.apply(update) }
+        var receivedAlice = false
+        for _ in 0..<200 {
+            let replica = try await document(b)
+            if await bob.accessLevel == "edit", try equivalent(replica, afterAlice) { receivedAlice = true; break }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        guard receivedAlice else { await alice.stop(); await bob.stop(); _ = try? await arun.value; _ = try? await brun.value; return XCTFail("Bob did not receive Alice's edit") }
+        try await bob.insertPlain(blockIndex: 0, blockID: "block-1", expected: "Hello Alice 🌍", offset: 12, insertion: "Bob ")
+        let expected = try NativeCRDTDocument()
+        for update in try await a.load(pageID: page, channel: 0) { try expected.apply(update) }
+        for update in try await b.load(pageID: page, channel: 0) { try expected.apply(update) }
+        var converged = false
+        for _ in 0..<200 {
+            let da = try await document(a), db = try await document(b)
+            let aPending = try await a.maximumPendingID(pageID: page, channel: 0)
+            let bPending = try await b.maximumPendingID(pageID: page, channel: 0)
+            if aPending == nil, bPending == nil, try equivalent(da, expected), try equivalent(db, expected) { converged = true; break }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        await alice.stop(); await bob.stop(); try await arun.value; try await brun.value
+        XCTAssertTrue(converged, "Both durable edits should converge after socket reconnect")
+    }
+
 }
 

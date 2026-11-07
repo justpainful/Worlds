@@ -14,6 +14,12 @@ public protocol CollaborationStore: Sendable {
     func archiveRejection(pageID: String, channel: UInt64, state: Data, reason: String) async throws
 }
 
+/// Stores that can atomically check a full base and persist an editor operation.
+public protocol CheckedPlainEditorStore: CollaborationStore {
+    func insertPlainChecked(base: Data, blockIndex: UInt32, blockID: String,
+                            expected: String, offset: UInt32, insertion: String) async throws -> Data
+}
+
 public protocol CollaborationSocket: Sendable {
     func send(_ data: Data) async throws
     func receive() async throws -> Data?
@@ -94,7 +100,7 @@ public actor CollaborationSession {
 
     /// The owner must start this on one task and call stop on teardown.
     public func run() async throws {
-        guard stopped, !running else { throw CollaborationError.notStarted }
+        guard stopped, !running, !localWriteInFlight else { throw CollaborationError.notStarted }
         running = true
         defer { running = false; stopped = true }
         stopped = false; revoked = false; failed = false; generation &+= 1
@@ -195,6 +201,27 @@ public actor CollaborationSession {
         try await store.appendLocal(pageID: pageID, channel: channel, update: update)
         do { try doc.apply(update) } catch { failed = true; if let socket { await socket.close() }; throw error }
         // Reconnect triggers a full state-vector handshake, covering the persisted edit.
+        if let socket { await socket.close() }
+    }
+
+    /// Experimental plain-text operation. Persist first, then apply to the live CRDT.
+    /// This API is not connected to the editor and does not cover IME or rich text.
+    public func insertPlain(blockIndex: UInt32, blockID: String, expected: String,
+                            offset: UInt32, insertion: String) async throws {
+        guard !stopped, !failed, verifiedIdentity, let level = accessLevel,
+              let access = WorldsSyncWire.AccessLevel(rawValue: level), WorldsSyncWire.canWrite(access, channel: 0),
+              let doc = documents[0], let editorStore = store as? any CheckedPlainEditorStore else { throw CollaborationError.accessRevoked }
+        guard !localWriteInFlight else { throw CollaborationError.notStarted }
+        localWriteInFlight = true
+        defer { localWriteInFlight = false }
+        let base = try doc.diff(Data([0]))
+        // SQLite checks identity, cached rights, stable block ID and full base within
+        // the same transaction that appends both the log and the outbox.
+        let update = try await editorStore.insertPlainChecked(base: base, blockIndex: blockIndex, blockID: blockID,
+                                                               expected: expected, offset: offset, insertion: insertion)
+        do { try doc.apply(update) }
+        catch { failed = true; if let socket { await socket.close() }; throw error }
+        // The durable update remains queued if offline or if the server rejects it.
         if let socket { await socket.close() }
     }
 

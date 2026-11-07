@@ -10,7 +10,7 @@ settings:
     GENERATE_INFOPLIST_FILE: YES
     PRODUCT_NAME: Worlds
     CODE_SIGNING_ALLOWED: NO
-    "EXCLUDED_SOURCE_FILE_NAMES[config=Release]": "worlds-v1-fixture.db search-ui-fixture.db"
+    "EXCLUDED_SOURCE_FILE_NAMES[config=Release]": "worlds-v1-fixture.db search-ui-fixture.db reader-ui-fixture.db"
     CURRENT_PROJECT_VERSION: 1
     MARKETING_VERSION: "0.1.0"
 packages:
@@ -29,6 +29,8 @@ targets:
       - path: WorldsCore/Tests/WorldsPersistenceTests/worlds-v1-fixture.db
         buildPhase: resources
       - path: App/UITests/Fixtures/search-ui-fixture.db
+        buildPhase: resources
+      - path: App/UITests/Fixtures/reader-ui-fixture.db
         buildPhase: resources
     dependencies:
       - package: WorldsCore
@@ -57,6 +59,8 @@ targets:
       - path: WorldsCore/Tests/WorldsPersistenceTests/worlds-v1-fixture.db
         buildPhase: resources
       - path: App/UITests/Fixtures/search-ui-fixture.db
+        buildPhase: resources
+      - path: App/UITests/Fixtures/reader-ui-fixture.db
         buildPhase: resources
     dependencies:
       - package: WorldsCore

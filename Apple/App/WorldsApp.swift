@@ -109,7 +109,10 @@ private struct WorldsLibraryView: View {
         .tint(WorldsPalette.accent(for: colorScheme))
         .task {
             #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("--ui-testing-search-fixture"),
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-reader-fixture"),
+               let fixture = Bundle.main.url(forResource: "reader-ui-fixture", withExtension: "db") {
+                await open(fixture)
+            } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-search-fixture"),
                let fixture = Bundle.main.url(forResource: "search-ui-fixture", withExtension: "db") {
                 await open(fixture)
             } else if ProcessInfo.processInfo.arguments.contains("--ui-testing-fixture"),

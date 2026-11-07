@@ -22,6 +22,7 @@ let package = Package(
         .library(name: "WorldsIdentity", targets: ["WorldsIdentity"]),
         .library(name: "WorldsRichText", targets: ["WorldsRichText"]),
         .library(name: "WorldsDrawing", targets: ["WorldsDrawing"]),
+        .library(name: "WorldsDrawingStorage", targets: ["WorldsDrawingStorage"]),
         .library(name: "WorldsPresentations", targets: ["WorldsPresentations"]),
         .library(name: "WorldsMedia", targets: ["WorldsMedia"]),
         .library(name: "WorldsSearch", targets: ["WorldsSearch"]),
@@ -43,6 +44,7 @@ let package = Package(
         .target(name: "WorldsIdentity", exclude: ["README.md"], linkerSettings: [.linkedFramework("Security")]),
         .target(name: "WorldsRichText", dependencies: ["WorldsModels"], exclude: ["README.md"]),
         .target(name: "WorldsDrawing", dependencies: ["WorldsModels"], exclude: ["README.md"]),
+        .target(name: "WorldsDrawingStorage", linkerSettings: [.linkedLibrary("sqlite3")]),
         .target(name: "WorldsPresentations", dependencies: ["WorldsModels"], exclude: ["README.md"]),
         .target(name: "WorldsMedia", exclude: ["README.md"]),
         .target(name: "WorldsSearch", exclude: ["README.md"], linkerSettings: [.linkedLibrary("sqlite3")]),
@@ -70,6 +72,7 @@ let package = Package(
         .testTarget(name: "WorldsProjectsTests", dependencies: ["WorldsProjects", "WorldsModels"], resources: [.copy("worlds-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]),
         .testTarget(name: "WorldsMediaViewsTests", dependencies: ["WorldsMediaViews", "WorldsMedia"]),
         .testTarget(name: "WorldsScreenDrawingTests", dependencies: ["WorldsScreenDrawing"]),
+        .testTarget(name: "WorldsDrawingStorageTests", dependencies: ["WorldsDrawingStorage"], linkerSettings: [.linkedLibrary("sqlite3")]),
         .testTarget(name: "WorldsOfficePreviewTests", dependencies: ["WorldsOfficePreview", "WorldsMedia"], resources: [.copy("Fixtures")]),
         .testTarget(name: "WorldsGalleryTests", dependencies: ["WorldsGallery", "WorldsModels"]),
     ]

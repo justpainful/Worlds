@@ -26,7 +26,9 @@ final class WorldsCollaborationTests: XCTestCase {
     }
 }
 
-private actor FixtureStore: CollaborationStore {
+private actor FixtureStore: CheckedPlainEditorStore {
+    private(set) var editorWrites = 0
+    func insertPlainChecked(base: Data, blockIndex: UInt32, blockID: String, expected: String, offset: UInt32, insertion: String) async throws -> Data { editorWrites += 1; return Data([0, 0]) }
     let fixture = Data(base64Encoded: "AQbpBwAEAQZzaGFyZWQKSGVsbG8g8J+MjQcBB2RlZmF1bHQDCXBhcmFncmFwaAcA6QcIBgYA6QcJBGJvbGQEdHJ1ZYTpBwoNWWpzIHJpY2ggdGV4dIbpBxcEYm9sZARudWxsAA==")!
     private(set) var acknowledged: Int64?
     func load(pageID: String, channel: UInt64) async throws -> [Data] { channel == 0 ? [fixture] : [] }
@@ -38,13 +40,15 @@ private actor FixtureStore: CollaborationStore {
 }
 
 private actor FixtureSocket: CollaborationSocket {
+    let level: String
+    init(level: String = "edit") { self.level = level }
     private var queue: [Data] = []
     private var waiting: CheckedContinuation<Data?, Error>?
     private var closed = false
     func send(_ data: Data) async throws {
         switch try WorldsSyncWire.decode(data) {
         case let .sync(channel, kind, _) where kind == 0:
-            if channel == 0 { try deliver(WorldsSyncWire.encode(.authState(level: "edit", userID: "user"))) }
+            if channel == 0 { try deliver(WorldsSyncWire.encode(.authState(level: level, userID: "user"))) }
             try deliver(WorldsSyncWire.encode(.sync(channel: channel, kind: 0, payload: Data([0]))))
         case let .update(batchID, _, _):
             try deliver(WorldsSyncWire.encode(.acknowledgement(batchID: batchID, status: 0, reason: "")))
@@ -159,5 +163,24 @@ extension WorldsCollaborationTests {
         XCTAssertEqual(updates.count, 2)
         let pending = try await reopened.maximumPendingID(pageID: "fixture-page", channel: 0)
         XCTAssertNotNil(pending)
+    }
+}
+
+extension WorldsCollaborationTests {
+    func testViewerCannotPrepareEditorWrite() async throws {
+        let store = FixtureStore(), socket = FixtureSocket(level: "view")
+        let session = try CollaborationSession(pageID: "p", workspaceID: "w", documentID: "p", expectedUserID: "user",
+            serverURL: URL(string: "https://example.invalid")!, store: store,
+            tokenProvider: { _ in "fixture-token" }, socketFactory: { _, _ in socket })
+        let run = Task { try await session.run() }
+        for _ in 0..<100 {
+            if await session.accessLevel == "view" { break }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        do { try await session.insertPlain(blockIndex: 0, blockID: "x", expected: "text", offset: 0, insertion: "x"); XCTFail("Viewer must not write") }
+        catch CollaborationError.accessRevoked { } catch { XCTFail("Unexpected error: \(error)") }
+        let writes = await store.editorWrites
+        await session.stop(); try await run.value
+        XCTAssertEqual(writes, 0)
     }
 }

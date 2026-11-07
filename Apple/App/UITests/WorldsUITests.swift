@@ -84,11 +84,34 @@ final class WorldsUITests: XCTestCase {
         let search = app.searchFields.firstMatch
         XCTAssertTrue(search.waitForExistence(timeout: 20))
         search.tap()
+        #if os(iOS)
+        if !app.keyboards.firstMatch.waitForExistence(timeout: 5) { search.tap() }
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 10))
+        #endif
         search.typeText("geometry")
         XCTAssertTrue(app.descendants(matching: .any)["search-result.search-personal"].firstMatch.waitForExistence(timeout: 20))
         search.tap()
         search.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 8))
         XCTAssertTrue(app.descendants(matching: .any)["page.search-personal"].firstMatch.waitForExistence(timeout: 20))
+    }
+
+    @MainActor
+    func testReaderShowsStructuredContentAndExpandsToggle() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["--ui-testing-reader-fixture", "--ui-testing-rtl"]
+        app.launch()
+        let page = app.descendants(matching: .any)["page.reader-fixture"].firstMatch
+        XCTAssertTrue(page.waitForExistence(timeout: 20))
+        page.tap()
+        XCTAssertTrue(app.staticTexts["Read the warning"].waitForExistence(timeout: 20))
+        XCTAssertTrue(app.staticTexts["مَسْأَلَة ١٢٣: Solve x = 5"].exists)
+        XCTAssertFalse(app.staticTexts["Hidden detail"].exists)
+        let disclosure = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "More details")).firstMatch
+        XCTAssertTrue(disclosure.waitForExistence(timeout: 10))
+        disclosure.tap()
+        XCTAssertTrue(app.staticTexts["Hidden detail"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["First tab content"].exists)
+        capture("09-structured-reader-rtl", app: app)
     }
 
     @MainActor

@@ -6,7 +6,7 @@ public enum CollaborationStorageError: Error, Equatable {
 }
 
 /// Bound to one existing Worlds page, signed-in account and workspace.
-public actor SQLiteCollaborationStore: CollaborationStore {
+public actor SQLiteCollaborationStore: CheckedPlainEditorStore {
     nonisolated(unsafe) private let handle: OpaquePointer
     private let pageID: String
 
@@ -86,7 +86,11 @@ public actor SQLiteCollaborationStore: CollaborationStore {
     /// Experimental isolated operation. A caller must separately check live service rights.
     /// The returned update was already persisted in both the replica log and outbox.
     public func insertPlainChecked(base: Data, blockIndex: UInt32, blockID: String,
-                                   expected: String, offset: UInt32, insertion: String) throws -> Data {
+                                   expected: String, offset: UInt32, insertion: String) async throws -> Data {
+        try insertPlainSynchronously(base: base, blockIndex: blockIndex, blockID: blockID, expected: expected, offset: offset, insertion: insertion)
+    }
+    private func insertPlainSynchronously(base: Data, blockIndex: UInt32, blockID: String,
+                                          expected: String, offset: UInt32, insertion: String) throws -> Data {
         guard ![blockID, expected, insertion].contains(where: { $0.utf8.contains(0) }) else { throw CollaborationStorageError.invalidInput }
         var output = WorldsBuffer(data: nil, len: 0)
         let status = base.withUnsafeBytes { bytes in

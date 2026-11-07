@@ -1,0 +1,7 @@
+# Page reader coverage
+
+The native page screen is read-only. It displays paragraphs, headings, basic inline marks and safe links, lists, task state, tables, code, separators, callouts, prompts, columns, collapsible sections and tabs. The collapse and tab selection are local viewing state and do not edit the document. Columns fall back to a vertical arrangement when space is limited. Explicit block direction is honored, and auto direction inherits the interface direction.
+
+Inline math is shown as LaTeX source between dollar signs. Math blocks and Mermaid diagrams show their source with an explanatory label, not a rendered equation or diagram. Page mentions show the stored label and are not navigable. Unknown blocks and formatting are identified as unsupported; media, embeds, collections, charts, advanced marks and many specialized nodes are not implemented in this view. No content is written to the database.
+
+Source behavior was inspected in `src/editor/extensions/nodes.ts`, `pages2.ts`, `pages4.ts` and `suggest.tsx`. An isolated UI fixture covers callout, toggle, tabs, equations, diagram source and Arabic text. UI tests and visual review must run on Apple platforms before declaring this coverage verified. Nested explicit node directions and document paragraph styles are supported. Left, center and right alignment are mapped; justify falls back to leading alignment. Page-level text direction and full bidirectional paragraph inference remain incomplete.
