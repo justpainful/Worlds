@@ -38,6 +38,51 @@ INSERT INTO account_workspaces VALUES('w','member','edit');").unwrap();
 }
 
 #[test]
+fn owned_outbox_blocks_legacy_and_account_switch_without_deleting_rows() {
+    let path=fixture();
+    let mut alice=SyncStore::open(&path,"p","u","w").unwrap();
+    alice.append(0,b"legacy",true).unwrap();
+    alice.prepare_owned_outbox().unwrap();
+    alice.append_owned(0,b"alice").unwrap();
+    assert!(matches!(alice.owned_max_pending(0),Err(StoreError::Denied)));
+    assert!(matches!(alice.acknowledge_owned(0,i64::MAX),Err(StoreError::Denied)));
+    let db=Connection::open(&path).unwrap();
+    assert_eq!(db.query_row("SELECT count(*) FROM sync_outbox",[],|r|r.get::<_,i64>(0)).unwrap(),2);
+    assert_eq!(db.query_row("SELECT count(*) FROM native_sync_outbox_owner_v1",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+    db.execute("UPDATE account SET user_id='other' WHERE id=1",[]).unwrap();
+    assert!(matches!(alice.owned_max_pending(0),Err(StoreError::Denied)));
+    let mut bob=SyncStore::open(&path,"p","other","w").unwrap();
+    bob.append_owned(0,b"bob").unwrap();
+    assert!(matches!(bob.owned_max_pending(0),Err(StoreError::Denied)));
+    assert!(matches!(bob.acknowledge_owned(0,i64::MAX),Err(StoreError::Denied)));
+    assert_eq!(db.query_row("SELECT count(*) FROM sync_outbox",[],|r|r.get::<_,i64>(0)).unwrap(),3);
+}
+
+#[test]
+fn owned_outbox_ack_watermark_and_atomic_rollback() {
+    let path=fixture(); let mut store=SyncStore::open(&path,"p","u","w").unwrap();
+    store.prepare_owned_outbox().unwrap(); store.prepare_owned_outbox().unwrap();
+    store.append_owned(0,b"first").unwrap();
+    let first=store.owned_max_pending(0).unwrap().unwrap();
+    store.append_owned(0,b"second").unwrap();
+    let db=Connection::open(&path).unwrap();
+    db.execute_batch("CREATE TRIGGER fail_owned_ack BEFORE DELETE ON sync_outbox BEGIN SELECT RAISE(ABORT,'fixture'); END;").unwrap();
+    assert!(store.acknowledge_owned(0,first).is_err());
+    assert_eq!(db.query_row("SELECT count(*) FROM native_sync_outbox_owner_v1",[],|r|r.get::<_,i64>(0)).unwrap(),2);
+    assert_eq!(db.query_row("SELECT count(*) FROM sync_outbox",[],|r|r.get::<_,i64>(0)).unwrap(),2);
+    db.execute_batch("DROP TRIGGER fail_owned_ack;").unwrap();
+    store.acknowledge_owned(0,first).unwrap();
+    assert!(store.owned_max_pending(0).unwrap().unwrap()>first);
+    db.execute_batch("CREATE TRIGGER fail_owner_insert BEFORE INSERT ON native_sync_outbox_owner_v1 BEGIN SELECT RAISE(ABORT,'fixture'); END;").unwrap();
+    assert!(store.append_owned(0,b"third").is_err());
+    assert_eq!(db.query_row("SELECT count(*) FROM sync_outbox",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+    assert_eq!(db.query_row("SELECT count(*) FROM sync_updates",[],|r|r.get::<_,i64>(0)).unwrap(),2);
+    db.execute_batch("DROP TRIGGER fail_owner_insert;").unwrap();
+    db.execute("UPDATE sync_outbox SET data=x'00' WHERE state='pending'",[]).unwrap();
+    assert!(matches!(store.owned_max_pending(0),Err(StoreError::Denied)));
+}
+
+#[test]
 fn incomplete_ancestry_never_falls_back_to_workspace_default_for_writes() {
     let path=fixture(); let mut store=SyncStore::open(&path,"p","u","w").unwrap();
     let db=Connection::open(&path).unwrap();

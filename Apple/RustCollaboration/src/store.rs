@@ -126,6 +126,59 @@ impl SyncStore {
         Ok(())
     }
 
+    /// Experimental sidecar schema. Existing outbox rows are deliberately not
+    /// assigned an owner. Never invoke this as an automatic Worlds migration.
+    pub fn prepare_owned_outbox(&mut self) -> Result<()> {
+        let tx = rusqlite::Transaction::new_unchecked(&self.conn, rusqlite::TransactionBehavior::Immediate)?;
+        self.check(0, true)?;
+        tx.execute_batch("CREATE TABLE IF NOT EXISTS native_sync_outbox_owner_v1(
+            outbox_id INTEGER PRIMARY KEY, page_id TEXT NOT NULL, channel INTEGER NOT NULL,
+            user_id TEXT NOT NULL, workspace_id TEXT NOT NULL, data BLOB NOT NULL,
+            created_at INTEGER NOT NULL)")?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Write the original Worlds rows and the owner binding atomically.
+    pub fn append_owned(&mut self, channel: i64, bytes: &[u8]) -> Result<()> {
+        if bytes.len() > 64 * 1024 * 1024 { return Err(StoreError::Invalid); }
+        let tx = rusqlite::Transaction::new_unchecked(&self.conn, rusqlite::TransactionBehavior::Immediate)?;
+        self.check(channel, true)?;
+        let t = now();
+        tx.execute("INSERT OR IGNORE INTO sync_docs(page_id,channel,created_at,updated_at) VALUES(?1,?2,?3,?3)",params![self.page,channel,t])?;
+        tx.execute("INSERT INTO sync_updates(page_id,channel,data,origin,created_at) VALUES(?1,?2,?3,'local',?4)",params![self.page,channel,bytes,t])?;
+        tx.execute("INSERT INTO sync_outbox(page_id,channel,data,created_at) VALUES(?1,?2,?3,?4)",params![self.page,channel,bytes,t])?;
+        let id = tx.last_insert_rowid();
+        tx.execute("INSERT INTO native_sync_outbox_owner_v1(outbox_id,page_id,channel,user_id,workspace_id,data,created_at) VALUES(?1,?2,?3,?4,?5,?6,?7)",params![id,self.page,channel,self.user,self.workspace,bytes,t])?;
+        tx.execute("UPDATE sync_docs SET updated_at=?3 WHERE page_id=?1 AND channel=?2",params![self.page,channel,t])?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    fn require_owned_pending(&self, channel: i64) -> Result<()> {
+        let unknown: bool = self.conn.query_row("SELECT EXISTS(SELECT 1 FROM sync_outbox o LEFT JOIN native_sync_outbox_owner_v1 n ON n.outbox_id=o.id WHERE o.page_id=?1 AND o.channel=?2 AND o.state='pending' AND (n.outbox_id IS NULL OR n.page_id!=o.page_id OR n.channel!=o.channel OR n.user_id!=?3 OR n.workspace_id!=?4 OR n.data!=o.data OR n.created_at!=o.created_at))",params![self.page,channel,self.user,self.workspace],|r|r.get(0))?;
+        if unknown { Err(StoreError::Denied) } else { Ok(()) }
+    }
+
+    /// Only usable by a future isolated sender which also proves document
+    /// provenance. A mixed or pre-migration queue is always blocked.
+    pub fn owned_max_pending(&self, channel: i64) -> Result<Option<i64>> {
+        let tx = self.conn.unchecked_transaction()?;
+        self.check(channel, false)?;
+        self.require_owned_pending(channel)?;
+        let value = tx.query_row("SELECT MAX(id) FROM sync_outbox WHERE page_id=?1 AND channel=?2 AND state='pending'",params![self.page,channel],|r|r.get(0))?;
+        tx.commit()?; Ok(value)
+    }
+
+    pub fn acknowledge_owned(&mut self, channel: i64, through: i64) -> Result<()> {
+        let tx = rusqlite::Transaction::new_unchecked(&self.conn, rusqlite::TransactionBehavior::Immediate)?;
+        self.check(channel, false)?;
+        self.require_owned_pending(channel)?;
+        tx.execute("DELETE FROM native_sync_outbox_owner_v1 WHERE outbox_id IN (SELECT id FROM sync_outbox WHERE page_id=?1 AND channel=?2 AND state='pending' AND id<=?3)",params![self.page,channel,through])?;
+        tx.execute("DELETE FROM sync_outbox WHERE page_id=?1 AND channel=?2 AND state='pending' AND id<=?3",params![self.page,channel,through])?;
+        tx.commit()?; Ok(())
+    }
+
     /// Rebuild and compare the complete CRDT state under an immediate SQLite transaction,
     /// then append both log and outbox atomically. The service still enforces live rights.
     pub fn insert_plain_checked(&mut self, base: &[u8], block_index: u32, block_id: &str, expected: &str, offset: u32, insert: &str) -> Result<Vec<u8>> {
