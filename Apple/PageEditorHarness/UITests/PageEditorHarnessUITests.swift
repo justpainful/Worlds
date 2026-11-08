@@ -48,8 +48,15 @@ final class PageEditorHarnessUITests: XCTestCase {
             outer.swipeUp()
         }
         let remove = app.buttons["editor-remove-link"]
-        for _ in 0..<4 where !formatting.frame.contains(remove.frame) { formatting.swipeUp() }
-        XCTAssertTrue(remove.isHittable)
+        for _ in 0..<4 {
+            if remove.exists && formatting.frame.contains(remove.frame) { break }
+            formatting.swipeUp()
+        }
+        guard remove.exists, remove.isHittable else {
+            captureFailure(app, named: "page-remove-link-not-visible")
+            XCTFail("The final formatting action must be reachable")
+            return
+        }
         XCTAssertTrue(formatting.frame.contains(remove.frame), "The final formatting action must be fully visible after scrolling")
         let lists = app.scrollViews["editor-list-toolbar"]
         XCTAssertTrue(lists.waitForExistence(timeout: 10))
@@ -59,8 +66,15 @@ final class PageEditorHarnessUITests: XCTestCase {
             outer.swipeUp()
         }
         let toggle = app.buttons["Toggle task"]
-        for _ in 0..<4 where !lists.frame.contains(toggle.frame) { lists.swipeUp() }
-        XCTAssertTrue(toggle.isHittable)
+        for _ in 0..<4 {
+            if toggle.exists && lists.frame.contains(toggle.frame) { break }
+            lists.swipeUp()
+        }
+        guard toggle.exists, toggle.isHittable else {
+            captureFailure(app, named: "page-toggle-task-not-visible")
+            XCTFail("The final list action must be reachable")
+            return
+        }
         XCTAssertTrue(lists.frame.contains(toggle.frame), "The final list action must be fully visible after scrolling")
         #endif
         capture(app, named: "page-editor-arabic-large-rtl-reopened")
