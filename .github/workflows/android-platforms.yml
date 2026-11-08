@@ -153,4 +153,5 @@ jobs:
             docs/android-native/screenshots/narrow-home-final.png
             docs/android-native/screenshots/workspace-keyboard.png
             docs/android-native/screenshots/avif-page.png
+            docs/android-native/screenshots/shared-append.png
           if-no-files-found: error

@@ -1,5 +1,14 @@
 # Android Yrs sync foundation
 
+Android can append a text paragraph to a shared page after confirmed edit
+access. The new block uses the desktop Yjs XML fragment and a unique block id.
+The update and recovery text are journaled before sending; an offline edit uses
+the last confirmed permission and is rechecked when synchronization resumes.
+Revocation retains unsent text in recovery. Concurrent appends were checked for
+convergence and the Android update was applied by desktop Yjs and Tiptap. A
+local Worker test checks delivery to another synthetic account. This does not
+yet implement creation of other block types or production validation.
+
 The sync library builds Yrs as a native Android library for arm64-v8a, armeabi-v7a, x86 and x86_64. All four are packaged in the debug APK; runtime tests so far use the x86_64 emulator only. The JNI bridge exposes Yjs v1 state vector, state diff and update merge operations. Its serialized snapshots include updates waiting for causal dependencies. The library limits each input to 64 MiB and reports invalid data to Kotlin as an exception.
 
 The bridge can also read the `default` XML fragment into Tiptap-compatible JSON, preserving element attributes, nested structure and text marks. A targeted operation replaces a UTF-16 range in one identified XML text node. Another addresses a top-level paragraph or heading by `bid` and accepts offsets over its direct text children, including empty paragraphs and ranges crossing multiple text nodes. Both return Yjs updates rather than replacing the document, preserve inherited formatting and reject offsets that split a surrogate pair. The session accepts a captured base snapshot for a block edit and merges the resulting update with newer remote state. Embedded text objects, non-text inline children, duplicate or missing block IDs, and unsupported block types are rejected instead of silently discarded. Structural edits and formatting edits remain open; the app UI is not connected to this API.

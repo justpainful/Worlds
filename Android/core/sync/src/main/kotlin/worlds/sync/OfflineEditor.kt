@@ -2,6 +2,16 @@ package worlds.sync
 
 /** Caller must serialize this operation against sessions and account changes for the document. */
 object OfflineEditor {
+    fun appendParagraph(store: AndroidSyncStore, key: SyncDocumentKey, blockId: String, text: String): ByteArray {
+        require(key.channel == SyncWire.CONTENT)
+        val replica = store.load(key)
+        var current = replica.snapshot ?: byteArrayOf()
+        for (update in replica.updates) current = YrsNative.merge(current, update.bytes)
+        val update = YrsNative.appendParagraph(current, blockId, text)
+        val merged = YrsNative.merge(current, update)
+        store.append(key, update, local = true, draft = DraftCapture(blockId, text))
+        return merged
+    }
     fun replaceBlockText(store: AndroidSyncStore, key: SyncDocumentKey, base: ByteArray, blockId: String, start: Int, end: Int, text: String, draftText: String? = null): ByteArray {
         require(key.channel == SyncWire.CONTENT)
         val replica = store.load(key)

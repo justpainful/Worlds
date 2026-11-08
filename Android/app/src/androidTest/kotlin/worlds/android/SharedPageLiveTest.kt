@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -62,6 +63,7 @@ class SharedPageLiveTest {
                 SyncCredentials(authority, user, "device", fresh, expires)
             },
             offlineEdit = { doc, base, bid, start, end, text, draft -> OfflineEditor.replaceBlockText(store, doc, base, bid, start, end, text, draft) },
+            offlineAppend = { doc, bid, text -> OfflineEditor.appendParagraph(store, doc, bid, text) },
             recoveredText = { store.recovered(it) },
             deleteRecoveredText = { doc, id -> store.deleteRecovered(doc, id) },
             saveRecoveredText = { doc, draft -> store.saveRecoveredText(doc, draft) },
@@ -127,6 +129,17 @@ class SharedPageLiveTest {
                 val contents = runCatching { JSONObject(YrsNative.editorJson(state)).getJSONArray("content").getJSONObject(0).getJSONArray("content") }.getOrNull() ?: return@waitUntil false
                 (0 until contents.length()).joinToString("") { contents.getJSONObject(it).getString("text") } == "AXB" && store.pending(key).isEmpty()
             }
+            compose.onNodeWithTag("shared_add_paragraph").performScrollTo().performClick()
+            compose.onNodeWithTag("shared_draft").performTextInput("New shared paragraph")
+            compose.onNodeWithText(app.getString(R.string.save)).performClick()
+            compose.waitUntil(30_000) {
+                val state = remote.get() ?: return@waitUntil false
+                val blocks = runCatching { JSONObject(YrsNative.editorJson(state)).getJSONArray("content") }.getOrNull() ?: return@waitUntil false
+                (0 until blocks.length()).any { index ->
+                    val block = blocks.getJSONObject(index)
+                    block.optString("type") == "paragraph" && block.optJSONArray("content")?.optJSONObject(0)?.optString("text") == "New shared paragraph"
+                } && store.pending(key).isEmpty()
+            }
             compose.onNodeWithTag("shared_history").performClick()
             compose.waitUntil(20_000) { controller.state.value.historyVisible && !controller.state.value.historyLoading }
             compose.onNodeWithTag("shared_version_create").performClick()
@@ -141,7 +154,7 @@ class SharedPageLiveTest {
             }
             compose.onNodeWithTag("shared_version_$versionId").performClick()
             compose.waitUntil(20_000) { controller.state.value.historyPreview != null }
-            compose.onNodeWithTag("shared_history_preview_block").assertIsDisplayed().assertTextEquals("AXB")
+            compose.onAllNodesWithTag("shared_history_preview_block")[0].assertIsDisplayed().assertTextEquals("AXB")
             compose.onNodeWithText(app.getString(R.string.close)).performClick()
             compose.onNodeWithTag("shared_block_block1").performClick()
             compose.onNodeWithTag("shared_draft").performTextClearance()
@@ -171,12 +184,25 @@ class SharedPageLiveTest {
             assertEquals("Later revision", (0 until backupNodes.length()).joinToString("") { backupNodes.getJSONObject(it).getString("text") })
             compose.onNodeWithText(app.getString(R.string.close)).performClick()
             compose.waitUntil(30_000) { refreshes.get() >= 1 && authentications.get() >= 2 }
+            retryDelay.set(15_000)
             dropConnection.get().invoke()
             compose.waitUntil(30_000) { controller.state.value.offline && controller.state.value.blocks.any { it.text == "AXB" } }
             compose.onNodeWithText(app.getString(R.string.shared_offline)).assertIsDisplayed()
             if (InstrumentationRegistry.getArguments().getString("captureUi") == "1") {
                 InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /sdcard/Download/worlds-shared-offline.png").close()
             }
+            compose.onNodeWithTag("shared_add_paragraph").performScrollTo().performClick()
+            compose.onNodeWithTag("shared_draft").performTextInput("Created offline")
+            compose.onNodeWithText(app.getString(R.string.save)).performClick()
+            compose.waitUntil(10_000) { controller.state.value.draft == null && controller.state.value.offline && store.pending(key).size == 1 }
+            compose.waitUntil(30_000) {
+                val current = remote.get() ?: return@waitUntil false
+                val blocks = runCatching { JSONObject(YrsNative.editorJson(current)).getJSONArray("content") }.getOrNull() ?: return@waitUntil false
+                (0 until blocks.length()).any { index -> blocks.getJSONObject(index).optJSONArray("content")?.optJSONObject(0)?.optString("text") == "Created offline" } && store.pending(key).isEmpty()
+            }
+            retryDelay.set(5_000)
+            dropConnection.get().invoke()
+            compose.waitUntil(30_000) { controller.state.value.offline }
             compose.onNodeWithTag("shared_block_block1").performClick()
             compose.onNodeWithTag("shared_draft").performTextClearance()
             compose.onNodeWithTag("shared_draft").performTextInput("AXZ")

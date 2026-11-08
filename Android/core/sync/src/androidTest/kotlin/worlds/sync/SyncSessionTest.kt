@@ -27,6 +27,30 @@ class SyncSessionTest {
     private val events = LinkedBlockingQueue<String>()
     private val latest = ConcurrentHashMap<Int, ByteArray>()
 
+    @Test fun offlineParagraphIsJournaledAndRecoverableOnRevocation() {
+        val merged = OfflineEditor.appendParagraph(store, key, "android-new", "Offline paragraph")
+        val content = JSONObject(YrsNative.editorJson(merged)).getJSONArray("content")
+        assertEquals("android-new", content.getJSONObject(0).getJSONObject("attrs").getString("bid"))
+        assertEquals("Offline paragraph", content.getJSONObject(0).getJSONArray("content").getJSONObject(0).getString("text"))
+        assertEquals(1, store.pending(key).size)
+        assertTrue(runCatching { OfflineEditor.appendParagraph(store, key, "android-new", "duplicate") }.isFailure)
+        assertEquals(1, store.pending(key).size)
+        store.purgeRevokedPage(key)
+        assertTrue(store.pending(key).isEmpty())
+        assertEquals("Offline paragraph", store.recovered(key).single().text)
+    }
+
+    @Test fun readOnlySessionCannotAppendParagraph() {
+        val session = session(); session.start()
+        event("state:0"); event("state:1"); event("started")
+        transport.callback.onAuthenticated("view"); event("access:view")
+        val completed = CountDownLatch(1); val result = AtomicBoolean(true)
+        session.appendParagraph("new-block", "Not allowed") { result.set(it); completed.countDown() }
+        assertTrue(completed.await(5, TimeUnit.SECONDS)); assertFalse(result.get())
+        assertTrue(store.pending(key).isEmpty()); assertTrue(store.load(key).updates.isEmpty())
+        session.close(); event("closed:null")
+    }
+
     private inner class FakeTransport(val callback: SyncSocket.Listener) : SyncTransport {
         val frames = LinkedBlockingQueue<SyncWire.Frame>()
         val failSend = AtomicBoolean(false)

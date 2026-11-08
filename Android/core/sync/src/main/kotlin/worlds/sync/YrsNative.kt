@@ -26,9 +26,17 @@ object YrsNative {
     @JvmStatic private external fun editorJsonBytes(snapshot: ByteArray): ByteArray
     @JvmStatic private external fun replaceTextBytes(snapshot: ByteArray, request: ByteArray): ByteArray
     @JvmStatic private external fun replaceBlockTextBytes(snapshot: ByteArray, request: ByteArray): ByteArray
+    @JvmStatic private external fun appendParagraphBytes(snapshot: ByteArray, request: ByteArray): ByteArray
     @JvmStatic private external fun blockIdentityBytes(snapshot: ByteArray, bid: ByteArray): ByteArray
 
     internal fun blockIdentity(snapshot: ByteArray, blockId: String): ByteArray = blockIdentityBytes(snapshot, blockId.toByteArray(Charsets.UTF_8))
+
+    fun appendParagraph(snapshot: ByteArray, blockId: String, text: String): ByteArray {
+        require(blockId.isNotBlank() && blockId.length <= 128 && text.isNotEmpty() && text.toByteArray(Charsets.UTF_8).size <= 1_000_000)
+        validateText(text)
+        val request = JSONObject().put("bid", blockId).put("text", text)
+        return appendParagraphBytes(snapshot, request.toString().toByteArray(Charsets.UTF_8))
+    }
 
     /** Tiptap-compatible JSON for the shared document's default XML fragment. */
     fun editorJson(snapshot: ByteArray): String = editorJsonBytes(snapshot).toString(Charsets.UTF_8)

@@ -14,6 +14,7 @@ pub fn editor_read(snapshot: &[u8]) -> Result<Vec<u8>, String> { editor::read(sn
 pub fn editor_restore(snapshot: &[u8], version: &[u8]) -> Result<Vec<u8>, String> { restore::restore(snapshot, version) }
 pub fn editor_replace_text(snapshot: &[u8], request: &[u8]) -> Result<Vec<u8>, String> { editor::replace_text(snapshot, request) }
 pub fn editor_replace_block_text(snapshot: &[u8], request: &[u8]) -> Result<Vec<u8>, String> { editor::replace_block_text(snapshot, request) }
+pub fn editor_append_paragraph(snapshot: &[u8], request: &[u8]) -> Result<Vec<u8>, String> { editor::append_paragraph(snapshot, request) }
 
 // Stateless calls keep ownership explicit across JNI. Inputs are v1 Yjs wire data.
 fn load(snapshot: &[u8]) -> Result<Doc, String> {
@@ -88,6 +89,11 @@ pub extern "system" fn Java_worlds_sync_YrsNative_replaceBlockTextBytes(env: JNI
 }
 
 #[no_mangle]
+pub extern "system" fn Java_worlds_sync_YrsNative_appendParagraphBytes(env: JNIEnv, _: JClass, snapshot: JByteArray, request: JByteArray) -> jbyteArray {
+    invoke(env, snapshot, Some(request), editor::append_paragraph)
+}
+
+#[no_mangle]
 pub extern "system" fn Java_worlds_sync_YrsNative_restoreVersionBytes(env: JNIEnv, _: JClass, snapshot: JByteArray, version: JByteArray) -> jbyteArray {
     invoke(env, snapshot, Some(version), restore::restore)
 }
@@ -117,6 +123,23 @@ mod tests {
         let value = doc.get_or_insert_text("body").get_string(&doc.transact());
         assert!(value.contains("Hello ") && value.contains("World"));
         assert!(merge(&sa, &[255]).is_err());
+    }
+
+    #[test]
+    fn concurrent_paragraph_appends_converge_and_reject_duplicate_ids() {
+        let base = merge(&[], &[0, 0]).unwrap();
+        let a = editor_append_paragraph(&base, r#"{"bid":"alpha","text":"First مرحبا"}"#.as_bytes()).unwrap();
+        let b = editor_append_paragraph(&base, br#"{"bid":"beta","text":"Second"}"#).unwrap();
+        let ab = merge(&merge(&base, &a).unwrap(), &b).unwrap();
+        let ba = merge(&merge(&base, &b).unwrap(), &a).unwrap();
+        let read = |bytes: &[u8]| -> serde_json::Value { serde_json::from_slice(&editor_read(bytes).unwrap()).unwrap() };
+        assert_eq!(read(&ab), read(&ba));
+        let content = read(&ab)["content"].as_array().unwrap().clone();
+        assert_eq!(content.len(), 2);
+        assert!(content.iter().any(|b| b["attrs"]["bid"] == "alpha" && b["content"][0]["text"] == "First مرحبا"));
+        assert!(content.iter().any(|b| b["attrs"]["bid"] == "beta" && b["content"][0]["text"] == "Second"));
+        assert!(editor_append_paragraph(&ab, br#"{"bid":"alpha","text":"duplicate"}"#).is_err());
+        assert!(editor_append_paragraph(&ab, br#"{"bid":"other","text":""}"#).is_err());
     }
 }
 

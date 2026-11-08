@@ -67,6 +67,11 @@ revision checks apply as for other destinations.
 
 ## Shared page
 
+Editors can add a paragraph using a labeled plus action below the shared page's
+blocks. It opens the existing shared text editor and follows the same offline,
+draft backup, access and retry states as editing a paragraph. Empty drafts do
+not create blocks. A queued paragraph is visible locally while it awaits sync.
+
 The workspace row opens a compact page connection screen. The owner provides the
 HTTPS sync address and page ID because the current service has no public page
 discovery endpoint. Once connected, readable blocks retain the page's text marks;

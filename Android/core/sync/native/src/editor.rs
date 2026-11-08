@@ -1,5 +1,5 @@
 use serde_json::{json, Map, Value};
-use yrs::{Out, ReadTxn, Text, Transact, Xml, XmlFragment, XmlOut, XmlTextPrelim};
+use yrs::{Out, ReadTxn, Text, Transact, Xml, XmlElementPrelim, XmlFragment, XmlOut, XmlTextPrelim};
 use yrs::types::ToJson;
 
 fn value(out: &Out, txn: &impl ReadTxn) -> Result<Value, String> {
@@ -69,6 +69,30 @@ pub fn read(snapshot: &[u8]) -> Result<Vec<u8>, String> {
     let mut blocks = Vec::new(); let mut count = 0;
     for child in fragment.children(&txn) { blocks.extend(node(child, &txn, 0, &mut count)?); }
     serde_json::to_vec(&json!({"type": "doc", "content": blocks})).map_err(|e| e.to_string())
+}
+
+/// Append a top-level paragraph using the same XML and block-id shape as Worlds.
+pub fn append_paragraph(snapshot: &[u8], request: &[u8]) -> Result<Vec<u8>, String> {
+    let input: Value = serde_json::from_slice(request).map_err(|e| e.to_string())?;
+    let bid = input["bid"].as_str().filter(|s| !s.is_empty() && s.len() <= 128).ok_or("Invalid block id")?;
+    let text = input["text"].as_str().filter(|s| !s.is_empty() && s.len() <= 1_000_000).ok_or("Invalid text")?;
+    let doc = super::load(snapshot)?;
+    let fragment = doc.get_or_insert_xml_fragment("default");
+    let vector = doc.transact().state_vector();
+    let mut txn = doc.transact_mut();
+    for child in fragment.children(&txn) {
+        if let XmlOut::Element(element) = child {
+            if matches!(element.get_attribute(&txn, "bid"), Some(Out::Any(yrs::Any::String(id))) if id.as_ref() == bid) {
+                return Err("Duplicate block id".into());
+            }
+        }
+    }
+    let element = fragment.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+    element.insert_attribute(&mut txn, "bid", bid);
+    element.push_back(&mut txn, XmlTextPrelim::new(text));
+    drop(txn);
+    let update = doc.transact().encode_state_as_update_v1(&vector);
+    Ok(update)
 }
 
 pub fn block_identity(snapshot: &[u8], bid: &[u8]) -> Result<Vec<u8>, String> {

@@ -34,6 +34,7 @@ internal class AccountSyncRuntime(
     private val freshCredentials: (String, Long) -> SyncCredentials = { server, _ -> credentials(server) },
     private val offlinePrincipal: (String) -> SyncPrincipal = { server -> credentials(server).let { SyncPrincipal(it.authority, it.userId, it.deviceId) } },
     private val offlineEdit: (SyncDocumentKey, ByteArray, String, Int, Int, String, String) -> ByteArray = { _, _, _, _, _, _, _ -> error("Offline editing is unavailable") },
+    private val offlineAppend: (SyncDocumentKey, String, String) -> ByteArray = { _, _, _ -> error("Offline editing is unavailable") },
     private val recoveredText: (SyncDocumentKey) -> List<RecoveredText> = { emptyList() },
     private val deleteRecoveredText: (SyncDocumentKey, Long) -> Boolean = { _, _ -> false },
     private val saveRecoveredText: (SyncDocumentKey, DraftCapture) -> Unit = { _, _ -> error("Recovery is unavailable") },
@@ -152,6 +153,16 @@ internal class AccountSyncRuntime(
         if (sessions.values.any { it == key }) throw SessionActive()
         check(isValid())
         offlineEdit(key, base, bid, start, end, text, draftText)
+    }
+
+    fun appendOffline(principal: SyncPrincipal, workspace: String, page: String, bid: String, text: String, isValid: () -> Boolean = { true }): ByteArray = synchronized(lock) {
+        check(!changingAccount && isValid())
+        require(offlinePrincipal(principal.authority) == principal) { "Account or device changed" }
+        val key = SyncDocumentKey(principal.userId, workspace, page, SyncWire.CONTENT, principal.authority)
+        require(access[key] in setOf("edit", "full")) { "No confirmed edit access" }
+        if (sessions.values.any { it == key }) throw SessionActive()
+        check(isValid())
+        offlineAppend(key, bid, text)
     }
 
     fun recovered(principal: SyncPrincipal, workspace: String, page: String): List<RecoveredText> = synchronized(lock) {
@@ -281,6 +292,7 @@ internal object WorldsAccountSync {
                     SyncPrincipal(session.profile.baseUrl, session.profile.userId, session.profile.deviceId)
                 },
                 offlineEdit = { key, base, bid, start, end, text, draft -> OfflineEditor.replaceBlockText(store, key, base, bid, start, end, text, draft) },
+                offlineAppend = { key, bid, text -> OfflineEditor.appendParagraph(store, key, bid, text) },
                 recoveredText = { key -> store.recovered(key) },
                 deleteRecoveredText = { key, id -> store.deleteRecovered(key, id) },
                 saveRecoveredText = { key, draft -> store.saveRecoveredText(key, draft) },

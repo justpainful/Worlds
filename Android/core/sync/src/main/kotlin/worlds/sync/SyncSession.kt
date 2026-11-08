@@ -72,6 +72,17 @@ class SyncSession(
         post { applyLocalNow(channel, copy) }
     }
 
+    /** Append using the latest serialized replica and retain text for rejection recovery. */
+    fun appendParagraph(blockId: String, text: String, completion: (Boolean) -> Unit = {}) = post {
+        val update = try {
+            require(canWrite(SyncWire.CONTENT))
+            YrsNative.appendParagraph(states[SyncWire.CONTENT], blockId, text)
+        } catch (_: IllegalArgumentException) { completion(false); return@post }
+        var persisted = false
+        try { applyLocalNow(SyncWire.CONTENT, update, DraftCapture(blockId, text)) { persisted = true; completion(true) } }
+        catch (e: Exception) { if (!persisted) completion(false); throw e }
+    }
+
     /** Rebases the UI's edit from its captured state onto the current shared document. */
     fun replaceBlockText(baseSnapshot: ByteArray, blockId: String, start: Int, end: Int, text: String, draftText: String? = null, completion: (Boolean) -> Unit = {}) {
         val base = baseSnapshot.copyOf()

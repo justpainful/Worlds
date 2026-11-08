@@ -7,6 +7,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.semantics.SemanticsActions
@@ -24,11 +25,102 @@ import worlds.sync.SyncDocumentKey
 import worlds.sync.SyncSession
 import worlds.sync.SyncTransport
 import worlds.sync.SyncWire
+import worlds.sync.YrsNative
+import worlds.sync.OfflineEditor
 import java.util.UUID
 
 @RunWith(AndroidJUnit4::class)
 class SharedRecoveryUiTest {
     @get:Rule val compose = createComposeRule()
+
+    @Test fun editorAddsParagraphAndQueuesItForPeer() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext
+        val name = "shared-append-${UUID.randomUUID()}.db"
+        val authority = "https://identity.example"
+        val key = SyncDocumentKey("user", "space", "page", 0, authority)
+        val store = AndroidSyncStore(app, name)
+        val remote = java.util.concurrent.atomic.AtomicReference<ByteArray>(byteArrayOf())
+        val runtime = AccountSyncRuntime(
+            credentials = { SyncCredentials(authority, "user", "device", "token") },
+            writeWorkingDraft = { doc, token, draft -> store.saveWorkingDraft(doc, token, draft) },
+            removeWorkingDraft = { doc, token -> store.discardWorkingDraft(doc, token); Unit },
+            makeSession = { doc, _, _, listener -> SyncSession(store, doc, { callback -> object : SyncTransport {
+                override fun start() {
+                    callback.onAuthenticated("edit")
+                    callback.onFrame(SyncWire.Frame.Sync(0, 0, byteArrayOf(0)))
+                    callback.onFrame(SyncWire.Frame.Sync(1, 0, byteArrayOf(0)))
+                }
+                override fun send(frame: SyncWire.Frame): Boolean {
+                    if (frame is SyncWire.Frame.Update && frame.channel == 0) {
+                        remote.set(YrsNative.merge(remote.get(), frame.data))
+                        callback.onFrame(SyncWire.Frame.Ack(frame.batchId, 0, ""))
+                    }
+                    return true
+                }
+                override fun close() { }
+            } }, listener) },
+        )
+        val controller = SharedPageController(runtime, authority, "space")
+        try {
+            controller.open("https://sync.example", "page")
+            compose.setContent { WorldsTheme { SharedPageScreen(authority, Workspace("space", "Team", "owner", 1), {}, controller) } }
+            compose.waitUntil(20_000) { controller.state.value.access == "edit" && controller.state.value.snapshot != null }
+            compose.onNodeWithTag("shared_add_paragraph").performScrollTo().performClick()
+            compose.onNodeWithTag("shared_draft").performTextInput("Shared paragraph مرحبا")
+            compose.onNodeWithText(app.getString(R.string.save)).performClick()
+            compose.waitUntil(20_000) { controller.state.value.draft == null && controller.state.value.blocks.any { it.text == "Shared paragraph مرحبا" } && store.pending(key).isEmpty() }
+            if (InstrumentationRegistry.getArguments().getString("captureUi") == "1") {
+                compose.waitForIdle(); Thread.sleep(300)
+                android.os.ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /sdcard/Download/worlds-shared-append.png")).use { it.readBytes() }
+            }
+            val json = org.json.JSONObject(YrsNative.editorJson(remote.get()))
+            val paragraph = json.getJSONArray("content").getJSONObject(0)
+            assertEquals("paragraph", paragraph.getString("type"))
+            assertEquals("Shared paragraph مرحبا", paragraph.getJSONArray("content").getJSONObject(0).getString("text"))
+            assertTrue(paragraph.getJSONObject("attrs").getString("bid").isNotBlank())
+        } finally {
+            controller.close(); assertTrue(controller.awaitDraftBackups()); runtime.accountChange { }
+            store.close(); app.deleteDatabase(name)
+        }
+    }
+
+    @Test fun offlineEditorAddsParagraphAndKeepsRejectedText() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext
+        val name = "shared-append-offline-${UUID.randomUUID()}.db"
+        val authority = "https://identity.example"
+        val endpoint = "https://sync.example"
+        val key = SyncDocumentKey("user", "space", "page", 0, authority)
+        val store = AndroidSyncStore(app, name)
+        val seed = YrsNative.appendParagraph(byteArrayOf(), "existing", "Existing")
+        store.bindEndpoint(key, endpoint); store.append(key, seed, local = false)
+        store.rememberAccess(key, "device", endpoint, "edit")
+        val runtime = AccountSyncRuntime(
+            credentials = { throw java.io.IOException("offline") },
+            offlinePrincipal = { SyncPrincipal(authority, "user", "device") },
+            cachedPages = { server, account, device -> store.cachedPages(server, account, device) },
+            loadCached = { doc -> store.load(doc).let { replica -> replica.updates.fold(replica.snapshot ?: byteArrayOf()) { state, update -> YrsNative.merge(state, update.bytes) } } },
+            offlineAppend = { doc, bid, text -> OfflineEditor.appendParagraph(store, doc, bid, text) },
+            recoveredText = { store.recovered(it) },
+            writeWorkingDraft = { doc, token, draft -> store.saveWorkingDraft(doc, token, draft) },
+            removeWorkingDraft = { doc, token -> store.discardWorkingDraft(doc, token); Unit },
+            makeSession = { _, _, _, _ -> error("offline") },
+        )
+        val controller = SharedPageController(runtime, authority, "space", retryDelay = { 30_000 })
+        try {
+            controller.open(endpoint, "page")
+            compose.setContent { WorldsTheme { SharedPageScreen(authority, Workspace("space", "Team", "owner", 1), {}, controller) } }
+            compose.waitUntil(20_000) { controller.state.value.offline && controller.state.value.access == "edit" }
+            compose.onNodeWithTag("shared_add_paragraph").performScrollTo().performClick()
+            compose.onNodeWithTag("shared_draft").performTextInput("Offline draft")
+            compose.onNodeWithText(app.getString(R.string.save)).performClick()
+            compose.waitUntil(20_000) { controller.state.value.draft == null && controller.state.value.blocks.any { it.text == "Offline draft" } && store.pending(key).size == 1 }
+            store.purgeRevokedPage(key)
+            assertTrue(store.recovered(key).any { it.text == "Offline draft" })
+        } finally {
+            controller.close(); assertTrue(controller.awaitDraftBackups()); runtime.accountChange { }
+            store.close(); app.deleteDatabase(name)
+        }
+    }
 
     @Test fun reviewAndSaveRecoveredTextOnItsOriginalBlock() {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext

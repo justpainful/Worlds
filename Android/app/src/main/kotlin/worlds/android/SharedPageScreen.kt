@@ -67,7 +67,7 @@ internal data class SharedBlock(val id: String?, val raw: String, val text: Stri
 internal data class NotificationTarget(val workspace: String, val page: String, val endpoint: String, val thread: String, val comment: String)
 internal data class ConversationMessage(val id: String, val author: String, val body: String, val createdAt: Long, val deleted: Boolean, val editedAt: Long)
 internal data class ConversationThread(val id: String, val quote: String, val resolved: Boolean, val createdAt: Long, val comments: List<ConversationMessage>)
-internal data class SharedDraft(val block: SharedBlock, val base: ByteArray, val text: String)
+internal data class SharedDraft(val block: SharedBlock, val base: ByteArray, val text: String, val isNew: Boolean = false)
 internal enum class EndpointProblem { DIFFERENT_SERVER, UNKNOWN_ORIGIN }
 internal data class SharedPageState(val opening: Boolean = false, val access: String? = null, val blocks: List<SharedBlock> = emptyList(),
     val snapshot: ByteArray? = null, val disconnected: Boolean = false, val revoked: Boolean = false, val error: Boolean = false,
@@ -494,6 +494,14 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
         draftToken = UUID.randomUUID().toString()
         mutable.update { it.copy(draft = SharedDraft(block, state.snapshot.copyOf(), block.text.orEmpty()), error = false, draftBackupFailed = false) }
     }
+    fun addParagraph() {
+        val state = mutable.value
+        if (state.draft != null || currentPrincipal == null || state.historySaving || state.disconnected || state.access !in setOf("edit", "full") || state.snapshot == null) return
+        val id = UUID.randomUUID().toString().replace("-", "").take(26)
+        draftToken = UUID.randomUUID().toString()
+        val block = SharedBlock(id, "", "", true)
+        mutable.update { it.copy(draft = SharedDraft(block, state.snapshot.copyOf(), "", isNew = true), error = false, draftBackupFailed = false) }
+    }
     fun updateDraft(text: String) {
         val draft = mutable.value.draft ?: return
         val principal = currentPrincipal ?: return
@@ -548,18 +556,21 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
                 }
                 if (!current.offline && current.access in setOf("edit", "full") && active != null) {
                     pendingLocalSave.set(false)
-                    active.replaceBlockText(draft.base, requireNotNull(draft.block.id), start, oldEnd, inserted, next) { saved ->
+                    val completion: (Boolean) -> Unit = { saved ->
                         if (saved) {
                             discardDraftBackup()
                             currentPrincipal?.let { principal -> scheduleOutbox(principal, currentServer, currentPage) }
                         }
                         if (!closed.get()) mutable.update { it.copy(saving = false, draft = if (saved) null else it.draft, error = !saved) }
                     }
+                    if (draft.isNew) active.appendParagraph(requireNotNull(draft.block.id), next, completion)
+                    else active.replaceBlockText(draft.base, requireNotNull(draft.block.id), start, oldEnd, inserted, next, completion)
                     break
                 }
                 if (!current.offline) { delay(50); continue }
                 try {
-                    val updated = runtime.editOffline(requireNotNull(currentPrincipal), workspace, currentPage, draft.base, requireNotNull(draft.block.id), start, oldEnd, inserted, next) { !closed.get() }
+                    val updated = if (draft.isNew) runtime.appendOffline(requireNotNull(currentPrincipal), workspace, currentPage, requireNotNull(draft.block.id), next) { !closed.get() }
+                    else runtime.editOffline(requireNotNull(currentPrincipal), workspace, currentPage, draft.base, requireNotNull(draft.block.id), start, oldEnd, inserted, next) { !closed.get() }
                     acceptSnapshot(updated)
                     currentPrincipal?.let { principal -> scheduleOutbox(principal, currentServer, currentPage) }
                     pendingLocalSave.set(false)
@@ -795,7 +806,7 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
         }
     }
     state.draft?.let { draft ->
-        AlertDialog(onDismissRequest = ::dismissDraft, title = { Text(stringResource(R.string.edit_text)) },
+        AlertDialog(onDismissRequest = ::dismissDraft, title = { Text(stringResource(if (draft.isNew) R.string.add_paragraph else R.string.edit_text)) },
             text = { Column { val editorSettings = LocalAppearancePreferences.current
                 OutlinedTextField(value = draft.text, onValueChange = controller::updateDraft, enabled = !state.saving, modifier = Modifier.fillMaxWidth().testTag("shared_draft"), minLines = 3,
                     textStyle = LocalTextStyle.current.copy(textDirection = editorDirection(editorSettings.direction)), keyboardOptions = editorKeyboardOptions(editorSettings.suggestions))
@@ -864,6 +875,11 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
                         if (editable) WorldsGlyph(R.drawable.ic_pencil)
                     }
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
+                if (state.access in setOf("edit", "full") && !state.disconnected && state.snapshot != null) {
+                    TextButton(enabled = !state.saving && !state.historySaving, onClick = controller::addParagraph, modifier = Modifier.testTag("shared_add_paragraph")) {
+                        WorldsActionLabel(R.drawable.ic_plus, stringResource(R.string.add_paragraph))
+                    }
                 }
             }
             if (state.endpointProblem != null) Text(stringResource(if (state.endpointProblem == EndpointProblem.DIFFERENT_SERVER) R.string.shared_endpoint_conflict else R.string.shared_endpoint_unknown), color = MaterialTheme.colorScheme.error)
