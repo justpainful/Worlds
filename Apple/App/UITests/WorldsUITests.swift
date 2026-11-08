@@ -1,6 +1,12 @@
 import XCTest
+#if os(macOS)
+import Darwin
+#endif
 
 final class WorldsUITests: XCTestCase {
+    #if os(macOS)
+    private var traceDirectoryFDs: [String: Int32] = [:]
+    #endif
     @MainActor func testPersonalHierarchyExpandCollapseAndRetainState() {
         let app = XCUIApplication()
         app.launchArguments += ["--ui-testing-reader-fixture", "--ui-testing-rtl", "--ui-testing-large-text"]
@@ -176,6 +182,7 @@ final class WorldsUITests: XCTestCase {
     func testSearchEmptyState() throws {
         let app = XCUIApplication()
         app.launchArguments.append("--ui-testing-search-fixture")
+        prepareWindowTrace(app)
         app.launch()
         guard app.descendants(matching: .any)["page.search-personal"].firstMatch.waitForExistence(timeout: 20) else {
             captureLaunchFailure(app, name: "search-fixture-missing")
@@ -281,6 +288,7 @@ final class WorldsUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments.append("--ui-testing-reader-fixture")
         if rightToLeft { app.launchArguments.append("--ui-testing-rtl") }
+        prepareWindowTrace(app)
         app.launch()
         let page = app.descendants(matching: .any)["page.reader-fixture"].firstMatch
         guard page.waitForExistence(timeout: 40) else {
@@ -465,6 +473,7 @@ final class WorldsUITests: XCTestCase {
         if largeText { app.launchArguments.append("--ui-testing-large-text") }
         if dark { app.launchArguments.append("--ui-testing-dark") }
         if light { app.launchArguments.append("--ui-testing-light") }
+        prepareWindowTrace(app)
         app.launch()
         let row = app.descendants(matching: .any)["page.\(id)"].firstMatch
         if !row.waitForExistence(timeout: 10) {
@@ -510,6 +519,69 @@ final class WorldsUITests: XCTestCase {
         state.name = name + "-state-and-hierarchy"; state.lifetime = .keepAlways; add(state)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = name + "-screen"; screenshot.lifetime = .keepAlways; add(screenshot)
+        #if os(macOS)
+        if let raw = app.launchEnvironment["WORLDS_WINDOW_TRACE_TOKEN"], let token = UUID(uuidString: raw),
+           let directoryFD = traceDirectoryFDs[token.uuidString] {
+            let fd = openat(directoryFD, "lifecycle.log", O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+            var text = "Window trace unavailable."
+            if fd >= 0 {
+                var info = stat()
+                if fstat(fd, &info) == 0, (info.st_mode & S_IFMT) == S_IFREG,
+                   info.st_uid == getuid(), info.st_nlink == 1, (info.st_mode & 0o077) == 0,
+                   info.st_size >= 0, info.st_size <= 16_384 {
+                    var bytes = [UInt8](repeating: 0, count: 16_385)
+                    let count = bytes.withUnsafeMutableBytes { Darwin.read(fd, $0.baseAddress, $0.count) }
+                    if count >= 0, count <= 16_384, let decoded = String(bytes: bytes.prefix(count), encoding: .utf8) {
+                        text = decoded
+                    }
+                }
+                Darwin.close(fd)
+            }
+            let trace = XCTAttachment(string: text)
+            trace.name = name + "-window-lifecycle"; trace.lifetime = .keepAlways; add(trace)
+        }
+        #endif
+    }
+    @MainActor
+    private func prepareWindowTrace(_ app: XCUIApplication) {
+        #if os(macOS)
+        let token = UUID()
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("worlds-window-trace-\(token.uuidString)", isDirectory: true)
+        guard Darwin.mkdir(directory.path, mode_t(0o700)) == 0 else { return }
+        var original = stat()
+        guard lstat(directory.path, &original) == 0, (original.st_mode & S_IFMT) == S_IFDIR,
+              original.st_uid == getuid() else { return }
+        let directoryFD = Darwin.open(directory.path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
+        guard directoryFD >= 0 else { return }
+        var opened = stat()
+        guard fstat(directoryFD, &opened) == 0, opened.st_dev == original.st_dev,
+              opened.st_ino == original.st_ino, opened.st_uid == getuid() else {
+            Darwin.close(directoryFD); return
+        }
+        let device = original.st_dev, inode = original.st_ino
+        traceDirectoryFDs[token.uuidString] = directoryFD
+        app.launchEnvironment["WORLDS_WINDOW_TRACE_TOKEN"] = token.uuidString
+        addTeardownBlock {
+            let fd = openat(directoryFD, "lifecycle.log", O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+            if fd >= 0 {
+                var openedFile = stat(), currentFile = stat()
+                if fstat(fd, &openedFile) == 0, (openedFile.st_mode & S_IFMT) == S_IFREG,
+                   openedFile.st_uid == getuid(), openedFile.st_nlink == 1, (openedFile.st_mode & 0o077) == 0,
+                   openedFile.st_size >= 0, openedFile.st_size <= 16_384,
+                   fstatat(directoryFD, "lifecycle.log", &currentFile, AT_SYMLINK_NOFOLLOW) == 0,
+                   currentFile.st_dev == openedFile.st_dev, currentFile.st_ino == openedFile.st_ino {
+                    _ = unlinkat(directoryFD, "lifecycle.log", 0)
+                }
+                Darwin.close(fd)
+            }
+            Darwin.close(directoryFD)
+            var current = stat()
+            guard lstat(directory.path, &current) == 0, (current.st_mode & S_IFMT) == S_IFDIR,
+                  current.st_uid == getuid(), current.st_dev == device, current.st_ino == inode else { return }
+            _ = rmdir(directory.path)
+        }
+        #endif
     }
     private enum FixtureLaunchError: Error { case unavailable }
     @MainActor

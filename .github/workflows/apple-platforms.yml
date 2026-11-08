@@ -2367,11 +2367,13 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p logs results
+          diagnostic_flags=()
+          if [[ "${{ matrix.device }}" == "macOS" ]]; then diagnostic_flags+=('OTHER_SWIFT_FLAGS=$(inherited) -DWORLDS_UI_WINDOW_DIAGNOSTICS'); fi
           gtimeout --kill-after=30s 20m xcodebuild -project Apple/Worlds.xcodeproj -scheme '${{ matrix.scheme }}' \
             -configuration Debug -destination '${{ matrix.destination }}' \
             -derivedDataPath "$RUNNER_TEMP/WorldsUI" \
             -resultBundlePath "$GITHUB_WORKSPACE/results/${{ matrix.device }}.xcresult" \
-            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee logs/ui-${{ matrix.device }}.log
+            "${diagnostic_flags[@]}" CODE_SIGNING_ALLOWED=NO test 2>&1 | tee logs/ui-${{ matrix.device }}.log
           grep -Eq 'testRightToLeftNavigationAndReading.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testReaderShowsStructuredContentAndExpandsToggle.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testReaderShowsRTLQuotationAndOverflowingList.*passed' logs/ui-${{ matrix.device }}.log

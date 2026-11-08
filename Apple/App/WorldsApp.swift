@@ -9,6 +9,9 @@ import WorldsProjectEditingViews
 
 @main
 struct WorldsApp: App {
+    #if DEBUG && os(macOS) && WORLDS_UI_WINDOW_DIAGNOSTICS
+    @NSApplicationDelegateAdaptor(WindowLifecycleDiagnostics.self) private var windowLifecycleDiagnostics
+    #endif
     var body: some Scene {
         #if os(macOS) && DEBUG
         WindowGroup { rootView }
