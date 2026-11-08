@@ -1,6 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import SQLite3
+import Darwin
 import WorldsFixtureBundleImport
 
 @MainActor private final class FixtureModel: ObservableObject {
@@ -15,7 +16,15 @@ import WorldsFixtureBundleImport
 
     func createFixture() throws {
         guard root == nil else { if let fixtureSource { selected = fixtureSource }; return }
-        let root = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent("bundle-harness-\(UUID().uuidString)", isDirectory: true)
+        let temporaryRoot = FileManager.default.temporaryDirectory.appendingPathComponent("bundle-harness-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: temporaryRoot, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+        // Resolve the newly created fixture directory with POSIX realpath.
+        // Foundation may retain the /var alias on macOS.
+        guard let resolved = realpath(temporaryRoot.path, nil) else { throw FixtureBundleError.invalidPath }
+        defer { free(resolved) }
+        let canonicalPath = String(cString: resolved)
+        let root = URL(fileURLWithPath: canonicalPath, isDirectory: true)
+        guard root.path == canonicalPath else { throw FixtureBundleError.invalidPath }
         let source = root.appendingPathComponent("source", isDirectory: true), destination = root.appendingPathComponent("private", isDirectory: true)
         try FileManager.default.createDirectory(at: source.appendingPathComponent("attachments/sub", isDirectory: true), withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
