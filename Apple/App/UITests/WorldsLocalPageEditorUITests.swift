@@ -2,6 +2,27 @@
 import XCTest
 
 final class WorldsLocalPageEditorUITests: XCTestCase {
+    @MainActor func testDocumentDeleteLastTableRowRequiresConfirmationAndReopensRTL() {
+        let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-document-table-insert", "--ui-testing-rtl"]; app.launch()
+        let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
+        XCTAssertTrue(page.waitForExistence(timeout: 30)); page.tap()
+        let edit = app.buttons["edit-local-page"]; XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
+        let editor = app.descendants(matching: .any)["native-editor-text"].firstMatch
+        XCTAssertTrue(editor.waitForExistence(timeout: 20))
+        editor.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.14)).tap()
+        let delete = app.buttons["editor-delete-table-row"]
+        XCTAssertTrue(delete.waitForExistence(timeout: 10)); delete.tap()
+        let cancel = app.buttons["Cancel"].firstMatch
+        XCTAssertTrue(cancel.waitForExistence(timeout: 10)); cancel.tap()
+        XCTAssertFalse(app.staticTexts["fixture-table-last-row-removed"].exists)
+        delete.tap()
+        let confirm = app.buttons["editor-confirm-delete-table-row"].firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 10)); confirm.tap()
+        XCTAssertTrue(app.staticTexts["fixture-table-last-row-removed"].waitForExistence(timeout: 10))
+        app.buttons["Save"].tap(); XCTAssertTrue(app.staticTexts["local-page-saved"].waitForExistence(timeout: 20))
+        app.buttons["Close"].tap(); XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
+        XCTAssertTrue(app.staticTexts["fixture-table-last-row-removed"].waitForExistence(timeout: 20))
+    }
     @MainActor func testDocumentInsertColumnAfterSelectionAndReopenRTL() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-document-table-column-insert", "--ui-testing-rtl"]; app.launch()
         let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch

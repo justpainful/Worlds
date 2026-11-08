@@ -409,6 +409,25 @@ public final class NativeEditorModel: ObservableObject {
         catch { throw NativeEditorError.unsupportedFormatting }
         registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
     }
+    public func deleteSelectedLastTableRow() throws {
+        guard supportsDocumentFormatting, selectionIsInRootTable, validSelectionBoundaries, recoverableNativeText == nil, !nativeEditPending, !saving,
+              let span = projection.spans.first(where: { selection.location >= $0.range.location && selection.location <= NSMaxRange($0.range) }),
+              span.path.indices.count >= 4 else { throw NativeEditorError.unsupportedFormatting }
+        let before = document
+        let tableIndex = span.path.indices[0]
+        do { try document.removeLastPlainTableRow(at: RichTextPath([tableIndex]), selectedRow: span.path.indices[1]) }
+        catch { throw NativeEditorError.unsupportedFormatting }
+        let result = projection
+        let finalSpan = result.spans.last { $0.path.indices.first == tableIndex }
+        var position = min(finalSpan.map { NSMaxRange($0.range) } ?? 0, result.text.utf16.count)
+        while position > 0 {
+            let index = result.text.utf16.index(result.text.utf16.startIndex, offsetBy: position)
+            if String.Index(index, within: result.text) != nil { break }
+            position -= 1
+        }
+        selection = NSRange(location: position, length: 0)
+        registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
+    }
     public func appendTableColumn() throws {
         guard supportsDocumentFormatting, selectionIsInRootTable, recoverableNativeText == nil, !nativeEditPending, !saving,
               let span = projection.spans.first(where: { selection.location >= $0.range.location && selection.location <= NSMaxRange($0.range) }),

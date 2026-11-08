@@ -15,6 +15,37 @@ private actor FixturePersistence: EditorPersistence {
 
 @MainActor
 final class NativeEditorTests: XCTestCase {
+    func testDeletingTableRowKeepsCaretOutOfFollowingEmoji() throws {
+        let json = #"{"type":"doc","content":[{"type":"table","attrs":{"bid":"t"},"content":[{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"A"}]}]}]},{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"B"}]}]}]}]},{"type":"paragraph","attrs":{"bid":"p"},"content":[{"type":"text","text":"👋zzz"}]}]}"#
+        let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 0, supportsDocumentFormatting: true)
+        let lastRow = (model.projection.text as NSString).range(of: "B")
+        model.selection = NSRange(location: NSMaxRange(lastRow), length: 0)
+        try model.deleteSelectedLastTableRow()
+        XCTAssertEqual(model.projection.text, "A\n👋zzz")
+        XCTAssertEqual(model.selection.location, 1)
+        _ = try model.replace(range: model.selection, with: "X")
+        XCTAssertEqual(model.projection.text, "AX\n👋zzz")
+    }
+    func testDeleteLastTableRowRejectsOpaqueDataAndSupportsUndo() throws {
+        let json = #"{"type":"doc","content":[{"type":"table","attrs":{"bid":"t","future":"keep"},"content":[{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"الأول"}]}]}]},{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"أخير","marks":[{"type":"bold"}]}]}]}]}]}]}"#
+        let original = try RichTextDocument(json: Data(json.utf8))
+        let model = NativeEditorModel(document: original, baseRevision: 0, supportsDocumentFormatting: true)
+        XCTAssertThrowsError(try model.deleteSelectedLastTableRow()) // First row remains selected.
+        XCTAssertEqual(model.document, original)
+        model.selection = NSRange(location: model.projection.text.utf16.count, length: 0)
+        try model.deleteSelectedLastTableRow()
+        XCTAssertEqual(model.projection.text, "الأول")
+        let deleted = model.document.source
+        model.undo(); XCTAssertEqual(model.document, original)
+        model.redo(); XCTAssertEqual(model.document.source, deleted)
+        XCTAssertThrowsError(try model.deleteSelectedLastTableRow()) // Final row cannot be removed.
+        let opaque = json.replacingOccurrences(of: #""text":"أخير""#, with: #""text":"أخير","future":true"#)
+        let blocked = NativeEditorModel(document: try RichTextDocument(json: Data(opaque.utf8)), baseRevision: 0, supportsDocumentFormatting: true)
+        blocked.selection = NSRange(location: blocked.projection.text.utf16.count, length: 0)
+        let before = blocked.document.source
+        XCTAssertThrowsError(try blocked.deleteSelectedLastTableRow())
+        XCTAssertEqual(blocked.document.source, before)
+    }
     func testInsertColumnAfterSelectionPreservesTypesAndRejectsOpaqueShift() throws {
         let json = #"{"type":"doc","content":[{"type":"table","attrs":{"bid":"t","future":true},"content":[{"type":"tableRow","content":[{"type":"tableHeader","content":[{"type":"paragraph","content":[{"type":"text","text":"أ"}]}]},{"type":"tableHeader","content":[{"type":"paragraph","content":[{"type":"text","text":"ب"}]}]}]},{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"١"}]}]},{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"٢"}]}]}]}]}]}"#
         let original = try RichTextDocument(json: Data(json.utf8))
