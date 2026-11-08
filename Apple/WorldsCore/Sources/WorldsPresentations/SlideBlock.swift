@@ -107,7 +107,15 @@ public struct SlideBlock: Sendable, Equatable, Identifiable {
     public var notes: String { attributes["notes"]?.slideString ?? "" }
     public var elements: [SlideElement] { (attributes["elements"]?.slideArray ?? []).map { SlideElement(source: $0) } }
 
-    public mutating func setNotes(_ notes: String) throws { try updateAttributes { $0["notes"] = .string(notes) } }
+    public var editableNotes: String? {
+        guard let attrs = source.slideObject?["content"]?.slideObject?["attrs"]?.slideObject else { return nil }
+        guard let value = attrs["notes"] else { return "" }
+        return value.slideString
+    }
+    public mutating func setNotes(_ notes: String) throws {
+        guard editableNotes != nil else { throw SlideError.unsupportedElement }
+        try updateAttributes { $0["notes"] = .string(notes) }
+    }
     public mutating func setText(elementID: String, text: String) throws {
         try updateElement(id: elementID) { element in
             guard element["type"]?.slideString == "text" else { throw SlideError.unsupportedElement }

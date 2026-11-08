@@ -9,6 +9,7 @@ import SQLite3
     @Published var selectedID: String?
     @Published var selectedElementID: String?
     @Published var draft = ""
+    @Published var notesDraft = ""
     @Published var error: String?
     @Published var busy = false
     @Published var saved = false
@@ -23,7 +24,9 @@ import SQLite3
     var selected: SlideBlock? { slides.first { $0.id == selectedID } }
     var textElements: [SlideElement] { selected?.elements.filter { $0.type == "text" && !$0.id.isEmpty && $0.text != nil } ?? [] }
     var currentElement: SlideElement? { textElements.first { $0.id == selectedElementID } }
-    var hasUnapplied: Bool { currentElement != nil && draft != currentElement?.text }
+    var hasTextUnapplied: Bool { currentElement != nil && draft != currentElement?.text }
+    var hasNotesUnapplied: Bool { selected?.editableNotes != nil && notesDraft != selected?.editableNotes }
+    var hasUnapplied: Bool { hasTextUnapplied || hasNotesUnapplied }
     var dirty: Bool { hasUnapplied || slides != baseline }
     var canUndo: Bool { session?.canUndo == true }
     var canRedo: Bool { session?.canRedo == true }
@@ -40,6 +43,7 @@ import SQLite3
     func select(_ id: String?) {
         guard !hasUnapplied else { return }
         selectedElementID = nil; draft = ""; selectedID = id
+        notesDraft = selected?.editableNotes ?? ""
         selectElement(textElements.first?.id)
     }
     func selectElement(_ id: String?) { guard !hasUnapplied else { return }; selectedElementID = id; draft = currentElement?.text ?? "" }
@@ -49,6 +53,13 @@ import SQLite3
             try session.update(at: index) { try $0.setText(elementID: currentElement.id, text: draft) }
             self.session = session; slides = session.slides; saved = false; fixtureMediaPresent = false; error = nil
         } catch { self.error = "This text cannot be changed safely: \(error.localizedDescription)" }
+    }
+    func applyNotes() {
+        do {
+            guard var session, let index = session.slides.firstIndex(where: { $0.id == selectedID }), session.slides[index].editableNotes != nil else { return }
+            try session.update(at: index) { try $0.setNotes(notesDraft) }
+            self.session = session; slides = session.slides; saved = false; fixtureMediaPresent = false; error = nil
+        } catch { self.error = "These notes cannot be changed safely: \(error.localizedDescription)" }
     }
     func addBlankSlide() { insertSlide(duplicate: false) }
     func duplicateSelectedSlide() { insertSlide(duplicate: true) }
@@ -152,7 +163,14 @@ struct LocalPresentationEditor: View {
                 }
                 if state.currentElement != nil {
                     TextField("Slide text", text: $state.draft, axis: .vertical).accessibilityIdentifier("presentation-text")
-                    Button("Apply text") { state.applyText() }.disabled(!state.hasUnapplied)
+                    Button("Apply text") { state.applyText() }.disabled(!state.hasTextUnapplied)
+                }
+                if let notes = state.selected?.editableNotes {
+                    TextField("Speaker notes", text: $state.notesDraft, axis: .vertical).accessibilityIdentifier("presentation-notes")
+                    Button("Apply notes") { state.applyNotes() }
+                        .disabled(state.notesDraft == notes).accessibilityIdentifier("presentation-apply-notes")
+                } else if state.selected != nil {
+                    Text("These speaker notes cannot be edited safely.").accessibilityIdentifier("presentation-notes-unsupported")
                 }
                 if let selected = state.selected, selected.elements.contains(where: { $0.type != "text" }) {
                     Text("This slide contains elements that cannot be edited here.").accessibilityIdentifier("presentation-unsupported-elements")

@@ -509,7 +509,9 @@ fn presentation_refs(c: &Connection, page: &str, entries: &[(String,Value)]) -> 
 fn protected_slide(value: &Value) -> Result<Value> {
     let mut result=value.clone();
     let attrs=result.get_mut("attrs").and_then(Value::as_object_mut).ok_or_else(||anyhow::anyhow!("invalid slide attributes"))?;
-    attrs.remove("notes");
+    // Only text notes are editable. Preserve malformed or future values in
+    // the protected comparison so a save cannot silently overwrite them.
+    if attrs.get("notes").is_some_and(Value::is_string) { attrs.remove("notes"); }
     if let Some(elements)=attrs.get_mut("elements") {
         for element in elements.as_array_mut().ok_or_else(||anyhow::anyhow!("invalid slide elements"))? {
             let Some(object)=element.as_object_mut() else { continue };
@@ -671,6 +673,25 @@ mod presentation_tests {
         assert_eq!(saved["blocks"][1],old["blocks"][1]);
         assert!(save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),inputs(&old)).is_err());
         assert!(read_presentation(&path,"shared").is_err());
+        std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn malformed_speaker_notes_are_preserved_and_cannot_be_replaced() {
+        let path=fixture();
+        let c=Connection::open(&path).unwrap();
+        let original=json!({"type":"slide","attrs":{"bid":"s","notes":{"future":true},"elements":[{"id":"t","type":"text","text":"before"}]}});
+        c.execute("UPDATE blocks SET content=?1 WHERE id='s'",[original.to_string()]).unwrap(); drop(c);
+        let old=read_presentation(&path,"deck").unwrap();
+        for replacement in [json!("replacement"),json!(null),json!({"future":false})] {
+            let mut attack=inputs(&old); attack[0].content["attrs"]["notes"]=replacement;
+            assert!(save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),attack).is_err());
+            assert_eq!(read_presentation(&path,"deck").unwrap(),old);
+        }
+        let mut legitimate=inputs(&old); legitimate[0].content["attrs"]["elements"][0]["text"]=json!("after");
+        let saved=save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),legitimate).unwrap();
+        assert_eq!(saved["blocks"][0]["content"]["attrs"]["notes"],json!({"future":true}));
+        assert_eq!(saved["blocks"][0]["content"]["attrs"]["elements"][0]["text"],"after");
+        assert!(save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),inputs(&old)).is_err());
         std::fs::remove_file(path).unwrap();
     }
     #[test]

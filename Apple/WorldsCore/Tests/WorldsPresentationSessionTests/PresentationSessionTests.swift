@@ -10,6 +10,22 @@ final class PresentationSessionTests: XCTestCase {
         """
         return try SlideBlock(json: Data(json.utf8))
     }
+    func testSpeakerNotesUndoAndRejectsMalformedNotes() throws {
+        let original = try slide("one")
+        var session = try PresentationSession(slides: [original])
+        try session.update(at: 0) { try $0.setNotes("ملاحظات 🌍") }
+        let changed = session.slides[0]
+        XCTAssertEqual(changed.editableNotes, "ملاحظات 🌍")
+        XCTAssertEqual(changed.elements, original.elements)
+        XCTAssertEqual(changed.attributes["unknown"], original.attributes["unknown"])
+        session.undo(); XCTAssertEqual(session.slides[0], original)
+        session.redo(); XCTAssertEqual(session.slides[0], changed)
+        let malformed = try SlideBlock(json: Data(#"{"id":"bad","content":{"type":"slide","attrs":{"notes":{"future":true},"elements":[]}}}"#.utf8))
+        var rejected = try PresentationSession(slides: [malformed])
+        XCTAssertNil(malformed.editableNotes)
+        XCTAssertThrowsError(try rejected.update(at: 0) { try $0.setNotes("replacement") })
+        XCTAssertEqual(rejected.slides[0], malformed); XCTAssertFalse(rejected.canUndo)
+    }
     func testEditingOrderUndoAndUnknownFields() throws {
         let one = try slide("one"), two = try slide("two")
         var session = try PresentationSession(slides: [one, two])

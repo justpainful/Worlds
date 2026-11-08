@@ -1,6 +1,24 @@
 #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
 import XCTest
 final class WorldsLocalPresentationUITests: XCTestCase {
+    @MainActor func testSpeakerNotesSaveAndReopenKeepsMedia() {
+        let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-presentation-fixture"]; app.launch()
+        let page = app.descendants(matching: .any)["page.deck-test"].firstMatch
+        guard page.waitForExistence(timeout: 30) else { failure(app, "notes-page-missing"); XCTFail("Presentation page missing"); return }; page.tap()
+        let edit = app.buttons["edit-local-presentation"]
+        guard edit.waitForExistence(timeout: 20) else { failure(app, "notes-edit-missing"); XCTFail("Presentation editor missing"); return }; edit.tap()
+        let notes = app.descendants(matching: .any)["presentation-notes"].firstMatch
+        guard notes.waitForExistence(timeout: 20) else { failure(app, "notes-field-missing"); XCTFail("Notes field missing"); return }
+        notes.tap(); notes.typeText("Speaker notes")
+        let apply = app.buttons["presentation-apply-notes"]; XCTAssertTrue(apply.isEnabled); apply.tap()
+        app.buttons["Save"].tap()
+        guard app.staticTexts["presentation-edit-saved"].waitForExistence(timeout: 20) else { failure(app, "notes-save-missing"); XCTFail("Notes save missing"); return }
+        XCTAssertTrue(app.staticTexts["presentation-media-record-retained"].waitForExistence(timeout: 10))
+        app.buttons["Close"].tap(); XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
+        XCTAssertTrue(notes.waitForExistence(timeout: 20)); XCTAssertEqual(notes.value as? String, "Speaker notes")
+        XCTAssertTrue(app.staticTexts["presentation-unsupported-elements"].exists)
+        let screenshot = XCTAttachment(screenshot: app.screenshot()); screenshot.name = "presentation-notes-reopened"; screenshot.lifetime = .keepAlways; add(screenshot)
+    }
     @MainActor func testDeleteUndoRedoAndReopenKeepsAttachmentRecord() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-presentation-fixture"]; app.launch()
         let page = app.descendants(matching: .any)["page.deck-test"].firstMatch
