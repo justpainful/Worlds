@@ -1,0 +1,37 @@
+// Uses the desktop Yjs and @tiptap/y-tiptap packages on NODE_PATH.
+const Y = require('yjs');
+const tiptap = require('@tiptap/y-tiptap');
+const assert = require('assert');
+const { spawnSync } = require('child_process');
+const path = require('path');
+const doc = new Y.Doc(); doc.clientID = 123;
+const root = doc.getXmlFragment('default');
+const heading = new Y.XmlElement('heading'); heading.setAttribute('level', 2); heading.setAttribute('bid', 'block1');
+const text = new Y.XmlText(); text.insert(0, 'A😀B', { bold: {}, link: { href: 'https://example.test' } });
+heading.insert(0, [text]);
+const table = new Y.XmlElement('table'); const row = new Y.XmlElement('tableRow'); const cell = new Y.XmlElement('tableCell');
+const para = new Y.XmlElement('paragraph'); const inner = new Y.XmlText(); inner.insert(0, 'مرحبا');
+para.insert(0, [inner]); cell.insert(0, [para]); row.insert(0, [cell]); table.insert(0, [row]); root.insert(0, [heading, table]);
+const snapshot = Y.encodeStateAsUpdate(doc);
+function rust(mode, request) {
+  const args = ['run', '--quiet', '--locked', '--example', 'editor', '--', mode, Buffer.from(snapshot).toString('hex')];
+  if (request) args.push(JSON.stringify(request));
+  const p = spawnSync('cargo', args, { cwd: path.join(__dirname, '../native'), encoding: 'utf8' });
+  if (p.status !== 0) throw Error(p.stderr);
+  return Buffer.from(p.stdout.trim(), 'hex');
+}
+function normalize(n) { if (Array.isArray(n)) return n.map(normalize); if (n && typeof n === 'object') return Object.fromEntries(Object.keys(n).sort().map(k => [k, k === 'marks' ? n[k].map(normalize).sort((a,b) => a.type.localeCompare(b.type)) : normalize(n[k])])); return n; }
+assert.deepStrictEqual(normalize(JSON.parse(rust('read'))), normalize(tiptap.yXmlFragmentToProsemirrorJSON(root)));
+const update = rust('replace', { path: [0, 0], start: 1, end: 3, text: 'X' });
+assert.throws(() => rust('replace', { path: [0, 0], start: 2, end: 3, text: 'X' }));
+text.insert(4, '!'); // independent desktop edit after the Android base was captured
+Y.applyUpdate(doc, update);
+assert.equal(text.toDelta().map(x => x.insert).join(''), 'AXB!');
+assert.deepStrictEqual(text.toDelta()[0].attributes, { bold: {}, link: { href: 'https://example.test' } });
+const blockUpdate = rust('block', { bid: 'block1', start: 1, end: 3, text: 'Z' });
+const independent = new Y.Doc(); Y.applyUpdate(independent, snapshot);
+independent.getXmlFragment('default').get(0).get(0).insert(4, '!');
+Y.applyUpdate(independent, blockUpdate);
+assert.equal(independent.getXmlFragment('default').get(0).get(0).toDelta().map(x => x.insert).join(''), 'AZB!');
+assert.throws(() => rust('block', { bid: 'missing', start: 0, end: 0, text: 'x' }));
+console.log('Tiptap JSON, block-id edits, UTF-16 and concurrent desktop edits agree');

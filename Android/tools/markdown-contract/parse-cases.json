@@ -1,0 +1,114 @@
+[
+  {
+    "name": "empty",
+    "source": ""
+  },
+  {
+    "name": "blank",
+    "source": "\n\n"
+  },
+  {
+    "name": "heading",
+    "source": "# Title\n\n## Second\n\n### Third"
+  },
+  {
+    "name": "paragraph",
+    "source": "First line\nSecond line\n\nAnother"
+  },
+  {
+    "name": "unicode",
+    "source": "مرحبًا **بالعالم** 😀\nرابط [ملف](https://example.com)"
+  },
+  {
+    "name": "marks",
+    "source": "**bold *both*** ~~gone~~ ==highlight== `code`"
+  },
+  {
+    "name": "links",
+    "source": "@[Nova](page:abc) [site](https://example.com/a) [bad](two words)"
+  },
+  {
+    "name": "bad_marks",
+    "source": "open ** and ` and *"
+  },
+  {
+    "name": "bullets",
+    "source": "- one\n* two\n-\n- last"
+  },
+  {
+    "name": "tasks",
+    "source": "- [ ] open\n- [x] done\n- [X] uppercase\n- [ ]"
+  },
+  {
+    "name": "ordered",
+    "source": "2. first\n4. second\n1."
+  },
+  {
+    "name": "nested_indent",
+    "source": "- parent\n  - child\n- next"
+  },
+  {
+    "name": "quotes",
+    "source": "> first\n>> second\n> third"
+  },
+  {
+    "name": "callout",
+    "source": "> [!WARNING] Be careful\n> More"
+  },
+  {
+    "name": "prompt",
+    "source": "> [!prompt]\n> Answer"
+  },
+  {
+    "name": "empty_callout",
+    "source": "> [!note]"
+  },
+  {
+    "name": "table",
+    "source": "| A | B |\n|---|:---:|\n| one | two |"
+  },
+  {
+    "name": "table_empty",
+    "source": "||\n| --- | --- |\n| a | b |"
+  },
+  {
+    "name": "code",
+    "source": "```kotlin\nval x = 1\n  x++\n```\n\nAfter"
+  },
+  {
+    "name": "unclosed_code",
+    "source": "```text\ncontent"
+  },
+  {
+    "name": "rules",
+    "source": "---\n\n***"
+  },
+  {
+    "name": "windows",
+    "source": "a\r\nb\r\n\r\n# C\r\n"
+  },
+  {
+    "name": "line_endings",
+    "source": "  paragraph   \n  second  \n"
+  },
+  {
+    "name": "mentions",
+    "source": "@[hello](page:one) and @[x](page:two)"
+  },
+  {
+    "name": "empty_marks",
+    "source": "**** ~~ ` == **x**"
+  },
+  {
+    "name": "special",
+    "source": "### heading\ntext with $x$\n\n[empty]()"
+  },
+  {
+    "name": "emoji",
+    "source": "😀😀**bold**😀 [😀](url)"
+  },
+  {
+    "name": "unsupported",
+    "source": "![picture](asset.png)\n\n<div>html</div>"
+  }
+]
