@@ -2347,9 +2347,41 @@ class HomeTest {
         val items = drawingKeyboardShortcutGroup(app).items
         fun has(code: Int, modifiers: Int) = items.any { it.keycode == code && it.modifiers == modifiers }
         val ctrl = android.view.KeyEvent.META_CTRL_ON
-        check(items.size == 8 && has(android.view.KeyEvent.KEYCODE_B, 0) && has(android.view.KeyEvent.KEYCODE_P, 0) && has(android.view.KeyEvent.KEYCODE_H, 0) && has(android.view.KeyEvent.KEYCODE_E, 0))
+        check(items.size == 12 && has(android.view.KeyEvent.KEYCODE_B, 0) && has(android.view.KeyEvent.KEYCODE_P, 0) && has(android.view.KeyEvent.KEYCODE_H, 0) && has(android.view.KeyEvent.KEYCODE_E, 0))
         check(has(android.view.KeyEvent.KEYCODE_Z, ctrl) && has(android.view.KeyEvent.KEYCODE_Z, ctrl or android.view.KeyEvent.META_SHIFT_ON))
         check(has(android.view.KeyEvent.KEYCODE_Y, ctrl) && has(android.view.KeyEvent.KEYCODE_0, ctrl))
+        check(has(android.view.KeyEvent.KEYCODE_M, 0) && has(android.view.KeyEvent.KEYCODE_D, ctrl))
+        check(has(android.view.KeyEvent.KEYCODE_FORWARD_DEL, 0) && has(android.view.KeyEvent.KEYCODE_DEL, 0))
+    }
+
+    @Test fun drawingKeyboardSelectsClearsDeletesAndUndoes() {
+        val page = ContentStore(app, database).use { it.create("drawing", "Keyboard selection") }
+        compose.setContent { WorldsTheme { Home(model) } }; model.open(page.id)
+        compose.waitUntil(20_000) { runCatching { compose.onNodeWithContentDescription(app.getString(R.string.drawing_canvas)).assertIsDisplayed(); true }.getOrDefault(false) }
+        fun key(code: Int, meta: Int = 0) {
+            val instrumentation = InstrumentationRegistry.getInstrumentation(); val now = android.os.SystemClock.uptimeMillis()
+            instrumentation.sendKeySync(android.view.KeyEvent(now, now, android.view.KeyEvent.ACTION_DOWN, code, 0, meta))
+            instrumentation.sendKeySync(android.view.KeyEvent(now, now, android.view.KeyEvent.ACTION_UP, code, 0, meta))
+            compose.waitForIdle()
+        }
+        val canvas = compose.onNodeWithContentDescription(app.getString(R.string.drawing_canvas))
+        canvas.performTouchInput { down(Offset(center.x - 80f, center.y)); moveTo(Offset(center.x + 80f, center.y)); up() }
+        compose.waitUntil(20_000) { DrawingStore(app).use { it.loadOrCreate(page.id).getInt("revision") == 1 } }
+        key(android.view.KeyEvent.KEYCODE_M)
+        canvas.performTouchInput { down(center); up() }
+        compose.onNodeWithText(app.getString(R.string.drawing_clear_selection, 1)).assertIsDisplayed()
+        key(android.view.KeyEvent.KEYCODE_D, android.view.KeyEvent.META_CTRL_ON)
+        compose.onNodeWithText(app.getString(R.string.drawing_clear_selection, 1)).assertDoesNotExist()
+        canvas.performTouchInput { down(center); up() }
+        compose.onNodeWithText(app.getString(R.string.drawing_clear_selection, 1)).assertIsDisplayed()
+        key(android.view.KeyEvent.KEYCODE_FORWARD_DEL)
+        compose.waitUntil(20_000) { DrawingStore(app).use { it.loadOrCreate(page.id).getJSONObject("scene").getJSONArray("nodeOrder").length() == 0 } }
+        key(android.view.KeyEvent.KEYCODE_Z, android.view.KeyEvent.META_CTRL_ON)
+        compose.waitUntil(20_000) { DrawingStore(app).use { it.loadOrCreate(page.id).getJSONObject("scene").getJSONArray("nodeOrder").length() == 1 } }
+        canvas.performTouchInput { down(center); up() }
+        compose.onNodeWithText(app.getString(R.string.drawing_clear_selection, 1)).assertIsDisplayed()
+        key(android.view.KeyEvent.KEYCODE_DEL)
+        compose.waitUntil(20_000) { DrawingStore(app).use { it.loadOrCreate(page.id).getJSONObject("scene").getJSONArray("nodeOrder").length() == 0 } }
     }
 
     @Test fun pinchAndPanChangeViewportWithoutCreatingInk() {

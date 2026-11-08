@@ -377,7 +377,8 @@
     <string name="drawing_barrel_eraser">ممحاة زر القلم</string>
     <string name="drawing_barrel_eraser_hint">اضغط زر القلم الأساسي قبل لمس اللوحة. يتطلب قلمًا متوافقًا.</string>
     <string name="drawing_shortcuts_title">اختصارات لوحة المفاتيح</string>
-    <string name="drawing_shortcuts_detail">B: قلم · P: رصاص · H: تظليل · E: ممحاة\nCtrl+Z: تراجع · Ctrl+Shift+Z أو Ctrl+Y: إعادة\nCtrl+0: احتواء اللوحة</string>
+    <string name="drawing_shortcuts_detail">B: قلم · P: رصاص · H: تظليل · E: ممحاة · M: تحديد\nDelete أو Backspace: إزالة المحدد · Ctrl+D: إلغاء التحديد\nCtrl+Z: تراجع · Ctrl+Shift+Z أو Ctrl+Y: إعادة\nCtrl+0: احتواء اللوحة</string>
+    <string name="drawing_clear_selection_shortcut">إلغاء التحديد</string>
     <string name="markdown_share">مشاركة النص</string>
     <string name="markdown_share_error">تعذر فتح المشاركة. حاول مرة أخرى.</string>
     <string name="markdown_share_limit">الصفحة كبيرة جدًا للمشاركة كنص. احفظها كملف Markdown بدلًا من ذلك.</string>

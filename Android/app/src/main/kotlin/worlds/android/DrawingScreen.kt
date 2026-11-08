@@ -262,6 +262,7 @@ private fun historyAvailable(json: String): Pair<Boolean, Boolean> {
                 event.key == Key.Z && !event.isShiftPressed && canUndo -> { model.toggle(false); true }
                 ((event.key == Key.Z && event.isShiftPressed) || (event.key == Key.Y && !event.isShiftPressed)) && canRedo -> { model.toggle(true); true }
                 event.key == Key.Zero && !event.isShiftPressed -> { model.fit(); true }
+                event.key == Key.D && !event.isShiftPressed && tool == "select" && model.selectedStrokes.isNotEmpty() -> { model.selectStroke(null); true }
                 else -> false
             }
         } else if (!event.isShiftPressed) when (event.key) {
@@ -269,6 +270,8 @@ private fun historyAvailable(json: String): Pair<Boolean, Boolean> {
             Key.P -> { tool = "pencil"; true }
             Key.H -> { tool = "highlighter"; true }
             Key.E -> { tool = "eraser"; true }
+            Key.M -> { tool = "select"; true }
+            Key.Delete, Key.Backspace -> if (tool == "select" && model.selectedStrokes.isNotEmpty()) { model.removeSelectedStroke(); true } else false
             else -> false
         } else false
     }.focusRequester(drawingFocus).onFocusChanged { drawingHasFocus = it.hasFocus }.focusable().padding(16.dp)) {

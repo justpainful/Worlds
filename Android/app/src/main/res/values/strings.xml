@@ -377,7 +377,8 @@
     <string name="drawing_barrel_eraser">Stylus button eraser</string>
     <string name="drawing_barrel_eraser_hint">Hold the primary stylus button before touching the canvas. Requires a compatible pen.</string>
     <string name="drawing_shortcuts_title">Keyboard shortcuts</string>
-    <string name="drawing_shortcuts_detail">B: pen · P: pencil · H: highlighter · E: eraser\nCtrl+Z: undo · Ctrl+Shift+Z or Ctrl+Y: redo\nCtrl+0: fit canvas</string>
+    <string name="drawing_shortcuts_detail">B: pen · P: pencil · H: highlighter · E: eraser · M: select\nDelete or Backspace: remove selection · Ctrl+D: clear selection\nCtrl+Z: undo · Ctrl+Shift+Z or Ctrl+Y: redo\nCtrl+0: fit canvas</string>
+    <string name="drawing_clear_selection_shortcut">Clear selection</string>
     <string name="markdown_share">Share text</string>
     <string name="markdown_share_error">Could not open sharing. Try again.</string>
     <string name="markdown_share_limit">This page is too large to share as text. Save it as a Markdown file instead.</string>

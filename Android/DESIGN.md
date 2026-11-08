@@ -456,7 +456,7 @@ The drawing settings include an optional stylus-button eraser with an eraser ico
 ## Compact drawing controls
 On a narrow window, drawing tools stay on one row: three 48 dp icon targets, the selected tool name, and a settings icon. Selection has a visible surface and an accessible selected state. The separate history and zoom row remains immediately below. On wider windows, the labeled tool controls remain visible. Both layouts use the same actions and state, adapt to RTL, and preserve room for the canvas.
 
-Drawing settings list the implemented keyboard commands for pen, highlighter, eraser, undo, redo and fitting the canvas. The commands follow the existing desktop defaults and operate only while the drawing screen has keyboard focus. Dialogs and menus keep their own keyboard input.
+Drawing settings list the implemented keyboard commands for pen, pencil, highlighter, eraser, stroke selection, undo, redo and fitting the canvas. M opens stroke selection; Delete or Backspace removes selected strokes, and Ctrl+D clears the selection. These commands follow the existing desktop defaults and operate only while the drawing screen has keyboard focus. Dialogs and menus keep their own keyboard input. Android 11 and 15 emulator tests exercise selection, clearing, deletion and undo, and verify the keyboard shortcut helper. Physical keyboards and ChromeOS remain unverified.
 
 ## Share a page
 The Markdown export dialog offers a labeled share action beside saving and copying. Its existing explanation makes clear that the shared text is a projection and does not include attachments as files. The Android chooser appears only after the user chooses Share. Oversized text shows an error and offers file export instead; it is never silently truncated.

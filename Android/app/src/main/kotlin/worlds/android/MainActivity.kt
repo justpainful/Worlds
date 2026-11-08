@@ -129,7 +129,9 @@ internal fun drawingKeyboardShortcutGroup(context: Context): android.view.Keyboa
         item(R.string.drawing_pen, android.view.KeyEvent.KEYCODE_B), item(R.string.drawing_pencil, android.view.KeyEvent.KEYCODE_P), item(R.string.drawing_highlighter, android.view.KeyEvent.KEYCODE_H),
         item(R.string.drawing_eraser, android.view.KeyEvent.KEYCODE_E), item(R.string.drawing_undo, android.view.KeyEvent.KEYCODE_Z, ctrl),
         item(R.string.drawing_redo, android.view.KeyEvent.KEYCODE_Z, ctrl or android.view.KeyEvent.META_SHIFT_ON),
-        item(R.string.drawing_redo, android.view.KeyEvent.KEYCODE_Y, ctrl), item(R.string.drawing_fit, android.view.KeyEvent.KEYCODE_0, ctrl)))
+        item(R.string.drawing_redo, android.view.KeyEvent.KEYCODE_Y, ctrl), item(R.string.drawing_fit, android.view.KeyEvent.KEYCODE_0, ctrl),
+        item(R.string.drawing_select, android.view.KeyEvent.KEYCODE_M), item(R.string.drawing_clear_selection_shortcut, android.view.KeyEvent.KEYCODE_D, ctrl),
+        item(R.string.drawing_remove_strokes, android.view.KeyEvent.KEYCODE_FORWARD_DEL), item(R.string.drawing_remove_strokes, android.view.KeyEvent.KEYCODE_DEL)))
 }
 
 data class HomeState(
