@@ -137,7 +137,9 @@ pub(crate) mod unix {
         let before=input.metadata()?;
         if before.nlink()!=1 || before.len()>MAX_FILE { bail!("unsupported source") }
         let request=json!({"page":page,"base":base,"metadata":metadata,"expected":expected,"source_name":name.to_string_lossy(),"device":before.dev(),"inode":before.ino(),"size":before.len(),"mtime":before.mtime(),"mtime_ns":before.mtime_nsec(),"ctime":before.ctime(),"ctime_ns":before.ctime_nsec()}).to_string();
-        let read_tx=c.unchecked_transaction()?;
+        // Keep authorization, item and attachment ownership stable throughout
+        // verification. This does not lock the filesystem or other machines.
+        let read_tx=c.transaction_with_behavior(TransactionBehavior::Immediate)?;
         crate::require_personal(&read_tx,page)?;
         let prior: Option<(String,String)>=read_tx.query_row("SELECT request,result FROM native_gallery_import_completed WHERE id=?1",[&operation],|r|Ok((r.get(0)?,r.get(1)?))).optional()?;
         if let Some((_,result))=&prior {
@@ -149,7 +151,6 @@ pub(crate) mod unix {
             let valid:bool=read_tx.query_row("SELECT EXISTS(SELECT 1 FROM pages p JOIN blocks b ON b.page_id=p.id WHERE p.id=?1 AND p.kind='gallery' AND b.id=?2 AND CASE WHEN json_valid(b.content) THEN NOT EXISTS(SELECT 1 FROM json_tree(b.content) WHERE typeof(key)='text' GROUP BY parent,key HAVING count(*)>1) AND json_extract(b.content,'$.type')='galleryItem' AND json_extract(b.content,'$.attrs.attachmentId')=?3 ELSE 0 END)",params![page,block_id,operation],|r|r.get(0))?;
             if !valid { bail!("completed import item is unavailable") }
         }
-        read_tx.commit()?;
         if let Some((prior_request,result))=prior {
             let mut old_request: Value=serde_json::from_str(&prior_request)?;
             if let Some(object)=old_request.as_object_mut() {
@@ -161,7 +162,7 @@ pub(crate) mod unix {
             if old_request!=serde_json::from_str::<Value>(&request)? { bail!("conflict: import operation reused with different input") }
             // An operation record is not proof that its attachment still
             // exists. Never report a successful retry for a missing file.
-            let stored: Option<(String,i64)>=c.query_row(
+            let stored: Option<(String,i64)>=read_tx.query_row(
                 "SELECT rel_path,size FROM attachments WHERE id=?1 AND page_id=?2",
                 params![operation,page],|r|Ok((r.get(0)?,r.get(1)?))).optional()?;
             let (rel,size)=stored.ok_or_else(||anyhow::anyhow!("completed import attachment is unavailable"))?;
@@ -181,8 +182,12 @@ pub(crate) mod unix {
             let source_after=input.metadata()?; let copy_after=file.metadata()?;
             let same=|a: &std::fs::Metadata,b: &std::fs::Metadata| a.dev()==b.dev() && a.ino()==b.ino() && a.len()==b.len() && a.nlink()==b.nlink() && a.mtime()==b.mtime() && a.mtime_nsec()==b.mtime_nsec() && a.ctime()==b.ctime() && a.ctime_nsec()==b.ctime_nsec();
             if !same(&before,&source_after) || !same(&info,&copy_after) { bail!("completed import files changed during verification") }
+            require_private_copy(root,&held)?;
+            require_output_identity(&root.join("attachments"),&rel,&file,info.dev(),info.ino(),info.len())?;
+            read_tx.commit()?;
             return Ok(serde_json::from_str(&result)?);
         }
+        read_tx.commit()?;
         if let Some(cancel)=cancel { cancel.check()?; }
         let filename=crate::store::clean_file_name(&name.to_string_lossy());
         let ext=Path::new(&filename).extension().and_then(|s|s.to_str()).unwrap_or("").to_ascii_lowercase();
@@ -270,6 +275,21 @@ pub(crate) mod unix {
     mod tests {
         use super::*;
         use std::os::unix::fs::{PermissionsExt, DirBuilderExt};
+        #[test]
+        fn immediate_retry_snapshot_blocks_competing_permission_write() {
+            let root=std::env::temp_dir().canonicalize().unwrap().join(format!("gallery-retry-lock-{}",uuid::Uuid::new_v4()));
+            std::fs::DirBuilder::new().mode(0o700).create(&root).unwrap();
+            std::fs::copy(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/worlds-v11.db"),root.join("worlds.db")).unwrap();
+            let mut first=db(&root).unwrap(); let other=Connection::open(root.join("worlds.db")).unwrap();
+            other.busy_timeout(std::time::Duration::ZERO).unwrap();
+            let tx=first.transaction_with_behavior(TransactionBehavior::Immediate).unwrap();
+            crate::require_personal(&tx,"fixture-page").unwrap();
+            assert!(other.execute("UPDATE pages SET workspace_id='team' WHERE id='fixture-page'",[]).is_err());
+            assert!(crate::require_personal(&tx,"fixture-page").is_ok());
+            tx.commit().unwrap();
+            assert_eq!(other.execute("UPDATE pages SET workspace_id='team' WHERE id='fixture-page'",[]).unwrap(),1);
+            drop(other); drop(first); std::fs::remove_dir_all(root).unwrap();
+        }
         #[test]
         fn replacement_after_commit_reports_committed_without_touching_replacement() {
             let parent=std::env::temp_dir().canonicalize().unwrap().join(format!("gallery-after-commit-{}",uuid::Uuid::new_v4()));
