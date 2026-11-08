@@ -12,7 +12,7 @@ struct CollaborationHarnessApp: App {
                 Text("Disposable fixtures and local service only. No user workspace is opened.")
                 Button("Run local scenario") { model.start() }.disabled(model.running).accessibilityIdentifier("scenario.start")
                 if model.running { ProgressView() }
-                Text(model.status).textSelection(.enabled).accessibilityIdentifier("scenario.status")
+                Text(model.status).accessibilityElement(children: .ignore).accessibilityLabel(model.status).accessibilityIdentifier("scenario.status")
                 Spacer()
             }.padding().frame(minWidth: 520, minHeight: 250)
         }

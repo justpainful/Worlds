@@ -9,6 +9,22 @@ import WorldsLocalImport
 @testable import WorldsEditorPersistence
 
 final class EditorPersistenceTests: XCTestCase {
+    @MainActor func testLinkAcrossRunsPersistsAndReopens() async throws {
+        let url = try fixture()
+        try exec(#"UPDATE blocks SET content='{"type":"paragraph","attrs":{"bid":"fixture-block","dir":"rtl"},"content":[{"type":"text","text":"Hello ","marks":[{"type":"bold"}]},{"type":"text","text":"Worlds"}]}' WHERE id='fixture-block'"#, url: url)
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let model = NativeEditorModel(document: bridge.initialDocument, baseRevision: bridge.initialRevision)
+        try model.setLink(URL(string: "https://example.com"), selection: NSRange(location: 3, length: 6))
+        let expected = model.document.source
+        try await model.save(using: bridge)
+        let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(reopened.initialDocument.source, expected)
+        XCTAssertEqual(reopened.initialDocument.project().text, "Hello Worlds")
+        let restored = NativeEditorModel(document: reopened.initialDocument, baseRevision: reopened.initialRevision)
+        try restored.setLink(nil, selection: NSRange(location: 3, length: 6)); try await restored.save(using: reopened)
+        let final = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertFalse(final.initialDocument.project().spans.flatMap(\.marks).contains { value in if case .object(let mark) = value { return mark["type"] == .string("link") }; return false })
+    }
     @MainActor func testTaskListSaveToggleAndReopen() async throws {
         let url = try fixture()
         try exec(#"UPDATE blocks SET content='{"type":"paragraph","attrs":{"bid":"fixture-block"},"content":[{"type":"text","text":"Hello Worlds"}]}' WHERE id='fixture-block'"#, url: url)
@@ -25,6 +41,63 @@ final class EditorPersistenceTests: XCTestCase {
         let again = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
         let last = NativeEditorModel(document: again.initialDocument, baseRevision: again.initialRevision)
         XCTAssertEqual(last.currentListDescription, "Task incomplete")
+    }
+    @MainActor func testAppendNestedListItemsSaveAndReopen() async throws {
+        let url = try fixture()
+        try exec(#"UPDATE blocks SET content='{"type":"paragraph","attrs":{"bid":"fixture-block"},"content":[{"type":"text","text":"First"}]}' WHERE id='fixture-block'"#, url: url)
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let model = NativeEditorModel(document: bridge.initialDocument, baseRevision: bridge.initialRevision)
+        try model.makeList("bulletList")
+        try model.appendListItem(text: "Second", nested: false)
+        try model.appendListItem(text: "متداخل", nested: true)
+        let expected = model.document.source
+        model.undo(); model.redo(); XCTAssertEqual(model.document.source, expected)
+        try await model.save(using: bridge)
+        let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(reopened.initialDocument.source, expected)
+        XCTAssertEqual(reopened.initialDocument.project().text, "First\nSecond\nمتداخل")
+    }
+    @MainActor func testNestedTaskEnterAndBackspaceSurviveRealStore() async throws {
+        let url = try fixture()
+        try exec(#"UPDATE blocks SET content='{"type":"paragraph","attrs":{"bid":"fixture-block"},"content":[{"type":"text","text":"أصل"}]}' WHERE id='fixture-block'"#, url: url)
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let model = NativeEditorModel(document: bridge.initialDocument, baseRevision: bridge.initialRevision)
+        try model.makeList("taskList"); try model.appendListItem(text: "فرعي", nested: true)
+        let end = model.projection.text.utf16.count
+        _ = try model.replace(range: NSRange(location: end, length: 0), with: "\n")
+        _ = try model.replace(range: NSRange(location: end + 1, length: 0), with: "جديد")
+        _ = try model.replace(range: NSRange(location: end, length: 1), with: "")
+        let expected = model.document.source
+        try await model.save(using: bridge)
+        let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(reopened.initialDocument.source, expected)
+        XCTAssertEqual(reopened.initialDocument.project().text, "أصل\nفرعيجديد")
+    }
+    @MainActor func testConvertAndUnwrapListSurviveRealStore() async throws {
+        let url = try fixture()
+        try exec(#"UPDATE blocks SET content='{"type":"paragraph","attrs":{"bid":"fixture-block"},"content":[{"type":"text","text":"Hello Worlds"}]}' WHERE id='fixture-block'"#, url: url)
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let model = NativeEditorModel(document: bridge.initialDocument, baseRevision: bridge.initialRevision)
+        let original = model.document.source
+        try model.makeList("bulletList"); try model.makeList("orderedList"); try await model.save(using: bridge)
+        let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let restored = NativeEditorModel(document: reopened.initialDocument, baseRevision: reopened.initialRevision)
+        XCTAssertEqual(restored.currentListDescription, "Numbered list")
+        try restored.makeList("orderedList"); try await restored.save(using: reopened)
+        let final = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(final.initialDocument.source, original)
+    }
+    @MainActor func testUnwrapMultipleListItemsSurvivesRealStore() async throws {
+        let url = try fixture()
+        try exec(#"UPDATE blocks SET content='{"type":"bulletList","attrs":{"bid":"fixture-block"},"content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"First"}]}]},{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Second"}]}]}]}' WHERE id='fixture-block'"#, url: url)
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let model = NativeEditorModel(document: bridge.initialDocument, baseRevision: bridge.initialRevision)
+        try model.makeList("bulletList")
+        let expected = model.document.source
+        try await model.save(using: bridge)
+        let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(reopened.initialDocument.source, expected)
+        XCTAssertEqual(reopened.initialDocument.project().text, "First\nSecond")
     }
     private func fixture() throws -> URL {
         let source = try XCTUnwrap(Bundle.module.url(forResource: "editor-fixture", withExtension: "db"))

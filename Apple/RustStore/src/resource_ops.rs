@@ -498,9 +498,16 @@ pub fn save_presentation_deleting(path: &Path, id: &str, base: i64, expected_met
     let previous: HashSet<_> = before.iter().filter(|(_,v)|v.get("type").and_then(Value::as_str)==Some("slide")).map(|(id,_)|id.clone()).collect();
     let remaining: HashSet<_> = next_pairs.iter().filter(|(_,v)|v.get("type").and_then(Value::as_str)==Some("slide")).map(|(id,_)|id.clone()).collect();
     if remaining.is_empty() || previous.difference(&remaining).cloned().collect::<HashSet<_>>() != declared { bail!("invalid change: deleted slides must be explicitly identified") }
+    if declared.len()>1 { bail!("unsupported change: delete one slide per save") }
+    if !declared.is_empty() && before.iter().filter(|(key,_)|!declared.contains(key)).map(|(key,_)|key).ne(next_pairs.iter().map(|(key,_)|key)) { bail!("unsupported change: save reordering separately from deletion") }
     for deleted in &declared {
-        let raw: String=tx.query_row("SELECT properties FROM blocks WHERE page_id=?1 AND id=?2",rusqlite::params![id,deleted],|r|r.get(0))?;
+        let (raw,content,direction,text,kind,created,updated): (String,String,String,String,String,i64,i64)=tx.query_row("SELECT properties,content,direction,text,type,created_at,updated_at FROM blocks WHERE page_id=?1 AND id=?2",rusqlite::params![id,deleted],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?,r.get(5)?,r.get(6)?)))?;
         if !serde_json::from_str::<Value>(&raw).ok().and_then(|v|v.as_object().map(|o|o.is_empty())).unwrap_or(false) { bail!("unsupported change: slide properties cannot be restored") }
+        tx.execute_batch("CREATE TABLE IF NOT EXISTS native_presentation_deleted(id TEXT PRIMARY KEY,page_id TEXT NOT NULL,block_id TEXT NOT NULL,content TEXT NOT NULL,properties TEXT NOT NULL,direction TEXT NOT NULL,text TEXT NOT NULL,block_type TEXT NOT NULL,block_created INTEGER NOT NULL,block_updated INTEGER NOT NULL,original_order TEXT NOT NULL,remaining_order TEXT NOT NULL,created_at INTEGER NOT NULL,restored_at INTEGER)")?;
+        let recovery=uuid::Uuid::new_v4().to_string();
+        let original_order=serde_json::to_string(&before.iter().map(|(key,_)|key).collect::<Vec<_>>())?;
+        let remaining_order=serde_json::to_string(&next_pairs.iter().map(|(key,_)|key).collect::<Vec<_>>())?;
+        tx.execute("INSERT INTO native_presentation_deleted(id,page_id,block_id,content,properties,direction,text,block_type,block_created,block_updated,original_order,remaining_order,created_at) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)",rusqlite::params![recovery,id,deleted,content,raw,direction,text,kind,created,updated,original_order,remaining_order,db::now()])?;
     }
     for (block_id,old) in &before {
         if old.get("type").and_then(Value::as_str) != Some("slide") { continue }
@@ -526,6 +533,50 @@ pub fn save_presentation_deleting(path: &Path, id: &str, base: i64, expected_met
     presentation_refs(&tx,id,&next_pairs)?;
     let output = presentation_snapshot(&tx,id)?;
     tx.commit()?; Ok(output)
+}
+
+pub fn deleted_presentation_slides(path: &Path, page: &str) -> Result<Value> {
+    let mut c=open_existing(path)?; let tx=c.transaction_with_behavior(rusqlite::TransactionBehavior::Deferred)?;
+    require_personal(&tx,page)?;
+    let kind:String=tx.query_row("SELECT kind FROM pages WHERE id=?1",[page],|r|r.get(0))?;
+    if kind!="presentation" { bail!("invalid resource kind") }
+    let exists:bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='native_presentation_deleted')",[],|r|r.get(0))?;
+    let items:Vec<Value>=if exists {
+        tx.prepare("SELECT id,block_id,created_at FROM native_presentation_deleted WHERE page_id=?1 AND restored_at IS NULL ORDER BY created_at DESC,id DESC LIMIT 100")?
+            .query_map([page],|r|Ok(serde_json::json!({"id":r.get::<_,String>(0)?,"blockID":r.get::<_,String>(1)?,"createdAt":r.get::<_,i64>(2)?})))?.collect::<rusqlite::Result<_>>()?
+    } else { Vec::new() };
+    tx.commit()?; Ok(serde_json::json!({"items":items}))
+}
+
+/// Restores one native deletion record only when its recorded remaining order
+/// matches the current page. Live data, refs and assets are checked in the same transaction.
+pub fn restore_presentation_slide(path: &Path, page: &str, recovery_id: &str, base: i64, metadata: Value, expected: Vec<BlockInput>) -> Result<Value> {
+    if uuid::Uuid::parse_str(recovery_id).is_err() { bail!("invalid recovery ID") }
+    let mut c=open_existing(path)?; let tx=c.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+    check_metadata(&tx,page,base,&metadata,"presentation")?; presentation_unambiguous(&tx,page)?;
+    let current=blocks(&tx,page)?; presentation_refs(&tx,page,&current)?;
+    if current.len()!=expected.len() || current.iter().zip(&expected).any(|((id,value),entry)|id!=&entry.id || value!=&entry.content) { bail!("conflict: presentation blocks changed") }
+    type Saved=(String,String,String,String,String,String,i64,i64,String,String);
+    let saved:Option<Saved>=tx.query_row("SELECT block_id,content,properties,direction,text,block_type,block_created,block_updated,original_order,remaining_order FROM native_presentation_deleted WHERE id=?1 AND page_id=?2 AND restored_at IS NULL",rusqlite::params![recovery_id,page],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?,r.get(5)?,r.get(6)?,r.get(7)?,r.get(8)?,r.get(9)?))).optional()?;
+    let (block_id,raw,properties,direction,text,kind,created,updated,original,remaining)=saved.ok_or_else(||anyhow::anyhow!("recovery record unavailable"))?;
+    let original:Vec<String>=serde_json::from_str(&original)?; let remaining:Vec<String>=serde_json::from_str(&remaining)?;
+    let ids:Vec<String>=current.iter().map(|(id,_)|id.clone()).collect();
+    if ids!=remaining || original.iter().filter(|id|*id!=&block_id).cloned().collect::<Vec<_>>()!=remaining || original.iter().filter(|id|*id==&block_id).count()!=1 { bail!("conflict: presentation order changed") }
+    let used:bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM blocks WHERE id=?1)",[&block_id],|r|r.get(0))?;
+    if used { bail!("conflict: deleted block ID is already used") }
+    let content:Value=serde_json::from_str(&raw)?;
+    if kind!="slide" || content.get("type").and_then(Value::as_str)!=Some("slide") || content.pointer("/attrs/bid").and_then(Value::as_str)!=Some(block_id.as_str()) || content::plain_text(&content)!=text { bail!("unsupported recovery record") }
+    if !serde_json::from_str::<Value>(&properties).ok().and_then(|v|v.as_object().map(|o|o.is_empty())).unwrap_or(false) { bail!("unsupported recovery properties") }
+    let position=original.iter().position(|id|id==&block_id).ok_or_else(||anyhow::anyhow!("invalid recovery order"))?;
+    let mut next=current.clone(); next.insert(position,(block_id.clone(),content));
+    presentation_attachments(&tx,&next)?;
+    store::snapshot(&tx,page,"user",None,Some("Before slide recovery"))?;
+    let result=store::save_blocks(&tx,&store::Ctx::user(),page,next.iter().map(|(id,content)|store::BlockInput{id:id.clone(),content:content.clone()}).collect())?;
+    if !result.remapped.is_empty() { bail!("conflict: block IDs were remapped") }
+    tx.execute("UPDATE blocks SET properties=?2,direction=?3,created_at=?4,updated_at=?5 WHERE id=?1 AND page_id=?6",rusqlite::params![block_id,properties,direction,created,updated,page])?;
+    presentation_refs(&tx,page,&next)?;
+    tx.execute("UPDATE native_presentation_deleted SET restored_at=?3 WHERE id=?1 AND page_id=?2 AND restored_at IS NULL",rusqlite::params![recovery_id,page,db::now()])?;
+    let output=presentation_snapshot(&tx,page)?; tx.commit()?; Ok(output)
 }
 
 #[cfg(test)]
@@ -664,5 +715,39 @@ mod presentation_tests {
         assert!(serde_json::from_str::<Value>(&snap).unwrap()["blocks"].as_array().unwrap().iter().any(|v|v.pointer("/attrs/bid")==Some(&json!("s"))));
         assert_eq!(std::fs::read(&media).unwrap(),b"original media");
         drop(c); std::fs::remove_file(path).unwrap(); std::fs::remove_file(media).unwrap();
+    }
+    #[test]
+    fn deleted_slide_restores_after_reopen_and_rolls_back_on_failure() {
+        let path=fixture(); let c=Connection::open(&path).unwrap();
+        c.execute("INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('media','deck','image','a.png','image/png',4,'media/a.png',1)",[]).unwrap();
+        let rich=json!({"type":"slide","attrs":{"bid":"s","elements":[{"id":"a","type":"image","attachmentId":"media","future":{"keep":true}}]}});
+        let next_slide=json!({"type":"slide","attrs":{"bid":"s2","elements":[]}});
+        c.execute("UPDATE blocks SET content=?1,direction='rtl',created_at=42 WHERE id='s'",[rich.to_string()]).unwrap();
+        c.execute("INSERT INTO blocks(id,page_id,type,sort_key,content,created_at,updated_at) VALUES('s2','deck','slide',2,?1,1,1)",[next_slide.to_string()]).unwrap(); drop(c);
+        let original=read_presentation(&path,"deck").unwrap();
+        let remaining=inputs(&original).into_iter().filter(|b|b.id!="s").collect();
+        let after=save_presentation_deleting(&path,"deck",100,original["metadata"].clone(),inputs(&original),remaining,vec!["s".into()]).unwrap();
+        let ids=deleted_presentation_slides(&path,"deck").unwrap(); let recovery=ids["items"][0]["id"].as_str().unwrap();
+        let c=Connection::open(&path).unwrap();
+        c.execute("UPDATE blocks SET sort_key=-1 WHERE id='s2'",[]).unwrap(); drop(c);
+        let reordered=read_presentation(&path,"deck").unwrap();
+        assert!(restore_presentation_slide(&path,"deck",recovery,reordered["revision"].as_i64().unwrap(),reordered["metadata"].clone(),inputs(&reordered)).unwrap_err().to_string().contains("order changed"));
+        let c=Connection::open(&path).unwrap(); c.execute("UPDATE blocks SET sort_key=1 WHERE id='s2'",[]).unwrap();
+        c.execute("UPDATE pages SET workspace_id='team' WHERE id='deck'",[]).unwrap(); drop(c);
+        assert!(restore_presentation_slide(&path,"deck",recovery,after["revision"].as_i64().unwrap(),after["metadata"].clone(),inputs(&after)).is_err());
+        let c=Connection::open(&path).unwrap(); c.execute("UPDATE pages SET workspace_id=NULL WHERE id='deck'",[]).unwrap();
+        c.execute_batch("CREATE TRIGGER fail_restore BEFORE INSERT ON blocks WHEN NEW.id='s' BEGIN SELECT RAISE(ABORT,'fixture'); END;").unwrap(); drop(c);
+        assert!(restore_presentation_slide(&path,"deck",recovery,after["revision"].as_i64().unwrap(),after["metadata"].clone(),inputs(&after)).is_err());
+        assert_eq!(deleted_presentation_slides(&path,"deck").unwrap()["items"].as_array().unwrap().len(),1);
+        let c=Connection::open(&path).unwrap(); c.execute_batch("DROP TRIGGER fail_restore").unwrap(); drop(c);
+        let restored=restore_presentation_slide(&path,"deck",recovery,after["revision"].as_i64().unwrap(),after["metadata"].clone(),inputs(&after)).unwrap();
+        assert_eq!(restored["blocks"],original["blocks"]);
+        assert_eq!(read_presentation(&path,"deck").unwrap()["blocks"],original["blocks"]);
+        assert!(deleted_presentation_slides(&path,"deck").unwrap()["items"].as_array().unwrap().is_empty());
+        let c=Connection::open(&path).unwrap();
+        let (direction,created,properties):(String,i64,String)=c.query_row("SELECT direction,created_at,properties FROM blocks WHERE id='s'",[],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).unwrap();
+        assert_eq!((direction,created,properties),("rtl".into(),42,"{}".into()));
+        assert_eq!(c.query_row("SELECT count(*) FROM attachments WHERE id='media'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        drop(c); std::fs::remove_file(path).unwrap();
     }
 }

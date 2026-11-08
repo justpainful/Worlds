@@ -21,8 +21,8 @@ private actor FixtureAuthority: ArchiveAuthority {
             let copy = FileManager.default.temporaryDirectory.appendingPathComponent("rejected-harness-\(UUID().uuidString).db")
             try FileManager.default.copyItem(at: fixture, to: copy)
             let store = try SQLiteCollaborationStore(databaseURL: copy, pageID: permission.pageID, userID: permission.userID, workspaceID: permission.workspaceID)
-            try await store.appendLocal(pageID: permission.pageID, channel: 0, update: Data([0, 0]))
-            try await store.archiveRejection(pageID: permission.pageID, channel: 0, state: Data([0, 0]), reason: "Fixture rejection")
+            guard let comments = Bundle.main.url(forResource: "rejected-comments-yjs", withExtension: "bin") else { throw FixtureError.missing }
+            try await store.archiveRejection(pageID: permission.pageID, channel: 1, state: Data(contentsOf: comments), reason: "Fixture rejection")
             let access = FixtureAuthority(permission); authority = access
             service = RejectedArchiveService(store: store, authority: access, expected: permission)
         } catch { self.error = "Could not prepare the isolated fixture." }

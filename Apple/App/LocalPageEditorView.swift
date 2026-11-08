@@ -4,6 +4,7 @@ import WorldsEditorPersistence
 import WorldsNativeEditor
 import WorldsNativeWrites
 import SQLite3
+import WorldsModels
 
 /// Available only in the isolated integration build; never points at the source database.
 struct LocalPageEditorView: View {
@@ -86,14 +87,19 @@ private struct LocalPageEditorContent: View {
     let onReload: () -> Void
     let onClose: () -> Void
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        ScrollView { VStack(alignment: .leading, spacing: 12) {
             Text("Edits apply only to this local copy. Some content and input methods cannot be edited safely.").font(.body)
-            NativeEditorView(model: model).frame(minHeight: 240)
+            NativeEditorView(model: model).frame(maxWidth: .infinity, minHeight: 240)
             if let error { Text(error).accessibilityLabel(error).accessibilityIdentifier("local-page-error") }
             if reloadRequired { Button("Reload saved page", action: onReload).accessibilityIdentifier("local-page-reload") }
             if saved && !model.dirty { Text("Page saved").accessibilityIdentifier("local-page-saved") }
-        }
-        .padding()
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-link-fixture") {
+                let spans = model.projection.spans
+                let expected = JSONValue.object(["type": .string("link"), "attrs": .object(["href": .string("https://example.com")])])
+                if !spans.isEmpty && spans.allSatisfy({ $0.marks.contains(expected) }) { Text("Fixture link covers text").accessibilityIdentifier("fixture-link-covered") }
+                if !spans.isEmpty && spans.allSatisfy({ !$0.marks.contains(expected) }) { Text("Fixture link absent").accessibilityIdentifier("fixture-link-absent") }
+            }
+        }.padding() }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) { Button("Close", action: onClose).disabled(model.saving || model.nativeEditPending) }
             ToolbarItem(placement: .confirmationAction) {

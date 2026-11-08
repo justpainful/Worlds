@@ -143,15 +143,14 @@ private struct HarnessEditor: View {
     @State private var discard = false
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 12) {
+            ScrollView { VStack(alignment: .leading, spacing: 12) {
                 Text("Editing a test copy. Some content and input methods are not supported.").font(.caption)
-                NativeEditorView(model: model).frame(minHeight: 240)
+                NativeEditorView(model: model).frame(maxWidth: .infinity, minHeight: 240)
                 if let failure = state.failure { Text(failure).accessibilityIdentifier("editor-save-error") }
                 if state.saved && !model.dirty { Text("Page saved").accessibilityIdentifier("editor-page-saved") }
                 if state.reopenedHasBold { Text("Reopened bold formatting").accessibilityIdentifier("editor-reopened-bold") }
                 if state.reopenedArabic { Text("Reopened exact Arabic text").accessibilityIdentifier("editor-reopened-arabic") }
-            }
-            .padding()
+            }.padding() }
             .navigationTitle("Edit test page")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

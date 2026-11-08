@@ -4,6 +4,11 @@ import WorldsNativeWrites
 import WorldsPresentations
 
 public enum PresentationPersistenceError: Error { case invalidResponse, invalidBlock, saveInProgress, reloadRequired }
+public struct DeletedSlideRecovery: Sendable, Equatable, Identifiable {
+    public let id: UUID
+    public let blockID: String
+    public let createdAt: Int64
+}
 
 /// Experimental personal-only repository. All original blocks and metadata are
 /// supplied back to Rust as the baseline; Rust validates within a transaction.
@@ -54,6 +59,33 @@ public actor PresentationPersistence {
             let parsed = try Self.parse(value)
             guard parsed.id == pageID else { throw PresentationPersistenceError.invalidResponse }
             revision = parsed.revision; metadata = parsed.metadata; baseline = parsed.blocks
+        } catch { invalidated = true; throw error }
+    }
+    public func deletedSlides() async throws -> [DeletedSlideRecovery] {
+        guard !invalidated else { throw PresentationPersistenceError.reloadRequired }
+        guard !busy else { throw PresentationPersistenceError.saveInProgress }
+        let value = try await store.deletedPresentationSlides(id: pageID)
+        guard case .object(let result) = value, case .array(let items)? = result["items"] else { throw PresentationPersistenceError.invalidResponse }
+        return try items.map { item in
+            guard case .object(let row) = item, case .string(let rawID)? = row["id"], let id = UUID(uuidString: rawID),
+                  case .string(let blockID)? = row["blockID"], case .integer(let createdAt)? = row["createdAt"] else { throw PresentationPersistenceError.invalidResponse }
+            return DeletedSlideRecovery(id: id, blockID: blockID, createdAt: createdAt)
+        }
+    }
+    public func restoreDeletedSlide(id: UUID) async throws -> [SlideBlock] {
+        guard !invalidated else { throw PresentationPersistenceError.reloadRequired }
+        guard !busy else { throw PresentationPersistenceError.saveInProgress }
+        busy = true; defer { busy = false }
+        do {
+            let value = try await store.restorePresentationSlide(id: pageID, recoveryID: id, base: revision, expectedMetadata: metadata, expected: baseline)
+            let parsed = try Self.parse(value)
+            guard parsed.id == pageID else { throw PresentationPersistenceError.invalidResponse }
+            let slides = try parsed.blocks.compactMap { block -> SlideBlock? in
+                guard case .object(let content) = block.content, content["type"] == .string("slide") else { return nil }
+                return try SlideBlock(source: .object(["id": .string(block.id), "content": block.content]))
+            }
+            revision = parsed.revision; metadata = parsed.metadata; baseline = parsed.blocks
+            return slides
         } catch { invalidated = true; throw error }
     }
     private static func block(_ slide: SlideBlock) throws -> NativeBlockInput {

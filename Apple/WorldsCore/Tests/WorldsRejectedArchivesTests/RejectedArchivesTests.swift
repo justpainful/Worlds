@@ -52,4 +52,29 @@ final class RejectedArchivesTests: XCTestCase {
         do { _ = try await service.list(); XCTFail("A permission for another account must fail") }
         catch RejectedArchiveError.stalePermission { } catch { XCTFail("Unexpected error: \(error)") }
     }
+    func testReadableOwnerCommentsAndChannelRestriction() async throws {
+        let fixture = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-v11", withExtension: "db"))
+        let source = try XCTUnwrap(Bundle.module.url(forResource: "rejected-comments-yjs", withExtension: "bin"))
+        let destination = FileManager.default.temporaryDirectory.appendingPathComponent("archives-\(UUID().uuidString).db")
+        try FileManager.default.copyItem(at: fixture, to: destination)
+        defer { try? FileManager.default.removeItem(at: destination) }
+        let store = try SQLiteCollaborationStore(databaseURL: destination, pageID: "fixture-page", userID: "fixture-user", workspaceID: "fixture-workspace")
+        try await store.archiveRejection(pageID: "fixture-page", channel: 1, state: Data(contentsOf: source), reason: "denied")
+        try await store.archiveRejection(pageID: "fixture-page", channel: 0, state: Data([0, 0]), reason: "denied")
+        let permission = ArchivePermission(userID: "fixture-user", workspaceID: "fixture-workspace", pageID: "fixture-page", generation: "fixture")
+        let authority = FixtureAuthority(permission)
+        let service = RejectedArchiveService(store: store, authority: authority, expected: permission)
+        let page = try await service.list()
+        let commentsID = try XCTUnwrap(page.items.first(where: { $0.channel == 1 })?.id)
+        let contentsID = try XCTUnwrap(page.items.first(where: { $0.channel == 0 })?.id)
+        let comments = try await service.drawingComments(id: commentsID)
+        XCTAssertEqual(comments.map(\.body), ["تعليقي 🌍", "my reply"])
+        do { _ = try await service.copyableDrawingComments(id: commentsID); XCTFail("Export permission is required") }
+        catch RejectedArchiveError.accessUnavailable { } catch { XCTFail("Unexpected error: \(error)") }
+        do { _ = try await service.drawingComments(id: contentsID); XCTFail("Content channel is not a comment archive") }
+        catch CollaborationStorageError.denied { } catch { XCTFail("Unexpected error: \(error)") }
+        await authority.revoke()
+        do { _ = try await service.drawingComments(id: commentsID); XCTFail("Revoked authority must fail") }
+        catch RejectedArchiveError.accessUnavailable { } catch { XCTFail("Unexpected error: \(error)") }
+    }
 }

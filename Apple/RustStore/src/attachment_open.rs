@@ -14,11 +14,11 @@ pub(crate) fn open_directory(root: &Path) -> Result<File> {
     let fd = unsafe { libc::open(slash.as_ptr(), libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC | libc::O_NOFOLLOW) };
     if fd < 0 { return Err(std::io::Error::last_os_error().into()); }
     let mut directory = unsafe { OwnedFd::from_raw_fd(fd) };
-    for part in components {
+    for (index,part) in components.enumerate() {
         let Component::Normal(name) = part else { bail!("invalid root component") };
         let name = CString::new(name.as_bytes())?;
         let fd = unsafe { libc::openat(directory.as_raw_fd(), name.as_ptr(), libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC | libc::O_NOFOLLOW) };
-        if fd < 0 { return Err(std::io::Error::last_os_error().into()); }
+        if fd < 0 { return Err(anyhow::Error::new(std::io::Error::last_os_error()).context(format!("no-follow directory component {index}"))); }
         directory = unsafe { OwnedFd::from_raw_fd(fd) };
     }
     Ok(File::from(directory))

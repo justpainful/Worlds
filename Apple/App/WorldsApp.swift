@@ -339,7 +339,7 @@ private struct WorldsLibraryView: View {
     private var sidebarSelection: Binding<String?> {
         Binding(get: { selectedID }, set: { newSelection in
             #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("--ui-testing-fixture") {
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-fixture") || ProcessInfo.processInfo.arguments.contains("--ui-testing-local-copy-fixture") {
                 print("[Worlds fixture navigation] selection \(selectedID ?? "nil") -> \(newSelection ?? "nil")")
             }
             #endif

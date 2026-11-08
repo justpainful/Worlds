@@ -32,6 +32,7 @@ struct NativeListMarker: Identifiable, Equatable {
     let rightToLeft: Bool
     let path: [Int]
     let depth: Int
+    let empty: Bool
 }
 
 @MainActor
@@ -91,7 +92,7 @@ public final class NativeEditorModel: ObservableObject {
                             let label = type == "bulletList" ? "•" : (type == "orderedList" ? "\(number)." : (checked == true ? "☑" : "☐"))
                             let text = span.map { NSMaxRange($0.range) <= ns.length ? ns.substring(with: $0.range) : "" } ?? ""
                             result.append(NativeListMarker(id: childPath.map { String($0) }.joined(separator: "."), location: offset, label: label, checked: checked,
-                                text: text.isEmpty ? "Empty task" : text, rightToLeft: (span?.direction ?? itemDirection) == "rtl", path: childPath, depth: depth))
+                                text: text.isEmpty ? "Empty task" : text, rightToLeft: (span?.direction ?? itemDirection) == "rtl", path: childPath, depth: depth, empty: text.isEmpty))
                         }
                     }
                     walk(child, path: childPath, direction: dir, depth: depth + (["bulletList", "orderedList", "taskList"].contains(type) ? 1 : 0))
@@ -133,6 +134,29 @@ public final class NativeEditorModel: ObservableObject {
         guard range.location != NSNotFound, range.location >= 0, range.length >= 0,
               range.location <= Int.max - range.length else { throw NativeEditorError.invalidSelection }
         let before = document
+        if range.length == 0, replacement == "\n",
+           let span = projection.spans.first(where: { range.location >= $0.range.location && range.location <= NSMaxRange($0.range) }),
+           listMarkers.contains(where: { span.path.indices.starts(with: $0.path) }) {
+            do { try document.splitListItem(at: span.path, offset: range.location - span.range.location) }
+            catch { throw NativeEditorError.crossesUnsupportedBoundary }
+            registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
+            let caret = NSRange(location: range.location + 1, length: 0); selection = caret; return caret
+        }
+        if range.length == 1, replacement.isEmpty, range.location < projection.text.utf16.count,
+           (projection.text as NSString).substring(with: range) == "\n",
+           let marker = listMarkers.first(where: { $0.location == range.location + 1 }) {
+            do { try document.mergeListItem(at: RichTextPath(marker.path)) }
+            catch { throw NativeEditorError.crossesUnsupportedBoundary }
+            registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
+            let caret = NSRange(location: range.location, length: 0); selection = caret; return caret
+        }
+        if range.length == 0, !replacement.isEmpty, !replacement.contains("\n"),
+           let marker = listMarkers.first(where: { $0.location == range.location && $0.empty }) {
+            do { try document.insertIntoEmptyListItem(at: RichTextPath(marker.path), text: replacement) }
+            catch { throw NativeEditorError.crossesUnsupportedBoundary }
+            registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
+            let caret = NSRange(location: range.location + replacement.utf16.count, length: 0); selection = caret; return caret
+        }
         let matches = projection.spans.filter { span in
             range.location >= span.range.location && NSMaxRange(range) <= NSMaxRange(span.range)
         }
@@ -217,13 +241,27 @@ public final class NativeEditorModel: ObservableObject {
         registerRestore(before)
         generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
     }
-    /// Change only a complete text node's link. Unknown marks and attributes on
-    /// an existing link survive. URL activation remains the host's decision.
+    /// Keep opaque marks on whole nodes. Splitting or spanning nodes is only
+    /// permitted when every affected sibling has fully understood marks.
     public func setLink(_ url: URL?, selection range: NSRange) throws {
         guard recoverableNativeText == nil else { throw NativeEditorError.unrecoveredNativeText }
-        guard let span = projection.spans.first(where: { $0.range == range && range.length > 0 }) else { throw NativeEditorError.unsupportedFormatting }
-        if let url {
-            guard let scheme = url.scheme?.lowercased(), ["https", "http", "mailto"].contains(scheme) else { throw NativeEditorError.unsupportedFormatting }
+        guard !nativeEditPending, !saving, range.location != NSNotFound, range.location >= 0, range.length > 0,
+              range.location <= Int.max - range.length, url.map({ RichLinkSafety.isAllowed($0.absoluteString) }) ?? true else { throw NativeEditorError.unsupportedFormatting }
+        let hits = projection.spans.filter { NSIntersectionRange($0.range, range).length > 0 }
+        guard let span = hits.first else { throw NativeEditorError.unsupportedFormatting }
+        if hits.count > 1 || span.range != range {
+            var cursor = range.location, pieces: [(path: RichTextPath, range: NSRange)] = []
+            for hit in hits {
+                let overlap = NSIntersectionRange(hit.range, range)
+                guard overlap.location == cursor else { throw NativeEditorError.unsupportedFormatting }
+                pieces.append((hit.path, NSRange(location: overlap.location - hit.range.location, length: overlap.length)))
+                cursor = NSMaxRange(overlap)
+            }
+            guard cursor == NSMaxRange(range) else { throw NativeEditorError.unsupportedFormatting }
+            let before = document
+            do { try document.setLinkAcrossRuns(pieces, href: url?.absoluteString) } catch { throw NativeEditorError.unsupportedFormatting }
+            registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil; selection = range
+            return
         }
         var marks = span.marks
         let links = marks.indices.filter { index in
@@ -231,6 +269,11 @@ public final class NativeEditorModel: ObservableObject {
             return true
         }
         guard links.count <= 1 else { throw NativeEditorError.unsupportedFormatting }
+        if let index = links.first, case .object(let link) = marks[index] {
+            guard case .object(let attrs)? = link["attrs"], case .string(let existing)? = attrs["href"],
+                  RichLinkSafety.isAllowed(existing) else { throw NativeEditorError.unsupportedFormatting }
+            guard Set(link.keys) == Set(["type", "attrs"]), Set(attrs.keys) == Set(["href"]) else { throw NativeEditorError.unsupportedFormatting }
+        }
         if let url {
             var link: [String: JSONValue] = ["type": .string("link")]
             if let index = links.first, case .object(let existing) = marks[index] { link = existing }
@@ -255,7 +298,11 @@ public final class NativeEditorModel: ObservableObject {
               let span = projection.spans.first(where: { selection.location >= $0.range.location && NSMaxRange(selection) <= NSMaxRange($0.range) }),
               let block = span.path.indices.first else { throw NativeEditorError.unsupportedFormatting }
         let before = document
-        do { try document.makeList(blockIndex: block, kind: kind) } catch { throw NativeEditorError.unsupportedFormatting }
+        do {
+            if let marker = listMarkers.filter({ span.path.indices.starts(with: $0.path) }).max(by: { $0.path.count < $1.path.count }), marker.depth > 0 {
+                try document.convertNestedList(at: RichTextPath(Array(marker.path.dropLast())), kind: kind)
+            } else { try document.toggleList(blockIndex: block, kind: kind) }
+        } catch { throw NativeEditorError.unsupportedFormatting }
         registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
     }
     public func toggleTask() throws {
@@ -271,6 +318,22 @@ public final class NativeEditorModel: ObservableObject {
         let before = document
         do { try document.toggleTaskItemNode(at: RichTextPath(marker.path)) } catch { throw NativeEditorError.unsupportedFormatting }
         registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
+    }
+    func addListItem(to marker: NativeListMarker, text: String, nested: Bool) throws {
+        guard listMarkers.contains(marker), recoverableNativeText == nil, !nativeEditPending, !saving else { throw NativeEditorError.unsupportedFormatting }
+        let before = document
+        let newPath: RichTextPath
+        do { newPath = try document.appendListItem(after: RichTextPath(marker.path), text: text, nested: nested) }
+        catch { throw NativeEditorError.unsupportedFormatting }
+        registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
+        if let span = projection.spans.first(where: { $0.path.indices.starts(with: newPath.indices) }) {
+            selection = NSRange(location: NSMaxRange(span.range), length: 0)
+        }
+    }
+    public func appendListItem(text: String, nested: Bool) throws {
+        guard let span = projection.spans.first(where: { selection.location >= $0.range.location && selection.location <= NSMaxRange($0.range) }),
+              let marker = listMarkers.filter({ span.path.indices.starts(with: $0.path) }).max(by: { $0.path.count < $1.path.count }) else { throw NativeEditorError.unsupportedFormatting }
+        try addListItem(to: marker, text: text, nested: nested)
     }
     public func report(_ error: Error) { errorMessage = error.localizedDescription }
     public func setNativeEditPending(_ value: Bool) { nativeEditPending = value }

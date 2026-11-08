@@ -29,8 +29,12 @@ final class LocalGalleryImporterTests: XCTestCase {
         guard case .object(let snapshot) = value, case .integer(let revision)? = snapshot["revision"], let metadata = snapshot["metadata"], let blocks = snapshot["blocks"] else { return XCTFail("Invalid gallery fixture") }
         let expected = try JSONDecoder().decode([NativeBlockInput].self, from: JSONEncoder().encode(blocks))
         let importer = try LocalGalleryImporter(copy: copy), operation = UUID()
-        let first = try await importer.importFile(source: media, galleryID: "gallery-test", base: revision, metadata: metadata, expected: expected, operationID: operation)
-        let retry = try await importer.importFile(source: media, galleryID: "gallery-test", base: revision, metadata: metadata, expected: expected, operationID: operation)
+        let first: JSONValue
+        do { first = try await importer.importFile(source: media, galleryID: "gallery-test", base: revision, metadata: metadata, expected: expected, operationID: operation) }
+        catch { return XCTFail("Initial import failed: \(error)") }
+        let retry: JSONValue
+        do { retry = try await importer.importFile(source: media, galleryID: "gallery-test", base: revision, metadata: metadata, expected: expected, operationID: operation) }
+        catch { return XCTFail("Idempotent retry failed: \(error)") }
         XCTAssertEqual(first, retry)
         XCTAssertEqual(try Data(contentsOf: database), sourceBytes)
         XCTAssertEqual(try Data(contentsOf: media), Data("fixture media".utf8))

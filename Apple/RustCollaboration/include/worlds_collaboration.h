@@ -38,9 +38,12 @@ int32_t worlds_store_ack(const WorldsStore *store, int64_t channel, int64_t thro
 int32_t worlds_store_reject(const WorldsStore *store, int64_t channel, const char *archive_id, const uint8_t *state, size_t len, const char *reason);
 /* Read-only archived Yjs update; output must be freed on success. */
 int32_t worlds_store_rejected_read(const WorldsStore *store, const char *archive_id, WorldsBuffer *out);
+int32_t worlds_store_rejected_read_channel(const WorldsStore *store, const char *archive_id, int64_t channel, WorldsBuffer *out);
 /* LE u64 count, u8 has-next, then each item's LE u64 id length, UTF-8 id,
    LE i64 channel/time/size, LE u64 reason length and UTF-8 reason. */
 int32_t worlds_store_rejected_list(const WorldsStore *store, int32_t has_before, int64_t before_time, const char *before_id, WorldsBuffer *out);
+/* Read-only JSON extraction; caller must authenticate owner and release output. */
+int32_t worlds_rejected_comments(const uint8_t *data, size_t len, const char *owner, WorldsBuffer *out);
 #ifdef __cplusplus
 }
 #endif

@@ -1,5 +1,6 @@
 import SwiftUI
 import WorldsRichText
+import WorldsModels
 
 enum NativePastePolicy {
     private static let unsupported: Set<String> = ["public.html", "public.rtf", "com.apple.flat-rtfd", "com.apple.rtfd", "com.apple.webarchive", "public.png", "public.jpeg", "public.tiff", "public.image", "public.file-url"]
@@ -10,36 +11,66 @@ enum NativePastePolicy {
 /// and whether to save using its own authorized persistence implementation.
 public struct NativeEditorView: View {
     @ObservedObject private var model: NativeEditorModel
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var confirmDiscard = false
+    @State private var addItem = false
+    @State private var addTarget: NativeListMarker?
+    @State private var addNested = false
+    @State private var itemText = ""
+    @State private var showLink = false
+    @State private var linkText = ""
+    @State private var linkSelection = NSRange(location: 0, length: 0)
+    @State private var linkSource: JSONValue?
     public init(model: NativeEditorModel) { self.model = model }
     public var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             VStack(alignment: .leading, spacing: 8) {
-                HStack {
+                ScrollView(.vertical) { LazyVGrid(columns: [GridItem(.adaptive(minimum: dynamicTypeSize.isAccessibilitySize ? 160 : 100), spacing: 8)], alignment: .leading, spacing: 8) {
                     Button("Undo") { model.undo() }.keyboardShortcut("z", modifiers: .command).disabled(!model.undoManager.canUndo)
                     Button("Redo") { model.redo() }.keyboardShortcut("z", modifiers: [.command, .shift]).disabled(!model.undoManager.canRedo)
                     Button("Bold") { format("bold") }.keyboardShortcut("b", modifiers: .command)
                     Button("Italic") { format("italic") }.keyboardShortcut("i", modifiers: .command)
                     Button("Underline") { format("underline") }.keyboardShortcut("u", modifiers: .command)
-                }
-                .buttonStyle(.borderless)
+                    Button("Link") {
+                        guard model.selection.length > 0 else { model.report(NativeEditorError.unsupportedFormatting); return }
+                        linkSelection = model.selection; linkSource = model.document.source; linkText = ""; showLink = true
+                    }.accessibilityIdentifier("editor-link")
+                    Button("Remove link") { do { try model.setLink(nil, selection: model.selection) } catch { model.report(error) } }
+                        .accessibilityIdentifier("editor-remove-link")
+                }.buttonStyle(.bordered).controlSize(.large).fixedSize(horizontal: false, vertical: true) }
+                .accessibilityIdentifier("editor-format-toolbar")
+                .scrollIndicators(.visible)
+                .frame(maxHeight: dynamicTypeSize.isAccessibilitySize ? 200 : 120)
                 .disabled(model.nativeEditPending || model.saving)
-                ScrollView(.horizontal) {
-                    HStack {
+                ScrollView(.vertical) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: dynamicTypeSize.isAccessibilitySize ? 160 : 100), spacing: 8)], alignment: .leading, spacing: 8) {
                         Button("Bullets") { list("bulletList") }
                         Button("Numbered") { list("orderedList") }
                         Button("Checklist") { list("taskList") }
                         Button("Toggle task") { do { try model.toggleTask() } catch { model.report(error) } }
-                    }.buttonStyle(.borderless)
-                }.disabled(model.nativeEditPending || model.saving)
+                    }.buttonStyle(.bordered).controlSize(.large).fixedSize(horizontal: false, vertical: true)
+                }
+                .accessibilityIdentifier("editor-list-toolbar")
+                .scrollIndicators(.visible)
+                .frame(maxHeight: dynamicTypeSize.isAccessibilitySize ? 150 : 100)
+                .disabled(model.nativeEditPending || model.saving)
                 if let description = model.currentListDescription { Text(description).font(.caption).accessibilityIdentifier("editor-list-status") }
-                ForEach(model.listMarkers.filter { $0.checked != nil }) { marker in
-                    Button("\(marker.checked == true ? "Mark incomplete" : "Mark complete"): \(marker.text)") {
-                        do { try model.toggleTask(marker: marker) } catch { model.report(error) }
+                if !model.listMarkers.isEmpty { ScrollView {
+                ForEach(model.listMarkers) { marker in
+                    VStack(alignment: .leading) {
+                        if let checked = marker.checked {
+                            Button("\(checked ? "Mark incomplete" : "Mark complete"): \(marker.text)") {
+                                do { try model.toggleTask(marker: marker) } catch { model.report(error) }
+                            }.accessibilityIdentifier("editor-task.\(marker.id)")
+                        }
+                        Button("Add next item") { addTarget = marker; addNested = false; itemText = ""; addItem = true }
+                            .accessibilityIdentifier("editor-add-item.\(marker.id)")
+                        Button("Add nested item") { addTarget = marker; addNested = true; itemText = ""; addItem = true }
+                            .accessibilityIdentifier("editor-add-nested.\(marker.id)")
                     }
-                    .accessibilityIdentifier("editor-task.\(marker.id)")
                     .disabled(model.nativeEditPending || model.saving)
                 }
+                }.frame(maxHeight: 160) }
                 NativeTextSurface(model: model)
             }
             .disabled(model.recoverableNativeText != nil)
@@ -55,6 +86,24 @@ public struct NativeEditorView: View {
             Button("Discard", role: .destructive) { model.discardRejectedNativeText() }
             Button("Cancel", role: .cancel) { }
         }
+        .alert(addNested ? "Add nested item" : "Add list item", isPresented: $addItem) {
+            TextField("Item text", text: $itemText)
+            Button("Add") {
+                guard let addTarget else { return }
+                do { try model.addListItem(to: addTarget, text: itemText, nested: addNested) } catch { model.report(error) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { Text("Adding after a non-final item is unavailable when it would move protected content.") }
+        .alert("Link address", isPresented: $showLink) {
+            TextField("https://example.com", text: $linkText)
+            Button("Apply link") {
+                guard linkSource == model.document.source, RichLinkSafety.isAllowed(linkText), let url = URL(string: linkText) else {
+                    model.report(NativeEditorError.unsupportedFormatting); return
+                }
+                do { try model.setLink(url, selection: linkSelection) } catch { model.report(error) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { Text("Select text and enter an HTTP, HTTPS, or email address.") }
     }
     private func format(_ mark: String) {
         do { try model.toggleMark(mark, selection: model.selection) }
@@ -191,23 +240,35 @@ private struct NativeTextSurface: UIViewRepresentable {
 #elseif canImport(AppKit)
 import AppKit
 
-private final class EditorTextView: NSTextView {
-    weak var editorModel: NativeEditorModel?
-    var markers: [NativeListMarker] = [] { didSet { if oldValue != markers { needsDisplay = true } } }
-    override var undoManager: UndoManager? { nil }
+private final class ListMarkerOverlay: NSView {
+    weak var editor: EditorTextView?
+    override var isFlipped: Bool { true }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
     override func draw(_ dirtyRect: NSRect) {
-        super.draw(dirtyRect)
-        guard let manager = layoutManager, let storage = textStorage else { return }
-        let font = self.font ?? NSFont.systemFont(ofSize: NSFont.systemFontSize)
-        for marker in markers where marker.location <= storage.length {
+        guard let editor, let manager = editor.layoutManager, let storage = editor.textStorage else { return }
+        let font = editor.font ?? NSFont.systemFont(ofSize: NSFont.systemFontSize)
+        for marker in editor.markers where marker.location <= storage.length {
             let line: NSRect
             if marker.location == storage.length { line = manager.extraLineFragmentRect }
             else { let glyph = manager.glyphIndexForCharacter(at: marker.location); line = manager.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil) }
             let indent = CGFloat(min(marker.depth, 3)) * 10
             let x: CGFloat = marker.rightToLeft ? bounds.width - 28 - indent : 4 + indent
-            (marker.label as NSString).draw(at: NSPoint(x: x, y: line.minY + textContainerInset.height), withAttributes: [.font: font, .foregroundColor: NSColor.secondaryLabelColor])
+            (marker.label as NSString).draw(at: NSPoint(x: x, y: line.minY + editor.textContainerInset.height), withAttributes: [.font: font, .foregroundColor: NSColor.secondaryLabelColor])
         }
     }
+}
+private final class EditorTextView: NSTextView {
+    weak var editorModel: NativeEditorModel?
+    private let markerOverlay = ListMarkerOverlay()
+    var markers: [NativeListMarker] = [] { didSet { if oldValue != markers { markerOverlay.needsDisplay = true } } }
+    override var undoManager: UndoManager? { nil }
+    func installMarkerOverlay() {
+        markerOverlay.editor = self
+        markerOverlay.frame = bounds
+        markerOverlay.autoresizingMask = [.width, .height]
+        addSubview(markerOverlay, positioned: .above, relativeTo: nil)
+    }
+    func redrawMarkers() { markerOverlay.needsDisplay = true }
     override func paste(_ sender: Any?) {
         if NativePastePolicy.rejects((NSPasteboard.general.types ?? []).map(\.rawValue)) {
             editorModel?.report(NativeEditorError.unsupportedRichPaste)
@@ -231,6 +292,7 @@ private struct NativeTextSurface: NSViewRepresentable {
         view.isRichText = false
         view.allowsUndo = false
         view.textContainer?.widthTracksTextView = true
+        view.installMarkerOverlay()
         scroll.documentView = view
         scroll.hasVerticalScroller = true
         return scroll
@@ -243,6 +305,7 @@ private struct NativeTextSurface: NSViewRepresentable {
         view.markers = model.listMarkers
         let value = model.attributedText
         if !view.attributedString().isEqual(to: value) { view.textStorage?.setAttributedString(value) }
+        view.redrawMarkers()
         let selection = model.selection
         if NSMaxRange(selection) <= value.length, view.selectedRange() != selection { view.setSelectedRange(selection) }
     }

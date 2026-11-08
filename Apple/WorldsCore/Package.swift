@@ -100,6 +100,16 @@ let package = Package(
 
 // The write bridge is present only after building the native XCFramework.
 // Read-only clients continue to build before the optional binary exists.
+package.products.append(.library(name: "WorldsPresentationSession", targets: ["WorldsPresentationSession"]))
+package.targets.append(.target(name: "WorldsPresentationSession", dependencies: ["WorldsPresentations"], exclude: ["README.md"]))
+package.targets.append(.testTarget(name: "WorldsPresentationSessionTests", dependencies: ["WorldsPresentationSession", "WorldsPresentations"]))
+
+if rustStoreAvailable && ProcessInfo.processInfo.environment["WORLDS_FIXTURE_BUNDLE"] == "1" {
+    package.products.append(.library(name: "WorldsFixtureBundleImport", targets: ["WorldsFixtureBundleImport"]))
+    package.targets.append(.target(name: "WorldsFixtureBundleImport", dependencies: ["WorldsRustStore"], exclude: ["README.md"], linkerSettings: [.linkedLibrary("sqlite3"), .linkedFramework("Security"), .linkedFramework("SystemConfiguration"), .linkedLibrary("resolv"), .linkedLibrary("iconv")]))
+    package.targets.append(.testTarget(name: "WorldsFixtureBundleImportTests", dependencies: ["WorldsFixtureBundleImport"], resources: [.copy("worlds-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]))
+}
+
 if rustStoreAvailable {
     package.products.append(.library(name: "WorldsLocalGalleryImport", targets: ["WorldsLocalGalleryImport"]))
     package.targets.append(.target(name: "WorldsLocalGalleryImport", dependencies: ["WorldsLocalImport", "WorldsNativeWrites", "WorldsModels"]))
@@ -143,7 +153,7 @@ if rustStoreAvailable {
 if collaborationAvailable {
     package.products.append(.library(name: "WorldsRejectedArchives", targets: ["WorldsRejectedArchives"]))
     package.targets.append(.target(name: "WorldsRejectedArchives", dependencies: ["WorldsCollaboration"], exclude: ["DESIGN.md", "README.md"]))
-    package.targets.append(.testTarget(name: "WorldsRejectedArchivesTests", dependencies: ["WorldsRejectedArchives", "WorldsCollaboration"], resources: [.copy("worlds-collab-v11.db")]))
+    package.targets.append(.testTarget(name: "WorldsRejectedArchivesTests", dependencies: ["WorldsRejectedArchives", "WorldsCollaboration"], resources: [.copy("worlds-collab-v11.db"), .copy("rejected-comments-yjs.bin")]))
     package.products.append(.library(name: "WorldsCollaborationEditor", targets: ["WorldsCollaborationEditor"]))
     package.targets.append(.target(name: "WorldsCollaborationEditor", dependencies: ["WorldsModels", "WorldsRichText", "WorldsCollaboration"], exclude: ["README.md"]))
     package.targets.append(.testTarget(name: "WorldsCollaborationEditorTests", dependencies: ["WorldsCollaborationEditor", "WorldsModels", "WorldsRichText", "WorldsCollaboration"]))

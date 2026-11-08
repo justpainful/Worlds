@@ -6,6 +6,9 @@ edition = "2021"
 [lib]
 crate-type = ["staticlib", "rlib"]
 
+[features]
+fixture-bundle = []
+
 [dependencies]
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }

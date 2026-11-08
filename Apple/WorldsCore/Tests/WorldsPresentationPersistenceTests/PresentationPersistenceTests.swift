@@ -64,6 +64,16 @@ final class PresentationPersistenceTests: XCTestCase {
         try await store.save(slides: remaining, deleting: ["slide"])
         let reopened = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
         XCTAssertEqual(reopened.initialSlides.map(\.id), ["slide2"])
+        let recoveries = try await reopened.deletedSlides()
+        XCTAssertEqual(recoveries.count, 1)
+        let recovery = try XCTUnwrap(recoveries.first)
+        XCTAssertEqual(recovery.blockID, "slide")
+        let restored = try await reopened.restoreDeletedSlide(id: recovery.id)
+        XCTAssertEqual(restored.map(\.id), ["slide", "slide2"])
+        let pending = try await reopened.deletedSlides()
+        XCTAssertTrue(pending.isEmpty)
+        let reopenedAgain = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        XCTAssertEqual(reopenedAgain.initialSlides.map(\.id), ["slide", "slide2"])
         var db: OpaquePointer?
         XCTAssertEqual(sqlite3_open_v2(path.path, &db, SQLITE_OPEN_READONLY, nil), SQLITE_OK)
         let handle = try XCTUnwrap(db); defer { sqlite3_close(handle) }

@@ -33,6 +33,15 @@ jobs:
           grep -E 'testRecognitionMatchesModifiedSourceCorpus.*passed' logs/swift-test.log
           grep -E 'testMarkersTrackEveryTaskAndNumberedStart.*passed' logs/swift-test.log
           grep -E 'testNestedAndEmptyTaskMarkersRemainEditableWithoutChangingText.*passed' logs/swift-test.log
+          grep -E 'testAppendItemsKeepsUnknownSiblingAndSupportsUndo.*passed' logs/swift-test.log
+          grep -E 'testConvertAndUnwrapListWithUndoAndProtectCheckedTasks.*passed' logs/swift-test.log
+          grep -E 'testUnwrapMultipleItemsAndConvertNestedWithoutLosingUnknownBlock.*passed' logs/swift-test.log
+          grep -E 'testNestedTaskEnterBackspaceRTLAndUndo.*passed' logs/swift-test.log
+          grep -E 'testLinkAcrossRTLTextRunsAndUnsafeRejection.*passed' logs/swift-test.log
+          grep -E 'testUnsafeExistingLinkAndOpaqueSiblingRemainUnchanged.*passed' logs/swift-test.log
+          grep -E 'testListEnterRejectsUnknownSiblingAndBackspaceRejectsDifferentTaskState.*passed' logs/swift-test.log
+          grep -E 'testEditingOrderUndoAndUnknownFields.*passed' logs/swift-test.log
+          grep -E 'testRejectsInvalidAndPreservesSession.*passed' logs/swift-test.log
           grep -E 'testCreateListsAndToggleTaskWithUndoRedo.*passed' logs/swift-test.log
           grep -E 'testListCreationRejectsUnknownContent.*passed' logs/swift-test.log
           grep -E 'testPartialArabicFormattingRoundTripsAndUndoPreservesOpaqueBlocks.*passed' logs/swift-test.log
@@ -505,6 +514,10 @@ jobs:
               grep -E 'testConflictKeepsDraftUntilConfirmedReload.*passed' "logs/local-page-editor-$device.log" || result=1
               grep -E 'testCreateChecklistSaveAndReopen.*passed' "logs/local-page-editor-$device.log" || result=1
               grep -E 'testMultipleTaskItemsToggleAndReopen.*passed' "logs/local-page-editor-$device.log" || result=1
+              grep -E 'testAppendListItemsAndReopen.*passed' "logs/local-page-editor-$device.log" || result=1
+              grep -E 'testUnwrapMultipleBulletsAndReopen.*passed' "logs/local-page-editor-$device.log" || result=1
+              grep -E 'testTaskReturnAndBackspaceSaveAndReopen.*passed' "logs/local-page-editor-$device.log" || result=1
+              grep -E 'testLinkAcrossTextRunsSaveRemoveAndReopenRTL.*passed' "logs/local-page-editor-$device.log" || result=1
             else
               result=1
             fi
@@ -964,6 +977,7 @@ jobs:
           grep -q 'checked_save_refuses_ambiguous_content_and_unrecognized_reference_index ... ok' logs/rust-store-tests.log
           grep -q 'checked_save_rolls_back_if_reference_rebuild_is_blocked ... ok' logs/rust-store-tests.log
           grep -q 'slide_reorder_roundtrips_media_and_unknown_elements_even_when_file_missing ... ok' logs/rust-store-tests.log
+          grep -q 'deleted_slide_restores_after_reopen_and_rolls_back_on_failure ... ok' logs/rust-store-tests.log
           grep -q 'explicit_slide_delete_keeps_shared_assets_snapshots_and_rolls_back ... ok' logs/rust-store-tests.log
           grep -q 'refuses_unknown_element_loss_slide_removal_and_stale_refs_atomically ... ok' logs/rust-store-tests.log
           grep -q 'identity_probe_rejects_swapped_main_wal_and_shm_before_write ... ok' logs/rust-store-tests.log
@@ -1006,6 +1020,11 @@ jobs:
           grep -q 'testImportedLocalPageEditSurvivesReopenAndPreservesSource' logs/editor-persistence-discovery.log
           grep -q 'testUnappliedNativeInputBlocksRealStoreUntilExplicitDiscard' logs/editor-persistence-discovery.log
           grep -q 'testPartialFormattingSurvivesRealStoreReopen' logs/editor-persistence-discovery.log
+          grep -q 'testAppendNestedListItemsSaveAndReopen' logs/editor-persistence-discovery.log
+          grep -q 'testConvertAndUnwrapListSurviveRealStore' logs/editor-persistence-discovery.log
+          grep -q 'testUnwrapMultipleListItemsSurvivesRealStore' logs/editor-persistence-discovery.log
+          grep -q 'testNestedTaskEnterAndBackspaceSurviveRealStore' logs/editor-persistence-discovery.log
+          grep -q 'testLinkAcrossRunsPersistsAndReopens' logs/editor-persistence-discovery.log
           grep -q 'testTaskListSaveToggleAndReopen' logs/editor-persistence-discovery.log
       - name: Test editor persistence on macOS
         shell: bash
@@ -1023,6 +1042,11 @@ jobs:
           grep -q 'testImportedLocalPageEditSurvivesReopenAndPreservesSource' logs/editor-persistence-macos.log
           grep -q 'testUnappliedNativeInputBlocksRealStoreUntilExplicitDiscard' logs/editor-persistence-macos.log
           grep -q 'testPartialFormattingSurvivesRealStoreReopen' logs/editor-persistence-macos.log
+          grep -E 'testAppendNestedListItemsSaveAndReopen.*passed' logs/editor-persistence-macos.log
+          grep -E 'testConvertAndUnwrapListSurviveRealStore.*passed' logs/editor-persistence-macos.log
+          grep -E 'testUnwrapMultipleListItemsSurvivesRealStore.*passed' logs/editor-persistence-macos.log
+          grep -E 'testNestedTaskEnterAndBackspaceSurviveRealStore.*passed' logs/editor-persistence-macos.log
+          grep -E 'testLinkAcrossRunsPersistsAndReopens.*passed' logs/editor-persistence-macos.log
           grep -q 'testTaskListSaveToggleAndReopen' logs/editor-persistence-macos.log
       - name: Build experimental project editor views
         shell: bash
@@ -1171,6 +1195,11 @@ jobs:
           grep -E "Test Case .*testImportedLocalPageEditSurvivesReopenAndPreservesSource.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testUnappliedNativeInputBlocksRealStoreUntilExplicitDiscard.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testPartialFormattingSurvivesRealStoreReopen.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testAppendNestedListItemsSaveAndReopen.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testConvertAndUnwrapListSurviveRealStore.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testUnwrapMultipleListItemsSurvivesRealStore.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testNestedTaskEnterAndBackspaceSurviveRealStore.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testLinkAcrossRunsPersistsAndReopens.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testTaskListSaveToggleAndReopen.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testProjectUsesNativeStoreAndRejectsSameTimestampChange.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testUndoAndFullBaselineConflictOnRealStore.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
@@ -1280,6 +1309,7 @@ jobs:
           grep -q 'testRejectionWaitsForPersistedLocalWriteBeforeArchiving' logs/collaboration-discovery.log
           grep -q 'testRejectedArchiveListAndReadRespectAccount' logs/collaboration-discovery.log
           grep -q 'testRealSQLiteArchiveRefusesRevocationAndDoesNotRequeue' logs/collaboration-discovery.log
+          grep -q 'testReadableOwnerCommentsAndChannelRestriction' logs/collaboration-discovery.log
           grep -q 'testServiceRejectsPermissionForAnotherAccount' logs/collaboration-discovery.log
           grep -q 'testParallelCRDTAllocationApplyAndFree' logs/collaboration-discovery.log
           grep -q 'testDefaultSocketLifecycleWithLocalRefusal' logs/collaboration-discovery.log
@@ -1328,6 +1358,7 @@ jobs:
           set -o pipefail
           swift test --package-path Apple/WorldsCore --filter WorldsRejectedArchivesTests 2>&1 | tee logs/rejected-archives-macos.log
           grep -E 'testRealSQLiteArchiveRefusesRevocationAndDoesNotRequeue.*passed' logs/rejected-archives-macos.log
+          grep -E 'testReadableOwnerCommentsAndChannelRestriction.*passed' logs/rejected-archives-macos.log
           grep -E 'testServiceRejectsPermissionForAnotherAccount.*passed' logs/rejected-archives-macos.log
       - name: Test collaboration bridge on iOS simulator
         shell: bash
@@ -1353,6 +1384,7 @@ jobs:
           grep -q 'testRejectionWaitsForPersistedLocalWriteBeforeArchiving' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testRejectedArchiveListAndReadRespectAccount' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -E "Test Case .*testRealSQLiteArchiveRefusesRevocationAndDoesNotRequeue.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
+          grep -E "Test Case .*testReadableOwnerCommentsAndChannelRestriction.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -E "Test Case .*testServiceRejectsPermissionForAnotherAccount.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -E 'testParallelCRDTAllocationApplyAndFree.*passed' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testDefaultSocketLifecycleWithLocalRefusal' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
@@ -1477,6 +1509,9 @@ jobs:
             2>&1 | tee logs/collaboration-editor-rust.log
           grep -q 'concurrent_insertions_converge_without_losing_either_edit ... ok' logs/collaboration-editor-rust.log
           grep -q 'rejects_stale_content_surrogate_boundaries_and_rich_formatting ... ok' logs/collaboration-editor-rust.log
+          cargo test --locked --manifest-path Apple/RustCollaboration/Cargo.toml --test rejected_comments -- --nocapture 2>&1 | tee logs/rejected-comments-rust.log
+          grep -E 'yjs_fixture_extracts_only_visible_owner_drawing_comments.*ok' logs/rejected-comments-rust.log
+          grep -E 'ffi_extracts_same_owner_filtered_comments.*ok' logs/rejected-comments-rust.log
           cargo test --locked --manifest-path Apple/RustCollaboration/Cargo.toml --test store -- --nocapture \
             2>&1 | tee logs/collaboration-store-rust.log
           grep -q 'editor_transaction_rejects_stale_and_rolls_back_outbox_failure ... ok' logs/collaboration-store-rust.log
@@ -1784,4 +1819,52 @@ jobs:
         with:
           name: Worlds-macOS-package-build-log
           path: logs/
+          if-no-files-found: warn
+
+  experimental-fixture-bundle:
+    name: Experimental fixture-only attachment bundle
+    runs-on: macos-26
+    timeout-minutes: 40
+    env:
+      WORLDS_FIXTURE_BUNDLE: "1"
+      WORLDS_REQUIRE_NATIVE_WRITES: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app/Contents/Developer
+      - uses: dtolnay/rust-toolchain@1.99.1
+      - name: Build fixture-only RustStore
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p logs
+          bash Apple/RustStore/scripts/build-apple.sh 2>&1 | tee logs/fixture-build.log
+          test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
+      - name: Test isolated Rust FFI
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo test --locked --manifest-path Apple/RustStore/Cargo.toml --features fixture-bundle fixture_bundle_ffi_restricts_paths_and_copies_synthetic_data -- --nocapture 2>&1 | tee logs/fixture-rust.log
+          grep -E 'fixture_bundle_ffi_restricts_paths_and_copies_synthetic_data.*ok' logs/fixture-rust.log
+      - name: Test isolated Swift bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          swift test --package-path Apple/WorldsCore --filter WorldsFixtureBundleImportTests 2>&1 | tee logs/fixture-swift.log
+          grep -E 'testFixtureBundleCopiesDataAndLeavesSourceUntouched.*passed' logs/fixture-swift.log
+          grep -E 'testMissingAttachmentDoesNotPublishBundle.*passed' logs/fixture-swift.log
+      - name: Test fixture harness
+        shell: bash
+        run: |
+          set -euo pipefail
+          brew install xcodegen
+          xcodegen generate --spec Apple/AttachmentBundleHarness/project.yml
+          xcodebuild test -project Apple/AttachmentBundleHarness/WorldsAttachmentBundleHarness.xcodeproj -scheme AttachmentBundleHarness-macOS -destination 'platform=macOS' -resultBundlePath "$PWD/logs/attachment-bundle.xcresult" CODE_SIGNING_ALLOWED=NO 2>&1 | tee logs/fixture-ui.log
+          grep -E 'testFixtureSelectionAndRealBundleImport.*passed' logs/fixture-ui.log
+      - name: Preserve isolated logs and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Worlds-experimental-fixture-bundle-results
+          path: logs
           if-no-files-found: warn

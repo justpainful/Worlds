@@ -158,6 +158,9 @@ impl SyncStore {
     /// Returns an immutable Yjs update for inspection. It never modifies the
     /// live document, clears the archive, or queues a change for transmission.
     pub fn rejected_read(&self, id: &str) -> Result<Vec<u8>> {
+        self.rejected_read_channel(id,None)
+    }
+    pub fn rejected_read_channel(&self, id: &str, required: Option<i64>) -> Result<Vec<u8>> {
         use yrs::updates::decoder::Decode;
         if id.is_empty() || id.len() > 256 { return Err(StoreError::Invalid); }
         let tx = self.conn.unchecked_transaction()?;
@@ -165,6 +168,7 @@ impl SyncStore {
         let row: Option<(i64, i64)> = tx.query_row("SELECT channel,LENGTH(data) FROM sync_rejected_snapshots WHERE id=?1 AND page_id=?2 AND owner_id=?3",params![id,self.page,self.user],|r|Ok((r.get(0)?,r.get(1)?))).optional()?;
         let (channel,size) = row.ok_or(StoreError::Denied)?;
         valid_channel(channel)?;
+        if required.is_some_and(|expected| expected != channel) { return Err(StoreError::Denied); }
         if !(0..=64*1024*1024).contains(&size) { return Err(StoreError::Invalid); }
         let bytes: Vec<u8> = tx.query_row("SELECT data FROM sync_rejected_snapshots WHERE id=?1 AND page_id=?2 AND owner_id=?3",params![id,self.page,self.user],|r|r.get(0))?;
         yrs::Update::decode_v1(&bytes).map_err(|_| StoreError::Invalid)?;

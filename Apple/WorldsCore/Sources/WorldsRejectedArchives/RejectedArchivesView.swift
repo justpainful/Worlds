@@ -10,6 +10,9 @@ import AppKit
 private final class ArchiveViewModel: ObservableObject {
     @Published var items: [RejectedArchiveInfo] = []
     @Published var selected: RejectedArchiveInfo?
+    @Published var comments: [RejectedDrawingComment] = []
+    @Published var selectedComment: RejectedDrawingComment?
+    @Published var canCopyComment = false
     @Published var next: RejectedArchiveCursor?
     @Published var busy = false
     @Published var message: String?
@@ -20,7 +23,7 @@ private final class ArchiveViewModel: ObservableObject {
         busy = true; defer { busy = false }
         do {
             let page = try await service.list(before: more ? next : nil)
-            if more { items.append(contentsOf: page.items) } else { items = page.items; selected = nil }
+            if more { items.append(contentsOf: page.items) } else { items = page.items; selected = nil; comments = []; selectedComment = nil; canCopyComment = false }
             next = page.next; message = nil
         } catch { clear(); message = "The archive is unavailable. Check your current access and try again." }
     }
@@ -28,26 +31,29 @@ private final class ArchiveViewModel: ObservableObject {
         guard !busy else { return }
         busy = true; defer { busy = false }
         do {
-            _ = try await service.snapshot(id: item.id)
-            selected = item; message = nil
+            if item.channel == 1 { comments = try await service.drawingComments(id: item.id); canCopyComment = try await service.canExportComments() }
+            else { _ = try await service.snapshot(id: item.id); comments = []; canCopyComment = false }
+            selected = item; selectedComment = nil; message = nil
         } catch { clear(); message = "This archive is unavailable or access has changed." }
     }
-    func copy() async {
-        guard !busy, let item = selected else { return }
+    func copySelectedComment() async {
+        guard !busy, let archive = selected, let chosen = selectedComment else { return }
         busy = true; defer { busy = false }
         do {
-            let data = try await service.snapshot(id: item.id)
+            let fresh = try await service.copyableDrawingComments(id: archive.id)
+            let matches = fresh.filter { $0.threadID == chosen.threadID && $0.commentID == chosen.commentID }
+            guard matches.count == 1, matches[0] == chosen else { throw RejectedArchiveError.invalidSelection }
             try Task.checkCancellation()
             #if canImport(UIKit)
-            UIPasteboard.general.string = data.base64EncodedString()
+            UIPasteboard.general.string = chosen.body
             #elseif canImport(AppKit)
             NSPasteboard.general.clearContents()
-            guard NSPasteboard.general.setString(data.base64EncodedString(), forType: .string) else { throw RejectedArchiveError.invalidSelection }
+            guard NSPasteboard.general.setString(chosen.body, forType: .string) else { throw RejectedArchiveError.invalidSelection }
             #endif
-            message = "Technical snapshot copied."
-        } catch { clear(); message = "The snapshot could not be copied. Check your current access." }
+            message = "Comment copied."
+        } catch { clear(); message = "The comment could not be copied. Check your current access." }
     }
-    private func clear() { items = []; selected = nil; next = nil }
+    private func clear() { items = []; selected = nil; comments = []; selectedComment = nil; canCopyComment = false; next = nil }
 }
 
 /// An isolated review view. It cannot retransmit or modify an archive.
@@ -58,7 +64,7 @@ public struct RejectedArchivesView: View {
     public var body: some View {
         List {
             Section {
-                Text("These local snapshots may include earlier shared content. Copying exports technical Yjs data, not readable text.")
+                Text("These local copies may include earlier shared comments. Only your visible drawing comments are shown here.")
                     .font(.footnote).foregroundStyle(.secondary)
                 if let message = model.message { Text(message).accessibilityIdentifier("archive.message") }
             }
@@ -80,7 +86,24 @@ public struct RejectedArchivesView: View {
                     LabeledContent("Channel", value: item.channel == 0 ? "Content" : "Comments")
                     LabeledContent("Size", value: ByteCountFormatter.string(fromByteCount: item.size, countStyle: .file))
                     Text(item.reason).textSelection(.enabled)
-                    Button("Copy technical snapshot") { Task { await model.copy() } }.disabled(model.busy)
+                }
+                if item.channel == 1 {
+                    Section("Your drawing comments") {
+                        if model.comments.isEmpty { Text("No visible comments by this account.").foregroundStyle(.secondary) }
+                        ForEach(Array(model.comments.enumerated()), id: \.offset) { _, comment in
+                            Button { model.selectedComment = comment } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(comment.body).lineLimit(3)
+                                    Text(Date(timeIntervalSince1970: comment.createdAt / 1000), style: .date).font(.caption).foregroundStyle(.secondary)
+                                }
+                            }.disabled(model.busy).accessibilityIdentifier("archive.comment.row.\(comment.commentID)")
+                        }
+                        if let comment = model.selectedComment {
+                            Text(comment.body).accessibilityIdentifier("archive.comment")
+                            Button("Copy selected comment") { Task { await model.copySelectedComment() } }.disabled(model.busy || !model.canCopyComment)
+                            if !model.canCopyComment { Text("Current permission does not allow comment export.").font(.caption).foregroundStyle(.secondary) }
+                        }
+                    }
                 }
             }
         }

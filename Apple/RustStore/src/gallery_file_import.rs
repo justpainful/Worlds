@@ -2,7 +2,7 @@
 //! The private copy directory must not be writable by an untrusted process.
 #[cfg(unix)]
 pub(crate) mod unix {
-    use anyhow::{bail, Result};
+    use anyhow::{bail, Context, Result};
     use rusqlite::{params, Connection, OptionalExtension, TransactionBehavior};
     use serde_json::{json, Value};
     use std::{fs::{File, OpenOptions}, io::{Read, Write}, os::{fd::AsRawFd, unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt}}, path::Path};
@@ -83,10 +83,10 @@ pub(crate) mod unix {
     }
     fn import_with_hooks(root: &Path, source: &Path, page: &str, base: i64, metadata: Value, expected: Vec<BlockInput>, operation: &str, after_create: impl FnOnce() -> Result<()>, after_intent: impl FnOnce() -> Result<()>, after_file_create: impl FnOnce() -> Result<()>) -> Result<Value> {
         let operation=uuid::Uuid::parse_str(operation)?.simple().to_string();
-        let _lock=lock(root)?; let mut c=db(root)?; recover_locked(&mut c,root)?;
+        let _lock=lock(root).context("validate local copy directory")?; let mut c=db(root).context("open local copy database")?; recover_locked(&mut c,root).context("recover previous import")?;
         let parent=source.parent().ok_or_else(||anyhow::anyhow!("invalid source"))?;
         let name=source.file_name().ok_or_else(||anyhow::anyhow!("invalid source"))?;
-        let mut input=crate::attachment_open::open_confined(parent,Path::new(name))?;
+        let mut input=crate::attachment_open::open_confined(parent,Path::new(name)).context("open scoped source file")?;
         let before=input.metadata()?;
         if before.nlink()!=1 || before.len()>MAX_FILE { bail!("unsupported source") }
         let request=json!({"page":page,"base":base,"metadata":metadata,"expected":expected,"source":source.to_string_lossy(),"device":before.dev(),"inode":before.ino(),"size":before.len(),"mtime":before.mtime(),"mtime_ns":before.mtime_nsec(),"ctime":before.ctime(),"ctime_ns":before.ctime_nsec()}).to_string();
@@ -104,15 +104,15 @@ pub(crate) mod unix {
         let id=operation.clone(); let rel=format!("native-import/{id}/asset.{ext}");
         let attachments=root.join("attachments");
         match std::fs::DirBuilder::new().mode(0o700).create(&attachments) { Ok(()) => { File::open(root)?.sync_all()?; }, Err(e) if e.kind()==std::io::ErrorKind::AlreadyExists => {}, Err(e) => return Err(e.into()) }
-        crate::attachment_open::open_directory(&attachments)?;
+        crate::attachment_open::open_directory(&attachments).context("validate attachment directory")?;
         let folder=attachments.join("native-import");
         match std::fs::create_dir(&folder) { Ok(()) => {}, Err(e) if e.kind()==std::io::ErrorKind::AlreadyExists => {}, Err(e) => return Err(e.into()) }
-        crate::attachment_open::open_directory(&folder)?;
+        crate::attachment_open::open_directory(&folder).context("validate import directory")?;
         File::open(&attachments)?.sync_all()?;
         let item_dir=folder.join(&id);
         let mut builder=std::fs::DirBuilder::new(); builder.mode(0o700); builder.create(&item_dir)?;
         File::open(&folder)?.sync_all()?;
-        let item_handle=crate::attachment_open::open_directory(&item_dir)?;
+        let item_handle=crate::attachment_open::open_directory(&item_dir).context("validate new import directory")?;
         let item_meta=item_handle.metadata()?;
         after_create()?;
         c.execute("INSERT INTO native_gallery_import_intents_v2(id,rel_path,dir_device,dir_inode) VALUES(?1,?2,?3,?4)",params![id,rel,item_meta.dev() as i64,item_meta.ino() as i64])?;
@@ -148,7 +148,7 @@ pub(crate) mod unix {
                 if let Err(error)=recover_locked(&mut c,root) { bail!("committed: gallery import succeeded but recovery cleanup is pending: {error}") }
                 Ok(value)
             },
-            Err(error) => { recover_locked(&mut c,root)?; Err(error) },
+            Err(error) => { recover_locked(&mut c,root).context("recover failed import")?; Err(error) },
         }
     }
 

@@ -10,9 +10,11 @@ out_dir="$package_dir/Artifacts/WorldsRustStore.xcframework"
 command -v xcodebuild >/dev/null
 command -v rustup >/dev/null
 command -v lipo >/dev/null
+fixture_flags=()
+if [[ "${WORLDS_FIXTURE_BUNDLE:-0}" == "1" ]]; then fixture_flags=(--features fixture-bundle); fi
 for target in aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios aarch64-apple-darwin x86_64-apple-darwin; do
   rustup target add "$target"
-  IPHONEOS_DEPLOYMENT_TARGET=17.0 MACOSX_DEPLOYMENT_TARGET=14.0 cargo build --locked --release --manifest-path "$store_dir/Cargo.toml" --target "$target"
+  IPHONEOS_DEPLOYMENT_TARGET=17.0 MACOSX_DEPLOYMENT_TARGET=14.0 cargo build --locked --release --manifest-path "$store_dir/Cargo.toml" --target "$target" "${fixture_flags[@]}"
 done
 
 mkdir -p "$build_dir/simulator" "$build_dir/macos" "$build_dir/headers" "$package_dir/Artifacts"

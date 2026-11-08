@@ -39,11 +39,13 @@ private struct Request: Encodable, Sendable {
     var source: String? = nil
     var operationID: String? = nil
     var deleting: [String]? = nil
+    var recoveryID: String? = nil
     enum CodingKeys: String, CodingKey {
         case operation, path, page, base, title, parent, blocks, expected, metadata, deleting
         case expectedMetadata = "expected_metadata"
         case source
         case operationID = "operation_id"
+        case recoveryID = "recovery_id"
     }
 }
 private struct Response: Decodable {
@@ -79,6 +81,12 @@ public actor NativePersonalStore {
     }
     public func readPresentation(id: String) async throws -> JSONValue {
         try await call(Request(operation: "read_presentation", path: url.path, page: id))
+    }
+    public func deletedPresentationSlides(id: String) async throws -> JSONValue {
+        try await call(Request(operation: "deleted_presentation_slides", path: url.path, page: id))
+    }
+    public func restorePresentationSlide(id: String, recoveryID: UUID, base: Int64, expectedMetadata: JSONValue, expected: [NativeBlockInput]) async throws -> JSONValue {
+        try await call(Request(operation: "restore_presentation_slide", path: url.path, page: id, base: base, expected: expected, expectedMetadata: expectedMetadata, recoveryID: recoveryID.uuidString.lowercased()))
     }
     public func savePresentation(id: String, base: Int64, expectedMetadata: JSONValue, expected: [NativeBlockInput], blocks: [NativeBlockInput], deleting: [String] = []) async throws -> JSONValue {
         try await call(Request(operation: "save_presentation", path: url.path, page: id, base: base, blocks: blocks, expected: expected, expectedMetadata: expectedMetadata, deleting: deleting))

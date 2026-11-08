@@ -1,4 +1,4 @@
-//! Experimental combined import. Never exposed to the application.
+//! Experimental combined import. Debug-only fixture bridge; not product-enabled.
 //! Path and metadata checks do not establish atomic source identity for SQLite.
 #[cfg(unix)]
 pub(crate) mod unix {
@@ -100,6 +100,9 @@ pub(crate) mod unix {
         let source_canonical=source.canonicalize()?;
         let private_canonical=private_root.canonicalize()?;
         if private_canonical.starts_with(&source_canonical) { bail!("private staging must not be inside the source directory") }
+        let private_dir=crate::attachment_open::open_directory(private_root)?;
+        let private_meta=private_dir.metadata()?;
+        if private_meta.uid()!=unsafe { libc::geteuid() } || private_meta.mode() & 0o077 != 0 { bail!("private staging directory required") }
         let source_dir=crate::attachment_open::open_directory(source)?;
         let attachments=source.join("attachments");
         let attachment_dir=crate::attachment_open::open_directory(&attachments)?;
@@ -151,7 +154,7 @@ pub(crate) mod unix {
         fn fixture() -> (PathBuf,PathBuf,PathBuf) {
             let root=std::env::temp_dir().canonicalize().unwrap().join(format!("worlds-bundle-test-{}",uuid::Uuid::new_v4()));
             let source=root.join("source"); let private=root.join("private");
-            std::fs::create_dir_all(source.join("attachments/2026-11")).unwrap(); std::fs::create_dir(&private).unwrap();
+            std::fs::create_dir_all(source.join("attachments/2026-11")).unwrap(); std::fs::DirBuilder::new().mode(0o700).create(&private).unwrap();
             let dbpath=source.join("worlds.db");
             std::fs::copy(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/worlds-v11.db"),&dbpath).unwrap();
             let db=Connection::open(&dbpath).unwrap();
@@ -168,6 +171,24 @@ pub(crate) mod unix {
             assert!(!copy.parent().unwrap().join(".incomplete").exists());
             assert_eq!(std::fs::read(source.join("attachments/2026-11/a.bin")).unwrap(),b"safe");
             assert_eq!(std::fs::read_dir(&private).unwrap().count(),1);
+            std::fs::remove_dir_all(root).unwrap();
+        }
+        #[test]
+        fn fixture_bundle_ffi_restricts_paths_and_copies_synthetic_data() {
+            let (root,source,private)=fixture();
+            let request=serde_json::json!({"operation":"import_fixture_attachment_bundle","source":source,"private_root":private}).to_string();
+            let ptr=unsafe { crate::worlds_store_call(request.as_ptr(),request.len()) };
+            assert!(!ptr.is_null());
+            let value:serde_json::Value=serde_json::from_str(unsafe { std::ffi::CStr::from_ptr(ptr) }.to_str().unwrap()).unwrap();
+            unsafe { crate::worlds_store_free(ptr) };
+            assert_eq!(value["ok"],true,"{value}");
+            let copy=Path::new(value["value"]["path"].as_str().unwrap());
+            assert_eq!(std::fs::read(copy.parent().unwrap().join("attachments/2026-11/a.bin")).unwrap(),b"safe");
+            let blocked=serde_json::json!({"operation":"import_fixture_attachment_bundle","source":"/","private_root":private}).to_string();
+            let ptr=unsafe { crate::worlds_store_call(blocked.as_ptr(),blocked.len()) };
+            let value:serde_json::Value=serde_json::from_str(unsafe { std::ffi::CStr::from_ptr(ptr) }.to_str().unwrap()).unwrap();
+            unsafe { crate::worlds_store_free(ptr) };
+            assert_eq!(value["ok"],false);
             std::fs::remove_dir_all(root).unwrap();
         }
         #[test]

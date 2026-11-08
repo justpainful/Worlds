@@ -1,0 +1,45 @@
+name: WorldsAttachmentBundleHarness
+options:
+  deploymentTarget:
+    iOS: "17.0"
+    macOS: "14.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    GENERATE_INFOPLIST_FILE: YES
+    CODE_SIGNING_ALLOWED: NO
+packages:
+  WorldsCore:
+    path: ../WorldsCore
+targets:
+  AttachmentBundleHarness-macOS:
+    type: application
+    platform: macOS
+    sources:
+      - App
+      - path: Fixtures/worlds-v11.db
+        buildPhase: resources
+    dependencies:
+      - package: WorldsCore
+        product: WorldsFixtureBundleImport
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.worlds.test.bundle.macos
+  AttachmentBundleHarness-macOS-UITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources: [UITests]
+    dependencies:
+      - target: AttachmentBundleHarness-macOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.worlds.test.bundle.macos.uitests
+        TEST_TARGET_NAME: AttachmentBundleHarness-macOS
+schemes:
+  AttachmentBundleHarness-macOS:
+    build:
+      targets:
+        AttachmentBundleHarness-macOS: all
+        AttachmentBundleHarness-macOS-UITests: [test]
+    test:
+      targets: [AttachmentBundleHarness-macOS-UITests]

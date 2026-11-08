@@ -13,8 +13,9 @@ public struct ArchivePermission: Sendable, Equatable {
     public let pageID: String
     /// Changes whenever the login or authorization state changes.
     public let generation: String
-    public init(userID: String, workspaceID: String, pageID: String, generation: String) {
-        self.userID = userID; self.workspaceID = workspaceID; self.pageID = pageID; self.generation = generation
+    public let canExportComments: Bool
+    public init(userID: String, workspaceID: String, pageID: String, generation: String, canExportComments: Bool = false) {
+        self.userID = userID; self.workspaceID = workspaceID; self.pageID = pageID; self.generation = generation; self.canExportComments = canExportComments
     }
 }
 
@@ -48,5 +49,22 @@ public actor RejectedArchiveService {
         let result = try await store.readRejectedSnapshot(id: id)
         try await verify()
         return result
+    }
+    public func drawingComments(id: String) async throws -> [RejectedDrawingComment] {
+        guard !id.isEmpty else { throw RejectedArchiveError.invalidSelection }
+        try await verify()
+        let data = try await store.readRejectedSnapshot(id: id, channel: 1)
+        try await verify()
+        let comments = try RejectedDrawingCommentReader.extract(snapshot: data, owner: expected.userID)
+        try await verify()
+        return comments
+    }
+    public func copyableDrawingComments(id: String) async throws -> [RejectedDrawingComment] {
+        guard expected.canExportComments else { throw RejectedArchiveError.accessUnavailable }
+        return try await drawingComments(id: id)
+    }
+    public func canExportComments() async throws -> Bool {
+        try await verify()
+        return expected.canExportComments
     }
 }

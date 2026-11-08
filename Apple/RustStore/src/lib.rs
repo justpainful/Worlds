@@ -211,6 +211,8 @@ pub fn trash_page(path: &Path, page: &str, base: i64) -> Result<()> {
 #[serde(tag = "operation", rename_all = "snake_case")]
 enum Request {
     SqliteInfo,
+    #[cfg(any(debug_assertions, feature = "fixture-bundle"))]
+    ImportFixtureAttachmentBundle { source: String, private_root: String },
     ImportLocalSnapshot { source: String, private_root: String },
     ValidateDrawingScene { scene: Value },
     LoadPersonalDrawing { path: String, page: String },
@@ -220,6 +222,8 @@ enum Request {
     AutomationDecline { path: String, action_id: String },
     ReadResource { path: String, page: String },
     ReadPresentation { path: String, page: String },
+    DeletedPresentationSlides { path: String, page: String },
+    RestorePresentationSlide { path: String, page: String, recovery_id: String, base: i64, expected_metadata: Value, expected: Vec<BlockInput> },
     SavePresentation { path: String, page: String, base: i64, expected_metadata: Value, expected: Vec<BlockInput>, blocks: Vec<BlockInput>, #[serde(default)] deleting: Vec<String> },
     SaveProject { path: String, page: String, base: i64, expected_metadata: Value, metadata: Value },
     SaveGallery { path: String, page: String, base: i64, expected_metadata: Value, metadata: Value, expected: Vec<BlockInput>, blocks: Vec<BlockInput> },
@@ -234,6 +238,18 @@ enum Request {
 fn dispatch(bytes: &[u8]) -> Result<Value> {
     let request: Request = serde_json::from_slice(bytes)?;
     match request {
+        #[cfg(any(debug_assertions, feature = "fixture-bundle"))]
+        Request::ImportFixtureAttachmentBundle { source, private_root } => {
+            #[cfg(unix)] {
+                let temp=std::env::temp_dir().canonicalize()?;
+                let source_path=Path::new(&source); let root_path=Path::new(&private_root);
+                let source_resolved=source_path.canonicalize()?; let root_resolved=root_path.canonicalize()?;
+                if source_resolved == temp || root_resolved == temp || !source_resolved.starts_with(&temp) || !root_resolved.starts_with(&temp) { bail!("fixture-only temporary paths required") }
+                let path=attachment_bundle::unix::prepare(source_path,root_path)?;
+                Ok(serde_json::json!({"path":path.to_str().ok_or_else(||anyhow::anyhow!("non-UTF-8 destination"))?}))
+            }
+            #[cfg(not(unix))] { let _=(source,private_root); bail!("fixture bundle unsupported") }
+        },
         Request::ImportLocalSnapshot { source, private_root } => {
             let path = isolated_import::import(Path::new(&source), Path::new(&private_root))?;
             Ok(serde_json::json!({"path": path.to_str().ok_or_else(|| anyhow::anyhow!("non-UTF-8 destination"))?}))
@@ -251,6 +267,8 @@ fn dispatch(bytes: &[u8]) -> Result<Value> {
         Request::AutomationDecline { path, action_id } => automation_ops::decline(Path::new(&path), &action_id, db::now()),
         Request::ReadResource { path, page } => resource_ops::read_resource(Path::new(&path), &page),
         Request::ReadPresentation { path, page } => resource_ops::read_presentation(Path::new(&path), &page),
+        Request::DeletedPresentationSlides { path, page } => resource_ops::deleted_presentation_slides(Path::new(&path), &page),
+        Request::RestorePresentationSlide { path, page, recovery_id, base, expected_metadata, expected } => resource_ops::restore_presentation_slide(Path::new(&path), &page, &recovery_id, base, expected_metadata, expected),
         Request::SavePresentation { path, page, base, expected_metadata, expected, blocks, deleting } => resource_ops::save_presentation_deleting(Path::new(&path), &page, base, expected_metadata, expected, blocks, deleting),
         Request::SaveProject { path, page, base, expected_metadata, metadata } => resource_ops::save_project(Path::new(&path), &page, base, expected_metadata, metadata),
         Request::SaveGallery { path, page, base, expected_metadata, metadata, expected, blocks } => resource_ops::save_gallery(Path::new(&path), &page, base, expected_metadata, metadata, expected, blocks),

@@ -19,6 +19,8 @@ targets:
       - App
       - path: Fixtures/worlds-collab-v11.db
         buildPhase: resources
+      - path: Fixtures/rejected-comments-yjs.bin
+        buildPhase: resources
     dependencies:
       - package: WorldsCore
         product: WorldsCollaboration
@@ -45,6 +47,8 @@ targets:
     sources:
       - App
       - path: Fixtures/worlds-collab-v11.db
+        buildPhase: resources
+      - path: Fixtures/rejected-comments-yjs.bin
         buildPhase: resources
     dependencies:
       - package: WorldsCore

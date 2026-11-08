@@ -164,11 +164,15 @@ public actor SQLiteCollaborationStore: CheckedPlainEditorStore {
     /// Reads a known archive into memory without requeueing it or changing the live replica.
     /// This checks cached rights only; the caller must also verify current service authority.
     public func readRejectedSnapshot(id: String) throws -> Data {
+        try readRejectedSnapshot(id: id, channel: nil)
+    }
+    public func readRejectedSnapshot(id: String, channel: Int64?) throws -> Data {
         guard !id.isEmpty, !id.utf8.contains(0), id.utf8.count <= 256,
               let identifier = strdup(id) else { throw CollaborationStorageError.invalidInput }
         defer { free(identifier) }
         var output = WorldsBuffer(data: nil, len: 0)
-        try Self.check(worlds_store_rejected_read(handle, identifier, &output))
+        if let channel { try Self.check(worlds_store_rejected_read_channel(handle, identifier, channel, &output)) }
+        else { try Self.check(worlds_store_rejected_read(handle, identifier, &output)) }
         defer { worlds_buffer_free(output) }
         guard let pointer = output.data else { throw CollaborationStorageError.invalidResult }
         return Data(bytes: pointer, count: output.len)

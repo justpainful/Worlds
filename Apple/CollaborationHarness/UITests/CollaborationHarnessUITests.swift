@@ -23,8 +23,10 @@ final class CollaborationHarnessUITests: XCTestCase {
         let start = app.buttons["scenario.start"]
         XCTAssertTrue(start.waitForExistence(timeout: 10))
         start.click()
-        let status = app.staticTexts["scenario.status"]
-        let complete = NSPredicate(format: "label BEGINSWITH 'Passed:'")
+        let status = app.descendants(matching: .any)["scenario.status"].firstMatch
+        XCTAssertTrue(status.waitForExistence(timeout: 10))
+        let expected = "Passed: two replicas converged, offline outbox survived session restart, and viewer write was refused."
+        let complete = NSPredicate(format: "label == %@ OR value == %@", expected, expected)
         expectation(for: complete, evaluatedWith: status)
         waitForExpectations(timeout: 90)
         let screenshot = XCTAttachment(screenshot: app.screenshot())
