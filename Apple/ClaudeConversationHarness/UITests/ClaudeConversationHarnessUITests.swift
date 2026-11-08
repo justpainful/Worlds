@@ -1,6 +1,31 @@
 import XCTest
 
 final class ClaudeConversationHarnessUITests: XCTestCase {
+    @MainActor func testReferenceEditorAccessibilityDiagnostic() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--isolated-ui-fixture", UUID().uuidString, "--diagnose-reference-editor"]
+        app.launch()
+        try start(app)
+        let composer = app.textViews["Message"].firstMatch
+        let reference = app.textViews["Diagnostic editor"].firstMatch
+        guard composer.waitForExistence(timeout: 20), reference.waitForExistence(timeout: 20) else {
+            captureFailure(app, name: "reference-editor-missing")
+            XCTFail("Diagnostic editors did not appear")
+            return
+        }
+        let details = app.staticTexts["conversation-fixture-diagnostics"].firstMatch
+        let loaded = NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", "loaded=true", "loaded=true")
+        guard XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: loaded, object: details)], timeout: 20) == .completed else {
+            captureFailure(app, name: "reference-editor-load-missing")
+            XCTFail("Diagnostic conversation did not finish loading")
+            return
+        }
+        let observation = "composer enabled=\(composer.isEnabled) hittable=\(composer.isHittable); reference enabled=\(reference.isEnabled) hittable=\(reference.isHittable); native=\((details.value as? String) ?? details.label)"
+        let attachment = XCTAttachment(string: observation)
+        attachment.name = "reference-editor-observation"; attachment.lifetime = .keepAlways; add(attachment)
+        captureFailure(app, name: "reference-editor-diagnostic")
+    }
+
     @MainActor func testPendingResponseRecoversAfterProcessRestart() throws {
         let app = XCUIApplication()
         let fixtureID = UUID().uuidString
@@ -80,7 +105,9 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
             let app = XCUIApplication()
             let diagnostics = app.staticTexts["conversation-fixture-diagnostics"].firstMatch
             let details = (diagnostics.value as? String) ?? diagnostics.label
-            XCTFail("Message editor did not become enabled; fixture state: \(details)")
+            let reference = app.textViews["Diagnostic editor"].firstMatch
+            let referenceState = reference.exists ? "enabled=\(reference.isEnabled),hittable=\(reference.isHittable)" : "missing"
+            XCTFail("Message editor did not become enabled; reference: \(referenceState); fixture state: \(details)")
             throw HarnessUIError.unavailable
         }
     }

@@ -11,6 +11,7 @@ public struct ConversationView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     #if DEBUG && os(macOS)
     @State private var fixtureNativeDetails = "unavailable"
+    @State private var fixtureReferenceDraft = ""
     #endif
 
     public init(conversationID: String, service: any ConversationService) {
@@ -84,6 +85,15 @@ public struct ConversationView: View {
     }
     private var composer: some View {
         VStack(alignment: .leading, spacing: 8) {
+            #if DEBUG && os(macOS)
+            if ProcessInfo.processInfo.arguments.contains("--isolated-ui-fixture") &&
+                ProcessInfo.processInfo.arguments.contains("--diagnose-reference-editor") {
+                TextEditor(text: $fixtureReferenceDraft)
+                    .frame(height: 48)
+                    .accessibilityLabel("Diagnostic editor")
+                    .accessibilityIdentifier("conversation-fixture-reference-editor")
+            }
+            #endif
             TextEditor(text: $model.draft)
                 .frame(minHeight: 64, maxHeight: 140)
                 .accessibilityLabel("Message")
@@ -133,7 +143,7 @@ private struct FixtureTextEditorProbe: NSViewRepresentable {
                     ancestors.append("\(type(of: view)):ax=\(view.isAccessibilityEnabled()),hidden=\(view.isHidden)")
                     cursor = view.superview
                 }
-                return "index=\(index),editable=\(text.isEditable),selectable=\(text.isSelectable),key=\(window.isKeyWindow),firstResponder=\(window.firstResponder === text),ancestors=\(ancestors.joined(separator: ">"))"
+                return "index=\(index),identifier=\(text.accessibilityIdentifier() ?? "none"),editable=\(text.isEditable),selectable=\(text.isSelectable),key=\(window.isKeyWindow),firstResponder=\(window.firstResponder === text),ancestors=\(ancestors.joined(separator: ">"))"
             }.joined(separator: " | ")
             let report = "count=\(texts.count) \(details)"
             if output != report { output = report }
