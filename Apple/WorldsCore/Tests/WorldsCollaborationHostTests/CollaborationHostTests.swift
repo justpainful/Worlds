@@ -28,7 +28,7 @@ final class CollaborationHostTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: copy) }
         let store = try SQLiteCollaborationStore(databaseURL: copy, pageID: "fixture-page", userID: "editor", workspaceID: "fixture-workspace")
         let permitted = IdentityFixture(.edit)
-        let trusted = try TrustedSyncOrigin(URL(string: "https://example.invalid")!)
+        let trusted = try SyncEndpointProposal(origin: URL(string: "https://example.invalid")!, accountID: "editor", workspaceID: "fixture-workspace").approve()
         do {
             _ = try await CollaborationHost.makeSession(pageID: "other-page", workspaceID: "fixture-workspace", expectedUserID: "editor", serverURL: URL(string: "https://example.invalid")!, trustedOrigin: trusted, store: store, checkedIdentity: permitted)
             XCTFail("A different page must not use this store")
@@ -49,7 +49,7 @@ final class CollaborationHostTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: copy) }
         let store = try SQLiteCollaborationStore(databaseURL: copy, pageID: "fixture-page", userID: "editor", workspaceID: "fixture-workspace")
         let identity = IdentityFixture(.edit)
-        let trusted = try TrustedSyncOrigin(URL(string: "https://example.invalid")!)
+        let trusted = try SyncEndpointProposal(origin: URL(string: "https://example.invalid")!, accountID: "editor", workspaceID: "fixture-workspace").approve()
         for raw in ["https://evil.invalid", "https://example.invalid.evil.invalid", "https://example.invalid:444", "http://example.invalid", "https://example.invalid/path", "https://user@example.invalid", "https://example.invalid/?x=1"] {
             let candidate = try XCTUnwrap(URL(string: raw))
             do {
@@ -61,6 +61,14 @@ final class CollaborationHostTests: XCTestCase {
         XCTAssertEqual(calls, 0)
         let tokenCalls = await identity.tokenCalls
         XCTAssertEqual(tokenCalls, 0)
-        XCTAssertTrue(trusted.accepts(URL(string: "https://EXAMPLE.invalid:443/")!))
+        XCTAssertTrue(trusted.accepts(URL(string: "https://EXAMPLE.invalid:443/")!, accountID: "editor", workspaceID: "fixture-workspace"))
+        XCTAssertFalse(trusted.accepts(URL(string: "https://example.invalid")!, accountID: "other", workspaceID: "fixture-workspace"))
+        XCTAssertFalse(trusted.accepts(URL(string: "https://example.invalid")!, accountID: "editor", workspaceID: "other"))
+        do {
+            _ = try await CollaborationHost.makeSession(pageID: "fixture-page", workspaceID: "fixture-workspace", expectedUserID: "other", serverURL: URL(string: "https://example.invalid")!, trustedOrigin: trusted, store: store, checkedIdentity: identity)
+            XCTFail("Approval must not follow another account")
+        } catch CollaborationHostError.untrustedEndpoint { }
+        let callsAfterAccountChange = await identity.calls
+        XCTAssertEqual(callsAfterAccountChange, 0)
     }
 }
