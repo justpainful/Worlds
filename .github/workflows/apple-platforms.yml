@@ -30,6 +30,8 @@ jobs:
           mkdir -p logs
           swift test --package-path Apple/WorldsCore --skip WorldsDrawingVisualComparisonTests 2>&1 | tee logs/swift-test.log
           grep -q 'testSaveWaitsForNativeTextComposition' logs/swift-test.log
+          grep -E 'testRejectedNativeTextIsRetainedAndBlocksSaveUntilDiscarded.*passed' logs/swift-test.log
+          grep -E 'testKnownRichClipboardFormatsAreRejectedInsteadOfFlattened.*passed' logs/swift-test.log
           grep -q 'testStagesAndCleansUpAnIsolatedFile' logs/swift-test.log
           grep -q 'testBoundsAndSymlink' logs/swift-test.log
           grep -q 'testOriginalNameCleaning' logs/swift-test.log
@@ -195,7 +197,7 @@ jobs:
     name: Experimental project links UI
     runs-on: macos-26
     needs: [ruststore-xcframework]
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       WORLDS_REQUIRE_NATIVE_WRITES: "1"
     steps:
@@ -223,22 +225,22 @@ jobs:
         run: |
           set -o pipefail
           result=0
-          for platform in macOS iOS; do
-            if [[ "$platform" == macOS ]]; then destination='platform=macOS'; else destination='platform=iOS Simulator,name=iPhone 17,OS=26.5'; fi
+          run_links() {
+            local platform="$1" case_name="$2" destination="$3"; shift 3
+            local selectors=() test
+            for test in "$@"; do selectors+=("-only-testing:LocalCopy-$platform-UITests/WorldsLocalCopyUITests/$test"); done
             if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsProjectLinksExperimental.xcodeproj \
-              -scheme "LocalCopy-$platform" -destination "$destination" \
-              -only-testing:"LocalCopy-$platform-UITests/WorldsLocalCopyUITests/testPersonalProjectLinksPersistAndUnlink" \
-              -only-testing:"LocalCopy-$platform-UITests/WorldsLocalCopyUITests/testDuplicateLinksAreNotRemovedSilently" \
-              -only-testing:"LocalCopy-$platform-UITests/WorldsLocalCopyUITests/testUnavailableLinkExplainsAndReloadsWithoutDiscard" \
-              -resultBundlePath "$GITHUB_WORKSPACE/project-links-$platform.xcresult" \
-              CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/project-links-$platform.log"; then
-              for test in testPersonalProjectLinksPersistAndUnlink testDuplicateLinksAreNotRemovedSilently testUnavailableLinkExplainsAndReloadsWithoutDiscard; do
-                grep -E "Test Case .*${test}.*passed" "logs/project-links-$platform.log" || result=1
-              done
+              -scheme "LocalCopy-$platform" -destination "$destination" "${selectors[@]}" \
+              -resultBundlePath "$GITHUB_WORKSPACE/project-links-$case_name.xcresult" \
+              CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/project-links-$case_name.log"; then
+              for test in "$@"; do grep -E "Test Case .*${test}.*passed" "logs/project-links-$case_name.log" || result=1; done
             else
               result=1
             fi
-          done
+          }
+          run_links macOS macOS-standard 'platform=macOS' testPersonalProjectLinksPersistAndUnlink testDuplicateLinksAreNotRemovedSilently
+          run_links macOS macOS-unavailable 'platform=macOS' testUnavailableLinkExplainsAndReloadsWithoutDiscard
+          run_links iOS iPhone 'platform=iOS Simulator,name=iPhone 17,OS=26.5' testPersonalProjectLinksPersistAndUnlink testDuplicateLinksAreNotRemovedSilently testUnavailableLinkExplainsAndReloadsWithoutDiscard
           test "$result" = 0
       - uses: actions/upload-artifact@v4
         if: always()
@@ -543,6 +545,7 @@ jobs:
           grep -q 'testRejectsDroppingUnknownNestedNodeOrItsContainingBlock' logs/editor-persistence-discovery.log
           grep -q 'testRejectsLostAttributesAndMovedUnknownMark' logs/editor-persistence-discovery.log
           grep -q 'testImportedLocalPageEditSurvivesReopenAndPreservesSource' logs/editor-persistence-discovery.log
+          grep -q 'testUnappliedNativeInputBlocksRealStoreUntilExplicitDiscard' logs/editor-persistence-discovery.log
       - name: Test editor persistence on macOS
         shell: bash
         run: |
@@ -557,6 +560,7 @@ jobs:
           grep -q 'testRejectsDroppingUnknownNestedNodeOrItsContainingBlock' logs/editor-persistence-macos.log
           grep -q 'testRejectsLostAttributesAndMovedUnknownMark' logs/editor-persistence-macos.log
           grep -q 'testImportedLocalPageEditSurvivesReopenAndPreservesSource' logs/editor-persistence-macos.log
+          grep -q 'testUnappliedNativeInputBlocksRealStoreUntilExplicitDiscard' logs/editor-persistence-macos.log
       - name: Build experimental project editor views
         shell: bash
         run: |
@@ -640,12 +644,17 @@ jobs:
           set -o pipefail
           swift test --package-path Apple/WorldsCore list 2>&1 | tee logs/drawing-writes-discovery.log
           grep -q 'testPersonalDrawingOriginalSaveAndConflict' logs/drawing-writes-discovery.log
+          grep -q 'testStrokePersistsAndStaleRevisionIsRejected' logs/drawing-writes-discovery.log
+          grep -q 'testLockedLayerAndUnknownFrameAreRejected' logs/drawing-writes-discovery.log
       - name: Test drawing writes on macOS
         shell: bash
         run: |
           set -o pipefail
           swift test --package-path Apple/WorldsCore --filter WorldsDrawingNativeWritesTests 2>&1 | tee logs/drawing-writes-macos.log
           grep -q 'testPersonalDrawingOriginalSaveAndConflict' logs/drawing-writes-macos.log
+          swift test --package-path Apple/WorldsCore --filter WorldsDrawingStrokeSessionTests 2>&1 | tee logs/drawing-stroke-session-macos.log
+          grep -E 'testStrokePersistsAndStaleRevisionIsRejected.*passed' logs/drawing-stroke-session-macos.log
+          grep -E 'testLockedLayerAndUnknownFrameAreRejected.*passed' logs/drawing-stroke-session-macos.log
       - name: Test native writes on iOS simulator
         shell: bash
         run: |
@@ -662,6 +671,7 @@ jobs:
             -only-testing:WorldsPresentationPersistenceTests \
             -only-testing:WorldsDrawingValidationTests \
             -only-testing:WorldsDrawingNativeWritesTests \
+            -only-testing:WorldsDrawingStrokeSessionTests \
             -resultBundlePath "$GITHUB_WORKSPACE/native-writes-simulator.xcresult" \
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testSQLiteLinkageAndFTSAvailability.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
@@ -674,6 +684,7 @@ jobs:
           grep -E "Test Case .*testRejectsDroppingUnknownNestedNodeOrItsContainingBlock.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testRejectsLostAttributesAndMovedUnknownMark.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testImportedLocalPageEditSurvivesReopenAndPreservesSource.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testUnappliedNativeInputBlocksRealStoreUntilExplicitDiscard.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testProjectUsesNativeStoreAndRejectsSameTimestampChange.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testUndoAndFullBaselineConflictOnRealStore.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testNativeBackupImportsCommittedWALWithoutChangingSource.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
@@ -685,6 +696,8 @@ jobs:
           grep -E "Test Case .*testSaveKeepsOpaqueAndConflictingSessionFails.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testOriginalSceneFixtureAndInvalidFrame.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testPersonalDrawingOriginalSaveAndConflict.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testStrokePersistsAndStaleRevisionIsRejected.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testLockedLayerAndUnknownFrameAreRejected.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

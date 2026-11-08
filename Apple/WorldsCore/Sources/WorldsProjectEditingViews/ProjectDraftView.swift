@@ -151,6 +151,7 @@ public struct ProjectDraftView: View {
     @FocusState private var focusedField: Field?
     @State private var confirmReload = false
     @State private var confirmClose = false
+    @State private var showLinkPicker = false
     private let onSaved: @MainActor () -> Void
     public init(projectID: String, repository: any ProjectRepository, candidates: [ProjectLinkCandidate] = [], allowsLinkEditing: Bool = false, onSaved: @escaping @MainActor () -> Void) {
         _model = StateObject(wrappedValue: ProjectDraftModel(repository: repository, projectID: projectID, candidates: candidates, allowsLinkEditing: allowsLinkEditing))
@@ -161,6 +162,8 @@ public struct ProjectDraftView: View {
             if model.loading { ProgressView("Loading project") }
             if let error = model.error {
                 Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.red)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(error)
                     .accessibilityIdentifier("project-editing-error")
             }
             if model.hasSession {
@@ -187,13 +190,8 @@ public struct ProjectDraftView: View {
                         }
                     }
                     if !model.availableLinks.isEmpty {
-                        Menu("Link existing page") {
-                            ForEach(model.availableLinks) { candidate in
-                                Button(candidate.title.isEmpty ? "Untitled" : candidate.title) {
-                                    Task { await model.changeLink(.link(candidate.id)) }
-                                }.accessibilityIdentifier("project-link.\(candidate.id)")
-                            }
-                        }.accessibilityIdentifier("project-link-menu")
+                        Button("Link existing page") { showLinkPicker = true }
+                            .accessibilityIdentifier("project-link-menu")
                     }
                 }
                 }
@@ -237,6 +235,23 @@ public struct ProjectDraftView: View {
                     if model.hasSession && (model.hasUnstagedChanges || model.canUndo || !model.ready) { confirmClose = true }
                     else { dismiss() }
                 }.disabled(model.busy)
+            }
+        }
+        .sheet(isPresented: $showLinkPicker) {
+            NavigationStack {
+                List(model.availableLinks) { candidate in
+                    Button(candidate.title.isEmpty ? "Untitled" : candidate.title) {
+                        showLinkPicker = false
+                        Task { await model.changeLink(.link(candidate.id)) }
+                    }
+                    .accessibilityIdentifier("project-link.\(candidate.id)")
+                }
+                .navigationTitle("Link existing page")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { showLinkPicker = false }
+                    }
+                }
             }
         }
         .confirmationDialog("Close and discard unsaved changes?", isPresented: $confirmClose) {

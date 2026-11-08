@@ -39,6 +39,12 @@ final class NativeEditorTests: XCTestCase {
         XCTAssertThrowsError(try model.replace(range: NSRange(location: 0, length: 0), with: "\n"))
         XCTAssertEqual(model.document.source, original)
     }
+    func testKnownRichClipboardFormatsAreRejectedInsteadOfFlattened() {
+        XCTAssertFalse(NativePastePolicy.rejects(["public.utf8-plain-text"]))
+        for rich in ["public.html", "public.rtf", "com.apple.flat-rtfd", "public.png", "public.file-url"] {
+            XCTAssertTrue(NativePastePolicy.rejects(["public.utf8-plain-text", rich]))
+        }
+    }
     func testFormattingPreservesUnknownMark() throws {
         let model = try makeModel()
         let span = try XCTUnwrap(model.projection.spans.first)
@@ -72,6 +78,28 @@ final class NativeEditorTests: XCTestCase {
         model.setNativeEditPending(false)
         try await model.save(using: store)
         XCTAssertFalse(model.dirty)
+    }
+    func testRejectedNativeTextIsRetainedAndBlocksSaveUntilDiscarded() async throws {
+        let model = try makeModel()
+        let original = model.document.source
+        let rejected = "Unapplied user text"
+        do {
+            try model.commitNativeText(rejected, selection: NSRange(location: rejected.utf16.count, length: 0))
+            XCTFail("Crossing an unsupported widget must fail")
+        } catch { model.retainRejectedNativeText(rejected) }
+        XCTAssertEqual(model.document.source, original)
+        XCTAssertEqual(model.recoverableNativeText, rejected)
+        XCTAssertTrue(model.hasUnresolvedInput)
+        let store = FixturePersistence()
+        do { try await model.save(using: store); XCTFail("Unapplied text must not look saved") }
+        catch NativeEditorError.unrecoveredNativeText { }
+        let state = await store.state()
+        XCTAssertNil(state.0)
+        XCTAssertThrowsError(try model.replace(range: NSRange(location: 0, length: 0), with: "x"))
+        model.discardRejectedNativeText()
+        XCTAssertNil(model.recoverableNativeText)
+        XCTAssertFalse(model.hasUnresolvedInput)
+        try await model.save(using: store)
     }
     func testCommittedNativeTextSplitsParagraphAndUndo() throws {
         let json = #"{"type":"doc","content":[{"type":"paragraph","attrs":{"bid":"a"},"content":[{"type":"text","text":"abcd"}]}]}"#

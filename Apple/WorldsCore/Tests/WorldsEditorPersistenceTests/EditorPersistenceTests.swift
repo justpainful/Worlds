@@ -74,6 +74,30 @@ final class EditorPersistenceTests: XCTestCase {
         XCTAssertEqual(text["marks"], .array([.object(["type": .string("futureMark"), "attrs": .object(["flag": .integer(7)])])]))
     }
     @MainActor
+    func testUnappliedNativeInputBlocksRealStoreUntilExplicitDiscard() async throws {
+        let url = try fixture()
+        try exec("INSERT INTO blocks(id,page_id,type,sort_key,content,text,direction,created_at,updated_at) SELECT 'future',page_id,'futureWidget',10,'{\"type\":\"futureWidget\",\"attrs\":{\"bid\":\"future\"}}','',direction,created_at,updated_at FROM blocks WHERE id='fixture-block'", url: url)
+        let reader = try WorldsDatabase(url: url)
+        let originalSnapshot = try await reader.snapshot()
+        let original = try XCTUnwrap(originalSnapshot.pages.first(where: { $0.id == "fixture-page" }))
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: original.id)
+        let model = NativeEditorModel(document: bridge.initialDocument, baseRevision: bridge.initialRevision)
+        let rejected = "Unapplied input"
+        do { try model.commitNativeText(rejected, selection: NSRange(location: rejected.utf16.count, length: 0)); XCTFail("Expected an unsupported edit") }
+        catch { model.retainRejectedNativeText(rejected) }
+        do { try await model.save(using: bridge); XCTFail("Cannot save while rejected input is unresolved") }
+        catch NativeEditorError.unrecoveredNativeText { }
+        let unchanged = try await reader.snapshot()
+        XCTAssertEqual(unchanged.pages.first(where: { $0.id == original.id }), original)
+        model.discardRejectedNativeText()
+        _ = try model.replace(range: NSRange(location: 6, length: 6), with: "Swift")
+        try await model.save(using: bridge)
+        let saved = try await reader.snapshot()
+        let page = try XCTUnwrap(saved.pages.first(where: { $0.id == original.id }))
+        XCTAssertTrue(page.blocks[0].contentJSON.contains("Hello Swift"))
+        XCTAssertTrue(page.blocks.contains(where: { $0.id == "future" }))
+    }
+    @MainActor
     func testConflictAtSameTimestampKeepsDirtyEditorAndDatabase() async throws {
         let url = try fixture(); let db = try WorldsDatabase(url: url)
         let snapshot = try await db.snapshot()

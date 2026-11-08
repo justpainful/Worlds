@@ -1,23 +1,42 @@
 import SwiftUI
 import WorldsRichText
 
+enum NativePastePolicy {
+    private static let unsupported: Set<String> = ["public.html", "public.rtf", "com.apple.flat-rtfd", "com.apple.rtfd", "com.apple.webarchive", "public.png", "public.jpeg", "public.tiff", "public.image", "public.file-url"]
+    static func rejects(_ types: [String]) -> Bool { !unsupported.isDisjoint(with: types) }
+}
+
 /// TextKit-backed editing of supported text nodes only. The host decides when
 /// and whether to save using its own authorized persistence implementation.
 public struct NativeEditorView: View {
     @ObservedObject private var model: NativeEditorModel
+    @State private var confirmDiscard = false
     public init(model: NativeEditorModel) { self.model = model }
     public var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Button("Undo") { model.undo() }.disabled(!model.undoManager.canUndo)
-                Button("Redo") { model.redo() }.disabled(!model.undoManager.canRedo)
-                Button("Bold") { format("bold") }
-                Button("Italic") { format("italic") }
-                Button("Underline") { format("underline") }
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Button("Undo") { model.undo() }.disabled(!model.undoManager.canUndo)
+                    Button("Redo") { model.redo() }.disabled(!model.undoManager.canRedo)
+                    Button("Bold") { format("bold") }
+                    Button("Italic") { format("italic") }
+                    Button("Underline") { format("underline") }
+                }
+                .buttonStyle(.borderless)
+                NativeTextSurface(model: model)
             }
-            .buttonStyle(.borderless)
-            NativeTextSurface(model: model)
+            .disabled(model.recoverableNativeText != nil)
             if let error = model.errorMessage { Text(error).font(.caption).foregroundStyle(.secondary) }
+            if let rejected = model.recoverableNativeText {
+                Text("This text was not applied. Select and copy what you need before discarding it.")
+                ScrollView { Text(rejected.isEmpty ? "(Empty text)" : rejected).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }
+                    .frame(minHeight: 80, maxHeight: 220)
+                Button("Discard unapplied text", role: .destructive) { confirmDiscard = true }
+            }
+        }
+        .confirmationDialog("Discard unapplied text?", isPresented: $confirmDiscard) {
+            Button("Discard", role: .destructive) { model.discardRejectedNativeText() }
+            Button("Cancel", role: .cancel) { }
         }
     }
     private func format(_ mark: String) {
@@ -32,6 +51,13 @@ import UIKit
 private final class EditorTextView: UITextView {
     weak var editorModel: NativeEditorModel?
     override var undoManager: UndoManager? { nil }
+    override func paste(_ sender: Any?) {
+        if NativePastePolicy.rejects(UIPasteboard.general.types) {
+            editorModel?.report(NativeEditorError.unsupportedRichPaste)
+            return
+        }
+        super.paste(sender)
+    }
 }
 private struct NativeTextSurface: UIViewRepresentable {
     @ObservedObject var model: NativeEditorModel
@@ -62,6 +88,7 @@ private struct NativeTextSurface: UIViewRepresentable {
         var pendingNativeChange = false
         init(model: NativeEditorModel) { self.model = model }
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+            guard model.recoverableNativeText == nil else { model.report(NativeEditorError.unrecoveredNativeText); return false }
             pendingNativeChange = true
             model.setNativeEditPending(true)
             return true
@@ -73,11 +100,11 @@ private struct NativeTextSurface: UIViewRepresentable {
             defer { model.setNativeEditPending(false) }
             do { try model.commitNativeText(textView.text ?? "", selection: textView.selectedRange) }
             catch {
+                model.retainRejectedNativeText(textView.text ?? "")
                 updating = true
                 textView.attributedText = model.attributedText
                 textView.selectedRange = NSRange(location: min(model.selection.location, textView.attributedText.length), length: 0)
                 updating = false
-                model.report(error)
             }
         }
         func textViewDidChangeSelection(_ textView: UITextView) {
@@ -95,6 +122,13 @@ import AppKit
 private final class EditorTextView: NSTextView {
     weak var editorModel: NativeEditorModel?
     override var undoManager: UndoManager? { nil }
+    override func paste(_ sender: Any?) {
+        if NativePastePolicy.rejects((NSPasteboard.general.types ?? []).map(\.rawValue)) {
+            editorModel?.report(NativeEditorError.unsupportedRichPaste)
+            return
+        }
+        super.paste(sender)
+    }
 }
 private struct NativeTextSurface: NSViewRepresentable {
     @ObservedObject var model: NativeEditorModel
@@ -129,6 +163,7 @@ private struct NativeTextSurface: NSViewRepresentable {
         var pendingNativeChange = false
         init(model: NativeEditorModel) { self.model = model }
         func textView(_ textView: NSTextView, shouldChangeTextIn affectedCharRange: NSRange, replacementString: String?) -> Bool {
+            guard model.recoverableNativeText == nil else { model.report(NativeEditorError.unrecoveredNativeText); return false }
             pendingNativeChange = true
             model.setNativeEditPending(true)
             return true
@@ -140,11 +175,11 @@ private struct NativeTextSurface: NSViewRepresentable {
             defer { model.setNativeEditPending(false) }
             do { try model.commitNativeText(view.string, selection: view.selectedRange()) }
             catch {
+                model.retainRejectedNativeText(view.string)
                 updating = true
                 view.textStorage?.setAttributedString(model.attributedText)
                 view.setSelectedRange(NSRange(location: min(model.selection.location, view.string.utf16.count), length: 0))
                 updating = false
-                model.report(error)
             }
         }
         func textViewDidChangeSelection(_ notification: Notification) {

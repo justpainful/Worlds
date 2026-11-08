@@ -4,14 +4,16 @@ import WorldsModels
 import WorldsRichText
 
 public enum NativeEditorError: Error, LocalizedError, Equatable {
-    case crossesUnsupportedBoundary, unsupportedFormatting, invalidSelection, saveInProgress, nativeEditPending
+    case crossesUnsupportedBoundary, unsupportedFormatting, unsupportedRichPaste, invalidSelection, saveInProgress, nativeEditPending, unrecoveredNativeText
     public var errorDescription: String? {
         switch self {
         case .crossesUnsupportedBoundary: return "This edit crosses a block or unsupported element."
         case .unsupportedFormatting: return "Select one complete text segment to change its formatting."
+        case .unsupportedRichPaste: return "Rich text or attachments cannot be pasted without losing formatting. Paste plain text instead."
         case .invalidSelection: return "The selected text is unavailable."
         case .saveInProgress: return "A save is already in progress."
         case .nativeEditPending: return "Finish the current text composition before saving."
+        case .unrecoveredNativeText: return "Copy or discard the unapplied text before editing or saving."
         }
     }
 }
@@ -30,6 +32,8 @@ public final class NativeEditorModel: ObservableObject {
     @Published public private(set) var saving = false
     @Published public private(set) var nativeEditPending = false
     @Published public private(set) var errorMessage: String?
+    /// The text surface's rejected value, retained until the user explicitly discards it.
+    @Published public private(set) var recoverableNativeText: String?
     public let undoManager = UndoManager()
     public private(set) var baseRevision: Int64
     private var generation: UInt64 = 0
@@ -41,10 +45,13 @@ public final class NativeEditorModel: ObservableObject {
     }
     public var projection: RichTextProjection { document.project() }
     public var attributedText: NSAttributedString { document.attributedString() }
+    /// Hosts must use this when deciding whether it is safe to close the editor.
+    public var hasUnresolvedInput: Bool { dirty || saving || nativeEditPending || recoverableNativeText != nil }
 
     /// Structural edits and line insertion are rejected until block editing is supported.
     @discardableResult
     public func replace(range: NSRange, with replacement: String) throws -> NSRange {
+        guard recoverableNativeText == nil else { throw NativeEditorError.unrecoveredNativeText }
         guard !replacement.contains("\u{fffc}") else { throw NativeEditorError.crossesUnsupportedBoundary }
         guard range.location != NSNotFound, range.location >= 0, range.length >= 0,
               range.location <= Int.max - range.length else { throw NativeEditorError.invalidSelection }
@@ -90,6 +97,7 @@ public final class NativeEditorModel: ObservableObject {
     /// Formatting applies only to a complete text node, preserving every
     /// unrelated and unknown mark. Partial-node formatting requires splitting.
     public func toggleMark(_ name: String, selection range: NSRange) throws {
+        guard recoverableNativeText == nil else { throw NativeEditorError.unrecoveredNativeText }
         guard ["bold", "italic", "underline", "strike"].contains(name) else { throw NativeEditorError.unsupportedFormatting }
         guard let span = projection.spans.first(where: { $0.range == range && range.length > 0 }) else { throw NativeEditorError.unsupportedFormatting }
         var marks = span.marks
@@ -107,6 +115,7 @@ public final class NativeEditorModel: ObservableObject {
     /// Change only a complete text node's link. Unknown marks and attributes on
     /// an existing link survive. URL activation remains the host's decision.
     public func setLink(_ url: URL?, selection range: NSRange) throws {
+        guard recoverableNativeText == nil else { throw NativeEditorError.unrecoveredNativeText }
         guard let span = projection.spans.first(where: { $0.range == range && range.length > 0 }) else { throw NativeEditorError.unsupportedFormatting }
         if let url {
             guard let scheme = url.scheme?.lowercased(), ["https", "http", "mailto"].contains(scheme) else { throw NativeEditorError.unsupportedFormatting }
@@ -132,14 +141,20 @@ public final class NativeEditorModel: ObservableObject {
         registerRestore(before)
         generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
     }
-    public func undo() { undoManager.undo() }
-    public func redo() { undoManager.redo() }
+    public func undo() { if recoverableNativeText == nil { undoManager.undo() } }
+    public func redo() { if recoverableNativeText == nil { undoManager.redo() } }
     public func report(_ error: Error) { errorMessage = error.localizedDescription }
     public func setNativeEditPending(_ value: Bool) { nativeEditPending = value }
+    public func retainRejectedNativeText(_ text: String) {
+        if recoverableNativeText == nil { recoverableNativeText = text }
+        errorMessage = NativeEditorError.unrecoveredNativeText.localizedDescription
+    }
+    public func discardRejectedNativeText() { recoverableNativeText = nil; errorMessage = nil }
 
     public func save(using persistence: any EditorPersistence) async throws {
         guard !saving else { throw NativeEditorError.saveInProgress }
         guard !nativeEditPending else { throw NativeEditorError.nativeEditPending }
+        guard recoverableNativeText == nil else { throw NativeEditorError.unrecoveredNativeText }
         saving = true
         defer { saving = false }
         let source = document.source
