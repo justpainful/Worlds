@@ -40,6 +40,13 @@ final class WorldsGalleryTests: XCTestCase {
         XCTAssertEqual(try document.iconValue(itemID: "a"), "img:img")
         XCTAssertThrowsError(try document.iconValue(itemID: "b"))
     }
+    func testMalformedCaptionCannotBeOverwritten() throws {
+        let json = #"[{"id":"a","content":{"type":"galleryItem","attrs":{"bid":"a","attachmentId":"img","name":"a.png","mime":"image/png","size":1,"kind":"file","caption":{"future":true}}}}]"#
+        let blocks = try JSONDecoder().decode([JSONValue].self, from: Data(json.utf8))
+        var document = try GalleryDocument(blocks: blocks, metadata: .object([:]))
+        XCTAssertThrowsError(try document.setCaption(itemID: "a", caption: "replacement"))
+        XCTAssertEqual(document.blocks, blocks)
+    }
     func testReorderRemoveAndCaptionPreserveOpaqueBlock() throws {
         var document = try fixture()
         let opaque = document.blocks[1]

@@ -144,6 +144,17 @@ pub(crate) fn save_gallery_transaction(tx: &Connection, id: &str, base: i64, exp
     let next_pairs: Vec<_> = next.iter().map(|b|(b.id.clone(),b.content.clone())).collect();
     let new_opaque: Vec<_> = next_pairs.iter().filter(|(_,v)|v.get("type").and_then(Value::as_str) != Some("galleryItem")).collect();
     if old_opaque != new_opaque { bail!("invalid change: unknown blocks must be preserved") }
+    for (block_id,old) in &before {
+        if old.get("type").and_then(Value::as_str)!=Some("galleryItem") { continue }
+        let Some((_,new))=next_pairs.iter().find(|(candidate,_)|candidate==block_id) else { continue };
+        let mut previous=old.clone(); let mut replacement=new.clone();
+        let old_attrs=previous.get_mut("attrs").and_then(Value::as_object_mut).ok_or_else(||anyhow::anyhow!("invalid gallery item"))?;
+        let new_attrs=replacement.get_mut("attrs").and_then(Value::as_object_mut).ok_or_else(||anyhow::anyhow!("invalid gallery item"))?;
+        if old_attrs.get("caption").is_some_and(Value::is_string) && !new_attrs.contains_key("caption") { bail!("unsupported change: gallery caption would be removed") }
+        if old_attrs.get("caption").is_some_and(Value::is_string) { old_attrs.remove("caption"); }
+        if new_attrs.get("caption").is_some_and(Value::is_string) { new_attrs.remove("caption"); }
+        if previous!=replacement { bail!("unsupported change: gallery item would lose protected data") }
+    }
     let mut seen = HashSet::new();
     for item in &next {
         if item.id.is_empty() || !seen.insert(&item.id) || item.content.pointer("/attrs/bid").and_then(Value::as_str) != Some(item.id.as_str()) { bail!("invalid block identity") }
@@ -320,6 +331,22 @@ mod tests {
         let c=Connection::open(&path).unwrap();
         let (content,direction,updated):(String,String,i64)=c.query_row("SELECT content,direction,updated_at FROM blocks WHERE id='opaque'",[],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).unwrap();
         assert_eq!((content,direction,updated),(raw.to_string(),"ltr".into(),7));
+        drop(c); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn gallery_caption_edit_cannot_discard_unknown_fields_or_malformed_caption() {
+        let path=fixture(); let c=Connection::open(&path).unwrap();
+        let mut item=gallery("b","a"); item.content["attrs"]["future"]=json!({"keep":true});
+        item.content["attrs"]["caption"]=json!({"future":"caption"});
+        c.execute("INSERT INTO blocks(id,page_id,type,sort_key,content,created_at,updated_at) VALUES('b','g','galleryItem',0,?1,1,1)",[item.content.to_string()]).unwrap(); drop(c);
+        let old=read_resource(&path,"g").unwrap();
+        let mut attack=item.clone(); attack.content["attrs"]["caption"]=json!("new");
+        assert!(save_gallery(&path,"g",old["revision"].as_i64().unwrap(),old["metadata"].clone(),old["metadata"].clone(),vec![item.clone()],vec![attack]).is_err());
+        let mut attack=item.clone(); attack.content["attrs"].as_object_mut().unwrap().remove("future");
+        assert!(save_gallery(&path,"g",old["revision"].as_i64().unwrap(),old["metadata"].clone(),old["metadata"].clone(),vec![item.clone()],vec![attack]).is_err());
+        assert_eq!(read_resource(&path,"g").unwrap(),old);
+        let c=Connection::open(&path).unwrap();
+        assert_eq!(c.query_row("SELECT count(*) FROM versions WHERE page_id='g'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
         drop(c); std::fs::remove_file(path).unwrap();
     }
     #[test]

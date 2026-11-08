@@ -78,6 +78,7 @@ public struct GalleryDocument: Sendable, Equatable {
         let matches = galleryPositions().filter { blocks[$0].galleryObject?["id"]?.galleryString == itemID }
         guard matches.count == 1, let position = matches.first, var block = blocks[position].galleryObject,
               var content = block["content"]?.galleryObject, var attrs = content["attrs"]?.galleryObject else { throw GalleryError.missingItem }
+        if let existing = attrs["caption"], existing.galleryString == nil { throw GalleryError.invalidBlock }
         attrs["caption"] = .string(caption); content["attrs"] = .object(attrs); block["content"] = .object(content)
         blocks[position] = .object(block)
     }

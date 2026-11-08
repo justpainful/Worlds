@@ -59,7 +59,7 @@ public struct NativeSlideView: View {
             let border = slideColor(raw["stroke"]?.slideString, fallback: .clear)
             switch raw["shape"]?.slideString {
             case "ellipse": Ellipse().fill(fill).overlay(Ellipse().strokeBorder(border, lineWidth: 2))
-            case "line": Rectangle().fill(slideColor(raw["stroke"]?.slideString ?? raw["fill"]?.slideString, fallback: .white)).frame(height: 2)
+            case "line": Capsule().fill(slideColor(raw["stroke"]?.slideString ?? raw["fill"]?.slideString, fallback: .white)).frame(height: 4)
             case "rect", nil: RoundedRectangle(cornerRadius: CGFloat(max(0, min(raw["radius"]?.slideNumber ?? 0, 10000)))).fill(fill).overlay(RoundedRectangle(cornerRadius: CGFloat(max(0, min(raw["radius"]?.slideNumber ?? 0, 10000)))).strokeBorder(border, lineWidth: 2))
             default: placeholder("Unsupported shape")
             }
