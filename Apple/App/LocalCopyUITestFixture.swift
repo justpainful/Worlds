@@ -19,6 +19,14 @@ enum LocalCopyUITestFixture {
         defer { sqlite3_close(database) }
         let sql = #"INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('harness-project','Fixture project','project','{"project":{"status":"active","description":"Original fixture","links":[]},"unknown":{"preserve":true}}',1,100);"#
         guard sqlite3_exec(database, sql, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+        #if WORLDS_EXPERIMENTAL_MOVE_PAGE
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing-move-fixture") {
+            let sql = "INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('move-destination','Destination fixture','page','{}',1,100); INSERT INTO pages(id,title,kind,parent_id,metadata,created_at,updated_at) VALUES('move-child','Child fixture','page','fixture-page','{}',1,100);"
+            guard sqlite3_exec(database, sql, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+            let chain = "WITH RECURSIVE n(x) AS (VALUES(0) UNION ALL SELECT x+1 FROM n WHERE x<999) INSERT INTO pages(id,title,kind,parent_id,metadata,created_at,updated_at) SELECT 'deep-' || x, 'Deep fixture', 'page', CASE WHEN x=0 THEN NULL ELSE 'deep-' || (x-1) END, '{}',1,100 FROM n;"
+            guard sqlite3_exec(database, chain, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+        }
+        #endif
         #if WORLDS_EXPERIMENTAL_PERSONAL_TABS
         if ProcessInfo.processInfo.arguments.contains("--ui-testing-tabs-links") {
             let links = #"UPDATE pages SET metadata='{"project":{"status":"active","description":"Original fixture","links":["fixture-page"]},"unknown":{"preserve":true}}' WHERE id='harness-project';"#

@@ -5,7 +5,7 @@ import WorldsSearch
 #if WORLDS_EXPERIMENTAL_LOCAL_COPY
 import WorldsLocalImport
 import WorldsProjectEditingViews
-#if DEBUG && WORLDS_EXPERIMENTAL_RENAME_PAGE
+#if DEBUG && (WORLDS_EXPERIMENTAL_RENAME_PAGE || WORLDS_EXPERIMENTAL_MOVE_PAGE)
 import WorldsNativeWrites
 #endif
 #endif
@@ -100,6 +100,9 @@ private struct WorldsLibraryView: View {
     @State private var showCopyExplanation = false
     @State private var showLocalCopies = false
     @State private var editingProject: ProjectEditorRequest?
+    #if DEBUG && WORLDS_EXPERIMENTAL_MOVE_PAGE
+    @State private var movingPage: LocalMovePageRequest?
+    #endif
     #if DEBUG && WORLDS_EXPERIMENTAL_RENAME_PAGE
     @State private var renamingPage: LocalRenamePageRequest?
     #endif
@@ -311,6 +314,17 @@ private struct WorldsLibraryView: View {
                     }
                 }
                 #endif
+                #if DEBUG && WORLDS_EXPERIMENTAL_MOVE_PAGE
+                if let id = selectedID, let page = pages.first(where: { $0.id == id && ($0.kind == "page" || $0.kind == "document") }),
+                   let context = copyContext, let source = openedVideoDatabase,
+                   source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Move page", systemImage: "folder") {
+                            movingPage = LocalMovePageRequest(pageID: id, title: page.title, originalParent: page.parentID, originalSortKey: page.sortKey, originalRevision: page.updatedAt, candidates: pages, copy: context.copy, databaseIdentity: source.identity, generation: databaseGeneration)
+                        }.accessibilityIdentifier("move-local-page").disabled(databaseActionsDisabled)
+                    }
+                }
+                #endif
                 #if DEBUG && WORLDS_EXPERIMENTAL_RENAME_PAGE
                 if let id = selectedID, let page = pages.first(where: { $0.id == id && ($0.kind == "page" || $0.kind == "document") }),
                    let context = copyContext, let source = openedVideoDatabase,
@@ -380,6 +394,13 @@ private struct WorldsLibraryView: View {
         .sheet(item: $renamingPage) { request in
             LocalRenamePageView(request: request) { baseline, title, operationID in
                 try await savePageName(request: request, baseline: baseline, title: title, operationID: operationID)
+            }
+        }
+        #endif
+        #if DEBUG && WORLDS_EXPERIMENTAL_MOVE_PAGE
+        .sheet(item: $movingPage) { request in
+            LocalMovePageView(request: request) { baseline, destination, operationID in
+                try await movePersonalPage(request: request, baseline: baseline, destination: destination, operationID: operationID)
             }
         }
         #endif
@@ -576,6 +597,9 @@ private struct WorldsLibraryView: View {
         #endif
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
         disabled = disabled || editingProject != nil
+        #if DEBUG && WORLDS_EXPERIMENTAL_MOVE_PAGE
+        disabled = disabled || movingPage != nil
+        #endif
         #if DEBUG && WORLDS_EXPERIMENTAL_RENAME_PAGE
         disabled = disabled || renamingPage != nil
         #endif
@@ -992,6 +1016,38 @@ private struct WorldsLibraryView: View {
               page.title.utf8.elementsEqual(savedTitle.utf8), page.updatedAt == savedRevision else { throw NativeWriteError.invalidResponse }
         pages = snapshot.pages
         return LocalPageNameRevision(title: page.title, revision: page.updatedAt)
+    }
+    #endif
+    #if DEBUG && WORLDS_EXPERIMENTAL_MOVE_PAGE
+    @MainActor private func movePersonalPage(request: LocalMovePageRequest, baseline: LocalPagePlacement, destination: String?, operationID: UUID) async throws -> LocalPagePlacement {
+        guard copyContext?.copy.id == request.copy.id, databaseGeneration == request.generation,
+              VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity else { throw NativeWriteError.invalidResponse }
+        let destinationRevision: Int64?
+        if let destination {
+            guard let candidate = request.candidates.first(where: { $0.id == destination }) else { throw NativeWriteError.invalidResponse }
+            destinationRevision = candidate.updatedAt
+        } else { destinationRevision = nil }
+        let store = try NativePersonalStore(url: request.copy.databaseURL)
+        let result = try await store.movePageChecked(id: request.pageID, base: baseline.revision, expectedParent: baseline.parent, expectedSort: baseline.sortKey, destination: destination, destinationRevision: destinationRevision, operationID: operationID)
+        guard case .object(let fields) = result, case .string(let resultID)? = fields["id"], resultID == request.pageID,
+              case .integer(let resultRevision)? = fields["updatedAt"], resultRevision == baseline.revision,
+              VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity else { throw NativeWriteError.invalidResponse }
+        let resultSort: Double
+        switch fields["sortKey"] {
+        case .integer(let value)?: resultSort = Double(value)
+        case .number(let value)?: resultSort = value
+        default: throw NativeWriteError.invalidResponse
+        }
+        guard resultSort.isFinite else { throw NativeWriteError.invalidResponse }
+        let database = try WorldsDatabase(url: request.copy.databaseURL)
+        let snapshot = try await database.snapshot()
+        guard copyContext?.copy.id == request.copy.id, databaseGeneration == request.generation,
+              VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity,
+              let page = snapshot.pages.first(where: { $0.id == request.pageID }),
+              page.parentID == destination, page.updatedAt == resultRevision, page.sortKey == resultSort else { throw NativeWriteError.invalidResponse }
+        pages = snapshot.pages
+        returnStack.removeAll()
+        return LocalPagePlacement(parent: page.parentID, sortKey: page.sortKey, revision: page.updatedAt)
     }
     #endif
     @MainActor private func refreshCopy(id: UUID, generation: UUID) async {
