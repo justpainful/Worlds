@@ -95,6 +95,7 @@ public actor CollaborationSession {
     private var generation: UInt64 = 0
     private var retryTask: Task<Void, Error>?
     private var localWriteInFlight = false
+    private var localWriteWaiters: [CheckedContinuation<Void, Never>] = []
     private var verifiedIdentity = false
     public private(set) var accessLevel: String?
     public private(set) var lastNotice: String?
@@ -231,7 +232,7 @@ public actor CollaborationSession {
         guard !stopped, !failed, let doc = documents[channel] else { throw CollaborationError.notStarted }
         guard !localWriteInFlight else { throw CollaborationError.notStarted }
         localWriteInFlight = true
-        defer { localWriteInFlight = false }
+        defer { finishLocalWrite() }
         try await store.appendLocal(pageID: pageID, channel: channel, update: update)
         do { try doc.apply(update) } catch { failed = true; if let socket { await socket.close() }; throw error }
         // Reconnect triggers a full state-vector handshake, covering the persisted edit.
@@ -247,7 +248,7 @@ public actor CollaborationSession {
               let doc = documents[0], let editorStore = store as? any CheckedPlainEditorStore else { throw CollaborationError.accessRevoked }
         guard !localWriteInFlight else { throw CollaborationError.notStarted }
         localWriteInFlight = true
-        defer { localWriteInFlight = false }
+        defer { finishLocalWrite() }
         let base = try doc.diff(Data([0]))
         // SQLite checks identity, cached rights, stable block ID and full base within
         // the same transaction that appends both the log and the outbox.
@@ -292,6 +293,13 @@ public actor CollaborationSession {
                 if let through = item.through { try await store.acknowledge(pageID: pageID, channel: item.channel, through: through) }
             } else {
                 failed = true
+                // The store may have persisted a local edit whose continuation
+                // has not yet applied it to the in-memory document. Wait for it
+                // before capturing the rejected state; no new local write can
+                // start once failed is set.
+                if localWriteInFlight {
+                    await withCheckedContinuation { localWriteWaiters.append($0) }
+                }
                 guard let doc = documents[item.channel] else { throw CollaborationError.invalidChannel }
                 let full = try doc.diff(Data([0]))
                 try await store.archiveRejection(pageID: pageID, channel: item.channel, state: full, reason: reason)
@@ -320,6 +328,13 @@ public actor CollaborationSession {
         case .queryAwareness: break
         default: throw CollaborationError.invalidFrame
         }
+    }
+
+    private func finishLocalWrite() {
+        localWriteInFlight = false
+        let waiters = localWriteWaiters
+        localWriteWaiters.removeAll()
+        waiters.forEach { $0.resume() }
     }
 }
 

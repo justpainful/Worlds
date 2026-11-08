@@ -101,6 +101,9 @@ if rustStoreAvailable {
     package.products.append(.library(name: "WorldsDrawingValidation", targets: ["WorldsDrawingValidation"]))
     package.targets.append(.target(name: "WorldsDrawingValidation", dependencies: ["WorldsRustStore"], exclude: ["README.md"], linkerSettings: [.linkedLibrary("sqlite3"), .linkedFramework("Security"), .linkedFramework("SystemConfiguration"), .linkedLibrary("resolv"), .linkedLibrary("iconv")]))
     package.targets.append(.testTarget(name: "WorldsDrawingValidationTests", dependencies: ["WorldsDrawingValidation"], resources: [.copy("original-journal-fixture.json")]))
+    package.products.append(.library(name: "WorldsDrawingPencilInput", targets: ["WorldsDrawingPencilInput"]))
+    package.targets.append(.target(name: "WorldsDrawingPencilInput", dependencies: ["WorldsDrawing", "WorldsDrawingStrokeSession"], exclude: ["README.md"]))
+    package.targets.append(.testTarget(name: "WorldsDrawingPencilInputTests", dependencies: ["WorldsDrawingPencilInput", "WorldsDrawing", "WorldsDrawingNativeWrites", "WorldsDrawingStrokeSession"], resources: [.copy("worlds-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]))
     package.products.append(.library(name: "WorldsDrawingStrokeSession", targets: ["WorldsDrawingStrokeSession"]))
     package.targets.append(.target(name: "WorldsDrawingStrokeSession", dependencies: ["WorldsDrawing", "WorldsDrawingNativeWrites"], exclude: ["README.md"]))
     package.targets.append(.testTarget(name: "WorldsDrawingStrokeSessionTests", dependencies: ["WorldsDrawingStrokeSession", "WorldsDrawing", "WorldsDrawingNativeWrites"], resources: [.copy("worlds-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]))
@@ -138,7 +141,7 @@ if collaborationAvailable {
     package.products.append(.library(name: "WorldsCollaboration", targets: ["WorldsCollaboration"]))
     package.targets.append(.binaryTarget(name: "WorldsRustCollaboration", path: collaborationPath))
     package.targets.append(.target(name: "WorldsCollaboration", dependencies: ["WorldsRustCollaboration", "WorldsSyncWire", "WorldsAwareness"], exclude: ["README.md"], linkerSettings: [.linkedFramework("Security"), .linkedFramework("SystemConfiguration"), .linkedLibrary("resolv"), .linkedLibrary("iconv")]))
-    package.targets.append(.testTarget(name: "WorldsCollaborationTests", dependencies: ["WorldsCollaboration", "WorldsSyncWire"], resources: [.copy("worlds-collab-v11.db"), .copy("worlds-collab-editor-v11.db"), .copy("worlds-collab-viewer-v11.db")]))
+    package.targets.append(.testTarget(name: "WorldsCollaborationTests", dependencies: ["WorldsCollaboration", "WorldsSyncWire"], resources: [.copy("worlds-collab-v11.db"), .copy("worlds-collab-editor-v11.db"), .copy("worlds-collab-viewer-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]))
 }
 
 

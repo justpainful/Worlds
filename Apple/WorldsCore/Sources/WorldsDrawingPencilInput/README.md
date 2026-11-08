@@ -1,0 +1,7 @@
+# Experimental Pencil input
+
+This isolated UIKit surface captures real touch and Pencil events, coalesced samples, force, altitude, azimuth and timestamp in coordinates transformed by the host. The buffer follows the source movement smoothing and release-pressure rule, and converts angular data to Pointer Events tilt using the W3C conversion. It does not render content or assert visual parity. A host can submit completed input to `PersonalStrokeSession` through `PencilStrokeController`; unconfirmed input remains in memory and is returned by `recoverInput`, while an uncertain operation can be retried with the same identifier. Cancellation is reported to the host rather than saved.
+
+This remains experimental and is not in the app. UIKit estimated-property updates are not yet reconciled: any stroke containing an unresolved estimate is retained and refused rather than saved with provisional values. There is no persistence of a pending input across process exit, no Apple Pencil hardware validation, no macOS tablet event adapter, no accessible alternative input, and no proof of device force/orientation equivalence. The host must supply a verified renderer, valid coordinate transform, layer/frame selection, actor identity, safe database lifetime and an explicit recovery UI. No approximate rendering or asset-backed editing is enabled. Tests are written but have not run on Apple.
+
+Reference: https://www.w3.org/TR/pointerevents/#converting-between-tiltx-tilty-and-altitudeangle-azimuthangle

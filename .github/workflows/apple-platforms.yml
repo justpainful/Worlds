@@ -646,6 +646,10 @@ jobs:
           grep -q 'testPersonalDrawingOriginalSaveAndConflict' logs/drawing-writes-discovery.log
           grep -q 'testStrokePersistsAndStaleRevisionIsRejected' logs/drawing-writes-discovery.log
           grep -q 'testLockedLayerAndUnknownFrameAreRejected' logs/drawing-writes-discovery.log
+          grep -q 'testPencilPressureAndOrientation' logs/drawing-writes-discovery.log
+          grep -q 'testPendingEstimateFailsWithoutDiscardingRawSamples' logs/drawing-writes-discovery.log
+          grep -q 'testMoveSmoothingAndReleasePressureMatchSource' logs/drawing-writes-discovery.log
+          grep -q 'testCapturedInputPersistsAndReopens' logs/drawing-writes-discovery.log
       - name: Test drawing writes on macOS
         shell: bash
         run: |
@@ -655,6 +659,11 @@ jobs:
           swift test --package-path Apple/WorldsCore --filter WorldsDrawingStrokeSessionTests 2>&1 | tee logs/drawing-stroke-session-macos.log
           grep -E 'testStrokePersistsAndStaleRevisionIsRejected.*passed' logs/drawing-stroke-session-macos.log
           grep -E 'testLockedLayerAndUnknownFrameAreRejected.*passed' logs/drawing-stroke-session-macos.log
+          swift test --package-path Apple/WorldsCore --filter WorldsDrawingPencilInputTests 2>&1 | tee logs/drawing-pencil-input-macos.log
+          grep -E 'testPencilPressureAndOrientation.*passed' logs/drawing-pencil-input-macos.log
+          grep -E 'testPendingEstimateFailsWithoutDiscardingRawSamples.*passed' logs/drawing-pencil-input-macos.log
+          grep -E 'testMoveSmoothingAndReleasePressureMatchSource.*passed' logs/drawing-pencil-input-macos.log
+          grep -E 'testCapturedInputPersistsAndReopens.*passed' logs/drawing-pencil-input-macos.log
       - name: Test native writes on iOS simulator
         shell: bash
         run: |
@@ -672,6 +681,7 @@ jobs:
             -only-testing:WorldsDrawingValidationTests \
             -only-testing:WorldsDrawingNativeWritesTests \
             -only-testing:WorldsDrawingStrokeSessionTests \
+            -only-testing:WorldsDrawingPencilInputTests \
             -resultBundlePath "$GITHUB_WORKSPACE/native-writes-simulator.xcresult" \
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testSQLiteLinkageAndFTSAvailability.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
@@ -698,6 +708,10 @@ jobs:
           grep -E "Test Case .*testPersonalDrawingOriginalSaveAndConflict.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testStrokePersistsAndStaleRevisionIsRejected.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testLockedLayerAndUnknownFrameAreRejected.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testPencilPressureAndOrientation.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testPendingEstimateFailsWithoutDiscardingRawSamples.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testMoveSmoothingAndReleasePressureMatchSource.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testCapturedInputPersistsAndReopens.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -783,6 +797,7 @@ jobs:
           grep -q 'testRejectsAmbiguousServiceBasePathsBeforeConnecting' logs/collaboration-discovery.log
           grep -q 'testUnauthenticatedReconnectBacksOffAndStopInterruptsWait' logs/collaboration-discovery.log
           grep -q 'testDurableOutboxResentAfterFailedConnection' logs/collaboration-discovery.log
+          grep -q 'testRejectionWaitsForPersistedLocalWriteBeforeArchiving' logs/collaboration-discovery.log
           grep -q 'testDefaultSocketLifecycleWithLocalRefusal' logs/collaboration-discovery.log
           grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' logs/collaboration-discovery.log
           grep -q 'testViewerCannotPrepareEditorWrite' logs/collaboration-discovery.log
@@ -812,6 +827,7 @@ jobs:
           grep -q 'testRejectsAmbiguousServiceBasePathsBeforeConnecting' logs/collaboration-macos.log
           grep -q 'testUnauthenticatedReconnectBacksOffAndStopInterruptsWait' logs/collaboration-macos.log
           grep -q 'testDurableOutboxResentAfterFailedConnection' logs/collaboration-macos.log
+          grep -q 'testRejectionWaitsForPersistedLocalWriteBeforeArchiving' logs/collaboration-macos.log
           grep -q 'testDefaultSocketLifecycleWithLocalRefusal' logs/collaboration-macos.log
           grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' logs/collaboration-macos.log
           grep -q 'testViewerCannotPrepareEditorWrite' logs/collaboration-macos.log
@@ -835,6 +851,7 @@ jobs:
           grep -q 'testRejectsAmbiguousServiceBasePathsBeforeConnecting' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testUnauthenticatedReconnectBacksOffAndStopInterruptsWait' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testDurableOutboxResentAfterFailedConnection' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
+          grep -q 'testRejectionWaitsForPersistedLocalWriteBeforeArchiving' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testDefaultSocketLifecycleWithLocalRefusal' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testViewerCannotPrepareEditorWrite' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"

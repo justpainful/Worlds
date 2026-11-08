@@ -71,17 +71,98 @@ fn atomic_append_ack_watermark_and_reopen() {
 fn rejection_preserves_owner_snapshot_and_marks_only_channel() {
     let path=fixture();
     let mut s=SyncStore::open(&path,"p","u","w").unwrap();
-    s.append(0,b"a",true).unwrap(); s.append(1,b"b",true).unwrap();
-    s.reject(0,"f1f468d2-3b01-4fe0-a2de-df352089d21d",b"full-state","denied").unwrap();
+    let base = include_bytes!("fixtures/plain-editor.bin");
+    s.append(0,base,true).unwrap(); s.append(1,&[0,0],true).unwrap();
+    s.reject(0,"f1f468d2-3b01-4fe0-a2de-df352089d21d",base,"denied").unwrap();
     assert_eq!(s.load(0).unwrap(),vec![vec![0,0]]);
     assert_eq!(s.max_pending(0).unwrap(),None);
     assert!(s.max_pending(1).unwrap().is_some());
     drop(s);
     let db=Connection::open(&path).unwrap();
     let (owner,state):(String,Vec<u8>)=db.query_row("SELECT owner_id,data FROM sync_rejected_snapshots",[],|r|Ok((r.get(0)?,r.get(1)?))).unwrap();
-    assert_eq!((owner,state),("u".into(),b"full-state".to_vec()));
+    assert_eq!(owner,"u");
+    let restored = worlds_collaboration::CollaborationDoc::default();
+    restored.apply(&state).unwrap();
+    let original = worlds_collaboration::CollaborationDoc::default();
+    original.apply(base).unwrap();
+    assert_eq!(restored.state_vector().unwrap(),original.state_vector().unwrap());
     let rejected:i64=db.query_row("SELECT count(*) FROM sync_outbox WHERE state='rejected'",[],|r|r.get(0)).unwrap(); assert_eq!(rejected,1);
     drop(db); std::fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn rejection_merges_durable_edits_missing_from_memory_snapshot() {
+    let path=fixture();
+    let mut store=SyncStore::open(&path,"p","u","w").unwrap();
+    let base=include_bytes!("fixtures/plain-editor.bin");
+    store.append(0,base,false).unwrap();
+    let later=store.insert_plain_checked(base,0,"block-1","Hello 🌍",6,"Alice ").unwrap();
+    // Model the Swift race: its snapshot is older than the committed outbox.
+    store.reject(0,"f1f468d2-3b01-4fe0-a2de-df352089d21d",base,"denied").unwrap();
+    let db=Connection::open(&path).unwrap();
+    let archived:Vec<u8>=db.query_row("SELECT data FROM sync_rejected_snapshots",[],|r|r.get(0)).unwrap();
+    let restored=worlds_collaboration::CollaborationDoc::default(); restored.apply(&archived).unwrap();
+    let expected=worlds_collaboration::CollaborationDoc::default(); expected.apply(base).unwrap(); expected.apply(&later).unwrap();
+    assert_eq!(restored.state_vector().unwrap(),expected.state_vector().unwrap());
+    assert_eq!(restored.diff(&expected.state_vector().unwrap()).unwrap(),[0,0]);
+    assert_eq!(expected.diff(&restored.state_vector().unwrap()).unwrap(),[0,0]);
+    assert_eq!(store.max_pending(0).unwrap(),None);
+    assert_eq!(db.query_row("SELECT count(*) FROM sync_outbox WHERE state='rejected'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+    drop(db);
+    // Retrying the same archive with a stale/empty snapshot must not replace
+    // the previously captured edit after the live log has been cleared.
+    store.reject(0,"f1f468d2-3b01-4fe0-a2de-df352089d21d",&[0,0],"retry").unwrap();
+    let db=Connection::open(&path).unwrap();
+    let retried:Vec<u8>=db.query_row("SELECT data FROM sync_rejected_snapshots",[],|r|r.get(0)).unwrap();
+    let recovered=worlds_collaboration::CollaborationDoc::default(); recovered.apply(&retried).unwrap();
+    assert_eq!(recovered.state_vector().unwrap(),expected.state_vector().unwrap());
+    drop(db); drop(store); std::fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn rejection_with_corrupt_update_keeps_live_log_and_pending_outbox() {
+    let path=fixture();
+    let mut store=SyncStore::open(&path,"p","u","w").unwrap();
+    store.append(0,&[255],true).unwrap();
+    assert!(matches!(store.reject(0,"f1f468d2-3b01-4fe0-a2de-df352089d21d",&[0,0],"denied"),Err(StoreError::Invalid)));
+    assert_eq!(store.load(0).unwrap(),vec![vec![255]]);
+    assert!(store.max_pending(0).unwrap().is_some());
+    let db=Connection::open(&path).unwrap();
+    assert_eq!(db.query_row("SELECT count(*) FROM sync_rejected_snapshots",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+    drop(db); drop(store); std::fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn rejection_reset_failure_rolls_back_archive_and_preserves_outbox() {
+    let path=fixture(); let mut store=SyncStore::open(&path,"p","u","w").unwrap();
+    let base=include_bytes!("fixtures/plain-editor.bin"); store.append(0,base,true).unwrap();
+    let db=Connection::open(&path).unwrap();
+    db.execute_batch("CREATE TRIGGER fail_reject_reset BEFORE UPDATE ON sync_docs BEGIN SELECT RAISE(ABORT,'fixture failure'); END;").unwrap();
+    assert!(store.reject(0,"f1f468d2-3b01-4fe0-a2de-df352089d21d",base,"denied").is_err());
+    assert_eq!(store.load(0).unwrap(),vec![base.to_vec()]);
+    assert!(store.max_pending(0).unwrap().is_some());
+    assert_eq!(db.query_row("SELECT count(*) FROM sync_rejected_snapshots",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+    assert_eq!(db.query_row("SELECT count(*) FROM sync_outbox WHERE state='rejected'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+    drop(db); drop(store); std::fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn rejection_retains_pending_causal_updates_without_their_base() {
+    use yrs::updates::decoder::Decode;
+    let base = [1,6,233,7,0,4,1,6,115,104,97,114,101,100,10,72,101,108,108,111,32,240,159,140,141,7,1,7,100,101,102,97,117,108,116,3,9,112,97,114,97,103,114,97,112,104,7,0,233,7,8,6,6,0,233,7,9,4,98,111,108,100,4,116,114,117,101,132,233,7,10,13,89,106,115,32,114,105,99,104,32,116,101,120,116,134,233,7,23,4,98,111,108,100,4,110,117,108,108,0];
+    let pending = [1,1,209,15,0,196,233,7,5,233,7,6,6,65,108,105,99,101,32,0];
+    // Validate the synthetic Yjs update encoding before using it.
+    yrs::Update::decode_v1(&base).unwrap(); yrs::Update::decode_v1(&pending).unwrap();
+    let path=fixture(); let mut store=SyncStore::open(&path,"p","u","w").unwrap();
+    store.append(0,&pending,true).unwrap();
+    store.reject(0,"f1f468d2-3b01-4fe0-a2de-df352089d21d",&[0,0],"denied").unwrap();
+    let db=Connection::open(&path).unwrap();
+    let archived:Vec<u8>=db.query_row("SELECT data FROM sync_rejected_snapshots",[],|r|r.get(0)).unwrap();
+    let restored=worlds_collaboration::CollaborationDoc::default(); restored.apply(&archived).unwrap(); restored.apply(&base).unwrap();
+    let expected=worlds_collaboration::CollaborationDoc::default(); expected.apply(&base).unwrap(); expected.apply(&pending).unwrap();
+    assert_eq!(restored.state_vector().unwrap(),expected.state_vector().unwrap());
+    assert_eq!(restored.diff(&expected.state_vector().unwrap()).unwrap(),[0,0]);
+    drop(db); drop(store); std::fs::remove_file(path).unwrap();
 }
 
 #[test]

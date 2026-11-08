@@ -73,6 +73,8 @@ public actor PersonalStrokeSession {
         return result
     }
 
+    public func hasPendingOperation() -> Bool { pending != nil }
+
     public func retryPending() async throws -> Data {
         guard !busy else { throw StrokeSessionError.busy }
         guard let operation = pending else { throw StrokeSessionError.noPendingOperation }

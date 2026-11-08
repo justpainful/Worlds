@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 import SQLite3
 import XCTest
 import WorldsDrawing
@@ -16,7 +17,11 @@ final class PersonalStrokeSessionTests: XCTestCase {
         let status = sqlite3_exec(db, "UPDATE pages SET kind='drawing' WHERE id='fixture-page'; INSERT INTO profile(id,display_name,created_at,updated_at) VALUES('artist','Artist',1,1);", nil, nil, nil)
         sqlite3_close_v2(db)
         XCTAssertEqual(status, SQLITE_OK)
-        return (path, try PersonalDrawingWriter(database: path))
+        let resolved = path.withUnsafeFileSystemRepresentation { pointer in pointer.flatMap { realpath($0, nil) } }
+        let canonicalPointer = try XCTUnwrap(resolved, "Could not resolve the isolated fixture")
+        defer { free(canonicalPointer) }
+        let canonical = URL(fileURLWithPath: String(cString: canonicalPointer))
+        return (canonical, try PersonalDrawingWriter(database: canonical))
     }
     private func document(_ data: Data) throws -> [String: Any] {
         let envelope = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])

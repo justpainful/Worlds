@@ -252,6 +252,9 @@ public struct ProjectDraftView: View {
                         Button("Cancel") { showLinkPicker = false }
                     }
                 }
+                #if os(macOS)
+                .frame(minWidth: 320, idealWidth: 440, minHeight: 240, idealHeight: 360)
+                #endif
             }
         }
         .confirmationDialog("Close and discard unsaved changes?", isPresented: $confirmClose) {

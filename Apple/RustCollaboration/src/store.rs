@@ -130,13 +130,36 @@ impl SyncStore {
     }
     /// This operation intentionally does not expose archived data or re-enable syncing.
     pub fn reject(&mut self, channel: i64, archive_id: &str, state: &[u8], reason: &str) -> Result<()> {
+        use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
+        use yrs::updates::decoder::Decode;
         if uuid::Uuid::parse_str(archive_id).is_err() || state.len() > 64*1024*1024 || reason.len() > 10_000 { return Err(StoreError::Invalid); }
-        let tx = self.conn.unchecked_transaction()?;
+        let tx = rusqlite::Transaction::new_unchecked(&self.conn, rusqlite::TransactionBehavior::Immediate)?;
         self.authorize_archive(channel)?;
-        let existing: Option<(String,String,i64)> = tx.query_row("SELECT page_id,owner_id,channel FROM sync_rejected_snapshots WHERE id=?1", [archive_id], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?))).optional()?;
-        if existing.is_some_and(|v| v != (self.page.clone(), self.user.clone(), channel)) { return Err(StoreError::Denied); }
+        let existing: Option<(String,String,i64,Vec<u8>)> = tx.query_row("SELECT page_id,owner_id,channel,data FROM sync_rejected_snapshots WHERE id=?1", [archive_id], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?))).optional()?;
+        if existing.as_ref().is_some_and(|v| v.0 != self.page || v.1 != self.user || v.2 != channel) { return Err(StoreError::Denied); }
+        // Capture every durable change in the same transaction that clears the
+        // live log. The caller's in-memory document may lag a persisted write.
+        // Merge both versions; malformed data fails closed before any reset.
+        let doc = Doc::new();
+        if let Some((_,_,_,bytes)) = existing {
+            doc.transact_mut().apply_update(Update::decode_v1(&bytes).map_err(|_| StoreError::Invalid)?).map_err(|_| StoreError::Invalid)?;
+        }
+        let snapshot: Option<Option<Vec<u8>>> = tx.query_row("SELECT snapshot FROM sync_docs WHERE page_id=?1 AND channel=?2", params![self.page,channel], |r| r.get(0)).optional()?;
+        if let Some(Some(bytes)) = snapshot {
+            doc.transact_mut().apply_update(Update::decode_v1(&bytes).map_err(|_| StoreError::Invalid)?).map_err(|_| StoreError::Invalid)?;
+        }
+        {
+            let mut query = tx.prepare("SELECT data FROM sync_updates WHERE page_id=?1 AND channel=?2 ORDER BY id")?;
+            for row in query.query_map(params![self.page,channel], |r| r.get::<_, Vec<u8>>(0))? {
+                let bytes = row?;
+                doc.transact_mut().apply_update(Update::decode_v1(&bytes).map_err(|_| StoreError::Invalid)?).map_err(|_| StoreError::Invalid)?;
+            }
+        }
+        doc.transact_mut().apply_update(Update::decode_v1(state).map_err(|_| StoreError::Invalid)?).map_err(|_| StoreError::Invalid)?;
+        let merged = doc.transact().encode_state_as_update_v1(&StateVector::default());
+        if merged.len() > 64*1024*1024 { return Err(StoreError::Invalid); }
         let t = now();
-        tx.execute("INSERT INTO sync_rejected_snapshots(id,page_id,channel,owner_id,data,reason,created_at) VALUES(?1,?2,?3,?4,?5,?6,?7) ON CONFLICT(id) DO UPDATE SET data=excluded.data,reason=excluded.reason",params![archive_id,self.page,channel,self.user,state,reason,t])?;
+        tx.execute("INSERT INTO sync_rejected_snapshots(id,page_id,channel,owner_id,data,reason,created_at) VALUES(?1,?2,?3,?4,?5,?6,?7) ON CONFLICT(id) DO UPDATE SET data=excluded.data,reason=excluded.reason",params![archive_id,self.page,channel,self.user,merged,reason,t])?;
         tx.execute("UPDATE sync_outbox SET state='rejected',last_error=?3 WHERE page_id=?1 AND channel=?2 AND state='pending'",params![self.page,channel,reason])?;
         tx.execute("INSERT OR IGNORE INTO sync_docs(page_id,channel,created_at,updated_at) VALUES(?1,?2,?3,?3)",params![self.page,channel,t])?;
         tx.execute("UPDATE sync_docs SET snapshot=x'0000',snapshot_upto=0,updated_at=?3 WHERE page_id=?1 AND channel=?2",params![self.page,channel,t])?;

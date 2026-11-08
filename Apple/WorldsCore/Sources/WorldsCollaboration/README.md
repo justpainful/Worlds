@@ -19,3 +19,13 @@ change. Endpoint base paths containing percent escapes, backslashes, repeated
 separators or dot segments are refused before constructing a request carrying a
 bearer token. These checks do not implement network heartbeat scheduling or
 resolve the remaining collaboration authorization and recovery limitations.
+
+On a rejected update, the session waits for any in-flight local store write
+before requesting an archive. The Rust store holds an immediate SQLite
+transaction and merges the caller's state, the durable replica log, and any
+existing archive with the same ID before clearing the live replica. Malformed
+updates, oversized results and failed resets abort the transaction, leaving the
+live log and pending outbox intact. Rust fixture tests cover a stale caller
+snapshot, unresolved causal updates, an archive retry and an injected rollback;
+a Swift integration case uses a real SQLite fixture and scripted socket. These
+tests do not establish recovery UX, restart policy or Apple device behavior.
