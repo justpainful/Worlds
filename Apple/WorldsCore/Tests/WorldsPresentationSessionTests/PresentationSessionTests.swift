@@ -54,7 +54,7 @@ final class PresentationSessionTests: XCTestCase {
         XCTAssertEqual(changed.elements[1], original.elements[1])
         session.undo(); XCTAssertEqual(session.slides[0], original)
         session.redo(); XCTAssertEqual(session.slides[0], changed)
-        for replacement in [#""shape":"line""#, #""shape":"rect","fill":"rgba(1,2,3,.5)""#, #""shape":"rect","fill":{"future":true}""#] {
+        for replacement in [#""shape":"line""#, #""shape":"rect","fill":"rgba(1,2,3,.5)""#, #""shape":"rect","fill":{"future":true}"#] {
             let bad = try SlideBlock(json: Data(json.replacingOccurrences(of: #""shape":"rect""#, with: replacement).utf8))
             var rejected = try PresentationSession(slides: [bad])
             XCTAssertNil(bad.elements[0].editableShapeFill)
