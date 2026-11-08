@@ -17,8 +17,8 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         let undo = app.buttons["Undo"]; XCTAssertTrue(undo.isEnabled); undo.tap(); XCTAssertTrue(slideA.waitForExistence(timeout: 10))
         let redo = app.buttons["Redo"]; XCTAssertTrue(redo.isEnabled); redo.tap(); XCTAssertFalse(slideA.exists)
         app.buttons["Save"].tap()
-        XCTAssertTrue(app.staticTexts["presentation-edit-saved"].waitForExistence(timeout: 20))
-        XCTAssertTrue(app.staticTexts["presentation-media-record-retained"].waitForExistence(timeout: 10))
+        guard app.staticTexts["presentation-edit-saved"].waitForExistence(timeout: 20) else { failure(app, "presentation-save-missing"); XCTFail("Saved state missing"); return }
+        guard app.staticTexts["presentation-media-record-retained"].waitForExistence(timeout: 10) else { failure(app, "presentation-media-missing"); XCTFail("Media verification missing"); return }
         app.buttons["Close"].tap(); XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
         XCTAssertTrue(slideB.waitForExistence(timeout: 20)); XCTAssertFalse(slideA.exists); XCTAssertFalse(delete.isEnabled)
         let image = XCTAttachment(screenshot: app.screenshot()); image.name = "presentation-slide-deleted"; image.lifetime = .keepAlways; add(image)
@@ -30,7 +30,9 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         let edit = app.buttons["edit-local-presentation"]
         XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
         let count = app.staticTexts["presentation-slide-count"]
-        XCTAssertTrue(count.waitForExistence(timeout: 20)); XCTAssertEqual(count.label, "2 slides")
+        XCTAssertTrue(count.waitForExistence(timeout: 20))
+        if count.label != "2 slides" { failure(app, "presentation-count-unexpected") }
+        XCTAssertEqual(count.label, "2 slides")
         let addSlide = app.buttons["presentation-add-blank"]
         if !addSlide.isHittable { app.swipeUp() }
         XCTAssertTrue(addSlide.waitForExistence(timeout: 10)); addSlide.tap()
@@ -41,8 +43,8 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         app.buttons["presentation-move-down"].tap()
         app.buttons["Undo"].tap(); app.buttons["Redo"].tap()
         app.buttons["Save"].tap()
-        XCTAssertTrue(app.staticTexts["presentation-edit-saved"].waitForExistence(timeout: 20))
-        XCTAssertTrue(app.staticTexts["presentation-media-record-retained"].waitForExistence(timeout: 10))
+        guard app.staticTexts["presentation-edit-saved"].waitForExistence(timeout: 20) else { failure(app, "presentation-created-save-missing"); XCTFail("Saved state missing"); return }
+        guard app.staticTexts["presentation-media-record-retained"].waitForExistence(timeout: 10) else { failure(app, "presentation-created-media-missing"); XCTFail("Media verification missing"); return }
         app.buttons["Close"].tap(); XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
         XCTAssertTrue(count.waitForExistence(timeout: 20)); XCTAssertEqual(count.label, "4 slides")
         let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = "presentation-created-and-reopened"; shot.lifetime = .keepAlways; add(shot)
@@ -61,6 +63,7 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         field.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
         field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 40))
         #endif
+        if field.value as? String != "" { failure(app, "presentation-field-not-empty") }
         XCTAssertEqual(field.value as? String, "")
         field.typeText("Edited slide")
         app.buttons["Apply text"].tap()
@@ -69,7 +72,7 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         app.buttons["Move slide up"].tap()
         XCTAssertLessThan(app.buttons["presentation-slide.slide-b"].frame.minY, app.buttons["presentation-slide.slide-a"].frame.minY)
         app.buttons["Save"].tap()
-        XCTAssertTrue(app.staticTexts["presentation-edit-saved"].waitForExistence(timeout: 20))
+        guard app.staticTexts["presentation-edit-saved"].waitForExistence(timeout: 20) else { failure(app, "presentation-text-save-missing"); XCTFail("Saved state missing"); return }
         app.buttons["Close"].tap()
         XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
         let slideA = app.buttons["presentation-slide.slide-a"]
@@ -79,6 +82,10 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         XCTAssertEqual(app.descendants(matching: .any)["presentation-text"].firstMatch.value as? String, "Edited slide")
         XCTAssertTrue(app.staticTexts["presentation-unsupported-elements"].exists)
         let image = XCTAttachment(screenshot: app.screenshot()); image.name = "local-presentation-reopened"; image.lifetime = .keepAlways; add(image)
+    }
+    @MainActor private func failure(_ app: XCUIApplication, _ name: String) {
+        let screenshot = XCTAttachment(screenshot: app.screenshot()); screenshot.name = name; screenshot.lifetime = .keepAlways; add(screenshot)
+        let hierarchy = XCTAttachment(string: app.debugDescription); hierarchy.name = name + "-hierarchy"; hierarchy.lifetime = .keepAlways; add(hierarchy)
     }
 }
 #endif
