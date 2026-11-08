@@ -67,6 +67,51 @@ final class CollaborationHarnessUITests: XCTestCase {
         waitForExpectations(timeout: 10)
         XCTAssertFalse(app.buttons["scenario.continue"].exists)
     }
+
+    @MainActor func testCheckedAppendAndConditionalUndo() throws {
+        let tokenURL = try XCTUnwrap(URL(string: "http://127.0.0.1:18791/dev/token?sub=editor"))
+        let response = try JSONSerialization.jsonObject(with: Data(contentsOf: tokenURL)) as? [String: Any]
+        let token = try XCTUnwrap(response?["token"] as? String)
+        XCTAssertFalse(token.isEmpty)
+        let app = XCUIApplication()
+        app.launchArguments.append("--test-hold-checked-operation")
+        app.launchEnvironment["WORLDS_REQUIRE_LIVE_SERVICE"] = "1"
+        app.launchEnvironment["WORLDS_LIVE_SYNC_URL"] = "ws://127.0.0.1:18790"
+        app.launchEnvironment["WORLDS_LIVE_EDITOR_TOKEN"] = token
+        app.launch()
+        let open = app.buttons["checked.open"]
+        XCTAssertTrue(open.waitForExistence(timeout: 10))
+        open.click()
+        let document = app.descendants(matching: .any)["checked.document"].firstMatch
+        XCTAssertTrue(document.waitForExistence(timeout: 30))
+        let initial = NSPredicate(format: "label == %@ OR value == %@", "Hello 🌍", "Hello 🌍")
+        expectation(for: initial, evaluatedWith: document)
+        waitForExpectations(timeout: 30)
+        let draft = app.textFields["checked.draft"]
+        XCTAssertTrue(draft.waitForExistence(timeout: 10))
+        draft.click(); draft.typeText(" test")
+        app.buttons["checked.append"].click()
+        let editingBlocked = NSPredicate(format: "enabled == false")
+        expectation(for: editingBlocked, evaluatedWith: draft)
+        waitForExpectations(timeout: 10)
+        XCTAssertEqual(draft.value as? String, " test")
+        let continueOperation = app.buttons["checked.test-continue"]
+        XCTAssertTrue(continueOperation.waitForExistence(timeout: 10))
+        continueOperation.click()
+        let appended = NSPredicate(format: "label == %@ OR value == %@", "Hello 🌍 test", "Hello 🌍 test")
+        expectation(for: appended, evaluatedWith: document)
+        waitForExpectations(timeout: 30)
+        let undo = app.buttons["checked.undo"]
+        XCTAssertTrue(undo.isEnabled)
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Checked insertion in isolated collaboration"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        undo.click()
+        expectation(for: initial, evaluatedWith: document)
+        waitForExpectations(timeout: 30)
+        XCTAssertFalse(undo.isEnabled)
+    }
 }
 
 private enum FixtureError: Error { case invalidResponse }

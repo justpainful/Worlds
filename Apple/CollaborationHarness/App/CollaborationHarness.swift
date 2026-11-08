@@ -6,12 +6,17 @@ import WorldsCollaborationEditor
 @main
 struct CollaborationHarnessApp: App {
     @StateObject private var model = HarnessModel()
+    @State private var showingCheckedEditor = false
     var body: some Scene {
         WindowGroup {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Collaboration integration harness").font(.title2)
                 Text("Disposable fixtures and local service only. No user workspace is opened.")
-                Button("Run local scenario") { model.start() }.disabled(model.running).accessibilityIdentifier("scenario.start")
+                Button("Run local scenario") { model.start() }.disabled(model.running || showingCheckedEditor).accessibilityIdentifier("scenario.start")
+                Button("Open checked editing fixture") { showingCheckedEditor = true }
+                    .disabled(model.running || showingCheckedEditor)
+                    .accessibilityIdentifier("checked.open")
+                if showingCheckedEditor { CheckedEditHarnessView() }
                 if model.running { ProgressView() }
                 if let session = model.activeSession {
                     CollaborationConnectionView(session: session)
