@@ -331,6 +331,12 @@ public actor CollaborationSession {
             throw CollaborationError.accessRevoked
         }
         guard !localWriteInFlight, !remoteWriteInFlight else { throw CollaborationError.notStarted }
+        guard update.count <= 64 * 1024 * 1024 else { throw CollaborationError.invalidFrame }
+        // Refuse malformed wire updates before they can poison the durable
+        // replica log and prevent subsequent sessions from opening it. This
+        // only validates the update format, not its semantic authorization.
+        let validation = try NativeCRDTDocument()
+        try validation.apply(update)
         localWriteInFlight = true
         defer { finishLocalWrite() }
         try await store.appendLocal(pageID: pageID, channel: channel, update: update)

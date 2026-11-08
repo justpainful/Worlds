@@ -230,6 +230,30 @@ private actor FixtureSocket: CollaborationSocket {
 }
 
 extension WorldsCollaborationTests {
+    func testMalformedLocalUpdateNeverPoisonsOutboxOrReopenedReplica() async throws {
+        let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-editor-v11", withExtension: "db"))
+        let copy = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-invalid-update-\(UUID().uuidString).db")
+        try FileManager.default.copyItem(at: source, to: copy)
+        defer { try? FileManager.default.removeItem(at: copy) }
+        let store = try SQLiteCollaborationStore(databaseURL: copy, pageID: "fixture-page", userID: "editor", workspaceID: "fixture-workspace")
+        let before = try await store.load(pageID: "fixture-page", channel: 0)
+        let pending = try await store.maximumPendingID(pageID: "fixture-page", channel: 0)
+        let socket = FixtureSocket(level: "edit", userID: "editor", acknowledges: false)
+        let session = try CollaborationSession(pageID: "fixture-page", workspaceID: "fixture-workspace", documentID: "fixture-page", expectedUserID: "editor", serverURL: URL(string: "https://example.invalid")!, store: store, tokenProvider: { _ in "fixture-token" }, socketFactory: { _, _ in socket })
+        let run = Task { try await session.run() }
+        defer { Task { await session.stop() } }
+        for _ in 0..<100 { if await session.accessLevel == "edit" { break }; try await Task.sleep(for: .milliseconds(10)) }
+        guard await session.accessLevel == "edit" else { await session.stop(); _ = try? await run.value; return XCTFail("Authentication was not observed") }
+        do { try await session.appendLocal(channel: 0, update: Data([255])); XCTFail("Malformed update must fail before storage") }
+        catch CRDTError.invalidUpdate { }
+        await session.stop(); _ = try? await run.value
+        let reopened = try SQLiteCollaborationStore(databaseURL: copy, pageID: "fixture-page", userID: "editor", workspaceID: "fixture-workspace")
+        let after = try await reopened.load(pageID: "fixture-page", channel: 0)
+        let afterPending = try await reopened.maximumPendingID(pageID: "fixture-page", channel: 0)
+        XCTAssertEqual(after, before); XCTAssertEqual(afterPending, pending)
+        let replica = try NativeCRDTDocument()
+        for update in after { try replica.apply(update) }
+    }
     func testStoppedSessionDoesNotSendDelayedRefreshToken() async throws {
         let store = FixtureStore(), socket = FixtureSocket(), token = PausedRefreshToken()
         let session = try CollaborationSession(pageID: "p", workspaceID: "w", documentID: "p", expectedUserID: "user", serverURL: URL(string: "https://example.invalid")!, store: store, tokenProvider: { force in await token.token(force: force) }, socketFactory: { _, _ in socket })

@@ -11,6 +11,10 @@ The server still makes the authoritative decision; access can change while a
 local SQLite write is in flight, and an earlier server frame is not an atomic
 permit. An isolated fixture exercises a downgrade and pending outbox retention;
 it does not prove live-service permission propagation.
+Before appending a raw local update, the session also applies it to a temporary
+yrs document so malformed wire data cannot be inserted into its durable log.
+This is not semantic authorization and does not cover callers that write
+directly to the experimental SQLite store.
 On a receive failure, the session clears the connection's local permission
 before awaiting socket close status. An isolated suspended-close fixture checks
 that a concurrent local update is denied and does not alter the outbox.
