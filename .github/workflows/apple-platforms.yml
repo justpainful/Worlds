@@ -1791,12 +1791,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p logs "$RUNNER_TEMP/identity-fixture"
-          node -e 'const c=require("node:crypto"),f=require("node:fs");const k=c.generateKeyPairSync("ed25519").privateKey.export({format:"jwk"});f.writeFileSync(process.argv[1],"JWT_PRIVATE_JWK="+JSON.stringify(JSON.stringify(k))+"\nEMAIL_WEBHOOK_URL=http://127.0.0.1:18793/mail\n",{mode:0o600})' "$RUNNER_TEMP/identity-fixture/worker.env"
+          node -e 'const c=require("node:crypto"),f=require("node:fs");const k=c.generateKeyPairSync("ed25519").privateKey.export({format:"jwk"});f.writeFileSync(process.argv[1],"JWT_PRIVATE_JWK="+JSON.stringify(k)+"\nEMAIL_WEBHOOK_URL=http://127.0.0.1:18793/mail\n",{mode:0o600})' "$RUNNER_TEMP/identity-fixture/worker.env"
           cd services/identity
           pnpm exec wrangler d1 migrations apply worlds-identity --local --persist-to "$RUNNER_TEMP/identity-fixture/d1" > /dev/null
           node ../../Apple/IdentityHarness/mailbox.cjs > /dev/null 2>&1 & mailbox_pid=$!
-          pnpm exec wrangler dev --ip 127.0.0.1 --port 18792 --inspector-port 18794 --persist-to "$RUNNER_TEMP/identity-fixture/d1" --env-file "$RUNNER_TEMP/identity-fixture/worker.env" > /dev/null 2>&1 & worker_pid=$!
-          trap 'kill "$worker_pid" "$mailbox_pid" 2>/dev/null || true; rm -f "$RUNNER_TEMP/identity-fixture/worker.env"' EXIT
+          pnpm exec wrangler dev --ip 127.0.0.1 --port 18792 --inspector-port 18794 --persist-to "$RUNNER_TEMP/identity-fixture/d1" --env-file "$RUNNER_TEMP/identity-fixture/worker.env" > "$RUNNER_TEMP/identity-fixture/worker.log" 2>&1 & worker_pid=$!
+          trap 'kill "$worker_pid" "$mailbox_pid" 2>/dev/null || true; rm -f "$RUNNER_TEMP/identity-fixture/worker.env" "$RUNNER_TEMP/identity-fixture/worker.log"' EXIT
           ready=0
           for attempt in {1..60}; do
             if curl --fail --silent http://127.0.0.1:18793/health > /dev/null && curl --fail --silent http://127.0.0.1:18792/.well-known/jwks.json > /dev/null; then ready=1; break; fi
@@ -1814,6 +1814,7 @@ jobs:
               printf '%s process=%s HTTP=%s\n' "$service" "$state" "$http"
             done
             lsof -nP -iTCP:18792 -iTCP:18793 -iTCP:18794 -sTCP:LISTEN || true
+            node -e 'const f=require("node:fs");let s="";try{s=f.readFileSync(process.argv[1],"utf8")}catch{};let c="unclassified";if(s.includes("JWT_PRIVATE_JWK is not configured"))c="missing-key";else if(s.includes("JWT_PRIVATE_JWK must be an Ed25519 private JWK"))c="invalid-key-shape";else if(s.includes("SyntaxError"))c="syntax-error";else if(s.includes("DataError"))c="crypto-data-error";else if(s.includes("NotSupportedError"))c="crypto-unsupported";console.log("Worker error category="+c)' "$RUNNER_TEMP/identity-fixture/worker.log"
             exit 1
           fi
           cd ../..
