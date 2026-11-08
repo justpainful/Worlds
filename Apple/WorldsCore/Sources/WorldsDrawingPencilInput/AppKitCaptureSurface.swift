@@ -10,17 +10,21 @@ public struct PencilCaptureSurface: NSViewRepresentable {
     public let onCancelled: @MainActor (PencilStrokeBuffer) -> Void
     public let onBegan: @MainActor () -> Void
     public let onProgress: @MainActor (PencilRawSample) -> Void
+    public let onCancellationReason: @MainActor (PencilCancellationReason) -> Void
     public init(viewToDocument: CGAffineTransform, onStroke: @escaping @MainActor (PencilStrokeBuffer) -> Void,
                 onCancelled: @escaping @MainActor (PencilStrokeBuffer) -> Void,
                 onBegan: @escaping @MainActor () -> Void = {},
-                onProgress: @escaping @MainActor (PencilRawSample) -> Void = { _ in }) {
+                onProgress: @escaping @MainActor (PencilRawSample) -> Void = { _ in },
+                onCancellationReason: @escaping @MainActor (PencilCancellationReason) -> Void = { _ in }) {
         self.viewToDocument = viewToDocument; self.onStroke = onStroke; self.onCancelled = onCancelled
         self.onBegan = onBegan; self.onProgress = onProgress
+        self.onCancellationReason = onCancellationReason
     }
     public func makeNSView(context: Context) -> CaptureView { CaptureView(frame: .zero) }
     public func updateNSView(_ view: CaptureView, context: Context) {
         view.viewToDocument = viewToDocument; view.onStroke = onStroke; view.onCancelled = onCancelled
         view.onBegan = onBegan; view.onProgress = onProgress
+        view.onCancellationReason = onCancellationReason
     }
 }
 
@@ -30,6 +34,7 @@ public struct PencilCaptureSurface: NSViewRepresentable {
     var onCancelled: (PencilStrokeBuffer) -> Void = { _ in }
     fileprivate var onBegan: () -> Void = {}
     fileprivate var onProgress: (PencilRawSample) -> Void = { _ in }
+    fileprivate var onCancellationReason: (PencilCancellationReason) -> Void = { _ in }
     private var buffer = PencilStrokeBuffer()
     private var active = false
     private var failed = false
@@ -49,7 +54,7 @@ public struct PencilCaptureSurface: NSViewRepresentable {
     @objc private func windowResigned() { cancelInput() }
     private func cancelInput() {
         guard active else { return }
-        active = false; onCancelled(buffer)
+        active = false; onCancellationReason(.systemCancelled); onCancelled(buffer)
     }
     public override func cancelOperation(_ sender: Any?) { cancelInput() }
     @available(macOS 26.0, *)
@@ -63,7 +68,7 @@ public struct PencilCaptureSurface: NSViewRepresentable {
     public override func mouseUp(with event: NSEvent) {
         guard active else { return }
         append(event, release: true); active = false
-        if failed { onCancelled(buffer) } else { onStroke(buffer) }
+        if failed { onCancellationReason(.invalidInput); onCancelled(buffer) } else { onStroke(buffer) }
     }
     private func append(_ event: NSEvent, release: Bool) {
         let location = convert(event.locationInWindow, from: nil).applying(viewToDocument)

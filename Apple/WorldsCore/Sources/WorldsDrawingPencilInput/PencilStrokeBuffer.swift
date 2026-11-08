@@ -1,6 +1,8 @@
 import Foundation
 import WorldsDrawing
 
+public enum PencilCancellationReason: Sendable { case systemCancelled, invalidInput }
+
 public enum PencilInputError: Error, Equatable { case invalidSample, unresolvedEstimate, cancelled, empty }
 
 /// Pointer coordinates must already be transformed into the drawing frame.

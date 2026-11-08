@@ -10,17 +10,21 @@ public struct PencilCaptureSurface: UIViewRepresentable {
     public let onCancelled: @MainActor (PencilStrokeBuffer) -> Void
     public let onBegan: @MainActor () -> Void
     public let onProgress: @MainActor (PencilRawSample) -> Void
+    public let onCancellationReason: @MainActor (PencilCancellationReason) -> Void
     public init(viewToDocument: CGAffineTransform, onStroke: @escaping @MainActor (PencilStrokeBuffer) -> Void,
                 onCancelled: @escaping @MainActor (PencilStrokeBuffer) -> Void,
                 onBegan: @escaping @MainActor () -> Void = {},
-                onProgress: @escaping @MainActor (PencilRawSample) -> Void = { _ in }) {
+                onProgress: @escaping @MainActor (PencilRawSample) -> Void = { _ in },
+                onCancellationReason: @escaping @MainActor (PencilCancellationReason) -> Void = { _ in }) {
         self.viewToDocument = viewToDocument; self.onStroke = onStroke; self.onCancelled = onCancelled
         self.onBegan = onBegan; self.onProgress = onProgress
+        self.onCancellationReason = onCancellationReason
     }
     public func makeUIView(context: Context) -> CaptureView { CaptureView(frame: .zero) }
     public func updateUIView(_ view: CaptureView, context: Context) {
         view.viewToDocument = viewToDocument; view.onStroke = onStroke; view.onCancelled = onCancelled
         view.onBegan = onBegan; view.onProgress = onProgress
+        view.onCancellationReason = onCancellationReason
     }
 }
 
@@ -30,6 +34,7 @@ public struct PencilCaptureSurface: UIViewRepresentable {
     fileprivate var onCancelled: (PencilStrokeBuffer) -> Void = { _ in }
     fileprivate var onBegan: () -> Void = {}
     fileprivate var onProgress: (PencilRawSample) -> Void = { _ in }
+    fileprivate var onCancellationReason: (PencilCancellationReason) -> Void = { _ in }
     private var active: UITouch?
     private var buffer = PencilStrokeBuffer()
     private var failed = false
@@ -51,11 +56,11 @@ public struct PencilCaptureSurface: UIViewRepresentable {
         guard let active, touches.contains(active) else { return }
         append(active, release: true)
         self.active = nil
-        if failed { onCancelled(buffer) } else { onStroke(buffer) }
+        if failed { onCancellationReason(.invalidInput); onCancelled(buffer) } else { onStroke(buffer) }
     }
     public override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let active, touches.contains(active) else { return }
-        self.active = nil; onCancelled(buffer)
+        self.active = nil; onCancellationReason(.systemCancelled); onCancelled(buffer)
     }
     private func append(_ touch: UITouch, release: Bool) {
         let location = touch.location(in: self).applying(viewToDocument)

@@ -33,6 +33,7 @@ import WorldsDrawingPencilInput
     var inputBlocked: Bool { busy || recovery != nil }
     private var currentLaserID: String?
     private var activeTool: String?
+    private var cancellationReason: PencilCancellationReason?
     private var activeColor = "#202023"
     private var activeSize: Double = 12
     private var activeShapeCorrection = false
@@ -106,6 +107,7 @@ import WorldsDrawingPencilInput
     }
     func beginInput() {
         guard !inputBlocked else { return }
+        cancellationReason = nil
         guard validateIdentity() else { recovery = .reload; message = "The local copy changed. Reopen it before editing."; return }
         inputActive = true
         activeTool = brush; activeColor = brushColor; activeSize = brushSize; activeShapeCorrection = correctShape
@@ -123,8 +125,14 @@ import WorldsDrawingPencilInput
     func cancelInput() {
         if let id = currentLaserID { lasers.removeAll { $0.id == id }; currentLaserID = nil }
         activeTool = nil; inputActive = false
-        message = "Input cancelled and was not saved."
+        switch cancellationReason {
+        case .systemCancelled: message = "Input cancelled by the system and was not saved."
+        case .invalidInput: message = "Input samples were invalid and were not saved."
+        case nil: message = "Input cancelled and was not saved."
+        }
+        cancellationReason = nil
     }
+    func noteCancellation(_ reason: PencilCancellationReason) { cancellationReason = reason }
     private func releaseLaser() {
         guard let id = currentLaserID, let index = lasers.firstIndex(where: { $0.id == id }) else { return }
         currentLaserID = nil
@@ -335,7 +343,7 @@ import WorldsDrawingPencilInput
                         LaserOverlayView(traces: model.lasers, scale: scale)
                             .frame(width: width, height: height).allowsHitTesting(false).accessibilityHidden(true)
                     }
-                    PencilCaptureSurface(viewToDocument: CGAffineTransform(scaleX: 1 / scale, y: 1 / scale), onStroke: model.capture, onCancelled: { _ in model.cancelInput() }, onBegan: model.beginInput, onProgress: model.progressInput)
+                    PencilCaptureSurface(viewToDocument: CGAffineTransform(scaleX: 1 / scale, y: 1 / scale), onStroke: model.capture, onCancelled: { _ in model.cancelInput() }, onBegan: model.beginInput, onProgress: model.progressInput, onCancellationReason: model.noteCancellation)
                         .frame(width: width, height: height).allowsHitTesting(!model.inputBlocked).accessibilityIdentifier("drawing-canvas")
                 }.frame(width: width, height: height).accessibilityElement(children: .contain).accessibilityIdentifier("drawing-surface")
             }
