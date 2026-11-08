@@ -572,6 +572,16 @@ jobs:
             -destination 'platform=iOS Simulator,name=iPad (A16),OS=26.5' \
             OTHER_SWIFT_FLAGS='$(inherited) -DWORLDS_EXPERIMENTAL_IPAD_LIST_KEYS' \
             CODE_SIGNING_ALLOWED=NO build 2>&1 | tee logs/ipad-list-keys-build.log
+      - name: Export page editor attachments
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          for result in page-editor-*.xcresult; do
+            [ -d "$result" ] || continue
+            mkdir -p "logs/attachments-${result%.xcresult}"
+            xcrun xcresulttool export attachments --path "$result" --output-path "logs/attachments-${result%.xcresult}"
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
