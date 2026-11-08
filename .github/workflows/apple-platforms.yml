@@ -442,6 +442,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee logs/claude-harness-ui.log
           grep -E 'testConversationSurvivesProcessRestartAndCancellation.*passed' logs/claude-harness-ui.log
           grep -E 'testPendingResponseRecoversAfterProcessRestart.*passed' logs/claude-harness-ui.log
+          grep -E 'testReferenceEditorAccessibilityDiagnostic.*passed' logs/claude-harness-ui.log
       - name: Export fixture UI failure attachments
         if: always()
         shell: bash
