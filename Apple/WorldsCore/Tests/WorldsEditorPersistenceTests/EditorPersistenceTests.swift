@@ -9,6 +9,30 @@ import WorldsLocalImport
 @testable import WorldsEditorPersistence
 
 final class EditorPersistenceTests: XCTestCase {
+    @MainActor func testEmptyNestedTaskPersistsAndRejectsStaleSession() async throws {
+        let url = try fixture()
+        try exec(#"UPDATE blocks SET content='{"type":"taskList","attrs":{"bid":"fixture-block"},"content":[{"type":"taskItem","attrs":{"checked":false,"future":"kept"},"content":[{"type":"paragraph","content":[{"type":"text","text":"أصل"}]}]}]}' WHERE id='fixture-block'"#, url: url)
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let stale = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let model = NativeEditorModel(document: bridge.initialDocument, baseRevision: bridge.initialRevision)
+        try model.appendListItem(text: "", nested: true)
+        let empty = model.document.source
+        try await model.save(using: bridge)
+        let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(reopened.initialDocument.source, empty)
+        let resumed = NativeEditorModel(document: reopened.initialDocument, baseRevision: reopened.initialRevision)
+        let insertion = NSRange(location: resumed.projection.text.utf16.count, length: 0)
+        _ = try resumed.replace(range: insertion, with: "فرعي")
+        let typed = resumed.document.source
+        try await resumed.save(using: reopened)
+        let final = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(final.initialDocument.source, typed)
+        let staleModel = NativeEditorModel(document: stale.initialDocument, baseRevision: stale.initialRevision)
+        try staleModel.appendListItem(text: "تعارض", nested: true)
+        do { try await staleModel.save(using: stale); XCTFail("Expected stale snapshot rejection") } catch { }
+        let after = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(after.initialDocument.source, typed)
+    }
     @MainActor func testUnsupportedLegacyHeadingDoesNotBlockOtherParagraphEdit() async throws {
         let url = try fixture()
         try exec(#"UPDATE blocks SET content='{"type":"heading","attrs":{"bid":"fixture-block","level":4},"content":[{"type":"text","text":"Legacy"}]}' WHERE id='fixture-block'"#, url: url)

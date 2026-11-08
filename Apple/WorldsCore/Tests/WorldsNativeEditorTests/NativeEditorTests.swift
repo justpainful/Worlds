@@ -15,6 +15,22 @@ private actor FixturePersistence: EditorPersistence {
 
 @MainActor
 final class NativeEditorTests: XCTestCase {
+    func testAppendEmptyNestedTaskThenTypeAndUndo() throws {
+        let json = #"{"type":"doc","content":[{"type":"taskList","attrs":{"bid":"list"},"content":[{"type":"taskItem","attrs":{"checked":false,"future":"kept"},"content":[{"type":"paragraph","content":[{"type":"text","text":"أصل"}]}]}]}]}"#
+        let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 0)
+        let original = model.document.source
+        try model.appendListItem(text: "", nested: true)
+        XCTAssertEqual(model.listMarkers.count, 2)
+        XCTAssertTrue(model.listMarkers[1].empty)
+        XCTAssertEqual(model.selection.location, model.listMarkers[1].location)
+        let empty = model.document.source
+        _ = try model.replace(range: model.selection, with: "فرعي 👋")
+        XCTAssertTrue(model.projection.text.contains("فرعي 👋"))
+        let typed = model.document.source
+        model.undo(); XCTAssertEqual(model.document.source, empty)
+        model.undo(); XCTAssertEqual(model.document.source, original)
+        model.redo(); model.redo(); XCTAssertEqual(model.document.source, typed)
+    }
     func testStrikethroughPreservesArabicTextAndUndo() throws {
         let json = #"{"type":"doc","content":[{"type":"paragraph","attrs":{"bid":"p","dir":"rtl"},"content":[{"type":"text","text":"مرحبا"}]}]}"#
         let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 0)

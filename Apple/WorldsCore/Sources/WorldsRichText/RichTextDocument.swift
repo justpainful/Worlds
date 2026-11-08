@@ -227,7 +227,7 @@ public struct RichTextDocument: Sendable, Equatable {
     /// Append a new item without relocating existing sibling paths. Nested
     /// lists are appended to the selected item or to its final matching list.
     public mutating func appendListItem(after path: RichTextPath, text: String, nested: Bool) throws -> RichTextPath {
-        guard path.indices.count >= 2, let index = path.indices.last, !text.isEmpty,
+        guard path.indices.count >= 2, let index = path.indices.last,
               text.utf8.count <= 64 * 1024, !text.contains("\n"), !text.contains("\r"), !text.contains("\u{fffc}") else { throw RichTextError.invalidRange }
         let parent = Array(path.indices.dropLast())
         var output: [Int] = []
@@ -235,8 +235,9 @@ public struct RichTextDocument: Sendable, Equatable {
             guard case .string(let kind)? = list["type"], ["bulletList", "orderedList", "taskList"].contains(kind),
                   case .array(var items)? = list["content"], items.indices.contains(index),
                   case .object(var item) = items[index], item["type"] == .string(kind == "taskList" ? "taskItem" : "listItem") else { throw RichTextError.invalidDocument }
+            let paragraphContent: [JSONValue] = text.isEmpty ? [] : [.object(["type": .string("text"), "text": .string(text)])]
             var newItem: [String: JSONValue] = ["type": .string(kind == "taskList" ? "taskItem" : "listItem"),
-                "content": .array([.object(["type": .string("paragraph"), "content": .array([.object(["type": .string("text"), "text": .string(text)])])])])]
+                "content": .array([.object(["type": .string("paragraph"), "content": .array(paragraphContent)])])]
             if kind == "taskList" { newItem["attrs"] = .object(["checked": .bool(false)]) }
             if nested {
                 guard case .array(var content)? = item["content"] else { throw RichTextError.invalidDocument }

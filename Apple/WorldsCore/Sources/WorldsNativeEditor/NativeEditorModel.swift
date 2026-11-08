@@ -347,6 +347,8 @@ public final class NativeEditorModel: ObservableObject {
         registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
         if let span = projection.spans.first(where: { $0.path.indices.starts(with: newPath.indices) }) {
             selection = NSRange(location: NSMaxRange(span.range), length: 0)
+        } else if let marker = listMarkers.first(where: { $0.path == newPath.indices && $0.empty }) {
+            selection = NSRange(location: marker.location, length: 0)
         }
     }
     public func appendListItem(text: String, nested: Bool) throws {
