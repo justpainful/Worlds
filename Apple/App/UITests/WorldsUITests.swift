@@ -52,7 +52,11 @@ final class WorldsUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments.append("--ui-testing-search-fixture")
         app.launch()
-        XCTAssertTrue(app.descendants(matching: .any)["page.search-personal"].firstMatch.waitForExistence(timeout: 20))
+        guard app.descendants(matching: .any)["page.search-personal"].firstMatch.waitForExistence(timeout: 20) else {
+            captureLaunchFailure(app, name: "search-fixture-missing")
+            XCTFail("Search fixture did not appear")
+            throw FixtureLaunchError.unavailable
+        }
         let search = app.searchFields.firstMatch
         XCTAssertTrue(search.waitForExistence(timeout: 20))
         search.tap()
@@ -154,7 +158,11 @@ final class WorldsUITests: XCTestCase {
         if rightToLeft { app.launchArguments.append("--ui-testing-rtl") }
         app.launch()
         let page = app.descendants(matching: .any)["page.reader-fixture"].firstMatch
-        XCTAssertTrue(page.waitForExistence(timeout: 40))
+        guard page.waitForExistence(timeout: 40) else {
+            captureLaunchFailure(app, name: "reader-fixture-missing")
+            XCTFail("Reader fixture did not appear")
+            throw FixtureLaunchError.unavailable
+        }
         page.tap()
         XCTAssertTrue(app.staticTexts["Read the warning"].waitForExistence(timeout: 20))
         XCTAssertTrue(app.staticTexts["مَسْأَلَة ١٢٣: Solve x = 5"].exists)
@@ -334,7 +342,16 @@ final class WorldsUITests: XCTestCase {
         if light { app.launchArguments.append("--ui-testing-light") }
         app.launch()
         let row = app.descendants(matching: .any)["page.\(id)"].firstMatch
-        if !row.waitForExistence(timeout: 10) { app.swipeUp() }
+        if !row.waitForExistence(timeout: 10) {
+            #if os(macOS)
+            guard app.windows.firstMatch.exists else {
+                captureLaunchFailure(app, name: "resource-window-missing")
+                XCTFail("Application window did not appear")
+                throw FixtureLaunchError.unavailable
+            }
+            #endif
+            app.swipeUp()
+        }
         XCTAssertTrue(row.waitForExistence(timeout: 15))
         row.tap()
         XCTAssertTrue(app.descendants(matching: .any)["resource-content"].firstMatch.waitForExistence(timeout: 15))
@@ -362,6 +379,15 @@ final class WorldsUITests: XCTestCase {
         let value = element.value as? String ?? ""
         return value.isEmpty ? element.label : value
     }
+    @MainActor
+    private func captureLaunchFailure(_ app: XCUIApplication, name: String) {
+        let state = XCTAttachment(string: "state=\(app.state.rawValue) pid=\(app.processID) windows=\(app.windows.count)\n\(app.debugDescription)")
+        state.name = name + "-state-and-hierarchy"; state.lifetime = .keepAlways; add(state)
+        let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        screenshot.name = name + "-screen"; screenshot.lifetime = .keepAlways; add(screenshot)
+    }
+    private enum FixtureLaunchError: Error { case unavailable }
+    @MainActor
     private func capture(_ name: String, app: XCUIApplication) {
         #if os(macOS)
         app.activate()
