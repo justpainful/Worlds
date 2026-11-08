@@ -31,3 +31,8 @@ native passkey enrollment, associated domains, Keychain entitlements, or the
 deployed Apple ceremony work. Sign-out remains serialized against active account
 requests. Removal must be triggered by the user, and the server response is the
 authority for whether it completed.
+
+An email challenge response that arrives after sign-out or after a newer sign-in
+flow begins is discarded locally. The server may already have sent the code.
+This check does not revoke a challenge at the service or prevent a caller from
+explicitly submitting a previously obtained challenge ID to `verifyEmail`.

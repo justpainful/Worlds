@@ -113,6 +113,18 @@ private actor DelayedPasskeyTransport: IdentityTransport {
         return (Data(body.utf8), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
     }
 }
+private actor DelayedEmailTransport: IdentityTransport {
+    private(set) var started = false
+    private var continuation: CheckedContinuation<Void, Never>?
+    func release() { continuation?.resume(); continuation = nil }
+    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        guard request.url?.path == "/auth/email/start" else { throw URLError(.badURL) }
+        started = true
+        await withCheckedContinuation { continuation = $0 }
+        let json = #"{"challengeId":"delayed","expiresAt":9999999999999}"#
+        return (Data(json.utf8), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
+}
 private actor DelayedWorkspaceAccessTransport: IdentityTransport {
     private(set) var started = false
     private var continuation: CheckedContinuation<Void, Never>?
@@ -211,6 +223,24 @@ final class IdentityContinuityTests: XCTestCase {
         await transport.release()
         do { _ = try await pending.value; XCTFail("A response issued before sign out must be rejected") }
         catch IdentityContinuityError.signedOut { } catch { XCTFail("Unexpected error: \(error)") }
+    }
+    func testSignOutRejectsEmailChallengeStillInFlight() async throws {
+        let transport = DelayedEmailTransport()
+        let coordinator = try IdentitySessionCoordinator(baseURL: URL(string: "https://example.test")!, lockDirectory: directory(), transport: transport, secrets: MemorySecrets())
+        let pending = Task { try await coordinator.startEmail("fixture@example.test") }
+        for _ in 0..<100 {
+            if await transport.started { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let started = await transport.started
+        guard started else { pending.cancel(); await transport.release(); return XCTFail("Fixture did not start") }
+        _ = try await coordinator.signOut()
+        await transport.release()
+        do { _ = try await pending.value; XCTFail("An email challenge from before sign out must not be delivered") }
+        catch IdentityContinuityError.signedOut { }
+        catch { XCTFail("Unexpected error: \(error)") }
+        let hasSession = try await coordinator.hasStoredSession()
+        XCTAssertFalse(hasSession)
     }
     private func directory() throws -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-identity-\(UUID().uuidString)", isDirectory: true)

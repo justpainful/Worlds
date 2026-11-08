@@ -137,7 +137,18 @@ public actor IdentitySessionCoordinator {
         client = try WorldsIdentityClient(baseURL: baseURL, secrets: secrets, transport: transport)
         self.lease = lease; self.scope = scope; self.secrets = secrets
     }
-    public func startEmail(_ email: String) async throws -> EmailChallenge { try await client.startEmail(email) }
+    /// Do not deliver a challenge requested before sign-out or a newer sign-in
+    /// flow. The service may still have sent the email; no code is consumed here.
+    public func startEmail(_ email: String) async throws -> EmailChallenge {
+        guard !changingSession else { throw IdentityContinuityError.busy }
+        try Task.checkCancellation()
+        sessionGeneration &+= 1; pendingPasskey = nil
+        let generation = sessionGeneration
+        let challenge = try await client.startEmail(email)
+        try Task.checkCancellation()
+        guard !changingSession, generation == sessionGeneration else { throw IdentityContinuityError.signedOut }
+        return challenge
+    }
     public func verifyEmail(challengeID: String, code: String, displayName: String? = nil,
                             deviceName: String, platform: String) async throws -> IdentitySessionSummary {
         guard !changingSession, activeRequests == 0 else { throw IdentityContinuityError.busy }
