@@ -110,15 +110,15 @@ final class WorldsUITests: XCTestCase {
         app.launch()
         let page = app.descendants(matching: .any)["page.reader-fixture"].firstMatch
         XCTAssertTrue(page.waitForExistence(timeout: 40)); page.tap()
-        let quote = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "اقتباس عربي محفوظ ١٢٣")).firstMatch
+        let quote = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", "اقتباس عربي محفوظ ١٢٣", "اقتباس عربي محفوظ ١٢٣")).firstMatch
         let overflow = app.staticTexts["Overflow item"].firstMatch
         let reader = app.scrollViews["page-content"].firstMatch
         XCTAssertTrue(reader.waitForExistence(timeout: 10))
         for _ in 0..<4 { reader.swipeUp() }
         XCTAssertTrue(quote.waitForExistence(timeout: 10))
-        XCTAssertTrue(quote.label.contains("Mixed quote"))
-        XCTAssertTrue(quote.label.contains("Invalid color preserved"))
-        XCTAssertTrue(quote.label.contains("Unsupported formatting: highlight color"))
+        XCTAssertTrue(accessibleText(quote).contains("Mixed quote"))
+        XCTAssertTrue(accessibleText(quote).contains("Invalid color preserved"))
+        XCTAssertTrue(accessibleText(quote).contains("Unsupported formatting: highlight color"))
         XCTAssertTrue(overflow.waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["9223372036854775807 + 1."].exists)
         XCTAssertTrue(app.staticTexts["Unsupported attributes: pstyle"].exists)
@@ -129,16 +129,16 @@ final class WorldsUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["مهمة بحالة مجهولة"].exists)
         XCTAssertTrue(app.images["Completion status unknown"].exists)
         XCTAssertGreaterThanOrEqual(app.staticTexts.matching(identifier: "?").count, 2)
-        let inline = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "نص مضمن محفوظ")).firstMatch
+        let inline = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", "نص مضمن محفوظ", "نص مضمن محفوظ")).firstMatch
         XCTAssertTrue(inline.exists)
-        XCTAssertTrue(inline.label.contains("Unsupported formatting: text.dir"))
-        let badInline = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Equation source unavailable")).firstMatch
+        XCTAssertTrue(accessibleText(inline).contains("Unsupported formatting: text.dir"))
+        let badInline = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", "Equation source unavailable", "Equation source unavailable")).firstMatch
         XCTAssertTrue(badInline.exists)
-        XCTAssertTrue(badInline.label.contains("Page mention label unavailable"))
-        XCTAssertEqual(badInline.label.components(separatedBy: "Equation source unavailable").count - 1, 2)
-        XCTAssertEqual(badInline.label.components(separatedBy: "Page mention label unavailable").count - 1, 2)
-        XCTAssertTrue(badInline.label.contains("قبل"))
-        XCTAssertTrue(badInline.label.contains("نهاية"))
+        XCTAssertTrue(accessibleText(badInline).contains("Page mention label unavailable"))
+        XCTAssertEqual(accessibleText(badInline).components(separatedBy: "Equation source unavailable").count - 1, 2)
+        XCTAssertEqual(accessibleText(badInline).components(separatedBy: "Page mention label unavailable").count - 1, 2)
+        XCTAssertTrue(accessibleText(badInline).contains("قبل"))
+        XCTAssertTrue(accessibleText(badInline).contains("نهاية"))
         capture("reader-rtl-quotation-list", app: app)
     }
 
@@ -358,6 +358,10 @@ final class WorldsUITests: XCTestCase {
     }
 
     @MainActor
+    private func accessibleText(_ element: XCUIElement) -> String {
+        let value = element.value as? String ?? ""
+        return value.isEmpty ? element.label : value
+    }
     private func capture(_ name: String, app: XCUIApplication) {
         #if os(macOS)
         app.activate()
