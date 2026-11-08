@@ -252,6 +252,8 @@ struct LocalPresentationEditor: View {
             List {
                 Text("This edits a local copy. Media and unsupported elements are kept but cannot be edited here.")
                 if let error = state.error { Text(error).accessibilityIdentifier("presentation-edit-error") }
+                if state.saved && !state.dirty { Text("Presentation saved").accessibilityIdentifier("presentation-edit-saved") }
+                if state.fixtureMediaPresent { Text("Fixture attachment record retained").accessibilityIdentifier("presentation-media-record-retained") }
                 if state.slides.isEmpty && !state.busy { Text("No editable slides are available.") }
                 Text("\(state.slides.count) slides").accessibilityIdentifier("presentation-slide-count")
                 Group {
@@ -408,8 +410,6 @@ struct LocalPresentationEditor: View {
                     Button("Redo") { state.redo() }.disabled(state.hasUnapplied || !state.canRedo)
                 }
                 if state.reloadRequired { Button("Reload saved presentation") { reload = true }.accessibilityIdentifier("presentation-reload") }
-                if state.saved { Text("Presentation saved").accessibilityIdentifier("presentation-edit-saved") }
-                if state.fixtureMediaPresent { Text("Fixture attachment record retained").accessibilityIdentifier("presentation-media-record-retained") }
             }
             .navigationTitle("Edit presentation")
             .disabled(state.busy)

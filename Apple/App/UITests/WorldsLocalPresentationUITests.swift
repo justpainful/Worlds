@@ -260,23 +260,45 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
         let count = app.staticTexts["presentation-slide-count"]
         XCTAssertTrue(count.waitForExistence(timeout: 20))
-        if count.label != "2 slides" { failure(app, "presentation-count-unexpected") }
-        XCTAssertEqual(count.label, "2 slides")
+        if accessibleText(count) != "2 slides" { failure(app, "presentation-count-unexpected") }
+        XCTAssertEqual(accessibleText(count), "2 slides")
         let addSlide = app.buttons["presentation-add-blank"]
         if !addSlide.isHittable { app.swipeUp() }
         XCTAssertTrue(addSlide.waitForExistence(timeout: 10)); addSlide.tap()
-        XCTAssertEqual(count.label, "3 slides")
+        XCTAssertEqual(accessibleText(count), "3 slides")
         let duplicate = app.buttons["presentation-duplicate-slide"]
         if !duplicate.isHittable { app.swipeUp() }; duplicate.tap()
-        XCTAssertEqual(count.label, "4 slides")
+        XCTAssertEqual(accessibleText(count), "4 slides")
         app.buttons["presentation-move-down"].tap()
         app.buttons["Undo"].tap(); app.buttons["Redo"].tap()
         app.buttons["Save"].tap()
         guard app.staticTexts["presentation-edit-saved"].waitForExistence(timeout: 20) else { failure(app, "presentation-created-save-missing"); XCTFail("Saved state missing"); return }
         guard app.staticTexts["presentation-media-record-retained"].waitForExistence(timeout: 10) else { failure(app, "presentation-created-media-missing"); XCTFail("Media verification missing"); return }
         app.buttons["Close"].tap(); XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
-        XCTAssertTrue(count.waitForExistence(timeout: 20)); XCTAssertEqual(count.label, "4 slides")
+        XCTAssertTrue(count.waitForExistence(timeout: 20)); XCTAssertEqual(accessibleText(count), "4 slides")
         let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = "presentation-created-and-reopened"; shot.lifetime = .keepAlways; add(shot)
+    }
+    @MainActor func testSavedStatusDisappearsWhenNewDraftIsTyped() {
+        let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-presentation-fixture"]; app.launch()
+        let page = app.descendants(matching: .any)["page.deck-test"].firstMatch
+        guard page.waitForExistence(timeout: 30) else { failure(app, "status-page-missing"); XCTFail("Presentation page missing"); return }; page.tap()
+        let edit = app.buttons["edit-local-presentation"]
+        guard edit.waitForExistence(timeout: 20) else { failure(app, "status-edit-missing"); XCTFail("Presentation editor missing"); return }; edit.tap()
+        let field = app.descendants(matching: .any)["presentation-text"].firstMatch
+        guard field.waitForExistence(timeout: 20) else { failure(app, "status-field-missing"); XCTFail("Presentation text missing"); return }
+        field.tap(); field.typeText("x"); app.buttons["Apply text"].tap(); app.buttons["Save"].tap()
+        let saved = app.staticTexts["presentation-edit-saved"]
+        guard saved.waitForExistence(timeout: 20) else { failure(app, "status-saved-missing"); XCTFail("Saved state missing"); return }
+        field.tap(); field.typeText("y")
+        XCTAssertTrue(saved.waitForNonExistence(timeout: 10), "A new text draft must not appear saved")
+        app.buttons["Apply text"].tap(); app.buttons["Save"].tap()
+        guard saved.waitForExistence(timeout: 20) else { failure(app, "status-second-save-missing"); XCTFail("Saved state missing"); return }
+        let notes = app.descendants(matching: .any)["presentation-notes"].firstMatch
+        if !notes.isHittable { app.swipeUp() }
+        guard notes.waitForExistence(timeout: 10), notes.isHittable else { failure(app, "status-notes-missing"); XCTFail("Notes field missing"); return }
+        XCTAssertTrue(saved.exists, "Saved state must be observable before editing notes")
+        notes.tap(); notes.typeText("z")
+        XCTAssertTrue(saved.waitForNonExistence(timeout: 10), "A new notes draft must not appear saved")
     }
     @MainActor func testEditReorderSaveAndReopen() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-presentation-fixture"]; app.launch()
@@ -287,6 +309,7 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         let field = app.descendants(matching: .any)["presentation-text"].firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 20)); field.tap()
         #if os(macOS)
+        failure(app, "presentation-text-after-tap")
         field.typeKey("a", modifierFlags: .command); field.typeKey(.delete, modifierFlags: [])
         #else
         field.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
@@ -296,7 +319,9 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         XCTAssertEqual(field.value as? String, "")
         field.typeText("Edited slide")
         app.buttons["Apply text"].tap()
-        app.buttons["presentation-slide.slide-b"].tap()
+        let slideB = app.buttons["presentation-slide.slide-b"]
+        guard slideB.waitForExistence(timeout: 10) else { failure(app, "presentation-next-slide-missing"); XCTFail("Next slide missing"); return }
+        slideB.tap()
         XCTAssertEqual(field.value as? String, "Second slide", "Element IDs may recur on different slides")
         app.buttons["Move slide up"].tap()
         XCTAssertLessThan(app.buttons["presentation-slide.slide-b"].frame.minY, app.buttons["presentation-slide.slide-a"].frame.minY)
@@ -311,6 +336,10 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         XCTAssertEqual(app.descendants(matching: .any)["presentation-text"].firstMatch.value as? String, "Edited slide")
         XCTAssertTrue(app.staticTexts["presentation-unsupported-elements"].exists)
         let image = XCTAttachment(screenshot: app.screenshot()); image.name = "local-presentation-reopened"; image.lifetime = .keepAlways; add(image)
+    }
+    @MainActor private func accessibleText(_ element: XCUIElement) -> String {
+        let value = element.value as? String ?? ""
+        return value.isEmpty ? element.label : value
     }
     @MainActor private func failure(_ app: XCUIApplication, _ name: String) {
         let screenshot = XCTAttachment(screenshot: app.screenshot()); screenshot.name = name; screenshot.lifetime = .keepAlways; add(screenshot)
