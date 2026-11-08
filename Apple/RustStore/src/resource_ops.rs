@@ -502,6 +502,15 @@ fn presentation_refs(c: &Connection, page: &str, entries: &[(String,Value)]) -> 
     if actual != expected { bail!("unsupported presentation: reference index is inconsistent") }
     Ok(())
 }
+fn ensure_unchanged_presentation_blocks_canonical(c: &Connection, page: &str, before: &[(String,Value)], next: &[(String,Value)]) -> Result<()> {
+    for (block_id,old) in before {
+        if next.iter().any(|(next_id,value)| next_id==block_id && value==old) {
+            let raw:String=c.query_row("SELECT content FROM blocks WHERE page_id=?1 AND id=?2",rusqlite::params![page,block_id],|r|r.get(0))?;
+            if raw != old.to_string() { bail!("unsupported presentation: unchanged block requires normalization") }
+        }
+    }
+    Ok(())
+}
 
 // The experimental native presentation editor can change notes, text, geometry
 // and selected text-style fields. Preserve every other field and element until
@@ -606,6 +615,10 @@ pub fn save_presentation_deleting(path: &Path, id: &str, base: i64, expected_met
         let owner: Option<String> = tx.query_row("SELECT page_id FROM blocks WHERE id=?1",[&item.id],|r|r.get(0)).optional()?;
         if owner.as_deref().is_some_and(|other| other != id) { bail!("conflict: block belongs to another page") }
     }
+    // The original writer compares raw JSON bytes, not parsed values. If an
+    // unchanged block is serialized differently, it would rewrite derived
+    // direction/text/timestamps and record a spurious change. Fail closed.
+    ensure_unchanged_presentation_blocks_canonical(&tx,id,&before,&next_pairs)?;
     presentation_attachments(&tx,&before)?; presentation_attachments(&tx,&next_pairs)?;
     if declared.is_empty() { store::snapshot_before_user_edit(&tx,id)?; }
     else { store::snapshot(&tx,id,"user",None,Some("Before slide deletion"))?; }
@@ -650,6 +663,7 @@ pub fn restore_presentation_slide(path: &Path, page: &str, recovery_id: &str, ba
     if !serde_json::from_str::<Value>(&properties).ok().and_then(|v|v.as_object().map(|o|o.is_empty())).unwrap_or(false) { bail!("unsupported recovery properties") }
     let position=original.iter().position(|id|id==&block_id).ok_or_else(||anyhow::anyhow!("invalid recovery order"))?;
     let mut next=current.clone(); next.insert(position,(block_id.clone(),content));
+    ensure_unchanged_presentation_blocks_canonical(&tx,page,&current,&next)?;
     presentation_attachments(&tx,&next)?;
     store::snapshot(&tx,page,"user",None,Some("Before slide recovery"))?;
     let result=store::save_blocks(&tx,&store::Ctx::user(),page,next.iter().map(|(id,content)|store::BlockInput{id:id.clone(),content:content.clone()}).collect())?;
@@ -769,6 +783,20 @@ mod presentation_tests {
         assert!(save_presentation(&path,"deck",old["revision"].as_i64().unwrap(),old["metadata"].clone(),inputs(&old),next).is_err());
         assert_eq!(read_presentation(&path,"deck").unwrap(),old);
         std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn noncanonical_unchanged_block_is_not_rewritten() {
+        let path=fixture(); let c=Connection::open(&path).unwrap();
+        let raw=r#"{"type":"future","attrs":{"payload":true,"bid":"o"},"content":[{"type":"text","text":"مرحبا"}]}"#;
+        c.execute("UPDATE blocks SET content=?1,direction='ltr',updated_at=7 WHERE id='o'",[raw]).unwrap(); drop(c);
+        let old=read_presentation(&path,"deck").unwrap();
+        let mut next=inputs(&old); next[0].content["attrs"]["notes"]=json!("changed");
+        assert!(save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),next).is_err());
+        assert_eq!(read_presentation(&path,"deck").unwrap(),old);
+        let c=Connection::open(&path).unwrap();
+        let (direction,updated):(String,i64)=c.query_row("SELECT direction,updated_at FROM blocks WHERE id='o'",[],|r|Ok((r.get(0)?,r.get(1)?))).unwrap();
+        assert_eq!(direction,"ltr"); assert_eq!(updated,7);
+        drop(c); std::fs::remove_file(path).unwrap();
     }
     #[test]
     fn same_revision_mutations_and_shared_attachment_fail_closed() {
