@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import WorldsCollaboration
+import WorldsCollaborationEditor
 
 @main
 struct CollaborationHarnessApp: App {
@@ -12,6 +13,10 @@ struct CollaborationHarnessApp: App {
                 Text("Disposable fixtures and local service only. No user workspace is opened.")
                 Button("Run local scenario") { model.start() }.disabled(model.running).accessibilityIdentifier("scenario.start")
                 if model.running { ProgressView() }
+                if let session = model.activeSession {
+                    CollaborationConnectionView(session: session)
+                    CollaborativeLivePreview(session: session).frame(minHeight: 80)
+                }
                 Text(model.status).accessibilityElement(children: .ignore).accessibilityLabel(model.status).accessibilityIdentifier("scenario.status")
                 Spacer()
             }.padding().frame(minWidth: 520, minHeight: 250)
@@ -23,6 +28,7 @@ struct CollaborationHarnessApp: App {
 final class HarnessModel: ObservableObject {
     @Published private(set) var status = "Start the isolated Worker and provide fixture tokens before running."
     @Published private(set) var running = false
+    @Published private(set) var activeSession: CollaborationSession?
     private let page = "fixture-page"
     private let workspace = "fixture-workspace"
     private let base = Data(base64Encoded: "AQbpBwAEAQZzaGFyZWQKSGVsbG8g8J+MjQcBB2RlZmF1bHQDCXBhcmFncmFwaAcA6QcIBgYA6QcJBGJvbGQEdHJ1ZYTpBwoNWWpzIHJpY2ggdGV4dIbpBxcEYm9sZARudWxsAA==")!
@@ -63,11 +69,14 @@ final class HarnessModel: ObservableObject {
         try await a.appendLocal(pageID: page, channel: 0, update: base)
         try await a.appendLocal(pageID: page, channel: 0, update: alice)
         let first = try session(a, "editor", editor, doc), second = try session(b, "editor", editor, doc)
+        activeSession = first
+        defer { activeSession = nil }
         let firstRun = Task { try await first.run() }, secondRun = Task { try await second.run() }
         do {
             status = "Waiting for two authenticated replicas…"
             let initial = try NativeCRDTDocument(); try initial.apply(base); try initial.apply(alice)
             try await waitForConvergence(a, b, initial)
+            guard case .authenticated(let level) = await first.connectionStatus(), level == "edit" || level == "full" else { throw HarnessError.connectionState }
             await second.stop(); try await secondRun.value
             status = "Queueing an offline change in the isolated second replica…"
             try await b.appendLocal(pageID: page, channel: 0, update: bob)
@@ -78,6 +87,7 @@ final class HarnessModel: ObservableObject {
             do { try await waitForConvergence(a, b, expected); await reopened.stop(); try await reopenedRun.value }
             catch { await reopened.stop(); _ = try? await reopenedRun.value; throw error }
             await first.stop(); try await firstRun.value
+            guard await first.connectionStatus() == .stopped else { throw HarnessError.connectionState }
         } catch {
             await first.stop(); await second.stop(); _ = try? await firstRun.value; _ = try? await secondRun.value
             throw error
@@ -114,4 +124,4 @@ final class HarnessModel: ObservableObject {
     }
 }
 
-enum HarnessError: Error { case configuration, fixture, outbox, timeout, refusal }
+enum HarnessError: Error { case configuration, fixture, outbox, timeout, refusal, connectionState }

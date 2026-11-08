@@ -21,3 +21,5 @@ actual editor integration, durable rejection recovery UX, token refresh,
 presence correctness, production permissions, or Apple device validation.
 It is not linked to the shipping application. Apple build and execution must
 be verified in CI; they cannot be performed on this Windows host.
+
+During the local scenario the harness shows observed connection and access state and a read-only projection of the actual session. Connected means the transport has authenticated; it does not claim pending changes have synced. Unsupported document content is reported as unavailable. The host owns session shutdown; neither view is linked to the product. Apple UI and accessibility behavior still require validation.

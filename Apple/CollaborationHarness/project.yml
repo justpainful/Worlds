@@ -21,6 +21,8 @@ targets:
     dependencies:
       - package: WorldsCore
         product: WorldsCollaboration
+      - package: WorldsCore
+        product: WorldsCollaborationEditor
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.worlds.test.collaboration.macos

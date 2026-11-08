@@ -130,6 +130,41 @@ private actor PausedDisconnectSocket: CollaborationSocket {
     func releaseClose() { closeWaiter?.resume(); closeWaiter = nil }
 }
 
+private actor PausedRequestedCloseSocket: CollaborationSocket {
+    private var first = true
+    private var receiveWaiter: CheckedContinuation<Data?, Error>?
+    private var closeWaiter: CheckedContinuation<Void, Never>?
+    private var rejectSend = false
+    private(set) var closeWaiting = false
+    var waitingForReceive: Bool { receiveWaiter != nil }
+    func failNextSend() { rejectSend = true }
+    func send(_ data: Data) async throws {
+        if rejectSend { rejectSend = false; throw URLError(.networkConnectionLost) }
+    }
+    func receive() async throws -> Data? {
+        if first { first = false; return try WorldsSyncWire.encode(.authState(level: "edit", userID: "editor")) }
+        return try await withCheckedThrowingContinuation { receiveWaiter = $0 }
+    }
+    func close() async {
+        if !closeWaiting {
+            closeWaiting = true
+            await withCheckedContinuation { closeWaiter = $0 }
+        }
+        receiveWaiter?.resume(throwing: CancellationError()); receiveWaiter = nil
+    }
+    func releaseClose() { closeWaiter?.resume(); closeWaiter = nil }
+    func closeCode() async -> Int { 0 }
+}
+
+private actor FailingLoadStore: CollaborationStore {
+    func load(pageID: String, channel: UInt64) async throws -> [Data] { throw URLError(.cannotOpenFile) }
+    func appendLocal(pageID: String, channel: UInt64, update: Data) async throws { }
+    func appendRemote(pageID: String, channel: UInt64, update: Data) async throws { }
+    func maximumPendingID(pageID: String, channel: UInt64) async throws -> Int64? { nil }
+    func acknowledge(pageID: String, channel: UInt64, through: Int64) async throws { }
+    func archiveRejection(pageID: String, channel: UInt64, state: Data, reason: String) async throws { }
+}
+
 private actor DelayedPresenceSocket: CollaborationSocket {
     private let userID: String
     init(userID: String = "user") { self.userID = userID }
@@ -385,6 +420,32 @@ extension WorldsCollaborationTests {
         let after = await socket.presenceUpdates; XCTAssertEqual(after.count, 2)
         await session.stop(); _ = try? await run.value
     }
+    func testRequestedCloseRevokesAuthorityBeforeCloseReturns() async throws {
+        let socket = PausedRequestedCloseSocket()
+        let session = try CollaborationSession(pageID: "fixture-page", workspaceID: "fixture-workspace", documentID: "fixture-page", expectedUserID: "editor", serverURL: URL(string: "https://example.invalid")!, store: FixtureStore(), tokenProvider: { _ in "fixture-token" }, socketFactory: { _, _ in socket })
+        let run = Task { try await session.run() }
+        defer { Task { await socket.releaseClose(); await session.stop() } }
+        for _ in 0..<100 { if await session.accessLevel == "edit" { break }; try await Task.sleep(for: .milliseconds(10)) }
+        guard await session.accessLevel == "edit" else { XCTFail("Authentication was not observed"); return }
+        for _ in 0..<100 { if await socket.waitingForReceive { break }; try await Task.sleep(for: .milliseconds(10)) }
+        guard await socket.waitingForReceive else { XCTFail("Receive was not reached"); return }
+        await socket.failNextSend()
+        let closing = Task { try await session.clearPresence() }
+        for _ in 0..<100 { if await socket.closeWaiting { break }; try await Task.sleep(for: .milliseconds(10)) }
+        guard await socket.closeWaiting else { XCTFail("Close was not reached"); return }
+        let status = await session.connectionStatus()
+        XCTAssertEqual(status, .connecting)
+        do { try await session.appendLocal(channel: 0, update: Data([0, 0])); XCTFail("Closing connection authorized a write") }
+        catch CollaborationError.accessRevoked { }
+        await socket.releaseClose(); _ = try? await closing.value
+        await session.stop(); _ = try? await run.value
+    }
+    func testInitialStoreFailurePublishesFailed() async throws {
+        let session = try CollaborationSession(pageID: "fixture-page", workspaceID: "fixture-workspace", documentID: "fixture-page", expectedUserID: "editor", serverURL: URL(string: "https://example.invalid")!, store: FailingLoadStore(), tokenProvider: { _ in "fixture-token" })
+        do { try await session.run(); XCTFail("Load failure was hidden") } catch { }
+        let status = await session.connectionStatus()
+        XCTAssertEqual(status, .failed)
+    }
     func testDisconnectedSocketCannotAuthorizeLocalWritesWhileClosing() async throws {
         let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-editor-v11", withExtension: "db"))
         let copy = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-closing-\(UUID().uuidString).db")
@@ -400,14 +461,20 @@ extension WorldsCollaborationTests {
         guard await session.accessLevel == "edit" else { await session.stop(); _ = try? await run.value; return XCTFail("Authentication was not observed") }
         for _ in 0..<100 { if await socket.waitingForReceive { break }; try await Task.sleep(for: .milliseconds(10)) }
         guard await socket.waitingForReceive else { await session.stop(); _ = try? await run.value; return XCTFail("Receive was not reached") }
+        let connected = await session.connectionStatus()
+        XCTAssertEqual(connected, .authenticated(level: "edit"))
         await socket.disconnect()
         for _ in 0..<100 { if await socket.waitingForCloseCode { break }; try await Task.sleep(for: .milliseconds(10)) }
         guard await socket.waitingForCloseCode else { await socket.releaseClose(); await session.stop(); _ = try? await run.value; return XCTFail("Close was not reached") }
+        let disconnected = await session.connectionStatus()
+        XCTAssertEqual(disconnected, .connecting)
         do { try await session.appendLocal(channel: 0, update: Data([0, 0])); XCTFail("Closed connection must not authorize writes") }
         catch CollaborationError.accessRevoked { }
         let after = try await store.maximumPendingID(pageID: "fixture-page", channel: 0)
         XCTAssertEqual(after, pending)
         await session.stop(); await socket.releaseClose(); _ = try? await run.value
+        let stopped = await session.connectionStatus()
+        XCTAssertEqual(stopped, .stopped)
     }
     func testLivePermissionDowngradeBlocksNewContentWithoutDiscardingOutbox() async throws {
         let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-editor-v11", withExtension: "db"))

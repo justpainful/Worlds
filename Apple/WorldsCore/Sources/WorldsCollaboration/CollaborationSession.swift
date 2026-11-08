@@ -77,6 +77,11 @@ public enum CollaborationError: Error {
     case invalidEndpoint, invalidChannel, invalidFrame, accessRevoked, rejected(String), notStarted, staleProjection
 }
 
+/// Transport observation, not a guarantee that pending changes have synced.
+public enum CollaborationConnectionStatus: Sendable, Equatable {
+    case stopped, connecting, authenticated(level: String), accessRevoked, failed
+}
+
 public struct PlainEditorProjection: Sendable {
     public let json: Data
     public let state: Data
@@ -155,9 +160,11 @@ public actor CollaborationSession {
         diagnostic("run begin")
         guard stopped, !running, !localWriteInFlight else { throw CollaborationError.notStarted }
         running = true
-        defer { running = false; stopped = true }
+        defer { running = false; stopped = true; publishEditorChange() }
         stopped = false; revoked = false; failed = false; generation &+= 1
+        publishEditorChange()
         let runID = generation
+        do {
         for channel: UInt64 in [0, 1] {
             diagnostic("allocate document \(channel)")
             let doc = try NativeCRDTDocument()
@@ -175,6 +182,10 @@ public actor CollaborationSession {
         _ = try awareness?.setLocal("{}", at: Date().timeIntervalSince1970)
         if let presenceJSON { _ = try awareness?.setLocal(presenceJSON, at: Date().timeIntervalSince1970) }
         diagnostic("awareness ready")
+        } catch {
+            if !stopped && generation == runID { failed = true }
+            throw error
+        }
         let heartbeat = Task {
             while !Task.isCancelled {
                 do { try await Task.sleep(for: .seconds(3)); try await self.pulseAwareness() }
@@ -202,6 +213,7 @@ public actor CollaborationSession {
                 diagnostic("socket created")
                 guard !stopped, generation == runID else { await opened.close(); return }
                 connection = opened; socket = opened; socketID = UUID(); clearPending(); verifiedIdentity = false; synchronizedChannels.removeAll()
+                let activeConnectionID = socketID
                 for channel: UInt64 in [0, 1] {
                     guard let doc = documents[channel] else { throw CollaborationError.notStarted }
                     diagnostic("send vector \(channel)")
@@ -212,6 +224,7 @@ public actor CollaborationSession {
                     guard let data = try await opened.receive() else { throw CollaborationError.invalidFrame }
                     diagnostic("frame received")
                     guard !stopped, generation == runID else { break }
+                    guard socketID == activeConnectionID else { throw CollaborationError.invalidFrame }
                     try await handle(data, via: opened)
                 }
             } catch {
@@ -263,6 +276,15 @@ public actor CollaborationSession {
         if let closing { await closing.close() }
     }
 
+    /// Observation is instantaneous and does not imply durable synchronization.
+    public func connectionStatus() -> CollaborationConnectionStatus {
+        if revoked { return .accessRevoked }
+        if failed { return .failed }
+        guard running, !stopped else { return .stopped }
+        guard socket != nil, verifiedIdentity, let accessLevel else { return .connecting }
+        return .authenticated(level: accessLevel)
+    }
+
     /// Coalesced invalidation signals only. Each consumer must call
     /// plainEditorSnapshot again, which rechecks authentication and state.
     public func editorChanges() -> AsyncStream<Void> {
@@ -280,11 +302,23 @@ public actor CollaborationSession {
         for timer in acknowledgementTimers.values { timer.cancel() }
         acknowledgementTimers.removeAll(); pending.removeAll()
     }
+    // Revoke local authority before suspending for a potentially stalled close.
+    // A delayed failure from an older connection must not revoke a new one.
+    private func closeConnection(_ target: any CollaborationSocket, connection: UUID) async {
+        if socketID == connection {
+            socketID = UUID()
+            verifiedIdentity = false; accessLevel = nil; synchronizedChannels.removeAll()
+            awareness?.disconnected()
+            publishEditorChange()
+        }
+        await target.close()
+    }
+
     private func expireAcknowledgement(_ batchID: UInt64, connection: UUID) async {
         guard !stopped, socketID == connection, pending[batchID] != nil, let socket else { return }
         // Do not acknowledge or remove durable data. A new connection will
         // negotiate state vectors and resend whatever the server lacks.
-        await socket.close()
+        await closeConnection(socket, connection: connection)
     }
 
     private func sendPresence(_ update: Data, via target: any CollaborationSocket, connection: UUID, version: UInt64) async throws {
@@ -319,12 +353,13 @@ public actor CollaborationSession {
         guard awareness != nil else { return }
         let update = try awareness!.setLocal(nil, at: Date().timeIntervalSince1970)
         if verifiedIdentity, let socket {
+            let connection = socketID
             // A queued removal cannot overtake an in-flight send. Closing the
             // connection allows the service to remove its awareness without
             // waiting indefinitely for that send to finish.
-            if presenceSending { await socket.close(); return }
-            do { try await sendPresence(update, via: socket, connection: socketID, version: presenceVersion) }
-            catch { await socket.close(); throw error }
+            if presenceSending { await closeConnection(socket, connection: connection); return }
+            do { try await sendPresence(update, via: socket, connection: connection, version: presenceVersion) }
+            catch { await closeConnection(socket, connection: connection); throw error }
         }
     }
 
@@ -332,8 +367,9 @@ public actor CollaborationSession {
 
     func pulseAwareness(at now: TimeInterval = Date().timeIntervalSince1970) async throws {
         guard !stopped, verifiedIdentity, let socket, let update = try awareness?.tick(at: now), presenceJSON != nil else { return }
-        do { try await sendPresence(update, via: socket, connection: socketID, version: presenceVersion) }
-        catch { await socket.close(); throw error }
+        let connection = socketID
+        do { try await sendPresence(update, via: socket, connection: connection, version: presenceVersion) }
+        catch { await closeConnection(socket, connection: connection); throw error }
     }
 
     /// Persist first. If application fails afterward, stop and rebuild from the log.
@@ -356,9 +392,9 @@ public actor CollaborationSession {
         localWriteInFlight = true
         defer { finishLocalWrite() }
         try await store.appendLocal(pageID: pageID, channel: channel, update: update)
-        do { try doc.apply(update) } catch { failed = true; if let socket { await socket.close() }; throw error }
+        do { try doc.apply(update) } catch { failed = true; if let socket { await closeConnection(socket, connection: socketID) }; throw error }
         // Reconnect triggers a full state-vector handshake, covering the persisted edit.
-        if let socket { await socket.close() }
+        if let socket { await closeConnection(socket, connection: socketID) }
     }
 
     /// Experimental plain-text operation. Persist first, then apply to the live CRDT.
@@ -378,9 +414,9 @@ public actor CollaborationSession {
         let update = try await editorStore.insertPlainChecked(base: base, blockIndex: blockIndex, blockID: blockID,
                                                                expected: expected, offset: offset, insertion: insertion)
         do { try doc.apply(update) }
-        catch { failed = true; if let socket { await socket.close() }; throw error }
+        catch { failed = true; if let socket { await closeConnection(socket, connection: socketID) }; throw error }
         // The durable update remains queued if offline or if the server rejects it.
-        if let socket { await socket.close() }
+        if let socket { await closeConnection(socket, connection: socketID) }
     }
 
     /// Only exposes a supported projection after authentication and after all
@@ -397,8 +433,8 @@ public actor CollaborationSession {
         let base = try doc.diff(Data([0]))
         guard base == expectedState else { throw CollaborationError.staleProjection }
         let update = try await editorStore.deletePlainChecked(base: base, blockIndex: blockIndex, blockID: blockID, expected: expected, offset: offset, length: length)
-        do { try doc.apply(update) } catch { failed = true; if let socket { await socket.close() }; throw error }
-        if let socket { await socket.close() }
+        do { try doc.apply(update) } catch { failed = true; if let socket { await closeConnection(socket, connection: socketID) }; throw error }
+        if let socket { await closeConnection(socket, connection: socketID) }
     }
     public func formatPlain(blockIndex: UInt32, blockID: String, expected: String, offset: UInt32, length: UInt32, mark: String, enabled: Bool, expectedState: Data) async throws {
         guard !stopped, !failed, verifiedIdentity, synchronizedChannels.contains(0), let level = accessLevel,
@@ -409,8 +445,8 @@ public actor CollaborationSession {
         let base = try doc.diff(Data([0]))
         guard base == expectedState else { throw CollaborationError.staleProjection }
         let update = try await editorStore.formatPlainChecked(base: base, blockIndex: blockIndex, blockID: blockID, expected: expected, offset: offset, length: length, mark: mark, enabled: enabled)
-        do { try doc.apply(update) } catch { failed = true; if let socket { await socket.close() }; throw error }
-        if let socket { await socket.close() }
+        do { try doc.apply(update) } catch { failed = true; if let socket { await closeConnection(socket, connection: socketID) }; throw error }
+        if let socket { await closeConnection(socket, connection: socketID) }
     }
     public func plainEditorSnapshot() throws -> PlainEditorProjection {
         guard !stopped, !failed, verifiedIdentity, synchronizedChannels.contains(0), !localWriteInFlight, !remoteWriteInFlight,
