@@ -593,7 +593,8 @@ extension WorldsCollaborationTests {
         try FileManager.default.copyItem(at: source, to: copy)
         defer { try? FileManager.default.removeItem(at: copy) }
         let store = try SQLiteCollaborationStore(databaseURL: copy, pageID: "fixture-page", userID: "editor", workspaceID: "fixture-workspace")
-        try await store.appendLocal(pageID: "fixture-page", channel: 0, update: Data([0, 0]))
+        let update = try XCTUnwrap(Data(base64Encoded: "AQbpBwAEAQZzaGFyZWQKSGVsbG8g8J+MjQcBB2RlZmF1bHQDCXBhcmFncmFwaAcA6QcIBgYA6QcJBGJvbGQEdHJ1ZYTpBwoNWWpzIHJpY2ggdGV4dIbpBxcEYm9sZARudWxsAA=="))
+        try await store.appendLocal(pageID: "fixture-page", channel: 0, update: update)
         let pending = try await store.maximumPendingID(pageID: "fixture-page", channel: 0)
         XCTAssertNotNil(pending)
         let factory = MissingAcknowledgementFactory()
@@ -610,7 +611,7 @@ extension WorldsCollaborationTests {
         await session.stop(); _ = try? await run.value
         XCTAssertTrue(resent, "A missing acknowledgement must trigger reconnect and resend")
         let updates = try await store.load(pageID: "fixture-page", channel: 0)
-        XCTAssertTrue(updates.contains(Data([0, 0])))
+        XCTAssertTrue(updates.contains(update))
     }
     func testDurableOutboxResentAfterFailedConnection() async throws {
         let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-editor-v11", withExtension: "db"))
