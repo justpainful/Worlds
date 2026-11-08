@@ -37,6 +37,7 @@ jobs:
           grep -E 'testConvertAndUnwrapListWithUndoAndProtectCheckedTasks.*passed' logs/swift-test.log
           grep -E 'testUnwrapMultipleItemsAndConvertNestedWithoutLosingUnknownBlock.*passed' logs/swift-test.log
           grep -E 'testNestedTaskEnterBackspaceRTLAndUndo.*passed' logs/swift-test.log
+          grep -E 'testAppendEmptyNestedTaskThenTypeAndUndo.*passed' logs/swift-test.log
           grep -E 'testStrikethroughPreservesArabicTextAndUndo.*passed' logs/swift-test.log
           grep -E 'testHeadingConversionPreservesOpaqueDataAndRejectsAmbiguousLevel.*passed' logs/swift-test.log
           grep -E 'testLinkAcrossRTLTextRunsAndUnsafeRejection.*passed' logs/swift-test.log
@@ -1270,6 +1271,7 @@ jobs:
           grep -q 'testConvertAndUnwrapListSurviveRealStore' logs/editor-persistence-discovery.log
           grep -q 'testUnwrapMultipleListItemsSurvivesRealStore' logs/editor-persistence-discovery.log
           grep -q 'testNestedTaskEnterAndBackspaceSurviveRealStore' logs/editor-persistence-discovery.log
+          grep -q 'testEmptyNestedTaskPersistsAndRejectsStaleSession' logs/editor-persistence-discovery.log
           grep -q 'testUnsupportedLegacyHeadingDoesNotBlockOtherParagraphEdit' logs/editor-persistence-discovery.log
           grep -q 'testRawHeadingValidationPreservesUnsupportedLegacyHeading' logs/editor-persistence-discovery.log
           grep -q 'testHeadingSaveReopenPreservesOpaqueAttributesAndRejectsConflict' logs/editor-persistence-discovery.log
@@ -1295,6 +1297,7 @@ jobs:
           grep -E 'testConvertAndUnwrapListSurviveRealStore.*passed' logs/editor-persistence-macos.log
           grep -E 'testUnwrapMultipleListItemsSurvivesRealStore.*passed' logs/editor-persistence-macos.log
           grep -E 'testNestedTaskEnterAndBackspaceSurviveRealStore.*passed' logs/editor-persistence-macos.log
+          grep -E 'testEmptyNestedTaskPersistsAndRejectsStaleSession.*passed' logs/editor-persistence-macos.log
           grep -E 'testUnsupportedLegacyHeadingDoesNotBlockOtherParagraphEdit.*passed' logs/editor-persistence-macos.log
           grep -E 'testRawHeadingValidationPreservesUnsupportedLegacyHeading.*passed' logs/editor-persistence-macos.log
           grep -E 'testHeadingSaveReopenPreservesOpaqueAttributesAndRejectsConflict.*passed' logs/editor-persistence-macos.log
@@ -1466,6 +1469,7 @@ jobs:
           grep -E "Test Case .*testConvertAndUnwrapListSurviveRealStore.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testUnwrapMultipleListItemsSurvivesRealStore.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testNestedTaskEnterAndBackspaceSurviveRealStore.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testEmptyNestedTaskPersistsAndRejectsStaleSession.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E 'testUnsupportedLegacyHeadingDoesNotBlockOtherParagraphEdit.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E 'testRawHeadingValidationPreservesUnsupportedLegacyHeading.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E 'testHeadingSaveReopenPreservesOpaqueAttributesAndRejectsConflict.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
