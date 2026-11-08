@@ -47,17 +47,14 @@ import WorldsNativeWrites
         busy = true; error = nil
         task = Task {
             defer { busy = false; task = nil }
+            let outcome: GalleryImportDisposition
             do {
                 _ = try await importer.importFile(source: source, galleryID: pageID, base: revision, metadata: metadata, expected: blocks, operationID: operation)
-                completed = true; onSaved()
-            } catch is CancellationError { error = "Import cancelled." }
-            catch NativeWriteError.galleryCommittedCleanupPending {
-                // The gallery entry has committed. Do not offer another import
-                // for this operation; the journal will need reconciliation.
-                completed = true; retryRequired = false; self.source = nil
-                error = "The file was saved in the copy open during import. Cleanup or identity verification is pending. Close this view and reopen the local copy before checking it."
-            }
-            catch { retryRequired = true; error = "The import result could not be confirmed. Retry this file or close and reopen the gallery." }
+                outcome = GalleryImportDisposition.resolve(error: nil)
+            } catch { outcome = GalleryImportDisposition.resolve(error: error) }
+            completed = outcome.completed; retryRequired = outcome.retryRequired; error = outcome.message
+            if outcome == .committedCleanupPending { self.source = nil }
+            outcome.notifyIfSafe(onSaved)
         }
     }
     func cancel() { task?.cancel() }

@@ -8,6 +8,54 @@ import WorldsNativeWrites
 @testable import WorldsLocalGalleryImport
 
 final class LocalGalleryImporterTests: XCTestCase {
+    @MainActor func testGalleryDispositionRefreshesOnlyConfirmedSuccess() {
+        var refreshes = 0
+        let success = GalleryImportDisposition.resolve(error: nil)
+        success.notifyIfSafe { refreshes += 1 }
+        let unconfirmed = GalleryImportDisposition.resolve(error: NativeWriteError.responseUnavailable)
+        unconfirmed.notifyIfSafe { refreshes += 1 }
+        XCTAssertEqual(refreshes, 1)
+        XCTAssertTrue(success.completed)
+        XCTAssertFalse(unconfirmed.completed)
+        XCTAssertTrue(unconfirmed.retryRequired)
+    }
+    @MainActor func testCommittedCleanupPendingDoesNotRefreshReplacedDatabase() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("gallery-outcome-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let selected = root.appendingPathComponent("selected", isDirectory: true)
+        let replacement = root.appendingPathComponent("replacement", isDirectory: true)
+        let retired = root.appendingPathComponent("retired", isDirectory: true)
+        try FileManager.default.createDirectory(at: selected, withIntermediateDirectories: false)
+        try FileManager.default.createDirectory(at: replacement, withIntermediateDirectories: false)
+        func database(_ folder: URL, sql: String) throws {
+            var db: OpaquePointer?
+            guard sqlite3_open(folder.appendingPathComponent("worlds.db").path, &db) == SQLITE_OK, let db else { throw CocoaError(.fileWriteUnknown) }
+            defer { sqlite3_close_v2(db) }
+            guard sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+        }
+        try database(selected, sql: "CREATE TABLE marker(value INTEGER); INSERT INTO marker VALUES(11)")
+        try database(replacement, sql: "CREATE TABLE marker(value INTEGER); INSERT INTO marker VALUES(22)")
+        try FileManager.default.moveItem(at: selected, to: retired)
+        try FileManager.default.moveItem(at: replacement, to: selected)
+        var refreshes = 0
+        let outcome = GalleryImportDisposition.resolve(error: NativeWriteError.galleryCommittedCleanupPending)
+        outcome.notifyIfSafe { refreshes += 1; try? database(selected, sql: "UPDATE marker SET value=99") }
+        XCTAssertEqual(outcome, .committedCleanupPending)
+        XCTAssertTrue(outcome.completed)
+        XCTAssertFalse(outcome.retryRequired)
+        XCTAssertTrue(outcome.message?.contains("saved in the copy open during import") == true)
+        XCTAssertTrue(outcome.message?.contains("reopen the local copy") == true)
+        XCTAssertEqual(refreshes, 0)
+        var db: OpaquePointer?
+        XCTAssertEqual(sqlite3_open_v2(selected.appendingPathComponent("worlds.db").path, &db, SQLITE_OPEN_READONLY, nil), SQLITE_OK)
+        guard let db else { return XCTFail("Replacement database unavailable") }; defer { sqlite3_close_v2(db) }
+        var statement: OpaquePointer?
+        XCTAssertEqual(sqlite3_prepare_v2(db, "SELECT value FROM marker", -1, &statement, nil), SQLITE_OK)
+        guard let statement else { return XCTFail("Marker unavailable") }; defer { sqlite3_finalize(statement) }
+        XCTAssertEqual(sqlite3_step(statement), SQLITE_ROW)
+        XCTAssertEqual(sqlite3_column_int(statement, 0), 22)
+    }
     #if DEBUG
     func testIndependentCopyImportsOnceAndPreservesSource() async throws {
         let fixture = try XCTUnwrap(Bundle.module.url(forResource: "worlds-v11", withExtension: "db"))
