@@ -1,5 +1,17 @@
 # Worlds Android design decisions
 
+## Shared page action strip
+The shared page puts access, conversations, notifications, version history and
+Markdown export in one compact horizontal strip above the document. These are
+existing Worlds actions and icons, with accessible names and 48dp targets. The
+strip scrolls horizontally if a window is too narrow, follows layout direction,
+and keeps the existing permission and offline availability rules. A native tooltip
+identifies each icon on hover or long press. Neutral ink
+keeps the document content primary; disabled actions use the system disabled
+color. The existing status text and error messages stay visible. The established
+Worlds palette, Android system typography and light and dark theme remain in use.
+No new motion is added.
+
 ## Duplicate shared text blocks
 The existing block action menu offers Duplicate for supported shared paragraphs
 and headings. It uses the existing duplicate symbol, action label and compact

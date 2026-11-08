@@ -1,5 +1,13 @@
 # Android Yrs sync foundation
 
+Shared-page access, comments, notices, versions and Markdown actions share a
+compact icon strip with accessibility labels and native tooltips. Android 15
+emulator checks cover accessible labels, a long-press tooltip, offline disabled
+states, Arabic at 1.5x text size and the existing shared-page editing workflow.
+The Arabic phone screenshot was reviewed visually. Physical Chromebook pointer
+hover and other screen sizes remain unverified.
+
+
 Android also duplicates supported top-level shared paragraphs and headings,
 including text marks and attributes, using a fresh block id and the current
 locally known content. A replaced source is rejected. The update and copied

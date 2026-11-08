@@ -6,6 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import android.content.Context
 import android.net.Uri
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
@@ -713,6 +714,17 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
     internal fun awaitDraftBackups(timeoutMillis: Long = 5_000): Boolean = draftQueue.awaitTermination(timeoutMillis)
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SharedPageTool(icon: Int, label: String, enabled: Boolean, tag: String, action: () -> Unit) {
+    TooltipBox(positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+        tooltip = { PlainTooltip { Text(label) } }, state = rememberTooltipState()) {
+        IconButton(enabled = enabled, onClick = action, modifier = Modifier.testTag(tag)) {
+            Icon(painterResource(icon), contentDescription = label)
+        }
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable internal fun SharedPageScreen(identity: String, workspace: Workspace, onBack: () -> Unit, controllerOverride: SharedPageController? = null, initialServer: String = "", initialPage: String = "", initialThread: String? = null, initialComment: String? = null, onOpenNotification: ((NotificationTarget) -> Unit)? = null) {
     val context = LocalContext.current
@@ -1045,20 +1057,12 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
                         Text(stringResource(if (state.access in setOf("edit", "full")) R.string.shared_offline else R.string.shared_offline_read_only), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 } else Text(stringResource(if (state.access in setOf("edit", "full")) R.string.shared_editable else if (state.access == "comment") R.string.shared_comment_access else R.string.shared_read_only), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                TextButton(enabled = !state.offline && !state.opening, onClick = { showPermissions = true }, modifier = Modifier.testTag("shared_permissions")) {
-                    WorldsActionLabel(R.drawable.ic_lock_keyhole, stringResource(R.string.access_title))
-                }
-                TextButton(enabled = !state.offline && !state.opening, onClick = controller::openConversations, modifier = Modifier.testTag("shared_conversations")) {
-                    WorldsActionLabel(R.drawable.ic_message_circle, stringResource(R.string.conversations_title))
-                }
-                TextButton(enabled = !state.offline && !state.opening, onClick = controller::openNotices, modifier = Modifier.testTag("shared_notices")) {
-                    WorldsActionLabel(R.drawable.ic_bell, stringResource(R.string.notices_title))
-                }
-                TextButton(enabled = !state.offline && !state.opening, onClick = { controller.openHistory() }, modifier = Modifier.testTag("shared_history")) {
-                    WorldsActionLabel(R.drawable.ic_history, stringResource(R.string.shared_history_title))
-                }
-                TextButton(enabled = !state.disconnected && state.snapshot != null && !state.markdownExporting, onClick = { showMarkdown = true }, modifier = Modifier.testTag("shared_markdown")) {
-                    WorldsActionLabel(R.drawable.ic_download, stringResource(R.string.markdown_export))
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).testTag("shared_action_strip"), verticalAlignment = Alignment.CenterVertically) {
+                    SharedPageTool(R.drawable.ic_lock_keyhole, stringResource(R.string.access_title), !state.offline && !state.opening, "shared_permissions") { showPermissions = true }
+                    SharedPageTool(R.drawable.ic_message_circle, stringResource(R.string.conversations_title), !state.offline && !state.opening, "shared_conversations", controller::openConversations)
+                    SharedPageTool(R.drawable.ic_bell, stringResource(R.string.notices_title), !state.offline && !state.opening, "shared_notices", controller::openNotices)
+                    SharedPageTool(R.drawable.ic_history, stringResource(R.string.shared_history_title), !state.offline && !state.opening, "shared_history") { controller.openHistory() }
+                    SharedPageTool(R.drawable.ic_download, stringResource(R.string.markdown_export), !state.disconnected && state.snapshot != null && !state.markdownExporting, "shared_markdown") { showMarkdown = true }
                 }
                 state.markdownStatus?.let { Text(stringResource(it), color = if (it in setOf(R.string.markdown_export_success, R.string.markdown_copy_success)) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error) }
                 Spacer(Modifier.height(12.dp))

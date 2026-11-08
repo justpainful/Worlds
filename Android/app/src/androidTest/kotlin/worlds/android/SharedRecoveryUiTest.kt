@@ -2,10 +2,16 @@ package worlds.android
 
 import android.util.Base64
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTextInputSelection
@@ -102,6 +108,14 @@ class SharedRecoveryUiTest {
             assertEquals(2, blocks.getJSONObject(1).getJSONObject("attrs").getInt("level"))
             assertEquals("Shared heading", blocks.getJSONObject(1).getJSONArray("content").getJSONObject(0).getString("text"))
             if (duplicate) {
+                compose.onNodeWithTag("shared_permissions").assertContentDescriptionEquals(app.getString(R.string.access_title))
+                compose.onNodeWithTag("shared_conversations").assertContentDescriptionEquals(app.getString(R.string.conversations_title))
+                compose.onNodeWithTag("shared_notices").assertContentDescriptionEquals(app.getString(R.string.notices_title))
+                compose.onNodeWithTag("shared_history").assertContentDescriptionEquals(app.getString(R.string.shared_history_title))
+                compose.onNodeWithTag("shared_markdown").assertContentDescriptionEquals(app.getString(R.string.markdown_export))
+                val strip = compose.onNodeWithTag("shared_action_strip").getUnclippedBoundsInRoot()
+                assertTrue((strip.bottom - strip.top).value <= 56f)
+                assertTrue(compose.onNodeWithTag("shared_block_$firstId").getUnclippedBoundsInRoot().top >= strip.bottom)
                 val headingId = blocks.getJSONObject(1).getJSONObject("attrs").getString("bid")
                 compose.onNodeWithTag("shared_block_actions_$headingId").performScrollTo().performClick()
                 if (InstrumentationRegistry.getArguments().getString("captureUi") == "1") {
@@ -218,7 +232,9 @@ class SharedRecoveryUiTest {
 
     @Test fun longSharedTextCanBeEditedAndSavedOffline() = offlineEditorScenario(stress = true)
 
-    private fun offlineEditorScenario(stress: Boolean) {
+    @Test fun sharedToolbarSupportsArabicLargeTextOffline() = offlineEditorScenario(stress = false, rtl = true)
+
+    private fun offlineEditorScenario(stress: Boolean, rtl: Boolean = false) {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext
         val name = "shared-append-offline-${UUID.randomUUID()}.db"
         val authority = "https://identity.example"
@@ -244,8 +260,34 @@ class SharedRecoveryUiTest {
         val controller = SharedPageController(runtime, authority, "space", retryDelay = { 30_000 })
         try {
             controller.open(endpoint, "page")
-            compose.setContent { WorldsTheme { SharedPageScreen(authority, Workspace("space", "Team", "owner", 1), {}, controller) } }
+            val config = android.content.res.Configuration(app.resources.configuration).apply { if (rtl) setLocale(java.util.Locale("ar")) }
+            val localized = if (rtl) app.createConfigurationContext(config) else app
+            compose.setContent {
+                val currentDensity = androidx.compose.ui.platform.LocalDensity.current
+                val registryOwner = requireNotNull(androidx.activity.compose.LocalActivityResultRegistryOwner.current)
+                CompositionLocalProvider(
+                    androidx.activity.compose.LocalActivityResultRegistryOwner provides registryOwner,
+                    androidx.compose.ui.platform.LocalContext provides localized,
+                    androidx.compose.ui.platform.LocalConfiguration provides config,
+                    androidx.compose.ui.platform.LocalLayoutDirection provides if (rtl) androidx.compose.ui.unit.LayoutDirection.Rtl else androidx.compose.ui.unit.LayoutDirection.Ltr,
+                    androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(currentDensity.density, if (rtl) 1.5f else currentDensity.fontScale),
+                ) { WorldsTheme { SharedPageScreen(authority, Workspace("space", if (rtl) "مساحة الفريق" else "Team", "owner", 1), {}, controller) } }
+            }
             compose.waitUntil(20_000) { controller.state.value.offline && controller.state.value.access == "edit" }
+            if (rtl) {
+                compose.onNodeWithTag("shared_permissions").assertContentDescriptionEquals(localized.getString(R.string.access_title)).assertIsNotEnabled()
+                compose.onNodeWithTag("shared_conversations").assertIsNotEnabled()
+                compose.onNodeWithTag("shared_notices").assertIsNotEnabled()
+                compose.onNodeWithTag("shared_history").assertIsNotEnabled()
+                compose.onNodeWithTag("shared_markdown").assertContentDescriptionEquals(localized.getString(R.string.markdown_export)).assertIsEnabled()
+                if (InstrumentationRegistry.getArguments().getString("captureUi") == "1") {
+                    compose.waitForIdle(); Thread.sleep(300)
+                    android.os.ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /sdcard/Download/worlds-shared-toolbar-ar.png")).use { it.readBytes() }
+                }
+                compose.onNodeWithTag("shared_markdown").performTouchInput { longClick() }
+                compose.onNodeWithText(localized.getString(R.string.markdown_export)).assertIsDisplayed()
+                return
+            }
             compose.onNodeWithTag("shared_add_paragraph").performScrollTo().performClick()
             compose.onNodeWithTag("shared_draft").performTextInput("Offline draft")
             compose.onNodeWithText(app.getString(R.string.save)).performClick()
