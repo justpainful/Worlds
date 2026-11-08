@@ -195,6 +195,27 @@ pub fn rename_page(path: &Path, page: &str, base: i64, title: String) -> Result<
     Ok(serde_json::to_value(result)?)
 }
 
+/// Idempotent, title-aware CAS for an experimental personal-copy rename.
+pub fn rename_page_checked(path: &Path, page: &str, base: i64, expected_title: String, title: String, operation_id: &str) -> Result<Value> {
+    let operation_id=uuid::Uuid::parse_str(operation_id)?.to_string();
+    let mut conn=open_existing(path)?;
+    let tx=conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+    require_personal(&tx,page)?;
+    tx.execute_batch("CREATE TABLE IF NOT EXISTS native_personal_page_renames_v1(operation_id TEXT PRIMARY KEY,page_id TEXT NOT NULL,base INTEGER NOT NULL,expected_title TEXT NOT NULL,title TEXT NOT NULL,result_json TEXT NOT NULL)")?;
+    let previous:Option<(String,i64,String,String,String)>=tx.query_row("SELECT page_id,base,expected_title,title,result_json FROM native_personal_page_renames_v1 WHERE operation_id=?1",[&operation_id],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?))).optional()?;
+    if let Some((saved_page,saved_base,saved_expected,saved_title,result))=previous {
+        if saved_page!=page || saved_base!=base || saved_expected!=expected_title || saved_title!=title { bail!("conflict: rename operation input changed") }
+        let value:Value=serde_json::from_str(&result)?;
+        if value.get("id").and_then(Value::as_str)!=Some(page) { bail!("conflict: invalid rename record") }
+        tx.commit()?; return Ok(value)
+    }
+    let (current_title,current_revision):(String,i64)=tx.query_row("SELECT title,updated_at FROM pages WHERE id=?1",[page],|r|Ok((r.get(0)?,r.get(1)?)))?;
+    if current_title!=expected_title || current_revision!=base { bail!("conflict: page title or revision changed") }
+    let result=serde_json::to_value(store::update_page(&tx,&store::Ctx::user(),page,store::PagePatch { title:Some(title.clone()), ..Default::default() })?)?;
+    tx.execute("INSERT INTO native_personal_page_renames_v1(operation_id,page_id,base,expected_title,title,result_json) VALUES(?1,?2,?3,?4,?5,?6)",rusqlite::params![operation_id,page,base,expected_title,title,result.to_string()])?;
+    tx.commit()?; Ok(result)
+}
+
 
 
 /// Creates a personal page using the existing Rust store. Restricted to page kind.
@@ -272,6 +293,7 @@ enum Request {
     SaveBlocksChecked { path: String, page: String, base: i64, expected: Vec<BlockInput>, blocks: Vec<BlockInput> },
     SaveBlocksCheckedKind { path: String, page: String, base: i64, expected: Vec<BlockInput>, blocks: Vec<BlockInput>, expected_kind: String },
     RenamePage { path: String, page: String, base: i64, title: String },
+    RenamePageChecked { path: String, page: String, base: i64, expected_title: String, title: String, operation_id: String },
     CreatePage { path: String, title: String, parent: Option<String> },
     CreatePageIdempotent { path: String, title: String, parent: Option<String>, operation_id: String },
     TrashPage { path: String, page: String, base: i64 },
@@ -359,6 +381,7 @@ fn dispatch_inner(bytes: &[u8], cancellation: Option<&GalleryCancellation>) -> R
         Request::SaveBlocksChecked { path, page, base, expected, blocks } => save_blocks_checked(Path::new(&path), &page, base, expected, blocks),
         Request::SaveBlocksCheckedKind { path, page, base, expected, blocks, expected_kind } => save_blocks_checked_kind(Path::new(&path), &page, base, expected, blocks, &expected_kind),
         Request::RenamePage { path, page, base, title } => rename_page(Path::new(&path), &page, base, title),
+        Request::RenamePageChecked { path, page, base, expected_title, title, operation_id } => rename_page_checked(Path::new(&path), &page, base, expected_title, title, &operation_id),
         Request::CreatePage { path, title, parent } => create_page(Path::new(&path), title, parent),
         Request::CreatePageIdempotent { path, title, parent, operation_id } => create_page_idempotent(Path::new(&path), title, parent, &operation_id),
         Request::TrashPage { path, page, base } => { trash_page(Path::new(&path), &page, base)?; Ok(Value::Null) }
@@ -471,6 +494,52 @@ mod tests {
         assert!(deleted.is_some());
         assert_eq!(c.query_row("SELECT count(*) FROM history WHERE page_id=?1",[id],|r|r.get::<_,i64>(0)).unwrap(),3);
         drop(c); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn checked_rename_retries_without_duplicate_history_and_refuses_same_revision_change() {
+        let path=fixture(); let db=Connection::open(&path).unwrap();
+        let (old,base):(String,i64)=db.query_row("SELECT title,updated_at FROM pages WHERE id='fixture-page'",[],|r|Ok((r.get(0)?,r.get(1)?))).unwrap();
+        let op=uuid::Uuid::new_v4().to_string();
+        let first=rename_page_checked(&path,"fixture-page",base,old.clone(),"Renamedfixture".into(),&op).unwrap();
+        let retry=rename_page_checked(&path,"fixture-page",base,old.clone(),"Renamedfixture".into(),&op).unwrap();
+        assert_eq!(retry,first);
+        assert!(rename_page_checked(&path,"fixture-page",base,old.clone(),"Different".into(),&op).is_err());
+        assert_eq!(db.query_row("SELECT count(*) FROM history WHERE page_id='fixture-page' AND kind='renamed'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        assert_eq!(db.query_row("SELECT count(*) FROM pages_fts WHERE pages_fts MATCH 'Renamedfixture'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        // A conflicting name with unchanged updated_at must not be overwritten.
+        db.execute("UPDATE pages SET title='Other',updated_at=?1 WHERE id='fixture-page'",[base]).unwrap();
+        let another=uuid::Uuid::new_v4().to_string();
+        assert!(rename_page_checked(&path,"fixture-page",base,old.clone(),"Overwrite".into(),&another).is_err());
+        assert_eq!(db.query_row("SELECT title FROM pages WHERE id='fixture-page'",[],|r|r.get::<_,String>(0)).unwrap(),"Other");
+        db.execute("UPDATE pages SET metadata='{\"sync\":{\"shared\":true}}' WHERE id='fixture-page'",[]).unwrap();
+        assert!(rename_page_checked(&path,"fixture-page",base,old,"Renamedfixture".into(),&op).is_err());
+        drop(db);std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn checked_rename_rolls_back_page_history_fts_and_changes() {
+        let path=fixture(); let db=Connection::open(&path).unwrap();
+        let (old,base):(String,i64)=db.query_row("SELECT title,updated_at FROM pages WHERE id='fixture-page'",[],|r|Ok((r.get(0)?,r.get(1)?))).unwrap();
+        db.execute_batch("CREATE TABLE native_personal_page_renames_v1(operation_id TEXT PRIMARY KEY,page_id TEXT NOT NULL,base INTEGER NOT NULL,expected_title TEXT NOT NULL,title TEXT NOT NULL,result_json TEXT NOT NULL); CREATE TRIGGER fail_rename_record BEFORE INSERT ON native_personal_page_renames_v1 BEGIN SELECT RAISE(ABORT,'fixture'); END;").unwrap();
+        let before:(i64,i64)=db.query_row("SELECT (SELECT count(*) FROM history),(SELECT count(*) FROM changes)",[],|r|Ok((r.get(0)?,r.get(1)?))).unwrap();
+        let op=uuid::Uuid::new_v4().to_string();
+        assert!(rename_page_checked(&path,"fixture-page",base,old.clone(),"Rollbackuniquerename".into(),&op).is_err());
+        let after:(i64,i64)=db.query_row("SELECT (SELECT count(*) FROM history),(SELECT count(*) FROM changes)",[],|r|Ok((r.get(0)?,r.get(1)?))).unwrap();
+        assert_eq!(before,after);
+        assert_eq!(db.query_row("SELECT title FROM pages WHERE id='fixture-page'",[],|r|r.get::<_,String>(0)).unwrap(),old);
+        assert_eq!(db.query_row("SELECT count(*) FROM pages_fts WHERE pages_fts MATCH 'Rollbackuniquerename'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        db.execute_batch("DROP TRIGGER fail_rename_record;").unwrap();
+        assert!(rename_page_checked(&path,"fixture-page",base,old,"Rollbackuniquerename".into(),&op).is_ok());
+        drop(db);std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn ffi_checked_rename_retries_same_operation() {
+        let path=fixture(); let db=Connection::open(&path).unwrap();
+        let (old,base):(String,i64)=db.query_row("SELECT title,updated_at FROM pages WHERE id='fixture-page'",[],|r|Ok((r.get(0)?,r.get(1)?))).unwrap();
+        let request=serde_json::json!({"operation":"rename_page_checked","path":path,"page":"fixture-page","base":base,"expected_title":old,"title":"FFIrenamefixture","operation_id":uuid::Uuid::new_v4().to_string()}).to_string();
+        let invoke=|| { let response=unsafe { worlds_store_call(request.as_ptr(),request.len()) }; let parsed:Value=serde_json::from_str(unsafe { std::ffi::CStr::from_ptr(response) }.to_str().unwrap()).unwrap(); unsafe { worlds_store_free(response) }; parsed };
+        let first=invoke(); let second=invoke(); assert_eq!(first["ok"],true,"{first}"); assert_eq!(first,second);
+        assert_eq!(db.query_row("SELECT count(*) FROM history WHERE page_id='fixture-page' AND kind='renamed'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        drop(db); std::fs::remove_file(path).unwrap();
     }
     #[test]
     fn idempotent_page_create_retries_after_commit_and_refuses_changed_inputs() {
