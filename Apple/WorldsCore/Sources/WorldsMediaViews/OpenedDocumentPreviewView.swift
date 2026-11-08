@@ -31,11 +31,13 @@ public struct OpenedDocumentPreviewView: View {
                 Spacer(minLength: 8)
                 Text(model.name).lineLimit(1).truncationMode(.middle)
                 Spacer(minLength: 8)
+                #if WORLDS_EXPERIMENTAL_ATTACHMENT_EXPORT
                 if let bytes = model.originalBytes {
                     Button("Export", systemImage: "square.and.arrow.up") {
                         exportError = nil; exportDocument = OriginalAttachmentDocument(data: bytes); exporting = true
                     }.accessibilityIdentifier("export-original-attachment")
                 }
+                #endif
             }.padding()
             Divider()
             Group {
