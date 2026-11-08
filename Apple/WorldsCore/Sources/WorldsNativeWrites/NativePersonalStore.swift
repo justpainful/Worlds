@@ -81,6 +81,11 @@ public actor NativePersonalStore {
     public func createPage(title: String, parent: String? = nil) async throws -> JSONValue {
         try await call(Request(operation: "create_page", path: url.path, title: title, parent: parent))
     }
+    /// Reuse the same ID and exact inputs when resolving an uncertain response.
+    /// The result describes the original commit; reload to see current page state.
+    public func createPageIdempotent(title: String, parent: String? = nil, operationID: UUID) async throws -> JSONValue {
+        try await call(Request(operation: "create_page_idempotent", path: url.path, title: title, parent: parent, operationID: operationID.uuidString))
+    }
     public func renamePage(id: String, base: Int64, title: String) async throws -> JSONValue {
         try await call(Request(operation: "rename_page", path: url.path, page: id, base: base, title: title))
     }

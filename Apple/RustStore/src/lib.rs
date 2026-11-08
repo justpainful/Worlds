@@ -208,6 +208,29 @@ pub fn create_page(path: &Path, title: String, parent: Option<String>) -> Result
     Ok(serde_json::to_value(result)?)
 }
 
+/// Experimental retry-safe creation in a single local copy. The same operation
+/// ID and identical inputs return the original result, never create a second page.
+pub fn create_page_idempotent(path: &Path, title: String, parent: Option<String>, operation_id: &str) -> Result<Value> {
+    let operation_id = uuid::Uuid::parse_str(operation_id)?.to_string();
+    let mut conn = open_existing(path)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+    if let Some(parent_id) = parent.as_deref() { require_personal(&tx, parent_id)?; }
+    tx.execute_batch("CREATE TABLE IF NOT EXISTS native_personal_page_creations_v1(operation_id TEXT PRIMARY KEY,title TEXT NOT NULL,parent_id TEXT,page_id TEXT NOT NULL,result_json TEXT NOT NULL)")?;
+    let previous: Option<(String,Option<String>,String,String)> = tx.query_row("SELECT title,parent_id,page_id,result_json FROM native_personal_page_creations_v1 WHERE operation_id=?1",[&operation_id],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?))).optional()?;
+    if let Some((saved_title,saved_parent,page_id,result)) = previous {
+        if saved_title != title || saved_parent != parent { bail!("conflict: creation operation input changed") }
+        require_personal(&tx,&page_id)?;
+        let value: Value=serde_json::from_str(&result)?;
+        if value.get("id").and_then(Value::as_str)!=Some(page_id.as_str()) { bail!("conflict: invalid creation record") }
+        tx.commit()?; return Ok(value)
+    }
+    let input=store::NewPage { title:Some(title.clone()), parent_id:parent.clone(), kind:Some("page".into()), ..Default::default() };
+    let result=serde_json::to_value(store::create_page(&tx,&store::Ctx::user(),input)?)?;
+    let page_id=result.get("id").and_then(Value::as_str).ok_or_else(||anyhow::anyhow!("invalid created page"))?;
+    tx.execute("INSERT INTO native_personal_page_creations_v1(operation_id,title,parent_id,page_id,result_json) VALUES(?1,?2,?3,?4,?5)",rusqlite::params![operation_id,title,parent,page_id,result.to_string()])?;
+    tx.commit()?; Ok(result)
+}
+
 /// Moves a wholly personal subtree to trash, failing closed on mixed ownership.
 pub fn trash_page(path: &Path, page: &str, base: i64) -> Result<()> {
     let mut conn = open_existing(path)?;
@@ -250,6 +273,7 @@ enum Request {
     SaveBlocksCheckedKind { path: String, page: String, base: i64, expected: Vec<BlockInput>, blocks: Vec<BlockInput>, expected_kind: String },
     RenamePage { path: String, page: String, base: i64, title: String },
     CreatePage { path: String, title: String, parent: Option<String> },
+    CreatePageIdempotent { path: String, title: String, parent: Option<String>, operation_id: String },
     TrashPage { path: String, page: String, base: i64 },
 }
 
@@ -336,6 +360,7 @@ fn dispatch_inner(bytes: &[u8], cancellation: Option<&GalleryCancellation>) -> R
         Request::SaveBlocksCheckedKind { path, page, base, expected, blocks, expected_kind } => save_blocks_checked_kind(Path::new(&path), &page, base, expected, blocks, &expected_kind),
         Request::RenamePage { path, page, base, title } => rename_page(Path::new(&path), &page, base, title),
         Request::CreatePage { path, title, parent } => create_page(Path::new(&path), title, parent),
+        Request::CreatePageIdempotent { path, title, parent, operation_id } => create_page_idempotent(Path::new(&path), title, parent, &operation_id),
         Request::TrashPage { path, page, base } => { trash_page(Path::new(&path), &page, base)?; Ok(Value::Null) }
     }
 }
@@ -446,6 +471,54 @@ mod tests {
         assert!(deleted.is_some());
         assert_eq!(c.query_row("SELECT count(*) FROM history WHERE page_id=?1",[id],|r|r.get::<_,i64>(0)).unwrap(),3);
         drop(c); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn idempotent_page_create_retries_after_commit_and_refuses_changed_inputs() {
+        let path=fixture(); let operation=uuid::Uuid::new_v4().to_string();
+        // Simulate losing the successful response after its transaction commits.
+        let first=create_page_idempotent(&path,"Distinctive fixture".into(),Some("fixture-page".into()),&operation).unwrap();
+        let retried=create_page_idempotent(&path,"Distinctive fixture".into(),Some("fixture-page".into()),&operation).unwrap();
+        assert_eq!(retried,first);
+        assert!(create_page_idempotent(&path,"Changed".into(),Some("fixture-page".into()),&operation).is_err());
+        assert!(create_page_idempotent(&path,"Distinctive fixture".into(),None,&operation).is_err());
+        let db=Connection::open(&path).unwrap();
+        assert_eq!(db.query_row("SELECT count(*) FROM pages WHERE title='Distinctive fixture'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        let id=first["id"].as_str().unwrap();
+        assert_eq!(db.query_row("SELECT count(*) FROM history WHERE page_id=?1 AND kind='created'",[id],|r|r.get::<_,i64>(0)).unwrap(),1);
+        assert_eq!(db.query_row("SELECT count(*) FROM changes WHERE page_id=?1",[id],|r|r.get::<_,i64>(0)).unwrap(),1);
+        assert_eq!(db.query_row("SELECT count(*) FROM pages_fts WHERE pages_fts MATCH 'Distinctive'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        db.execute("UPDATE pages SET metadata='{\"sync\":{\"shared\":true}}' WHERE id=?1",[id]).unwrap();
+        assert!(create_page_idempotent(&path,"Distinctive fixture".into(),Some("fixture-page".into()),&operation).is_err());
+        drop(db);std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn idempotent_page_create_rolls_back_page_history_fts_and_changes() {
+        let path=fixture(); let operation=uuid::Uuid::new_v4().to_string();
+        let db=Connection::open(&path).unwrap();
+        db.execute_batch("CREATE TABLE native_personal_page_creations_v1(operation_id TEXT PRIMARY KEY,title TEXT NOT NULL,parent_id TEXT,page_id TEXT NOT NULL,result_json TEXT NOT NULL); CREATE TRIGGER fail_creation_record BEFORE INSERT ON native_personal_page_creations_v1 BEGIN SELECT RAISE(ABORT,'fixture'); END;").unwrap();
+        let before: (i64,i64,i64)=db.query_row("SELECT (SELECT count(*) FROM pages),(SELECT count(*) FROM history),(SELECT count(*) FROM changes)",[],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).unwrap();
+        assert!(create_page_idempotent(&path,"Rollbackuniquefixture".into(),Some("fixture-page".into()),&operation).is_err());
+        let after: (i64,i64,i64)=db.query_row("SELECT (SELECT count(*) FROM pages),(SELECT count(*) FROM history),(SELECT count(*) FROM changes)",[],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).unwrap();
+        assert_eq!(before,after);
+        assert_eq!(db.query_row("SELECT count(*) FROM pages_fts WHERE pages_fts MATCH 'Rollbackuniquefixture'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        db.execute_batch("DROP TRIGGER fail_creation_record;").unwrap();
+        assert!(create_page_idempotent(&path,"Rollbackuniquefixture".into(),Some("fixture-page".into()),&operation).is_ok());
+        drop(db); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn ffi_idempotent_page_create_retries_same_operation() {
+        let path=fixture(); let operation=uuid::Uuid::new_v4().to_string();
+        let request=serde_json::json!({"operation":"create_page_idempotent","path":path,"title":"FFI fixture","parent":"fixture-page","operation_id":operation}).to_string();
+        let invoke=|| {
+            let response=unsafe { worlds_store_call(request.as_ptr(),request.len()) };
+            let parsed:Value=serde_json::from_str(unsafe { std::ffi::CStr::from_ptr(response) }.to_str().unwrap()).unwrap();
+            unsafe { worlds_store_free(response) }; parsed
+        };
+        let first=invoke(); let second=invoke();
+        assert_eq!(first["ok"],true,"{first}"); assert_eq!(second,first);
+        let db=Connection::open(&path).unwrap();
+        assert_eq!(db.query_row("SELECT count(*) FROM pages WHERE title='FFI fixture'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        drop(db); std::fs::remove_file(path).unwrap();
     }
     #[test]
     fn ffi_rename_uses_real_store() {
