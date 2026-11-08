@@ -555,7 +555,8 @@ fn protected_slide(value: &Value) -> Result<Value> {
                     for (key,min,max) in [("fontSize",1.0,2048.0),("fontWeight",100.0,1000.0)] {
                         if style.get(key).and_then(Value::as_f64).is_some_and(|v|v.is_finite() && (min..=max).contains(&v)) { style.remove(key); }
                     }
-                    for key in ["color","font"] { if style.get(key).is_some_and(Value::is_string) { style.remove(key); } }
+                    if style.get("font").is_some_and(Value::is_string) { style.remove("font"); }
+                    if style.get("color").and_then(Value::as_str).is_some_and(|v|v.len()==7 && v.starts_with('#') && v.as_bytes()[1..].iter().all(u8::is_ascii_hexdigit)) { style.remove("color"); }
                     if style.get("italic").is_some_and(Value::is_boolean) { style.remove("italic"); }
                     if style.get("align").and_then(Value::as_str).is_some_and(|v|["left","center","right"].contains(&v)) { style.remove("align"); }
                     if style.is_empty() { object.remove("style"); }
@@ -790,6 +791,20 @@ mod presentation_tests {
         std::fs::remove_file(path).unwrap();
     }
     #[test]
+    fn unsupported_css_slide_color_survives_unrelated_edits() {
+        let path=fixture(); let c=Connection::open(&path).unwrap();
+        let original=json!({"type":"slide","attrs":{"bid":"s","notes":"before","elements":[{"id":"t","type":"text","text":"text","style":{"color":"rgba(0, 0, 0, 0.5)"}}]}});
+        c.execute("UPDATE blocks SET content=?1 WHERE id='s'",[original.to_string()]).unwrap(); drop(c);
+        let old=read_presentation(&path,"deck").unwrap();
+        let mut attack=inputs(&old); attack[0].content["attrs"]["elements"][0]["style"]["color"]=json!("#abcdef");
+        assert!(save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),attack).is_err());
+        assert_eq!(read_presentation(&path,"deck").unwrap(),old);
+        let mut safe=inputs(&old); safe[0].content["attrs"]["notes"]=json!("after");
+        let saved=save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),safe).unwrap();
+        assert_eq!(saved["blocks"][0]["content"]["attrs"]["elements"][0]["style"]["color"],"rgba(0, 0, 0, 0.5)");
+        std::fs::remove_file(path).unwrap();
+    }
+    #[test]
     fn refuses_opaque_block_that_original_writer_would_mutate() {
         let path=fixture();
         let c=Connection::open(&path).unwrap();
@@ -956,7 +971,8 @@ mod presentation_tests {
     #[test]
     fn deleted_slide_restores_after_reopen_and_rolls_back_on_failure() {
         let path=fixture(); let c=Connection::open(&path).unwrap();
-        c.execute("INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('media','deck','image','a.png','image/png',4,'media/a.png',1)",[]).unwrap();
+        c.execute("INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('media-owner','Owner','page','{}',1,1)",[]).unwrap();
+        c.execute("INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('media','media-owner','image','a.png','image/png',4,'media/a.png',1)",[]).unwrap();
         let rich=json!({"type":"slide","attrs":{"bid":"s","elements":[{"id":"a","type":"image","attachmentId":"media","future":{"keep":true}}]}});
         let next_slide=json!({"type":"slide","attrs":{"bid":"s2","elements":[]}});
         c.execute("UPDATE blocks SET content=?1,direction='rtl',created_at=42 WHERE id='s'",[rich.to_string()]).unwrap();
@@ -973,6 +989,13 @@ mod presentation_tests {
         c.execute("UPDATE pages SET workspace_id='team' WHERE id='deck'",[]).unwrap(); drop(c);
         assert!(restore_presentation_slide(&path,"deck",recovery,after["revision"].as_i64().unwrap(),after["metadata"].clone(),inputs(&after)).is_err());
         let c=Connection::open(&path).unwrap(); c.execute("UPDATE pages SET workspace_id=NULL WHERE id='deck'",[]).unwrap();
+        c.execute("UPDATE pages SET workspace_id='team' WHERE id='media-owner'",[]).unwrap(); drop(c);
+        assert!(restore_presentation_slide(&path,"deck",recovery,after["revision"].as_i64().unwrap(),after["metadata"].clone(),inputs(&after)).is_err());
+        assert_eq!(deleted_presentation_slides(&path,"deck").unwrap()["items"].as_array().unwrap().len(),1);
+        let c=Connection::open(&path).unwrap();
+        assert_eq!(c.query_row("SELECT count(*) FROM blocks WHERE id='s'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        assert_eq!(c.query_row("SELECT count(*) FROM attachments WHERE id='media'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        c.execute("UPDATE pages SET workspace_id=NULL WHERE id='media-owner'",[]).unwrap();
         c.execute_batch("CREATE TRIGGER fail_restore BEFORE INSERT ON blocks WHEN NEW.id='s' BEGIN SELECT RAISE(ABORT,'fixture'); END;").unwrap(); drop(c);
         assert!(restore_presentation_slide(&path,"deck",recovery,after["revision"].as_i64().unwrap(),after["metadata"].clone(),inputs(&after)).is_err());
         assert_eq!(deleted_presentation_slides(&path,"deck").unwrap()["items"].as_array().unwrap().len(),1);
