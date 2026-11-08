@@ -2,6 +2,12 @@
 import XCTest
 
 final class WorldsLocalPageEditorUITests: XCTestCase {
+    @MainActor private func recordFailureContext(_ app: XCUIApplication, _ name: String) {
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = name + "-screenshot"; screenshot.lifetime = .keepAlways; add(screenshot)
+        let hierarchy = XCTAttachment(string: app.debugDescription)
+        hierarchy.name = name + "-accessibility"; hierarchy.lifetime = .keepAlways; add(hierarchy)
+    }
     @MainActor func testLinkAcrossTextRunsSaveRemoveAndReopenRTL() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-link-fixture", "--ui-testing-rtl"]; app.launch()
         let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
@@ -14,7 +20,8 @@ final class WorldsLocalPageEditorUITests: XCTestCase {
         #else
         editor.press(forDuration: 1.2)
         let selectAll = app.menuItems["Select All"].firstMatch
-        XCTAssertTrue(selectAll.waitForExistence(timeout: 10)); selectAll.tap()
+        guard selectAll.waitForExistence(timeout: 10) else { recordFailureContext(app, "missing-select-all"); XCTFail("Select All menu item did not appear"); return }
+        selectAll.tap()
         #endif
         let link = app.buttons["editor-link"]
         #if os(iOS)
@@ -34,7 +41,8 @@ final class WorldsLocalPageEditorUITests: XCTestCase {
         #else
         reopened.press(forDuration: 1.2)
         let selectAgain = app.menuItems["Select All"].firstMatch
-        XCTAssertTrue(selectAgain.waitForExistence(timeout: 10)); selectAgain.tap()
+        guard selectAgain.waitForExistence(timeout: 10) else { recordFailureContext(app, "missing-select-all-reopened"); XCTFail("Select All menu item did not appear after reopening"); return }
+        selectAgain.tap()
         #endif
         let remove = app.buttons["editor-remove-link"]
         #if os(iOS)
@@ -106,14 +114,16 @@ final class WorldsLocalPageEditorUITests: XCTestCase {
         let nested = app.buttons["editor-add-nested.0.0"]
         XCTAssertTrue(nested.waitForExistence(timeout: 20)); nested.tap()
         let field = app.alerts.textFields["Item text"]
-        XCTAssertTrue(field.waitForExistence(timeout: 10)); field.tap(); field.typeText("Nested item")
+        guard field.waitForExistence(timeout: 10) else { recordFailureContext(app, "missing-item-text"); XCTFail("Item text field did not appear in alert"); return }
+        field.tap(); field.typeText("Nested item")
         app.alerts.buttons["Add"].tap()
         let nestedTask = app.buttons["editor-task.0.0.1.1"]
         XCTAssertTrue(nestedTask.waitForExistence(timeout: 20)); XCTAssertTrue(nestedTask.label.contains("Nested item"))
         let next = app.buttons["editor-add-item.0.1"]
         XCTAssertTrue(next.waitForExistence(timeout: 20)); next.tap()
         let nextField = app.alerts.textFields["Item text"]
-        XCTAssertTrue(nextField.waitForExistence(timeout: 10)); nextField.tap(); nextField.typeText("Third item")
+        guard nextField.waitForExistence(timeout: 10) else { recordFailureContext(app, "missing-next-item-text"); XCTFail("Next item text field did not appear in alert"); return }
+        nextField.tap(); nextField.typeText("Third item")
         app.alerts.buttons["Add"].tap()
         let third = app.buttons["editor-task.0.2"]
         XCTAssertTrue(third.waitForExistence(timeout: 20)); XCTAssertTrue(third.label.contains("Third item"))
@@ -197,11 +207,13 @@ final class WorldsLocalPageEditorUITests: XCTestCase {
         let reload = app.buttons["local-page-reload"]
         XCTAssertTrue(reload.exists); reload.tap()
         let cancel = app.windows.buttons["Keep editing"].firstMatch
-        XCTAssertTrue(cancel.waitForExistence(timeout: 10)); cancel.tap()
+        guard cancel.waitForExistence(timeout: 10) else { recordFailureContext(app, "missing-keep-editing"); XCTFail("Keep editing action did not appear"); return }
+        cancel.tap()
         XCTAssertEqual(editor.value as? String, draft)
         reload.tap()
         let discard = app.windows.buttons["Discard draft and reload"].firstMatch
-        XCTAssertTrue(discard.waitForExistence(timeout: 10)); discard.tap()
+        guard discard.waitForExistence(timeout: 10) else { recordFailureContext(app, "missing-discard"); XCTFail("Discard action did not appear"); return }
+        discard.tap()
         let reopened = app.descendants(matching: .any)["native-editor-text"].firstMatch
         XCTAssertTrue(reopened.waitForExistence(timeout: 20))
         XCTAssertEqual(reopened.value as? String, original)
