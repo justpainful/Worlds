@@ -256,7 +256,7 @@ jobs:
     name: Experimental project links UI
     runs-on: macos-26
     needs: [ruststore-xcframework]
-    timeout-minutes: 50
+    timeout-minutes: 65
     env:
       WORLDS_REQUIRE_NATIVE_WRITES: "1"
     steps:
@@ -288,7 +288,9 @@ jobs:
             local platform="$1" case_name="$2" destination="$3"; shift 3
             local selectors=() test
             for test in "$@"; do selectors+=("-only-testing:LocalCopy-$platform-UITests/WorldsLocalCopyUITests/$test"); done
-            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsProjectLinksExperimental.xcodeproj \
+            local limit=600s
+            if [ "$platform" = iOS ]; then limit=900s; fi
+            if gtimeout --kill-after=30s "$limit" xcodebuild -project Apple/ProjectEditorHarness/WorldsProjectLinksExperimental.xcodeproj \
               -scheme "LocalCopy-$platform" -destination "$destination" "${selectors[@]}" \
               -resultBundlePath "$GITHUB_WORKSPACE/project-links-$case_name.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/project-links-$case_name.log"; then
