@@ -82,6 +82,7 @@ jobs:
           grep -E 'testNamedFontWeightChangesRenderedText.*passed' logs/swift-test.log
           grep -E 'testMalformedCaptionCannotBeOverwritten.*passed' logs/swift-test.log
           grep -E 'testAdjacentPlainTextReorderUndoAndProtectsOtherElements.*passed' logs/swift-test.log
+          grep -E 'testShapeFillUndoAndProtectsUnsupportedData.*passed' logs/swift-test.log
           grep -E 'testRejectsInvalidAndPreservesSession.*passed' logs/swift-test.log
           grep -E 'testCreateListsAndToggleTaskWithUndoRedo.*passed' logs/swift-test.log
           grep -E 'testListCreationRejectsUnknownContent.*passed' logs/swift-test.log
@@ -709,6 +710,7 @@ jobs:
               grep -E 'testSavedStatusDisappearsWhenNewDraftIsTyped.*passed' "logs/local-presentation-editor-$device.log" || result=1
               grep -E 'testBackgroundColorUndoAndReopenKeepsMedia.*passed' "logs/local-presentation-editor-$device.log" || result=1
               grep -E 'testReorderTextUndoAndReopenKeepsMedia.*passed' "logs/local-presentation-editor-$device.log" || result=1
+              grep -E 'testShapeFillUndoAndReopenKeepsMedia.*passed' "logs/local-presentation-editor-$device.log" || result=1
             else
               result=1
             fi
@@ -1509,6 +1511,7 @@ jobs:
           grep -q 'testSaveAndReopenPreservesMissingMediaAndUnknownSlideFields' logs/presentation-persistence-discovery.log
           grep -q 'testSolidBackgroundSaveAndConflictKeepsMediaElement' logs/presentation-persistence-discovery.log
           grep -q 'testAdjacentTextReorderSaveAndConflictKeepsMedia' logs/presentation-persistence-discovery.log
+          grep -q 'testShapeFillSaveAndConflictKeepsMedia' logs/presentation-persistence-discovery.log
           grep -q 'testExplicitSlideDeletionKeepsMediaAndReopens' logs/presentation-persistence-discovery.log
           grep -q 'testInsertDuplicateAndReorderRoundTripsWithoutDroppingOpaqueBlocks' logs/presentation-persistence-discovery.log
       - name: Test presentation persistence on macOS
@@ -1520,6 +1523,7 @@ jobs:
           grep -q 'testSaveAndReopenPreservesMissingMediaAndUnknownSlideFields' logs/presentation-persistence-macos.log
           grep -q 'testSolidBackgroundSaveAndConflictKeepsMediaElement' logs/presentation-persistence-macos.log
           grep -q 'testAdjacentTextReorderSaveAndConflictKeepsMedia' logs/presentation-persistence-macos.log
+          grep -q 'testShapeFillSaveAndConflictKeepsMedia' logs/presentation-persistence-macos.log
           grep -q 'testExplicitSlideDeletionKeepsMediaAndReopens' logs/presentation-persistence-macos.log
           grep -E 'testInsertDuplicateAndReorderRoundTripsWithoutDroppingOpaqueBlocks.*passed' logs/presentation-persistence-macos.log
       - name: Discover drawing validation tests
@@ -1654,6 +1658,7 @@ jobs:
           grep -E "Test Case .*testSaveAndReopenPreservesMissingMediaAndUnknownSlideFields.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testSolidBackgroundSaveAndConflictKeepsMediaElement.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testAdjacentTextReorderSaveAndConflictKeepsMedia.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testShapeFillSaveAndConflictKeepsMedia.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testExplicitSlideDeletionKeepsMediaAndReopens.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testInsertDuplicateAndReorderRoundTripsWithoutDroppingOpaqueBlocks.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testOriginalSceneFixtureAndInvalidFrame.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
