@@ -65,7 +65,7 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         let button = app.buttons["Start"]
         guard button.waitForExistence(timeout: 20) else {
             captureFailure(app, name: "start-unavailable")
-            XCTFail("Start did not appear")
+            XCTFail("Start did not appear; application state: \(app.state.rawValue), windows: \(app.windows.count)")
             throw HarnessUIError.unavailable
         }
         button.click()
@@ -77,7 +77,9 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isEnabled == true"), object: element)
         guard XCTWaiter.wait(for: [ready], timeout: 20) == .completed else {
             captureFailure(XCUIApplication(), name: "composer-disabled")
-            XCTFail("Message editor did not become enabled")
+            let app = XCUIApplication()
+            let diagnostics = app.staticTexts["conversation-fixture-diagnostics"].firstMatch
+            XCTFail("Message editor did not become enabled; fixture state: \(diagnostics.label)")
             throw HarnessUIError.unavailable
         }
     }

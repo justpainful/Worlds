@@ -1,4 +1,7 @@
 import SwiftUI
+#if DEBUG && os(macOS)
+import AppKit
+#endif
 
 /// A host must inject an authorized service. No preview data or runtime setup is
 /// supplied by this view. It does not create or select conversations.
@@ -60,6 +63,17 @@ public struct ConversationView: View {
             .frame(maxWidth: .infinity)
         }
         .safeAreaInset(edge: .bottom) { composer }
+        #if DEBUG && os(macOS)
+        .overlay(alignment: .topLeading) {
+            if ProcessInfo.processInfo.arguments.contains("--isolated-ui-fixture") {
+                TimelineView(.periodic(from: .now, by: 1)) { _ in
+                    Text("loading=\(model.loading) loaded=\(model.loaded) running=\(model.running) active=\(NSApp.isActive) modal=\(NSApp.modalWindow != nil)")
+                        .font(.caption2).accessibilityIdentifier("conversation-fixture-diagnostics")
+                }
+                .allowsHitTesting(false)
+            }
+        }
+        #endif
         .navigationTitle("Conversation")
         .tint(colorScheme == .dark ? Color(red: 210/255, green: 164/255, blue: 110/255) : Color(red: 138/255, green: 88/255, blue: 32/255))
         .task { await model.load() }
