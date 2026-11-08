@@ -1882,6 +1882,9 @@ jobs:
           grep -q 'gallery_create_preserves_source_defaults_and_idempotency ... ok' logs/rust-store-tests.log
           grep -q 'gallery_create_checks_parent_and_rolls_back_all_writes ... ok' logs/rust-store-tests.log
           grep -q 'ffi_gallery_create_replays_same_operation ... ok' logs/rust-store-tests.log
+          grep -q 'stream_create_formats_replay_and_collisions ... ok' logs/rust-store-tests.log
+          grep -q 'stream_create_rolls_back_and_checks_parent ... ok' logs/rust-store-tests.log
+          grep -q 'ffi_stream_create_replays ... ok' logs/rust-store-tests.log
           grep -q 'checked_rename_retries_without_duplicate_history_and_refuses_same_revision_change ... ok' logs/rust-store-tests.log
           grep -q 'checked_rename_rolls_back_page_history_fts_and_changes ... ok' logs/rust-store-tests.log
           grep -q 'ffi_checked_rename_retries_same_operation ... ok' logs/rust-store-tests.log
