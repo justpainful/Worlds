@@ -692,6 +692,7 @@ jobs:
               grep -E 'testBoldTextUndoAndReopenKeepsMedia.*passed' "logs/local-presentation-editor-$device.log" || result=1
               grep -E 'testItalicTextUndoAndReopenKeepsMedia.*passed' "logs/local-presentation-editor-$device.log" || result=1
               grep -E 'testFontSizeUndoAndReopenKeepsMedia.*passed' "logs/local-presentation-editor-$device.log" || result=1
+              grep -E 'testChooseFontSizeUndoAndReopenKeepsMedia.*passed' "logs/local-presentation-editor-$device.log" || result=1
             else
               result=1
             fi
