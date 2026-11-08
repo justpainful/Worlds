@@ -9,6 +9,40 @@ import WorldsLocalImport
 @testable import WorldsEditorPersistence
 
 final class EditorPersistenceTests: XCTestCase {
+    @MainActor func testTableLargeUnknownIntegerSurvivesSaveAndConflict() async throws {
+        let url = try fixture()
+        try exec(#"UPDATE pages SET kind='document' WHERE id='fixture-page'; UPDATE blocks SET content='{"type":"table","attrs":{"bid":"fixture-block","future":{"number":9007199254740993,"mixed":[null,1.25,"1",false]}},"content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colspan":1,"rowspan":1,"colwidth":null},"content":[{"type":"paragraph","content":[{"type":"text","text":"أصل"}]}]}]}]}' WHERE id='fixture-block'"#, url: url)
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let stale = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        func check(_ source: JSONValue) {
+            guard case .object(let doc) = source, case .array(let blocks)? = doc["content"],
+                  case .object(let table)? = blocks.first, case .object(let attrs)? = table["attrs"],
+                  case .object(let future)? = attrs["future"] else { return XCTFail("Missing table attributes") }
+            XCTAssertEqual(future["number"], .integer(9_007_199_254_740_993))
+            XCTAssertEqual(future["mixed"], .array([.null, .number(1.25), .string("1"), .bool(false)]))
+        }
+        check(bridge.initialDocument.source)
+        let model = NativeEditorModel(document: bridge.initialDocument, baseRevision: bridge.initialRevision, supportsDocumentFormatting: true)
+        try model.appendTableRow()
+        _ = try model.replace(range: NSRange(location: model.projection.text.utf16.count, length: 0), with: "جديد")
+        try await model.save(using: bridge)
+        let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        check(reopened.initialDocument.source)
+        XCTAssertEqual(reopened.initialDocument.project().text, "أصل\nجديد")
+        do { _ = try await stale.save(documentJSON: try stale.initialDocument.json(), basedOn: stale.initialRevision); XCTFail("Expected conflict") }
+        catch NativeWriteError.conflict { } catch { XCTFail("Unexpected error: \(error)") }
+        var raw: OpaquePointer?
+        XCTAssertEqual(sqlite3_open_v2(url.path, &raw, SQLITE_OPEN_READONLY, nil), SQLITE_OK)
+        let db = try XCTUnwrap(raw); defer { sqlite3_close(db) }
+        var statement: OpaquePointer?
+        let sql = "SELECT json_type(content,'$.attrs.future.number'), json_extract(content,'$.attrs.future.number') FROM blocks WHERE id='fixture-block'"
+        XCTAssertEqual(sqlite3_prepare_v2(db, sql, -1, &statement, nil), SQLITE_OK)
+        let query = try XCTUnwrap(statement); defer { sqlite3_finalize(query) }
+        XCTAssertEqual(sqlite3_step(query), SQLITE_ROW)
+        XCTAssertEqual(String(cString: try XCTUnwrap(sqlite3_column_text(query, 0))), "integer")
+        XCTAssertEqual(sqlite3_column_type(query, 1), SQLITE_INTEGER)
+        XCTAssertEqual(sqlite3_column_int64(query, 1), 9_007_199_254_740_993)
+    }
     @MainActor func testDeleteMiddleTableRowSaveReopenAndConflict() async throws {
         let url = try fixture()
         try exec(#"UPDATE pages SET kind='document' WHERE id='fixture-page'; UPDATE blocks SET content='{"type":"table","attrs":{"bid":"fixture-block","future":"keep"},"content":[{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"أول"}]}]}]},{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"أخير"}]}]}]},{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"C"}]}]}]}]}' WHERE id='fixture-block'"#, url: url)
