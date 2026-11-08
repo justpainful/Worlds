@@ -7,7 +7,16 @@ import XCTest
 
 final class FixtureBundleImporterTests: XCTestCase {
     private func fixture() throws -> (URL, URL, URL) {
-        let root = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent("bundle-fixture-\(UUID().uuidString)", isDirectory: true)
+        let temporaryRoot = FileManager.default.temporaryDirectory.appendingPathComponent("bundle-fixture-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: temporaryRoot, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+        // Foundation can retain the /var alias on macOS. Resolve this newly
+        // created test-owned directory with POSIX realpath before handing its
+        // descendants to the no-follow Rust bridge.
+        guard let resolved = realpath(temporaryRoot.path, nil) else { throw FixtureBundleError.invalidPath }
+        defer { free(resolved) }
+        let canonicalPath = String(cString: resolved)
+        let root = URL(fileURLWithPath: canonicalPath, isDirectory: true)
+        guard root.path == canonicalPath else { throw FixtureBundleError.invalidPath }
         let source = root.appendingPathComponent("source", isDirectory: true), privateRoot = root.appendingPathComponent("private", isDirectory: true)
         try FileManager.default.createDirectory(at: source.appendingPathComponent("attachments/sub", isDirectory: true), withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: privateRoot, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
@@ -49,7 +58,9 @@ final class FixtureBundleImporterTests: XCTestCase {
         let (root, source, privateRoot) = try fixture(); defer { try? FileManager.default.removeItem(at: root) }
         try FileManager.default.removeItem(at: source.appendingPathComponent("attachments/sub/a.bin"))
         do { _ = try await FixtureBundleImporter().prepare(source: source, privateRoot: privateRoot); XCTFail("Missing file must fail") }
-        catch FixtureBundleError.failed(_) { }
+        catch FixtureBundleError.failed(let reason) {
+            XCTAssertTrue(reason.contains("os error 2"), "Expected the missing-file error, got: \(reason)")
+        }
         catch { XCTFail("Expected a missing-file import failure, got \(error)") }
         XCTAssertTrue(try FileManager.default.contentsOfDirectory(atPath: privateRoot.path).isEmpty)
         XCTAssertTrue(FileManager.default.fileExists(atPath: source.appendingPathComponent("worlds.db").path))

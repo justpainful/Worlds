@@ -91,3 +91,16 @@ fn unexpected_touched_page_rolls_back_original_guarded_operation() {
     let title:String=db.query_row("SELECT title FROM pages WHERE id='hidden'",[],|r|r.get(0)).unwrap(); assert_eq!(title,"Hidden");
     drop(db);std::fs::remove_file(path).unwrap();
 }
+#[test]
+fn cancellation_during_write_rolls_back_and_invalidates_run() {
+    let (path,mut db,binding)=fixture(); let mut gate=HostGate::new(binding.clone()).unwrap();
+    let authority=Authority{user:"u",workspace:Some("w"),level:Level::Edit}; let request=rename("new");
+    let approval=gate.approve_write(&binding,&request).unwrap(); let cancellation=gate.cancellation();
+    let result=gate.execute(&mut db,&binding,&request,Some(&approval),&authority,|c| {
+        let result=update(c,"new")?; cancellation.cancel(); Ok(result)
+    });
+    assert!(result.is_err());
+    let title:String=db.query_row("SELECT title FROM pages WHERE id='shared'",[],|r|r.get(0)).unwrap(); assert_eq!(title,"Shared");
+    assert!(gate.approve_write(&binding,&request).is_err());
+    drop(db);std::fs::remove_file(path).unwrap();
+}

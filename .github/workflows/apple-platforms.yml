@@ -74,6 +74,16 @@ jobs:
           grep -E 'testPasswordProtectedPDFReportsLimit.*passed' logs/swift-test.log
           grep -E 'testTruncatedOpenFileIsRejected.*passed' logs/swift-test.log
           grep -E 'testCloseBeforeLoadDoesNotDecode.*passed' logs/swift-test.log
+          grep -E 'testOriginalDefaultChainAndArabicLabels.*passed' logs/swift-test.log
+          grep -E 'testKnownUnsupportedSyntaxFailsClosed.*passed' logs/swift-test.log
+          grep -E 'testElementLimitFailsWithoutPartialResult.*passed' logs/swift-test.log
+          grep -E 'testSourceEditPreservesUnknownFieldsExactly.*passed' logs/swift-test.log
+          grep -E 'testDecisionIsSingleUseAndDismissalCannotOverrideApproval.*passed' logs/swift-test.log
+          grep -E 'testDismissalDeclinesOnlyOnce.*passed' logs/swift-test.log
+          grep -E 'testReviewEscapesDirectionalAndLineControls.*passed' logs/swift-test.log
+          grep -E 'testWorkspaceAccessUsesCurrentAccountAndFailsClosed.*passed' logs/swift-test.log
+          grep -E 'testWorkspaceAccessRejectsDuplicatePageEntries.*passed' logs/swift-test.log
+          grep -E 'testWorkspaceAccessPreventsConcurrentAccountChange.*passed' logs/swift-test.log
           grep -q 'testActualYjsFixture' logs/swift-test.log
           grep -E 'testYjsRelativeCursorAwarenessRemainsOpaque.*passed' logs/swift-test.log
           grep -E 'testCancelledPasskeyBeforePresentationDoesNotStart.*passed' logs/swift-test.log
@@ -380,6 +390,14 @@ jobs:
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee logs/claude-harness-ui.log
           grep -E 'testConversationSurvivesProcessRestartAndCancellation.*passed' logs/claude-harness-ui.log
           grep -E 'testPendingResponseRecoversAfterProcessRestart.*passed' logs/claude-harness-ui.log
+      - name: Export fixture UI failure attachments
+        if: always()
+        shell: bash
+        run: |
+          if [ -f logs/claude-harness.xcresult/Info.plist ]; then
+            mkdir -p logs/claude-ui-attachments
+            xcrun xcresulttool export attachments --path logs/claude-harness.xcresult --output-path logs/claude-ui-attachments
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -1693,7 +1711,20 @@ jobs:
             if curl --fail --silent http://127.0.0.1:18793/health > /dev/null && curl --fail --silent http://127.0.0.1:18792/.well-known/jwks.json > /dev/null; then ready=1; break; fi
             sleep 1
           done
-          test "$ready" = 1 || { echo "Local identity fixture failed readiness"; exit 1; }
+          if [ "$ready" != 1 ]; then
+            echo "Local identity fixture failed readiness"
+            for service in mailbox worker; do
+              case "$service" in
+                mailbox) pid="$mailbox_pid"; url=http://127.0.0.1:18793/health ;;
+                worker) pid="$worker_pid"; url=http://127.0.0.1:18792/.well-known/jwks.json ;;
+              esac
+              if kill -0 "$pid" 2>/dev/null; then state=running; else state=exited; fi
+              http=$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 3 "$url" || true)
+              printf '%s process=%s HTTP=%s\n' "$service" "$state" "$http"
+            done
+            lsof -nP -iTCP:18792 -iTCP:18793 -iTCP:18794 -sTCP:LISTEN || true
+            exit 1
+          fi
           cd ../..
           swift test --package-path Apple/WorldsCore --filter LiveIdentityServiceTests 2>&1 | tee logs/live-identity.log
           grep -E 'testLocalIdentityEmailRefreshAndRemoteLogout.*passed' logs/live-identity.log

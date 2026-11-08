@@ -84,6 +84,7 @@ import WorldsDrawingPencilInput
               let space = CGColorSpace(name: CGColorSpace.sRGB),
               let context = CGContext(data: nil, width: Int(w), height: Int(h), bitsPerComponent: 8, bytesPerRow: 0, space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { throw Failure.fixture }
         let drawing = try DrawingScene(json: JSONSerialization.data(withJSONObject: scene))
+        context.translateBy(x: 0, y: CGFloat(h)); context.scaleBy(x: 1, y: -1)
         try ExperimentalStrokeSceneRenderer.render(scene: drawing, frameID: frame, in: context, allowCorrectedRightTriangles: true)
         guard let cg = context.makeImage() else { throw Failure.fixture }
         #if canImport(UIKit)

@@ -3,7 +3,10 @@
 This isolated library exercises a narrow host authorization model using the
 original Worlds permission guard inside SQLite transactions. Requests are bound
 to an account, copy, server, run and page; a write requires a one-use approval
-for the exact arguments. Cancellation invalidates pending approvals. The tests
+for the exact arguments. Cancellation before the commit boundary rolls back
+the transaction and invalidates further calls. After the boundary, the real
+commit outcome is returned. Cancellation cannot interrupt a blocking operation
+or undo external side effects. The tests
 use synthetic databases and verify local permission changes, account changes,
 approval replay, and rollback when an original guarded operation touches an
 unauthorized page.

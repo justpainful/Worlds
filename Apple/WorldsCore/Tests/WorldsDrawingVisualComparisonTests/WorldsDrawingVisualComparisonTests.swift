@@ -77,7 +77,7 @@ final class WorldsDrawingVisualComparisonTests: XCTestCase {
         let scene = try DrawingScene(json: JSONSerialization.data(withJSONObject: sceneJSON))
         XCTAssertThrowsError(try bitmap(256) { try ExperimentalStrokeSceneRenderer.render(scene: scene, frameID: "frame", in: $0) })
         let actual = try bitmap(256) { context in
-            context.scaleBy(x: 4, y: 4)
+            context.translateBy(x: 0, y: 256); context.scaleBy(x: 4, y: -4)
             try ExperimentalStrokeSceneRenderer.render(scene: scene, frameID: "frame", in: context, allowCorrectedRightTriangles: true)
         }
         let reference = try XCTUnwrap(Bundle.module.url(forResource: "right-triangle-4x", withExtension: "png", subdirectory: "CanvasReferences"))
@@ -106,7 +106,7 @@ final class WorldsDrawingVisualComparisonTests: XCTestCase {
         let sceneJSON: [String: Any] = ["schema": 1, "defaultFrameId": "frame", "frames": ["frame": ["x": 0, "y": 0, "w": 64, "h": 64, "background": "transparent", "clip": true]], "frameOrder": ["frame"], "layers": ["layer": ["visible": true, "opacity": 1, "blend": "source-over", "parentId": NSNull()]], "layerOrder": ["layer"], "nodes": ["shape": shape, "stroke": stroke], "nodeOrder": ["shape", "stroke"], "assets": [:], "masks": [:], "steps": [:], "stepOrder": []]
         let scene = try DrawingScene(json: JSONSerialization.data(withJSONObject: sceneJSON))
         let actual = try bitmap(256) { context in
-            context.scaleBy(x: 4, y: 4)
+            context.translateBy(x: 0, y: 256); context.scaleBy(x: 4, y: -4)
             try ExperimentalStrokeSceneRenderer.render(scene: scene, frameID: "frame", in: context, allowCorrectedRightTriangles: true)
         }
         let reference = try XCTUnwrap(Bundle.module.url(forResource: "right-triangle-mixed-4x", withExtension: "png", subdirectory: "CanvasReferences"))

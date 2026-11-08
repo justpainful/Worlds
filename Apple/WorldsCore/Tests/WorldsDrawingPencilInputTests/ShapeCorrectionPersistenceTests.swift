@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 import SQLite3
 import XCTest
 import WorldsDrawing
@@ -16,7 +17,11 @@ final class ShapeCorrectionPersistenceTests: XCTestCase {
         let db = try XCTUnwrap(connection)
         let status = sqlite3_exec(db, "UPDATE pages SET kind='drawing' WHERE id='fixture-page'; INSERT INTO profile(id,display_name,created_at,updated_at) VALUES('artist','Artist',1,1);", nil, nil, nil)
         sqlite3_close_v2(db); XCTAssertEqual(status, SQLITE_OK)
-        let writer = try PersonalDrawingWriter(database: path.resolvingSymlinksInPath())
+        let resolved = path.withUnsafeFileSystemRepresentation { pointer in pointer.flatMap { realpath($0, nil) } }
+        let canonicalPointer = try XCTUnwrap(resolved, "Could not resolve the isolated fixture")
+        defer { free(canonicalPointer) }
+        let canonical = URL(fileURLWithPath: String(cString: canonicalPointer))
+        let writer = try PersonalDrawingWriter(database: canonical)
         func document(_ data: Data) throws -> [String: Any] {
             let root = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
             return try XCTUnwrap(root["value"] as? [String: Any])
@@ -42,7 +47,7 @@ final class ShapeCorrectionPersistenceTests: XCTestCase {
         let unchanged = try XCTUnwrap((afterFailure["scene"] as? [String: Any])?["nodes"] as? [String: [String: Any]])
         XCTAssertEqual(unchanged["stroke-node"]?["kind"] as? String, "stroke")
         _ = try await writer.apply(pageID: "fixture-page", changeJSON: correction)
-        let reopenedWriter = try PersonalDrawingWriter(database: path.resolvingSymlinksInPath())
+        let reopenedWriter = try PersonalDrawingWriter(database: canonical)
         let reopened = try document(await reopenedWriter.load(pageID: "fixture-page"))
         let nodes = try XCTUnwrap((reopened["scene"] as? [String: Any])?["nodes"] as? [String: [String: Any]])
         let node = try XCTUnwrap(nodes["stroke-node"])

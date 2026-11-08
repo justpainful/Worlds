@@ -3,6 +3,7 @@ use anyhow::{bail, Result};
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::sync::{Arc,atomic::{AtomicU8,Ordering}};
 
 #[path = "../../../src-tauri/src/account/permissions.rs"]
 pub mod permissions;
@@ -37,15 +38,35 @@ pub trait CurrentAuthority {
     fn require(&self, binding: &RunBinding, workspace: Option<&str>, needed: permissions::Level) -> Result<()>;
 }
 
-pub struct HostGate { binding: RunBinding, cancelled: bool, pending: HashMap<String,Approval> }
+/// A cancel can race a commit. Once commit wins, the actual commit outcome is
+/// returned and the cancellation takes effect for subsequent calls.
+#[derive(Clone)]
+pub struct RunCancellation(Arc<AtomicU8>);
+impl RunCancellation {
+    pub fn cancel(&self) {
+        loop {
+            let current=self.0.load(Ordering::Acquire);
+            let next=match current { 0=>1, 2=>3, _=>return };
+            if self.0.compare_exchange(current,next,Ordering::AcqRel,Ordering::Acquire).is_ok() { return }
+        }
+    }
+    fn check(&self)->Result<()> { if self.0.load(Ordering::Acquire)!=0 { bail!("session unavailable") } Ok(()) }
+    fn begin_commit(&self)->Result<()> { self.0.compare_exchange(0,2,Ordering::AcqRel,Ordering::Acquire).map(|_|()).map_err(|_|anyhow::anyhow!("session unavailable")) }
+    fn end_commit(&self) {
+        if self.0.compare_exchange(2,0,Ordering::AcqRel,Ordering::Acquire).is_err() { self.0.store(1,Ordering::Release); }
+    }
+}
+
+pub struct HostGate { binding: RunBinding, cancellation: RunCancellation, pending: HashMap<String,Approval> }
 impl HostGate {
     pub fn new(binding: RunBinding) -> Result<Self> {
         for value in [&binding.run_id,&binding.user_id,&binding.copy_id,&binding.server_id,&binding.page_id] {
             if value.is_empty() || value.len()>1024 || value.bytes().any(|b|b==0) { bail!("invalid binding") }
         }
-        Ok(Self { binding, cancelled:false, pending:HashMap::new() })
+        Ok(Self { binding, cancellation:RunCancellation(Arc::new(AtomicU8::new(0))), pending:HashMap::new() })
     }
-    pub fn cancel(&mut self) { self.cancelled=true; self.pending.clear(); }
+    pub fn cancellation(&self) -> RunCancellation { self.cancellation.clone() }
+    pub fn cancel(&mut self) { self.cancellation.cancel(); self.pending.clear(); }
     /// Invoke only after an explicit human approval of this exact request.
     pub fn approve_write(&mut self, binding: &RunBinding, request: &ToolRequest) -> Result<String> {
         self.validate(binding,request)?;
@@ -56,7 +77,8 @@ impl HostGate {
         Ok(id)
     }
     fn validate(&self, binding: &RunBinding, request: &ToolRequest) -> Result<permissions::Level> {
-        if self.cancelled || &self.binding!=binding { bail!("session unavailable") }
+        self.cancellation.check()?;
+        if &self.binding!=binding { bail!("session unavailable") }
         let args=request.arguments.as_object().ok_or_else(||anyhow::anyhow!("invalid arguments"))?;
         if args.get("pageId").and_then(Value::as_str)!=Some(binding.page_id.as_str()) { bail!("page unavailable") }
         match request.name.as_str() {
@@ -94,7 +116,11 @@ impl HostGate {
             }
         }
         authority.require(binding,workspace.as_deref(),needed)?;
+        self.cancellation.check()?;
         let value=permissions::guarded_tool_call(&tx,&request.name,&request.arguments,operation)?;
-        tx.commit()?; Ok(value)
+        self.cancellation.begin_commit()?;
+        let committed=tx.commit();
+        self.cancellation.end_commit();
+        committed?; Ok(value)
     }
 }

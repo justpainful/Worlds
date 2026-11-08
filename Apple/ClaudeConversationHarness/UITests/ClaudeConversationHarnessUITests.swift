@@ -7,7 +7,7 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         app.launchArguments = ["--isolated-ui-fixture", fixtureID, "--fixture-fail-save"]
         app.launch(); try start(app)
         let composer = app.textViews["Message"]
-        XCTAssertTrue(composer.waitForExistence(timeout: 20)); waitEnabled(composer)
+        XCTAssertTrue(composer.waitForExistence(timeout: 20)); try waitEnabled(composer)
         composer.click(); composer.typeText("Recover question")
         app.buttons["Send"].click()
         XCTAssertTrue(app.buttons["Retry saving response"].waitForExistence(timeout: 20))
@@ -33,12 +33,12 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         try start(app)
         let composer = app.textViews["Message"]
         XCTAssertTrue(composer.waitForExistence(timeout: 20))
-        waitEnabled(composer)
+        try waitEnabled(composer)
         composer.click(); composer.typeText("Persisted question")
         app.buttons["Send"].click()
         XCTAssertTrue(text("Fixture response", in: app).waitForExistence(timeout: 20))
         // Wait until the saved response is reloaded and the composer is ready.
-        waitEnabled(composer)
+        try waitEnabled(composer)
         app.terminate()
 
         app.launch()
@@ -47,7 +47,7 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         XCTAssertTrue(text("Fixture response", in: app).waitForExistence(timeout: 20))
         let reopenedComposer = app.textViews["Message"]
         XCTAssertTrue(reopenedComposer.waitForExistence(timeout: 10))
-        waitEnabled(reopenedComposer)
+        try waitEnabled(reopenedComposer)
         reopenedComposer.click(); reopenedComposer.typeText("Cancel fixture")
         app.buttons["Send"].click()
         let stop = app.buttons["Stop"]
@@ -63,14 +63,29 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
 
     @MainActor private func start(_ app: XCUIApplication) throws {
         let button = app.buttons["Start"]
-        XCTAssertTrue(button.waitForExistence(timeout: 20))
+        guard button.waitForExistence(timeout: 20) else {
+            captureFailure(app, name: "start-unavailable")
+            XCTFail("Start did not appear")
+            throw HarnessUIError.unavailable
+        }
         button.click()
     }
     @MainActor private func text(_ expected: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", expected, expected)).firstMatch
     }
-    @MainActor private func waitEnabled(_ element: XCUIElement) {
+    @MainActor private func waitEnabled(_ element: XCUIElement) throws {
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isEnabled == true"), object: element)
-        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 20), .completed)
+        guard XCTWaiter.wait(for: [ready], timeout: 20) == .completed else {
+            captureFailure(XCUIApplication(), name: "composer-disabled")
+            XCTFail("Message editor did not become enabled")
+            throw HarnessUIError.unavailable
+        }
     }
+    @MainActor private func captureFailure(_ app: XCUIApplication, name: String) {
+        let hierarchy = XCTAttachment(string: app.debugDescription)
+        hierarchy.name = "\(name)-accessibility"; hierarchy.lifetime = .keepAlways; add(hierarchy)
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "\(name)-screenshot"; screenshot.lifetime = .keepAlways; add(screenshot)
+    }
+    private enum HarnessUIError: Error { case unavailable }
 }
