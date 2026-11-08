@@ -54,6 +54,17 @@ import SQLite3
             self.session = session; slides = session.slides; saved = false; fixtureMediaPresent = false; error = nil
         } catch { self.error = "This text cannot be changed safely: \(error.localizedDescription)" }
     }
+    static let fontSizes: [Int] = [14, 18, 20, 24, 28, 32, 40, 48, 56, 64, 76, 96, 120]
+    func changeFontSize(larger: Bool) {
+        guard !hasUnapplied else { return }
+        do {
+            guard var session, let index = session.slides.firstIndex(where: { $0.id == selectedID }), let element = currentElement, let size = element.editableFontSize else { return }
+            let candidate = larger ? Self.fontSizes.first(where: { Double($0) > size }) : Self.fontSizes.last(where: { Double($0) < size })
+            guard let candidate else { return }
+            try session.update(at: index) { try $0.setTextStyle(elementID: element.id, key: "fontSize", value: .integer(Int64(candidate))) }
+            self.session = session; slides = session.slides; saved = false; fixtureMediaPresent = false; error = nil
+        } catch { self.error = "This font size cannot be changed safely: \(error.localizedDescription)" }
+    }
     func toggleTextItalic() {
         guard !hasUnapplied else { return }
         do {
@@ -191,6 +202,19 @@ struct LocalPresentationEditor: View {
                     Button("Apply text") { state.applyText() }.disabled(!state.hasTextUnapplied)
                 }
                 if let element = state.currentElement {
+                    if let size = element.editableFontSize {
+                        VStack(alignment: .leading) {
+                            Button("Smaller text") { state.changeFontSize(larger: false) }
+                                .accessibilityIdentifier("presentation-text-smaller")
+                                .disabled(state.hasUnapplied || !PresentationEditorState.fontSizes.contains(where: { Double($0) < size }))
+                            Text(size.formatted()).accessibilityIdentifier("presentation-font-size")
+                            Button("Larger text") { state.changeFontSize(larger: true) }
+                                .accessibilityIdentifier("presentation-text-larger")
+                                .disabled(state.hasUnapplied || !PresentationEditorState.fontSizes.contains(where: { Double($0) > size }))
+                        }
+                    } else {
+                        Text("This font size cannot be edited safely.")
+                    }
                     if let italic = element.editableItalic {
                         Button { state.toggleTextItalic() } label: { Label(italic ? "Italic: On" : "Italic: Off", systemImage: "italic") }
                             .accessibilityLabel("Italic text")

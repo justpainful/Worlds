@@ -27,6 +27,14 @@ public struct SlideElement: Sendable, Equatable, Identifiable {
     public var rotation: Double { source.slideObject?["rot"]?.slideNumber ?? 0 }
     public var opacity: Double { source.slideObject?["opacity"]?.slideNumber ?? 1 }
     public var text: String? { source.slideObject?["text"]?.slideString }
+    public var editableFontSize: Double? {
+        guard type == "text", let element = source.slideObject else { return nil }
+        guard let rawStyle = element["style"] else { return 32 }
+        guard let style = rawStyle.slideObject else { return nil }
+        guard let raw = style["fontSize"] else { return 32 }
+        guard let value = raw.slideNumber, value.isFinite, (1...2048).contains(value) else { return nil }
+        return value
+    }
     public var editableItalic: Bool? {
         guard type == "text", let element = source.slideObject else { return nil }
         guard let rawStyle = element["style"] else { return false }
@@ -169,6 +177,7 @@ public struct SlideBlock: Sendable, Equatable, Identifiable {
             if key == "align", SlideElement(source: .object(element)).editableTextAlignment == nil { throw SlideError.unsupportedElement }
             if key == "fontWeight", SlideElement(source: .object(element)).editableFontWeight == nil { throw SlideError.unsupportedElement }
             if key == "italic", SlideElement(source: .object(element)).editableItalic == nil { throw SlideError.unsupportedElement }
+            if key == "fontSize", SlideElement(source: .object(element)).editableFontSize == nil { throw SlideError.unsupportedElement }
             if let existing = element["style"], existing.slideObject == nil { throw SlideError.unsupportedElement }
             var style = element["style"]?.slideObject ?? [:]
             style[key] = value
