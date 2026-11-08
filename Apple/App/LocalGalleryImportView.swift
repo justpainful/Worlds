@@ -51,6 +51,12 @@ import WorldsNativeWrites
                 _ = try await importer.importFile(source: source, galleryID: pageID, base: revision, metadata: metadata, expected: blocks, operationID: operation)
                 completed = true; onSaved()
             } catch is CancellationError { error = "Import cancelled." }
+            catch NativeWriteError.galleryCommittedCleanupPending {
+                // The gallery entry has committed. Do not offer another import
+                // for this operation; the journal will need reconciliation.
+                completed = true; retryRequired = false; self.source = nil
+                error = "The file was saved in the copy open during import. Cleanup or identity verification is pending. Close this view and reopen the local copy before checking it."
+            }
             catch { retryRequired = true; error = "The import result could not be confirmed. Retry this file or close and reopen the gallery." }
         }
     }
@@ -77,7 +83,7 @@ struct LocalGalleryImportView: View {
                     Button(state.retryRequired ? "Retry import" : "Import file") { state.start(onSaved: onSaved) }.disabled(state.busy || !state.ready || state.fileName == nil)
                     if state.busy { ProgressView("Importing"); Button("Cancel import") { state.cancel() } }
                 }
-                if let error = state.error { Text(error).foregroundStyle(.secondary) }
+                if let error = state.error { Text(error).foregroundStyle(.secondary).accessibilityIdentifier("gallery-import-message") }
             }
             .navigationTitle("Import to gallery")
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() }.disabled(state.busy) } }
