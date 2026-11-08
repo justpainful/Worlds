@@ -854,6 +854,25 @@ mod presentation_tests {
         std::fs::remove_file(path).unwrap();
     }
     #[test]
+    fn presentation_media_owner_becoming_shared_blocks_save_atomically() {
+        let path=fixture(); let c=Connection::open(&path).unwrap();
+        c.execute("INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('owner','Owner','page','{}',1,1)",[]).unwrap();
+        c.execute("INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('media','owner','image','a.png','image/png',1,'a.png',1)",[]).unwrap();
+        let slide=json!({"type":"slide","attrs":{"bid":"s","notes":"before","background":{"color":"#fff","attachmentId":"media"},"elements":[]}});
+        c.execute("UPDATE blocks SET content=?1 WHERE id='s'",[slide.to_string()]).unwrap(); drop(c);
+        let old=read_presentation(&path,"deck").unwrap();
+        let c=Connection::open(&path).unwrap();
+        c.execute("UPDATE pages SET workspace_id='team' WHERE id='owner'",[]).unwrap(); drop(c);
+        let mut next=inputs(&old); next[0].content["attrs"]["notes"]=json!("after");
+        assert!(save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),next).is_err());
+        let c=Connection::open(&path).unwrap();
+        let content:String=c.query_row("SELECT content FROM blocks WHERE id='s'",[],|r|r.get(0)).unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&content).unwrap(),slide);
+        assert_eq!(c.query_row("SELECT count(*) FROM versions WHERE page_id='deck'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        assert_eq!(c.query_row("SELECT count(*) FROM attachments WHERE id='media'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        drop(c); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
     fn rejects_lost_opaque_and_unauthorized_attachment() {
         let path=fixture(); let old=read_presentation(&path,"deck").unwrap();
         let mut next=inputs(&old); next.pop();
