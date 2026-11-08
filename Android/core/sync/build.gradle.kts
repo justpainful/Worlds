@@ -1,15 +1,16 @@
 plugins { id("com.android.library") }
 
 val nativeOutput = layout.buildDirectory.dir("generated/yrsJni")
+val yrsNdkVersion = "28.2.13676358"
 val buildYrs = tasks.register("buildYrs") {
     inputs.files(fileTree("native") { exclude("target/**") })
+    inputs.property("ndkVersion", yrsNdkVersion)
     outputs.dir(nativeOutput)
     doLast {
         val sdk = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT")
             ?: error("ANDROID_HOME or ANDROID_SDK_ROOT is required for Yrs")
-        val ndkRoot = file("$sdk/ndk")
-        val ndk = ndkRoot.listFiles()?.filter { it.isDirectory }?.maxByOrNull { it.name }
-            ?: error("Android NDK is required for Yrs")
+        val ndk = file("$sdk/ndk/$yrsNdkVersion")
+        check(ndk.isDirectory) { "Android NDK $yrsNdkVersion is required for Yrs" }
         val windows = System.getProperty("os.name").startsWith("Windows")
         val host = if (windows) "windows-x86_64" else if (System.getProperty("os.name").startsWith("Mac")) "darwin-x86_64" else "linux-x86_64"
         val bin = ndk.resolve("toolchains/llvm/prebuilt/$host/bin")

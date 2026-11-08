@@ -1481,7 +1481,7 @@ private data class PendingTableDelete(val revision: Long, val action: String, va
     } }
     imageSettings?.let { target -> ImageSettingsDialog(target, busy, { imageSettings = null }) { caption, display, align -> imageSettings = null; onImageSettings(target, caption, display, align) } }
     var pendingRemoval by remember(document.resource.id) { mutableStateOf<Pair<String, Long>?>(null) }
-    val pageActivity = androidx.compose.ui.platform.LocalContext.current as? MainActivity
+    val pageActivity = androidx.activity.compose.LocalActivity.current as? MainActivity
     val pageShortcutsActive = allowKeyboardShortcuts && editable && pageHasFocus && !busy && findTarget == null && imageSettings == null && runningTextTarget == null && typographyTarget == null && pendingRemoval == null
     DisposableEffect(pageActivity, pageShortcutsActive) {
         val owner = Any()

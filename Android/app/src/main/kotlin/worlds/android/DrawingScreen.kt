@@ -190,7 +190,7 @@ private fun historyAvailable(json: String): Pair<Boolean, Boolean> {
     var showExport by remember { mutableStateOf(false) }
     val drawingFocus = remember(resource.id) { FocusRequester() }
     var drawingHasFocus by remember(resource.id) { mutableStateOf(false) }
-    val activity = androidx.compose.ui.platform.LocalContext.current as? MainActivity
+    val activity = androidx.activity.compose.LocalActivity.current as? MainActivity
     DisposableEffect(activity, drawingHasFocus, showSettings, showExport) {
         val owner = Any()
         if (drawingHasFocus && !showSettings && !showExport) activity?.drawingShortcutOwner = owner
