@@ -90,10 +90,20 @@ impl SyncStore {
     }
 
     pub fn load(&self, channel: i64) -> Result<Vec<Vec<u8>>> {
+        self.load_with_hook(channel, || Ok(()))
+    }
+    fn load_with_hook(&self, channel: i64, after_snapshot: impl FnOnce() -> Result<()>) -> Result<Vec<Vec<u8>>> {
+        let tx=self.conn.unchecked_transaction()?;
+        let result=self.load_entries(channel,after_snapshot)?;
+        tx.commit()?;
+        Ok(result)
+    }
+    fn load_entries(&self, channel: i64, after_snapshot: impl FnOnce() -> Result<()>) -> Result<Vec<Vec<u8>>> {
         self.check(channel, false)?;
         let snapshot: Option<Option<Vec<u8>>> = self.conn.query_row("SELECT snapshot FROM sync_docs WHERE page_id=?1 AND channel=?2", params![self.page,channel], |r| r.get(0)).optional()?;
         let mut result = Vec::new();
         if let Some(Some(bytes)) = snapshot { result.push(bytes); }
+        after_snapshot()?;
         let mut q = self.conn.prepare("SELECT data FROM sync_updates WHERE page_id=?1 AND channel=?2 ORDER BY id")?;
         for row in q.query_map(params![self.page,channel], |r| r.get(0))? { result.push(row?); }
         Ok(result)
@@ -129,7 +139,7 @@ impl SyncStore {
         if base.len() > 64 * 1024 * 1024 { return Err(StoreError::Invalid); }
         let tx = rusqlite::Transaction::new_unchecked(&self.conn, rusqlite::TransactionBehavior::Immediate)?;
         self.check(0, true)?;
-        let updates = self.load(0)?;
+        let updates = self.load_entries(0, || Ok(()))?;
         let current = Doc::new();
         for bytes in updates {
             let update = Update::decode_v1(&bytes).map_err(|_| StoreError::Invalid)?;
@@ -245,6 +255,38 @@ impl SyncStore {
         tx.execute("DELETE FROM sync_updates WHERE page_id=?1 AND channel=?2",params![self.page,channel])?;
         tx.commit()?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod snapshot_tests {
+    use super::*;
+    #[test]
+    fn load_uses_one_snapshot_across_auth_and_compaction() {
+        let directory=std::env::temp_dir().join(format!("worlds-sync-snapshot-{}-{}",std::process::id(),SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()));
+        std::fs::create_dir(&directory).unwrap();
+        let path=directory.join("worlds.db"); let conn=Connection::open(&path).unwrap();
+        conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA user_version=11;
+            CREATE TABLE pages(id TEXT PRIMARY KEY,workspace_id TEXT,parent_id TEXT,deleted_at INTEGER);
+            CREATE TABLE account(id INTEGER PRIMARY KEY,user_id TEXT,status TEXT);
+            CREATE TABLE account_workspaces(id TEXT PRIMARY KEY,role TEXT,default_level TEXT);
+            CREATE TABLE account_page_access(workspace_id TEXT,page_id TEXT,level TEXT);
+            CREATE TABLE drawing_sync_state(page_id TEXT,user_id TEXT);
+            CREATE TABLE sync_docs(page_id TEXT,channel INTEGER,snapshot BLOB,PRIMARY KEY(page_id,channel));
+            CREATE TABLE sync_updates(id INTEGER PRIMARY KEY,page_id TEXT,channel INTEGER,data BLOB);
+            INSERT INTO pages VALUES('p','w',NULL,NULL); INSERT INTO account VALUES(1,'u','active');
+            INSERT INTO account_workspaces VALUES('w','member','edit');
+            INSERT INTO sync_docs VALUES('p',0,x'01'); INSERT INTO sync_updates VALUES(1,'p',0,x'02');").unwrap();
+        drop(conn);
+        let store=SyncStore::open(&path,"p","u","w").unwrap();
+        let result=store.load_with_hook(0,|| {
+            let writer=Connection::open(&path)?;
+            writer.execute_batch("BEGIN IMMEDIATE; UPDATE sync_docs SET snapshot=x'03'; DELETE FROM sync_updates; UPDATE account SET user_id='other' WHERE id=1; COMMIT;")?;
+            Ok(())
+        }).unwrap();
+        assert_eq!(result,vec![vec![1],vec![2]]);
+        assert!(matches!(store.load(0),Err(StoreError::Denied)));
+        drop(store); std::fs::remove_dir_all(directory).unwrap();
     }
 }
 
