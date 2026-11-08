@@ -18,11 +18,12 @@ import worlds.content.CodeEditing
     var language by rememberSaveable(target.pageId, target.blockId) { mutableStateOf(original.language) }
     var discard by rememberSaveable { mutableStateOf(false) }
     fun dismiss() { if (!busy) { if (text != original.text || language != original.language) discard = true else onCancel() } }
+    EditorShortcutRegistration(!busy && !discard)
     if (discard) AlertDialog(onDismissRequest = { discard = false }, title = { Text(stringResource(R.string.discard_title)) },
         text = { Text(stringResource(R.string.discard_body)) },
         confirmButton = { TextButton(onClick = { discard = false; onCancel() }) { Text(stringResource(R.string.discard)) } },
         dismissButton = { TextButton(onClick = { discard = false }) { Text(stringResource(R.string.keep_editing)) } })
-    else AlertDialog(onDismissRequest = { dismiss() }, title = { Text(stringResource(R.string.edit_code)) },
+    else AlertDialog(modifier = Modifier.editorSaveShortcut(!busy) { onSave(CodeEditing.update(target.initial, text, language)) }, onDismissRequest = { dismiss() }, title = { Text(stringResource(R.string.edit_code)) },
         text = { Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedTextField(value = language, onValueChange = { language = it }, enabled = !busy, singleLine = true,
                 label = { Text(stringResource(R.string.code_language)) }, modifier = Modifier.fillMaxWidth())

@@ -47,12 +47,14 @@ internal fun replaceChangedText(raw: String, old: String, new: String): String {
     var sizeStart by rememberSaveable { mutableIntStateOf(0) }
     var sizeEnd by rememberSaveable { mutableIntStateOf(0) }
     fun dismiss() { if (!busy) { if (raw != target.initial) discardPrompt = true else onCancel() } }
+    val shortcutEnabled = !busy && !inputError && value.composition == null && !discardPrompt && !linkDialog && !colorDialog && !sizeDialog
+    EditorShortcutRegistration(shortcutEnabled)
     if (discardPrompt) {
         AlertDialog(onDismissRequest = { discardPrompt = false }, title = { Text(stringResource(R.string.discard_title)) },
             text = { Text(stringResource(R.string.discard_body)) },
             confirmButton = { TextButton(onClick = { discardPrompt = false; onCancel() }) { Text(stringResource(R.string.discard)) } },
             dismissButton = { TextButton(onClick = { discardPrompt = false }) { Text(stringResource(R.string.keep_editing)) } })
-    } else AlertDialog(onDismissRequest = { dismiss() }, title = {
+    } else AlertDialog(modifier = Modifier.editorSaveShortcut(shortcutEnabled) { onSave(raw) }, onDismissRequest = { dismiss() }, title = {
         Column {
             Text(stringResource(R.string.edit_text))
             if (saveError) Text(stringResource(R.string.editor_error), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)

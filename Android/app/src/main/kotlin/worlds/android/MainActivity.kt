@@ -97,10 +97,12 @@ import java.util.Date
 class MainActivity : ComponentActivity() {
     internal var drawingShortcutOwner: Any? = null
     internal var pageShortcutOwner: Any? = null
+    internal var editorShortcutOwner: Any? = null
     override fun onProvideKeyboardShortcuts(data: MutableList<android.view.KeyboardShortcutGroup>?, menu: android.view.Menu?, deviceId: Int) {
         super.onProvideKeyboardShortcuts(data, menu, deviceId)
         if (drawingShortcutOwner != null) data?.add(drawingKeyboardShortcutGroup(this))
         if (pageShortcutOwner != null) data?.add(pageKeyboardShortcutGroup(this))
+        if (editorShortcutOwner != null) data?.add(editorKeyboardShortcutGroup(this))
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -108,6 +110,10 @@ class MainActivity : ComponentActivity() {
         setContent { WorldsTheme { val model: HomeModel = viewModel(); val account: AccountModel = viewModel(); Home(model, account) } }
     }
 }
+
+internal fun editorKeyboardShortcutGroup(context: Context): android.view.KeyboardShortcutGroup =
+    android.view.KeyboardShortcutGroup(context.getString(R.string.edit_text), listOf(
+        android.view.KeyboardShortcutInfo(context.getString(R.string.save), android.view.KeyEvent.KEYCODE_S, android.view.KeyEvent.META_CTRL_ON)))
 
 internal fun pageKeyboardShortcutGroup(context: Context): android.view.KeyboardShortcutGroup {
     val ctrl = android.view.KeyEvent.META_CTRL_ON

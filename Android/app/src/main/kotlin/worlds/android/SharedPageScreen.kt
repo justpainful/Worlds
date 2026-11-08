@@ -964,7 +964,12 @@ private fun SharedPageTool(icon: Int, label: String, enabled: Boolean, tag: Stri
         }
     }
     state.draft?.let { draft ->
-        AlertDialog(onDismissRequest = ::dismissDraft, title = { Text(stringResource(if (!draft.isNew) R.string.edit_text else if (draft.kind == "heading") R.string.add_heading else R.string.add_paragraph)) },
+        var showPartPicker by rememberSaveable(draft.block.id) { mutableStateOf(false) }
+        var partNumber by rememberSaveable(draft.block.id) { mutableStateOf("") }
+        var draftComposing by remember(draft.block.id) { mutableStateOf(false) }
+        val shortcutEnabled = !draftComposing && !state.saving && !state.disconnected && state.snapshot != null && !confirmDiscardDraft && !showPartPicker
+        EditorShortcutRegistration(shortcutEnabled)
+        AlertDialog(modifier = Modifier.editorSaveShortcut(shortcutEnabled, controller::save), onDismissRequest = ::dismissDraft, title = { Text(stringResource(if (!draft.isNew) R.string.edit_text else if (draft.kind == "heading") R.string.add_heading else R.string.add_paragraph)) },
             text = { Column { val editorSettings = LocalAppearancePreferences.current
                 if (draft.isNew && draft.kind == "heading") FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     (1..3).forEach { level -> FilterChip(selected = draft.level == level, enabled = !state.saving,
@@ -978,8 +983,6 @@ private fun SharedPageTool(icon: Int, label: String, enabled: Boolean, tag: Stri
                 val part = draft.text.substring(from, to)
                 var field by remember(draft.block.id, currentPage) { mutableStateOf(TextFieldValue(part, TextRange(part.length))) }
                 val shown = if (field.text == part) field else TextFieldValue(part, TextRange(field.selection.start.coerceIn(0, part.length), field.selection.end.coerceIn(0, part.length)))
-                var showPartPicker by rememberSaveable(draft.block.id) { mutableStateOf(false) }
-                var partNumber by rememberSaveable(draft.block.id) { mutableStateOf("") }
                 if (offsets.size > 2) {
                     TextButton(onClick = { partNumber = (currentPage + 1).toString(); showPartPicker = true }, enabled = !state.saving, modifier = Modifier.testTag("shared_text_jump")) {
                         WorldsActionLabel(R.drawable.ic_search, stringResource(R.string.shared_text_part, currentPage + 1, offsets.size - 1))
@@ -994,6 +997,7 @@ private fun SharedPageTool(icon: Int, label: String, enabled: Boolean, tag: Stri
                     }
                 }
                 OutlinedTextField(value = shown, onValueChange = { next ->
+                    draftComposing = next.composition != null
                     field = next
                     if (next.text != part) {
                         val full = draft.text.replaceRange(from, to, next.text)

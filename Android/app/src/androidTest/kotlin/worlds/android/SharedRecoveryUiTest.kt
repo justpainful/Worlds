@@ -234,7 +234,9 @@ class SharedRecoveryUiTest {
 
     @Test fun sharedToolbarSupportsArabicLargeTextOffline() = offlineEditorScenario(stress = false, rtl = true)
 
-    private fun offlineEditorScenario(stress: Boolean, rtl: Boolean = false) {
+    @Test fun sharedDraftSavesWithKeyboardAndProtectsDiscardConfirmation() = offlineEditorScenario(stress = false, keyboard = true)
+
+    private fun offlineEditorScenario(stress: Boolean, rtl: Boolean = false, keyboard: Boolean = false) {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext
         val name = "shared-append-offline-${UUID.randomUUID()}.db"
         val authority = "https://identity.example"
@@ -286,6 +288,29 @@ class SharedRecoveryUiTest {
                 }
                 compose.onNodeWithTag("shared_markdown").performTouchInput { longClick() }
                 compose.onNodeWithText(localized.getString(R.string.markdown_export)).assertIsDisplayed()
+                return
+            }
+            if (keyboard) {
+                fun key(meta: Int) {
+                    val instrumentation = InstrumentationRegistry.getInstrumentation(); val now = android.os.SystemClock.uptimeMillis()
+                    instrumentation.sendKeySync(android.view.KeyEvent(now, now, android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_S, 0, meta))
+                    instrumentation.sendKeySync(android.view.KeyEvent(now, now, android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_S, 0, meta))
+                    compose.waitForIdle()
+                }
+                compose.onNodeWithTag("shared_block_existing").performClick()
+                compose.onNodeWithTag("shared_draft").performClick().performTextInput(" edited")
+                val ctrl = android.view.KeyEvent.META_CTRL_ON
+                key(ctrl or android.view.KeyEvent.META_SHIFT_ON)
+                assertTrue(controller.state.value.draft != null)
+                compose.onNodeWithText(app.getString(R.string.cancel)).performClick()
+                compose.onNodeWithTag("shared_discard_title").assertIsDisplayed()
+                key(ctrl)
+                assertTrue(controller.state.value.draft != null)
+                assertTrue(store.pending(key).isEmpty())
+                compose.onNodeWithTag("shared_discard_cancel").performClick()
+                compose.onNodeWithTag("shared_draft").performClick()
+                key(ctrl)
+                compose.waitUntil(20_000) { controller.state.value.draft == null && controller.state.value.blocks.single().text?.contains(" edited") == true && store.pending(key).size == 1 }
                 return
             }
             compose.onNodeWithTag("shared_add_paragraph").performScrollTo().performClick()
