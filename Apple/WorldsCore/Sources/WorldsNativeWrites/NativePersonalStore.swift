@@ -102,6 +102,10 @@ public actor NativePersonalStore {
     public func createDocumentIdempotent(title: String, parent: String? = nil, parentRevision: Int64? = nil, operationID: UUID) async throws -> JSONValue {
         try await call(Request(operation: "create_document_idempotent", path: url.path, title: title, parent: parent, parentRevision: parentRevision, operationID: operationID.uuidString))
     }
+    /// Pass the parent and its observed revision together, or nil for a root project.
+    public func createProjectIdempotent(title: String, parent: String? = nil, parentRevision: Int64? = nil, operationID: UUID) async throws -> JSONValue {
+        try await call(Request(operation: "create_project_idempotent", path: url.path, title: title, parent: parent, parentRevision: parentRevision, operationID: operationID.uuidString))
+    }
     public func renamePage(id: String, base: Int64, title: String) async throws -> JSONValue {
         try await call(Request(operation: "rename_page", path: url.path, page: id, base: base, title: title))
     }
