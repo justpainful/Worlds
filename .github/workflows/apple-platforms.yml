@@ -46,6 +46,8 @@ jobs:
           grep -E 'testAppendTableRowPreservesExistingDataAndUndo.*passed' logs/swift-test.log
           grep -E 'testAppendTableColumnPreservesHeadersCellsAndRejectsMerged.*passed' logs/swift-test.log
           grep -E 'testInsertRowBelowSelectionPreservesHeaderAndRejectsOpaqueShift.*passed' logs/swift-test.log
+          grep -E 'testInsertRowRejectsLaterOpaqueRowWithoutMutation.*passed' logs/swift-test.log
+          grep -E 'testInsertRowBelowMixedHeaderUsesSelectedCellTypes.*passed' logs/swift-test.log
           grep -E 'testAppendColumnRejectsLaterInvalidRowAtomically.*passed' logs/swift-test.log
           grep -E 'testAppendColumnUsesLastCellTypeInMixedRows.*passed' logs/swift-test.log
           grep -E 'testIndentAndOutdentLastTaskWithUndoAndOpaqueRejection.*passed' logs/swift-test.log
