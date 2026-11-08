@@ -5,6 +5,22 @@ public enum CollaborationStorageError: Error, Equatable {
     case invalidInput, database, denied, unsupportedSchema, invalidResult, conflict
 }
 
+public struct RejectedArchiveInfo: Sendable, Equatable {
+    public let id: String
+    public let channel: Int64
+    public let createdAt: Int64
+    public let size: Int64
+    public let reason: String
+}
+public struct RejectedArchiveCursor: Sendable, Equatable {
+    public let createdAt: Int64
+    public let id: String
+}
+public struct RejectedArchivePage: Sendable, Equatable {
+    public let items: [RejectedArchiveInfo]
+    public let next: RejectedArchiveCursor?
+}
+
 /// Bound to one existing Worlds page, signed-in account and workspace.
 public actor SQLiteCollaborationStore: CheckedPlainEditorStore {
     nonisolated(unsafe) private let handle: OpaquePointer
@@ -137,5 +153,59 @@ public actor SQLiteCollaborationStore: CheckedPlainEditorStore {
             }
         }
         try Self.check(result)
+    }
+    /// Reads a known archive into memory without requeueing it or changing the live replica.
+    /// This checks cached rights only; the caller must also verify current service authority.
+    public func readRejectedSnapshot(id: String) throws -> Data {
+        guard !id.isEmpty, !id.utf8.contains(0), id.utf8.count <= 256,
+              let identifier = strdup(id) else { throw CollaborationStorageError.invalidInput }
+        defer { free(identifier) }
+        var output = WorldsBuffer(data: nil, len: 0)
+        try Self.check(worlds_store_rejected_read(handle, identifier, &output))
+        defer { worlds_buffer_free(output) }
+        guard let pointer = output.data else { throw CollaborationStorageError.invalidResult }
+        return Data(bytes: pointer, count: output.len)
+    }
+    /// Cached local view permission is checked on every page, but does not replace the service's current authorization.
+    public func rejectedArchives(before: RejectedArchiveCursor? = nil) throws -> RejectedArchivePage {
+        if let before, before.id.isEmpty || before.id.utf8.contains(0) || before.id.utf8.count > 256 { throw CollaborationStorageError.invalidInput }
+        let identifier = before.flatMap { strdup($0.id) }
+        if before != nil && identifier == nil { throw CollaborationStorageError.invalidResult }
+        defer { free(identifier) }
+        var output = WorldsBuffer(data: nil, len: 0)
+        try Self.check(worlds_store_rejected_list(handle, before == nil ? 0 : 1, before?.createdAt ?? 0, identifier, &output))
+        defer { worlds_buffer_free(output) }
+        guard let pointer = output.data, output.len <= 2 * 1024 * 1024 else { throw CollaborationStorageError.invalidResult }
+        let bytes = [UInt8](UnsafeBufferPointer(start: pointer, count: output.len))
+        var offset = 0
+        func integer() throws -> UInt64 {
+            guard bytes.count - offset >= 8 else { throw CollaborationStorageError.invalidResult }
+            var value: UInt64 = 0
+            for i in 0..<8 { value |= UInt64(bytes[offset + i]) << (i * 8) }
+            offset += 8
+            return value
+        }
+        func string(maximum: Int) throws -> String {
+            let count = try integer()
+            guard count <= UInt64(maximum), count <= UInt64(bytes.count - offset) else { throw CollaborationStorageError.invalidResult }
+            let end = offset + Int(count)
+            guard let value = String(bytes: bytes[offset..<end], encoding: .utf8) else { throw CollaborationStorageError.invalidResult }
+            offset = end; return value
+        }
+        let count = try integer()
+        guard count <= 100, offset < bytes.count else { throw CollaborationStorageError.invalidResult }
+        let more = bytes[offset]; offset += 1
+        guard more <= 1, more == 0 || count == 100 else { throw CollaborationStorageError.invalidResult }
+        var items: [RejectedArchiveInfo] = []
+        for _ in 0..<count {
+            let id = try string(maximum: 256)
+            let channel = Int64(bitPattern: try integer()), createdAt = Int64(bitPattern: try integer()), size = Int64(bitPattern: try integer())
+            let reason = try string(maximum: 10_000)
+            guard !id.isEmpty, !id.utf8.contains(0), (0...1).contains(channel), (0...64 * 1024 * 1024).contains(size) else { throw CollaborationStorageError.invalidResult }
+            items.append(RejectedArchiveInfo(id: id, channel: channel, createdAt: createdAt, size: size, reason: reason))
+        }
+        guard offset == bytes.count else { throw CollaborationStorageError.invalidResult }
+        let next = more == 1 ? items.last.map { RejectedArchiveCursor(createdAt: $0.createdAt, id: $0.id) } : nil
+        return RejectedArchivePage(items: items, next: next)
     }
 }

@@ -238,4 +238,37 @@ pub unsafe extern "C" fn worlds_store_reject(handle: *const CollaborationStoreHa
     })
 }
 
+/// # Safety
+/// Handle, NUL-terminated ID and writable output must remain valid for the call.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn worlds_store_rejected_read(handle: *const CollaborationStoreHandle, id: *const std::ffi::c_char, out: *mut WorldsBuffer) -> i32 {
+    boundary(|| {
+        if handle.is_null() || out.is_null() { return Err(1); }
+        let id = unsafe { ffi_str(id)? };
+        let store = unsafe { &*handle }.0.lock().map_err(|_| 2)?;
+        write_result(out, store.rejected_read(id).map_err(store_error)?)
+    })
+}
+
+/// # Safety
+/// Handle and output must be valid. `before_id` is required when `has_before` is 1.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn worlds_store_rejected_list(handle: *const CollaborationStoreHandle, has_before: i32, before_time: i64, before_id: *const std::ffi::c_char, out: *mut WorldsBuffer) -> i32 {
+    boundary(|| {
+        if handle.is_null() || out.is_null() || !(0..=1).contains(&has_before) { return Err(1); }
+        let before = if has_before == 1 { Some((before_time,unsafe { ffi_str(before_id)? })) } else { None };
+        let store = unsafe { &*handle }.0.lock().map_err(|_| 2)?;
+        let page = store.rejected_list(before).map_err(store_error)?;
+        let mut data=Vec::new();
+        data.extend_from_slice(&(page.items.len() as u64).to_le_bytes());
+        data.push(u8::from(page.next.is_some()));
+        for item in page.items {
+            data.extend_from_slice(&(item.id.len() as u64).to_le_bytes()); data.extend_from_slice(item.id.as_bytes());
+            data.extend_from_slice(&item.channel.to_le_bytes()); data.extend_from_slice(&item.created_at.to_le_bytes()); data.extend_from_slice(&item.size.to_le_bytes());
+            data.extend_from_slice(&(item.reason.len() as u64).to_le_bytes()); data.extend_from_slice(item.reason.as_bytes());
+        }
+        write_result(out,data)
+    })
+}
+
 pub mod editor;

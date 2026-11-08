@@ -6,6 +6,7 @@ mod resource_ops;
 mod isolated_import;
 mod attachment_staging;
 mod attachment_bundle;
+#[allow(dead_code)] mod gallery_file_import;
 mod automation_ops;
 #[allow(dead_code)]
 mod template_preflight;
@@ -118,16 +119,30 @@ pub fn save_blocks_checked(path: &Path, page: &str, base: i64, expected: Vec<Blo
     let current: Vec<(String,String,String)> = tx.prepare("SELECT id,content,properties FROM blocks WHERE page_id=?1 ORDER BY sort_key")?
         .query_map([page], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?)))?.collect::<rusqlite::Result<_>>()?;
     if current.len() != expected.len() { bail!("conflict: block count changed") }
+    let mut expected_refs = HashSet::new();
     for ((id, json, _), old) in current.iter().zip(expected.iter()) {
+        let unambiguous: i64 = tx.query_row("SELECT CASE WHEN json_valid(?1) THEN NOT EXISTS(SELECT 1 FROM json_tree(?1) WHERE typeof(key)='text' GROUP BY parent,key HAVING COUNT(*) > 1) ELSE 0 END", [json], |r|r.get(0))?;
+        if unambiguous != 1 { bail!("unsupported edit: ambiguous block content") }
         let value: Value = serde_json::from_str(json)?;
         if id != &old.id || value != old.content { bail!("conflict: block content or order changed") }
+        let mut refs = Vec::new(); content::collect_refs(&value, &mut refs);
+        expected_refs.extend(refs.into_iter().map(|(target,kind)| (id.clone(),target,kind.to_string())));
     }
+    // The original writer rebuilds the entire reference index. Refuse when the
+    // existing index contains unknown or stale entries, instead of silently
+    // deleting them as a side effect of an unrelated text edit.
+    let stored_refs: HashSet<(String,String,String)> = tx.prepare("SELECT source_block,target_page,kind FROM refs WHERE source_page=?1")?
+        .query_map([page],|r| Ok((r.get(0)?,r.get(1)?,r.get(2)?)))?.collect::<rusqlite::Result<_>>()?;
+    if stored_refs != expected_refs { bail!("unsupported edit: reference index differs from block content") }
     let mut ids = HashSet::new();
+    let mut next_refs = HashSet::new();
     for block in &blocks {
         if block.id.is_empty() || !ids.insert(block.id.clone()) || !block.content.is_object() { bail!("invalid block ID or content") }
         if block.content.pointer("/attrs/bid").and_then(Value::as_str) != Some(block.id.as_str()) { bail!("invalid block identity") }
         let owner: Option<String> = tx.query_row("SELECT page_id FROM blocks WHERE id=?1", [&block.id], |r| r.get(0)).optional()?;
         if owner.as_deref().is_some_and(|other| other != page) { bail!("conflict: block ID belongs to another page") }
+        let mut refs = Vec::new(); content::collect_refs(&block.content, &mut refs);
+        next_refs.extend(refs.into_iter().map(|(target,kind)| (block.id.clone(),target,kind.to_string())));
     }
     // Native editor has no representation for the separate properties column.
     // Never delete a block with nonempty or malformed properties, including
@@ -145,6 +160,9 @@ pub fn save_blocks_checked(path: &Path, page: &str, base: i64, expected: Vec<Blo
     let input = blocks.into_iter().map(|block| store::BlockInput { id: block.id, content: block.content }).collect();
     let result = store::save_blocks(&tx, &store::Ctx::user(), page, input)?;
     if !result.remapped.is_empty() { bail!("conflict: block identifiers were remapped") }
+    let written_refs: HashSet<(String,String,String)> = tx.prepare("SELECT source_block,target_page,kind FROM refs WHERE source_page=?1")?
+        .query_map([page],|r| Ok((r.get(0)?,r.get(1)?,r.get(2)?)))?.collect::<rusqlite::Result<_>>()?;
+    if written_refs != next_refs { bail!("conflict: reference index could not be preserved") }
     let saved_at: i64 = tx.query_row("SELECT updated_at FROM pages WHERE id=?1", [page], |r| r.get(0))?;
     let mut result = serde_json::to_value(result)?;
     result["updatedAt"] = Value::from(saved_at);
@@ -434,6 +452,62 @@ mod tests {
         let c=Connection::open(&path).unwrap();
         let properties:String=c.query_row("SELECT properties FROM blocks WHERE id='fixture-block'",[],|r|r.get(0)).unwrap();
         assert_eq!(properties,r#"{"plugin":{"keep":true}}"#);
+        drop(c); std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn checked_roundtrip_keeps_rich_nodes_properties_and_reference_index() {
+        let path=fixture(); let c=Connection::open(&path).unwrap();
+        let original=serde_json::json!({"type":"paragraph","attrs":{"bid":"fixture-block","dir":"rtl","plugin":{"k":3}},"content":[
+            {"type":"text","text":"مسألة 🌍","marks":[{"type":"bold"},{"type":"link","attrs":{"href":"https://example.org","extra":"keep"}}]},
+            {"type":"pageMention","attrs":{"id":"target-page","label":"مثال"}},
+            {"type":"customInline","attrs":{"opaque":[1,2,3]}}
+        ]});
+        c.execute("UPDATE blocks SET content=?1,properties=?2 WHERE id='fixture-block'",rusqlite::params![original.to_string(),r#"{"plugin":{"keep":true}}"#]).unwrap();
+        c.execute("INSERT INTO refs(source_page,source_block,target_page,kind) VALUES('fixture-page','fixture-block','target-page','mention')",[]).unwrap(); drop(c);
+        let expected=current_blocks(&path); let mut next=with_bid(current_blocks(&path));
+        next[0].content["content"][0]["text"]=serde_json::json!("مسألة محلولة 🌍");
+        save_blocks_checked(&path,"fixture-page",1700000000001,expected,next).unwrap();
+        let c=Connection::open(&path).unwrap();
+        let (raw,properties):(String,String)=c.query_row("SELECT content,properties FROM blocks WHERE id='fixture-block'",[],|r|Ok((r.get(0)?,r.get(1)?))).unwrap();
+        let mut wanted=original; wanted["content"][0]["text"]=serde_json::json!("مسألة محلولة 🌍");
+        assert_eq!(serde_json::from_str::<Value>(&raw).unwrap(),wanted);
+        assert_eq!(properties,r#"{"plugin":{"keep":true}}"#);
+        assert_eq!(c.query_row("SELECT count(*) FROM refs WHERE source_block='fixture-block' AND target_page='target-page' AND kind='mention'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        drop(c); std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn checked_save_refuses_ambiguous_content_and_unrecognized_reference_index() {
+        let path=fixture(); let c=Connection::open(&path).unwrap();
+        let ambiguous=r#"{"type":"paragraph","attrs":{"x":1,"x":2},"content":[{"type":"text","text":"keep"}]}"#;
+        c.execute("UPDATE blocks SET content=?1 WHERE id='fixture-block'",[ambiguous]).unwrap(); drop(c);
+        let expected=current_blocks(&path); let next=with_bid(current_blocks(&path));
+        assert!(save_blocks_checked(&path,"fixture-page",1700000000001,expected,next).unwrap_err().to_string().contains("ambiguous"));
+        let c=Connection::open(&path).unwrap();
+        assert_eq!(c.query_row("SELECT content FROM blocks WHERE id='fixture-block'",[],|r|r.get::<_,String>(0)).unwrap(),ambiguous);
+        c.execute("UPDATE blocks SET content=?1 WHERE id='fixture-block'",[r#"{"type":"paragraph","content":[{"type":"text","text":"keep"}]}"#]).unwrap();
+        c.execute("INSERT INTO refs(source_page,source_block,target_page,kind) VALUES('fixture-page','fixture-block','plugin-target','plugin')",[]).unwrap(); drop(c);
+        let expected=current_blocks(&path); let next=with_bid(current_blocks(&path));
+        assert!(save_blocks_checked(&path,"fixture-page",1700000000001,expected,next).unwrap_err().to_string().contains("reference index"));
+        let c=Connection::open(&path).unwrap();
+        assert_eq!(c.query_row("SELECT count(*) FROM refs WHERE kind='plugin'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        assert_eq!(c.query_row("SELECT count(*) FROM history WHERE page_id='fixture-page'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        drop(c); std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn checked_save_rolls_back_if_reference_rebuild_is_blocked() {
+        let path=fixture(); let c=Connection::open(&path).unwrap();
+        c.execute("INSERT INTO refs(source_page,source_block,target_page,kind) VALUES('other','fixture-block','target-page','mention')",[]).unwrap(); drop(c);
+        let expected=current_blocks(&path); let original=expected[0].content.clone(); let mut next=with_bid(current_blocks(&path));
+        next[0].content["content"]=serde_json::json!([{"type":"pageMention","attrs":{"id":"target-page"}}]);
+        assert!(save_blocks_checked(&path,"fixture-page",1700000000001,expected,next).unwrap_err().to_string().contains("reference index"));
+        let c=Connection::open(&path).unwrap();
+        let raw:String=c.query_row("SELECT content FROM blocks WHERE id='fixture-block'",[],|r|r.get(0)).unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&raw).unwrap(),original);
+        assert_eq!(c.query_row("SELECT count(*) FROM refs WHERE source_page='other'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        assert_eq!(c.query_row("SELECT count(*) FROM history WHERE page_id='fixture-page'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
         drop(c); std::fs::remove_file(path).unwrap();
     }
     #[test]

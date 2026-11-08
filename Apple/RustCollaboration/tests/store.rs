@@ -91,6 +91,75 @@ fn rejection_preserves_owner_snapshot_and_marks_only_channel() {
 }
 
 #[test]
+fn rejected_archive_read_is_owned_authorized_and_never_requeues() {
+    let path=fixture();
+    let mut store=SyncStore::open(&path,"p","u","w").unwrap();
+    let update=include_bytes!("fixtures/plain-editor.bin");
+    let id="f1f468d2-3b01-4fe0-a2de-df352089d21d";
+    store.append(0,update,true).unwrap(); store.reject(0,id,update,"denied").unwrap();
+    let listing=store.rejected_list(None).unwrap();
+    assert_eq!(listing.items.len(),1); assert_eq!(listing.items[0].id,id);
+    let recovered=store.rejected_read(id).unwrap();
+    let doc=worlds_collaboration::CollaborationDoc::default(); doc.apply(&recovered).unwrap();
+    let expected=worlds_collaboration::CollaborationDoc::default(); expected.apply(update).unwrap();
+    assert_eq!(doc.state_vector().unwrap(),expected.state_vector().unwrap());
+    assert_eq!(store.max_pending(0).unwrap(),None);
+    let db=Connection::open(&path).unwrap();
+    db.execute("UPDATE sync_rejected_snapshots SET owner_id='other' WHERE id=?1",[id]).unwrap();
+    assert!(store.rejected_list(None).unwrap().items.is_empty());
+    assert!(matches!(store.rejected_read(id),Err(StoreError::Denied)));
+    db.execute("UPDATE sync_rejected_snapshots SET owner_id='u' WHERE id=?1",[id]).unwrap();
+    db.execute("UPDATE account_workspaces SET default_level='none' WHERE id='w'",[]).unwrap();
+    assert!(matches!(store.rejected_list(None),Err(StoreError::Denied)));
+    assert!(matches!(store.rejected_read(id),Err(StoreError::Denied)));
+    db.execute("UPDATE account_workspaces SET default_level='view' WHERE id='w'",[]).unwrap();
+    db.execute("UPDATE account SET user_id='other' WHERE id=1",[]).unwrap();
+    assert!(matches!(store.rejected_read(id),Err(StoreError::Denied)));
+    drop(db); drop(store);
+}
+
+#[test]
+fn rejected_archive_paginates_without_leaking_other_accounts() {
+    let path=fixture(); let db=Connection::open(&path).unwrap();
+    for index in 0..103 {
+        db.execute("INSERT INTO sync_rejected_snapshots VALUES(?1,'p',0,?2,x'0000','denied',7)",rusqlite::params![format!("id{index:03}"),if index==102 {"other"} else {"u"}]).unwrap();
+    }
+    drop(db);
+    let store=SyncStore::open(&path,"p","u","w").unwrap();
+    let first=store.rejected_list(None).unwrap(); assert_eq!(first.items.len(),100);
+    let (time,id)=first.next.unwrap();
+    let second=store.rejected_list(Some((time,&id))).unwrap();
+    assert_eq!(second.items.len(),2); assert!(second.next.is_none());
+    assert!(!first.items.iter().any(|item| second.items.iter().any(|other| item.id==other.id)));
+}
+
+#[test]
+fn rejected_archive_ffi_returns_snapshot_and_rechecks_access() {
+    use std::ffi::CString;
+    use worlds_collaboration::*;
+    let path=fixture(); let mut s=SyncStore::open(&path,"p","u","w").unwrap();
+    let id=CString::new("f1f468d2-3b01-4fe0-a2de-df352089d21d").unwrap();
+    s.reject(0,id.to_str().unwrap(),&[0,0],"denied").unwrap(); drop(s);
+    let path_s=CString::new(path.to_str().unwrap()).unwrap();
+    let page=CString::new("p").unwrap(); let user=CString::new("u").unwrap(); let workspace=CString::new("w").unwrap();
+    let mut handle=std::ptr::null_mut();
+    unsafe {
+        assert_eq!(worlds_store_open(path_s.as_ptr(),page.as_ptr(),user.as_ptr(),workspace.as_ptr(),&mut handle),0);
+        let mut listed=WorldsBuffer{data:std::ptr::null_mut(),len:0};
+        assert_eq!(worlds_store_rejected_list(handle,0,0,std::ptr::null(),&mut listed),0);
+        let raw=std::slice::from_raw_parts(listed.data,listed.len);
+        assert_eq!(&raw[..8],&1u64.to_le_bytes()); assert_eq!(raw[8],0); worlds_buffer_free(listed);
+        let mut output=WorldsBuffer{data:std::ptr::null_mut(),len:0};
+        assert_eq!(worlds_store_rejected_read(handle,id.as_ptr(),&mut output),0);
+        assert_eq!(std::slice::from_raw_parts(output.data,output.len),&[0,0]); worlds_buffer_free(output);
+        let db=Connection::open(&path).unwrap(); db.execute("UPDATE account SET user_id='other'",[]).unwrap();
+        let mut output=WorldsBuffer{data:std::ptr::null_mut(),len:0};
+        assert_eq!(worlds_store_rejected_read(handle,id.as_ptr(),&mut output),3);
+        worlds_collaboration_store_free(handle);
+    }
+}
+
+#[test]
 fn rejection_merges_durable_edits_missing_from_memory_snapshot() {
     let path=fixture();
     let mut store=SyncStore::open(&path,"p","u","w").unwrap();

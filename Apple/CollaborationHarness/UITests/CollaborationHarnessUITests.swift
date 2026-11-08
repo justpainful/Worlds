@@ -1,7 +1,7 @@
 import XCTest
 
 final class CollaborationHarnessUITests: XCTestCase {
-    func testLocalCollaborationScenario() throws {
+    @MainActor func testLocalCollaborationScenario() throws {
         let environment = ProcessInfo.processInfo.environment
         let keys = ["WORLDS_REQUIRE_LIVE_SERVICE", "WORLDS_LIVE_SYNC_URL", "WORLDS_LIVE_EDITOR_TOKEN", "WORLDS_LIVE_VIEWER_TOKEN"]
         guard environment[keys[0]] == "1", environment[keys[1]] == "ws://127.0.0.1:18790",

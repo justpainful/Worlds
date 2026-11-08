@@ -12,6 +12,11 @@ fn now() -> i64 { SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default
 fn valid_channel(c: i64) -> Result<()> { if c == 0 || c == 1 { Ok(()) } else { Err(StoreError::Invalid) } }
 fn rank(level: &str) -> u8 { match level { "full" => 4, "edit" => 3, "comment" => 2, "view" => 1, _ => 0 } }
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct RejectedSnapshot { pub id: String, pub channel: i64, pub reason: String, pub created_at: i64, pub size: i64 }
+#[derive(Debug, PartialEq, Eq)]
+pub struct RejectedPage { pub items: Vec<RejectedSnapshot>, pub next: Option<(i64, String)> }
+
 pub struct SyncStore { conn: Connection, page: String, user: String, workspace: String }
 impl SyncStore {
     /// Opens an existing Worlds database only; the owner and workspace are pinned.
@@ -127,6 +132,44 @@ impl SyncStore {
         tx.execute("DELETE FROM sync_outbox WHERE page_id=?1 AND channel=?2 AND state='pending' AND id<=?3",params![self.page,channel,through])?;
         tx.commit()?;
         Ok(())
+    }
+    /// Read-only access, bound to the active account and cached page view rights.
+    /// Cached rights are not proof of current remote authorization.
+    pub fn rejected_list(&self, before: Option<(i64, &str)>) -> Result<RejectedPage> {
+        if before.as_ref().is_some_and(|(_, id)| id.is_empty() || id.len() > 256) { return Err(StoreError::Invalid); }
+        let tx = self.conn.unchecked_transaction()?;
+        self.authorize(1)?;
+        let (before_time,before_id) = before.map_or((None,None), |(time,id)| (Some(time),Some(id)));
+        let mut items = Vec::new();
+        {
+            let mut query = tx.prepare("SELECT id,channel,reason,created_at,LENGTH(data) FROM sync_rejected_snapshots WHERE page_id=?1 AND owner_id=?2 AND (?3 IS NULL OR created_at<?3 OR (created_at=?3 AND id<?4)) ORDER BY created_at DESC,id DESC LIMIT 101")?;
+            for row in query.query_map(params![self.page,self.user,before_time,before_id], |r| Ok(RejectedSnapshot { id:r.get(0)?,channel:r.get(1)?,reason:r.get(2)?,created_at:r.get(3)?,size:r.get(4)? }))? {
+                let item = row?;
+                valid_channel(item.channel)?;
+                if item.id.is_empty() || item.id.len() > 256 || item.id.contains('\0') || item.reason.len() > 10_000 || !(0..=64*1024*1024).contains(&item.size) { return Err(StoreError::Invalid); }
+                items.push(item);
+            }
+        }
+        let more = items.len() > 100; items.truncate(100);
+        let next = if more { items.last().map(|item| (item.created_at,item.id.clone())) } else { None };
+        tx.commit()?;
+        Ok(RejectedPage { items, next })
+    }
+    /// Returns an immutable Yjs update for inspection. It never modifies the
+    /// live document, clears the archive, or queues a change for transmission.
+    pub fn rejected_read(&self, id: &str) -> Result<Vec<u8>> {
+        use yrs::updates::decoder::Decode;
+        if id.is_empty() || id.len() > 256 { return Err(StoreError::Invalid); }
+        let tx = self.conn.unchecked_transaction()?;
+        self.authorize(1)?;
+        let row: Option<(i64, i64)> = tx.query_row("SELECT channel,LENGTH(data) FROM sync_rejected_snapshots WHERE id=?1 AND page_id=?2 AND owner_id=?3",params![id,self.page,self.user],|r|Ok((r.get(0)?,r.get(1)?))).optional()?;
+        let (channel,size) = row.ok_or(StoreError::Denied)?;
+        valid_channel(channel)?;
+        if !(0..=64*1024*1024).contains(&size) { return Err(StoreError::Invalid); }
+        let bytes: Vec<u8> = tx.query_row("SELECT data FROM sync_rejected_snapshots WHERE id=?1 AND page_id=?2 AND owner_id=?3",params![id,self.page,self.user],|r|r.get(0))?;
+        yrs::Update::decode_v1(&bytes).map_err(|_| StoreError::Invalid)?;
+        tx.commit()?;
+        Ok(bytes)
     }
     /// This operation intentionally does not expose archived data or re-enable syncing.
     pub fn reject(&mut self, channel: i64, archive_id: &str, state: &[u8], reason: &str) -> Result<()> {

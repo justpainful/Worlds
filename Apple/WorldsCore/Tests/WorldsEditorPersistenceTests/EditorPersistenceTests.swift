@@ -74,6 +74,20 @@ final class EditorPersistenceTests: XCTestCase {
         XCTAssertEqual(text["marks"], .array([.object(["type": .string("futureMark"), "attrs": .object(["flag": .integer(7)])])]))
     }
     @MainActor
+    func testPartialFormattingSurvivesRealStoreReopen() async throws {
+        let url = try fixture()
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let model = NativeEditorModel(document: bridge.initialDocument, baseRevision: bridge.initialRevision)
+        XCTAssertEqual(model.projection.text, "Hello Worlds")
+        try model.toggleMark("bold", selection: NSRange(location: 6, length: 6))
+        try await model.save(using: bridge)
+        let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let spans = reopened.initialDocument.project().spans
+        XCTAssertEqual(reopened.initialDocument.project().text, "Hello Worlds")
+        XCTAssertEqual(spans.count, 2)
+        XCTAssertEqual(spans[1].marks, [.object(["type": .string("bold")])])
+    }
+    @MainActor
     func testUnappliedNativeInputBlocksRealStoreUntilExplicitDiscard() async throws {
         let url = try fixture()
         try exec("INSERT INTO blocks(id,page_id,type,sort_key,content,text,direction,created_at,updated_at) SELECT 'future',page_id,'futureWidget',10,'{\"type\":\"futureWidget\",\"attrs\":{\"bid\":\"future\"}}','',direction,created_at,updated_at FROM blocks WHERE id='fixture-block'", url: url)

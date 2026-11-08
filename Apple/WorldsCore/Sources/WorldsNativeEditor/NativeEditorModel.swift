@@ -8,7 +8,7 @@ public enum NativeEditorError: Error, LocalizedError, Equatable {
     public var errorDescription: String? {
         switch self {
         case .crossesUnsupportedBoundary: return "This edit crosses a block or unsupported element."
-        case .unsupportedFormatting: return "Select one complete text segment to change its formatting."
+        case .unsupportedFormatting: return "This selection cannot be formatted without changing unsupported content."
         case .unsupportedRichPaste: return "Rich text or attachments cannot be pasted without losing formatting. Paste plain text instead."
         case .invalidSelection: return "The selected text is unavailable."
         case .saveInProgress: return "A save is already in progress."
@@ -94,12 +94,22 @@ public final class NativeEditorModel: ObservableObject {
         if selection.location != NSNotFound, selection.location >= 0, selection.length >= 0,
            selection.location <= text.utf16.count, selection.length <= text.utf16.count - selection.location { self.selection = selection }
     }
-    /// Formatting applies only to a complete text node, preserving every
-    /// unrelated and unknown mark. Partial-node formatting requires splitting.
+    /// Partial formatting is supported only where splitting cannot move opaque
+    /// siblings or unknown marks. Full-node formatting preserves those marks.
     public func toggleMark(_ name: String, selection range: NSRange) throws {
         guard recoverableNativeText == nil else { throw NativeEditorError.unrecoveredNativeText }
         guard ["bold", "italic", "underline", "strike"].contains(name) else { throw NativeEditorError.unsupportedFormatting }
-        guard let span = projection.spans.first(where: { $0.range == range && range.length > 0 }) else { throw NativeEditorError.unsupportedFormatting }
+        guard range.location != NSNotFound, range.location >= 0, range.length > 0,
+              range.location <= Int.max - range.length,
+              let span = projection.spans.first(where: { range.location >= $0.range.location && NSMaxRange(range) <= NSMaxRange($0.range) }) else { throw NativeEditorError.unsupportedFormatting }
+        if span.range != range {
+            let before = document
+            do { try document.togglePartialMark(at: span.path, range: NSRange(location: range.location - span.range.location, length: range.length), mark: name) }
+            catch { throw NativeEditorError.unsupportedFormatting }
+            registerRestore(before)
+            generation &+= 1; dirty = document.source != savedSource; errorMessage = nil; selection = range
+            return
+        }
         var marks = span.marks
         func markType(_ value: JSONValue) -> String? {
             guard case .object(let object) = value, case .string(let type)? = object["type"] else { return nil }

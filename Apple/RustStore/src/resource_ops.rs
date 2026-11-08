@@ -104,8 +104,14 @@ fn attachment_ids(c: &Connection, entries: &[(String,Value)]) -> Result<()> {
 pub fn save_gallery(path: &Path, id: &str, base: i64, expected_metadata: Value, metadata: Value, expected: Vec<BlockInput>, next: Vec<BlockInput>) -> Result<Value> {
     let mut connection = open_existing(path)?;
     let tx = connection.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-    check_metadata(&tx,id,base,&expected_metadata,"gallery")?;
-    let before = blocks(&tx,id)?;
+    let out = save_gallery_transaction(&tx,id,base,expected_metadata,metadata,expected,next)?;
+    tx.commit()?; Ok(out)
+}
+/// Caller owns the transaction, allowing an isolated importer to register the
+/// attachment and gallery block together. This alone does not publish files.
+pub(crate) fn save_gallery_transaction(tx: &Connection, id: &str, base: i64, expected_metadata: Value, metadata: Value, expected: Vec<BlockInput>, next: Vec<BlockInput>) -> Result<Value> {
+    check_metadata(tx,id,base,&expected_metadata,"gallery")?;
+    let before = blocks(tx,id)?;
     if before.len() != expected.len() || before.iter().zip(&expected).any(|((id,value),e)|id != &e.id || value != &e.content) { bail!("conflict: gallery blocks changed") }
     let old_opaque: Vec<_> = before.iter().filter(|(_,v)|v.get("type").and_then(Value::as_str) != Some("galleryItem")).collect();
     let next_pairs: Vec<_> = next.iter().map(|b|(b.id.clone(),b.content.clone())).collect();
@@ -124,8 +130,7 @@ pub fn save_gallery(path: &Path, id: &str, base: i64, expected_metadata: Value, 
     let result = store::save_blocks(&tx,&store::Ctx::user(),id,input)?;
     if !result.remapped.is_empty() { bail!("conflict: block IDs were remapped") }
     if let Some(value) = gallery { store::set_page_meta(&tx,&store::Ctx::user(),id,"gallery",value)?; }
-    let out = snapshot(&tx,id)?;
-    tx.commit()?; Ok(out)
+    snapshot(tx,id)
 }
 
 
@@ -188,6 +193,28 @@ mod tests {
         assert!(removed["blocks"].as_array().unwrap().is_empty());
         let c=Connection::open(&path).unwrap(); assert_eq!(c.query_row("SELECT count(*) FROM attachments WHERE id='a'",[],|r|r.get::<_,i64>(0)).unwrap(),1); drop(c);
         std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn gallery_attachment_and_block_share_transaction_and_roll_back() {
+        let path=fixture(); let old=read_resource(&path,"g").unwrap();
+        let mut c=Connection::open(&path).unwrap();
+        {
+            let tx=c.transaction().unwrap();
+            tx.execute("INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('new','g','image','n.png','image/png',4,'2026-11/n.png',1)",[]).unwrap();
+            assert!(save_gallery_transaction(&tx,"g",old["revision"].as_i64().unwrap(),old["metadata"].clone(),old["metadata"].clone(),vec![],vec![gallery("b","new")]).is_ok());
+            tx.rollback().unwrap();
+        }
+        assert_eq!(c.query_row("SELECT count(*) FROM attachments WHERE id='new'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        assert_eq!(c.query_row("SELECT count(*) FROM blocks WHERE page_id='g'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        {
+            let tx=c.transaction().unwrap();
+            tx.execute("INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('new','g','image','n.png','image/png',4,'2026-11/n.png',1)",[]).unwrap();
+            save_gallery_transaction(&tx,"g",old["revision"].as_i64().unwrap(),old["metadata"].clone(),old["metadata"].clone(),vec![],vec![gallery("b","new")]).unwrap();
+            tx.commit().unwrap();
+        }
+        assert_eq!(c.query_row("SELECT count(*) FROM attachments WHERE id='new'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        assert_eq!(c.query_row("SELECT count(*) FROM blocks WHERE page_id='g'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        drop(c); std::fs::remove_file(path).unwrap();
     }
     #[test]
     fn gallery_refuses_dropping_unknown_blocks() {

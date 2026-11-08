@@ -16,13 +16,14 @@ public struct NativeEditorView: View {
         VStack(alignment: .leading, spacing: 8) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Button("Undo") { model.undo() }.disabled(!model.undoManager.canUndo)
-                    Button("Redo") { model.redo() }.disabled(!model.undoManager.canRedo)
-                    Button("Bold") { format("bold") }
-                    Button("Italic") { format("italic") }
-                    Button("Underline") { format("underline") }
+                    Button("Undo") { model.undo() }.keyboardShortcut("z", modifiers: .command).disabled(!model.undoManager.canUndo)
+                    Button("Redo") { model.redo() }.keyboardShortcut("z", modifiers: [.command, .shift]).disabled(!model.undoManager.canRedo)
+                    Button("Bold") { format("bold") }.keyboardShortcut("b", modifiers: .command)
+                    Button("Italic") { format("italic") }.keyboardShortcut("i", modifiers: .command)
+                    Button("Underline") { format("underline") }.keyboardShortcut("u", modifiers: .command)
                 }
                 .buttonStyle(.borderless)
+                .disabled(model.nativeEditPending || model.saving)
                 NativeTextSurface(model: model)
             }
             .disabled(model.recoverableNativeText != nil)
@@ -101,7 +102,7 @@ private struct NativeTextSurface: UIViewRepresentable {
         if !view.attributedText.isEqual(to: value) { view.attributedText = value }
         #if DEBUG
         if value.length > 0, let font = value.attribute(.font, at: 0, effectiveRange: nil) as? UIFont {
-            view.accessibilityLabel = "display-font-size:\(font.pointSize)"
+            view.accessibilityLabel = "display-font-size:\(font.pointSize);category:\(category.rawValue)"
         }
         #endif
         let selection = model.selection
@@ -116,13 +117,12 @@ private struct NativeTextSurface: UIViewRepresentable {
         func displayText() -> NSAttributedString {
             let result = NSMutableAttributedString(attributedString: model.attributedText)
             let full = NSRange(location: 0, length: result.length)
-            let metrics = UIFontMetrics(forTextStyle: .body)
-            let system = UITraitCollection(preferredContentSizeCategory: UIApplication.shared.preferredContentSizeCategory)
             let target = UITraitCollection(preferredContentSizeCategory: category)
-            let baseline = metrics.scaledValue(for: 100, compatibleWith: system) / 100
+            let baseline = UIFont.preferredFont(forTextStyle: .body).pointSize
+            let scaledBody = UIFont.preferredFont(forTextStyle: .body, compatibleWith: target).pointSize
             result.enumerateAttribute(.font, in: full) { value, range, _ in
                 guard let font = value as? UIFont else { return }
-                let size = metrics.scaledValue(for: font.pointSize / baseline, compatibleWith: target)
+                let size = font.pointSize * scaledBody / baseline
                 result.addAttribute(.font, value: font.withSize(size), range: range)
             }
             return result

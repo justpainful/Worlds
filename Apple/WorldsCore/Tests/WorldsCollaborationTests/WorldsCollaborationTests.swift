@@ -239,6 +239,32 @@ extension WorldsCollaborationTests {
         XCTAssertEqual(reset, [update])
         XCTAssertThrowsError(try SQLiteCollaborationStore(databaseURL: destination, pageID: "fixture-page", userID: "other", workspaceID: "fixture-workspace"))
     }
+    func testRejectedArchiveListAndReadRespectAccount() async throws {
+        let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-v11", withExtension: "db"))
+        let destination = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-archive-\(UUID().uuidString).db")
+        try FileManager.default.copyItem(at: source, to: destination)
+        defer { try? FileManager.default.removeItem(at: destination) }
+        let store = try SQLiteCollaborationStore(databaseURL: destination, pageID: "fixture-page", userID: "fixture-user", workspaceID: "fixture-workspace")
+        try await store.appendLocal(pageID: "fixture-page", channel: 0, update: Data([0, 0]))
+        try await store.archiveRejection(pageID: "fixture-page", channel: 0, state: Data([0, 0]), reason: "denied")
+        let page = try await store.rejectedArchives()
+        XCTAssertEqual(page.items.count, 1)
+        let item = try XCTUnwrap(page.items.first)
+        XCTAssertEqual(item.reason, "denied"); XCTAssertNil(page.next)
+        let recovered = try await store.readRejectedSnapshot(id: item.id)
+        XCTAssertEqual(recovered, Data([0, 0]))
+        let pending = try await store.maximumPendingID(pageID: "fixture-page", channel: 0)
+        XCTAssertNil(pending)
+        var handle: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(destination.path, &handle), SQLITE_OK)
+        let database = try XCTUnwrap(handle)
+        XCTAssertEqual(sqlite3_exec(database, "UPDATE account SET user_id='other'", nil, nil, nil), SQLITE_OK)
+        sqlite3_close(database)
+        do { _ = try await store.rejectedArchives(); XCTFail("Changed account must be refused") }
+        catch CollaborationStorageError.denied { } catch { XCTFail("Unexpected error: \(error)") }
+        do { _ = try await store.readRejectedSnapshot(id: item.id); XCTFail("Changed account must be refused") }
+        catch CollaborationStorageError.denied { } catch { XCTFail("Unexpected error: \(error)") }
+    }
 }
 
 

@@ -26,3 +26,13 @@ Five SQLite integration tests passed on Windows, including a test through C ABI 
 ## Local service integration
 
 `tests/live_service.rs` exercises the real `services/sync` Worker using its local identity stand-in, an isolated SQLite fixture and the Rust Yrs core. The local-only test covers separately generated offline edits, synchronization and reconnect, accepted acknowledgements, server denial for a viewer, and rejected-state archival. It checks Yjs state vectors semantically because byte ordering can differ. It does not run `CollaborationSession` in Swift and does not establish Apple networking compatibility. The test requires local Workers and short-lived development tokens supplied through environment variables, and rejects non-local endpoints. A Windows local run passed on 2026-11-07. No production service or user data was used.
+# Experimental rejected archive reading
+
+The Rust store can page through the bound account's rejected snapshots and
+read one Yjs update using the original Worlds tables. Each operation rechecks
+the active account, page binding and cached view rights in a SQLite transaction.
+The C and Swift bridges expose listing and reading by ID. No operation restores,
+removes or retransmits archived edits. Cached
+rights are not current server authority, and a reader cannot open a page after
+cached view permission is removed. Device behavior and Swift integration await
+Apple CI. This is not enabled in the product.

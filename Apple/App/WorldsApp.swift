@@ -75,6 +75,9 @@ private struct WorldsLibraryView: View {
     @State private var showCopyExplanation = false
     @State private var showLocalCopies = false
     @State private var editingProject: ProjectEditorRequest?
+    #if DEBUG && WORLDS_EXPERIMENTAL_PAGE_EDITOR
+    @State private var editingPage: LocalPageEditorRequest?
+    #endif
     #endif
 
     var body: some View {
@@ -160,6 +163,14 @@ private struct WorldsLibraryView: View {
             }
             .toolbar {
                 #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+                #if DEBUG && WORLDS_EXPERIMENTAL_PAGE_EDITOR
+                if let id = selectedID, let context = copyContext, pages.contains(where: { $0.id == id && ($0.kind == "page" || $0.kind == "document") }) {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Edit page", systemImage: "pencil") { editingPage = LocalPageEditorRequest(id: id, context: context, generation: databaseGeneration) }
+                            .accessibilityIdentifier("edit-local-page").disabled(loading)
+                    }
+                }
+                #endif
                 if let id = selectedID, let context = copyContext, pages.contains(where: { $0.id == id && $0.kind == "project" }) {
                     ToolbarItem(placement: .primaryAction) {
                         Button("Edit project", systemImage: "pencil") { editingProject = ProjectEditorRequest(id: id, context: context, generation: databaseGeneration, candidates: projectLinkCandidates()) }
@@ -201,6 +212,13 @@ private struct WorldsLibraryView: View {
                 }
             }
         }
+        #if DEBUG && WORLDS_EXPERIMENTAL_PAGE_EDITOR
+        .sheet(item: $editingPage) { request in
+            LocalPageEditorView(databaseURL: request.context.copy.databaseURL, pageID: request.id) {
+                Task { await refreshCopy(id: request.context.copy.id, generation: request.generation) }
+            }
+        }
+        #endif
         #endif
         #if WORLDS_EXPERIMENTAL_PERSONAL_VIDEO
         .sheet(item: $videoRequest) { request in
@@ -287,6 +305,9 @@ private struct WorldsLibraryView: View {
         var disabled = loading
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
         disabled = disabled || editingProject != nil
+        #if DEBUG && WORLDS_EXPERIMENTAL_PAGE_EDITOR
+        disabled = disabled || editingPage != nil
+        #endif
         #endif
         #if WORLDS_EXPERIMENTAL_PERSONAL_VIDEO
         disabled = disabled || videoRequest != nil
@@ -552,6 +573,13 @@ private struct ProjectEditorRequest: Identifiable {
     let generation: UUID
     let candidates: [ProjectLinkCandidate]
 }
+#if DEBUG && WORLDS_EXPERIMENTAL_PAGE_EDITOR
+private struct LocalPageEditorRequest: Identifiable {
+    let id: String
+    let context: LocalCopyContext
+    let generation: UUID
+}
+#endif
 #endif
 
 private struct VideoDatabaseSource {

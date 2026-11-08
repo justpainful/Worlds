@@ -81,6 +81,48 @@ public struct RichTextDocument: Sendable, Equatable {
             node["marks"] = .array(marks)
         }
     }
+
+    /// Split one plain text node to apply a mark to a UTF-16 selection. Refuse
+    /// opaque siblings or marks rather than moving their protected paths.
+    public mutating func togglePartialMark(at path: RichTextPath, range: NSRange, mark: String) throws {
+        guard ["bold", "italic", "underline", "strike"].contains(mark), let index = path.indices.last,
+              path.indices.count >= 2, range.location != NSNotFound, range.location >= 0, range.length > 0 else { throw RichTextError.invalidRange }
+        let parent = Array(path.indices.dropLast())
+        try updateNode(&source, path: ArraySlice(parent)) { node in
+            guard case .string(let type)? = node["type"], ["paragraph", "heading"].contains(type),
+                  case .array(var children)? = node["content"], children.indices.contains(index) else { throw RichTextError.invalidPath }
+            let known: Set<String> = ["bold", "italic", "underline", "strike"]
+            for child in children {
+                guard case .object(let object) = child, Set(object.keys).isSubset(of: ["type", "text", "marks"]),
+                      object["type"] == .string("text"), case .string(_)? = object["text"] else { throw RichTextError.invalidDocument }
+                if let marks = object["marks"] {
+                    guard case .array(let values) = marks, values.allSatisfy({ value in
+                        guard case .object(let m) = value, Set(m.keys) == Set(["type"]), case .string(let name)? = m["type"] else { return false }
+                        return known.contains(name)
+                    }) else { throw RichTextError.invalidDocument }
+                }
+            }
+            guard case .object(let selected) = children[index], case .string(let text)? = selected["text"],
+                  range.location <= text.utf16.count, range.length <= text.utf16.count - range.location,
+                  let lo16 = text.utf16.index(text.utf16.startIndex, offsetBy: range.location, limitedBy: text.utf16.endIndex),
+                  let hi16 = text.utf16.index(lo16, offsetBy: range.length, limitedBy: text.utf16.endIndex),
+                  let lo = String.Index(lo16, within: text), let hi = String.Index(hi16, within: text) else { throw RichTextError.invalidRange }
+            var marks: [JSONValue] = []
+            if case .array(let values)? = selected["marks"] { marks = values }
+            let markValue: JSONValue = .object(["type": .string(mark)])
+            var newMarks = marks
+            if newMarks.contains(markValue) { newMarks.removeAll { $0 == markValue } } else { newMarks.append(markValue) }
+            func fragment(_ text: Substring, _ marks: [JSONValue]) -> JSONValue? {
+                guard !text.isEmpty else { return nil }
+                var value: [String: JSONValue] = ["type": .string("text"), "text": .string(String(text))]
+                if !marks.isEmpty { value["marks"] = .array(marks) }
+                return .object(value)
+            }
+            let parts = [fragment(text[..<lo], marks), fragment(text[lo..<hi], newMarks), fragment(text[hi...], marks)].compactMap { $0 }
+            children.replaceSubrange(index...index, with: parts)
+            node["content"] = .array(children)
+        }
+    }
 }
 
 private func updateNode(_ value: inout JSONValue, path: ArraySlice<Int>, update: (inout [String: JSONValue]) throws -> Void) throws {

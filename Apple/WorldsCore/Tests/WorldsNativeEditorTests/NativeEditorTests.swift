@@ -54,6 +54,41 @@ final class NativeEditorTests: XCTestCase {
         XCTAssertEqual(model.projection.spans[0].marks, span.marks)
         XCTAssertThrowsError(try model.toggleMark("bold", selection: NSRange(location: 0, length: 1)))
     }
+    func testPartialArabicFormattingRoundTripsAndUndoPreservesOpaqueBlocks() throws {
+        let json = #"{"type":"doc","content":[{"type":"paragraph","attrs":{"dir":"rtl","bid":"p"},"content":[{"type":"text","text":"مرحبا عالم"}]},{"type":"futureWidget","attrs":{"keep":true}}]}"#
+        let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 1)
+        let original = model.document.source
+        try model.toggleMark("bold", selection: NSRange(location: 6, length: 4))
+        XCTAssertEqual(model.projection.text, "مرحبا عالم\n\u{fffc}")
+        XCTAssertEqual(model.projection.spans.count, 2)
+        XCTAssertEqual(model.projection.spans[1].marks, [.object(["type": .string("bold")])])
+        let roundTrip = try RichTextDocument(json: model.document.json())
+        XCTAssertEqual(roundTrip.source, model.document.source)
+        model.undo(); XCTAssertEqual(model.document.source, original)
+        model.redo(); XCTAssertEqual(model.document.source, roundTrip.source)
+    }
+    func testPartialFormattingRejectsUnknownMarksAndSurrogateSplit() throws {
+        let opaque = try makeModel(); let original = opaque.document.source
+        XCTAssertThrowsError(try opaque.toggleMark("bold", selection: NSRange(location: 0, length: 2)))
+        XCTAssertEqual(opaque.document.source, original)
+        let json = #"{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"A👋B"}]}]}"#
+        let plain = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 0)
+        let before = plain.document.source
+        XCTAssertThrowsError(try plain.toggleMark("italic", selection: NSRange(location: 2, length: 1)))
+        XCTAssertEqual(plain.document.source, before)
+        try plain.toggleMark("italic", selection: NSRange(location: 1, length: 2))
+        XCTAssertEqual(plain.projection.spans[1].marks, [.object(["type": .string("italic")])])
+    }
+    func testPartialFormattingInsideRTLListPreservesListStructure() throws {
+        let json = #"{"type":"doc","content":[{"type":"bulletList","attrs":{"bid":"list","future":42},"content":[{"type":"listItem","content":[{"type":"paragraph","attrs":{"dir":"rtl"},"content":[{"type":"text","text":"واحد اثنان"}]}]}]}]}"#
+        let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 0)
+        try model.toggleMark("underline", selection: NSRange(location: 0, length: 4))
+        XCTAssertEqual(model.projection.spans.first?.marks, [.object(["type": .string("underline")])])
+        guard case .object(let root) = model.document.source, case .array(let blocks)? = root["content"],
+              case .object(let list) = blocks[0], case .object(let attrs)? = list["attrs"] else { return XCTFail("Missing list") }
+        XCTAssertEqual(attrs["future"], .integer(42))
+        XCTAssertEqual(try RichTextDocument(json: model.document.json()).source, model.document.source)
+    }
     func testSaveUsesAbstractPersistenceAndBaseRevision() async throws {
         let model = try makeModel()
         let store = FixturePersistence()
