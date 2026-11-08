@@ -2193,6 +2193,28 @@ class HomeTest {
         check(DrawingStore(app).use { DrawingPackage.equalJson(original, it.loadOrCreate(page.id).getJSONObject("scene")) })
     }
 
+    @Test fun duplicatesSelectedStrokeAndUndoRemovesCopy() {
+        val page = ContentStore(app, database).use { it.create("drawing", "Copy test") }
+        compose.setContent { WorldsTheme { Home(model) } }; model.open(page.id)
+        compose.waitUntil(20_000) { runCatching { compose.onNodeWithContentDescription(app.getString(R.string.drawing_canvas)).assertIsDisplayed(); true }.getOrDefault(false) }
+        val canvas = compose.onNodeWithContentDescription(app.getString(R.string.drawing_canvas))
+        canvas.performTouchInput { down(Offset(center.x - 80f, center.y)); moveTo(Offset(center.x + 80f, center.y)); up() }
+        compose.waitUntil(20_000) { DrawingStore(app).use { it.loadOrCreate(page.id).getInt("revision") == 1 } }
+        drawingControl(R.string.drawing_select)
+        canvas.performTouchInput { down(center); up() }
+        if (InstrumentationRegistry.getArguments().getString("captureWorldsUi") == "true") {
+            compose.waitForIdle(); Thread.sleep(400)
+            InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /sdcard/Download/worlds-drawing-duplicate.png").close()
+        }
+        compose.onNodeWithText(app.getString(R.string.drawing_duplicate_selection)).performClick()
+        compose.waitUntil(20_000) { DrawingStore(app).use { it.loadOrCreate(page.id).getJSONObject("scene").getJSONArray("nodeOrder").length() == 2 } }
+        compose.onNodeWithText(app.getString(R.string.drawing_clear_selection, 1)).assertIsDisplayed()
+        compose.onNodeWithContentDescription(app.getString(R.string.drawing_undo)).performClick()
+        compose.waitUntil(20_000) { DrawingStore(app).use { it.loadOrCreate(page.id).getJSONObject("scene").getJSONArray("nodeOrder").length() == 1 } }
+        compose.onNodeWithContentDescription(app.getString(R.string.drawing_redo)).performClick()
+        compose.waitUntil(20_000) { DrawingStore(app).use { it.loadOrCreate(page.id).getJSONObject("scene").getJSONArray("nodeOrder").length() == 2 } }
+    }
+
     @Test fun selectsAndMovesStrokeOnCanvas() {
         val page = ContentStore(app, database).use { it.create("drawing", "Selection test") }
         compose.setContent { WorldsTheme { Home(model) } }; model.open(page.id)

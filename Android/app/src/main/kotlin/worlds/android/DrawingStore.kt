@@ -74,6 +74,32 @@ internal class DrawingStore(context: Context, name: String = "worlds-drawings.db
 
     fun moveStroke(id: String, revision: Int, nodeId: String, dx: Double, dy: Double): JSONObject = moveStrokes(id, revision, setOf(nodeId), dx, dy)
 
+    /** Duplicate in scene order as one journal edit so a group can be undone together. */
+    fun duplicateStrokes(id: String, revision: Int, nodeIds: Set<String>): Pair<JSONObject, Set<String>> = transaction {
+        require(nodeIds.isNotEmpty() && nodeIds.size <= 1000)
+        val doc = checked(id, revision); val scene = doc.getJSONObject("scene")
+        val nodes = scene.getJSONObject("nodes"); val order = scene.getJSONArray("nodeOrder")
+        val sourceIds = (0 until order.length()).map { order.getString(it) }.filter { it in nodeIds }
+        require(sourceIds.size == nodeIds.size)
+        val next = JSONArray(order.toString()); val changes = JSONArray(); val copies = linkedSetOf<String>()
+        sourceIds.forEach { sourceId ->
+            val source = nodes.getJSONObject(sourceId)
+            require(source.getString("kind") == "stroke" && !source.optBoolean("erase") && !source.optBoolean("locked"))
+            val x = source.getDouble("x") + 24.0; val y = source.getDouble("y") + 24.0
+            require(x.isFinite() && y.isFinite() && x in -1e7..1e7 && y in -1e7..1e7)
+            val copyId = UUID.randomUUID().toString()
+            val copy = JSONObject(source.toString()).put("id", copyId).put("x", x).put("y", y)
+            nodes.put(copyId, copy); next.put(copyId); copies.add(copyId)
+            changes.put(JSONObject().put("type", "put").put("collection", "nodes").put("id", copyId).put("value", copy))
+        }
+        changes.put(JSONObject().put("type", "order").put("list", "nodeOrder").put("ids", next))
+        val op = JSONObject().put("id", UUID.randomUUID().toString()).put("actor", ACTOR).put("base", revision).put("at", System.currentTimeMillis())
+            .put("label", if (copies.size == 1) "Duplicate stroke" else "Duplicate strokes").put("type", "edit").put("changes", changes)
+        doc.getJSONArray("operations").put(op); scene.put("nodeOrder", next)
+        DrawingInk.parse(doc.toString())
+        save(id, revision, doc) to copies
+    }
+
     fun moveStrokes(id: String, revision: Int, nodeIds: Set<String>, dx: Double, dy: Double): JSONObject = transaction {
         require(dx.isFinite() && dy.isFinite() && (dx != 0.0 || dy != 0.0))
         require(nodeIds.isNotEmpty() && nodeIds.size <= 1000)

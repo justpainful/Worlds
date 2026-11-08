@@ -136,6 +136,16 @@ private class DrawingModel(app: Application, private val resource: Resource, dat
             busy = false
         }
     }
+    fun duplicateSelectedStrokes() {
+        val doc = document ?: return; val ids = selectedStrokes.toSet(); if (ids.isEmpty()) return
+        if (busy || pending != null || gesture) return
+        busy = true; failed = false
+        viewModelScope.launch {
+            val result = runCatching { withContext(Dispatchers.IO) { store.duplicateStrokes(drawingId, JSONObject(doc).getInt("revision"), ids) } }
+            if (result.isSuccess) { val (updated, copies) = result.getOrThrow(); document = updated.toString(); selectedStrokes = copies } else failed = true
+            busy = false
+        }
+    }
     fun toggle(redo: Boolean) {
         val doc = document ?: return
         if (busy || pending != null || gesture) return
@@ -330,7 +340,10 @@ private fun historyAvailable(json: String): Pair<Boolean, Boolean> {
         if (tool == "select") FlowRow(verticalArrangement = Arrangement.Center, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(selected = multiSelect, enabled = !model.gesture && !model.busy, onClick = { multiSelect = !multiSelect; if (!multiSelect) model.selectStroke(null) },
                 leadingIcon = { WorldsGlyph(R.drawable.ic_files) }, label = { Text(stringResource(R.string.drawing_multi_select)) })
-            if (model.selectedStrokes.isNotEmpty()) TextButton(enabled = !model.gesture && !model.busy, onClick = { model.selectStroke(null) }) { Text(stringResource(R.string.drawing_clear_selection, model.selectedStrokes.size)) }
+            if (model.selectedStrokes.isNotEmpty()) {
+                TextButton(enabled = !model.gesture && !model.busy, onClick = model::duplicateSelectedStrokes) { WorldsActionLabel(R.drawable.ic_files, stringResource(R.string.drawing_duplicate_selection)) }
+                TextButton(enabled = !model.gesture && !model.busy, onClick = { model.selectStroke(null) }) { Text(stringResource(R.string.drawing_clear_selection, model.selectedStrokes.size)) }
+            }
         }
         Text(stringResource(R.string.drawing_local_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         model.exportStatus?.let { Text(stringResource(it), color = if (it in setOf(R.string.drawing_export_error, R.string.drawing_export_interrupted, R.string.drawing_project_error, R.string.drawing_project_limit)) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground) }

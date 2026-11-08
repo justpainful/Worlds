@@ -1,4 +1,5 @@
 <resources>
+    <string name="drawing_duplicate_selection">تكرار المحدد</string>
     <string name="library_more_actions">المزيد من إجراءات المكتبة</string>
     <string name="drawing_multi_select">تحديد متعدد</string>
     <string name="drawing_clear_selection">إلغاء التحديد (%1$d)</string>

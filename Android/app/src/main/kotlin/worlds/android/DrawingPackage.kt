@@ -97,19 +97,21 @@ internal object DrawingPackage {
                         require(expected.length() + removed.size == previous.length() && equalJson(expected, order.getJSONArray("ids")))
                         removed.forEach { current.getJSONObject("nodes").remove(it) }; current.put("nodeOrder", expected)
                     } else {
-                        require(changes.length() == 2)
-                        val put = changes.getJSONObject(0); val order = changes.getJSONObject(1)
-                        val nodeId = put.getString("id")
-                        val node = put.getJSONObject("value")
-                        require(keys(put) == setOf("type", "collection", "id", "value") && put.getString("type") == "put" && put.getString("collection") == "nodes")
-                        require(safeId(nodeId) && nodeIds.add(nodeId) && node.getString("id") == nodeId)
-                        verifyNode(node)
+                        require(changes.length() in 2..1001)
+                        val order = changes.getJSONObject(changes.length() - 1)
+                        val expected = JSONArray(current.getJSONArray("nodeOrder").toString())
+                        for (i in 0 until changes.length() - 1) {
+                            val put = changes.getJSONObject(i); val nodeId = put.getString("id"); val node = put.getJSONObject("value")
+                            require(keys(put) == setOf("type", "collection", "id", "value") && put.getString("type") == "put" && put.getString("collection") == "nodes")
+                            require(safeId(nodeId) && nodeIds.add(nodeId) && node.getString("id") == nodeId)
+                            verifyNode(node)
+                            val one = JSONObject(seed.toString()); one.put("nodes", JSONObject().put(nodeId, node)); one.put("nodeOrder", JSONArray().put(nodeId))
+                            DrawingInk.parse(JSONObject().put("scene", one).toString())
+                            current.getJSONObject("nodes").put(nodeId, JSONObject(node.toString())); expected.put(nodeId)
+                        }
                         require(keys(order) == setOf("type", "list", "ids") && order.getString("type") == "order" && order.getString("list") == "nodeOrder")
-                        val expected = JSONArray(current.getJSONArray("nodeOrder").toString()).put(nodeId)
                         require(equalJson(expected, order.getJSONArray("ids"))) { "Invalid drawing order" }
-                        val one = JSONObject(seed.toString()); one.put("nodes", JSONObject().put(nodeId, node)); one.put("nodeOrder", JSONArray().put(nodeId))
-                        DrawingInk.parse(JSONObject().put("scene", one).toString())
-                        current.getJSONObject("nodes").put(nodeId, JSONObject(node.toString())); current.put("nodeOrder", expected)
+                        current.put("nodeOrder", expected)
                     }
                     edits.add(op); owners[id] = actor; enabled[id] = true
                 }
@@ -180,7 +182,7 @@ internal object DrawingPackage {
         for (op in edits) {
             if (enabled[op.getString("id")] != true) continue
             val changes = op.getJSONArray("changes")
-            val put = changes.getJSONObject(0); val id = put.getString("id")
+            val put = changes.getJSONObject(0)
             if (put.getString("type") == "patch") {
                 for (i in 0 until changes.length()) {
                     val change = changes.getJSONObject(i); val node = nodes.getJSONObject(change.getString("id")); val fields = change.getJSONObject("fields")
@@ -189,7 +191,10 @@ internal object DrawingPackage {
                 continue
             }
             if (put.getString("type") == "remove") { for (i in 0 until changes.length() - 1) nodes.remove(changes.getJSONObject(i).getString("id")) }
-            else { require(!nodes.has(id)); nodes.put(id, JSONObject(put.getJSONObject("value").toString())) }
+            else for (i in 0 until changes.length() - 1) {
+                val change = changes.getJSONObject(i); val newId = change.getString("id")
+                require(!nodes.has(newId)); nodes.put(newId, JSONObject(change.getJSONObject("value").toString()))
+            }
             val desired = changes.getJSONObject(changes.length() - 1).getJSONArray("ids")
             val selected = mutableListOf<String>()
             for (i in 0 until desired.length()) {

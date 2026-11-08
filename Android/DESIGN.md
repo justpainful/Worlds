@@ -25,6 +25,8 @@ Dragging the find controls closes the keyboard so the controls remain reachable
 on a compact screen; focusing a field opens it again.
 The slide text style dialog follows the same rule when its options are dragged,
 and keeps its actions above the software keyboard.
+Drawing selection exposes duplicate beside the existing selection controls. The
+copy remains selected and is offset so it can be moved immediately.
 
 ## Shared page action strip
 The shared page puts access, conversations, notifications, version history and

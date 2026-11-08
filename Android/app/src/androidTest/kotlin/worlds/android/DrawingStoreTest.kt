@@ -22,6 +22,40 @@ class DrawingStoreTest {
     @Before fun setup() { store = DrawingStore(context, name) }
     @After fun cleanup() { store.close(); context.deleteDatabase(name) }
 
+    @Test fun duplicatesSelectedStrokesAsOneReversibleCompatibleEdit() {
+        store.loadOrCreate("copies")
+        store.addStroke("copies", 0, listOf(point(10.0), point(50.0)), StrokeBrush(size = 8.0), false, "#ff0000")
+        val original = store.addStroke("copies", 1, listOf(point(90.0), point(120.0)), StrokeBrush(kind = "natural-pencil"), false)
+        val scene = original.getJSONObject("scene"); val order = scene.getJSONArray("nodeOrder")
+        val ids = setOf(order.getString(0), order.getString(1))
+        assertTrue(runCatching { store.duplicateStrokes("copies", 1, ids) }.isFailure)
+        assertTrue(runCatching { store.duplicateStrokes("copies", 2, ids + "missing") }.isFailure)
+        assertEquals(original.toString(), store.loadOrCreate("copies").toString())
+        val (duplicated, copies) = store.duplicateStrokes("copies", 2, ids)
+        val next = duplicated.getJSONObject("scene"); val nextOrder = next.getJSONArray("nodeOrder")
+        assertEquals(4, nextOrder.length()); assertEquals(copies, setOf(nextOrder.getString(2), nextOrder.getString(3)))
+        repeat(2) { i ->
+            val source = scene.getJSONObject("nodes").getJSONObject(order.getString(i))
+            val copy = next.getJSONObject("nodes").getJSONObject(nextOrder.getString(i + 2))
+            assertEquals(source.getDouble("x") + 24, copy.getDouble("x"), 0.0)
+            assertEquals(source.getDouble("y") + 24, copy.getDouble("y"), 0.0)
+            assertEquals(source.getJSONObject("brush").toString(), copy.getJSONObject("brush").toString())
+            assertEquals(source.getJSONArray("samples").toString(), copy.getJSONArray("samples").toString())
+        }
+        assertTrue(DrawingPackage.equalJson(duplicated, org.json.JSONObject(DrawingPackage.decode(DrawingPackage.encode(duplicated.toString()).inputStream()))))
+        val corrupt = org.json.JSONObject(duplicated.toString())
+        val changes = corrupt.getJSONArray("operations").getJSONObject(2).getJSONArray("changes")
+        changes.put(1, org.json.JSONObject(changes.getJSONObject(0).toString()))
+        assertTrue(runCatching { DrawingPackage.encode(corrupt.toString()) }.isFailure)
+        val undo = store.toggle("copies", 3, false)
+        assertTrue(DrawingPackage.equalJson(scene, undo.getJSONObject("scene")))
+        val redo = store.toggle("copies", 4, true)
+        assertTrue(DrawingPackage.equalJson(next, redo.getJSONObject("scene")))
+        val folder = context.getExternalFilesDir(null)!!
+        folder.resolve("android-drawing-duplicate-contract.json").writeText(redo.toString())
+        folder.resolve("android-drawing-duplicate.worldsdraw").writeBytes(DrawingPackage.encode(redo.toString()))
+    }
+
     @Test fun persistsStrokesAndReplaysUndoRedoWithRevisionProtection() {
         val initial = store.loadOrCreate("drawing-test")
         assertEquals(0, initial.getInt("revision"))

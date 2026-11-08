@@ -1,4 +1,5 @@
 <resources>
+    <string name="drawing_duplicate_selection">Duplicate selection</string>
     <string name="drawing_multi_select">Select multiple</string>
     <string name="drawing_clear_selection">Clear selection (%1$d)</string>
     <string name="drawing_remove_strokes">Remove selected strokes</string>
