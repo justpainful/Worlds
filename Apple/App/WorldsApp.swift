@@ -100,6 +100,9 @@ private struct WorldsLibraryView: View {
     @State private var showCopyExplanation = false
     @State private var showLocalCopies = false
     @State private var editingProject: ProjectEditorRequest?
+    #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PROJECT
+    @State private var creatingProject: LocalCreateProjectRequest?
+    #endif
     #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DOCUMENT
     @State private var creatingDocument: LocalCreateDocumentRequest?
     #endif
@@ -202,6 +205,16 @@ private struct WorldsLibraryView: View {
                     .disabled(databaseActionsDisabled)
                 }
                 #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+                #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PROJECT
+                if let context = copyContext, let source = openedVideoDatabase,
+                   source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
+                    ToolbarItem {
+                        Button("New project", systemImage: "folder.badge.plus") {
+                            creatingProject = LocalCreateProjectRequest(copy: context.copy, databaseIdentity: source.identity, generation: databaseGeneration)
+                        }.accessibilityIdentifier("new-local-project").disabled(databaseActionsDisabled)
+                    }
+                }
+                #endif
                 #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DOCUMENT
                 if let context = copyContext, let source = openedVideoDatabase,
                    source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
@@ -424,6 +437,13 @@ private struct WorldsLibraryView: View {
             }
         }
         #endif
+        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PROJECT
+        .sheet(item: $creatingProject) { request in
+            LocalCreateProjectView(request: request) { id in
+                await showCreatedProject(id, request: request)
+            }
+        }
+        #endif
         .sheet(item: $editingProject) { request in
             NavigationStack {
                 ProjectDraftView(projectID: request.id, repository: request.context.repository, candidates: request.candidates, allowsLinkEditing: projectLinkEditingEnabled) {
@@ -617,6 +637,9 @@ private struct WorldsLibraryView: View {
         #endif
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
         disabled = disabled || editingProject != nil
+        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PROJECT
+        disabled = disabled || creatingProject != nil
+        #endif
         #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DOCUMENT
         disabled = disabled || creatingDocument != nil
         #endif
@@ -1083,6 +1106,23 @@ private struct WorldsLibraryView: View {
             guard copyContext?.copy.id == request.copy.id, databaseGeneration == request.generation,
                   VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity,
                   snapshot.pages.contains(where: { $0.id == id && $0.kind == "document" && $0.parentID == nil }) else { return false }
+            pages = snapshot.pages
+            returnStack.removeAll()
+            selectedID = id
+            return true
+        } catch { return false }
+    }
+    #endif
+    #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PROJECT
+    @MainActor private func showCreatedProject(_ id: String, request: LocalCreateProjectRequest) async -> Bool {
+        guard copyContext?.copy.id == request.copy.id, databaseGeneration == request.generation,
+              VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity else { return false }
+        do {
+            let database = try WorldsDatabase(url: request.copy.databaseURL)
+            let snapshot = try await database.snapshot()
+            guard copyContext?.copy.id == request.copy.id, databaseGeneration == request.generation,
+                  VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity,
+                  snapshot.pages.contains(where: { $0.id == id && $0.kind == "project" && $0.parentID == nil }) else { return false }
             pages = snapshot.pages
             returnStack.removeAll()
             selectedID = id
