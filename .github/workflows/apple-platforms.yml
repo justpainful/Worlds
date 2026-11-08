@@ -40,6 +40,7 @@ jobs:
           grep -E 'testAppendEmptyNestedTaskThenTypeAndUndo.*passed' logs/swift-test.log
           grep -E 'testListKeyboardBoundariesUseExactRangeWithRepeatedItems.*passed' logs/swift-test.log
           grep -E 'testEnterOnEmptyNestedTaskLiftsAndUndoRestores.*passed' logs/swift-test.log
+          grep -E 'testEnterExitsLastEmptyRootTaskAndNewParagraphAcceptsRTLText.*passed' logs/swift-test.log
           grep -E 'testOutdentRejectsNestedMetadataAndKeepsDocument.*passed' logs/swift-test.log
           grep -E 'testStrikethroughPreservesArabicTextAndUndo.*passed' logs/swift-test.log
           grep -E 'testHeadingConversionPreservesOpaqueDataAndRejectsAmbiguousLevel.*passed' logs/swift-test.log
@@ -1281,6 +1282,9 @@ jobs:
           grep -q 'testNestedTaskEnterAndBackspaceSurviveRealStore' logs/editor-persistence-discovery.log
           grep -q 'testEmptyNestedTaskPersistsAndRejectsStaleSession' logs/editor-persistence-discovery.log
           grep -q 'testEmptyNestedTaskEnterPersistsLiftAndRejectsStaleSession' logs/editor-persistence-discovery.log
+          grep -q 'testLegacyHeadingIdentityAndMovementAreRejected' logs/editor-persistence-discovery.log
+          grep -q 'testExitListBeforeUnsupportedHeadingPreservesItOnSave' logs/editor-persistence-discovery.log
+          grep -q 'testExitEmptyRootTaskAndTypeSurvivesReopen' logs/editor-persistence-discovery.log
           grep -q 'testUnsupportedLegacyHeadingDoesNotBlockOtherParagraphEdit' logs/editor-persistence-discovery.log
           grep -q 'testRawHeadingValidationPreservesUnsupportedLegacyHeading' logs/editor-persistence-discovery.log
           grep -q 'testHeadingSaveReopenPreservesOpaqueAttributesAndRejectsConflict' logs/editor-persistence-discovery.log
@@ -1308,6 +1312,9 @@ jobs:
           grep -E 'testNestedTaskEnterAndBackspaceSurviveRealStore.*passed' logs/editor-persistence-macos.log
           grep -E 'testEmptyNestedTaskPersistsAndRejectsStaleSession.*passed' logs/editor-persistence-macos.log
           grep -E 'testEmptyNestedTaskEnterPersistsLiftAndRejectsStaleSession.*passed' logs/editor-persistence-macos.log
+          grep -E 'testLegacyHeadingIdentityAndMovementAreRejected.*passed' logs/editor-persistence-macos.log
+          grep -E 'testExitListBeforeUnsupportedHeadingPreservesItOnSave.*passed' logs/editor-persistence-macos.log
+          grep -E 'testExitEmptyRootTaskAndTypeSurvivesReopen.*passed' logs/editor-persistence-macos.log
           grep -E 'testUnsupportedLegacyHeadingDoesNotBlockOtherParagraphEdit.*passed' logs/editor-persistence-macos.log
           grep -E 'testRawHeadingValidationPreservesUnsupportedLegacyHeading.*passed' logs/editor-persistence-macos.log
           grep -E 'testHeadingSaveReopenPreservesOpaqueAttributesAndRejectsConflict.*passed' logs/editor-persistence-macos.log
@@ -1481,6 +1488,9 @@ jobs:
           grep -E "Test Case .*testNestedTaskEnterAndBackspaceSurviveRealStore.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testEmptyNestedTaskPersistsAndRejectsStaleSession.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testEmptyNestedTaskEnterPersistsLiftAndRejectsStaleSession.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E 'testLegacyHeadingIdentityAndMovementAreRejected.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E 'testExitListBeforeUnsupportedHeadingPreservesItOnSave.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E 'testExitEmptyRootTaskAndTypeSurvivesReopen.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E 'testUnsupportedLegacyHeadingDoesNotBlockOtherParagraphEdit.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E 'testRawHeadingValidationPreservesUnsupportedLegacyHeading.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E 'testHeadingSaveReopenPreservesOpaqueAttributesAndRejectsConflict.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
