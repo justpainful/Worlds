@@ -1293,7 +1293,8 @@ jobs:
           grep -q 'malformed_slide_text_is_preserved_during_other_edits ... ok' logs/rust-store-tests.log
           grep -q 'unknown_slide_alignment_is_preserved_during_other_edits ... ok' logs/rust-store-tests.log
           grep -q 'malformed_slide_style_and_geometry_survive_other_edits ... ok' logs/rust-store-tests.log
-          grep -q 'noncanonical_unchanged_block_is_not_rewritten ... ok' logs/rust-store-tests.log
+          grep -q 'noncanonical_unchanged_block_roundtrips_without_spurious_changes ... ok' logs/rust-store-tests.log
+          grep -q 'noncanonical_blocks_roll_back_when_late_write_fails ... ok' logs/rust-store-tests.log
           grep -q 'explicit_slide_delete_keeps_shared_assets_snapshots_and_rolls_back ... ok' logs/rust-store-tests.log
           grep -q 'refuses_unknown_element_loss_slide_removal_and_stale_refs_atomically ... ok' logs/rust-store-tests.log
           grep -q 'identity_probe_rejects_swapped_main_wal_and_shm_before_write ... ok' logs/rust-store-tests.log
