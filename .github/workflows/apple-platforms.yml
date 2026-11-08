@@ -2036,6 +2036,7 @@ jobs:
           grep -q 'testLiveSwiftSessionsConvergeReconnectAndArchiveRefusal' logs/local-swift-discovery.log
           grep -q 'testLiveAwarenessExchangeAndDisconnect' logs/local-swift-discovery.log
           grep -q 'testLiveCheckedEditorsConvergeAfterReconnect' logs/local-swift-discovery.log
+          grep -q 'testLiveArabicRangeDeletionAndConditionalRestore' logs/local-swift-discovery.log
           grep -q 'testDiagnosticDefaultTransportLoopbackHandshake' logs/local-swift-discovery.log
           grep -q 'testDiagnosticSharedSessionLoopbackHandshake' logs/local-swift-discovery.log
           grep -q 'testDiagnosticSingleClientWithPresence' logs/local-swift-discovery.log
@@ -2159,8 +2160,9 @@ jobs:
           grep -q 'testLiveSwiftSessionsConvergeReconnectAndArchiveRefusal' logs/collaboration-live-swift.log
           grep -q 'testLiveAwarenessExchangeAndDisconnect' logs/collaboration-live-swift.log
           grep -q 'testLiveCheckedEditorsConvergeAfterReconnect' logs/collaboration-live-swift.log
+          grep -E 'testLiveArabicRangeDeletionAndConditionalRestore.*passed' logs/collaboration-live-swift.log
           grep -E 'testLiveWorkerPongDoesNotCloseBinaryTransport.*passed' logs/collaboration-live-swift.log
-          grep -Eq 'Executed 4 tests, with 0 failures' logs/collaboration-live-swift.log
+          grep -Eq 'Executed 5 tests, with 0 failures' logs/collaboration-live-swift.log
           test "$diagnostic_status" = 0
           test "$harness_status" = 0
       - name: Collect XCTest crash reports
