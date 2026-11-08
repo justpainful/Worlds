@@ -381,7 +381,7 @@ final class WorldsUITests: XCTestCase {
     }
     @MainActor
     private func captureLaunchFailure(_ app: XCUIApplication, name: String) {
-        let state = XCTAttachment(string: "state=\(app.state.rawValue) pid=\(app.processID) windows=\(app.windows.count)\n\(app.debugDescription)")
+        let state = XCTAttachment(string: "state=\(app.state.rawValue) windows=\(app.windows.count)\n\(app.debugDescription)")
         state.name = name + "-state-and-hierarchy"; state.lifetime = .keepAlways; add(state)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = name + "-screen"; screenshot.lifetime = .keepAlways; add(screenshot)
