@@ -20,7 +20,11 @@ final class GalleryHarnessUITests: XCTestCase {
                 XCTFail("Image preview did not open"); return
             }
             let surface = app.descendants(matching: .any)["opened-image-surface"].firstMatch
-            XCTAssertTrue(surface.waitForExistence(timeout: 10))
+            guard surface.waitForExistence(timeout: 10) else {
+                let screenshot = XCTAttachment(screenshot: app.screenshot()); screenshot.name = "gallery-image-surface-missing-\(id)"; screenshot.lifetime = .keepAlways; add(screenshot)
+                let tree = XCTAttachment(string: app.debugDescription); tree.name = "gallery-image-surface-missing-\(id)-hierarchy"; tree.lifetime = .keepAlways; add(tree)
+                XCTFail("Image surface missing"); return
+            }
             XCTAssertEqual(surface.label, id == "a" ? "Image preview: First.png" : "Image preview: Second.png")
             let zoom = app.descendants(matching: .any)["opened-image-zoom-level"].firstMatch
             let plus = app.buttons["opened-image-zoom-in"], minus = app.buttons["opened-image-zoom-out"]
@@ -72,7 +76,11 @@ final class GalleryHarnessUITests: XCTestCase {
         open.tap()
         let zoom = app.buttons["opened-image-zoom-in"]
         let reset = app.buttons["opened-image-zoom-reset"]
-        guard zoom.waitForExistence(timeout: 20), reset.exists else { XCTFail("Zoom controls missing"); return }
+        guard zoom.waitForExistence(timeout: 20), reset.exists else {
+            let screenshot = XCTAttachment(screenshot: app.screenshot()); screenshot.name = "gallery-zoom-missing"; screenshot.lifetime = .keepAlways; add(screenshot)
+            let tree = XCTAttachment(string: app.debugDescription); tree.name = "gallery-zoom-missing-hierarchy"; tree.lifetime = .keepAlways; add(tree)
+            XCTFail("Zoom controls missing"); return
+        }
         XCTAssertTrue(zoom.isHittable)
         let window = app.windows.firstMatch
         XCTAssertTrue(window.frame.contains(zoom.frame))
