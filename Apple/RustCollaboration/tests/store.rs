@@ -251,6 +251,33 @@ fn rejection_reset_failure_rolls_back_archive_and_preserves_outbox() {
 }
 
 #[test]
+fn pending_causal_outbox_is_visible_in_snapshot_and_wire_before_ack() {
+    use worlds_collaboration::CollaborationDoc;
+    let base = include_bytes!("fixtures/base.bin");
+    let update = include_bytes!("fixtures/alice-diff.bin");
+    let path = fixture();
+    let mut store = SyncStore::open(&path, "p", "u", "w").unwrap();
+    let stale = CollaborationDoc::default();
+    store.append(0, update, true).unwrap();
+    let watermark = store.max_pending(0).unwrap().unwrap();
+    let durable = CollaborationDoc::default();
+    for bytes in store.load(0).unwrap() { durable.apply(&bytes).unwrap(); }
+    // The missing dependency means state vectors alone falsely agree.
+    assert_eq!(stale.state_vector().unwrap(), durable.state_vector().unwrap());
+    assert_ne!(stale.diff(&[0]).unwrap(), durable.diff(&[0]).unwrap());
+    // Simulate an accepting peer and verify delivery before clearing the row.
+    let peer = CollaborationDoc::default();
+    peer.apply(base).unwrap();
+    let wire = durable.diff(&peer.state_vector().unwrap()).unwrap();
+    peer.apply(&wire).unwrap();
+    let expected = CollaborationDoc::default();
+    expected.apply(base).unwrap(); expected.apply(update).unwrap();
+    assert_eq!(peer.diff(&[0]).unwrap(), expected.diff(&[0]).unwrap());
+    store.acknowledge(0, watermark).unwrap();
+    assert_eq!(store.max_pending(0).unwrap(), None);
+}
+
+#[test]
 fn rejection_retains_pending_causal_updates_without_their_base() {
     use yrs::updates::decoder::Decode;
     let base = [1,6,233,7,0,4,1,6,115,104,97,114,101,100,10,72,101,108,108,111,32,240,159,140,141,7,1,7,100,101,102,97,117,108,116,3,9,112,97,114,97,103,114,97,112,104,7,0,233,7,8,6,6,0,233,7,9,4,98,111,108,100,4,116,114,117,101,132,233,7,10,13,89,106,115,32,114,105,99,104,32,116,101,120,116,134,233,7,23,4,98,111,108,100,4,110,117,108,108,0];

@@ -1,6 +1,6 @@
 use worlds_collaboration::*;
 use yrs::updates::decoder::Decode;
-use yrs::{Doc, GetString, ReadTxn, StateVector, Transact, Update};
+use yrs::{Doc, GetString, ReadTxn, StateVector, Text, Transact, Update};
 
 const BASE: &[u8] = include_bytes!("fixtures/base.bin");
 const VECTOR: &[u8] = include_bytes!("fixtures/base-vector.bin");
@@ -48,6 +48,50 @@ fn missing_parent_update_is_not_lost() {
     d.apply(BASE).unwrap();
     d.apply(B).unwrap();
     assert_eq!(text(&d.diff(&[0]).unwrap()).0, include_str!("fixtures/merged.txt"));
+}
+
+#[test]
+fn pending_dependency_survives_full_snapshot_and_wire_diff() {
+    let empty = CollaborationDoc::default();
+    let pending = CollaborationDoc::default();
+    pending.apply(A).unwrap();
+    assert_eq!(pending.state_vector().unwrap(), empty.state_vector().unwrap());
+    let full = pending.diff(&[0]).unwrap();
+    assert_ne!(full, empty.diff(&[0]).unwrap());
+    let reconstructed = CollaborationDoc::default();
+    reconstructed.apply(&full).unwrap();
+    reconstructed.apply(BASE).unwrap();
+    let expected = CollaborationDoc::default();
+    expected.apply(BASE).unwrap();
+    expected.apply(A).unwrap();
+    assert_eq!(reconstructed.diff(&[0]).unwrap(), expected.diff(&[0]).unwrap());
+    // A peer already possessing BASE must also receive the pending update.
+    let peer = CollaborationDoc::default();
+    peer.apply(BASE).unwrap();
+    let wire = pending.diff(&peer.state_vector().unwrap()).unwrap();
+    peer.apply(&wire).unwrap();
+    assert_eq!(peer.diff(&[0]).unwrap(), expected.diff(&[0]).unwrap());
+}
+
+#[test]
+fn pending_deletion_survives_full_snapshot_and_wire_diff() {
+    let source = Doc::new();
+    source.transact_mut().apply_update(Update::decode_v1(BASE).unwrap()).unwrap();
+    let vector = source.transact().state_vector();
+    let text = source.transact().get_text("shared").unwrap();
+    text.remove_range(&mut source.transact_mut(), 0, 1);
+    let deletion = source.transact().encode_state_as_update_v1(&vector);
+    let pending = CollaborationDoc::default(); pending.apply(&deletion).unwrap();
+    let empty = CollaborationDoc::default();
+    assert_eq!(pending.state_vector().unwrap(), empty.state_vector().unwrap());
+    let full = pending.diff(&[0]).unwrap();
+    assert_ne!(full, empty.diff(&[0]).unwrap());
+    let peer = CollaborationDoc::default(); peer.apply(BASE).unwrap();
+    peer.apply(&pending.diff(&peer.state_vector().unwrap()).unwrap()).unwrap();
+    let expected = CollaborationDoc::default(); expected.apply(BASE).unwrap(); expected.apply(&deletion).unwrap();
+    assert_eq!(peer.diff(&[0]).unwrap(), expected.diff(&[0]).unwrap());
+    let restored = CollaborationDoc::default(); restored.apply(&full).unwrap(); restored.apply(BASE).unwrap();
+    assert_eq!(restored.diff(&[0]).unwrap(), expected.diff(&[0]).unwrap());
 }
 
 #[test]
