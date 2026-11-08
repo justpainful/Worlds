@@ -48,6 +48,8 @@ jobs:
           grep -E 'testInsertRowBelowSelectionPreservesHeaderAndRejectsOpaqueShift.*passed' logs/swift-test.log
           grep -E 'testDeleteLastTableRowRejectsOpaqueDataAndSupportsUndo.*passed' logs/swift-test.log
           grep -E 'testDeleteLastTableColumnPreservesCaretAndRejectsOpaqueCell.*passed' logs/swift-test.log
+          grep -E 'testDeleteSelectedMiddleTableRowAndProtectShiftedRows.*passed' logs/swift-test.log
+          grep -E 'testDeleteSelectedMiddleTableColumnAndProtectShiftedCells.*passed' logs/swift-test.log
           grep -E 'testDeleteTableRowRejectsWhenRemainingTableHasNoTextCaret.*passed' logs/swift-test.log
           grep -E 'testInsertColumnAfterSelectionPreservesTypesAndRejectsOpaqueShift.*passed' logs/swift-test.log
           grep -E 'testInsertColumnAfterHeaderUsesFollowingColumnTypes.*passed' logs/swift-test.log
@@ -1335,6 +1337,8 @@ jobs:
           grep -q 'testInsertTableRowBelowSaveReopenAndConflict' logs/editor-persistence-discovery.log
           grep -q 'testDeleteLastTableRowSaveReopenAndConflict' logs/editor-persistence-discovery.log
           grep -q 'testDeleteLastTableColumnSaveReopenAndConflict' logs/editor-persistence-discovery.log
+          grep -q 'testDeleteMiddleTableColumnSaveReopenAndConflict' logs/editor-persistence-discovery.log
+          grep -q 'testDeleteMiddleTableRowSaveReopenAndConflict' logs/editor-persistence-discovery.log
           grep -q 'testInsertTableColumnAfterSelectionSaveReopenAndConflict' logs/editor-persistence-discovery.log
           grep -q 'testDocumentUnknownParagraphStyleRemainsProtected' logs/editor-persistence-discovery.log
           grep -q 'testDocumentAlignmentDoesNotOverwriteUnknownLegacyValue' logs/editor-persistence-discovery.log
@@ -1377,6 +1381,8 @@ jobs:
           grep -E 'testInsertTableRowBelowSaveReopenAndConflict.*passed' logs/editor-persistence-macos.log
           grep -E 'testDeleteLastTableRowSaveReopenAndConflict.*passed' logs/editor-persistence-macos.log
           grep -E 'testDeleteLastTableColumnSaveReopenAndConflict.*passed' logs/editor-persistence-macos.log
+          grep -E 'testDeleteMiddleTableColumnSaveReopenAndConflict.*passed' logs/editor-persistence-macos.log
+          grep -E 'testDeleteMiddleTableRowSaveReopenAndConflict.*passed' logs/editor-persistence-macos.log
           grep -E 'testInsertTableColumnAfterSelectionSaveReopenAndConflict.*passed' logs/editor-persistence-macos.log
           grep -E 'testDocumentUnknownParagraphStyleRemainsProtected.*passed' logs/editor-persistence-macos.log
           grep -E 'testDocumentAlignmentDoesNotOverwriteUnknownLegacyValue.*passed' logs/editor-persistence-macos.log
@@ -1569,6 +1575,8 @@ jobs:
           grep -E 'testInsertTableRowBelowSaveReopenAndConflict.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E 'testDeleteLastTableRowSaveReopenAndConflict.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E 'testDeleteLastTableColumnSaveReopenAndConflict.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E 'testDeleteMiddleTableColumnSaveReopenAndConflict.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E 'testDeleteMiddleTableRowSaveReopenAndConflict.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E 'testInsertTableColumnAfterSelectionSaveReopenAndConflict.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E 'testDocumentUnknownParagraphStyleRemainsProtected.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E 'testDocumentAlignmentDoesNotOverwriteUnknownLegacyValue.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
