@@ -2070,6 +2070,8 @@ jobs:
           cargo test --locked --manifest-path Apple/RustCollaboration/Cargo.toml --test interop -- --nocapture \
             2>&1 | tee logs/collaboration-interop-rust.log
           grep -q 'concurrent_ffi_document_lifetimes_preserve_buffers ... ok' logs/collaboration-interop-rust.log
+          cargo test --locked --manifest-path Apple/RustCollaboration/Cargo.toml --lib -- --nocapture 2>&1 | tee logs/collaboration-lib-rust.log
+          grep -q 'load_uses_one_snapshot_across_auth_and_compaction ... ok' logs/collaboration-lib-rust.log
           cargo test --locked --manifest-path Apple/RustCollaboration/Cargo.toml --test editor -- --nocapture \
             2>&1 | tee logs/collaboration-editor-rust.log
           grep -q 'concurrent_insertions_converge_without_losing_either_edit ... ok' logs/collaboration-editor-rust.log
