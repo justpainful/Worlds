@@ -28,6 +28,18 @@ impl<'a> OwnedAckSession<'a> {
         self.pending = Some((batch, channel, watermark));
         Ok((batch, bytes))
     }
+    /// Keep the receipt only if the caller confirms the frame was handed to
+    /// this socket. A send failure invalidates this session without clearing rows.
+    pub fn send<F>(&mut self, channel: i64, vector: &[u8], send: F) -> Result<u64, StoreError>
+    where F: FnOnce(u64, &[u8]) -> Result<(), StoreError> {
+        let (batch, bytes) = self.prepare(channel, vector)?;
+        if let Err(error) = send(batch, &bytes) {
+            self.valid = false;
+            self.pending = None;
+            return Err(error);
+        }
+        Ok(batch)
+    }
     /// Call only for an ACK read from this session's authenticated socket.
     /// Rejection and all store failures invalidate the connection's receipt.
     pub fn acknowledge(&mut self, batch: u64, accepted: bool) -> Result<(), StoreError> {

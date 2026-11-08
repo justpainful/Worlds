@@ -248,6 +248,9 @@ fn owned_ack_binds_watermark_to_connection_and_rechecks_account() {
     db.execute("UPDATE account SET user_id='other' WHERE id=1",[]).unwrap();assert!(session.acknowledge(batch,true).is_err());
     db.execute("UPDATE account SET user_id='u' WHERE id=1",[]).unwrap();assert!(session.acknowledge(batch,true).is_err());drop(session);
     assert_eq!(db.query_row("SELECT count(*) FROM sync_outbox WHERE state='pending'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+    let mut session=OwnedAckSession::new(&mut store,server).unwrap();
+    assert!(session.send(0,&[0],|_,_|Err(StoreError::Invalid)).is_err());assert!(session.prepare(0,&[0]).is_err());drop(session);
+    assert_eq!(db.query_row("SELECT count(*) FROM sync_outbox WHERE state='pending'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
     let mut session=OwnedAckSession::new(&mut store,server).unwrap();let (batch,_)=session.prepare(0,&[0]).unwrap();assert!(session.acknowledge(batch,false).is_err());drop(session);
     let mut session=OwnedAckSession::new(&mut store,server).unwrap();let (batch,_)=session.prepare(0,&[0]).unwrap();
     let mut concurrent=SyncStore::open(&path,"p","u","w").unwrap();concurrent.append_owned_document(0,server,base).unwrap();
