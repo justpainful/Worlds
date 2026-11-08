@@ -93,6 +93,9 @@ private struct LocalPageEditorContent: View {
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-document-alignment"), model.projection.spans.contains(where: { $0.alignment == "center" && $0.direction == "rtl" }) {
                 Text("Fixture alignment saved").accessibilityIdentifier("fixture-alignment-centered")
             }
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-document-alignment"), model.projection.spans.contains(where: { $0.paragraphStyle == "title" && $0.direction == "rtl" }) {
+                Text("Fixture title style saved").accessibilityIdentifier("fixture-paragraph-title")
+            }
             if let error { Text(error).accessibilityLabel(error).accessibilityIdentifier("local-page-error") }
             if reloadRequired { Button("Reload saved page", action: onReload).accessibilityIdentifier("local-page-reload") }
             if saved && !model.dirty { Text("Page saved").accessibilityIdentifier("local-page-saved") }

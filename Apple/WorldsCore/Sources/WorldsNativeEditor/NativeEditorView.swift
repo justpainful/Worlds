@@ -39,6 +39,12 @@ public struct NativeEditorView: View {
                         Button("Heading 3") { heading(3) }
                     }.accessibilityIdentifier("editor-text-style")
                     if model.supportsDocumentFormatting {
+                        Menu("Paragraph style") {
+                            Button("Normal") { paragraphStyle("normal") }
+                            Button("Title") { paragraphStyle("title") }
+                            Button("Subtitle") { paragraphStyle("subtitle") }
+                            Button("Caption") { paragraphStyle("caption") }
+                        }.accessibilityIdentifier("editor-paragraph-style")
                         Menu("Alignment") {
                             Button("Automatic") { align(nil) }
                             Button("Left") { align("left") }
@@ -135,6 +141,7 @@ public struct NativeEditorView: View {
     private func list(_ kind: String) { do { try model.makeList(kind) } catch { model.report(error) } }
     private func heading(_ level: Int?) { do { try model.setHeading(level) } catch { model.report(error) } }
     private func align(_ alignment: String?) { do { try model.setTextAlignment(alignment) } catch { model.report(error) } }
+    private func paragraphStyle(_ style: String) { do { try model.setParagraphStyle(style) } catch { model.report(error) } }
 }
 
 #if canImport(UIKit)

@@ -4,6 +4,18 @@ import WorldsModels
 @testable import WorldsRichText
 
 final class RichTextDocumentTests: XCTestCase {
+    func testHeadingConversionRejectsParagraphStyleWithoutChangingDocument() throws {
+        for json in [
+            #"{"type":"doc","content":[{"type":"paragraph","attrs":{"bid":"p","pstyle":"title","future":true},"content":[{"type":"text","text":"عربي"}]}]}"#,
+            #"{"type":"doc","content":[{"type":"heading","attrs":{"bid":"p","level":1,"pstyle":"future","future":true},"content":[{"type":"text","text":"عربي"}]}]}"#
+        ] {
+            var document = try RichTextDocument(json: Data(json.utf8))
+            let original = document
+            let level: Int? = json.contains("\"heading\"") ? nil : 1
+            XCTAssertThrowsError(try document.setHeading(at: RichTextPath([0]), level: level))
+            XCTAssertEqual(document, original)
+        }
+    }
     func testLiftRejectsNegativePathAndEmptyListWithoutMutation() throws {
         let json = #"{"type":"doc","content":[{"type":"bulletList","attrs":{"bid":"list"},"content":[]}]}"#
         var document = try RichTextDocument(json: Data(json.utf8))

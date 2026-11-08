@@ -1,0 +1,7 @@
+# Experimental document paragraph styles
+
+The original document toolbar uses `pstyle` values `normal`, `title`, `subtitle` and `caption` on paragraph nodes. The isolated personal-copy editor exposes those values for an existing paragraph of a document, preserving the other attributes, text and marks. It uses native preferred fonts, supports undo and redo and saves through the checked page-kind and full-block baseline transaction. Unknown legacy `pstyle` values stay protected.
+
+This is a restricted subset. Unlike the original toolbar, selecting a style does not convert a heading or other node into a paragraph; such a change is rejected. Multiple paragraphs and ambiguous selections are rejected. Rendering uses platform fonts, not an exact reproduction of Worlds document font settings or page layout. Shared documents and collaborative Yjs editing are not supported by this path. The interface remains experimental behind the local page editor flags, and the new unit, SQLite integration and UI tests require Apple execution and visual review.
+
+A paragraph with an explicit `pstyle` cannot currently be converted to a heading, and a heading carrying that attribute cannot be converted to a paragraph. The editor refuses these conversions before changing the draft because the source attribute does not have the same protected semantics on both node types. The original supports style conversion; this restriction remains a parity gap.

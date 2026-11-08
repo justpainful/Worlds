@@ -15,6 +15,21 @@ private actor FixturePersistence: EditorPersistence {
 
 @MainActor
 final class NativeEditorTests: XCTestCase {
+    func testDocumentParagraphStylesPreserveRTLAndUndo() throws {
+        let json = #"{"type":"doc","content":[{"type":"paragraph","attrs":{"bid":"p","dir":"rtl","future":{"keep":true}},"content":[{"type":"text","text":"عنوان عربي"}]}]}"#
+        let document = try RichTextDocument(json: Data(json.utf8))
+        let model = NativeEditorModel(document: document, baseRevision: 0, supportsDocumentFormatting: true)
+        for style in ["title", "subtitle", "caption", "normal"] {
+            try model.setParagraphStyle(style)
+            XCTAssertEqual(model.projection.spans.first?.paragraphStyle, style)
+            XCTAssertEqual(model.projection.spans.first?.direction, "rtl")
+        }
+        let final = model.document.source
+        for _ in 0..<4 { model.undo() }; XCTAssertEqual(model.document, document)
+        for _ in 0..<4 { model.redo() }; XCTAssertEqual(model.document.source, final)
+        XCTAssertThrowsError(try model.setParagraphStyle("future"))
+        XCTAssertEqual(model.document.source, final)
+    }
     func testDocumentAlignmentPreservesRTLAndUnknownAttributesWithUndo() throws {
         let json = #"{"type":"doc","content":[{"type":"paragraph","attrs":{"bid":"p","dir":"rtl","future":{"keep":true}},"content":[{"type":"text","text":"عربي 👋"}]}]}"#
         let document = try RichTextDocument(json: Data(json.utf8))

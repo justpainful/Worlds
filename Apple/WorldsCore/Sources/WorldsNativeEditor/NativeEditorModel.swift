@@ -367,6 +367,23 @@ public final class NativeEditorModel: ObservableObject {
         guard before != document else { return }
         registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
     }
+    public func setParagraphStyle(_ style: String) throws {
+        guard supportsDocumentFormatting, recoverableNativeText == nil, !nativeEditPending, !saving,
+              selection.location != NSNotFound, selection.location >= 0, selection.length >= 0,
+              selection.location <= Int.max - selection.length else { throw NativeEditorError.unsupportedFormatting }
+        let hits = projection.spans.filter {
+            selection.length == 0 ? selection.location >= $0.range.location && selection.location <= NSMaxRange($0.range) : NSIntersectionRange($0.range, selection).length > 0
+        }
+        guard let first = hits.first else { throw NativeEditorError.unsupportedFormatting }
+        func blockPath(_ span: RichTextSpan) -> [Int] { span.range.length == 0 ? span.path.indices : Array(span.path.indices.dropLast()) }
+        let parent = blockPath(first)
+        guard !parent.isEmpty, hits.allSatisfy({ blockPath($0) == parent }),
+              selection.length == 0 || (selection.location >= first.range.location && NSMaxRange(selection) <= NSMaxRange(hits.last!.range)) else { throw NativeEditorError.unsupportedFormatting }
+        let before = document
+        do { try document.setParagraphStyle(at: RichTextPath(parent), style: style) } catch { throw NativeEditorError.unsupportedFormatting }
+        guard before != document else { return }
+        registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
+    }
     public func makeList(_ kind: String) throws {
         guard recoverableNativeText == nil, !nativeEditPending, !saving,
               selection.location != NSNotFound, selection.location >= 0, selection.length >= 0,

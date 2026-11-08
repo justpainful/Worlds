@@ -117,6 +117,7 @@ public actor PersonalEditorPersistence: EditorPersistence {
                         if value == .null { object.removeValue(forKey: "textAlign") }
                         else if case .string(let name) = value, ["left", "center", "right", "justify"].contains(name) { object.removeValue(forKey: "textAlign") }
                     }
+                    if documentFormatting, type == "paragraph", case .string(let value)? = object["pstyle"], ["normal", "title", "subtitle", "caption"].contains(value) { object.removeValue(forKey: "pstyle") }
                     if !object.isEmpty { append(.object(object), owner: owner, path: path, kind: "attrs:\(protectedType)") }
                 } else { append(attributes, owner: owner, path: path, kind: "attrs:\(protectedType)") }
             }

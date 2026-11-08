@@ -39,6 +39,7 @@ public struct RichTextSpan: Equatable, Sendable {
     public let direction: String?
     public let blockType: String?
     public let alignment: String?
+    public let paragraphStyle: String?
 }
 
 public struct RichTextProjection: Sendable {
@@ -67,7 +68,7 @@ public struct RichTextDocument: Sendable, Equatable {
     public func project() -> RichTextProjection {
         var text = ""
         var spans: [RichTextSpan] = []
-        projectNode(source, path: [], direction: nil, blockType: nil, alignment: nil, text: &text, spans: &spans)
+        projectNode(source, path: [], direction: nil, blockType: nil, alignment: nil, paragraphStyle: nil, text: &text, spans: &spans)
         return RichTextProjection(text: text, spans: spans)
     }
 
@@ -84,6 +85,11 @@ public struct RichTextDocument: Sendable, Equatable {
                 attrs = fields
             }
             if type == "paragraph", attrs["level"] != nil { throw RichTextError.invalidDocument }
+            // pstyle belongs to document paragraphs. Moving it across node
+            // types would change its persistence protection and semantics.
+            if attrs["pstyle"] != nil && ((type == "paragraph" && level != nil) || (type == "heading" && level == nil)) {
+                throw RichTextError.invalidDocument
+            }
             if type == "heading" {
                 guard case .integer(let oldLevel)? = attrs["level"], (1...3).contains(oldLevel) else { throw RichTextError.invalidDocument }
             }
@@ -111,6 +117,21 @@ public struct RichTextDocument: Sendable, Equatable {
             }
             if let alignment { attrs["textAlign"] = .string(alignment) } else { attrs["textAlign"] = .null }
             node["attrs"] = .object(attrs)
+        }
+    }
+    public mutating func setParagraphStyle(at path: RichTextPath, style: String) throws {
+        let allowed = ["normal", "title", "subtitle", "caption"]
+        guard allowed.contains(style) else { throw RichTextError.invalidDocument }
+        try updateNode(&source, path: ArraySlice(path.indices)) { node in
+            guard node["type"] == .string("paragraph") else { throw RichTextError.invalidDocument }
+            var attrs: [String: JSONValue] = [:]
+            if let raw = node["attrs"], raw != .null {
+                guard case .object(let fields) = raw else { throw RichTextError.invalidDocument }; attrs = fields
+            } else if node["attrs"] == .null { throw RichTextError.invalidDocument }
+            if let old = attrs["pstyle"] {
+                guard case .string(let value) = old, allowed.contains(value) else { throw RichTextError.invalidDocument }
+            }
+            attrs["pstyle"] = .string(style); node["attrs"] = .object(attrs)
         }
     }
 
@@ -631,14 +652,16 @@ private func updateNode(_ value: inout JSONValue, path: ArraySlice<Int>, update:
     value = .object(object)
 }
 
-private func projectNode(_ value: JSONValue, path: [Int], direction: String?, blockType: String?, alignment: String?, text: inout String, spans: inout [RichTextSpan]) {
+private func projectNode(_ value: JSONValue, path: [Int], direction: String?, blockType: String?, alignment: String?, paragraphStyle: String?, text: inout String, spans: inout [RichTextSpan]) {
     guard case .object(let node) = value, case .string(let type)? = node["type"] else { return }
     var currentDirection = direction
     var currentAlignment = alignment
+    var currentStyle = paragraphStyle
     if case .object(let attributes)? = node["attrs"] {
         if case .string(let dir)? = attributes["dir"] { currentDirection = dir }
         else if case .string(let dir)? = attributes["direction"] { currentDirection = dir }
         if (type == "paragraph" || type == "heading"), case .string(let value)? = attributes["textAlign"], ["left", "center", "right", "justify"].contains(value) { currentAlignment = value }
+        if type == "paragraph", case .string(let value)? = attributes["pstyle"], ["normal", "title", "subtitle", "caption"].contains(value) { currentStyle = value }
     }
     let currentBlock = ["paragraph", "heading", "codeBlock", "blockquote", "listItem", "tableCell", "tableHeader"].contains(type) ? type : blockType
     if type == "text", case .string(let content)? = node["text"] {
@@ -646,20 +669,20 @@ private func projectNode(_ value: JSONValue, path: [Int], direction: String?, bl
         text += content
         let marks: [JSONValue]
         if case .array(let values)? = node["marks"] { marks = values } else { marks = [] }
-        spans.append(RichTextSpan(path: RichTextPath(path), range: NSRange(location: start, length: content.utf16.count), marks: marks, direction: currentDirection, blockType: currentBlock, alignment: currentAlignment))
+        spans.append(RichTextSpan(path: RichTextPath(path), range: NSRange(location: start, length: content.utf16.count), marks: marks, direction: currentDirection, blockType: currentBlock, alignment: currentAlignment, paragraphStyle: currentStyle))
         return
     }
     if type == "hardBreak" { text += "\n"; return }
     if case .array(let children)? = node["content"] {
         if children.isEmpty && type == "paragraph" {
-            spans.append(RichTextSpan(path: RichTextPath(path), range: NSRange(location: text.utf16.count, length: 0), marks: [], direction: currentDirection, blockType: currentBlock, alignment: currentAlignment))
+            spans.append(RichTextSpan(path: RichTextPath(path), range: NSRange(location: text.utf16.count, length: 0), marks: [], direction: currentDirection, blockType: currentBlock, alignment: currentAlignment, paragraphStyle: currentStyle))
         }
         for (index, child) in children.enumerated() {
             if index > 0 {
                 if type == "tableRow" { text += "\t" }
                 else if ["doc", "bulletList", "orderedList", "taskList", "table", "listItem", "taskItem", "blockquote", "tableCell", "tableHeader"].contains(type) { text += "\n" }
             }
-            projectNode(child, path: path + [index], direction: currentDirection, blockType: currentBlock, alignment: currentAlignment, text: &text, spans: &spans)
+            projectNode(child, path: path + [index], direction: currentDirection, blockType: currentBlock, alignment: currentAlignment, paragraphStyle: currentStyle, text: &text, spans: &spans)
         }
     } else if !["doc", "paragraph", "heading", "table", "tableRow", "tableCell", "tableHeader"].contains(type) {
         // Embedded and unknown leaf nodes remain visible as an object placeholder.
@@ -696,13 +719,17 @@ extension RichTextDocument {
             var traits: UIFontDescriptor.SymbolicTraits = []
             if bold { traits.insert(.traitBold) }
             if italic { traits.insert(.traitItalic) }
-            let base = UIFont.preferredFont(forTextStyle: span.blockType == "heading" ? .headline : .body)
+            let style: UIFont.TextStyle
+            switch span.paragraphStyle { case "title": style = .title1; case "subtitle": style = .title2; case "caption": style = .caption1; default: style = span.blockType == "heading" ? .headline : .body }
+            let base = UIFont.preferredFont(forTextStyle: style)
             if let descriptor = base.fontDescriptor.withSymbolicTraits(traits) { attributes[.font] = UIFont(descriptor: descriptor, size: base.pointSize) }
             #elseif canImport(AppKit)
             var traits: NSFontTraitMask = []
             if bold || span.blockType == "heading" { traits.insert(.boldFontMask) }
             if italic { traits.insert(.italicFontMask) }
-            let base = NSFont.systemFont(ofSize: NSFont.systemFontSize)
+            let textStyle: NSFont.TextStyle
+            switch span.paragraphStyle { case "title": textStyle = .title1; case "subtitle": textStyle = .title2; case "caption": textStyle = .caption1; default: textStyle = span.blockType == "heading" ? .headline : .body }
+            let base = NSFont.preferredFont(forTextStyle: textStyle)
             attributes[.font] = NSFontManager.shared.convert(base, toHaveTrait: traits)
             #endif
             if span.direction == "rtl" || span.direction == "ltr" || span.alignment != nil {

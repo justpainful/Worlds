@@ -2,6 +2,23 @@
 import XCTest
 
 final class WorldsLocalPageEditorUITests: XCTestCase {
+    @MainActor func testDocumentTitleStyleSaveAndReopenRTL() {
+        let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-document-alignment", "--ui-testing-rtl"]; app.launch()
+        let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
+        XCTAssertTrue(page.waitForExistence(timeout: 30)); page.tap()
+        let edit = app.buttons["edit-local-page"]; XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
+        let editor = app.descendants(matching: .any)["native-editor-text"].firstMatch
+        XCTAssertTrue(editor.waitForExistence(timeout: 20)); editor.tap()
+        let menu = app.descendants(matching: .any)["editor-paragraph-style"].firstMatch
+        XCTAssertTrue(menu.waitForExistence(timeout: 20)); menu.tap()
+        let title = app.descendants(matching: .any).matching(identifier: "Title").firstMatch
+        XCTAssertTrue(title.waitForExistence(timeout: 10)); title.tap()
+        XCTAssertTrue(app.staticTexts["fixture-paragraph-title"].waitForExistence(timeout: 10))
+        app.buttons["Save"].tap(); XCTAssertTrue(app.staticTexts["local-page-saved"].waitForExistence(timeout: 20))
+        app.buttons["Close"].tap(); XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
+        XCTAssertTrue(app.staticTexts["fixture-paragraph-title"].waitForExistence(timeout: 20))
+        XCTAssertEqual(app.descendants(matching: .any)["native-editor-text"].firstMatch.value as? String, "نص عربي")
+    }
     @MainActor func testDocumentAlignmentSaveAndReopenRTL() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-document-alignment", "--ui-testing-rtl"]; app.launch()
         let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch

@@ -9,6 +9,35 @@ import WorldsLocalImport
 @testable import WorldsEditorPersistence
 
 final class EditorPersistenceTests: XCTestCase {
+    @MainActor func testDocumentParagraphStyleSaveReopenAndConflict() async throws {
+        let url = try fixture()
+        try exec(#"UPDATE pages SET kind='document' WHERE id='fixture-page'; UPDATE blocks SET content='{"type":"paragraph","attrs":{"bid":"fixture-block","dir":"rtl","future":{"keep":true}},"content":[{"type":"text","text":"عنوان"}]}' WHERE id='fixture-block'"#, url: url)
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let stale = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let model = NativeEditorModel(document: bridge.initialDocument, baseRevision: bridge.initialRevision, supportsDocumentFormatting: true)
+        try model.setParagraphStyle("title")
+        let expected = model.document.source
+        XCTAssertThrowsError(try model.setHeading(1))
+        XCTAssertEqual(model.document.source, expected)
+        try await model.save(using: bridge)
+        let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(reopened.initialDocument.source, expected)
+        XCTAssertEqual(reopened.initialDocument.project().spans.first?.paragraphStyle, "title")
+        do { _ = try await stale.save(documentJSON: try stale.initialDocument.json(), basedOn: stale.initialRevision); XCTFail("Expected conflict") }
+        catch NativeWriteError.conflict { } catch { XCTFail("Unexpected error: \(error)") }
+        let final = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(final.initialDocument.source, expected)
+    }
+    func testDocumentUnknownParagraphStyleRemainsProtected() async throws {
+        let url = try fixture()
+        try exec(#"UPDATE pages SET kind='document' WHERE id='fixture-page'; UPDATE blocks SET content='{"type":"paragraph","attrs":{"bid":"fixture-block","pstyle":"future"},"content":[{"type":"text","text":"Text"}]}' WHERE id='fixture-block'"#, url: url)
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let attack = #"{"type":"doc","content":[{"type":"paragraph","attrs":{"bid":"fixture-block","pstyle":"title"},"content":[{"type":"text","text":"Text"}]}]}"#
+        do { _ = try await bridge.save(documentJSON: Data(attack.utf8), basedOn: bridge.initialRevision); XCTFail("Expected protected style rejection") }
+        catch EditorBridgeError.invalidBlock { }
+        let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(reopened.initialDocument.source, bridge.initialDocument.source)
+    }
     @MainActor func testDocumentAlignmentRejectsKindChangeAtSameRevision() async throws {
         let url = try fixture()
         try exec(#"UPDATE pages SET kind='document' WHERE id='fixture-page'"#, url: url)
