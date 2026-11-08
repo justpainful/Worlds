@@ -103,6 +103,9 @@ private struct WorldsLibraryView: View {
     @State private var showCopyExplanation = false
     @State private var showLocalCopies = false
     @State private var editingProject: ProjectEditorRequest?
+    #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DRAWING && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+    @State private var creatingDrawing: LocalCreateDrawingRequest?
+    #endif
     #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_STREAM
     @State private var creatingStream: LocalCreateStreamRequest?
     #endif
@@ -224,6 +227,16 @@ private struct WorldsLibraryView: View {
                         Button("New presentation", systemImage: "rectangle.on.rectangle") {
                             creatingPresentation = LocalCreatePresentationRequest(copy: context.copy, databaseIdentity: source.identity, generation: databaseGeneration)
                         }.accessibilityIdentifier("new-local-presentation").disabled(databaseActionsDisabled)
+                    }
+                }
+                #endif
+                #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DRAWING && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+                if let context = copyContext, let source = openedVideoDatabase,
+                   source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
+                    ToolbarItem {
+                        Button("New drawing", systemImage: "pencil.tip.crop.circle") {
+                            creatingDrawing = LocalCreateDrawingRequest(copy: context.copy, databaseIdentity: source.identity, generation: databaseGeneration)
+                        }.accessibilityIdentifier("new-local-drawing").disabled(databaseActionsDisabled)
                     }
                 }
                 #endif
@@ -507,6 +520,13 @@ private struct WorldsLibraryView: View {
             }
         }
         #endif
+        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DRAWING && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+        .sheet(item: $creatingDrawing) { request in
+            LocalCreateDrawingView(request: request) { id in
+                await showCreatedDrawing(id, request: request)
+            }
+        }
+        #endif
         .sheet(item: $editingProject) { request in
             NavigationStack {
                 ProjectDraftView(projectID: request.id, repository: request.context.repository, candidates: request.candidates, allowsLinkEditing: projectLinkEditingEnabled) {
@@ -700,6 +720,9 @@ private struct WorldsLibraryView: View {
         #endif
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
         disabled = disabled || editingProject != nil
+        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DRAWING && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+        disabled = disabled || creatingDrawing != nil
+        #endif
         #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_STREAM
         disabled = disabled || creatingStream != nil
         #endif
@@ -1253,6 +1276,23 @@ private struct WorldsLibraryView: View {
                   let stream = object["stream"] as? [String: Any], let saved = stream["url"] as? String,
                   let savedFormat = stream["format"] as? String, savedFormat == format,
                   saved.utf8.elementsEqual(link.utf8) else { return false }
+            pages = snapshot.pages
+            returnStack.removeAll()
+            selectedID = id
+            return true
+        } catch { return false }
+    }
+    #endif
+    #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DRAWING && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+    @MainActor private func showCreatedDrawing(_ id: String, request: LocalCreateDrawingRequest) async -> Bool {
+        guard copyContext?.copy.id == request.copy.id, databaseGeneration == request.generation,
+              VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity else { return false }
+        do {
+            let database = try WorldsDatabase(url: request.copy.databaseURL)
+            let snapshot = try await database.snapshot()
+            guard copyContext?.copy.id == request.copy.id, databaseGeneration == request.generation,
+                  VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity,
+                  snapshot.pages.contains(where: { $0.id == id && $0.kind == "drawing" && $0.parentID == nil }) else { return false }
             pages = snapshot.pages
             returnStack.removeAll()
             selectedID = id
