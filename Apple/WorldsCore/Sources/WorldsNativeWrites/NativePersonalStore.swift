@@ -107,6 +107,10 @@ public actor NativePersonalStore {
         try await call(Request(operation: "create_project_idempotent", path: url.path, title: title, parent: parent, parentRevision: parentRevision, operationID: operationID.uuidString))
     }
 
+    public func createGalleryIdempotent(title: String, parent: String? = nil, parentRevision: Int64? = nil, operationID: UUID) async throws -> JSONValue {
+        try await call(Request(operation: "create_gallery_idempotent", path: url.path, title: title, parent: parent, parentRevision: parentRevision, operationID: operationID.uuidString))
+    }
+
     public func createPresentationIdempotent(title: String, parent: String? = nil, parentRevision: Int64? = nil, operationID: UUID) async throws -> JSONValue {
         try await call(Request(operation: "create_presentation_idempotent", path: url.path, title: title, parent: parent, parentRevision: parentRevision, operationID: operationID.uuidString))
     }

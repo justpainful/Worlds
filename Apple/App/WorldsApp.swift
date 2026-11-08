@@ -100,6 +100,9 @@ private struct WorldsLibraryView: View {
     @State private var showCopyExplanation = false
     @State private var showLocalCopies = false
     @State private var editingProject: ProjectEditorRequest?
+    #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_GALLERY
+    @State private var creatingGallery: LocalCreateGalleryRequest?
+    #endif
     #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PRESENTATION && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
     @State private var creatingPresentation: LocalCreatePresentationRequest?
     #endif
@@ -215,6 +218,16 @@ private struct WorldsLibraryView: View {
                         Button("New presentation", systemImage: "rectangle.on.rectangle") {
                             creatingPresentation = LocalCreatePresentationRequest(copy: context.copy, databaseIdentity: source.identity, generation: databaseGeneration)
                         }.accessibilityIdentifier("new-local-presentation").disabled(databaseActionsDisabled)
+                    }
+                }
+                #endif
+                #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_GALLERY
+                if let context = copyContext, let source = openedVideoDatabase,
+                   source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
+                    ToolbarItem {
+                        Button("New gallery", systemImage: "photo.on.rectangle") {
+                            creatingGallery = LocalCreateGalleryRequest(copy: context.copy, databaseIdentity: source.identity, generation: databaseGeneration)
+                        }.accessibilityIdentifier("new-local-gallery").disabled(databaseActionsDisabled)
                     }
                 }
                 #endif
@@ -464,6 +477,13 @@ private struct WorldsLibraryView: View {
             }
         }
         #endif
+        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_GALLERY
+        .sheet(item: $creatingGallery) { request in
+            LocalCreateGalleryView(request: request) { id in
+                await showCreatedGallery(id, request: request)
+            }
+        }
+        #endif
         .sheet(item: $editingProject) { request in
             NavigationStack {
                 ProjectDraftView(projectID: request.id, repository: request.context.repository, candidates: request.candidates, allowsLinkEditing: projectLinkEditingEnabled) {
@@ -657,6 +677,9 @@ private struct WorldsLibraryView: View {
         #endif
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
         disabled = disabled || editingProject != nil
+        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_GALLERY
+        disabled = disabled || creatingGallery != nil
+        #endif
         #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PRESENTATION && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
         disabled = disabled || creatingPresentation != nil
         #endif
@@ -1164,6 +1187,23 @@ private struct WorldsLibraryView: View {
                   VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity,
                   let presentation = snapshot.pages.first(where: { $0.id == id && $0.kind == "presentation" && $0.parentID == nil }),
                   presentation.blocks.contains(where: { $0.type == "slide" }) else { return false }
+            pages = snapshot.pages
+            returnStack.removeAll()
+            selectedID = id
+            return true
+        } catch { return false }
+    }
+    #endif
+    #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_GALLERY
+    @MainActor private func showCreatedGallery(_ id: String, request: LocalCreateGalleryRequest) async -> Bool {
+        guard copyContext?.copy.id == request.copy.id, databaseGeneration == request.generation,
+              VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity else { return false }
+        do {
+            let database = try WorldsDatabase(url: request.copy.databaseURL)
+            let snapshot = try await database.snapshot()
+            guard copyContext?.copy.id == request.copy.id, databaseGeneration == request.generation,
+                  VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity,
+                  snapshot.pages.contains(where: { $0.id == id && $0.kind == "gallery" && $0.parentID == nil }) else { return false }
             pages = snapshot.pages
             returnStack.removeAll()
             selectedID = id
