@@ -409,7 +409,7 @@ public final class NativeEditorModel: ObservableObject {
         catch { throw NativeEditorError.unsupportedFormatting }
         registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
     }
-    public func deleteSelectedLastTableRow() throws {
+    public func deleteSelectedTableRow() throws {
         guard supportsDocumentFormatting, selectionIsInRootTable, validSelectionBoundaries, recoverableNativeText == nil, !nativeEditPending, !saving,
               let span = projection.spans.first(where: { selection.location >= $0.range.location && selection.location <= NSMaxRange($0.range) }),
               span.path.indices.count >= 4 else { throw NativeEditorError.unsupportedFormatting }
@@ -419,7 +419,7 @@ public final class NativeEditorModel: ObservableObject {
         guard let remaining = projection.spans.last(where: { $0.path.indices.count >= 2 && $0.path.indices[0] == tableIndex && $0.path.indices[1] < rowIndex }) else {
             throw NativeEditorError.unsupportedFormatting
         }
-        do { try document.removeLastPlainTableRow(at: RichTextPath([tableIndex]), selectedRow: span.path.indices[1]) }
+        do { try document.removeSelectedPlainTableRow(at: RichTextPath([tableIndex]), selectedRow: span.path.indices[1]) }
         catch { throw NativeEditorError.unsupportedFormatting }
         let result = projection
         var position = min(NSMaxRange(remaining.range), result.text.utf16.count)
@@ -431,7 +431,7 @@ public final class NativeEditorModel: ObservableObject {
         selection = NSRange(location: position, length: 0)
         registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
     }
-    public func deleteSelectedLastTableColumn() throws {
+    public func deleteSelectedTableColumn() throws {
         guard supportsDocumentFormatting, selectionIsInRootTable, validSelectionBoundaries, recoverableNativeText == nil, !nativeEditPending, !saving,
               let span = projection.spans.first(where: { selection.location >= $0.range.location && selection.location <= NSMaxRange($0.range) }),
               span.path.indices.count >= 4 else { throw NativeEditorError.unsupportedFormatting }
@@ -440,7 +440,7 @@ public final class NativeEditorModel: ObservableObject {
             $0.path.indices.count >= 3 && $0.path.indices[0] == table && $0.path.indices[1] == row && $0.path.indices[2] == column - 1
         }) else { throw NativeEditorError.unsupportedFormatting }
         let before = document
-        do { try document.removeLastPlainTableColumn(at: RichTextPath([table]), selectedColumn: column) }
+        do { try document.removeSelectedPlainTableColumn(at: RichTextPath([table]), selectedColumn: column) }
         catch { throw NativeEditorError.unsupportedFormatting }
         let result = projection
         guard let target = result.spans.last(where: { $0.path.indices.count >= 3 && $0.path.indices[0] == table && $0.path.indices[1] == row && $0.path.indices[2] == column - 1 }) else {

@@ -93,11 +93,11 @@ public struct NativeEditorView: View {
                     Button("Add column at end") { do { try model.appendTableColumn() } catch { model.report(error) } }
                         .accessibilityIdentifier("editor-add-table-column")
                         .disabled(model.nativeEditPending || model.saving)
-                    Button("Delete selected last row", role: .destructive) {
+                    Button("Delete selected row", role: .destructive) {
                         tableDeleteSource = model.document.source; tableDeleteSelection = model.selection; confirmDeleteTableRow = true
                     }.accessibilityIdentifier("editor-delete-table-row")
                         .disabled(model.nativeEditPending || model.saving)
-                    Button("Delete selected last column", role: .destructive) {
+                    Button("Delete selected column", role: .destructive) {
                         tableDeleteSource = model.document.source; tableDeleteSelection = model.selection; confirmDeleteTableColumn = true
                     }.accessibilityIdentifier("editor-delete-table-column")
                         .disabled(model.nativeEditPending || model.saving)
@@ -145,7 +145,7 @@ public struct NativeEditorView: View {
             Button("Delete row", role: .destructive) {
                 defer { tableDeleteSource = nil }
                 guard tableDeleteSource == model.document.source, tableDeleteSelection == model.selection else { model.report(NativeEditorError.unsupportedFormatting); return }
-                do { try model.deleteSelectedLastTableRow() } catch { model.report(error) }
+                do { try model.deleteSelectedTableRow() } catch { model.report(error) }
             }.accessibilityIdentifier("editor-confirm-delete-table-row")
             Button("Cancel", role: .cancel) { tableDeleteSource = nil }
         } message: { Text("The contents of this row will be removed when you save. You can undo this change.") }
@@ -153,7 +153,7 @@ public struct NativeEditorView: View {
             Button("Delete column", role: .destructive) {
                 defer { tableDeleteSource = nil }
                 guard tableDeleteSource == model.document.source, tableDeleteSelection == model.selection else { model.report(NativeEditorError.unsupportedFormatting); return }
-                do { try model.deleteSelectedLastTableColumn() } catch { model.report(error) }
+                do { try model.deleteSelectedTableColumn() } catch { model.report(error) }
             }.accessibilityIdentifier("editor-confirm-delete-table-column")
             Button("Cancel", role: .cancel) { tableDeleteSource = nil }
         } message: { Text("The contents of this column will be removed when you save. You can undo this change.") }

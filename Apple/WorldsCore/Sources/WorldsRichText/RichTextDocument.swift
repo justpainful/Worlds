@@ -284,13 +284,14 @@ public struct RichTextDocument: Sendable, Equatable {
         }
     }
 
-    /// Removes only an explicitly chosen final row with fully understood data.
+    /// Removes a selected non-first row with fully understood data.
     /// Callers must obtain user confirmation before invoking this operation.
-    public mutating func removeLastPlainTableRow(at path: RichTextPath, selectedRow: Int) throws {
+    public mutating func removeSelectedPlainTableRow(at path: RichTextPath, selectedRow: Int) throws {
         guard path.indices.count == 1 else { throw RichTextError.invalidPath }
         try updateNode(&source, path: ArraySlice(path.indices)) { table in
             guard table["type"] == .string("table"), case .array(var rows)? = table["content"], rows.count > 1,
-                  rows.count <= 100, rows.indices.contains(selectedRow), selectedRow == rows.count - 1,
+                  rows.count <= 100, rows.indices.contains(selectedRow), selectedRow > 0,
+                  rows.dropFirst(selectedRow + 1).allSatisfy(movablePlainTableRow),
                   deletablePlainTableRow(rows[selectedRow]) else { throw RichTextError.invalidDocument }
             var width: Int?
             for value in rows {
@@ -308,13 +309,13 @@ public struct RichTextDocument: Sendable, Equatable {
                     } else if cell["attrs"] == .null { throw RichTextError.invalidDocument }
                 }
             }
-            rows.removeLast(); table["content"] = .array(rows)
+            rows.remove(at: selectedRow); table["content"] = .array(rows)
         }
     }
 
-    /// Removes the final column only after checking every removed cell.
+    /// Removes a selected non-first column after checking removed and shifted cells.
     /// The caller must obtain explicit confirmation first.
-    public mutating func removeLastPlainTableColumn(at path: RichTextPath, selectedColumn: Int) throws {
+    public mutating func removeSelectedPlainTableColumn(at path: RichTextPath, selectedColumn: Int) throws {
         guard path.indices.count == 1 else { throw RichTextError.invalidPath }
         try updateNode(&source, path: ArraySlice(path.indices)) { table in
             guard table["type"] == .string("table"), case .array(var rows)? = table["content"],
@@ -322,7 +323,8 @@ public struct RichTextDocument: Sendable, Equatable {
             var width: Int?
             for value in rows {
                 guard case .object(let row) = value, row["type"] == .string("tableRow"), case .array(let cells)? = row["content"],
-                      cells.count > 1, cells.count <= 32, cells.indices.contains(selectedColumn), selectedColumn == cells.count - 1,
+                      cells.count > 1, cells.count <= 32, cells.indices.contains(selectedColumn), selectedColumn > 0,
+                      cells.dropFirst(selectedColumn + 1).allSatisfy(movablePlainTableRow),
                       width == nil || width == cells.count, deletablePlainTableCell(cells[selectedColumn]) else { throw RichTextError.invalidDocument }
                 width = cells.count
                 for value in cells {
@@ -338,7 +340,7 @@ public struct RichTextDocument: Sendable, Equatable {
             }
             for index in rows.indices {
                 guard case .object(var row) = rows[index], case .array(var cells)? = row["content"] else { throw RichTextError.invalidDocument }
-                cells.removeLast(); row["content"] = .array(cells); rows[index] = .object(row)
+                cells.remove(at: selectedColumn); row["content"] = .array(cells); rows[index] = .object(row)
             }
             table["content"] = .array(rows)
         }

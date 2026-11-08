@@ -9,6 +9,42 @@ import WorldsLocalImport
 @testable import WorldsEditorPersistence
 
 final class EditorPersistenceTests: XCTestCase {
+    @MainActor func testDeleteMiddleTableRowSaveReopenAndConflict() async throws {
+        let url = try fixture()
+        try exec(#"UPDATE pages SET kind='document' WHERE id='fixture-page'; UPDATE blocks SET content='{"type":"table","attrs":{"bid":"fixture-block","future":"keep"},"content":[{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"أول"}]}]}]},{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"أخير"}]}]}]},{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"C"}]}]}]}]}' WHERE id='fixture-block'"#, url: url)
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let stale = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let model = NativeEditorModel(document: bridge.initialDocument, baseRevision: bridge.initialRevision, supportsDocumentFormatting: true)
+        model.selection = NSRange(location: (model.projection.text as NSString).range(of: "أخير").location, length: 0)
+        try model.deleteSelectedTableRow()
+        let expected = model.document.source
+        try await model.save(using: bridge)
+        let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(reopened.initialDocument.source, expected)
+        XCTAssertEqual(reopened.initialDocument.project().text, "أول\nC")
+        do { _ = try await stale.save(documentJSON: try stale.initialDocument.json(), basedOn: stale.initialRevision); XCTFail("Expected conflict") }
+        catch NativeWriteError.conflict { } catch { XCTFail("Unexpected error: \(error)") }
+        let final = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(final.initialDocument.source, expected)
+    }
+    @MainActor func testDeleteMiddleTableColumnSaveReopenAndConflict() async throws {
+        let url = try fixture()
+        try exec(#"UPDATE pages SET kind='document' WHERE id='fixture-page'; UPDATE blocks SET content='{"type":"table","attrs":{"bid":"fixture-block","future":"keep"},"content":[{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"أول"}]}]},{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"أخير"}]}]},{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"C"}]}]}]}]}' WHERE id='fixture-block'"#, url: url)
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let stale = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let model = NativeEditorModel(document: bridge.initialDocument, baseRevision: bridge.initialRevision, supportsDocumentFormatting: true)
+        model.selection = NSRange(location: (model.projection.text as NSString).range(of: "أخير").location, length: 0)
+        try model.deleteSelectedTableColumn()
+        let expected = model.document.source
+        try await model.save(using: bridge)
+        let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(reopened.initialDocument.source, expected)
+        XCTAssertEqual(reopened.initialDocument.project().text, "أول\nC")
+        do { _ = try await stale.save(documentJSON: try stale.initialDocument.json(), basedOn: stale.initialRevision); XCTFail("Expected conflict") }
+        catch NativeWriteError.conflict { } catch { XCTFail("Unexpected error: \(error)") }
+        let final = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(final.initialDocument.source, expected)
+    }
     @MainActor func testDeleteLastTableColumnSaveReopenAndConflict() async throws {
         let url = try fixture()
         try exec(#"UPDATE pages SET kind='document' WHERE id='fixture-page'; UPDATE blocks SET content='{"type":"table","attrs":{"bid":"fixture-block","future":"keep"},"content":[{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"أول"}]}]},{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"أخير"}]}]}]}]}' WHERE id='fixture-block'"#, url: url)
@@ -16,7 +52,7 @@ final class EditorPersistenceTests: XCTestCase {
         let stale = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
         let model = NativeEditorModel(document: bridge.initialDocument, baseRevision: bridge.initialRevision, supportsDocumentFormatting: true)
         model.selection = NSRange(location: model.projection.text.utf16.count, length: 0)
-        try model.deleteSelectedLastTableColumn()
+        try model.deleteSelectedTableColumn()
         let expected = model.document.source
         try await model.save(using: bridge)
         let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
@@ -34,7 +70,7 @@ final class EditorPersistenceTests: XCTestCase {
         let stale = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
         let model = NativeEditorModel(document: bridge.initialDocument, baseRevision: bridge.initialRevision, supportsDocumentFormatting: true)
         model.selection = NSRange(location: model.projection.text.utf16.count, length: 0)
-        try model.deleteSelectedLastTableRow()
+        try model.deleteSelectedTableRow()
         let expected = model.document.source
         try await model.save(using: bridge)
         let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
