@@ -103,6 +103,10 @@ private struct WorldsLibraryView: View {
     @State private var showCopyExplanation = false
     @State private var showLocalCopies = false
     @State private var editingProject: ProjectEditorRequest?
+    #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_DRAFT_FIXTURE
+    @State private var fixtureGalleryCopyID: UUID?
+    @State private var galleryDraftRequest: LocalGalleryDraftRequest?
+    #endif
     #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DRAWING && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
     @State private var creatingDrawing: LocalCreateDrawingRequest?
     #endif
@@ -379,6 +383,17 @@ private struct WorldsLibraryView: View {
                     }
                 }
                 #endif
+                #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_DRAFT_FIXTURE
+                if selectedID == "gallery-draft-fixture", let context = copyContext,
+                   context.copy.id == fixtureGalleryCopyID, let source = openedVideoDatabase,
+                   source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Edit fixture gallery", systemImage: "pencil") {
+                            galleryDraftRequest = LocalGalleryDraftRequest(copy: context.copy, identity: source.identity, generation: databaseGeneration)
+                        }.disabled(databaseActionsDisabled).accessibilityIdentifier("edit-fixture-gallery")
+                    }
+                }
+                #endif
                 #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_IMPORT
                 if let id = selectedID, let context = copyContext, pages.contains(where: { $0.id == id && $0.kind == "gallery" }) {
                     ToolbarItem(placement: .primaryAction) {
@@ -527,6 +542,11 @@ private struct WorldsLibraryView: View {
             }
         }
         #endif
+        #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_DRAFT_FIXTURE
+        .sheet(item: $galleryDraftRequest) { request in
+            LocalGalleryDraftView(request: request)
+        }
+        #endif
         .sheet(item: $editingProject) { request in
             NavigationStack {
                 ProjectDraftView(projectID: request.id, repository: request.context.repository, candidates: request.candidates, allowsLinkEditing: projectLinkEditingEnabled) {
@@ -609,7 +629,17 @@ private struct WorldsLibraryView: View {
                     let (importer, source) = try LocalCopyUITestFixture.make()
                     copyCoordinator = importer
                     let copy = try await importer.importCopy(from: source)
+                    #if WORLDS_EXPERIMENTAL_GALLERY_DRAFT_FIXTURE
+                    if ProcessInfo.processInfo.arguments.contains("--ui-testing-gallery-draft-fixture") {
+                        try LocalGalleryDraftFixture.install(in: copy)
+                    }
+                    #endif
                     await activateCopy(copy)
+                    #if WORLDS_EXPERIMENTAL_GALLERY_DRAFT_FIXTURE
+                    if ProcessInfo.processInfo.arguments.contains("--ui-testing-gallery-draft-fixture"), copyContext?.copy.id == copy.id {
+                        fixtureGalleryCopyID = copy.id
+                    }
+                    #endif
                     #if WORLDS_EXPERIMENTAL_LOCAL_HISTORY
                     if copyContext?.copy.id == copy.id { fixtureHistoryCopyID = copy.id }
                     #endif
@@ -720,6 +750,9 @@ private struct WorldsLibraryView: View {
         #endif
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
         disabled = disabled || editingProject != nil
+        #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_DRAFT_FIXTURE
+        disabled = disabled || galleryDraftRequest != nil
+        #endif
         #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DRAWING && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
         disabled = disabled || creatingDrawing != nil
         #endif

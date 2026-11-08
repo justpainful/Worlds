@@ -69,6 +69,8 @@ targets:
       - package: WorldsCore
         product: WorldsResourceRepositories
       - package: WorldsCore
+        product: WorldsGallery
+      - package: WorldsCore
         product: WorldsProjectEditingViews
     settings:
       base:
@@ -128,6 +130,8 @@ targets:
         product: WorldsLocalGalleryImport
       - package: WorldsCore
         product: WorldsResourceRepositories
+      - package: WorldsCore
+        product: WorldsGallery
       - package: WorldsCore
         product: WorldsProjectEditingViews
     settings:

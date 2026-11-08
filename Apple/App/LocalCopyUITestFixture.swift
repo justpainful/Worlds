@@ -27,6 +27,19 @@ enum LocalCopyUITestFixture {
             guard sqlite3_exec(database, chain, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
         }
         #endif
+        #if WORLDS_EXPERIMENTAL_GALLERY_DRAFT_FIXTURE
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing-gallery-draft-fixture") {
+            let gallery = #"""
+            INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('gallery-draft-fixture','Gallery fixture','gallery','{"gallery":{"view":"grid"},"future":{"keep":true}}',1,100);
+            INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('asset-a','gallery-draft-fixture','image','First.png','image/png',162,'First.png',1),('asset-b','gallery-draft-fixture','image','Second.png','image/png',159,'Second.png',1);
+            INSERT INTO blocks(id,page_id,type,sort_key,content,created_at,updated_at) VALUES
+            ('gallery-a','gallery-draft-fixture','galleryItem',1,'{"type":"galleryItem","attrs":{"bid":"gallery-a","attachmentId":"asset-a","name":"First.png","mime":"image/png","size":162,"kind":"image","caption":"","future":true}}',1,1),
+            ('gallery-opaque','gallery-draft-fixture','future',2,'{"type":"future","attrs":{"bid":"gallery-opaque","keep":true}}',1,1),
+            ('gallery-b','gallery-draft-fixture','galleryItem',3,'{"type":"galleryItem","attrs":{"bid":"gallery-b","attachmentId":"asset-b","name":"Second.png","mime":"image/png","size":159,"kind":"image","caption":""}}',1,1);
+            """#
+            guard sqlite3_exec(database, gallery, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+        }
+        #endif
         #if WORLDS_EXPERIMENTAL_PERSONAL_TABS
         if ProcessInfo.processInfo.arguments.contains("--ui-testing-tabs-links") {
             let links = #"UPDATE pages SET metadata='{"project":{"status":"active","description":"Original fixture","links":["fixture-page"]},"unknown":{"preserve":true}}' WHERE id='harness-project';"#
