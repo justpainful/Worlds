@@ -126,6 +126,7 @@ jobs:
           grep -E 'testRejectsAmbiguousAuthenticatedPaths.*passed' logs/swift-test.log
           grep -q 'testReadOpaqueRoundTripAndRejectShared' logs/swift-test.log
           grep -E 'testLegacyAndMalformedSyncMetadataAreFilteredConsistently.*passed' logs/swift-test.log
+          grep -E 'testInlineImageRequiresPersonalPageOwnershipAndUnambiguousReference.*passed' logs/swift-test.log
           grep -E 'testSnapshotRetainsArchivedState.*passed' logs/swift-test.log
           grep -E 'testAmbiguousSyncMetadataCannotLeakFTSOrParentTitle.*passed' logs/swift-test.log
           grep -E 'testUnexpectedToolIsRecordedAsErrorWithoutPermission.*passed' logs/swift-test.log
