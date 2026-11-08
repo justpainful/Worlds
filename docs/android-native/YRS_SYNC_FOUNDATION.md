@@ -1,7 +1,9 @@
 # Android Yrs sync foundation
 
-Android can append a text paragraph to a shared page after confirmed edit
-access. The new block uses the desktop Yjs XML fragment and a unique block id.
+Android can create a paragraph or a level 1, 2 or 3 heading in a shared page
+after confirmed edit access, at the end or after a specific existing block. The
+new block uses the desktop Yjs XML fragment and a unique block id. Insertion
+after a block requires the original Yjs anchor identity to remain present.
 The update and recovery text are journaled before sending; an offline edit uses
 the last confirmed permission and is rechecked when synchronization resumes.
 Revocation retains unsent text in recovery. Concurrent appends were checked for

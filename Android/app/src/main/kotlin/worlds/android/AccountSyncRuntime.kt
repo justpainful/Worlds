@@ -35,6 +35,7 @@ internal class AccountSyncRuntime(
     private val offlinePrincipal: (String) -> SyncPrincipal = { server -> credentials(server).let { SyncPrincipal(it.authority, it.userId, it.deviceId) } },
     private val offlineEdit: (SyncDocumentKey, ByteArray, String, Int, Int, String, String) -> ByteArray = { _, _, _, _, _, _, _ -> error("Offline editing is unavailable") },
     private val offlineAppend: (SyncDocumentKey, String, String) -> ByteArray = { _, _, _ -> error("Offline editing is unavailable") },
+    private val offlineInsert: (SyncDocumentKey, ByteArray, String, String, String, Int, String?) -> ByteArray = { _, _, _, _, _, _, _ -> error("Offline editing is unavailable") },
     private val recoveredText: (SyncDocumentKey) -> List<RecoveredText> = { emptyList() },
     private val deleteRecoveredText: (SyncDocumentKey, Long) -> Boolean = { _, _ -> false },
     private val saveRecoveredText: (SyncDocumentKey, DraftCapture) -> Unit = { _, _ -> error("Recovery is unavailable") },
@@ -165,6 +166,16 @@ internal class AccountSyncRuntime(
         offlineAppend(key, bid, text)
     }
 
+    fun insertOffline(principal: SyncPrincipal, workspace: String, page: String, base: ByteArray, bid: String, text: String, kind: String, level: Int, after: String?, isValid: () -> Boolean = { true }): ByteArray = synchronized(lock) {
+        check(!changingAccount && isValid())
+        require(offlinePrincipal(principal.authority) == principal) { "Account or device changed" }
+        val key = SyncDocumentKey(principal.userId, workspace, page, SyncWire.CONTENT, principal.authority)
+        require(access[key] in setOf("edit", "full")) { "No confirmed edit access" }
+        if (sessions.values.any { it == key }) throw SessionActive()
+        check(isValid())
+        offlineInsert(key, base, bid, text, kind, level, after)
+    }
+
     fun recovered(principal: SyncPrincipal, workspace: String, page: String): List<RecoveredText> = synchronized(lock) {
         check(!changingAccount)
         require(offlinePrincipal(principal.authority) == principal) { "Account or device changed" }
@@ -293,6 +304,7 @@ internal object WorldsAccountSync {
                 },
                 offlineEdit = { key, base, bid, start, end, text, draft -> OfflineEditor.replaceBlockText(store, key, base, bid, start, end, text, draft) },
                 offlineAppend = { key, bid, text -> OfflineEditor.appendParagraph(store, key, bid, text) },
+                offlineInsert = { key, base, bid, text, kind, level, after -> OfflineEditor.insertTextBlock(store, key, base, bid, text, kind, level, after) },
                 recoveredText = { key -> store.recovered(key) },
                 deleteRecoveredText = { key, id -> store.deleteRecovered(key, id) },
                 saveRecoveredText = { key, draft -> store.saveRecoveredText(key, draft) },

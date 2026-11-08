@@ -32,9 +32,14 @@ object YrsNative {
     internal fun blockIdentity(snapshot: ByteArray, blockId: String): ByteArray = blockIdentityBytes(snapshot, blockId.toByteArray(Charsets.UTF_8))
 
     fun appendParagraph(snapshot: ByteArray, blockId: String, text: String): ByteArray {
+        return insertTextBlock(snapshot, blockId, text, "paragraph", 1, null)
+    }
+
+    fun insertTextBlock(snapshot: ByteArray, blockId: String, text: String, kind: String, level: Int, after: String?): ByteArray {
         require(blockId.isNotBlank() && blockId.length <= 128 && text.isNotEmpty() && text.toByteArray(Charsets.UTF_8).size <= 1_000_000)
+        require(kind in setOf("paragraph", "heading") && level in 1..3 && (after == null || after.isNotBlank() && after.length <= 128))
         validateText(text)
-        val request = JSONObject().put("bid", blockId).put("text", text)
+        val request = JSONObject().put("bid", blockId).put("text", text).put("kind", kind).put("level", level).put("after", after ?: JSONObject.NULL)
         return appendParagraphBytes(snapshot, request.toString().toByteArray(Charsets.UTF_8))
     }
 

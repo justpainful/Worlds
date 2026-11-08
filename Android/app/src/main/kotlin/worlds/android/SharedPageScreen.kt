@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -67,7 +68,8 @@ internal data class SharedBlock(val id: String?, val raw: String, val text: Stri
 internal data class NotificationTarget(val workspace: String, val page: String, val endpoint: String, val thread: String, val comment: String)
 internal data class ConversationMessage(val id: String, val author: String, val body: String, val createdAt: Long, val deleted: Boolean, val editedAt: Long)
 internal data class ConversationThread(val id: String, val quote: String, val resolved: Boolean, val createdAt: Long, val comments: List<ConversationMessage>)
-internal data class SharedDraft(val block: SharedBlock, val base: ByteArray, val text: String, val isNew: Boolean = false)
+internal data class SharedDraft(val block: SharedBlock, val base: ByteArray, val text: String, val isNew: Boolean = false,
+    val kind: String = "paragraph", val level: Int = 1, val after: String? = null)
 internal enum class EndpointProblem { DIFFERENT_SERVER, UNKNOWN_ORIGIN }
 internal data class SharedPageState(val opening: Boolean = false, val access: String? = null, val blocks: List<SharedBlock> = emptyList(),
     val snapshot: ByteArray? = null, val disconnected: Boolean = false, val revoked: Boolean = false, val error: Boolean = false,
@@ -494,14 +496,16 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
         draftToken = UUID.randomUUID().toString()
         mutable.update { it.copy(draft = SharedDraft(block, state.snapshot.copyOf(), block.text.orEmpty()), error = false, draftBackupFailed = false) }
     }
-    fun addParagraph() {
+    fun addTextBlock(kind: String, after: String? = null) {
         val state = mutable.value
         if (state.draft != null || currentPrincipal == null || state.historySaving || state.disconnected || state.access !in setOf("edit", "full") || state.snapshot == null) return
+        if (kind !in setOf("paragraph", "heading") || (after != null && state.blocks.count { it.id == after } != 1)) return
         val id = UUID.randomUUID().toString().replace("-", "").take(26)
         draftToken = UUID.randomUUID().toString()
         val block = SharedBlock(id, "", "", true)
-        mutable.update { it.copy(draft = SharedDraft(block, state.snapshot.copyOf(), "", isNew = true), error = false, draftBackupFailed = false) }
+        mutable.update { it.copy(draft = SharedDraft(block, state.snapshot.copyOf(), "", isNew = true, kind = kind, after = after), error = false, draftBackupFailed = false) }
     }
+    fun setHeadingLevel(level: Int) { if (level in 1..3) mutable.update { state -> state.copy(draft = state.draft?.let { if (it.isNew && it.kind == "heading") it.copy(level = level) else it }) } }
     fun updateDraft(text: String) {
         val draft = mutable.value.draft ?: return
         val principal = currentPrincipal ?: return
@@ -563,13 +567,14 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
                         }
                         if (!closed.get()) mutable.update { it.copy(saving = false, draft = if (saved) null else it.draft, error = !saved) }
                     }
-                    if (draft.isNew) active.appendParagraph(requireNotNull(draft.block.id), next, completion)
+                    if (draft.isNew) active.insertTextBlock(draft.base, requireNotNull(draft.block.id), next, draft.kind, draft.level, draft.after, completion)
                     else active.replaceBlockText(draft.base, requireNotNull(draft.block.id), start, oldEnd, inserted, next, completion)
                     break
                 }
                 if (!current.offline) { delay(50); continue }
                 try {
-                    val updated = if (draft.isNew) runtime.appendOffline(requireNotNull(currentPrincipal), workspace, currentPage, requireNotNull(draft.block.id), next) { !closed.get() }
+                    val updated = if (draft.isNew && draft.kind == "paragraph" && draft.after == null) runtime.appendOffline(requireNotNull(currentPrincipal), workspace, currentPage, requireNotNull(draft.block.id), next) { !closed.get() }
+                    else if (draft.isNew) runtime.insertOffline(requireNotNull(currentPrincipal), workspace, currentPage, draft.base, requireNotNull(draft.block.id), next, draft.kind, draft.level, draft.after) { !closed.get() }
                     else runtime.editOffline(requireNotNull(currentPrincipal), workspace, currentPage, draft.base, requireNotNull(draft.block.id), start, oldEnd, inserted, next) { !closed.get() }
                     acceptSnapshot(updated)
                     currentPrincipal?.let { principal -> scheduleOutbox(principal, currentServer, currentPage) }
@@ -590,6 +595,7 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
     internal fun awaitDraftBackups(timeoutMillis: Long = 5_000): Boolean = draftExecutor.awaitTermination(timeoutMillis, TimeUnit.MILLISECONDS)
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable internal fun SharedPageScreen(identity: String, workspace: Workspace, onBack: () -> Unit, controllerOverride: SharedPageController? = null, initialServer: String = "", initialPage: String = "", initialThread: String? = null, initialComment: String? = null, onOpenNotification: ((NotificationTarget) -> Unit)? = null) {
     val app = LocalContext.current.applicationContext
     val controller = remember(identity, workspace.id, controllerOverride) { controllerOverride ?: SharedPageController(WorldsAccountSync.get(app), identity, workspace.id) }
@@ -806,9 +812,14 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
         }
     }
     state.draft?.let { draft ->
-        AlertDialog(onDismissRequest = ::dismissDraft, title = { Text(stringResource(if (draft.isNew) R.string.add_paragraph else R.string.edit_text)) },
+        AlertDialog(onDismissRequest = ::dismissDraft, title = { Text(stringResource(if (!draft.isNew) R.string.edit_text else if (draft.kind == "heading") R.string.add_heading else R.string.add_paragraph)) },
             text = { Column { val editorSettings = LocalAppearancePreferences.current
-                OutlinedTextField(value = draft.text, onValueChange = controller::updateDraft, enabled = !state.saving, modifier = Modifier.fillMaxWidth().testTag("shared_draft"), minLines = 3,
+                if (draft.isNew && draft.kind == "heading") FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    (1..3).forEach { level -> FilterChip(selected = draft.level == level, enabled = !state.saving,
+                        onClick = { controller.setHeadingLevel(level) }, label = { Text(stringResource(R.string.heading_level, level)) },
+                        modifier = Modifier.testTag("shared_heading_level_$level")) }
+                }
+                OutlinedTextField(value = draft.text, onValueChange = controller::updateDraft, enabled = !state.saving, label = { Text(stringResource(R.string.text_content)) }, modifier = Modifier.fillMaxWidth().testTag("shared_draft"), minLines = 3,
                     textStyle = LocalTextStyle.current.copy(textDirection = editorDirection(editorSettings.direction)), keyboardOptions = editorKeyboardOptions(editorSettings.suggestions))
                 if (state.error) Text(stringResource(R.string.shared_edit_error), color = MaterialTheme.colorScheme.error)
                 if (state.draftBackupFailed) Text(stringResource(R.string.shared_draft_backup_error), color = MaterialTheme.colorScheme.error) } },
@@ -864,6 +875,7 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
                     WorldsActionLabel(R.drawable.ic_history, stringResource(R.string.shared_history_title))
                 }
                 Spacer(Modifier.height(12.dp))
+                val blockIdCounts = remember(state.blocks) { state.blocks.mapNotNull { it.id }.groupingBy { it }.eachCount() }
                 state.blocks.forEach { block ->
                     val preview = remember(block.raw) { runCatching { previewBlock(block.raw) }.getOrNull() }
                     val editable = block.canEdit && state.access in setOf("edit", "full")
@@ -873,12 +885,27 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
                             else Text(preview.text, style = if (preview.headingLevel != null) MaterialTheme.typography.titleLarge else MaterialTheme.typography.bodyLarge)
                         }
                         if (editable) WorldsGlyph(R.drawable.ic_pencil)
+                        if (state.access in setOf("edit", "full") && !state.disconnected && block.id != null && blockIdCounts[block.id] == 1) {
+                            var menu by remember(block.id) { mutableStateOf(false) }
+                            Box {
+                                IconButton(onClick = { menu = true }, modifier = Modifier.testTag("shared_block_actions_${block.id}")) {
+                                    Icon(painterResource(R.drawable.ic_ellipsis_vertical), contentDescription = stringResource(R.string.block_actions), modifier = Modifier.size(20.dp))
+                                }
+                                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                                    DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_plus) }, text = { Text(stringResource(R.string.insert_paragraph_after)) }, onClick = { menu = false; controller.addTextBlock("paragraph", block.id) })
+                                    DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_heading_1) }, text = { Text(stringResource(R.string.insert_heading_after)) }, onClick = { menu = false; controller.addTextBlock("heading", block.id) })
+                                }
+                            }
+                        }
                     }
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
                 if (state.access in setOf("edit", "full") && !state.disconnected && state.snapshot != null) {
-                    TextButton(enabled = !state.saving && !state.historySaving, onClick = controller::addParagraph, modifier = Modifier.testTag("shared_add_paragraph")) {
+                    TextButton(enabled = !state.saving && !state.historySaving, onClick = { controller.addTextBlock("paragraph") }, modifier = Modifier.testTag("shared_add_paragraph")) {
                         WorldsActionLabel(R.drawable.ic_plus, stringResource(R.string.add_paragraph))
+                    }
+                    TextButton(enabled = !state.saving && !state.historySaving, onClick = { controller.addTextBlock("heading") }, modifier = Modifier.testTag("shared_add_heading")) {
+                        WorldsActionLabel(R.drawable.ic_heading_1, stringResource(R.string.add_heading))
                     }
                 }
             }

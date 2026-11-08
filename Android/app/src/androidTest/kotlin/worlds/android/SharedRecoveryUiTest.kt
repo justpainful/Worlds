@@ -78,6 +78,26 @@ class SharedRecoveryUiTest {
             assertEquals("paragraph", paragraph.getString("type"))
             assertEquals("Shared paragraph مرحبا", paragraph.getJSONArray("content").getJSONObject(0).getString("text"))
             assertTrue(paragraph.getJSONObject("attrs").getString("bid").isNotBlank())
+            val firstId = paragraph.getJSONObject("attrs").getString("bid")
+            compose.onNodeWithTag("shared_block_actions_$firstId").performScrollTo().performClick()
+            compose.onNodeWithText(app.getString(R.string.insert_heading_after)).performClick()
+            if (InstrumentationRegistry.getArguments().getString("captureUi") == "1") {
+                compose.waitForIdle(); Thread.sleep(300)
+                android.os.ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /sdcard/Download/worlds-shared-heading-editor.png")).use { it.readBytes() }
+            }
+            compose.onNodeWithTag("shared_heading_level_2").performClick()
+            compose.onNodeWithTag("shared_draft").performTextInput("Shared heading")
+            compose.onNodeWithText(app.getString(R.string.save)).performClick()
+            compose.waitUntil(20_000) { controller.state.value.draft == null && controller.state.value.blocks.size == 2 && store.pending(key).isEmpty() }
+            val blocks = org.json.JSONObject(YrsNative.editorJson(remote.get())).getJSONArray("content")
+            assertEquals(firstId, blocks.getJSONObject(0).getJSONObject("attrs").getString("bid"))
+            assertEquals("heading", blocks.getJSONObject(1).getString("type"))
+            assertEquals(2, blocks.getJSONObject(1).getJSONObject("attrs").getInt("level"))
+            assertEquals("Shared heading", blocks.getJSONObject(1).getJSONArray("content").getJSONObject(0).getString("text"))
+            if (InstrumentationRegistry.getArguments().getString("captureUi") == "1") {
+                compose.waitForIdle(); Thread.sleep(300)
+                android.os.ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /sdcard/Download/worlds-shared-heading.png")).use { it.readBytes() }
+            }
         } finally {
             controller.close(); assertTrue(controller.awaitDraftBackups()); runtime.accountChange { }
             store.close(); app.deleteDatabase(name)
@@ -100,6 +120,7 @@ class SharedRecoveryUiTest {
             cachedPages = { server, account, device -> store.cachedPages(server, account, device) },
             loadCached = { doc -> store.load(doc).let { replica -> replica.updates.fold(replica.snapshot ?: byteArrayOf()) { state, update -> YrsNative.merge(state, update.bytes) } } },
             offlineAppend = { doc, bid, text -> OfflineEditor.appendParagraph(store, doc, bid, text) },
+            offlineInsert = { doc, base, bid, text, kind, level, after -> OfflineEditor.insertTextBlock(store, doc, base, bid, text, kind, level, after) },
             recoveredText = { store.recovered(it) },
             writeWorkingDraft = { doc, token, draft -> store.saveWorkingDraft(doc, token, draft) },
             removeWorkingDraft = { doc, token -> store.discardWorkingDraft(doc, token); Unit },
@@ -114,8 +135,16 @@ class SharedRecoveryUiTest {
             compose.onNodeWithTag("shared_draft").performTextInput("Offline draft")
             compose.onNodeWithText(app.getString(R.string.save)).performClick()
             compose.waitUntil(20_000) { controller.state.value.draft == null && controller.state.value.blocks.any { it.text == "Offline draft" } && store.pending(key).size == 1 }
+            compose.onNodeWithTag("shared_block_actions_existing").performScrollTo().performClick()
+            compose.onNodeWithText(app.getString(R.string.insert_heading_after)).performClick()
+            compose.onNodeWithTag("shared_heading_level_3").performClick()
+            compose.onNodeWithTag("shared_draft").performTextInput("Offline heading")
+            compose.onNodeWithText(app.getString(R.string.save)).performClick()
+            compose.waitUntil(20_000) { controller.state.value.draft == null && controller.state.value.blocks.size == 3 && store.pending(key).size == 2 }
+            assertEquals(listOf("Existing", "Offline heading", "Offline draft"), controller.state.value.blocks.map { it.text })
             store.purgeRevokedPage(key)
             assertTrue(store.recovered(key).any { it.text == "Offline draft" })
+            assertTrue(store.recovered(key).any { it.text == "Offline heading" })
         } finally {
             controller.close(); assertTrue(controller.awaitDraftBackups()); runtime.accountChange { }
             store.close(); app.deleteDatabase(name)

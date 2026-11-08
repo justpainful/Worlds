@@ -141,6 +141,23 @@ mod tests {
         assert!(editor_append_paragraph(&ab, br#"{"bid":"alpha","text":"duplicate"}"#).is_err());
         assert!(editor_append_paragraph(&ab, br#"{"bid":"other","text":""}"#).is_err());
     }
+
+    #[test]
+    fn inserts_heading_after_anchor_without_rewriting_other_blocks() {
+        let first = editor_append_paragraph(&[], br#"{"bid":"first","text":"First"}"#).unwrap();
+        let base = merge(&[], &first).unwrap();
+        let last = editor_append_paragraph(&base, br#"{"bid":"last","text":"Last"}"#).unwrap();
+        let base = merge(&base, &last).unwrap();
+        let added = editor_append_paragraph(&base, br#"{"bid":"heading","kind":"heading","level":2,"after":"first","text":"Title"}"#).unwrap();
+        let merged = merge(&base, &added).unwrap();
+        let result: serde_json::Value = serde_json::from_slice(&editor_read(&merged).unwrap()).unwrap();
+        let blocks = result["content"].as_array().unwrap();
+        assert_eq!(blocks.iter().map(|b| b["attrs"]["bid"].as_str().unwrap()).collect::<Vec<_>>(), vec!["first", "heading", "last"]);
+        assert_eq!(blocks[1]["type"], "heading");
+        assert_eq!(blocks[1]["attrs"]["level"], 2);
+        assert!(editor_append_paragraph(&base, br#"{"bid":"x","kind":"heading","level":4,"text":"Bad"}"#).is_err());
+        assert!(editor_append_paragraph(&base, br#"{"bid":"x","after":"gone","text":"Bad"}"#).is_err());
+    }
 }
 
 #[no_mangle]

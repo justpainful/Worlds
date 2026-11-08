@@ -71,6 +71,10 @@ Editors can add a paragraph using a labeled plus action below the shared page's
 blocks. It opens the existing shared text editor and follows the same offline,
 draft backup, access and retry states as editing a paragraph. Empty drafts do
 not create blocks. A queued paragraph is visible locally while it awaits sync.
+Editors can also add a heading with level 1, 2 or 3, or insert either type
+after an existing shared block using its icon-led action menu. The same editor,
+warm accent, permission checks and draft recovery apply. The anchor must still
+be the same block when saving; otherwise the draft stays open with an error.
 
 The workspace row opens a compact page connection screen. The owner provides the
 HTTPS sync address and page ID because the current service has no public page

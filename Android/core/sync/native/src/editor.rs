@@ -71,24 +71,42 @@ pub fn read(snapshot: &[u8]) -> Result<Vec<u8>, String> {
     serde_json::to_vec(&json!({"type": "doc", "content": blocks})).map_err(|e| e.to_string())
 }
 
-/// Append a top-level paragraph using the same XML and block-id shape as Worlds.
+/// Insert a supported top-level text block using the Worlds XML shape.
 pub fn append_paragraph(snapshot: &[u8], request: &[u8]) -> Result<Vec<u8>, String> {
     let input: Value = serde_json::from_slice(request).map_err(|e| e.to_string())?;
     let bid = input["bid"].as_str().filter(|s| !s.is_empty() && s.len() <= 128).ok_or("Invalid block id")?;
     let text = input["text"].as_str().filter(|s| !s.is_empty() && s.len() <= 1_000_000).ok_or("Invalid text")?;
+    let kind = input.get("kind").and_then(Value::as_str).unwrap_or("paragraph");
+    if !matches!(kind, "paragraph" | "heading") { return Err("Unsupported block type".into()); }
+    let level = if kind == "heading" {
+        Some(input.get("level").and_then(Value::as_u64).filter(|v| (1..=3).contains(v)).ok_or("Invalid heading level")?)
+    } else { None };
+    let after = match input.get("after") {
+        None | Some(Value::Null) => None,
+        Some(Value::String(value)) if !value.is_empty() && value.len() <= 128 => Some(value.as_str()),
+        _ => return Err("Invalid anchor".into()),
+    };
     let doc = super::load(snapshot)?;
     let fragment = doc.get_or_insert_xml_fragment("default");
     let vector = doc.transact().state_vector();
     let mut txn = doc.transact_mut();
-    for child in fragment.children(&txn) {
+    let mut anchor_index = None;
+    for (index, child) in fragment.children(&txn).enumerate() {
         if let XmlOut::Element(element) = child {
-            if matches!(element.get_attribute(&txn, "bid"), Some(Out::Any(yrs::Any::String(id))) if id.as_ref() == bid) {
-                return Err("Duplicate block id".into());
+            if let Some(Out::Any(yrs::Any::String(id))) = element.get_attribute(&txn, "bid") {
+                if id.as_ref() == bid { return Err("Duplicate block id".into()); }
+                if Some(id.as_ref()) == after {
+                    if anchor_index.is_some() { return Err("Duplicate anchor id".into()); }
+                    anchor_index = Some(index as u32);
+                }
             }
         }
     }
-    let element = fragment.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+    if after.is_some() && anchor_index.is_none() { return Err("Missing anchor".into()); }
+    let index = anchor_index.map(|i| i + 1).unwrap_or_else(|| fragment.len(&txn));
+    let element = fragment.insert(&mut txn, index, XmlElementPrelim::empty(kind));
     element.insert_attribute(&mut txn, "bid", bid);
+    if let Some(level) = level { element.insert_attribute(&mut txn, "level", level as i64); }
     element.push_back(&mut txn, XmlTextPrelim::new(text));
     drop(txn);
     let update = doc.transact().encode_state_as_update_v1(&vector);

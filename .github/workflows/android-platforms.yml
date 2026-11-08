@@ -154,4 +154,6 @@ jobs:
             docs/android-native/screenshots/workspace-keyboard.png
             docs/android-native/screenshots/avif-page.png
             docs/android-native/screenshots/shared-append.png
+            docs/android-native/screenshots/shared-heading.png
+            docs/android-native/screenshots/shared-heading-editor.png
           if-no-files-found: error

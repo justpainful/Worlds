@@ -64,6 +64,7 @@ class SharedPageLiveTest {
             },
             offlineEdit = { doc, base, bid, start, end, text, draft -> OfflineEditor.replaceBlockText(store, doc, base, bid, start, end, text, draft) },
             offlineAppend = { doc, bid, text -> OfflineEditor.appendParagraph(store, doc, bid, text) },
+            offlineInsert = { doc, base, bid, text, kind, level, after -> OfflineEditor.insertTextBlock(store, doc, base, bid, text, kind, level, after) },
             recoveredText = { store.recovered(it) },
             deleteRecoveredText = { doc, id -> store.deleteRecovered(doc, id) },
             saveRecoveredText = { doc, draft -> store.saveRecoveredText(doc, draft) },
@@ -139,6 +140,18 @@ class SharedPageLiveTest {
                     val block = blocks.getJSONObject(index)
                     block.optString("type") == "paragraph" && block.optJSONArray("content")?.optJSONObject(0)?.optString("text") == "New shared paragraph"
                 } && store.pending(key).isEmpty()
+            }
+            compose.onNodeWithTag("shared_block_actions_block1").performScrollTo().performClick()
+            compose.onNodeWithText(app.getString(R.string.insert_heading_after)).performClick()
+            compose.onNodeWithTag("shared_heading_level_2").performClick()
+            compose.onNodeWithTag("shared_draft").performTextInput("Heading from Android")
+            compose.onNodeWithText(app.getString(R.string.save)).performClick()
+            compose.waitUntil(30_000) {
+                val state = remote.get() ?: return@waitUntil false
+                val blocks = runCatching { JSONObject(YrsNative.editorJson(state)).getJSONArray("content") }.getOrNull() ?: return@waitUntil false
+                blocks.length() >= 2 && blocks.getJSONObject(1).optString("type") == "heading" &&
+                    blocks.getJSONObject(1).getJSONObject("attrs").optInt("level") == 2 &&
+                    blocks.getJSONObject(1).getJSONArray("content").getJSONObject(0).optString("text") == "Heading from Android" && store.pending(key).isEmpty()
             }
             compose.onNodeWithTag("shared_history").performClick()
             compose.waitUntil(20_000) { controller.state.value.historyVisible && !controller.state.value.historyLoading }

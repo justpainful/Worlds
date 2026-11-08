@@ -51,6 +51,20 @@ class SyncSessionTest {
         session.close(); event("closed:null")
     }
 
+    @Test fun offlineInsertRejectsAnAnchorReplacedWithTheSameId() {
+        val base = YrsNative.appendParagraph(byteArrayOf(), "anchor", "Original")
+        store.append(key, base, local = false)
+        store.purgeRevokedPage(key)
+        val replacement = YrsNative.appendParagraph(byteArrayOf(), "anchor", "Replacement")
+        store.append(key, replacement, local = false)
+        assertTrue(runCatching { OfflineEditor.insertTextBlock(store, key, base, "new", "Draft", "heading", 2, "anchor") }.isFailure)
+        assertTrue(store.pending(key).isEmpty())
+        val rebuilt = store.load(key).updates.fold(byteArrayOf()) { current, item -> YrsNative.merge(current, item.bytes) }
+        val blocks = JSONObject(YrsNative.editorJson(rebuilt)).getJSONArray("content")
+        assertEquals(1, blocks.length())
+        assertEquals("Replacement", blocks.getJSONObject(0).getJSONArray("content").getJSONObject(0).getString("text"))
+    }
+
     private inner class FakeTransport(val callback: SyncSocket.Listener) : SyncTransport {
         val frames = LinkedBlockingQueue<SyncWire.Frame>()
         val failSend = AtomicBoolean(false)
