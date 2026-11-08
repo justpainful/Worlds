@@ -97,6 +97,12 @@ private struct LocalPageEditorContent: View {
                model.projection.text == "أصل\t\tآخر" {
                 Text("Fixture column inserted after first").accessibilityIdentifier("fixture-table-inserted-column")
             }
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-document-table-column-insert"),
+               case .object(let root) = model.document.source, case .array(let blocks)? = root["content"],
+               let first = blocks.first, case .object(let table) = first,
+               case .object(let attrs)? = table["attrs"], attrs["future"] == .string("keep"), model.projection.text == "أصل" {
+                Text("Fixture last column removed").accessibilityIdentifier("fixture-table-last-column-removed")
+            }
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-document-table"),
                case .object(let root) = model.document.source, case .array(let blocks)? = root["content"],
                let first = blocks.first, case .object(let table) = first, table["type"] == .string("table"),

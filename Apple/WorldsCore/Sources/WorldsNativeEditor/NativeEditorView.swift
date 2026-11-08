@@ -22,6 +22,7 @@ public struct NativeEditorView: View {
     @State private var linkSelection = NSRange(location: 0, length: 0)
     @State private var linkSource: JSONValue?
     @State private var confirmDeleteTableRow = false
+    @State private var confirmDeleteTableColumn = false
     @State private var tableDeleteSource: JSONValue?
     @State private var tableDeleteSelection = NSRange(location: 0, length: 0)
     public init(model: NativeEditorModel) { self.model = model }
@@ -96,6 +97,10 @@ public struct NativeEditorView: View {
                         tableDeleteSource = model.document.source; tableDeleteSelection = model.selection; confirmDeleteTableRow = true
                     }.accessibilityIdentifier("editor-delete-table-row")
                         .disabled(model.nativeEditPending || model.saving)
+                    Button("Delete selected last column", role: .destructive) {
+                        tableDeleteSource = model.document.source; tableDeleteSelection = model.selection; confirmDeleteTableColumn = true
+                    }.accessibilityIdentifier("editor-delete-table-column")
+                        .disabled(model.nativeEditPending || model.saving)
                 }
                 if let description = model.currentListDescription { Text(description).font(.caption).accessibilityIdentifier("editor-list-status") }
                 if !model.listMarkers.isEmpty { ScrollView {
@@ -144,6 +149,14 @@ public struct NativeEditorView: View {
             }.accessibilityIdentifier("editor-confirm-delete-table-row")
             Button("Cancel", role: .cancel) { tableDeleteSource = nil }
         } message: { Text("The contents of this row will be removed when you save. You can undo this change.") }
+        .confirmationDialog("Delete this table column?", isPresented: $confirmDeleteTableColumn) {
+            Button("Delete column", role: .destructive) {
+                defer { tableDeleteSource = nil }
+                guard tableDeleteSource == model.document.source, tableDeleteSelection == model.selection else { model.report(NativeEditorError.unsupportedFormatting); return }
+                do { try model.deleteSelectedLastTableColumn() } catch { model.report(error) }
+            }.accessibilityIdentifier("editor-confirm-delete-table-column")
+            Button("Cancel", role: .cancel) { tableDeleteSource = nil }
+        } message: { Text("The contents of this column will be removed when you save. You can undo this change.") }
         .alert(addNested ? "Add nested item" : "Add list item", isPresented: $addItem) {
             TextField("Item text", text: $itemText)
             Button("Add") {

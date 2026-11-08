@@ -15,6 +15,30 @@ private actor FixturePersistence: EditorPersistence {
 
 @MainActor
 final class NativeEditorTests: XCTestCase {
+    func testDeleteLastTableColumnPreservesCaretAndRejectsOpaqueCell() throws {
+        let json = #"{"type":"doc","content":[{"type":"table","attrs":{"bid":"t","future":"keep"},"content":[{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"A"}]}]},{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"B"}]}]}]},{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"C"}]}]},{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"👋"}]}]}]}]},{"type":"paragraph","attrs":{"bid":"p"},"content":[{"type":"text","text":"Z"}]}]}"#
+        let original = try RichTextDocument(json: Data(json.utf8))
+        let model = NativeEditorModel(document: original, baseRevision: 0, supportsDocumentFormatting: true)
+        let emoji = (model.projection.text as NSString).range(of: "👋")
+        model.selection = NSRange(location: NSMaxRange(emoji), length: 0)
+        try model.deleteSelectedLastTableColumn()
+        XCTAssertEqual(model.projection.text, "A\nC\nZ")
+        XCTAssertEqual(model.selection.location, 3)
+        let deleted = model.document.source
+        _ = try model.replace(range: model.selection, with: "!")
+        XCTAssertEqual(model.projection.text, "A\nC!\nZ")
+        model.undo(); XCTAssertEqual(model.document.source, deleted)
+        model.undo(); XCTAssertEqual(model.document, original)
+        model.redo(); XCTAssertEqual(model.document.source, deleted)
+        XCTAssertThrowsError(try model.deleteSelectedLastTableColumn()) // The only column cannot be removed.
+        let opaque = json.replacingOccurrences(of: #""text":"👋""#, with: #""text":"👋","future":true"#)
+        let blocked = NativeEditorModel(document: try RichTextDocument(json: Data(opaque.utf8)), baseRevision: 0, supportsDocumentFormatting: true)
+        let target = (blocked.projection.text as NSString).range(of: "👋")
+        blocked.selection = NSRange(location: NSMaxRange(target), length: 0)
+        let before = blocked.document.source
+        XCTAssertThrowsError(try blocked.deleteSelectedLastTableColumn())
+        XCTAssertEqual(blocked.document.source, before)
+    }
     func testDeletingTableRowKeepsCaretOutOfFollowingEmoji() throws {
         let json = #"{"type":"doc","content":[{"type":"table","attrs":{"bid":"t"},"content":[{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"A"}]}]}]},{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"B"}]}]}]}]},{"type":"paragraph","attrs":{"bid":"p"},"content":[{"type":"text","text":"👋zzz"}]}]}"#
         let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 0, supportsDocumentFormatting: true)

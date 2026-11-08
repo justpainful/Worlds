@@ -312,6 +312,38 @@ public struct RichTextDocument: Sendable, Equatable {
         }
     }
 
+    /// Removes the final column only after checking every removed cell.
+    /// The caller must obtain explicit confirmation first.
+    public mutating func removeLastPlainTableColumn(at path: RichTextPath, selectedColumn: Int) throws {
+        guard path.indices.count == 1 else { throw RichTextError.invalidPath }
+        try updateNode(&source, path: ArraySlice(path.indices)) { table in
+            guard table["type"] == .string("table"), case .array(var rows)? = table["content"],
+                  !rows.isEmpty, rows.count <= 100 else { throw RichTextError.invalidDocument }
+            var width: Int?
+            for value in rows {
+                guard case .object(let row) = value, row["type"] == .string("tableRow"), case .array(let cells)? = row["content"],
+                      cells.count > 1, cells.count <= 32, cells.indices.contains(selectedColumn), selectedColumn == cells.count - 1,
+                      width == nil || width == cells.count, deletablePlainTableCell(cells[selectedColumn]) else { throw RichTextError.invalidDocument }
+                width = cells.count
+                for value in cells {
+                    guard case .object(let cell) = value, case .string(let type)? = cell["type"],
+                          type == "tableCell" || type == "tableHeader" else { throw RichTextError.invalidDocument }
+                    if let raw = cell["attrs"], raw != .null {
+                        guard case .object(let attrs) = raw, Set(attrs.keys).isSubset(of: ["colspan", "rowspan", "colwidth"]),
+                              attrs["colspan"] == nil || attrs["colspan"] == .integer(1),
+                              attrs["rowspan"] == nil || attrs["rowspan"] == .integer(1),
+                              attrs["colwidth"] == nil || attrs["colwidth"] == .null else { throw RichTextError.invalidDocument }
+                    } else if cell["attrs"] == .null { throw RichTextError.invalidDocument }
+                }
+            }
+            for index in rows.indices {
+                guard case .object(var row) = rows[index], case .array(var cells)? = row["content"] else { throw RichTextError.invalidDocument }
+                cells.removeLast(); row["content"] = .array(cells); rows[index] = .object(row)
+            }
+            table["content"] = .array(rows)
+        }
+    }
+
     /// Converts one top-level plain paragraph to a one-item Worlds list.
     /// Refuses opaque paragraph or text data rather than relocating it.
     public mutating func makeList(blockIndex: Int, kind: String) throws {
@@ -818,8 +850,11 @@ private func safeSimpleListItem(_ value: JSONValue, kind: String) -> Bool {
 
 private func deletablePlainTableRow(_ value: JSONValue) -> Bool {
     guard movablePlainTableRow(value), case .object(let row) = value, case .array(let cells)? = row["content"], !cells.isEmpty else { return false }
-    return cells.allSatisfy { value in
-        guard case .object(let cell) = value, case .string(let type)? = cell["type"],
+    return cells.allSatisfy(deletablePlainTableCell)
+}
+
+private func deletablePlainTableCell(_ value: JSONValue) -> Bool {
+        guard movablePlainTableRow(value), case .object(let cell) = value, case .string(let type)? = cell["type"],
               ["tableCell", "tableHeader"].contains(type), case .array(let paragraphs)? = cell["content"], !paragraphs.isEmpty else { return false }
         return paragraphs.allSatisfy { value in
             guard case .object(let paragraph) = value, paragraph["type"] == .string("paragraph"), case .array(let children)? = paragraph["content"] else { return false }
@@ -830,7 +865,6 @@ private func deletablePlainTableRow(_ value: JSONValue) -> Bool {
                 return false
             }
         }
-    }
 }
 
 private func movablePlainTableRow(_ value: JSONValue) -> Bool {

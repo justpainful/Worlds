@@ -431,6 +431,30 @@ public final class NativeEditorModel: ObservableObject {
         selection = NSRange(location: position, length: 0)
         registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
     }
+    public func deleteSelectedLastTableColumn() throws {
+        guard supportsDocumentFormatting, selectionIsInRootTable, validSelectionBoundaries, recoverableNativeText == nil, !nativeEditPending, !saving,
+              let span = projection.spans.first(where: { selection.location >= $0.range.location && selection.location <= NSMaxRange($0.range) }),
+              span.path.indices.count >= 4 else { throw NativeEditorError.unsupportedFormatting }
+        let indices = span.path.indices, table = indices[0], row = indices[1], column = indices[2]
+        guard column > 0, projection.spans.contains(where: {
+            $0.path.indices.count >= 3 && $0.path.indices[0] == table && $0.path.indices[1] == row && $0.path.indices[2] == column - 1
+        }) else { throw NativeEditorError.unsupportedFormatting }
+        let before = document
+        do { try document.removeLastPlainTableColumn(at: RichTextPath([table]), selectedColumn: column) }
+        catch { throw NativeEditorError.unsupportedFormatting }
+        let result = projection
+        guard let target = result.spans.last(where: { $0.path.indices.count >= 3 && $0.path.indices[0] == table && $0.path.indices[1] == row && $0.path.indices[2] == column - 1 }) else {
+            document = before; throw NativeEditorError.unsupportedFormatting
+        }
+        var position = min(NSMaxRange(target.range), result.text.utf16.count)
+        while position > 0 {
+            let index = result.text.utf16.index(result.text.utf16.startIndex, offsetBy: position)
+            if String.Index(index, within: result.text) != nil { break }
+            position -= 1
+        }
+        selection = NSRange(location: position, length: 0)
+        registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
+    }
     public func appendTableColumn() throws {
         guard supportsDocumentFormatting, selectionIsInRootTable, recoverableNativeText == nil, !nativeEditPending, !saving,
               let span = projection.spans.first(where: { selection.location >= $0.range.location && selection.location <= NSMaxRange($0.range) }),
