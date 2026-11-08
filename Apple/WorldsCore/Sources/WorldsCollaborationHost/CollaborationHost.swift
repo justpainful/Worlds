@@ -2,7 +2,27 @@ import Foundation
 import WorldsCollaboration
 import WorldsIdentityContinuity
 
-public enum CollaborationHostError: Error { case identityMismatch, accessDenied }
+public enum CollaborationHostError: Error { case identityMismatch, accessDenied, untrustedEndpoint }
+
+/// An independently provisioned exact HTTPS origin. The caller is responsible
+/// for obtaining it from trusted configuration, not from a Worlds document or
+/// its mutable sync.serverUrl setting.
+public struct TrustedSyncOrigin: Sendable {
+    private let host: String
+    private let port: Int
+    public init(_ url: URL) throws {
+        guard let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              parts.scheme?.lowercased() == "https", let host = parts.host?.lowercased(), !host.isEmpty,
+              parts.user == nil, parts.password == nil, parts.query == nil, parts.fragment == nil,
+              parts.percentEncodedPath.isEmpty || parts.percentEncodedPath == "/",
+              (parts.port ?? 443) > 0, (parts.port ?? 443) <= 65535 else { throw CollaborationHostError.untrustedEndpoint }
+        self.host = host; self.port = parts.port ?? 443
+    }
+    func accepts(_ url: URL) -> Bool {
+        guard let other = try? TrustedSyncOrigin(url) else { return false }
+        return host == other.host && port == other.port
+    }
+}
 
 protocol CollaborationIdentity: Sendable {
     func currentWorkspacePageLevel(workspaceID: String, pageID: String, expectedUserID: String) async throws -> IdentityPageLevel
@@ -17,14 +37,15 @@ extension IdentitySessionCoordinator: CollaborationIdentity {}
 /// the account permission response or by the original sync.serverUrl setting.
 public enum CollaborationHost {
     public static func makeSession(pageID: String, workspaceID: String, expectedUserID: String,
-                                   serverURL: URL, store: SQLiteCollaborationStore,
+                                   serverURL: URL, trustedOrigin: TrustedSyncOrigin, store: SQLiteCollaborationStore,
                                    identity: IdentitySessionCoordinator) async throws -> CollaborationSession {
         try await makeSession(pageID: pageID, workspaceID: workspaceID, expectedUserID: expectedUserID,
-                              serverURL: serverURL, store: store, checkedIdentity: identity)
+                              serverURL: serverURL, trustedOrigin: trustedOrigin, store: store, checkedIdentity: identity)
     }
     static func makeSession(pageID: String, workspaceID: String, expectedUserID: String,
-                            serverURL: URL, store: SQLiteCollaborationStore,
+                            serverURL: URL, trustedOrigin: TrustedSyncOrigin, store: SQLiteCollaborationStore,
                             checkedIdentity identity: any CollaborationIdentity) async throws -> CollaborationSession {
+        guard trustedOrigin.accepts(serverURL) else { throw CollaborationHostError.untrustedEndpoint }
         guard await store.matchesIdentity(pageID: pageID, userID: expectedUserID, workspaceID: workspaceID) else {
             throw CollaborationHostError.identityMismatch
         }
