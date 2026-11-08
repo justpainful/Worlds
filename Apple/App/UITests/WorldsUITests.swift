@@ -6,6 +6,12 @@ import Darwin
 final class WorldsUITests: XCTestCase {
     #if os(macOS)
     private var traceDirectoryFDs: [String: Int32] = [:]
+    func testWindowTraceFilterRejectsUnstructuredText() {
+        let valid = "willFinishLaunching active=true hidden=false modal=false windows=1 [visible=true,miniaturized=false,key=true]\n"
+        XCTAssertTrue(isSafeWindowTrace(valid))
+        XCTAssertFalse(isSafeWindowTrace(valid + "secret document contents\n"))
+        XCTAssertFalse(isSafeWindowTrace("willFinishLaunching active=true hidden=false modal=false windows=1 [secret]\n"))
+    }
     #endif
     @MainActor func testPersonalHierarchyExpandCollapseAndRetainState() {
         let app = XCUIApplication()
@@ -531,7 +537,8 @@ final class WorldsUITests: XCTestCase {
                    info.st_size >= 0, info.st_size <= 16_384 {
                     var bytes = [UInt8](repeating: 0, count: 16_385)
                     let count = bytes.withUnsafeMutableBytes { Darwin.read(fd, $0.baseAddress, $0.count) }
-                    if count >= 0, count <= 16_384, let decoded = String(bytes: bytes.prefix(count), encoding: .utf8) {
+                    if count >= 0, count <= 16_384, let decoded = String(bytes: bytes.prefix(count), encoding: .utf8),
+                       isSafeWindowTrace(decoded) {
                         text = decoded
                     }
                 }
@@ -542,6 +549,18 @@ final class WorldsUITests: XCTestCase {
         }
         #endif
     }
+    #if os(macOS)
+    private func isSafeWindowTrace(_ text: String) -> Bool {
+        let names = "(?:willFinishLaunching|didFinishLaunching|sample-[1-9][0-9]?|NSWindowDidBecomeKeyNotification|NSWindowDidResignKeyNotification|NSWindowWillCloseNotification|NSWindowDidMiniaturizeNotification|NSApplicationDidHideNotification|NSApplicationDidUnhideNotification)"
+        let window = "visible=(?:true|false),miniaturized=(?:true|false),key=(?:true|false)"
+        let pattern = "^\(names) active=(?:true|false) hidden=(?:true|false) modal=(?:true|false) windows=[0-9]{1,3} \\[(?:\(window)(?:;\(window))*)?\\]$"
+        let lines = text.split(separator: "\n", omittingEmptySubsequences: true)
+        guard !lines.isEmpty, lines.count <= 128 else { return false }
+        return lines.allSatisfy { line in
+            line.utf8.count <= 2_048 && String(line).range(of: pattern, options: .regularExpression) != nil
+        }
+    }
+    #endif
     @MainActor
     private func prepareWindowTrace(_ app: XCUIApplication) {
         #if os(macOS)
