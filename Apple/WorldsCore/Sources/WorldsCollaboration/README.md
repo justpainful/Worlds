@@ -11,6 +11,9 @@ The server still makes the authoritative decision; access can change while a
 local SQLite write is in flight, and an earlier server frame is not an atomic
 permit. An isolated fixture exercises a downgrade and pending outbox retention;
 it does not prove live-service permission propagation.
+On a receive failure, the session clears the connection's local permission
+before awaiting socket close status. An isolated suspended-close fixture checks
+that a concurrent local update is denied and does not alter the outbox.
 
 A `CollaborationStore` implementation must persist local replica updates and outbox rows atomically. It must record remote updates, return the largest pending row ID, acknowledge through that ID, and atomically preserve complete rejected CRDT state with its rejected entries. `SQLiteCollaborationStore` implements this contract through the Rust C ABI against existing Worlds schema versions 10 and 11; it is not connected to the app. If a write is rejected, networking stops after archival; recovery, server-state replacement and user review are not implemented. No claim of read-only permission enforcement is made by the client. Server authority remains required.
 
