@@ -23,3 +23,8 @@ It is not linked to the shipping application. Apple build and execution must
 be verified in CI; they cannot be performed on this Windows host.
 
 During the local scenario the harness shows observed connection and access state and a read-only projection of the actual session. Connected means the transport has authenticated; it does not claim pending changes have synced. Unsupported document content is reported as unavailable. The host owns session shutdown; neither view is linked to the product. Apple UI and accessibility behavior still require validation.
+
+The scenario pauses after checking that the second replica has a channel 0
+outbox entry. Select Continue scenario to reopen that replica. The displayed
+outbox state is the result of the most recent SQLite check, not a live count
+or proof of remote durability. Errors are reported in the scenario status.

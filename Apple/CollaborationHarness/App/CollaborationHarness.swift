@@ -17,6 +17,12 @@ struct CollaborationHarnessApp: App {
                     CollaborationConnectionView(session: session)
                     CollaborativeLivePreview(session: session).frame(minHeight: 80)
                 }
+                Text(model.queueStatus)
+                    .accessibilityIdentifier("scenario.queue")
+                if model.awaitingOfflineInspection {
+                    Button("Continue scenario") { model.continueScenario() }
+                        .accessibilityIdentifier("scenario.continue")
+                }
                 Text(model.status).accessibilityElement(children: .ignore).accessibilityLabel(model.status).accessibilityIdentifier("scenario.status")
                 Spacer()
             }.padding().frame(minWidth: 520, minHeight: 250)
@@ -29,6 +35,9 @@ final class HarnessModel: ObservableObject {
     @Published private(set) var status = "Start the isolated Worker and provide fixture tokens before running."
     @Published private(set) var running = false
     @Published private(set) var activeSession: CollaborationSession?
+    @Published private(set) var queueStatus = "Second replica outbox has not been inspected."
+    @Published private(set) var awaitingOfflineInspection = false
+    private var inspectionContinuation: CheckedContinuation<Void, Never>?
     private let page = "fixture-page"
     private let workspace = "fixture-workspace"
     private let base = Data(base64Encoded: "AQbpBwAEAQZzaGFyZWQKSGVsbG8g8J+MjQcBB2RlZmF1bHQDCXBhcmFncmFwaAcA6QcIBgYA6QcJBGJvbGQEdHJ1ZYTpBwoNWWpzIHJpY2ggdGV4dIbpBxcEYm9sZARudWxsAA==")!
@@ -38,11 +47,19 @@ final class HarnessModel: ObservableObject {
     func start() {
         guard !running else { return }
         running = true
+        queueStatus = "Second replica outbox has not been inspected."
         Task {
             defer { running = false }
             do { try await scenario(); status = "Passed: two replicas converged, offline outbox survived session restart, and viewer write was refused." }
-            catch { status = "Scenario failed: \(error)" }
+            catch { status = "Scenario failed: \(error.localizedDescription)" }
         }
+    }
+
+    func continueScenario() {
+        guard let continuation = inspectionContinuation else { return }
+        inspectionContinuation = nil
+        awaitingOfflineInspection = false
+        continuation.resume()
     }
 
     private func scenario() async throws {
@@ -81,10 +98,19 @@ final class HarnessModel: ObservableObject {
             status = "Queueing an offline change in the isolated second replica…"
             try await b.appendLocal(pageID: page, channel: 0, update: bob)
             guard try await b.maximumPendingID(pageID: page, channel: 0) != nil else { throw HarnessError.outbox }
+            queueStatus = "Second replica: local change waiting in outbox."
+            await withCheckedContinuation { continuation in
+                inspectionContinuation = continuation
+                awaitingOfflineInspection = true
+            }
             let expected = try NativeCRDTDocument(); try expected.apply(base); try expected.apply(alice); try expected.apply(bob)
             let reopened = try session(b, "editor", editor, doc)
             let reopenedRun = Task { try await reopened.run() }
-            do { try await waitForConvergence(a, b, expected); await reopened.stop(); try await reopenedRun.value }
+            do {
+                try await waitForConvergence(a, b, expected)
+                queueStatus = "Second replica: no pending channel 0 outbox entries at last check."
+                await reopened.stop(); try await reopenedRun.value
+            }
             catch { await reopened.stop(); _ = try? await reopenedRun.value; throw error }
             await first.stop(); try await firstRun.value
             guard await first.connectionStatus() == .stopped else { throw HarnessError.connectionState }
@@ -124,4 +150,17 @@ final class HarnessModel: ObservableObject {
     }
 }
 
-enum HarnessError: Error { case configuration, fixture, outbox, timeout, refusal, connectionState }
+enum HarnessError: LocalizedError {
+    case configuration, fixture, outbox, timeout, refusal, connectionState
+
+    var errorDescription: String? {
+        switch self {
+        case .configuration: return "The local service configuration or fixture tokens are missing."
+        case .fixture: return "The isolated database fixture is unavailable."
+        case .outbox: return "The offline change was not found in the outbox."
+        case .timeout: return "The local replicas did not reach the expected state in time."
+        case .refusal: return "The viewer refusal did not preserve the expected state."
+        case .connectionState: return "The session did not report the expected connection state."
+        }
+    }
+}
