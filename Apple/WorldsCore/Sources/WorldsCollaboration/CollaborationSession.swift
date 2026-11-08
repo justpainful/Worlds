@@ -209,6 +209,10 @@ public actor CollaborationSession {
                     try await handle(data, via: opened)
                 }
             } catch {
+                // A changed local account, workspace or cached permission is
+                // not a transient network error. Do not reconnect with an old
+                // session after the store has rejected its identity.
+                if let storage = error as? CollaborationStorageError, storage == .denied { failed = true }
                 // Only an authenticated connection resets backoff. Opening a
                 // socket that immediately fails is not a successful session.
                 if verifiedIdentity { attempt = 0 }

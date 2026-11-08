@@ -130,6 +130,27 @@ private actor PausedDisconnectSocket: CollaborationSocket {
     func releaseClose() { closeWaiter?.resume(); closeWaiter = nil }
 }
 
+private actor IdentityChangeSocket: CollaborationSocket {
+    private var first = true
+    private var waiting: CheckedContinuation<Data?, Error>?
+    var ready: Bool { waiting != nil }
+    func send(_ data: Data) async throws { }
+    func receive() async throws -> Data? {
+        if first { first = false; return try WorldsSyncWire.encode(.authState(level: "edit", userID: "editor")) }
+        return try await withCheckedThrowingContinuation { waiting = $0 }
+    }
+    func requestSync() throws {
+        let frame = try WorldsSyncWire.encode(.sync(channel: 0, kind: 0, payload: Data([0])))
+        waiting?.resume(returning: frame); waiting = nil
+    }
+    func close() async { waiting?.resume(throwing: CancellationError()); waiting = nil }
+    func closeCode() async -> Int { 0 }
+}
+private actor IdentityRunOutcome {
+    private(set) var result: String?
+    func set(_ value: String) { result = value }
+}
+
 private actor FixtureSocket: CollaborationSocket {
     let level: String
     let userID: String
@@ -172,6 +193,44 @@ private actor FixtureSocket: CollaborationSocket {
 }
 
 extension WorldsCollaborationTests {
+    func testChangedLocalAccountStopsSessionAndKeepsPendingOutbox() async throws {
+        let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-editor-v11", withExtension: "db"))
+        let copy = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-account-switch-\(UUID().uuidString).db")
+        try FileManager.default.copyItem(at: source, to: copy)
+        defer { try? FileManager.default.removeItem(at: copy) }
+        let store = try SQLiteCollaborationStore(databaseURL: copy, pageID: "fixture-page", userID: "editor", workspaceID: "fixture-workspace")
+        try await store.appendLocal(pageID: "fixture-page", channel: 0, update: Data([0, 0]))
+        let pendingID = try await store.maximumPendingID(pageID: "fixture-page", channel: 0)
+        let initial = try XCTUnwrap(pendingID)
+        let socket = IdentityChangeSocket(), outcome = IdentityRunOutcome()
+        let session = try CollaborationSession(pageID: "fixture-page", workspaceID: "fixture-workspace", documentID: "fixture-page", expectedUserID: "editor", serverURL: URL(string: "https://example.invalid")!, store: store, tokenProvider: { _ in "fixture-token" }, socketFactory: { _, _ in socket })
+        let run = Task {
+            do { try await session.run(); await outcome.set("returned") }
+            catch CollaborationStorageError.denied { await outcome.set("denied") }
+            catch { await outcome.set("other") }
+        }
+        defer { Task { await session.stop() } }
+        for _ in 0..<100 { if await socket.ready { break }; try await Task.sleep(for: .milliseconds(10)) }
+        guard await socket.ready else { await session.stop(); await run.value; return XCTFail("Connection was not authenticated") }
+        var raw: OpaquePointer?
+        guard sqlite3_open(copy.path, &raw) == SQLITE_OK, let db = raw else { await session.stop(); await run.value; return XCTFail("Fixture database could not open") }
+        let changed = sqlite3_exec(db, "UPDATE account SET user_id='other' WHERE id=1", nil, nil, nil)
+        sqlite3_close(db); XCTAssertEqual(changed, SQLITE_OK)
+        try await socket.requestSync()
+        for _ in 0..<200 { if await outcome.result != nil { break }; try await Task.sleep(for: .milliseconds(10)) }
+        let result = await outcome.result
+        if result == nil { await session.stop() }
+        await run.value
+        XCTAssertEqual(result, "denied")
+        var reopened: OpaquePointer?
+        guard sqlite3_open_v2(copy.path, &reopened, SQLITE_OPEN_READONLY, nil) == SQLITE_OK, let db = reopened else { return XCTFail("Fixture could not reopen") }
+        defer { sqlite3_close(db) }
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(db, "SELECT MAX(id) FROM sync_outbox WHERE page_id='fixture-page' AND channel=0 AND state='pending'", -1, &statement, nil) == SQLITE_OK, let statement else { return XCTFail("Outbox query failed") }
+        defer { sqlite3_finalize(statement) }
+        XCTAssertEqual(sqlite3_step(statement), SQLITE_ROW)
+        XCTAssertEqual(sqlite3_column_int64(statement, 0), initial)
+    }
     func testPresenceIsExplicitAndClearSendsRemoval() async throws {
         let store = FixtureStore(), socket = FixtureSocket()
         let session = try CollaborationSession(pageID: "p", workspaceID: "w", documentID: "p", expectedUserID: "user", serverURL: URL(string: "https://example.invalid")!, store: store, tokenProvider: { _ in "fixture-token" }, socketFactory: { _, _ in socket })
