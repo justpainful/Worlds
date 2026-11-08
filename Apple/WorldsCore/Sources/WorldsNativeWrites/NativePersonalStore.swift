@@ -14,12 +14,14 @@ public enum NativeWriteError: Error, LocalizedError, Sendable {
     case invalidResponse
     case conflict(String)
     case operationFailed(String)
+    case galleryCommittedCleanupPending
 
     public var errorDescription: String? {
         switch self {
         case .invalidFileURL: return "Choose an existing local database file."
         case .responseUnavailable: return "The native store did not return a response."
         case .invalidResponse: return "The native store returned an invalid response."
+        case .galleryCommittedCleanupPending: return "The gallery import was saved, but cleanup is pending."
         case .conflict(let message), .operationFailed(let message): return message
         }
     }
@@ -156,6 +158,7 @@ public actor NativePersonalStore {
                 if galleryCancellation != nil {
                     if message.hasPrefix("cancelled:") { throw CancellationError() }
                     if message.hasPrefix("conflict:") { throw NativeWriteError.conflict("The gallery or import request has changed.") }
+                    if message.hasPrefix("committed:") { throw NativeWriteError.galleryCommittedCleanupPending }
                     #if DEBUG
                     // Only fixed classifications are exposed; the underlying
                     // Rust error may contain user paths and must not be logged.

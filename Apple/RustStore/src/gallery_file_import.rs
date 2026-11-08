@@ -214,14 +214,24 @@ pub(crate) mod unix {
             if let Some(cancel)=cancel { cancel.commit()?; }
             tx.commit()?; Ok(result)
         })();
+        finish_import(&mut c,root,&held,work)
+    }
+    fn finish_import(c: &mut Connection, root: &Path, held: &Lock, work: Result<Value>) -> Result<Value> {
         // Never run path-based cleanup against a replacement copy directory.
-        require_private_copy(root,&held)?;
+        // The database transaction may already have committed: tell the caller
+        // explicitly so it does not present this as a failed import.
+        if let Err(error)=require_private_copy(root,held) {
+            return match work {
+                Ok(_) => Err(error.context("committed: gallery import succeeded but copy identity changed before cleanup")),
+                Err(_) => Err(error.context("gallery copy identity changed before cleanup")),
+            };
+        }
         match work {
             Ok(value) => {
-                if let Err(error)=recover_locked(&mut c,root) { bail!("committed: gallery import succeeded but recovery cleanup is pending: {error}") }
+                if let Err(error)=recover_locked(c,root) { bail!("committed: gallery import succeeded but recovery cleanup is pending: {error}") }
                 Ok(value)
             },
-            Err(error) => { recover_locked(&mut c,root).context("recover failed import")?; Err(error) },
+            Err(error) => { recover_locked(c,root).context("recover failed import")?; Err(error) },
         }
     }
 
@@ -229,6 +239,29 @@ pub(crate) mod unix {
     mod tests {
         use super::*;
         use std::os::unix::fs::{PermissionsExt, DirBuilderExt};
+        #[test]
+        fn replacement_after_commit_reports_committed_without_touching_replacement() {
+            let parent=std::env::temp_dir().canonicalize().unwrap().join(format!("gallery-after-commit-{}",uuid::Uuid::new_v4()));
+            std::fs::DirBuilder::new().mode(0o700).create(&parent).unwrap();
+            let root=parent.join("copy");
+            std::fs::DirBuilder::new().mode(0o700).create(&root).unwrap();
+            std::fs::copy(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/worlds-v11.db"),root.join("worlds.db")).unwrap();
+            let held=lock(&root).unwrap();
+            let mut connection=db(&root).unwrap();
+            let tx=connection.transaction_with_behavior(TransactionBehavior::Immediate).unwrap();
+            tx.execute("INSERT INTO native_gallery_import_completed(id,request,result) VALUES('fixture','{}','{}')",[]).unwrap();
+            tx.commit().unwrap();
+            let saved=parent.join("original-copy");
+            std::fs::rename(&root,&saved).unwrap();
+            std::fs::DirBuilder::new().mode(0o700).create(&root).unwrap();
+            std::fs::write(root.join("untouched"),b"replacement").unwrap();
+            let error=finish_import(&mut connection,&root,&held,Ok(json!({}))).unwrap_err().to_string();
+            assert!(error.starts_with("committed:"),"{error}");
+            assert_eq!(std::fs::read(root.join("untouched")).unwrap(),b"replacement");
+            let count:i64=connection.query_row("SELECT count(*) FROM native_gallery_import_completed WHERE id='fixture'",[],|r|r.get(0)).unwrap();
+            assert_eq!(count,1);
+            drop(connection); drop(held); std::fs::remove_dir_all(parent).unwrap();
+        }
         #[test]
         fn directory_identity_check_rejects_replacement_and_symlink() {
             use std::os::unix::fs::symlink;
