@@ -81,6 +81,7 @@ jobs:
           grep -E 'testLineUsesFourPointCenteredStroke.*passed' logs/swift-test.log
           grep -E 'testNamedFontWeightChangesRenderedText.*passed' logs/swift-test.log
           grep -E 'testMalformedCaptionCannotBeOverwritten.*passed' logs/swift-test.log
+          grep -E 'testDraftUndoSaveAndConflictPreserveAssets.*passed' logs/swift-test.log
           grep -E 'testAdjacentPlainTextReorderUndoAndProtectsOtherElements.*passed' logs/swift-test.log
           grep -E 'testShapeFillUndoAndProtectsUnsupportedData.*passed' logs/swift-test.log
           grep -E 'testRejectsInvalidAndPreservesSession.*passed' logs/swift-test.log
@@ -851,6 +852,7 @@ jobs:
               -resultBundlePath "$GITHUB_WORKSPACE/gallery-$device.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/gallery-$device.log"; then
               grep -E 'testAddReorderReopenAndMissingAttachment.*passed' "logs/gallery-$device.log" || result=1
+              grep -E 'testDraftCaptionReorderUndoSaveAndReopen.*passed' "logs/gallery-$device.log" || result=1
             else
               result=1
             fi
