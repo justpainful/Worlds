@@ -520,9 +520,12 @@ fn protected_slide(value: &Value) -> Result<Value> {
                 for key in ["x","y","w","h","rot"] { object.remove(key); }
             }
             if kind=="text" {
-                object.remove("text");
+                // Unknown text payloads must survive unrelated edits; only
+                // ordinary strings are supported by the native editor.
+                if object.get("text").is_some_and(Value::is_string) { object.remove("text"); }
                 if let Some(style)=object.get_mut("style").and_then(Value::as_object_mut) {
-                    for key in ["fontSize","fontWeight","color","align","font","italic"] { style.remove(key); }
+                    for key in ["fontSize","fontWeight","color","font","italic"] { style.remove(key); }
+                    if style.get("align").and_then(Value::as_str).is_some_and(|v|["left","center","right"].contains(&v)) { style.remove("align"); }
                     if style.is_empty() { object.remove("style"); }
                 }
             }
@@ -692,6 +695,40 @@ mod presentation_tests {
         assert_eq!(saved["blocks"][0]["content"]["attrs"]["notes"],json!({"future":true}));
         assert_eq!(saved["blocks"][0]["content"]["attrs"]["elements"][0]["text"],"after");
         assert!(save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),inputs(&old)).is_err());
+        std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn malformed_slide_text_is_preserved_during_other_edits() {
+        let path=fixture();
+        let c=Connection::open(&path).unwrap();
+        let original=json!({"type":"slide","attrs":{"bid":"s","notes":"before","elements":[{"id":"t","type":"text","text":{"future":"payload"}}]}});
+        c.execute("UPDATE blocks SET content=?1 WHERE id='s'",[original.to_string()]).unwrap(); drop(c);
+        let old=read_presentation(&path,"deck").unwrap();
+        for value in [json!("replacement"),json!(null),json!({"future":"changed"})] {
+            let mut attack=inputs(&old); attack[0].content["attrs"]["elements"][0]["text"]=value;
+            assert!(save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),attack).is_err());
+            assert_eq!(read_presentation(&path,"deck").unwrap(),old);
+        }
+        let mut safe=inputs(&old); safe[0].content["attrs"]["notes"]=json!("after");
+        let saved=save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),safe).unwrap();
+        assert_eq!(saved["blocks"][0]["content"]["attrs"]["elements"][0]["text"],json!({"future":"payload"}));
+        assert_eq!(saved["blocks"][0]["content"]["attrs"]["notes"],"after");
+        std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn unknown_slide_alignment_is_preserved_during_other_edits() {
+        let path=fixture(); let c=Connection::open(&path).unwrap();
+        let original=json!({"type":"slide","attrs":{"bid":"s","notes":"before","elements":[{"id":"t","type":"text","text":"text","style":{"align":"future"}}]}});
+        c.execute("UPDATE blocks SET content=?1 WHERE id='s'",[original.to_string()]).unwrap(); drop(c);
+        let old=read_presentation(&path,"deck").unwrap();
+        for value in [json!("center"),json!(null),json!({"future":true})] {
+            let mut attack=inputs(&old); attack[0].content["attrs"]["elements"][0]["style"]["align"]=value;
+            assert!(save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),attack).is_err());
+            assert_eq!(read_presentation(&path,"deck").unwrap(),old);
+        }
+        let mut safe=inputs(&old); safe[0].content["attrs"]["notes"]=json!("after");
+        let saved=save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),safe).unwrap();
+        assert_eq!(saved["blocks"][0]["content"]["attrs"]["elements"][0]["style"]["align"],"future");
         std::fs::remove_file(path).unwrap();
     }
     #[test]
