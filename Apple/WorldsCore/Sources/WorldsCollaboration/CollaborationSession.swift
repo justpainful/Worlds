@@ -286,6 +286,13 @@ public actor CollaborationSession {
     /// Persist first. If application fails afterward, stop and rebuild from the log.
     public func appendLocal(channel: UInt64, update: Data) async throws {
         guard !stopped, !failed, let doc = documents[channel] else { throw CollaborationError.notStarted }
+        // Cached local permissions do not authorize a new update when this
+        // connection has not authenticated or has lost the channel's rights.
+        // Existing durable outbox entries are retained for later recovery.
+        guard verifiedIdentity, let level = accessLevel,
+              let access = WorldsSyncWire.AccessLevel(rawValue: level), WorldsSyncWire.canWrite(access, channel: channel) else {
+            throw CollaborationError.accessRevoked
+        }
         guard !localWriteInFlight, !remoteWriteInFlight else { throw CollaborationError.notStarted }
         localWriteInFlight = true
         defer { finishLocalWrite() }
@@ -414,6 +421,7 @@ public actor CollaborationSession {
             guard userID == expectedUserID, ["full", "edit", "comment", "view"].contains(level) else { failed = true; throw CollaborationError.accessRevoked }
             verifiedIdentity = true
             accessLevel = level
+            publishEditorChange()
             diagnostic("send awareness query")
             try await socket.send(WorldsSyncWire.encode(.queryAwareness))
             guard !stopped, verifiedIdentity else { return }

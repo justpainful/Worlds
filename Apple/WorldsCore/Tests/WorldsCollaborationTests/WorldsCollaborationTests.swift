@@ -112,7 +112,8 @@ private actor RejectionSocket: CollaborationSocket {
 private actor FixtureSocket: CollaborationSocket {
     let level: String
     let userID: String
-    init(level: String = "edit", userID: String = "user") { self.level = level; self.userID = userID }
+    let acknowledges: Bool
+    init(level: String = "edit", userID: String = "user", acknowledges: Bool = true) { self.level = level; self.userID = userID; self.acknowledges = acknowledges }
     private var queue: [Data] = []
     private var waiting: CheckedContinuation<Data?, Error>?
     private var closed = false
@@ -122,13 +123,16 @@ private actor FixtureSocket: CollaborationSocket {
             if channel == 0 { try deliver(WorldsSyncWire.encode(.authState(level: level, userID: userID))) }
             try deliver(WorldsSyncWire.encode(.sync(channel: channel, kind: 0, payload: Data([0]))))
         case let .update(batchID, _, _):
-            try deliver(WorldsSyncWire.encode(.acknowledgement(batchID: batchID, status: 0, reason: "")))
+            if acknowledges { try deliver(WorldsSyncWire.encode(.acknowledgement(batchID: batchID, status: 0, reason: ""))) }
         default: break
         }
     }
     private func deliver(_ bytes: Data) throws {
         if let waiting { self.waiting = nil; waiting.resume(returning: bytes) }
         else { queue.append(bytes) }
+    }
+    func emitAccess(_ value: String) throws {
+        try deliver(WorldsSyncWire.encode(.authState(level: value, userID: userID)))
     }
     func receive() async throws -> Data? {
         if !queue.isEmpty { return queue.removeFirst() }
@@ -143,6 +147,32 @@ private actor FixtureSocket: CollaborationSocket {
 }
 
 extension WorldsCollaborationTests {
+    func testLivePermissionDowngradeBlocksNewContentWithoutDiscardingOutbox() async throws {
+        let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-editor-v11", withExtension: "db"))
+        let copy = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-downgrade-\(UUID().uuidString).db")
+        try FileManager.default.copyItem(at: source, to: copy)
+        defer { try? FileManager.default.removeItem(at: copy) }
+        let store = try SQLiteCollaborationStore(databaseURL: copy, pageID: "fixture-page", userID: "editor", workspaceID: "fixture-workspace")
+        // The already durable update belongs to the previous authorized session.
+        try await store.appendLocal(pageID: "fixture-page", channel: 0, update: Data([0, 0]))
+        let initial = try await store.maximumPendingID(pageID: "fixture-page", channel: 0)
+        let socket = FixtureSocket(level: "edit", userID: "editor", acknowledges: false)
+        let session = try CollaborationSession(pageID: "fixture-page", workspaceID: "fixture-workspace", documentID: "fixture-page", expectedUserID: "editor", serverURL: URL(string: "https://example.invalid")!, store: store, tokenProvider: { _ in "fixture-token" }, socketFactory: { _, _ in socket })
+        let run = Task { try await session.run() }
+        defer { Task { await session.stop() } }
+        for _ in 0..<100 { if await session.accessLevel == "edit" { break }; try await Task.sleep(for: .milliseconds(10)) }
+        guard await session.accessLevel == "edit" else { await session.stop(); _ = try? await run.value; return XCTFail("Authentication was not observed") }
+        try await socket.emitAccess("comment")
+        for _ in 0..<100 { if await session.accessLevel == "comment" { break }; try await Task.sleep(for: .milliseconds(10)) }
+        guard await session.accessLevel == "comment" else { await session.stop(); _ = try? await run.value; return XCTFail("Downgrade was not observed") }
+        let before = try await store.maximumPendingID(pageID: "fixture-page", channel: 0)
+        do { try await session.appendLocal(channel: 0, update: Data([0, 0])); XCTFail("Comment access cannot edit content") }
+        catch CollaborationError.accessRevoked { }
+        let after = try await store.maximumPendingID(pageID: "fixture-page", channel: 0)
+        XCTAssertEqual(before, after)
+        XCTAssertNotNil(initial); XCTAssertEqual(before, initial)
+        await session.stop(); _ = try? await run.value
+    }
     func testPlainProjectionUsesYjsFixtureAndRejectsRichText() throws {
         let plain = try XCTUnwrap(Data(base64Encoded: "AQTpBwAHAQdkZWZhdWx0AwlwYXJhZ3JhcGgoAOkHAANiaWQBdwdibG9jay0xBwDpBwAGBADpBwIKSGVsbG8g8J+MjQA="))
         let doc = try NativeCRDTDocument(); try doc.apply(plain)
