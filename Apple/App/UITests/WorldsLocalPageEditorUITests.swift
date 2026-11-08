@@ -13,7 +13,12 @@ final class WorldsLocalPageEditorUITests: XCTestCase {
         let delete = app.buttons["editor-delete-table-column"]
         XCTAssertTrue(delete.waitForExistence(timeout: 10)); delete.tap()
         let cancel = app.buttons["Cancel"].firstMatch
-        XCTAssertTrue(cancel.waitForExistence(timeout: 10)); cancel.tap()
+        guard cancel.waitForExistence(timeout: 10) else {
+            recordFailureContext(app, "delete-column-cancel-missing")
+            XCTFail("Cancel action did not appear")
+            return
+        }
+        cancel.tap()
         XCTAssertFalse(app.staticTexts["fixture-table-last-column-removed"].exists)
         delete.tap()
         let confirm = app.buttons["editor-confirm-delete-table-column"].firstMatch
@@ -34,7 +39,12 @@ final class WorldsLocalPageEditorUITests: XCTestCase {
         let delete = app.buttons["editor-delete-table-row"]
         XCTAssertTrue(delete.waitForExistence(timeout: 10)); delete.tap()
         let cancel = app.buttons["Cancel"].firstMatch
-        XCTAssertTrue(cancel.waitForExistence(timeout: 10)); cancel.tap()
+        guard cancel.waitForExistence(timeout: 10) else {
+            recordFailureContext(app, "delete-row-cancel-missing")
+            XCTFail("Cancel action did not appear")
+            return
+        }
+        cancel.tap()
         XCTAssertFalse(app.staticTexts["fixture-table-last-row-removed"].exists)
         delete.tap()
         let confirm = app.buttons["editor-confirm-delete-table-row"].firstMatch

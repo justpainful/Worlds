@@ -1,6 +1,31 @@
 #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
 import XCTest
 final class WorldsLocalPresentationUITests: XCTestCase {
+    @MainActor func testSlideActionsAreReachableByScrolling() {
+        let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-presentation-fixture"]; app.launch()
+        let page = app.descendants(matching: .any)["page.deck-test"].firstMatch
+        guard page.waitForExistence(timeout: 30) else { failure(app, "scroll-page-missing"); XCTFail("Presentation page missing"); return }
+        page.tap()
+        let edit = app.buttons["edit-local-presentation"]
+        guard edit.waitForExistence(timeout: 20) else { failure(app, "scroll-editor-missing"); XCTFail("Presentation editor missing"); return }
+        edit.tap()
+        let scroll = app.scrollViews["presentation-editor-scroll"].firstMatch
+        guard scroll.waitForExistence(timeout: 20), scroll.isHittable else { failure(app, "presentation-scroll-missing"); XCTFail("Presentation scroll view missing"); return }
+        let action = app.buttons["presentation-delete-slide"]
+        for _ in 0..<12 {
+            if action.exists && action.isHittable && scroll.frame.contains(action.frame) { break }
+            scroll.swipeUp()
+        }
+        guard action.exists, action.isHittable, scroll.frame.contains(action.frame) else {
+            failure(app, "presentation-slide-action-offscreen")
+            XCTFail("Slide action is not fully reachable")
+            return
+        }
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Presentation slide actions reached"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+    }
     @MainActor func testSpeakerNotesSaveAndReopenKeepsMedia() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-presentation-fixture"]; app.launch()
         let page = app.descendants(matching: .any)["page.deck-test"].firstMatch
@@ -84,17 +109,17 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         guard edit.waitForExistence(timeout: 20) else { failure(app, "background-edit-missing"); XCTFail("Presentation editor missing"); return }; edit.tap()
         let menu = app.descendants(matching: .any)["presentation-background-color-menu"].firstMatch
         guard menu.waitForExistence(timeout: 20) else { failure(app, "background-menu-missing"); XCTFail("Background menu missing"); return }
-        XCTAssertTrue(menu.label.contains("#16161a")); menu.tap()
+        XCTAssertTrue(accessibleText(menu).contains("#16161a")); menu.tap()
         let color = app.descendants(matching: .any)["presentation-background-color.#f7f5f0"].firstMatch
         guard color.waitForExistence(timeout: 10) else { failure(app, "background-option-missing"); XCTFail("Background option missing"); return }; color.tap()
-        XCTAssertTrue(menu.label.contains("#f7f5f0"))
-        app.buttons["Undo"].tap(); XCTAssertTrue(menu.label.contains("#16161a"))
-        app.buttons["Redo"].tap(); XCTAssertTrue(menu.label.contains("#f7f5f0"))
+        XCTAssertTrue(accessibleText(menu).contains("#f7f5f0"))
+        app.buttons["Undo"].tap(); XCTAssertTrue(accessibleText(menu).contains("#16161a"))
+        app.buttons["Redo"].tap(); XCTAssertTrue(accessibleText(menu).contains("#f7f5f0"))
         app.buttons["Save"].tap()
         guard app.staticTexts["presentation-edit-saved"].waitForExistence(timeout: 20) else { failure(app, "background-save-missing"); XCTFail("Background save missing"); return }
         XCTAssertTrue(app.staticTexts["presentation-media-record-retained"].waitForExistence(timeout: 10))
         app.buttons["Close"].tap(); XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
-        XCTAssertTrue(menu.waitForExistence(timeout: 20)); XCTAssertTrue(menu.label.contains("#f7f5f0"))
+        XCTAssertTrue(menu.waitForExistence(timeout: 20)); XCTAssertTrue(accessibleText(menu).contains("#f7f5f0"))
         XCTAssertTrue(app.staticTexts["presentation-unsupported-elements"].exists)
     }
     @MainActor func testRotateTextUndoAndReopenKeepsMedia() {
@@ -105,15 +130,15 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         guard edit.waitForExistence(timeout: 20) else { failure(app, "rotate-edit-missing"); XCTFail("Presentation editor missing"); return }; edit.tap()
         let position = app.staticTexts["presentation-text-rotation"]
         guard position.waitForExistence(timeout: 20) else { failure(app, "rotate-position-missing"); XCTFail("Text rotation missing"); return }
-        XCTAssertEqual(position.label, "Rotation: 0°")
-        app.buttons["presentation-text-rotate-right"].tap(); XCTAssertEqual(position.label, "Rotation: 1°")
-        app.buttons["Undo"].tap(); XCTAssertEqual(position.label, "Rotation: 0°")
-        app.buttons["Redo"].tap(); XCTAssertEqual(position.label, "Rotation: 1°")
+        XCTAssertEqual(accessibleText(position), "Rotation: 0°")
+        app.buttons["presentation-text-rotate-right"].tap(); XCTAssertEqual(accessibleText(position), "Rotation: 1°")
+        app.buttons["Undo"].tap(); XCTAssertEqual(accessibleText(position), "Rotation: 0°")
+        app.buttons["Redo"].tap(); XCTAssertEqual(accessibleText(position), "Rotation: 1°")
         app.buttons["Save"].tap()
         guard app.staticTexts["presentation-edit-saved"].waitForExistence(timeout: 20) else { failure(app, "rotate-save-missing"); XCTFail("Rotation save missing"); return }
         XCTAssertTrue(app.staticTexts["presentation-media-record-retained"].waitForExistence(timeout: 10))
         app.buttons["Close"].tap(); XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
-        XCTAssertTrue(position.waitForExistence(timeout: 20)); XCTAssertEqual(position.label, "Rotation: 1°")
+        XCTAssertTrue(position.waitForExistence(timeout: 20)); XCTAssertEqual(accessibleText(position), "Rotation: 1°")
         XCTAssertTrue(app.staticTexts["presentation-unsupported-elements"].exists)
     }
     @MainActor func testMoveTextUndoAndReopenKeepsMedia() {
@@ -124,15 +149,15 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         guard edit.waitForExistence(timeout: 20) else { failure(app, "move-edit-missing"); XCTFail("Presentation editor missing"); return }; edit.tap()
         let position = app.staticTexts["presentation-text-position"]
         guard position.waitForExistence(timeout: 20) else { failure(app, "move-position-missing"); XCTFail("Text position missing"); return }
-        XCTAssertEqual(position.label, "Position: 20, 30")
-        app.buttons["presentation-text-right"].tap(); XCTAssertEqual(position.label, "Position: 21, 30")
-        app.buttons["Undo"].tap(); XCTAssertEqual(position.label, "Position: 20, 30")
-        app.buttons["Redo"].tap(); XCTAssertEqual(position.label, "Position: 21, 30")
+        XCTAssertEqual(accessibleText(position), "Position: 20, 30")
+        app.buttons["presentation-text-right"].tap(); XCTAssertEqual(accessibleText(position), "Position: 21, 30")
+        app.buttons["Undo"].tap(); XCTAssertEqual(accessibleText(position), "Position: 20, 30")
+        app.buttons["Redo"].tap(); XCTAssertEqual(accessibleText(position), "Position: 21, 30")
         app.buttons["Save"].tap()
         guard app.staticTexts["presentation-edit-saved"].waitForExistence(timeout: 20) else { failure(app, "move-save-missing"); XCTFail("Position save missing"); return }
         XCTAssertTrue(app.staticTexts["presentation-media-record-retained"].waitForExistence(timeout: 10))
         app.buttons["Close"].tap(); XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
-        XCTAssertTrue(position.waitForExistence(timeout: 20)); XCTAssertEqual(position.label, "Position: 21, 30")
+        XCTAssertTrue(position.waitForExistence(timeout: 20)); XCTAssertEqual(accessibleText(position), "Position: 21, 30")
         XCTAssertTrue(app.staticTexts["presentation-unsupported-elements"].exists)
     }
     @MainActor func testTextColorUndoAndReopenKeepsMedia() {
@@ -143,17 +168,17 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         guard edit.waitForExistence(timeout: 20) else { failure(app, "color-edit-missing"); XCTFail("Presentation editor missing"); return }; edit.tap()
         let menu = app.descendants(matching: .any)["presentation-text-color-menu"].firstMatch
         guard menu.waitForExistence(timeout: 20) else { failure(app, "color-menu-missing"); XCTFail("Color menu missing"); return }
-        XCTAssertTrue(menu.label.contains("Default")); menu.tap()
+        XCTAssertTrue(accessibleText(menu).contains("Default")); menu.tap()
         let color = app.descendants(matching: .any)["presentation-text-color.#e5484d"].firstMatch
         guard color.waitForExistence(timeout: 10) else { failure(app, "color-option-missing"); XCTFail("Color option missing"); return }; color.tap()
-        XCTAssertTrue(menu.label.contains("#e5484d"))
-        app.buttons["Undo"].tap(); XCTAssertTrue(menu.label.contains("Default"))
-        app.buttons["Redo"].tap(); XCTAssertTrue(menu.label.contains("#e5484d"))
+        XCTAssertTrue(accessibleText(menu).contains("#e5484d"))
+        app.buttons["Undo"].tap(); XCTAssertTrue(accessibleText(menu).contains("Default"))
+        app.buttons["Redo"].tap(); XCTAssertTrue(accessibleText(menu).contains("#e5484d"))
         app.buttons["Save"].tap()
         guard app.staticTexts["presentation-edit-saved"].waitForExistence(timeout: 20) else { failure(app, "color-save-missing"); XCTFail("Color save missing"); return }
         XCTAssertTrue(app.staticTexts["presentation-media-record-retained"].waitForExistence(timeout: 10))
         app.buttons["Close"].tap(); XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
-        XCTAssertTrue(menu.waitForExistence(timeout: 20)); XCTAssertTrue(menu.label.contains("#e5484d"))
+        XCTAssertTrue(menu.waitForExistence(timeout: 20)); XCTAssertTrue(accessibleText(menu).contains("#e5484d"))
         XCTAssertTrue(app.staticTexts["presentation-unsupported-elements"].exists)
     }
     @MainActor func testChooseFontSizeUndoAndReopenKeepsMedia() {
@@ -164,19 +189,19 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         guard edit.waitForExistence(timeout: 20) else { failure(app, "choose-size-edit-missing"); XCTFail("Presentation editor missing"); return }; edit.tap()
         let size = app.staticTexts["presentation-font-size"]
         guard size.waitForExistence(timeout: 20) else { failure(app, "choose-size-control-missing"); XCTFail("Font size missing"); return }
-        XCTAssertEqual(size.label, "32")
+        XCTAssertEqual(accessibleText(size), "32")
         let menu = app.descendants(matching: .any)["presentation-font-size-menu"].firstMatch
         XCTAssertTrue(menu.waitForExistence(timeout: 10)); menu.tap()
         let choice = app.descendants(matching: .any)["presentation-font-size-choice.48"].firstMatch
         guard choice.waitForExistence(timeout: 10) else { failure(app, "choose-size-option-missing"); XCTFail("Font size option missing"); return }; choice.tap()
-        XCTAssertEqual(size.label, "48")
-        app.buttons["Undo"].tap(); XCTAssertEqual(size.label, "32")
-        app.buttons["Redo"].tap(); XCTAssertEqual(size.label, "48")
+        XCTAssertEqual(accessibleText(size), "48")
+        app.buttons["Undo"].tap(); XCTAssertEqual(accessibleText(size), "32")
+        app.buttons["Redo"].tap(); XCTAssertEqual(accessibleText(size), "48")
         app.buttons["Save"].tap()
         guard app.staticTexts["presentation-edit-saved"].waitForExistence(timeout: 20) else { failure(app, "choose-size-save-missing"); XCTFail("Font size save missing"); return }
         XCTAssertTrue(app.staticTexts["presentation-media-record-retained"].waitForExistence(timeout: 10))
         app.buttons["Close"].tap(); XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
-        XCTAssertTrue(size.waitForExistence(timeout: 20)); XCTAssertEqual(size.label, "48")
+        XCTAssertTrue(size.waitForExistence(timeout: 20)); XCTAssertEqual(accessibleText(size), "48")
         XCTAssertTrue(app.staticTexts["presentation-unsupported-elements"].exists)
     }
     @MainActor func testFontSizeUndoAndReopenKeepsMedia() {
@@ -187,14 +212,14 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         guard edit.waitForExistence(timeout: 20) else { failure(app, "size-edit-missing"); XCTFail("Presentation editor missing"); return }; edit.tap()
         let size = app.staticTexts["presentation-font-size"]
         guard size.waitForExistence(timeout: 20) else { failure(app, "size-control-missing"); XCTFail("Font size missing"); return }
-        XCTAssertEqual(size.label, "32"); app.buttons["presentation-text-larger"].tap(); XCTAssertEqual(size.label, "40")
-        app.buttons["Undo"].tap(); XCTAssertEqual(size.label, "32")
-        app.buttons["Redo"].tap(); XCTAssertEqual(size.label, "40")
+        XCTAssertEqual(accessibleText(size), "32"); app.buttons["presentation-text-larger"].tap(); XCTAssertEqual(accessibleText(size), "40")
+        app.buttons["Undo"].tap(); XCTAssertEqual(accessibleText(size), "32")
+        app.buttons["Redo"].tap(); XCTAssertEqual(accessibleText(size), "40")
         app.buttons["Save"].tap()
         guard app.staticTexts["presentation-edit-saved"].waitForExistence(timeout: 20) else { failure(app, "size-save-missing"); XCTFail("Font size save missing"); return }
         XCTAssertTrue(app.staticTexts["presentation-media-record-retained"].waitForExistence(timeout: 10))
         app.buttons["Close"].tap(); XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
-        XCTAssertTrue(size.waitForExistence(timeout: 20)); XCTAssertEqual(size.label, "40")
+        XCTAssertTrue(size.waitForExistence(timeout: 20)); XCTAssertEqual(accessibleText(size), "40")
         XCTAssertTrue(app.staticTexts["presentation-unsupported-elements"].exists)
     }
     @MainActor func testItalicTextUndoAndReopenKeepsMedia() {

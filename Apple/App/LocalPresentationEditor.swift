@@ -262,7 +262,8 @@ struct LocalPresentationEditor: View {
     }
     var body: some View {
         NavigationStack {
-            List {
+            ScrollView {
+              VStack(alignment: .leading, spacing: 12) {
                 Text("This edits a local copy. Media and unsupported elements are kept but cannot be edited here.")
                 if let error = state.error { Text(error).accessibilityIdentifier("presentation-edit-error") }
                 if state.saved && !state.dirty { Text("Presentation saved").accessibilityIdentifier("presentation-edit-saved") }
@@ -270,9 +271,11 @@ struct LocalPresentationEditor: View {
                 if state.slides.isEmpty && !state.busy { Text("No editable slides are available.") }
                 Text("\(state.slides.count) slides").accessibilityIdentifier("presentation-slide-count")
                 Group {
-                ForEach(Array(state.slides.enumerated()), id: \.element.id) { index, slide in
-                    Button("Slide \(index + 1)") { state.select(slide.id) }
-                        .accessibilityIdentifier("presentation-slide.\(slide.id)").disabled(state.hasUnapplied)
+                LazyVStack(alignment: .leading, spacing: 12) {
+                    ForEach(Array(state.slides.enumerated()), id: \.element.id) { index, slide in
+                        Button("Slide \(index + 1)") { state.select(slide.id) }
+                            .accessibilityIdentifier("presentation-slide.\(slide.id)").disabled(state.hasUnapplied)
+                    }
                 }
                 if let slide = state.selected {
                     DisclosureGroup("Partial slide preview", isExpanded: $previewExpanded) {
@@ -292,7 +295,10 @@ struct LocalPresentationEditor: View {
                                 }.accessibilityIdentifier("presentation-background-color.\(candidate)")
                             }
                         }
-                        .disabled(state.hasUnapplied).accessibilityIdentifier("presentation-background-color-menu")
+                        .disabled(state.hasUnapplied)
+                        .accessibilityLabel("Background color")
+                        .accessibilityValue(color)
+                        .accessibilityIdentifier("presentation-background-color-menu")
                     } else {
                         Text("This background contains an image or unsupported data and cannot be edited here.")
                     }
@@ -312,7 +318,11 @@ struct LocalPresentationEditor: View {
                                     Label { Text(color) } icon: { Circle().fill(swatchColor(color)) }
                                 }.accessibilityIdentifier("presentation-shape-fill.\(color)")
                             }
-                        }.disabled(state.hasUnapplied).accessibilityIdentifier("presentation-shape-fill-menu")
+                        }
+                        .disabled(state.hasUnapplied)
+                        .accessibilityLabel("Shape fill")
+                        .accessibilityValue(fill)
+                        .accessibilityIdentifier("presentation-shape-fill-menu")
                     } else {
                         Text("This shape fill cannot be edited safely.")
                     }
@@ -355,7 +365,10 @@ struct LocalPresentationEditor: View {
                                 }.accessibilityIdentifier("presentation-text-color.\(candidate)")
                             }
                         }
-                        .disabled(state.hasUnapplied).accessibilityIdentifier("presentation-text-color-menu")
+                        .disabled(state.hasUnapplied)
+                        .accessibilityLabel("Text color")
+                        .accessibilityValue(color.isEmpty ? "Default" : color)
+                        .accessibilityIdentifier("presentation-text-color-menu")
                     } else {
                         Text("This text color cannot be edited safely.")
                     }
@@ -443,7 +456,11 @@ struct LocalPresentationEditor: View {
                     Button("Redo") { state.redo() }.disabled(state.hasUnapplied || !state.canRedo)
                 }
                 if state.reloadRequired { Button("Reload saved presentation") { reload = true }.accessibilityIdentifier("presentation-reload") }
+              }
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .padding()
             }
+            .accessibilityIdentifier("presentation-editor-scroll")
             .navigationTitle("Edit presentation")
             .disabled(state.busy)
             .toolbar {
