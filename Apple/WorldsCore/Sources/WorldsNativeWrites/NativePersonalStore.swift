@@ -34,6 +34,10 @@ private struct Request: Encodable, Sendable {
     var base: Int64? = nil
     var title: String? = nil
     var expectedTitle: String? = nil
+    var expectedParent: String? = nil
+    var expectedSort: Double? = nil
+    var destination: String? = nil
+    var destinationRevision: Int64? = nil
     var parent: String? = nil
     var blocks: [NativeBlockInput]? = nil
     var expected: [NativeBlockInput]? = nil
@@ -50,6 +54,10 @@ private struct Request: Encodable, Sendable {
         case expectedMetadata = "expected_metadata"
         case expectedKind = "expected_kind"
         case expectedTitle = "expected_title"
+        case expectedParent = "expected_parent"
+        case expectedSort = "expected_sort"
+        case destination
+        case destinationRevision = "destination_revision"
         case source
         case operationID = "operation_id"
         case recoveryID = "recovery_id"
@@ -95,6 +103,11 @@ public actor NativePersonalStore {
     /// snapshot before treating the original result as the current page state.
     public func renamePageChecked(id: String, base: Int64, expectedTitle: String, title: String, operationID: UUID) async throws -> JSONValue {
         try await call(Request(operation: "rename_page_checked", path: url.path, page: id, base: base, title: title, expectedTitle: expectedTitle, operationID: operationID.uuidString))
+    }
+    /// Moves to the current end of the destination. This does not preserve an
+    /// earlier sort key for undo; repeat only with the same UUID and inputs.
+    public func movePageChecked(id: String, base: Int64, expectedParent: String?, expectedSort: Double, destination: String?, destinationRevision: Int64?, operationID: UUID) async throws -> JSONValue {
+        try await call(Request(operation: "move_page_checked", path: url.path, page: id, base: base, expectedParent: expectedParent, expectedSort: expectedSort, destination: destination, destinationRevision: destinationRevision, operationID: operationID.uuidString))
     }
     public func saveBlocks(pageID: String, base: Int64, blocks: [NativeBlockInput]) async throws -> JSONValue {
         try await call(Request(operation: "save_blocks", path: url.path, page: pageID, base: base, blocks: blocks))

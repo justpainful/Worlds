@@ -272,6 +272,53 @@ pub fn trash_page(path: &Path, page: &str, base: i64) -> Result<()> {
     tx.commit()?;
     Ok(())
 }
+
+/// Reparent a personal subtree after comparing its source location. The source
+/// writer chooses the current end of the destination; it does not restore an
+/// earlier sibling order and this operation is not an undo implementation.
+pub fn move_page_checked(path:&Path,page:&str,base:i64,expected_parent:Option<String>,expected_sort:f64,destination:Option<String>,destination_revision:Option<i64>,operation_id:&str)->Result<Value> {
+    if !expected_sort.is_finite() || destination.is_some()!=destination_revision.is_some() { bail!("invalid move request") }
+    let operation_id=uuid::Uuid::parse_str(operation_id)?.to_string();
+    let request=serde_json::json!({"page":page,"base":base,"expected_parent":expected_parent,"expected_sort":expected_sort,"destination":destination,"destination_revision":destination_revision}).to_string();
+    let mut conn=open_existing(path)?;
+    let tx=conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+    require_personal(&tx,page)?;
+    if let Some(id)=destination.as_deref() { require_personal(&tx,id)?; }
+    tx.execute_batch("CREATE TABLE IF NOT EXISTS native_personal_page_moves_v1(operation_id TEXT PRIMARY KEY,request_json TEXT NOT NULL,page_id TEXT NOT NULL,result_json TEXT NOT NULL)")?;
+    let previous:Option<(String,String,String)>=tx.query_row("SELECT request_json,page_id,result_json FROM native_personal_page_moves_v1 WHERE operation_id=?1",[&operation_id],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).optional()?;
+    if let Some((saved_request,saved_page,result))=previous {
+        if saved_request!=request || saved_page!=page { bail!("conflict: move operation input changed") }
+        let value:Value=serde_json::from_str(&result)?;
+        if value.get("id").and_then(Value::as_str)!=Some(page) { bail!("conflict: invalid move record") }
+        tx.commit()?; return Ok(value)
+    }
+    let (revision,parent,sort):(i64,Option<String>,f64)=tx.query_row("SELECT updated_at,parent_id,sort_key FROM pages WHERE id=?1",[page],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?)))?;
+    if revision!=base || parent!=expected_parent || sort!=expected_sort { bail!("conflict: page location changed") }
+    if destination==parent { bail!("invalid move request: destination unchanged") }
+    if let (Some(id),Some(expected))=(destination.as_deref(),destination_revision) {
+        let revision:i64=tx.query_row("SELECT updated_at FROM pages WHERE id=?1",[id],|r|r.get(0))?;
+        if revision!=expected { bail!("conflict: destination changed") }
+    }
+    // Inspect every visible ancestor, not merely the UI snapshot. Missing,
+    // shared, deleted, or cyclic ancestry is not a personal root.
+    for start in [Some(page),destination.as_deref()].into_iter().flatten() {
+        let mut seen=std::collections::HashSet::new(); let mut current=Some(start.to_owned());
+        while let Some(id)=current {
+            if !seen.insert(id.clone()) || seen.len()>128 { bail!("invalid page hierarchy: cycle or depth") }
+            require_personal(&tx,&id)?;
+            current=tx.query_row("SELECT parent_id FROM pages WHERE id=?1",[&id],|r|r.get(0))?;
+        }
+    }
+    {
+        let mut statement=tx.prepare("WITH RECURSIVE subtree(id) AS (SELECT id FROM pages WHERE id=?1 UNION SELECT p.id FROM pages p JOIN subtree s ON p.parent_id=s.id) SELECT id FROM subtree")?;
+        let descendants=statement.query_map([page],|r|r.get::<_,String>(0))?.collect::<rusqlite::Result<Vec<_>>>()?;
+        if destination.as_ref().is_some_and(|id|descendants.contains(id)) { bail!("invalid page hierarchy: destination is in subtree") }
+        for id in descendants { require_personal(&tx,&id)?; }
+    }
+    let value=serde_json::to_value(store::move_page(&tx,&store::Ctx::user(),page,destination.as_deref(),None)?)?;
+    tx.execute("INSERT INTO native_personal_page_moves_v1(operation_id,request_json,page_id,result_json) VALUES(?1,?2,?3,?4)",rusqlite::params![operation_id,request,page,value.to_string()])?;
+    tx.commit()?; Ok(value)
+}
 #[derive(serde::Deserialize)]
 #[serde(tag = "operation", rename_all = "snake_case")]
 enum Request {
@@ -299,6 +346,7 @@ enum Request {
     SaveBlocksCheckedKind { path: String, page: String, base: i64, expected: Vec<BlockInput>, blocks: Vec<BlockInput>, expected_kind: String },
     RenamePage { path: String, page: String, base: i64, title: String },
     RenamePageChecked { path: String, page: String, base: i64, expected_title: String, title: String, operation_id: String },
+    MovePageChecked { path: String, page: String, base: i64, expected_parent: Option<String>, expected_sort: f64, destination: Option<String>, destination_revision: Option<i64>, operation_id: String },
     CreatePage { path: String, title: String, parent: Option<String> },
     CreatePageIdempotent { path: String, title: String, parent: Option<String>, operation_id: String },
     TrashPage { path: String, page: String, base: i64 },
@@ -387,6 +435,7 @@ fn dispatch_inner(bytes: &[u8], cancellation: Option<&GalleryCancellation>) -> R
         Request::SaveBlocksCheckedKind { path, page, base, expected, blocks, expected_kind } => save_blocks_checked_kind(Path::new(&path), &page, base, expected, blocks, &expected_kind),
         Request::RenamePage { path, page, base, title } => rename_page(Path::new(&path), &page, base, title),
         Request::RenamePageChecked { path, page, base, expected_title, title, operation_id } => rename_page_checked(Path::new(&path), &page, base, expected_title, title, &operation_id),
+        Request::MovePageChecked { path, page, base, expected_parent, expected_sort, destination, destination_revision, operation_id } => move_page_checked(Path::new(&path), &page, base, expected_parent, expected_sort, destination, destination_revision, &operation_id),
         Request::CreatePage { path, title, parent } => create_page(Path::new(&path), title, parent),
         Request::CreatePageIdempotent { path, title, parent, operation_id } => create_page_idempotent(Path::new(&path), title, parent, &operation_id),
         Request::TrashPage { path, page, base } => { trash_page(Path::new(&path), &page, base)?; Ok(Value::Null) }
@@ -646,6 +695,55 @@ mod tests {
         assert!(trash_page(&path,"fixture-page",base+1).unwrap_err().to_string().contains("conflict"));
         assert_eq!(db.query_row("SELECT count(*) FROM pages WHERE id IN ('fixture-page','child') AND deleted_at IS NULL",[],|r|r.get::<_,i64>(0)).unwrap(),2);
         drop(db); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn checked_move_rejects_stale_location_shared_subtree_and_cycles() {
+        let path=fixture(); let db=Connection::open(&path).unwrap();
+        let (base,sort):(i64,f64)=db.query_row("SELECT updated_at,sort_key FROM pages WHERE id='fixture-page'",[],|r|Ok((r.get(0)?,r.get(1)?))).unwrap();
+        db.execute_batch("INSERT INTO pages(id,title,created_at,updated_at) VALUES('dest','Destination',1,2); INSERT INTO pages(id,title,parent_id,created_at,updated_at) VALUES('child','Child','fixture-page',1,3);").unwrap();
+        let op=uuid::Uuid::new_v4().to_string();
+        let attempt=|parent:Option<String>,key:f64,dest:Option<String>,rev:Option<i64>|move_page_checked(&path,"fixture-page",base,parent,key,dest,rev,&op);
+        assert!(attempt(None,sort+1.0,Some("dest".into()),Some(2)).is_err());
+        assert!(attempt(Some("dest".into()),sort,Some("dest".into()),Some(2)).is_err());
+        assert!(attempt(None,sort,Some("dest".into()),Some(1)).is_err());
+        assert!(attempt(None,sort,Some("child".into()),Some(3)).is_err());
+        db.execute("UPDATE pages SET metadata='{\"sync\":{\"shared\":true}}' WHERE id='child'",[]).unwrap();
+        assert!(attempt(None,sort,Some("dest".into()),Some(2)).is_err());
+        db.execute("UPDATE pages SET metadata='{}' WHERE id='child'",[]).unwrap();
+        db.execute("UPDATE pages SET parent_id='child' WHERE id='fixture-page'",[]).unwrap();
+        assert!(attempt(Some("child".into()),sort,Some("dest".into()),Some(2)).is_err());
+        assert_eq!(db.query_row("SELECT parent_id FROM pages WHERE id='fixture-page'",[],|r|r.get::<_,String>(0)).unwrap(),"child");
+        assert_eq!(db.query_row("SELECT count(*) FROM history WHERE page_id='fixture-page' AND kind='moved'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        drop(db);std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn checked_move_rolls_back_then_retries_without_duplicate_history() {
+        let path=fixture(); let db=Connection::open(&path).unwrap();
+        let (base,sort):(i64,f64)=db.query_row("SELECT updated_at,sort_key FROM pages WHERE id='fixture-page'",[],|r|Ok((r.get(0)?,r.get(1)?))).unwrap();
+        db.execute_batch("INSERT INTO pages(id,title,created_at,updated_at) VALUES('dest','Destination',1,2); CREATE TABLE native_personal_page_moves_v1(operation_id TEXT PRIMARY KEY,request_json TEXT NOT NULL,page_id TEXT NOT NULL,result_json TEXT NOT NULL); CREATE TRIGGER fail_move_record BEFORE INSERT ON native_personal_page_moves_v1 BEGIN SELECT RAISE(ABORT,'fixture'); END;").unwrap();
+        let op=uuid::Uuid::new_v4().to_string();
+        let attempt=||move_page_checked(&path,"fixture-page",base,None,sort,Some("dest".into()),Some(2),&op);
+        assert!(attempt().is_err());
+        assert!(db.query_row("SELECT parent_id FROM pages WHERE id='fixture-page'",[],|r|r.get::<_,Option<String>>(0)).unwrap().is_none());
+        assert_eq!(db.query_row("SELECT sort_key FROM pages WHERE id='fixture-page'",[],|r|r.get::<_,f64>(0)).unwrap(),sort);
+        assert_eq!(db.query_row("SELECT count(*) FROM history WHERE page_id='fixture-page' AND kind='moved'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        db.execute_batch("DROP TRIGGER fail_move_record;").unwrap();
+        let first=attempt().unwrap(); let again=attempt().unwrap(); assert_eq!(first,again);
+        assert_eq!(db.query_row("SELECT parent_id FROM pages WHERE id='fixture-page'",[],|r|r.get::<_,String>(0)).unwrap(),"dest");
+        assert_eq!(db.query_row("SELECT count(*) FROM history WHERE page_id='fixture-page' AND kind='moved'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        assert!(move_page_checked(&path,"fixture-page",base,None,sort,None,None,&op).is_err());
+        drop(db);std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn ffi_checked_move_retries_same_operation() {
+        let path=fixture(); let db=Connection::open(&path).unwrap();
+        let (base,sort):(i64,f64)=db.query_row("SELECT updated_at,sort_key FROM pages WHERE id='fixture-page'",[],|r|Ok((r.get(0)?,r.get(1)?))).unwrap();
+        db.execute("INSERT INTO pages(id,title,created_at,updated_at) VALUES('dest','Destination',1,2)",[]).unwrap();
+        let request=serde_json::json!({"operation":"move_page_checked","path":path,"page":"fixture-page","base":base,"expected_parent":null,"expected_sort":sort,"destination":"dest","destination_revision":2,"operation_id":uuid::Uuid::new_v4().to_string()}).to_string();
+        let invoke=|| { let response=unsafe { worlds_store_call(request.as_ptr(),request.len()) };let parsed:Value=serde_json::from_str(unsafe { std::ffi::CStr::from_ptr(response) }.to_str().unwrap()).unwrap();unsafe { worlds_store_free(response) };parsed };
+        let first=invoke(); let retry=invoke(); assert_eq!(first["ok"],true,"{first}");assert_eq!(retry,first);
+        assert_eq!(db.query_row("SELECT count(*) FROM history WHERE page_id='fixture-page' AND kind='moved'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        drop(db);std::fs::remove_file(path).unwrap();
     }
     #[test]
     fn refuses_shared_flag_and_unknown_schema() {
