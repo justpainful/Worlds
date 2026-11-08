@@ -1010,6 +1010,7 @@ jobs:
               -resultBundlePath "$GITHUB_WORKSPACE/local-drawing-$device.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-drawing-$device.log"; then
               grep -E 'testPersonalDrawingSaveAndReopen.*passed' "logs/local-drawing-$device.log" || result=1
+              if [[ "$device" != "macOS" ]]; then grep -E 'testDrawingControlsScrollOutsideCanvas.*passed' "logs/local-drawing-$device.log" || result=1; fi
               grep -E 'testUnsupportedSceneCannotBeEdited.*passed' "logs/local-drawing-$device.log" || result=1
             else
               result=1
@@ -1751,6 +1752,7 @@ jobs:
           grep -E "Test Case .*testPendingEstimateFailsWithoutDiscardingRawSamples.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testMoveSmoothingAndReleasePressureMatchSource.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testCapturedInputPersistsAndReopens.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testOnlyAncestorPansArePreventedForCanvasTouches.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testUnsubmittedInputCanBeExplicitlyDiscarded.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testCorrectionReopensAndRejectedCorrectionRetainsStroke.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
       - uses: actions/upload-artifact@v4
