@@ -290,10 +290,13 @@ public actor WorldsIdentityClient {
     /// Identifies the durable session without exposing its token or device key.
     /// An interrupted token rotation requires sign-in again.
     public func currentUserID() throws -> String {
-        guard !operationInProgress, refreshTask == nil else { throw IdentityError.busy }
+        guard !operationInProgress else { throw IdentityError.busy }
         guard let bytes = try secrets.load() else { throw IdentityError.signedOut }
         let saved = try JSONDecoder().decode(SavedSession.self, from: bytes)
-        guard saved.refreshInFlight != true, !saved.userID.isEmpty else { throw IdentityError.signedOut }
+        // A marker with no live rotation is an interrupted, unsafe session.
+        // During this actor's active refresh, however, the account remains
+        // pinned and other requests may safely join the same refresh task.
+        guard (saved.refreshInFlight != true || refreshTask != nil), !saved.userID.isEmpty else { throw IdentityError.signedOut }
         return saved.userID
     }
 

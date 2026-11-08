@@ -249,6 +249,25 @@ final class IdentityContinuityTests: XCTestCase {
         let count = await transport.refreshCount
         XCTAssertEqual(count, 1)
     }
+    func testAccountBoundTokenJoinsActiveRefreshWithoutReusingToken() async throws {
+        let secrets = MemorySecrets(), transport = IdentityFixtureTransport(mode: .success)
+        let coordinator = try IdentitySessionCoordinator(baseURL: URL(string: "https://identity.test")!, lockDirectory: directory(), transport: transport, secrets: secrets)
+        _ = try await coordinator.verifyEmail(challengeID: "test", code: "000000", deviceName: "Test", platform: "macos")
+        let first = Task { try await coordinator.accessToken(expectedUserID: "user", forceRefresh: true) }
+        for _ in 0..<200 {
+            if await transport.refreshCount > 0 { break }
+            try await Task.sleep(for: .milliseconds(1))
+        }
+        let started = await transport.refreshCount
+        guard started == 1 else { first.cancel(); return XCTFail("Refresh did not start") }
+        let second = Task { try await coordinator.accessToken(expectedUserID: "user", forceRefresh: true) }
+        let firstToken = try await first.value
+        let secondToken = try await second.value
+        XCTAssertEqual(firstToken, "access-wr_rotated")
+        XCTAssertEqual(secondToken, firstToken)
+        let count = await transport.refreshCount
+        XCTAssertEqual(count, 1)
+    }
     func testInterruptedRotationCannotBeReplayed() async throws {
         let dir = try directory(), secrets = MemorySecrets(), transport = IdentityFixtureTransport(mode: .interrupted)
         let coordinator = try IdentitySessionCoordinator(baseURL: URL(string: "https://identity.test")!, lockDirectory: dir, transport: transport, secrets: secrets)
