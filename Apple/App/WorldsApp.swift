@@ -183,7 +183,7 @@ private struct WorldsLibraryView: View {
                             selectedID = target
                         }
                     } else {
-                        PageContentView(page: page)
+                        PageContentView(page: page, openInlineImage: inlineImageAction(for: page))
                     }
                 } else if loaded {
                     ContentUnavailableView("Select a page", systemImage: "doc.text")
@@ -325,7 +325,7 @@ private struct WorldsLibraryView: View {
         #endif
         #if DEBUG && WORLDS_EXPERIMENTAL_PERSONAL_DOCUMENT
         .sheet(item: $documentRequest) { request in
-            PersonalDocumentView(databaseURL: request.source.url, databaseIdentity: request.source.identity, pageID: request.id)
+            PersonalDocumentView(databaseURL: request.source.url, databaseIdentity: request.source.identity, pageID: request.id, inlineImageBlockID: request.blockID)
         }
         #endif
         #if WORLDS_EXPERIMENTAL_ACCOUNT
@@ -403,6 +403,18 @@ private struct WorldsLibraryView: View {
         guard copyContext == nil else { return nil }
         #endif
         return { documentRequest = PersonalDocumentRequest(id: page.id, source: source) }
+        #else
+        return nil
+        #endif
+    }
+
+    private func inlineImageAction(for page: StoredPage) -> ((String) -> Void)? {
+        #if DEBUG && WORLDS_EXPERIMENTAL_PERSONAL_DOCUMENT && WORLDS_EXPERIMENTAL_INLINE_IMAGE
+        guard ["page", "document"].contains(page.kind), let source = openedVideoDatabase else { return nil }
+        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+        guard copyContext == nil else { return nil }
+        #endif
+        return { blockID in documentRequest = PersonalDocumentRequest(id: page.id, source: source, blockID: blockID) }
         #else
         return nil
         #endif
@@ -755,7 +767,7 @@ private struct VideoDatabaseSource {
 }
 
 #if DEBUG && WORLDS_EXPERIMENTAL_PERSONAL_DOCUMENT
-private struct PersonalDocumentRequest: Identifiable { let id: String; let source: VideoDatabaseSource }
+private struct PersonalDocumentRequest: Identifiable { let id: String; let source: VideoDatabaseSource; var blockID: String? = nil }
 #endif
 
 #if WORLDS_EXPERIMENTAL_PERSONAL_VIDEO

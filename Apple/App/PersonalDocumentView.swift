@@ -24,6 +24,7 @@ struct PersonalDocumentView: View {
     let databaseURL: URL
     let databaseIdentity: VideoDatabaseIdentity
     let pageID: String
+    var inlineImageBlockID: String? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var selection: DocumentSelection?
     @State private var choosingFolder = false
@@ -63,15 +64,21 @@ struct PersonalDocumentView: View {
         do {
             try Self.checkDatabase(folder: folder, selected: databaseURL, expected: databaseIdentity)
             let db = try WorldsDatabase(url: folder.appendingPathComponent("worlds.db"))
-            guard let item = try await db.personalFileAttachment(pageID: pageID) else { throw DocumentOpenError.unavailable }
+            let resolved: StoredFileAttachment?
+            if let inlineImageBlockID { resolved = try await db.personalInlineImage(pageID: pageID, blockID: inlineImageBlockID) }
+            else { resolved = try await db.personalFileAttachment(pageID: pageID) }
+            guard let item = resolved else { throw DocumentOpenError.unavailable }
             guard token == generation else { return }
             let kind = WorldsMedia.format(name: item.fileName, mime: item.mime)
-            guard kind == .image || kind == .pdf else { throw DocumentOpenError.unsupported }
+            guard inlineImageBlockID == nil ? (kind == .image || kind == .pdf) : kind == .image else { throw DocumentOpenError.unsupported }
             try Self.checkDatabase(folder: folder, selected: databaseURL, expected: databaseIdentity)
             let attachment = WorldsAttachment(id: item.id, pageId: item.pageID, kind: item.kind, fileName: item.fileName, mime: item.mime, size: item.size, relPath: item.relPath, width: item.width, height: item.height, createdAt: item.createdAt)
             let file = try AttachmentVault(root: folder.appendingPathComponent("attachments", isDirectory: true)).open(attachment)
             guard file.size == item.size else { throw DocumentOpenError.unavailable }
-            guard try await db.personalFileAttachment(pageID: pageID) == item else { throw DocumentOpenError.unavailable }
+            let confirmed: StoredFileAttachment?
+            if let inlineImageBlockID { confirmed = try await db.personalInlineImage(pageID: pageID, blockID: inlineImageBlockID) }
+            else { confirmed = try await db.personalFileAttachment(pageID: pageID) }
+            guard confirmed == item else { throw DocumentOpenError.unavailable }
             guard token == generation else { return }
             try Self.checkDatabase(folder: folder, selected: databaseURL, expected: databaseIdentity)
             selection = DocumentSelection(lease: lease, attachment: attachment, file: file)

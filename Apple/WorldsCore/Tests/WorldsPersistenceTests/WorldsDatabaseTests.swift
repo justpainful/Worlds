@@ -95,6 +95,31 @@ final class WorldsDatabaseTests: XCTestCase {
         XCTAssertNil(shared)
     }
 
+    func testInlineImageRequiresPersonalPageOwnershipAndUnambiguousReference() async throws {
+        let url = try fixture()
+        try execute(url, #"UPDATE blocks SET type='image',content='{"type":"image","attrs":{"attachmentId":"owned","caption":"صورة"}}' WHERE id='fixture-block'; INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('owned','fixture-page','image','test.png','image/png',4,'img/test.png',1),('unowned',NULL,'image','other.png','image/png',3,'img/other.png',1);"#)
+        let db = try WorldsDatabase(url: url)
+        let found = try await db.personalInlineImage(pageID: "fixture-page", blockID: "fixture-block")
+        XCTAssertEqual(found?.id, "owned")
+        let cases = [
+            #"UPDATE blocks SET content='{"type":"image","attrs":{"attachmentId":"unowned"}}' WHERE id='fixture-block'"#,
+            #"UPDATE blocks SET content='{"type":"image","attrs":{"attachmentId":"owned","attachmentId":"unowned"}}' WHERE id='fixture-block'"#,
+            #"UPDATE blocks SET content='{"type":"file","attrs":{"attachmentId":"owned"}}' WHERE id='fixture-block'"#,
+            #"UPDATE blocks SET content='not-json' WHERE id='fixture-block'"#
+        ]
+        for statement in cases {
+            try execute(url, statement)
+            let blocked = try await db.personalInlineImage(pageID: "fixture-page", blockID: "fixture-block")
+            XCTAssertNil(blocked)
+        }
+        try execute(url, #"UPDATE blocks SET content='{"type":"image","attrs":{"attachmentId":"owned"}}' WHERE id='fixture-block'; UPDATE pages SET metadata='{"sync":{"shared":true}}' WHERE id='fixture-page'"#)
+        let shared = try await db.personalInlineImage(pageID: "fixture-page", blockID: "fixture-block")
+        XCTAssertNil(shared)
+        try execute(url, #"UPDATE pages SET metadata='{"future":{"same":1,"same":2}}' WHERE id='fixture-page'"#)
+        let duplicate = try await db.personalInlineImage(pageID: "fixture-page", blockID: "fixture-block")
+        XCTAssertNil(duplicate)
+    }
+
     func testMissingFileIsNotCreated() throws {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         XCTAssertThrowsError(try WorldsDatabase(url: url))

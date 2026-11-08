@@ -191,6 +191,48 @@ public actor WorldsDatabase {
         } catch { try? Self.exec(db, "ROLLBACK"); throw error }
     }
 
+    /// Experimental: only a root image block whose attachment record belongs
+    /// to the same live personal page. This is a snapshot, not an ACL lease.
+    public func personalInlineImage(pageID: String, blockID: String) throws -> StoredFileAttachment? {
+        guard !pageID.isEmpty, !blockID.isEmpty, !pageID.utf8.contains(0), !blockID.utf8.contains(0) else { throw WorldsDatabaseError.invalidData("image identity") }
+        let workspace = version >= 5 ? " AND p.workspace_id IS NULL" : ""
+        let sql = """
+        SELECT a.id, a.page_id, a.kind, a.file_name, a.mime, a.size, a.rel_path, a.width, a.height, a.created_at
+        FROM pages p JOIN blocks b ON b.page_id = p.id JOIN attachments a ON a.page_id = p.id
+        WHERE p.id = ?1 AND b.id = ?2 AND p.kind IN ('page','document') AND p.deleted_at IS NULL \(workspace)
+          AND CASE WHEN (\(Self.personalMetadata)) THEN
+            NOT EXISTS (SELECT 1 FROM json_tree(p.metadata) WHERE key IS NOT NULL GROUP BY parent, key HAVING COUNT(*) > 1)
+          ELSE 0 END
+          AND CASE WHEN json_valid(b.content) THEN
+            json_type(b.content) = 'object' AND
+            NOT EXISTS (SELECT 1 FROM json_tree(b.content) WHERE key IS NOT NULL GROUP BY parent, key HAVING COUNT(*) > 1) AND
+            json_extract(b.content, '$.type') = 'image' AND
+            json_type(b.content, '$.attrs') = 'object' AND
+            json_type(b.content, '$.attrs.attachmentId') = 'text' AND
+            a.id = json_extract(b.content, '$.attrs.attachmentId')
+          ELSE 0 END
+        LIMIT 1
+        """
+        try Self.exec(db, "BEGIN DEFERRED TRANSACTION")
+        do {
+            let stmt = try Self.prepare(db, sql); defer { sqlite3_finalize(stmt) }
+            let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+            guard sqlite3_bind_text(stmt, 1, pageID, -1, transient) == SQLITE_OK,
+                  sqlite3_bind_text(stmt, 2, blockID, -1, transient) == SQLITE_OK else { throw Self.error(db) }
+            let status = sqlite3_step(stmt)
+            let value: StoredFileAttachment?
+            if status == SQLITE_DONE { value = nil }
+            else if status == SQLITE_ROW {
+                guard sqlite3_column_type(stmt, 5) == SQLITE_INTEGER, sqlite3_column_type(stmt, 9) == SQLITE_INTEGER,
+                      [7, 8].allSatisfy({ sqlite3_column_type(stmt, Int32($0)) == SQLITE_NULL || sqlite3_column_type(stmt, Int32($0)) == SQLITE_INTEGER }) else { throw WorldsDatabaseError.invalidData("attachment.metadata") }
+                let size = sqlite3_column_int64(stmt, 5)
+                guard size >= 0 else { throw WorldsDatabaseError.invalidData("attachment.size") }
+                value = StoredFileAttachment(id: try Self.text(stmt, 0, "attachment.id"), pageID: try Self.text(stmt, 1, "attachment.page_id"), kind: try Self.text(stmt, 2, "attachment.kind"), fileName: try Self.text(stmt, 3, "attachment.file_name"), mime: try Self.text(stmt, 4, "attachment.mime"), size: size, relPath: try Self.text(stmt, 6, "attachment.rel_path"), width: sqlite3_column_type(stmt, 7) == SQLITE_NULL ? nil : sqlite3_column_int64(stmt, 7), height: sqlite3_column_type(stmt, 8) == SQLITE_NULL ? nil : sqlite3_column_int64(stmt, 8), createdAt: sqlite3_column_int64(stmt, 9))
+            } else { throw Self.error(db) }
+            try Self.exec(db, "COMMIT"); return value
+        } catch { try? Self.exec(db, "ROLLBACK"); throw error }
+    }
+
     /// Returns whether the persisted page was updated after the caller's base.
     /// A missing or non-personal page is rejected, never treated as unchanged.
     public func pageChangedSince(id: String, base: Int64) throws -> Bool {

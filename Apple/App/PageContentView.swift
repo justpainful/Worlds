@@ -23,16 +23,18 @@ private struct PageNode: Decodable {
         let textAlign: String?
         let pstyle: String?
         let color: ColorValue?
+        let name: String?
+        let caption: String?
         let invalidFields: [String]
 
         private enum CodingKeys: String, CodingKey {
-            case level, start, href, checked, open, active, tone, label, title, latex, code, dir, textAlign, pstyle, color
+            case level, start, href, checked, open, active, tone, label, title, latex, code, dir, textAlign, pstyle, color, name, caption
         }
         init(from decoder: Decoder) throws {
             guard let container = try? decoder.container(keyedBy: CodingKeys.self) else {
                 level = nil; start = nil; href = nil; checked = nil; open = nil; active = nil
                 tone = nil; label = nil; title = nil; latex = nil; code = nil; dir = nil
-                textAlign = nil; pstyle = nil; color = nil; invalidFields = ["attributes"]
+                textAlign = nil; pstyle = nil; color = nil; name = nil; caption = nil; invalidFields = ["attributes"]
                 return
             }
             var invalid: [String] = []
@@ -52,7 +54,7 @@ private struct PageNode: Decodable {
             title = read(String.self, .title); latex = read(String.self, .latex)
             code = read(String.self, .code); dir = read(String.self, .dir)
             textAlign = read(String.self, .textAlign); pstyle = read(String.self, .pstyle)
-            color = read(ColorValue.self, .color); invalidFields = invalid
+            color = read(ColorValue.self, .color); name = read(String.self, .name); caption = read(String.self, .caption); invalidFields = invalid
         }
     }
     struct Mark: Decodable {
@@ -71,6 +73,7 @@ struct PageContentView: View {
     @Environment(\.layoutDirection) private var layoutDirection
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let page: StoredPage
+    var openInlineImage: ((String) -> Void)? = nil
 
     var body: some View {
         ScrollView {
@@ -86,7 +89,7 @@ struct PageContentView: View {
                 ForEach(page.blocks, id: \.id) { block in
                     if let data = block.contentJSON.data(using: .utf8),
                        let node = try? JSONDecoder().decode(PageNode.self, from: data) {
-                        NodeView(node: node)
+                        NodeView(node: node, openImage: openInlineImage.map { action in { action(block.id) } })
                             .environment(\.layoutDirection, direction(for: block.direction))
                     } else {
                         UnsupportedNodeView(name: block.type)
@@ -126,6 +129,7 @@ private struct NodeView: View {
     let node: PageNode
     var fillsWidth = true
     var allowsSelection = true
+    var openImage: (() -> Void)? = nil
 
     var body: some View {
         Group {
@@ -193,6 +197,13 @@ private struct NodeView: View {
             sourceContent(label: "Equation source", source: node.attrs?.latex)
         case "mermaid":
             sourceContent(label: "Diagram source", source: node.attrs?.code)
+        case "image":
+            VStack(alignment: .leading, spacing: 8) {
+                Label(node.attrs?.name.flatMap { $0.isEmpty ? nil : $0 } ?? "Image", systemImage: "photo")
+                if let caption = node.attrs?.caption, !caption.isEmpty { Text(caption).textSelection(.enabled) }
+                if let openImage { Button("Open image", systemImage: "arrow.up.left.and.arrow.down.right", action: openImage).accessibilityIdentifier("open-inline-image") }
+                else { Text("Image preview is unavailable.").foregroundStyle(.secondary) }
+            }.frame(maxWidth: .infinity, alignment: .leading)
         case "bulletList", "orderedList":
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(Array((node.content ?? []).enumerated()), id: \.offset) { index, item in
