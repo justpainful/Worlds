@@ -720,6 +720,7 @@ jobs:
               grep -E 'testRotateTextUndoAndReopenKeepsMedia.*passed' "logs/local-presentation-editor-$device.log" || result=1
               grep -E 'testPartialPreviewUsesSelectedSlideAndShowsLimits.*passed' "logs/local-presentation-editor-$device.log" || result=1
               grep -E 'testSavedStatusDisappearsWhenNewDraftIsTyped.*passed' "logs/local-presentation-editor-$device.log" || result=1
+              grep -E 'testSlideActionsAreReachableByScrolling.*passed' "logs/local-presentation-editor-$device.log" || result=1
               grep -E 'testBackgroundColorUndoAndReopenKeepsMedia.*passed' "logs/local-presentation-editor-$device.log" || result=1
               grep -E 'testReorderTextUndoAndReopenKeepsMedia.*passed' "logs/local-presentation-editor-$device.log" || result=1
               grep -E 'testShapeFillUndoAndReopenKeepsMedia.*passed' "logs/local-presentation-editor-$device.log" || result=1
