@@ -663,6 +663,16 @@ jobs:
             fi
           done
           test "$result" = 0
+      - name: Export UI attachments
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          for result in local-page-editor-*.xcresult; do
+            [ -d "$result" ] || continue
+            mkdir -p "logs/attachments-${result%.xcresult}"
+            xcrun xcresulttool export attachments --path "$result" --output-path "logs/attachments-${result%.xcresult}"
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -737,6 +747,16 @@ jobs:
             fi
           done
           test "$result" = 0
+      - name: Export UI attachments
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          for result in local-presentation-editor-*.xcresult; do
+            [ -d "$result" ] || continue
+            mkdir -p "logs/attachments-${result%.xcresult}"
+            xcrun xcresulttool export attachments --path "$result" --output-path "logs/attachments-${result%.xcresult}"
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -1077,6 +1097,16 @@ jobs:
             fi
           done
           test "$result" = 0
+      - name: Export UI attachments
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          for result in *drawing*.xcresult; do
+            [ -d "$result" ] || continue
+            mkdir -p "logs/attachments-${result%.xcresult}"
+            xcrun xcresulttool export attachments --path "$result" --output-path "logs/attachments-${result%.xcresult}"
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
