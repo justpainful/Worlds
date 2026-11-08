@@ -161,6 +161,15 @@ pub(crate) fn save_gallery_transaction(tx: &Connection, id: &str, base: i64, exp
         let owner: Option<String> = tx.query_row("SELECT page_id FROM blocks WHERE id=?1",[&item.id],|r|r.get(0)).optional()?;
         if owner.as_deref().is_some_and(|other| other != id) { bail!("conflict: block belongs to another page") }
     }
+    // The original block writer deletes the separate properties column with
+    // a removed item; native gallery recovery does not represent that data.
+    for (block_id,_) in &before {
+        if seen.contains(block_id) { continue }
+        let properties:String=tx.query_row("SELECT properties FROM blocks WHERE page_id=?1 AND id=?2",rusqlite::params![id,block_id],|r|r.get(0))?;
+        if !serde_json::from_str::<Value>(&properties).ok().and_then(|value|value.as_object().map(|object|object.is_empty())).unwrap_or(false) {
+            bail!("unsupported change: gallery item properties cannot be discarded")
+        }
+    }
     attachment_ids(&tx,&before)?; attachment_ids(&tx,&next_pairs)?;
     let gallery = if metadata != expected_metadata { Some(metadata_key(&expected_metadata,&metadata,"gallery")?.clone()) } else { None };
     store::snapshot_before_user_edit(&tx,id)?;
@@ -348,6 +357,21 @@ mod tests {
         let c=Connection::open(&path).unwrap();
         assert_eq!(c.query_row("SELECT count(*) FROM versions WHERE page_id='g'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
         drop(c); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn gallery_removal_refuses_nonempty_or_malformed_block_properties() {
+        for properties in [r#"{"plugin":{"keep":true}}"#, "not-json", "null"] {
+            let path=fixture(); let c=Connection::open(&path).unwrap();
+            let item=gallery("b","a");
+            c.execute("INSERT INTO blocks(id,page_id,type,sort_key,content,properties,created_at,updated_at) VALUES('b','g','galleryItem',0,?1,?2,1,1)",rusqlite::params![item.content.to_string(),properties]).unwrap(); drop(c);
+            let old=read_resource(&path,"g").unwrap();
+            assert!(save_gallery(&path,"g",old["revision"].as_i64().unwrap(),old["metadata"].clone(),old["metadata"].clone(),vec![item],vec![]).is_err());
+            let c=Connection::open(&path).unwrap();
+            assert_eq!(c.query_row("SELECT properties FROM blocks WHERE id='b'",[],|r|r.get::<_,String>(0)).unwrap(),properties);
+            assert_eq!(c.query_row("SELECT count(*) FROM attachments WHERE id='a'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+            assert_eq!(c.query_row("SELECT count(*) FROM versions WHERE page_id='g'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+            drop(c); std::fs::remove_file(path).unwrap();
+        }
     }
     #[test]
     fn project_rejects_shared_links_and_preserves_source() {
