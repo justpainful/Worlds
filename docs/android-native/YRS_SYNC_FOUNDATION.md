@@ -1,5 +1,14 @@
 # Android Yrs sync foundation
 
+The shared text editor displays existing text marks while a paragraph or
+heading is edited, including on either side of long-text page boundaries.
+The display is derived asynchronously from the draft and never modifies the
+Yjs update. Unsupported projections fall back to plain text. Android 11 and
+15 emulator tests compare the display with saved Yjs marks for mixed Arabic,
+emoji and edits across mark boundaries, and exercise offline save. The shared
+editor still does not offer formatting controls or editing of inline objects.
+
+
 CI also runs the Android Yrs examples against the desktop's locked Yjs and
 Tiptap versions. It verifies mixed-script text, UTF-16 boundaries, formatting,
 block insertion, duplication, reverse-order updates and convergence after a

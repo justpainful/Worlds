@@ -38,10 +38,12 @@ internal fun replaceChangedText(raw: String, old: String, new: String): String {
     return InlineEditing.replace(raw, prefix, old.length - suffix, new.substring(prefix, new.length - suffix))
 }
 
-internal fun inlineVisualTransformation(raw: String): VisualTransformation {
-    val preview = previewBlock(raw, interactiveLinks = false).text
+internal fun inlineVisualTransformation(raw: String): VisualTransformation =
+    annotatedVisualTransformation(previewBlock(raw, interactiveLinks = false).text)
+
+internal fun annotatedVisualTransformation(preview: AnnotatedString?): VisualTransformation {
     return VisualTransformation { input ->
-        if (input.text != preview.text) TransformedText(input, OffsetMapping.Identity)
+        if (preview == null || input.text != preview.text) TransformedText(input, OffsetMapping.Identity)
         else {
             val styled = AnnotatedString.Builder(input).apply {
                 preview.spanStyles.forEach { addStyle(it.item, it.start, it.end) }

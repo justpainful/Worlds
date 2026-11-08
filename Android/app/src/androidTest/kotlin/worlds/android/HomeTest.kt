@@ -10,6 +10,7 @@ import worlds.stylus.StrokeBrush
 import worlds.stylus.StrokeSample
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.hasText
@@ -552,7 +553,7 @@ class HomeTest {
         compose.waitUntil(20_000) { compose.onAllNodesWithText(app.getString(R.string.find_count, 1, 2)).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText(app.getString(R.string.find_next)).performScrollTo()
         compose.onNodeWithText(app.getString(R.string.find_next)).performSemanticsAction(SemanticsActions.OnClick) { check(it()) }
-        compose.onNodeWithText(app.getString(R.string.find_count, 2, 2)).performScrollTo().assertIsDisplayed()
+        compose.waitUntil(20_000) { runCatching { compose.onNodeWithText(app.getString(R.string.find_count, 2, 2)).performScrollTo().assertIsDisplayed(); true }.getOrDefault(false) }
         compose.onNodeWithText(app.getString(R.string.find_show_block)).performScrollTo().performClick()
         compose.waitUntil(20_000) { runCatching { compose.onNodeWithTag("find-revealed-block").assertIsDisplayed(); true }.getOrDefault(false) }
         compose.onNodeWithText("Distant unique target").assertIsDisplayed()
@@ -577,9 +578,13 @@ class HomeTest {
         compose.onNodeWithText(app.getString(R.string.find_query)).performTextInput("cat")
         compose.onNodeWithText(app.getString(R.string.find_replacement)).performTextInput("dog")
         compose.waitUntil(20_000) { compose.onAllNodesWithText(app.getString(R.string.find_count, 1, 2)).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("find_scroll").performTouchInput {
+            down(Offset(2f, center.y * 1.8f)); moveTo(Offset(2f, center.y * 0.2f), 300); up()
+        }
+        compose.onNodeWithText(app.getString(R.string.find_replacement)).assertIsNotFocused()
         compose.onNodeWithText(app.getString(R.string.find_skipped, 1)).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText(app.getString(R.string.find_replace_all)).performScrollTo().performClick()
-        compose.onNodeWithText(app.getString(R.string.find_confirm_all, 2)).assertIsDisplayed()
+        compose.waitUntil(20_000) { runCatching { compose.onNodeWithText(app.getString(R.string.find_confirm_all, 2)).assertIsDisplayed(); true }.getOrDefault(false) }
         compose.onAllNodesWithText(app.getString(R.string.find_replace_all)).let { it[it.fetchSemanticsNodes().lastIndex].performClick() }
         compose.waitUntil(20_000) { !model.state.value.busy && model.state.value.selected!!.blocks.single().content.contains("dog") }
         val content = org.json.JSONObject(model.state.value.selected!!.blocks.single().content).getJSONArray("content")

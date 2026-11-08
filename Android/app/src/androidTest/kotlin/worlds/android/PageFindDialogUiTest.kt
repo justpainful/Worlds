@@ -14,6 +14,8 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.test.platform.app.InstrumentationRegistry
@@ -45,8 +47,8 @@ class PageFindDialogUiTest {
             }
         }
         compose.waitUntil(20_000) { compose.onAllNodesWithText(context.getString(R.string.find_count, 1, 2)).fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText(context.getString(R.string.find_next)).performScrollTo().performClick()
-        compose.onNodeWithText(context.getString(R.string.find_count, 2, 2)).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.find_next)).performScrollTo().performSemanticsAction(SemanticsActions.OnClick) { check(it()) }
+        compose.waitUntil(20_000) { runCatching { compose.onNodeWithText(context.getString(R.string.find_count, 2, 2)).performScrollTo().assertIsDisplayed(); true }.getOrDefault(false) }
         compose.onNodeWithText(context.getString(R.string.find_show_block)).performScrollTo().assertIsDisplayed()
         if (InstrumentationRegistry.getArguments().getString("captureWorldsUi") == "true") {
             compose.waitForIdle(); Thread.sleep(500)

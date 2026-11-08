@@ -1,5 +1,14 @@
 # Worlds Android design decisions
 
+## Shared text while editing
+A shared paragraph or heading displays the formatting of its saved text while
+it is edited, including within long-text parts. Preview calculation runs away
+from the UI thread and falls back to plain text while pending or unsupported;
+it never changes the shared update. The current selection remains in UTF-16
+positions. The native dialog moves above the keyboard and scrolls its focused
+field into view. It uses the same Worlds text, surfaces and accessibility
+roles as the local editor and adds no decorative motion.
+
 ## Inline editor formatting
 The local text editor shows the actual stored bold, italic, underline, strike,
 code, highlight, color and size marks inside the editable field. The existing
@@ -12,6 +21,8 @@ When the keyboard appears, the dialog reserves its inset and scrolls the focused
 text field into view while keeping Save and Cancel reachable.
 The find and replace dialog also reserves keyboard space, and closes the
 keyboard before showing its replace-all confirmation.
+Dragging the find controls closes the keyboard so the controls remain reachable
+on a compact screen; focusing a field opens it again.
 
 ## Shared page action strip
 The shared page puts access, conversations, notifications, version history and

@@ -171,5 +171,6 @@ jobs:
             docs/android-native/screenshots/shared-duplicate-compact.png
             docs/android-native/screenshots/inline-formatted-editor-final.png
             docs/android-native/screenshots/drawing-cached-eraser.png
+            docs/android-native/screenshots/shared-formatted-editor.png
             docs/android-native/screenshots/shared-toolbar-ar-large.png
           if-no-files-found: error

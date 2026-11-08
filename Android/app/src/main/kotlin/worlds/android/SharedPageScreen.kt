@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -76,6 +77,14 @@ internal data class ConversationMessage(val id: String, val author: String, val 
 internal data class ConversationThread(val id: String, val quote: String, val resolved: Boolean, val createdAt: Long, val comments: List<ConversationMessage>)
 internal data class SharedDraft(val block: SharedBlock, val base: ByteArray, val text: String, val isNew: Boolean = false,
     val kind: String = "paragraph", val level: Int = 1, val after: String? = null)
+
+internal fun sharedDraftPreview(draft: SharedDraft): AnnotatedString? {
+    if (draft.isNew) return null
+    val original = draft.block.text ?: return null
+    return runCatching {
+        previewBlock(replaceChangedText(draft.block.raw, original, draft.text), interactiveLinks = false).text
+    }.getOrNull()?.takeIf { it.text == draft.text }
+}
 internal enum class EndpointProblem { DIFFERENT_SERVER, UNKNOWN_ORIGIN }
 internal data class SharedPageState(val opening: Boolean = false, val access: String? = null, val blocks: List<SharedBlock> = emptyList(),
     val snapshot: ByteArray? = null, val disconnected: Boolean = false, val revoked: Boolean = false, val error: Boolean = false,
@@ -969,8 +978,16 @@ private fun SharedPageTool(icon: Int, label: String, enabled: Boolean, tag: Stri
         var draftComposing by remember(draft.block.id) { mutableStateOf(false) }
         val shortcutEnabled = !draftComposing && !state.saving && !state.disconnected && state.snapshot != null && !confirmDiscardDraft && !showPartPicker
         EditorShortcutRegistration(shortcutEnabled)
-        AlertDialog(modifier = Modifier.editorSaveShortcut(shortcutEnabled, controller::save), onDismissRequest = ::dismissDraft, title = { Text(stringResource(if (!draft.isNew) R.string.edit_text else if (draft.kind == "heading") R.string.add_heading else R.string.add_paragraph)) },
-            text = { Column { val editorSettings = LocalAppearancePreferences.current
+        AlertDialog(modifier = Modifier.imePadding().editorSaveShortcut(shortcutEnabled, controller::save), onDismissRequest = ::dismissDraft, title = { Text(stringResource(if (!draft.isNew) R.string.edit_text else if (draft.kind == "heading") R.string.add_heading else R.string.add_paragraph)) },
+            text = { Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
+                val editorSettings = LocalAppearancePreferences.current
+                val focusRequester = remember { BringIntoViewRequester() }
+                val focusScope = rememberCoroutineScope()
+                var fieldFocused by remember { mutableStateOf(false) }
+                val mayHaveMarks = remember(draft.block.raw, draft.isNew) { !draft.isNew && draft.block.raw.contains("\"marks\"") }
+                val styled by produceState<AnnotatedString?>(null, draft.block.raw, draft.text, mayHaveMarks) {
+                    value = if (mayHaveMarks) withContext(Dispatchers.Default) { sharedDraftPreview(draft) } else null
+                }
                 if (draft.isNew && draft.kind == "heading") FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     (1..3).forEach { level -> FilterChip(selected = draft.level == level, enabled = !state.saving,
                         onClick = { controller.setHeadingLevel(level) }, label = { Text(stringResource(R.string.heading_level, level)) },
@@ -981,6 +998,10 @@ private fun SharedPageTool(icon: Int, label: String, enabled: Boolean, tag: Stri
                 val currentPage = pageIndex.coerceIn(0, offsets.size - 2)
                 val from = offsets[currentPage]; val to = offsets[currentPage + 1]
                 val part = draft.text.substring(from, to)
+                val styledPart = remember(styled, draft.text, from, to) {
+                    styled?.takeIf { it.text == draft.text }?.subSequence(from, to)
+                }
+                val visual = remember(styledPart) { annotatedVisualTransformation(styledPart) }
                 var field by remember(draft.block.id, currentPage) { mutableStateOf(TextFieldValue(part, TextRange(part.length))) }
                 val shown = if (field.text == part) field else TextFieldValue(part, TextRange(field.selection.start.coerceIn(0, part.length), field.selection.end.coerceIn(0, part.length)))
                 if (offsets.size > 2) {
@@ -996,7 +1017,7 @@ private fun SharedPageTool(icon: Int, label: String, enabled: Boolean, tag: Stri
                         }
                     }
                 }
-                OutlinedTextField(value = shown, onValueChange = { next ->
+                OutlinedTextField(value = shown, visualTransformation = visual, onValueChange = { next ->
                     draftComposing = next.composition != null
                     field = next
                     if (next.text != part) {
@@ -1006,7 +1027,11 @@ private fun SharedPageTool(icon: Int, label: String, enabled: Boolean, tag: Stri
                         pageIndex = sharedTextPageForCaret(updatedOffsets, caret, currentPage)
                         controller.updateDraft(full)
                     }
-                }, enabled = !state.saving, label = { Text(stringResource(R.string.text_content)) }, modifier = Modifier.fillMaxWidth().testTag("shared_draft"), minLines = 3, maxLines = 10,
+                }, enabled = !state.saving, label = { Text(stringResource(R.string.text_content)) }, modifier = Modifier.fillMaxWidth().testTag("shared_draft")
+                        .bringIntoViewRequester(focusRequester).onFocusChanged { focus ->
+                            fieldFocused = focus.isFocused
+                            if (focus.isFocused) focusScope.launch { delay(350); if (fieldFocused) focusRequester.bringIntoView() }
+                        }, minLines = 3, maxLines = 10,
                     textStyle = LocalTextStyle.current.copy(textDirection = editorDirection(editorSettings.direction)), keyboardOptions = editorKeyboardOptions(editorSettings.suggestions))
                 if (showPartPicker) AlertDialog(onDismissRequest = { showPartPicker = false },
                     title = { Text(stringResource(R.string.shared_text_go)) },

@@ -2,6 +2,9 @@ package worlds.android
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.interaction.DragInteraction
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -67,9 +70,17 @@ internal val PageFindSessionSaver = listSaver<PageFindSession, Any>(
             if (updated == null) error = true else { document = updated; index = 0; error = false }
         }
     }
-    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     AlertDialog(modifier = Modifier.imePadding(), onDismissRequest = { if (!busy) onDismiss() }, title = { WorldsActionLabel(R.drawable.ic_search, stringResource(R.string.find_replace)) },
-        text = { Column(Modifier.heightIn(max = 450.dp).verticalScroll(rememberScrollState())) {
+        text = {
+            val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+            val focusManager = LocalFocusManager.current
+            val scroll = rememberScrollState()
+            LaunchedEffect(scroll, keyboard, focusManager) {
+                scroll.interactionSource.interactions.collect { interaction ->
+                    if (interaction is DragInteraction.Start) { focusManager.clearFocus(); keyboard?.hide() }
+                }
+            }
+            Column(Modifier.heightIn(max = 450.dp).verticalScroll(scroll).testTag("find_scroll")) {
             Text(stringResource(R.string.find_scope), style = MaterialTheme.typography.bodySmall)
             OutlinedTextField(value = query, onValueChange = { if (it.length <= 256 && it != query) { query = it; index = 0; error = false } }, enabled = !busy,
                 label = { Text(stringResource(R.string.find_query)) }, modifier = Modifier.fillMaxWidth().onPreviewKeyEvent { event ->
