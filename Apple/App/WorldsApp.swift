@@ -5,6 +5,9 @@ import WorldsSearch
 #if WORLDS_EXPERIMENTAL_LOCAL_COPY
 import WorldsLocalImport
 import WorldsProjectEditingViews
+#if DEBUG && WORLDS_EXPERIMENTAL_CREATE_STREAM
+import WorldsModels
+#endif
 #if DEBUG && (WORLDS_EXPERIMENTAL_RENAME_PAGE || WORLDS_EXPERIMENTAL_MOVE_PAGE)
 import WorldsNativeWrites
 #endif
@@ -100,6 +103,9 @@ private struct WorldsLibraryView: View {
     @State private var showCopyExplanation = false
     @State private var showLocalCopies = false
     @State private var editingProject: ProjectEditorRequest?
+    #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_STREAM
+    @State private var creatingStream: LocalCreateStreamRequest?
+    #endif
     #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_GALLERY
     @State private var creatingGallery: LocalCreateGalleryRequest?
     #endif
@@ -218,6 +224,16 @@ private struct WorldsLibraryView: View {
                         Button("New presentation", systemImage: "rectangle.on.rectangle") {
                             creatingPresentation = LocalCreatePresentationRequest(copy: context.copy, databaseIdentity: source.identity, generation: databaseGeneration)
                         }.accessibilityIdentifier("new-local-presentation").disabled(databaseActionsDisabled)
+                    }
+                }
+                #endif
+                #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_STREAM
+                if let context = copyContext, let source = openedVideoDatabase,
+                   source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
+                    ToolbarItem {
+                        Button("New stream", systemImage: "play.rectangle") {
+                            creatingStream = LocalCreateStreamRequest(copy: context.copy, databaseIdentity: source.identity, generation: databaseGeneration)
+                        }.accessibilityIdentifier("new-local-stream").disabled(databaseActionsDisabled)
                     }
                 }
                 #endif
@@ -484,6 +500,13 @@ private struct WorldsLibraryView: View {
             }
         }
         #endif
+        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_STREAM
+        .sheet(item: $creatingStream) { request in
+            LocalCreateStreamView(request: request) { id, link in
+                await showCreatedStream(id, link: link, request: request)
+            }
+        }
+        #endif
         .sheet(item: $editingProject) { request in
             NavigationStack {
                 ProjectDraftView(projectID: request.id, repository: request.context.repository, candidates: request.candidates, allowsLinkEditing: projectLinkEditingEnabled) {
@@ -677,6 +700,9 @@ private struct WorldsLibraryView: View {
         #endif
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
         disabled = disabled || editingProject != nil
+        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_STREAM
+        disabled = disabled || creatingStream != nil
+        #endif
         #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_GALLERY
         disabled = disabled || creatingGallery != nil
         #endif
@@ -1204,6 +1230,29 @@ private struct WorldsLibraryView: View {
             guard copyContext?.copy.id == request.copy.id, databaseGeneration == request.generation,
                   VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity,
                   snapshot.pages.contains(where: { $0.id == id && $0.kind == "gallery" && $0.parentID == nil }) else { return false }
+            pages = snapshot.pages
+            returnStack.removeAll()
+            selectedID = id
+            return true
+        } catch { return false }
+    }
+    #endif
+    #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_STREAM
+    @MainActor private func showCreatedStream(_ id: String, link: String, request: LocalCreateStreamRequest) async -> Bool {
+        guard copyContext?.copy.id == request.copy.id, databaseGeneration == request.generation,
+              VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity else { return false }
+        do {
+            let database = try WorldsDatabase(url: request.copy.databaseURL)
+            let snapshot = try await database.snapshot()
+            let format = worldsStreamFormat(link)
+            guard copyContext?.copy.id == request.copy.id, databaseGeneration == request.generation,
+                  VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity,
+                  let page = snapshot.pages.first(where: { $0.id == id && $0.kind == "stream" && $0.parentID == nil }),
+                  let metadata = page.metadataJSON.data(using: .utf8),
+                  let object = try JSONSerialization.jsonObject(with: metadata) as? [String: Any],
+                  let stream = object["stream"] as? [String: Any], let saved = stream["url"] as? String,
+                  let savedFormat = stream["format"] as? String, savedFormat == format,
+                  saved.utf8.elementsEqual(link.utf8) else { return false }
             pages = snapshot.pages
             returnStack.removeAll()
             selectedID = id
