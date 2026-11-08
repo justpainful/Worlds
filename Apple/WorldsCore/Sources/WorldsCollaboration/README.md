@@ -17,6 +17,9 @@ that a concurrent local update is denied and does not alter the outbox.
 If the local store rejects account or workspace identity, the session stops
 instead of retrying as a network failure. It leaves pending entries untouched;
 reopening them requires a separately authorized account and recovery flow.
+An explicit token refresh checks that the same authenticated connection still
+exists after the token provider returns; a stopped or replaced socket does not
+receive that delayed token. This does not schedule token refresh automatically.
 Local awareness sends are serialized; an in-flight announcement completes
 before a subsequent removal, and stale queued sends are discarded when the
 presence version or connection changes. A blocked socket send can delay that

@@ -155,6 +155,16 @@ private actor DelayedPresenceSocket: CollaborationSocket {
     func closeCode() async -> Int { 0 }
 }
 
+private actor PausedRefreshToken {
+    private(set) var refreshStarted = false
+    private var waiting: CheckedContinuation<Void, Never>?
+    func token(force: Bool) async -> String {
+        if force { refreshStarted = true; await withCheckedContinuation { waiting = $0 } }
+        return "fixture-token"
+    }
+    func release() { waiting?.resume(); waiting = nil }
+}
+
 private actor IdentityChangeSocket: CollaborationSocket {
     private var first = true
     private var waiting: CheckedContinuation<Data?, Error>?
@@ -184,6 +194,7 @@ private actor FixtureSocket: CollaborationSocket {
     private var queue: [Data] = []
     private(set) var presenceUpdates: [Data] = []
     private(set) var awarenessQueries = 0
+    private(set) var refreshes = 0
     private var waiting: CheckedContinuation<Data?, Error>?
     private var closed = false
     func send(_ data: Data) async throws {
@@ -195,6 +206,7 @@ private actor FixtureSocket: CollaborationSocket {
             if acknowledges { try deliver(WorldsSyncWire.encode(.acknowledgement(batchID: batchID, status: 0, reason: ""))) }
         case let .awareness(payload): presenceUpdates.append(payload)
         case .queryAwareness: awarenessQueries += 1
+        case .authRefresh: refreshes += 1
         default: break
         }
     }
@@ -218,6 +230,23 @@ private actor FixtureSocket: CollaborationSocket {
 }
 
 extension WorldsCollaborationTests {
+    func testStoppedSessionDoesNotSendDelayedRefreshToken() async throws {
+        let store = FixtureStore(), socket = FixtureSocket(), token = PausedRefreshToken()
+        let session = try CollaborationSession(pageID: "p", workspaceID: "w", documentID: "p", expectedUserID: "user", serverURL: URL(string: "https://example.invalid")!, store: store, tokenProvider: { force in await token.token(force: force) }, socketFactory: { _, _ in socket })
+        let run = Task { try await session.run() }
+        defer { Task { await token.release(); await session.stop() } }
+        for _ in 0..<100 { if await session.accessLevel == "edit" { break }; try await Task.sleep(for: .milliseconds(10)) }
+        guard await session.accessLevel == "edit" else { await session.stop(); _ = try? await run.value; return XCTFail("Authentication was not observed") }
+        let refresh = Task { try await session.refreshAuthentication() }
+        for _ in 0..<100 { if await token.refreshStarted { break }; try await Task.sleep(for: .milliseconds(10)) }
+        guard await token.refreshStarted else { refresh.cancel(); await token.release(); await session.stop(); _ = try? await run.value; return XCTFail("Refresh did not start") }
+        await session.stop()
+        await token.release()
+        do { try await refresh.value; XCTFail("A stopped connection must not send a token") }
+        catch CollaborationError.notStarted { }
+        let count = await socket.refreshes; XCTAssertEqual(count, 0)
+        _ = try? await run.value
+    }
     func testClearPresenceWaitsForInFlightSendAndIsLast() async throws {
         let store = FixtureStore(), socket = DelayedPresenceSocket()
         let session = try CollaborationSession(pageID: "p", workspaceID: "w", documentID: "p", expectedUserID: "user", serverURL: URL(string: "https://example.invalid")!, store: store, tokenProvider: { _ in "fixture-token" }, socketFactory: { _, _ in socket })

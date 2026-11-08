@@ -398,8 +398,10 @@ public actor CollaborationSession {
 
     /// Called by the owner before JWT expiry. Expiration scheduling remains external.
     public func refreshAuthentication() async throws {
-        guard let socket else { throw CollaborationError.notStarted }
+        guard !stopped, verifiedIdentity, let socket else { throw CollaborationError.notStarted }
+        let connection = socketID
         let token = try await tokenProvider(true)
+        guard !stopped, verifiedIdentity, socketID == connection else { throw CollaborationError.notStarted }
         try await socket.send(WorldsSyncWire.encode(.authRefresh(token: token)))
     }
 
