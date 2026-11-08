@@ -152,4 +152,5 @@ jobs:
             docs/android-native/screenshots/library-fixed.png
             docs/android-native/screenshots/narrow-home-final.png
             docs/android-native/screenshots/workspace-keyboard.png
+            docs/android-native/screenshots/avif-page.png
           if-no-files-found: error

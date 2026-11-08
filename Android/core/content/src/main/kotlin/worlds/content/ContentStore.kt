@@ -225,7 +225,7 @@ class ContentStore(context: Context, name: String = "worlds-content.db") :
         val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
         android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
         val mime = bounds.outMimeType
-        require(mime in setOf("image/png", "image/jpeg", "image/webp", "image/gif") && bounds.outWidth in 1..12_000 && bounds.outHeight in 1..12_000 && bounds.outWidth.toLong() * bounds.outHeight <= 64_000_000L) { "Unsupported image" }
+        require(mime in setOf("image/png", "image/jpeg", "image/webp", "image/gif", "image/avif") && bounds.outWidth in 1..12_000 && bounds.outHeight in 1..12_000 && bounds.outWidth.toLong() * bounds.outHeight <= 64_000_000L) { "Unsupported image" }
         var sample = 1
         while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 1600) sample *= 2
         val decoded = requireNotNull(android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, android.graphics.BitmapFactory.Options().apply { inSampleSize = sample })) { "Image cannot be decoded" }
@@ -259,7 +259,7 @@ class ContentStore(context: Context, name: String = "worlds-content.db") :
         val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
         android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
         val mime = bounds.outMimeType
-        require(mime in setOf("image/png", "image/jpeg", "image/webp", "image/gif") && bounds.outWidth in 1..12_000 && bounds.outHeight in 1..12_000 && bounds.outWidth.toLong() * bounds.outHeight <= 64_000_000L)
+        require(mime in setOf("image/png", "image/jpeg", "image/webp", "image/gif", "image/avif") && bounds.outWidth in 1..12_000 && bounds.outHeight in 1..12_000 && bounds.outWidth.toLong() * bounds.outHeight <= 64_000_000L)
         var sample = 1
         while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 1600) sample *= 2
         requireNotNull(android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, android.graphics.BitmapFactory.Options().apply { inSampleSize = sample })).recycle()

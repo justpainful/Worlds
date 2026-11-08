@@ -18,6 +18,38 @@ class ContentStoreTest {
     @Before fun create() { store = ContentStore(context, name) }
     @After fun close() { store.close(); context.deleteDatabase(name) }
 
+    @Test fun avifImagesPreserveOriginalBytesInPagesGalleriesAndSlides() {
+        val bytes = InstrumentationRegistry.getInstrumentation().context.assets.open("sample.avif").use { it.readBytes() }
+        val page = store.create("page", "AVIF page")
+        val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        val decoded = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        val supported = bounds.outMimeType == "image/avif" && bounds.outWidth > 0 && bounds.outHeight > 0 && decoded != null
+        decoded?.recycle()
+        if (!supported) {
+            assertTrue(runCatching { store.insertImage(page.id, page.revision, "image.avif", bytes) }.isFailure)
+            assertTrue(store.load(page.id)!!.blocks.isEmpty())
+            return
+        }
+        for (kind in listOf("page", "gallery")) {
+            val resource = if (kind == "page") page else store.create(kind, "AVIF gallery")
+            store.insertImage(resource.id, resource.revision, "image.avif", bytes)
+            val attrs = JSONObject(store.load(resource.id)!!.blocks.single().content).getJSONObject("attrs")
+            assertEquals("image/avif", attrs.getString("mime"))
+            if (kind == "page") { assertEquals(24, attrs.getInt("width")); assertEquals(16, attrs.getInt("height")) }
+            assertArrayEquals(bytes, store.imageBytes(attrs.getString("attachmentId")))
+        }
+        val deck = store.create("presentation", "AVIF deck")
+        val slide = store.load(deck.id)!!.blocks.single()
+        val updated = store.insertSlideImage(deck.id, deck.revision, slide.id, "image.avif", bytes)
+        var attrs = JSONObject(store.load(deck.id)!!.blocks.single().content).getJSONObject("attrs")
+        val image = attrs.getJSONArray("elements").getJSONObject(attrs.getJSONArray("elements").length() - 1)
+        assertArrayEquals(bytes, store.imageBytes(image.getString("attachmentId")))
+        store.insertSlideImage(deck.id, updated.revision, slide.id, "background.avif", bytes, background = true)
+        attrs = JSONObject(store.load(deck.id)!!.blocks.single().content).getJSONObject("attrs")
+        assertArrayEquals(bytes, store.imageBytes(attrs.getJSONObject("background").getString("attachmentId")))
+    }
+
     @Test fun projectDetailsAndLinksPreserveUnknownDataAndStayIndependent() {
         val metadata = """{"outside":9,"project":{"status":"active","start":null,"due":null,"description":"old","links":[],"future":"keep"}}"""
         val project = store.create("project", "Project", metadata = metadata, instructions = "[\"retain\"]")

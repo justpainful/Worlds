@@ -81,6 +81,80 @@ class HomeTest {
         compose.onNodeWithText(app.getString(R.string.empty_body)).assertIsDisplayed()
     }
 
+    @Test fun avifPageImageIsDisplayedAndExportsOriginalBytes() {
+        org.junit.Assume.assumeTrue(android.os.Build.VERSION.SDK_INT >= 31)
+        val bytes = InstrumentationRegistry.getInstrumentation().context.assets.open("sample.avif").use { it.readBytes() }
+        val input = app.cacheDir.resolve("sample-${UUID.randomUUID()}.avif")
+        val output = app.cacheDir.resolve("export-${UUID.randomUUID()}.avif")
+        input.writeBytes(bytes)
+        val page = ContentStore(app, database).use { it.create("page", "AVIF page") }
+        try {
+            compose.setContent { WorldsTheme { Home(model) } }
+            model.open(page.id)
+            compose.waitUntil(20_000) { model.state.value.selected?.resource?.id == page.id }
+            compose.runOnIdle { check(model.beginImageImport()); model.finishImageImport(Uri.fromFile(input)) }
+            compose.waitUntil(20_000) { !model.state.value.busy && model.state.value.selected?.blocks?.size == 1 }
+            val block = model.state.value.selected!!.blocks.single()
+            val attrs = org.json.JSONObject(block.content).getJSONObject("attrs")
+            check(attrs.getString("mime") == "image/avif")
+            compose.waitUntil(20_000) { runCatching { compose.onNodeWithContentDescription(attrs.getString("name")).assertIsDisplayed(); true }.getOrDefault(false) }
+            if (InstrumentationRegistry.getArguments().getString("captureWorldsUi") == "true") {
+                compose.waitForIdle(); Thread.sleep(300)
+                android.os.ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /sdcard/Download/worlds-avif-page.png")).use { it.readBytes() }
+            }
+            compose.runOnIdle {
+                val request = checkNotNull(model.beginImageExport(block.id))
+                check(request.mime == "image/avif" && request.name.endsWith(".avif"))
+                model.finishImageExport(Uri.fromFile(output))
+            }
+            compose.waitUntil(20_000) { !model.state.value.busy && model.state.value.imageStatus == R.string.image_export_success }
+            check(output.readBytes().contentEquals(bytes))
+        } finally { input.delete(); output.delete() }
+    }
+
+    @Test fun avifCanBeSelectedFromTheSystemPicker() {
+        org.junit.Assume.assumeTrue(android.os.Build.VERSION.SDK_INT >= 31)
+        val bytes = InstrumentationRegistry.getInstrumentation().context.assets.open("sample.avif").use { it.readBytes() }
+        val filename = "worlds-avif-${UUID.randomUUID()}.avif"
+        val values = android.content.ContentValues().apply {
+            put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, filename)
+            put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "image/avif")
+            put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS)
+        }
+        val fixture = checkNotNull(app.contentResolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values))
+        checkNotNull(app.contentResolver.openOutputStream(fixture)).use { it.write(bytes) }
+        val page = ContentStore(app, database).use { it.create("page", "AVIF picker") }
+        try {
+            compose.setContent { WorldsTheme { Home(model) } }; model.open(page.id)
+            compose.waitUntil(20_000) { model.state.value.selected?.resource?.id == page.id }
+            insertBlock(R.string.image_insert)
+            val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+            fun find(node: android.view.accessibility.AccessibilityNodeInfo?): android.view.accessibility.AccessibilityNodeInfo? {
+                if (node == null) return null
+                if (node.contentDescription?.toString()?.startsWith(filename) == true) return node
+                for (i in 0 until node.childCount) find(node.getChild(i))?.let { return it }
+                return null
+            }
+            val deadline = System.currentTimeMillis() + 20_000; var clicked = false
+            while (System.currentTimeMillis() < deadline && !clicked) {
+                find(automation.rootInActiveWindow)?.let { target ->
+                    val bounds = android.graphics.Rect(); target.getBoundsInScreen(bounds)
+                    if (!bounds.isEmpty) {
+                        val x = bounds.left + bounds.width() / 4; val y = bounds.top + bounds.height() / 4
+                        automation.executeShellCommand("input tap $x $y").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
+                        clicked = true
+                    }
+                }
+                if (!clicked) Thread.sleep(200)
+            }
+            check(clicked) { "AVIF file was not found in the system picker" }
+            compose.waitUntil(20_000) { !model.state.value.busy && model.state.value.selected?.blocks?.size == 1 }
+            val attrs = org.json.JSONObject(model.state.value.selected!!.blocks.single().content).getJSONObject("attrs")
+            check(attrs.getString("mime") == "image/avif")
+            ContentStore(app, database).use { check(it.imageBytes(attrs.getString("attachmentId"))!!.contentEquals(bytes)) }
+        } finally { app.contentResolver.delete(fixture, null, null) }
+    }
+
     @Test fun templatePickerCreatesAnEditableIndependentPage() {
         compose.setContent { WorldsTheme { Home(model) } }
         compose.waitUntil(20_000) { !model.state.value.loading }

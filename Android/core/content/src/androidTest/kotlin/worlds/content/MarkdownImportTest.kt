@@ -75,6 +75,7 @@ class MarkdownImportTest {
     @Test fun versionFourMigrationKeepsResources() {
         val page = store.create("page", "Existing")
         store.writableDatabase.execSQL("DROP TABLE markdown_sources")
+        store.writableDatabase.execSQL("DROP TABLE media_blobs")
         store.writableDatabase.version = 4
         store.close(); store = ContentStore(context, name)
         assertEquals("Existing", store.load(page.id)!!.resource.title)

@@ -483,7 +483,7 @@ class HomeModel(application: Application, internal val databaseName: String) : A
         val attrs = node.optJSONObject("attrs") ?: return null
         val id = attrs.optString("attachmentId").takeIf { it.isNotBlank() } ?: return null
         val mime = attrs.optString("mime").takeIf { it.length <= 127 && Regex("(?:image|video|audio)/[A-Za-z0-9!#\\$&^_.+-]+").matches(it) } ?: return null
-        val suffix = when (mime) { "image/png" -> ".png"; "image/jpeg" -> ".jpg"; "image/webp" -> ".webp"; "image/gif" -> ".gif"; "video/mp4" -> ".mp4"; "video/webm" -> ".webm"; "audio/mpeg" -> ".mp3"; "audio/mp4" -> ".m4a"; "audio/ogg" -> ".ogg"; "audio/wav" -> ".wav"; "audio/flac" -> ".flac"; else -> "" }
+        val suffix = when (mime) { "image/png" -> ".png"; "image/jpeg" -> ".jpg"; "image/webp" -> ".webp"; "image/gif" -> ".gif"; "image/avif" -> ".avif"; "video/mp4" -> ".mp4"; "video/webm" -> ".webm"; "audio/mpeg" -> ".mp3"; "audio/mp4" -> ".m4a"; "audio/ogg" -> ".ogg"; "audio/wav" -> ".wav"; "audio/flac" -> ".flac"; else -> "" }
         val candidate = attrs.optString("name").replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "-").trim().take(120)
         val safe = if (candidate.lastOrNull()?.isHighSurrogate() == true) candidate.dropLast(1) else candidate
         val name = safe.ifBlank { "media$suffix" }.let { if (it.contains('.')) it else it + suffix }
@@ -993,17 +993,18 @@ private val Light = lightColorScheme(primary = Color(0xFF765127), onPrimary = Co
             runCatching { imageExportPicker.launch(intent) }.onFailure { model.imageExportPickerFailed() }
         }
     }
+    val imageTypes = remember { listOf("image/png", "image/jpeg", "image/webp", "image/gif") + if (android.os.Build.VERSION.SDK_INT >= 31) listOf("image/avif") else emptyList() }
     fun pickImage(after: String?) {
-        if (model.beginImageImport(after)) runCatching { imagePicker.launch(arrayOf("image/png", "image/jpeg", "image/webp", "image/gif")) }.onFailure { model.imagePickerFailed() }
+        if (model.beginImageImport(after)) runCatching { imagePicker.launch(imageTypes.toTypedArray()) }.onFailure { model.imagePickerFailed() }
     }
     fun pickGalleryMedia() {
-        if (model.beginImageImport()) runCatching { imagePicker.launch(arrayOf("image/png", "image/jpeg", "image/webp", "image/gif", "video/mp4", "video/webm", "audio/mpeg", "audio/mp4", "audio/ogg", "audio/wav", "audio/flac")) }.onFailure { model.imagePickerFailed() }
+        if (model.beginImageImport()) runCatching { imagePicker.launch((imageTypes + listOf("video/mp4", "video/webm", "audio/mpeg", "audio/mp4", "audio/ogg", "audio/wav", "audio/flac")).toTypedArray()) }.onFailure { model.imagePickerFailed() }
     }
     fun pickSlideImage(slideId: String) {
-        if (model.beginSlideImageImport(slideId)) runCatching { imagePicker.launch(arrayOf("image/png", "image/jpeg", "image/webp", "image/gif")) }.onFailure { model.imagePickerFailed() }
+        if (model.beginSlideImageImport(slideId)) runCatching { imagePicker.launch(imageTypes.toTypedArray()) }.onFailure { model.imagePickerFailed() }
     }
     fun pickSlideBackground(slideId: String) {
-        if (model.beginSlideImageImport(slideId, background = true)) runCatching { imagePicker.launch(arrayOf("image/png", "image/jpeg", "image/webp", "image/gif")) }.onFailure { model.imagePickerFailed() }
+        if (model.beginSlideImageImport(slideId, background = true)) runCatching { imagePicker.launch(imageTypes.toTypedArray()) }.onFailure { model.imagePickerFailed() }
     }
     fun pickSlideVideo(slideId: String) {
         if (model.beginSlideVideoImport(slideId)) runCatching { imagePicker.launch(arrayOf("video/mp4", "video/webm")) }.onFailure { model.imagePickerFailed() }
