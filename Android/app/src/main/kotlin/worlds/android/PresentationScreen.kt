@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -279,9 +280,6 @@ private val slideTextColors = listOf("#f4f2ee", "#16161a", "#d2a46e", "#e5484d",
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable private fun SlideTextStyleDialog(element: JSONObject, busy: Boolean, dismiss: () -> Unit, save: (Map<String, String>) -> Unit) {
-    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
-    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
-    fun finishTyping() { focusManager.clearFocus(); keyboard?.hide() }
     val initialFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { initialFocus.requestFocus() }
     val original = remember(element.optString("id")) { element.optJSONObject("style") ?: JSONObject() }
@@ -292,8 +290,16 @@ private val slideTextColors = listOf("#f4f2ee", "#16161a", "#d2a46e", "#e5484d",
     var color by remember { mutableStateOf(original.optString("color", "#f4f2ee")) }
     val originalSize = original.optInt("fontSize", 32); val originalBold = original.optInt("fontWeight", 500) >= 700
     val sizeValue = size.toIntOrNull()
-    AlertDialog(onDismissRequest = { if (!busy) dismiss() }, title = { Box(Modifier.focusRequester(initialFocus).focusable()) { WorldsActionLabel(R.drawable.ic_type, stringResource(R.string.slide_text_style)) } },
-        text = { Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    AlertDialog(modifier = Modifier.imePadding(), onDismissRequest = { if (!busy) dismiss() }, title = { Box(Modifier.focusRequester(initialFocus).focusable()) { WorldsActionLabel(R.drawable.ic_type, stringResource(R.string.slide_text_style)) } },
+        text = {
+            val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+            val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+            fun finishTyping() { focusManager.clearFocus(); keyboard?.hide() }
+            val scroll = rememberScrollState()
+            LaunchedEffect(scroll, focusManager, keyboard) {
+                scroll.interactionSource.interactions.collect { if (it is DragInteraction.Start) finishTyping() }
+            }
+            Column(Modifier.heightIn(max = 420.dp).verticalScroll(scroll).testTag("slide_style_scroll"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(value = size, onValueChange = { if (it.length <= 3) size = it }, label = { Text(stringResource(R.string.slide_font_size)) },
                 enabled = !busy, singleLine = true, isError = sizeValue !in 4..300,
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, imeAction = androidx.compose.ui.text.input.ImeAction.Done),

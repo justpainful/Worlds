@@ -23,6 +23,8 @@ The find and replace dialog also reserves keyboard space, and closes the
 keyboard before showing its replace-all confirmation.
 Dragging the find controls closes the keyboard so the controls remain reachable
 on a compact screen; focusing a field opens it again.
+The slide text style dialog follows the same rule when its options are dragged,
+and keeps its actions above the software keyboard.
 
 ## Shared page action strip
 The shared page puts access, conversations, notifications, version history and

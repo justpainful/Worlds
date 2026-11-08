@@ -1430,7 +1430,12 @@ class HomeTest {
         }
         compose.onNodeWithText(app.getString(R.string.slide_font_size)).performTextClearance()
         compose.onNodeWithText(app.getString(R.string.slide_font_size)).performTextInput("48")
-        compose.onNodeWithText(app.getString(R.string.italic)).performClick()
+        compose.onNodeWithText(app.getString(R.string.slide_font_size)).assertIsFocused()
+        compose.onNodeWithTag("slide_style_scroll").performTouchInput {
+            down(Offset(center.x, height * 0.8f)); moveTo(Offset(center.x, height * 0.25f)); up()
+        }
+        compose.onNodeWithText(app.getString(R.string.slide_font_size)).assertIsNotFocused()
+        compose.onNodeWithText(app.getString(R.string.italic)).performScrollTo().performClick()
         compose.onNodeWithText(app.getString(R.string.image_align_right)).performClick()
         compose.onNodeWithText("#e5484d").performScrollTo().performClick()
         compose.onNodeWithText(app.getString(R.string.save)).performClick()
