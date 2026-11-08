@@ -74,6 +74,8 @@ public struct NativeEditorView: View {
                             .accessibilityIdentifier("editor-add-item.\(marker.id)")
                         Button("Add nested item") { addTarget = marker; addNested = true; itemText = ""; addItem = true }
                             .accessibilityIdentifier("editor-add-nested.\(marker.id)")
+                        Button("Move in one level") { do { try model.indentListItem(marker: marker) } catch { model.report(error) } }
+                            .accessibilityIdentifier("editor-indent.\(marker.id)")
                         if marker.depth > 0 {
                             Button("Move out one level") { do { try model.liftListItem(marker: marker) } catch { model.report(error) } }
                                 .accessibilityIdentifier("editor-outdent.\(marker.id)")
@@ -285,6 +287,14 @@ private final class EditorTextView: NSTextView {
     private let markerOverlay = ListMarkerOverlay()
     var markers: [NativeListMarker] = [] { didSet { if oldValue != markers { markerOverlay.needsDisplay = true } } }
     override var undoManager: UndoManager? { nil }
+    override func insertTab(_ sender: Any?) {
+        guard !hasMarkedText(), let model = editorModel, model.hasListCaret else { super.insertTab(sender); return }
+        do { try model.changeListIndent(outdent: false) } catch { model.report(error) }
+    }
+    override func insertBacktab(_ sender: Any?) {
+        guard !hasMarkedText(), let model = editorModel, model.hasListCaret else { super.insertBacktab(sender); return }
+        do { try model.changeListIndent(outdent: true) } catch { model.report(error) }
+    }
     func installMarkerOverlay() {
         markerOverlay.editor = self
         markerOverlay.frame = bounds

@@ -9,6 +9,23 @@ import WorldsLocalImport
 @testable import WorldsEditorPersistence
 
 final class EditorPersistenceTests: XCTestCase {
+    @MainActor func testIndentTaskSavesAndRejectsConcurrentSnapshot() async throws {
+        let url = try fixture()
+        try exec(#"UPDATE blocks SET content='{"type":"taskList","attrs":{"bid":"fixture-block"},"content":[{"type":"taskItem","attrs":{"checked":false,"future":"keep"},"content":[{"type":"paragraph","content":[{"type":"text","text":"First"}]}]},{"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Second"}]}]}]}' WHERE id='fixture-block'"#, url: url)
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let stale = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let model = NativeEditorModel(document: bridge.initialDocument, baseRevision: bridge.initialRevision)
+        model.selection = NSRange(location: model.projection.text.utf16.count, length: 0)
+        try model.changeListIndent(outdent: false)
+        let expected = model.document.source
+        try await model.save(using: bridge)
+        let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(reopened.initialDocument.source, expected)
+        do { _ = try await stale.save(documentJSON: try stale.initialDocument.json(), basedOn: stale.initialRevision); XCTFail("Expected conflict") }
+        catch NativeWriteError.conflict { } catch { XCTFail("Unexpected error: \(error)") }
+        let final = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(final.initialDocument.source, expected)
+    }
     func testLegacyHeadingIdentityAndMovementAreRejected() async throws {
         let url = try fixture()
         try exec(#"UPDATE blocks SET content='{"type":"heading","attrs":{"bid":"fixture-block","level":4},"content":[{"type":"text","text":"Legacy"}]}' WHERE id='fixture-block'"#, url: url)

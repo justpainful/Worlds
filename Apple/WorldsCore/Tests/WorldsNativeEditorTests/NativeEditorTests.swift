@@ -15,6 +15,43 @@ private actor FixturePersistence: EditorPersistence {
 
 @MainActor
 final class NativeEditorTests: XCTestCase {
+    func testIndentAndOutdentPreserveArabicUTF16Caret() throws {
+        let json = #"{"type":"doc","content":[{"type":"bulletList","attrs":{"bid":"list"},"content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"أول"}]}]},{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"أ👋ب"}]}]}]}]}"#
+        let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 0)
+        let start = model.listMarkers[1].location
+        let original = model.document.source
+        model.selection = NSRange(location: start + 2, length: 0) // Inside the emoji's surrogate pair.
+        XCTAssertThrowsError(try model.changeListIndent(outdent: false))
+        XCTAssertEqual(model.document.source, original)
+        model.selection = NSRange(location: start + 3, length: 0)
+        try model.changeListIndent(outdent: false)
+        XCTAssertEqual(model.selection.location, model.listMarkers[1].location + 3)
+        let indented = model.document.source
+        model.selection = NSRange(location: model.listMarkers[1].location + 2, length: 0)
+        XCTAssertThrowsError(try model.changeListIndent(outdent: true))
+        XCTAssertEqual(model.document.source, indented)
+        model.selection = NSRange(location: model.listMarkers[1].location + 3, length: 0)
+        try model.changeListIndent(outdent: true)
+        XCTAssertEqual(model.selection.location, model.listMarkers[1].location + 3)
+        _ = try model.replace(range: model.selection, with: "ج")
+        XCTAssertEqual(model.projection.text, "أول\nأ👋جب")
+    }
+    func testIndentAndOutdentLastTaskWithUndoAndOpaqueRejection() throws {
+        let json = #"{"type":"doc","content":[{"type":"taskList","attrs":{"bid":"list"},"content":[{"type":"taskItem","attrs":{"checked":false,"future":"keep"},"content":[{"type":"paragraph","content":[{"type":"text","text":"أول"}]}]},{"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"ثان"}]}]}]}]}"#
+        let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 0)
+        let original = model.document.source
+        model.selection = NSRange(location: model.projection.text.utf16.count, length: 0)
+        try model.changeListIndent(outdent: false)
+        XCTAssertEqual(model.listMarkers.map(\.depth), [0, 1])
+        let indented = model.document.source
+        try model.changeListIndent(outdent: true)
+        XCTAssertEqual(model.document.source, original)
+        model.undo(); XCTAssertEqual(model.document.source, indented)
+        model.undo(); XCTAssertEqual(model.document.source, original)
+        model.redo(); XCTAssertEqual(model.document.source, indented)
+        XCTAssertThrowsError(try model.indentListItem(marker: model.listMarkers[0]))
+        XCTAssertEqual(model.document.source, indented)
+    }
     func testEnterExitsLastEmptyRootTaskAndNewParagraphAcceptsRTLText() throws {
         let json = #"{"type":"doc","content":[{"type":"taskList","attrs":{"bid":"list"},"content":[{"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"أصل"}]}]},{"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[]}]}]}]}"#
         let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 0)

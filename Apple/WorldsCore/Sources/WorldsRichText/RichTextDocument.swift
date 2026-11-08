@@ -245,6 +245,33 @@ public struct RichTextDocument: Sendable, Equatable {
         return RichTextPath(destination)
     }
 
+    /// Nest the last simple item under its preceding sibling, without moving
+    /// any following sibling or transferring unsupported item metadata.
+    public mutating func indentLastListItem(at path: RichTextPath) throws -> RichTextPath {
+        guard path.indices.count >= 2, let index = path.indices.last, index > 0 else { throw RichTextError.invalidPath }
+        let parentPath = Array(path.indices.dropLast())
+        var destination: [Int] = []
+        try updateNode(&source, path: ArraySlice(parentPath)) { list in
+            guard case .string(let kind)? = list["type"], ["bulletList", "orderedList", "taskList"].contains(kind),
+                  case .array(var items)? = list["content"], items.indices.contains(index), index == items.count - 1,
+                  safeSimpleListItem(items[index], kind: kind), case .object(let moving) = items[index], moving["attrs"] != .null,
+                  case .object(var previous) = items[index - 1], previous["type"] == .string(kind == "taskList" ? "taskItem" : "listItem"),
+                  case .array(var content)? = previous["content"], !content.isEmpty,
+                  case .object(let paragraph) = content[0], paragraph["type"] == .string("paragraph") else { throw RichTextError.invalidDocument }
+            if let last = content.indices.last, case .object(var nested) = content[last], nested["type"] == .string(kind) {
+                guard case .array(var children)? = nested["content"] else { throw RichTextError.invalidDocument }
+                destination = parentPath + [index - 1, last, children.count]
+                children.append(items[index]); nested["content"] = .array(children); content[last] = .object(nested)
+            } else {
+                destination = parentPath + [index - 1, content.count, 0]
+                content.append(.object(["type": .string(kind), "content": .array([items[index]])]))
+            }
+            previous["content"] = .array(content); items[index - 1] = .object(previous)
+            items.removeLast(); list["content"] = .array(items)
+        }
+        return RichTextPath(destination)
+    }
+
     /// Exit only the final empty root item, preserving existing list data.
     public mutating func exitLastEmptyRootListItem(at path: RichTextPath) throws -> RichTextPath {
         guard path.indices.count == 2, case .object(var root) = source,

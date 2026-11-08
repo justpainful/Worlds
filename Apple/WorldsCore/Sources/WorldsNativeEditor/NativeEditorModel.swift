@@ -377,14 +377,60 @@ public final class NativeEditorModel: ObservableObject {
         registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
     }
     func liftListItem(marker: NativeListMarker) throws {
-        guard marker.depth > 0, listMarkers.contains(marker), recoverableNativeText == nil, !nativeEditPending, !saving else { throw NativeEditorError.unsupportedFormatting }
+        guard marker.depth > 0, listMarkers.contains(marker), validSelectionBoundaries, recoverableNativeText == nil, !nativeEditPending, !saving else { throw NativeEditorError.unsupportedFormatting }
         let before = document
+        let caretOffset = caretOffsetInListItem(marker)
         let target: RichTextPath
         do { target = try document.liftLastNestedItem(at: RichTextPath(marker.path)) }
         catch { throw NativeEditorError.unsupportedFormatting }
         registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
-        if let selected = listMarkers.first(where: { $0.path == target.indices }) {
-            selection = NSRange(location: selected.location, length: 0)
+        restoreListCaret(path: target.indices, offset: caretOffset)
+    }
+    func indentListItem(marker: NativeListMarker) throws {
+        guard listMarkers.contains(marker), validSelectionBoundaries, recoverableNativeText == nil, !nativeEditPending, !saving else { throw NativeEditorError.unsupportedFormatting }
+        let before = document
+        let caretOffset = caretOffsetInListItem(marker)
+        let target: RichTextPath
+        do { target = try document.indentLastListItem(at: RichTextPath(marker.path)) }
+        catch { throw NativeEditorError.unsupportedFormatting }
+        registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
+        restoreListCaret(path: target.indices, offset: caretOffset)
+    }
+    private func caretOffsetInListItem(_ marker: NativeListMarker) -> Int? {
+        guard selection.length == 0, selection.location >= marker.location,
+              projection.spans.contains(where: { $0.path.indices.starts(with: marker.path) && selection.location >= $0.range.location && selection.location <= NSMaxRange($0.range) }) || (marker.empty && selection.location == marker.location) else { return nil }
+        return selection.location - marker.location
+    }
+    private var validSelectionBoundaries: Bool {
+        let text = projection.text
+        guard selection.location != NSNotFound, selection.location >= 0, selection.length >= 0,
+              selection.location <= text.utf16.count, selection.length <= text.utf16.count - selection.location,
+              let start = text.utf16.index(text.utf16.startIndex, offsetBy: selection.location, limitedBy: text.utf16.endIndex),
+              let end = text.utf16.index(start, offsetBy: selection.length, limitedBy: text.utf16.endIndex) else { return false }
+        return String.Index(start, within: text) != nil && String.Index(end, within: text) != nil
+    }
+    private func restoreListCaret(path: [Int], offset: Int?) {
+        guard let marker = listMarkers.first(where: { $0.path == path }) else { return }
+        let spans = projection.spans.filter { $0.path.indices.starts(with: path) }
+        let end = spans.map { NSMaxRange($0.range) }.max() ?? marker.location
+        let delta = min(offset ?? 0, max(0, end - marker.location))
+        selection = NSRange(location: marker.location + delta, length: 0)
+    }
+    public func changeListIndent(outdent: Bool) throws {
+        guard selection.length == 0, selection.location != NSNotFound,
+              let marker = listMarkers.filter({ $0.location <= selection.location }).last else { throw NativeEditorError.unsupportedFormatting }
+        // Require the caret to belong to this item, not a later paragraph.
+        guard marker.empty && marker.location == selection.location || projection.spans.contains(where: {
+            $0.path.indices.starts(with: marker.path) && selection.location >= $0.range.location && selection.location <= NSMaxRange($0.range)
+        }) else { throw NativeEditorError.unsupportedFormatting }
+        if outdent { try liftListItem(marker: marker) } else { try indentListItem(marker: marker) }
+    }
+    var hasListCaret: Bool {
+        guard selection.length == 0, selection.location != NSNotFound else { return false }
+        return listMarkers.contains { marker in
+            (marker.empty && marker.location == selection.location) || projection.spans.contains {
+                $0.path.indices.starts(with: marker.path) && selection.location >= $0.range.location && selection.location <= NSMaxRange($0.range)
+            }
         }
     }
     func addListItem(to marker: NativeListMarker, text: String, nested: Bool) throws {
