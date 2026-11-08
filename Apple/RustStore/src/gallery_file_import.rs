@@ -140,6 +140,15 @@ pub(crate) mod unix {
         let read_tx=c.unchecked_transaction()?;
         crate::require_personal(&read_tx,page)?;
         let prior: Option<(String,String)>=read_tx.query_row("SELECT request,result FROM native_gallery_import_completed WHERE id=?1",[&operation],|r|Ok((r.get(0)?,r.get(1)?))).optional()?;
+        if let Some((_,result))=&prior {
+            let saved:Value=serde_json::from_str(result)?;
+            let saved_blocks=saved.get("blocks").and_then(Value::as_array).ok_or_else(||anyhow::anyhow!("invalid completed import"))?;
+            let matching:Vec<_>=saved_blocks.iter().filter(|v|v.pointer("/content/attrs/attachmentId").and_then(Value::as_str)==Some(operation.as_str())).collect();
+            if matching.len()!=1 { bail!("invalid completed import item") }
+            let block_id=matching[0].get("id").and_then(Value::as_str).ok_or_else(||anyhow::anyhow!("invalid completed import item"))?;
+            let valid:bool=read_tx.query_row("SELECT EXISTS(SELECT 1 FROM pages p JOIN blocks b ON b.page_id=p.id WHERE p.id=?1 AND p.kind='gallery' AND b.id=?2 AND CASE WHEN json_valid(b.content) THEN NOT EXISTS(SELECT 1 FROM json_tree(b.content) WHERE typeof(key)='text' GROUP BY parent,key HAVING count(*)>1) AND json_extract(b.content,'$.type')='galleryItem' AND json_extract(b.content,'$.attrs.attachmentId')=?3 ELSE 0 END)",params![page,block_id,operation],|r|r.get(0))?;
+            if !valid { bail!("completed import item is unavailable") }
+        }
         read_tx.commit()?;
         if let Some((prior_request,result))=prior {
             let mut old_request: Value=serde_json::from_str(&prior_request)?;
@@ -422,6 +431,10 @@ pub(crate) mod unix {
             let db=Connection::open(root.join("worlds.db")).unwrap();
             assert_eq!(db.query_row("SELECT count(*) FROM attachments WHERE page_id='gallery-test'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
             assert_eq!(db.query_row("SELECT count(*) FROM native_gallery_import_completed",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+            let (block_id,content):(String,String)=db.query_row("SELECT id,content FROM blocks WHERE page_id='gallery-test'",[],|r|Ok((r.get(0)?,r.get(1)?))).unwrap();
+            db.execute("UPDATE blocks SET content=json_set(content,'$.attrs.attachmentId','different') WHERE id=?1",[&block_id]).unwrap();
+            assert_eq!(call()["ok"],false,"retry must not report success for a replaced gallery reference");
+            db.execute("UPDATE blocks SET content=?2 WHERE id=?1",params![block_id,content]).unwrap();
             let rel:String=db.query_row("SELECT rel_path FROM attachments WHERE page_id='gallery-test'",[],|r|r.get(0)).unwrap();
             let imported=root.join("attachments").join(rel);
             std::fs::write(&imported,b"different").unwrap();
