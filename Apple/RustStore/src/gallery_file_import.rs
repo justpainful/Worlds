@@ -20,7 +20,19 @@ pub(crate) mod unix {
         Ok(Lock(directory))
     }
     fn db(root: &Path) -> Result<Connection> {
+        // Inspect the existing database before SQLite can create journal files
+        // or our recovery tables. This is a point-in-time check, not a proof
+        // of container provenance or protection against swap-and-restore.
+        let opened = crate::attachment_open::open_confined(root, Path::new("worlds.db"))?;
+        let original = opened.metadata()?;
+        if original.nlink() != 1 { bail!("database hard links are unsupported") }
         let c = crate::open_existing(&root.join("worlds.db"))?;
+        let current = crate::attachment_open::open_confined(root, Path::new("worlds.db"))?.metadata()?;
+        if current.dev() != original.dev() || current.ino() != original.ino() || current.nlink() != 1 { bail!("database identity changed") }
+        let mut moved: std::ffi::c_int = -1;
+        let status = unsafe { rusqlite::ffi::sqlite3_file_control(c.handle(), b"main\0".as_ptr().cast(),
+            rusqlite::ffi::SQLITE_FCNTL_HAS_MOVED, (&mut moved as *mut std::ffi::c_int).cast()) };
+        if status != rusqlite::ffi::SQLITE_OK || moved != 0 { bail!("database identity cannot be verified") }
         let old: Option<String> = c.query_row("SELECT name FROM sqlite_master WHERE type='table' AND name='native_gallery_import_intents'",[],|r|r.get(0)).optional()?;
         if old.is_some() && c.query_row("SELECT EXISTS(SELECT 1 FROM native_gallery_import_intents)",[],|r|r.get::<_,bool>(0))? { bail!("legacy import intents require manual review") }
         c.execute_batch("CREATE TABLE IF NOT EXISTS native_gallery_import_intents_v2(id TEXT PRIMARY KEY,rel_path TEXT NOT NULL,dir_device INTEGER NOT NULL,dir_inode INTEGER NOT NULL,device INTEGER,inode INTEGER)")?;
@@ -169,6 +181,24 @@ pub(crate) mod unix {
     mod tests {
         use super::*;
         use std::os::unix::fs::{PermissionsExt, DirBuilderExt};
+        #[test]
+        fn database_symlink_and_hardlink_are_rejected_before_mutation() {
+            use std::os::unix::fs::symlink;
+            let root=std::env::temp_dir().canonicalize().unwrap().join(format!("gallery-db-identity-{}",uuid::Uuid::new_v4()));
+            std::fs::DirBuilder::new().mode(0o700).create(&root).unwrap();
+            let original=root.join("original.db");
+            std::fs::copy(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/worlds-v11.db"),&original).unwrap();
+            let database=root.join("worlds.db");
+            symlink(&original,&database).unwrap();
+            assert!(recover(&root).is_err());
+            std::fs::remove_file(&database).unwrap();
+            std::fs::hard_link(&original,&database).unwrap();
+            assert!(recover(&root).is_err());
+            let c=Connection::open(&original).unwrap();
+            let count:i64=c.query_row("SELECT count(*) FROM sqlite_master WHERE name IN ('native_gallery_import_intents_v2','native_gallery_import_completed')",[],|r|r.get(0)).unwrap();
+            assert_eq!(count,0);
+            drop(c); std::fs::remove_dir_all(root).unwrap();
+        }
         #[test]
         fn cancellation_rolls_back_and_same_operation_can_retry() {
             let root=std::env::temp_dir().canonicalize().unwrap().join(format!("gallery-cancel-{}",uuid::Uuid::new_v4()));
