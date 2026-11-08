@@ -5,7 +5,7 @@ final class WorldsLocalPageEditorUITests: XCTestCase {
     @MainActor func testDocumentDeleteLastTableColumnRequiresConfirmationAndReopensRTL() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-document-table-column-insert", "--ui-testing-rtl"]; app.launch()
         let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
-        XCTAssertTrue(page.waitForExistence(timeout: 30)); page.tap()
+        guard page.waitForExistence(timeout: 30) else { recordFailureContext(app, "missing-fixture-page"); XCTFail("Fixture page did not appear"); return }; page.tap()
         let edit = app.buttons["edit-local-page"]; XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
         let editor = app.descendants(matching: .any)["native-editor-text"].firstMatch
         XCTAssertTrue(editor.waitForExistence(timeout: 20))
@@ -26,7 +26,7 @@ final class WorldsLocalPageEditorUITests: XCTestCase {
     @MainActor func testDocumentDeleteLastTableRowRequiresConfirmationAndReopensRTL() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-document-table-insert", "--ui-testing-rtl"]; app.launch()
         let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
-        XCTAssertTrue(page.waitForExistence(timeout: 30)); page.tap()
+        guard page.waitForExistence(timeout: 30) else { recordFailureContext(app, "missing-fixture-page"); XCTFail("Fixture page did not appear"); return }; page.tap()
         let edit = app.buttons["edit-local-page"]; XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
         let editor = app.descendants(matching: .any)["native-editor-text"].firstMatch
         XCTAssertTrue(editor.waitForExistence(timeout: 20))
@@ -47,7 +47,7 @@ final class WorldsLocalPageEditorUITests: XCTestCase {
     @MainActor func testDocumentInsertColumnAfterSelectionAndReopenRTL() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-document-table-column-insert", "--ui-testing-rtl"]; app.launch()
         let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
-        XCTAssertTrue(page.waitForExistence(timeout: 30)); page.tap()
+        guard page.waitForExistence(timeout: 30) else { recordFailureContext(app, "missing-fixture-page"); XCTFail("Fixture page did not appear"); return }; page.tap()
         let edit = app.buttons["edit-local-page"]; XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
         let editor = app.descendants(matching: .any)["native-editor-text"].firstMatch
         XCTAssertTrue(editor.waitForExistence(timeout: 20))
@@ -62,7 +62,7 @@ final class WorldsLocalPageEditorUITests: XCTestCase {
     @MainActor func testDocumentInsertRowBelowHeaderAndReopenRTL() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-document-table-insert", "--ui-testing-rtl"]; app.launch()
         let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
-        XCTAssertTrue(page.waitForExistence(timeout: 30)); page.tap()
+        guard page.waitForExistence(timeout: 30) else { recordFailureContext(app, "missing-fixture-page"); XCTFail("Fixture page did not appear"); return }; page.tap()
         let edit = app.buttons["edit-local-page"]; XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
         let editor = app.descendants(matching: .any)["native-editor-text"].firstMatch
         XCTAssertTrue(editor.waitForExistence(timeout: 20))
@@ -77,7 +77,7 @@ final class WorldsLocalPageEditorUITests: XCTestCase {
     @MainActor func testDocumentAppendTableColumnAndReopenRTL() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-document-table", "--ui-testing-rtl"]; app.launch()
         let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
-        XCTAssertTrue(page.waitForExistence(timeout: 30)); page.tap()
+        guard page.waitForExistence(timeout: 30) else { recordFailureContext(app, "missing-fixture-page"); XCTFail("Fixture page did not appear"); return }; page.tap()
         let edit = app.buttons["edit-local-page"]; XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
         let editor = app.descendants(matching: .any)["native-editor-text"].firstMatch
         XCTAssertTrue(editor.waitForExistence(timeout: 20)); editor.tap()
@@ -92,7 +92,7 @@ final class WorldsLocalPageEditorUITests: XCTestCase {
     @MainActor func testDocumentAppendTableRowAndReopenRTL() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-document-table", "--ui-testing-rtl"]; app.launch()
         let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
-        XCTAssertTrue(page.waitForExistence(timeout: 30)); page.tap()
+        guard page.waitForExistence(timeout: 30) else { recordFailureContext(app, "missing-fixture-page"); XCTFail("Fixture page did not appear"); return }; page.tap()
         let edit = app.buttons["edit-local-page"]; XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
         let editor = app.descendants(matching: .any)["native-editor-text"].firstMatch
         XCTAssertTrue(editor.waitForExistence(timeout: 20)); editor.tap()
@@ -107,7 +107,7 @@ final class WorldsLocalPageEditorUITests: XCTestCase {
     @MainActor func testDocumentTitleStyleSaveAndReopenRTL() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-document-alignment", "--ui-testing-rtl"]; app.launch()
         let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
-        XCTAssertTrue(page.waitForExistence(timeout: 30)); page.tap()
+        guard page.waitForExistence(timeout: 30) else { recordFailureContext(app, "missing-fixture-page"); XCTFail("Fixture page did not appear"); return }; page.tap()
         let edit = app.buttons["edit-local-page"]; XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
         let editor = app.descendants(matching: .any)["native-editor-text"].firstMatch
         XCTAssertTrue(editor.waitForExistence(timeout: 20)); editor.tap()
@@ -124,7 +124,7 @@ final class WorldsLocalPageEditorUITests: XCTestCase {
     @MainActor func testDocumentAlignmentSaveAndReopenRTL() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-document-alignment", "--ui-testing-rtl"]; app.launch()
         let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
-        XCTAssertTrue(page.waitForExistence(timeout: 30)); page.tap()
+        guard page.waitForExistence(timeout: 30) else { recordFailureContext(app, "missing-fixture-page"); XCTFail("Fixture page did not appear"); return }; page.tap()
         let edit = app.buttons["edit-local-page"]; XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
         let editor = app.descendants(matching: .any)["native-editor-text"].firstMatch
         XCTAssertTrue(editor.waitForExistence(timeout: 20)); editor.tap()
@@ -147,7 +147,7 @@ final class WorldsLocalPageEditorUITests: XCTestCase {
     @MainActor func testLinkAcrossTextRunsSaveRemoveAndReopenRTL() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-link-fixture", "--ui-testing-rtl"]; app.launch()
         let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
-        XCTAssertTrue(page.waitForExistence(timeout: 30)); page.tap()
+        guard page.waitForExistence(timeout: 30) else { recordFailureContext(app, "missing-fixture-page"); XCTFail("Fixture page did not appear"); return }; page.tap()
         let edit = app.buttons["edit-local-page"]; XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
         let editor = app.descendants(matching: .any)["native-editor-text"].firstMatch
         XCTAssertTrue(editor.waitForExistence(timeout: 20)); editor.tap()
@@ -193,7 +193,7 @@ final class WorldsLocalPageEditorUITests: XCTestCase {
     @MainActor func testTaskReturnAndBackspaceSaveAndReopen() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-rtl"]; app.launch()
         let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
-        XCTAssertTrue(page.waitForExistence(timeout: 30)); page.tap()
+        guard page.waitForExistence(timeout: 30) else { recordFailureContext(app, "missing-fixture-page"); XCTFail("Fixture page did not appear"); return }; page.tap()
         let edit = app.buttons["edit-local-page"]
         XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
         let editor = app.descendants(matching: .any)["native-editor-text"].firstMatch
@@ -225,7 +225,7 @@ final class WorldsLocalPageEditorUITests: XCTestCase {
     @MainActor func testUnwrapMultipleBulletsAndReopen() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-multi-bullet"]; app.launch()
         let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
-        XCTAssertTrue(page.waitForExistence(timeout: 30)); page.tap()
+        guard page.waitForExistence(timeout: 30) else { recordFailureContext(app, "missing-fixture-page"); XCTFail("Fixture page did not appear"); return }; page.tap()
         let edit = app.buttons["edit-local-page"]
         XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
         let editor = app.descendants(matching: .any)["native-editor-text"].firstMatch
@@ -244,7 +244,7 @@ final class WorldsLocalPageEditorUITests: XCTestCase {
     @MainActor func testAppendListItemsAndReopen() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-multi-task"]; app.launch()
         let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
-        XCTAssertTrue(page.waitForExistence(timeout: 30)); page.tap()
+        guard page.waitForExistence(timeout: 30) else { recordFailureContext(app, "missing-fixture-page"); XCTFail("Fixture page did not appear"); return }; page.tap()
         let edit = app.buttons["edit-local-page"]
         XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
         let nested = app.buttons["editor-add-nested.0.0"]
@@ -273,7 +273,7 @@ final class WorldsLocalPageEditorUITests: XCTestCase {
     @MainActor func testMultipleTaskItemsToggleAndReopen() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-multi-task"]; app.launch()
         let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
-        XCTAssertTrue(page.waitForExistence(timeout: 30)); page.tap()
+        guard page.waitForExistence(timeout: 30) else { recordFailureContext(app, "missing-fixture-page"); XCTFail("Fixture page did not appear"); return }; page.tap()
         let edit = app.buttons["edit-local-page"]
         XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
         let first = app.buttons["editor-task.0.0"], second = app.buttons["editor-task.0.1"]
@@ -296,7 +296,7 @@ final class WorldsLocalPageEditorUITests: XCTestCase {
     @MainActor func testCreateChecklistSaveAndReopen() {
         let app = XCUIApplication(); app.launchArguments.append("--ui-testing-local-copy-fixture"); app.launch()
         let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
-        XCTAssertTrue(page.waitForExistence(timeout: 30)); page.tap()
+        guard page.waitForExistence(timeout: 30) else { recordFailureContext(app, "missing-fixture-page"); XCTFail("Fixture page did not appear"); return }; page.tap()
         let edit = app.buttons["edit-local-page"]
         XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
         let editor = app.descendants(matching: .any)["native-editor-text"].firstMatch
@@ -326,7 +326,7 @@ final class WorldsLocalPageEditorUITests: XCTestCase {
     @MainActor func testConflictKeepsDraftUntilConfirmedReload() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-page-conflict"]; app.launch()
         let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
-        XCTAssertTrue(page.waitForExistence(timeout: 30)); page.tap()
+        guard page.waitForExistence(timeout: 30) else { recordFailureContext(app, "missing-fixture-page"); XCTFail("Fixture page did not appear"); return }; page.tap()
         let edit = app.buttons["edit-local-page"]
         XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
         let editor = app.descendants(matching: .any)["native-editor-text"].firstMatch
@@ -357,7 +357,7 @@ final class WorldsLocalPageEditorUITests: XCTestCase {
     @MainActor func testClosingDraftRequiresExplicitDiscard() {
         let app = XCUIApplication(); app.launchArguments.append("--ui-testing-local-copy-fixture"); app.launch()
         let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
-        XCTAssertTrue(page.waitForExistence(timeout: 30)); page.tap()
+        guard page.waitForExistence(timeout: 30) else { recordFailureContext(app, "missing-fixture-page"); XCTFail("Fixture page did not appear"); return }; page.tap()
         let edit = app.buttons["edit-local-page"]
         XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
         let editor = app.descendants(matching: .any)["native-editor-text"].firstMatch
@@ -381,7 +381,7 @@ final class WorldsLocalPageEditorUITests: XCTestCase {
     @MainActor func testEditSaveAndReopenPersonalPage() {
         let app = XCUIApplication(); app.launchArguments.append("--ui-testing-local-copy-fixture"); app.launch()
         let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
-        XCTAssertTrue(page.waitForExistence(timeout: 30)); page.tap()
+        guard page.waitForExistence(timeout: 30) else { recordFailureContext(app, "missing-fixture-page"); XCTFail("Fixture page did not appear"); return }; page.tap()
         let edit = app.buttons["edit-local-page"]
         XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
         let editor = app.descendants(matching: .any)["native-editor-text"].firstMatch
