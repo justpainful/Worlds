@@ -97,8 +97,14 @@ public actor CollaborationSession {
     private var localWriteInFlight = false
     private var localWriteWaiters: [CheckedContinuation<Void, Never>] = []
     private var verifiedIdentity = false
+    private let diagnosticID = String(UUID().uuidString.prefix(8))
     public private(set) var accessLevel: String?
     public private(set) var lastNotice: String?
+
+    private func diagnostic(_ event: String) {
+        guard ProcessInfo.processInfo.environment["WORLDS_COLLAB_DIAGNOSTICS"] == "1" else { return }
+        FileHandle.standardError.write(Data("collab-diagnostic \(diagnosticID): \(event)\n".utf8))
+    }
 
     public init(pageID: String, workspaceID: String, documentID: String, expectedUserID: String, serverURL: URL,
                 store: any CollaborationStore, tokenProvider: @escaping TokenProvider,
@@ -124,22 +130,29 @@ public actor CollaborationSession {
 
     /// The owner must start this on one task and call stop on teardown.
     public func run() async throws {
+        diagnostic("run begin")
         guard stopped, !running, !localWriteInFlight else { throw CollaborationError.notStarted }
         running = true
         defer { running = false; stopped = true }
         stopped = false; revoked = false; failed = false; generation &+= 1
         let runID = generation
         for channel: UInt64 in [0, 1] {
+            diagnostic("allocate document \(channel)")
             let doc = try NativeCRDTDocument()
+            diagnostic("load store \(channel)")
             let updates = try await store.load(pageID: pageID, channel: channel)
+            diagnostic("loaded store \(channel)")
             guard !stopped, generation == runID else { return }
             for update in updates { try doc.apply(update) }
+            diagnostic("applied store \(channel)")
             documents[channel] = doc
         }
         guard let content = documents[0] else { throw CollaborationError.notStarted }
+        diagnostic("create awareness")
         awareness = WorldsAwareness(clientID: try content.clientID())
         _ = try awareness?.setLocal("{}", at: Date().timeIntervalSince1970)
         if let presenceJSON { _ = try awareness?.setLocal(presenceJSON, at: Date().timeIntervalSince1970) }
+        diagnostic("awareness ready")
         let heartbeat = Task {
             while !Task.isCancelled {
                 do { try await Task.sleep(for: .seconds(3)); try await self.pulseAwareness() }
@@ -152,18 +165,23 @@ public actor CollaborationSession {
         while !stopped && !revoked && !failed && generation == runID {
             var connection: (any CollaborationSocket)?
             do {
+                diagnostic("acquire token")
                 let token = try await tokenProvider(forceRefresh)
                 guard !stopped, generation == runID else { return }
                 forceRefresh = false
                 let opened = try await socketFactory(endpoint, token)
+                diagnostic("socket created")
                 guard !stopped, generation == runID else { await opened.close(); return }
                 connection = opened; socket = opened; pending.removeAll(); verifiedIdentity = false
                 for channel: UInt64 in [0, 1] {
                     guard let doc = documents[channel] else { throw CollaborationError.notStarted }
+                    diagnostic("send vector \(channel)")
                     try await opened.send(WorldsSyncWire.encode(.sync(channel: channel, kind: 0, payload: doc.vector())))
                 }
+                diagnostic("vectors sent")
                 while !stopped && !failed && generation == runID {
                     guard let data = try await opened.receive() else { throw CollaborationError.invalidFrame }
+                    diagnostic("frame received")
                     guard !stopped, generation == runID else { break }
                     try await handle(data, via: opened)
                 }
@@ -270,23 +288,30 @@ public actor CollaborationSession {
     private func handle(_ data: Data, via socket: any CollaborationSocket) async throws {
         switch try WorldsSyncWire.decode(data) {
         case let .sync(channel, kind, payload):
+            diagnostic("sync \(channel) kind \(kind)")
             guard verifiedIdentity else { failed = true; throw CollaborationError.accessRevoked }
             guard let doc = documents[channel] else { throw CollaborationError.invalidChannel }
             if kind == 0 {
                 guard verifiedIdentity else { failed = true; throw CollaborationError.accessRevoked }
                 guard !localWriteInFlight else { throw CollaborationError.notStarted }
+                diagnostic("pending watermark \(channel)")
                 let through = try await store.maximumPendingID(pageID: pageID, channel: channel)
                 guard !stopped, verifiedIdentity, !localWriteInFlight else { throw CollaborationError.notStarted }
+                diagnostic("calculate diff \(channel)")
                 let diff = try doc.diff(payload)
                 batch += 1
                 pending[batch] = Pending(channel: channel, through: through)
+                diagnostic("send update \(channel)")
                 try await socket.send(WorldsSyncWire.encode(.update(batchID: batch, channel: channel, update: diff)))
             } else if kind == 1 || kind == 2 {
+                diagnostic("apply remote \(channel)")
                 try doc.apply(payload)
+                diagnostic("persist remote \(channel)")
                 do { try await store.appendRemote(pageID: pageID, channel: channel, update: payload) }
                 catch { failed = true; throw error }
             } else { throw CollaborationError.invalidFrame }
         case let .acknowledgement(id, status, reason):
+            diagnostic("acknowledgement")
             guard verifiedIdentity else { failed = true; throw CollaborationError.accessRevoked }
             guard let item = pending.removeValue(forKey: id) else { return }
             if status == 0 {
@@ -306,16 +331,20 @@ public actor CollaborationSession {
                 throw CollaborationError.rejected(reason)
             }
         case let .authState(level, userID):
+            diagnostic("auth state")
             guard userID == expectedUserID, ["full", "edit", "comment", "view"].contains(level) else { failed = true; throw CollaborationError.accessRevoked }
             verifiedIdentity = true
             accessLevel = level
+            diagnostic("send awareness query")
             try await socket.send(WorldsSyncWire.encode(.queryAwareness))
             guard !stopped, verifiedIdentity else { return }
             if let presenceJSON, let update = try awareness?.setLocal(presenceJSON, at: Date().timeIntervalSince1970) {
+                diagnostic("send local awareness")
                 try await socket.send(WorldsSyncWire.encode(.awareness(update)))
             }
         case let .notice(code, message): lastNotice = "\(code): \(message)"
         case let .awareness(payload):
+            diagnostic("awareness frame")
             guard verifiedIdentity else { failed = true; throw CollaborationError.accessRevoked }
             do {
                 if let response = try awareness?.apply(payload, at: Date().timeIntervalSince1970) {

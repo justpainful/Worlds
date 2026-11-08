@@ -4,6 +4,8 @@ use serde_json::Value;
 use std::path::Path;
 mod resource_ops;
 mod isolated_import;
+mod attachment_staging;
+mod attachment_bundle;
 mod automation_ops;
 #[allow(dead_code)]
 mod template_preflight;

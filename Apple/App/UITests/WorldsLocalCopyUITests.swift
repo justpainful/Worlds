@@ -99,7 +99,10 @@ final class WorldsLocalCopyUITests: XCTestCase {
         #endif
         XCTAssertTrue(menu.isHittable); menu.tap()
         let candidate = app.buttons["project-link.fixture-page"]
-        XCTAssertTrue(candidate.waitForExistence(timeout: 10)); candidate.tap()
+        XCTAssertTrue(candidate.waitForExistence(timeout: 10))
+        XCTAssertTrue(candidate.isHittable)
+        capture(app, named: "local-copy-project-link-picker")
+        candidate.tap()
         let unlink = app.buttons["project-unlink.fixture-page"]
         XCTAssertTrue(unlink.waitForExistence(timeout: 15))
         capture(app, named: "local-copy-project-link-staged")

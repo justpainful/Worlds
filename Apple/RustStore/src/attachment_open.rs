@@ -5,9 +5,9 @@ use std::{fs::File, path::Path};
 #[cfg(unix)] use std::path::Component;
 
 #[cfg(unix)]
-pub(crate) fn open_confined(root: &Path, relative: &Path) -> Result<File> {
+pub(crate) fn open_directory(root: &Path) -> Result<File> {
     use std::{ffi::CString, os::{fd::{AsRawFd, FromRawFd, OwnedFd}, unix::ffi::OsStrExt}};
-    if !root.is_absolute() || relative.as_os_str().is_empty() { bail!("invalid attachment path") }
+    if !root.is_absolute() { bail!("invalid directory path") }
     let mut components = root.components();
     if components.next() != Some(Component::RootDir) { bail!("invalid root") }
     let slash = CString::new("/")?;
@@ -21,6 +21,15 @@ pub(crate) fn open_confined(root: &Path, relative: &Path) -> Result<File> {
         if fd < 0 { return Err(std::io::Error::last_os_error().into()); }
         directory = unsafe { OwnedFd::from_raw_fd(fd) };
     }
+    Ok(File::from(directory))
+}
+
+#[cfg(unix)]
+pub(crate) fn open_confined(root: &Path, relative: &Path) -> Result<File> {
+    use std::{ffi::CString, os::{fd::{AsRawFd, FromRawFd, OwnedFd}, unix::ffi::OsStrExt}};
+    if relative.as_os_str().is_empty() { bail!("invalid attachment path") }
+    let root_file = open_directory(root)?;
+    let mut directory: OwnedFd = root_file.into();
     let parts: Vec<_> = relative.components().collect();
     for (index, part) in parts.iter().enumerate() {
         let Component::Normal(name) = part else { bail!("invalid attachment component") };

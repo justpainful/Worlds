@@ -197,7 +197,7 @@ jobs:
     name: Experimental project links UI
     runs-on: macos-26
     needs: [ruststore-xcframework]
-    timeout-minutes: 40
+    timeout-minutes: 50
     env:
       WORLDS_REQUIRE_NATIVE_WRITES: "1"
     steps:
@@ -241,6 +241,7 @@ jobs:
           run_links macOS macOS-standard 'platform=macOS' testPersonalProjectLinksPersistAndUnlink testDuplicateLinksAreNotRemovedSilently
           run_links macOS macOS-unavailable 'platform=macOS' testUnavailableLinkExplainsAndReloadsWithoutDiscard
           run_links iOS iPhone 'platform=iOS Simulator,name=iPhone 17,OS=26.5' testPersonalProjectLinksPersistAndUnlink testDuplicateLinksAreNotRemovedSilently testUnavailableLinkExplainsAndReloadsWithoutDiscard
+          run_links iOS iPad 'platform=iOS Simulator,name=iPad (A16),OS=26.5' testPersonalProjectLinksPersistAndUnlink testDuplicateLinksAreNotRemovedSilently testUnavailableLinkExplainsAndReloadsWithoutDiscard
           test "$result" = 0
       - uses: actions/upload-artifact@v4
         if: always()
@@ -249,6 +250,59 @@ jobs:
           path: |
             logs/
             project-links-*.xcresult/
+          if-no-files-found: warn
+
+  page-editor-harness:
+    name: Isolated page editor UI harness
+    runs-on: macos-26
+    needs: [ruststore-xcframework]
+    timeout-minutes: 30
+    env:
+      WORLDS_REQUIRE_NATIVE_WRITES: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Worlds-shared-ruststore-xcframework
+          path: ruststore-artifact
+      - name: Verify and restore RustStore
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat ruststore-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd ruststore-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p logs Apple/WorldsCore/Artifacts
+          tar -xzf ruststore-artifact/ruststore-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
+          test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
+      - name: Generate isolated page editor project
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          brew install xcodegen coreutils
+          xcodegen generate --spec Apple/PageEditorHarness/project.yml
+      - name: Exercise isolated page editor on macOS and iPhone
+        shell: bash
+        run: |
+          set -o pipefail
+          result=0
+          for platform in macOS iOS; do
+            if [[ "$platform" == macOS ]]; then destination='platform=macOS'; else destination='platform=iOS Simulator,name=iPhone 17,OS=26.5'; fi
+            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/PageEditorHarness/WorldsPageEditorHarness.xcodeproj \
+              -scheme "PageEditorHarness-$platform" -destination "$destination" \
+              -resultBundlePath "$GITHUB_WORKSPACE/page-editor-$platform.xcresult" \
+              CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/page-editor-$platform.log"; then
+              grep -E 'testEditBoldSaveAndReopenIndependentCopy.*passed' "logs/page-editor-$platform.log" || result=1
+            else
+              result=1
+            fi
+          done
+          test "$result" = 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-page-editor-harness-results
+          path: |
+            logs/
+            page-editor-*.xcresult/
           if-no-files-found: warn
 
   experimental-account-build:
@@ -507,6 +561,13 @@ jobs:
           cargo test --locked --manifest-path Apple/RustStore/Cargo.toml 2>&1 | tee logs/rust-store-tests.log
           grep -q 'owned_asset_file_required_and_failures_roll_back ... ok' logs/rust-store-tests.log
           grep -q 'symlinked_attachment_is_rejected ... ok' logs/rust-store-tests.log
+          grep -q 'stages_personal_files_and_rolls_back_if_any_file_is_missing ... ok' logs/rust-store-tests.log
+          grep -q 'rejects_symlink_and_hardlink_sources_without_publishing ... ok' logs/rust-store-tests.log
+          grep -q 'combined_bundle_publishes_database_and_personal_file_together ... ok' logs/rust-store-tests.log
+          grep -q 'source_database_change_during_backup_never_publishes ... ok' logs/rust-store-tests.log
+          grep -q 'source_attachment_change_after_staging_never_publishes ... ok' logs/rust-store-tests.log
+          grep -q 'atomic_publication_does_not_replace_existing_directory ... ok' logs/rust-store-tests.log
+          grep -q 'staging_inside_source_is_rejected_without_creating_copy ... ok' logs/rust-store-tests.log
           grep -q 'identity_probe_rejects_swapped_main_wal_and_shm_before_write ... ok' logs/rust-store-tests.log
           grep -q 'imports_committed_wal_into_independent_database_without_changing_source_content ... ok' logs/rust-store-tests.log
           grep -q 'failed_import_removes_partial_destination_and_keeps_original ... ok' logs/rust-store-tests.log
@@ -875,6 +936,7 @@ jobs:
     env:
       WORLDS_REQUIRE_COLLABORATION: "1"
       WORLDS_REQUIRE_LIVE_SERVICE: "1"
+      WORLDS_COLLAB_DIAGNOSTICS: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -980,10 +1042,18 @@ jobs:
               diagnostic_status=1
             fi
           done
-          WORLDS_LIVE_SYNC_URL=ws://127.0.0.1:18790 \
-          WORLDS_LIVE_EDITOR_TOKEN="$editor_token" WORLDS_LIVE_VIEWER_TOKEN="$viewer_token" \
+          if WORLDS_LIVE_SYNC_URL=ws://127.0.0.1:18790 \
+            WORLDS_LIVE_EDITOR_TOKEN="$editor_token" WORLDS_LIVE_VIEWER_TOKEN="$viewer_token" \
             swift test --package-path Apple/WorldsCore --filter LiveWorkerTests \
-            2>&1 | tee logs/collaboration-live-swift.log
+            2>&1 | tee logs/collaboration-live-swift.log; then
+            :
+          else
+            # Diagnostic only: preserve the original failure, even when debugger access is denied.
+            WORLDS_LIVE_SYNC_URL=ws://127.0.0.1:18790 \
+              WORLDS_LIVE_EDITOR_TOKEN="$editor_token" WORLDS_LIVE_VIEWER_TOKEN="$viewer_token" \
+              python3 -c 'import subprocess; subprocess.run(["xcrun","lldb","--batch","-o","run","-o","thread backtrace all","--","/Applications/Xcode_26.6.app/Contents/Developer/usr/bin/xctest","-XCTest","WorldsCollaborationTests.TransportDiagnosticsTests/testDiagnosticSingleClientWithPresence","Apple/WorldsCore/.build/arm64-apple-macosx/debug/WorldsCorePackageTests.xctest"],timeout=90)' > logs/collaboration-lldb.log 2>&1 || true
+            exit 1
+          fi
           grep -q 'testLiveSwiftSessionsConvergeReconnectAndArchiveRefusal' logs/collaboration-live-swift.log
           grep -q 'testLiveAwarenessExchangeAndDisconnect' logs/collaboration-live-swift.log
           grep -q 'testLiveCheckedEditorsConvergeAfterReconnect' logs/collaboration-live-swift.log

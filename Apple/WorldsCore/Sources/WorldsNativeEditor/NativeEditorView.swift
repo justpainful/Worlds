@@ -65,6 +65,7 @@ private struct NativeTextSurface: UIViewRepresentable {
     func makeUIView(context: Context) -> EditorTextView {
         let view = EditorTextView()
         view.editorModel = model
+        view.accessibilityIdentifier = "native-editor-text"
         view.delegate = context.coordinator
         view.backgroundColor = .clear
         view.adjustsFontForContentSizeCategory = true
@@ -137,6 +138,7 @@ private struct NativeTextSurface: NSViewRepresentable {
         let scroll = NSScrollView()
         let view = EditorTextView()
         view.editorModel = model
+        view.setAccessibilityIdentifier("native-editor-text")
         view.delegate = context.coordinator
         view.isEditable = true; view.isSelectable = true
         view.drawsBackground = false
