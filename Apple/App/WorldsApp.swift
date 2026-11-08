@@ -58,6 +58,9 @@ private struct WorldsLibraryView: View {
     #if WORLDS_EXPERIMENTAL_PERSONAL_VIDEO
     @State private var videoRequest: PersonalVideoRequest?
     #endif
+    #if DEBUG && WORLDS_EXPERIMENTAL_PERSONAL_DOCUMENT
+    @State private var documentRequest: PersonalDocumentRequest?
+    #endif
     @State private var openRequest = UUID()
     @State private var searchQuery = ""
     @State private var searchHits: [WorldsSearchHit] = []
@@ -174,7 +177,7 @@ private struct WorldsLibraryView: View {
             Group {
                 if let selectedPageID = selectedID, let page = pages.first(where: { $0.id == selectedPageID }) {
                     if ["project", "gallery", "presentation", "file", "stream"].contains(page.kind) {
-                        ResourceContentView(page: page, pages: pages, projectEditingAvailable: projectEditingAvailable(for: page), otherEditingAvailable: otherResourceEditingAvailable(for: page), openVideo: videoAction(for: page)) { target in
+                        ResourceContentView(page: page, pages: pages, projectEditingAvailable: projectEditingAvailable(for: page), otherEditingAvailable: otherResourceEditingAvailable(for: page), openVideo: videoAction(for: page), openDocument: documentAction(for: page)) { target in
                             guard target != page.id else { return }
                             returnStack.append(page.id)
                             selectedID = target
@@ -320,6 +323,11 @@ private struct WorldsLibraryView: View {
             PersonalVideoView(databaseURL: request.source.url, databaseIdentity: request.source.identity, pageID: request.id)
         }
         #endif
+        #if DEBUG && WORLDS_EXPERIMENTAL_PERSONAL_DOCUMENT
+        .sheet(item: $documentRequest) { request in
+            PersonalDocumentView(databaseURL: request.source.url, databaseIdentity: request.source.identity, pageID: request.id)
+        }
+        #endif
         #if WORLDS_EXPERIMENTAL_ACCOUNT
         .sheet(isPresented: $showAccount) { AccountHostView() }
         #endif
@@ -388,6 +396,18 @@ private struct WorldsLibraryView: View {
         #endif
     }
 
+    private func documentAction(for page: StoredPage) -> (() -> Void)? {
+        #if DEBUG && WORLDS_EXPERIMENTAL_PERSONAL_DOCUMENT
+        guard page.kind == "file", let source = openedVideoDatabase else { return nil }
+        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+        guard copyContext == nil else { return nil }
+        #endif
+        return { documentRequest = PersonalDocumentRequest(id: page.id, source: source) }
+        #else
+        return nil
+        #endif
+    }
+
     private func projectEditingAvailable(for page: StoredPage) -> Bool {
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
         page.kind == "project" && copyContext != nil
@@ -434,6 +454,9 @@ private struct WorldsLibraryView: View {
         #endif
         #if WORLDS_EXPERIMENTAL_PERSONAL_VIDEO
         disabled = disabled || videoRequest != nil
+        #endif
+        #if DEBUG && WORLDS_EXPERIMENTAL_PERSONAL_DOCUMENT
+        disabled = disabled || documentRequest != nil
         #endif
         return disabled
     }
@@ -730,6 +753,10 @@ private struct VideoDatabaseSource {
     let url: URL
     let identity: VideoDatabaseIdentity
 }
+
+#if DEBUG && WORLDS_EXPERIMENTAL_PERSONAL_DOCUMENT
+private struct PersonalDocumentRequest: Identifiable { let id: String; let source: VideoDatabaseSource }
+#endif
 
 #if WORLDS_EXPERIMENTAL_PERSONAL_VIDEO
 private struct PersonalVideoRequest: Identifiable { let id: String; let source: VideoDatabaseSource }

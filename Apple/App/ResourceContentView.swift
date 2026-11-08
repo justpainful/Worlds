@@ -44,6 +44,7 @@ struct ResourceContentView: View {
     var projectEditingAvailable: Bool = false
     var otherEditingAvailable: Bool = false
     var openVideo: (() -> Void)? = nil
+    var openDocument: (() -> Void)? = nil
     let openPage: (String) -> Void
 
     private var metadata: ResourceMetadata? { try? JSONDecoder().decode(ResourceMetadata.self, from: Data(page.metadataJSON.utf8)) }
@@ -150,6 +151,11 @@ struct ResourceContentView: View {
                     Button("Open video", systemImage: "play.rectangle", action: openVideo)
                         .accessibilityIdentifier("open-personal-video")
                     Text("Choose the Worlds folder to open this personal video.").foregroundStyle(.secondary)
+                } else if let openDocument, let mime = info.mime?.lowercased(),
+                          mime.hasPrefix("image/") || mime == "application/pdf" {
+                    Button("Open document", systemImage: "doc.richtext", action: openDocument)
+                        .accessibilityIdentifier("open-personal-document")
+                    Text("Choose the Worlds folder to open this personal file.").foregroundStyle(.secondary)
                 } else {
                     Text("File preview is unavailable in this reader.").foregroundStyle(.secondary)
                 }
