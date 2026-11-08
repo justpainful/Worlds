@@ -112,7 +112,9 @@ final class WorldsUITests: XCTestCase {
         XCTAssertTrue(page.waitForExistence(timeout: 40)); page.tap()
         let quote = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "اقتباس عربي محفوظ ١٢٣")).firstMatch
         let overflow = app.staticTexts["Overflow item"].firstMatch
-        for _ in 0..<4 { app.swipeUp() }
+        let reader = app.scrollViews["page-content"].firstMatch
+        XCTAssertTrue(reader.waitForExistence(timeout: 10))
+        for _ in 0..<4 { reader.swipeUp() }
         XCTAssertTrue(quote.waitForExistence(timeout: 10))
         XCTAssertTrue(quote.label.contains("Mixed quote"))
         XCTAssertTrue(quote.label.contains("Invalid color preserved"))
