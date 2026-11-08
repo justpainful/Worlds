@@ -55,7 +55,8 @@ private actor IdentityFixtureTransport: IdentityTransport {
 
 private actor AccountFixtureTransport: IdentityTransport {
     let profileID: String
-    init(profileID: String) { self.profileID = profileID }
+    let accessJSON: String
+    init(profileID: String, accessJSON: String = #"{"role":"member","defaultLevel":"edit","docs":[{"docId":"visible","level":"view"},{"docId":"editable","level":"edit"}]}"#) { self.profileID = profileID; self.accessJSON = accessJSON }
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         let json: String
         switch request.url!.path {
@@ -75,6 +76,9 @@ private actor AccountFixtureTransport: IdentityTransport {
         case "/me/passkeys/dGVzdA":
             guard request.httpMethod == "DELETE", request.value(forHTTPHeaderField: "Authorization") == "Bearer fixture-access" else { throw URLError(.userAuthenticationRequired) }
             json = #"{"ok":true}"#
+        case "/workspaces/space/access":
+            guard request.value(forHTTPHeaderField: "Authorization") == "Bearer fixture-access" else { throw URLError(.userAuthenticationRequired) }
+            json = accessJSON
         default: throw URLError(.badURL)
         }
         return (Data(json.utf8), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
@@ -109,8 +113,57 @@ private actor DelayedPasskeyTransport: IdentityTransport {
         return (Data(body.utf8), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
     }
 }
+private actor DelayedWorkspaceAccessTransport: IdentityTransport {
+    private(set) var started = false
+    private var continuation: CheckedContinuation<Void, Never>?
+    func release() { continuation?.resume(); continuation = nil }
+    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        let body: String
+        switch request.url?.path {
+        case "/auth/email/verify":
+            body = #"{"accessToken":"fixture","accessTokenExpiresAt":9999999999999,"refreshToken":"refresh","refreshTokenExpiresAt":9999999999999,"userId":"user","deviceId":"device"}"#
+        case "/workspaces/space/access":
+            started = true; await withCheckedContinuation { continuation = $0 }
+            body = #"{"docs":[{"docId":"page","level":"edit"}]}"#
+        default: throw URLError(.badURL)
+        }
+        return (Data(body.utf8), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
+}
 
 final class IdentityContinuityTests: XCTestCase {
+    func testWorkspaceAccessUsesCurrentAccountAndFailsClosed() async throws {
+        let coordinator = try IdentitySessionCoordinator(baseURL: URL(string: "https://example.test")!, lockDirectory: directory(), transport: AccountFixtureTransport(profileID: "user"), secrets: MemorySecrets())
+        _ = try await coordinator.verifyEmail(challengeID: "fixture", code: "123456", deviceName: "Fixture", platform: "macos")
+        let view = try await coordinator.currentWorkspacePageLevel(workspaceID: "space", pageID: "visible", expectedUserID: "user")
+        let edit = try await coordinator.currentWorkspacePageLevel(workspaceID: "space", pageID: "editable", expectedUserID: "user")
+        let absent = try await coordinator.currentWorkspacePageLevel(workspaceID: "space", pageID: "missing", expectedUserID: "user")
+        XCTAssertEqual(view, .view); XCTAssertEqual(edit, .edit); XCTAssertEqual(absent, .none)
+        do { _ = try await coordinator.currentWorkspacePageLevel(workspaceID: "space", pageID: "visible", expectedUserID: "other"); XCTFail("Different account must be rejected") }
+        catch IdentityContinuityError.accountMismatch { } catch { XCTFail("Unexpected error: \(error)") }
+        do { _ = try await coordinator.currentWorkspacePageLevel(workspaceID: "../escape", pageID: "visible", expectedUserID: "user"); XCTFail("Unsafe workspace path must be rejected") }
+        catch IdentityError.invalidPath { } catch { XCTFail("Unexpected error: \(error)") }
+    }
+    func testWorkspaceAccessRejectsDuplicatePageEntries() async throws {
+        let json = #"{"docs":[{"docId":"same","level":"view"},{"docId":"same","level":"edit"}]}"#
+        let coordinator = try IdentitySessionCoordinator(baseURL: URL(string: "https://example.test")!, lockDirectory: directory(), transport: AccountFixtureTransport(profileID: "user", accessJSON: json), secrets: MemorySecrets())
+        _ = try await coordinator.verifyEmail(challengeID: "fixture", code: "123456", deviceName: "Fixture", platform: "macos")
+        do { _ = try await coordinator.currentWorkspacePageLevel(workspaceID: "space", pageID: "same", expectedUserID: "user"); XCTFail("Ambiguous access must be rejected") }
+        catch IdentityError.invalidResponse { } catch { XCTFail("Unexpected error: \(error)") }
+    }
+    func testWorkspaceAccessPreventsConcurrentAccountChange() async throws {
+        let transport = DelayedWorkspaceAccessTransport()
+        let coordinator = try IdentitySessionCoordinator(baseURL: URL(string: "https://example.test")!, lockDirectory: directory(), transport: transport, secrets: MemorySecrets())
+        _ = try await coordinator.verifyEmail(challengeID: "fixture", code: "123456", deviceName: "Fixture", platform: "macos")
+        let pending = Task { try await coordinator.currentWorkspacePageLevel(workspaceID: "space", pageID: "page", expectedUserID: "user") }
+        for _ in 0..<100 { if await transport.started { break }; try await Task.sleep(for: .milliseconds(10)) }
+        let started = await transport.started
+        guard started else { pending.cancel(); await transport.release(); return XCTFail("Fixture did not start") }
+        do { _ = try await coordinator.signOut(); XCTFail("Sign out must wait for the account-bound access request") }
+        catch IdentityContinuityError.busy { } catch { XCTFail("Unexpected error: \(error)") }
+        await transport.release()
+        let level = try await pending.value; XCTAssertEqual(level, .edit)
+    }
     func testPasskeyManagementUsesAuthenticatedEndpointsAndRejectsUnsafeID() async throws {
         let coordinator = try IdentitySessionCoordinator(baseURL: URL(string: "https://example.test")!, lockDirectory: directory(), transport: AccountFixtureTransport(profileID: "user"), secrets: MemorySecrets())
         _ = try await coordinator.verifyEmail(challengeID: "fixture", code: "123456", deviceName: "Fixture", platform: "macos")

@@ -187,6 +187,9 @@ struct LocalPresentationEditor: View {
             .interactiveDismissDisabled(state.dirty || state.busy)
             .task { await state.open() }
         }
+        #if os(macOS)
+        .frame(minWidth: 520, minHeight: 480)
+        #endif
     }
 }
 #endif

@@ -67,6 +67,13 @@ jobs:
           grep -E 'testRejectsHardLinkedAttachment.*passed' logs/swift-test.log
           grep -E 'testOpenedAttachmentUsesOriginalDescriptorAfterPathReplacement.*passed' logs/swift-test.log
           grep -E 'testOpenedVideoReportsPlaybackFailureAndIgnoresFailureAfterClose.*passed' logs/swift-test.log
+          grep -E 'testResolutionBudgetPreservesSmallOriginalAndCapsLargeImage.*passed' logs/swift-test.log
+          grep -E 'testImageReadsVerifiedDescriptorAfterPathReplacement.*passed' logs/swift-test.log
+          grep -E 'testPDFAndChangedSizeFailClosed.*passed' logs/swift-test.log
+          grep -E 'testLargeImageIsReportedAsDownsampled.*passed' logs/swift-test.log
+          grep -E 'testPasswordProtectedPDFReportsLimit.*passed' logs/swift-test.log
+          grep -E 'testTruncatedOpenFileIsRejected.*passed' logs/swift-test.log
+          grep -E 'testCloseBeforeLoadDoesNotDecode.*passed' logs/swift-test.log
           grep -q 'testActualYjsFixture' logs/swift-test.log
           grep -E 'testYjsRelativeCursorAwarenessRemainsOpaque.*passed' logs/swift-test.log
           grep -E 'testCancelledPasskeyBeforePresentationDoesNotStart.*passed' logs/swift-test.log
@@ -352,6 +359,17 @@ jobs:
           xcodebuild -project Apple/ClaudeConversationHarness/WorldsClaudeConversationHarness.xcodeproj \
             -scheme ClaudeConversationHarness-macOS -configuration Debug -destination 'generic/platform=macOS' \
             CODE_SIGNING_ALLOWED=NO build 2>&1 | tee logs/claude-harness-build.log
+      - uses: dtolnay/rust-toolchain@1.99.1
+      - name: Exercise isolated MCP protocol fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo build --locked --manifest-path Apple/RustMCP/Cargo.toml --bin worlds_mcp_fixture 2>&1 | tee logs/mcp-fixture-build.log
+          export WORLDS_REQUIRE_MCP_FIXTURE=1
+          export WORLDS_MCP_FIXTURE_BIN="$GITHUB_WORKSPACE/Apple/RustMCP/target/debug/worlds_mcp_fixture"
+          test -x "$WORLDS_MCP_FIXTURE_BIN"
+          swift test --package-path Apple/WorldsCore --filter MCPFixtureIntegrationTests 2>&1 | tee logs/mcp-fixture-swift.log
+          grep -E 'testRunnerUsesScopedOriginalProtocolFixture.*passed' logs/mcp-fixture-swift.log
       - name: Test isolated fixture conversation and process restart
         shell: bash
         run: |
@@ -957,6 +975,15 @@ jobs:
           grep -q 'actual_permission_gate_denies_hidden_and_write_before_dispatch ... ok' logs/rust-mcp-tests.log
           grep -q 'actual_permission_gate_rejects_unexpected_touched_page_and_rolls_back ... ok' logs/rust-mcp-tests.log
           grep -q 'actual_result_filter_removes_hidden_page ... ok' logs/rust-mcp-tests.log
+      - name: Test isolated MCP authorization gate
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo test --locked --manifest-path Apple/RustMCPAuthorization/Cargo.toml 2>&1 | tee logs/rust-mcp-authorization.log
+          grep -q 'write_requires_exact_single_use_approval_and_current_rights ... ok' logs/rust-mcp-authorization.log
+          grep -q 'account_binding_cancellation_and_local_revocation_fail_closed ... ok' logs/rust-mcp-authorization.log
+          grep -q 'personal_page_needs_attested_copy_and_rejects_ambiguous_metadata ... ok' logs/rust-mcp-authorization.log
+          grep -q 'unexpected_touched_page_rolls_back_original_guarded_operation ... ok' logs/rust-mcp-authorization.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:

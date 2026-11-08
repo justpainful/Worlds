@@ -105,6 +105,9 @@ public struct IdentityPasskey: Decodable, Sendable {
     public let createdAt: Int64
     public let lastUsedAt: Int64?
 }
+public enum IdentityPageLevel: String, Decodable, Sendable, Equatable {
+    case none, view, comment, edit, full
+}
 /// The wrapped client is private, preventing accidental bypass by this owner.
 /// The host must create one coordinator per scope and use the same lock directory
 /// for every process that can access the corresponding Keychain item.
@@ -175,6 +178,28 @@ public actor IdentitySessionCoordinator {
         let workspaces = try JSONDecoder().decode([IdentityWorkspace].self, from: workspaceData)
         guard try await client.currentUserID() == expected else { throw IdentityContinuityError.accountMismatch }
         return IdentityAccountSnapshot(profile: profile, workspaces: workspaces)
+    }
+    /// Fetches the service's effective access for a mirrored workspace page.
+    /// This is a point-in-time observation, not an atomic write permit.
+    public func currentWorkspacePageLevel(workspaceID: String, pageID: String, expectedUserID: String) async throws -> IdentityPageLevel {
+        struct Entry: Decodable { let docId: String; let level: IdentityPageLevel }
+        struct Envelope: Decodable { let docs: [Entry] }
+        func safeID(_ id: String) -> Bool {
+            !id.isEmpty && id.utf8.count <= 128 && id.utf8.allSatisfy {
+                (65...90).contains($0) || (97...122).contains($0) || (48...57).contains($0) || $0 == 45 || $0 == 95
+            }
+        }
+        guard safeID(workspaceID), safeID(pageID), !expectedUserID.isEmpty else { throw IdentityError.invalidPath }
+        guard !locallySignedOut, !changingSession else { throw IdentityContinuityError.signedOut }
+        activeRequests += 1; defer { activeRequests -= 1 }
+        guard try await client.currentUserID() == expectedUserID else { throw IdentityContinuityError.accountMismatch }
+        let data = try await client.authenticatedRequest(path: "/workspaces/\(workspaceID)/access")
+        guard data.count <= 8 * 1024 * 1024 else { throw IdentityError.invalidResponse }
+        let result = try JSONDecoder().decode(Envelope.self, from: data)
+        guard result.docs.count <= 100_000, Set(result.docs.map(\.docId)).count == result.docs.count,
+              result.docs.allSatisfy({ safeID($0.docId) }) else { throw IdentityError.invalidResponse }
+        guard try await client.currentUserID() == expectedUserID else { throw IdentityContinuityError.accountMismatch }
+        return result.docs.first(where: { $0.docId == pageID })?.level ?? .none
     }
     /// Read account passkeys from the authenticated service. This does not
     /// inspect credentials stored by the platform authenticator.
