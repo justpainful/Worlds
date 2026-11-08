@@ -130,7 +130,7 @@ private struct FixtureTextEditorProbe: NSViewRepresentable {
     func updateNSView(_ probe: NSView, context: Context) {
         DispatchQueue.main.async {
             guard let window = probe.window, let root = window.contentView else { return }
-            func collectText(_ view: NSView, into results: inout [NSTextView]) {
+            @MainActor func collectText(_ view: NSView, into results: inout [NSTextView]) {
                 if let text = view as? NSTextView { results.append(text) }
                 for child in view.subviews { collectText(child, into: &results) }
             }
@@ -143,7 +143,7 @@ private struct FixtureTextEditorProbe: NSViewRepresentable {
                     ancestors.append("\(type(of: view)):ax=\(view.isAccessibilityEnabled()),hidden=\(view.isHidden)")
                     cursor = view.superview
                 }
-                return "index=\(index),identifier=\(text.accessibilityIdentifier() ?? "none"),editable=\(text.isEditable),selectable=\(text.isSelectable),key=\(window.isKeyWindow),firstResponder=\(window.firstResponder === text),ancestors=\(ancestors.joined(separator: ">"))"
+                return "index=\(index),identifier=\(text.accessibilityIdentifier()),editable=\(text.isEditable),selectable=\(text.isSelectable),key=\(window.isKeyWindow),firstResponder=\(window.firstResponder === text),ancestors=\(ancestors.joined(separator: ">"))"
             }.joined(separator: " | ")
             let report = "count=\(texts.count) \(details)"
             if output != report { output = report }
