@@ -2094,6 +2094,8 @@ jobs:
           cargo test --locked --manifest-path Apple/RustCollaboration/Cargo.toml --test interop -- --nocapture \
             2>&1 | tee logs/collaboration-interop-rust.log
           grep -q 'concurrent_ffi_document_lifetimes_preserve_buffers ... ok' logs/collaboration-interop-rust.log
+          grep -q 'pending_dependency_survives_full_snapshot_and_wire_diff ... ok' logs/collaboration-interop-rust.log
+          grep -q 'pending_deletion_survives_full_snapshot_and_wire_diff ... ok' logs/collaboration-interop-rust.log
           cargo test --locked --manifest-path Apple/RustCollaboration/Cargo.toml --lib -- --nocapture 2>&1 | tee logs/collaboration-lib-rust.log
           grep -q 'load_uses_one_snapshot_across_auth_and_compaction ... ok' logs/collaboration-lib-rust.log
           cargo test --locked --manifest-path Apple/RustCollaboration/Cargo.toml --test editor -- --nocapture \
@@ -2108,6 +2110,7 @@ jobs:
             2>&1 | tee logs/collaboration-store-rust.log
           grep -q 'editor_transaction_rejects_stale_and_rolls_back_outbox_failure ... ok' logs/collaboration-store-rust.log
           grep -q 'incomplete_ancestry_never_falls_back_to_workspace_default_for_writes ... ok' logs/collaboration-store-rust.log
+          grep -q 'pending_causal_outbox_is_visible_in_snapshot_and_wire_before_ack ... ok' logs/collaboration-store-rust.log
           grep -q 'replaced_database_path_is_rejected_without_writing_either_database ... ok' logs/collaboration-store-rust.log
           grep -q 'delete_transaction_preserves_outbox_on_failure_and_rejects_stale_or_viewer ... ok' logs/collaboration-store-rust.log
           grep -q 'formatting_transaction_is_durable_and_refuses_stale_or_readonly ... ok' logs/collaboration-store-rust.log
