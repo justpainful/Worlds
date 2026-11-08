@@ -12,6 +12,9 @@ extension IdentitySessionCoordinator: CollaborationIdentity {}
 
 /// Experimental composition for a single already-authorized shared page.
 /// The owner must establish database and endpoint provenance independently.
+/// A local backup is an independent copy and is not a permitted sync source.
+/// The supplied URL receives a bearer token; its trust is not established by
+/// the account permission response or by the original sync.serverUrl setting.
 public enum CollaborationHost {
     public static func makeSession(pageID: String, workspaceID: String, expectedUserID: String,
                                    serverURL: URL, store: SQLiteCollaborationStore,

@@ -34,6 +34,7 @@ impl SyncStore {
 
     /// Cached local rights are an additional guard, never a replacement for server checks.
     fn authorize(&self, required: u8) -> Result<()> {
+        self.require_original_path()?;
         let current: Option<String> = self.conn.query_row("SELECT user_id FROM account WHERE id=1 AND status='active'", [], |r| r.get(0)).optional()?;
         if current.as_deref() != Some(&self.user) { return Err(StoreError::Denied); }
         let page_ws: Option<Option<String>> = self.conn.query_row("SELECT workspace_id FROM pages WHERE id=?1 AND deleted_at IS NULL", [&self.page], |r| r.get(0)).optional()?;
@@ -57,6 +58,7 @@ impl SyncStore {
     // Archiving after access removal protects local edits. The account and
     // original page binding must still match; archive contents are not exposed here.
     fn authorize_archive(&self, channel: i64) -> Result<()> {
+        self.require_original_path()?;
         valid_channel(channel)?;
         let current: Option<String> = self.conn.query_row("SELECT user_id FROM account WHERE id=1 AND status='active'", [], |r| r.get(0)).optional()?;
         if current.as_deref() != Some(&self.user) { return Err(StoreError::Denied); }
@@ -66,6 +68,22 @@ impl SyncStore {
         if owner.as_deref().is_some_and(|id| id != self.user) { return Err(StoreError::Denied); }
         Ok(())
     }
+    // On Apple, ask SQLite's own VFS whether the opened main database still
+    // corresponds to its pathname. This detects a replacement visible at the
+    // check; it does not establish provenance or prevent a swap-and-restore
+    // between checks, nor does it pin WAL and parent-directory identities.
+    #[cfg(any(target_os="macos", target_os="ios"))]
+    fn require_original_path(&self) -> Result<()> {
+        let mut moved: std::ffi::c_int = -1;
+        let status = unsafe {
+            rusqlite::ffi::sqlite3_file_control(self.conn.handle(), b"main\0".as_ptr().cast(),
+                rusqlite::ffi::SQLITE_FCNTL_HAS_MOVED, (&mut moved as *mut std::ffi::c_int).cast())
+        };
+        if status != rusqlite::ffi::SQLITE_OK || moved != 0 { return Err(StoreError::Denied); }
+        Ok(())
+    }
+    #[cfg(not(any(target_os="macos", target_os="ios")))]
+    fn require_original_path(&self) -> Result<()> { Ok(()) }
     fn check(&self, channel: i64, local: bool) -> Result<()> {
         valid_channel(channel)?;
         self.authorize(if local && channel == 0 { 3 } else if local { 2 } else { 1 })

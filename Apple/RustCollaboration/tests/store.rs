@@ -37,6 +37,24 @@ INSERT INTO account_workspaces VALUES('w','member','edit');").unwrap();
     path
 }
 
+#[cfg(any(target_os="macos", target_os="ios"))]
+#[test]
+fn replaced_database_path_is_rejected_without_writing_either_database() {
+    let path = fixture();
+    let mut store = SyncStore::open(&path, "p", "u", "w").unwrap();
+    let moved = path.directory.join("original.db");
+    std::fs::rename(&path.path, &moved).unwrap();
+    std::fs::copy(&moved, &path.path).unwrap();
+    assert!(matches!(store.load(0), Err(StoreError::Denied)));
+    assert!(store.append(0, b"fixture-update", true).is_err());
+    drop(store);
+    for database in [&moved, &path.path] {
+        let conn = Connection::open(database).unwrap();
+        let count: i64 = conn.query_row("SELECT COUNT(*) FROM sync_outbox", [], |r| r.get(0)).unwrap();
+        assert_eq!(count, 0);
+    }
+}
+
 #[test]
 fn parallel_fixtures_have_distinct_databases_and_survive_peer_cleanup() {
     let workers: Vec<_> = (0..24).map(|_| std::thread::spawn(fixture)).collect();
