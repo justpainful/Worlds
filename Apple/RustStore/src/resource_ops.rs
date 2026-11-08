@@ -629,10 +629,15 @@ fn adjacent_plain_text_swap(old: &Value, new: &Value) -> bool {
 fn geometry_keys_preserved(old: &Value, new: &Value) -> bool {
     let Some(old_elements)=old.pointer("/attrs/elements").and_then(Value::as_array) else { return true };
     let Some(new_elements)=new.pointer("/attrs/elements").and_then(Value::as_array) else { return false };
-    for element in old_elements {
+    for (index,element) in old_elements.iter().enumerate() {
         let Some(object)=element.as_object() else { continue };
         if !["text","image","video","shape"].contains(&object.get("type").and_then(Value::as_str).unwrap_or("")) { continue }
-        let Some(id)=object.get("id").and_then(Value::as_str) else { continue };
+        let Some(id)=object.get("id").and_then(Value::as_str).filter(|id|!id.is_empty()) else {
+            // Without a stable identity, do not match an editable element to a
+            // different one or allow its unsupported data to be discarded.
+            if new_elements.get(index)!=Some(element) { return false }
+            continue
+        };
         let candidates:Vec<_>=new_elements.iter().filter(|v|v.get("id").and_then(Value::as_str)==Some(id)).collect();
         if candidates.len()!=1 { return false }
         let Some(current)=candidates[0].as_object() else { return false };
@@ -887,6 +892,20 @@ mod presentation_tests {
         let c=Connection::open(&path).unwrap();
         assert_eq!(c.query_row("SELECT count(*) FROM history WHERE page_id='deck'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
         drop(c); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn unidentified_slide_element_cannot_lose_geometry() {
+        let path=fixture(); let c=Connection::open(&path).unwrap();
+        let slide=json!({"type":"slide","attrs":{"bid":"s","notes":"before","elements":[{"type":"text","text":"old","x":4,"y":6}]}});
+        c.execute("UPDATE blocks SET content=?1 WHERE id='s'",[slide.to_string()]).unwrap(); drop(c);
+        let old=read_presentation(&path,"deck").unwrap();
+        let mut attack=inputs(&old); attack[0].content["attrs"]["elements"][0].as_object_mut().unwrap().remove("x");
+        assert!(save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),attack).is_err());
+        assert_eq!(read_presentation(&path,"deck").unwrap(),old);
+        let mut safe=inputs(&old); safe[0].content["attrs"]["notes"]=json!("after");
+        let saved=save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),safe).unwrap();
+        assert_eq!(saved["blocks"][0]["content"]["attrs"]["elements"],slide["attrs"]["elements"]);
+        std::fs::remove_file(path).unwrap();
     }
     #[test]
     fn unsupported_css_slide_color_survives_unrelated_edits() {

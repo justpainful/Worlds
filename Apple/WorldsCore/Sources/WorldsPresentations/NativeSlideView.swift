@@ -29,6 +29,9 @@ public struct NativeSlideView: View {
             .clipped()
             .scaleEffect(scale, anchor: .topLeading)
             .frame(width: 1280 * scale, height: 720 * scale, alignment: .topLeading)
+            // Coordinates and CSS left/right are physical regardless of the app direction.
+            // Unicode bidirectional text remains resolved by the text renderer.
+            .environment(\.layoutDirection, .leftToRight)
         }
         .aspectRatio(16 / 9, contentMode: .fit)
         .accessibilityLabel("Presentation slide")
