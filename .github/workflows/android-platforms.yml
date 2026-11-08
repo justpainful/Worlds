@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   core:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: Android
@@ -27,7 +27,7 @@ jobs:
       - name: Install Android Rust targets and NDK
         run: |
           rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android
-          sdkmanager 'ndk;28.2.13676358'
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'ndk;28.2.13676358'
       - name: Check desktop drawing contracts
         run: |
           node --no-warnings --loader ./core/stylus/tools/desktop-loader.mjs ./core/stylus/tools/desktop-fixtures.mjs --check
@@ -58,7 +58,7 @@ jobs:
           if-no-files-found: ignore
 
   emulator:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -77,7 +77,7 @@ jobs:
       - name: Install Android Rust targets and NDK
         run: |
           rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android
-          sdkmanager 'ndk;28.2.13676358'
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'ndk;28.2.13676358'
       - name: Generate desktop drawing fixtures
         run: node --no-warnings --experimental-transform-types --loader ./Android/app/tools/drawing-contract-loader.mjs ./Android/app/tools/generate-desktop-projects.mjs
       - name: Enable KVM
@@ -107,7 +107,7 @@ jobs:
           if-no-files-found: ignore
 
   packages:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     defaults:
       run:
@@ -122,7 +122,7 @@ jobs:
       - name: Install Android Rust targets and NDK
         run: |
           rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android
-          sdkmanager 'ndk;28.2.13676358'
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'ndk;28.2.13676358'
       - name: Build APKs and app bundle
         run: |
           chmod +x gradlew
