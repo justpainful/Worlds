@@ -28,3 +28,12 @@ The scenario pauses after checking that the second replica has a channel 0
 outbox entry. Select Continue scenario to reopen that replica. The displayed
 outbox state is the result of the most recent SQLite check, not a live count
 or proof of remote durability. Errors are reported in the scenario status.
+
+The checked editing fixture uses a separate disposable document and an editor
+fixture token. It appends one line to a single known plain paragraph through the
+real checked session and can reverse that insertion only if the full CRDT state
+is unchanged. It is not general collaborative undo, offline editing, or an IME
+editor. A failed or uncertain operation retains the draft and disables further
+edits for that fixture. Closing the view waits for an in-flight operation before
+closing the session and removing the disposable files. Live Apple and Worker
+tests remain necessary.
