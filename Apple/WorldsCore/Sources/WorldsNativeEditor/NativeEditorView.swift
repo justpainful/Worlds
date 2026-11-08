@@ -38,6 +38,15 @@ public struct NativeEditorView: View {
                         Button("Heading 2") { heading(2) }
                         Button("Heading 3") { heading(3) }
                     }.accessibilityIdentifier("editor-text-style")
+                    if model.supportsDocumentFormatting {
+                        Menu("Alignment") {
+                            Button("Automatic") { align(nil) }
+                            Button("Left") { align("left") }
+                            Button("Center") { align("center") }
+                            Button("Right") { align("right") }
+                            Button("Justify") { align("justify") }
+                        }.accessibilityIdentifier("editor-alignment")
+                    }
                     Button("Link") {
                         guard model.selection.length > 0 else { model.report(NativeEditorError.unsupportedFormatting); return }
                         linkSelection = model.selection; linkSource = model.document.source; linkText = ""; showLink = true
@@ -125,6 +134,7 @@ public struct NativeEditorView: View {
     }
     private func list(_ kind: String) { do { try model.makeList(kind) } catch { model.report(error) } }
     private func heading(_ level: Int?) { do { try model.setHeading(level) } catch { model.report(error) } }
+    private func align(_ alignment: String?) { do { try model.setTextAlignment(alignment) } catch { model.report(error) } }
 }
 
 #if canImport(UIKit)

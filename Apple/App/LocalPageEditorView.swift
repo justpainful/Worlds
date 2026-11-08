@@ -49,7 +49,7 @@ struct LocalPageEditorView: View {
         do {
             let store = try await PersonalEditorPersistence.open(databaseURL: databaseURL, pageID: pageID)
             persistence = store
-            model = NativeEditorModel(document: store.initialDocument, baseRevision: store.initialRevision)
+            model = NativeEditorModel(document: store.initialDocument, baseRevision: store.initialRevision, supportsDocumentFormatting: store.supportsDocumentFormatting)
             reloadRequired = false; saved = false; error = nil
             if !injectedConflict, ProcessInfo.processInfo.arguments.contains("--ui-testing-local-copy-fixture"),
                ProcessInfo.processInfo.arguments.contains("--ui-testing-page-conflict") {
@@ -90,6 +90,9 @@ private struct LocalPageEditorContent: View {
         ScrollView { VStack(alignment: .leading, spacing: 12) {
             Text("Edits apply only to this local copy. Some content and input methods cannot be edited safely.").font(.body)
             NativeEditorView(model: model).frame(maxWidth: .infinity, minHeight: 240)
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-document-alignment"), model.projection.spans.contains(where: { $0.alignment == "center" && $0.direction == "rtl" }) {
+                Text("Fixture alignment saved").accessibilityIdentifier("fixture-alignment-centered")
+            }
             if let error { Text(error).accessibilityLabel(error).accessibilityIdentifier("local-page-error") }
             if reloadRequired { Button("Reload saved page", action: onReload).accessibilityIdentifier("local-page-reload") }
             if saved && !model.dirty { Text("Page saved").accessibilityIdentifier("local-page-saved") }

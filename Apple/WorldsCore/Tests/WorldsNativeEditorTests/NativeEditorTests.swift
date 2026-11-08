@@ -15,6 +15,21 @@ private actor FixturePersistence: EditorPersistence {
 
 @MainActor
 final class NativeEditorTests: XCTestCase {
+    func testDocumentAlignmentPreservesRTLAndUnknownAttributesWithUndo() throws {
+        let json = #"{"type":"doc","content":[{"type":"paragraph","attrs":{"bid":"p","dir":"rtl","future":{"keep":true}},"content":[{"type":"text","text":"عربي 👋"}]}]}"#
+        let document = try RichTextDocument(json: Data(json.utf8))
+        let page = NativeEditorModel(document: document, baseRevision: 0)
+        XCTAssertThrowsError(try page.setTextAlignment("center"))
+        let model = NativeEditorModel(document: document, baseRevision: 0, supportsDocumentFormatting: true)
+        try model.setTextAlignment("center")
+        XCTAssertEqual(model.projection.spans[0].alignment, "center")
+        XCTAssertEqual(model.projection.spans[0].direction, "rtl")
+        let changed = model.document.source
+        model.undo(); XCTAssertEqual(model.document, document)
+        model.redo(); XCTAssertEqual(model.document.source, changed)
+        XCTAssertThrowsError(try model.setTextAlignment("unknown"))
+        XCTAssertEqual(model.document.source, changed)
+    }
     func testIndentAndOutdentPreserveArabicUTF16Caret() throws {
         let json = #"{"type":"doc","content":[{"type":"bulletList","attrs":{"bid":"list"},"content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"أول"}]}]},{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"أ👋ب"}]}]}]}]}"#
         let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 0)

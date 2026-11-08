@@ -9,6 +9,49 @@ import WorldsLocalImport
 @testable import WorldsEditorPersistence
 
 final class EditorPersistenceTests: XCTestCase {
+    @MainActor func testDocumentAlignmentRejectsKindChangeAtSameRevision() async throws {
+        let url = try fixture()
+        try exec(#"UPDATE pages SET kind='document' WHERE id='fixture-page'"#, url: url)
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let model = NativeEditorModel(document: bridge.initialDocument, baseRevision: bridge.initialRevision, supportsDocumentFormatting: true)
+        try model.setTextAlignment("center")
+        try exec(#"UPDATE pages SET kind='page' WHERE id='fixture-page'"#, url: url)
+        do { try await model.save(using: bridge); XCTFail("Expected page kind conflict") }
+        catch NativeWriteError.conflict { } catch { XCTFail("Unexpected error: \(error)") }
+        let after = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(after.initialDocument.source, bridge.initialDocument.source)
+        XCTAssertFalse(after.supportsDocumentFormatting)
+    }
+    func testDocumentAlignmentDoesNotOverwriteUnknownLegacyValue() async throws {
+        let url = try fixture()
+        try exec(#"UPDATE pages SET kind='document' WHERE id='fixture-page'"#, url: url)
+        try exec(#"UPDATE blocks SET content='{"type":"paragraph","attrs":{"bid":"fixture-block","textAlign":"future"},"content":[{"type":"text","text":"Text"}]}' WHERE id='fixture-block'"#, url: url)
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let attack = #"{"type":"doc","content":[{"type":"paragraph","attrs":{"bid":"fixture-block","textAlign":"center"},"content":[{"type":"text","text":"Text"}]}]}"#
+        do { _ = try await bridge.save(documentJSON: Data(attack.utf8), basedOn: bridge.initialRevision); XCTFail("Expected protected value rejection") }
+        catch EditorBridgeError.invalidBlock { }
+        let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(reopened.initialDocument.source, bridge.initialDocument.source)
+    }
+    @MainActor func testDocumentAlignmentPersistsUnknownDataAndRejectsConflict() async throws {
+        let url = try fixture()
+        try exec(#"UPDATE pages SET kind='document' WHERE id='fixture-page'"#, url: url)
+        try exec(#"UPDATE blocks SET content='{"type":"paragraph","attrs":{"bid":"fixture-block","dir":"rtl","textAlign":null,"future":{"keep":true}},"content":[{"type":"text","text":"عربي"}]}' WHERE id='fixture-block'"#, url: url)
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let stale = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertTrue(bridge.supportsDocumentFormatting)
+        let model = NativeEditorModel(document: bridge.initialDocument, baseRevision: bridge.initialRevision, supportsDocumentFormatting: true)
+        try model.setTextAlignment("center")
+        let expected = model.document.source
+        try await model.save(using: bridge)
+        let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(reopened.initialDocument.source, expected)
+        XCTAssertEqual(reopened.initialDocument.project().spans[0].alignment, "center")
+        do { _ = try await stale.save(documentJSON: try stale.initialDocument.json(), basedOn: stale.initialRevision); XCTFail("Expected conflict") }
+        catch NativeWriteError.conflict { } catch { XCTFail("Unexpected error: \(error)") }
+        let final = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(final.initialDocument.source, expected)
+    }
     @MainActor func testIndentTaskSavesAndRejectsConcurrentSnapshot() async throws {
         let url = try fixture()
         try exec(#"UPDATE blocks SET content='{"type":"taskList","attrs":{"bid":"fixture-block"},"content":[{"type":"taskItem","attrs":{"checked":false,"future":"keep"},"content":[{"type":"paragraph","content":[{"type":"text","text":"First"}]}]},{"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Second"}]}]}]}' WHERE id='fixture-block'"#, url: url)

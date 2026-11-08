@@ -34,6 +34,7 @@ private struct Request: Encodable, Sendable {
     var parent: String? = nil
     var blocks: [NativeBlockInput]? = nil
     var expected: [NativeBlockInput]? = nil
+    var expectedKind: String? = nil
     var expectedMetadata: JSONValue? = nil
     var metadata: JSONValue? = nil
     var source: String? = nil
@@ -44,6 +45,7 @@ private struct Request: Encodable, Sendable {
     enum CodingKeys: String, CodingKey {
         case operation, path, page, base, title, parent, blocks, expected, metadata, deleting
         case expectedMetadata = "expected_metadata"
+        case expectedKind = "expected_kind"
         case source
         case operationID = "operation_id"
         case recoveryID = "recovery_id"
@@ -86,6 +88,10 @@ public actor NativePersonalStore {
     /// Requires the original ordered block contents and verifies them atomically.
     public func saveBlocksChecked(pageID: String, base: Int64, expected: [NativeBlockInput], blocks: [NativeBlockInput]) async throws -> JSONValue {
         try await call(Request(operation: "save_blocks_checked", path: url.path, page: pageID, base: base, blocks: blocks, expected: expected))
+    }
+    /// Also compares the original page kind in the same transaction.
+    public func saveBlocksCheckedKind(pageID: String, base: Int64, expected: [NativeBlockInput], blocks: [NativeBlockInput], expectedKind: String) async throws -> JSONValue {
+        try await call(Request(operation: "save_blocks_checked_kind", path: url.path, page: pageID, base: base, blocks: blocks, expected: expected, expectedKind: expectedKind))
     }
     public func readResource(id: String) async throws -> JSONValue {
         try await call(Request(operation: "read_resource", path: url.path, page: id))

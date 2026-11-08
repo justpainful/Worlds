@@ -15,7 +15,9 @@ public actor PersonalEditorPersistence: EditorPersistence {
     private static let editableMarkTypes: Set<String> = ["bold", "italic", "underline", "strike", "link"]
     public nonisolated let initialDocument: RichTextDocument
     public nonisolated let initialRevision: Int64
+    public nonisolated let supportsDocumentFormatting: Bool
     private let pageID: String
+    private let pageKind: String
     private let store: NativePersonalStore
     private var baseline: [NativeBlockInput]
     private var opaqueRoots: [JSONValue]
@@ -52,11 +54,13 @@ public actor PersonalEditorPersistence: EditorPersistence {
         }
         initialDocument = try RichTextDocument(source: .object(["type": .string("doc"), "content": .array(editable)]))
         initialRevision = page.updatedAt
+        supportsDocumentFormatting = page.kind == "document"
         expectedRevision = page.updatedAt
         pageID = page.id
+        pageKind = page.kind
         self.store = store
         baseline = original
-        opaqueRoots = Self.opaqueValues(in: editable)
+        opaqueRoots = Self.opaqueValues(in: editable, documentFormatting: page.kind == "document")
         unsupportedHeadings = Self.invalidHeadingValues(in: editable)
     }
 
@@ -86,7 +90,7 @@ public actor PersonalEditorPersistence: EditorPersistence {
         return result
     }
 
-    private static func opaqueValues(in roots: [JSONValue]) -> [JSONValue] {
+    private static func opaqueValues(in roots: [JSONValue], documentFormatting: Bool) -> [JSONValue] {
         var result: [JSONValue] = []
         func append(_ node: JSONValue, owner: JSONValue, path: String, kind: String) {
             result.append(.object(["owner": owner, "path": .string(path), "kind": .string(kind), "value": node]))
@@ -109,6 +113,10 @@ public actor PersonalEditorPersistence: EditorPersistence {
                     // property; every other task attribute remains protected.
                     if type == "taskItem", case .bool(_)? = object["checked"] { object.removeValue(forKey: "checked") }
                     if type == "heading", case .integer(let level)? = object["level"], (1...3).contains(level) { object.removeValue(forKey: "level") }
+                    if documentFormatting, (type == "paragraph" || type == "heading"), let value = object["textAlign"] {
+                        if value == .null { object.removeValue(forKey: "textAlign") }
+                        else if case .string(let name) = value, ["left", "center", "right", "justify"].contains(name) { object.removeValue(forKey: "textAlign") }
+                    }
                     if !object.isEmpty { append(.object(object), owner: owner, path: path, kind: "attrs:\(protectedType)") }
                 } else { append(attributes, owner: owner, path: path, kind: "attrs:\(protectedType)") }
             }
@@ -161,7 +169,7 @@ public actor PersonalEditorPersistence: EditorPersistence {
         guard case .object(let root) = value, Set(root.keys) == Set(["type", "content"]),
               root["type"] == .string("doc"), case .array(let nodes)? = root["content"] else { throw EditorBridgeError.invalidDocument }
         // Refuse edits that change protected data or its structural position.
-        guard Self.opaqueValues(in: nodes) == opaqueRoots else { throw EditorBridgeError.invalidBlock }
+        guard Self.opaqueValues(in: nodes, documentFormatting: supportsDocumentFormatting) == opaqueRoots else { throw EditorBridgeError.invalidBlock }
         guard Self.invalidHeadingValues(in: nodes) == unsupportedHeadings else { throw EditorBridgeError.invalidBlock }
         var updated: [NativeBlockInput] = []
         var ids = Set<String>()
@@ -174,7 +182,7 @@ public actor PersonalEditorPersistence: EditorPersistence {
         saving = true
         defer { saving = false }
         do {
-            let response = try await store.saveBlocksChecked(pageID: pageID, base: basedOn, expected: baseline, blocks: updated)
+            let response = try await store.saveBlocksCheckedKind(pageID: pageID, base: basedOn, expected: baseline, blocks: updated, expectedKind: pageKind)
             guard case .object(let result) = response, case .integer(let revision)? = result["updatedAt"],
                   case .array(let remapped)? = result["remapped"], remapped.isEmpty else {
                 invalidated = true
@@ -182,7 +190,7 @@ public actor PersonalEditorPersistence: EditorPersistence {
             }
             expectedRevision = revision
             baseline = updated
-            opaqueRoots = Self.opaqueValues(in: nodes)
+            opaqueRoots = Self.opaqueValues(in: nodes, documentFormatting: supportsDocumentFormatting)
             unsupportedHeadings = Self.invalidHeadingValues(in: nodes)
             return revision
         } catch {

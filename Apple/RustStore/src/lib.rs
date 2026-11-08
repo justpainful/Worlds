@@ -109,11 +109,21 @@ pub fn save_blocks(path: &Path, page: &str, base: i64, blocks: Vec<BlockInput>) 
 /// Full content and ordering are compared in the same write transaction.
 /// Millisecond timestamps alone cannot detect reordered rows or equal-time writes.
 pub fn save_blocks_checked(path: &Path, page: &str, base: i64, expected: Vec<BlockInput>, blocks: Vec<BlockInput>) -> Result<Value> {
+    save_blocks_checked_with_kind(path,page,base,expected,blocks,None)
+}
+
+pub fn save_blocks_checked_kind(path: &Path, page: &str, base: i64, expected: Vec<BlockInput>, blocks: Vec<BlockInput>, expected_kind: &str) -> Result<Value> {
+    if expected_kind != "page" && expected_kind != "document" { bail!("invalid expected page kind") }
+    save_blocks_checked_with_kind(path,page,base,expected,blocks,Some(expected_kind))
+}
+
+fn save_blocks_checked_with_kind(path: &Path, page: &str, base: i64, expected: Vec<BlockInput>, blocks: Vec<BlockInput>, expected_kind: Option<&str>) -> Result<Value> {
     use std::collections::HashSet;
     let mut conn = open_existing(path)?;
     let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
     require_personal(&tx, page)?;
     let (kind, current_at): (String,i64) = tx.query_row("SELECT kind,updated_at FROM pages WHERE id=?1", [page], |r| Ok((r.get(0)?,r.get(1)?)))?;
+    if expected_kind.is_some_and(|expected| expected != kind) { bail!("conflict: page kind changed") }
     if kind != "page" && kind != "document" { bail!("only page and document blocks are supported") }
     if current_at != base { bail!("conflict: page revision changed") }
     let current: Vec<(String,String,String)> = tx.prepare("SELECT id,content,properties FROM blocks WHERE page_id=?1 ORDER BY sort_key")?
@@ -231,6 +241,7 @@ enum Request {
     ImportLocalGalleryFile { path: String, source: String, page: String, base: i64, metadata: Value, expected: Vec<BlockInput>, operation_id: String },
     SaveBlocks { path: String, page: String, base: i64, blocks: Vec<BlockInput> },
     SaveBlocksChecked { path: String, page: String, base: i64, expected: Vec<BlockInput>, blocks: Vec<BlockInput> },
+    SaveBlocksCheckedKind { path: String, page: String, base: i64, expected: Vec<BlockInput>, blocks: Vec<BlockInput>, expected_kind: String },
     RenamePage { path: String, page: String, base: i64, title: String },
     CreatePage { path: String, title: String, parent: Option<String> },
     TrashPage { path: String, page: String, base: i64 },
@@ -316,6 +327,7 @@ fn dispatch_inner(bytes: &[u8], cancellation: Option<&GalleryCancellation>) -> R
         },
         Request::SaveBlocks { path, page, base, blocks } => save_blocks(Path::new(&path), &page, base, blocks),
         Request::SaveBlocksChecked { path, page, base, expected, blocks } => save_blocks_checked(Path::new(&path), &page, base, expected, blocks),
+        Request::SaveBlocksCheckedKind { path, page, base, expected, blocks, expected_kind } => save_blocks_checked_kind(Path::new(&path), &page, base, expected, blocks, &expected_kind),
         Request::RenamePage { path, page, base, title } => rename_page(Path::new(&path), &page, base, title),
         Request::CreatePage { path, title, parent } => create_page(Path::new(&path), title, parent),
         Request::TrashPage { path, page, base } => { trash_page(Path::new(&path), &page, base)?; Ok(Value::Null) }
@@ -497,6 +509,31 @@ mod tests {
         assert!(save_blocks_checked(&path,"fixture-page",1700000000001,expected,submitted).is_err());
         let c=Connection::open(&path).unwrap();let owner:String=c.query_row("SELECT page_id FROM blocks WHERE id='foreign'",[],|r|r.get(0)).unwrap();assert_eq!(owner,"other");
         drop(c);std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn checked_save_with_matching_kind_runs_original_writer() {
+        let path=fixture(); let expected=current_blocks(&path); let submitted=with_bid(current_blocks(&path));
+        let request=serde_json::json!({"operation":"save_blocks_checked_kind","path":path,"page":"fixture-page","base":1700000000001_i64,"expected":expected,"blocks":submitted,"expected_kind":"page"}).to_string();
+        let response=dispatch_inner(request.as_bytes(),None).unwrap();
+        assert!(response["updatedAt"].is_number());
+        std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn checked_save_rejects_kind_change_with_unchanged_revision() {
+        let path=fixture();
+        let c=Connection::open(&path).unwrap();
+        c.execute("UPDATE pages SET kind='document' WHERE id='fixture-page'",[]).unwrap(); drop(c);
+        let expected=current_blocks(&path); let submitted=with_bid(current_blocks(&path));
+        let c=Connection::open(&path).unwrap();
+        c.execute("UPDATE pages SET kind='page' WHERE id='fixture-page'",[]).unwrap(); drop(c);
+        let request=serde_json::json!({"operation":"save_blocks_checked_kind","path":path,"page":"fixture-page","base":1700000000001_i64,"expected":expected,"blocks":submitted,"expected_kind":"document"}).to_string();
+        let error=dispatch_inner(request.as_bytes(),None).unwrap_err();
+        assert!(error.to_string().contains("conflict: page kind changed"));
+        let c=Connection::open(&path).unwrap();
+        assert_eq!(c.query_row("SELECT COUNT(*) FROM versions",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        assert_eq!(c.query_row("SELECT kind FROM pages WHERE id='fixture-page'",[],|r|r.get::<_,String>(0)).unwrap(),"page");
+        assert_eq!(c.query_row("SELECT COUNT(*) FROM changes",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        drop(c); std::fs::remove_file(path).unwrap();
     }
     #[test]
     fn checked_save_rejects_page_shared_after_snapshot() {
