@@ -525,6 +525,17 @@ jobs:
             fi
           done
           test "$result" = 0
+      - name: Compile experimental iPad list keyboard handling
+        if: always()
+        shell: bash
+        run: |
+          set -o pipefail
+          test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
+          gtimeout --kill-after=30s 600s xcodebuild -project Apple/PageEditorHarness/WorldsPageEditorHarness.xcodeproj \
+            -scheme PageEditorHarness-iOS -configuration Debug -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,name=iPad (A16),OS=26.5' \
+            OTHER_SWIFT_FLAGS='$(inherited) -DWORLDS_EXPERIMENTAL_IPAD_LIST_KEYS' \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tee logs/ipad-list-keys-build.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -1227,6 +1238,8 @@ jobs:
           grep -q 'ffi_import_retries_atomically_without_duplicate_attachment ... ok' logs/rust-store-tests.log
           grep -q 'database_symlink_and_hardlink_are_rejected_before_mutation ... ok' logs/rust-store-tests.log
           grep -q 'swapped_destination_is_not_committed_or_deleted ... ok' logs/rust-store-tests.log
+          grep -q 'directory_identity_check_rejects_replacement_and_symlink ... ok' logs/rust-store-tests.log
+          grep -q 'replaced_copy_directory_stops_before_output_and_preserves_replacement ... ok' logs/rust-store-tests.log
           grep -q 'cancellation_rolls_back_and_same_operation_can_retry ... ok' logs/rust-store-tests.log
           grep -q 'cancellation_and_commit_have_single_winner ... ok' logs/rust-store-tests.log
           grep -q 'stream_ffi_reads_and_saves_original_metadata_shape ... ok' logs/rust-store-tests.log
