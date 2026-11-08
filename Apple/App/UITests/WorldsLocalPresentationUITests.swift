@@ -19,6 +19,28 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["presentation-unsupported-elements"].exists)
         let screenshot = XCTAttachment(screenshot: app.screenshot()); screenshot.name = "presentation-notes-reopened"; screenshot.lifetime = .keepAlways; add(screenshot)
     }
+    @MainActor func testReorderTextUndoAndReopenKeepsMedia() {
+        let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-presentation-fixture", "--ui-testing-presentation-element-order"]; app.launch()
+        let page = app.descendants(matching: .any)["page.deck-test"].firstMatch
+        guard page.waitForExistence(timeout: 30) else { failure(app, "order-page-missing"); XCTFail("Presentation page missing"); return }; page.tap()
+        let edit = app.buttons["edit-local-presentation"]
+        guard edit.waitForExistence(timeout: 20) else { failure(app, "order-edit-missing"); XCTFail("Presentation editor missing"); return }; edit.tap()
+        let first = app.buttons["First slide"], second = app.buttons["Second text"]
+        guard first.waitForExistence(timeout: 20), second.waitForExistence(timeout: 20) else { failure(app, "order-elements-missing"); XCTFail("Text elements missing"); return }
+        XCTAssertLessThan(first.frame.minY, second.frame.minY)
+        let forward = app.buttons["presentation-element-forward"]; if !forward.isHittable { app.swipeUp() }
+        XCTAssertTrue(forward.isEnabled); forward.tap()
+        XCTAssertLessThan(second.frame.minY, first.frame.minY)
+        app.buttons["Undo"].tap(); XCTAssertLessThan(first.frame.minY, second.frame.minY)
+        app.buttons["Redo"].tap(); XCTAssertLessThan(second.frame.minY, first.frame.minY)
+        app.buttons["Save"].tap()
+        guard app.staticTexts["presentation-edit-saved"].waitForExistence(timeout: 20) else { failure(app, "order-save-missing"); XCTFail("Element order save missing"); return }
+        XCTAssertTrue(app.staticTexts["presentation-media-record-retained"].waitForExistence(timeout: 10))
+        app.buttons["Close"].tap(); XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
+        XCTAssertTrue(first.waitForExistence(timeout: 20)); XCTAssertTrue(second.waitForExistence(timeout: 20))
+        XCTAssertLessThan(second.frame.minY, first.frame.minY)
+        XCTAssertTrue(app.staticTexts["presentation-unsupported-elements"].exists)
+    }
     @MainActor func testBackgroundColorUndoAndReopenKeepsMedia() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-presentation-fixture"]; app.launch()
         let page = app.descendants(matching: .any)["page.deck-test"].firstMatch

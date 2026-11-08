@@ -28,6 +28,25 @@ import SQLite3
     var hasNotesUnapplied: Bool { selected?.editableNotes != nil && notesDraft != selected?.editableNotes }
     var hasUnapplied: Bool { hasTextUnapplied || hasNotesUnapplied }
     var dirty: Bool { hasUnapplied || slides != baseline }
+    var elementReorderPending: Bool {
+        slides.contains { slide in
+            guard let original = baseline.first(where: { $0.id == slide.id }) else { return false }
+            return slide.elements.map(\.id) != original.elements.map(\.id)
+        }
+    }
+    func canReorderText(forward: Bool) -> Bool {
+        guard !dirty, let slide = selected, let element = currentElement else { return false }
+        var candidate = slide
+        do { try candidate.movePlainTextElement(elementID: element.id, forward: forward); return true } catch { return false }
+    }
+    func reorderText(forward: Bool) {
+        guard canReorderText(forward: forward) else { return }
+        do {
+            guard var session, let index = session.slides.firstIndex(where: { $0.id == selectedID }), let element = currentElement else { return }
+            try session.update(at: index) { try $0.movePlainTextElement(elementID: element.id, forward: forward) }
+            self.session = session; slides = session.slides; saved = false; fixtureMediaPresent = false; error = nil
+        } catch { self.error = "This element order cannot be changed safely: \(error.localizedDescription)" }
+    }
     var canUndo: Bool { session?.canUndo == true }
     var canRedo: Bool { session?.canRedo == true }
     func open() async {
@@ -226,6 +245,7 @@ struct LocalPresentationEditor: View {
                 if let error = state.error { Text(error).accessibilityIdentifier("presentation-edit-error") }
                 if state.slides.isEmpty && !state.busy { Text("No editable slides are available.") }
                 Text("\(state.slides.count) slides").accessibilityIdentifier("presentation-slide-count")
+                Group {
                 ForEach(Array(state.slides.enumerated()), id: \.element.id) { index, slide in
                     Button("Slide \(index + 1)") { state.select(slide.id) }
                         .accessibilityIdentifier("presentation-slide.\(slide.id)").disabled(state.hasUnapplied)
@@ -346,6 +366,15 @@ struct LocalPresentationEditor: View {
                 Button("Delete slide", role: .destructive) { deleteSlide = true }
                     .accessibilityIdentifier("presentation-delete-slide")
                     .disabled(state.hasUnapplied || state.slides.count <= 1)
+                }
+                .disabled(state.elementReorderPending)
+                if state.elementReorderPending {
+                    Text("Save or undo the element order before making other changes.")
+                }
+                Button("Bring text forward") { state.reorderText(forward: true) }
+                    .disabled(!state.canReorderText(forward: true)).accessibilityIdentifier("presentation-element-forward")
+                Button("Send text backward") { state.reorderText(forward: false) }
+                    .disabled(!state.canReorderText(forward: false)).accessibilityIdentifier("presentation-element-backward")
                 HStack {
                     Button("Undo") { state.undo() }.disabled(state.hasUnapplied || !state.canUndo)
                     Button("Redo") { state.redo() }.disabled(state.hasUnapplied || !state.canRedo)

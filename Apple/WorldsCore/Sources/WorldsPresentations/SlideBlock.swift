@@ -186,6 +186,26 @@ public struct SlideBlock: Sendable, Equatable, Identifiable {
             element["text"] = .string(text)
         }
     }
+    /// Swaps adjacent plain text elements without rewriting their data.
+    public mutating func movePlainTextElement(elementID: String, forward: Bool) throws {
+        try updateAttributes { attrs in
+            guard var elements = attrs["elements"]?.slideArray else { throw SlideError.invalidBlock }
+            let ids = elements.compactMap { $0.slideObject?["id"]?.slideString }
+            guard ids.count == elements.count, ids.allSatisfy({ !$0.isEmpty }), Set(ids).count == ids.count,
+                  let index = ids.firstIndex(of: elementID) else { throw SlideError.unsupportedElement }
+            let other = forward ? index + 1 : index - 1
+            guard elements.indices.contains(other), Self.isPlainTextForReorder(elements[index]), Self.isPlainTextForReorder(elements[other]) else { throw SlideError.unsupportedElement }
+            elements.swapAt(index, other); attrs["elements"] = .array(elements)
+        }
+    }
+    private static func isPlainTextForReorder(_ value: JSONValue) -> Bool {
+        guard let object = value.slideObject, object["type"]?.slideString == "text", object["text"]?.slideString != nil,
+              Set(object.keys).isSubset(of: ["id", "type", "text", "x", "y", "w", "h", "rot", "opacity"]) else { return false }
+        for key in ["x", "y", "w", "h", "rot", "opacity"] where object[key] != nil {
+            guard let number = object[key]?.slideNumber, number.isFinite else { return false }
+        }
+        return true
+    }
     public mutating func moveText(elementID: String, dx: Double, dy: Double) throws {
         guard dx.isFinite, dy.isFinite, abs(dx) + abs(dy) == 1 else { throw SlideError.invalidGeometry }
         try updateElement(id: elementID) { element in

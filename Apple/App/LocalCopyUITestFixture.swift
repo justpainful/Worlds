@@ -64,6 +64,10 @@ enum LocalCopyUITestFixture {
             ('slide-b','deck-test','slide',3,'{"type":"slide","attrs":{"bid":"slide-b","elements":[{"id":"title-a","type":"text","text":"Second slide"}]}}',1,1);
             """#
             guard sqlite3_exec(database, deck, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-presentation-element-order") {
+                let update = #"UPDATE blocks SET content='{"type":"slide","attrs":{"bid":"slide-a","background":{"color":"#16161a"},"elements":[{"id":"title-a","type":"text","text":"First slide"},{"id":"title-b","type":"text","text":"Second text"},{"id":"media","type":"image","attachmentId":"slide-media"}]}}' WHERE id='slide-a'"#
+                guard sqlite3_exec(database, update, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+            }
         }
         #endif
         if ProcessInfo.processInfo.arguments.contains("--ui-testing-duplicate-links") {
