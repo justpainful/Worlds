@@ -701,6 +701,7 @@ jobs:
               grep -E 'testTextColorUndoAndReopenKeepsMedia.*passed' "logs/local-presentation-editor-$device.log" || result=1
               grep -E 'testMoveTextUndoAndReopenKeepsMedia.*passed' "logs/local-presentation-editor-$device.log" || result=1
               grep -E 'testRotateTextUndoAndReopenKeepsMedia.*passed' "logs/local-presentation-editor-$device.log" || result=1
+              grep -E 'testPartialPreviewUsesSelectedSlideAndShowsLimits.*passed' "logs/local-presentation-editor-$device.log" || result=1
               grep -E 'testBackgroundColorUndoAndReopenKeepsMedia.*passed' "logs/local-presentation-editor-$device.log" || result=1
               grep -E 'testReorderTextUndoAndReopenKeepsMedia.*passed' "logs/local-presentation-editor-$device.log" || result=1
             else
