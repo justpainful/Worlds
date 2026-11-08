@@ -2,7 +2,7 @@ import Foundation
 import SQLite3
 import Darwin
 import XCTest
-import WorldsLocalImport
+@testable import WorldsLocalImport
 import WorldsModels
 import WorldsNativeWrites
 @testable import WorldsLocalGalleryImport
@@ -59,8 +59,16 @@ final class LocalGalleryImporterTests: XCTestCase {
     #if DEBUG
     func testIndependentCopyImportsOnceAndPreservesSource() async throws {
         let fixture = try XCTUnwrap(Bundle.module.url(forResource: "worlds-v11", withExtension: "db"))
-        let root = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent("gallery-test-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false)
+        let temporaryRoot = FileManager.default.temporaryDirectory.appendingPathComponent("gallery-test-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: temporaryRoot, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+        // This is a freshly created fixture directory. Foundation can retain
+        // the /var system alias, which the production no-follow importer must
+        // reject; pass the actual POSIX path for this test-owned root instead.
+        let resolved = try XCTUnwrap(realpath(temporaryRoot.path, nil))
+        defer { free(resolved) }
+        let canonical = String(cString: resolved)
+        let root = URL(fileURLWithPath: canonical, isDirectory: true)
+        XCTAssertEqual(root.path, canonical)
         defer { try? FileManager.default.removeItem(at: root) }
         let database = root.appendingPathComponent("source.db")
         try FileManager.default.copyItem(at: fixture, to: database)
@@ -71,7 +79,7 @@ final class LocalGalleryImporterTests: XCTestCase {
         let sourceBytes = try Data(contentsOf: database)
         let media = root.appendingPathComponent("sample.mp3")
         try Data("fixture media".utf8).write(to: media)
-        let coordinator = try LocalProjectImportCoordinator.isolatedTestCoordinator(root: root.appendingPathComponent("private", isDirectory: true), backup: NativeSQLiteBackup())
+        let coordinator = LocalProjectImportCoordinator(testRoot: root.appendingPathComponent("private", isDirectory: true), backup: NativeSQLiteBackup())
         let copy = try await coordinator.importCopy(from: database)
         let native = try NativePersonalStore(url: copy.databaseURL)
         let value = try await native.readResource(id: "gallery-test")
