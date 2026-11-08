@@ -29,6 +29,12 @@ pub(crate) mod unix {
         }
         Ok(())
     }
+    fn require_private_copy(path: &Path, held: &Lock) -> Result<()> {
+        require_directory_identity(path,&held.0)?;
+        let metadata=held.0.metadata()?;
+        if metadata.uid()!=unsafe { libc::geteuid() } || metadata.mode() & 0o077 != 0 { bail!("private copy directory required") }
+        Ok(())
+    }
     fn db(root: &Path) -> Result<Connection> {
         // Inspect the existing database before SQLite can create journal files
         // or our recovery tables. This is a point-in-time check, not a proof
@@ -108,7 +114,7 @@ pub(crate) mod unix {
         }
         Ok(())
     }
-    pub(crate) fn recover(root: &Path) -> Result<()> { let held=lock(root)?; let mut c=db(root)?; require_directory_identity(root,&held.0)?; recover_locked(&mut c,root) }
+    pub(crate) fn recover(root: &Path) -> Result<()> { let held=lock(root)?; let mut c=db(root)?; require_private_copy(root,&held)?; recover_locked(&mut c,root) }
 
     /// `source` is already security-scoped by the host. Only the private copy
     /// is mutated; source and its security scope must remain stable throughout.
@@ -124,7 +130,7 @@ pub(crate) mod unix {
     fn import_with_hooks(root: &Path, source: &Path, page: &str, base: i64, metadata: Value, expected: Vec<BlockInput>, operation: &str, cancel: Option<&Cancellation>, after_create: impl FnOnce() -> Result<()>, after_intent: impl FnOnce() -> Result<()>, after_file_create: impl FnOnce() -> Result<()>) -> Result<Value> {
         let operation=uuid::Uuid::parse_str(operation)?.simple().to_string();
         let held=lock(root).context("validate local copy directory")?; let mut c=db(root).context("open local copy database")?;
-        require_directory_identity(root,&held.0)?; recover_locked(&mut c,root).context("recover previous import")?;
+        require_private_copy(root,&held)?; recover_locked(&mut c,root).context("recover previous import")?;
         let parent=source.parent().ok_or_else(||anyhow::anyhow!("invalid source"))?;
         let name=source.file_name().ok_or_else(||anyhow::anyhow!("invalid source"))?;
         let mut input=crate::attachment_open::open_confined(parent,Path::new(name)).context("open scoped source file")?;
@@ -164,7 +170,7 @@ pub(crate) mod unix {
         let item_handle=crate::attachment_open::open_directory(&item_dir).context("validate new import directory")?;
         let item_meta=item_handle.metadata()?;
         after_create()?;
-        require_directory_identity(root,&held.0)?;
+        require_private_copy(root,&held)?;
         require_directory_identity(&attachments,&attachments_handle)?;
         require_directory_identity(&folder,&folder_handle)?;
         require_directory_identity(&item_dir,&item_handle)?;
@@ -172,7 +178,7 @@ pub(crate) mod unix {
         after_intent()?;
         let destination=attachments.join(&rel);
         let work=(|| -> Result<Value> {
-            require_directory_identity(root,&held.0)?;
+            require_private_copy(root,&held)?;
             require_directory_identity(&attachments,&attachments_handle)?;
             require_directory_identity(&folder,&folder_handle)?;
             require_directory_identity(&item_dir,&item_handle)?;
@@ -200,7 +206,7 @@ pub(crate) mod unix {
             next.push(BlockInput{id:bid.clone(),content:json!({"type":"galleryItem","attrs":{"bid":bid,"attachmentId":id,"name":filename,"mime":mime,"size":copied,"kind":kind,"caption":""}})});
             let result=crate::resource_ops::save_gallery_transaction(&tx,page,base,metadata.clone(),metadata,expected,next)?;
             tx.execute("INSERT INTO native_gallery_import_completed(id,request,result) VALUES(?1,?2,?3)",params![operation,request,result.to_string()])?;
-            require_directory_identity(root,&held.0)?;
+            require_private_copy(root,&held)?;
             require_directory_identity(&attachments,&attachments_handle)?;
             require_directory_identity(&folder,&folder_handle)?;
             require_directory_identity(&item_dir,&item_handle)?;
@@ -209,7 +215,7 @@ pub(crate) mod unix {
             tx.commit()?; Ok(result)
         })();
         // Never run path-based cleanup against a replacement copy directory.
-        require_directory_identity(root,&held.0)?;
+        require_private_copy(root,&held)?;
         match work {
             Ok(value) => {
                 if let Err(error)=recover_locked(&mut c,root) { bail!("committed: gallery import succeeded but recovery cleanup is pending: {error}") }
@@ -237,6 +243,17 @@ pub(crate) mod unix {
             std::fs::remove_dir(&path).unwrap(); symlink(&old,&path).unwrap();
             assert!(require_directory_identity(&path,&handle).is_err());
             drop(handle); std::fs::remove_dir_all(root).unwrap();
+        }
+        #[test]
+        fn private_copy_recheck_rejects_permissions_broadened_after_lock() {
+            let root=std::env::temp_dir().canonicalize().unwrap().join(format!("gallery-private-{}",uuid::Uuid::new_v4()));
+            std::fs::DirBuilder::new().mode(0o700).create(&root).unwrap();
+            let held=lock(&root).unwrap();
+            assert!(require_private_copy(&root,&held).is_ok());
+            std::fs::set_permissions(&root,std::fs::Permissions::from_mode(0o755)).unwrap();
+            assert!(require_private_copy(&root,&held).is_err());
+            std::fs::set_permissions(&root,std::fs::Permissions::from_mode(0o700)).unwrap();
+            drop(held); std::fs::remove_dir_all(root).unwrap();
         }
         #[test]
         fn replaced_copy_directory_stops_before_output_and_preserves_replacement() {
