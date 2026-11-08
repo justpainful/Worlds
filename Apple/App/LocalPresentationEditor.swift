@@ -54,6 +54,15 @@ import SQLite3
             self.session = session; slides = session.slides; saved = false; fixtureMediaPresent = false; error = nil
         } catch { self.error = "This text cannot be changed safely: \(error.localizedDescription)" }
     }
+    static let textColors = ["#f4f2ee", "#16161a", "#d2a46e", "#e5484d", "#f76b15", "#ffc53d", "#46a758", "#0090ff", "#8e4ec6", "#d6409f", "#8b8d98"]
+    func setTextColor(_ color: String) {
+        guard !hasUnapplied, Self.textColors.contains(color) else { return }
+        do {
+            guard var session, let index = session.slides.firstIndex(where: { $0.id == selectedID }), let element = currentElement, let current = element.editableTextColor, current.lowercased() != color else { return }
+            try session.update(at: index) { try $0.setTextStyle(elementID: element.id, key: "color", value: .string(color)) }
+            self.session = session; slides = session.slides; saved = false; fixtureMediaPresent = false; error = nil
+        } catch { self.error = "This text color cannot be changed safely: \(error.localizedDescription)" }
+    }
     static let fontSizes: [Int] = [14, 18, 20, 24, 28, 32, 40, 48, 56, 64, 76, 96, 120]
     func changeFontSize(larger: Bool) {
         guard !hasUnapplied else { return }
@@ -189,6 +198,10 @@ struct LocalPresentationEditor: View {
     init(databaseURL: URL, pageID: String, onSaved: @escaping () -> Void) {
         _state = StateObject(wrappedValue: PresentationEditorState(databaseURL: databaseURL, pageID: pageID)); self.onSaved = onSaved
     }
+    private func swatchColor(_ hex: String) -> Color {
+        let rgb = UInt32(hex.dropFirst(), radix: 16) ?? 0
+        return Color(red: Double((rgb >> 16) & 255) / 255, green: Double((rgb >> 8) & 255) / 255, blue: Double(rgb & 255) / 255)
+    }
     var body: some View {
         NavigationStack {
             List {
@@ -210,6 +223,18 @@ struct LocalPresentationEditor: View {
                     Button("Apply text") { state.applyText() }.disabled(!state.hasTextUnapplied)
                 }
                 if let element = state.currentElement {
+                    if let color = element.editableTextColor {
+                        Menu("Text color: \(color.isEmpty ? "Default" : color)") {
+                            ForEach(PresentationEditorState.textColors, id: \.self) { candidate in
+                                Button { state.setTextColor(candidate) } label: {
+                                    Label { Text(candidate) } icon: { Circle().fill(swatchColor(candidate)) }
+                                }.accessibilityIdentifier("presentation-text-color.\(candidate)")
+                            }
+                        }
+                        .disabled(state.hasUnapplied).accessibilityIdentifier("presentation-text-color-menu")
+                    } else {
+                        Text("This text color cannot be edited safely.")
+                    }
                     if let size = element.editableFontSize {
                         VStack(alignment: .leading) {
                             Button("Smaller text") { state.changeFontSize(larger: false) }

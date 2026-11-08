@@ -27,6 +27,15 @@ public struct SlideElement: Sendable, Equatable, Identifiable {
     public var rotation: Double { source.slideObject?["rot"]?.slideNumber ?? 0 }
     public var opacity: Double { source.slideObject?["opacity"]?.slideNumber ?? 1 }
     public var text: String? { source.slideObject?["text"]?.slideString }
+    /// Empty string means no explicit color. Unknown CSS colors remain protected.
+    public var editableTextColor: String? {
+        guard type == "text", let element = source.slideObject else { return nil }
+        guard let rawStyle = element["style"] else { return "" }
+        guard let style = rawStyle.slideObject else { return nil }
+        guard let raw = style["color"] else { return "" }
+        guard let value = raw.slideString, value.range(of: "^#[0-9a-fA-F]{6}$", options: .regularExpression) != nil else { return nil }
+        return value
+    }
     public var editableFontSize: Double? {
         guard type == "text", let element = source.slideObject else { return nil }
         guard let rawStyle = element["style"] else { return 32 }
@@ -178,6 +187,9 @@ public struct SlideBlock: Sendable, Equatable, Identifiable {
             if key == "fontWeight", SlideElement(source: .object(element)).editableFontWeight == nil { throw SlideError.unsupportedElement }
             if key == "italic", SlideElement(source: .object(element)).editableItalic == nil { throw SlideError.unsupportedElement }
             if key == "fontSize", SlideElement(source: .object(element)).editableFontSize == nil { throw SlideError.unsupportedElement }
+            if key == "color" {
+                guard SlideElement(source: .object(element)).editableTextColor != nil, let color = value.slideString, color.range(of: "^#[0-9a-fA-F]{6}$", options: .regularExpression) != nil else { throw SlideError.unsupportedElement }
+            }
             if let existing = element["style"], existing.slideObject == nil { throw SlideError.unsupportedElement }
             var style = element["style"]?.slideObject ?? [:]
             style[key] = value
