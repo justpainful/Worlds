@@ -19,6 +19,25 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["presentation-unsupported-elements"].exists)
         let screenshot = XCTAttachment(screenshot: app.screenshot()); screenshot.name = "presentation-notes-reopened"; screenshot.lifetime = .keepAlways; add(screenshot)
     }
+    @MainActor func testMoveTextUndoAndReopenKeepsMedia() {
+        let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-presentation-fixture"]; app.launch()
+        let page = app.descendants(matching: .any)["page.deck-test"].firstMatch
+        guard page.waitForExistence(timeout: 30) else { failure(app, "move-page-missing"); XCTFail("Presentation page missing"); return }; page.tap()
+        let edit = app.buttons["edit-local-presentation"]
+        guard edit.waitForExistence(timeout: 20) else { failure(app, "move-edit-missing"); XCTFail("Presentation editor missing"); return }; edit.tap()
+        let position = app.staticTexts["presentation-text-position"]
+        guard position.waitForExistence(timeout: 20) else { failure(app, "move-position-missing"); XCTFail("Text position missing"); return }
+        XCTAssertEqual(position.label, "Position: 20, 30")
+        app.buttons["presentation-text-right"].tap(); XCTAssertEqual(position.label, "Position: 21, 30")
+        app.buttons["Undo"].tap(); XCTAssertEqual(position.label, "Position: 20, 30")
+        app.buttons["Redo"].tap(); XCTAssertEqual(position.label, "Position: 21, 30")
+        app.buttons["Save"].tap()
+        guard app.staticTexts["presentation-edit-saved"].waitForExistence(timeout: 20) else { failure(app, "move-save-missing"); XCTFail("Position save missing"); return }
+        XCTAssertTrue(app.staticTexts["presentation-media-record-retained"].waitForExistence(timeout: 10))
+        app.buttons["Close"].tap(); XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
+        XCTAssertTrue(position.waitForExistence(timeout: 20)); XCTAssertEqual(position.label, "Position: 21, 30")
+        XCTAssertTrue(app.staticTexts["presentation-unsupported-elements"].exists)
+    }
     @MainActor func testTextColorUndoAndReopenKeepsMedia() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-presentation-fixture"]; app.launch()
         let page = app.descendants(matching: .any)["page.deck-test"].firstMatch

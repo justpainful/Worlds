@@ -27,6 +27,12 @@ public struct SlideElement: Sendable, Equatable, Identifiable {
     public var rotation: Double { source.slideObject?["rot"]?.slideNumber ?? 0 }
     public var opacity: Double { source.slideObject?["opacity"]?.slideNumber ?? 1 }
     public var text: String? { source.slideObject?["text"]?.slideString }
+    public var editablePosition: (x: Double, y: Double)? {
+        guard type == "text", let element = source.slideObject,
+              let x = element["x"]?.slideNumber, let y = element["y"]?.slideNumber,
+              x.isFinite, y.isFinite, abs(x) <= 1_000_000, abs(y) <= 1_000_000 else { return nil }
+        return (x, y)
+    }
     /// Empty string means no explicit color. Unknown CSS colors remain protected.
     public var editableTextColor: String? {
         guard type == "text", let element = source.slideObject else { return nil }
@@ -161,6 +167,16 @@ public struct SlideBlock: Sendable, Equatable, Identifiable {
         try updateElement(id: elementID) { element in
             guard element["type"]?.slideString == "text" else { throw SlideError.unsupportedElement }
             element["text"] = .string(text)
+        }
+    }
+    public mutating func moveText(elementID: String, dx: Double, dy: Double) throws {
+        guard dx.isFinite, dy.isFinite, abs(dx) + abs(dy) == 1 else { throw SlideError.invalidGeometry }
+        try updateElement(id: elementID) { element in
+            guard let position = SlideElement(source: .object(element)).editablePosition else { throw SlideError.unsupportedElement }
+            let x = position.x + dx, y = position.y + dy
+            guard x.isFinite, y.isFinite, abs(x) <= 1_000_000, abs(y) <= 1_000_000 else { throw SlideError.invalidGeometry }
+            if dx != 0 { element["x"] = .number(x) }
+            if dy != 0 { element["y"] = .number(y) }
         }
     }
     public mutating func setGeometry(elementID: String, x: Double, y: Double, width: Double, height: Double, rotation: Double) throws {

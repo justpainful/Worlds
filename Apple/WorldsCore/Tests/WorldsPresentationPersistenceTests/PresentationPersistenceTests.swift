@@ -42,7 +42,7 @@ final class PresentationPersistenceTests: XCTestCase {
     }
     func testSaveAndReopenPreservesMissingMediaAndUnknownSlideFields() async throws {
         let path = try database()
-        try execute(path, #"INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('image','deck','image','a.png','image/png',4,'missing/a.png',1); UPDATE blocks SET content='{"type":"slide","attrs":{"bid":"slide","notes":"old","background":{"attachmentId":"image","extra":true},"elements":[{"id":"title","type":"text","text":"قبل 🌍","future":{"keep":true}},{"id":"opaque","type":"future","data":{"keep":true}}]}}' WHERE id='slide';"#)
+        try execute(path, #"INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('image','deck','image','a.png','image/png',4,'missing/a.png',1); UPDATE blocks SET content='{"type":"slide","attrs":{"bid":"slide","notes":"old","background":{"attachmentId":"image","extra":true},"elements":[{"id":"title","type":"text","x":20,"y":30,"text":"قبل 🌍","future":{"keep":true}},{"id":"opaque","type":"future","data":{"keep":true}}]}}' WHERE id='slide';"#)
         let store = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
         var slide = try XCTUnwrap(store.initialSlides.first)
         try slide.setText(elementID: "title", text: "بعد 🌍")
@@ -52,6 +52,7 @@ final class PresentationPersistenceTests: XCTestCase {
         try slide.setTextStyle(elementID: "title", key: "italic", value: .bool(true))
         try slide.setTextStyle(elementID: "title", key: "fontSize", value: .integer(40))
         try slide.setTextStyle(elementID: "title", key: "color", value: .string("#e5484d"))
+        try slide.moveText(elementID: "title", dx: 1, dy: 0)
         try await store.save(slides: [slide])
         let reopened = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
         let restored = try XCTUnwrap(reopened.initialSlides.first)
@@ -62,6 +63,8 @@ final class PresentationPersistenceTests: XCTestCase {
         XCTAssertEqual(restored.elements.first?.editableItalic, true)
         XCTAssertEqual(restored.elements.first?.editableFontSize, 40)
         XCTAssertEqual(restored.elements.first?.editableTextColor, "#e5484d")
+        XCTAssertEqual(restored.elements.first?.editablePosition?.x, 21)
+        XCTAssertEqual(restored.elements.first?.editablePosition?.y, 30)
         XCTAssertEqual(restored.attributes["background"], slide.attributes["background"])
         XCTAssertEqual(restored.elements.last?.source, slide.elements.last?.source)
         XCTAssertEqual(restored.elements.first?.source, slide.elements.first?.source)

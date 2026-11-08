@@ -54,6 +54,14 @@ import SQLite3
             self.session = session; slides = session.slides; saved = false; fixtureMediaPresent = false; error = nil
         } catch { self.error = "This text cannot be changed safely: \(error.localizedDescription)" }
     }
+    func moveText(dx: Double, dy: Double) {
+        guard !hasUnapplied else { return }
+        do {
+            guard var session, let index = session.slides.firstIndex(where: { $0.id == selectedID }), let element = currentElement, element.editablePosition != nil else { return }
+            try session.update(at: index) { try $0.moveText(elementID: element.id, dx: dx, dy: dy) }
+            self.session = session; slides = session.slides; saved = false; fixtureMediaPresent = false; error = nil
+        } catch { self.error = "This text position cannot be changed safely: \(error.localizedDescription)" }
+    }
     static let textColors = ["#f4f2ee", "#16161a", "#d2a46e", "#e5484d", "#f76b15", "#ffc53d", "#46a758", "#0090ff", "#8e4ec6", "#d6409f", "#8b8d98"]
     func setTextColor(_ color: String) {
         guard !hasUnapplied, Self.textColors.contains(color) else { return }
@@ -223,6 +231,16 @@ struct LocalPresentationEditor: View {
                     Button("Apply text") { state.applyText() }.disabled(!state.hasTextUnapplied)
                 }
                 if let element = state.currentElement {
+                    if let position = element.editablePosition {
+                        Text("Position: \(position.x.formatted()), \(position.y.formatted())").accessibilityIdentifier("presentation-text-position")
+                        Text("Position uses slide coordinates. A full slide preview is not available here.").font(.caption)
+                        Button("Move text left") { state.moveText(dx: -1, dy: 0) }.disabled(state.hasUnapplied).accessibilityIdentifier("presentation-text-left")
+                        Button("Move text right") { state.moveText(dx: 1, dy: 0) }.disabled(state.hasUnapplied).accessibilityIdentifier("presentation-text-right")
+                        Button("Move text up") { state.moveText(dx: 0, dy: -1) }.disabled(state.hasUnapplied).accessibilityIdentifier("presentation-text-up")
+                        Button("Move text down") { state.moveText(dx: 0, dy: 1) }.disabled(state.hasUnapplied).accessibilityIdentifier("presentation-text-down")
+                    } else {
+                        Text("This text position cannot be edited safely.")
+                    }
                     if let color = element.editableTextColor {
                         Menu("Text color: \(color.isEmpty ? "Default" : color)") {
                             ForEach(PresentationEditorState.textColors, id: \.self) { candidate in

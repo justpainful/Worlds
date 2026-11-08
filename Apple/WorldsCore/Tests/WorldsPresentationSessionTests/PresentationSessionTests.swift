@@ -26,6 +26,24 @@ final class PresentationSessionTests: XCTestCase {
         XCTAssertThrowsError(try rejected.update(at: 0) { try $0.setNotes("replacement") })
         XCTAssertEqual(rejected.slides[0], malformed); XCTAssertFalse(rejected.canUndo)
     }
+    func testMoveTextUndoAndRejectsMalformedPosition() throws {
+        let json = #"{"id":"one","content":{"type":"slide","attrs":{"unknown":{"keep":true},"elements":[{"id":"text","type":"text","text":"old","x":20,"y":30,"future":{"keep":true}},{"id":"image","type":"image","attachmentId":"image"}]}}}"#
+        let original = try SlideBlock(json: Data(json.utf8))
+        var session = try PresentationSession(slides: [original])
+        try session.update(at: 0) { try $0.moveText(elementID: "text", dx: 1, dy: 0) }
+        let changed = session.slides[0]
+        XCTAssertEqual(changed.elements[0].editablePosition?.x, 21)
+        XCTAssertEqual(changed.elements[0].editablePosition?.y, 30)
+        XCTAssertEqual(changed.elements[1], original.elements[1])
+        XCTAssertEqual(changed.attributes["unknown"], original.attributes["unknown"])
+        session.undo(); XCTAssertEqual(session.slides[0], original)
+        session.redo(); XCTAssertEqual(session.slides[0], changed)
+        let bad = try SlideBlock(json: Data(json.replacingOccurrences(of: #""x":20"#, with: #""x":{"future":true}"#).utf8))
+        var rejected = try PresentationSession(slides: [bad])
+        XCTAssertNil(bad.elements[0].editablePosition)
+        XCTAssertThrowsError(try rejected.update(at: 0) { try $0.moveText(elementID: "text", dx: 1, dy: 0) })
+        XCTAssertEqual(rejected.slides[0], bad); XCTAssertFalse(rejected.canUndo)
+    }
     func testTextColorUndoAndProtectsUnknownCSS() throws {
         let original = try slide("one")
         var session = try PresentationSession(slides: [original])
