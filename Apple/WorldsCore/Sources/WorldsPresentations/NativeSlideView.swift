@@ -47,7 +47,7 @@ public struct NativeSlideView: View {
             let size = min(2048, max(1, style["fontSize"]?.slideNumber ?? 32))
             let weight = textWeight(style["fontWeight"]?.slideNumber ?? 500)
             let alignment = textAlignment(style["align"]?.slideString)
-            let font = (style["font"]?.slideString).map { Font.custom($0, size: CGFloat(size)) } ?? .system(size: CGFloat(size), weight: weight)
+            let font = (style["font"]?.slideString).map { Font.custom($0, size: CGFloat(size)).weight(weight) } ?? .system(size: CGFloat(size), weight: weight)
             Text(element.text ?? "")
                 .font(style["italic"] == .bool(true) ? font.italic() : font)
                 .foregroundStyle(slideColor(style["color"]?.slideString, fallback: .white))
@@ -75,7 +75,15 @@ public struct NativeSlideView: View {
 }
 
 private func textWeight(_ value: Double) -> Font.Weight {
-    if value >= 700 { return .bold }; if value >= 600 { return .semibold }; if value >= 500 { return .medium }; return .regular
+    if value >= 900 { return .black }
+    if value >= 800 { return .heavy }
+    if value >= 700 { return .bold }
+    if value >= 600 { return .semibold }
+    if value >= 500 { return .medium }
+    if value >= 400 { return .regular }
+    if value >= 300 { return .light }
+    if value >= 200 { return .thin }
+    return .ultraLight
 }
 private func textAlignment(_ value: String?) -> TextAlignment {
     switch value { case "center": return .center; case "right": return .trailing; default: return .leading }

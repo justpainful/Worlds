@@ -5,6 +5,19 @@ import XCTest
 @testable import WorldsPresentations
 
 final class NativeSlideLayoutTests: XCTestCase {
+    @MainActor func testNamedFontWeightChangesRenderedText() throws {
+        let json = #"{"id":"slide","content":{"type":"slide","attrs":{"background":{"color":"#000000"},"elements":[{"id":"text","type":"text","x":80,"y":100,"w":900,"h":150,"text":"Weighted Text","style":{"font":"Helvetica","fontSize":100,"fontWeight":400,"color":"#ffffff"}}]}}}"#
+        func render(_ source: String) throws -> Data {
+            let slide = try SlideBlock(json: Data(source.utf8))
+            let renderer = ImageRenderer(content: NativeSlideView(slide: slide).frame(width: 640, height: 360))
+            renderer.scale = 1
+            let image = try XCTUnwrap(renderer.cgImage)
+            return try XCTUnwrap(image.dataProvider?.data) as Data
+        }
+        let regular = try render(json)
+        let bold = try render(json.replacingOccurrences(of: #""fontWeight":400"#, with: #""fontWeight":700"#))
+        XCTAssertNotEqual(regular, bold, "The stored weight must affect a named font")
+    }
     @MainActor func testLineUsesFourPointCenteredStroke() throws {
         let json = #"{"id":"slide","content":{"type":"slide","attrs":{"background":{"color":"#000000"},"elements":[{"id":"line","type":"shape","shape":"line","x":500,"y":310,"w":200,"h":100,"stroke":"#ff0000"}]}}}"#
         let slide = try SlideBlock(json: Data(json.utf8))
