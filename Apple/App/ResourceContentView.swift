@@ -176,7 +176,7 @@ struct ResourceContentView: View {
                         .foregroundStyle(.secondary).accessibilityIdentifier("external-stream-dash")
                 } else {
                     if let player = streamPlayback.player {
-                        VideoPlayer(player: player)
+                        NativeStreamPlayer(player: player)
                             .aspectRatio(16 / 9, contentMode: .fit)
                             .accessibilityLabel("External video stream")
                             .accessibilityIdentifier("external-stream-player")
@@ -248,6 +248,35 @@ struct ResourceContentView: View {
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
 }
+
+/// AppKit owns only the presentation. ExternalStreamPlayback owns the player,
+/// observers and stop/retry lifecycle on every platform.
+private struct NativeStreamPlayer: View {
+    let player: AVPlayer
+    var body: some View {
+        #if os(macOS)
+        MacStreamPlayer(player: player)
+        #else
+        VideoPlayer(player: player)
+        #endif
+    }
+}
+
+#if os(macOS)
+private struct MacStreamPlayer: NSViewRepresentable {
+    let player: AVPlayer
+    func makeNSView(context: Context) -> AVPlayerView {
+        let view = AVPlayerView()
+        view.controlsStyle = .inline
+        view.player = player
+        return view
+    }
+    func updateNSView(_ view: AVPlayerView, context: Context) {
+        if view.player !== player { view.player = player }
+    }
+    static func dismantleNSView(_ view: AVPlayerView, coordinator: ()) { view.player = nil }
+}
+#endif
 
 /// Observers belong to one item and are invalidated on navigation or retry.
 /// Errors deliberately omit URLs, which may contain private stream tokens.
