@@ -219,6 +219,16 @@ private struct NativeTextSurface: UIViewRepresentable {
         }
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
             guard model.recoverableNativeText == nil else { model.report(NativeEditorError.unrecoveredNativeText); return false }
+            if textView.markedTextRange == nil, !pendingNativeChange, model.isListKeyboardEdit(range: range, replacement: text) {
+                do {
+                    _ = try model.replace(range: range, with: text)
+                    updating = true
+                    textView.attributedText = displayText()
+                    textView.selectedRange = model.selection
+                    updating = false
+                } catch { model.report(error) }
+                return false
+            }
             pendingNativeChange = true
             model.setNativeEditPending(true)
             return true
@@ -325,6 +335,17 @@ private struct NativeTextSurface: NSViewRepresentable {
         init(model: NativeEditorModel) { self.model = model }
         func textView(_ textView: NSTextView, shouldChangeTextIn affectedCharRange: NSRange, replacementString: String?) -> Bool {
             guard model.recoverableNativeText == nil else { model.report(NativeEditorError.unrecoveredNativeText); return false }
+            if let replacementString, !textView.hasMarkedText(), !pendingNativeChange,
+               model.isListKeyboardEdit(range: affectedCharRange, replacement: replacementString) {
+                do {
+                    _ = try model.replace(range: affectedCharRange, with: replacementString)
+                    updating = true
+                    textView.textStorage?.setAttributedString(model.attributedText)
+                    textView.setSelectedRange(model.selection)
+                    updating = false
+                } catch { model.report(error) }
+                return false
+            }
             pendingNativeChange = true
             model.setNativeEditPending(true)
             return true

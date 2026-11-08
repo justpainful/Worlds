@@ -15,6 +15,23 @@ private actor FixturePersistence: EditorPersistence {
 
 @MainActor
 final class NativeEditorTests: XCTestCase {
+    func testListKeyboardBoundariesUseExactRangeWithRepeatedItems() throws {
+        let json = #"{"type":"doc","content":[{"type":"bulletList","attrs":{"bid":"list"},"content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"aa"}]}]},{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"aa"}]}]}]}]}"#
+        let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 0)
+        let initial = model.document.source
+        let first = NSRange(location: 1, length: 0)
+        XCTAssertTrue(model.isListKeyboardEdit(range: first, replacement: "\n"))
+        _ = try model.replace(range: first, with: "\n")
+        XCTAssertEqual(model.projection.text, "a\na\naa")
+        let split = model.document.source
+        let boundary = NSRange(location: 1, length: 1)
+        XCTAssertTrue(model.isListKeyboardEdit(range: boundary, replacement: ""))
+        _ = try model.replace(range: boundary, with: "")
+        XCTAssertEqual(model.document.source, initial)
+        model.undo(); XCTAssertEqual(model.document.source, split)
+        model.undo(); XCTAssertEqual(model.document.source, initial)
+        model.redo(); XCTAssertEqual(model.document.source, split)
+    }
     func testAppendEmptyNestedTaskThenTypeAndUndo() throws {
         let json = #"{"type":"doc","content":[{"type":"taskList","attrs":{"bid":"list"},"content":[{"type":"taskItem","attrs":{"checked":false,"future":"kept"},"content":[{"type":"paragraph","content":[{"type":"text","text":"أصل"}]}]}]}]}"#
         let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 0)

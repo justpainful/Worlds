@@ -126,6 +126,22 @@ public final class NativeEditorModel: ObservableObject {
     /// Hosts must use this when deciding whether it is safe to close the editor.
     public var hasUnresolvedInput: Bool { dirty || saving || nativeEditPending || recoverableNativeText != nil }
 
+    /// Use the native delegate's exact range for list boundaries. Inferring a
+    /// range from the final string is ambiguous when adjacent lines are equal.
+    func isListKeyboardEdit(range: NSRange, replacement: String) -> Bool {
+        guard range.location != NSNotFound, range.location >= 0, range.length >= 0,
+              range.location <= Int.max - range.length else { return false }
+        if replacement == "\n", range.length == 0 {
+            return projection.spans.contains { span in
+                range.location >= span.range.location && range.location <= NSMaxRange(span.range)
+                    && listMarkers.contains { span.path.indices.starts(with: $0.path) }
+            }
+        }
+        return replacement.isEmpty && range.length == 1 && NSMaxRange(range) <= projection.text.utf16.count
+            && (projection.text as NSString).substring(with: range) == "\n"
+            && listMarkers.contains { $0.location == NSMaxRange(range) }
+    }
+
     /// Structural edits and line insertion are rejected until block editing is supported.
     @discardableResult
     public func replace(range: NSRange, with replacement: String) throws -> NSRange {
