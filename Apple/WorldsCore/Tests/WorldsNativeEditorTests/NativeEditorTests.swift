@@ -116,10 +116,14 @@ final class NativeEditorTests: XCTestCase {
         let boundary = NSRange(location: 1, length: 1)
         XCTAssertTrue(model.isListKeyboardEdit(range: boundary, replacement: ""))
         _ = try model.replace(range: boundary, with: "")
-        XCTAssertEqual(model.document.source, initial)
+        XCTAssertEqual(model.projection.text, "aa\naa")
+        let merged = model.document.source
+        let expected = #"{"type":"doc","content":[{"type":"bulletList","attrs":{"bid":"list"},"content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"a"},{"type":"text","text":"a"}]}]},{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"aa"}]}]}]}]}"#
+        XCTAssertEqual(merged, try RichTextDocument(json: Data(expected.utf8)).source)
         model.undo(); XCTAssertEqual(model.document.source, split)
         model.undo(); XCTAssertEqual(model.document.source, initial)
         model.redo(); XCTAssertEqual(model.document.source, split)
+        model.redo(); XCTAssertEqual(model.document.source, merged)
     }
     func testAppendEmptyNestedTaskThenTypeAndUndo() throws {
         let json = #"{"type":"doc","content":[{"type":"taskList","attrs":{"bid":"list"},"content":[{"type":"taskItem","attrs":{"checked":false,"future":"kept"},"content":[{"type":"paragraph","content":[{"type":"text","text":"أصل"}]}]}]}]}"#

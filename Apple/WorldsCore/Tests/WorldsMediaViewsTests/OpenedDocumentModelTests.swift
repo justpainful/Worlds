@@ -1,5 +1,6 @@
 import Foundation
 import CoreGraphics
+import PDFKit
 import ImageIO
 import XCTest
 import WorldsMedia
@@ -78,12 +79,13 @@ import WorldsMedia
     }
     func testPasswordProtectedPDFReportsLimit() async throws {
         let root = try root(); let path = root.appendingPathComponent("locked.pdf")
-        let data = NSMutableData(); let consumer = try XCTUnwrap(CGDataConsumer(data: data as CFMutableData))
-        var box = CGRect(x: 0, y: 0, width: 64, height: 64)
-        let options = [kCGPDFContextUserPassword: "fixture-password"] as CFDictionary
-        let context = try XCTUnwrap(CGContext(consumer: consumer, mediaBox: &box, options))
-        context.beginPDFPage(nil); context.endPDFPage(); context.closePDF(); try (data as Data).write(to: path)
-        let attachment = item("locked.pdf", size: data.length)
+        // Synthetic encrypted PDF, independently verified to reject an empty password.
+        let data = try XCTUnwrap(Data(base64Encoded: "JVBERi0xLjMKJeLjz9MKMSAwIG9iago8PAovUHJvZHVjZXIgPDg3ZjEwNzdkNDc+Cj4+CmVuZG9iagoyIDAgb2JqCjw8Ci9UeXBlIC9QYWdlcwovQ291bnQgMQovS2lkcyBbIDQgMCBSIF0KPj4KZW5kb2JqCjMgMCBvYmoKPDwKL1R5cGUgL0NhdGFsb2cKL1BhZ2VzIDIgMCBSCj4+CmVuZG9iago0IDAgb2JqCjw8Ci9UeXBlIC9QYWdlCi9SZXNvdXJjZXMgPDwKPj4KL01lZGlhQm94IFsgMC4wIDAuMCA2NCA2NCBdCi9QYXJlbnQgMiAwIFIKPj4KZW5kb2JqCjUgMCBvYmoKPDwKL1YgMgovUiAzCi9MZW5ndGggMTI4Ci9QIDQyOTQ5NjcyOTIKL0ZpbHRlciAvU3RhbmRhcmQKL08gPDc1ZWE0NGU1YmY1MGIwN2IxZmM4ZDlhOGYyZWQ1MmJlMGJmM2ZmMGE3NGRiNmFlZWUwYmFlNDQ3ODc2NWYxZjA+Ci9VIDw0ZDg0MmRmMzRjM2NhZjY1YTljMzg5NzAzMmYxMjBlMTI4YmY0ZTVlNGU3NThhNDE2NDAwNGU1NmZmZmEwMTA4Pgo+PgplbmRvYmoKeHJlZgowIDYKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDE1IDAwMDAwIG4gCjAwMDAwMDAwNTkgMDAwMDAgbiAKMDAwMDAwMDExOCAwMDAwMCBuIAowMDAwMDAwMTY3IDAwMDAwIG4gCjAwMDAwMDAyNTkgMDAwMDAgbiAKdHJhaWxlcgo8PAovU2l6ZSA2Ci9Sb290IDMgMCBSCi9JbmZvIDEgMCBSCi9JRCBbIDxmM2Y4ZjJkM2YyMDczMGRmNTQ4YTk0MzU5NGY4ODRiMT4gPGYzZjhmMmQzZjIwNzMwZGY1NDhhOTQzNTk0Zjg4NGIxPiBdCi9FbmNyeXB0IDUgMCBSCj4+CnN0YXJ0eHJlZgo0NzQKJSVFT0YK"))
+        let source = try XCTUnwrap(PDFDocument(data: data))
+        XCTAssertTrue(source.isEncrypted)
+        XCTAssertTrue(source.isLocked, "The test fixture must actually require a password")
+        try data.write(to: path)
+        let attachment = item("locked.pdf", size: data.count)
         let model = OpenedDocumentModel(attachment: attachment, openedFile: try AttachmentVault(root: root).open(attachment))
         await model.load()
         guard case .failure(let message) = model.state else { return XCTFail("Locked PDF must not be shown as open") }
