@@ -69,13 +69,87 @@ private actor AccountFixtureTransport: IdentityTransport {
         case "/workspaces":
             guard request.value(forHTTPHeaderField: "Authorization") == "Bearer fixture-access" else { throw URLError(.userAuthenticationRequired) }
             json = #"[{"id":"space","name":"Workspace","ownerId":"user","defaultLevel":"view","createdAt":1,"memberCount":1,"role":"owner"}]"#
+        case "/me/passkeys":
+            guard request.httpMethod == "GET", request.value(forHTTPHeaderField: "Authorization") == "Bearer fixture-access" else { throw URLError(.userAuthenticationRequired) }
+            json = #"[{"id":"dGVzdA","name":"Fixture","synced":true,"createdAt":1,"lastUsedAt":null}]"#
+        case "/me/passkeys/dGVzdA":
+            guard request.httpMethod == "DELETE", request.value(forHTTPHeaderField: "Authorization") == "Bearer fixture-access" else { throw URLError(.userAuthenticationRequired) }
+            json = #"{"ok":true}"#
         default: throw URLError(.badURL)
         }
         return (Data(json.utf8), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
     }
 }
 
+private actor PasskeyFixtureTransport: IdentityTransport {
+    private(set) var verifyCount = 0
+    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        let body: String
+        switch request.url!.path {
+        case "/auth/passkey/login/options":
+            body = #"{"challengeId":"fixture-challenge","options":{"challenge":"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE","rpId":"example.test"}}"#
+        case "/auth/passkey/login/verify":
+            verifyCount += 1; body = #"{"code":"fixture-handoff"}"#
+        case "/auth/token":
+            body = #"{"accessToken":"access","accessTokenExpiresAt":9999999999999,"refreshToken":"refresh","refreshTokenExpiresAt":9999999999999,"userId":"user","deviceId":"device"}"#
+        default: throw URLError(.badURL)
+        }
+        return (Data(body.utf8), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
+}
+private actor DelayedPasskeyTransport: IdentityTransport {
+    private(set) var started = false
+    private var continuation: CheckedContinuation<Void, Never>?
+    func release() { continuation?.resume(); continuation = nil }
+    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        guard request.url?.path == "/auth/passkey/login/options" else { throw URLError(.badURL) }
+        started = true
+        await withCheckedContinuation { continuation = $0 }
+        let body = #"{"challengeId":"fixture-challenge","options":{"challenge":"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE","rpId":"example.test"}}"#
+        return (Data(body.utf8), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
+}
+
 final class IdentityContinuityTests: XCTestCase {
+    func testPasskeyManagementUsesAuthenticatedEndpointsAndRejectsUnsafeID() async throws {
+        let coordinator = try IdentitySessionCoordinator(baseURL: URL(string: "https://example.test")!, lockDirectory: directory(), transport: AccountFixtureTransport(profileID: "user"), secrets: MemorySecrets())
+        _ = try await coordinator.verifyEmail(challengeID: "fixture", code: "123456", deviceName: "Fixture", platform: "macos")
+        let items = try await coordinator.passkeys()
+        XCTAssertEqual(items.count, 1); XCTAssertEqual(items.first?.id, "dGVzdA")
+        try await coordinator.removePasskey(id: "dGVzdA")
+        do { try await coordinator.removePasskey(id: "../devices"); XCTFail("Path-shaped IDs must be refused") }
+        catch IdentityError.invalidPath { } catch { XCTFail("Unexpected error: \(error)") }
+    }
+    func testSignOutInvalidatesOutstandingPasskeyChallenge() async throws {
+        let transport = PasskeyFixtureTransport(), secrets = MemorySecrets()
+        let coordinator = try IdentitySessionCoordinator(baseURL: URL(string: "https://example.test")!, lockDirectory: directory(), transport: transport, secrets: secrets)
+        let stale = try await coordinator.passkeyChallenge(expectedRelyingPartyID: "example.test")
+        _ = try await coordinator.signOut()
+        let assertion = PasskeyAssertion(credentialID: Data([1]), clientDataJSON: Data([2]), authenticatorData: Data([3]), signature: Data([4]), userID: nil)
+        do { _ = try await coordinator.completePasskey(challenge: stale, assertion: assertion, deviceName: "Fixture", platform: "macos"); XCTFail("Sign out must invalidate an old ceremony") }
+        catch IdentityContinuityError.signedOut { } catch { XCTFail("Unexpected error: \(error)") }
+        let before = await transport.verifyCount; XCTAssertEqual(before, 0)
+        let fresh = try await coordinator.passkeyChallenge(expectedRelyingPartyID: "example.test")
+        _ = try await coordinator.completePasskey(challenge: fresh, assertion: assertion, deviceName: "Fixture", platform: "macos")
+        let after = await transport.verifyCount; XCTAssertEqual(after, 1)
+        do { _ = try await coordinator.completePasskey(challenge: fresh, assertion: assertion, deviceName: "Fixture", platform: "macos"); XCTFail("A challenge must not be replayed") }
+        catch IdentityContinuityError.signedOut { } catch { XCTFail("Unexpected error: \(error)") }
+    }
+    func testSignOutRejectsPasskeyChallengeStillInFlight() async throws {
+        let transport = DelayedPasskeyTransport()
+        let coordinator = try IdentitySessionCoordinator(baseURL: URL(string: "https://example.test")!, lockDirectory: directory(), transport: transport, secrets: MemorySecrets())
+        let pending = Task { try await coordinator.passkeyChallenge(expectedRelyingPartyID: "example.test") }
+        for _ in 0..<100 {
+            if await transport.started { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let started = await transport.started
+        guard started else { pending.cancel(); await transport.release(); return XCTFail("Fixture did not start") }
+        _ = try await coordinator.signOut()
+        await transport.release()
+        do { _ = try await pending.value; XCTFail("A response issued before sign out must be rejected") }
+        catch IdentityContinuityError.signedOut { } catch { XCTFail("Unexpected error: \(error)") }
+    }
     private func directory() throws -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-identity-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])

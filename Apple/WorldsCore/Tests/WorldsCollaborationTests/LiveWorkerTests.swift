@@ -2,6 +2,10 @@ import Foundation
 import XCTest
 import WorldsSyncWire
 @testable import WorldsCollaboration
+private actor ProjectionChangeProbe {
+    private(set) var formatted = false
+    func record() { formatted = true }
+}
 
 /// Runs only against the repository's local Worker and its disposable identity stand-in.
 final class LiveWorkerTests: XCTestCase {
@@ -205,20 +209,33 @@ final class LiveWorkerTests: XCTestCase {
             let da = try await document(a), db = try await document(b)
             if await alice.accessLevel == "edit", await bob.accessLevel == "edit",
                try equivalent(da, initial), try equivalent(db, initial),
-               try await a.maximumPendingID(pageID: page, channel: 0) == nil { ready = true; break }
+               try await a.maximumPendingID(pageID: page, channel: 0) == nil,
+               (try? await alice.plainEditorProjection()) != nil,
+               (try? await bob.plainEditorProjection()) != nil { ready = true; break }
             try await Task.sleep(for: .milliseconds(100))
         }
         guard ready else { await alice.stop(); await bob.stop(); _ = try? await arun.value; _ = try? await brun.value; return XCTFail("Clients did not synchronize the base") }
+        let projection = try await alice.plainEditorProjection()
+        let tree = try XCTUnwrap(try JSONSerialization.jsonObject(with: projection) as? [String: Any])
+        let paragraphs = try XCTUnwrap(tree["content"] as? [[String: Any]])
+        let content = try XCTUnwrap(paragraphs.first?["content"] as? [[String: Any]])
+        XCTAssertEqual(content.first?["text"] as? String, "Hello 🌍")
+        let bobInitial = try await bob.plainEditorSnapshot()
         try await alice.insertPlain(blockIndex: 0, blockID: "block-1", expected: "Hello 🌍", offset: 6, insertion: "Alice ")
         let afterAlice = try NativeCRDTDocument()
         for update in try await a.load(pageID: page, channel: 0) { try afterAlice.apply(update) }
         var receivedAlice = false
         for _ in 0..<200 {
             let replica = try await document(b)
-            if await bob.accessLevel == "edit", try equivalent(replica, afterAlice) { receivedAlice = true; break }
+            if await bob.accessLevel == "edit", try equivalent(replica, afterAlice),
+               (try? await bob.plainEditorSnapshot()) != nil { receivedAlice = true; break }
             try await Task.sleep(for: .milliseconds(100))
         }
         guard receivedAlice else { await alice.stop(); await bob.stop(); _ = try? await arun.value; _ = try? await brun.value; return XCTFail("Bob did not receive Alice's edit") }
+        do {
+            try await bob.insertPlain(blockIndex: 0, blockID: "block-1", expected: "Hello Alice 🌍", offset: 12, insertion: "stale", expectedState: bobInitial.state)
+            XCTFail("A selection tied to an older projection must not write")
+        } catch CollaborationError.staleProjection { } catch { XCTFail("Unexpected error: \(error)") }
         try await bob.insertPlain(blockIndex: 0, blockID: "block-1", expected: "Hello Alice 🌍", offset: 12, insertion: "Bob ")
         let expected = try NativeCRDTDocument()
         for update in try await a.load(pageID: page, channel: 0) { try expected.apply(update) }
@@ -230,6 +247,31 @@ final class LiveWorkerTests: XCTestCase {
             let bPending = try await b.maximumPendingID(pageID: page, channel: 0)
             if aPending == nil, bPending == nil, try equivalent(da, expected), try equivalent(db, expected) { converged = true; break }
             try await Task.sleep(for: .milliseconds(100))
+        }
+        if converged {
+            var current: PlainEditorProjection?
+            for _ in 0..<100 {
+                if let snapshot = try? await bob.plainEditorSnapshot() { current = snapshot; break }
+                try await Task.sleep(for: .milliseconds(100))
+            }
+            let snapshot = try XCTUnwrap(current)
+            let signals = await alice.editorChanges()
+            let probe = ProjectionChangeProbe()
+            let observer = Task {
+                for await _ in signals {
+                    if let json = try? await alice.plainEditorProjection(), let text = String(data: json, encoding: .utf8), text.contains("italic") {
+                        await probe.record(); break
+                    }
+                }
+            }
+            try await bob.formatPlain(blockIndex: 0, blockID: "block-1", expected: "Hello Alice Bob 🌍", offset: 6, length: 5, mark: "italic", enabled: true, expectedState: snapshot.state)
+            var observed = false
+            for _ in 0..<200 {
+                if await probe.formatted { observed = true; break }
+                try await Task.sleep(for: .milliseconds(100))
+            }
+            observer.cancel()
+            XCTAssertTrue(observed, "Formatting should reach the other replica")
         }
         await alice.stop(); await bob.stop(); try await arun.value; try await brun.value
         XCTAssertTrue(converged, "Both durable edits should converge after socket reconnect")

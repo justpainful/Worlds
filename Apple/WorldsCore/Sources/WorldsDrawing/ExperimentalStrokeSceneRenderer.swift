@@ -76,6 +76,13 @@ public enum ExperimentalStrokeSceneRenderer {
             for nodeID in decoded.nodeOrder {
                 guard let node = decoded.nodes[nodeID], node.layerId == layerID, node.visible else { continue }
                 context.saveGState()
+                if node.kind == "shape" {
+                    // A Core Graphics path uses the opposite vertical bitmap
+                    // orientation from the source Canvas image. Correct in frame
+                    // coordinates before applying this node's own transform.
+                    context.translateBy(x: 0, y: frame.y * 2 + frame.h)
+                    context.scaleBy(x: 1, y: -1)
+                }
                 context.translateBy(x: node.x + node.w / 2, y: node.y + node.h / 2)
                 context.rotate(by: node.rotation * .pi / 180)
                 context.scaleBy(x: node.flipX ? -1 : 1, y: node.flipY ? -1 : 1)

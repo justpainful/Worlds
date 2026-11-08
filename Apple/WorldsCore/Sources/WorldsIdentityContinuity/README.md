@@ -22,3 +22,12 @@ not authorization, and the two service responses are not an atomic server
 snapshot. The isolated transport tests are not evidence of deployed-service,
 Keychain entitlement or device behavior; this API remains disconnected from
 the product UI pending those checks.
+
+The coordinator invalidates outstanding passkey challenges on sign-out or a
+new sign-in attempt and accepts each challenge once. It also exposes authenticated
+listing and explicit removal through the existing `/me/passkeys` endpoints, with
+strict credential ID validation. These are experimental APIs, not evidence that
+native passkey enrollment, associated domains, Keychain entitlements, or the
+deployed Apple ceremony work. Sign-out remains serialized against active account
+requests. Removal must be triggered by the user, and the server response is the
+authority for whether it completed.

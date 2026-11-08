@@ -259,6 +259,33 @@ final class WorldsUITests: XCTestCase {
     }
 
     @MainActor
+    func testStreamPlaybackFailureCanBeRetried() throws {
+        let app = try openResource("resource-stream")
+        let play = app.buttons["play-external-stream"]
+        XCTAssertTrue(play.waitForExistence(timeout: 15)); play.tap()
+        XCTAssertTrue(app.staticTexts["external-stream-error"].waitForExistence(timeout: 30))
+        XCTAssertTrue(app.buttons["retry-external-stream"].exists)
+        capture("15-stream-failure", app: app)
+        app.buttons["retry-external-stream"].tap()
+        XCTAssertTrue(app.staticTexts["external-stream-error"].waitForExistence(timeout: 30))
+    }
+
+    @MainActor
+    func testDashStreamExplainsUnsupportedPlayback() throws {
+        let app = try openResource("resource-stream-dash", rightToLeft: true, largeText: true)
+        XCTAssertTrue(app.staticTexts["external-stream-dash"].waitForExistence(timeout: 15))
+        XCTAssertFalse(app.buttons["play-external-stream"].exists)
+        capture("16-stream-dash-rtl", app: app)
+    }
+
+    @MainActor
+    func testStreamUsesStoredFormatWhenExtensionConflicts() throws {
+        let app = try openResource("resource-stream-format-mismatch")
+        XCTAssertTrue(app.buttons["play-external-stream"].waitForExistence(timeout: 15))
+        XCTAssertFalse(app.staticTexts["external-stream-dash"].exists)
+    }
+
+    @MainActor
     private func openResource(_ id: String, rightToLeft: Bool = false, largeText: Bool = false, dark: Bool = false, light: Bool = false) throws -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments.append("--ui-testing-reader-fixture")

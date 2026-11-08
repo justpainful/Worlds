@@ -75,6 +75,18 @@ private struct WorldsLibraryView: View {
     @State private var showCopyExplanation = false
     @State private var showLocalCopies = false
     @State private var editingProject: ProjectEditorRequest?
+    #if DEBUG && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+    @State private var editingDrawing: LocalDrawingEditorRequest?
+    #endif
+    #if DEBUG && WORLDS_EXPERIMENTAL_AUTOMATIONS
+    @State private var automationsRequest: LocalAutomationsRequest?
+    #endif
+    #if DEBUG && WORLDS_EXPERIMENTAL_STREAM_EDITOR
+    @State private var editingStream: LocalStreamEditorRequest?
+    #endif
+    #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_IMPORT
+    @State private var importingGallery: LocalGalleryImportRequest?
+    #endif
     #if DEBUG && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
     @State private var editingPresentation: LocalPresentationEditorRequest?
     #endif
@@ -139,6 +151,16 @@ private struct WorldsLibraryView: View {
                     .disabled(databaseActionsDisabled)
                 }
                 #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+                #if DEBUG && WORLDS_EXPERIMENTAL_AUTOMATIONS
+                if let context = copyContext, let source = openedVideoDatabase,
+                   source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
+                    ToolbarItem {
+                        Button("Automations", systemImage: "clock.arrow.circlepath") {
+                            automationsRequest = LocalAutomationsRequest(context: context, identity: source.identity)
+                        }.accessibilityIdentifier("open-local-automations").disabled(databaseActionsDisabled)
+                    }
+                }
+                #endif
                 ToolbarItem {
                     Menu {
                         Button("Create local copy") { showCopyExplanation = true }
@@ -151,8 +173,8 @@ private struct WorldsLibraryView: View {
         } detail: {
             Group {
                 if let selectedPageID = selectedID, let page = pages.first(where: { $0.id == selectedPageID }) {
-                    if ["project", "gallery", "presentation", "file"].contains(page.kind) {
-                        ResourceContentView(page: page, pages: pages, projectEditingAvailable: projectEditingAvailable(for: page), openVideo: videoAction(for: page)) { target in
+                    if ["project", "gallery", "presentation", "file", "stream"].contains(page.kind) {
+                        ResourceContentView(page: page, pages: pages, projectEditingAvailable: projectEditingAvailable(for: page), otherEditingAvailable: otherResourceEditingAvailable(for: page), openVideo: videoAction(for: page)) { target in
                             guard target != page.id else { return }
                             returnStack.append(page.id)
                             selectedID = target
@@ -160,12 +182,41 @@ private struct WorldsLibraryView: View {
                     } else {
                         PageContentView(page: page)
                     }
-                } else {
+                } else if loaded {
                     ContentUnavailableView("Select a page", systemImage: "doc.text")
+                } else {
+                    Color.clear
                 }
             }
             .toolbar {
                 #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+                #if DEBUG && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+                if let id = selectedID, let context = copyContext, let source = openedVideoDatabase,
+                   source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL,
+                   pages.contains(where: { $0.id == id && $0.kind == "drawing" }) {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Edit drawing", systemImage: "pencil.tip") {
+                            editingDrawing = LocalDrawingEditorRequest(id: id, context: context, identity: source.identity, generation: databaseGeneration)
+                        }.accessibilityIdentifier("edit-local-drawing").disabled(databaseActionsDisabled)
+                    }
+                }
+                #endif
+                #if DEBUG && WORLDS_EXPERIMENTAL_STREAM_EDITOR
+                if let id = selectedID, let context = copyContext, pages.contains(where: { $0.id == id && $0.kind == "stream" }) {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Edit link", systemImage: "link") { editingStream = LocalStreamEditorRequest(id: id, context: context, generation: databaseGeneration) }
+                            .disabled(loading)
+                    }
+                }
+                #endif
+                #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_IMPORT
+                if let id = selectedID, let context = copyContext, pages.contains(where: { $0.id == id && $0.kind == "gallery" }) {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Import file", systemImage: "square.and.arrow.down") { importingGallery = LocalGalleryImportRequest(id: id, context: context, generation: databaseGeneration) }
+                            .disabled(loading)
+                    }
+                }
+                #endif
                 #if DEBUG && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
                 if let id = selectedID, let context = copyContext, pages.contains(where: { $0.id == id && $0.kind == "presentation" }) {
                     ToolbarItem(placement: .primaryAction) {
@@ -223,6 +274,32 @@ private struct WorldsLibraryView: View {
                 }
             }
         }
+        #if DEBUG && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+        .sheet(item: $editingDrawing) { request in
+            LocalDrawingEditor(databaseURL: request.context.copy.databaseURL, pageID: request.id, identity: request.identity) {
+                Task { await refreshCopy(id: request.context.copy.id, generation: request.generation) }
+            }
+        }
+        #endif
+        #if DEBUG && WORLDS_EXPERIMENTAL_AUTOMATIONS
+        .sheet(item: $automationsRequest) { request in
+            LocalAutomationsView(databaseURL: request.context.copy.databaseURL, identity: request.identity)
+        }
+        #endif
+        #if DEBUG && WORLDS_EXPERIMENTAL_STREAM_EDITOR
+        .sheet(item: $editingStream) { request in
+            LocalStreamEditor(copy: request.context.copy, pageID: request.id) {
+                Task { await refreshCopy(id: request.context.copy.id, generation: request.generation) }
+            }
+        }
+        #endif
+        #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_IMPORT
+        .sheet(item: $importingGallery) { request in
+            LocalGalleryImportView(copy: request.context.copy, pageID: request.id) {
+                Task { await refreshCopy(id: request.context.copy.id, generation: request.generation) }
+            }
+        }
+        #endif
         #if DEBUG && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
         .sheet(item: $editingPresentation) { request in
             LocalPresentationEditor(databaseURL: request.context.copy.databaseURL, pageID: request.id) {
@@ -319,10 +396,35 @@ private struct WorldsLibraryView: View {
         #endif
     }
 
+    private func otherResourceEditingAvailable(for page: StoredPage) -> Bool {
+        #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY
+        guard copyContext != nil else { return false }
+        #if WORLDS_EXPERIMENTAL_STREAM_EDITOR
+        if page.kind == "stream" { return true }
+        #endif
+        #if WORLDS_EXPERIMENTAL_GALLERY_IMPORT
+        if page.kind == "gallery" { return true }
+        #endif
+        #endif
+        return false
+    }
+
     private var databaseActionsDisabled: Bool {
         var disabled = loading
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
         disabled = disabled || editingProject != nil
+        #if DEBUG && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+        disabled = disabled || editingDrawing != nil
+        #endif
+        #if DEBUG && WORLDS_EXPERIMENTAL_AUTOMATIONS
+        disabled = disabled || automationsRequest != nil
+        #endif
+        #if DEBUG && WORLDS_EXPERIMENTAL_STREAM_EDITOR
+        disabled = disabled || editingStream != nil
+        #endif
+        #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_IMPORT
+        disabled = disabled || importingGallery != nil
+        #endif
         #if DEBUG && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
         disabled = disabled || editingPresentation != nil
         #endif
@@ -594,6 +696,20 @@ private struct ProjectEditorRequest: Identifiable {
     let generation: UUID
     let candidates: [ProjectLinkCandidate]
 }
+#if DEBUG && WORLDS_EXPERIMENTAL_STREAM_EDITOR
+private struct LocalStreamEditorRequest: Identifiable {
+    let id: String
+    let context: LocalCopyContext
+    let generation: UUID
+}
+#endif
+#if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_IMPORT
+private struct LocalGalleryImportRequest: Identifiable {
+    let id: String
+    let context: LocalCopyContext
+    let generation: UUID
+}
+#endif
 #if DEBUG && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
 private struct LocalPresentationEditorRequest: Identifiable {
     let id: String
@@ -617,4 +733,21 @@ private struct VideoDatabaseSource {
 
 #if WORLDS_EXPERIMENTAL_PERSONAL_VIDEO
 private struct PersonalVideoRequest: Identifiable { let id: String; let source: VideoDatabaseSource }
+#endif
+
+#if WORLDS_EXPERIMENTAL_LOCAL_COPY && DEBUG && WORLDS_EXPERIMENTAL_AUTOMATIONS
+private struct LocalAutomationsRequest: Identifiable {
+    let id = UUID()
+    let context: LocalCopyContext
+    let identity: VideoDatabaseIdentity
+}
+#endif
+
+#if WORLDS_EXPERIMENTAL_LOCAL_COPY && DEBUG && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+private struct LocalDrawingEditorRequest: Identifiable {
+    let id: String
+    let context: LocalCopyContext
+    let identity: VideoDatabaseIdentity
+    let generation: UUID
+}
 #endif

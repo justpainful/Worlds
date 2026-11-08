@@ -46,13 +46,28 @@ public actor PresentationPersistence {
             return nil
         })
         guard previous.subtracting(Set(slides.map(\.id))) == deleting else { throw PresentationPersistenceError.invalidBlock }
-        var replacement = slides.makeIterator(), next: [NativeBlockInput] = []
-        for block in baseline {
-            if case .object(let content) = block.content, content["type"] == .string("slide") {
-                if let slide = replacement.next() { next.append(try Self.block(slide)) }
-            } else { next.append(block) }
+        var next: [NativeBlockInput] = []
+        if !deleting.isEmpty {
+            let retainedIDs = baseline.compactMap { block -> String? in
+                guard case .object(let content) = block.content, content["type"] == .string("slide"), !deleting.contains(block.id) else { return nil }
+                return block.id
+            }
+            guard retainedIDs == slides.map(\.id) else { throw PresentationPersistenceError.invalidBlock }
+            let byID = Dictionary(uniqueKeysWithValues: slides.map { ($0.id, $0) })
+            for block in baseline {
+                if case .object(let content) = block.content, content["type"] == .string("slide") {
+                    if let slide = byID[block.id] { next.append(try Self.block(slide)) }
+                } else { next.append(block) }
+            }
+        } else {
+            var replacement = slides.makeIterator()
+            for block in baseline {
+                if case .object(let content) = block.content, content["type"] == .string("slide") {
+                    if let slide = replacement.next() { next.append(try Self.block(slide)) }
+                } else { next.append(block) }
+            }
+            while let slide = replacement.next() { next.append(try Self.block(slide)) }
         }
-        while let slide = replacement.next() { next.append(try Self.block(slide)) }
         busy = true; defer { busy = false }
         do {
             let value = try await store.savePresentation(id: pageID, base: revision, expectedMetadata: metadata, expected: baseline, blocks: next, deleting: deleting.sorted())

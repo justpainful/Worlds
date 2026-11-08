@@ -29,7 +29,7 @@ struct LocalCopyNotice: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             Label("Independent local copy", systemImage: "doc.on.doc").font(.body.weight(.semibold))
-            Text("No attachments or sync to the original.")
+            Text("Existing attachments are not copied. Changes do not sync to the original.")
                 .font(.body).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

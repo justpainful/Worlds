@@ -19,6 +19,12 @@ public protocol CheckedPlainEditorStore: CollaborationStore {
     func insertPlainChecked(base: Data, blockIndex: UInt32, blockID: String,
                             expected: String, offset: UInt32, insertion: String) async throws -> Data
 }
+public protocol CheckedPlainDeleteStore: CollaborationStore {
+    func deletePlainChecked(base: Data, blockIndex: UInt32, blockID: String, expected: String, offset: UInt32, length: UInt32) async throws -> Data
+}
+public protocol CheckedBasicFormatStore: CollaborationStore {
+    func formatPlainChecked(base: Data, blockIndex: UInt32, blockID: String, expected: String, offset: UInt32, length: UInt32, mark: String, enabled: Bool) async throws -> Data
+}
 
 public protocol CollaborationSocket: Sendable {
     func send(_ data: Data) async throws
@@ -68,7 +74,12 @@ public struct URLSessionCollaborationSocket: CollaborationSocket {
 }
 
 public enum CollaborationError: Error {
-    case invalidEndpoint, invalidChannel, invalidFrame, accessRevoked, rejected(String), notStarted
+    case invalidEndpoint, invalidChannel, invalidFrame, accessRevoked, rejected(String), notStarted, staleProjection
+}
+
+public struct PlainEditorProjection: Sendable {
+    public let json: Data
+    public let state: Data
 }
 
 /// A token provider must serialize refresh and return the current access token.
@@ -97,8 +108,11 @@ public actor CollaborationSession {
     private var generation: UInt64 = 0
     private var retryTask: Task<Void, Error>?
     private var localWriteInFlight = false
+    private var remoteWriteInFlight = false
     private var localWriteWaiters: [CheckedContinuation<Void, Never>] = []
     private var verifiedIdentity = false
+    private var synchronizedChannels: Set<UInt64> = []
+    private var editorObservers: [UUID: AsyncStream<Void>.Continuation] = [:]
     private let diagnosticID = String(UUID().uuidString.prefix(8))
     public private(set) var accessLevel: String?
     public private(set) var lastNotice: String?
@@ -181,7 +195,7 @@ public actor CollaborationSession {
                 }
                 diagnostic("socket created")
                 guard !stopped, generation == runID else { await opened.close(); return }
-                connection = opened; socket = opened; pending.removeAll(); verifiedIdentity = false
+                connection = opened; socket = opened; pending.removeAll(); verifiedIdentity = false; synchronizedChannels.removeAll()
                 for channel: UInt64 in [0, 1] {
                     guard let doc = documents[channel] else { throw CollaborationError.notStarted }
                     diagnostic("send vector \(channel)")
@@ -204,7 +218,8 @@ public actor CollaborationSession {
                     if closeCode == WorldsSyncWire.closeUnauthorized { forceRefresh = true }
                     await connection.close()
                 }
-                socket = nil; pending.removeAll(); verifiedIdentity = false; accessLevel = nil; awareness?.disconnected()
+                socket = nil; pending.removeAll(); verifiedIdentity = false; synchronizedChannels.removeAll(); accessLevel = nil; awareness?.disconnected()
+                publishEditorChange()
                 if stopped || generation != runID { return }
                 if revoked { throw CollaborationError.accessRevoked }
                 if failed { throw error }
@@ -232,8 +247,22 @@ public actor CollaborationSession {
             }
             await socket.close()
         }
-        socket = nil; pending.removeAll(); verifiedIdentity = false; accessLevel = nil; awareness?.disconnected()
+        socket = nil; pending.removeAll(); verifiedIdentity = false; synchronizedChannels.removeAll(); accessLevel = nil; awareness?.disconnected()
+        publishEditorChange()
     }
+
+    /// Coalesced invalidation signals only. Each consumer must call
+    /// plainEditorSnapshot again, which rechecks authentication and state.
+    public func editorChanges() -> AsyncStream<Void> {
+        let id = UUID()
+        let (stream, continuation) = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
+        editorObservers[id] = continuation
+        continuation.onTermination = { @Sendable [weak self] _ in Task { await self?.removeEditorObserver(id) } }
+        continuation.yield(())
+        return stream
+    }
+    private func removeEditorObserver(_ id: UUID) { editorObservers.removeValue(forKey: id) }
+    private func publishEditorChange() { for continuation in editorObservers.values { continuation.yield(()) } }
 
     /// Presence names and colors are ephemeral. The service enforces authenticated user identity.
     public func setPresence(name: String, color: String) async throws {
@@ -257,7 +286,7 @@ public actor CollaborationSession {
     /// Persist first. If application fails afterward, stop and rebuild from the log.
     public func appendLocal(channel: UInt64, update: Data) async throws {
         guard !stopped, !failed, let doc = documents[channel] else { throw CollaborationError.notStarted }
-        guard !localWriteInFlight else { throw CollaborationError.notStarted }
+        guard !localWriteInFlight, !remoteWriteInFlight else { throw CollaborationError.notStarted }
         localWriteInFlight = true
         defer { finishLocalWrite() }
         try await store.appendLocal(pageID: pageID, channel: channel, update: update)
@@ -269,14 +298,15 @@ public actor CollaborationSession {
     /// Experimental plain-text operation. Persist first, then apply to the live CRDT.
     /// This API is not connected to the editor and does not cover IME or rich text.
     public func insertPlain(blockIndex: UInt32, blockID: String, expected: String,
-                            offset: UInt32, insertion: String) async throws {
-        guard !stopped, !failed, verifiedIdentity, let level = accessLevel,
+                            offset: UInt32, insertion: String, expectedState: Data? = nil) async throws {
+        guard !stopped, !failed, verifiedIdentity, synchronizedChannels.contains(0), let level = accessLevel,
               let access = WorldsSyncWire.AccessLevel(rawValue: level), WorldsSyncWire.canWrite(access, channel: 0),
               let doc = documents[0], let editorStore = store as? any CheckedPlainEditorStore else { throw CollaborationError.accessRevoked }
-        guard !localWriteInFlight else { throw CollaborationError.notStarted }
+        guard !localWriteInFlight, !remoteWriteInFlight else { throw CollaborationError.notStarted }
         localWriteInFlight = true
         defer { finishLocalWrite() }
         let base = try doc.diff(Data([0]))
+        if let expectedState, expectedState != base { throw CollaborationError.staleProjection }
         // SQLite checks identity, cached rights, stable block ID and full base within
         // the same transaction that appends both the log and the outbox.
         let update = try await editorStore.insertPlainChecked(base: base, blockIndex: blockIndex, blockID: blockID,
@@ -285,6 +315,41 @@ public actor CollaborationSession {
         catch { failed = true; if let socket { await socket.close() }; throw error }
         // The durable update remains queued if offline or if the server rejects it.
         if let socket { await socket.close() }
+    }
+
+    /// Only exposes a supported projection after authentication and after all
+    /// currently applying remote or local updates have reached durable storage.
+    public func plainEditorProjection() throws -> Data {
+        try plainEditorSnapshot().json
+    }
+    public func deletePlain(blockIndex: UInt32, blockID: String, expected: String, offset: UInt32, length: UInt32, expectedState: Data) async throws {
+        guard !stopped, !failed, verifiedIdentity, synchronizedChannels.contains(0), let level = accessLevel,
+              let access = WorldsSyncWire.AccessLevel(rawValue: level), WorldsSyncWire.canWrite(access, channel: 0),
+              let doc = documents[0], let editorStore = store as? any CheckedPlainDeleteStore else { throw CollaborationError.accessRevoked }
+        guard !localWriteInFlight, !remoteWriteInFlight else { throw CollaborationError.notStarted }
+        localWriteInFlight = true; defer { finishLocalWrite() }
+        let base = try doc.diff(Data([0]))
+        guard base == expectedState else { throw CollaborationError.staleProjection }
+        let update = try await editorStore.deletePlainChecked(base: base, blockIndex: blockIndex, blockID: blockID, expected: expected, offset: offset, length: length)
+        do { try doc.apply(update) } catch { failed = true; if let socket { await socket.close() }; throw error }
+        if let socket { await socket.close() }
+    }
+    public func formatPlain(blockIndex: UInt32, blockID: String, expected: String, offset: UInt32, length: UInt32, mark: String, enabled: Bool, expectedState: Data) async throws {
+        guard !stopped, !failed, verifiedIdentity, synchronizedChannels.contains(0), let level = accessLevel,
+              let access = WorldsSyncWire.AccessLevel(rawValue: level), WorldsSyncWire.canWrite(access, channel: 0),
+              let doc = documents[0], let editorStore = store as? any CheckedBasicFormatStore else { throw CollaborationError.accessRevoked }
+        guard !localWriteInFlight, !remoteWriteInFlight else { throw CollaborationError.notStarted }
+        localWriteInFlight = true; defer { finishLocalWrite() }
+        let base = try doc.diff(Data([0]))
+        guard base == expectedState else { throw CollaborationError.staleProjection }
+        let update = try await editorStore.formatPlainChecked(base: base, blockIndex: blockIndex, blockID: blockID, expected: expected, offset: offset, length: length, mark: mark, enabled: enabled)
+        do { try doc.apply(update) } catch { failed = true; if let socket { await socket.close() }; throw error }
+        if let socket { await socket.close() }
+    }
+    public func plainEditorSnapshot() throws -> PlainEditorProjection {
+        guard !stopped, !failed, verifiedIdentity, synchronizedChannels.contains(0), !localWriteInFlight, !remoteWriteInFlight,
+              let doc = documents[0] else { throw CollaborationError.notStarted }
+        return try PlainEditorProjection(json: doc.plainProjection(), state: doc.diff(Data([0])))
     }
 
     /// Called by the owner before JWT expiry. Expiration scheduling remains external.
@@ -314,10 +379,15 @@ public actor CollaborationSession {
                 try await socket.send(WorldsSyncWire.encode(.update(batchID: batch, channel: channel, update: diff)))
             } else if kind == 1 || kind == 2 {
                 diagnostic("apply remote \(channel)")
+                guard !remoteWriteInFlight, !localWriteInFlight else { throw CollaborationError.notStarted }
+                remoteWriteInFlight = true
+                defer { remoteWriteInFlight = false }
                 try doc.apply(payload)
                 diagnostic("persist remote \(channel)")
                 do { try await store.appendRemote(pageID: pageID, channel: channel, update: payload) }
                 catch { failed = true; throw error }
+                if kind == 1 { synchronizedChannels.insert(channel) }
+                if channel == 0 { publishEditorChange() }
             } else { throw CollaborationError.invalidFrame }
         case let .acknowledgement(id, status, reason):
             diagnostic("acknowledgement")
@@ -370,6 +440,7 @@ public actor CollaborationSession {
 
     private func finishLocalWrite() {
         localWriteInFlight = false
+        publishEditorChange()
         let waiters = localWriteWaiters
         localWriteWaiters.removeAll()
         waiters.forEach { $0.resume() }

@@ -9,10 +9,10 @@ fn blocks(c: &Connection, page: &str) -> Result<Vec<(String, Value)>> {
 fn snapshot(c: &Connection, id: &str) -> Result<Value> {
     require_personal(c, id)?;
     let (kind, revision, metadata): (String,i64,String) = c.query_row("SELECT kind,updated_at,metadata FROM pages WHERE id=?1", [id], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?)))?;
-    if kind != "project" && kind != "gallery" { bail!("unsupported resource kind") }
+    if kind != "project" && kind != "gallery" && kind != "stream" { bail!("unsupported resource kind") }
     let metadata: Value = serde_json::from_str(&metadata)?;
     let current = blocks(c, id)?;
-    if kind == "project" { project_links(c, &metadata)?; } else { attachment_ids(c, &current)?; }
+    if kind == "project" { project_links(c, &metadata)?; } else if kind == "gallery" { attachment_ids(c, &current)?; }
     let entries: Vec<Value> = current.into_iter().map(|(id,content)| serde_json::json!({"id":id,"content":content})).collect();
     Ok(serde_json::json!({"id":id,"kind":kind,"revision":revision,"metadata":metadata,"blocks":entries}))
 }
@@ -91,6 +91,31 @@ pub fn save_project(path: &Path, id: &str, base: i64, expected: Value, metadata:
     let result = snapshot(&tx,id)?;
     tx.commit()?; Ok(result)
 }
+
+/// Updates only URL and format in the original stream metadata. Unknown stream
+/// fields and every unrelated metadata key are retained from the CAS baseline.
+pub fn save_stream(path: &Path, id: &str, base: i64, expected: Value, url: &str) -> Result<Value> {
+    if !expected.is_object() { bail!("invalid resource metadata") }
+    let raw=url.trim();
+    if raw.is_empty() || raw.len()>65536 || raw.bytes().any(|b| b.is_ascii_control()) { bail!("invalid stream URL") }
+    let parsed=url::Url::parse(raw).map_err(|_|anyhow::anyhow!("invalid stream URL"))?;
+    if !matches!(parsed.scheme(),"http" | "https") || parsed.host_str().is_none() { bail!("invalid stream URL") }
+    let path_part=raw.split(['?', '#']).next().unwrap_or("").to_lowercase();
+    let format=if path_part.ends_with(".m3u8") || path_part.ends_with(".m3u") { "hls" } else if path_part.ends_with(".mpd") { "dash" } else { "progressive" };
+    let mut connection=open_existing(path)?;
+    let tx=connection.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+    check_metadata(&tx,id,base,&expected,"stream")?;
+    let mut stream=match expected.get("stream") {
+        None | Some(Value::Null) => serde_json::Map::new(),
+        Some(Value::Object(object)) => object.clone(),
+        _ => bail!("invalid stream metadata"),
+    };
+    stream.insert("url".into(),Value::String(raw.to_owned()));
+    stream.insert("format".into(),Value::String(format.into()));
+    store::set_page_meta(&tx,&store::Ctx::user(),id,"stream",Value::Object(stream))?;
+    let result=snapshot(&tx,id)?;
+    tx.commit()?; Ok(result)
+}
 fn attachment_ids(c: &Connection, entries: &[(String,Value)]) -> Result<()> {
     for (_, value) in entries {
         if value.get("type").and_then(Value::as_str) != Some("galleryItem") { continue }
@@ -148,6 +173,49 @@ mod tests {
     }
     fn gallery(id:&str, attachment:&str) -> BlockInput {
         BlockInput{id:id.into(),content:json!({"type":"galleryItem","attrs":{"bid":id,"attachmentId":attachment,"name":"a.png","mime":"image/png","size":1,"kind":"image","caption":""}})}
+    }
+    #[test]
+    fn stream_save_preserves_unknown_fields_and_rejects_conflicts_and_shared_pages() {
+        let path=fixture();
+        let c=Connection::open(&path).unwrap();
+        c.execute("INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('s','Stream','stream',?1,1,100)",[json!({"other":{"x":1},"stream":{"url":"https://old.test/video","format":"progressive","future":{"keep":true}}}).to_string()]).unwrap();
+        drop(c);
+        let old=read_resource(&path,"s").unwrap();
+        let saved=save_stream(&path,"s",100,old["metadata"].clone(),"  https://example.test/live.M3U8?token=abc  ").unwrap();
+        assert_eq!(saved["metadata"]["stream"]["url"],"https://example.test/live.M3U8?token=abc");
+        assert_eq!(saved["metadata"]["stream"]["format"],"hls");
+        assert_eq!(saved["metadata"]["stream"]["future"],json!({"keep":true}));
+        assert_eq!(saved["metadata"]["other"],json!({"x":1}));
+        assert!(save_stream(&path,"s",100,old["metadata"].clone(),"https://example.test/file").is_err());
+        let revision=saved["revision"].as_i64().unwrap();
+        let c=Connection::open(&path).unwrap();
+        c.execute("UPDATE pages SET metadata=json_set(metadata,'$.other.x',2) WHERE id='s'",[]).unwrap(); drop(c);
+        assert!(save_stream(&path,"s",revision,saved["metadata"].clone(),"https://example.test/file").is_err());
+        let current=read_resource(&path,"s").unwrap();
+        assert!(save_stream(&path,"s",revision,current["metadata"].clone(),"file:///etc/passwd").is_err());
+        let c=Connection::open(&path).unwrap();
+        c.execute("UPDATE pages SET workspace_id='team' WHERE id='s'",[]).unwrap(); drop(c);
+        assert!(save_stream(&path,"s",revision,current["metadata"].clone(),"https://example.test/a.mpd").is_err());
+        let c=Connection::open(&path).unwrap();
+        let raw:String=c.query_row("SELECT metadata FROM pages WHERE id='s'",[],|r|r.get(0)).unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&raw).unwrap(),current["metadata"]);
+        drop(c); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn stream_ffi_reads_and_saves_original_metadata_shape() {
+        let path=fixture(); let c=Connection::open(&path).unwrap();
+        c.execute("INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('s','Stream','stream','{}',1,100)",[]).unwrap(); drop(c);
+        let invoke=|request: Value| -> Value {
+            let bytes=request.to_string(); let ptr=unsafe { crate::worlds_store_call(bytes.as_ptr(),bytes.len()) };
+            let value=serde_json::from_str(unsafe { std::ffi::CStr::from_ptr(ptr) }.to_str().unwrap()).unwrap();
+            unsafe { crate::worlds_store_free(ptr) }; value
+        };
+        let read=invoke(json!({"operation":"read_resource","path":path,"page":"s"}));
+        assert_eq!(read["ok"],true);
+        let saved=invoke(json!({"operation":"save_stream","path":path,"page":"s","base":read["value"]["revision"],"expected_metadata":read["value"]["metadata"],"url":"https://example.test/video.m3u#part"}));
+        assert_eq!(saved["ok"],true,"{saved}");
+        assert_eq!(saved["value"]["metadata"]["stream"]["format"],"hls");
+        std::fs::remove_file(path).unwrap();
     }
     #[test]
     fn ffi_project_and_gallery_request_names_are_accepted() {

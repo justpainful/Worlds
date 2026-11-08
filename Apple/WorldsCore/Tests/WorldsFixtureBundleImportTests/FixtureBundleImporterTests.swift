@@ -1,5 +1,6 @@
 #if DEBUG
 import Foundation
+import Darwin
 import SQLite3
 import XCTest
 @testable import WorldsFixtureBundleImport
@@ -21,6 +22,13 @@ final class FixtureBundleImporterTests: XCTestCase {
     }
     func testFixtureBundleCopiesDataAndLeavesSourceUntouched() async throws {
         let (root, source, privateRoot) = try fixture(); defer { try? FileManager.default.removeItem(at: root) }
+        if let resolved = realpath(source.path, nil) {
+            defer { free(resolved) }
+            let actual = String(cString: resolved)
+            let inputFirst = source.pathComponents.dropFirst().first ?? "none"
+            let actualFirst = URL(fileURLWithPath: actual).pathComponents.dropFirst().first ?? "none"
+            print("Fixture source path matches realpath: \(source.path == actual); first component: \(inputFirst); realpath first component: \(actualFirst)")
+        }
         let database = source.appendingPathComponent("worlds.db"), before = try Data(contentsOf: database)
         let copy: URL
         do { copy = try await FixtureBundleImporter().prepare(source: source, privateRoot: privateRoot) }

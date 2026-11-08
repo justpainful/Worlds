@@ -22,7 +22,7 @@ public struct RejectedArchivePage: Sendable, Equatable {
 }
 
 /// Bound to one existing Worlds page, signed-in account and workspace.
-public actor SQLiteCollaborationStore: CheckedPlainEditorStore {
+public actor SQLiteCollaborationStore: CheckedPlainEditorStore, CheckedPlainDeleteStore, CheckedBasicFormatStore {
     nonisolated(unsafe) private let handle: OpaquePointer
     private let pageID: String
     private let userID: String
@@ -130,6 +130,36 @@ public actor SQLiteCollaborationStore: CheckedPlainEditorStore {
                                                        blockIndex, id, text, offset, replacement, &output)
         try Self.check(status)
         defer { worlds_buffer_free(output) }
+        guard let pointer = output.data else { throw CollaborationStorageError.invalidResult }
+        return Data(bytes: pointer, count: output.len)
+    }
+    public func deletePlainChecked(base: Data, blockIndex: UInt32, blockID: String, expected: String, offset: UInt32, length: UInt32) async throws -> Data {
+        try deletePlainSynchronously(base: base, blockIndex: blockIndex, blockID: blockID, expected: expected, offset: offset, length: length)
+    }
+    private func deletePlainSynchronously(base: Data, blockIndex: UInt32, blockID: String, expected: String, offset: UInt32, length: UInt32) throws -> Data {
+        guard ![blockID, expected].contains(where: { $0.utf8.contains(0) }) else { throw CollaborationStorageError.invalidInput }
+        guard let id = strdup(blockID) else { throw CollaborationStorageError.invalidResult }; defer { free(id) }
+        guard let text = strdup(expected) else { throw CollaborationStorageError.invalidResult }; defer { free(text) }
+        let storage = base as NSData
+        var output = WorldsBuffer(data: nil, len: 0)
+        let status = worlds_store_delete_plain_checked(handle, storage.bytes.assumingMemoryBound(to: UInt8.self), storage.length, blockIndex, id, text, offset, length, &output)
+        try Self.check(status)
+        defer { worlds_buffer_free(output) }
+        guard let pointer = output.data else { throw CollaborationStorageError.invalidResult }
+        return Data(bytes: pointer, count: output.len)
+    }
+    public func formatPlainChecked(base: Data, blockIndex: UInt32, blockID: String, expected: String, offset: UInt32, length: UInt32, mark: String, enabled: Bool) async throws -> Data {
+        try formatPlainSynchronously(base: base, blockIndex: blockIndex, blockID: blockID, expected: expected, offset: offset, length: length, mark: mark, enabled: enabled)
+    }
+    private func formatPlainSynchronously(base: Data, blockIndex: UInt32, blockID: String, expected: String, offset: UInt32, length: UInt32, mark: String, enabled: Bool) throws -> Data {
+        guard ![blockID, expected, mark].contains(where: { $0.utf8.contains(0) }) else { throw CollaborationStorageError.invalidInput }
+        guard let id = strdup(blockID) else { throw CollaborationStorageError.invalidResult }; defer { free(id) }
+        guard let text = strdup(expected) else { throw CollaborationStorageError.invalidResult }; defer { free(text) }
+        guard let name = strdup(mark) else { throw CollaborationStorageError.invalidResult }; defer { free(name) }
+        let storage = base as NSData
+        var output = WorldsBuffer(data: nil, len: 0)
+        let status = worlds_store_format_plain_checked(handle, storage.bytes.assumingMemoryBound(to: UInt8.self), storage.length, blockIndex, id, text, offset, length, name, enabled ? 1 : 0, &output)
+        try Self.check(status); defer { worlds_buffer_free(output) }
         guard let pointer = output.data else { throw CollaborationStorageError.invalidResult }
         return Data(bytes: pointer, count: output.len)
     }

@@ -40,3 +40,13 @@ In [run 42387357673](https://github.com/justpainful/Worlds/actions/runs/42387357
 2. Record an evidence-based design brief using the existing product identity and adaptive layouts. Resolve source data and service contracts before designing the shared native core.
 3. Implement complete native workflows and their real integrations. Establish reproducible Apple CI and test and visually review each workflow before marking it complete.
 4. Produce and verify unsigned packages only after functional and visual gates are met. Record Actions run links and artifact provenance.
+
+## 2026-11-08: Current evidence and limits
+
+The preliminary inventory contains 29 grouped entries: 12 partially implemented, 15 planned, and two blocked. None is marked complete and verified. The source inventory is incomplete and these groups are not equal-sized features, so their count does not establish a whole-project completion percentage.
+
+The native application has built for iPhone, iPad and macOS, with unsigned packages from [Actions run 42427431715](https://github.com/justpainful/Worlds/actions/runs/42427431715). These packages are incomplete: personal project editing uses an independent local copy, while the original service synchronization and full feature parity are not established. Unsigned iOS packages cannot be installed directly on devices.
+
+An isolated collaboration harness connected two replicas to a local Worker, checked convergence and denied a viewer write. It is not connected to the shipping application and does not verify the production service or device behavior. Experimental page, drawing, presentation, gallery and Claude workflows likewise remain separate from a fully verified product.
+
+[Actions run 42450227460](https://github.com/justpainful/Worlds/actions/runs/42450227460) is still running at the time of this entry. Its drawing comparison found a real image mismatch, and experimental attachment and Claude harness jobs failed. Fixes require a subsequent Apple run; no successful result is implied by local changes.

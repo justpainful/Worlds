@@ -5,12 +5,28 @@ import WorldsGallery
 import WorldsNativeWrites
 
 public enum NativeResourceRepositoryError: Error { case malformedResponse }
+public struct StreamRecord: Sendable {
+    public let id: String
+    public let revision: Int64
+    public let metadata: JSONValue
+}
 
 /// Experimental adapter. RustStore is the sole persistence authority and
 /// rejects shared pages and unauthorized attachments. Not wired to the app.
 public actor NativeResourceRepository: ProjectRepository, GalleryRepository {
     private let store: NativePersonalStore
     public init(store: NativePersonalStore) { self.store = store }
+    public func readStream(id: String) async throws -> StreamRecord {
+        let record = try parse(await store.readResource(id: id))
+        guard record.kind == "stream", record.id == id else { throw NativeResourceRepositoryError.malformedResponse }
+        return StreamRecord(id: record.id, revision: record.revision, metadata: record.metadata)
+    }
+    public func saveStream(id: String, baseline: StreamRecord, url: String) async throws -> StreamRecord {
+        guard baseline.id == id else { throw NativeResourceRepositoryError.malformedResponse }
+        let record = try parse(await store.saveStream(id: id, base: baseline.revision, expectedMetadata: baseline.metadata, url: url))
+        guard record.kind == "stream", record.id == id else { throw NativeResourceRepositoryError.malformedResponse }
+        return StreamRecord(id: record.id, revision: record.revision, metadata: record.metadata)
+    }
     public func readProject(id: String) async throws -> ProjectRecord {
         let value = try await store.readResource(id: id)
         let record = try parse(value)

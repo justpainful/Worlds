@@ -41,6 +41,8 @@ jobs:
           grep -E 'testUnsafeExistingLinkAndOpaqueSiblingRemainUnchanged.*passed' logs/swift-test.log
           grep -E 'testListEnterRejectsUnknownSiblingAndBackspaceRejectsDifferentTaskState.*passed' logs/swift-test.log
           grep -E 'testEditingOrderUndoAndUnknownFields.*passed' logs/swift-test.log
+          grep -E 'testDuplicateRekeysElementsAndKeepsMediaButRejectsUnknownFields.*passed' logs/swift-test.log
+          grep -E 'testBlankDuplicateReorderAndUndo.*passed' logs/swift-test.log
           grep -E 'testRejectsInvalidAndPreservesSession.*passed' logs/swift-test.log
           grep -E 'testCreateListsAndToggleTaskWithUndoRedo.*passed' logs/swift-test.log
           grep -E 'testListCreationRejectsUnknownContent.*passed' logs/swift-test.log
@@ -80,6 +82,9 @@ jobs:
           grep -E 'testExpiredSessionAfterVerificationIsNotShownAsSignedIn.*passed' logs/swift-test.log
           grep -E 'testUncertainVerificationRequiresNewCode.*passed' logs/swift-test.log
           grep -E 'testSignOutCannotRaceStoredSessionCheck.*passed' logs/swift-test.log
+          grep -E 'testSignOutInvalidatesOutstandingPasskeyChallenge.*passed' logs/swift-test.log
+          grep -E 'testSignOutRejectsPasskeyChallengeStillInFlight.*passed' logs/swift-test.log
+          grep -E 'testPasskeyManagementUsesAuthenticatedEndpointsAndRejectsUnsafeID.*passed' logs/swift-test.log
           grep -E 'testConcurrentRefreshUsesOneRotation.*passed' logs/swift-test.log
           grep -E 'testSignOutWaitsForActiveRefresh.*passed' logs/swift-test.log
           grep -E 'testRecreatedClientRefreshesUsingSavedDeviceKey.*passed' logs/swift-test.log
@@ -136,6 +141,7 @@ jobs:
           grep -E 'Test Case .*testPressureSensitiveHighlighterRemainsUnsupported.*passed' "$GITHUB_WORKSPACE/logs/drawing-visual-comparison.log"
           grep -E 'Test Case .*testPersistedStrokeOperationAgainstSourceCanvas.*passed' "$GITHUB_WORKSPACE/logs/drawing-visual-comparison.log"
           grep -E 'Test Case .*testCorrectedRightTriangleAgainstSourceCanvas.*passed' "$GITHUB_WORKSPACE/logs/drawing-visual-comparison.log"
+          grep -E 'Test Case .*testRotatedTriangleAndStrokeAgainstSourceCanvas.*passed' "$GITHUB_WORKSPACE/logs/drawing-visual-comparison.log"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -587,6 +593,7 @@ jobs:
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-presentation-editor-$device.log"; then
               grep -E 'testEditReorderSaveAndReopen.*passed' "logs/local-presentation-editor-$device.log" || result=1
               grep -E 'testDeleteUndoRedoAndReopenKeepsAttachmentRecord.*passed' "logs/local-presentation-editor-$device.log" || result=1
+              grep -E 'testAddDuplicateReorderUndoAndReopen.*passed' "logs/local-presentation-editor-$device.log" || result=1
             else
               result=1
             fi
@@ -599,6 +606,89 @@ jobs:
           path: |
             logs/
             local-presentation-editor-*.xcresult/
+          if-no-files-found: warn
+
+  experimental-stream-editor-ui:
+    name: Experimental local stream and automation UI
+    runs-on: macos-26
+    needs: [ruststore-xcframework]
+    timeout-minutes: 65
+    env:
+      WORLDS_REQUIRE_NATIVE_WRITES: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Worlds-shared-ruststore-xcframework
+          path: ruststore-artifact
+      - name: Verify and restore RustStore
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat ruststore-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd ruststore-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p logs Apple/WorldsCore/Artifacts
+          tar -xzf ruststore-artifact/ruststore-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
+          test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
+      - name: Generate experimental local stream editor project
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          brew install xcodegen coreutils
+          xcodegen generate --spec Apple/ProjectEditorHarness/stream-editing-experimental.yml
+      - name: Exercise experimental local stream editor on macOS, iPhone and iPad
+        shell: bash
+        run: |
+          set -o pipefail
+          result=0
+          for device in macOS iPhone iPad; do
+            case "$device" in
+              macOS) platform=macOS; destination='platform=macOS' ;;
+              iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
+              iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
+            esac
+            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsStreamEditingExperimental.xcodeproj \
+              -scheme "LocalCopy-$platform" -destination "$destination" \
+              -resultBundlePath "$GITHUB_WORKSPACE/local-stream-editor-$device.xcresult" \
+              CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-stream-editor-$device.log"; then
+              grep -E 'testEditStreamLinkAndReopenIndependentCopy.*passed' "logs/local-stream-editor-$device.log" || result=1
+            else
+              result=1
+            fi
+          done
+          test "$result" = 0
+      - name: Exercise isolated personal automations on Apple platforms
+        if: always()
+        shell: bash
+        run: |
+          set -o pipefail
+          test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
+          xcodegen generate --spec Apple/ProjectEditorHarness/automations-experimental.yml
+          result=0
+          for device in macOS iPhone iPad; do
+            case "$device" in
+              macOS) platform=macOS; destination='platform=macOS' ;;
+              iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
+              iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
+            esac
+            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsAutomationExperimental.xcodeproj \
+              -scheme "LocalCopy-$platform" -destination "$destination" \
+              -resultBundlePath "$GITHUB_WORKSPACE/local-automations-$device.xcresult" \
+              CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-automations-$device.log"; then
+              grep -E 'testEmptyAutomationsOnIndependentCopy.*passed' "logs/local-automations-$device.log" || result=1
+              grep -E 'testDeclineOnlyChangesIndependentCopy.*passed' "logs/local-automations-$device.log" || result=1
+            else
+              result=1
+            fi
+          done
+          test "$result" = 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-experimental-local-stream-editor-results
+          path: |
+            logs/
+            local-stream-editor-*.xcresult/
+            local-automations-*.xcresult/
           if-no-files-found: warn
 
   gallery-harness:
@@ -662,7 +752,7 @@ jobs:
     name: Experimental isolated drawing UI harness
     runs-on: macos-26
     needs: [ruststore-xcframework]
-    timeout-minutes: 40
+    timeout-minutes: 75
     env:
       WORLDS_REQUIRE_NATIVE_WRITES: "1"
     steps:
@@ -685,13 +775,14 @@ jobs:
           sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
           brew install xcodegen coreutils
           xcodegen generate --spec Apple/DrawingHarness/project.yml
-      - name: Exercise isolated drawing on iPhone and iPad
+      - name: Exercise isolated drawing on macOS, iPhone and iPad
         shell: bash
         run: |
           set -o pipefail
           result=0
-          for device in iPhone iPad; do
+          for device in macOS iPhone iPad; do
             case "$device" in
+              macOS) platform=macOS; destination='platform=macOS' ;;
               iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
               iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
             esac
@@ -701,6 +792,33 @@ jobs:
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/drawing-$device.log"; then
               grep -E 'testDrawSaveAndReopen.*passed' "logs/drawing-$device.log" || result=1
               grep -E 'testSyntheticTriangleCorrectionAndReopen.*passed' "logs/drawing-$device.log" || result=1
+              grep -E 'testColoredHighlighterSavesAndReopens.*passed' "logs/drawing-$device.log" || result=1
+              grep -E 'testLaserFadesWithoutChangingStoredDrawing.*passed' "logs/drawing-$device.log" || result=1
+            else
+              result=1
+            fi
+          done
+          test "$result" = 0
+      - name: Exercise drawing editor in isolated copies on macOS, iPhone and iPad
+        if: always()
+        shell: bash
+        run: |
+          set -o pipefail
+          test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
+          xcodegen generate --spec Apple/ProjectEditorHarness/drawing-editing-experimental.yml
+          result=0
+          for device in macOS iPhone iPad; do
+            case "$device" in
+              macOS) platform=macOS; destination='platform=macOS' ;;
+              iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
+              iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
+            esac
+            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsDrawingEditingExperimental.xcodeproj \
+              -scheme "LocalCopy-$platform" -destination "$destination" \
+              -resultBundlePath "$GITHUB_WORKSPACE/local-drawing-$device.xcresult" \
+              CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-drawing-$device.log"; then
+              grep -E 'testPersonalDrawingSaveAndReopen.*passed' "logs/local-drawing-$device.log" || result=1
+              grep -E 'testUnsupportedSceneCannotBeEdited.*passed' "logs/local-drawing-$device.log" || result=1
             else
               result=1
             fi
@@ -713,6 +831,7 @@ jobs:
           path: |
             logs/
             drawing-*.xcresult/
+            local-drawing-*.xcresult/
           if-no-files-found: warn
 
   presentation-harness:
@@ -1004,6 +1123,7 @@ jobs:
   native-writes:
     name: Rust bridge and native write tests
     runs-on: macos-26
+    needs: [ruststore-xcframework]
     timeout-minutes: 45
     env:
       WORLDS_REQUIRE_NATIVE_WRITES: "1"
@@ -1014,12 +1134,18 @@ jobs:
           sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
           xcodebuild -version
       - uses: dtolnay/rust-toolchain@stable
-      - name: Build required XCFramework
+      - uses: actions/download-artifact@v4
+        with:
+          name: Worlds-shared-ruststore-xcframework
+          path: ruststore-artifact
+      - name: Verify and restore required XCFramework
         shell: bash
         run: |
-          set -o pipefail
-          mkdir -p logs
-          bash Apple/RustStore/scripts/build-apple.sh 2>&1 | tee logs/rust-xcframework.log
+          set -euo pipefail
+          test "$(cat ruststore-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd ruststore-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p logs Apple/WorldsCore/Artifacts
+          tar -xzf ruststore-artifact/ruststore-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
           test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
       - name: Test Rust store on macOS
         shell: bash
@@ -1040,6 +1166,10 @@ jobs:
           grep -q 'missing_file_rolls_back_entire_unpublished_bundle ... ok' logs/rust-store-tests.log
           grep -q 'imports_and_recovers_uncommitted_file_without_touching_source ... ok' logs/rust-store-tests.log
           grep -q 'ffi_import_retries_atomically_without_duplicate_attachment ... ok' logs/rust-store-tests.log
+          grep -q 'cancellation_rolls_back_and_same_operation_can_retry ... ok' logs/rust-store-tests.log
+          grep -q 'cancellation_and_commit_have_single_winner ... ok' logs/rust-store-tests.log
+          grep -q 'stream_ffi_reads_and_saves_original_metadata_shape ... ok' logs/rust-store-tests.log
+          grep -q 'stream_save_preserves_unknown_fields_and_rejects_conflicts_and_shared_pages ... ok' logs/rust-store-tests.log
           grep -q 'interruption_after_exclusive_create_leaves_unclaimed_file_and_recovery_continues ... ok' logs/rust-store-tests.log
           grep -q 'checked_roundtrip_keeps_rich_nodes_properties_and_reference_index ... ok' logs/rust-store-tests.log
           grep -q 'checked_save_refuses_ambiguous_content_and_unrecognized_reference_index ... ok' logs/rust-store-tests.log
@@ -1148,6 +1278,7 @@ jobs:
           swift test --package-path Apple/WorldsCore list 2>&1 | tee logs/resource-repositories-discovery.log
           grep -q 'testProjectUsesNativeStoreAndRejectsSameTimestampChange' logs/resource-repositories-discovery.log
           grep -q 'testGalleryUsesNativeStoreAndKeepsAttachment' logs/resource-repositories-discovery.log
+          grep -q 'testStreamCASPreservesMetadataAndRejectsSharing' logs/resource-repositories-discovery.log
       - name: Test resource repositories on macOS
         shell: bash
         run: |
@@ -1155,6 +1286,7 @@ jobs:
           swift test --package-path Apple/WorldsCore --filter WorldsResourceRepositoriesTests 2>&1 | tee logs/resource-repositories-macos.log
           grep -q 'testProjectUsesNativeStoreAndRejectsSameTimestampChange' logs/resource-repositories-macos.log
           grep -q 'testGalleryUsesNativeStoreAndKeepsAttachment' logs/resource-repositories-macos.log
+          grep -E 'testStreamCASPreservesMetadataAndRejectsSharing.*passed' logs/resource-repositories-macos.log
       - name: Discover native automation tests
         shell: bash
         run: |
@@ -1162,13 +1294,17 @@ jobs:
           swift test --package-path Apple/WorldsCore list 2>&1 | tee logs/automation-discovery.log
           grep -q 'testIsolatedScheduleClaimRestartAndDecline' logs/automation-discovery.log
           grep -q 'testMissedScheduleIsSkippedWithoutApproval' logs/automation-discovery.log
+          grep -q 'testPersonalSnapshotExcludesSharedMalformedAndMismatchedApprovals' logs/automation-discovery.log
+          grep -q 'testUnavailableSchemaReturnsError' logs/automation-discovery.log
       - name: Test native automation on macOS
         shell: bash
         run: |
           set -o pipefail
-          swift test --package-path Apple/WorldsCore --filter NativeAutomationDriverTests 2>&1 | tee logs/automation-macos.log
+          swift test --package-path Apple/WorldsCore --filter WorldsAutomationsTests 2>&1 | tee logs/automation-macos.log
           grep -q 'testIsolatedScheduleClaimRestartAndDecline' logs/automation-macos.log
           grep -q 'testMissedScheduleIsSkippedWithoutApproval' logs/automation-macos.log
+          grep -E 'testPersonalSnapshotExcludesSharedMalformedAndMismatchedApprovals.*passed' logs/automation-macos.log
+          grep -E 'testUnavailableSchemaReturnsError.*passed' logs/automation-macos.log
       - name: Discover presentation persistence tests
         shell: bash
         run: |
@@ -1177,6 +1313,7 @@ jobs:
           grep -q 'testSaveKeepsOpaqueAndConflictingSessionFails' logs/presentation-persistence-discovery.log
           grep -q 'testSaveAndReopenPreservesMissingMediaAndUnknownSlideFields' logs/presentation-persistence-discovery.log
           grep -q 'testExplicitSlideDeletionKeepsMediaAndReopens' logs/presentation-persistence-discovery.log
+          grep -q 'testInsertDuplicateAndReorderRoundTripsWithoutDroppingOpaqueBlocks' logs/presentation-persistence-discovery.log
       - name: Test presentation persistence on macOS
         shell: bash
         run: |
@@ -1185,6 +1322,7 @@ jobs:
           grep -q 'testSaveKeepsOpaqueAndConflictingSessionFails' logs/presentation-persistence-macos.log
           grep -q 'testSaveAndReopenPreservesMissingMediaAndUnknownSlideFields' logs/presentation-persistence-macos.log
           grep -q 'testExplicitSlideDeletionKeepsMediaAndReopens' logs/presentation-persistence-macos.log
+          grep -E 'testInsertDuplicateAndReorderRoundTripsWithoutDroppingOpaqueBlocks.*passed' logs/presentation-persistence-macos.log
       - name: Discover drawing validation tests
         shell: bash
         run: |
@@ -1210,6 +1348,7 @@ jobs:
           grep -q 'testPendingEstimateFailsWithoutDiscardingRawSamples' logs/drawing-writes-discovery.log
           grep -q 'testMoveSmoothingAndReleasePressureMatchSource' logs/drawing-writes-discovery.log
           grep -q 'testCapturedInputPersistsAndReopens' logs/drawing-writes-discovery.log
+          grep -q 'testUnsubmittedInputCanBeExplicitlyDiscarded' logs/drawing-writes-discovery.log
           grep -q 'testCorrectionReopensAndRejectedCorrectionRetainsStroke' logs/drawing-writes-discovery.log
       - name: Test drawing writes on macOS
         shell: bash
@@ -1225,6 +1364,10 @@ jobs:
           grep -E 'testPendingEstimateFailsWithoutDiscardingRawSamples.*passed' logs/drawing-pencil-input-macos.log
           grep -E 'testMoveSmoothingAndReleasePressureMatchSource.*passed' logs/drawing-pencil-input-macos.log
           grep -E 'testCapturedInputPersistsAndReopens.*passed' logs/drawing-pencil-input-macos.log
+          grep -E 'testUnsubmittedInputCanBeExplicitlyDiscarded.*passed' logs/drawing-pencil-input-macos.log
+          grep -E 'testTabletPressureAndReleaseAreRetained.*passed' logs/drawing-pencil-input-macos.log
+          grep -E 'testMouseUsesFullPressure.*passed' logs/drawing-pencil-input-macos.log
+          grep -E 'testCancelReturnsInputWithoutStrokeCommit.*passed' logs/drawing-pencil-input-macos.log
           grep -E 'testCorrectionReopensAndRejectedCorrectionRetainsStroke.*passed' logs/drawing-pencil-input-macos.log
       - name: Test isolated gallery import on macOS
         shell: bash
@@ -1244,7 +1387,7 @@ jobs:
             -only-testing:WorldsResourceRepositoriesTests \
             -only-testing:WorldsProjectEditingTests \
             -only-testing:WorldsLocalImportTests \
-            -only-testing:WorldsAutomationsTests/NativeAutomationDriverTests \
+            -only-testing:WorldsAutomationsTests \
             -only-testing:WorldsPresentationPersistenceTests \
             -only-testing:WorldsDrawingValidationTests \
             -only-testing:WorldsDrawingNativeWritesTests \
@@ -1277,11 +1420,15 @@ jobs:
           grep -E "Test Case .*testRestoresOnlyValidatedCopiesAfterCoordinatorRecreated.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testSavePreservesUnknownMetadataAndRefusesShared.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testGalleryUsesNativeStoreAndKeepsAttachment.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testStreamCASPreservesMetadataAndRejectsSharing.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testIsolatedScheduleClaimRestartAndDecline.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testMissedScheduleIsSkippedWithoutApproval.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testPersonalSnapshotExcludesSharedMalformedAndMismatchedApprovals.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testUnavailableSchemaReturnsError.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testSaveKeepsOpaqueAndConflictingSessionFails.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testSaveAndReopenPreservesMissingMediaAndUnknownSlideFields.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testExplicitSlideDeletionKeepsMediaAndReopens.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testInsertDuplicateAndReorderRoundTripsWithoutDroppingOpaqueBlocks.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testOriginalSceneFixtureAndInvalidFrame.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testPersonalDrawingOriginalSaveAndConflict.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testIndependentCopyImportsOnceAndPreservesSource.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
@@ -1291,6 +1438,7 @@ jobs:
           grep -E "Test Case .*testPendingEstimateFailsWithoutDiscardingRawSamples.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testMoveSmoothingAndReleasePressureMatchSource.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testCapturedInputPersistsAndReopens.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testUnsubmittedInputCanBeExplicitlyDiscarded.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testCorrectionReopensAndRejectedCorrectionRetainsStroke.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
       - uses: actions/upload-artifact@v4
         if: always()
@@ -1385,6 +1533,8 @@ jobs:
           grep -q 'testParallelCRDTAllocationApplyAndFree' logs/collaboration-discovery.log
           grep -q 'testDefaultSocketLifecycleWithLocalRefusal' logs/collaboration-discovery.log
           grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' logs/collaboration-discovery.log
+          grep -q 'testPlainProjectionUsesYjsFixtureAndRejectsRichText' logs/collaboration-discovery.log
+          grep -q 'testCheckedDeleteAndFormatPersistThroughNativeStore' logs/collaboration-discovery.log
           grep -q 'testViewerCannotPrepareEditorWrite' logs/collaboration-discovery.log
       - name: Discover and test collaboration editor on macOS
         shell: bash
@@ -1422,6 +1572,8 @@ jobs:
           grep -q 'testRejectedArchiveListAndReadRespectAccount' logs/collaboration-macos.log
           grep -q 'testDefaultSocketLifecycleWithLocalRefusal' logs/collaboration-macos.log
           grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' logs/collaboration-macos.log
+          grep -E 'testPlainProjectionUsesYjsFixtureAndRejectsRichText.*passed' logs/collaboration-macos.log
+          grep -E 'testCheckedDeleteAndFormatPersistThroughNativeStore.*passed' logs/collaboration-macos.log
           grep -q 'testViewerCannotPrepareEditorWrite' logs/collaboration-macos.log
       - name: Test rejected archive service on macOS
         shell: bash
@@ -1460,6 +1612,8 @@ jobs:
           grep -E 'testParallelCRDTAllocationApplyAndFree.*passed' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testDefaultSocketLifecycleWithLocalRefusal' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
+          grep -E "Test Case .*testPlainProjectionUsesYjsFixtureAndRejectsRichText.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
+          grep -E "Test Case .*testCheckedDeleteAndFormatPersistThroughNativeStore.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testViewerCannotPrepareEditorWrite' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           for name in testPlansSinglePlainInsertionWithoutMutatingDocument testRejectsMarkedTextNonInsertionAndSurrogateSplit testRejectsDuplicateIDsAndRichText; do
             grep -E "Test Case .*${name}.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
@@ -1471,6 +1625,56 @@ jobs:
           path: |
             logs/
             collaboration-simulator.xcresult/
+          if-no-files-found: warn
+
+  experimental-local-identity:
+    name: Experimental isolated identity Worker integration
+    runs-on: macos-26
+    timeout-minutes: 20
+    env:
+      WORLDS_REQUIRE_LIVE_IDENTITY: "1"
+      WORLDS_LIVE_IDENTITY_URL: http://127.0.0.1:18792
+      WORLDS_LIVE_MAILBOX_URL: http://127.0.0.1:18793
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: services/identity/pnpm-lock.yaml
+      - name: Select Xcode
+        run: sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+      - name: Install isolated service
+        working-directory: services/identity
+        run: pnpm install --frozen-lockfile
+      - name: Run local service and identity client test
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p logs "$RUNNER_TEMP/identity-fixture"
+          node -e 'const c=require("node:crypto"),f=require("node:fs");const k=c.generateKeyPairSync("ed25519").privateKey.export({format:"jwk"});f.writeFileSync(process.argv[1],"JWT_PRIVATE_JWK="+JSON.stringify(JSON.stringify(k))+"\nEMAIL_WEBHOOK_URL=http://127.0.0.1:18793/mail\n",{mode:0o600})' "$RUNNER_TEMP/identity-fixture/worker.env"
+          cd services/identity
+          pnpm exec wrangler d1 migrations apply worlds-identity --local --persist-to "$RUNNER_TEMP/identity-fixture/d1" > /dev/null
+          node ../../Apple/IdentityHarness/mailbox.cjs > /dev/null 2>&1 & mailbox_pid=$!
+          pnpm exec wrangler dev --ip 127.0.0.1 --port 18792 --inspector-port 18794 --persist-to "$RUNNER_TEMP/identity-fixture/d1" --env-file "$RUNNER_TEMP/identity-fixture/worker.env" > /dev/null 2>&1 & worker_pid=$!
+          trap 'kill "$worker_pid" "$mailbox_pid" 2>/dev/null || true; rm -f "$RUNNER_TEMP/identity-fixture/worker.env"' EXIT
+          ready=0
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:18793/health > /dev/null && curl --fail --silent http://127.0.0.1:18792/.well-known/jwks.json > /dev/null; then ready=1; break; fi
+            sleep 1
+          done
+          test "$ready" = 1 || { echo "Local identity fixture failed readiness"; exit 1; }
+          cd ../..
+          swift test --package-path Apple/WorldsCore --filter LiveIdentityServiceTests 2>&1 | tee logs/live-identity.log
+          grep -E 'testLocalIdentityEmailRefreshAndRemoteLogout.*passed' logs/live-identity.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-experimental-local-identity-results
+          path: logs/
           if-no-files-found: warn
 
   collaboration-local-worker:
@@ -1579,6 +1783,7 @@ jobs:
           cargo test --locked --manifest-path Apple/RustCollaboration/Cargo.toml --test editor -- --nocapture \
             2>&1 | tee logs/collaboration-editor-rust.log
           grep -q 'concurrent_insertions_converge_without_losing_either_edit ... ok' logs/collaboration-editor-rust.log
+          grep -q 'projection_uses_live_yjs_and_rejects_unsupported_content ... ok' logs/collaboration-editor-rust.log
           grep -q 'rejects_stale_content_surrogate_boundaries_and_rich_formatting ... ok' logs/collaboration-editor-rust.log
           cargo test --locked --manifest-path Apple/RustCollaboration/Cargo.toml --test rejected_comments -- --nocapture 2>&1 | tee logs/rejected-comments-rust.log
           grep -E 'yjs_fixture_extracts_only_visible_owner_drawing_comments.*ok' logs/rejected-comments-rust.log
@@ -1586,6 +1791,8 @@ jobs:
           cargo test --locked --manifest-path Apple/RustCollaboration/Cargo.toml --test store -- --nocapture \
             2>&1 | tee logs/collaboration-store-rust.log
           grep -q 'editor_transaction_rejects_stale_and_rolls_back_outbox_failure ... ok' logs/collaboration-store-rust.log
+          grep -q 'delete_transaction_preserves_outbox_on_failure_and_rejects_stale_or_viewer ... ok' logs/collaboration-store-rust.log
+          grep -q 'formatting_transaction_is_durable_and_refuses_stale_or_readonly ... ok' logs/collaboration-store-rust.log
           grep -q 'editor_ffi_commits_and_reports_stale_base ... ok' logs/collaboration-store-rust.log
           grep -q 'parallel_fixtures_have_distinct_databases_and_survive_peer_cleanup ... ok' logs/collaboration-store-rust.log
           grep -q 'rejected_archive_ffi_returns_snapshot_and_rechecks_access ... ok' logs/collaboration-store-rust.log
@@ -1655,7 +1862,7 @@ jobs:
     env:
       WORLDS_REQUIRE_NATIVE_WRITES: "1"
     needs: ruststore-xcframework
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -1700,7 +1907,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p logs results
-          gtimeout --kill-after=30s 15m xcodebuild -project Apple/Worlds.xcodeproj -scheme '${{ matrix.scheme }}' \
+          gtimeout --kill-after=30s 20m xcodebuild -project Apple/Worlds.xcodeproj -scheme '${{ matrix.scheme }}' \
             -configuration Debug -destination '${{ matrix.destination }}' \
             -derivedDataPath "$RUNNER_TEMP/WorldsUI" \
             -resultBundlePath "$GITHUB_WORKSPACE/results/${{ matrix.device }}.xcresult" \
@@ -1715,6 +1922,9 @@ jobs:
           grep -Eq 'testGallerySummary.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testPresentationSummary.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testFileSummary.*passed' logs/ui-${{ matrix.device }}.log
+          grep -Eq 'testStreamPlaybackFailureCanBeRetried.*passed' logs/ui-${{ matrix.device }}.log
+          grep -Eq 'testDashStreamExplainsUnsupportedPlayback.*passed' logs/ui-${{ matrix.device }}.log
+          grep -Eq 'testStreamUsesStoredFormatWhenExtensionConflicts.*passed' logs/ui-${{ matrix.device }}.log
           if [[ "${{ matrix.device }}" == "macOS" ]]; then
             grep -Eq 'testLargeReaderWindow.*passed' logs/ui-${{ matrix.device }}.log
           fi

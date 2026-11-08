@@ -2,7 +2,7 @@
 //! Path and metadata checks do not establish atomic source identity for SQLite.
 #[cfg(unix)]
 pub(crate) mod unix {
-    use anyhow::{bail, Result};
+    use anyhow::{bail, Context, Result};
     use rusqlite::{Connection, OpenFlags};
     use std::{ffi::CString, fs::File, os::unix::{ffi::OsStrExt, fs::{DirBuilderExt, MetadataExt}}, path::{Path, PathBuf}};
 
@@ -100,13 +100,13 @@ pub(crate) mod unix {
         let source_canonical=source.canonicalize()?;
         let private_canonical=private_root.canonicalize()?;
         if private_canonical.starts_with(&source_canonical) { bail!("private staging must not be inside the source directory") }
-        let private_dir=crate::attachment_open::open_directory(private_root)?;
+        let private_dir=crate::attachment_open::open_directory(private_root).context("open private staging root")?;
         let private_meta=private_dir.metadata()?;
         if private_meta.uid()!=unsafe { libc::geteuid() } || private_meta.mode() & 0o077 != 0 { bail!("private staging directory required") }
-        let source_dir=crate::attachment_open::open_directory(source)?;
+        let source_dir=crate::attachment_open::open_directory(source).context("open source root")?;
         let attachments=source.join("attachments");
-        let attachment_dir=crate::attachment_open::open_directory(&attachments)?;
-        let original=crate::attachment_open::open_confined(source,Path::new("worlds.db"))?;
+        let attachment_dir=crate::attachment_open::open_directory(&attachments).context("open source attachments")?;
+        let original=crate::attachment_open::open_confined(source,Path::new("worlds.db")).context("open source database")?;
         let db_before=stamp(&original)?;
         if db_before.links != 1 { bail!("database hard links are unsupported") }
         let wal=optional_file(source,"worlds.db-wal")?; let wal_before=optional_stamp(&wal)?;
@@ -114,7 +114,7 @@ pub(crate) mod unix {
         let pending_dir=private_root.join(format!("worlds-bundle-stage-{}",uuid::Uuid::new_v4()));
         let mut builder=std::fs::DirBuilder::new(); builder.mode(0o700); builder.create(&pending_dir)?;
         let _pending=Pending(pending_dir.clone());
-        let copy=crate::isolated_import::import_with_source_validation(&source.join("worlds.db"),&pending_dir,|db|sqlite_source_matches(db,source,&db_before))?;
+        let copy=crate::isolated_import::import_with_source_validation(&source.join("worlds.db"),&pending_dir,|db|sqlite_source_matches(db,source,&db_before)).context("backup source database")?;
         after_backup()?;
         let db=Connection::open_with_flags(&copy,OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX)?;
         let entries=crate::attachment_staging::inventory(&db)?;
@@ -126,7 +126,7 @@ pub(crate) mod unix {
             files.push((entry.relative,file,before));
         }
         drop(db);
-        let staged=crate::attachment_staging::stage(&copy,&attachments,&pending_dir)?;
+        let staged=crate::attachment_staging::stage(&copy,&attachments,&pending_dir).context("stage source attachments")?;
         after_staging()?;
         let live_dir=crate::attachment_open::open_directory(source)?;
         let live_attachments=crate::attachment_open::open_directory(&attachments)?;

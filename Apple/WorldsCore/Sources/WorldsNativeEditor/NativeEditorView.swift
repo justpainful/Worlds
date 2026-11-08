@@ -72,6 +72,7 @@ public struct NativeEditorView: View {
                 }
                 }.frame(maxHeight: 160) }
                 NativeTextSurface(model: model)
+                    .frame(minHeight: dynamicTypeSize.isAccessibilitySize ? 240 : 160)
             }
             .disabled(model.recoverableNativeText != nil)
             if let error = model.errorMessage { Text(error).font(.caption).foregroundStyle(.secondary) }

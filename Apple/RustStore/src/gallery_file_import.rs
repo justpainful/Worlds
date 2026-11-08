@@ -7,6 +7,7 @@ pub(crate) mod unix {
     use serde_json::{json, Value};
     use std::{fs::{File, OpenOptions}, io::{Read, Write}, os::{fd::AsRawFd, unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt}}, path::Path};
     use crate::BlockInput;
+    use crate::GalleryCancellation as Cancellation;
 
     const MAX_FILE: u64 = 1024 * 1024 * 1024;
     struct Lock(File);
@@ -76,12 +77,15 @@ pub(crate) mod unix {
     /// `source` is already security-scoped by the host. Only the private copy
     /// is mutated; source and its security scope must remain stable throughout.
     pub(crate) fn import(root: &Path, source: &Path, page: &str, base: i64, metadata: Value, expected: Vec<BlockInput>) -> Result<Value> {
-        import_with_hooks(root,source,page,base,metadata,expected,&uuid::Uuid::new_v4().to_string(),||Ok(()),||Ok(()),||Ok(()))
+        import_with_hooks(root,source,page,base,metadata,expected,&uuid::Uuid::new_v4().to_string(),None,||Ok(()),||Ok(()),||Ok(()))
     }
     pub(crate) fn import_idempotent(root: &Path, source: &Path, page: &str, base: i64, metadata: Value, expected: Vec<BlockInput>, operation: &str) -> Result<Value> {
-        import_with_hooks(root,source,page,base,metadata,expected,operation,||Ok(()),||Ok(()),||Ok(()))
+        import_with_hooks(root,source,page,base,metadata,expected,operation,None,||Ok(()),||Ok(()),||Ok(()))
     }
-    fn import_with_hooks(root: &Path, source: &Path, page: &str, base: i64, metadata: Value, expected: Vec<BlockInput>, operation: &str, after_create: impl FnOnce() -> Result<()>, after_intent: impl FnOnce() -> Result<()>, after_file_create: impl FnOnce() -> Result<()>) -> Result<Value> {
+    pub(crate) fn import_cancellable(root: &Path, source: &Path, page: &str, base: i64, metadata: Value, expected: Vec<BlockInput>, operation: &str, cancel: &Cancellation) -> Result<Value> {
+        import_with_hooks(root,source,page,base,metadata,expected,operation,Some(cancel),||Ok(()),||Ok(()),||Ok(()))
+    }
+    fn import_with_hooks(root: &Path, source: &Path, page: &str, base: i64, metadata: Value, expected: Vec<BlockInput>, operation: &str, cancel: Option<&Cancellation>, after_create: impl FnOnce() -> Result<()>, after_intent: impl FnOnce() -> Result<()>, after_file_create: impl FnOnce() -> Result<()>) -> Result<Value> {
         let operation=uuid::Uuid::parse_str(operation)?.simple().to_string();
         let _lock=lock(root).context("validate local copy directory")?; let mut c=db(root).context("open local copy database")?; recover_locked(&mut c,root).context("recover previous import")?;
         let parent=source.parent().ok_or_else(||anyhow::anyhow!("invalid source"))?;
@@ -89,15 +93,23 @@ pub(crate) mod unix {
         let mut input=crate::attachment_open::open_confined(parent,Path::new(name)).context("open scoped source file")?;
         let before=input.metadata()?;
         if before.nlink()!=1 || before.len()>MAX_FILE { bail!("unsupported source") }
-        let request=json!({"page":page,"base":base,"metadata":metadata,"expected":expected,"source":source.to_string_lossy(),"device":before.dev(),"inode":before.ino(),"size":before.len(),"mtime":before.mtime(),"mtime_ns":before.mtime_nsec(),"ctime":before.ctime(),"ctime_ns":before.ctime_nsec()}).to_string();
+        let request=json!({"page":page,"base":base,"metadata":metadata,"expected":expected,"source_name":name.to_string_lossy(),"device":before.dev(),"inode":before.ino(),"size":before.len(),"mtime":before.mtime(),"mtime_ns":before.mtime_nsec(),"ctime":before.ctime(),"ctime_ns":before.ctime_nsec()}).to_string();
         let read_tx=c.unchecked_transaction()?;
         crate::require_personal(&read_tx,page)?;
         let prior: Option<(String,String)>=read_tx.query_row("SELECT request,result FROM native_gallery_import_completed WHERE id=?1",[&operation],|r|Ok((r.get(0)?,r.get(1)?))).optional()?;
         read_tx.commit()?;
         if let Some((prior_request,result))=prior {
-            if prior_request!=request { bail!("conflict: import operation reused with different input") }
+            let mut old_request: Value=serde_json::from_str(&prior_request)?;
+            if let Some(object)=old_request.as_object_mut() {
+                if object.get("source").and_then(Value::as_str)==Some(source.to_string_lossy().as_ref()) {
+                    object.remove("source");
+                    object.insert("source_name".into(),json!(name.to_string_lossy()));
+                }
+            }
+            if old_request!=serde_json::from_str::<Value>(&request)? { bail!("conflict: import operation reused with different input") }
             return Ok(serde_json::from_str(&result)?);
         }
+        if let Some(cancel)=cancel { cancel.check()?; }
         let filename=crate::store::clean_file_name(&name.to_string_lossy());
         let ext=Path::new(&filename).extension().and_then(|s|s.to_str()).unwrap_or("").to_ascii_lowercase();
         if !["png","jpg","jpeg","gif","webp","avif","bmp","svg","heic","mp4","webm","mov","m4v","mkv","mp3","wav","m4a","ogg","flac"].contains(&ext.as_str()) { bail!("unsupported gallery file") }
@@ -125,7 +137,7 @@ pub(crate) mod unix {
             after_file_create()?;
             c.execute("UPDATE native_gallery_import_intents_v2 SET device=?2,inode=?3 WHERE id=?1",params![id,created.dev() as i64,created.ino() as i64])?;
             let mut copied=0_u64; let mut buffer=[0_u8;64*1024];
-            loop { let count=input.read(&mut buffer)?; if count==0 { break } copied+=count as u64; if copied>before.len() { bail!("source grew") } output.write_all(&buffer[..count])?; }
+            loop { if let Some(cancel)=cancel { cancel.check()?; } let count=input.read(&mut buffer)?; if count==0 { break } copied+=count as u64; if copied>before.len() { bail!("source grew") } output.write_all(&buffer[..count])?; }
             output.sync_all()?; item_handle.sync_all()?;
             let after=input.metadata()?;
             if copied!=before.len() || before.dev()!=after.dev() || before.ino()!=after.ino() || before.len()!=after.len() || before.mtime()!=after.mtime() || before.mtime_nsec()!=after.mtime_nsec() || before.ctime()!=after.ctime() || before.ctime_nsec()!=after.ctime_nsec() || after.nlink()!=1 { bail!("source changed during copy") }
@@ -141,6 +153,7 @@ pub(crate) mod unix {
             next.push(BlockInput{id:bid.clone(),content:json!({"type":"galleryItem","attrs":{"bid":bid,"attachmentId":id,"name":filename,"mime":mime,"size":copied,"kind":kind,"caption":""}})});
             let result=crate::resource_ops::save_gallery_transaction(&tx,page,base,metadata.clone(),metadata,expected,next)?;
             tx.execute("INSERT INTO native_gallery_import_completed(id,request,result) VALUES(?1,?2,?3)",params![operation,request,result.to_string()])?;
+            if let Some(cancel)=cancel { cancel.commit()?; }
             tx.commit()?; Ok(result)
         })();
         match work {
@@ -156,6 +169,27 @@ pub(crate) mod unix {
     mod tests {
         use super::*;
         use std::os::unix::fs::{PermissionsExt, DirBuilderExt};
+        #[test]
+        fn cancellation_rolls_back_and_same_operation_can_retry() {
+            let root=std::env::temp_dir().canonicalize().unwrap().join(format!("gallery-cancel-{}",uuid::Uuid::new_v4()));
+            std::fs::DirBuilder::new().mode(0o700).create(&root).unwrap();
+            std::fs::copy(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/worlds-v11.db"),root.join("worlds.db")).unwrap();
+            let c=Connection::open(root.join("worlds.db")).unwrap();
+            c.execute("INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('gallery-test','Gallery','gallery','{}',1,1)",[]).unwrap(); drop(c);
+            let source=root.join("sample.mp3"); std::fs::write(&source,b"synthetic file").unwrap();
+            let old=crate::resource_ops::read_resource(&root.join("worlds.db"),"gallery-test").unwrap();
+            let expected: Vec<BlockInput>=old["blocks"].as_array().unwrap().iter().map(|v|BlockInput{id:v["id"].as_str().unwrap().into(),content:v["content"].clone()}).collect();
+            let op=uuid::Uuid::new_v4().to_string(); let token=Cancellation::new();
+            let failed=import_with_hooks(&root,&source,"gallery-test",old["revision"].as_i64().unwrap(),old["metadata"].clone(),expected.clone(),&op,Some(&token),||Ok(()),||Ok(()),||{token.cancel();Ok(())});
+            assert!(failed.unwrap_err().to_string().starts_with("cancelled:"));
+            let c=Connection::open(root.join("worlds.db")).unwrap();
+            assert_eq!(c.query_row("SELECT count(*) FROM attachments WHERE page_id='gallery-test'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+            assert_eq!(c.query_row("SELECT count(*) FROM native_gallery_import_intents_v2",[],|r|r.get::<_,i64>(0)).unwrap(),0); drop(c);
+            let retry=import_cancellable(&root,&source,"gallery-test",old["revision"].as_i64().unwrap(),old["metadata"].clone(),expected.clone(),&op,&Cancellation::new()).unwrap();
+            assert_eq!(retry,import_cancellable(&root,&source,"gallery-test",old["revision"].as_i64().unwrap(),old["metadata"].clone(),expected,&op,&Cancellation::new()).unwrap());
+            assert_eq!(std::fs::read(&source).unwrap(),b"synthetic file");
+            std::fs::remove_dir_all(root).unwrap();
+        }
         #[test]
         fn ffi_import_retries_atomically_without_duplicate_attachment() {
             let root=std::env::temp_dir().canonicalize().unwrap().join(format!("worlds-import-{}",uuid::Uuid::new_v4()));
@@ -185,7 +219,7 @@ pub(crate) mod unix {
             std::fs::create_dir(root.join("attachments")).unwrap();
             std::fs::copy(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/worlds-v11.db"),root.join("worlds.db")).unwrap();
             let source=root.join("source.mp3"); std::fs::write(&source,b"original").unwrap();
-            let result=import_with_hooks(&root,&source,"fixture-page",0,json!({}),vec![],&uuid::Uuid::new_v4().to_string(),||anyhow::bail!("interrupted before intent"),||Ok(()),||Ok(()));
+            let result=import_with_hooks(&root,&source,"fixture-page",0,json!({}),vec![],&uuid::Uuid::new_v4().to_string(),None,||anyhow::bail!("interrupted before intent"),||Ok(()),||Ok(()));
             assert!(result.is_err());
             let db=Connection::open(root.join("worlds.db")).unwrap();
             assert_eq!(db.query_row("SELECT count(*) FROM native_gallery_import_intents_v2",[],|r|r.get::<_,i64>(0)).unwrap(),0);
@@ -196,7 +230,7 @@ pub(crate) mod unix {
             let orphan=entries[0].as_ref().unwrap().path();
             assert!(orphan.is_dir()); assert_eq!(std::fs::read_dir(&orphan).unwrap().count(),0);
             recover(&root).unwrap(); assert!(orphan.exists());
-            let result=import_with_hooks(&root,&source,"fixture-page",0,json!({}),vec![],&uuid::Uuid::new_v4().to_string(),||Ok(()),||anyhow::bail!("interrupted after intent"),||Ok(()));
+            let result=import_with_hooks(&root,&source,"fixture-page",0,json!({}),vec![],&uuid::Uuid::new_v4().to_string(),None,||Ok(()),||anyhow::bail!("interrupted after intent"),||Ok(()));
             assert!(result.is_err());
             let db=Connection::open(root.join("worlds.db")).unwrap();
             assert_eq!(db.query_row("SELECT count(*) FROM native_gallery_import_intents_v2",[],|r|r.get::<_,i64>(0)).unwrap(),1); drop(db);
@@ -214,7 +248,7 @@ pub(crate) mod unix {
             db.execute("INSERT INTO native_gallery_import_intents_v2(id,rel_path,dir_device,dir_inode) VALUES(?1,?2,?3,?4)",params![id,rel,dir_meta.dev() as i64,dir_meta.ino() as i64]).unwrap(); drop(db);
             std::fs::write(root.join("attachments").join(&rel),b"partial").unwrap();
             recover(&root).unwrap(); assert!(!dir.exists()); assert!(orphan.exists());
-            let result=import_with_hooks(&root,&source,"fixture-page",0,json!({}),vec![],&uuid::Uuid::new_v4().to_string(),||Ok(()),||Ok(()),||anyhow::bail!("interrupted after file creation"));
+            let result=import_with_hooks(&root,&source,"fixture-page",0,json!({}),vec![],&uuid::Uuid::new_v4().to_string(),None,||Ok(()),||Ok(()),||anyhow::bail!("interrupted after file creation"));
             assert!(result.is_err());
             assert_eq!(std::fs::read_dir(root.join("attachments/native-import")).unwrap().count(),1);
             assert_eq!(std::fs::read(source).unwrap(),b"original");

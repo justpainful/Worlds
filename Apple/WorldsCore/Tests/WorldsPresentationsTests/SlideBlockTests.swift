@@ -7,6 +7,19 @@ final class SlideBlockTests: XCTestCase {
     private let fixture = #"""
     {"id":"slide1","futureBlock":{"keep":true},"content":{"type":"slide","attrs":{"bid":"slide1","layout":"two-columns","background":{"color":"#16161a","attachmentId":null,"future":42},"notes":"Presenter note","elements":[{"id":"text1","type":"text","x":90,"y":70,"w":1100,"h":100,"rot":2,"opacity":1,"text":"مرحبا","style":{"fontSize":54,"fontWeight":700,"color":"#ffffff","align":"left","unknownFontTrait":true},"futureElement":42},{"id":"shape1","type":"shape","shape":"ellipse","x":40,"y":150,"w":100,"h":100,"fill":"#d2a46e"},{"id":"media1","type":"video","attachmentId":"attachment-id","x":200,"y":150,"w":400,"h":300,"fit":"contain"},{"id":"future1","type":"future-media","payload":{"keep":[1,2,3]}}],"custom":{"nested":"value"}}}}
     """#
+    func testDuplicateRekeysElementsAndKeepsMediaButRejectsUnknownFields() throws {
+        let raw = ##"{"id":"one","content":{"type":"slide","attrs":{"bid":"one","layout":"blank","background":{"color":"#16161a","attachmentId":"media"},"notes":"note","elements":[{"id":"image","type":"image","x":0,"y":0,"w":20,"h":20,"attachmentId":"media"}]}}}"##
+        let original = try SlideBlock(json: Data(raw.utf8))
+        let copy = try original.duplicated(id: "two")
+        XCTAssertEqual(copy.attributes["background"], original.attributes["background"])
+        XCTAssertNotEqual(copy.elements.first?.id, original.elements.first?.id)
+        XCTAssertTrue(String(decoding: try copy.json(), as: UTF8.self).contains("media"))
+        let unknown = #"{"id":"one","content":{"type":"slide","attrs":{"bid":"one","elements":[{"id":"image","type":"image","futureRef":"image"}]}}}"#
+        XCTAssertThrowsError(try SlideBlock(json: Data(unknown.utf8)).duplicated(id: "two"))
+        let nested = #"{"id":"one","content":{"type":"slide","attrs":{"bid":"one","elements":[{"id":"text","type":"text","text":{"ref":"text"}}]}}}"#
+        XCTAssertThrowsError(try SlideBlock(json: Data(nested.utf8)).duplicated(id: "two"))
+    }
+
     func testRoundTripPreservesUnknownContent() throws {
         let source = try JSONDecoder().decode(JSONValue.self, from: Data(fixture.utf8))
         let slide = try SlideBlock(source: source)

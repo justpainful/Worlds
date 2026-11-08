@@ -8,6 +8,25 @@ import WorldsDrawingStrokeSession
 @testable import WorldsDrawingPencilInput
 
 final class PencilStrokeIntegrationTests: XCTestCase {
+    @MainActor func testUnsubmittedInputCanBeExplicitlyDiscarded() async throws {
+        let fixture = try XCTUnwrap(Bundle.module.url(forResource: "worlds-v11", withExtension: "db"))
+        let root = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let path = root.appendingPathComponent("worlds.db"); try FileManager.default.copyItem(at: fixture, to: path)
+        let writer = try PersonalDrawingWriter(database: path.resolvingSymlinksInPath())
+        let session = try PersonalStrokeSession(writer: writer, pageID: "fixture-page")
+        let controller = PencilStrokeController(session: session)
+        var buffer = PencilStrokeBuffer()
+        try buffer.append(PencilRawSample(x: 10, y: 10, force: 1, maximumForce: 2, altitude: .pi / 2, azimuth: 0,
+            timeMilliseconds: 1, isPencil: true, hasPendingEstimates: true))
+        let result = await controller.save(buffer, brush: ToolBrush(), tool: .brush, actor: "artist", revision: 0,
+            timestamp: 1, layerID: "layer", frameID: "frame", seed: 1)
+        XCTAssertNil(result); XCTAssertTrue(controller.hasUnresolvedInput); XCTAssertFalse(controller.canRetryPending)
+        XCTAssertNotNil(controller.recoverInput())
+        XCTAssertTrue(controller.discardUnsubmitted()); XCTAssertFalse(controller.hasUnresolvedInput)
+        XCTAssertNil(controller.recoverInput()); XCTAssertFalse(controller.discardUnsubmitted())
+    }
     @MainActor func testCapturedInputPersistsAndReopens() async throws {
         let fixture = try XCTUnwrap(Bundle.module.url(forResource: "worlds-v11", withExtension: "db"))
         let path = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent("pencil-\(UUID().uuidString).db")

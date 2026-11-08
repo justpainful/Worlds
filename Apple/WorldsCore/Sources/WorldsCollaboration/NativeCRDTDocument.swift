@@ -42,6 +42,14 @@ public final class NativeCRDTDocument: @unchecked Sendable {
         guard worlds_doc_client_id(handle, &id) == 0 else { throw CRDTError.poisoned }
         return id
     }
+    /// Returns JSON only for supported paragraphs and basic formatting marks.
+    public func plainProjection() throws -> Data {
+        lock.lock(); defer { lock.unlock() }
+        var buffer = WorldsBuffer(data: nil, len: 0)
+        guard worlds_doc_plain_projection(handle, &buffer) == 0, let bytes = buffer.data else { throw CRDTError.invalidUpdate }
+        defer { worlds_buffer_free(buffer) }
+        return Data(bytes: bytes, count: buffer.len)
+    }
     public func apply(_ update: Data) throws {
         lock.lock(); defer { lock.unlock() }
         let code = update.withUnsafeBytes { bytes in

@@ -12,7 +12,8 @@ final class PresentationHarnessUITests: XCTestCase {
         field.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
         field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 40))
         #endif
-        XCTAssertEqual(field.value as? String, "")
+        let clearedValue = field.value as? String ?? ""
+        XCTAssertTrue(clearedValue.isEmpty || (field.placeholderValue == "Slide text" && clearedValue == field.placeholderValue), "Expected an empty field or its placeholder, got: \(clearedValue)")
         field.typeText("Edited slide")
         app.buttons["Apply text"].tap()
         let slideB = app.buttons["slide.slide-b"]

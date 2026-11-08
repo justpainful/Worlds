@@ -27,6 +27,20 @@ final class PresentationSessionTests: XCTestCase {
         session.undo(); XCTAssertEqual(session.slides.count, 2)
         session.redo(); XCTAssertEqual(session.slides.count, 1)
     }
+    func testBlankDuplicateReorderAndUndo() throws {
+        let original = try SlideBlock.blank(id: "original")
+        let copy = try original.duplicated(id: "copy")
+        XCTAssertEqual(copy.layout, "blank")
+        XCTAssertEqual(copy.attributes["bid"], .string("copy"))
+        var session = try PresentationSession(slides: [original])
+        try session.insert(copy, at: 1)
+        try session.move(from: 1, to: 0)
+        XCTAssertEqual(session.slides.map(\.id), ["copy", "original"])
+        session.undo(); XCTAssertEqual(session.slides.map(\.id), ["original", "copy"])
+        session.undo(); XCTAssertEqual(session.slides.map(\.id), ["original"])
+        session.redo(); XCTAssertEqual(session.slides.map(\.id), ["original", "copy"])
+        XCTAssertThrowsError(try slide("opaque").duplicated())
+    }
     func testRejectsInvalidAndPreservesSession() throws {
         let one = try slide("one")
         var session = try PresentationSession(slides: [one])

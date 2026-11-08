@@ -29,6 +29,12 @@ final class LocalGalleryImporterTests: XCTestCase {
         guard case .object(let snapshot) = value, case .integer(let revision)? = snapshot["revision"], let metadata = snapshot["metadata"], let blocks = snapshot["blocks"] else { return XCTFail("Invalid gallery fixture") }
         let expected = try JSONDecoder().decode([NativeBlockInput].self, from: JSONEncoder().encode(blocks))
         let importer = try LocalGalleryImporter(copy: copy), operation = UUID()
+        let cancelled = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            return try await importer.importFile(source: media, galleryID: "gallery-test", base: revision, metadata: metadata, expected: expected, operationID: operation)
+        }
+        do { _ = try await cancelled.value; XCTFail("Cancelled import must not start") }
+        catch is CancellationError { } catch { XCTFail("Unexpected cancellation error: \(error)") }
         let first: JSONValue
         do { first = try await importer.importFile(source: media, galleryID: "gallery-test", base: revision, metadata: metadata, expected: expected, operationID: operation) }
         catch { return XCTFail("Initial import failed: \(error)") }

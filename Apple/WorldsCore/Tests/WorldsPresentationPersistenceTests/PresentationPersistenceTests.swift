@@ -54,6 +54,23 @@ final class PresentationPersistenceTests: XCTestCase {
         XCTAssertEqual(restored.elements.last?.source, slide.elements.last?.source)
         XCTAssertEqual(restored.elements.first?.source, slide.elements.first?.source)
     }
+    func testInsertDuplicateAndReorderRoundTripsWithoutDroppingOpaqueBlocks() async throws {
+        let path = try database()
+        let store = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        let original = try XCTUnwrap(store.initialSlides.first)
+        let blank = try SlideBlock.blank(id: "new-slide")
+        let duplicate = try blank.duplicated(id: "copy-slide")
+        try await store.save(slides: [duplicate, original, blank])
+        let reopened = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        XCTAssertEqual(reopened.initialSlides.map(\.id), ["copy-slide", "slide", "new-slide"])
+        XCTAssertEqual(reopened.initialSlides[1], original)
+        var db: OpaquePointer?; XCTAssertEqual(sqlite3_open_v2(path.path, &db, SQLITE_OPEN_READONLY, nil), SQLITE_OK)
+        let handle = try XCTUnwrap(db); defer { sqlite3_close(handle) }
+        var statement: OpaquePointer?
+        XCTAssertEqual(sqlite3_prepare_v2(handle, "SELECT count(*) FROM blocks WHERE id='opaque' AND json_extract(content,'$.attrs.keep')=1", -1, &statement, nil), SQLITE_OK)
+        let query = try XCTUnwrap(statement); defer { sqlite3_finalize(query) }
+        XCTAssertEqual(sqlite3_step(query), SQLITE_ROW); XCTAssertEqual(sqlite3_column_int(query, 0), 1)
+    }
     func testExplicitSlideDeletionKeepsMediaAndReopens() async throws {
         let path = try database()
         try execute(path, #"INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('image','deck','image','a.png','image/png',4,'missing/a.png',1); UPDATE blocks SET content='{"type":"slide","attrs":{"bid":"slide","elements":[{"id":"i","type":"image","attachmentId":"image"}]}}' WHERE id='slide'; INSERT INTO blocks(id,page_id,type,sort_key,content,created_at,updated_at) VALUES('slide2','deck','slide',2,'{"type":"slide","attrs":{"bid":"slide2","elements":[{"id":"j","type":"image","attachmentId":"image"}]}}',1,1);"#)

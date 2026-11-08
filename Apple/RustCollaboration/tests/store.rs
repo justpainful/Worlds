@@ -315,6 +315,41 @@ fn editor_transaction_rejects_stale_and_rolls_back_outbox_failure() {
 }
 
 #[test]
+fn delete_transaction_preserves_outbox_on_failure_and_rejects_stale_or_viewer() {
+    let path=fixture(); let base=include_bytes!("fixtures/plain-editor.bin");
+    let mut store=SyncStore::open(&path,"p","u","w").unwrap();
+    store.append(0,base,false).unwrap();
+    let db=Connection::open(&path).unwrap();
+    db.execute_batch("CREATE TRIGGER fail_delete BEFORE INSERT ON sync_outbox BEGIN SELECT RAISE(ABORT,'failure'); END;").unwrap();
+    assert!(store.delete_plain_checked(base,0,"block-1","Hello 🌍",6,2).is_err());
+    assert_eq!(store.load(0).unwrap().len(),1); assert_eq!(store.max_pending(0).unwrap(),None);
+    db.execute_batch("DROP TRIGGER fail_delete").unwrap();
+    assert!(!store.delete_plain_checked(base,0,"block-1","Hello 🌍",6,2).unwrap().is_empty());
+    assert!(matches!(store.delete_plain_checked(base,0,"block-1","Hello 🌍",0,1),Err(StoreError::Conflict)));
+    drop(store);
+    db.execute("UPDATE account_workspaces SET default_level='view' WHERE id='w'",[]).unwrap();
+    let mut viewer=SyncStore::open(&path,"p","u","w").unwrap();
+    assert!(matches!(viewer.delete_plain_checked(base,0,"block-1","Hello 🌍",0,1),Err(StoreError::Denied)));
+    drop(viewer);drop(db);std::fs::remove_file(path).unwrap();
+}
+#[test]
+fn formatting_transaction_is_durable_and_refuses_stale_or_readonly() {
+    let path=fixture(); let base=include_bytes!("fixtures/rich-editor.bin");
+    let mut store=SyncStore::open(&path,"p","u","w").unwrap(); store.append(0,base,false).unwrap();
+    let db=Connection::open(&path).unwrap();
+    db.execute_batch("CREATE TRIGGER fail_format BEFORE INSERT ON sync_outbox BEGIN SELECT RAISE(ABORT,'failure'); END;").unwrap();
+    assert!(store.format_plain_checked(base,0,"block-1","Yjs rich text",4,4,"italic",true).is_err());
+    assert_eq!(store.load(0).unwrap().len(),1); assert_eq!(store.max_pending(0).unwrap(),None);
+    db.execute_batch("DROP TRIGGER fail_format").unwrap();
+    assert!(!store.format_plain_checked(base,0,"block-1","Yjs rich text",4,4,"italic",true).unwrap().is_empty());
+    assert!(matches!(store.format_plain_checked(base,0,"block-1","Yjs rich text",0,1,"bold",false),Err(StoreError::Conflict)));
+    drop(store); db.execute("UPDATE account_workspaces SET default_level='view' WHERE id='w'",[]).unwrap();
+    let mut viewer=SyncStore::open(&path,"p","u","w").unwrap();
+    assert!(matches!(viewer.format_plain_checked(base,0,"block-1","Yjs rich text",0,1,"bold",false),Err(StoreError::Denied)));
+    drop(viewer);drop(db);std::fs::remove_file(path).unwrap();
+}
+
+#[test]
 fn editor_ffi_commits_and_reports_stale_base() {
     use std::ffi::CString;
     use worlds_collaboration::*;

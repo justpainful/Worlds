@@ -97,6 +97,15 @@ impl SyncStore {
     /// Rebuild and compare the complete CRDT state under an immediate SQLite transaction,
     /// then append both log and outbox atomically. The service still enforces live rights.
     pub fn insert_plain_checked(&mut self, base: &[u8], block_index: u32, block_id: &str, expected: &str, offset: u32, insert: &str) -> Result<Vec<u8>> {
+        self.edit_plain_checked(base,block_index,block_id,expected,offset,Some(insert),0,None)
+    }
+    pub fn delete_plain_checked(&mut self, base: &[u8], block_index: u32, block_id: &str, expected: &str, offset: u32, length: u32) -> Result<Vec<u8>> {
+        self.edit_plain_checked(base,block_index,block_id,expected,offset,None,length,None)
+    }
+    pub fn format_plain_checked(&mut self, base: &[u8], block_index: u32, block_id: &str, expected: &str, offset: u32, length: u32, mark: &str, enabled: bool) -> Result<Vec<u8>> {
+        self.edit_plain_checked(base,block_index,block_id,expected,offset,None,length,Some((mark,enabled)))
+    }
+    fn edit_plain_checked(&mut self, base: &[u8], block_index: u32, block_id: &str, expected: &str, offset: u32, insert: Option<&str>, length: u32, format: Option<(&str,bool)>) -> Result<Vec<u8>> {
         use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
         use yrs::updates::decoder::Decode;
         if base.len() > 64 * 1024 * 1024 { return Err(StoreError::Invalid); }
@@ -112,7 +121,12 @@ impl SyncStore {
         proposed.transact_mut().apply_update(Update::decode_v1(base).map_err(|_| StoreError::Invalid)?).map_err(|_| StoreError::Invalid)?;
         let canonical = |doc: &Doc| doc.transact().encode_state_as_update_v1(&StateVector::default());
         if canonical(&current) != canonical(&proposed) { return Err(StoreError::Conflict); }
-        let update = crate::editor::prepare_plain_insert(base, block_index, block_id, expected, offset, insert).map_err(|_| StoreError::Invalid)?;
+        let update = match (insert,format) {
+            (Some(value),None) => crate::editor::prepare_plain_insert(base,block_index,block_id,expected,offset,value),
+            (None,Some((mark,enabled))) => crate::editor::prepare_basic_mark(base,block_index,block_id,expected,offset,length,mark,enabled),
+            (None,None) => crate::editor::prepare_plain_delete(base,block_index,block_id,expected,offset,length),
+            _ => return Err(StoreError::Invalid),
+        }.map_err(|_| StoreError::Invalid)?;
         let t = now();
         tx.execute("INSERT OR IGNORE INTO sync_docs(page_id,channel,created_at,updated_at) VALUES(?1,0,?2,?2)", params![self.page,t])?;
         tx.execute("INSERT INTO sync_updates(page_id,channel,data,origin,created_at) VALUES(?1,0,?2,'local',?3)", params![self.page,update,t])?;

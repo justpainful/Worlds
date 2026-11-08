@@ -98,6 +98,13 @@ public struct IdentityAccountSnapshot: Sendable {
     public let profile: IdentityAccountProfile
     public let workspaces: [IdentityWorkspace]
 }
+public struct IdentityPasskey: Decodable, Sendable {
+    public let id: String
+    public let name: String
+    public let synced: Bool
+    public let createdAt: Int64
+    public let lastUsedAt: Int64?
+}
 /// The wrapped client is private, preventing accidental bypass by this owner.
 /// The host must create one coordinator per scope and use the same lock directory
 /// for every process that can access the corresponding Keychain item.
@@ -108,6 +115,8 @@ public actor IdentitySessionCoordinator {
     private var locallySignedOut = false
     private var changingSession = false
     private var activeRequests = 0
+    private var sessionGeneration: UInt64 = 0
+    private var pendingPasskey: (challenge: PasskeyChallenge, generation: UInt64)?
     public let scope: String
 
     public init(baseURL: URL, lockDirectory: URL,
@@ -129,6 +138,7 @@ public actor IdentitySessionCoordinator {
     public func verifyEmail(challengeID: String, code: String, displayName: String? = nil,
                             deviceName: String, platform: String) async throws -> IdentitySessionSummary {
         guard !changingSession, activeRequests == 0 else { throw IdentityContinuityError.busy }
+        sessionGeneration &+= 1; pendingPasskey = nil
         changingSession = true; defer { changingSession = false }
         let tokens = try await client.verifyEmail(challengeID: challengeID, code: code, displayName: displayName, deviceName: deviceName, platform: platform)
         locallySignedOut = false
@@ -166,10 +176,36 @@ public actor IdentitySessionCoordinator {
         guard try await client.currentUserID() == expected else { throw IdentityContinuityError.accountMismatch }
         return IdentityAccountSnapshot(profile: profile, workspaces: workspaces)
     }
+    /// Read account passkeys from the authenticated service. This does not
+    /// inspect credentials stored by the platform authenticator.
+    public func passkeys() async throws -> [IdentityPasskey] {
+        guard !locallySignedOut, !changingSession else { throw IdentityContinuityError.signedOut }
+        activeRequests += 1; defer { activeRequests -= 1 }
+        let data = try await client.authenticatedRequest(path: "/me/passkeys")
+        let items = try JSONDecoder().decode([IdentityPasskey].self, from: data)
+        guard items.count <= 10_000, Set(items.map(\.id)).count == items.count,
+              items.allSatisfy({ Self.validCredentialID($0.id) }) else { throw IdentityError.invalidResponse }
+        return items
+    }
+    /// Caller must obtain explicit user intent before removing a credential.
+    public func removePasskey(id: String) async throws {
+        guard Self.validCredentialID(id) else { throw IdentityError.invalidPath }
+        guard !locallySignedOut, !changingSession else { throw IdentityContinuityError.signedOut }
+        activeRequests += 1; defer { activeRequests -= 1 }
+        let data = try await client.authenticatedRequest(path: "/me/passkeys/\(id)", method: "DELETE")
+        struct Result: Decodable { let ok: Bool }
+        guard try JSONDecoder().decode(Result.self, from: data).ok else { throw IdentityError.invalidResponse }
+    }
+    private static func validCredentialID(_ id: String) -> Bool {
+        !id.isEmpty && id.utf8.count <= 1024 && id.utf8.allSatisfy {
+            (65...90).contains($0) || (97...122).contains($0) || (48...57).contains($0) || $0 == 45 || $0 == 95
+        }
+    }
     /// Local credentials are erased even when remote revocation fails.
     /// `localOnly` means the server session may still exist until it expires.
     public func signOut() async throws -> IdentitySignOutResult {
         guard !changingSession, activeRequests == 0 else { throw IdentityContinuityError.busy }
+        sessionGeneration &+= 1; pendingPasskey = nil
         changingSession = true; locallySignedOut = true
         defer { changingSession = false }
         let result: IdentitySignOutResult
@@ -179,11 +215,26 @@ public actor IdentitySessionCoordinator {
         return result
     }
     public func passkeyChallenge(expectedRelyingPartyID: String) async throws -> PasskeyChallenge {
-        try await client.passkeyChallenge(expectedRelyingPartyID: expectedRelyingPartyID)
+        guard !changingSession else { throw IdentityContinuityError.busy }
+        try Task.checkCancellation()
+        sessionGeneration &+= 1; pendingPasskey = nil
+        let generation = sessionGeneration
+        let challenge = try await client.passkeyChallenge(expectedRelyingPartyID: expectedRelyingPartyID)
+        try Task.checkCancellation()
+        guard !changingSession, generation == sessionGeneration else { throw IdentityContinuityError.signedOut }
+        pendingPasskey = (challenge, generation)
+        return challenge
     }
     public func completePasskey(challenge: PasskeyChallenge, assertion: PasskeyAssertion,
                                 deviceName: String, platform: String) async throws -> IdentitySessionSummary {
         guard !changingSession, activeRequests == 0 else { throw IdentityContinuityError.busy }
+        try Task.checkCancellation()
+        guard let pendingPasskey, pendingPasskey.challenge.challengeID == challenge.challengeID,
+              pendingPasskey.challenge.relyingPartyID == challenge.relyingPartyID,
+              pendingPasskey.challenge.challenge == challenge.challenge,
+              pendingPasskey.generation == sessionGeneration else { throw IdentityContinuityError.signedOut }
+        self.pendingPasskey = nil
+        sessionGeneration &+= 1
         changingSession = true; defer { changingSession = false }
         let tokens = try await client.completePasskey(challenge: challenge, assertion: assertion, deviceName: deviceName, platform: platform)
         locallySignedOut = false

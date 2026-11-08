@@ -23,6 +23,30 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         XCTAssertTrue(slideB.waitForExistence(timeout: 20)); XCTAssertFalse(slideA.exists); XCTAssertFalse(delete.isEnabled)
         let image = XCTAttachment(screenshot: app.screenshot()); image.name = "presentation-slide-deleted"; image.lifetime = .keepAlways; add(image)
     }
+    @MainActor func testAddDuplicateReorderUndoAndReopen() {
+        let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-presentation-fixture"]; app.launch()
+        let page = app.descendants(matching: .any)["page.deck-test"].firstMatch
+        XCTAssertTrue(page.waitForExistence(timeout: 30)); page.tap()
+        let edit = app.buttons["edit-local-presentation"]
+        XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
+        let count = app.staticTexts["presentation-slide-count"]
+        XCTAssertTrue(count.waitForExistence(timeout: 20)); XCTAssertEqual(count.label, "2 slides")
+        let add = app.buttons["presentation-add-blank"]
+        if !add.isHittable { app.swipeUp() }
+        XCTAssertTrue(add.waitForExistence(timeout: 10)); add.tap()
+        XCTAssertEqual(count.label, "3 slides")
+        let duplicate = app.buttons["presentation-duplicate-slide"]
+        if !duplicate.isHittable { app.swipeUp() }; duplicate.tap()
+        XCTAssertEqual(count.label, "4 slides")
+        app.buttons["presentation-move-down"].tap()
+        app.buttons["Undo"].tap(); app.buttons["Redo"].tap()
+        app.buttons["Save"].tap()
+        XCTAssertTrue(app.staticTexts["presentation-edit-saved"].waitForExistence(timeout: 20))
+        XCTAssertTrue(app.staticTexts["presentation-media-record-retained"].waitForExistence(timeout: 10))
+        app.buttons["Close"].tap(); XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
+        XCTAssertTrue(count.waitForExistence(timeout: 20)); XCTAssertEqual(count.label, "4 slides")
+        let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = "presentation-created-and-reopened"; shot.lifetime = .keepAlways; add(shot)
+    }
     @MainActor func testEditReorderSaveAndReopen() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-presentation-fixture"]; app.launch()
         let page = app.descendants(matching: .any)["page.deck-test"].firstMatch

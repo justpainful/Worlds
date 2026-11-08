@@ -143,6 +143,18 @@ private actor FixtureSocket: CollaborationSocket {
 }
 
 extension WorldsCollaborationTests {
+    func testPlainProjectionUsesYjsFixtureAndRejectsRichText() throws {
+        let plain = try XCTUnwrap(Data(base64Encoded: "AQTpBwAHAQdkZWZhdWx0AwlwYXJhZ3JhcGgoAOkHAANiaWQBdwdibG9jay0xBwDpBwAGBADpBwIKSGVsbG8g8J+MjQA="))
+        let doc = try NativeCRDTDocument(); try doc.apply(plain)
+        let tree = try XCTUnwrap(try JSONSerialization.jsonObject(with: doc.plainProjection()) as? [String: Any])
+        let blocks = try XCTUnwrap(tree["content"] as? [[String: Any]])
+        let children = try XCTUnwrap(blocks.first?["content"] as? [[String: Any]])
+        XCTAssertEqual(children.first?["text"] as? String, "Hello 🌍")
+        let rich = try NativeCRDTDocument()
+        try rich.apply(try XCTUnwrap(Data(base64Encoded: "AQbqBwAHAQdkZWZhdWx0AwlwYXJhZ3JhcGgoAOoHAANiaWQBdwdibG9jay0xBwDqBwAGBgDqBwIEYm9sZAR0cnVlhOoHAw1ZanMgcmljaCB0ZXh0huoHEARib2xkBG51bGwA")))
+        let richTree = try XCTUnwrap(try JSONSerialization.jsonObject(with: rich.plainProjection()) as? [String: Any])
+        XCTAssertNotNil(richTree["content"])
+    }
     func testRejectsAmbiguousServiceBasePathsBeforeConnecting() throws {
         let store = FixtureStore()
         for value in ["https://example.invalid/a/../private", "https://example.invalid/a/%2e%2e/private", "https://example.invalid/a%2fb", "https://example.invalid/a//b"] {
@@ -371,6 +383,28 @@ extension WorldsCollaborationTests {
 }
 
 extension WorldsCollaborationTests {
+    func testCheckedDeleteAndFormatPersistThroughNativeStore() async throws {
+        let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-editor-v11", withExtension: "db"))
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-collab-edits-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let plain = try XCTUnwrap(Data(base64Encoded: "AQTpBwAHAQdkZWZhdWx0AwlwYXJhZ3JhcGgoAOkHAANiaWQBdwdibG9jay0xBwDpBwAGBADpBwIKSGVsbG8g8J+MjQA="))
+        let rich = try XCTUnwrap(Data(base64Encoded: "AQbqBwAHAQdkZWZhdWx0AwlwYXJhZ3JhcGgoAOoHAANiaWQBdwdibG9jay0xBwDqBwAGBgDqBwIEYm9sZAR0cnVlhOoHAw1ZanMgcmljaCB0ZXh0huoHEARib2xkBG51bGwA"))
+        for (name, base) in [("delete", plain), ("format", rich)] {
+            let url = directory.appendingPathComponent(name + ".db"); try FileManager.default.copyItem(at: source, to: url)
+            let store = try SQLiteCollaborationStore(databaseURL: url, pageID: "fixture-page", userID: "editor", workspaceID: "fixture-workspace")
+            try await store.appendRemote(pageID: "fixture-page", channel: 0, update: base)
+            if name == "delete" {
+                _ = try await store.deletePlainChecked(base: base, blockIndex: 0, blockID: "block-1", expected: "Hello 🌍", offset: 6, length: 2)
+            } else {
+                _ = try await store.formatPlainChecked(base: base, blockIndex: 0, blockID: "block-1", expected: "Yjs rich text", offset: 4, length: 4, mark: "italic", enabled: true)
+            }
+            let updates = try await store.load(pageID: "fixture-page", channel: 0)
+            XCTAssertEqual(updates.count, 2)
+            let pending = try await store.maximumPendingID(pageID: "fixture-page", channel: 0)
+            XCTAssertNotNil(pending)
+        }
+    }
     func testCheckedEditorWritePersistsAndRejectsStaleBase() async throws {
         let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-editor-v11", withExtension: "db"))
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-edit-\(UUID().uuidString).db")

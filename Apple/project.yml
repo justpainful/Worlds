@@ -26,6 +26,7 @@ targets:
           - DESIGN.md
           - UI_TEST_COVERAGE.md
           - UITests
+      - path: DrawingHarness/Shared
       - path: WorldsCore/Tests/WorldsPersistenceTests/worlds-v1-fixture.db
         buildPhase: resources
       - path: App/UITests/Fixtures/search-ui-fixture.db
@@ -42,6 +43,16 @@ targets:
       - package: WorldsCore
         product: WorldsSearch
       - package: WorldsCore
+        product: WorldsAutomations
+      - package: WorldsCore
+        product: WorldsDrawing
+      - package: WorldsCore
+        product: WorldsDrawingNativeWrites
+      - package: WorldsCore
+        product: WorldsDrawingStrokeSession
+      - package: WorldsCore
+        product: WorldsDrawingPencilInput
+      - package: WorldsCore
         product: WorldsAccountViews
       - package: WorldsCore
         product: WorldsIdentityContinuity
@@ -53,6 +64,8 @@ targets:
         product: WorldsLocalImport
       - package: WorldsCore
         product: WorldsNativeWrites
+      - package: WorldsCore
+        product: WorldsLocalGalleryImport
       - package: WorldsCore
         product: WorldsResourceRepositories
       - package: WorldsCore
@@ -73,6 +86,7 @@ targets:
           - DESIGN.md
           - UI_TEST_COVERAGE.md
           - UITests
+      - path: DrawingHarness/Shared
       - path: WorldsCore/Tests/WorldsPersistenceTests/worlds-v1-fixture.db
         buildPhase: resources
       - path: App/UITests/Fixtures/search-ui-fixture.db
@@ -89,6 +103,16 @@ targets:
       - package: WorldsCore
         product: WorldsSearch
       - package: WorldsCore
+        product: WorldsAutomations
+      - package: WorldsCore
+        product: WorldsDrawing
+      - package: WorldsCore
+        product: WorldsDrawingNativeWrites
+      - package: WorldsCore
+        product: WorldsDrawingStrokeSession
+      - package: WorldsCore
+        product: WorldsDrawingPencilInput
+      - package: WorldsCore
         product: WorldsAccountViews
       - package: WorldsCore
         product: WorldsIdentityContinuity
@@ -100,6 +124,8 @@ targets:
         product: WorldsLocalImport
       - package: WorldsCore
         product: WorldsNativeWrites
+      - package: WorldsCore
+        product: WorldsLocalGalleryImport
       - package: WorldsCore
         product: WorldsResourceRepositories
       - package: WorldsCore

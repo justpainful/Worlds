@@ -226,6 +226,7 @@ enum Request {
     RestorePresentationSlide { path: String, page: String, recovery_id: String, base: i64, expected_metadata: Value, expected: Vec<BlockInput> },
     SavePresentation { path: String, page: String, base: i64, expected_metadata: Value, expected: Vec<BlockInput>, blocks: Vec<BlockInput>, #[serde(default)] deleting: Vec<String> },
     SaveProject { path: String, page: String, base: i64, expected_metadata: Value, metadata: Value },
+    SaveStream { path: String, page: String, base: i64, expected_metadata: Value, url: String },
     SaveGallery { path: String, page: String, base: i64, expected_metadata: Value, metadata: Value, expected: Vec<BlockInput>, blocks: Vec<BlockInput> },
     ImportLocalGalleryFile { path: String, source: String, page: String, base: i64, metadata: Value, expected: Vec<BlockInput>, operation_id: String },
     SaveBlocks { path: String, page: String, base: i64, blocks: Vec<BlockInput> },
@@ -235,7 +236,28 @@ enum Request {
     TrashPage { path: String, page: String, base: i64 },
 }
 
-fn dispatch(bytes: &[u8]) -> Result<Value> {
+pub struct GalleryCancellation(std::sync::atomic::AtomicU8);
+impl GalleryCancellation {
+    fn new() -> Self { Self(std::sync::atomic::AtomicU8::new(0)) }
+    fn cancel(&self) { let _ = self.0.compare_exchange(0,1,std::sync::atomic::Ordering::AcqRel,std::sync::atomic::Ordering::Acquire); }
+    fn check(&self) -> Result<()> { if self.0.load(std::sync::atomic::Ordering::Acquire)==1 { bail!("cancelled: gallery import") } Ok(()) }
+    fn commit(&self) -> Result<()> { self.0.compare_exchange(0,2,std::sync::atomic::Ordering::AcqRel,std::sync::atomic::Ordering::Acquire).map(|_|()).map_err(|_|anyhow::anyhow!("cancelled: gallery import")) }
+}
+
+#[cfg(test)]
+mod gallery_cancellation_tests {
+    use super::GalleryCancellation;
+    #[test]
+    fn cancellation_and_commit_have_single_winner() {
+        let cancelled=GalleryCancellation::new(); cancelled.cancel();
+        assert!(cancelled.check().is_err()); assert!(cancelled.commit().is_err());
+        let committed=GalleryCancellation::new(); committed.commit().unwrap(); committed.cancel();
+        assert!(committed.check().is_ok());
+    }
+}
+
+fn dispatch(bytes: &[u8]) -> Result<Value> { dispatch_inner(bytes,None) }
+fn dispatch_inner(bytes: &[u8], cancellation: Option<&GalleryCancellation>) -> Result<Value> {
     let request: Request = serde_json::from_slice(bytes)?;
     match request {
         #[cfg(any(debug_assertions, feature = "fixture-bundle"))]
@@ -271,6 +293,7 @@ fn dispatch(bytes: &[u8]) -> Result<Value> {
         Request::RestorePresentationSlide { path, page, recovery_id, base, expected_metadata, expected } => resource_ops::restore_presentation_slide(Path::new(&path), &page, &recovery_id, base, expected_metadata, expected),
         Request::SavePresentation { path, page, base, expected_metadata, expected, blocks, deleting } => resource_ops::save_presentation_deleting(Path::new(&path), &page, base, expected_metadata, expected, blocks, deleting),
         Request::SaveProject { path, page, base, expected_metadata, metadata } => resource_ops::save_project(Path::new(&path), &page, base, expected_metadata, metadata),
+        Request::SaveStream { path, page, base, expected_metadata, url } => resource_ops::save_stream(Path::new(&path), &page, base, expected_metadata, &url),
         Request::SaveGallery { path, page, base, expected_metadata, metadata, expected, blocks } => resource_ops::save_gallery(Path::new(&path), &page, base, expected_metadata, metadata, expected, blocks),
         Request::ImportLocalGalleryFile { path, source, page, base, metadata, expected, operation_id } => {
             #[cfg(unix)] {
@@ -283,7 +306,11 @@ fn dispatch(bytes: &[u8]) -> Result<Value> {
                     Err(e) if e.kind()==std::io::ErrorKind::NotFound => {},
                     _ => bail!("incomplete or unavailable local copy"),
                 }
-                gallery_file_import::unix::import_idempotent(root,Path::new(&source),&page,base,metadata,expected,&operation_id)
+                if let Some(cancel)=cancellation {
+                    gallery_file_import::unix::import_cancellable(root,Path::new(&source),&page,base,metadata,expected,&operation_id,cancel)
+                } else {
+                    gallery_file_import::unix::import_idempotent(root,Path::new(&source),&page,base,metadata,expected,&operation_id)
+                }
             }
             #[cfg(not(unix))] { let _=(path,source,page,base,metadata,expected,operation_id); bail!("local gallery import is unavailable on this platform") }
         },
@@ -293,6 +320,28 @@ fn dispatch(bytes: &[u8]) -> Result<Value> {
         Request::CreatePage { path, title, parent } => create_page(Path::new(&path), title, parent),
         Request::TrashPage { path, page, base } => { trash_page(Path::new(&path), &page, base)?; Ok(Value::Null) }
     }
+}
+
+/// Token must remain alive until the call and concurrent cancellation have returned.
+#[no_mangle]
+pub extern "C" fn worlds_gallery_cancel_new() -> *mut GalleryCancellation { Box::into_raw(Box::new(GalleryCancellation::new())) }
+#[no_mangle]
+pub unsafe extern "C" fn worlds_gallery_cancel(token: *const GalleryCancellation) { if let Some(token)=token.as_ref() { token.cancel(); } }
+#[no_mangle]
+pub unsafe extern "C" fn worlds_gallery_cancel_free(token: *mut GalleryCancellation) { if !token.is_null() { drop(Box::from_raw(token)); } }
+#[no_mangle]
+pub unsafe extern "C" fn worlds_gallery_call(request: *const u8, length: usize, token: *const GalleryCancellation) -> *mut std::ffi::c_char {
+    let result=std::panic::catch_unwind(|| {
+        if request.is_null() || token.is_null() || length==0 || length>8*1024*1024 { return serde_json::json!({"ok":false,"error":"invalid request size"}); }
+        let bytes=std::slice::from_raw_parts(request,length);
+        let operation: Result<Request, _> = serde_json::from_slice(bytes);
+        if !matches!(operation,Ok(Request::ImportLocalGalleryFile { .. })) { return serde_json::json!({"ok":false,"error":"invalid gallery request"}); }
+        match dispatch_inner(bytes,token.as_ref()) {
+            Ok(value)=>serde_json::json!({"ok":true,"value":value}),
+            Err(error)=>serde_json::json!({"ok":false,"error":format!("{error:#}")}),
+        }
+    }).unwrap_or_else(|_|serde_json::json!({"ok":false,"error":"store operation failed"}));
+    std::ffi::CString::new(result.to_string()).expect("JSON escapes NUL").into_raw()
 }
 
 /// C ABI: request must point to `length` readable bytes for this call. The

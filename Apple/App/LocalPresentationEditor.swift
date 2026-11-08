@@ -50,6 +50,30 @@ import SQLite3
             self.session = session; slides = session.slides; saved = false; fixtureMediaPresent = false; error = nil
         } catch { self.error = "This text cannot be changed safely: \(error.localizedDescription)" }
     }
+    func addBlankSlide() { insertSlide(duplicate: false) }
+    func duplicateSelectedSlide() { insertSlide(duplicate: true) }
+    private func insertSlide(duplicate: Bool) {
+        guard !hasUnapplied else { return }
+        do {
+            guard var session, let index = session.slides.firstIndex(where: { $0.id == selectedID }) else { return }
+            let slide: SlideBlock
+            if duplicate { slide = try session.slides[index].duplicated() }
+            else { slide = try SlideBlock.blank() }
+            try session.insert(slide, at: index + 1)
+            self.session = session; slides = session.slides
+            selectedID = nil; selectedElementID = nil; draft = ""; select(slide.id)
+            saved = false; fixtureMediaPresent = false; error = nil
+        } catch {
+            self.error = duplicate ? "This slide cannot be duplicated safely because it contains unsupported fields or elements." : "The slide could not be added: \(error.localizedDescription)"
+        }
+    }
+    func moveDown() {
+        guard !hasUnapplied else { return }
+        do {
+            guard var session, let index = session.slides.firstIndex(where: { $0.id == selectedID }), index + 1 < session.slides.count else { return }
+            try session.move(from: index, to: index + 1); self.session = session; slides = session.slides; saved = false; fixtureMediaPresent = false
+        } catch { self.error = error.localizedDescription }
+    }
     func moveUp() {
         guard !hasUnapplied else { return }
         do {
@@ -116,6 +140,7 @@ struct LocalPresentationEditor: View {
                 Text("This edits a local copy. Media and unsupported elements are kept but cannot be edited here.")
                 if let error = state.error { Text(error).accessibilityIdentifier("presentation-edit-error") }
                 if state.slides.isEmpty && !state.busy { Text("No editable slides are available.") }
+                Text("\(state.slides.count) slides").accessibilityIdentifier("presentation-slide-count")
                 ForEach(Array(state.slides.enumerated()), id: \.element.id) { index, slide in
                     Button("Slide \(index + 1)") { state.select(slide.id) }
                         .accessibilityIdentifier("presentation-slide.\(slide.id)").disabled(state.hasUnapplied)
@@ -132,6 +157,9 @@ struct LocalPresentationEditor: View {
                 if let selected = state.selected, selected.elements.contains(where: { $0.type != "text" }) {
                     Text("This slide contains elements that cannot be edited here.").accessibilityIdentifier("presentation-unsupported-elements")
                 }
+                Button("Add blank slide") { state.addBlankSlide() }.disabled(state.hasUnapplied || state.selected == nil).accessibilityIdentifier("presentation-add-blank")
+                Button("Duplicate slide") { state.duplicateSelectedSlide() }.disabled(state.hasUnapplied || state.selected == nil).accessibilityIdentifier("presentation-duplicate-slide")
+                Button("Move slide down") { state.moveDown() }.disabled(state.hasUnapplied || state.slides.last?.id == state.selectedID).accessibilityIdentifier("presentation-move-down")
                 Button("Move slide up") { state.moveUp() }.disabled(state.hasUnapplied || state.slides.first?.id == state.selectedID)
                 Button("Delete slide", role: .destructive) { deleteSlide = true }
                     .accessibilityIdentifier("presentation-delete-slide")

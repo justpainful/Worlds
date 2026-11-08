@@ -90,6 +90,35 @@ final class WorldsDrawingVisualComparisonTests: XCTestCase {
         let native = XCTAttachment(data: try png(actual, dimension: 256), uniformTypeIdentifier: "public.png"); native.name = "right-triangle-native"; native.lifetime = .keepAlways; add(native)
         XCTAssertLessThan(mean, 0.02, "Right triangle painted-union RGBA MAE: \(mean)")
     }
+    func testRotatedTriangleAndStrokeAgainstSourceCanvas() throws {
+        var brush = ToolBrush(); brush.size = 10; brush.opacity = 0.6; brush.flow = 0.7; brush.spacing = 0.25; brush.pressureSize = true; brush.pressureOpacity = true
+        let operation = try StrokeOperationBuilder.make(samples: samples(), brush: brush, tool: .brush,
+            nodeID: "stroke", operationID: "operation", actor: "artist", revision: 0, timestamp: 1,
+            layerID: "layer", frameID: "frame", nodeOrder: [], seed: 123)
+        let root = try XCTUnwrap(JSONSerialization.jsonObject(with: operation) as? [String: Any])
+        var stroke = try XCTUnwrap(((root["changes"] as? [[String: Any]])?.first)?["value"] as? [String: Any])
+        stroke["x"] = 0; stroke["y"] = 0; stroke["w"] = 64; stroke["h"] = 64
+        stroke["samples"] = try JSONSerialization.jsonObject(with: JSONEncoder().encode(samples()))
+        var shape = stroke; shape["id"] = "shape"; shape["kind"] = "shape"; shape["shape"] = "right-triangle"
+        shape["x"] = 10; shape["y"] = 7; shape["w"] = 44; shape["h"] = 40; shape["rotation"] = 18
+        shape["points"] = [["x": 4, "y": 4], ["x": 4, "y": 35], ["x": 39, "y": 35]]
+        var paint = try XCTUnwrap(shape["paint"] as? [String: Any]); paint["strokeWidth"] = 3; shape["paint"] = paint
+        let sceneJSON: [String: Any] = ["schema": 1, "defaultFrameId": "frame", "frames": ["frame": ["x": 0, "y": 0, "w": 64, "h": 64, "background": "transparent", "clip": true]], "frameOrder": ["frame"], "layers": ["layer": ["visible": true, "opacity": 1, "blend": "source-over", "parentId": NSNull()]], "layerOrder": ["layer"], "nodes": ["shape": shape, "stroke": stroke], "nodeOrder": ["shape", "stroke"], "assets": [:], "masks": [:], "steps": [:], "stepOrder": []]
+        let scene = try DrawingScene(json: JSONSerialization.data(withJSONObject: sceneJSON))
+        let actual = try bitmap(256) { context in
+            context.scaleBy(x: 4, y: 4)
+            try ExperimentalStrokeSceneRenderer.render(scene: scene, frameID: "frame", in: context, allowCorrectedRightTriangles: true)
+        }
+        let reference = try XCTUnwrap(Bundle.module.url(forResource: "right-triangle-mixed-4x", withExtension: "png", subdirectory: "CanvasReferences"))
+        let expected = try readPNG(reference, dimension: 256)
+        let painted = stride(from: 0, to: actual.count, by: 4).filter { max(actual[$0 + 3], expected[$0 + 3]) > 4 }
+        XCTAssertFalse(painted.isEmpty)
+        let difference = painted.reduce(0.0) { sum, i in sum + (0..<4).reduce(0.0) { $0 + abs(Double(actual[i+$1]) - Double(expected[i+$1])) } }
+        let mean = difference / Double(max(1, painted.count) * 4 * 255)
+        let source = XCTAttachment(data: try Data(contentsOf: reference), uniformTypeIdentifier: "public.png"); source.name = "triangle-stroke-source"; source.lifetime = .keepAlways; add(source)
+        let native = XCTAttachment(data: try png(actual, dimension: 256), uniformTypeIdentifier: "public.png"); native.name = "triangle-stroke-native"; native.lifetime = .keepAlways; add(native)
+        XCTAssertLessThan(mean, 0.02, "Mixed painted-union RGBA MAE: \(mean)")
+    }
     func testPressureSensitiveHighlighterRemainsUnsupported() throws {
         let reference = try XCTUnwrap(Bundle.module.url(forResource: "highlighter-pressure-4x", withExtension: "png", subdirectory: "CanvasReferences"))
         let source = XCTAttachment(data: try Data(contentsOf: reference), uniformTypeIdentifier: "public.png")

@@ -274,7 +274,7 @@ private struct ToggleNodeView: View {
         let items = node.content ?? []
         VStack(alignment: .leading, spacing: 8) {
             #if os(macOS)
-            MacReaderToggle(title: items.first.map { String(inlineContent($0).characters) } ?? "Toggle", isOpen: $isOpen)
+            MacReaderToggle(title: items.first.map { String(inlineContent($0).characters) } ?? "Toggle", isOpen: $isOpen).fixedSize(horizontal: true, vertical: false)
             #else
             Button {
                 isOpen.toggle()

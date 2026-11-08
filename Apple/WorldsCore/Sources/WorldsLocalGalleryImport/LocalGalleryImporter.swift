@@ -10,7 +10,8 @@ public actor LocalGalleryImporter {
     public init(copy: LocalProjectCopy) throws { store = try NativePersonalStore(url: copy.databaseURL) }
     /// Keep the same operation ID and identical inputs when retrying a response
     /// whose outcome was uncertain. Reload the gallery after a successful retry.
-    /// The underlying write cannot be interrupted after it has begun.
+    /// Cancellation before the atomic commit rolls back the import. Once commit
+    /// starts, its real outcome is returned even if cancellation arrives.
     public func importFile(source: URL, galleryID: String, base: Int64, metadata: JSONValue, expected: [NativeBlockInput], operationID: UUID) async throws -> JSONValue {
         try Task.checkCancellation()
         return try await store.importLocalGalleryFile(id: galleryID, base: base, metadata: metadata, expected: expected, source: source, operationID: operationID)

@@ -4,6 +4,9 @@
 pub mod protocol;
 #[path = "../../../src-tauri/src/account/permissions.rs"]
 pub mod permissions;
+#[path = "../../../src-tauri/src/content.rs"]
+mod content;
+pub mod scoped_read;
 
 // The only database helper used by the original permissions module. This has
 // the same SQL and decoding as src-tauri/src/db.rs::get_setting.
@@ -91,5 +94,20 @@ mod tests {
         let result=permissions::guarded_tool_call(&conn,"pages_list",&json!({}), |_| Ok(json!([{"id":"shared"},{"id":"hidden"}]))).unwrap();
         assert_eq!(result,json!([{"id":"shared"}]));
         drop(conn); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn scoped_original_blocks_read_denies_other_or_shared_pages() {
+        let (path,mut conn)=fixture();
+        conn.execute("INSERT INTO blocks(id,page_id,type,sort_key,content,properties,direction,created_at,updated_at) VALUES('block','fixture-page','paragraph','a',?1,'{}','ltr',1,1)",
+            [json!({"type":"paragraph","content":[{"type":"text","text":"Fixture content"}]}).to_string()]).unwrap();
+        let result=scoped_read::call(&mut conn,"fixture-page","blocks_read",&json!({"pageId":"fixture-page"})).unwrap();
+        let found=result.as_array().unwrap().iter().find(|item|item["id"]=="block").unwrap();
+        assert_eq!(found["markdown"],"Fixture content");
+        assert!(scoped_read::call(&mut conn,"fixture-page","blocks_read",&json!({"pageId":"shared"})).is_err());
+        assert!(scoped_read::call(&mut conn,"shared","blocks_read",&json!({"pageId":"shared"})).is_err());
+        assert!(scoped_read::call(&mut conn,"fixture-page","blocks_delete",&json!({"pageId":"fixture-page"})).is_err());
+        conn.execute("UPDATE pages SET metadata='{\"sync\":{\"shared\":false,\"shared\":true}}' WHERE id='fixture-page'",[]).unwrap();
+        assert!(scoped_read::call(&mut conn,"fixture-page","blocks_read",&json!({"pageId":"fixture-page"})).is_err());
+        drop(conn);std::fs::remove_file(path).unwrap();
     }
 }

@@ -15,6 +15,11 @@ impl Default for CollaborationDoc {
     fn default() -> Self { Self(Mutex::new(Doc::new())) }
 }
 impl CollaborationDoc {
+    pub fn plain_projection(&self) -> Result<Vec<u8>, &'static str> {
+        let doc = self.0.lock().map_err(|_| "document poisoned")?;
+        let value = editor::project_plain(&doc).map_err(|_| "unsupported document")?;
+        serde_json::to_vec(&value).map_err(|_| "encoding failed")
+    }
     pub fn client_id(&self) -> Result<u64, &'static str> {
         let doc = self.0.lock().map_err(|_| "document poisoned")?;
         Ok(doc.client_id().get())
@@ -91,6 +96,17 @@ fn write_result(out: *mut WorldsBuffer, value: Vec<u8>) -> Result<(), i32> {
     std::mem::forget(bytes);
     unsafe { out.write(buffer); }
     Ok(())
+}
+
+/// # Safety
+/// Document and output pointers must remain valid for this call.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn worlds_doc_plain_projection(doc: *const CollaborationDoc, out: *mut WorldsBuffer) -> i32 {
+    boundary(|| {
+        if doc.is_null() || out.is_null() { return Err(1); }
+        let value = unsafe { &*doc }.plain_projection().map_err(|_| 1)?;
+        write_result(out,value)
+    })
 }
 
 /// # Safety
@@ -202,6 +218,36 @@ pub unsafe extern "C" fn worlds_store_insert_plain_checked(handle: *const Collab
         let mut store = unsafe { &*handle }.0.lock().map_err(|_| 2)?;
         let update = store.insert_plain_checked(base, block_index, block_id, expected, offset, insert).map_err(store_error)?;
         write_result(out, update)
+    })
+}
+/// # Safety
+/// Handle, input ranges, strings and output must remain valid for the call.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn worlds_store_delete_plain_checked(handle: *const CollaborationStoreHandle,
+    base: *const u8, base_len: usize, block_index: u32, block_id: *const std::ffi::c_char,
+    expected: *const std::ffi::c_char, offset: u32, length: u32, out: *mut WorldsBuffer) -> i32 {
+    boundary(|| {
+        if handle.is_null() || out.is_null() { return Err(1); }
+        let base=unsafe { ffi_bytes(base,base_len)? };
+        let block_id=unsafe { ffi_str(block_id)? }; let expected=unsafe { ffi_str(expected)? };
+        let mut store=unsafe { &*handle }.0.lock().map_err(|_| 2)?;
+        let update=store.delete_plain_checked(base,block_index,block_id,expected,offset,length).map_err(store_error)?;
+        write_result(out,update)
+    })
+}
+/// # Safety
+/// Handle, input ranges, strings and output must remain valid for the call.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn worlds_store_format_plain_checked(handle: *const CollaborationStoreHandle,
+    base: *const u8, base_len: usize, block_index: u32, block_id: *const std::ffi::c_char,
+    expected: *const std::ffi::c_char, offset: u32, length: u32, mark: *const std::ffi::c_char, enabled: i32, out: *mut WorldsBuffer) -> i32 {
+    boundary(|| {
+        if handle.is_null() || out.is_null() || !(0..=1).contains(&enabled) { return Err(1); }
+        let base=unsafe { ffi_bytes(base,base_len)? };
+        let block_id=unsafe { ffi_str(block_id)? }; let expected=unsafe { ffi_str(expected)? }; let mark=unsafe { ffi_str(mark)? };
+        let mut store=unsafe { &*handle }.0.lock().map_err(|_|2)?;
+        let update=store.format_plain_checked(base,block_index,block_id,expected,offset,length,mark,enabled==1).map_err(store_error)?;
+        write_result(out,update)
     })
 }
 /// # Safety

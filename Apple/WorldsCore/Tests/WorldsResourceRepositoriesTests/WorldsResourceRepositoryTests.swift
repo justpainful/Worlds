@@ -56,4 +56,20 @@ final class WorldsResourceRepositoryTests: XCTestCase {
         XCTAssertEqual(sqlite3_step(query), SQLITE_ROW)
         XCTAssertEqual(sqlite3_column_int(query, 0), 1)
     }
+    func testStreamCASPreservesMetadataAndRejectsSharing() async throws {
+        let path = try database()
+        try execute(path, #"INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('s','Stream','stream','{"stream":{"url":"https://old.example/a","format":"progressive","future":true},"other":7}',1,100)"#)
+        let repo = NativeResourceRepository(store: try NativePersonalStore(url: path))
+        let initial = try await repo.readStream(id: "s")
+        let saved = try await repo.saveStream(id: "s", baseline: initial, url: "https://example.com/video.MPD?token=sample")
+        guard case .object(let root) = saved.metadata, case .object(let stream)? = root["stream"] else { return XCTFail("Invalid stream metadata") }
+        XCTAssertEqual(stream["format"], .string("dash"))
+        XCTAssertEqual(stream["future"], .bool(true))
+        XCTAssertEqual(root["other"], .integer(7))
+        do { _ = try await repo.saveStream(id: "s", baseline: initial, url: "https://example.com/stale"); XCTFail("Stale baseline must fail") }
+        catch NativeWriteError.conflict(_) { } catch { XCTFail("Unexpected error: \(error)") }
+        try execute(path, "UPDATE pages SET workspace_id='team' WHERE id='s'")
+        do { _ = try await repo.saveStream(id: "s", baseline: saved, url: "https://example.com/shared"); XCTFail("Shared page must fail") }
+        catch NativeWriteError.operationFailed(_) { } catch { XCTFail("Unexpected error: \(error)") }
+    }
 }

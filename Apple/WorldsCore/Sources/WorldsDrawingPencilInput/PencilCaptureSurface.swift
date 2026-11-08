@@ -8,12 +8,19 @@ public struct PencilCaptureSurface: UIViewRepresentable {
     public let viewToDocument: CGAffineTransform
     public let onStroke: @MainActor (PencilStrokeBuffer) -> Void
     public let onCancelled: @MainActor (PencilStrokeBuffer) -> Void
-    public init(viewToDocument: CGAffineTransform, onStroke: @escaping @MainActor (PencilStrokeBuffer) -> Void, onCancelled: @escaping @MainActor (PencilStrokeBuffer) -> Void) {
+    public let onBegan: @MainActor () -> Void
+    public let onProgress: @MainActor (PencilRawSample) -> Void
+    public init(viewToDocument: CGAffineTransform, onStroke: @escaping @MainActor (PencilStrokeBuffer) -> Void,
+                onCancelled: @escaping @MainActor (PencilStrokeBuffer) -> Void,
+                onBegan: @escaping @MainActor () -> Void = {},
+                onProgress: @escaping @MainActor (PencilRawSample) -> Void = { _ in }) {
         self.viewToDocument = viewToDocument; self.onStroke = onStroke; self.onCancelled = onCancelled
+        self.onBegan = onBegan; self.onProgress = onProgress
     }
     public func makeUIView(context: Context) -> CaptureView { CaptureView(frame: .zero) }
     public func updateUIView(_ view: CaptureView, context: Context) {
         view.viewToDocument = viewToDocument; view.onStroke = onStroke; view.onCancelled = onCancelled
+        view.onBegan = onBegan; view.onProgress = onProgress
     }
 }
 
@@ -21,6 +28,8 @@ public struct PencilCaptureSurface: UIViewRepresentable {
     fileprivate var viewToDocument = CGAffineTransform.identity
     fileprivate var onStroke: (PencilStrokeBuffer) -> Void = { _ in }
     fileprivate var onCancelled: (PencilStrokeBuffer) -> Void = { _ in }
+    fileprivate var onBegan: () -> Void = {}
+    fileprivate var onProgress: (PencilRawSample) -> Void = { _ in }
     private var active: UITouch?
     private var buffer = PencilStrokeBuffer()
     private var failed = false
@@ -32,7 +41,7 @@ public struct PencilCaptureSurface: UIViewRepresentable {
     public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard active == nil, let touch = touches.first(where: { $0.type == .pencil || $0.type == .direct }) else { return }
         active = touch; buffer = PencilStrokeBuffer(); failed = false
-        append(touch, release: false)
+        onBegan(); append(touch, release: false)
     }
     public override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let active, touches.contains(active) else { return }
@@ -55,7 +64,7 @@ public struct PencilCaptureSurface: UIViewRepresentable {
             azimuth: Double(touch.azimuthAngle(in: self)), timeMilliseconds: touch.timestamp * 1000,
             isPencil: touch.type == .pencil, hasPendingEstimates: !touch.estimatedPropertiesExpectingUpdates.isEmpty,
             isRelease: release)
-        do { try buffer.append(raw) } catch { failed = true }
+        do { try buffer.append(raw); onProgress(raw) } catch { failed = true }
     }
 }
 #endif

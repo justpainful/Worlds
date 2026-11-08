@@ -19,6 +19,10 @@ enum LocalCopyUITestFixture {
         defer { sqlite3_close(database) }
         let sql = #"INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('harness-project','Fixture project','project','{"project":{"status":"active","description":"Original fixture","links":[]},"unknown":{"preserve":true}}',1,100);"#
         guard sqlite3_exec(database, sql, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+        #if WORLDS_EXPERIMENTAL_STREAM_EDITOR
+        let stream = #"INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('fixture-stream','Fixture stream','stream','{"stream":{"url":"https://old.example/video.mp4"},"future":true}',1,100);"#
+        guard sqlite3_exec(database, stream, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+        #endif
         #if WORLDS_EXPERIMENTAL_PAGE_EDITOR
         if ProcessInfo.processInfo.arguments.contains("--ui-testing-link-fixture") {
             let update = #"UPDATE blocks SET content='{"type":"paragraph","attrs":{"bid":"fixture-block","dir":"rtl"},"content":[{"type":"text","text":"Hello ","marks":[{"type":"bold"}]},{"type":"text","text":"Worlds"}]}' WHERE id='fixture-block'"#
@@ -54,6 +58,25 @@ enum LocalCopyUITestFixture {
             let update = #"UPDATE pages SET metadata=json_set(metadata,'$.project.links',json('["missing-fixture"]')) WHERE id='harness-project';"#
             guard sqlite3_exec(database, update, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
         }
+        #if WORLDS_EXPERIMENTAL_AUTOMATIONS
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing-automation-fixture") {
+            let automation = #"""
+            INSERT INTO automations(id,name,enabled,spec,created_at,updated_at) VALUES('auto-fixture','Fixture automation',1,'{"trigger":{"kind":"manual"},"source":{"pageId":"fixture-page"},"action":{"kind":"discord.send"},"destination":{"kind":"channel","id":"example"},"policy":{"unattended":false}}',1,1);
+            INSERT INTO runs(id,automation_id,status,trigger,started_at) VALUES('run-fixture','auto-fixture','waiting','manual',1);
+            INSERT INTO pending_actions(id,kind,payload,requested_by,op_id,status,created_at) VALUES('pending-fixture','discord.send','{"runId":"run-fixture","automationId":"auto-fixture","pageId":"fixture-page"}','automation','run-fixture','pending',1);
+            """#
+            guard sqlite3_exec(database, automation, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+        }
+        #endif
+        #if WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+        let drawing = #"INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('fixture-drawing','Fixture drawing','drawing','{}',1,100); INSERT INTO profile(id,display_name,created_at,updated_at) VALUES('artist','Artist',1,1);"#
+        guard sqlite3_exec(database, drawing, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing-unsupported-drawing") {
+            let scene = ##"{"schema":1,"defaultFrameId":"f","frames":{"f":{"id":"f","name":"Frame","x":0,"y":0,"w":1280,"h":720,"background":"#ffffff","clip":true}},"frameOrder":["f"],"layers":{"a":{"id":"a","name":"Parent","visible":true,"locked":false,"positionLocked":false,"alphaLocked":false,"opacity":1,"blend":"source-over","parentId":null},"b":{"id":"b","name":"Child","visible":true,"locked":false,"positionLocked":false,"alphaLocked":false,"opacity":1,"blend":"source-over","parentId":"a"}},"layerOrder":["a","b"],"nodes":{},"nodeOrder":[],"assets":{},"masks":{},"steps":{},"stepOrder":[]}"##
+            let insert = "INSERT INTO drawing_documents(page_id,revision,seed,scene,updated_at) VALUES('fixture-drawing',0,'\(scene)','\(scene)',1)"
+            guard sqlite3_exec(database, insert, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+        }
+        #endif
         let importer = try LocalProjectImportCoordinator.isolatedTestCoordinator(root: root.appendingPathComponent("private", isDirectory: true), backup: NativeSQLiteBackup())
         return (importer, source)
     }

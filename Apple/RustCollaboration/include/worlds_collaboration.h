@@ -18,6 +18,8 @@ int32_t worlds_doc_client_id(const WorldsDoc *doc, uint64_t *out);
 int32_t worlds_doc_apply(const WorldsDoc *doc, const uint8_t *data, size_t len);
 int32_t worlds_doc_state_vector(const WorldsDoc *doc, WorldsBuffer *out);
 int32_t worlds_doc_diff(const WorldsDoc *doc, const uint8_t *state_vector, size_t len, WorldsBuffer *out);
+/* Conservative paragraph-only JSON projection. Unsupported content returns 1. */
+int32_t worlds_doc_plain_projection(const WorldsDoc *doc, WorldsBuffer *out);
 void worlds_buffer_free(WorldsBuffer buffer);
 typedef struct WorldsStore WorldsStore;
 /* Store status: 0 success, 1 invalid input, 2 failure, 3 denied, 4 unsupported schema.
@@ -33,6 +35,12 @@ int32_t worlds_store_append(const WorldsStore *store, int64_t channel, const uin
 int32_t worlds_store_insert_plain_checked(const WorldsStore *store, const uint8_t *base, size_t base_len,
     uint32_t block_index, const char *block_id, const char *expected, uint32_t offset,
     const char *insert, WorldsBuffer *out);
+int32_t worlds_store_delete_plain_checked(const WorldsStore *store, const uint8_t *base, size_t base_len,
+    uint32_t block_index, const char *block_id, const char *expected, uint32_t offset,
+    uint32_t length, WorldsBuffer *out);
+int32_t worlds_store_format_plain_checked(const WorldsStore *store, const uint8_t *base, size_t base_len,
+    uint32_t block_index, const char *block_id, const char *expected, uint32_t offset,
+    uint32_t length, const char *mark, int32_t enabled, WorldsBuffer *out);
 int32_t worlds_store_max_pending(const WorldsStore *store, int64_t channel, int64_t *out);
 int32_t worlds_store_ack(const WorldsStore *store, int64_t channel, int64_t through);
 int32_t worlds_store_reject(const WorldsStore *store, int64_t channel, const char *archive_id, const uint8_t *state, size_t len, const char *reason);

@@ -1,4 +1,5 @@
 import SwiftUI
+import AVKit
 import WorldsPersistence
 
 private struct ResourceMetadata: Decodable {
@@ -14,8 +15,10 @@ private struct ResourceMetadata: Decodable {
         let mime: String?
         let size: Int64?
     }
+    struct Stream: Decodable { let url: String?; let format: String? }
     let project: Project?
     let file: File?
+    let stream: Stream?
 }
 private struct ResourceBlock: Decodable {
     struct Attributes: Decodable {
@@ -35,9 +38,11 @@ private struct ResourceBlock: Decodable {
 struct ResourceContentView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @StateObject private var streamPlayback = ExternalStreamPlayback()
     let page: StoredPage
     let pages: [StoredPage]
     var projectEditingAvailable: Bool = false
+    var otherEditingAvailable: Bool = false
     var openVideo: (() -> Void)? = nil
     let openPage: (String) -> Void
 
@@ -56,10 +61,11 @@ struct ResourceContentView: View {
                 case "gallery": gallery
                 case "presentation": presentation
                 case "file": file
+                case "stream": stream
                 default: Text("This resource type is not available in the reader.")
                 }
-                Label(projectEditingAvailable ? "Project editing available in local copy" : "Read only", systemImage: projectEditingAvailable ? "pencil" : "eye")
-                    .font(.body).foregroundStyle(.secondary)
+                Label(projectEditingAvailable ? "Project editing available in local copy" : (otherEditingAvailable ? "Editing available in local copy" : "Read only"), systemImage: (projectEditingAvailable || otherEditingAvailable) ? "pencil" : "eye")
+                    .font(.body).foregroundStyle(.primary)
             }
             .padding(dynamicTypeSize.isAccessibilitySize ? 16 : 24)
             .frame(maxWidth: 760, alignment: .leading)
@@ -67,6 +73,9 @@ struct ResourceContentView: View {
         }
         .background(WorldsPalette.paper(for: colorScheme))
         .accessibilityIdentifier("resource-content")
+        .onDisappear { streamPlayback.stop() }
+        .onChange(of: page.id) { _, _ in streamPlayback.stop() }
+        .onChange(of: page.metadataJSON) { _, _ in streamPlayback.stop() }
         #if os(macOS)
         .navigationTitle(page.title.isEmpty ? "Untitled" : page.title)
         #else
@@ -147,6 +156,47 @@ struct ResourceContentView: View {
             } else { Text("File details are unavailable.").foregroundStyle(.secondary) }
         }
     }
+    private var stream: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let info = metadata?.stream, let raw = info.url,
+               let url = URL(string: raw.trimmingCharacters(in: .whitespacesAndNewlines)),
+               let scheme = url.scheme?.lowercased(), ["https", "http"].contains(scheme),
+               let host = url.host, !host.isEmpty {
+                Text("External stream").foregroundStyle(.secondary)
+                Text(raw).textSelection(.enabled).font(.caption).environment(\.layoutDirection, .leftToRight)
+                if info.format == "dash" {
+                    Text("DASH streams are saved, but playback is not supported.")
+                        .foregroundStyle(.secondary).accessibilityIdentifier("external-stream-dash")
+                } else {
+                    if let player = streamPlayback.player {
+                        VideoPlayer(player: player)
+                            .aspectRatio(16 / 9, contentMode: .fit)
+                            .accessibilityLabel("External video stream")
+                            .accessibilityIdentifier("external-stream-player")
+                    }
+                    switch streamPlayback.state {
+                    case .idle:
+                        Button("Play stream", systemImage: "play.fill") { streamPlayback.play(url) }
+                            .accessibilityIdentifier("play-external-stream")
+                    case .connecting:
+                        ProgressView("Connecting to the stream").accessibilityIdentifier("external-stream-loading")
+                        Button("Stop", systemImage: "stop.fill") { streamPlayback.stop() }
+                    case .playing:
+                        Button("Stop", systemImage: "stop.fill") { streamPlayback.stop() }
+                    case .failed:
+                        Text("The stream could not be played. The link may be offline, expired, or blocked.")
+                            .foregroundStyle(.secondary).accessibilityIdentifier("external-stream-error")
+                        Button("Try again", systemImage: "arrow.clockwise") { streamPlayback.play(url) }
+                            .accessibilityIdentifier("retry-external-stream")
+                    }
+                }
+                Link("Open link", destination: url)
+            } else {
+                Text("This stream does not have a valid HTTP or HTTPS link.")
+                    .foregroundStyle(.secondary).accessibilityIdentifier("external-stream-invalid")
+            }
+        }
+    }
     @ViewBuilder
     private func projectFacts(_ info: ResourceMetadata.Project) -> some View {
         if let status = info.status { detail("Status", status.capitalized).frame(minWidth: 90) }
@@ -189,5 +239,49 @@ struct ResourceContentView: View {
                 .accessibilityIdentifier("resource-page.\(item.id)")
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Observers belong to one item and are invalidated on navigation or retry.
+/// Errors deliberately omit URLs, which may contain private stream tokens.
+@MainActor private final class ExternalStreamPlayback: ObservableObject {
+    enum State { case idle, connecting, playing, failed }
+    @Published private(set) var state: State = .idle
+    @Published private(set) var player: AVPlayer?
+    private var observation: NSKeyValueObservation?
+    private var failureObserver: NSObjectProtocol?
+    private var generation = UUID()
+
+    func play(_ url: URL) {
+        stop()
+        let token = generation
+        let item = AVPlayerItem(url: url)
+        let player = AVPlayer(playerItem: item)
+        self.player = player; state = .connecting
+        observation = item.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
+            let ready = item.status == .readyToPlay
+            let failed = item.status == .failed
+            Task { @MainActor [weak self] in
+                guard let self, self.generation == token else { return }
+                if failed { self.fail(token) }
+                else if ready { self.state = .playing }
+            }
+        }
+        failureObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemFailedToPlayToEndTime, object: item, queue: nil) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.fail(token) }
+        }
+        player.play()
+    }
+    func stop() {
+        generation = UUID(); observation = nil
+        if let failureObserver { NotificationCenter.default.removeObserver(failureObserver); self.failureObserver = nil }
+        player?.pause(); player?.replaceCurrentItem(with: nil); player = nil; state = .idle
+    }
+    private func fail(_ token: UUID) {
+        guard generation == token else { return }
+        generation = UUID()
+        observation = nil
+        if let failureObserver { NotificationCenter.default.removeObserver(failureObserver); self.failureObserver = nil }
+        player?.pause(); player?.replaceCurrentItem(with: nil); player = nil; state = .failed
     }
 }

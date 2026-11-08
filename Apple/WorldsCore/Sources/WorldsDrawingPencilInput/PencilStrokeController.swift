@@ -34,6 +34,15 @@ import WorldsDrawingStrokeSession
         }
     }
 
+    /// The exact same operation may be retried only after submission.
+    public var canRetryPending: Bool { operationSubmitted && retainedInput != nil }
+
+    /// Discard is safe only before an operation has been submitted to storage.
+    @discardableResult public func discardUnsubmitted() -> Bool {
+        guard !saving, retainedInput != nil, !operationSubmitted else { return false }
+        retainedInput = nil; hasUnresolvedInput = false; error = nil
+        return true
+    }
     public func retry() async -> Data? {
         guard !saving, operationSubmitted else { return nil }
         saving = true; defer { saving = false }
