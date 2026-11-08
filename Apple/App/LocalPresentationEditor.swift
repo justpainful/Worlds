@@ -54,6 +54,14 @@ import SQLite3
             self.session = session; slides = session.slides; saved = false; fixtureMediaPresent = false; error = nil
         } catch { self.error = "This text cannot be changed safely: \(error.localizedDescription)" }
     }
+    func setTextAlignment(_ alignment: String) {
+        guard !hasUnapplied else { return }
+        do {
+            guard var session, let index = session.slides.firstIndex(where: { $0.id == selectedID }), let element = currentElement, element.editableTextAlignment != nil else { return }
+            try session.update(at: index) { try $0.setTextStyle(elementID: element.id, key: "align", value: .string(alignment)) }
+            self.session = session; slides = session.slides; saved = false; fixtureMediaPresent = false; error = nil
+        } catch { self.error = "This alignment cannot be changed safely: \(error.localizedDescription)" }
+    }
     func applyNotes() {
         do {
             guard var session, let index = session.slides.firstIndex(where: { $0.id == selectedID }), session.slides[index].editableNotes != nil else { return }
@@ -164,6 +172,18 @@ struct LocalPresentationEditor: View {
                 if state.currentElement != nil {
                     TextField("Slide text", text: $state.draft, axis: .vertical).accessibilityIdentifier("presentation-text")
                     Button("Apply text") { state.applyText() }.disabled(!state.hasTextUnapplied)
+                }
+                if let element = state.currentElement {
+                    if let alignment = element.editableTextAlignment {
+                        Picker("Text alignment", selection: Binding(get: { alignment }, set: { state.setTextAlignment($0) })) {
+                            Text("Left").tag("left")
+                            Text("Center").tag("center")
+                            Text("Right").tag("right")
+                        }
+                        .disabled(state.hasUnapplied).accessibilityIdentifier("presentation-text-alignment")
+                    } else {
+                        Text("This text alignment cannot be edited safely.")
+                    }
                 }
                 if let notes = state.selected?.editableNotes {
                     TextField("Speaker notes", text: $state.notesDraft, axis: .vertical).accessibilityIdentifier("presentation-notes")

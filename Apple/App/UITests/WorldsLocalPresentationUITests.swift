@@ -19,6 +19,25 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["presentation-unsupported-elements"].exists)
         let screenshot = XCTAttachment(screenshot: app.screenshot()); screenshot.name = "presentation-notes-reopened"; screenshot.lifetime = .keepAlways; add(screenshot)
     }
+    @MainActor func testTextAlignmentSaveAndReopenKeepsMedia() {
+        let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-presentation-fixture"]; app.launch()
+        let page = app.descendants(matching: .any)["page.deck-test"].firstMatch
+        guard page.waitForExistence(timeout: 30) else { failure(app, "alignment-page-missing"); XCTFail("Presentation page missing"); return }; page.tap()
+        let edit = app.buttons["edit-local-presentation"]
+        guard edit.waitForExistence(timeout: 20) else { failure(app, "alignment-edit-missing"); XCTFail("Presentation editor missing"); return }; edit.tap()
+        let picker = app.descendants(matching: .any)["presentation-text-alignment"].firstMatch
+        guard picker.waitForExistence(timeout: 20) else { failure(app, "alignment-picker-missing"); XCTFail("Alignment picker missing"); return }
+        picker.tap()
+        let center = app.descendants(matching: .any).matching(identifier: "Center").firstMatch
+        guard center.waitForExistence(timeout: 10) else { failure(app, "alignment-center-missing"); XCTFail("Center option missing"); return }; center.tap()
+        app.buttons["Save"].tap()
+        guard app.staticTexts["presentation-edit-saved"].waitForExistence(timeout: 20) else { failure(app, "alignment-save-missing"); XCTFail("Alignment save missing"); return }
+        XCTAssertTrue(app.staticTexts["presentation-media-record-retained"].waitForExistence(timeout: 10))
+        app.buttons["Close"].tap(); XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
+        XCTAssertTrue(picker.waitForExistence(timeout: 20))
+        XCTAssertTrue((picker.value as? String ?? picker.label).contains("Center"))
+        XCTAssertTrue(app.staticTexts["presentation-unsupported-elements"].exists)
+    }
     @MainActor func testDeleteUndoRedoAndReopenKeepsAttachmentRecord() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-presentation-fixture"]; app.launch()
         let page = app.descendants(matching: .any)["page.deck-test"].firstMatch
