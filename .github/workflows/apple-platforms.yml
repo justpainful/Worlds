@@ -1608,6 +1608,9 @@ jobs:
           grep -q 'checked_rename_retries_without_duplicate_history_and_refuses_same_revision_change ... ok' logs/rust-store-tests.log
           grep -q 'checked_rename_rolls_back_page_history_fts_and_changes ... ok' logs/rust-store-tests.log
           grep -q 'ffi_checked_rename_retries_same_operation ... ok' logs/rust-store-tests.log
+          grep -q 'checked_move_rejects_stale_location_shared_subtree_and_cycles ... ok' logs/rust-store-tests.log
+          grep -q 'checked_move_rolls_back_then_retries_without_duplicate_history ... ok' logs/rust-store-tests.log
+          grep -q 'ffi_checked_move_retries_same_operation ... ok' logs/rust-store-tests.log
           grep -q 'checked_rename_rejects_canonically_equivalent_but_distinct_utf8 ... ok' logs/rust-store-tests.log
           grep -q 'gallery_preserves_unknown_refs_and_noncanonical_block ... ok' logs/rust-store-tests.log
           grep -q 'gallery_caption_edit_cannot_discard_unknown_fields_or_malformed_caption ... ok' logs/rust-store-tests.log
