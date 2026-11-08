@@ -601,6 +601,31 @@ fn protected_slide(value: &Value) -> Result<Value> {
     }
     Ok(result)
 }
+fn adjacent_plain_text_swap(old: &Value, new: &Value) -> bool {
+    let Some(old_elements)=old.pointer("/attrs/elements").and_then(Value::as_array) else { return false };
+    let Some(new_elements)=new.pointer("/attrs/elements").and_then(Value::as_array) else { return false };
+    if old_elements.len()!=new_elements.len() { return false }
+    let mut ids=HashSet::new();
+    for item in old_elements {
+        let Some(id)=item.get("id").and_then(Value::as_str).filter(|s|!s.is_empty()) else { return false };
+        if !ids.insert(id) { return false }
+    }
+    let changed:Vec<usize>=old_elements.iter().zip(new_elements).enumerate().filter_map(|(i,(a,b))|(a!=b).then_some(i)).collect();
+    if changed.len()!=2 || changed[1]!=changed[0]+1 { return false }
+    let i=changed[0];
+    if old_elements[i]!=new_elements[i+1] || old_elements[i+1]!=new_elements[i] { return false }
+    for element in [&old_elements[i],&old_elements[i+1]] {
+        let Some(object)=element.as_object() else { return false };
+        if object.get("type").and_then(Value::as_str)!=Some("text") ||
+            !object.keys().all(|k|["id","type","x","y","w","h","rot","opacity","text"].contains(&k.as_str())) ||
+            object.get("text").is_some_and(|v|!v.is_string()) { return false }
+        if ["x","y","w","h","rot","opacity"].iter().any(|key|object.get(*key).is_some_and(|v|!v.as_f64().is_some_and(f64::is_finite))) { return false }
+    }
+    let mut restored=new.clone();
+    let Some(elements)=restored.pointer_mut("/attrs/elements").and_then(Value::as_array_mut) else { return false };
+    elements.swap(i,i+1);
+    restored==*old
+}
 
 pub fn read_presentation(path: &Path, id: &str) -> Result<Value> {
     let mut connection = open_existing(path)?;
@@ -655,7 +680,7 @@ pub fn save_presentation_deleting(path: &Path, id: &str, base: i64, expected_met
         if declared.contains(block_id) { continue }
         let new=next_pairs.iter().find(|(candidate,_)| candidate==block_id).map(|(_,v)|v)
             .ok_or_else(||anyhow::anyhow!("unsupported change: slide removal is not yet available"))?;
-        if new.get("type").and_then(Value::as_str) != Some("slide") || protected_slide(old)? != protected_slide(new)? { bail!("unsupported change: slide content would lose protected fields") }
+        if new.get("type").and_then(Value::as_str) != Some("slide") || (protected_slide(old)? != protected_slide(new)? && !adjacent_plain_text_swap(old,new)) { bail!("unsupported change: slide content would lose protected fields") }
     }
     let mut ids = HashSet::new();
     for item in &next {
@@ -859,6 +884,34 @@ mod presentation_tests {
             assert!(save_presentation(&path,"deck",current["revision"].as_i64().unwrap(),current["metadata"].clone(),inputs(&current),attempt).is_err());
             assert_eq!(read_presentation(&path,"deck").unwrap(),current);
         }
+        drop(c); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn adjacent_plain_text_swap_preserves_media_and_rejects_mixed_edits() {
+        let path=fixture(); let c=Connection::open(&path).unwrap();
+        c.execute("INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('media','deck','image','a.png','image/png',1,'a.png',1)",[]).unwrap();
+        let slide=json!({"type":"slide","attrs":{"bid":"s","elements":[{"id":"a","type":"text","text":"A"},{"id":"b","type":"text","text":"B"},{"id":"img","type":"image","attachmentId":"media","future":true}]}});
+        let mut unknown=slide.clone(); unknown["attrs"]["elements"][0]["future"]=json!(true);
+        let mut unknown_swap=unknown.clone(); unknown_swap["attrs"]["elements"].as_array_mut().unwrap().swap(0,1);
+        assert!(!adjacent_plain_text_swap(&unknown,&unknown_swap));
+        let mut duplicate=slide.clone(); duplicate["attrs"]["elements"][1]["id"]=json!("a");
+        let mut duplicate_swap=duplicate.clone(); duplicate_swap["attrs"]["elements"].as_array_mut().unwrap().swap(0,1);
+        assert!(!adjacent_plain_text_swap(&duplicate,&duplicate_swap));
+        c.execute("UPDATE blocks SET content=?1 WHERE id='s'",[slide.to_string()]).unwrap(); drop(c);
+        let old=read_presentation(&path,"deck").unwrap();
+        let mut mixed=inputs(&old); mixed[0].content["attrs"]["elements"].as_array_mut().unwrap().swap(0,1); mixed[0].content["attrs"]["notes"]=json!("other change");
+        assert!(save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),mixed).is_err());
+        assert_eq!(read_presentation(&path,"deck").unwrap(),old);
+        let c=Connection::open(&path).unwrap(); c.execute_batch("CREATE TRIGGER fail_swap BEFORE INSERT ON changes BEGIN SELECT RAISE(ABORT,'fixture'); END;").unwrap(); drop(c);
+        let mut failing=inputs(&old); failing[0].content["attrs"]["elements"].as_array_mut().unwrap().swap(0,1);
+        assert!(save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),failing).is_err());
+        assert_eq!(read_presentation(&path,"deck").unwrap(),old);
+        let c=Connection::open(&path).unwrap(); c.execute_batch("DROP TRIGGER fail_swap").unwrap(); drop(c);
+        let mut next=inputs(&old); next[0].content["attrs"]["elements"].as_array_mut().unwrap().swap(0,1);
+        let saved=save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),next).unwrap();
+        assert_eq!(saved["blocks"][0]["content"]["attrs"]["elements"][2],slide["attrs"]["elements"][2]);
+        assert!(save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),inputs(&old)).is_err());
+        let c=Connection::open(&path).unwrap(); assert_eq!(c.query_row("SELECT count(*) FROM attachments WHERE id='media'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
         drop(c); std::fs::remove_file(path).unwrap();
     }
     #[test]
