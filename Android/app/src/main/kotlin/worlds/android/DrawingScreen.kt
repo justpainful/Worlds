@@ -353,8 +353,10 @@ private fun historyAvailable(json: String): Pair<Boolean, Boolean> {
 
 internal class InkView(context: Context) : View(context) {
     var document = ""
-        set(value) { if (value != field) { saved = DrawingInk.parse(value); field = value } }
+        set(value) { if (value != field) { saved = DrawingInk.parse(value); field = value; stablePicture = null; stablePictureAttempted = false } }
     private var saved: List<InkStroke> = emptyList()
+    private var stablePicture: android.graphics.Picture? = null
+    private var stablePictureAttempted = false
     var selectionMode = false
         set(value) { if (field != value) { selectedIds = emptySet(); selectionPointer = null; field = value; invalidate() } }
     var multiSelect = false
@@ -460,7 +462,7 @@ internal class InkView(context: Context) : View(context) {
         }
     }
     private val stylus = AndroidStylusInput(engine)
-    override fun onDetachedFromWindow() { selectionPointer = null; selectionDx = 0.0; selectionDy = 0.0; hoverPosition = null; engine.cancelAll(); deferredPenEnd?.let { recorder.onEvent(StylusEvent.Cancel(it)) }; deferredPenEnd = null; finishNavigation(true); gestureChanged(false); super.onDetachedFromWindow() }
+    override fun onDetachedFromWindow() { stablePicture = null; stablePictureAttempted = false; selectionPointer = null; selectionDx = 0.0; selectionDy = 0.0; hoverPosition = null; engine.cancelAll(); deferredPenEnd?.let { recorder.onEvent(StylusEvent.Cancel(it)) }; deferredPenEnd = null; finishNavigation(true); gestureChanged(false); super.onDetachedFromWindow() }
     override fun onHoverEvent(event: MotionEvent): Boolean {
         val pen = (0 until event.pointerCount).any { event.getToolType(it) in setOf(MotionEvent.TOOL_TYPE_STYLUS, MotionEvent.TOOL_TYPE_ERASER) }
         if (!pen) return super.onHoverEvent(event)
@@ -489,10 +491,16 @@ internal class InkView(context: Context) : View(context) {
         val overlays = mutableListOf<InkStroke>()
         pending?.let { overlays.add(InkStroke(it.samples, it.brush, it.erase, android.graphics.Color.parseColor(it.color))) }
         active.forEach { (id, points) -> overlays.add(InkStroke(points, activeBrush.getValue(id), activeErase[id] == true, android.graphics.Color.parseColor(activeColor.getValue(id)))) }
-        val shown = saved.map { stroke ->
-            if (selectionMode && stroke.id in selectedIds && selectionPointer != null) stroke.copy(samples = stroke.samples.map { it.copy(x = it.x + selectionDx, y = it.y + selectionDy) }) else stroke
+        val draggingSelection = selectionMode && selectionPointer != null
+        val shown = if (draggingSelection) saved.map { stroke ->
+            if (stroke.id in selectedIds) stroke.copy(samples = stroke.samples.map { it.copy(x = it.x + selectionDx, y = it.y + selectionDy) }) else stroke
+        } else saved
+        if (draggingSelection) DrawingInk.draw(canvas, shown + overlays)
+        else {
+            if (!stablePictureAttempted) { stablePicture = DrawingInk.record(saved); stablePictureAttempted = true }
+            val picture = stablePicture
+            if (picture != null) DrawingInk.drawCached(canvas, picture, overlays) else DrawingInk.draw(canvas, saved + overlays)
         }
-        DrawingInk.draw(canvas, shown + overlays)
         if (selectionMode) shown.filter { it.id in selectedIds }.forEach { stroke ->
             val pad = stroke.brush.size / 2 + 6.0 / scale
             val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.rgb(169, 112, 50); style = android.graphics.Paint.Style.STROKE; strokeWidth = (2.0 / scale).toFloat(); pathEffect = android.graphics.DashPathEffect(floatArrayOf((6.0 / scale).toFloat(), (4.0 / scale).toFloat()), 0f) }

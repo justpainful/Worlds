@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.Picture
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 import kotlin.math.ceil
@@ -76,9 +77,45 @@ internal object DrawingInk {
         }
     }
 
+    /** Record bounded vector commands for a stable scene, keeping zoom resolution independent. */
+    fun record(strokes: List<InkStroke>): Picture? {
+        var work = 0.0
+        var sampleCount = 0
+        for (stroke in strokes) {
+            if (stroke.samples.size > 100_000 - sampleCount) return null
+            sampleCount += stroke.samples.size
+            var length = 0.0
+            for (i in 1 until stroke.samples.size) {
+                val previous = stroke.samples[i - 1]; val next = stroke.samples[i]
+                length += hypot(next.x - previous.x, next.y - previous.y)
+            }
+            work += StrokeGeometry.workForLength(length, stroke.brush)
+            if (!work.isFinite() || work > 250_000.0) return null
+        }
+        val picture = Picture()
+        val recording = picture.beginRecording(WIDTH, HEIGHT)
+        try { drawStrokes(recording, strokes) } finally { picture.endRecording() }
+        return picture
+    }
+
     fun draw(canvas: Canvas, strokes: List<InkStroke>) {
+        drawLayer(canvas) { drawStrokes(canvas, strokes) }
+    }
+
+    fun drawCached(canvas: Canvas, stable: Picture, overlays: List<InkStroke>) {
+        drawLayer(canvas) {
+            canvas.drawPicture(stable)
+            drawStrokes(canvas, overlays)
+        }
+    }
+
+    private inline fun drawLayer(canvas: Canvas, content: () -> Unit) {
         canvas.drawColor(Color.WHITE)
         val layer = canvas.saveLayer(0f, 0f, WIDTH.toFloat(), HEIGHT.toFloat(), null)
+        try { content() } finally { canvas.restoreToCount(layer) }
+    }
+
+    private fun drawStrokes(canvas: Canvas, strokes: List<InkStroke>) {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(32, 32, 35); style = Paint.Style.FILL }
         strokes.forEach { stroke ->
             if (stroke.brush.kind == "natural-pencil") {
@@ -92,7 +129,6 @@ internal object DrawingInk {
             }
         }
         paint.xfermode = null
-        canvas.restoreToCount(layer)
     }
 
     /** Seeded pigment follows the desktop natural-pencil dab model. */

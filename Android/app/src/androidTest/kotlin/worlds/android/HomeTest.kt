@@ -2130,6 +2130,15 @@ class HomeTest {
             val scene = it.loadOrCreate(id).getJSONObject("scene")
             check(scene.getJSONObject("nodes").getJSONObject(scene.getJSONArray("nodeOrder").getString(1)).getBoolean("erase"))
         }
+        val frame = compose.onNodeWithContentDescription(app.getString(R.string.drawing_canvas)).captureToImage().asAndroidBitmap()
+        val middle = frame.getPixel(frame.width / 2, frame.height / 2)
+        val stroke = frame.getPixel(frame.width / 2 - 40, frame.height / 2)
+        check(android.graphics.Color.red(middle) > 240 && android.graphics.Color.green(middle) > 240 && android.graphics.Color.blue(middle) > 240)
+        check(android.graphics.Color.blue(stroke) > android.graphics.Color.red(stroke) * 2)
+        if (InstrumentationRegistry.getArguments().getString("captureWorldsUi") == "true") {
+            compose.waitForIdle(); Thread.sleep(400)
+            InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /sdcard/Download/worlds-drawing-cached-eraser.png").close()
+        }
         compose.onNodeWithText(app.getString(R.string.drawing_export)).performClick()
         compose.onNodeWithText(app.getString(R.string.drawing_export_png)).assertIsDisplayed()
         compose.onNodeWithText(app.getString(R.string.drawing_export_project)).assertIsDisplayed()
