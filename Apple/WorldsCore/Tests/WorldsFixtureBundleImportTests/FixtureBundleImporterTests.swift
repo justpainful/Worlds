@@ -22,7 +22,16 @@ final class FixtureBundleImporterTests: XCTestCase {
     func testFixtureBundleCopiesDataAndLeavesSourceUntouched() async throws {
         let (root, source, privateRoot) = try fixture(); defer { try? FileManager.default.removeItem(at: root) }
         let database = source.appendingPathComponent("worlds.db"), before = try Data(contentsOf: database)
-        let copy = try await FixtureBundleImporter().prepare(source: source, privateRoot: privateRoot)
+        let copy: URL
+        do { copy = try await FixtureBundleImporter().prepare(source: source, privateRoot: privateRoot) }
+        catch let error as FixtureBundleError {
+            switch error {
+            case .invalidPath: XCTFail("Fixture import rejected URL paths")
+            case .invalidResult: XCTFail("Fixture import returned an invalid response")
+            case .failed(let reason): XCTFail("Fixture import failed: \(reason)")
+            }
+            throw error
+        }
         XCTAssertTrue(copy.deletingLastPathComponent().lastPathComponent.hasPrefix("worlds-unverified-bundle-"))
         XCTAssertEqual(try Data(contentsOf: copy.deletingLastPathComponent().appendingPathComponent("attachments/sub/a.bin")), Data("safe".utf8))
         XCTAssertEqual(try Data(contentsOf: database), before)
@@ -32,7 +41,8 @@ final class FixtureBundleImporterTests: XCTestCase {
         let (root, source, privateRoot) = try fixture(); defer { try? FileManager.default.removeItem(at: root) }
         try FileManager.default.removeItem(at: source.appendingPathComponent("attachments/sub/a.bin"))
         do { _ = try await FixtureBundleImporter().prepare(source: source, privateRoot: privateRoot); XCTFail("Missing file must fail") }
-        catch { }
+        catch FixtureBundleError.failed(_) { }
+        catch { XCTFail("Expected a missing-file import failure, got \(error)") }
         XCTAssertTrue(try FileManager.default.contentsOfDirectory(atPath: privateRoot.path).isEmpty)
         XCTAssertTrue(FileManager.default.fileExists(atPath: source.appendingPathComponent("worlds.db").path))
     }

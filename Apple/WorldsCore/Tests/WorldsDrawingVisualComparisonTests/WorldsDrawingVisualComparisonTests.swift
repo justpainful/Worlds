@@ -62,6 +62,34 @@ final class WorldsDrawingVisualComparisonTests: XCTestCase {
             XCTAssertLessThan(inkMean, 0.02, "\(name) painted pixels differ from Canvas")
         }
     }
+    func testCorrectedRightTriangleAgainstSourceCanvas() throws {
+        var brush = ToolBrush(); brush.size = 3
+        let stroke = try StrokeOperationBuilder.make(samples: samples(), brush: brush, tool: .brush,
+            nodeID: "node", operationID: "stroke", actor: "artist", revision: 0,
+            timestamp: 1, layerID: "layer", frameID: "frame", nodeOrder: [], seed: 123)
+        let root = try XCTUnwrap(JSONSerialization.jsonObject(with: stroke) as? [String: Any])
+        var node = try XCTUnwrap(((root["changes"] as? [[String: Any]])?.first)?["value"] as? [String: Any])
+        node["kind"] = "shape"; node["shape"] = "right-triangle"
+        node["x"] = 0; node["y"] = 0; node["w"] = 64; node["h"] = 64
+        node["points"] = [["x": 8, "y": 8], ["x": 8, "y": 52], ["x": 52, "y": 52]]
+        var paint = try XCTUnwrap(node["paint"] as? [String: Any]); paint["strokeWidth"] = 3; node["paint"] = paint
+        let sceneJSON: [String: Any] = ["schema": 1, "defaultFrameId": "frame", "frames": ["frame": ["x": 0, "y": 0, "w": 64, "h": 64, "background": "transparent", "clip": true]], "frameOrder": ["frame"], "layers": ["layer": ["visible": true, "opacity": 1, "blend": "source-over", "parentId": NSNull()]], "layerOrder": ["layer"], "nodes": ["node": node], "nodeOrder": ["node"], "assets": [:], "masks": [:], "steps": [:], "stepOrder": []]
+        let scene = try DrawingScene(json: JSONSerialization.data(withJSONObject: sceneJSON))
+        XCTAssertThrowsError(try bitmap(256) { try ExperimentalStrokeSceneRenderer.render(scene: scene, frameID: "frame", in: $0) })
+        let actual = try bitmap(256) { context in
+            context.scaleBy(x: 4, y: 4)
+            try ExperimentalStrokeSceneRenderer.render(scene: scene, frameID: "frame", in: context, allowCorrectedRightTriangles: true)
+        }
+        let reference = try XCTUnwrap(Bundle.module.url(forResource: "right-triangle-4x", withExtension: "png", subdirectory: "CanvasReferences"))
+        let expected = try readPNG(reference, dimension: 256)
+        let painted = stride(from: 0, to: actual.count, by: 4).filter { max(actual[$0 + 3], expected[$0 + 3]) > 4 }
+        XCTAssertFalse(painted.isEmpty)
+        let difference = painted.reduce(0.0) { sum, i in sum + (0..<4).reduce(0.0) { $0 + abs(Double(actual[i+$1]) - Double(expected[i+$1])) } }
+        let mean = difference / Double(max(1, painted.count) * 4 * 255)
+        let source = XCTAttachment(data: try Data(contentsOf: reference), uniformTypeIdentifier: "public.png"); source.name = "right-triangle-source"; source.lifetime = .keepAlways; add(source)
+        let native = XCTAttachment(data: try png(actual, dimension: 256), uniformTypeIdentifier: "public.png"); native.name = "right-triangle-native"; native.lifetime = .keepAlways; add(native)
+        XCTAssertLessThan(mean, 0.02, "Right triangle painted-union RGBA MAE: \(mean)")
+    }
     func testPressureSensitiveHighlighterRemainsUnsupported() throws {
         let reference = try XCTUnwrap(Bundle.module.url(forResource: "highlighter-pressure-4x", withExtension: "png", subdirectory: "CanvasReferences"))
         let source = XCTAttachment(data: try Data(contentsOf: reference), uniformTypeIdentifier: "public.png")

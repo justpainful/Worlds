@@ -30,8 +30,21 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.worlds.test.claudeconversation.macos
+  ClaudeConversationHarness-macOS-UITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources: [UITests]
+    dependencies:
+      - target: ClaudeConversationHarness-macOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.worlds.test.claudeconversation.uitests
+        TEST_TARGET_NAME: ClaudeConversationHarness-macOS
 schemes:
   ClaudeConversationHarness-macOS:
     build:
       targets:
         ClaudeConversationHarness-macOS: all
+    test:
+      targets:
+        - ClaudeConversationHarness-macOS-UITests

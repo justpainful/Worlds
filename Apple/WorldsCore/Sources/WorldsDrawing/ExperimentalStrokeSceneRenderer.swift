@@ -8,7 +8,12 @@ public enum ExperimentalStrokeSceneError: Error { case unsupportedScene }
 public enum ExperimentalStrokeSceneRenderer {
     private struct Frame: Decodable { let x, y, w, h: Double; let background: String; let clip: Bool }
     private struct Layer: Decodable { let visible: Bool; let opacity: Double; let blend: String; let parentId: String? }
+    private struct Point: Decodable { let x, y: Double }
+    private struct Paint: Decodable { let fill, stroke, cap: String; let strokeWidth: Double; let dash: [Double] }
     private struct Node: Decodable {
+        let shape: String?
+        let points: [Point]?
+        let paint: Paint
         let kind, layerId: String
         let frameId, groupId: String?
         let visible: Bool
@@ -26,14 +31,18 @@ public enum ExperimentalStrokeSceneRenderer {
         let layerOrder, nodeOrder: [String]
     }
 
-    public static func render(scene: DrawingScene, frameID: String, in context: CGContext) throws {
+    public static func render(scene: DrawingScene, frameID: String, in context: CGContext, allowCorrectedRightTriangles: Bool = false) throws {
         let data = try scene.json()
         guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let masks = root["masks"] as? [String: Any], masks.isEmpty,
               let assets = root["assets"] as? [String: Any], assets.isEmpty,
               let nodes = root["nodes"] as? [String: [String: Any]] else { throw ExperimentalStrokeSceneError.unsupportedScene }
-        let allowedNodeKeys: Set<String> = ["id", "kind", "name", "layerId", "frameId", "groupId", "visible", "locked", "rotation", "opacity", "flipX", "flipY", "paint", "textStyle", "effects", "x", "y", "w", "h", "samples", "brush", "erase", "seed", "alphaLock"]
+        let allowedNodeKeys: Set<String> = ["id", "kind", "name", "layerId", "frameId", "groupId", "visible", "locked", "rotation", "opacity", "flipX", "flipY", "paint", "textStyle", "effects", "x", "y", "w", "h", "samples", "brush", "erase", "seed", "alphaLock", "shape", "points", "originalSamples"]
         guard nodes.values.allSatisfy({ Set($0.keys).isSubset(of: allowedNodeKeys) }) else { throw ExperimentalStrokeSceneError.unsupportedScene }
+        for node in nodes.values where node["kind"] as? String == "shape" {
+            guard let paint = node["paint"] as? [String: Any],
+                  Set(paint.keys).isSubset(of: ["fill", "stroke", "strokeWidth", "dash", "cap", "radius"]) else { throw ExperimentalStrokeSceneError.unsupportedScene }
+        }
         let decoded = try JSONDecoder().decode(Scene.self, from: data)
         guard decoded.schema == 1, let frame = decoded.frames[frameID], frame.clip,
               [frame.x, frame.y, frame.w, frame.h].allSatisfy(\.isFinite), frame.w > 0, frame.h > 0,
@@ -45,11 +54,17 @@ public enum ExperimentalStrokeSceneRenderer {
             guard layer.parentId == nil, layer.blend == "source-over", layer.opacity.isFinite, (0...1).contains(layer.opacity) else { throw ExperimentalStrokeSceneError.unsupportedScene }
         }
         for node in decoded.nodes.values {
-            guard node.kind == "stroke", decoded.layers[node.layerId] != nil, node.frameId == frameID,
+            guard (node.kind == "stroke" || (allowCorrectedRightTriangles && node.kind == "shape" && node.shape == "right-triangle")), decoded.layers[node.layerId] != nil, node.frameId == frameID,
                   node.groupId == nil, !node.erase, !node.alphaLock, node.effects.isEmpty,
                   [node.x, node.y, node.w, node.h, node.rotation, node.opacity].allSatisfy(\.isFinite),
                   node.w > 0, node.h > 0, (0...1).contains(node.opacity) else { throw ExperimentalStrokeSceneError.unsupportedScene }
-            _ = try color(node.brush.color)
+            if node.kind == "stroke" { _ = try color(node.brush.color) }
+            else {
+                guard let points = node.points, points.count == 3, points.allSatisfy({ $0.x.isFinite && $0.y.isFinite }),
+                      node.paint.fill == "transparent", node.paint.dash.isEmpty, node.paint.cap == "round",
+                      node.paint.strokeWidth.isFinite, node.paint.strokeWidth > 0, node.paint.strokeWidth <= 2048 else { throw ExperimentalStrokeSceneError.unsupportedScene }
+                _ = try color(node.paint.stroke)
+            }
         }
         context.saveGState(); defer { context.restoreGState() }
         context.clip(to: CGRect(x: 0, y: 0, width: frame.w, height: frame.h))
@@ -66,7 +81,18 @@ public enum ExperimentalStrokeSceneRenderer {
                 context.scaleBy(x: node.flipX ? -1 : 1, y: node.flipY ? -1 : 1)
                 context.translateBy(x: -node.w / 2, y: -node.h / 2)
                 context.setAlpha(node.opacity)
-                do { try StrokeRasterCandidate.draw(samples: node.samples, brush: node.brush, seed: node.seed, color: color(node.brush.color), in: context) }
+                do {
+                    if node.kind == "stroke" {
+                        try StrokeRasterCandidate.draw(samples: node.samples, brush: node.brush, seed: node.seed, color: color(node.brush.color), in: context)
+                    } else if let points = node.points {
+                        context.setStrokeColor(try color(node.paint.stroke)); context.setLineWidth(node.paint.strokeWidth)
+                        context.setLineJoin(.round); context.setLineCap(.round); context.beginPath()
+                        context.move(to: CGPoint(x: points[0].x, y: points[0].y))
+                        context.addLine(to: CGPoint(x: points[1].x, y: points[1].y))
+                        context.addLine(to: CGPoint(x: points[2].x, y: points[2].y))
+                        context.closePath(); context.strokePath()
+                    }
+                }
                 catch { context.restoreGState(); context.endTransparencyLayer(); context.restoreGState(); throw error }
                 context.restoreGState()
             }

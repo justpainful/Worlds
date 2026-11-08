@@ -135,6 +135,7 @@ jobs:
           grep -E 'Test Case .*testSourceCanvasAndNativeStrokePixels.*passed' "$GITHUB_WORKSPACE/logs/drawing-visual-comparison.log"
           grep -E 'Test Case .*testPressureSensitiveHighlighterRemainsUnsupported.*passed' "$GITHUB_WORKSPACE/logs/drawing-visual-comparison.log"
           grep -E 'Test Case .*testPersistedStrokeOperationAgainstSourceCanvas.*passed' "$GITHUB_WORKSPACE/logs/drawing-visual-comparison.log"
+          grep -E 'Test Case .*testCorrectedRightTriangleAgainstSourceCanvas.*passed' "$GITHUB_WORKSPACE/logs/drawing-visual-comparison.log"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -345,6 +346,16 @@ jobs:
           xcodebuild -project Apple/ClaudeConversationHarness/WorldsClaudeConversationHarness.xcodeproj \
             -scheme ClaudeConversationHarness-macOS -configuration Debug -destination 'generic/platform=macOS' \
             CODE_SIGNING_ALLOWED=NO build 2>&1 | tee logs/claude-harness-build.log
+      - name: Test isolated fixture conversation and process restart
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild -project Apple/ClaudeConversationHarness/WorldsClaudeConversationHarness.xcodeproj \
+            -scheme ClaudeConversationHarness-macOS -configuration Debug -destination 'platform=macOS' \
+            -resultBundlePath "$GITHUB_WORKSPACE/logs/claude-harness.xcresult" \
+            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee logs/claude-harness-ui.log
+          grep -E 'testConversationSurvivesProcessRestartAndCancellation.*passed' logs/claude-harness-ui.log
+          grep -E 'testPendingResponseRecoversAfterProcessRestart.*passed' logs/claude-harness-ui.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -645,6 +656,63 @@ jobs:
           path: |
             logs/
             gallery-*.xcresult/
+          if-no-files-found: warn
+
+  drawing-harness:
+    name: Experimental isolated drawing UI harness
+    runs-on: macos-26
+    needs: [ruststore-xcframework]
+    timeout-minutes: 40
+    env:
+      WORLDS_REQUIRE_NATIVE_WRITES: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Worlds-shared-ruststore-xcframework
+          path: ruststore-artifact
+      - name: Verify and restore RustStore
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat ruststore-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd ruststore-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p logs Apple/WorldsCore/Artifacts
+          tar -xzf ruststore-artifact/ruststore-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
+          test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
+      - name: Generate isolated drawing project
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          brew install xcodegen coreutils
+          xcodegen generate --spec Apple/DrawingHarness/project.yml
+      - name: Exercise isolated drawing on iPhone and iPad
+        shell: bash
+        run: |
+          set -o pipefail
+          result=0
+          for device in iPhone iPad; do
+            case "$device" in
+              iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
+              iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
+            esac
+            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/DrawingHarness/WorldsDrawingHarness.xcodeproj \
+              -scheme "DrawingHarness-$platform" -destination "$destination" \
+              -resultBundlePath "$GITHUB_WORKSPACE/drawing-$device.xcresult" \
+              CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/drawing-$device.log"; then
+              grep -E 'testDrawSaveAndReopen.*passed' "logs/drawing-$device.log" || result=1
+              grep -E 'testSyntheticTriangleCorrectionAndReopen.*passed' "logs/drawing-$device.log" || result=1
+            else
+              result=1
+            fi
+          done
+          test "$result" = 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-drawing-harness-results
+          path: |
+            logs/
+            drawing-*.xcresult/
           if-no-files-found: warn
 
   presentation-harness:
@@ -1142,6 +1210,7 @@ jobs:
           grep -q 'testPendingEstimateFailsWithoutDiscardingRawSamples' logs/drawing-writes-discovery.log
           grep -q 'testMoveSmoothingAndReleasePressureMatchSource' logs/drawing-writes-discovery.log
           grep -q 'testCapturedInputPersistsAndReopens' logs/drawing-writes-discovery.log
+          grep -q 'testCorrectionReopensAndRejectedCorrectionRetainsStroke' logs/drawing-writes-discovery.log
       - name: Test drawing writes on macOS
         shell: bash
         run: |
@@ -1156,6 +1225,7 @@ jobs:
           grep -E 'testPendingEstimateFailsWithoutDiscardingRawSamples.*passed' logs/drawing-pencil-input-macos.log
           grep -E 'testMoveSmoothingAndReleasePressureMatchSource.*passed' logs/drawing-pencil-input-macos.log
           grep -E 'testCapturedInputPersistsAndReopens.*passed' logs/drawing-pencil-input-macos.log
+          grep -E 'testCorrectionReopensAndRejectedCorrectionRetainsStroke.*passed' logs/drawing-pencil-input-macos.log
       - name: Test isolated gallery import on macOS
         shell: bash
         run: |
@@ -1221,6 +1291,7 @@ jobs:
           grep -E "Test Case .*testPendingEstimateFailsWithoutDiscardingRawSamples.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testMoveSmoothingAndReleasePressureMatchSource.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testCapturedInputPersistsAndReopens.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testCorrectionReopensAndRejectedCorrectionRetainsStroke.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -5,6 +5,19 @@ import WorldsAIConversation
 import WorldsAIViews
 import WorldsAIConversationBridge
 
+#if DEBUG
+import SQLite3
+private actor HarnessFixtureRunner: ConversationRunner {
+    func run(_ request: ClaudeRequest, timeout: TimeInterval, onEvent: @escaping @Sendable (ClaudeEvent) -> Void) async throws -> ClaudeResult {
+        guard request.mcp == nil else { throw ClaudeConversationBridgeError.unexpectedTool }
+        if request.prompt == "Cancel fixture" { try await Task.sleep(for: .seconds(30)) }
+        onEvent(.text("Fixture response"))
+        return ClaudeResult(text: "Fixture response", isError: false)
+    }
+    func cancel(runID: UUID) async {}
+}
+#endif
+
 @main
 struct ClaudeConversationHarnessApp: App {
     var body: some Scene { WindowGroup { HarnessRoot() } }
@@ -19,10 +32,17 @@ struct ClaudeConversationHarnessApp: App {
         guard !loading, service == nil else { return }
         loading = true; defer { loading = false }
         do {
-            guard let executable = ClaudeExecutable.discover() else { throw ClaudeError.executableUnavailable }
             guard let fixture = Bundle.main.url(forResource: "worlds-v11", withExtension: "db") else { throw ClaudeConversationBridgeError.unavailable }
             let support = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-            let root = support.appendingPathComponent("WorldsClaudeHarness", isDirectory: true)
+            var root = support.appendingPathComponent("WorldsClaudeHarness", isDirectory: true)
+            #if DEBUG
+            let arguments = ProcessInfo.processInfo.arguments
+            let fixtureID: UUID?
+            if let index = arguments.firstIndex(of: "--isolated-ui-fixture"), arguments.indices.contains(index + 1), let id = UUID(uuidString: arguments[index + 1]) {
+                fixtureID = id
+                root = support.appendingPathComponent("WorldsClaudeHarness-UI-\(id.uuidString)", isDirectory: true)
+            } else { fixtureID = nil }
+            #endif
             if !FileManager.default.fileExists(atPath: root.path) {
                 try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
             }
@@ -32,9 +52,35 @@ struct ClaudeConversationHarnessApp: App {
                 try FileManager.default.copyItem(at: fixture, to: database)
                 try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: database.path)
             }
+            #if DEBUG
+            if fixtureID != nil && (arguments.contains("--fixture-fail-save") || arguments.contains("--fixture-allow-save")) {
+                var handle: OpaquePointer?
+                guard sqlite3_open_v2(database.path, &handle, SQLITE_OPEN_READWRITE, nil) == SQLITE_OK, let handle else {
+                    if let handle { sqlite3_close_v2(handle) }
+                    throw ClaudeConversationBridgeError.unavailable
+                }
+                let sql = arguments.contains("--fixture-fail-save")
+                    ? "CREATE TRIGGER IF NOT EXISTS ui_refuse_assistant BEFORE INSERT ON ai_messages WHEN NEW.role='assistant' BEGIN SELECT RAISE(ABORT,'fixture'); END;"
+                    : "DROP TRIGGER IF EXISTS ui_refuse_assistant;"
+                let result = sqlite3_exec(handle, sql, nil, nil, nil)
+                sqlite3_close_v2(handle)
+                guard result == SQLITE_OK else { throw ClaudeConversationBridgeError.unavailable }
+            }
+            #endif
             let store = try SQLiteConversationStore(database: database, isolatedJournal: journal)
+            let runner: any ConversationRunner
+            #if DEBUG
+            if fixtureID != nil { runner = HarnessFixtureRunner() }
+            else {
+                guard let executable = ClaudeExecutable.discover() else { throw ClaudeError.executableUnavailable }
+                let audit = try JSONLineRunAudit(url: root.appendingPathComponent("audit.jsonl"))
+                runner = try ClaudeRunner(executable: executable, audit: audit)
+            }
+            #else
+            guard let executable = ClaudeExecutable.discover() else { throw ClaudeError.executableUnavailable }
             let audit = try JSONLineRunAudit(url: root.appendingPathComponent("audit.jsonl"))
-            let runner = try ClaudeRunner(executable: executable, audit: audit)
+            runner = try ClaudeRunner(executable: executable, audit: audit)
+            #endif
             let owned = try await store.isolatedOwnedChatIDs()
             guard owned.count <= 1 else { throw ClaudeConversationBridgeError.invalidResponse }
             if let chatID = owned.first {
