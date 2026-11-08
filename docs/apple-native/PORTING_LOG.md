@@ -50,3 +50,13 @@ The native application has built for iPhone, iPad and macOS, with unsigned packa
 An isolated collaboration harness connected two replicas to a local Worker, checked convergence and denied a viewer write. It is not connected to the shipping application and does not verify the production service or device behavior. Experimental page, drawing, presentation, gallery and Claude workflows likewise remain separate from a fully verified product.
 
 [Actions run 42450227460](https://github.com/justpainful/Worlds/actions/runs/42450227460) is still running at the time of this entry. Its drawing comparison found a real image mismatch, and experimental attachment and Claude harness jobs failed. Fixes require a subsequent Apple run; no successful result is implied by local changes.
+
+## 2026-11-08: Subsequent Apple validation
+
+The current preliminary parity matrix has 29 grouped rows: 13 partial, 14 planned and two blocked. None is complete and verified. These categories are unequal in scope and the inventory is incomplete, so these counts do not measure total project completion.
+
+[Actions run 42471608182](https://github.com/justpainful/Worlds/actions/runs/42471608182) completed with 20 successful jobs and 10 failed jobs. Failures included collaboration Worker, Claude, drawing, page and gallery harnesses, Rust bridge and native UI jobs. Successful isolated checks do not establish end-to-end feature parity.
+
+[Actions run 42477484195](https://github.com/justpainful/Worlds/actions/runs/42477484195) is still in progress at the time of this entry. Swift core tests, the drawing visual comparison, the collaboration XCFramework build and the isolated identity Worker job have passed; the experimental Claude conversation harness compilation has failed. Later local corrections are not covered by this run until built in a subsequent run. The remaining jobs and visual acceptance must be assessed individually after completion.
+
+New personal content creation, gallery editing and collaboration acknowledgement work remains either isolated or behind experimental development flags. Local changes and fixture coverage do not prove release integration, production identity or authorization, real service synchronization, physical-device input, or the full requested feature set. No new complete native feature or final delivery is claimed.
