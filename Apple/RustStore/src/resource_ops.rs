@@ -1144,6 +1144,12 @@ mod presentation_tests {
         assert_eq!(c.query_row("SELECT count(*) FROM blocks WHERE id='s'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
         assert_eq!(c.query_row("SELECT count(*) FROM attachments WHERE id='media'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
         c.execute("UPDATE pages SET workspace_id=NULL WHERE id='media-owner'",[]).unwrap();
+        c.execute("DELETE FROM attachments WHERE id='media'",[]).unwrap(); drop(c);
+        assert!(restore_presentation_slide(&path,"deck",recovery,after["revision"].as_i64().unwrap(),after["metadata"].clone(),inputs(&after)).is_err());
+        assert_eq!(deleted_presentation_slides(&path,"deck").unwrap()["items"].as_array().unwrap().len(),1);
+        let c=Connection::open(&path).unwrap();
+        assert_eq!(c.query_row("SELECT count(*) FROM blocks WHERE id='s'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        c.execute("INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('media','media-owner','image','a.png','image/png',4,'media/a.png',1)",[]).unwrap();
         c.execute_batch("CREATE TRIGGER fail_restore BEFORE INSERT ON blocks WHEN NEW.id='s' BEGIN SELECT RAISE(ABORT,'fixture'); END;").unwrap(); drop(c);
         assert!(restore_presentation_slide(&path,"deck",recovery,after["revision"].as_i64().unwrap(),after["metadata"].clone(),inputs(&after)).is_err());
         assert_eq!(deleted_presentation_slides(&path,"deck").unwrap()["items"].as_array().unwrap().len(),1);
