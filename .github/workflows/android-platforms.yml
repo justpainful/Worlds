@@ -100,18 +100,7 @@ jobs:
           target: google_apis
           disable-animations: true
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
-          script: |
-            set -e
-            cd Android
-            chmod +x gradlew
-            ./gradlew :app:connectedDebugAndroidTest :core:sync:connectedDebugAndroidTest :core:stylus:connectedDebugAndroidTest :core:content:connectedDebugAndroidTest :core:identity:connectedDebugAndroidTest
-            mkdir -p build/full-app-test-results
-            cp -a app/build/reports/androidTests build/full-app-test-results/reports
-            cp -a app/build/outputs/androidTest-results build/full-app-test-results/results
-            ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=worlds.android.SharedRecoveryUiTest#sharedToolbarSupportsArabicLargeTextOffline,worlds.android.SharedRecoveryUiTest#duplicateHeadingSyncsToPeerAndRemainsIndependent -Pandroid.testInstrumentationRunnerArguments.captureUi=1
-            mkdir -p build/ci-screenshots
-            adb pull /sdcard/Download/worlds-shared-toolbar-ar.png build/ci-screenshots/shared-toolbar-ar.png
-            adb pull /sdcard/Download/worlds-shared-duplicate.png build/ci-screenshots/shared-duplicate.png
+          script: bash Android/tools/run-emulator-tests.sh
       - name: Upload instrumentation reports
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
