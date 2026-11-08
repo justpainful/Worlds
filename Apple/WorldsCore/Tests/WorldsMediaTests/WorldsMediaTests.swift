@@ -83,4 +83,26 @@ final class WorldsMediaTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: copy.url), Data("original".utf8))
         XCTAssertEqual(try Data(contentsOf: path), Data("replacement".utf8))
     }
+    func testChangedOpenAttachmentIsRejectedBeforeReadAndPlaybackCopy() throws {
+        let root = try workspace()
+        let path = root.appendingPathComponent("clip.mp4")
+        try Data("original".utf8).write(to: path)
+        let opened = try AttachmentVault(root: root).open(attachment("clip.mp4", name: "clip.mp4"))
+        let writer = try FileHandle(forWritingTo: path)
+        try writer.write(contentsOf: Data("modified".utf8)); try writer.close()
+        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1_600_000_000)], ofItemAtPath: path.path)
+        XCTAssertThrowsError(try opened.read())
+        XCTAssertThrowsError(try opened.playbackCopy(fileExtension: "mp4"))
+        XCTAssertEqual(try Data(contentsOf: path), Data("modified".utf8))
+    }
+    func testHardLinkAddedAfterOpenIsRejected() throws {
+        let root = try workspace()
+        let path = root.appendingPathComponent("source.mp4")
+        try Data("original".utf8).write(to: path)
+        let opened = try AttachmentVault(root: root).open(attachment("source.mp4", name: "source.mp4"))
+        try FileManager.default.linkItem(at: path, to: root.appendingPathComponent("other.mp4"))
+        XCTAssertThrowsError(try opened.read())
+        XCTAssertThrowsError(try opened.playbackCopy(fileExtension: "mp4"))
+        XCTAssertEqual(try Data(contentsOf: path), Data("original".utf8))
+    }
 }

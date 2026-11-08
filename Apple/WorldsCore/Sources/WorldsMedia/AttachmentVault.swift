@@ -41,10 +41,19 @@ public final class AttachmentFile {
     private let scoped: Bool
     private let file: FileHandle
     public let size: Int64
-    fileprivate init(root: URL, scoped: Bool, descriptor: Int32, size: Int64) {
+    private let modifiedSeconds: Int
+    private let modifiedNanoseconds: Int
+    fileprivate init(root: URL, scoped: Bool, descriptor: Int32, size: Int64, modifiedSeconds: Int, modifiedNanoseconds: Int) {
         self.root = root; self.scoped = scoped; self.file = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true); self.size = size
+        self.modifiedSeconds = modifiedSeconds; self.modifiedNanoseconds = modifiedNanoseconds
     }
     deinit { try? file.close(); if scoped { root.stopAccessingSecurityScopedResource() } }
+    private func verifyUnchanged() throws {
+        var info = stat()
+        guard fstat(file.fileDescriptor, &info) == 0, (info.st_mode & S_IFMT) == S_IFREG, info.st_nlink == 1,
+              info.st_size == size, info.st_mtimespec.tv_sec == modifiedSeconds,
+              info.st_mtimespec.tv_nsec == modifiedNanoseconds else { throw MediaError.inaccessible }
+    }
 
     /// Copies verified bytes to a private temporary directory for AVFoundation.
     /// The returned lease must outlive playback.
@@ -59,13 +68,15 @@ public final class AttachmentFile {
             guard FileManager.default.createFile(atPath: destination.path, contents: nil, attributes: [.posixPermissions: 0o600]) else { throw MediaError.inaccessible }
             let output = try FileHandle(forWritingTo: destination)
             defer { try? output.close() }
-            try file.seek(toOffset: 0)
+            try verifyUnchanged(); try file.seek(toOffset: 0)
             var written: Int64 = 0
             while let chunk = try file.read(upToCount: 65536), !chunk.isEmpty {
                 written += Int64(chunk.count)
                 guard written <= 512 * 1024 * 1024 else { throw MediaError.tooLarge }
                 try output.write(contentsOf: chunk)
             }
+            guard written == size else { throw MediaError.inaccessible }
+            try verifyUnchanged()
             return TemporaryMediaFile(url: destination, directory: directory)
         } catch {
             try? FileManager.default.removeItem(at: directory)
@@ -74,12 +85,15 @@ public final class AttachmentFile {
     }
     public func read(maxBytes: Int = 64 * 1024 * 1024) throws -> Data {
         guard maxBytes >= 0, maxBytes <= 1024 * 1024 * 1024, size >= 0, size <= Int64(maxBytes) else { throw MediaError.tooLarge }
-        try file.seek(toOffset: 0)
+        try verifyUnchanged(); try file.seek(toOffset: 0)
         var data = Data()
         while true {
             let remaining = maxBytes - data.count
             let chunk = try file.read(upToCount: min(65536, remaining + 1)) ?? Data()
-            if chunk.isEmpty { return data }
+            if chunk.isEmpty {
+                guard Int64(data.count) == size else { throw MediaError.inaccessible }
+                try verifyUnchanged(); return data
+            }
             guard chunk.count <= remaining else { throw MediaError.tooLarge }
             data.append(chunk)
         }
@@ -112,7 +126,8 @@ public struct AttachmentVault {
             guard fstat(fd, &statInfo) == 0, (statInfo.st_mode & S_IFMT) == S_IFREG else { throw MediaError.notAFile }
             guard statInfo.st_nlink == 1 else { throw MediaError.inaccessible }
             guard statInfo.st_size >= 0, statInfo.st_size <= maxSize else { throw MediaError.tooLarge }
-            return AttachmentFile(root: root, scoped: scoped, descriptor: fd, size: statInfo.st_size)
+            return AttachmentFile(root: root, scoped: scoped, descriptor: fd, size: statInfo.st_size,
+                                  modifiedSeconds: statInfo.st_mtimespec.tv_sec, modifiedNanoseconds: statInfo.st_mtimespec.tv_nsec)
         } catch {
             Darwin.close(fd)
             if scoped { root.stopAccessingSecurityScopedResource() }

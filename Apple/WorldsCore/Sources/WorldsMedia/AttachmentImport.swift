@@ -57,6 +57,11 @@ public enum AttachmentImport {
                 copied += Int64(chunk.count)
                 try output.write(contentsOf: chunk)
             }
+            var after = stat()
+            guard fstat(fd, &after) == 0, copied == info.st_size, after.st_size == info.st_size,
+                  after.st_dev == info.st_dev, after.st_ino == info.st_ino,
+                  after.st_mtimespec.tv_sec == info.st_mtimespec.tv_sec,
+                  after.st_mtimespec.tv_nsec == info.st_mtimespec.tv_nsec else { throw MediaError.inaccessible }
             return StagedAttachment(url: destination, fileName: cleanFileName(source.lastPathComponent), size: copied, directory: directory)
         } catch {
             try? FileManager.default.removeItem(at: directory)
