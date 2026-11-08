@@ -130,6 +130,49 @@ fn isolated_owned_document_refuses_existing_history_and_rolls_back() {
 }
 
 #[test]
+fn isolated_receive_and_compaction_preserve_outbox_and_causal_updates() {
+    use worlds_collaboration::CollaborationDoc;
+    let path=fixture(); let mut store=SyncStore::open(&path,"p","u","w").unwrap();
+    let server="wss://fixture.invalid";
+    store.enroll_empty_owned_document(0,server).unwrap();
+    let base=include_bytes!("fixtures/base.bin"); let update=include_bytes!("fixtures/alice-diff.bin");
+    let db=Connection::open(&path).unwrap();
+    db.execute_batch("DROP TABLE native_sync_remote_source_v1; DROP TABLE native_sync_snapshot_owner_v1;").unwrap();
+    assert!(matches!(store.prepare_owned_receive(0,"wss://other.invalid"),Err(StoreError::Denied)));
+    store.prepare_owned_receive(0,server).unwrap();
+    store.prepare_owned_receive(0,server).unwrap();
+    db.execute_batch("CREATE TRIGGER fail_remote BEFORE INSERT ON native_sync_remote_source_v1 BEGIN SELECT RAISE(ABORT,'fixture'); END;").unwrap();
+    assert!(store.append_owned_remote(0,server,update).is_err());
+    assert!(store.load(0).unwrap().is_empty());
+    db.execute_batch("DROP TRIGGER fail_remote;").unwrap();
+    store.append_owned_remote(0,server,update).unwrap();
+    store.append_owned_document(0,server,base).unwrap();
+    let (before,pending)=store.owned_document_batch(0,server,&[0]).unwrap();
+    db.execute_batch("CREATE TRIGGER fail_compaction BEFORE DELETE ON sync_updates BEGIN SELECT RAISE(ABORT,'fixture'); END;").unwrap();
+    assert!(store.compact_owned_document(0,server).is_err());
+    assert_eq!(store.owned_document_batch(0,server,&[0]).unwrap(),(before.clone(),pending));
+    db.execute_batch("DROP TRIGGER fail_compaction;").unwrap();
+    store.compact_owned_document(0,server).unwrap();
+    let first_upto: i64=db.query_row("SELECT snapshot_upto FROM sync_docs WHERE page_id='p'",[],|r|r.get(0)).unwrap();
+    store.compact_owned_document(0,server).unwrap();
+    assert_eq!(db.query_row("SELECT snapshot_upto FROM sync_docs WHERE page_id='p'",[],|r|r.get::<_,i64>(0)).unwrap(),first_upto);
+    assert_eq!(store.owned_document_batch(0,server,&[0]).unwrap(),(before.clone(),pending));
+    assert_eq!(db.query_row("SELECT count(*) FROM sync_updates",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+    assert_eq!(db.query_row("SELECT count(*) FROM sync_outbox WHERE state='pending'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+    drop(store);
+    let mut reopened=SyncStore::open(&path,"p","u","w").unwrap();
+    let (wire,through)=reopened.owned_document_batch(0,server,&[0]).unwrap();
+    let received=CollaborationDoc::default(); received.apply(&wire).unwrap();
+    let expected=CollaborationDoc::default(); expected.apply(base).unwrap(); expected.apply(update).unwrap();
+    assert_eq!(received.diff(&[0]).unwrap(),expected.diff(&[0]).unwrap());
+    assert!(matches!(reopened.append_owned_remote(0,"wss://other.invalid",update),Err(StoreError::Denied)));
+    reopened.acknowledge_owned_document(0,server,through.unwrap()).unwrap();
+    assert_eq!(reopened.owned_document_batch(0,server,&[0]).unwrap().1,None);
+    db.execute("UPDATE sync_docs SET snapshot=x'0000' WHERE page_id='p'",[]).unwrap();
+    assert!(matches!(reopened.owned_document_batch(0,server,&[0]),Err(StoreError::Denied)));
+}
+
+#[test]
 fn incomplete_ancestry_never_falls_back_to_workspace_default_for_writes() {
     let path=fixture(); let mut store=SyncStore::open(&path,"p","u","w").unwrap();
     let db=Connection::open(&path).unwrap();

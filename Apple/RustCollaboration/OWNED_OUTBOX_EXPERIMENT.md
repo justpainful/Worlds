@@ -28,6 +28,11 @@ and fails closed on untracked, altered or deleted log entries and nonempty
 snapshots. Batch construction reads the validated log and watermark in one
 SQLite snapshot; ACK repeats the checks in a write transaction. Its tests
 simulate a peer and ACK, not the service. The server identifier is not itself
-authenticated. Remote updates, compaction, rejection recovery, native editor
-transactions and existing documents remain unsupported. The experiment does
+authenticated. An isolated receive operation records the caller-supplied server
+binding with the update, and compaction replaces the validated log with a bound
+snapshot atomically while leaving the outbox unchanged. These operations do not
+authenticate incoming data and are not connected to a network. The explicit
+`prepare_owned_receive` step upgrades earlier experimental enrollment without
+assigning old log entries or snapshots to any owner. Rejection recovery, native editor
+transactions and existing Worlds documents remain unsupported. The experiment does
 not stop an original Worlds writer or consumer from bypassing its sidecars.
