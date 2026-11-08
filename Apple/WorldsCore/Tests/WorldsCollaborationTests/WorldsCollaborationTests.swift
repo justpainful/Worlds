@@ -617,7 +617,60 @@ private actor MissingAcknowledgementFactory {
     func next() -> any CollaborationSocket { count += 1; return count == 1 ? first : second }
 }
 
+private actor BlockedUpdateSocket: CollaborationSocket {
+    private let underlying = FixtureSocket(userID: "editor")
+    private var waiting: CheckedContinuation<Void, Error>?
+    private(set) var blocked = false
+    private(set) var closed = false
+    func send(_ data: Data) async throws {
+        if case .update = try WorldsSyncWire.decode(data) {
+            blocked = true
+            try await withCheckedThrowingContinuation { waiting = $0 }
+        } else { try await underlying.send(data) }
+    }
+    func receive() async throws -> Data? { try await underlying.receive() }
+    func close() async {
+        closed = true
+        if let waiting { self.waiting = nil; waiting.resume(throwing: CancellationError()) }
+        await underlying.close()
+    }
+    func closeCode() async -> Int { await underlying.closeCode() }
+}
+private actor BlockedUpdateFactory {
+    let first = BlockedUpdateSocket()
+    let second = FixtureSocket(userID: "editor")
+    private(set) var count = 0
+    func next() -> any CollaborationSocket { count += 1; return count == 1 ? first : second }
+}
+
 extension WorldsCollaborationTests {
+    func testBlockedUpdateSendTimesOutAndResendsDurableOutbox() async throws {
+        let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-editor-v11", withExtension: "db"))
+        let copy = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-blocked-send-\(UUID().uuidString).db")
+        try FileManager.default.copyItem(at: source, to: copy)
+        defer { try? FileManager.default.removeItem(at: copy) }
+        let store = try SQLiteCollaborationStore(databaseURL: copy, pageID: "fixture-page", userID: "editor", workspaceID: "fixture-workspace")
+        let update = try XCTUnwrap(Data(base64Encoded: "AQbpBwAEAQZzaGFyZWQKSGVsbG8g8J+MjQcBB2RlZmF1bHQDCXBhcmFncmFwaAcA6QcIBgYA6QcJBGJvbGQEdHJ1ZYTpBwoNWWpzIHJpY2ggdGV4dIbpBxcEYm9sZARudWxsAA=="))
+        try await store.appendLocal(pageID: "fixture-page", channel: 0, update: update)
+        let factory = BlockedUpdateFactory()
+        let session = try CollaborationSession(pageID: "fixture-page", workspaceID: "fixture-workspace", documentID: "fixture-page", expectedUserID: "editor", serverURL: URL(string: "https://example.invalid")!, store: store, tokenProvider: { _ in "fixture-token" }, socketFactory: { _, _ in await factory.next() }, acknowledgementTimeout: .milliseconds(100))
+        let run = Task { try await session.run() }
+        defer { Task { await session.stop() } }
+        var resent = false
+        for _ in 0..<250 {
+            let count = await factory.count
+            let remaining = try await store.maximumPendingID(pageID: "fixture-page", channel: 0)
+            if count >= 2 && remaining == nil { resent = true; break }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        let blocked = await factory.first.blocked
+        let closed = await factory.first.closed
+        await session.stop(); _ = try? await run.value
+        XCTAssertTrue(blocked); XCTAssertTrue(closed)
+        XCTAssertTrue(resent, "A stalled send must close the socket and retry its durable outbox")
+        let updates = try await store.load(pageID: "fixture-page", channel: 0)
+        XCTAssertTrue(updates.contains(update))
+    }
     func testMissingAcknowledgementReconnectsAndResendsDurableOutbox() async throws {
         let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-editor-v11", withExtension: "db"))
         let copy = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-missing-ack-\(UUID().uuidString).db")

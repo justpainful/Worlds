@@ -441,12 +441,13 @@ public actor CollaborationSession {
                 pending[batch] = Pending(channel: channel, through: through)
                 diagnostic("send update \(channel)")
                 let batchID = batch, connection = socketID, delay = acknowledgementTimeout
-                try await socket.send(WorldsSyncWire.encode(.update(batchID: batchID, channel: channel, update: diff)))
-                guard !stopped, socketID == connection, pending[batchID] != nil else { return }
                 acknowledgementTimers[batchID] = Task { [weak self] in
                     do { try await Task.sleep(for: delay) } catch { return }
                     await self?.expireAcknowledgement(batchID, connection: connection)
                 }
+                // Include a stalled send in the deadline: otherwise no timer
+                // exists to close the socket and retry the durable outbox.
+                try await socket.send(WorldsSyncWire.encode(.update(batchID: batchID, channel: channel, update: diff)))
             } else if kind == 1 || kind == 2 {
                 diagnostic("apply remote \(channel)")
                 guard !remoteWriteInFlight, !localWriteInFlight else { throw CollaborationError.notStarted }
