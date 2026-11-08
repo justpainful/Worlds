@@ -136,7 +136,9 @@ pub fn save_gallery(path: &Path, id: &str, base: i64, expected_metadata: Value, 
 /// attachment and gallery block together. This alone does not publish files.
 pub(crate) fn save_gallery_transaction(tx: &Connection, id: &str, base: i64, expected_metadata: Value, metadata: Value, expected: Vec<BlockInput>, next: Vec<BlockInput>) -> Result<Value> {
     check_metadata(tx,id,base,&expected_metadata,"gallery")?;
+    presentation_unambiguous(tx,id)?;
     let before = blocks(tx,id)?;
+    presentation_refs(tx,id,&before)?;
     if before.len() != expected.len() || before.iter().zip(&expected).any(|((id,value),e)|id != &e.id || value != &e.content) { bail!("conflict: gallery blocks changed") }
     let old_opaque: Vec<_> = before.iter().filter(|(_,v)|v.get("type").and_then(Value::as_str) != Some("galleryItem")).collect();
     let next_pairs: Vec<_> = next.iter().map(|b|(b.id.clone(),b.content.clone())).collect();
@@ -151,9 +153,12 @@ pub(crate) fn save_gallery_transaction(tx: &Connection, id: &str, base: i64, exp
     attachment_ids(&tx,&before)?; attachment_ids(&tx,&next_pairs)?;
     let gallery = if metadata != expected_metadata { Some(metadata_key(&expected_metadata,&metadata,"gallery")?.clone()) } else { None };
     store::snapshot_before_user_edit(&tx,id)?;
+    let originals=prepare_unchanged_blocks(tx,id,&before,&next_pairs)?;
     let input = next.into_iter().map(|item| store::BlockInput {id:item.id,content:item.content}).collect();
     let result = store::save_blocks(&tx,&store::Ctx::user(),id,input)?;
     if !result.remapped.is_empty() { bail!("conflict: block IDs were remapped") }
+    restore_unchanged_blocks(tx,id,originals)?;
+    presentation_refs(tx,id,&next_pairs)?;
     if let Some(value) = gallery { store::set_page_meta(&tx,&store::Ctx::user(),id,"gallery",value)?; }
     snapshot(tx,id)
 }
@@ -295,6 +300,27 @@ mod tests {
         assert!(save_gallery(&path,"g",snapshot["revision"].as_i64().unwrap(),snapshot["metadata"].clone(),snapshot["metadata"].clone(),expected,vec![]).is_err());
         let c=Connection::open(&path).unwrap(); assert_eq!(c.query_row("SELECT count(*) FROM blocks WHERE id='opaque'",[],|r|r.get::<_,i64>(0)).unwrap(),1); drop(c);
         std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn gallery_preserves_unknown_refs_and_noncanonical_block() {
+        let path=fixture();
+        let raw=r#"{"type":"futureBlock","attrs":{"payload":"keep","bid":"opaque"},"content":[{"type":"text","text":"مرحبا"}]}"#;
+        let c=Connection::open(&path).unwrap();
+        c.execute("INSERT INTO blocks(id,page_id,type,sort_key,content,text,direction,created_at,updated_at) VALUES('opaque','g','futureBlock',0,?1,'مرحبا','ltr',1,7)",[raw]).unwrap();
+        c.execute("INSERT INTO refs(source_page,source_block,target_page,kind) VALUES('g','opaque','unknown','plugin')",[]).unwrap(); drop(c);
+        let snapshot=read_resource(&path,"g").unwrap();
+        let opaque=BlockInput{id:"opaque".into(),content:serde_json::from_str(raw).unwrap()};
+        let next=||vec![opaque.clone(),gallery("new","a")];
+        assert!(save_gallery(&path,"g",snapshot["revision"].as_i64().unwrap(),snapshot["metadata"].clone(),snapshot["metadata"].clone(),vec![opaque.clone()],next()).is_err());
+        let c=Connection::open(&path).unwrap();
+        assert_eq!(c.query_row("SELECT count(*) FROM refs WHERE source_page='g'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        assert_eq!(c.query_row("SELECT count(*) FROM versions WHERE page_id='g'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        c.execute("DELETE FROM refs WHERE source_page='g'",[]).unwrap(); drop(c);
+        save_gallery(&path,"g",snapshot["revision"].as_i64().unwrap(),snapshot["metadata"].clone(),snapshot["metadata"].clone(),vec![opaque.clone()],next()).unwrap();
+        let c=Connection::open(&path).unwrap();
+        let (content,direction,updated):(String,String,i64)=c.query_row("SELECT content,direction,updated_at FROM blocks WHERE id='opaque'",[],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).unwrap();
+        assert_eq!((content,direction,updated),(raw.to_string(),"ltr".into(),7));
+        drop(c); std::fs::remove_file(path).unwrap();
     }
     #[test]
     fn project_rejects_shared_links_and_preserves_source() {
@@ -530,12 +556,21 @@ pub(crate) fn restore_unchanged_blocks(c: &Connection, page: &str, originals: Ve
 // The experimental native presentation editor can change notes, text, geometry
 // and selected text-style fields. Preserve every other field and element until
 // a complete editor can prove an explicit operation is safe.
+fn native_hex_color(value: &Value) -> bool {
+    value.as_str().is_some_and(|v|v.len()==7 && v.starts_with('#') && v.as_bytes()[1..].iter().all(u8::is_ascii_hexdigit))
+}
 fn protected_slide(value: &Value) -> Result<Value> {
     let mut result=value.clone();
     let attrs=result.get_mut("attrs").and_then(Value::as_object_mut).ok_or_else(||anyhow::anyhow!("invalid slide attributes"))?;
     // Only text notes are editable. Preserve malformed or future values in
     // the protected comparison so a save cannot silently overwrite them.
     if attrs.get("notes").is_some_and(Value::is_string) { attrs.remove("notes"); }
+    if let Some(background)=attrs.get_mut("background").and_then(Value::as_object_mut) {
+        let plain=background.keys().all(|key|key=="color" || key=="attachmentId")
+            && background.get("attachmentId").is_none_or(Value::is_null)
+            && background.get("color").is_some_and(native_hex_color);
+        if plain { background.remove("color"); }
+    }
     if let Some(elements)=attrs.get_mut("elements") {
         for element in elements.as_array_mut().ok_or_else(||anyhow::anyhow!("invalid slide elements"))? {
             let Some(object)=element.as_object_mut() else { continue };
@@ -556,7 +591,7 @@ fn protected_slide(value: &Value) -> Result<Value> {
                         if style.get(key).and_then(Value::as_f64).is_some_and(|v|v.is_finite() && (min..=max).contains(&v)) { style.remove(key); }
                     }
                     if style.get("font").is_some_and(Value::is_string) { style.remove("font"); }
-                    if style.get("color").and_then(Value::as_str).is_some_and(|v|v.len()==7 && v.starts_with('#') && v.as_bytes()[1..].iter().all(u8::is_ascii_hexdigit)) { style.remove("color"); }
+                    if style.get("color").is_some_and(native_hex_color) { style.remove("color"); }
                     if style.get("italic").is_some_and(Value::is_boolean) { style.remove("italic"); }
                     if style.get("align").and_then(Value::as_str).is_some_and(|v|["left","center","right"].contains(&v)) { style.remove("align"); }
                     if style.is_empty() { object.remove("style"); }
@@ -803,6 +838,28 @@ mod presentation_tests {
         let saved=save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),safe).unwrap();
         assert_eq!(saved["blocks"][0]["content"]["attrs"]["elements"][0]["style"]["color"],"rgba(0, 0, 0, 0.5)");
         std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn background_color_change_preserves_media_and_unknown_fields() {
+        let path=fixture(); let c=Connection::open(&path).unwrap();
+        let slide=json!({"type":"slide","attrs":{"bid":"s","background":{"color":"#112233"},"elements":[]}});
+        c.execute("UPDATE blocks SET content=?1 WHERE id='s'",[slide.to_string()]).unwrap(); drop(c);
+        let old=read_presentation(&path,"deck").unwrap();
+        let mut next=inputs(&old); next[0].content["attrs"]["background"]["color"]=json!("#abcdef");
+        let saved=save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),next).unwrap();
+        assert_eq!(saved["blocks"][0]["content"]["attrs"]["background"]["color"],"#abcdef");
+        assert!(save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),inputs(&old)).is_err());
+        let c=Connection::open(&path).unwrap();
+        c.execute("INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('media','deck','image','a.png','image/png',1,'a.png',1)",[]).unwrap();
+        for extra in [json!({"color":"#112233","attachmentId":"media"}),json!({"color":"#112233","future":true}),json!({"color":"rgba(0,0,0,.5)"})] {
+            let mut changed=slide.clone(); changed["attrs"]["background"]=extra;
+            c.execute("UPDATE blocks SET content=?1 WHERE id='s'",[changed.to_string()]).unwrap();
+            let current=read_presentation(&path,"deck").unwrap(); let mut attempt=inputs(&current);
+            attempt[0].content["attrs"]["background"]["color"]=json!("#abcdef");
+            assert!(save_presentation(&path,"deck",current["revision"].as_i64().unwrap(),current["metadata"].clone(),inputs(&current),attempt).is_err());
+            assert_eq!(read_presentation(&path,"deck").unwrap(),current);
+        }
+        drop(c); std::fs::remove_file(path).unwrap();
     }
     #[test]
     fn refuses_opaque_block_that_original_writer_would_mutate() {
