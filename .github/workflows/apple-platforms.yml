@@ -903,6 +903,59 @@ jobs:
             local-history-*.xcresult/
           if-no-files-found: warn
 
+  experimental-move-page-ui:
+    name: Experimental fixture-only move page UI
+    runs-on: macos-26
+    needs: [ruststore-xcframework]
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Worlds-shared-ruststore-xcframework
+          path: ruststore-artifact
+      - name: Restore same-commit RustStore
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat ruststore-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd ruststore-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p logs Apple/WorldsCore/Artifacts
+          tar -xzf ruststore-artifact/ruststore-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
+          test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          brew install xcodegen coreutils
+          xcodegen generate --spec Apple/ProjectEditorHarness/move-page-experimental.yml
+      - name: Test fixture-only page move on Apple platforms
+        shell: bash
+        run: |
+          set -o pipefail
+          result=0
+          for device in macOS iPhone iPad; do
+            case "$device" in
+              macOS) platform=macOS; destination='platform=macOS' ;;
+              iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
+              iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
+            esac
+            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsMovePageExperimental.xcodeproj \
+              -scheme "LocalCopy-$platform" -configuration Debug -destination "$destination" \
+              -resultBundlePath "$GITHUB_WORKSPACE/local-move-page-$device.xcresult" \
+              CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-move-page-$device.log"; then
+              grep -E 'testMoveReopensAndRejectsOwnDescendant.*passed' "logs/local-move-page-$device.log" || result=1
+            else
+              result=1
+            fi
+          done
+          test "$result" = 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-experimental-local-move-page-results
+          path: |
+            logs/
+            local-move-page-*.xcresult/
+          if-no-files-found: warn
+
   experimental-rename-page-ui:
     name: Experimental fixture-only rename page UI
     runs-on: macos-26
