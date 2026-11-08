@@ -2,12 +2,24 @@ import SwiftUI
 import SQLite3
 import WorldsGallery
 import WorldsModels
+import WorldsMedia
+import WorldsMediaViews
 import WorldsNativeWrites
 import WorldsResourceRepositories
 
 /// Test-only host: it operates only on a generated temporary fixture.
 @main struct GalleryHarnessApp: App {
-    var body: some Scene { WindowGroup { GalleryHarnessView() } }
+    var body: some Scene {
+        WindowGroup {
+            GalleryHarnessView().environment(\.layoutDirection, ProcessInfo.processInfo.arguments.contains("--test-rtl") ? .rightToLeft : .leftToRight)
+        }
+    }
+}
+
+private struct GalleryPreviewRequest: Identifiable {
+    let id = UUID()
+    let attachment: WorldsAttachment
+    let file: AttachmentFile
 }
 
 @MainActor private final class GalleryHarnessState: ObservableObject {
@@ -24,6 +36,8 @@ import WorldsResourceRepositories
     @Published var draftSaveUnconfirmed = false
     @Published var draftRequiresReload = false
     @Published var draftSaved = false
+    @Published var preview: GalleryPreviewRequest?
+    @Published var afterOpenMutationPerformed = false
     var currentDraftItem: GalleryItem? { draft?.document.items.first { $0.id == draftItemID } }
     var editableDraftCaption: String? { guard let draft, let id = draftItemID else { return nil }; return draft.document.editableCaption(itemID: id) }
     var captionPending: Bool { editableDraftCaption != nil && captionDraft != editableDraftCaption }
@@ -73,7 +87,8 @@ import WorldsResourceRepositories
     private var copyURL: URL?
     private var repository: NativeResourceRepository?
     private var snapshot: GallerySnapshot?
-    private let png = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/a9sAAAAASUVORK5CYII=")!
+    private let firstPNG = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAIAAAAuKetIAAAAaUlEQVR4nNXOMREAIBDAsFJ1LPhXgA9E/MA1CrLuPpRJnMRJnMRJnMRJnMRJnMRJnMRJnMRJnMRJnMRJnMRJnMRJnMRJnMRJnMRJnMRJnMRJnMRJnMRJnMRJnMRJnMRJnMRJnMT5OzD1AF04Adqq4CNxAAAAAElFTkSuQmCC")!
+    private let secondPNG = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAIAAAAuKetIAAAAZklEQVR4nNXOQREAIAzAsK7+HzgGETx2jYIM51ImcRIncRIncRIncRIncRIncRIncRIncRIncRIncRIncRIncRIncRIncRIncRIncRIncRIncRIncRIncRIncRIncRIncRLnduDXA1OUAe8Zs0PeAAAAAElFTkSuQmCC")!
 
     func prepare() async {
         guard !ready, !busy else { return }; busy = true; defer { busy = false }
@@ -88,12 +103,12 @@ import WorldsResourceRepositories
             let sql = #"""
             INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('gallery-test','Gallery','gallery','{"gallery":{"view":"grid"},"unknown":{"keep":true}}',1,100);
             INSERT INTO blocks(id,page_id,type,sort_key,content,created_at,updated_at) VALUES('opaque','gallery-test','future',1,'{"type":"future","attrs":{"bid":"opaque","preserve":true}}',1,1);
-            INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('a','gallery-test','image','First.png','image/png',68,'First.png',1),('b','gallery-test','image','Second.png','image/png',68,'Second.png',1),('missing','gallery-test','image','Missing.png','image/png',68,'Missing.png',1);
+            INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('a','gallery-test','image','First.png','image/png',162,'First.png',1),('b','gallery-test','image','Second.png','image/png',159,'Second.png',1),('missing','gallery-test','image','Missing.png','image/png',68,'Missing.png',1);
             """#
             let status = sqlite3_exec(db, sql, nil, nil, nil); sqlite3_close_v2(db)
             guard status == SQLITE_OK else { throw HarnessError.fixture }
             source = original; sourceBytes = try Data(contentsOf: original); directory = root
-            try png.write(to: root.appendingPathComponent("First.png")); try png.write(to: root.appendingPathComponent("Second.png"))
+            try firstPNG.write(to: root.appendingPathComponent("First.png")); try secondPNG.write(to: root.appendingPathComponent("Second.png"))
             let copy = root.appendingPathComponent("copy.db"); try FileManager.default.copyItem(at: original, to: copy); copyURL = copy
             repository = NativeResourceRepository(store: try NativePersonalStore(url: copy))
             try await reload(); ready = true
@@ -123,6 +138,77 @@ import WorldsResourceRepositories
             try await reload(); error = nil
         } catch { self.error = error.localizedDescription }
     }
+    /// Fixture-only authorization. The snapshot check is not an ongoing ACL lease.
+    func openImage(_ item: GalleryItem) async {
+        guard !busy, draft == nil, preview == nil, let repository, let snapshot, let copyURL, let root = directory else { return }
+        busy = true; defer { busy = false }
+        do {
+            let fresh = try await repository.readAuthorizedGallery(id: "gallery-test")
+            guard fresh == snapshot, try GalleryDocument(blocks: fresh.blocks, metadata: fresh.metadata).items.contains(item),
+                  item.mime == "image/png", item.size >= 0, item.size <= 64 * 1024 * 1024 else { throw HarnessError.invalidImage }
+            var pointer: OpaquePointer?
+            guard sqlite3_open_v2(copyURL.path, &pointer, SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX, nil) == SQLITE_OK, let db = pointer else {
+                if let pointer { sqlite3_close_v2(pointer) }; throw HarnessError.invalidImage
+            }
+            defer { sqlite3_close_v2(db) }
+            var raw: OpaquePointer?
+            let sql = "SELECT file_name, mime, kind, size, rel_path, created_at FROM attachments WHERE id=?1 AND page_id=?2"
+            guard sqlite3_prepare_v2(db, sql, -1, &raw, nil) == SQLITE_OK, let statement = raw else { throw HarnessError.invalidImage }
+            defer { sqlite3_finalize(statement) }
+            let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+            guard sqlite3_bind_text(statement, 1, item.attachmentID, -1, transient) == SQLITE_OK,
+                  sqlite3_bind_text(statement, 2, "gallery-test", -1, transient) == SQLITE_OK,
+                  sqlite3_step(statement) == SQLITE_ROW,
+                  [0, 1, 2, 4].allSatisfy({ sqlite3_column_type(statement, Int32($0)) == SQLITE_TEXT }),
+                  sqlite3_column_type(statement, 3) == SQLITE_INTEGER, sqlite3_column_type(statement, 5) == SQLITE_INTEGER,
+                  let name = sqlite3_column_text(statement, 0), let mime = sqlite3_column_text(statement, 1),
+                  let kind = sqlite3_column_text(statement, 2), let path = sqlite3_column_text(statement, 4) else { throw HarnessError.invalidImage }
+            let size = sqlite3_column_int64(statement, 3)
+            let attachment = WorldsAttachment(id: item.attachmentID, pageId: "gallery-test", kind: String(cString: kind),
+                fileName: String(cString: name), mime: String(cString: mime), size: size, relPath: String(cString: path),
+                width: nil, height: nil, createdAt: sqlite3_column_int64(statement, 5))
+            guard attachment.fileName == item.name, attachment.mime == item.mime, attachment.kind == item.kind,
+                  attachment.size == item.size, sqlite3_step(statement) == SQLITE_DONE else { throw HarnessError.invalidImage }
+            let file = try AttachmentVault(root: root).open(attachment, maxSize: 64 * 1024 * 1024)
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-gallery-after-open-record-change") {
+                var writer: OpaquePointer?
+                guard sqlite3_open_v2(copyURL.path, &writer, SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX, nil) == SQLITE_OK, let writer else {
+                    if let writer { sqlite3_close_v2(writer) }; throw HarnessError.invalidImage
+                }
+                let result = sqlite3_exec(writer, "UPDATE attachments SET size=size+1 WHERE id='a'", nil, nil, nil)
+                let count = sqlite3_changes(writer); sqlite3_close_v2(writer)
+                guard result == SQLITE_OK, count == 1 else { throw HarnessError.invalidImage }
+                afterOpenMutationPerformed = true
+            }
+            guard file.size == attachment.size, try await repository.readAuthorizedGallery(id: "gallery-test") == fresh,
+                  sqlite3_reset(statement) == SQLITE_OK, sqlite3_step(statement) == SQLITE_ROW,
+                  [0, 1, 2, 4].allSatisfy({ sqlite3_column_type(statement, Int32($0)) == SQLITE_TEXT }),
+                  sqlite3_column_type(statement, 3) == SQLITE_INTEGER, sqlite3_column_type(statement, 5) == SQLITE_INTEGER,
+                  let checkedName = sqlite3_column_text(statement, 0), let checkedMime = sqlite3_column_text(statement, 1),
+                  let checkedKind = sqlite3_column_text(statement, 2), let checkedPath = sqlite3_column_text(statement, 4),
+                  String(cString: checkedName) == attachment.fileName, String(cString: checkedMime) == attachment.mime,
+                  String(cString: checkedKind) == attachment.kind, String(cString: checkedPath) == attachment.relPath,
+                  sqlite3_column_int64(statement, 3) == attachment.size, sqlite3_column_int64(statement, 5) == attachment.createdAt,
+                  sqlite3_step(statement) == SQLITE_DONE else { throw HarnessError.invalidImage }
+            preview = GalleryPreviewRequest(attachment: attachment, file: file); error = nil
+        } catch { self.error = "The fixture image could not be opened safely." }
+    }
+    func alterFixtureAttachment(owner: Bool) {
+        guard !busy, let copyURL, ProcessInfo.processInfo.arguments.contains("--ui-testing-gallery-record-failure") else { return }
+        var pointer: OpaquePointer?
+        guard sqlite3_open_v2(copyURL.path, &pointer, SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX, nil) == SQLITE_OK, let db = pointer else {
+            if let pointer { sqlite3_close_v2(pointer) }; error = "The fixture record could not be changed."; return
+        }
+        defer { sqlite3_close_v2(db) }
+        let sql = owner ? "UPDATE attachments SET page_id='fixture-page' WHERE id='a'" : "UPDATE attachments SET size=size+1 WHERE id='a'"
+        guard sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK, sqlite3_changes(db) == 1 else { error = "The fixture record could not be changed."; return }
+        error = nil
+    }
+    func removeFixtureImage() {
+        guard !busy, let root = directory, ProcessInfo.processInfo.arguments.contains("--ui-testing-gallery-preview-failure") else { return }
+        do { try FileManager.default.removeItem(at: root.appendingPathComponent("First.png")); error = nil }
+        catch { self.error = "The fixture file could not be removed." }
+    }
     func moveUp(_ index: Int) async {
         guard index > 0, let repository, let snapshot, !busy else { return }
         busy = true; defer { busy = false }
@@ -141,8 +227,8 @@ import WorldsResourceRepositories
     }
 }
 private enum HarnessError: LocalizedError {
-    case fixture, missingAttachment
-    var errorDescription: String? { switch self { case .fixture: return "The isolated fixture is unavailable."; case .missingAttachment: return "Attachment file is missing. Nothing was added." } }
+    case fixture, missingAttachment, invalidImage
+    var errorDescription: String? { switch self { case .fixture: return "The isolated fixture is unavailable."; case .missingAttachment: return "Attachment file is missing. Nothing was added."; case .invalidImage: return "The fixture image is unavailable." } }
 }
 private struct GalleryHarnessView: View {
     @StateObject private var state = GalleryHarnessState()
@@ -152,6 +238,7 @@ private struct GalleryHarnessView: View {
             List {
                 Text("Isolated gallery fixture. Files and edits stay in this temporary copy.")
                 if let error = state.error { Text(error).accessibilityIdentifier("gallery-error") }
+                if state.afterOpenMutationPerformed { Text("Fixture changed after open").accessibilityIdentifier("gallery-after-open-mutation") }
                 if state.ready {
                     if let draft = state.draft {
                         Text("Changes stay in this temporary draft until saved.")
@@ -183,9 +270,20 @@ private struct GalleryHarnessView: View {
                     Button("Add First.png") { Task { await state.add(id: "a", name: "First.png") } }
                     Button("Add Second.png") { Task { await state.add(id: "b", name: "Second.png") } }
                     Button("Add Missing.png") { Task { await state.add(id: "missing", name: "Missing.png") } }
+                    if ProcessInfo.processInfo.arguments.contains("--ui-testing-gallery-record-failure") {
+                        Button("Change fixture owner") { state.alterFixtureAttachment(owner: true) }.accessibilityIdentifier("gallery-change-fixture-owner")
+                        Button("Change fixture size") { state.alterFixtureAttachment(owner: false) }.accessibilityIdentifier("gallery-change-fixture-size")
+                    }
+                    if ProcessInfo.processInfo.arguments.contains("--ui-testing-gallery-preview-failure") {
+                        Button("Remove fixture image") { state.removeFixtureImage() }.accessibilityIdentifier("gallery-remove-fixture-image")
+                    }
                     ForEach(Array(state.items.enumerated()), id: \.element.id) { index, item in
                         HStack {
                             Text(item.name).accessibilityIdentifier("gallery-item.\(item.attachmentID)")
+                            if item.isImage {
+                                Button("View image") { Task { await state.openImage(item) } }
+                                    .accessibilityIdentifier("gallery-preview.\(item.attachmentID)")
+                            }
                             Spacer()
                             if index > 0 { Button("Move up") { Task { await state.moveUp(index) } }.accessibilityIdentifier("gallery-move.\(item.attachmentID)") }
                         }
@@ -197,6 +295,9 @@ private struct GalleryHarnessView: View {
                     }.disabled(state.draft != nil)
                 } else { Button("Prepare fixture") { Task { await state.prepare() } } }
             }.disabled(state.busy).navigationTitle("Gallery test")
+                .sheet(item: $state.preview) { request in
+                    OpenedDocumentPreviewView(attachment: request.attachment, openedFile: request.file)
+                }
                 .confirmationDialog("Discard unsaved gallery changes?", isPresented: $confirmDiscard) {
                     Button("Discard", role: .destructive) { state.discardDraft() }
                     Button("Cancel", role: .cancel) { }

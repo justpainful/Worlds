@@ -23,6 +23,14 @@ final class WorldsMediaTests: XCTestCase {
             XCTAssertThrowsError(try vault.open(attachment(path)))
         }
     }
+    func testOpenRejectsFileAboveExplicitLimit() throws {
+        let root = try workspace()
+        try Data("small".utf8).write(to: root.appendingPathComponent("a.txt"))
+        let vault = try AttachmentVault(root: root)
+        do { _ = try vault.open(attachment("a.txt"), maxSize: 4); XCTFail("Expected size rejection") }
+        catch MediaError.tooLarge { } catch { XCTFail("Unexpected error: \(error)") }
+        XCTAssertEqual(try vault.open(attachment("a.txt"), maxSize: 5).read(), Data("small".utf8))
+    }
     func testRejectsSymlinkForFileAndDirectory() throws {
         let root = try workspace()
         let outside = try workspace()

@@ -1,6 +1,64 @@
 import XCTest
 
 final class GalleryHarnessUITests: XCTestCase {
+    @MainActor func testFixtureImagesOpenFromAuthorizedHandlesInRTL() {
+        let app = XCUIApplication(); app.launchArguments.append("--test-rtl"); app.launch()
+        let prepare = app.buttons["Prepare fixture"]
+        guard prepare.waitForExistence(timeout: 30) else { XCTFail("Fixture missing"); return }; prepare.tap()
+        let first = app.buttons["Add First.png"]
+        guard first.waitForExistence(timeout: 30) else { XCTFail("First file action missing"); return }; first.tap()
+        XCTAssertTrue(app.staticTexts["gallery-item.a"].waitForExistence(timeout: 20))
+        app.buttons["Add Second.png"].tap(); XCTAssertTrue(app.staticTexts["gallery-item.b"].waitForExistence(timeout: 20))
+        for id in ["a", "b"] {
+            let open = app.buttons["gallery-preview.\(id)"]
+            guard open.waitForExistence(timeout: 10) else { XCTFail("Image action missing"); return }; open.tap()
+            let image = app.descendants(matching: .any)["opened-image-preview"].firstMatch
+            guard image.waitForExistence(timeout: 20) else {
+                let detail = XCTAttachment(string: app.debugDescription); detail.name = "gallery-image-error-\(id)"; detail.lifetime = .keepAlways; add(detail)
+                XCTFail("Image preview did not open"); return
+            }
+            let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = "gallery-image-\(id)-rtl"; shot.lifetime = .keepAlways; add(shot)
+            app.buttons["Back"].tap()
+        }
+    }
+    @MainActor func testAttachmentChangedAfterOpenBlocksPreview() {
+        let app = XCUIApplication(); app.launchArguments.append("--ui-testing-gallery-after-open-record-change"); app.launch()
+        let prepare = app.buttons["Prepare fixture"]
+        guard prepare.waitForExistence(timeout: 30) else { XCTFail("Fixture missing"); return }; prepare.tap()
+        let first = app.buttons["Add First.png"]
+        guard first.waitForExistence(timeout: 30) else { XCTFail("First file action missing"); return }; first.tap()
+        XCTAssertTrue(app.staticTexts["gallery-item.a"].waitForExistence(timeout: 20))
+        app.buttons["gallery-preview.a"].tap()
+        XCTAssertTrue(app.staticTexts["gallery-after-open-mutation"].waitForExistence(timeout: 20))
+        XCTAssertTrue(app.staticTexts["gallery-error"].waitForExistence(timeout: 20))
+        XCTAssertFalse(app.descendants(matching: .any)["opened-image-preview"].exists)
+    }
+    @MainActor func testChangedFixtureOwnerOrSizeBlocksPreview() {
+        for action in ["gallery-change-fixture-owner", "gallery-change-fixture-size"] {
+            let app = XCUIApplication(); app.launchArguments.append("--ui-testing-gallery-record-failure"); app.launch()
+            let prepare = app.buttons["Prepare fixture"]
+            guard prepare.waitForExistence(timeout: 30) else { XCTFail("Fixture missing"); return }; prepare.tap()
+            let first = app.buttons["Add First.png"]
+            guard first.waitForExistence(timeout: 30) else { XCTFail("First file action missing"); return }; first.tap()
+            XCTAssertTrue(app.staticTexts["gallery-item.a"].waitForExistence(timeout: 20))
+            app.buttons[action].tap(); app.buttons["gallery-preview.a"].tap()
+            XCTAssertTrue(app.staticTexts["gallery-error"].waitForExistence(timeout: 20))
+            XCTAssertFalse(app.descendants(matching: .any)["opened-image-preview"].exists)
+            app.terminate()
+        }
+    }
+    @MainActor func testMissingFixtureImageReportsErrorWithoutPreview() {
+        let app = XCUIApplication(); app.launchArguments.append("--ui-testing-gallery-preview-failure"); app.launch()
+        let prepare = app.buttons["Prepare fixture"]
+        guard prepare.waitForExistence(timeout: 30) else { XCTFail("Fixture missing"); return }; prepare.tap()
+        let first = app.buttons["Add First.png"]
+        guard first.waitForExistence(timeout: 30) else { XCTFail("First file action missing"); return }; first.tap()
+        XCTAssertTrue(app.staticTexts["gallery-item.a"].waitForExistence(timeout: 20))
+        app.buttons["gallery-remove-fixture-image"].tap()
+        app.buttons["gallery-preview.a"].tap()
+        XCTAssertTrue(app.staticTexts["gallery-error"].waitForExistence(timeout: 20))
+        XCTAssertFalse(app.descendants(matching: .any)["opened-image-preview"].exists)
+    }
     @MainActor func testDraftCaptionReorderUndoSaveAndReopen() {
         let app = XCUIApplication(); app.launch()
         let prepare = app.buttons["Prepare fixture"]

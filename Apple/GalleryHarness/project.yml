@@ -23,6 +23,10 @@ targets:
       - package: WorldsCore
         product: WorldsGallery
       - package: WorldsCore
+        product: WorldsMedia
+      - package: WorldsCore
+        product: WorldsMediaViews
+      - package: WorldsCore
         product: WorldsResourceRepositories
       - package: WorldsCore
         product: WorldsNativeWrites
@@ -44,6 +48,10 @@ targets:
     dependencies:
       - package: WorldsCore
         product: WorldsGallery
+      - package: WorldsCore
+        product: WorldsMedia
+      - package: WorldsCore
+        product: WorldsMediaViews
       - package: WorldsCore
         product: WorldsResourceRepositories
       - package: WorldsCore
