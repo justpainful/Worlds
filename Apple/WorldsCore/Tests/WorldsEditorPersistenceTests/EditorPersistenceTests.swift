@@ -39,7 +39,7 @@ final class EditorPersistenceTests: XCTestCase {
         try await model.save(using: bridge)
         let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
         XCTAssertEqual(reopened.initialDocument.source, expected)
-        XCTAssertEqual(reopened.initialDocument.project().text, "أول\nC")
+        XCTAssertEqual(reopened.initialDocument.project().text, "أول\tC")
         do { _ = try await stale.save(documentJSON: try stale.initialDocument.json(), basedOn: stale.initialRevision); XCTFail("Expected conflict") }
         catch NativeWriteError.conflict { } catch { XCTFail("Unexpected error: \(error)") }
         let final = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
