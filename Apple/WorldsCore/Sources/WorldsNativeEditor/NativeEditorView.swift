@@ -77,6 +77,9 @@ public struct NativeEditorView: View {
                 .frame(maxHeight: dynamicTypeSize.isAccessibilitySize ? 320 : 100)
                 .disabled(model.nativeEditPending || model.saving)
                 if model.supportsDocumentFormatting && model.selectionIsInRootTable {
+                    Button("Insert column after selection") { do { try model.insertTableColumnRight() } catch { model.report(error) } }
+                        .accessibilityIdentifier("editor-insert-table-column")
+                        .disabled(model.nativeEditPending || model.saving)
                     Button("Insert row below") { do { try model.insertTableRowBelow() } catch { model.report(error) } }
                         .accessibilityIdentifier("editor-insert-table-row")
                         .disabled(model.nativeEditPending || model.saving)

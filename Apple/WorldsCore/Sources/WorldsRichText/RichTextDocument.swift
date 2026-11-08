@@ -238,6 +238,52 @@ public struct RichTextDocument: Sendable, Equatable {
         }
     }
 
+    /// Insert after one selected column only when no shifted cell carries
+    /// position-protected data. All mutations publish together on success.
+    public mutating func insertPlainTableColumn(at path: RichTextPath, afterColumn selected: Int) throws {
+        guard path.indices.count == 1 else { throw RichTextError.invalidPath }
+        try updateNode(&source, path: ArraySlice(path.indices)) { table in
+            guard table["type"] == .string("table"), case .array(var rows)? = table["content"],
+                  !rows.isEmpty, rows.count <= 100 else { throw RichTextError.invalidDocument }
+            var width: Int?
+            var allHeader = true
+            for rowValue in rows {
+                guard case .object(let row) = rowValue, row["type"] == .string("tableRow"),
+                      case .array(let cells)? = row["content"], !cells.isEmpty, cells.count < 32,
+                      cells.indices.contains(selected), width == nil || width == cells.count else { throw RichTextError.invalidDocument }
+                width = cells.count
+                guard case .object(let selectedCell) = cells[selected] else { throw RichTextError.invalidDocument }
+                allHeader = allHeader && selectedCell["type"] == .string("tableHeader")
+                for value in cells {
+                    guard case .object(let cell) = value, case .string(let type)? = cell["type"],
+                          type == "tableCell" || type == "tableHeader" else { throw RichTextError.invalidDocument }
+                    if let raw = cell["attrs"], raw != .null {
+                        guard case .object(let attrs) = raw, Set(attrs.keys).isSubset(of: ["colspan", "rowspan", "colwidth"]),
+                              attrs["colspan"] == nil || attrs["colspan"] == .integer(1),
+                              attrs["rowspan"] == nil || attrs["rowspan"] == .integer(1),
+                              attrs["colwidth"] == nil || attrs["colwidth"] == .null else { throw RichTextError.invalidDocument }
+                    } else if cell["attrs"] == .null { throw RichTextError.invalidDocument }
+                }
+                guard cells.dropFirst(selected + 1).allSatisfy(movablePlainTableRow) else { throw RichTextError.invalidDocument }
+            }
+            guard let width else { throw RichTextError.invalidDocument }
+            let insertion = selected + 1
+            for index in rows.indices {
+                guard case .object(var row) = rows[index], case .array(var cells)? = row["content"] else { throw RichTextError.invalidDocument }
+                let type: JSONValue
+                if allHeader && insertion == width { type = .string("tableCell") }
+                else {
+                    let reference = allHeader ? insertion : selected
+                    guard cells.indices.contains(reference), case .object(let cell) = cells[reference], let cellType = cell["type"] else { throw RichTextError.invalidDocument }
+                    type = cellType
+                }
+                cells.insert(.object(["type": type, "content": .array([.object(["type": .string("paragraph"), "content": .array([])])])]), at: insertion)
+                row["content"] = .array(cells); rows[index] = .object(row)
+            }
+            table["content"] = .array(rows)
+        }
+    }
+
     /// Converts one top-level plain paragraph to a one-item Worlds list.
     /// Refuses opaque paragraph or text data rather than relocating it.
     public mutating func makeList(blockIndex: Int, kind: String) throws {

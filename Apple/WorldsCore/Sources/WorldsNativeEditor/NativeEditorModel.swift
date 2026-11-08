@@ -417,6 +417,15 @@ public final class NativeEditorModel: ObservableObject {
         do { try document.appendPlainTableColumn(at: RichTextPath([index])) } catch { throw NativeEditorError.unsupportedFormatting }
         registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
     }
+    public func insertTableColumnRight() throws {
+        guard supportsDocumentFormatting, selectionIsInRootTable, recoverableNativeText == nil, !nativeEditPending, !saving,
+              let span = projection.spans.first(where: { selection.location >= $0.range.location && selection.location <= NSMaxRange($0.range) }),
+              span.path.indices.count >= 4 else { throw NativeEditorError.unsupportedFormatting }
+        let before = document
+        do { try document.insertPlainTableColumn(at: RichTextPath([span.path.indices[0]]), afterColumn: span.path.indices[2]) }
+        catch { throw NativeEditorError.unsupportedFormatting }
+        registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
+    }
     public func makeList(_ kind: String) throws {
         guard recoverableNativeText == nil, !nativeEditPending, !saving,
               selection.location != NSNotFound, selection.location >= 0, selection.length >= 0,

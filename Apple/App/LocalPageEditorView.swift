@@ -90,6 +90,13 @@ private struct LocalPageEditorContent: View {
         ScrollView { VStack(alignment: .leading, spacing: 12) {
             Text("Edits apply only to this local copy. Some content and input methods cannot be edited safely.").font(.body)
             NativeEditorView(model: model).frame(maxWidth: .infinity, minHeight: 240)
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-document-table-column-insert"),
+               case .object(let root) = model.document.source, case .array(let blocks)? = root["content"],
+               let first = blocks.first, case .object(let table) = first,
+               case .object(let attrs)? = table["attrs"], attrs["future"] == .string("keep"),
+               model.projection.text == "أصل\t\tآخر" {
+                Text("Fixture column inserted after first").accessibilityIdentifier("fixture-table-inserted-column")
+            }
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-document-table"),
                case .object(let root) = model.document.source, case .array(let blocks)? = root["content"],
                let first = blocks.first, case .object(let table) = first, table["type"] == .string("table"),

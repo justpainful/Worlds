@@ -15,6 +15,22 @@ private actor FixturePersistence: EditorPersistence {
 
 @MainActor
 final class NativeEditorTests: XCTestCase {
+    func testInsertColumnAfterSelectionPreservesTypesAndRejectsOpaqueShift() throws {
+        let json = #"{"type":"doc","content":[{"type":"table","attrs":{"bid":"t","future":true},"content":[{"type":"tableRow","content":[{"type":"tableHeader","content":[{"type":"paragraph","content":[{"type":"text","text":"أ"}]}]},{"type":"tableHeader","content":[{"type":"paragraph","content":[{"type":"text","text":"ب"}]}]}]},{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"١"}]}]},{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"٢"}]}]}]}]}]}"#
+        let original = try RichTextDocument(json: Data(json.utf8))
+        let model = NativeEditorModel(document: original, baseRevision: 0, supportsDocumentFormatting: true)
+        try model.insertTableColumnRight()
+        let expected = #"{"type":"doc","content":[{"type":"table","attrs":{"bid":"t","future":true},"content":[{"type":"tableRow","content":[{"type":"tableHeader","content":[{"type":"paragraph","content":[{"type":"text","text":"أ"}]}]},{"type":"tableHeader","content":[{"type":"paragraph","content":[]}]},{"type":"tableHeader","content":[{"type":"paragraph","content":[{"type":"text","text":"ب"}]}]}]},{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"١"}]}]},{"type":"tableCell","content":[{"type":"paragraph","content":[]}]},{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"٢"}]}]}]}]}]}"#
+        XCTAssertEqual(model.document.source, try RichTextDocument(json: Data(expected.utf8)).source)
+        let changed = model.document.source
+        model.undo(); XCTAssertEqual(model.document, original)
+        model.redo(); XCTAssertEqual(model.document.source, changed)
+        let opaque = json.replacingOccurrences(of: #""text":"٢""#, with: #""text":"٢","future":true"#)
+        let blocked = NativeEditorModel(document: try RichTextDocument(json: Data(opaque.utf8)), baseRevision: 0, supportsDocumentFormatting: true)
+        let before = blocked.document.source
+        XCTAssertThrowsError(try blocked.insertTableColumnRight())
+        XCTAssertEqual(blocked.document.source, before)
+    }
     func testInsertRowBelowSelectionPreservesHeaderAndRejectsOpaqueShift() throws {
         let json = #"{"type":"doc","content":[{"type":"table","attrs":{"bid":"t","future":"keep"},"content":[{"type":"tableRow","content":[{"type":"tableHeader","content":[{"type":"paragraph","content":[{"type":"text","text":"عنوان"}]}]}]},{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"بيانات"}]}]}]}]}]}"#
         let original = try RichTextDocument(json: Data(json.utf8))

@@ -4,6 +4,18 @@ import WorldsModels
 @testable import WorldsRichText
 
 final class RichTextDocumentTests: XCTestCase {
+    func testInsertColumnAfterHeaderUsesFollowingColumnTypes() throws {
+        let json = #"{"type":"doc","content":[{"type":"table","attrs":{"bid":"t"},"content":[{"type":"tableRow","content":[{"type":"tableHeader","content":[{"type":"paragraph","content":[]}]},{"type":"tableHeader","content":[{"type":"paragraph","content":[]}]}]},{"type":"tableRow","content":[{"type":"tableHeader","content":[{"type":"paragraph","content":[]}]},{"type":"tableCell","content":[{"type":"paragraph","content":[]}]}]}]}]}"#
+        var document = try RichTextDocument(json: Data(json.utf8))
+        try document.insertPlainTableColumn(at: RichTextPath([0]), afterColumn: 0)
+        guard case .object(let root) = document.source, case .array(let blocks)? = root["content"],
+              case .object(let table) = blocks[0], case .array(let rows)? = table["content"], rows.count == 2,
+              case .object(let firstRow) = rows[0], case .array(let firstCells)? = firstRow["content"],
+              case .object(let secondRow) = rows[1], case .array(let secondCells)? = secondRow["content"],
+              firstCells.count == 3, secondCells.count == 3, case .object(let first) = firstCells[1],
+              case .object(let second) = secondCells[1] else { return XCTFail("Missing inserted column") }
+        XCTAssertEqual(first["type"], .string("tableHeader")); XCTAssertEqual(second["type"], .string("tableCell"))
+    }
     func testInsertRowRejectsLaterOpaqueRowWithoutMutation() throws {
         let json = #"{"type":"doc","content":[{"type":"table","attrs":{"bid":"t"},"content":[{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[]}]}]},{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[]}]}]},{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","attrs":{"future":true},"content":[]}]}]}]}]}"#
         var document = try RichTextDocument(json: Data(json.utf8))
