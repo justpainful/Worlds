@@ -22,6 +22,22 @@ final class PresentationPersistenceTests: XCTestCase {
         try execute(path, #"INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('deck','Deck','presentation','{}',1,100); INSERT INTO blocks(id,page_id,type,sort_key,content,created_at,updated_at) VALUES('slide','deck','slide',0,'{"type":"slide","attrs":{"bid":"slide","notes":"old","elements":[]}}',1,1),('opaque','deck','future',1,'{"type":"future","attrs":{"bid":"opaque","keep":true}}',1,1);"#)
         return path
     }
+    func testShapeFillSaveAndConflictKeepsMedia() async throws {
+        let path = try database()
+        try execute(path, #"INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('image','deck','image','a.png','image/png',4,'missing/a.png',1); UPDATE blocks SET content='{"type":"slide","attrs":{"bid":"slide","elements":[{"id":"shape","type":"shape","shape":"rect","fill":"#16161a","future":{"keep":true}},{"id":"image-el","type":"image","attachmentId":"image"}]}}' WHERE id='slide';"#)
+        let store = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        let stale = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        var slide = try XCTUnwrap(store.initialSlides.first)
+        let media = slide.elements.last?.source
+        try slide.setShapeFill(elementID: "shape", color: "#e5484d")
+        try await store.save(slides: [slide])
+        do { try await stale.save(slides: stale.initialSlides); XCTFail("Expected conflict") }
+        catch NativeWriteError.conflict { } catch { XCTFail("Unexpected error: \(error)") }
+        let reopened = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        XCTAssertEqual(reopened.initialSlides.first?.elements.first?.editableShapeFill, "#e5484d")
+        XCTAssertEqual(reopened.initialSlides.first?.elements.last?.source, media)
+        XCTAssertEqual(reopened.initialSlides.first?.elements.first?.source, slide.elements.first?.source)
+    }
     func testAdjacentTextReorderSaveAndConflictKeepsMedia() async throws {
         let path = try database()
         try execute(path, #"INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('image','deck','image','a.png','image/png',4,'missing/a.png',1); UPDATE blocks SET content='{"type":"slide","attrs":{"bid":"slide","elements":[{"id":"a","type":"text","text":"A"},{"id":"b","type":"text","text":"B"},{"id":"image-el","type":"image","attachmentId":"image","future":{"keep":true}}]}}' WHERE id='slide';"#)

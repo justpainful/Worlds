@@ -64,6 +64,10 @@ enum LocalCopyUITestFixture {
             ('slide-b','deck-test','slide',3,'{"type":"slide","attrs":{"bid":"slide-b","elements":[{"id":"title-a","type":"text","text":"Second slide"}]}}',1,1);
             """#
             guard sqlite3_exec(database, deck, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-presentation-shape") {
+                let update = #"UPDATE blocks SET content='{"type":"slide","attrs":{"bid":"slide-a","background":{"color":"#16161a"},"elements":[{"id":"title-a","type":"text","x":20,"y":30,"w":500,"h":100,"text":"First slide"},{"id":"shape","type":"shape","shape":"rect","x":100,"y":160,"w":300,"h":200,"fill":"#d2a46e","future":{"keep":true}},{"id":"media","type":"image","attachmentId":"slide-media"}]}}' WHERE id='slide-a'"#
+                guard sqlite3_exec(database, update, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+            }
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-presentation-element-order") {
                 let update = #"UPDATE blocks SET content='{"type":"slide","attrs":{"bid":"slide-a","background":{"color":"#16161a"},"elements":[{"id":"title-a","type":"text","text":"First slide"},{"id":"title-b","type":"text","text":"Second text"},{"id":"media","type":"image","attachmentId":"slide-media"}]}}' WHERE id='slide-a'"#
                 guard sqlite3_exec(database, update, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }

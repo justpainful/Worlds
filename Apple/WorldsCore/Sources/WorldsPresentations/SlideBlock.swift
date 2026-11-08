@@ -27,6 +27,13 @@ public struct SlideElement: Sendable, Equatable, Identifiable {
     public var rotation: Double { source.slideObject?["rot"]?.slideNumber ?? 0 }
     public var opacity: Double { source.slideObject?["opacity"]?.slideNumber ?? 1 }
     public var text: String? { source.slideObject?["text"]?.slideString }
+    public var editableShapeFill: String? {
+        guard type == "shape", let element = source.slideObject,
+              let shape = element["shape"]?.slideString, ["rect", "ellipse"].contains(shape) else { return nil }
+        guard let raw = element["fill"] else { return "#d2a46e" }
+        guard let color = raw.slideString, color.range(of: "^#[0-9a-fA-F]{6}$", options: .regularExpression) != nil else { return nil }
+        return color
+    }
     public var editableRotation: Double? {
         guard type == "text", let element = source.slideObject else { return nil }
         guard let raw = element["rot"] else { return 0 }
@@ -211,6 +218,13 @@ public struct SlideBlock: Sendable, Equatable, Identifiable {
             guard let number = object[key]?.slideNumber, number.isFinite else { return false }
         }
         return true
+    }
+    public mutating func setShapeFill(elementID: String, color: String) throws {
+        guard color.range(of: "^#[0-9a-fA-F]{6}$", options: .regularExpression) != nil else { throw SlideError.unsupportedElement }
+        try updateElement(id: elementID) { element in
+            guard SlideElement(source: .object(element)).editableShapeFill != nil else { throw SlideError.unsupportedElement }
+            element["fill"] = .string(color)
+        }
     }
     public mutating func rotateText(elementID: String, degrees: Double) throws {
         guard degrees == -1 || degrees == 1 else { throw SlideError.invalidGeometry }

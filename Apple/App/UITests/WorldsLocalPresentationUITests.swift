@@ -19,6 +19,28 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["presentation-unsupported-elements"].exists)
         let screenshot = XCTAttachment(screenshot: app.screenshot()); screenshot.name = "presentation-notes-reopened"; screenshot.lifetime = .keepAlways; add(screenshot)
     }
+    @MainActor func testShapeFillUndoAndReopenKeepsMedia() {
+        let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-presentation-fixture", "--ui-testing-presentation-shape"]; app.launch()
+        let page = app.descendants(matching: .any)["page.deck-test"].firstMatch
+        guard page.waitForExistence(timeout: 30) else { failure(app, "shape-page-missing"); XCTFail("Presentation page missing"); return }; page.tap()
+        let edit = app.buttons["edit-local-presentation"]
+        guard edit.waitForExistence(timeout: 20) else { failure(app, "shape-edit-missing"); XCTFail("Presentation editor missing"); return }; edit.tap()
+        let menu = app.descendants(matching: .any)["presentation-shape-fill-menu"].firstMatch
+        guard menu.waitForExistence(timeout: 20) else { failure(app, "shape-menu-missing"); XCTFail("Shape fill menu missing"); return }
+        XCTAssertTrue(accessibleText(menu).contains("#d2a46e")); menu.tap()
+        let choice = app.descendants(matching: .any)["presentation-shape-fill.#e5484d"].firstMatch
+        guard choice.waitForExistence(timeout: 10) else { failure(app, "shape-choice-missing"); XCTFail("Shape color missing"); return }; choice.tap()
+        XCTAssertTrue(accessibleText(menu).contains("#e5484d"))
+        let screenshot = XCTAttachment(screenshot: app.screenshot()); screenshot.name = "presentation-shape-fill"; screenshot.lifetime = .keepAlways; add(screenshot)
+        app.buttons["Undo"].tap(); XCTAssertTrue(accessibleText(menu).contains("#d2a46e"))
+        app.buttons["Redo"].tap(); XCTAssertTrue(accessibleText(menu).contains("#e5484d"))
+        app.buttons["Save"].tap()
+        guard app.staticTexts["presentation-edit-saved"].waitForExistence(timeout: 20) else { failure(app, "shape-save-missing"); XCTFail("Shape save missing"); return }
+        XCTAssertTrue(app.staticTexts["presentation-media-record-retained"].waitForExistence(timeout: 10))
+        app.buttons["Close"].tap(); XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
+        XCTAssertTrue(menu.waitForExistence(timeout: 20)); XCTAssertTrue(accessibleText(menu).contains("#e5484d"))
+        XCTAssertTrue(app.staticTexts["presentation-unsupported-elements"].exists)
+    }
     @MainActor func testPartialPreviewUsesSelectedSlideAndShowsLimits() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-presentation-fixture"]; app.launch()
         let page = app.descendants(matching: .any)["page.deck-test"].firstMatch

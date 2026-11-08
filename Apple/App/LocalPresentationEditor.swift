@@ -8,6 +8,7 @@ import SQLite3
     @Published var slides: [SlideBlock] = []
     @Published var selectedID: String?
     @Published var selectedElementID: String?
+    @Published var selectedShapeID: String?
     @Published var draft = ""
     @Published var notesDraft = ""
     @Published var error: String?
@@ -24,6 +25,8 @@ import SQLite3
     var selected: SlideBlock? { slides.first { $0.id == selectedID } }
     var textElements: [SlideElement] { selected?.elements.filter { $0.type == "text" && !$0.id.isEmpty && $0.text != nil } ?? [] }
     var currentElement: SlideElement? { textElements.first { $0.id == selectedElementID } }
+    var shapeElements: [SlideElement] { selected?.elements.filter { $0.type == "shape" && !$0.id.isEmpty } ?? [] }
+    var currentShape: SlideElement? { shapeElements.first { $0.id == selectedShapeID } }
     var hasTextUnapplied: Bool { currentElement != nil && draft != currentElement?.text }
     var hasNotesUnapplied: Bool { selected?.editableNotes != nil && notesDraft != selected?.editableNotes }
     var hasUnapplied: Bool { hasTextUnapplied || hasNotesUnapplied }
@@ -63,9 +66,19 @@ import SQLite3
         guard !hasUnapplied else { return }
         selectedElementID = nil; draft = ""; selectedID = id
         notesDraft = selected?.editableNotes ?? ""
+        selectedShapeID = shapeElements.first?.id
         selectElement(textElements.first?.id)
     }
     func selectElement(_ id: String?) { guard !hasUnapplied else { return }; selectedElementID = id; draft = currentElement?.text ?? "" }
+    func selectShape(_ id: String) { guard !hasUnapplied else { return }; selectedShapeID = id }
+    func setShapeFill(_ color: String) {
+        guard !hasUnapplied, Self.textColors.contains(color) else { return }
+        do {
+            guard var session, let index = session.slides.firstIndex(where: { $0.id == selectedID }), let shape = currentShape, let current = shape.editableShapeFill, current.lowercased() != color else { return }
+            try session.update(at: index) { try $0.setShapeFill(elementID: shape.id, color: color) }
+            self.session = session; slides = session.slides; saved = false; fixtureMediaPresent = false; error = nil
+        } catch { self.error = "This shape fill cannot be changed safely: \(error.localizedDescription)" }
+    }
     func applyText() {
         do {
             guard var session, let index = session.slides.firstIndex(where: { $0.id == selectedID }), let currentElement else { return }
@@ -282,6 +295,26 @@ struct LocalPresentationEditor: View {
                         .disabled(state.hasUnapplied).accessibilityIdentifier("presentation-background-color-menu")
                     } else {
                         Text("This background contains an image or unsupported data and cannot be edited here.")
+                    }
+                }
+                if !state.shapeElements.isEmpty {
+                    if state.shapeElements.count > 1 {
+                        Menu("Select shape") {
+                            ForEach(Array(state.shapeElements.enumerated()), id: \.offset) { index, shape in
+                                Button("Shape \(index + 1)") { state.selectShape(shape.id) }
+                            }
+                        }.disabled(state.hasUnapplied).accessibilityIdentifier("presentation-shape-selection")
+                    }
+                    if let shape = state.currentShape, let fill = shape.editableShapeFill {
+                        Menu("Shape fill: \(fill)") {
+                            ForEach(PresentationEditorState.textColors, id: \.self) { color in
+                                Button { state.setShapeFill(color) } label: {
+                                    Label { Text(color) } icon: { Circle().fill(swatchColor(color)) }
+                                }.accessibilityIdentifier("presentation-shape-fill.\(color)")
+                            }
+                        }.disabled(state.hasUnapplied).accessibilityIdentifier("presentation-shape-fill-menu")
+                    } else {
+                        Text("This shape fill cannot be edited safely.")
                     }
                 }
                 if state.textElements.count > 1 {
