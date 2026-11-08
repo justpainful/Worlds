@@ -151,6 +151,28 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
 
     fun markdownPickerFailed() { markdownSnapshot = null; mutable.update { it.copy(markdownExporting = false, markdownStatus = R.string.markdown_export_error) } }
 
+    fun deliverMarkdown(copy: Boolean, deliver: (String) -> Unit) {
+        if (!beginMarkdownExport()) return
+        val captured = markdownSnapshot ?: return
+        markdownSnapshot = null
+        scope.launch {
+            val text = runCatching { captured.blocks.map { MarkdownExport.block(JSONObject(it)) }.filter { it.isNotBlank() }.joinToString("\n\n") + "\n" }.getOrNull()
+            val status = when {
+                text == null -> if (copy) R.string.markdown_copy_error else R.string.markdown_share_error
+                text.length > MAX_SHARE_TEXT_CHARS -> R.string.shared_markdown_text_limit
+                else -> withContext(Dispatchers.Main) {
+                    val valid = !closed.get() && currentPrincipal == captured.principal && currentPage == captured.page &&
+                        mutable.value.access in setOf("view", "comment", "edit", "full") && !mutable.value.disconnected
+                    if (!valid) R.string.markdown_export_interrupted
+                    else if (runCatching { deliver(text) }.isFailure) {
+                        if (copy) R.string.markdown_copy_error else R.string.markdown_share_error
+                    } else if (copy) R.string.markdown_copy_success else null
+                }
+            }
+            if (!closed.get()) mutable.update { it.copy(markdownExporting = false, markdownStatus = status) }
+        }
+    }
+
     private fun scheduleOutbox(principal: SyncPrincipal, endpoint: String, page: String) {
         runCatching { runtime.scheduleOutbox(principal, endpoint, workspace, page) }
             .onFailure { if (!closed.get()) mutable.update { it.copy(backgroundScheduleFailed = true) } }
@@ -638,7 +660,9 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable internal fun SharedPageScreen(identity: String, workspace: Workspace, onBack: () -> Unit, controllerOverride: SharedPageController? = null, initialServer: String = "", initialPage: String = "", initialThread: String? = null, initialComment: String? = null, onOpenNotification: ((NotificationTarget) -> Unit)? = null) {
-    val app = LocalContext.current.applicationContext
+    val context = LocalContext.current
+    val app = context.applicationContext
+    val sharedPageTitle = stringResource(R.string.shared_page_title)
     val controller = remember(identity, workspace.id, controllerOverride) { controllerOverride ?: SharedPageController(WorldsAccountSync.get(app), identity, workspace.id) }
     DisposableEffect(controller) { onDispose { controller.close() } }
     val state by controller.state.collectAsState()
@@ -647,7 +671,16 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
     LaunchedEffect(state.access, state.disconnected) { if (state.access == null || state.disconnected) showMarkdown = false }
     if (showMarkdown && state.access != null && !state.disconnected) AlertDialog(onDismissRequest = { showMarkdown = false },
         title = { Text(stringResource(R.string.markdown_export)) },
-        text = { Text(stringResource(R.string.shared_markdown_explanation)) },
+        text = { Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
+            Text(stringResource(R.string.shared_markdown_explanation))
+            TextButton(onClick = { showMarkdown = false; controller.deliverMarkdown(copy = true) { clipboardText ->
+                val service = app.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                service.setPrimaryClip(android.content.ClipData.newPlainText(sharedPageTitle, clipboardText))
+            } }, modifier = Modifier.testTag("shared_markdown_copy")) { WorldsActionLabel(R.drawable.ic_files, stringResource(R.string.markdown_copy)) }
+            TextButton(onClick = { showMarkdown = false; controller.deliverMarkdown(copy = false) { text ->
+                context.startActivity(markdownShareIntent(sharedPageTitle, text))
+            } }, modifier = Modifier.testTag("shared_markdown_share")) { WorldsActionLabel(R.drawable.ic_share_2, stringResource(R.string.markdown_share)) }
+        } },
         confirmButton = { TextButton(onClick = {
             showMarkdown = false
             if (controller.beginMarkdownExport()) runCatching { markdownPicker.launch("page.md") }.onFailure { controller.markdownPickerFailed() }
@@ -929,7 +962,7 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
                 TextButton(enabled = !state.disconnected && state.snapshot != null && !state.markdownExporting, onClick = { showMarkdown = true }, modifier = Modifier.testTag("shared_markdown")) {
                     WorldsActionLabel(R.drawable.ic_download, stringResource(R.string.markdown_export))
                 }
-                state.markdownStatus?.let { Text(stringResource(it), color = if (it == R.string.markdown_export_success) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error) }
+                state.markdownStatus?.let { Text(stringResource(it), color = if (it in setOf(R.string.markdown_export_success, R.string.markdown_copy_success)) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error) }
                 Spacer(Modifier.height(12.dp))
                 val blockIdCounts = remember(state.blocks) { state.blocks.mapNotNull { it.id }.groupingBy { it }.eachCount() }
                 state.blocks.forEach { block ->

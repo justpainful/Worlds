@@ -104,13 +104,55 @@ class SharedRecoveryUiTest {
                 compose.onNodeWithTag("shared_markdown_save").performClick()
                 val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
                 compose.waitUntil(20_000) { automation.rootInActiveWindow?.packageName?.toString() == "com.google.android.documentsui" }
-                automation.executeShellCommand("input keyevent 4").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
+                if (InstrumentationRegistry.getArguments().getString("realPicker") == "1") {
+                    val filename = "worlds-shared-test-${UUID.randomUUID()}.md"
+                    val path = "/sdcard/Download/$filename"
+                    try {
+                        fun find(id: String) = automation.rootInActiveWindow?.findAccessibilityNodeInfosByViewId(id)?.firstOrNull()
+                        fun filenameField() = automation.rootInActiveWindow?.findAccessibilityNodeInfosByViewId("android:id/title")?.firstOrNull { it.isEditable }
+                        compose.waitUntil(20_000) { filenameField() != null && find("android:id/button1") != null }
+                        check(find("com.google.android.documentsui:id/breadcrumb_text")?.text?.toString() == "Downloads")
+                        val args = android.os.Bundle().apply { putCharSequence(android.view.accessibility.AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, filename) }
+                        check(filenameField()!!.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_TEXT, args))
+                        check(find("android:id/button1")!!.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK))
+                        compose.waitUntil(20_000) { !controller.state.value.markdownExporting }
+                        assertEquals(R.string.markdown_export_success, controller.state.value.markdownStatus)
+                        val bytes = automation.executeShellCommand("cat $path").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
+                        assertEquals("Shared paragraph مرحبا\n\n## Shared heading\n", bytes.toString(Charsets.UTF_8))
+                    } finally {
+                        automation.executeShellCommand("rm -f $path").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
+                    }
+                } else automation.executeShellCommand("input keyevent 4").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
                 compose.waitUntil(20_000) { !controller.state.value.markdownExporting }
                 assertTrue(controller.beginMarkdownExport())
                 controller.finishMarkdownExport(app, android.net.Uri.fromFile(output))
                 compose.waitUntil(20_000) { !controller.state.value.markdownExporting }
                 assertEquals(R.string.markdown_export_success, controller.state.value.markdownStatus)
                 assertEquals("Shared paragraph مرحبا\n\n## Shared heading\n", output.readText())
+                compose.onNodeWithTag("shared_markdown").performScrollTo().performClick()
+                compose.onNodeWithTag("shared_markdown_copy").performClick()
+                compose.waitUntil(20_000) { controller.state.value.markdownStatus == R.string.markdown_copy_success }
+                val clipboard = app.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                assertEquals("Shared paragraph مرحبا\n\n## Shared heading\n", clipboard.primaryClip!!.getItemAt(0).text.toString())
+                val shared = java.util.concurrent.atomic.AtomicReference<String>()
+                controller.deliverMarkdown(copy = false) { shared.set(it) }
+                compose.waitUntil(20_000) { shared.get() != null && !controller.state.value.markdownExporting }
+                val chooser = markdownShareIntent("Shared page", shared.get())
+                val send = chooser.getParcelableExtra<android.content.Intent>(android.content.Intent.EXTRA_INTENT)!!
+                assertEquals(android.content.Intent.ACTION_SEND, send.action)
+                assertEquals("Shared paragraph مرحبا\n\n## Shared heading\n", send.getStringExtra(android.content.Intent.EXTRA_TEXT))
+                if (InstrumentationRegistry.getArguments().getString("realShare") == "1") {
+                    compose.onNodeWithTag("shared_markdown").performScrollTo().performClick()
+                    compose.onNodeWithTag("shared_markdown_share").performClick()
+                    compose.waitUntil(20_000) {
+                        val active = automation.rootInActiveWindow?.packageName?.toString()
+                        active != null && active != app.packageName
+                    }
+                    automation.executeShellCommand("input keyevent 4").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
+                    compose.waitUntil(20_000) { automation.rootInActiveWindow?.packageName?.toString() == app.packageName }
+                }
+                controller.deliverMarkdown(copy = false) { error("No sharing target") }
+                compose.waitUntil(20_000) { controller.state.value.markdownStatus == R.string.markdown_share_error }
             } finally { output.delete() }
             if (InstrumentationRegistry.getArguments().getString("captureUi") == "1") {
                 compose.waitForIdle(); Thread.sleep(300)
@@ -167,6 +209,10 @@ class SharedRecoveryUiTest {
                 compose.waitUntil(20_000) { !controller.state.value.markdownExporting }
                 assertEquals(R.string.markdown_export_success, controller.state.value.markdownStatus)
                 assertEquals("Existing\n\n### Offline heading\n\nOffline draft\n", output.readText())
+                val copied = java.util.concurrent.atomic.AtomicReference<String>()
+                controller.deliverMarkdown(copy = true) { copied.set(it) }
+                compose.waitUntil(20_000) { controller.state.value.markdownStatus == R.string.markdown_copy_success }
+                assertEquals("Existing\n\n### Offline heading\n\nOffline draft\n", copied.get())
                 controller.edit(controller.state.value.blocks.first())
                 controller.updateDraft("Unsaved change")
                 assertTrue(controller.beginMarkdownExport())
@@ -192,6 +238,36 @@ class SharedRecoveryUiTest {
         } finally {
             controller.close(); assertTrue(controller.awaitDraftBackups()); runtime.accountChange { }
             store.close(); app.deleteDatabase(name)
+        }
+    }
+
+    @Test fun sharedTextDeliveryRejectsLargeContent() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext
+        val name = "shared-large-${UUID.randomUUID()}.db"
+        val authority = "https://identity.example"
+        val endpoint = "https://sync.example"
+        val key = SyncDocumentKey("user", "space", "page", 0, authority)
+        val store = AndroidSyncStore(app, name)
+        store.bindEndpoint(key, endpoint)
+        store.append(key, YrsNative.appendParagraph(byteArrayOf(), "large", "x".repeat(MAX_SHARE_TEXT_CHARS + 1)), local = false)
+        store.rememberAccess(key, "device", endpoint, "view")
+        val runtime = AccountSyncRuntime(
+            credentials = { throw java.io.IOException("offline") },
+            offlinePrincipal = { SyncPrincipal(authority, "user", "device") },
+            cachedPages = { server, account, device -> store.cachedPages(server, account, device) },
+            loadCached = { doc -> store.load(doc).let { replica -> replica.updates.fold(replica.snapshot ?: byteArrayOf()) { state, update -> YrsNative.merge(state, update.bytes) } } },
+            makeSession = { _, _, _, _ -> error("offline") },
+        )
+        val controller = SharedPageController(runtime, authority, "space", retryDelay = { 30_000 })
+        try {
+            controller.open(endpoint, "page")
+            compose.waitUntil(20_000) { controller.state.value.offline && controller.state.value.access == "view" }
+            val delivered = java.util.concurrent.atomic.AtomicBoolean(false)
+            controller.deliverMarkdown(copy = false) { delivered.set(true) }
+            compose.waitUntil(20_000) { controller.state.value.markdownStatus == R.string.shared_markdown_text_limit }
+            assertFalse(delivered.get())
+        } finally {
+            controller.close(); runtime.accountChange { }; store.close(); app.deleteDatabase(name)
         }
     }
 

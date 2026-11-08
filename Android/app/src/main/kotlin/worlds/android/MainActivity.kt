@@ -155,7 +155,7 @@ private data class ImageExportSnapshot(val pageId: String, val attachmentId: Str
 private data class FileImportSnapshot(val parentId: String?, val parentRevision: Long?)
 private data class FileExportSnapshot(val resourceId: String, val attachmentId: String)
 internal data class ImageExportRequest(val name: String, val mime: String)
-private const val MAX_SHARE_TEXT_CHARS = 100_000
+internal const val MAX_SHARE_TEXT_CHARS = 100_000
 internal fun markdownShareIntent(title: String, text: String): Intent {
     require(text.length <= MAX_SHARE_TEXT_CHARS)
     val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_SUBJECT, title).putExtra(Intent.EXTRA_TEXT, text)

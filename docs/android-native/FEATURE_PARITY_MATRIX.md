@@ -25,12 +25,17 @@ uncommitted drawing work which is not included in this branch.
 | Search and history | `src-tauri/src/db.rs`, `src/views/ActivityView.tsx`, `src/views/TrashView.tsx` | Partially Implemented: local substring search, local page find and replace within individual text runs in paragraphs, headings and supported plain code blocks, including supported nested lists, tables, callouts, quotes, columns and tabs; text beside unsupported inline objects is searchable while the objects remain unchanged; case matching, result navigation, session retention, Ctrl+F and Ctrl+H page shortcuts, Enter and Shift+Enter result navigation, and revealing and highlighting supported paragraph, list-item and table-cell matches including horizontal and vertical scrolling, atomic revision-checked replacement with recoverable versions, trash, versions and basic activity. Unknown node types are excluded and reported; operations over 1,000 matches are rejected; full desktop history and indexing absent |
 | Stylus input | `src/drawing`, Android `core/stylus` | Partially Implemented: input routing, local canvas, stylus hover cursor and synthetic simultaneous pen with two-finger navigation; no hardware or latency validation, and physical mixed-input palm rejection remains unverified |
 
-Shared page Markdown export is available for authorized online and cached offline
-pages. It projects the captured saved blocks through the same Markdown converter
-as personal pages. The file excludes the unavailable shared page title, an open
-draft and original attachment bytes. Android 11 and 15 emulator tests verify the output,
-picker cancellation, offline edits, account changes and write failure. The actual
-system picker save flow for this action and other providers remain unverified.
+Shared page Markdown export, copy and sharing are available for authorized online
+and cached offline pages. They project the captured saved blocks through the same
+Markdown converter as personal pages. The result excludes the unavailable shared
+page title, an open draft and original attachment bytes, and unsupported content
+can be omitted. Android 11 and 15 emulator tests verify output, picker cancellation,
+offline edits, account changes and write failure. Android 15 also saved and read
+the actual file through the system picker and opened the Android sharesheet. Other
+document providers and delivery to an external sharing target remain unverified.
+An Android 11 emulator stopped responding during a synthetic test that placed
+over 100,000 characters in an open shared editor. Large shared text editing and
+preview performance require further investigation and device testing.
 
 Each area requires further inspection of behavior, persistence, contracts,
 tests and source status before it can be expanded into feature-level rows.

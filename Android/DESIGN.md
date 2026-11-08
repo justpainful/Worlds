@@ -9,6 +9,9 @@ picker selects the destination. Use existing Worlds surface, on-surface and warm
 accent roles, system typography and 48dp touch targets. Keep the action available
 for an authorized cached page offline, and show an error if saving fails or access
 is lost before the picker returns. No decorative motion is added.
+The same dialog offers labeled copy and share actions using the existing copy and
+share symbols. Both operate on the captured saved text and report failures in the
+page. The Android sharesheet handles destination selection.
 
 ## Library action menu
 The library is a list of real pages, with search and creation above it. Its
