@@ -41,6 +41,7 @@ jobs:
           grep -E 'testListKeyboardBoundariesUseExactRangeWithRepeatedItems.*passed' logs/swift-test.log
           grep -E 'testEnterOnEmptyNestedTaskLiftsAndUndoRestores.*passed' logs/swift-test.log
           grep -E 'testIndentAndOutdentPreserveArabicUTF16Caret.*passed' logs/swift-test.log
+          grep -E 'testDocumentAlignmentPreservesRTLAndUnknownAttributesWithUndo.*passed' logs/swift-test.log
           grep -E 'testIndentAndOutdentLastTaskWithUndoAndOpaqueRejection.*passed' logs/swift-test.log
           grep -E 'testEnterExitsLastEmptyRootTaskAndNewParagraphAcceptsRTLText.*passed' logs/swift-test.log
           grep -E 'testOutdentRejectsNestedMetadataAndKeepsDocument.*passed' logs/swift-test.log
@@ -595,6 +596,7 @@ jobs:
               grep -E 'testAppendListItemsAndReopen.*passed' "logs/local-page-editor-$device.log" || result=1
               grep -E 'testUnwrapMultipleBulletsAndReopen.*passed' "logs/local-page-editor-$device.log" || result=1
               grep -E 'testTaskReturnAndBackspaceSaveAndReopen.*passed' "logs/local-page-editor-$device.log" || result=1
+              grep -E 'testDocumentAlignmentSaveAndReopenRTL.*passed' "logs/local-page-editor-$device.log" || result=1
               grep -E 'testLinkAcrossTextRunsSaveRemoveAndReopenRTL.*passed' "logs/local-page-editor-$device.log" || result=1
             else
               result=1
@@ -1249,6 +1251,8 @@ jobs:
           grep -q 'checked_roundtrip_keeps_rich_nodes_properties_and_reference_index ... ok' logs/rust-store-tests.log
           grep -q 'checked_save_refuses_ambiguous_content_and_unrecognized_reference_index ... ok' logs/rust-store-tests.log
           grep -q 'checked_save_rolls_back_if_reference_rebuild_is_blocked ... ok' logs/rust-store-tests.log
+          grep -q 'checked_save_with_matching_kind_runs_original_writer ... ok' logs/rust-store-tests.log
+          grep -q 'checked_save_rejects_kind_change_with_unchanged_revision ... ok' logs/rust-store-tests.log
           grep -q 'slide_reorder_roundtrips_media_and_unknown_elements_even_when_file_missing ... ok' logs/rust-store-tests.log
           grep -q 'deleted_slide_restores_after_reopen_and_rolls_back_on_failure ... ok' logs/rust-store-tests.log
           grep -q 'explicit_slide_delete_keeps_shared_assets_snapshots_and_rolls_back ... ok' logs/rust-store-tests.log
@@ -1300,6 +1304,9 @@ jobs:
           grep -q 'testEmptyNestedTaskPersistsAndRejectsStaleSession' logs/editor-persistence-discovery.log
           grep -q 'testEmptyNestedTaskEnterPersistsLiftAndRejectsStaleSession' logs/editor-persistence-discovery.log
           grep -q 'testIndentTaskSavesAndRejectsConcurrentSnapshot' logs/editor-persistence-discovery.log
+          grep -q 'testDocumentAlignmentPersistsUnknownDataAndRejectsConflict' logs/editor-persistence-discovery.log
+          grep -q 'testDocumentAlignmentDoesNotOverwriteUnknownLegacyValue' logs/editor-persistence-discovery.log
+          grep -q 'testDocumentAlignmentRejectsKindChangeAtSameRevision' logs/editor-persistence-discovery.log
           grep -q 'testLegacyHeadingIdentityAndMovementAreRejected' logs/editor-persistence-discovery.log
           grep -q 'testExitListBeforeUnsupportedHeadingPreservesItOnSave' logs/editor-persistence-discovery.log
           grep -q 'testExitEmptyRootTaskAndTypeSurvivesReopen' logs/editor-persistence-discovery.log
@@ -1331,6 +1338,9 @@ jobs:
           grep -E 'testEmptyNestedTaskPersistsAndRejectsStaleSession.*passed' logs/editor-persistence-macos.log
           grep -E 'testEmptyNestedTaskEnterPersistsLiftAndRejectsStaleSession.*passed' logs/editor-persistence-macos.log
           grep -E 'testIndentTaskSavesAndRejectsConcurrentSnapshot.*passed' logs/editor-persistence-macos.log
+          grep -E 'testDocumentAlignmentPersistsUnknownDataAndRejectsConflict.*passed' logs/editor-persistence-macos.log
+          grep -E 'testDocumentAlignmentDoesNotOverwriteUnknownLegacyValue.*passed' logs/editor-persistence-macos.log
+          grep -E 'testDocumentAlignmentRejectsKindChangeAtSameRevision.*passed' logs/editor-persistence-macos.log
           grep -E 'testLegacyHeadingIdentityAndMovementAreRejected.*passed' logs/editor-persistence-macos.log
           grep -E 'testExitListBeforeUnsupportedHeadingPreservesItOnSave.*passed' logs/editor-persistence-macos.log
           grep -E 'testExitEmptyRootTaskAndTypeSurvivesReopen.*passed' logs/editor-persistence-macos.log
@@ -1508,6 +1518,9 @@ jobs:
           grep -E "Test Case .*testEmptyNestedTaskPersistsAndRejectsStaleSession.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testEmptyNestedTaskEnterPersistsLiftAndRejectsStaleSession.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testIndentTaskSavesAndRejectsConcurrentSnapshot.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E 'testDocumentAlignmentPersistsUnknownDataAndRejectsConflict.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E 'testDocumentAlignmentDoesNotOverwriteUnknownLegacyValue.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E 'testDocumentAlignmentRejectsKindChangeAtSameRevision.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E 'testLegacyHeadingIdentityAndMovementAreRejected.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E 'testExitListBeforeUnsupportedHeadingPreservesItOnSave.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E 'testExitEmptyRootTaskAndTypeSurvivesReopen.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
