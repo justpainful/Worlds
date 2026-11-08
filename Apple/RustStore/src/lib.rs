@@ -166,7 +166,9 @@ fn save_blocks_checked_with_kind(path: &Path, page: &str, base: i64, expected: V
             }
         }
     }
-    store::snapshot_before_user_edit(&tx, page)?;
+    if current.iter().any(|(id,_,_)| !ids.contains(id)) {
+        store::snapshot(&tx,page,"user",None,Some("Before block deletion"))?;
+    } else { store::snapshot_before_user_edit(&tx, page)?; }
     let before_values: Vec<(String,Value)>=current.iter().map(|(id,raw,_)|Ok((id.clone(),serde_json::from_str(raw)?))).collect::<Result<_>>()?;
     let next_values: Vec<(String,Value)>=blocks.iter().map(|block|(block.id.clone(),block.content.clone())).collect();
     let originals=resource_ops::prepare_unchanged_blocks(&tx,page,&before_values,&next_values)?;
@@ -509,6 +511,24 @@ mod tests {
         assert_eq!((content,direction,updated),(raw.to_string(),"ltr".into(),7));
         let history:String=c.query_row("SELECT meta FROM history WHERE page_id='fixture-page' ORDER BY id DESC LIMIT 1",[],|r|r.get(0)).unwrap();
         assert_eq!(serde_json::from_str::<Value>(&history).unwrap()["changed"],1);
+        drop(c); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn checked_delete_snapshots_latest_content_even_with_recent_version() {
+        let path=fixture(); let c=Connection::open(&path).unwrap();
+        store::snapshot(&c,"fixture-page","user",None,Some("Older fixture")).unwrap();
+        let latest=serde_json::json!({"type":"paragraph","attrs":{"bid":"fixture-block"},"content":[{"type":"text","text":"latest before delete"}]});
+        c.execute("UPDATE blocks SET content=?1 WHERE id='fixture-block'",[latest.to_string()]).unwrap();
+        c.execute_batch("CREATE TRIGGER fail_block_delete BEFORE DELETE ON blocks BEGIN SELECT RAISE(ABORT,'fixture'); END;").unwrap(); drop(c);
+        let expected=current_blocks(&path);
+        assert!(save_blocks_checked(&path,"fixture-page",1700000000001,expected.clone(),vec![]).is_err());
+        let c=Connection::open(&path).unwrap();
+        assert_eq!(c.query_row("SELECT count(*) FROM versions WHERE label='Before block deletion'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        c.execute_batch("DROP TRIGGER fail_block_delete").unwrap(); drop(c);
+        save_blocks_checked(&path,"fixture-page",1700000000001,expected,vec![]).unwrap();
+        let c=Connection::open(&path).unwrap();
+        let raw:String=c.query_row("SELECT snapshot FROM versions WHERE label='Before block deletion'",[],|r|r.get(0)).unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&raw).unwrap()["blocks"][0],latest);
         drop(c); std::fs::remove_file(path).unwrap();
     }
     #[test]

@@ -172,7 +172,9 @@ pub(crate) fn save_gallery_transaction(tx: &Connection, id: &str, base: i64, exp
     }
     attachment_ids(&tx,&before)?; attachment_ids(&tx,&next_pairs)?;
     let gallery = if metadata != expected_metadata { Some(metadata_key(&expected_metadata,&metadata,"gallery")?.clone()) } else { None };
-    store::snapshot_before_user_edit(&tx,id)?;
+    if before.iter().any(|(block_id,_)| !seen.contains(block_id)) {
+        store::snapshot(&tx,id,"user",None,Some("Before gallery item deletion"))?;
+    } else { store::snapshot_before_user_edit(&tx,id)?; }
     let originals=prepare_unchanged_blocks(tx,id,&before,&next_pairs)?;
     let input = next.into_iter().map(|item| store::BlockInput {id:item.id,content:item.content}).collect();
     let result = store::save_blocks(&tx,&store::Ctx::user(),id,input)?;
@@ -372,6 +374,20 @@ mod tests {
             assert_eq!(c.query_row("SELECT count(*) FROM versions WHERE page_id='g'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
             drop(c); std::fs::remove_file(path).unwrap();
         }
+    }
+    #[test]
+    fn gallery_delete_snapshots_latest_item_despite_recent_version() {
+        let path=fixture(); let c=Connection::open(&path).unwrap();
+        store::snapshot(&c,"g","user",None,Some("Older fixture")).unwrap();
+        let mut item=gallery("b","a"); item.content["attrs"]["caption"]=json!("latest caption");
+        c.execute("INSERT INTO blocks(id,page_id,type,sort_key,content,created_at,updated_at) VALUES('b','g','galleryItem',0,?1,1,1)",[item.content.to_string()]).unwrap(); drop(c);
+        let old=read_resource(&path,"g").unwrap();
+        save_gallery(&path,"g",old["revision"].as_i64().unwrap(),old["metadata"].clone(),old["metadata"].clone(),vec![item.clone()],vec![]).unwrap();
+        let c=Connection::open(&path).unwrap();
+        let raw:String=c.query_row("SELECT snapshot FROM versions WHERE label='Before gallery item deletion'",[],|r|r.get(0)).unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&raw).unwrap()["blocks"][0],item.content);
+        assert_eq!(c.query_row("SELECT count(*) FROM attachments WHERE id='a'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        drop(c); std::fs::remove_file(path).unwrap();
     }
     #[test]
     fn project_rejects_shared_links_and_preserves_source() {
@@ -633,6 +649,7 @@ fn protected_slide(value: &Value) -> Result<Value> {
                     if valid { object.remove(key); }
                 }
             }
+            if kind=="shape" && ["rect","ellipse"].contains(&object.get("shape").and_then(Value::as_str).unwrap_or("")) && object.get("fill").is_some_and(native_hex_color) { object.remove("fill"); }
             if kind=="text" {
                 // Unknown text payloads must survive unrelated edits; only
                 // ordinary strings are supported by the native editor.
@@ -993,6 +1010,27 @@ mod presentation_tests {
             assert_eq!(read_presentation(&path,"deck").unwrap(),current);
         }
         drop(c); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn shape_fill_change_preserves_media_and_unsupported_values() {
+        let path=fixture(); let c=Connection::open(&path).unwrap();
+        c.execute("INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('media','deck','image','a.png','image/png',1,'a.png',1)",[]).unwrap();
+        let slide=json!({"type":"slide","attrs":{"bid":"s","elements":[{"id":"shape","type":"shape","shape":"rect","fill":"#112233","future":{"keep":true}},{"id":"img","type":"image","attachmentId":"media"}]}});
+        c.execute("UPDATE blocks SET content=?1 WHERE id='s'",[slide.to_string()]).unwrap(); drop(c);
+        let old=read_presentation(&path,"deck").unwrap(); let mut next=inputs(&old);
+        next[0].content["attrs"]["elements"][0]["fill"]=json!("#abcdef");
+        let saved=save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),next).unwrap();
+        assert_eq!(saved["blocks"][0]["content"]["attrs"]["elements"][1],slide["attrs"]["elements"][1]);
+        assert_eq!(saved["blocks"][0]["content"]["attrs"]["elements"][0]["future"],json!({"keep":true}));
+        assert!(save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),inputs(&old)).is_err());
+        let c=Connection::open(&path).unwrap(); let mut unsupported=slide.clone();
+        unsupported["attrs"]["elements"][0]["fill"]=json!("rgba(0,0,0,.5)");
+        c.execute("UPDATE blocks SET content=?1 WHERE id='s'",[unsupported.to_string()]).unwrap(); drop(c);
+        let current=read_presentation(&path,"deck").unwrap(); let mut attack=inputs(&current);
+        attack[0].content["attrs"]["elements"][0]["fill"]=json!("#ffffff");
+        assert!(save_presentation(&path,"deck",current["revision"].as_i64().unwrap(),current["metadata"].clone(),inputs(&current),attack).is_err());
+        assert_eq!(read_presentation(&path,"deck").unwrap(),current);
+        std::fs::remove_file(path).unwrap();
     }
     #[test]
     fn adjacent_plain_text_swap_preserves_media_and_rejects_mixed_edits() {
