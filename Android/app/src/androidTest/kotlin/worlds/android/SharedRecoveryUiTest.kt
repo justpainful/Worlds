@@ -328,12 +328,16 @@ class SharedRecoveryUiTest {
                 controller.addTextBlock("paragraph")
                 controller.updateDraft("x".repeat(100_001))
                 compose.waitUntil(20_000) { compose.onAllNodes(androidx.compose.ui.test.hasTestTag("shared_text_next")).fetchSemanticsNodes().isNotEmpty() }
+                compose.onNodeWithText(app.getString(R.string.shared_text_part, 1, 26)).assertIsDisplayed()
                 compose.onNodeWithTag("shared_text_next").performClick()
+                compose.onNodeWithText(app.getString(R.string.shared_text_part, 2, 26)).assertIsDisplayed()
                 compose.onNodeWithTag("shared_draft").performTextReplacement("changed😀")
                 val expected = "x".repeat(4_000) + "changed😀" + "x".repeat(92_001)
                 assertEquals(expected, controller.state.value.draft!!.text)
                 controller.cancelDraft()
+                compose.waitUntil(20_000) { compose.onAllNodes(androidx.compose.ui.test.hasTestTag("shared_draft")).fetchSemanticsNodes().isEmpty() }
                 controller.addTextBlock("paragraph")
+                compose.waitUntil(20_000) { compose.onAllNodes(androidx.compose.ui.test.hasTestTag("shared_draft")).fetchSemanticsNodes().isNotEmpty() }
                 compose.onNodeWithTag("shared_draft").performTextReplacement("x".repeat(100_001))
                 compose.waitUntil(20_000) { controller.state.value.draft?.text?.length == 100_001 }
                 compose.onNodeWithText(app.getString(R.string.shared_text_part, 26, 26)).assertIsDisplayed()
