@@ -21,7 +21,12 @@ final class WorldsLocalDrawingUITests: XCTestCase {
         let end = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: 0.20))
         start.press(forDuration: 0.1, thenDragTo: end)
         let saved = NSPredicate(format: "label CONTAINS %@", "Saved revision 1, strokes 1")
-        wait(for: [expectation(for: saved, evaluatedWith: status)], timeout: 30)
+        let completed = XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: saved, object: status)], timeout: 30)
+        guard completed == .completed else {
+            failure(app, "personal-drawing-save-failed")
+            XCTFail("Drawing did not save; input diagnostics: \(app.staticTexts["drawing-input-diagnostics"].label)")
+            return
+        }
         screenshot(app, "personal-drawing-saved")
         app.buttons["close-drawing-editor"].tap()
         let edit = app.buttons["edit-local-drawing"]

@@ -11,14 +11,16 @@ public struct PencilCaptureSurface: NSViewRepresentable {
     public let onBegan: @MainActor () -> Void
     public let onProgress: @MainActor (PencilRawSample) -> Void
     public let onCancellationReason: @MainActor (PencilCancellationReason) -> Void
+    public let onDiagnostics: @MainActor (String) -> Void
     public init(viewToDocument: CGAffineTransform, onStroke: @escaping @MainActor (PencilStrokeBuffer) -> Void,
                 onCancelled: @escaping @MainActor (PencilStrokeBuffer) -> Void,
                 onBegan: @escaping @MainActor () -> Void = {},
                 onProgress: @escaping @MainActor (PencilRawSample) -> Void = { _ in },
-                onCancellationReason: @escaping @MainActor (PencilCancellationReason) -> Void = { _ in }) {
+                onCancellationReason: @escaping @MainActor (PencilCancellationReason) -> Void = { _ in },
+                onDiagnostics: @escaping @MainActor (String) -> Void = { _ in }) {
         self.viewToDocument = viewToDocument; self.onStroke = onStroke; self.onCancelled = onCancelled
         self.onBegan = onBegan; self.onProgress = onProgress
-        self.onCancellationReason = onCancellationReason
+        self.onCancellationReason = onCancellationReason; self.onDiagnostics = onDiagnostics
     }
     public func makeNSView(context: Context) -> CaptureView { CaptureView(frame: .zero) }
     public func updateNSView(_ view: CaptureView, context: Context) {

@@ -29,6 +29,7 @@ import WorldsDrawingPencilInput
     @Published var recovery: Recovery?
     @Published var retryAvailable = false
     @Published var inputActive = false
+    @Published var inputDiagnostics = ""
     var canClose: Bool { !busy && !inputActive && recovery != .stroke }
     var inputBlocked: Bool { busy || recovery != nil }
     private var currentLaserID: String?
@@ -296,6 +297,11 @@ import WorldsDrawingPencilInput
                     .disabled(model.busy).accessibilityIdentifier("simulate-triangle")
             }
             #endif
+            #if DEBUG && canImport(UIKit)
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-local-copy-fixture"), !model.inputDiagnostics.isEmpty {
+                Text(model.inputDiagnostics).font(.caption2).accessibilityIdentifier("drawing-input-diagnostics")
+            }
+            #endif
             if model.recovery == .stroke {
                 if model.retryAvailable {
                     Button("Retry unconfirmed stroke") { Task { await model.retryStroke() } }.disabled(model.busy)
@@ -343,7 +349,7 @@ import WorldsDrawingPencilInput
                         LaserOverlayView(traces: model.lasers, scale: scale)
                             .frame(width: width, height: height).allowsHitTesting(false).accessibilityHidden(true)
                     }
-                    PencilCaptureSurface(viewToDocument: CGAffineTransform(scaleX: 1 / scale, y: 1 / scale), onStroke: model.capture, onCancelled: { _ in model.cancelInput() }, onBegan: model.beginInput, onProgress: model.progressInput, onCancellationReason: model.noteCancellation)
+                    PencilCaptureSurface(viewToDocument: CGAffineTransform(scaleX: 1 / scale, y: 1 / scale), onStroke: model.capture, onCancelled: { _ in model.cancelInput() }, onBegan: model.beginInput, onProgress: model.progressInput, onCancellationReason: model.noteCancellation, onDiagnostics: { model.inputDiagnostics = $0 })
                         .frame(width: width, height: height).allowsHitTesting(!model.inputBlocked).accessibilityIdentifier("drawing-canvas")
                 }.frame(width: width, height: height).accessibilityElement(children: .contain).accessibilityIdentifier("drawing-surface")
             }
