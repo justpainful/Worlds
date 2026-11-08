@@ -164,7 +164,7 @@ impl SyncStore {
     /// provenance. A mixed or pre-migration queue is always blocked.
     pub fn owned_max_pending(&self, channel: i64) -> Result<Option<i64>> {
         let tx = self.conn.unchecked_transaction()?;
-        self.check(channel, false)?;
+        self.check(channel, true)?;
         self.require_owned_pending(channel)?;
         let value = tx.query_row("SELECT MAX(id) FROM sync_outbox WHERE page_id=?1 AND channel=?2 AND state='pending'",params![self.page,channel],|r|r.get(0))?;
         tx.commit()?; Ok(value)
@@ -172,7 +172,7 @@ impl SyncStore {
 
     pub fn acknowledge_owned(&mut self, channel: i64, through: i64) -> Result<()> {
         let tx = rusqlite::Transaction::new_unchecked(&self.conn, rusqlite::TransactionBehavior::Immediate)?;
-        self.check(channel, false)?;
+        self.check(channel, true)?;
         self.require_owned_pending(channel)?;
         tx.execute("DELETE FROM native_sync_outbox_owner_v1 WHERE outbox_id IN (SELECT id FROM sync_outbox WHERE page_id=?1 AND channel=?2 AND state='pending' AND id<=?3)",params![self.page,channel,through])?;
         tx.execute("DELETE FROM sync_outbox WHERE page_id=?1 AND channel=?2 AND state='pending' AND id<=?3",params![self.page,channel,through])?;
@@ -277,7 +277,10 @@ impl SyncStore {
     /// The caller must obtain server identity and authorization independently.
     pub fn owned_document_batch(&self, channel: i64, server: &str, vector: &[u8]) -> Result<(Vec<u8>,Option<i64>)> {
         let tx=self.conn.unchecked_transaction()?;
-        self.check(channel,false)?; self.require_owned_document(channel,server)?;
+        // A sync-step diff can contain writes even when it is framed as a
+        // handshake. Never expose it to a sender after cached write access
+        // has been removed. The server still enforces current live rights.
+        self.check(channel,true)?; self.require_owned_document(channel,server)?;
         let doc=crate::CollaborationDoc::default();
         for bytes in self.load_entries(channel,||Ok(()))? { doc.apply(&bytes).map_err(|_|StoreError::Invalid)?; }
         let watermark=tx.query_row("SELECT MAX(id) FROM sync_outbox WHERE page_id=?1 AND channel=?2 AND state='pending'",params![self.page,channel],|r|r.get(0))?;
@@ -287,7 +290,7 @@ impl SyncStore {
 
     pub fn acknowledge_owned_document(&mut self, channel: i64, server: &str, through: i64) -> Result<()> {
         let tx=rusqlite::Transaction::new_unchecked(&self.conn,rusqlite::TransactionBehavior::Immediate)?;
-        self.check(channel,false)?; self.require_owned_document(channel,server)?;
+        self.check(channel,true)?; self.require_owned_document(channel,server)?;
         tx.execute("DELETE FROM native_sync_outbox_owner_v1 WHERE outbox_id IN (SELECT id FROM sync_outbox WHERE page_id=?1 AND channel=?2 AND state='pending' AND id<=?3)",params![self.page,channel,through])?;
         tx.execute("DELETE FROM sync_outbox WHERE page_id=?1 AND channel=?2 AND state='pending' AND id<=?3",params![self.page,channel,through])?;
         tx.commit()?; Ok(())

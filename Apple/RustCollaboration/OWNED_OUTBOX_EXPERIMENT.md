@@ -26,8 +26,10 @@ existing document, log, or queue. It binds a caller-supplied server identifier,
 account and workspace, records the bytes of every admitted local log entry,
 and fails closed on untracked, altered or deleted log entries and nonempty
 snapshots. Batch construction reads the validated log and watermark in one
-SQLite snapshot; ACK repeats the checks in a write transaction. Its tests
-simulate a peer and ACK, not the service. The server identifier is not itself
+SQLite snapshot; ACK repeats the checks in a write transaction. Both operations
+require cached write access; a downgrade retains the pending rows. Cached access
+is not current server authority. Tests simulate a peer and ACK, not the service.
+The server identifier is not itself
 authenticated. An isolated receive operation records the caller-supplied server
 binding with the update, and compaction replaces the validated log with a bound
 snapshot atomically while leaving the outbox unchanged. These operations do not

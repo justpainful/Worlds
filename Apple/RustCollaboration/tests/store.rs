@@ -130,6 +130,33 @@ fn isolated_owned_document_refuses_existing_history_and_rolls_back() {
 }
 
 #[test]
+fn owned_document_downgrade_blocks_diff_and_ack_without_losing_queue() {
+    let path=fixture(); let mut store=SyncStore::open(&path,"p","u","w").unwrap();
+    let server="wss://fixture.invalid/workspaces/w/docs/p";
+    for channel in [0,1] { store.enroll_empty_owned_document(channel,server).unwrap(); }
+    let base=include_bytes!("fixtures/base.bin");
+    store.append_owned_document(0,server,base).unwrap();
+    store.append_owned_document(1,server,base).unwrap();
+    let (_,content)=store.owned_document_batch(0,server,&[0]).unwrap();
+    let (_,comments)=store.owned_document_batch(1,server,&[0]).unwrap();
+    let db=Connection::open(&path).unwrap();
+    db.execute("UPDATE account_workspaces SET default_level='comment' WHERE id='w'",[]).unwrap();
+    assert!(matches!(store.owned_document_batch(0,server,&[0]),Err(StoreError::Denied)));
+    assert!(matches!(store.acknowledge_owned_document(0,server,content.unwrap()),Err(StoreError::Denied)));
+    // Read-only receipt remains allowed, while a commenter can send comments.
+    store.append_owned_remote(0,server,base).unwrap();
+    assert!(store.owned_document_batch(1,server,&[0]).is_ok());
+    db.execute("UPDATE account_workspaces SET default_level='view' WHERE id='w'",[]).unwrap();
+    assert!(matches!(store.owned_document_batch(1,server,&[0]),Err(StoreError::Denied)));
+    assert!(matches!(store.acknowledge_owned_document(1,server,comments.unwrap()),Err(StoreError::Denied)));
+    assert_eq!(db.query_row("SELECT count(*) FROM sync_outbox WHERE state='pending'",[],|r|r.get::<_,i64>(0)).unwrap(),2);
+    db.execute("UPDATE account_workspaces SET default_level='edit' WHERE id='w'",[]).unwrap();
+    store.acknowledge_owned_document(0,server,content.unwrap()).unwrap();
+    store.acknowledge_owned_document(1,server,comments.unwrap()).unwrap();
+    assert_eq!(db.query_row("SELECT count(*) FROM sync_outbox WHERE state='pending'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+}
+
+#[test]
 fn isolated_receive_and_compaction_preserve_outbox_and_causal_updates() {
     use worlds_collaboration::CollaborationDoc;
     let path=fixture(); let mut store=SyncStore::open(&path,"p","u","w").unwrap();
