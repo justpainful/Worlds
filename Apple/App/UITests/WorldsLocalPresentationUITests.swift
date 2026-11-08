@@ -31,9 +31,9 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
         let count = app.staticTexts["presentation-slide-count"]
         XCTAssertTrue(count.waitForExistence(timeout: 20)); XCTAssertEqual(count.label, "2 slides")
-        let add = app.buttons["presentation-add-blank"]
-        if !add.isHittable { app.swipeUp() }
-        XCTAssertTrue(add.waitForExistence(timeout: 10)); add.tap()
+        let addSlide = app.buttons["presentation-add-blank"]
+        if !addSlide.isHittable { app.swipeUp() }
+        XCTAssertTrue(addSlide.waitForExistence(timeout: 10)); addSlide.tap()
         XCTAssertEqual(count.label, "3 slides")
         let duplicate = app.buttons["presentation-duplicate-slide"]
         if !duplicate.isHittable { app.swipeUp() }; duplicate.tap()
