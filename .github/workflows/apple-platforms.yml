@@ -1784,6 +1784,8 @@ jobs:
           grep -q 'testChangedLocalAccountStopsSessionAndKeepsPendingOutbox' logs/collaboration-discovery.log
           grep -q 'testClearPresenceClosesSocketDuringBlockedSend' logs/collaboration-discovery.log
           grep -q 'testStoppedSessionDoesNotSendDelayedRefreshToken' logs/collaboration-discovery.log
+          grep -q 'testRequestedCloseRevokesAuthorityBeforeCloseReturns' logs/collaboration-discovery.log
+          grep -q 'testInitialStoreFailurePublishesFailed' logs/collaboration-discovery.log
           grep -q 'testMalformedLocalUpdateNeverPoisonsOutboxOrReopenedReplica' logs/collaboration-discovery.log
           grep -q 'testMissingAcknowledgementReconnectsAndResendsDurableOutbox' logs/collaboration-discovery.log
           grep -q 'testStopClosesDuringBlockedPresenceAndPreservesOutbox' logs/collaboration-discovery.log
@@ -1833,6 +1835,8 @@ jobs:
           grep -E 'testChangedLocalAccountStopsSessionAndKeepsPendingOutbox.*passed' logs/collaboration-macos.log
           grep -E 'testClearPresenceClosesSocketDuringBlockedSend.*passed' logs/collaboration-macos.log
           grep -E 'testStoppedSessionDoesNotSendDelayedRefreshToken.*passed' logs/collaboration-macos.log
+          grep -E 'testRequestedCloseRevokesAuthorityBeforeCloseReturns.*passed' logs/collaboration-macos.log
+          grep -E 'testInitialStoreFailurePublishesFailed.*passed' logs/collaboration-macos.log
           grep -E 'testMalformedLocalUpdateNeverPoisonsOutboxOrReopenedReplica.*passed' logs/collaboration-macos.log
           grep -E 'testMissingAcknowledgementReconnectsAndResendsDurableOutbox.*passed' logs/collaboration-macos.log
           grep -E 'testStopClosesDuringBlockedPresenceAndPreservesOutbox.*passed' logs/collaboration-macos.log
@@ -1891,6 +1895,8 @@ jobs:
           grep -E "Test Case .*testChangedLocalAccountStopsSessionAndKeepsPendingOutbox.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -E "Test Case .*testClearPresenceClosesSocketDuringBlockedSend.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -E "Test Case .*testStoppedSessionDoesNotSendDelayedRefreshToken.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
+          grep -E "Test Case .*testRequestedCloseRevokesAuthorityBeforeCloseReturns.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
+          grep -E "Test Case .*testInitialStoreFailurePublishesFailed.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -E "Test Case .*testMalformedLocalUpdateNeverPoisonsOutboxOrReopenedReplica.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -E "Test Case .*testMissingAcknowledgementReconnectsAndResendsDurableOutbox.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -E "Test Case .*testStopClosesDuringBlockedPresenceAndPreservesOutbox.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
