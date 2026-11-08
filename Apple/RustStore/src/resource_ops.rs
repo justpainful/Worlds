@@ -578,7 +578,7 @@ fn protected_slide(value: &Value) -> Result<Value> {
             if ["text","image","video","shape"].contains(&kind.as_str()) {
                 for key in ["x","y","w","h","rot"] {
                     let valid=object.get(key).and_then(Value::as_f64).is_some_and(|n|
-                        n.is_finite() && (key=="rot" || n.abs()<=1_000_000.0) && (!(key=="w" || key=="h") || n>0.0));
+                        n.is_finite() && n.abs()<=1_000_000.0 && (!(key=="w" || key=="h") || n>0.0));
                     if valid { object.remove(key); }
                 }
             }
@@ -625,6 +625,20 @@ fn adjacent_plain_text_swap(old: &Value, new: &Value) -> bool {
     let Some(elements)=restored.pointer_mut("/attrs/elements").and_then(Value::as_array_mut) else { return false };
     elements.swap(i,i+1);
     restored==*old
+}
+fn geometry_keys_preserved(old: &Value, new: &Value) -> bool {
+    let Some(old_elements)=old.pointer("/attrs/elements").and_then(Value::as_array) else { return true };
+    let Some(new_elements)=new.pointer("/attrs/elements").and_then(Value::as_array) else { return false };
+    for element in old_elements {
+        let Some(object)=element.as_object() else { continue };
+        if !["text","image","video","shape"].contains(&object.get("type").and_then(Value::as_str).unwrap_or("")) { continue }
+        let Some(id)=object.get("id").and_then(Value::as_str) else { continue };
+        let candidates:Vec<_>=new_elements.iter().filter(|v|v.get("id").and_then(Value::as_str)==Some(id)).collect();
+        if candidates.len()!=1 { return false }
+        let Some(current)=candidates[0].as_object() else { return false };
+        if ["x","y","w","h","rot"].iter().any(|key|object.contains_key(*key) && !current.contains_key(*key)) { return false }
+    }
+    true
 }
 
 pub fn read_presentation(path: &Path, id: &str) -> Result<Value> {
@@ -680,7 +694,7 @@ pub fn save_presentation_deleting(path: &Path, id: &str, base: i64, expected_met
         if declared.contains(block_id) { continue }
         let new=next_pairs.iter().find(|(candidate,_)| candidate==block_id).map(|(_,v)|v)
             .ok_or_else(||anyhow::anyhow!("unsupported change: slide removal is not yet available"))?;
-        if new.get("type").and_then(Value::as_str) != Some("slide") || (protected_slide(old)? != protected_slide(new)? && !adjacent_plain_text_swap(old,new)) { bail!("unsupported change: slide content would lose protected fields") }
+        if new.get("type").and_then(Value::as_str) != Some("slide") || !geometry_keys_preserved(old,new) || (protected_slide(old)? != protected_slide(new)? && !adjacent_plain_text_swap(old,new)) { bail!("unsupported change: slide content would lose protected fields") }
     }
     let mut ids = HashSet::new();
     for item in &next {
@@ -849,6 +863,30 @@ mod presentation_tests {
         let saved=save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),safe).unwrap();
         assert_eq!(saved["blocks"][0]["content"]["attrs"]["elements"],original["attrs"]["elements"]);
         std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn geometry_fields_cannot_be_silently_deleted_and_extreme_rotation_is_protected() {
+        let no_rotation=json!({"attrs":{"elements":[{"id":"t","type":"text","x":1,"y":2}]}});
+        let mut rotated=no_rotation.clone(); rotated["attrs"]["elements"][0]["rot"]=json!(1);
+        assert!(geometry_keys_preserved(&no_rotation,&rotated));
+        assert_eq!(protected_slide(&no_rotation).unwrap(),protected_slide(&rotated).unwrap());
+        let path=fixture(); let c=Connection::open(&path).unwrap();
+        let slide=json!({"type":"slide","attrs":{"bid":"s","notes":"before","elements":[{"id":"t","type":"text","text":"x","x":1,"y":2,"w":30,"h":40,"rot":1000001}]}});
+        c.execute("UPDATE blocks SET content=?1 WHERE id='s'",[slide.to_string()]).unwrap(); drop(c);
+        let old=read_presentation(&path,"deck").unwrap();
+        for key in ["x","y","w","h","rot"] {
+            let mut attack=inputs(&old); attack[0].content["attrs"]["elements"][0].as_object_mut().unwrap().remove(key);
+            assert!(save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),attack).is_err(),"{key}");
+            assert_eq!(read_presentation(&path,"deck").unwrap(),old);
+        }
+        let mut attack=inputs(&old); attack[0].content["attrs"]["elements"][0]["rot"]=json!(30);
+        assert!(save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),attack).is_err());
+        let mut safe=inputs(&old); safe[0].content["attrs"]["notes"]=json!("after");
+        let saved=save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),safe).unwrap();
+        assert_eq!(saved["blocks"][0]["content"]["attrs"]["elements"],slide["attrs"]["elements"]);
+        let c=Connection::open(&path).unwrap();
+        assert_eq!(c.query_row("SELECT count(*) FROM history WHERE page_id='deck'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        drop(c); std::fs::remove_file(path).unwrap();
     }
     #[test]
     fn unsupported_css_slide_color_survives_unrelated_edits() {
