@@ -2094,6 +2094,7 @@ jobs:
           cargo test --locked --manifest-path Apple/RustCollaboration/Cargo.toml --test store -- --nocapture \
             2>&1 | tee logs/collaboration-store-rust.log
           grep -q 'editor_transaction_rejects_stale_and_rolls_back_outbox_failure ... ok' logs/collaboration-store-rust.log
+          grep -q 'incomplete_ancestry_never_falls_back_to_workspace_default_for_writes ... ok' logs/collaboration-store-rust.log
           grep -q 'replaced_database_path_is_rejected_without_writing_either_database ... ok' logs/collaboration-store-rust.log
           grep -q 'delete_transaction_preserves_outbox_on_failure_and_rejects_stale_or_viewer ... ok' logs/collaboration-store-rust.log
           grep -q 'formatting_transaction_is_durable_and_refuses_stale_or_readonly ... ok' logs/collaboration-store-rust.log
