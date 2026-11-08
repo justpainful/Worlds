@@ -274,7 +274,7 @@ extension WorldsCollaborationTests {
         let count = await socket.refreshes; XCTAssertEqual(count, 0)
         _ = try? await run.value
     }
-    func testClearPresenceWaitsForInFlightSendAndIsLast() async throws {
+    func testClearPresenceClosesSocketDuringBlockedSend() async throws {
         let store = FixtureStore(), socket = DelayedPresenceSocket()
         let session = try CollaborationSession(pageID: "p", workspaceID: "w", documentID: "p", expectedUserID: "user", serverURL: URL(string: "https://example.invalid")!, store: store, tokenProvider: { _ in "fixture-token" }, socketFactory: { _, _ in socket })
         let run = Task { try await session.run() }
@@ -289,11 +289,11 @@ extension WorldsCollaborationTests {
         for _ in 0..<100 { if await session.presenceSnapshot().isEmpty { break }; try await Task.sleep(for: .milliseconds(10)) }
         let locallyCleared = await session.presenceSnapshot().isEmpty
         if !locallyCleared { await socket.releaseSend(); _ = try? await send.value; _ = try? await clear.value; await session.stop(); _ = try? await run.value; return XCTFail("Local presence was not cleared") }
-        let before = await socket.states; XCTAssertTrue(before.isEmpty)
+        for _ in 0..<100 { if await socket.closed { break }; try await Task.sleep(for: .milliseconds(10)) }
+        let closedBeforeRelease = await socket.closed
         await socket.releaseSend()
         try await send.value; try await clear.value
-        let states = await socket.states
-        XCTAssertEqual(states.count, 2); XCTAssertNotEqual(states.first, "null"); XCTAssertEqual(states.last, "null")
+        XCTAssertTrue(closedBeforeRelease, "Clearing presence must not wait for an in-flight send")
         await session.stop(); _ = try? await run.value
     }
     func testStopClosesDuringBlockedPresenceAndPreservesOutbox() async throws {

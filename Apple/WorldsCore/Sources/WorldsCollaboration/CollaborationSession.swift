@@ -319,6 +319,10 @@ public actor CollaborationSession {
         guard awareness != nil else { return }
         let update = try awareness!.setLocal(nil, at: Date().timeIntervalSince1970)
         if verifiedIdentity, let socket {
+            // A queued removal cannot overtake an in-flight send. Closing the
+            // connection allows the service to remove its awareness without
+            // waiting indefinitely for that send to finish.
+            if presenceSending { await socket.close(); return }
             do { try await sendPresence(update, via: socket, connection: socketID, version: presenceVersion) }
             catch { await socket.close(); throw error }
         }
