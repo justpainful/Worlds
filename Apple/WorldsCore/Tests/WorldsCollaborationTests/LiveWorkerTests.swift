@@ -276,7 +276,7 @@ final class TransportDiagnosticsTests: XCTestCase {
     func testDiagnosticDefaultTransportLoopbackHandshake() async throws { try await diagnosticTransport(useSharedSession: false) }
     func testDiagnosticSharedSessionLoopbackHandshake() async throws { try await diagnosticTransport(useSharedSession: true) }
 
-    private func diagnosticPresenceIsolation(dual: Bool) async throws {
+    private func diagnosticPresenceIsolation(dual: Bool, explicitFactory: Bool = false, includePresence: Bool = true) async throws {
         func trace(_ value: String) { FileHandle.standardError.write(Data("awareness-isolation: \(value)\n".utf8)) }
         let env = ProcessInfo.processInfo.environment
         guard env["WORLDS_REQUIRE_LIVE_SERVICE"] == "1" else { throw XCTSkip("Local Worker integration was not requested") }
@@ -293,15 +293,22 @@ final class TransportDiagnosticsTests: XCTestCase {
         }
         let doc = "isolation" + UUID().uuidString.replacingOccurrences(of: "-", with: "")
         let page = "fixture-page", workspace = "fixture-workspace", server = URL(string: "http://127.0.0.1:18790")!
+        func session(store: SQLiteCollaborationStore, user: String, token: String) throws -> CollaborationSession {
+            if explicitFactory {
+                return try CollaborationSession(pageID: page, workspaceID: workspace, documentID: doc, expectedUserID: user, serverURL: server, store: store,
+                    tokenProvider: { _ in token }, socketFactory: { url, token in URLSessionCollaborationSocket(url: url, token: token) })
+            }
+            return try CollaborationSession(pageID: page, workspaceID: workspace, documentID: doc, expectedUserID: user, serverURL: server, store: store, tokenProvider: { _ in token })
+        }
         trace("open first store")
         let a = try SQLiteCollaborationStore(databaseURL: paths[0], pageID: page, userID: "editor", workspaceID: workspace)
-        let alice = try CollaborationSession(pageID: page, workspaceID: workspace, documentID: doc, expectedUserID: "editor", serverURL: server, store: a, tokenProvider: { _ in editor })
+        let alice = try session(store: a, user: "editor", token: editor)
         var bob: CollaborationSession?
         if dual {
             trace("open second store")
             let b = try SQLiteCollaborationStore(databaseURL: paths[1], pageID: page, userID: "viewer", workspaceID: workspace)
-            bob = try CollaborationSession(pageID: page, workspaceID: workspace, documentID: doc, expectedUserID: "viewer", serverURL: server, store: b, tokenProvider: { _ in viewer })
-        } else {
+            bob = try session(store: b, user: "viewer", token: viewer)
+        } else if includePresence {
             trace("set one presence")
             try await alice.setPresence(name: "Alice", color: "#123456")
         }
@@ -322,5 +329,7 @@ final class TransportDiagnosticsTests: XCTestCase {
     }
     func testDiagnosticSingleClientWithPresence() async throws { try await diagnosticPresenceIsolation(dual: false) }
     func testDiagnosticTwoClientsWithoutPresence() async throws { try await diagnosticPresenceIsolation(dual: true) }
+    func testDiagnosticDefaultFactoryWithoutPresence() async throws { try await diagnosticPresenceIsolation(dual: false, includePresence: false) }
+    func testDiagnosticExplicitFactoryWithPresence() async throws { try await diagnosticPresenceIsolation(dual: false, explicitFactory: true) }
 
 }

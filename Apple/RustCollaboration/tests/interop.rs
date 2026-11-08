@@ -68,6 +68,24 @@ fn rejects_truncated_inputs_and_handles_ffi_ownership() {
     }
 }
 
+#[test]
+fn concurrent_ffi_document_lifetimes_preserve_buffers() {
+    let workers: Vec<_> = (0..12).map(|_| std::thread::spawn(|| {
+        for _ in 0..64 {
+            unsafe {
+                let handle=worlds_doc_new(); assert!(!handle.is_null());
+                let mut id=0_u64; assert_eq!(worlds_doc_client_id(handle,&mut id),0);
+                assert_eq!(worlds_doc_apply(handle,BASE.as_ptr(),BASE.len()),0);
+                let mut vector=WorldsBuffer {data:std::ptr::null_mut(),len:0};
+                assert_eq!(worlds_doc_state_vector(handle,&mut vector),0);
+                assert_eq!(std::slice::from_raw_parts(vector.data,vector.len),VECTOR);
+                worlds_buffer_free(vector); worlds_doc_free(handle);
+            }
+        }
+    })).collect();
+    for worker in workers { worker.join().unwrap(); }
+}
+
 use yrs::updates::encoder::Encode;
 
 #[test]

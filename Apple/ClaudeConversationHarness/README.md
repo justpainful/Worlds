@@ -1,0 +1,5 @@
+# Isolated Claude conversation harness
+
+A separate macOS build target that discovers the local Claude Code executable and opens the existing native conversation UI over an isolated, temporary schema-v11 fixture. It never selects or opens a user's Worlds database. Sending is an explicit user action, and uses the local runtime and its configured account. MCP, page context, attachments and tools are not supplied. The process itself must be trusted: the host cannot prevent a malicious executable from ignoring its arguments.
+
+This target is not a product app, release artifact, screenshot demo or automated live-provider test. It requires a compatible installed and authenticated Claude runtime and may fail under sandbox restrictions. Tests must use the injected synthetic runner; CI should build this harness but not invoke the real CLI. Conversations and failed-save recovery are session-scoped and can be lost after process termination. The process runner does not guarantee terminating descendants. Full provider, approvals and collaboration parity remain incomplete, and iOS/iPadOS have no local Claude process runtime.

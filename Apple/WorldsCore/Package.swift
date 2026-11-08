@@ -32,6 +32,7 @@ let package = Package(
         .library(name: "WorldsAI", targets: ["WorldsAI"]),
         .library(name: "WorldsAIConversation", targets: ["WorldsAIConversation"]),
         .library(name: "WorldsAIViews", targets: ["WorldsAIViews"]),
+        .library(name: "WorldsAIConversationBridge", targets: ["WorldsAIConversationBridge"]),
         .library(name: "WorldsNativeEditor", targets: ["WorldsNativeEditor"]),
         .library(name: "WorldsAutomations", targets: ["WorldsAutomations"]),
         .library(name: "WorldsProjects", targets: ["WorldsProjects"]),
@@ -59,6 +60,7 @@ let package = Package(
         .target(name: "WorldsAI", dependencies: ["WorldsModels"], exclude: ["README.md"]),
         .target(name: "WorldsAIConversation", dependencies: ["WorldsAI", "WorldsModels"], exclude: ["README.md"], linkerSettings: [.linkedLibrary("sqlite3")]),
         .target(name: "WorldsAIViews", exclude: ["README.md", "DESIGN.md"]),
+        .target(name: "WorldsAIConversationBridge", dependencies: ["WorldsAI", "WorldsAIConversation", "WorldsAIViews"]),
         .target(name: "WorldsNativeEditor", dependencies: ["WorldsModels", "WorldsRichText"], exclude: ["README.md"]),
         .target(name: "WorldsAutomations", dependencies: rustStoreAvailable ? ["WorldsModels", "WorldsRustStore"] : ["WorldsModels"], exclude: ["README.md"], linkerSettings: rustStoreAvailable ? [.linkedLibrary("sqlite3"), .linkedFramework("Security"), .linkedFramework("SystemConfiguration"), .linkedLibrary("resolv"), .linkedLibrary("iconv")] : [.linkedLibrary("sqlite3")]),
         .target(name: "WorldsProjects", dependencies: ["WorldsModels"], exclude: ["README.md"]),
@@ -83,6 +85,7 @@ let package = Package(
         .testTarget(name: "WorldsSearchTests", dependencies: ["WorldsSearch"], resources: [.copy("worlds-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]),
         .testTarget(name: "WorldsAIConversationTests", dependencies: ["WorldsAIConversation", "WorldsAI"], linkerSettings: [.linkedLibrary("sqlite3")]),
         .testTarget(name: "WorldsAIViewsTests", dependencies: ["WorldsAIViews"]),
+        .testTarget(name: "WorldsAIConversationBridgeTests", dependencies: ["WorldsAIConversationBridge", "WorldsAI", "WorldsAIConversation", "WorldsAIViews"], linkerSettings: [.linkedLibrary("sqlite3")]),
         .testTarget(name: "WorldsAITests", dependencies: ["WorldsAI", "WorldsModels"], resources: [.copy("Fixtures")]),
         .testTarget(name: "WorldsNativeEditorTests", dependencies: ["WorldsNativeEditor", "WorldsModels", "WorldsRichText"]),
         .testTarget(name: "WorldsAutomationsTests", dependencies: rustStoreAvailable ? ["WorldsAutomations", "WorldsModels", "WorldsRustStore"] : ["WorldsAutomations", "WorldsModels"], resources: [.copy("automation-fixture.db")], linkerSettings: [.linkedLibrary("sqlite3")]),
@@ -146,3 +149,7 @@ if collaborationAvailable {
 
 
 
+
+if rustStoreAvailable && collaborationAvailable {
+    package.targets.append(.testTarget(name: "WorldsCombinedFFITests", dependencies: ["WorldsRustStore", "WorldsRustCollaboration"], resources: [.copy("worlds-collab-editor-v11.db")], linkerSettings: [.linkedLibrary("sqlite3"), .linkedFramework("Security"), .linkedFramework("SystemConfiguration"), .linkedLibrary("resolv"), .linkedLibrary("iconv")]))
+}

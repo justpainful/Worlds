@@ -29,3 +29,9 @@ public protocol ConversationService: Sendable {
     func send(conversationID: String, runID: UUID, text: String) -> AsyncThrowingStream<ConversationEvent, Error>
     func cancel(runID: UUID) async throws
 }
+
+/// Optional recovery of a final response retained by the service in memory.
+public protocol ConversationRecoveryService: ConversationService {
+    func hasPendingSave() async -> Bool
+    func retryPendingSave() async throws
+}

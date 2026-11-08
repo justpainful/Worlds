@@ -23,7 +23,7 @@ typedef struct WorldsStore WorldsStore;
 /* Store status: 0 success, 1 invalid input, 2 failure, 3 denied, 4 unsupported schema.
    All strings must be NUL-terminated UTF-8. Do not free a store while calls are active. */
 int32_t worlds_store_open(const char *path, const char *page, const char *user, const char *workspace, WorldsStore **out);
-void worlds_store_free(WorldsStore *store);
+void worlds_collaboration_store_free(WorldsStore *store);
 /* Load packs an LE uint64 count followed by LE uint64 length and bytes per update.
    The output is freed using worlds_buffer_free. */
 int32_t worlds_store_load(const WorldsStore *store, int64_t channel, WorldsBuffer *out);

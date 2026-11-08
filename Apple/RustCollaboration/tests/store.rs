@@ -215,7 +215,7 @@ fn ffi_original_schema_and_revoked_access_archive() {
         let state:String=db.query_row("SELECT state FROM sync_outbox",[],|r|r.get(0)).unwrap(); assert_eq!(state,"rejected");
         db.execute("UPDATE account SET user_id='other'",[]).unwrap();
         assert_eq!(worlds_store_reject(store,0,id.as_ptr(),[0u8,0].as_ptr(),2,reason.as_ptr()),3);
-        drop(db);worlds_store_free(store);
+        drop(db);worlds_collaboration_store_free(store);
     }
     std::fs::remove_file(path).unwrap();
 }
@@ -261,7 +261,7 @@ fn editor_ffi_commits_and_reports_stale_base() {
         assert!(out.len > 0); worlds_buffer_free(out);
         let mut stale = WorldsBuffer { data: std::ptr::null_mut(), len: 0 };
         assert_eq!(worlds_store_insert_plain_checked(handle, base.as_ptr(), base.len(), 0, strings[4].as_ptr(), strings[5].as_ptr(), 6, strings[6].as_ptr(), &mut stale), 5);
-        assert!(stale.data.is_null()); worlds_store_free(handle);
+        assert!(stale.data.is_null()); worlds_collaboration_store_free(handle);
     }
     std::fs::remove_file(path).unwrap();
 }

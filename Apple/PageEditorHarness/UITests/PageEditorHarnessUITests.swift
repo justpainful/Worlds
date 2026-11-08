@@ -24,7 +24,7 @@ final class PageEditorHarnessUITests: XCTestCase {
         XCTAssertTrue(open.waitForExistence(timeout: 10)); open.tap()
         let reopened = app.descendants(matching: .any)["native-editor-text"].firstMatch
         XCTAssertTrue(reopened.waitForExistence(timeout: 20))
-        XCTAssertTrue((reopened.value as? String ?? "").contains("Edited fixture"))
+        XCTAssertEqual(reopened.value as? String, "Edited fixture")
         XCTAssertTrue(app.staticTexts["editor-reopened-bold"].waitForExistence(timeout: 10))
         capture(app, named: "page-editor-reopened")
     }

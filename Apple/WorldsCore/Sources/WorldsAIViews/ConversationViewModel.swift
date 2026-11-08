@@ -10,6 +10,8 @@ public final class ConversationViewModel: ObservableObject {
     @Published public private(set) var loaded = false
     @Published public private(set) var running = false
     @Published public private(set) var stopping = false
+    @Published public private(set) var canRetrySave = false
+    @Published public private(set) var retryingSave = false
     @Published public private(set) var error: String?
     @Published public var draft = ""
     public let conversationID: String
@@ -36,7 +38,7 @@ public final class ConversationViewModel: ObservableObject {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, loaded, !running, !loading else { return }
         let id = UUID(); activeRun = id; loadToken = UUID()
-        running = true; stopping = false; error = nil; streamedText = ""; tools = []
+        running = true; stopping = false; error = nil; canRetrySave = false; streamedText = ""; tools = []
         // Retain the draft until the service confirms that it persisted a snapshot.
         var accepted = false
         do {
@@ -59,9 +61,24 @@ public final class ConversationViewModel: ObservableObject {
             if error == nil { streamedText = ""; tools = [] }
         } catch {
             guard activeRun == id else { return }
+            let pending: Bool
+            if let recovery = service as? any ConversationRecoveryService { pending = await recovery.hasPendingSave() }
+            else { pending = false }
+            guard activeRun == id else { return }
             activeRun = nil; running = false; stopping = false
+            canRetrySave = pending
             self.error = error.localizedDescription
         }
+    }
+    public func retrySave() async {
+        guard canRetrySave, !retryingSave, let recovery = service as? any ConversationRecoveryService else { return }
+        retryingSave = true; defer { retryingSave = false }
+        do {
+            try await recovery.retryPendingSave()
+            canRetrySave = false
+            await load()
+            if error == nil { streamedText = ""; tools = [] }
+        } catch { self.error = error.localizedDescription }
     }
     public func stop() async {
         guard let id = activeRun, !stopping else { return }

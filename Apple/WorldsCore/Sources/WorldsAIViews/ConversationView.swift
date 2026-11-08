@@ -46,7 +46,11 @@ public struct ConversationView: View {
                 if let error = model.error {
                     Label(error, systemImage: "exclamationmark.triangle")
                         .foregroundStyle(.red).accessibilityLabel("Error: \(error)")
-                    if !model.running {
+                    if model.canRetrySave {
+                        Button("Retry saving response") { Task { await model.retrySave() } }
+                            .disabled(model.retryingSave)
+                    }
+                    if !model.running && !model.canRetrySave {
                         Button("Reload conversation") { Task { await model.load() } }
                     }
                 }
@@ -73,7 +77,7 @@ public struct ConversationView: View {
                         .disabled(model.stopping)
                 } else {
                     Button { Task { await model.send() } } label: { Label("Send", systemImage: "arrow.up") }
-                        .disabled(!model.loaded || model.loading || model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .disabled(!model.loaded || model.loading || model.canRetrySave || model.retryingSave || model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
         }

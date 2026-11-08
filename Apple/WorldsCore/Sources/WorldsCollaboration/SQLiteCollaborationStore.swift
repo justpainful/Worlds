@@ -29,7 +29,7 @@ public actor SQLiteCollaborationStore: CheckedPlainEditorStore {
         handle = output
         self.pageID = pageID
     }
-    deinit { worlds_store_free(handle) }
+    deinit { worlds_collaboration_store_free(handle) }
 
     private static func check(_ result: Int32) throws {
         switch result {

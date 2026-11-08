@@ -5,6 +5,24 @@ import WorldsSyncWire
 @testable import WorldsCollaboration
 
 final class WorldsCollaborationTests: XCTestCase {
+    func testParallelCRDTAllocationApplyAndFree() async throws {
+        let update = try XCTUnwrap(Data(base64Encoded: "AQbpBwAEAQZzaGFyZWQKSGVsbG8g8J+MjQcBB2RlZmF1bHQDCXBhcmFncmFwaAcA6QcIBgYA6QcJBGJvbGQEdHJ1ZYTpBwoNWWpzIHJpY2ggdGV4dIbpBxcEYm9sZARudWxsAA=="))
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for _ in 0..<12 {
+                group.addTask {
+                    for _ in 0..<32 {
+                        let doc = try NativeCRDTDocument()
+                        _ = try doc.clientID()
+                        try doc.apply(update)
+                        let vector = try doc.vector()
+                        let diff = try doc.diff(vector)
+                        guard diff == Data([0, 0]) else { throw CRDTError.invalidUpdate }
+                    }
+                }
+            }
+            try await group.waitForAll()
+        }
+    }
     func testNativeFixtureStateVectorAndIncrement() throws {
         let doc = try NativeCRDTDocument()
         let base = try XCTUnwrap(Data(base64Encoded: "AQbpBwAEAQZzaGFyZWQKSGVsbG8g8J+MjQcBB2RlZmF1bHQDCXBhcmFncmFwaAcA6QcIBgYA6QcJBGJvbGQEdHJ1ZYTpBwoNWWpzIHJpY2ggdGV4dIbpBxcEYm9sZARudWxsAA=="))

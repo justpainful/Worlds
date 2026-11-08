@@ -46,18 +46,24 @@ struct PageEditorHarnessApp: App {
             let store = try await PersonalEditorPersistence.open(databaseURL: copyURL, pageID: "fixture-page")
             persistence = store
             let document = try JSONSerialization.jsonObject(with: store.initialDocument.json())
-            reopenedHasBold = originalUnchanged && containsBold(document)
+            reopenedHasBold = originalUnchanged && hasExactBoldFixture(document)
             model = NativeEditorModel(document: store.initialDocument, baseRevision: store.initialRevision)
             saved = false; failure = nil
         } catch { failure = error.localizedDescription }
     }
-    private func containsBold(_ value: Any) -> Bool {
-        if let object = value as? [String: Any] {
-            if let marks = object["marks"] as? [[String: Any]], marks.contains(where: { $0["type"] as? String == "bold" }) { return true }
-            return object.values.contains(where: containsBold)
+    private func hasExactBoldFixture(_ value: Any) -> Bool {
+        guard let document = value as? [String: Any], document["type"] as? String == "doc",
+              let blocks = document["content"] as? [[String: Any]], blocks.count == 1,
+              blocks[0]["type"] as? String == "paragraph",
+              let runs = blocks[0]["content"] as? [[String: Any]], !runs.isEmpty else { return false }
+        var text = ""
+        for run in runs {
+            guard run["type"] as? String == "text", let fragment = run["text"] as? String,
+                  !fragment.isEmpty, let marks = run["marks"] as? [[String: Any]],
+                  marks.contains(where: { $0["type"] as? String == "bold" }) else { return false }
+            text += fragment
         }
-        if let array = value as? [Any] { return array.contains(where: containsBold) }
-        return false
+        return text == "Edited fixture"
     }
     func save() async {
         guard let model, let persistence, !model.nativeEditPending, model.recoverableNativeText == nil else { return }

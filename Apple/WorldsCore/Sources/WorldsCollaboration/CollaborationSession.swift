@@ -167,8 +167,10 @@ public actor CollaborationSession {
             do {
                 diagnostic("acquire token")
                 let token = try await tokenProvider(forceRefresh)
+                diagnostic("token acquired")
                 guard !stopped, generation == runID else { return }
                 forceRefresh = false
+                diagnostic("create socket")
                 let opened = try await socketFactory(endpoint, token)
                 diagnostic("socket created")
                 guard !stopped, generation == runID else { await opened.close(); return }

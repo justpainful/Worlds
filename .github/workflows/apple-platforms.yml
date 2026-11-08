@@ -30,6 +30,10 @@ jobs:
           mkdir -p logs
           swift test --package-path Apple/WorldsCore --skip WorldsDrawingVisualComparisonTests 2>&1 | tee logs/swift-test.log
           grep -q 'testSaveWaitsForNativeTextComposition' logs/swift-test.log
+          grep -E 'testAcceptedPrecedesStreamAndSavedMessagesReload.*passed' logs/swift-test.log
+          grep -E 'testUnexpectedToolIsRejectedWithoutMCP.*passed' logs/swift-test.log
+          grep -E 'testCancelAfterAcceptanceStopsRun.*passed' logs/swift-test.log
+          grep -E 'testFailedFinalSaveRemainsRecoverable.*passed' logs/swift-test.log
           grep -E 'testRejectedNativeTextIsRetainedAndBlocksSaveUntilDiscarded.*passed' logs/swift-test.log
           grep -E 'testKnownRichClipboardFormatsAreRejectedInsteadOfFlattened.*passed' logs/swift-test.log
           grep -q 'testStagesAndCleansUpAnIsolatedFile' logs/swift-test.log
@@ -250,6 +254,80 @@ jobs:
           path: |
             logs/
             project-links-*.xcresult/
+          if-no-files-found: warn
+
+  combined-ffi:
+    name: Combined native FFI linkage
+    runs-on: macos-26
+    needs: [ruststore-xcframework, collaboration-xcframework]
+    timeout-minutes: 20
+    env:
+      WORLDS_REQUIRE_NATIVE_WRITES: "1"
+      WORLDS_REQUIRE_COLLABORATION: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+      - uses: actions/download-artifact@v4
+        with:
+          name: Worlds-shared-ruststore-xcframework
+          path: ruststore-artifact
+      - uses: actions/download-artifact@v4
+        with:
+          name: Worlds-shared-collaboration-xcframework
+          path: shared-artifact
+      - name: Verify and restore both binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat ruststore-artifact/source-revision)" = "$GITHUB_SHA"
+          test "$(cat shared-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd ruststore-artifact && shasum -a 256 -c SHA256SUMS)
+          (cd shared-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p logs Apple/WorldsCore/Artifacts
+          tar -xzf ruststore-artifact/ruststore-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
+          tar -xzf shared-artifact/collaboration-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
+          test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
+          test -d Apple/WorldsCore/Artifacts/WorldsRustCollaboration.xcframework
+      - name: Discover and exercise both FFI libraries
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path Apple/WorldsCore list 2>&1 | tee logs/combined-discovery.log
+          grep -q 'testBothLibrariesAllocateAndFreeTheirOwnObjects' logs/combined-discovery.log
+          swift test --package-path Apple/WorldsCore --filter WorldsCombinedFFITests 2>&1 | tee logs/combined-ffi.log
+          grep -E 'testBothLibrariesAllocateAndFreeTheirOwnObjects.*passed' logs/combined-ffi.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-combined-ffi-results
+          path: logs/
+          if-no-files-found: warn
+
+  claude-conversation-harness-build:
+    name: Experimental Claude conversation harness compilation
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate isolated harness
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          brew install xcodegen
+          xcodegen generate --spec Apple/ClaudeConversationHarness/project.yml
+      - name: Build without launching Claude
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p logs
+          xcodebuild -project Apple/ClaudeConversationHarness/WorldsClaudeConversationHarness.xcodeproj \
+            -scheme ClaudeConversationHarness-macOS -configuration Debug -destination 'generic/platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tee logs/claude-harness-build.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-claude-conversation-harness-build-log
+          path: logs/
           if-no-files-found: warn
 
   page-editor-harness:
@@ -859,6 +937,7 @@ jobs:
           grep -q 'testUnauthenticatedReconnectBacksOffAndStopInterruptsWait' logs/collaboration-discovery.log
           grep -q 'testDurableOutboxResentAfterFailedConnection' logs/collaboration-discovery.log
           grep -q 'testRejectionWaitsForPersistedLocalWriteBeforeArchiving' logs/collaboration-discovery.log
+          grep -q 'testParallelCRDTAllocationApplyAndFree' logs/collaboration-discovery.log
           grep -q 'testDefaultSocketLifecycleWithLocalRefusal' logs/collaboration-discovery.log
           grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' logs/collaboration-discovery.log
           grep -q 'testViewerCannotPrepareEditorWrite' logs/collaboration-discovery.log
@@ -874,6 +953,12 @@ jobs:
           for name in testPlansSinglePlainInsertionWithoutMutatingDocument testRejectsMarkedTextNonInsertionAndSurrogateSplit testRejectsDuplicateIDsAndRichText; do
             grep -E "Test Case .*${name}.*passed" logs/collaboration-editor-macos.log
           done
+      - name: Exercise parallel CRDT FFI independently on macOS
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path Apple/WorldsCore --filter testParallelCRDTAllocationApplyAndFree 2>&1 | tee logs/collaboration-parallel-crdt.log
+          grep -E 'testParallelCRDTAllocationApplyAndFree.*passed' logs/collaboration-parallel-crdt.log
       - name: Test collaboration bridge on macOS
         shell: bash
         run: |
@@ -913,6 +998,7 @@ jobs:
           grep -q 'testUnauthenticatedReconnectBacksOffAndStopInterruptsWait' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testDurableOutboxResentAfterFailedConnection' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testRejectionWaitsForPersistedLocalWriteBeforeArchiving' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
+          grep -E 'testParallelCRDTAllocationApplyAndFree.*passed' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testDefaultSocketLifecycleWithLocalRefusal' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testViewerCannotPrepareEditorWrite' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
@@ -977,6 +1063,8 @@ jobs:
           grep -q 'testDiagnosticSharedSessionLoopbackHandshake' logs/local-swift-discovery.log
           grep -q 'testDiagnosticSingleClientWithPresence' logs/local-swift-discovery.log
           grep -q 'testDiagnosticTwoClientsWithoutPresence' logs/local-swift-discovery.log
+          grep -q 'testDiagnosticDefaultFactoryWithoutPresence' logs/local-swift-discovery.log
+          grep -q 'testDiagnosticExplicitFactoryWithPresence' logs/local-swift-discovery.log
       - name: Install isolated Worker dependencies
         working-directory: services/sync
         run: pnpm install --frozen-lockfile
@@ -1022,6 +1110,9 @@ jobs:
             cargo test --locked --manifest-path Apple/RustCollaboration/Cargo.toml --test live_service -- --ignored --nocapture \
             2>&1 | tee logs/collaboration-local-worker.log
           grep -q 'live_native_replica_offline_merge_reconnect_and_refusal ... ok' logs/collaboration-local-worker.log
+          cargo test --locked --manifest-path Apple/RustCollaboration/Cargo.toml --test interop -- --nocapture \
+            2>&1 | tee logs/collaboration-interop-rust.log
+          grep -q 'concurrent_ffi_document_lifetimes_preserve_buffers ... ok' logs/collaboration-interop-rust.log
           cargo test --locked --manifest-path Apple/RustCollaboration/Cargo.toml --test editor -- --nocapture \
             2>&1 | tee logs/collaboration-editor-rust.log
           grep -q 'concurrent_insertions_converge_without_losing_either_edit ... ok' logs/collaboration-editor-rust.log
@@ -1032,7 +1123,7 @@ jobs:
           grep -q 'editor_ffi_commits_and_reports_stale_base ... ok' logs/collaboration-store-rust.log
           grep -q 'parallel_fixtures_have_distinct_databases_and_survive_peer_cleanup ... ok' logs/collaboration-store-rust.log
           diagnostic_status=0
-          for diagnostic in testDiagnosticDefaultTransportLoopbackHandshake testDiagnosticSharedSessionLoopbackHandshake testDiagnosticSingleClientWithPresence testDiagnosticTwoClientsWithoutPresence; do
+          for diagnostic in testDiagnosticDefaultTransportLoopbackHandshake testDiagnosticSharedSessionLoopbackHandshake testDiagnosticSingleClientWithPresence testDiagnosticTwoClientsWithoutPresence testDiagnosticDefaultFactoryWithoutPresence testDiagnosticExplicitFactoryWithPresence; do
             if WORLDS_LIVE_SYNC_URL=ws://127.0.0.1:18790 \
               WORLDS_LIVE_EDITOR_TOKEN="$editor_token" WORLDS_LIVE_VIEWER_TOKEN="$viewer_token" \
               swift test --package-path Apple/WorldsCore --filter "$diagnostic" \
@@ -1051,7 +1142,7 @@ jobs:
             # Diagnostic only: preserve the original failure, even when debugger access is denied.
             WORLDS_LIVE_SYNC_URL=ws://127.0.0.1:18790 \
               WORLDS_LIVE_EDITOR_TOKEN="$editor_token" WORLDS_LIVE_VIEWER_TOKEN="$viewer_token" \
-              python3 -c 'import subprocess; subprocess.run(["xcrun","lldb","--batch","-o","run","-o","thread backtrace all","--","/Applications/Xcode_26.6.app/Contents/Developer/usr/bin/xctest","-XCTest","WorldsCollaborationTests.TransportDiagnosticsTests/testDiagnosticSingleClientWithPresence","Apple/WorldsCore/.build/arm64-apple-macosx/debug/WorldsCorePackageTests.xctest"],timeout=90)' > logs/collaboration-lldb.log 2>&1 || true
+              python3 -c 'import subprocess; subprocess.run(["xcrun","lldb","--batch","-o","run","-k","thread backtrace all","--","/Applications/Xcode_26.6.app/Contents/Developer/usr/bin/xctest","-XCTest","WorldsCollaborationTests.TransportDiagnosticsTests/testDiagnosticSingleClientWithPresence","Apple/WorldsCore/.build/arm64-apple-macosx/debug/WorldsCorePackageTests.xctest"],timeout=90)' > logs/collaboration-lldb.log 2>&1 || true
             exit 1
           fi
           grep -q 'testLiveSwiftSessionsConvergeReconnectAndArchiveRefusal' logs/collaboration-live-swift.log

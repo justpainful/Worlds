@@ -156,7 +156,7 @@ pub unsafe extern "C" fn worlds_store_open(path: *const std::ffi::c_char, page: 
 /// # Safety
 /// Handle must be null or a live handle returned by worlds_store_open, freed once with no calls in flight.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn worlds_store_free(handle: *mut CollaborationStoreHandle) {
+pub unsafe extern "C" fn worlds_collaboration_store_free(handle: *mut CollaborationStoreHandle) {
     if !handle.is_null() { unsafe { drop(Box::from_raw(handle)); } }
 }
 /// # Safety

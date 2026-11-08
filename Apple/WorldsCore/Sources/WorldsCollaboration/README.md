@@ -29,3 +29,11 @@ live log and pending outbox intact. Rust fixture tests cover a stale caller
 snapshot, unresolved causal updates, an archive retry and an injected rollback;
 a Swift integration case uses a real SQLite fixture and scripted socket. These
 tests do not establish recovery UX, restart policy or Apple device behavior.
+
+The collaboration store handle is released with
+`worlds_collaboration_store_free`. Previously it shared the exported C symbol
+`worlds_store_free` with the unrelated personal-store JSON allocator, despite
+different pointer types. The renamed interface removes that collision; both
+XCFrameworks must be rebuilt together. A combined-link test is prepared but
+requires an Apple CI run. The Worker job that crashed only linked the
+collaboration artifact, so the collision alone does not establish its cause.
