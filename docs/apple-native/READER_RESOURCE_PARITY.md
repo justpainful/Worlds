@@ -49,3 +49,11 @@ Two isolated Swift integration tests were added for link/unlink save/reopen and 
 ### Link recovery states
 
 The experimental editor now explains malformed or duplicate links and blocks their mutation, rather than silently removing repeated entries. If loading fails because the project or a linked page is unavailable or no longer personal, it gives a conservative message that does not reveal the target's identity and offers reload; the text warns that creating another independent copy does not carry across edits in this one. Reload before an editing session opens does not ask to discard a nonexistent draft. No automatic repair, bypass of permissions or removal of a missing link is implemented; returning to the original project and restoring access or correcting its links may be necessary. SwiftUI tests use isolated fixtures for a duplicate link and a missing link and assert the warning/reload or preservation behavior. These additions await Apple CI and accessibility/visual verification.
+
+### 2026-11-08: Experimental document route and approval coordinator
+
+The personal file reader now exposes an image or PDF preview only in DEBUG builds with `WORLDS_EXPERIMENTAL_PERSONAL_DOCUMENT`; it requires an explicitly chosen Worlds folder and a matching original database identity. Ordinary local copies omit attachments and do not expose this route. Preview decoding, security-scope behavior, device performance and UI still require Apple verification; unsupported formats and full file operations remain outstanding.
+
+The separate `WorldsMCPApprovalCoordinator` experiment binds an approval to a run, user, workspace, page and proposed title and rechecks edit access. Its gateway is synthetic in tests; there is no connected production gateway or Claude workflow. A remote access recheck is not an atomic authorization guarantee. It is not enabled in the app and its Swift tests have not yet run on Apple.
+
+The resource summary also contains an AVPlayer route for saved HTTP(S) streams in source, subject to current CI results; earlier rows describing no stream route are historical. Playback behavior and parity are not established by source presence.
