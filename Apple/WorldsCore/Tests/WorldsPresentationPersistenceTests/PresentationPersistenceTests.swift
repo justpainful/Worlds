@@ -89,10 +89,20 @@ final class PresentationPersistenceTests: XCTestCase {
         XCTAssertEqual(sqlite3_column_int(query, 0), 1)
     }
     func testSaveAndReopenPreservesMissingMediaAndUnknownSlideFields() async throws {
+        func assertLargeInteger(_ slide: SlideBlock, file: StaticString = #filePath, line: UInt = #line) {
+            guard case .object(let element)? = slide.elements.first?.source,
+                  case .object(let future)? = element["future"],
+                  case .array(let mixed)? = future["mixed"], mixed.count == 5 else {
+                XCTFail("Missing unknown mixed values", file: file, line: line)
+                return
+            }
+            XCTAssertEqual(mixed[2], .integer(9_007_199_254_740_993), file: file, line: line)
+        }
         let path = try database()
-        try execute(path, #"INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('image','deck','image','a.png','image/png',4,'missing/a.png',1); UPDATE blocks SET content='{"type":"slide","attrs":{"bid":"slide","notes":"old","background":{"attachmentId":"image","extra":true},"elements":[{"id":"title","type":"text","x":20,"y":30,"text":"قبل 🌍","future":{"keep":true}},{"id":"opaque","type":"future","data":{"keep":true}}]}}' WHERE id='slide';"#)
+        try execute(path, #"INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('image','deck','image','a.png','image/png',4,'missing/a.png',1); UPDATE blocks SET content='{"type":"slide","attrs":{"bid":"slide","notes":"old","background":{"attachmentId":"image","extra":true},"elements":[{"id":"title","type":"text","x":20,"y":30,"text":"قبل 🌍","future":{"keep":true,"mixed":[null,1.25,9007199254740993,"1",false]}},{"id":"opaque","type":"future","data":{"keep":true}}]}}' WHERE id='slide';"#)
         let store = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
         var slide = try XCTUnwrap(store.initialSlides.first)
+        assertLargeInteger(slide)
         try slide.setText(elementID: "title", text: "بعد 🌍")
         try slide.setNotes("Speaker notes")
         try slide.setTextStyle(elementID: "title", key: "align", value: .string("center"))
@@ -117,7 +127,43 @@ final class PresentationPersistenceTests: XCTestCase {
         XCTAssertEqual(restored.elements.first?.editableRotation, 1)
         XCTAssertEqual(restored.attributes["background"], slide.attributes["background"])
         XCTAssertEqual(restored.elements.last?.source, slide.elements.last?.source)
-        XCTAssertEqual(restored.elements.first?.source, slide.elements.first?.source)
+        // Compare the whole JSON block after the same Codable round trip used
+        // for storage: integral doubles can decode as integers. This preserves
+        // exact types for strings, booleans, null, objects and arrays.
+        let encodedFirst = try SlideBlock(json: slide.json())
+        XCTAssertEqual(restored.source, encodedFirst.source)
+
+        var second = restored
+        try second.setNotes("Second save after reopen")
+        try await reopened.save(slides: [second])
+        let reopenedAgain = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        let final = try XCTUnwrap(reopenedAgain.initialSlides.first)
+        assertLargeInteger(final)
+        let encodedSecond = try SlideBlock(json: second.json())
+        XCTAssertEqual(final.source, encodedSecond.source)
+        XCTAssertEqual(final.editableNotes, "Second save after reopen")
+        XCTAssertEqual(final.attributes["background"], slide.attributes["background"])
+        XCTAssertEqual(final.elements.last?.source, slide.elements.last?.source)
+
+        do {
+            try await store.save(slides: [slide])
+            XCTFail("An older session must conflict after the second save")
+        } catch NativeWriteError.conflict { }
+        let afterConflict = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        XCTAssertEqual(afterConflict.initialSlides.first?.source, final.source)
+        var db: OpaquePointer?
+        XCTAssertEqual(sqlite3_open_v2(path.path, &db, SQLITE_OPEN_READONLY, nil), SQLITE_OK)
+        let handle = try XCTUnwrap(db); defer { sqlite3_close(handle) }
+        var statement: OpaquePointer?
+        let sql = "SELECT (SELECT count(*) FROM attachments WHERE id='image' AND page_id='deck' AND rel_path='missing/a.png' AND size=4), (SELECT count(*) FROM blocks WHERE id='opaque' AND json_extract(content,'$.type')='future' AND json_extract(content,'$.attrs.bid')='opaque' AND json_type(content,'$.attrs.keep')='true' AND (SELECT count(*) FROM json_each(content))=2 AND (SELECT count(*) FROM json_each(content,'$.attrs'))=2), (SELECT json_type(content,'$.attrs.elements[0].future.mixed[2]')='integer' FROM blocks WHERE id='slide'), (SELECT json_extract(content,'$.attrs.elements[0].future.mixed[2]') FROM blocks WHERE id='slide')"
+        XCTAssertEqual(sqlite3_prepare_v2(handle, sql, -1, &statement, nil), SQLITE_OK)
+        let query = try XCTUnwrap(statement); defer { sqlite3_finalize(query) }
+        XCTAssertEqual(sqlite3_step(query), SQLITE_ROW)
+        XCTAssertEqual(sqlite3_column_int(query, 0), 1)
+        XCTAssertEqual(sqlite3_column_int(query, 1), 1)
+        XCTAssertEqual(sqlite3_column_int(query, 2), 1)
+        XCTAssertEqual(sqlite3_column_type(query, 3), SQLITE_INTEGER)
+        XCTAssertEqual(sqlite3_column_int64(query, 3), 9_007_199_254_740_993)
     }
     func testInsertDuplicateAndReorderRoundTripsWithoutDroppingOpaqueBlocks() async throws {
         let path = try database()
