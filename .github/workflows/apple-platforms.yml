@@ -866,6 +866,7 @@ jobs:
               grep -E 'testAddReorderReopenAndMissingAttachment.*passed' "logs/gallery-$device.log" || result=1
               grep -E 'testDraftCaptionReorderUndoSaveAndReopen.*passed' "logs/gallery-$device.log" || result=1
               grep -E 'testFixtureImagesOpenFromAuthorizedHandlesInRTL.*passed' "logs/gallery-$device.log" || result=1
+              grep -E 'testLargeRTLImageZoomControlsRemainReachable.*passed' "logs/gallery-$device.log" || result=1
               grep -E 'testMissingFixtureImageReportsErrorWithoutPreview.*passed' "logs/gallery-$device.log" || result=1
               grep -E 'testChangedFixtureOwnerOrSizeBlocksPreview.*passed' "logs/gallery-$device.log" || result=1
               grep -E 'testAttachmentChangedAfterOpenBlocksPreview.*passed' "logs/gallery-$device.log" || result=1
