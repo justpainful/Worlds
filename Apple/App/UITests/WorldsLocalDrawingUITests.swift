@@ -35,6 +35,28 @@ final class WorldsLocalDrawingUITests: XCTestCase {
         wait(for: [expectation(for: saved, evaluatedWith: status)], timeout: 20)
         screenshot(app, "personal-drawing-reopened")
     }
+    #if os(iOS)
+    @MainActor func testDrawingControlsScrollOutsideCanvas() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing-local-copy-fixture", "--ui-testing-large-text"]
+        app.launch()
+        guard openDrawing(app) else { return }
+        let status = app.staticTexts["drawing-status"]
+        guard status.waitForExistence(timeout: 20) else { failure(app, "drawing-scroll-status-missing"); XCTFail("Drawing status did not appear"); return }
+        let controls = app.scrollViews["drawing-controls"].firstMatch
+        guard controls.waitForExistence(timeout: 20), controls.isHittable else {
+            failure(app, "drawing-scroll-controls-missing"); XCTFail("Drawing controls cannot be reached"); return
+        }
+        let tool = app.descendants(matching: .any)["drawing-tool"].firstMatch
+        guard tool.exists else { failure(app, "drawing-scroll-tool-missing"); XCTFail("Drawing tool missing"); return }
+        let before = tool.frame.minY
+        controls.swipeUp()
+        let after = tool.frame.minY
+        XCTAssertLessThan(after, before, "A gesture starting in the controls must scroll the controls")
+        XCTAssertTrue(status.label.contains("Saved revision 0"), "Scrolling controls must not save a stroke")
+        screenshot(app, "drawing-controls-scrolled")
+    }
+    #endif
     @MainActor func testUnsupportedSceneCannotBeEdited() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-testing-local-copy-fixture", "--ui-testing-unsupported-drawing"]; app.launch()
         guard openDrawing(app) else { return }

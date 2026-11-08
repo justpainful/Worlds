@@ -1,6 +1,7 @@
 #if canImport(UIKit)
 import SwiftUI
 import UIKit
+import UIKit.UIGestureRecognizerSubclass
 
 /// Transparent input surface. A host must place it over an independently
 /// verified renderer; it intentionally does not draw approximated content.
@@ -44,25 +45,36 @@ public struct PencilCaptureSurface: UIViewRepresentable {
     public override init(frame: CGRect) {
         super.init(frame: frame); backgroundColor = .clear; isMultipleTouchEnabled = true
         isAccessibilityElement = false
+        let capture = DrawingCaptureRecognizer(target: nil, action: nil)
+        capture.cancelsTouchesInView = false
+        capture.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.direct.rawValue), NSNumber(value: UITouch.TouchType.pencil.rawValue)]
+        addGestureRecognizer(capture)
     }
     @available(*, unavailable) required init?(coder: NSCoder) { fatalError("init(coder:) is unavailable") }
-    public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard active == nil, let touch = touches.first(where: { $0.type == .pencil || $0.type == .direct }) else { return }
+    fileprivate func captureBegan(_ touches: Set<UITouch>) -> Bool {
+        guard active == nil, let touch = touches.first(where: { $0.type == .pencil || $0.type == .direct }) else { return false }
         active = touch; buffer = PencilStrokeBuffer(); failed = false
         onBegan(); append(touch, release: false)
+        return true
     }
-    public override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+    fileprivate func captureMoved(_ touches: Set<UITouch>, event: UIEvent?) {
         guard let active, touches.contains(active) else { return }
         for touch in event?.coalescedTouches(for: active) ?? [active] { append(touch, release: false) }
     }
-    public override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let active, touches.contains(active) else { return }
+    fileprivate func captureEnded(_ touches: Set<UITouch>, event: UIEvent) -> Bool {
+        guard let active, touches.contains(active) else { return false }
+        // UIKit's coalesced array ends with a copy of the delivered touch.
+        // Append earlier samples and then the release exactly once.
+        if let samples = event.coalescedTouches(for: active) {
+            for sample in samples.dropLast() { append(sample, release: false) }
+        }
         append(active, release: true)
         self.active = nil
         if failed { onCancellationReason(.invalidInput); onCancelled(buffer) } else { onStroke(buffer) }
+        return true
     }
-    public override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let active, touches.contains(active) else { return }
+    @discardableResult fileprivate func captureCancelled(_ touches: Set<UITouch>? = nil) -> Bool {
+        guard let active, touches == nil || touches!.contains(active) else { return false }
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--ui-testing-local-copy-fixture") {
             var views: [String] = []
@@ -77,6 +89,7 @@ public struct PencilCaptureSurface: UIViewRepresentable {
         }
         #endif
         self.active = nil; onCancellationReason(.systemCancelled); onCancelled(buffer)
+        return true
     }
     private func append(_ touch: UITouch, release: Bool) {
         let location = touch.location(in: self).applying(viewToDocument)
@@ -86,6 +99,43 @@ public struct PencilCaptureSurface: UIViewRepresentable {
             isPencil: touch.type == .pencil, hasPendingEstimates: !touch.estimatedPropertiesExpectingUpdates.isEmpty,
             isRelease: release)
         do { try buffer.append(raw); onProgress(raw) } catch { failed = true }
+    }
+}
+
+/// Gives a stroke that starts on the canvas precedence over ancestor pans.
+/// Other gesture types and touches beginning outside this surface are unaffected.
+@MainActor final class DrawingCaptureRecognizer: UIGestureRecognizer {
+    static func isAncestorPan(_ other: UIGestureRecognizer, surface: UIView?) -> Bool {
+        guard other is UIPanGestureRecognizer, !(other is UIScreenEdgePanGestureRecognizer), let surface,
+              let ancestor = other.view, ancestor !== surface else { return false }
+        return surface.isDescendant(of: ancestor)
+    }
+    override func canPrevent(_ preventedGestureRecognizer: UIGestureRecognizer) -> Bool {
+        Self.isAncestorPan(preventedGestureRecognizer, surface: view)
+    }
+    override func canBePrevented(by preventingGestureRecognizer: UIGestureRecognizer) -> Bool {
+        !Self.isAncestorPan(preventingGestureRecognizer, surface: view)
+    }
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
+        guard state == .possible, let surface = view as? CaptureView else { return }
+        if surface.captureBegan(touches) { state = .began }
+        else { state = .failed }
+    }
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent) {
+        guard state == .began || state == .changed, let surface = view as? CaptureView else { return }
+        surface.captureMoved(touches, event: event)
+        state = .changed
+    }
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent) {
+        guard state == .began || state == .changed, let surface = view as? CaptureView else { return }
+        if surface.captureEnded(touches, event: event) { state = .ended }
+    }
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent) {
+        if (view as? CaptureView)?.captureCancelled(touches) == true { state = .cancelled }
+    }
+    override func reset() {
+        (view as? CaptureView)?.captureCancelled()
+        super.reset()
     }
 }
 #endif
