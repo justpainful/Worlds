@@ -18,6 +18,12 @@ The root content color follows the current background ink so icon-only controls
 remain visible in both themes. Surfaces and buttons provide their own content
 colors when they use a different background.
 
+On a failed rich-text save, the error remains in the dialog header above the
+scrolling formatting controls. This keeps the failure visible on compact phones
+while preserving the draft and the existing retry and cancel actions.
+The keyboard closes on a failed save to make room for the error; the text field
+can be focused again without discarding the draft.
+
 ## Subject
 Worlds is a personal and collaborative workspace for pages, documents, projects,
 drawings and files. This native surface lets the owner browse, search and create

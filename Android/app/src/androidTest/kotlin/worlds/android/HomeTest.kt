@@ -1787,6 +1787,7 @@ class HomeTest {
         ContentStore(app, database).use { it.rename(page.id, page.revision, "Newer title") }
         compose.onNodeWithText(app.getString(R.string.save)).performClick()
         compose.waitUntil(20_000) { model.state.value.editorSaveError }
+        compose.waitUntil(20_000) { runCatching { compose.onNodeWithText(app.getString(R.string.editor_error)).assertIsDisplayed(); true }.getOrDefault(false) }
         compose.onNodeWithText(app.getString(R.string.editor_error)).assertIsDisplayed()
         compose.onNodeWithText("Unsaved draft").assertIsDisplayed()
         ContentStore(app, database).use { check(it.load(page.id)!!.blocks.isEmpty()) }
@@ -2202,7 +2203,10 @@ class HomeTest {
         drawingControl(R.string.drawing_settings)
         key(android.view.KeyEvent.KEYCODE_E)
         compose.onNodeWithText(app.getString(R.string.close)).performClick()
-        compose.onNodeWithText(app.getString(R.string.drawing_highlighter)).assertIsDisplayed()
+        val highlighter = app.getString(R.string.drawing_highlighter)
+        if (compose.onAllNodes(androidx.compose.ui.test.hasContentDescription(highlighter)).fetchSemanticsNodes().isNotEmpty())
+            compose.onNodeWithContentDescription(highlighter).assertIsDisplayed()
+        else compose.onNodeWithText(highlighter).assertIsDisplayed()
         DrawingStore(app).use { it.writableDatabase.delete("drawings", "id=?", arrayOf(page.id)) }
     }
 
@@ -2210,7 +2214,7 @@ class HomeTest {
         val items = drawingKeyboardShortcutGroup(app).items
         fun has(code: Int, modifiers: Int) = items.any { it.keycode == code && it.modifiers == modifiers }
         val ctrl = android.view.KeyEvent.META_CTRL_ON
-        check(items.size == 7 && has(android.view.KeyEvent.KEYCODE_B, 0) && has(android.view.KeyEvent.KEYCODE_H, 0) && has(android.view.KeyEvent.KEYCODE_E, 0))
+        check(items.size == 8 && has(android.view.KeyEvent.KEYCODE_B, 0) && has(android.view.KeyEvent.KEYCODE_P, 0) && has(android.view.KeyEvent.KEYCODE_H, 0) && has(android.view.KeyEvent.KEYCODE_E, 0))
         check(has(android.view.KeyEvent.KEYCODE_Z, ctrl) && has(android.view.KeyEvent.KEYCODE_Z, ctrl or android.view.KeyEvent.META_SHIFT_ON))
         check(has(android.view.KeyEvent.KEYCODE_Y, ctrl) && has(android.view.KeyEvent.KEYCODE_0, ctrl))
     }

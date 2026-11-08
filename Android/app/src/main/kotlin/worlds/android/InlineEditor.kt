@@ -52,8 +52,15 @@ internal fun replaceChangedText(raw: String, old: String, new: String): String {
             text = { Text(stringResource(R.string.discard_body)) },
             confirmButton = { TextButton(onClick = { discardPrompt = false; onCancel() }) { Text(stringResource(R.string.discard)) } },
             dismissButton = { TextButton(onClick = { discardPrompt = false }) { Text(stringResource(R.string.keep_editing)) } })
-    } else AlertDialog(onDismissRequest = { dismiss() }, title = { Text(stringResource(R.string.edit_text)) },
+    } else AlertDialog(onDismissRequest = { dismiss() }, title = {
+        Column {
+            Text(stringResource(R.string.edit_text))
+            if (saveError) Text(stringResource(R.string.editor_error), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        }
+    },
         text = {
+            val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+            LaunchedEffect(saveError) { if (saveError) keyboard?.hide() }
             Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
                 Text(stringResource(R.string.limited_editing), style = MaterialTheme.typography.bodySmall)
                 val node = remember(raw) { JSONObject(raw) }
@@ -122,7 +129,6 @@ internal fun replaceChangedText(raw: String, old: String, new: String): String {
                     }) { WorldsActionLabel(R.drawable.ic_link, stringResource(R.string.inline_link)) }
                 }
                 if (inputError) Text(stringResource(R.string.input_error), color = MaterialTheme.colorScheme.error)
-                if (saveError) Text(stringResource(R.string.editor_error), color = MaterialTheme.colorScheme.error)
             }
         }, confirmButton = { TextButton(enabled = !busy && !inputError, onClick = { onSave(raw) }) { Text(stringResource(R.string.save)) } },
         dismissButton = { TextButton(enabled = !busy, onClick = { dismiss() }) { Text(stringResource(R.string.cancel)) } })

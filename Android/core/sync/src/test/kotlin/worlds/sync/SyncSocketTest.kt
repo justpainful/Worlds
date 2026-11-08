@@ -10,6 +10,7 @@ import okio.ByteString.Companion.toByteString
 import org.junit.Assert.*
 import org.junit.Test
 import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 class SyncSocketTest {
@@ -25,6 +26,7 @@ class SyncSocketTest {
     @Test fun authenticatesAndPassesRealBinaryFramesWithoutTreatingSendAsAck() {
         MockWebServer().use { server ->
             val received = LinkedBlockingQueue<SyncWire.Frame>()
+            val closed = CountDownLatch(1)
             server.enqueue(MockResponse().addHeader("Sec-WebSocket-Protocol", SyncWire.PROTOCOL).withWebSocketUpgrade(object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
                     webSocket.send(SyncWire.encode(SyncWire.Frame.AuthState("edit", "user")).toByteString())
@@ -35,6 +37,8 @@ class SyncSocketTest {
                     received.add(frame)
                     if (frame is SyncWire.Frame.Update) webSocket.send(SyncWire.encode(SyncWire.Frame.Ack(frame.batchId, 0, "")).toByteString())
                 }
+                override fun onClosing(webSocket: WebSocket, code: Int, reason: String) { webSocket.close(code, reason) }
+                override fun onClosed(webSocket: WebSocket, code: Int, reason: String) { closed.countDown() }
             }))
             val events = Events()
             val socket = SyncSocket(server.url("/").newBuilder().host("127.0.0.1").build().toString(), "space", "page", "user", "secret", events, allowInsecureLoopback = true)
@@ -49,6 +53,7 @@ class SyncSocketTest {
             assertEquals("/v1/workspaces/space/docs/page/sync", request.path)
             assertEquals("Bearer secret", request.getHeader("Authorization"))
             socket.close()
+            assertTrue("WebSocket did not close cleanly", closed.await(10, TimeUnit.SECONDS))
         }
     }
 

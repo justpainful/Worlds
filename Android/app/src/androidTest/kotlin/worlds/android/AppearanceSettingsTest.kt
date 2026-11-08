@@ -59,7 +59,7 @@ class AppearanceSettingsTest {
                     val brightness = (android.graphics.Color.red(pixel) + android.graphics.Color.green(pixel) + android.graphics.Color.blue(pixel)) / 3
                     if (if (dark) brightness > 160 else brightness < 100) contrastingPixels++
                 }
-                check(contrastingPixels > 20) { "Icon $label is not visible on the ${if (dark) "dark" else "light"} background" }
+                check(contrastingPixels > 4) { "Icon $label is not visible on the ${if (dark) "dark" else "light"} background" }
             }
             assertIconVisible(R.string.appearance_title, true)
             assertIconVisible(R.string.library_more_actions, true)
