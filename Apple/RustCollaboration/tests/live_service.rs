@@ -68,4 +68,71 @@ fn live_native_replica_offline_merge_reconnect_and_refusal() {
  for p in [p1,p2,p3] {std::fs::remove_file(p).unwrap();}
 }
 
+// This harness is intentionally separate from the product sender. It uses
+// only the local fixture Worker and requires its synthetic identity service.
+fn owned_handshake(store:&mut SyncStore, path:&std::path::Path, token:&str, doc_id:&str, change_account:bool) {
+ let base=std::env::var("WORLDS_LIVE_SYNC_URL").expect("local sync URL");
+ assert_eq!(base,"ws://127.0.0.1:18790","local-only test");
+ let resource=format!("{base}/v1/workspaces/fixture-workspace/docs/{doc_id}/sync");
+ let mut request=resource.clone().into_client_request().unwrap();
+ request.headers_mut().insert("Authorization",format!("Bearer {token}").parse().unwrap());
+ request.headers_mut().insert("Sec-WebSocket-Protocol","worlds-sync.v1".parse().unwrap());
+ let (mut socket,_)=connect(request).unwrap();
+ if let MaybeTlsStream::Plain(tcp)=socket.get_mut(){tcp.set_read_timeout(Some(Duration::from_secs(8))).unwrap();}
+ // The fixture server sends auth state before any document data is sent.
+ let Message::Binary(auth)=socket.read().unwrap() else { panic!("missing fixture auth state") };
+ let mut pos=0; assert_eq!(get(&auth,&mut pos),3);
+ assert!(matches!(bytes(&auth,&mut pos).as_slice(),b"full"|b"edit"));
+ assert_eq!(bytes(&auth,&mut pos),b"editor"); assert_eq!(pos,auth.len());
+ for channel in 0..2 {
+   let (full,_)=store.owned_document_batch(channel,&resource,&[0]).unwrap();
+   let doc=CollaborationDoc::default(); doc.apply(&full).unwrap();
+   socket.send(frame(0,&[channel as u64,0],&doc.state_vector().unwrap())).unwrap();
+ }
+ let(mut steps,mut acks,mut batch)=(0,0,0u64);
+ let mut pending=HashMap::new();
+ while steps<2 || acks<2 {
+  let Message::Binary(data)=socket.read().unwrap() else { continue };
+  let mut pos=0; match get(&data,&mut pos) {
+   0 => { let ch=get(&data,&mut pos) as i64; let kind=get(&data,&mut pos); let payload=bytes(&data,&mut pos);
+    if kind==0 { let(diff,through)=store.owned_document_batch(ch,&resource,&payload).unwrap();batch+=1;pending.insert(batch,(ch,through));socket.send(frame(4,&[batch,ch as u64],&diff)).unwrap(); }
+    else if kind==1 || kind==2 { store.append_owned_remote(ch,&resource,&payload).unwrap(); if kind==1 {steps+=1;} }
+   },
+   5 => { let id=get(&data,&mut pos); let status=get(&data,&mut pos); let _reason=bytes(&data,&mut pos);
+    if let Some((channel,through))=pending.remove(&id) {
+     assert_eq!(status,0,"fixture Worker refused update");
+     if let Some(through)=through {
+      if change_account {
+       let db=rusqlite::Connection::open(path).unwrap();
+       db.execute("UPDATE account SET user_id='other' WHERE id=1",[]).unwrap();
+       assert!(store.acknowledge_owned_document(channel,&resource,through).is_err());
+       db.execute("UPDATE account SET user_id='editor' WHERE id=1",[]).unwrap();
+       drop(socket);return;
+      }
+      store.acknowledge_owned_document(channel,&resource,through).unwrap();
+     }
+     acks+=1;
+    }
+   }, _=>{}
+  }
+ }
+}
+
+#[test]
+#[ignore = "requires isolated local sync Worker and local fake identity"]
+fn live_owned_outbox_survives_account_change_and_reconnect() {
+ let token=std::env::var("WORLDS_LIVE_EDITOR_TOKEN").unwrap();
+ let doc_id=format!("owned{}{}",std::process::id(),std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos());
+ let path=fixture("owned","editor");
+ let resource=format!("ws://127.0.0.1:18790/v1/workspaces/fixture-workspace/docs/{doc_id}/sync");
+ let mut store=SyncStore::open(&path,"fixture-page","editor","fixture-workspace").unwrap();
+ for channel in 0..2 {store.enroll_empty_owned_document(channel,&resource).unwrap();}
+ store.append_owned_document(0,&resource,BASE).unwrap();
+ owned_handshake(&mut store,&path,&token,&doc_id,true);
+ assert!(store.owned_document_batch(0,&resource,&[0]).unwrap().1.is_some());
+ owned_handshake(&mut store,&path,&token,&doc_id,false);
+ assert_eq!(store.owned_document_batch(0,&resource,&[0]).unwrap().1,None);
+ drop(store);std::fs::remove_file(path).unwrap();
+}
+
 
