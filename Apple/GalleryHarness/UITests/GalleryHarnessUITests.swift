@@ -11,12 +11,31 @@ final class GalleryHarnessUITests: XCTestCase {
         app.buttons["Add Second.png"].tap(); XCTAssertTrue(app.staticTexts["gallery-item.b"].waitForExistence(timeout: 20))
         for id in ["a", "b"] {
             let open = app.buttons["gallery-preview.\(id)"]
-            guard open.waitForExistence(timeout: 10) else { XCTFail("Image action missing"); return }; open.tap()
+            guard open.waitForExistence(timeout: 10) else { XCTFail("Image action missing"); return }
+            XCTAssertEqual(open.label, id == "a" ? "View image: First.png" : "View image: Second.png")
+            open.tap()
             let image = app.descendants(matching: .any)["opened-image-preview"].firstMatch
             guard image.waitForExistence(timeout: 20) else {
                 let detail = XCTAttachment(string: app.debugDescription); detail.name = "gallery-image-error-\(id)"; detail.lifetime = .keepAlways; add(detail)
                 XCTFail("Image preview did not open"); return
             }
+            let surface = app.descendants(matching: .any)["opened-image-surface"].firstMatch
+            XCTAssertTrue(surface.waitForExistence(timeout: 10))
+            XCTAssertEqual(surface.label, id == "a" ? "Image preview: First.png" : "Image preview: Second.png")
+            let zoom = app.descendants(matching: .any)["opened-image-zoom-level"].firstMatch
+            let plus = app.buttons["opened-image-zoom-in"], minus = app.buttons["opened-image-zoom-out"]
+            let reset = app.buttons["opened-image-zoom-reset"]
+            XCTAssertTrue(zoom.waitForExistence(timeout: 10))
+            XCTAssertTrue(plus.isHittable)
+            XCTAssertEqual(zoom.label, "Zoom 100 percent")
+            plus.tap()
+            XCTAssertEqual(zoom.label, "Zoom 200 percent")
+            minus.tap()
+            XCTAssertEqual(zoom.label, "Zoom 100 percent")
+            plus.tap()
+            XCTAssertTrue(reset.isEnabled)
+            reset.tap()
+            XCTAssertEqual(zoom.label, "Zoom 100 percent")
             let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = "gallery-image-\(id)-rtl"; shot.lifetime = .keepAlways; add(shot)
             app.buttons["Back"].tap()
         }
@@ -32,6 +51,38 @@ final class GalleryHarnessUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["gallery-after-open-mutation"].waitForExistence(timeout: 20))
         XCTAssertTrue(app.staticTexts["gallery-error"].waitForExistence(timeout: 20))
         XCTAssertFalse(app.descendants(matching: .any)["opened-image-preview"].exists)
+    }
+    @MainActor func testLargeRTLImageZoomControlsRemainReachable() {
+        let app = XCUIApplication(); app.launchArguments += ["--test-rtl", "--test-large-text"]; app.launch()
+        let prepare = app.buttons["Prepare fixture"]
+        guard prepare.waitForExistence(timeout: 30) else { XCTFail("Fixture missing"); return }
+        prepare.tap()
+        let first = app.buttons["Add First.png"]
+        guard first.waitForExistence(timeout: 30) else { XCTFail("First file action missing"); return }
+        first.tap()
+        let open = app.buttons["gallery-preview.a"]
+        for _ in 0..<8 {
+            if open.exists && open.isHittable { break }
+            app.swipeUp()
+        }
+        guard open.exists && open.isHittable else {
+            let detail = XCTAttachment(string: app.debugDescription); detail.name = "gallery-large-rtl-open-missing"; detail.lifetime = .keepAlways; add(detail)
+            XCTFail("Image action is not reachable"); return
+        }
+        open.tap()
+        let zoom = app.buttons["opened-image-zoom-in"]
+        let reset = app.buttons["opened-image-zoom-reset"]
+        guard zoom.waitForExistence(timeout: 20), reset.exists else { XCTFail("Zoom controls missing"); return }
+        XCTAssertTrue(zoom.isHittable)
+        let window = app.windows.firstMatch
+        XCTAssertTrue(window.frame.contains(zoom.frame))
+        XCTAssertTrue(window.frame.contains(reset.frame))
+        zoom.tap()
+        XCTAssertTrue(reset.isEnabled)
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "gallery-large-rtl-zoom"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
     }
     @MainActor func testChangedFixtureOwnerOrSizeBlocksPreview() {
         for action in ["gallery-change-fixture-owner", "gallery-change-fixture-size"] {
@@ -56,7 +107,10 @@ final class GalleryHarnessUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["gallery-item.a"].waitForExistence(timeout: 20))
         app.buttons["gallery-remove-fixture-image"].tap()
         app.buttons["gallery-preview.a"].tap()
-        XCTAssertTrue(app.staticTexts["gallery-error"].waitForExistence(timeout: 20))
+        let error = app.staticTexts["gallery-error"]
+        XCTAssertTrue(error.waitForExistence(timeout: 20))
+        let message = error.value as? String ?? error.label
+        XCTAssertEqual(message, "The attachment cannot be opened.")
         XCTAssertFalse(app.descendants(matching: .any)["opened-image-preview"].exists)
     }
     @MainActor func testDraftCaptionReorderUndoSaveAndReopen() {

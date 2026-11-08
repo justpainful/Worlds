@@ -45,7 +45,7 @@ public struct OpenedDocumentPreviewView: View {
                 case .loading: ProgressView("Opening preview")
                 case .image(let preview):
                     VStack(spacing: 4) {
-                        OpenedZoomImage(image: preview.image) { scale in Task { await model.requestImageResolution(scale: scale) } }
+                        OpenedZoomImage(image: preview.image, name: model.name) { scale in Task { await model.requestImageResolution(scale: scale) } }
                         if max(preview.sourceWidth, preview.sourceHeight) > max(preview.image.width, preview.image.height) {
                             Text(preview.maximumDimension < max(preview.sourceWidth, preview.sourceHeight)
                                 ? "Preview resolution is limited to protect memory."
@@ -218,20 +218,45 @@ private enum DocumentPayload: @unchecked Sendable { case image(OpenedDocumentIma
 
 private struct OpenedZoomImage: View {
     let image: CGImage
+    let name: String
     let onZoom: @MainActor (CGFloat) -> Void
     @State private var scale: CGFloat = 1
     @GestureState private var gestureScale: CGFloat = 1
     var body: some View {
-        GeometryReader { geometry in
-            let fit = min(max(1, geometry.size.width) / CGFloat(image.width), max(1, geometry.size.height) / CGFloat(image.height))
-            let zoom = min(8, max(0.5, scale * gestureScale))
-            ScrollView([.horizontal, .vertical]) {
-                Image(decorative: image, scale: 1).resizable().aspectRatio(contentMode: .fit)
-                    .frame(width: CGFloat(image.width) * fit * zoom, height: CGFloat(image.height) * fit * zoom)
-                    .gesture(MagnificationGesture().updating($gestureScale) { value, state, _ in state = value }.onEnded { scale = min(8, max(0.5, scale * $0)); onZoom(scale) })
-                    .padding()
+        VStack(spacing: 8) {
+            GeometryReader { geometry in
+                let fit = min(max(1, geometry.size.width) / CGFloat(image.width), max(1, geometry.size.height) / CGFloat(image.height))
+                let zoom = min(8, max(0.5, scale * gestureScale))
+                ScrollView([.horizontal, .vertical]) {
+                    Image(decorative: image, scale: 1).resizable().aspectRatio(contentMode: .fit)
+                        .frame(width: CGFloat(image.width) * fit * zoom, height: CGFloat(image.height) * fit * zoom)
+                        .gesture(MagnificationGesture().updating($gestureScale) { value, state, _ in state = value }.onEnded { setZoom(scale * $0) })
+                        .padding()
+                }
+                .accessibilityLabel("Image preview: \(name)")
+                .accessibilityIdentifier("opened-image-surface")
             }
-        }.accessibilityLabel("Image preview")
+            VStack(spacing: 4) {
+                Text("\(Int((scale * 100).rounded()))%")
+                    .accessibilityLabel("Zoom \(Int((scale * 100).rounded())) percent")
+                    .accessibilityIdentifier("opened-image-zoom-level")
+                HStack {
+                    Button("Zoom out", systemImage: "minus.magnifyingglass") { setZoom(scale / 2) }
+                        .disabled(scale <= 0.5).accessibilityIdentifier("opened-image-zoom-out")
+                    Button("Zoom in", systemImage: "plus.magnifyingglass") { setZoom(scale * 2) }
+                        .disabled(scale >= 8).accessibilityIdentifier("opened-image-zoom-in")
+                    Button("Reset zoom", systemImage: "arrow.counterclockwise") { setZoom(1) }
+                        .disabled(scale == 1).accessibilityIdentifier("opened-image-zoom-reset")
+                }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.bordered)
+            }
+            .padding(.horizontal)
+        }
+    }
+    private func setZoom(_ value: CGFloat) {
+        scale = min(8, max(0.5, value))
+        onZoom(scale)
     }
 }
 #if canImport(UIKit)

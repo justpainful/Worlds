@@ -11,7 +11,14 @@ import WorldsResourceRepositories
 @main struct GalleryHarnessApp: App {
     var body: some Scene {
         WindowGroup {
-            GalleryHarnessView().environment(\.layoutDirection, ProcessInfo.processInfo.arguments.contains("--test-rtl") ? .rightToLeft : .leftToRight)
+            if ProcessInfo.processInfo.arguments.contains("--test-large-text") {
+                GalleryHarnessView()
+                    .environment(\.layoutDirection, ProcessInfo.processInfo.arguments.contains("--test-rtl") ? .rightToLeft : .leftToRight)
+                    .dynamicTypeSize(.accessibility3)
+            } else {
+                GalleryHarnessView()
+                    .environment(\.layoutDirection, ProcessInfo.processInfo.arguments.contains("--test-rtl") ? .rightToLeft : .leftToRight)
+            }
         }
     }
 }
@@ -191,7 +198,11 @@ private struct GalleryPreviewRequest: Identifiable {
                   sqlite3_column_int64(statement, 3) == attachment.size, sqlite3_column_int64(statement, 5) == attachment.createdAt,
                   sqlite3_step(statement) == SQLITE_DONE else { throw HarnessError.invalidImage }
             preview = GalleryPreviewRequest(attachment: attachment, file: file); error = nil
-        } catch { self.error = "The fixture image could not be opened safely." }
+        } catch let error as MediaError {
+            self.error = error.localizedDescription
+        } catch {
+            self.error = "The fixture image could not be opened safely."
+        }
     }
     func alterFixtureAttachment(owner: Bool) {
         guard !busy, let copyURL, ProcessInfo.processInfo.arguments.contains("--ui-testing-gallery-record-failure") else { return }
@@ -278,14 +289,20 @@ private struct GalleryHarnessView: View {
                         Button("Remove fixture image") { state.removeFixtureImage() }.accessibilityIdentifier("gallery-remove-fixture-image")
                     }
                     ForEach(Array(state.items.enumerated()), id: \.element.id) { index, item in
-                        HStack {
+                        VStack(alignment: .leading, spacing: 8) {
                             Text(item.name).accessibilityIdentifier("gallery-item.\(item.attachmentID)")
-                            if item.isImage {
-                                Button("View image") { Task { await state.openImage(item) } }
-                                    .accessibilityIdentifier("gallery-preview.\(item.attachmentID)")
+                            HStack {
+                                if item.isImage {
+                                    Button("View image") { Task { await state.openImage(item) } }
+                                        .accessibilityLabel("View image: \(item.name)")
+                                        .accessibilityIdentifier("gallery-preview.\(item.attachmentID)")
+                                }
+                                if index > 0 {
+                                    Button("Move up") { Task { await state.moveUp(index) } }
+                                        .accessibilityLabel("Move up: \(item.name)")
+                                        .accessibilityIdentifier("gallery-move.\(item.attachmentID)")
+                                }
                             }
-                            Spacer()
-                            if index > 0 { Button("Move up") { Task { await state.moveUp(index) } }.accessibilityIdentifier("gallery-move.\(item.attachmentID)") }
                         }
                     }
                     if state.unknownPreserved { Text("Unknown block preserved").accessibilityIdentifier("gallery-unknown-preserved") }
