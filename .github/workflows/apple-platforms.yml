@@ -160,6 +160,8 @@ jobs:
           grep -E 'testLegacyAndMalformedSyncMetadataAreFilteredConsistently.*passed' logs/swift-test.log
           grep -E 'testCheckedHistoryDistinguishesEmptyFromUnavailable.*passed' logs/swift-test.log
           grep -E 'testCheckedHistoryRejectsWorkspacePages.*passed' logs/swift-test.log
+          grep -E 'testHierarchyPreferencesArePerCopyAndFilterUnavailablePages.*passed' logs/swift-test.log
+          grep -E 'testPersonalHierarchyKeepsDetachedComponentsAndStopsCycles.*passed' logs/swift-test.log
           grep -E 'testInlineImageRequiresPersonalPageOwnershipAndUnambiguousReference.*passed' logs/swift-test.log
           grep -E 'testSnapshotRetainsArchivedState.*passed' logs/swift-test.log
           grep -E 'testAmbiguousSyncMetadataCannotLeakFTSOrParentTitle.*passed' logs/swift-test.log
@@ -2318,6 +2320,7 @@ jobs:
           grep -Eq 'testReaderShowsRTLQuotationAndOverflowingList.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testPersonalSubpagesNavigateAndReturn.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testSubpageCycleDoesNotRepeatAnAncestor.*passed' logs/ui-${{ matrix.device }}.log
+          grep -Eq 'testPersonalHierarchyExpandCollapseAndRetainState.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testProjectSummaryAndLinkedPage.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testArabicProjectSummary.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testArabicProjectDark.*passed' logs/ui-${{ matrix.device }}.log
