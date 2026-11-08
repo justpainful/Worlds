@@ -179,6 +179,68 @@ impl SyncStore {
         tx.commit()?; Ok(())
     }
 
+    /// Enroll only a completely empty channel. Existing documents and queues
+    /// are never claimed, migrated, or erased by this experiment.
+    pub fn enroll_empty_owned_document(&mut self, channel: i64, server: &str) -> Result<()> {
+        if server.is_empty() || server.len() > 2048 { return Err(StoreError::Invalid); }
+        let tx = rusqlite::Transaction::new_unchecked(&self.conn, rusqlite::TransactionBehavior::Immediate)?;
+        self.check(channel, true)?;
+        tx.execute_batch("CREATE TABLE IF NOT EXISTS native_sync_document_owner_v1(page_id TEXT NOT NULL,channel INTEGER NOT NULL,user_id TEXT NOT NULL,workspace_id TEXT NOT NULL,server TEXT NOT NULL,PRIMARY KEY(page_id,channel));
+            CREATE TABLE IF NOT EXISTS native_sync_update_owner_v1(update_id INTEGER PRIMARY KEY,page_id TEXT NOT NULL,channel INTEGER NOT NULL,data BLOB NOT NULL,created_at INTEGER NOT NULL);
+            CREATE TABLE IF NOT EXISTS native_sync_outbox_owner_v1(outbox_id INTEGER PRIMARY KEY,page_id TEXT NOT NULL,channel INTEGER NOT NULL,user_id TEXT NOT NULL,workspace_id TEXT NOT NULL,data BLOB NOT NULL,created_at INTEGER NOT NULL)")?;
+        let occupied: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM sync_docs WHERE page_id=?1 AND channel=?2) OR EXISTS(SELECT 1 FROM sync_updates WHERE page_id=?1 AND channel=?2) OR EXISTS(SELECT 1 FROM sync_outbox WHERE page_id=?1 AND channel=?2) OR EXISTS(SELECT 1 FROM native_sync_document_owner_v1 WHERE page_id=?1 AND channel=?2)",params![self.page,channel],|r|r.get(0))?;
+        if occupied { return Err(StoreError::Denied); }
+        tx.execute("INSERT INTO native_sync_document_owner_v1(page_id,channel,user_id,workspace_id,server) VALUES(?1,?2,?3,?4,?5)",params![self.page,channel,self.user,self.workspace,server])?;
+        tx.commit()?; Ok(())
+    }
+
+    fn require_owned_document(&self, channel: i64, server: &str) -> Result<()> {
+        let bound: bool = self.conn.query_row("SELECT EXISTS(SELECT 1 FROM native_sync_document_owner_v1 WHERE page_id=?1 AND channel=?2 AND user_id=?3 AND workspace_id=?4 AND server=?5)",params![self.page,channel,self.user,self.workspace,server],|r|r.get(0))?;
+        if !bound { return Err(StoreError::Denied); }
+        let untrusted: bool = self.conn.query_row("SELECT EXISTS(SELECT 1 FROM sync_docs WHERE page_id=?1 AND channel=?2 AND snapshot IS NOT NULL) OR EXISTS(SELECT 1 FROM sync_updates u LEFT JOIN native_sync_update_owner_v1 n ON n.update_id=u.id WHERE u.page_id=?1 AND u.channel=?2 AND (n.update_id IS NULL OR n.page_id!=u.page_id OR n.channel!=u.channel OR n.data!=u.data OR n.created_at!=u.created_at OR u.origin!='local')) OR EXISTS(SELECT 1 FROM native_sync_update_owner_v1 n LEFT JOIN sync_updates u ON u.id=n.update_id WHERE n.page_id=?1 AND n.channel=?2 AND (u.id IS NULL OR u.page_id!=n.page_id OR u.channel!=n.channel))",params![self.page,channel],|r|r.get(0))?;
+        if untrusted { return Err(StoreError::Denied); }
+        self.require_owned_pending(channel)
+    }
+
+    /// Local update and provenance records commit together. This path does not
+    /// yet admit incoming service updates or original-editor writes.
+    pub fn append_owned_document(&mut self, channel: i64, server: &str, bytes: &[u8]) -> Result<()> {
+        use yrs::updates::decoder::Decode;
+        if bytes.len()>64*1024*1024 || yrs::Update::decode_v1(bytes).is_err() { return Err(StoreError::Invalid); }
+        let tx = rusqlite::Transaction::new_unchecked(&self.conn, rusqlite::TransactionBehavior::Immediate)?;
+        self.check(channel,true)?; self.require_owned_document(channel,server)?;
+        let t=now();
+        tx.execute("INSERT OR IGNORE INTO sync_docs(page_id,channel,created_at,updated_at) VALUES(?1,?2,?3,?3)",params![self.page,channel,t])?;
+        tx.execute("INSERT INTO sync_updates(page_id,channel,data,origin,created_at) VALUES(?1,?2,?3,'local',?4)",params![self.page,channel,bytes,t])?;
+        let update_id=tx.last_insert_rowid();
+        tx.execute("INSERT INTO native_sync_update_owner_v1(update_id,page_id,channel,data,created_at) VALUES(?1,?2,?3,?4,?5)",params![update_id,self.page,channel,bytes,t])?;
+        tx.execute("INSERT INTO sync_outbox(page_id,channel,data,created_at) VALUES(?1,?2,?3,?4)",params![self.page,channel,bytes,t])?;
+        let outbox_id=tx.last_insert_rowid();
+        tx.execute("INSERT INTO native_sync_outbox_owner_v1(outbox_id,page_id,channel,user_id,workspace_id,data,created_at) VALUES(?1,?2,?3,?4,?5,?6,?7)",params![outbox_id,self.page,channel,self.user,self.workspace,bytes,t])?;
+        tx.execute("UPDATE sync_docs SET updated_at=?3 WHERE page_id=?1 AND channel=?2",params![self.page,channel,t])?;
+        tx.commit()?; Ok(())
+    }
+
+    /// Snapshot of a verified experimental log and its pending watermark.
+    /// The caller must obtain server identity and authorization independently.
+    pub fn owned_document_batch(&self, channel: i64, server: &str, vector: &[u8]) -> Result<(Vec<u8>,Option<i64>)> {
+        let tx=self.conn.unchecked_transaction()?;
+        self.check(channel,false)?; self.require_owned_document(channel,server)?;
+        let doc=crate::CollaborationDoc::default();
+        for bytes in self.load_entries(channel,||Ok(()))? { doc.apply(&bytes).map_err(|_|StoreError::Invalid)?; }
+        let watermark=tx.query_row("SELECT MAX(id) FROM sync_outbox WHERE page_id=?1 AND channel=?2 AND state='pending'",params![self.page,channel],|r|r.get(0))?;
+        let diff=doc.diff(vector).map_err(|_|StoreError::Invalid)?;
+        tx.commit()?; Ok((diff,watermark))
+    }
+
+    pub fn acknowledge_owned_document(&mut self, channel: i64, server: &str, through: i64) -> Result<()> {
+        let tx=rusqlite::Transaction::new_unchecked(&self.conn,rusqlite::TransactionBehavior::Immediate)?;
+        self.check(channel,false)?; self.require_owned_document(channel,server)?;
+        tx.execute("DELETE FROM native_sync_outbox_owner_v1 WHERE outbox_id IN (SELECT id FROM sync_outbox WHERE page_id=?1 AND channel=?2 AND state='pending' AND id<=?3)",params![self.page,channel,through])?;
+        tx.execute("DELETE FROM sync_outbox WHERE page_id=?1 AND channel=?2 AND state='pending' AND id<=?3",params![self.page,channel,through])?;
+        tx.commit()?; Ok(())
+    }
+
     /// Rebuild and compare the complete CRDT state under an immediate SQLite transaction,
     /// then append both log and outbox atomically. The service still enforces live rights.
     pub fn insert_plain_checked(&mut self, base: &[u8], block_index: u32, block_id: &str, expected: &str, offset: u32, insert: &str) -> Result<Vec<u8>> {

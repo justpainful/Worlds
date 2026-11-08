@@ -20,3 +20,14 @@ writer interoperability, rejection recovery, account changes, and server
 authorization have been designed and verified. Never assign legacy rows to the
 current account merely because it is active. No existing rows are deleted or
 claimed during setup.
+
+An additional isolated document experiment enrolls only a channel without any
+existing document, log, or queue. It binds a caller-supplied server identifier,
+account and workspace, records the bytes of every admitted local log entry,
+and fails closed on untracked, altered or deleted log entries and nonempty
+snapshots. Batch construction reads the validated log and watermark in one
+SQLite snapshot; ACK repeats the checks in a write transaction. Its tests
+simulate a peer and ACK, not the service. The server identifier is not itself
+authenticated. Remote updates, compaction, rejection recovery, native editor
+transactions and existing documents remain unsupported. The experiment does
+not stop an original Worlds writer or consumer from bypassing its sidecars.

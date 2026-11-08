@@ -83,6 +83,53 @@ fn owned_outbox_ack_watermark_and_atomic_rollback() {
 }
 
 #[test]
+fn isolated_owned_document_batch_never_claims_legacy_or_other_accounts() {
+    use worlds_collaboration::CollaborationDoc;
+    let path=fixture(); let mut alice=SyncStore::open(&path,"p","u","w").unwrap();
+    let server="wss://fixture.invalid";
+    alice.enroll_empty_owned_document(0,server).unwrap();
+    let base=include_bytes!("fixtures/base.bin");
+    let update=include_bytes!("fixtures/alice-diff.bin");
+    alice.append_owned_document(0,server,base).unwrap();
+    let (first,watermark)=alice.owned_document_batch(0,server,&[0]).unwrap();
+    let watermark=watermark.unwrap();
+    alice.append_owned_document(0,server,update).unwrap();
+    let peer=CollaborationDoc::default(); peer.apply(&first).unwrap();
+    alice.acknowledge_owned_document(0,server,watermark).unwrap();
+    let (next,last)=alice.owned_document_batch(0,server,&peer.state_vector().unwrap()).unwrap();
+    assert!(last.unwrap()>watermark); peer.apply(&next).unwrap();
+    let expected=CollaborationDoc::default(); expected.apply(base).unwrap(); expected.apply(update).unwrap();
+    assert_eq!(peer.diff(&[0]).unwrap(),expected.diff(&[0]).unwrap());
+    assert!(matches!(alice.owned_document_batch(0,"wss://other.invalid",&[0]),Err(StoreError::Denied)));
+    let db=Connection::open(&path).unwrap();
+    db.execute("UPDATE account SET user_id='other' WHERE id=1",[]).unwrap();
+    let mut bob=SyncStore::open(&path,"p","other","w").unwrap();
+    assert!(matches!(bob.owned_document_batch(0,server,&[0]),Err(StoreError::Denied)));
+    assert!(matches!(bob.acknowledge_owned_document(0,server,i64::MAX),Err(StoreError::Denied)));
+    assert_eq!(db.query_row("SELECT count(*) FROM sync_outbox",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+    db.execute("UPDATE account SET user_id='u' WHERE id=1",[]).unwrap();
+    alice.append(0,update,true).unwrap();
+    assert!(matches!(alice.owned_document_batch(0,server,&[0]),Err(StoreError::Denied)));
+    assert!(matches!(alice.acknowledge_owned_document(0,server,i64::MAX),Err(StoreError::Denied)));
+    assert_eq!(db.query_row("SELECT count(*) FROM sync_outbox",[],|r|r.get::<_,i64>(0)).unwrap(),2);
+}
+
+#[test]
+fn isolated_owned_document_refuses_existing_history_and_rolls_back() {
+    let path=fixture(); let mut store=SyncStore::open(&path,"p","u","w").unwrap();
+    let update=include_bytes!("fixtures/base.bin"); store.append(0,update,true).unwrap();
+    assert!(matches!(store.enroll_empty_owned_document(0,"fixture"),Err(StoreError::Denied)));
+    assert_eq!(store.load(0).unwrap(),vec![update.to_vec()]);
+    let other=fixture(); let mut fresh=SyncStore::open(&other,"p","u","w").unwrap();
+    fresh.enroll_empty_owned_document(0,"fixture").unwrap();
+    let db=Connection::open(&other).unwrap();
+    db.execute_batch("CREATE TRIGGER fail_provenance BEFORE INSERT ON native_sync_update_owner_v1 BEGIN SELECT RAISE(ABORT,'fixture'); END;").unwrap();
+    assert!(fresh.append_owned_document(0,"fixture",update).is_err());
+    assert!(fresh.load(0).unwrap().is_empty());
+    assert_eq!(db.query_row("SELECT count(*) FROM sync_outbox",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+}
+
+#[test]
 fn incomplete_ancestry_never_falls_back_to_workspace_default_for_writes() {
     let path=fixture(); let mut store=SyncStore::open(&path,"p","u","w").unwrap();
     let db=Connection::open(&path).unwrap();
