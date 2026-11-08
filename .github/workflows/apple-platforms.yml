@@ -72,6 +72,7 @@ jobs:
           grep -E 'testTextAlignmentUndoAndRejectsMalformedAlignment.*passed' logs/swift-test.log
           grep -E 'testFontWeightUndoAndRejectsMalformedValue.*passed' logs/swift-test.log
           grep -E 'testItalicUndoAndRejectsMalformedValue.*passed' logs/swift-test.log
+          grep -E 'testFontSizeUndoAndRejectsMalformedValue.*passed' logs/swift-test.log
           grep -E 'testRejectsInvalidAndPreservesSession.*passed' logs/swift-test.log
           grep -E 'testCreateListsAndToggleTaskWithUndoRedo.*passed' logs/swift-test.log
           grep -E 'testListCreationRejectsUnknownContent.*passed' logs/swift-test.log
@@ -690,6 +691,7 @@ jobs:
               grep -E 'testTextAlignmentSaveAndReopenKeepsMedia.*passed' "logs/local-presentation-editor-$device.log" || result=1
               grep -E 'testBoldTextUndoAndReopenKeepsMedia.*passed' "logs/local-presentation-editor-$device.log" || result=1
               grep -E 'testItalicTextUndoAndReopenKeepsMedia.*passed' "logs/local-presentation-editor-$device.log" || result=1
+              grep -E 'testFontSizeUndoAndReopenKeepsMedia.*passed' "logs/local-presentation-editor-$device.log" || result=1
             else
               result=1
             fi
