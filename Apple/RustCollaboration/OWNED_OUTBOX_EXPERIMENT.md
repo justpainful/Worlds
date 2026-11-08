@@ -36,3 +36,11 @@ authenticate incoming data and are not connected to a network. The explicit
 assigning old log entries or snapshots to any owner. Rejection recovery, native editor
 transactions and existing Worlds documents remain unsupported. The experiment does
 not stop an original Worlds writer or consumer from bypassing its sidecars.
+
+`live_owned_outbox_survives_account_change_and_reconnect` is an ignored,
+local-Worker-only integration harness. It pins the full fixture document URL,
+requires a synthetic editor token, verifies the returned user and level before
+sending, and checks that a changed local account prevents ACK before a new
+connection. It must be run against the isolated Worker fixture to establish
+its result; compiling it alone does not verify the Worker or Apple client. The
+local HTTP transport and synthetic token are not production authentication.
