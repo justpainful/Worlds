@@ -167,9 +167,13 @@ fn save_blocks_checked_with_kind(path: &Path, page: &str, base: i64, expected: V
         }
     }
     store::snapshot_before_user_edit(&tx, page)?;
+    let before_values: Vec<(String,Value)>=current.iter().map(|(id,raw,_)|Ok((id.clone(),serde_json::from_str(raw)?))).collect::<Result<_>>()?;
+    let next_values: Vec<(String,Value)>=blocks.iter().map(|block|(block.id.clone(),block.content.clone())).collect();
+    let originals=resource_ops::prepare_unchanged_blocks(&tx,page,&before_values,&next_values)?;
     let input = blocks.into_iter().map(|block| store::BlockInput { id: block.id, content: block.content }).collect();
     let result = store::save_blocks(&tx, &store::Ctx::user(), page, input)?;
     if !result.remapped.is_empty() { bail!("conflict: block identifiers were remapped") }
+    resource_ops::restore_unchanged_blocks(&tx,page,originals)?;
     let written_refs: HashSet<(String,String,String)> = tx.prepare("SELECT source_block,target_page,kind FROM refs WHERE source_page=?1")?
         .query_map([page],|r| Ok((r.get(0)?,r.get(1)?,r.get(2)?)))?.collect::<rusqlite::Result<_>>()?;
     if written_refs != next_refs { bail!("conflict: reference index could not be preserved") }
@@ -483,6 +487,29 @@ mod tests {
     fn with_bid(mut blocks:Vec<BlockInput>) -> Vec<BlockInput> {
         for block in &mut blocks { content::set_block_id(&mut block.content,&block.id); }
         blocks
+    }
+    #[test]
+    fn checked_page_save_preserves_unchanged_noncanonical_block_and_rolls_back() {
+        let path=fixture(); let c=Connection::open(&path).unwrap();
+        let raw=r#"{"type":"future","attrs":{"payload":true,"bid":"opaque"},"content":[{"type":"text","text":"مرحبا"}]}"#;
+        c.execute("INSERT INTO blocks(id,page_id,type,sort_key,content,text,direction,created_at,updated_at) VALUES('opaque','fixture-page','future',1,?1,'مرحبا','ltr',1,7)",[raw]).unwrap();
+        c.execute_batch("CREATE TRIGGER fail_change BEFORE INSERT ON changes BEGIN SELECT RAISE(ABORT,'fixture failure'); END;").unwrap(); drop(c);
+        let expected=current_blocks(&path); let mut next=with_bid(expected.clone());
+        next[0].content["content"]=serde_json::json!([{"type":"text","text":"changed"}]);
+        assert!(save_blocks_checked(&path,"fixture-page",1700000000001,expected.clone(),next.clone()).is_err());
+        let c=Connection::open(&path).unwrap();
+        let (content,direction,updated):(String,String,i64)=c.query_row("SELECT content,direction,updated_at FROM blocks WHERE id='opaque'",[],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).unwrap();
+        assert_eq!((content,direction,updated),(raw.to_string(),"ltr".into(),7));
+        assert_eq!(c.query_row("SELECT count(*) FROM versions",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        c.execute_batch("DROP TRIGGER fail_change").unwrap(); drop(c);
+        save_blocks_checked(&path,"fixture-page",1700000000001,expected.clone(),next).unwrap();
+        assert!(save_blocks_checked(&path,"fixture-page",1700000000001,expected.clone(),with_bid(expected)).is_err());
+        let c=Connection::open(&path).unwrap();
+        let (content,direction,updated):(String,String,i64)=c.query_row("SELECT content,direction,updated_at FROM blocks WHERE id='opaque'",[],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).unwrap();
+        assert_eq!((content,direction,updated),(raw.to_string(),"ltr".into(),7));
+        let history:String=c.query_row("SELECT meta FROM history WHERE page_id='fixture-page' ORDER BY id DESC LIMIT 1",[],|r|r.get(0)).unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&history).unwrap()["changed"],1);
+        drop(c); std::fs::remove_file(path).unwrap();
     }
     #[test]
     fn checked_save_rejects_equal_timestamp_conflict_without_writes() {

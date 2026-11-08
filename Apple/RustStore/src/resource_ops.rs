@@ -502,7 +502,7 @@ fn presentation_refs(c: &Connection, page: &str, entries: &[(String,Value)]) -> 
     if actual != expected { bail!("unsupported presentation: reference index is inconsistent") }
     Ok(())
 }
-fn prepare_unchanged_presentation_blocks(c: &Connection, page: &str, before: &[(String,Value)], next: &[(String,Value)]) -> Result<Vec<(String,String)>> {
+pub(crate) fn prepare_unchanged_blocks(c: &Connection, page: &str, before: &[(String,Value)], next: &[(String,Value)]) -> Result<Vec<(String,String)>> {
     let mut originals=Vec::new();
     for (block_id,old) in before {
         if next.iter().any(|(next_id,value)| next_id==block_id && value==old) {
@@ -512,7 +512,7 @@ fn prepare_unchanged_presentation_blocks(c: &Connection, page: &str, before: &[(
     }
     if !originals.is_empty() {
         let trigger:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='trigger' AND tbl_name='blocks')",[],|r|r.get(0))?;
-        if trigger { bail!("unsupported presentation: block triggers prevent safe normalization") }
+        if trigger { bail!("unsupported edit: block triggers prevent safe normalization") }
         for (id,raw) in &originals {
             let canonical=serde_json::from_str::<Value>(raw)?.to_string();
             c.execute("UPDATE blocks SET content=?3 WHERE page_id=?1 AND id=?2",rusqlite::params![page,id,canonical])?;
@@ -520,9 +520,9 @@ fn prepare_unchanged_presentation_blocks(c: &Connection, page: &str, before: &[(
     }
     Ok(originals)
 }
-fn restore_unchanged_presentation_blocks(c: &Connection, page: &str, originals: Vec<(String,String)>) -> Result<()> {
+pub(crate) fn restore_unchanged_blocks(c: &Connection, page: &str, originals: Vec<(String,String)>) -> Result<()> {
     for (id,raw) in originals {
-        if c.execute("UPDATE blocks SET content=?3 WHERE page_id=?1 AND id=?2",rusqlite::params![page,id,raw])? != 1 { bail!("presentation block disappeared") }
+        if c.execute("UPDATE blocks SET content=?3 WHERE page_id=?1 AND id=?2",rusqlite::params![page,id,raw])? != 1 { bail!("unchanged block disappeared") }
     }
     Ok(())
 }
@@ -636,10 +636,10 @@ pub fn save_presentation_deleting(path: &Path, id: &str, base: i64, expected_met
     else { store::snapshot(&tx,id,"user",None,Some("Before slide deletion"))?; }
     // Match the writer's byte comparison within this transaction, then restore
     // the exact original bytes before commit. No other connection sees them.
-    let originals=prepare_unchanged_presentation_blocks(&tx,id,&before,&next_pairs)?;
+    let originals=prepare_unchanged_blocks(&tx,id,&before,&next_pairs)?;
     let result = store::save_blocks(&tx,&store::Ctx::user(),id,next.into_iter().map(|b|store::BlockInput{id:b.id,content:b.content}).collect())?;
     if !result.remapped.is_empty() { bail!("conflict: block IDs were remapped") }
-    restore_unchanged_presentation_blocks(&tx,id,originals)?;
+    restore_unchanged_blocks(&tx,id,originals)?;
     presentation_refs(&tx,id,&next_pairs)?;
     let output = presentation_snapshot(&tx,id)?;
     tx.commit()?; Ok(output)
@@ -681,10 +681,10 @@ pub fn restore_presentation_slide(path: &Path, page: &str, recovery_id: &str, ba
     let mut next=current.clone(); next.insert(position,(block_id.clone(),content));
     presentation_attachments(&tx,&next)?;
     store::snapshot(&tx,page,"user",None,Some("Before slide recovery"))?;
-    let originals=prepare_unchanged_presentation_blocks(&tx,page,&current,&next)?;
+    let originals=prepare_unchanged_blocks(&tx,page,&current,&next)?;
     let result=store::save_blocks(&tx,&store::Ctx::user(),page,next.iter().map(|(id,content)|store::BlockInput{id:id.clone(),content:content.clone()}).collect())?;
     if !result.remapped.is_empty() { bail!("conflict: block IDs were remapped") }
-    restore_unchanged_presentation_blocks(&tx,page,originals)?;
+    restore_unchanged_blocks(&tx,page,originals)?;
     tx.execute("UPDATE blocks SET properties=?2,direction=?3,created_at=?4,updated_at=?5 WHERE id=?1 AND page_id=?6",rusqlite::params![block_id,properties,direction,created,updated,page])?;
     presentation_refs(&tx,page,&next)?;
     tx.execute("UPDATE native_presentation_deleted SET restored_at=?3 WHERE id=?1 AND page_id=?2 AND restored_at IS NULL",rusqlite::params![recovery_id,page,db::now()])?;
