@@ -2111,6 +2111,7 @@ jobs:
             -resultBundlePath "$GITHUB_WORKSPACE/collaboration-harness.xcresult" \
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee logs/collaboration-harness.log; then
             grep -E 'testLocalCollaborationScenario.*passed' logs/collaboration-harness.log || harness_status=1
+            grep -E 'testMissingServiceConfigurationShowsFailure.*passed' logs/collaboration-harness.log || harness_status=1
           else
             harness_status=1
           fi
