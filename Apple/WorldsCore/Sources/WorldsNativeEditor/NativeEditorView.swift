@@ -134,6 +134,30 @@ private final class EditorTextView: UITextView {
     weak var editorModel: NativeEditorModel?
     var markers: [NativeListMarker] = [] { didSet { if oldValue != markers { setNeedsDisplay() } } }
     override var undoManager: UndoManager? { nil }
+    #if WORLDS_EXPERIMENTAL_IPAD_LIST_KEYS
+    override var keyCommands: [UIKeyCommand]? {
+        guard UIDevice.current.userInterfaceIdiom == .pad else { return super.keyCommands }
+        let indent = UIKeyCommand(input: "\t", modifierFlags: [], action: #selector(indentListFromKeyboard))
+        let outdent = UIKeyCommand(input: "\t", modifierFlags: [.shift], action: #selector(outdentListFromKeyboard))
+        indent.discoverabilityTitle = "Move in one level"
+        outdent.discoverabilityTitle = "Move out one level"
+        indent.wantsPriorityOverSystemBehavior = true
+        outdent.wantsPriorityOverSystemBehavior = true
+        return (super.keyCommands ?? []) + [indent, outdent]
+    }
+    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        if action == #selector(indentListFromKeyboard) || action == #selector(outdentListFromKeyboard) {
+            return markedTextRange == nil && editorModel?.nativeEditPending == false && editorModel?.hasListCaret == true
+        }
+        return super.canPerformAction(action, withSender: sender)
+    }
+    @objc private func indentListFromKeyboard() { performListIndent(outdent: false) }
+    @objc private func outdentListFromKeyboard() { performListIndent(outdent: true) }
+    private func performListIndent(outdent: Bool) {
+        guard markedTextRange == nil, let model = editorModel, !model.nativeEditPending, model.hasListCaret else { return }
+        do { try model.changeListIndent(outdent: outdent) } catch { model.report(error) }
+    }
+    #endif
     override func draw(_ rect: CGRect) {
         super.draw(rect)
         let font = self.font ?? UIFont.preferredFont(forTextStyle: .body)
