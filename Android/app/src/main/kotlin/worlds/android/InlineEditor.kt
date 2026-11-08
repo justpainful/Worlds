@@ -4,6 +4,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.focus.onFocusChanged
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -11,6 +16,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import worlds.content.InlineEditing
 import worlds.content.LinkAddress
@@ -27,6 +36,19 @@ internal fun replaceChangedText(raw: String, old: String, new: String): String {
     while (suffix < old.length - prefix && suffix < new.length - prefix && old[old.length - 1 - suffix] == new[new.length - 1 - suffix]) suffix++
     while (splitsPair(old, old.length - suffix) || splitsPair(new, new.length - suffix)) suffix--
     return InlineEditing.replace(raw, prefix, old.length - suffix, new.substring(prefix, new.length - suffix))
+}
+
+internal fun inlineVisualTransformation(raw: String): VisualTransformation {
+    val preview = previewBlock(raw, interactiveLinks = false).text
+    return VisualTransformation { input ->
+        if (input.text != preview.text) TransformedText(input, OffsetMapping.Identity)
+        else {
+            val styled = AnnotatedString.Builder(input).apply {
+                preview.spanStyles.forEach { addStyle(it.item, it.start, it.end) }
+            }.toAnnotatedString()
+            TransformedText(styled, OffsetMapping.Identity)
+        }
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -54,7 +76,7 @@ internal fun replaceChangedText(raw: String, old: String, new: String): String {
             text = { Text(stringResource(R.string.discard_body)) },
             confirmButton = { TextButton(onClick = { discardPrompt = false; onCancel() }) { Text(stringResource(R.string.discard)) } },
             dismissButton = { TextButton(onClick = { discardPrompt = false }) { Text(stringResource(R.string.keep_editing)) } })
-    } else AlertDialog(modifier = Modifier.editorSaveShortcut(shortcutEnabled) { onSave(raw) }, onDismissRequest = { dismiss() }, title = {
+    } else AlertDialog(modifier = Modifier.imePadding().editorSaveShortcut(shortcutEnabled) { onSave(raw) }, onDismissRequest = { dismiss() }, title = {
         Column {
             Text(stringResource(R.string.edit_text))
             if (saveError) Text(stringResource(R.string.editor_error), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
@@ -62,6 +84,9 @@ internal fun replaceChangedText(raw: String, old: String, new: String): String {
     },
         text = {
             val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+            val bringTextIntoView = remember { BringIntoViewRequester() }
+            val scrollScope = rememberCoroutineScope()
+            var editorFocused by remember { mutableStateOf(false) }
             LaunchedEffect(saveError) { if (saveError) keyboard?.hide() }
             Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
                 Text(stringResource(R.string.limited_editing), style = MaterialTheme.typography.bodySmall)
@@ -99,7 +124,8 @@ internal fun replaceChangedText(raw: String, old: String, new: String): String {
                     }
                 }
                 val editorSettings = LocalAppearancePreferences.current
-                OutlinedTextField(value = value, enabled = !busy, onValueChange = { next ->
+                val visual = remember(raw) { inlineVisualTransformation(raw) }
+                OutlinedTextField(value = value, visualTransformation = visual, enabled = !busy, onValueChange = { next ->
                     val result = runCatching { if (next.text != value.text) replaceChangedText(raw, value.text, next.text) else raw }
                     if (result.isSuccess) {
                         raw = result.getOrThrow()
@@ -107,7 +133,11 @@ internal fun replaceChangedText(raw: String, old: String, new: String): String {
                         inputError = false
                     } else inputError = true
                 }, label = { Text(stringResource(R.string.text_content)) }, textStyle = LocalTextStyle.current.copy(textDirection = editorDirection(editorSettings.direction)),
-                    keyboardOptions = editorKeyboardOptions(editorSettings.suggestions), modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp, max = 240.dp))
+                    keyboardOptions = editorKeyboardOptions(editorSettings.suggestions), modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp, max = 240.dp)
+                        .bringIntoViewRequester(bringTextIntoView).onFocusChanged { focus ->
+                            editorFocused = focus.isFocused
+                            if (focus.isFocused) scrollScope.launch { delay(350); if (editorFocused) bringTextIntoView.bringIntoView() }
+                        })
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     listOf(Triple("bold", R.string.bold, R.drawable.ic_bold), Triple("italic", R.string.italic, R.drawable.ic_italic), Triple("underline", R.string.underline, R.drawable.ic_underline), Triple("strike", R.string.strike, R.drawable.ic_strikethrough), Triple("code", R.string.inline_code, R.drawable.ic_code_2), Triple("highlight", R.string.inline_highlight, R.drawable.ic_highlighter)).forEach { (mark, label, icon) ->
                         TextButton(enabled = !busy && !value.selection.collapsed && value.composition == null, onClick = {

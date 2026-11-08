@@ -67,7 +67,8 @@ internal val PageFindSessionSaver = listSaver<PageFindSession, Any>(
             if (updated == null) error = true else { document = updated; index = 0; error = false }
         }
     }
-    AlertDialog(onDismissRequest = { if (!busy) onDismiss() }, title = { WorldsActionLabel(R.drawable.ic_search, stringResource(R.string.find_replace)) },
+    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    AlertDialog(modifier = Modifier.imePadding(), onDismissRequest = { if (!busy) onDismiss() }, title = { WorldsActionLabel(R.drawable.ic_search, stringResource(R.string.find_replace)) },
         text = { Column(Modifier.heightIn(max = 450.dp).verticalScroll(rememberScrollState())) {
             Text(stringResource(R.string.find_scope), style = MaterialTheme.typography.bodySmall)
             OutlinedTextField(value = query, onValueChange = { if (it.length <= 256 && it != query) { query = it; index = 0; error = false } }, enabled = !busy,
@@ -107,7 +108,7 @@ internal val PageFindSessionSaver = listSaver<PageFindSession, Any>(
                 TextButton(enabled = !busy && matches.size > 1, onClick = { index = (current + 1) % matches.size }) { WorldsActionLabel(R.drawable.ic_chevron_right, stringResource(R.string.find_next)) }
                 TextButton(enabled = !busy && matches.isNotEmpty() && result?.truncated == false, onClick = { if (!onShowBlock(document, matches[current])) error = true }) { WorldsActionLabel(R.drawable.ic_search, stringResource(R.string.find_show_block)) }
                 TextButton(enabled = !busy && matches.isNotEmpty() && result?.truncated == false, onClick = { replace(current) }) { WorldsActionLabel(R.drawable.ic_pen_line, stringResource(R.string.find_replace_one)) }
-                TextButton(enabled = !busy && matches.isNotEmpty() && result?.truncated == false, onClick = { confirmAll = true }) { WorldsActionLabel(R.drawable.ic_files, stringResource(R.string.find_replace_all)) }
+                TextButton(enabled = !busy && matches.isNotEmpty() && result?.truncated == false, onClick = { keyboard?.hide(); confirmAll = true }) { WorldsActionLabel(R.drawable.ic_files, stringResource(R.string.find_replace_all)) }
             }
             if (error) Text(stringResource(R.string.find_error), color = MaterialTheme.colorScheme.error)
         } }, confirmButton = { TextButton(enabled = !busy, onClick = onDismiss) { Text(stringResource(R.string.close)) } })

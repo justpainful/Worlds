@@ -1,5 +1,18 @@
 # Worlds Android design decisions
 
+## Inline editor formatting
+The local text editor shows the actual stored bold, italic, underline, strike,
+code, highlight, color and size marks inside the editable field. The existing
+Worlds preview styling is reused, with no active links while editing. Text and
+UTF-16 offsets stay unchanged so the caret and selection match the saved data.
+The existing neutral surfaces, warm actions, system typography, RTL behavior and
+light and dark roles remain in use. No new motion or decorative elements are
+added. Unsupported content retains the existing safeguards.
+When the keyboard appears, the dialog reserves its inset and scrolls the focused
+text field into view while keeping Save and Cancel reachable.
+The find and replace dialog also reserves keyboard space, and closes the
+keyboard before showing its replace-all confirmation.
+
 ## Shared page action strip
 The shared page puts access, conversations, notifications, version history and
 Markdown export in one compact horizontal strip above the document. These are

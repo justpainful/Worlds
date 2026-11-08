@@ -5,6 +5,12 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextInputSelection
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontStyle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
@@ -55,6 +61,35 @@ class EditorKeyboardTest {
         key(android.view.KeyEvent.KEYCODE_S, android.view.KeyEvent.META_CTRL_ON)
         assertTrue(CodeEditing.read(saved.get()).text.contains(" + 2"))
         assertEquals("kotlin", CodeEditing.read(saved.get()).language)
+    }
+
+    @Test fun formattingIsShownWhileEditingAndSelectionStaysCorrect() {
+        val original = """{"type":"paragraph","content":[{"type":"text","text":"Bold 😀 ","marks":[{"type":"bold"}]},{"type":"text","text":"مرحبا","marks":[{"type":"italic"}]}]}"""
+        val visual = inlineVisualTransformation(original)
+        val transformed = visual.filter(AnnotatedString("Bold 😀 مرحبا"))
+        assertEquals("Bold 😀 مرحبا", transformed.text.text)
+        assertTrue(transformed.text.spanStyles.any { it.item.fontWeight == FontWeight.Bold && it.start == 0 && it.end == 8 })
+        assertTrue(transformed.text.spanStyles.any { it.item.fontStyle == FontStyle.Italic && it.start == 8 && it.end == 13 })
+        assertEquals(7, transformed.offsetMapping.originalToTransformed(7))
+        assertEquals(7, transformed.offsetMapping.transformedToOriginal(7))
+        assertTrue(visual.filter(AnnotatedString("changed")).text.spanStyles.isEmpty())
+        val saved = AtomicReference<String>()
+        compose.setContent { WorldsTheme { InlineEditorDialog(EditorTarget("page", "format", 0, original, false), false, false, {}, saved::set) } }
+        compose.onNodeWithText(app.getString(R.string.text_content)).performClick()
+        if (InstrumentationRegistry.getArguments().getString("captureUi") == "1") {
+            compose.waitForIdle(); Thread.sleep(1000)
+            InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /sdcard/Download/worlds-inline-formatted-editor.png").close()
+        }
+        compose.onNodeWithText(app.getString(R.string.text_content)).assertIsDisplayed()
+        compose.onNodeWithText(app.getString(R.string.save)).assertIsDisplayed()
+        compose.onNodeWithText(app.getString(R.string.text_content)).performTextInputSelection(TextRange(8, 13))
+        compose.onNodeWithText(app.getString(R.string.underline)).performScrollTo().performClick()
+        compose.onNodeWithText(app.getString(R.string.text_content)).performScrollTo().performClick()
+        key(android.view.KeyEvent.KEYCODE_S, android.view.KeyEvent.META_CTRL_ON)
+        assertEquals("Bold 😀 مرحبا", InlineEditing.text(saved.get()))
+        assertTrue(InlineEditing.hasMark(saved.get(), 8, 13, "underline"))
+        assertTrue(InlineEditing.hasMark(saved.get(), 8, 13, "italic"))
+        assertTrue(InlineEditing.hasMark(saved.get(), 0, 8, "bold"))
     }
 
     @Test fun keyboardHelperListsSaveShortcut() {
