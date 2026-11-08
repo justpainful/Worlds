@@ -58,6 +58,28 @@ private actor FixtureStore: CheckedPlainEditorStore {
     func archiveRejection(pageID: String, channel: UInt64, state: Data, reason: String) async throws {}
 }
 
+private actor ConcurrentWatermarkStore: CollaborationStore {
+    let inner: SQLiteCollaborationStore
+    let external: SQLiteCollaborationStore
+    let update: Data
+    private var injected = false
+    init(_ inner: SQLiteCollaborationStore, external: SQLiteCollaborationStore, update: Data) {
+        self.inner = inner; self.external = external; self.update = update
+    }
+    func load(pageID: String, channel: UInt64) async throws -> [Data] { try await inner.load(pageID: pageID, channel: channel) }
+    func appendLocal(pageID: String, channel: UInt64, update: Data) async throws { try await inner.appendLocal(pageID: pageID, channel: channel, update: update) }
+    func appendRemote(pageID: String, channel: UInt64, update: Data) async throws { try await inner.appendRemote(pageID: pageID, channel: channel, update: update) }
+    func maximumPendingID(pageID: String, channel: UInt64) async throws -> Int64? {
+        if channel == 0 && !injected {
+            injected = true
+            try await external.appendLocal(pageID: pageID, channel: channel, update: update)
+        }
+        return try await inner.maximumPendingID(pageID: pageID, channel: channel)
+    }
+    func acknowledge(pageID: String, channel: UInt64, through: Int64) async throws { try await inner.acknowledge(pageID: pageID, channel: channel, through: through) }
+    func archiveRejection(pageID: String, channel: UInt64, state: Data, reason: String) async throws { try await inner.archiveRejection(pageID: pageID, channel: channel, state: state, reason: reason) }
+}
+
 private actor PausedRealStore: CollaborationStore {
     let inner: SQLiteCollaborationStore
     private(set) var persisted = false
@@ -268,6 +290,31 @@ private actor FixtureSocket: CollaborationSocket {
 }
 
 extension WorldsCollaborationTests {
+    func testExternalOutboxWriteCannotBeAcknowledgedByStaleReplica() async throws {
+        let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-editor-v11", withExtension: "db"))
+        let copy = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-watermark-\(UUID().uuidString).db")
+        try FileManager.default.copyItem(at: source, to: copy)
+        defer { try? FileManager.default.removeItem(at: copy) }
+        let inner = try SQLiteCollaborationStore(databaseURL: copy, pageID: "fixture-page", userID: "editor", workspaceID: "fixture-workspace")
+        let external = try SQLiteCollaborationStore(databaseURL: copy, pageID: "fixture-page", userID: "editor", workspaceID: "fixture-workspace")
+        let base = try XCTUnwrap(Data(base64Encoded: "AQbpBwAEAQZzaGFyZWQKSGVsbG8g8J+MjQcBB2RlZmF1bHQDCXBhcmFncmFwaAcA6QcIBgYA6QcJBGJvbGQEdHJ1ZYTpBwoNWWpzIHJpY2ggdGV4dIbpBxcEYm9sZARudWxsAA=="))
+        let update = try XCTUnwrap(Data(base64Encoded: "AQHRDwDE6QcF6QcGBkFsaWNlIAA="))
+        try await inner.appendRemote(pageID: "fixture-page", channel: 0, update: base)
+        let store = ConcurrentWatermarkStore(inner, external: external, update: update)
+        let socket = FixtureSocket(level: "edit", userID: "editor")
+        let session = try CollaborationSession(pageID: "fixture-page", workspaceID: "fixture-workspace", documentID: "fixture-page", expectedUserID: "editor", serverURL: URL(string: "https://example.invalid")!, store: store, tokenProvider: { _ in "fixture-token" }, socketFactory: { _, _ in socket })
+        do { try await session.run(); XCTFail("Stale replica must stop before sending") }
+        catch CollaborationError.staleProjection { }
+        catch { XCTFail("Unexpected error: \(error)") }
+        let pending = try await external.maximumPendingID(pageID: "fixture-page", channel: 0)
+        XCTAssertNotNil(pending)
+        let updates = try await external.load(pageID: "fixture-page", channel: 0)
+        let doc = try NativeCRDTDocument()
+        for item in updates { try doc.apply(item) }
+        let expected = try NativeCRDTDocument(); try expected.apply(base); try expected.apply(update)
+        XCTAssertEqual(try doc.diff(Data([0])), try expected.diff(Data([0])))
+    }
+
     func testMalformedLocalUpdateNeverPoisonsOutboxOrReopenedReplica() async throws {
         let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-editor-v11", withExtension: "db"))
         let copy = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-invalid-update-\(UUID().uuidString).db")

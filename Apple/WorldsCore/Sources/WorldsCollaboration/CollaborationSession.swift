@@ -472,15 +472,26 @@ public actor CollaborationSession {
             if kind == 0 {
                 guard verifiedIdentity else { failed = true; throw CollaborationError.accessRevoked }
                 guard !localWriteInFlight else { throw CollaborationError.notStarted }
+                let connection = socketID
                 diagnostic("pending watermark \(channel)")
                 let through = try await store.maximumPendingID(pageID: pageID, channel: channel)
-                guard !stopped, verifiedIdentity, !localWriteInFlight else { throw CollaborationError.notStarted }
+                guard !stopped, verifiedIdentity, socketID == connection, !localWriteInFlight, !remoteWriteInFlight else { throw CollaborationError.notStarted }
+                // Another session can append to the same durable outbox. Never
+                // acknowledge its watermark using an older in-memory replica.
+                let persisted = try await store.load(pageID: pageID, channel: channel)
+                guard !stopped, verifiedIdentity, socketID == connection, !localWriteInFlight, !remoteWriteInFlight else { throw CollaborationError.notStarted }
+                let durable = try NativeCRDTDocument()
+                for update in persisted { try durable.apply(update) }
+                guard try durable.diff(Data([0])) == doc.diff(Data([0])) else {
+                    failed = true
+                    throw CollaborationError.staleProjection
+                }
                 diagnostic("calculate diff \(channel)")
                 let diff = try doc.diff(payload)
                 batch += 1
                 pending[batch] = Pending(channel: channel, through: through)
                 diagnostic("send update \(channel)")
-                let batchID = batch, connection = socketID, delay = acknowledgementTimeout
+                let batchID = batch, delay = acknowledgementTimeout
                 acknowledgementTimers[batchID] = Task { [weak self] in
                     do { try await Task.sleep(for: delay) } catch { return }
                     await self?.expireAcknowledgement(batchID, connection: connection)
