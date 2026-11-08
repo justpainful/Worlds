@@ -86,6 +86,7 @@ jobs:
           grep -E 'testReviewEscapesDirectionalAndLineControls.*passed' logs/swift-test.log
           grep -E 'testWorkspaceAccessUsesCurrentAccountAndFailsClosed.*passed' logs/swift-test.log
           grep -E 'testTokenProviderRejectsOtherAccount.*passed' logs/swift-test.log
+          grep -E 'testAccountBoundTokenJoinsActiveRefreshWithoutReusingToken.*passed' logs/swift-test.log
           grep -E 'testWorkspaceAccessRejectsDuplicatePageEntries.*passed' logs/swift-test.log
           grep -E 'testWorkspaceAccessPreventsConcurrentAccountChange.*passed' logs/swift-test.log
           grep -q 'testActualYjsFixture' logs/swift-test.log
