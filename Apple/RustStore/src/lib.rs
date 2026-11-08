@@ -257,10 +257,15 @@ pub fn trash_page(path: &Path, page: &str, base: i64) -> Result<()> {
     let mut conn = open_existing(path)?;
     let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
     require_personal(&tx, page)?;
-    if store::page_changed_since(&tx, page, base)? { bail!("conflict: the page changed since it was loaded") }
+    let revision: i64 = tx.query_row("SELECT updated_at FROM pages WHERE id=?1",[page],|r|r.get(0))?;
+    if revision != base { bail!("conflict: the page changed since it was loaded") }
     {
         let mut statement = tx.prepare("WITH RECURSIVE subtree(id) AS (SELECT id FROM pages WHERE id=?1 UNION SELECT p.id FROM pages p JOIN subtree s ON p.parent_id=s.id) SELECT id FROM subtree")?;
         let descendants = statement.query_map([page], |row| row.get::<_, String>(0))?.collect::<rusqlite::Result<Vec<_>>>()?;
+        let parent: Option<String>=tx.query_row("SELECT parent_id FROM pages WHERE id=?1",[page],|r|r.get(0))?;
+        // The original delete implementation traverses with UNION ALL and
+        // would not terminate on a parent cycle. Reject before invoking it.
+        if parent.as_ref().is_some_and(|id| descendants.contains(id)) { bail!("invalid page hierarchy: cycle") }
         for id in descendants { require_personal(&tx, &id)?; }
     }
     store::delete_page(&tx, &store::Ctx::user(), page)?;
@@ -618,13 +623,29 @@ mod tests {
     fn trash_rejects_subtree_with_shared_child_without_changes() {
         let path=fixture();
         let c=Connection::open(&path).unwrap();
+        let base:i64=c.query_row("SELECT updated_at FROM pages WHERE id='fixture-page'",[],|r|r.get(0)).unwrap();
         c.execute("INSERT INTO pages(id,title,parent_id,workspace_id,created_at,updated_at) VALUES('child','Child','fixture-page','team',1,2)",[]).unwrap();
         drop(c);
-        assert!(trash_page(&path,"fixture-page",i64::MAX).is_err());
+        assert!(trash_page(&path,"fixture-page",base).is_err());
         let c=Connection::open(&path).unwrap();
         let deleted:Option<i64>=c.query_row("SELECT deleted_at FROM pages WHERE id='fixture-page'",[],|r|r.get(0)).unwrap();
         assert!(deleted.is_none());
         drop(c); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn trash_rejects_cyclic_hierarchy_and_wrong_revision_without_changes() {
+        let path=fixture(); let db=Connection::open(&path).unwrap();
+        let base:i64=db.query_row("SELECT updated_at FROM pages WHERE id='fixture-page'",[],|r|r.get(0)).unwrap();
+        db.execute("INSERT INTO pages(id,title,parent_id,created_at,updated_at) VALUES('child','Child','fixture-page',1,2)",[]).unwrap();
+        db.execute("UPDATE pages SET parent_id='child' WHERE id='fixture-page'",[]).unwrap();
+        let err=trash_page(&path,"fixture-page",base).unwrap_err().to_string();
+        assert!(err.contains("cycle"),"{err}");
+        assert_eq!(db.query_row("SELECT count(*) FROM pages WHERE id IN ('fixture-page','child') AND deleted_at IS NULL",[],|r|r.get::<_,i64>(0)).unwrap(),2);
+        assert_eq!(db.query_row("SELECT count(*) FROM history WHERE page_id='fixture-page' AND kind='deleted'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        db.execute("UPDATE pages SET parent_id=NULL WHERE id='fixture-page'",[]).unwrap();
+        assert!(trash_page(&path,"fixture-page",base+1).unwrap_err().to_string().contains("conflict"));
+        assert_eq!(db.query_row("SELECT count(*) FROM pages WHERE id IN ('fixture-page','child') AND deleted_at IS NULL",[],|r|r.get::<_,i64>(0)).unwrap(),2);
+        drop(db); std::fs::remove_file(path).unwrap();
     }
     #[test]
     fn refuses_shared_flag_and_unknown_schema() {
