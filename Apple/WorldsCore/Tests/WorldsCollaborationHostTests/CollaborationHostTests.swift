@@ -39,7 +39,12 @@ final class CollaborationHostTests: XCTestCase {
             _ = try await CollaborationHost.makeSession(pageID: "fixture-page", workspaceID: "fixture-workspace", expectedUserID: "editor", serverURL: URL(string: "https://example.invalid")!, trustedOrigin: trusted, store: store, checkedIdentity: denied)
             XCTFail("A revoked page must not start")
         } catch CollaborationHostError.accessDenied { }
-        _ = try await CollaborationHost.makeSession(pageID: "fixture-page", workspaceID: "fixture-workspace", expectedUserID: "editor", serverURL: URL(string: "https://example.invalid")!, trustedOrigin: trusted, store: store, checkedIdentity: permitted)
+        do {
+            _ = try await CollaborationHost.makeSession(pageID: "fixture-page", workspaceID: "fixture-workspace", expectedUserID: "editor", serverURL: URL(string: "https://example.invalid")!, trustedOrigin: trusted, store: store, checkedIdentity: permitted)
+            XCTFail("Legacy document and outbox ownership must not be assumed")
+        } catch CollaborationHostError.unverifiedDocumentOwnership { }
+        let tokenCalls = await permitted.tokenCalls
+        XCTAssertEqual(tokenCalls, 0)
     }
 
     func testHostRejectsUntrustedOriginBeforeIdentityCalls() async throws {

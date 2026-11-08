@@ -2,7 +2,7 @@ import Foundation
 import WorldsCollaboration
 import WorldsIdentityContinuity
 
-public enum CollaborationHostError: Error { case identityMismatch, accessDenied, untrustedEndpoint }
+public enum CollaborationHostError: Error { case identityMismatch, accessDenied, untrustedEndpoint, unverifiedDocumentOwnership }
 
 /// An independently provisioned exact HTTPS origin. The caller is responsible
 /// for obtaining it from trusted configuration, not from a Worlds document or
@@ -70,12 +70,10 @@ public enum CollaborationHost {
         }
         let level = try await identity.currentWorkspacePageLevel(workspaceID: workspaceID, pageID: pageID, expectedUserID: expectedUserID)
         guard level != .none else { throw CollaborationHostError.accessDenied }
-        // Worlds' application session routes the local page to the same document
-        // identifier in its workspace. Never accept an independent document ID.
-        return try CollaborationSession(pageID: pageID, workspaceID: workspaceID, documentID: pageID,
-                                        expectedUserID: expectedUserID, serverURL: serverURL, store: store,
-                                        tokenProvider: { force in
-                                            try await identity.accessToken(expectedUserID: expectedUserID, forceRefresh: force)
-                                        })
+        // The Swift SQLite store still uses the legacy outbox and cannot prove
+        // ownership of its document or queued rows. Do not hand it a bearer
+        // token or create a network-capable session until the owned transport
+        // is exposed through the native bridge.
+        throw CollaborationHostError.unverifiedDocumentOwnership
     }
 }
