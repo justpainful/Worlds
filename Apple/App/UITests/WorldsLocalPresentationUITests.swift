@@ -19,6 +19,27 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["presentation-unsupported-elements"].exists)
         let screenshot = XCTAttachment(screenshot: app.screenshot()); screenshot.name = "presentation-notes-reopened"; screenshot.lifetime = .keepAlways; add(screenshot)
     }
+    @MainActor func testBackgroundColorUndoAndReopenKeepsMedia() {
+        let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-presentation-fixture"]; app.launch()
+        let page = app.descendants(matching: .any)["page.deck-test"].firstMatch
+        guard page.waitForExistence(timeout: 30) else { failure(app, "background-page-missing"); XCTFail("Presentation page missing"); return }; page.tap()
+        let edit = app.buttons["edit-local-presentation"]
+        guard edit.waitForExistence(timeout: 20) else { failure(app, "background-edit-missing"); XCTFail("Presentation editor missing"); return }; edit.tap()
+        let menu = app.descendants(matching: .any)["presentation-background-color-menu"].firstMatch
+        guard menu.waitForExistence(timeout: 20) else { failure(app, "background-menu-missing"); XCTFail("Background menu missing"); return }
+        XCTAssertTrue(menu.label.contains("#16161a")); menu.tap()
+        let color = app.descendants(matching: .any)["presentation-background-color.#f7f5f0"].firstMatch
+        guard color.waitForExistence(timeout: 10) else { failure(app, "background-option-missing"); XCTFail("Background option missing"); return }; color.tap()
+        XCTAssertTrue(menu.label.contains("#f7f5f0"))
+        app.buttons["Undo"].tap(); XCTAssertTrue(menu.label.contains("#16161a"))
+        app.buttons["Redo"].tap(); XCTAssertTrue(menu.label.contains("#f7f5f0"))
+        app.buttons["Save"].tap()
+        guard app.staticTexts["presentation-edit-saved"].waitForExistence(timeout: 20) else { failure(app, "background-save-missing"); XCTFail("Background save missing"); return }
+        XCTAssertTrue(app.staticTexts["presentation-media-record-retained"].waitForExistence(timeout: 10))
+        app.buttons["Close"].tap(); XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
+        XCTAssertTrue(menu.waitForExistence(timeout: 20)); XCTAssertTrue(menu.label.contains("#f7f5f0"))
+        XCTAssertTrue(app.staticTexts["presentation-unsupported-elements"].exists)
+    }
     @MainActor func testMoveTextUndoAndReopenKeepsMedia() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-presentation-fixture"]; app.launch()
         let page = app.descendants(matching: .any)["page.deck-test"].firstMatch

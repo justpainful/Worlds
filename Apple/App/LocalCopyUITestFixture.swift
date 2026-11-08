@@ -59,7 +59,7 @@ enum LocalCopyUITestFixture {
             INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('deck-test','Fixture deck','presentation','{}',1,100);
             INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('slide-media','deck-test','image','asset.png','image/png',1,'fixture/asset.png',1);
             INSERT INTO blocks(id,page_id,type,sort_key,content,created_at,updated_at) VALUES
-            ('slide-a','deck-test','slide',1,'{"type":"slide","attrs":{"bid":"slide-a","elements":[{"id":"title-a","type":"text","x":20,"y":30,"text":"First slide"},{"id":"unknown","type":"future","data":{"keep":true}},{"id":"media","type":"image","attachmentId":"slide-media"}]}}',1,1),
+            ('slide-a','deck-test','slide',1,'{"type":"slide","attrs":{"bid":"slide-a","background":{"color":"#16161a"},"elements":[{"id":"title-a","type":"text","x":20,"y":30,"text":"First slide"},{"id":"unknown","type":"future","data":{"keep":true}},{"id":"media","type":"image","attachmentId":"slide-media"}]}}',1,1),
             ('opaque','deck-test','future',2,'{"type":"future","attrs":{"bid":"opaque","keep":true}}',1,1),
             ('slide-b','deck-test','slide',3,'{"type":"slide","attrs":{"bid":"slide-b","elements":[{"id":"title-a","type":"text","text":"Second slide"}]}}',1,1);
             """#

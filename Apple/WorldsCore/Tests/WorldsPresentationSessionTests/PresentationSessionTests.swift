@@ -26,6 +26,23 @@ final class PresentationSessionTests: XCTestCase {
         XCTAssertThrowsError(try rejected.update(at: 0) { try $0.setNotes("replacement") })
         XCTAssertEqual(rejected.slides[0], malformed); XCTAssertFalse(rejected.canUndo)
     }
+    func testSolidBackgroundUndoAndProtectsPictureAndUnknownFields() throws {
+        let original = try SlideBlock.blank(id: "one")
+        var session = try PresentationSession(slides: [original])
+        try session.update(at: 0) { try $0.setBackgroundColor("#f7f5f0") }
+        let changed = session.slides[0]
+        XCTAssertEqual(changed.editableBackgroundColor, "#f7f5f0")
+        session.undo(); XCTAssertEqual(session.slides[0], original)
+        session.redo(); XCTAssertEqual(session.slides[0], changed)
+        for background in [#"{"color":"#16161a","attachmentId":"image"}"#, #"{"color":"#16161a","future":{"keep":true}}"#, #"{"color":"rgba(1,2,3,.5)"}"#] {
+            let json = #"{"id":"bad","content":{"type":"slide","attrs":{"background":BACKGROUND,"elements":[]}}}"#.replacingOccurrences(of: "BACKGROUND", with: background)
+            let bad = try SlideBlock(json: Data(json.utf8))
+            var rejected = try PresentationSession(slides: [bad])
+            XCTAssertNil(bad.editableBackgroundColor)
+            XCTAssertThrowsError(try rejected.update(at: 0) { try $0.setBackgroundColor("#ffffff") })
+            XCTAssertEqual(rejected.slides[0], bad); XCTAssertFalse(rejected.canUndo)
+        }
+    }
     func testMoveTextUndoAndRejectsMalformedPosition() throws {
         let json = #"{"id":"one","content":{"type":"slide","attrs":{"unknown":{"keep":true},"elements":[{"id":"text","type":"text","text":"old","x":20,"y":30,"future":{"keep":true}},{"id":"image","type":"image","attachmentId":"image"}]}}}"#
         let original = try SlideBlock(json: Data(json.utf8))

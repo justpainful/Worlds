@@ -62,6 +62,15 @@ import SQLite3
             self.session = session; slides = session.slides; saved = false; fixtureMediaPresent = false; error = nil
         } catch { self.error = "This text position cannot be changed safely: \(error.localizedDescription)" }
     }
+    static let backgroundColors = ["#16161a", "#0f172a", "#1b1f1d", "#2a1a1f", "#f7f5f0", "#ffffff", "#1d3557", "#3a2e5a", "#7c2d12", "#14532d"]
+    func setBackgroundColor(_ color: String) {
+        guard !hasUnapplied, Self.backgroundColors.contains(color) else { return }
+        do {
+            guard var session, let index = session.slides.firstIndex(where: { $0.id == selectedID }), let current = session.slides[index].editableBackgroundColor, current.lowercased() != color else { return }
+            try session.update(at: index) { try $0.setBackgroundColor(color) }
+            self.session = session; slides = session.slides; saved = false; fixtureMediaPresent = false; error = nil
+        } catch { self.error = "This background cannot be changed safely: \(error.localizedDescription)" }
+    }
     static let textColors = ["#f4f2ee", "#16161a", "#d2a46e", "#e5484d", "#f76b15", "#ffc53d", "#46a758", "#0090ff", "#8e4ec6", "#d6409f", "#8b8d98"]
     func setTextColor(_ color: String) {
         guard !hasUnapplied, Self.textColors.contains(color) else { return }
@@ -220,6 +229,20 @@ struct LocalPresentationEditor: View {
                 ForEach(Array(state.slides.enumerated()), id: \.element.id) { index, slide in
                     Button("Slide \(index + 1)") { state.select(slide.id) }
                         .accessibilityIdentifier("presentation-slide.\(slide.id)").disabled(state.hasUnapplied)
+                }
+                if let slide = state.selected {
+                    if let color = slide.editableBackgroundColor {
+                        Menu("Background color: \(color)") {
+                            ForEach(PresentationEditorState.backgroundColors, id: \.self) { candidate in
+                                Button { state.setBackgroundColor(candidate) } label: {
+                                    Label { Text(candidate) } icon: { Circle().fill(swatchColor(candidate)) }
+                                }.accessibilityIdentifier("presentation-background-color.\(candidate)")
+                            }
+                        }
+                        .disabled(state.hasUnapplied).accessibilityIdentifier("presentation-background-color-menu")
+                    } else {
+                        Text("This background contains an image or unsupported data and cannot be edited here.")
+                    }
                 }
                 if state.textElements.count > 1 {
                     ForEach(Array(state.textElements.enumerated()), id: \.offset) { _, element in

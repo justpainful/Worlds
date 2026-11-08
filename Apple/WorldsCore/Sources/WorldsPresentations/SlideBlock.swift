@@ -150,6 +150,23 @@ public struct SlideBlock: Sendable, Equatable, Identifiable {
         return try SlideBlock(source: .object(block))
     }
     public var attributes: [String: JSONValue] { source.slideObject?["content"]?.slideObject?["attrs"]?.slideObject ?? [:] }
+    /// Only solid colors without picture or unknown background data are editable.
+    public var editableBackgroundColor: String? {
+        guard let background = attributes["background"]?.slideObject,
+              Set(background.keys).isSubset(of: ["color", "attachmentId"]),
+              background["attachmentId"] == nil || background["attachmentId"] == .null,
+              let color = background["color"]?.slideString,
+              color.range(of: "^#[0-9a-fA-F]{6}$", options: .regularExpression) != nil else { return nil }
+        return color
+    }
+    public mutating func setBackgroundColor(_ color: String) throws {
+        guard editableBackgroundColor != nil,
+              color.range(of: "^#[0-9a-fA-F]{6}$", options: .regularExpression) != nil else { throw SlideError.unsupportedElement }
+        try updateAttributes { attrs in
+            guard var background = attrs["background"]?.slideObject else { throw SlideError.invalidBlock }
+            background["color"] = .string(color); attrs["background"] = .object(background)
+        }
+    }
     public var layout: String { attributes["layout"]?.slideString ?? "blank" }
     public var notes: String { attributes["notes"]?.slideString ?? "" }
     public var elements: [SlideElement] { (attributes["elements"]?.slideArray ?? []).map { SlideElement(source: $0) } }

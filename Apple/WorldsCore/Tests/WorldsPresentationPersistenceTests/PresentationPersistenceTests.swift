@@ -2,6 +2,7 @@ import Foundation
 import SQLite3
 import XCTest
 import WorldsPresentations
+import WorldsNativeWrites
 @testable import WorldsPresentationPersistence
 
 final class PresentationPersistenceTests: XCTestCase {
@@ -20,6 +21,22 @@ final class PresentationPersistenceTests: XCTestCase {
         try FileManager.default.copyItem(at: fixture, to: path)
         try execute(path, #"INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('deck','Deck','presentation','{}',1,100); INSERT INTO blocks(id,page_id,type,sort_key,content,created_at,updated_at) VALUES('slide','deck','slide',0,'{"type":"slide","attrs":{"bid":"slide","notes":"old","elements":[]}}',1,1),('opaque','deck','future',1,'{"type":"future","attrs":{"bid":"opaque","keep":true}}',1,1);"#)
         return path
+    }
+    func testSolidBackgroundSaveAndConflictKeepsMediaElement() async throws {
+        let path = try database()
+        try execute(path, #"INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('image','deck','image','a.png','image/png',4,'missing/a.png',1); UPDATE blocks SET content='{"type":"slide","attrs":{"bid":"slide","background":{"color":"#16161a"},"elements":[{"id":"image-el","type":"image","attachmentId":"image","future":{"keep":true}}],"future":{"keep":true}}}' WHERE id='slide';"#)
+        let store = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        let stale = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        var slide = try XCTUnwrap(store.initialSlides.first)
+        let media = slide.elements.first?.source
+        try slide.setBackgroundColor("#f7f5f0")
+        try await store.save(slides: [slide])
+        do { try await stale.save(slides: stale.initialSlides); XCTFail("Expected conflict") }
+        catch NativeWriteError.conflict { } catch { XCTFail("Unexpected error: \(error)") }
+        let reopened = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        XCTAssertEqual(reopened.initialSlides.first?.editableBackgroundColor, "#f7f5f0")
+        XCTAssertEqual(reopened.initialSlides.first?.elements.first?.source, media)
+        XCTAssertEqual(reopened.initialSlides.first?.attributes["future"], slide.attributes["future"])
     }
     func testSaveKeepsOpaqueAndConflictingSessionFails() async throws {
         let path = try database()
