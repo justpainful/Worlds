@@ -1,0 +1,22 @@
+[
+  {"id":"worlds-default","code":"flowchart LR\nA[Idea] --> B[Plan] --> C[Ship]"},
+  {"id":"arabic","code":"graph TD\nA[بداية] --> B[نهاية]"},
+  {"id":"branch","code":"flowchart LR\nA --> B\nA --> C"},
+  {"id":"class-style","code":"flowchart LR\nA --> B\nclassDef active fill:#f00\nclass A active"},
+  {"id":"click","code":"flowchart LR\nA --> B\nclick A \"https://example.com\""},
+  {"id":"edge-label","code":"flowchart LR\nA -->|yes| B"},
+  {"id":"semicolons","code":"graph LR; A --> B; B --> C"},
+  {"id":"circle","code":"flowchart LR\nA((Start)) --> B[End]"},
+  {"id":"diamond","code":"flowchart TD\nA{Decision} --> B[Yes]"},
+  {"id":"subgraph","code":"flowchart LR\nsubgraph G\nA --> B\nend"},
+  {"id":"sequence","code":"sequenceDiagram\nAlice->>Bob: Hello"},
+  {"id":"class","code":"classDiagram\nAnimal <|-- Dog"},
+  {"id":"state","code":"stateDiagram-v2\n[*] --> Idle"},
+  {"id":"entity","code":"erDiagram\nCUSTOMER ||--o{ ORDER : places"},
+  {"id":"gantt","code":"gantt\n  title A project\n  dateFormat YYYY-MM-DD\n  section Plan\n  Task :a, 2024-01-01, 2d"},
+  {"id":"pie","code":"pie title Votes\n  \"A\" : 10\n  \"B\" : 20"},
+  {"id":"mindmap","code":"mindmap\n  root((Worlds))\n    Notes\n    Projects"},
+  {"id":"timeline","code":"timeline\n  title History\n  2024 : Start\n  2025 : Launch"},
+  {"id":"skip-rank","code":"flowchart LR\nA --> B\nB --> C\nA --> C"},
+  {"id":"cycle","code":"flowchart LR\nA --> B\nB --> A"}
+]
