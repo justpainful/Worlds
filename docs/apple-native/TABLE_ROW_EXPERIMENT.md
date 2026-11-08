@@ -1,0 +1,5 @@
+# Experimental native table row
+
+Worlds uses Tiptap TableKit and exposes adding rows and columns and toggling header rows in `src/editor/PageEditor.tsx`. The personal-copy editor experiment adds an explicitly named **Add row at end** action for a selected root table in a document. It appends empty cells without moving existing rows or rewriting their content. The action accepts only rectangular tables with at most 99 existing rows and 32 columns, no merged cells or non-default column widths, and an ordinary-cell final row. Unsupported cases are refused. Undo, checked baseline saves and conflict handling use the existing editor pipeline.
+
+This is not a full table editor or a replacement for Add Row Below, column editing, header toggling, merged cells, width editing, visual grid selection, collaborative editing or the original spreadsheet behavior. Existing opaque content stays in place and is still checked by persistence. New unit, isolated SQLite and UI tests have not yet run on Apple; accessibility, text direction, empty-cell input and visual layout require device or simulator verification. The local editor remains experimental.

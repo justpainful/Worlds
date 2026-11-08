@@ -384,6 +384,22 @@ public final class NativeEditorModel: ObservableObject {
         guard before != document else { return }
         registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
     }
+    public var selectionIsInRootTable: Bool {
+        guard selection.location != NSNotFound, selection.location >= 0, selection.length == 0,
+              let span = projection.spans.first(where: { selection.location >= $0.range.location && selection.location <= NSMaxRange($0.range) }),
+              let index = span.path.indices.first, case .object(let root) = document.source,
+              case .array(let blocks)? = root["content"], blocks.indices.contains(index),
+              case .object(let block) = blocks[index] else { return false }
+        return block["type"] == .string("table")
+    }
+    public func appendTableRow() throws {
+        guard supportsDocumentFormatting, selectionIsInRootTable, recoverableNativeText == nil, !nativeEditPending, !saving,
+              let span = projection.spans.first(where: { selection.location >= $0.range.location && selection.location <= NSMaxRange($0.range) }),
+              let index = span.path.indices.first else { throw NativeEditorError.unsupportedFormatting }
+        let before = document
+        do { try document.appendPlainTableRow(at: RichTextPath([index])) } catch { throw NativeEditorError.unsupportedFormatting }
+        registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
+    }
     public func makeList(_ kind: String) throws {
         guard recoverableNativeText == nil, !nativeEditPending, !saving,
               selection.location != NSNotFound, selection.location >= 0, selection.length >= 0,

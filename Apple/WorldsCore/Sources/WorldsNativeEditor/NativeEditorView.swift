@@ -76,6 +76,11 @@ public struct NativeEditorView: View {
                 .scrollIndicators(.visible)
                 .frame(maxHeight: dynamicTypeSize.isAccessibilitySize ? 320 : 100)
                 .disabled(model.nativeEditPending || model.saving)
+                if model.supportsDocumentFormatting && model.selectionIsInRootTable {
+                    Button("Add row at end") { do { try model.appendTableRow() } catch { model.report(error) } }
+                        .accessibilityIdentifier("editor-add-table-row")
+                        .disabled(model.nativeEditPending || model.saving)
+                }
                 if let description = model.currentListDescription { Text(description).font(.caption).accessibilityIdentifier("editor-list-status") }
                 if !model.listMarkers.isEmpty { ScrollView {
                 ForEach(model.listMarkers) { marker in

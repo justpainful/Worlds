@@ -15,6 +15,21 @@ private actor FixturePersistence: EditorPersistence {
 
 @MainActor
 final class NativeEditorTests: XCTestCase {
+    func testAppendTableRowPreservesExistingDataAndUndo() throws {
+        let json = #"{"type":"doc","content":[{"type":"table","attrs":{"bid":"t","future":"keep"},"content":[{"type":"tableRow","content":[{"type":"tableHeader","attrs":{"colspan":1,"rowspan":1,"colwidth":null},"content":[{"type":"paragraph","content":[{"type":"text","text":"عنوان"}]}]}]},{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colspan":1,"rowspan":1,"colwidth":null},"content":[{"type":"paragraph","attrs":{"dir":"rtl"},"content":[{"type":"text","text":"بيانات","marks":[{"type":"future","attrs":{"keep":true}}]}]}]}]}]}]}"#
+        let document = try RichTextDocument(json: Data(json.utf8))
+        let model = NativeEditorModel(document: document, baseRevision: 0, supportsDocumentFormatting: true)
+        try model.appendTableRow()
+        let appended = model.document.source
+        XCTAssertTrue(model.projection.text.hasSuffix("بيانات\n"))
+        model.undo(); XCTAssertEqual(model.document, document)
+        model.redo(); XCTAssertEqual(model.document.source, appended)
+        let unsupported = json.replacingOccurrences(of: #""rowspan":1"#, with: #""rowspan":2"#)
+        let blocked = NativeEditorModel(document: try RichTextDocument(json: Data(unsupported.utf8)), baseRevision: 0, supportsDocumentFormatting: true)
+        let before = blocked.document.source
+        XCTAssertThrowsError(try blocked.appendTableRow())
+        XCTAssertEqual(blocked.document.source, before)
+    }
     func testDocumentParagraphStylesPreserveRTLAndUndo() throws {
         let json = #"{"type":"doc","content":[{"type":"paragraph","attrs":{"bid":"p","dir":"rtl","future":{"keep":true}},"content":[{"type":"text","text":"عنوان عربي"}]}]}"#
         let document = try RichTextDocument(json: Data(json.utf8))

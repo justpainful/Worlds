@@ -24,6 +24,10 @@ enum LocalCopyUITestFixture {
         guard sqlite3_exec(database, stream, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
         #endif
         #if WORLDS_EXPERIMENTAL_PAGE_EDITOR
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing-document-table") {
+            let update = #"UPDATE pages SET kind='document' WHERE id='fixture-page'; UPDATE blocks SET content='{"type":"table","attrs":{"bid":"fixture-block","future":"keep"},"content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colspan":1,"rowspan":1,"colwidth":null},"content":[{"type":"paragraph","content":[{"type":"text","text":"خلية"}]}]}]}]}' WHERE id='fixture-block'"#
+            guard sqlite3_exec(database, update, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+        }
         if ProcessInfo.processInfo.arguments.contains("--ui-testing-document-alignment") {
             let update = #"UPDATE pages SET kind='document' WHERE id='fixture-page'; UPDATE blocks SET content='{"type":"paragraph","attrs":{"bid":"fixture-block","dir":"rtl","textAlign":null,"future":"keep"},"content":[{"type":"text","text":"نص عربي"}]}' WHERE id='fixture-block'"#
             guard sqlite3_exec(database, update, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }

@@ -9,6 +9,24 @@ import WorldsLocalImport
 @testable import WorldsEditorPersistence
 
 final class EditorPersistenceTests: XCTestCase {
+    @MainActor func testAppendTableRowTypeSaveReopenAndRejectConflict() async throws {
+        let url = try fixture()
+        try exec(#"UPDATE pages SET kind='document' WHERE id='fixture-page'; UPDATE blocks SET content='{"type":"table","attrs":{"bid":"fixture-block","future":"keep"},"content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colspan":1,"rowspan":1,"colwidth":null},"content":[{"type":"paragraph","content":[{"type":"text","text":"أصل"}]}]}]}]}' WHERE id='fixture-block'"#, url: url)
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let stale = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let model = NativeEditorModel(document: bridge.initialDocument, baseRevision: bridge.initialRevision, supportsDocumentFormatting: true)
+        try model.appendTableRow()
+        _ = try model.replace(range: NSRange(location: model.projection.text.utf16.count, length: 0), with: "جديد")
+        let expected = model.document.source
+        try await model.save(using: bridge)
+        let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(reopened.initialDocument.source, expected)
+        XCTAssertEqual(reopened.initialDocument.project().text, "أصل\nجديد")
+        do { _ = try await stale.save(documentJSON: try stale.initialDocument.json(), basedOn: stale.initialRevision); XCTFail("Expected conflict") }
+        catch NativeWriteError.conflict { } catch { XCTFail("Unexpected error: \(error)") }
+        let final = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(final.initialDocument.source, expected)
+    }
     @MainActor func testDocumentParagraphStyleSaveReopenAndConflict() async throws {
         let url = try fixture()
         try exec(#"UPDATE pages SET kind='document' WHERE id='fixture-page'; UPDATE blocks SET content='{"type":"paragraph","attrs":{"bid":"fixture-block","dir":"rtl","future":{"keep":true}},"content":[{"type":"text","text":"عنوان"}]}' WHERE id='fixture-block'"#, url: url)
