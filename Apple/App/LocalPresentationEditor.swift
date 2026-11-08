@@ -65,6 +65,14 @@ import SQLite3
             self.session = session; slides = session.slides; saved = false; fixtureMediaPresent = false; error = nil
         } catch { self.error = "This font size cannot be changed safely: \(error.localizedDescription)" }
     }
+    func chooseFontSize(_ size: Int) {
+        guard !hasUnapplied, Self.fontSizes.contains(size) else { return }
+        do {
+            guard var session, let index = session.slides.firstIndex(where: { $0.id == selectedID }), let element = currentElement, let current = element.editableFontSize, current != Double(size) else { return }
+            try session.update(at: index) { try $0.setTextStyle(elementID: element.id, key: "fontSize", value: .integer(Int64(size))) }
+            self.session = session; slides = session.slides; saved = false; fixtureMediaPresent = false; error = nil
+        } catch { self.error = "This font size cannot be changed safely: \(error.localizedDescription)" }
+    }
     func toggleTextItalic() {
         guard !hasUnapplied else { return }
         do {
@@ -208,6 +216,17 @@ struct LocalPresentationEditor: View {
                                 .accessibilityIdentifier("presentation-text-smaller")
                                 .disabled(state.hasUnapplied || !PresentationEditorState.fontSizes.contains(where: { Double($0) < size }))
                             Text(size.formatted()).accessibilityIdentifier("presentation-font-size")
+                            Menu("Choose font size") {
+                                ForEach(PresentationEditorState.fontSizes, id: \.self) { candidate in
+                                    Button {
+                                        state.chooseFontSize(candidate)
+                                    } label: {
+                                        if Double(candidate) == size { Label(String(candidate), systemImage: "checkmark") }
+                                        else { Text(String(candidate)) }
+                                    }.accessibilityIdentifier("presentation-font-size-choice.\(candidate)")
+                                }
+                            }
+                            .disabled(state.hasUnapplied).accessibilityIdentifier("presentation-font-size-menu")
                             Button("Larger text") { state.changeFontSize(larger: true) }
                                 .accessibilityIdentifier("presentation-text-larger")
                                 .disabled(state.hasUnapplied || !PresentationEditorState.fontSizes.contains(where: { Double($0) > size }))

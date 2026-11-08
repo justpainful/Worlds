@@ -19,6 +19,29 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["presentation-unsupported-elements"].exists)
         let screenshot = XCTAttachment(screenshot: app.screenshot()); screenshot.name = "presentation-notes-reopened"; screenshot.lifetime = .keepAlways; add(screenshot)
     }
+    @MainActor func testChooseFontSizeUndoAndReopenKeepsMedia() {
+        let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-presentation-fixture"]; app.launch()
+        let page = app.descendants(matching: .any)["page.deck-test"].firstMatch
+        guard page.waitForExistence(timeout: 30) else { failure(app, "choose-size-page-missing"); XCTFail("Presentation page missing"); return }; page.tap()
+        let edit = app.buttons["edit-local-presentation"]
+        guard edit.waitForExistence(timeout: 20) else { failure(app, "choose-size-edit-missing"); XCTFail("Presentation editor missing"); return }; edit.tap()
+        let size = app.staticTexts["presentation-font-size"]
+        guard size.waitForExistence(timeout: 20) else { failure(app, "choose-size-control-missing"); XCTFail("Font size missing"); return }
+        XCTAssertEqual(size.label, "32")
+        let menu = app.descendants(matching: .any)["presentation-font-size-menu"].firstMatch
+        XCTAssertTrue(menu.waitForExistence(timeout: 10)); menu.tap()
+        let choice = app.descendants(matching: .any)["presentation-font-size-choice.48"].firstMatch
+        guard choice.waitForExistence(timeout: 10) else { failure(app, "choose-size-option-missing"); XCTFail("Font size option missing"); return }; choice.tap()
+        XCTAssertEqual(size.label, "48")
+        app.buttons["Undo"].tap(); XCTAssertEqual(size.label, "32")
+        app.buttons["Redo"].tap(); XCTAssertEqual(size.label, "48")
+        app.buttons["Save"].tap()
+        guard app.staticTexts["presentation-edit-saved"].waitForExistence(timeout: 20) else { failure(app, "choose-size-save-missing"); XCTFail("Font size save missing"); return }
+        XCTAssertTrue(app.staticTexts["presentation-media-record-retained"].waitForExistence(timeout: 10))
+        app.buttons["Close"].tap(); XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
+        XCTAssertTrue(size.waitForExistence(timeout: 20)); XCTAssertEqual(size.label, "48")
+        XCTAssertTrue(app.staticTexts["presentation-unsupported-elements"].exists)
+    }
     @MainActor func testFontSizeUndoAndReopenKeepsMedia() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-presentation-fixture"]; app.launch()
         let page = app.descendants(matching: .any)["page.deck-test"].firstMatch
