@@ -1,6 +1,7 @@
 import SwiftUI
 import AVKit
 import WorldsPersistence
+import WorldsMedia
 
 private struct ResourceMetadata: Decodable {
     struct Project: Decodable {
@@ -151,8 +152,8 @@ struct ResourceContentView: View {
                     Button("Open video", systemImage: "play.rectangle", action: openVideo)
                         .accessibilityIdentifier("open-personal-video")
                     Text("Choose the Worlds folder to open this personal video.").foregroundStyle(.secondary)
-                } else if let openDocument, let mime = info.mime?.lowercased(),
-                          mime.hasPrefix("image/") || mime == "application/pdf" {
+                } else if let openDocument,
+                          [.image, .pdf].contains(WorldsMedia.format(name: info.name ?? "", mime: info.mime ?? "")) {
                     Button("Open document", systemImage: "doc.richtext", action: openDocument)
                         .accessibilityIdentifier("open-personal-document")
                     Text("Choose the Worlds folder to open this personal file.").foregroundStyle(.secondary)
