@@ -68,6 +68,9 @@ struct LocalAutomationsView: View {
             .interactiveDismissDisabled(model.loading)
             .task { await model.refresh() }
         }
+        #if os(macOS)
+        .frame(minWidth: 500, minHeight: 440)
+        #endif
     }
     private func name(_ id: String, in snapshot: PersonalAutomationSnapshot) -> String {
         snapshot.automations.first(where: { $0.id == id })?.name ?? "Unavailable automation"

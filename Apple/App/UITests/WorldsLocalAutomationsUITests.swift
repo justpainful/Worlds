@@ -16,6 +16,11 @@ final class WorldsLocalAutomationsUITests: XCTestCase {
         XCTAssertTrue(button.waitForExistence(timeout: 30)); button.tap()
         let decline = app.buttons["decline-automation.pending-fixture"]
         XCTAssertTrue(decline.waitForExistence(timeout: 20)); screenshot(app, "automations-pending")
+        #if os(macOS)
+        XCTAssertGreaterThan(decline.frame.width, 0)
+        XCTAssertGreaterThan(decline.frame.height, 0)
+        XCTAssertTrue(decline.isHittable)
+        #endif
         decline.tap()
         let confirm = app.buttons["Decline"].firstMatch
         XCTAssertTrue(confirm.waitForExistence(timeout: 10)); confirm.tap()
