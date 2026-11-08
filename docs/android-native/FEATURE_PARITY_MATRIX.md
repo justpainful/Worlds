@@ -43,5 +43,13 @@ received both creation and an edit. Selecting text across part boundaries is not
 supported. Production sync for this long-text case, larger documents, hardware
 performance and other input methods remain unverified.
 
+Working draft backups coalesce consecutive pending changes for the same draft,
+so a slow disk does not retain every intermediate long-text copy in the write
+queue. Cancel and successful save retain an ordered removal barrier, while screen
+close or account change lets the latest accepted write finish under the original
+account. Android 11 and 15 emulator recovery tests cover rapid updates, account
+changes, cancellation, stale failure reports and write errors. A sudden process
+termination can still occur before an in-flight backup reaches storage.
+
 Each area requires further inspection of behavior, persistence, contracts,
 tests and source status before it can be expanded into feature-level rows.

@@ -63,9 +63,7 @@ import worlds.sync.CachedPage
 import worlds.sync.DraftCapture
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.Executors
-import java.util.concurrent.RejectedExecutionException
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 import java.util.UUID
 import java.io.IOException
 import java.text.DateFormat
@@ -108,7 +106,9 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
     private val historyGeneration = AtomicInteger()
     private val noticeGeneration = AtomicInteger()
     private val historyCreating = AtomicBoolean(false)
-    private val draftExecutor = Executors.newSingleThreadExecutor()
+    private val draftLock = Any()
+    private val draftQueue = CoalescingDraftQueue()
+    private val draftBackupVersion = AtomicLong()
     @Volatile private var draftToken: String? = null
     private val accountObserver = runtime.observeAccountChanges {
         if (!closed.get()) {
@@ -555,15 +555,15 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
         if (mutable.value.draft?.block?.id == entry.blockId) updateDraft(entry.text)
     }
 
-    fun edit(block: SharedBlock) {
+    fun edit(block: SharedBlock) = synchronized(draftLock) {
         val state = mutable.value
-        if (state.draft != null || currentPrincipal == null || state.historySaving || state.access !in setOf("edit", "full") || !block.canEdit || state.snapshot == null) return
+        if (closed.get() || state.draft != null || currentPrincipal == null || state.historySaving || state.access !in setOf("edit", "full") || !block.canEdit || state.snapshot == null) return
         draftToken = UUID.randomUUID().toString()
         mutable.update { it.copy(draft = SharedDraft(block, state.snapshot.copyOf(), block.text.orEmpty()), error = false, draftBackupFailed = false) }
     }
-    fun addTextBlock(kind: String, after: String? = null) {
+    fun addTextBlock(kind: String, after: String? = null) = synchronized(draftLock) {
         val state = mutable.value
-        if (state.draft != null || currentPrincipal == null || state.historySaving || state.disconnected || state.access !in setOf("edit", "full") || state.snapshot == null) return
+        if (closed.get() || state.draft != null || currentPrincipal == null || state.historySaving || state.disconnected || state.access !in setOf("edit", "full") || state.snapshot == null) return
         if (kind !in setOf("paragraph", "heading") || (after != null && state.blocks.count { it.id == after } != 1)) return
         val id = UUID.randomUUID().toString().replace("-", "").take(26)
         draftToken = UUID.randomUUID().toString()
@@ -571,29 +571,34 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
         mutable.update { it.copy(draft = SharedDraft(block, state.snapshot.copyOf(), "", isNew = true, kind = kind, after = after), error = false, draftBackupFailed = false) }
     }
     fun setHeadingLevel(level: Int) { if (level in 1..3) mutable.update { state -> state.copy(draft = state.draft?.let { if (it.isNew && it.kind == "heading") it.copy(level = level) else it }) } }
-    fun updateDraft(text: String) {
+    fun updateDraft(text: String) = synchronized(draftLock) {
+        if (closed.get()) return
         val draft = mutable.value.draft ?: return
         val principal = currentPrincipal ?: return
         val token = draftToken ?: return
         val page = currentPage
+        val version = draftBackupVersion.incrementAndGet()
         mutable.update { state -> state.copy(draft = state.draft?.copy(text = text)) }
-        try { draftExecutor.execute {
-            val ok = runCatching {
+        val accepted = draftQueue.update(token, action = {
                 if (text == draft.block.text.orEmpty()) runtime.discardWorkingDraft(principal, workspace, page, token)
                 else runtime.backupWorkingDraft(principal, workspace, page, token, DraftCapture(requireNotNull(draft.block.id), text))
-            }.isSuccess
-            if (!closed.get() && draftToken == token) mutable.update { it.copy(draftBackupFailed = !ok) }
-        } } catch (_: RejectedExecutionException) { if (!closed.get()) mutable.update { it.copy(draftBackupFailed = true) } }
+            }, completed = { ok ->
+                synchronized(draftLock) {
+                    if (!closed.get() && draftToken == token && draftBackupVersion.get() == version) mutable.update { it.copy(draftBackupFailed = !ok) }
+                }
+            })
+        if (!accepted && !closed.get()) mutable.update { it.copy(draftBackupFailed = true) }
     }
-    private fun discardDraftBackup(refresh: Boolean = false) {
+    private fun discardDraftBackup(refresh: Boolean = false) = synchronized(draftLock) {
         val token = draftToken ?: return
         val principal = currentPrincipal ?: return
         val page = currentPage
         draftToken = null
-        try { draftExecutor.execute {
+        draftQueue.barrier(token) {
             runCatching { runtime.discardWorkingDraft(principal, workspace, page, token) }
             if (refresh && !closed.get()) refreshRecovery()
-        } } catch (_: RejectedExecutionException) { }
+        }
+        Unit
     }
     fun cancelDraft() {
         if (mutable.value.saving) return
@@ -656,8 +661,13 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
             }
         }
     }
-    override fun close() { if (closed.compareAndSet(false, true)) { markdownSnapshot = null; accountObserver.close(); session?.close(); scope.cancel(); draftExecutor.shutdown() } }
-    internal fun awaitDraftBackups(timeoutMillis: Long = 5_000): Boolean = draftExecutor.awaitTermination(timeoutMillis, TimeUnit.MILLISECONDS)
+    override fun close() {
+        val shouldClose = synchronized(draftLock) {
+            if (!closed.compareAndSet(false, true)) false else { markdownSnapshot = null; draftQueue.close(); true }
+        }
+        if (shouldClose) { accountObserver.close(); session?.close(); scope.cancel() }
+    }
+    internal fun awaitDraftBackups(timeoutMillis: Long = 5_000): Boolean = draftQueue.awaitTermination(timeoutMillis)
 }
 
 @OptIn(ExperimentalLayoutApi::class)

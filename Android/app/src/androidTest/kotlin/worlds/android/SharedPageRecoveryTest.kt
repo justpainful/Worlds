@@ -23,6 +23,8 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.io.IOException
 
 @RunWith(AndroidJUnit4::class)
@@ -43,6 +45,10 @@ class SharedPageRecoveryTest {
     private val retryMillis = AtomicLong(20)
     private val versionRequests = AtomicInteger(0)
     private val failDraftBackup = AtomicBoolean(false)
+    private val backupWrites = AtomicInteger(0)
+    @Volatile private var backupStarted: CountDownLatch? = null
+    @Volatile private var backupRelease: CountDownLatch? = null
+    @Volatile private var backupHook: ((DraftCapture) -> Unit)? = null
     @Volatile private var user = "user"
     @Volatile private var expiry = Long.MAX_VALUE
     @Volatile private var changedOnRefresh = false
@@ -93,7 +99,14 @@ class SharedPageRecoveryTest {
             recoveredText = { store.recovered(it) },
             deleteRecoveredText = { doc, id -> store.deleteRecovered(doc, id) },
             saveRecoveredText = { doc, draft -> store.saveRecoveredText(doc, draft) },
-            writeWorkingDraft = { doc, token, draft -> if (failDraftBackup.get()) throw IOException("disk unavailable"); store.saveWorkingDraft(doc, token, draft) },
+            writeWorkingDraft = { doc, token, draft ->
+                backupWrites.incrementAndGet()
+                backupStarted?.countDown()
+                backupRelease?.let { check(it.await(10, TimeUnit.SECONDS)) }
+                backupHook?.invoke(draft)
+                if (failDraftBackup.get()) throw IOException("disk unavailable")
+                store.saveWorkingDraft(doc, token, draft)
+            },
             removeWorkingDraft = { doc, token -> store.discardWorkingDraft(doc, token); Unit },
             historyListOverride = { _, _, _, _ -> emptyList() },
             historyCreateOverride = { _, _, _, _, _ -> versionRequests.incrementAndGet(); throw IOException("response lost") },
@@ -188,6 +201,65 @@ class SharedPageRecoveryTest {
         runtime.accountChange { }
         store.close(); store = AndroidSyncStore(app, name)
         assertEquals("work in progress", store.recovered(key).single().text)
+    }
+
+    @Test fun rapidLargeDraftUpdatesKeepTheLatestCopyAfterAccountChange() {
+        start(); controller.edit(controller.state.value.blocks.single())
+        val entered = CountDownLatch(1); val release = CountDownLatch(1)
+        backupStarted = entered; backupRelease = release
+        try {
+            controller.updateDraft("first")
+            assertTrue(entered.await(5, TimeUnit.SECONDS))
+            val prefix = "x".repeat(100_000)
+            repeat(250) { controller.updateDraft("$prefix$it") }
+            runtime.accountChange { user = "other" }
+            release.countDown()
+            assertTrue(controller.awaitDraftBackups(10_000))
+            assertEquals(prefix + "249", store.recovered(key).single().text)
+            assertTrue("Unexpected number of writes: ${backupWrites.get()}", backupWrites.get() <= 2)
+            assertTrue(store.recovered(key.copy(account = "other")).isEmpty())
+        } finally { release.countDown() }
+    }
+
+    @Test fun cancelCannotRestoreAnOldDraftAheadOfANewOne() {
+        start(); controller.edit(controller.state.value.blocks.single())
+        val entered = CountDownLatch(1); val release = CountDownLatch(1)
+        backupStarted = entered; backupRelease = release
+        try {
+            controller.updateDraft("old first")
+            assertTrue(entered.await(5, TimeUnit.SECONDS))
+            controller.updateDraft("old last")
+            controller.cancelDraft()
+            controller.edit(controller.state.value.blocks.single())
+            controller.updateDraft("new draft")
+            release.countDown()
+            await { store.recovered(key).singleOrNull()?.text == "new draft" }
+            assertEquals(listOf("new draft"), store.recovered(key).map { it.text })
+        } finally { release.countDown() }
+    }
+
+    @Test fun staleBackupFailureDoesNotMarkANewerPendingDraftAsFailed() {
+        start(); controller.edit(controller.state.value.blocks.single())
+        val firstStarted = CountDownLatch(1); val releaseFirst = CountDownLatch(1)
+        val lastStarted = CountDownLatch(1); val releaseLast = CountDownLatch(1)
+        backupHook = { draft ->
+            when (draft.text) {
+                "old" -> { firstStarted.countDown(); check(releaseFirst.await(5, TimeUnit.SECONDS)); throw IOException("old write failed") }
+                "new" -> { lastStarted.countDown(); check(releaseLast.await(5, TimeUnit.SECONDS)) }
+            }
+        }
+        try {
+            controller.updateDraft("old")
+            assertTrue(firstStarted.await(5, TimeUnit.SECONDS))
+            controller.updateDraft("new")
+            releaseFirst.countDown()
+            assertTrue(lastStarted.await(5, TimeUnit.SECONDS))
+            assertFalse(controller.state.value.draftBackupFailed)
+            assertEquals("new", controller.state.value.draft?.text)
+            releaseLast.countDown()
+            await { store.recovered(key).singleOrNull()?.text == "new" }
+            assertFalse(controller.state.value.draftBackupFailed)
+        } finally { releaseFirst.countDown(); releaseLast.countDown() }
     }
 
     @Test fun explicitCancelAndSuccessfulSaveRemoveWorkingCopy() {

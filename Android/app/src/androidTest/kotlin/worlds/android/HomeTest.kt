@@ -442,7 +442,7 @@ class HomeTest {
         ContentStore(app, database).use { it.rename(project.id, project.revision, "Changed elsewhere") }
         compose.onNodeWithText(app.getString(R.string.save)).performClick()
         compose.waitUntil(20_000) { runCatching { compose.onNodeWithText(app.getString(R.string.project_save_error)).performScrollTo().assertIsDisplayed(); true }.getOrDefault(false) }
-        compose.onNodeWithText("Unsaved project draft").assertIsDisplayed()
+        compose.onNodeWithText("Unsaved project draft").performScrollTo().assertIsDisplayed()
         ContentStore(app, database).use { check(worlds.content.ProjectEditing.read(it.load(project.id)!!.resource.metadata).links == listOf("missing")) }
     }
 
