@@ -76,6 +76,8 @@ jobs:
           grep -E 'testDuplicateLinksCannotBeUnlinkedOrModifiedSilently.*passed' logs/swift-test.log
           grep -E 'testRejectsHardLinkedAttachment.*passed' logs/swift-test.log
           grep -E 'testOpenedAttachmentUsesOriginalDescriptorAfterPathReplacement.*passed' logs/swift-test.log
+          grep -E 'testChangedOpenAttachmentIsRejectedBeforeReadAndPlaybackCopy.*passed' logs/swift-test.log
+          grep -E 'testHardLinkAddedAfterOpenIsRejected.*passed' logs/swift-test.log
           grep -E 'testOpenedVideoReportsPlaybackFailureAndIgnoresFailureAfterClose.*passed' logs/swift-test.log
           grep -E 'testResolutionBudgetPreservesSmallOriginalAndCapsLargeImage.*passed' logs/swift-test.log
           grep -E 'testImageReadsVerifiedDescriptorAfterPathReplacement.*passed' logs/swift-test.log
