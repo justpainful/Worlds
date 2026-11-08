@@ -136,6 +136,8 @@ private actor FixtureSocket: CollaborationSocket {
     let acknowledges: Bool
     init(level: String = "edit", userID: String = "user", acknowledges: Bool = true) { self.level = level; self.userID = userID; self.acknowledges = acknowledges }
     private var queue: [Data] = []
+    private(set) var presenceUpdates: [Data] = []
+    private(set) var awarenessQueries = 0
     private var waiting: CheckedContinuation<Data?, Error>?
     private var closed = false
     func send(_ data: Data) async throws {
@@ -145,6 +147,8 @@ private actor FixtureSocket: CollaborationSocket {
             try deliver(WorldsSyncWire.encode(.sync(channel: channel, kind: 0, payload: Data([0]))))
         case let .update(batchID, _, _):
             if acknowledges { try deliver(WorldsSyncWire.encode(.acknowledgement(batchID: batchID, status: 0, reason: ""))) }
+        case let .awareness(payload): presenceUpdates.append(payload)
+        case .queryAwareness: awarenessQueries += 1
         default: break
         }
     }
@@ -168,6 +172,29 @@ private actor FixtureSocket: CollaborationSocket {
 }
 
 extension WorldsCollaborationTests {
+    func testPresenceIsExplicitAndClearSendsRemoval() async throws {
+        let store = FixtureStore(), socket = FixtureSocket()
+        let session = try CollaborationSession(pageID: "p", workspaceID: "w", documentID: "p", expectedUserID: "user", serverURL: URL(string: "https://example.invalid")!, store: store, tokenProvider: { _ in "fixture-token" }, socketFactory: { _, _ in socket })
+        let run = Task { try await session.run() }
+        defer { Task { await session.stop() } }
+        for _ in 0..<100 { if await session.accessLevel == "edit" { break }; try await Task.sleep(for: .milliseconds(10)) }
+        guard await session.accessLevel == "edit" else { await session.stop(); _ = try? await run.value; return XCTFail("Authentication was not observed") }
+        try await session.pulseAwareness(at: Date().timeIntervalSince1970 + 30)
+        let before = await socket.presenceUpdates; XCTAssertTrue(before.isEmpty)
+        try await session.setPresence(name: "Fixture", color: "#123456")
+        try await session.clearPresence()
+        let entries = await socket.presenceUpdates
+        XCTAssertEqual(entries.count, 2)
+        let removal = try WorldsSyncWire.decodeAwarenessUpdate(try XCTUnwrap(entries.last))
+        XCTAssertEqual(removal.first?.state, "null")
+        let queries = await socket.awarenessQueries
+        try await socket.emitAccess("edit")
+        for _ in 0..<100 { if await socket.awarenessQueries > queries { break }; try await Task.sleep(for: .milliseconds(10)) }
+        let refreshed = await socket.awarenessQueries; XCTAssertGreaterThan(refreshed, queries)
+        try await session.pulseAwareness(at: Date().timeIntervalSince1970 + 60)
+        let after = await socket.presenceUpdates; XCTAssertEqual(after.count, 2)
+        await session.stop(); _ = try? await run.value
+    }
     func testDisconnectedSocketCannotAuthorizeLocalWritesWhileClosing() async throws {
         let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-editor-v11", withExtension: "db"))
         let copy = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-closing-\(UUID().uuidString).db")

@@ -244,7 +244,7 @@ public actor CollaborationSession {
         stopped = true; generation &+= 1
         retryTask?.cancel()
         if let socket {
-            if verifiedIdentity, let update = try? awareness?.setLocal(nil, at: Date().timeIntervalSince1970) {
+            if verifiedIdentity, presenceJSON != nil, let update = try? awareness?.setLocal(nil, at: Date().timeIntervalSince1970) {
                 try? await socket.send(WorldsSyncWire.encode(.awareness(update)))
             }
             await socket.close()
@@ -277,10 +277,23 @@ public actor CollaborationSession {
         if verifiedIdentity, let socket { try await socket.send(WorldsSyncWire.encode(.awareness(update))) }
     }
 
+    /// Clear local presence and prevent automatic republishing on reconnect.
+    /// If sending the removal fails, close the connection so peers can observe
+    /// its departure. A server or peer may retain data already received.
+    public func clearPresence() async throws {
+        presenceJSON = nil
+        guard awareness != nil else { return }
+        let update = try awareness!.setLocal(nil, at: Date().timeIntervalSince1970)
+        if verifiedIdentity, let socket {
+            do { try await socket.send(WorldsSyncWire.encode(.awareness(update))) }
+            catch { await socket.close(); throw error }
+        }
+    }
+
     public func presenceSnapshot() -> [UInt64: WorldsAwareness.Peer] { awareness?.peers ?? [:] }
 
-    private func pulseAwareness() async throws {
-        guard !stopped, verifiedIdentity, let socket, let update = try awareness?.tick(at: Date().timeIntervalSince1970) else { return }
+    func pulseAwareness(at now: TimeInterval = Date().timeIntervalSince1970) async throws {
+        guard !stopped, verifiedIdentity, let socket, let update = try awareness?.tick(at: now), presenceJSON != nil else { return }
         do { try await socket.send(WorldsSyncWire.encode(.awareness(update))) }
         catch { await socket.close(); throw error }
     }
