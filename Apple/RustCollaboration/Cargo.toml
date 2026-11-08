@@ -10,8 +10,9 @@ crate-type = ["rlib", "staticlib"]
 [dependencies]
 yrs = { version = "=0.28.1", features = ["sync"] }
 rusqlite = { version = "0.37", features = ["bundled"] }
-uuid = "1"
+uuid = { version = "1", features = ["v4"] }
 serde_json = "1"
 
 [dev-dependencies]
 tungstenite = "0.30"
+
