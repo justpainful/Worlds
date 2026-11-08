@@ -166,6 +166,47 @@ public struct RichTextDocument: Sendable, Equatable {
             table["content"] = .array(rows)
         }
     }
+
+    /// Insert after the selected row only when every shifted row contains no
+    /// data protected by a positional opaque path in the persistence bridge.
+    public mutating func insertPlainTableRow(at path: RichTextPath, afterRow selected: Int) throws {
+        guard path.indices.count == 1 else { throw RichTextError.invalidPath }
+        try updateNode(&source, path: ArraySlice(path.indices)) { table in
+            guard table["type"] == .string("table"), case .array(var rows)? = table["content"],
+                  rows.indices.contains(selected), rows.count < 100 else { throw RichTextError.invalidDocument }
+            var width: Int?
+            for rowValue in rows {
+                guard case .object(let row) = rowValue, row["type"] == .string("tableRow"),
+                      case .array(let cells)? = row["content"], !cells.isEmpty, cells.count <= 32,
+                      width == nil || width == cells.count else { throw RichTextError.invalidDocument }
+                width = cells.count
+                for value in cells {
+                    guard case .object(let cell) = value, case .string(let type)? = cell["type"],
+                          type == "tableCell" || type == "tableHeader" else { throw RichTextError.invalidDocument }
+                    if let raw = cell["attrs"], raw != .null {
+                        guard case .object(let attrs) = raw, Set(attrs.keys).isSubset(of: ["colspan", "rowspan", "colwidth"]),
+                              attrs["colspan"] == nil || attrs["colspan"] == .integer(1),
+                              attrs["rowspan"] == nil || attrs["rowspan"] == .integer(1),
+                              attrs["colwidth"] == nil || attrs["colwidth"] == .null else { throw RichTextError.invalidDocument }
+                    } else if cell["attrs"] == .null { throw RichTextError.invalidDocument }
+                }
+            }
+            let insertion = selected + 1
+            guard rows.dropFirst(insertion).allSatisfy(movablePlainTableRow),
+                  case .object(let selectedRow) = rows[selected], case .array(let selectedCells)? = selectedRow["content"] else { throw RichTextError.invalidDocument }
+            let selectedIsHeader = selectedCells.allSatisfy { if case .object(let cell) = $0 { return cell["type"] == .string("tableHeader") }; return false }
+            let reference: [JSONValue]
+            if selectedIsHeader && insertion < rows.count, case .object(let next) = rows[insertion], case .array(let cells)? = next["content"] { reference = cells }
+            else if selectedIsHeader && insertion == rows.count { reference = Array(repeating: .object(["type": .string("tableCell")]), count: selectedCells.count) }
+            else { reference = selectedCells }
+            let emptyCells: [JSONValue] = try reference.map { value in
+                guard case .object(let cell) = value, let type = cell["type"] else { throw RichTextError.invalidDocument }
+                return .object(["type": type, "content": .array([.object(["type": .string("paragraph"), "content": .array([])])])])
+            }
+            rows.insert(.object(["type": .string("tableRow"), "content": .array(emptyCells)]), at: insertion)
+            table["content"] = .array(rows)
+        }
+    }
     /// Append a column without shifting any existing cell. Header and body
     /// rows retain the type of their last cell; merged cells are refused.
     public mutating func appendPlainTableColumn(at path: RichTextPath) throws {
@@ -699,6 +740,29 @@ private func safeSimpleListItem(_ value: JSONValue, kind: String) -> Bool {
             return ["bold", "italic", "underline", "strike"].contains(name)
         }
     }
+}
+
+private func movablePlainTableRow(_ value: JSONValue) -> Bool {
+    func walk(_ value: JSONValue) -> Bool {
+        guard case .object(let node) = value, case .string(let type)? = node["type"],
+              ["tableRow", "tableCell", "tableHeader", "paragraph", "text", "hardBreak"].contains(type),
+              Set(node.keys).isSubset(of: ["type", "attrs", "content", "text", "marks"]),
+              node["attrs"] == nil || node["attrs"] == .object([:]) else { return false }
+        if type == "text" { guard case .string(_)? = node["text"] else { return false } }
+        else if node["text"] != nil { return false }
+        if let marks = node["marks"] {
+            guard type == "text", case .array(let entries) = marks, entries.allSatisfy({ value in
+                guard case .object(let mark) = value, Set(mark.keys) == Set(["type"]), case .string(let name)? = mark["type"] else { return false }
+                return ["bold", "italic", "underline", "strike"].contains(name)
+            }) else { return false }
+        }
+        if let content = node["content"] {
+            guard case .array(let children) = content else { return false }
+            return children.allSatisfy(walk)
+        }
+        return true
+    }
+    return walk(value)
 }
 
 private func updateNode(_ value: inout JSONValue, path: ArraySlice<Int>, update: (inout [String: JSONValue]) throws -> Void) throws {

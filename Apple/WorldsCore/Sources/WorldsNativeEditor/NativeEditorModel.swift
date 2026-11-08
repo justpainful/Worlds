@@ -400,6 +400,15 @@ public final class NativeEditorModel: ObservableObject {
         do { try document.appendPlainTableRow(at: RichTextPath([index])) } catch { throw NativeEditorError.unsupportedFormatting }
         registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
     }
+    public func insertTableRowBelow() throws {
+        guard supportsDocumentFormatting, selectionIsInRootTable, recoverableNativeText == nil, !nativeEditPending, !saving,
+              let span = projection.spans.first(where: { selection.location >= $0.range.location && selection.location <= NSMaxRange($0.range) }),
+              span.path.indices.count >= 4 else { throw NativeEditorError.unsupportedFormatting }
+        let before = document
+        do { try document.insertPlainTableRow(at: RichTextPath([span.path.indices[0]]), afterRow: span.path.indices[1]) }
+        catch { throw NativeEditorError.unsupportedFormatting }
+        registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
+    }
     public func appendTableColumn() throws {
         guard supportsDocumentFormatting, selectionIsInRootTable, recoverableNativeText == nil, !nativeEditPending, !saving,
               let span = projection.spans.first(where: { selection.location >= $0.range.location && selection.location <= NSMaxRange($0.range) }),

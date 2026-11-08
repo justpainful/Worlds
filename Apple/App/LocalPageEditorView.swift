@@ -105,6 +105,15 @@ private struct LocalPageEditorContent: View {
                case .object(let row) = firstRow, case .array(let cells)? = row["content"], cells.count == 2 {
                 Text("Fixture table has two columns").accessibilityIdentifier("fixture-table-two-columns")
             }
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-document-table-insert"),
+               case .object(let root) = model.document.source, case .array(let blocks)? = root["content"],
+               let first = blocks.first, case .object(let table) = first,
+               case .object(let attrs)? = table["attrs"], attrs["future"] == .string("keep"),
+               case .array(let rows)? = table["content"], rows.count == 3,
+               case .object(let middle) = rows[1], case .array(let cells)? = middle["content"],
+               case .object(let cell)? = cells.first, cell["type"] == .string("tableCell") {
+                Text("Fixture row inserted below header").accessibilityIdentifier("fixture-table-inserted-row")
+            }
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-document-alignment"), model.projection.spans.contains(where: { $0.alignment == "center" && $0.direction == "rtl" }) {
                 Text("Fixture alignment saved").accessibilityIdentifier("fixture-alignment-centered")
             }
