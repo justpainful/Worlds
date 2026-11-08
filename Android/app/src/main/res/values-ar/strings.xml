@@ -135,6 +135,7 @@
     <string name="move_list_item_down">نقل العنصر للأسفل</string>
     <string name="markdown_export">تصدير Markdown</string>
     <string name="markdown_explanation">Markdown نسخة نصية. تظهر المرفقات وبعض التنسيقات كوصف نصي، وتبقى الصفحة في Worlds.</string>
+    <string name="shared_markdown_explanation">تصدير الصفحة المشتركة المحفوظة كنص. تظهر المرفقات وبعض التنسيقات كوصف نصي، ولا تشمل النسخة عنوان الصفحة أو المسودة المفتوحة.</string>
     <string name="markdown_save">حفظ ملف</string>
     <string name="markdown_copy">نسخ النص</string>
     <string name="markdown_export_success">تم حفظ Markdown.</string>

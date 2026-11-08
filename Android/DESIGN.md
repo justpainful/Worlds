@@ -1,5 +1,15 @@
 # Worlds Android design decisions
 
+## Shared page Markdown export
+The shared page offers the existing download icon and a labeled Markdown action
+beside its history and conversation actions. A native dialog explains that the
+file is a text projection of the saved shared page, that attachments and some
+formatting may become text, and that an open draft is excluded. The system file
+picker selects the destination. Use existing Worlds surface, on-surface and warm
+accent roles, system typography and 48dp touch targets. Keep the action available
+for an authorized cached page offline, and show an error if saving fails or access
+is lost before the picker returns. No decorative motion is added.
+
 ## Library action menu
 The library is a list of real pages, with search and creation above it. Its
 previous always-open list of creation actions consumed the page viewport on a

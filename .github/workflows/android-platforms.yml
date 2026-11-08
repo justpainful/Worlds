@@ -156,4 +156,5 @@ jobs:
             docs/android-native/screenshots/shared-append.png
             docs/android-native/screenshots/shared-heading.png
             docs/android-native/screenshots/shared-heading-editor.png
+            docs/android-native/screenshots/shared-markdown.png
           if-no-files-found: error

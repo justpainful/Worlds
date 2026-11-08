@@ -1,6 +1,10 @@
 package worlds.android
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.content.Context
+import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -41,6 +45,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import worlds.content.InlineEditing
+import worlds.content.MarkdownExport
 import worlds.identity.Workspace
 import worlds.identity.ReauthenticationRequired
 import worlds.identity.RefreshUncertain
@@ -80,7 +85,10 @@ internal data class SharedPageState(val opening: Boolean = false, val access: St
     val conversationsVisible: Boolean = false, val commentsSynced: Boolean = false, val focusedThread: String? = null, val focusedComment: String? = null, val conversations: List<ConversationThread> = emptyList(), val people: Map<String, String> = emptyMap(), val conversationsError: Boolean = false, val replySaving: Boolean = false,
     val noticesVisible: Boolean = false, val noticesLoading: Boolean = false, val noticesError: Boolean = false, val notices: List<SyncNotice> = emptyList(), val unread: Int = 0,
     val historySaving: Boolean = false, val historyRestoring: Boolean = false, val historyUncertain: Boolean = false, val historySyncFailed: Boolean = false, val draftBackupFailed: Boolean = false,
-    val backgroundScheduleFailed: Boolean = false, val backgroundScheduleRetrying: Boolean = false)
+    val backgroundScheduleFailed: Boolean = false, val backgroundScheduleRetrying: Boolean = false,
+    val markdownExporting: Boolean = false, val markdownStatus: Int? = null)
+
+private data class SharedMarkdownSnapshot(val principal: SyncPrincipal, val page: String, val blocks: List<String>)
 
 internal class SharedPageController(private val runtime: AccountSyncRuntime, private val identity: String, private val workspace: String,
     private val retryDelay: (Int) -> Long = { attempt -> (1_000L shl attempt.coerceIn(0, 5)).coerceAtMost(30_000L) },
@@ -94,6 +102,7 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
     @Volatile private var currentPrincipal: SyncPrincipal? = null
     @Volatile private var currentPage: String = ""
     @Volatile private var currentServer: String = ""
+    @Volatile private var markdownSnapshot: SharedMarkdownSnapshot? = null
     private val historyGeneration = AtomicInteger()
     private val noticeGeneration = AtomicInteger()
     private val historyCreating = AtomicBoolean(false)
@@ -109,6 +118,38 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
     }
 
     fun currentPageId(): String = currentPage
+
+    fun beginMarkdownExport(): Boolean {
+        val state = mutable.value
+        val principal = currentPrincipal ?: return false
+        if (closed.get() || state.access !in setOf("view", "comment", "edit", "full") || state.disconnected || state.snapshot == null || state.markdownExporting) return false
+        val blocks = state.blocks.map { it.raw }
+        if (blocks.sumOf { it.length.toLong() } > 10_000_000L) {
+            mutable.update { it.copy(markdownStatus = R.string.markdown_export_error) }; return false
+        }
+        markdownSnapshot = SharedMarkdownSnapshot(principal, currentPage, blocks)
+        mutable.update { it.copy(markdownExporting = true, markdownStatus = null) }
+        return true
+    }
+
+    fun finishMarkdownExport(context: Context, uri: Uri?) {
+        val captured = markdownSnapshot
+        markdownSnapshot = null
+        if (uri == null) { mutable.update { it.copy(markdownExporting = false) }; return }
+        if (captured == null || closed.get() || currentPrincipal != captured.principal || currentPage != captured.page || mutable.value.access !in setOf("view", "comment", "edit", "full") || mutable.value.disconnected) {
+            mutable.update { it.copy(markdownExporting = false, markdownStatus = R.string.markdown_export_interrupted) }; return
+        }
+        scope.launch {
+            val result = runCatching {
+                val text = captured.blocks.map { MarkdownExport.block(JSONObject(it)) }.filter { it.isNotBlank() }.joinToString("\n\n") + "\n"
+                check(!closed.get() && currentPrincipal == captured.principal && currentPage == captured.page && mutable.value.access in setOf("view", "comment", "edit", "full") && !mutable.value.disconnected)
+                requireNotNull(context.contentResolver.openOutputStream(uri, "w")).use { it.write(text.toByteArray(Charsets.UTF_8)); it.flush() }
+            }
+            if (!closed.get()) mutable.update { it.copy(markdownExporting = false, markdownStatus = if (result.isSuccess) R.string.markdown_export_success else R.string.markdown_export_error) }
+        }
+    }
+
+    fun markdownPickerFailed() { markdownSnapshot = null; mutable.update { it.copy(markdownExporting = false, markdownStatus = R.string.markdown_export_error) } }
 
     private fun scheduleOutbox(principal: SyncPrincipal, endpoint: String, page: String) {
         runCatching { runtime.scheduleOutbox(principal, endpoint, workspace, page) }
@@ -591,7 +632,7 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
             }
         }
     }
-    override fun close() { if (closed.compareAndSet(false, true)) { accountObserver.close(); session?.close(); scope.cancel(); draftExecutor.shutdown() } }
+    override fun close() { if (closed.compareAndSet(false, true)) { markdownSnapshot = null; accountObserver.close(); session?.close(); scope.cancel(); draftExecutor.shutdown() } }
     internal fun awaitDraftBackups(timeoutMillis: Long = 5_000): Boolean = draftExecutor.awaitTermination(timeoutMillis, TimeUnit.MILLISECONDS)
 }
 
@@ -601,6 +642,17 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
     val controller = remember(identity, workspace.id, controllerOverride) { controllerOverride ?: SharedPageController(WorldsAccountSync.get(app), identity, workspace.id) }
     DisposableEffect(controller) { onDispose { controller.close() } }
     val state by controller.state.collectAsState()
+    val markdownPicker = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/markdown")) { uri -> controller.finishMarkdownExport(app, uri) }
+    var showMarkdown by remember(controller) { mutableStateOf(false) }
+    LaunchedEffect(state.access, state.disconnected) { if (state.access == null || state.disconnected) showMarkdown = false }
+    if (showMarkdown && state.access != null && !state.disconnected) AlertDialog(onDismissRequest = { showMarkdown = false },
+        title = { Text(stringResource(R.string.markdown_export)) },
+        text = { Text(stringResource(R.string.shared_markdown_explanation)) },
+        confirmButton = { TextButton(onClick = {
+            showMarkdown = false
+            if (controller.beginMarkdownExport()) runCatching { markdownPicker.launch("page.md") }.onFailure { controller.markdownPickerFailed() }
+        }, modifier = Modifier.testTag("shared_markdown_save")) { Text(stringResource(R.string.markdown_save)) } },
+        dismissButton = { TextButton(onClick = { showMarkdown = false }) { Text(stringResource(R.string.cancel)) } })
     var showPermissions by remember { mutableStateOf(false) }
     LaunchedEffect(state.access, state.offline, state.disconnected) { if (state.access == null || state.offline || state.disconnected) showPermissions = false }
     if (showPermissions && state.access != null && !state.offline && !state.disconnected) {
@@ -874,6 +926,10 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
                 TextButton(enabled = !state.offline && !state.opening, onClick = { controller.openHistory() }, modifier = Modifier.testTag("shared_history")) {
                     WorldsActionLabel(R.drawable.ic_history, stringResource(R.string.shared_history_title))
                 }
+                TextButton(enabled = !state.disconnected && state.snapshot != null && !state.markdownExporting, onClick = { showMarkdown = true }, modifier = Modifier.testTag("shared_markdown")) {
+                    WorldsActionLabel(R.drawable.ic_download, stringResource(R.string.markdown_export))
+                }
+                state.markdownStatus?.let { Text(stringResource(it), color = if (it == R.string.markdown_export_success) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error) }
                 Spacer(Modifier.height(12.dp))
                 val blockIdCounts = remember(state.blocks) { state.blocks.mapNotNull { it.id }.groupingBy { it }.eachCount() }
                 state.blocks.forEach { block ->

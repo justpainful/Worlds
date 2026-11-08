@@ -135,6 +135,7 @@
     <string name="move_list_item_down">Move item down</string>
     <string name="markdown_export">Export Markdown</string>
     <string name="markdown_explanation">Markdown is a text version. Attachments and some formatting are represented as text. The page stays in Worlds.</string>
+    <string name="shared_markdown_explanation">Export the saved shared page as text. Attachments and some formatting are represented as text. The page title and any open draft are not included.</string>
     <string name="markdown_save">Save file</string>
     <string name="markdown_copy">Copy text</string>
     <string name="markdown_export_success">Markdown saved.</string>

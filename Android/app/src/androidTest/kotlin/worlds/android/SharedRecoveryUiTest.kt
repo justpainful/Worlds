@@ -93,6 +93,25 @@ class SharedRecoveryUiTest {
             assertEquals("heading", blocks.getJSONObject(1).getString("type"))
             assertEquals(2, blocks.getJSONObject(1).getJSONObject("attrs").getInt("level"))
             assertEquals("Shared heading", blocks.getJSONObject(1).getJSONArray("content").getJSONObject(0).getString("text"))
+            val output = app.cacheDir.resolve("shared-online-${UUID.randomUUID()}.md")
+            try {
+                compose.onNodeWithTag("shared_markdown").performScrollTo().performClick()
+                compose.onNodeWithText(app.getString(R.string.shared_markdown_explanation)).assertIsDisplayed()
+                if (InstrumentationRegistry.getArguments().getString("captureUi") == "1") {
+                    compose.waitForIdle(); Thread.sleep(300)
+                    android.os.ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /sdcard/Download/worlds-shared-markdown.png")).use { it.readBytes() }
+                }
+                compose.onNodeWithTag("shared_markdown_save").performClick()
+                val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+                compose.waitUntil(20_000) { automation.rootInActiveWindow?.packageName?.toString() == "com.google.android.documentsui" }
+                automation.executeShellCommand("input keyevent 4").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
+                compose.waitUntil(20_000) { !controller.state.value.markdownExporting }
+                assertTrue(controller.beginMarkdownExport())
+                controller.finishMarkdownExport(app, android.net.Uri.fromFile(output))
+                compose.waitUntil(20_000) { !controller.state.value.markdownExporting }
+                assertEquals(R.string.markdown_export_success, controller.state.value.markdownStatus)
+                assertEquals("Shared paragraph مرحبا\n\n## Shared heading\n", output.readText())
+            } finally { output.delete() }
             if (InstrumentationRegistry.getArguments().getString("captureUi") == "1") {
                 compose.waitForIdle(); Thread.sleep(300)
                 android.os.ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /sdcard/Download/worlds-shared-heading.png")).use { it.readBytes() }
@@ -141,6 +160,32 @@ class SharedRecoveryUiTest {
             compose.onNodeWithText(app.getString(R.string.save)).performClick()
             compose.waitUntil(20_000) { controller.state.value.draft == null && controller.state.value.blocks.size == 3 && store.pending(key).size == 2 }
             assertEquals(listOf("Existing", "Offline heading", "Offline draft"), controller.state.value.blocks.map { it.text })
+            val output = app.cacheDir.resolve("shared-offline-${UUID.randomUUID()}.md")
+            try {
+                assertTrue(controller.beginMarkdownExport())
+                controller.finishMarkdownExport(app, android.net.Uri.fromFile(output))
+                compose.waitUntil(20_000) { !controller.state.value.markdownExporting }
+                assertEquals(R.string.markdown_export_success, controller.state.value.markdownStatus)
+                assertEquals("Existing\n\n### Offline heading\n\nOffline draft\n", output.readText())
+                controller.edit(controller.state.value.blocks.first())
+                controller.updateDraft("Unsaved change")
+                assertTrue(controller.beginMarkdownExport())
+                controller.finishMarkdownExport(app, android.net.Uri.fromFile(output))
+                compose.waitUntil(20_000) { !controller.state.value.markdownExporting }
+                assertEquals("Existing\n\n### Offline heading\n\nOffline draft\n", output.readText())
+                controller.cancelDraft()
+                assertTrue(controller.beginMarkdownExport())
+                val missingParent = app.cacheDir.resolve("missing-${UUID.randomUUID()}/page.md")
+                controller.finishMarkdownExport(app, android.net.Uri.fromFile(missingParent))
+                compose.waitUntil(20_000) { !controller.state.value.markdownExporting }
+                assertEquals(R.string.markdown_export_error, controller.state.value.markdownStatus)
+                assertFalse(missingParent.exists())
+                assertTrue(controller.beginMarkdownExport())
+                runtime.accountChange { }
+                controller.finishMarkdownExport(app, android.net.Uri.fromFile(output))
+                assertEquals(R.string.markdown_export_interrupted, controller.state.value.markdownStatus)
+                assertEquals("Existing\n\n### Offline heading\n\nOffline draft\n", output.readText())
+            } finally { output.delete() }
             store.purgeRevokedPage(key)
             assertTrue(store.recovered(key).any { it.text == "Offline draft" })
             assertTrue(store.recovered(key).any { it.text == "Offline heading" })
