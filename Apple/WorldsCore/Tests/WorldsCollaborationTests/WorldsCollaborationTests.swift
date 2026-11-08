@@ -130,6 +130,31 @@ private actor PausedDisconnectSocket: CollaborationSocket {
     func releaseClose() { closeWaiter?.resume(); closeWaiter = nil }
 }
 
+private actor DelayedPresenceSocket: CollaborationSocket {
+    private var firstReceive = true
+    private var waiting: CheckedContinuation<Data?, Error>?
+    private var sendWaiter: CheckedContinuation<Void, Never>?
+    private(set) var sendStarted = false
+    private(set) var states: [String] = []
+    func send(_ data: Data) async throws {
+        if case let .awareness(payload) = try WorldsSyncWire.decode(data) {
+            let state = try XCTUnwrap(WorldsSyncWire.decodeAwarenessUpdate(payload).first?.state)
+            if !sendStarted && state != "null" {
+                sendStarted = true
+                await withCheckedContinuation { sendWaiter = $0 }
+            }
+            states.append(state)
+        }
+    }
+    func receive() async throws -> Data? {
+        if firstReceive { firstReceive = false; return try WorldsSyncWire.encode(.authState(level: "edit", userID: "user")) }
+        return try await withCheckedThrowingContinuation { waiting = $0 }
+    }
+    func releaseSend() { sendWaiter?.resume(); sendWaiter = nil }
+    func close() async { waiting?.resume(throwing: CancellationError()); waiting = nil }
+    func closeCode() async -> Int { 0 }
+}
+
 private actor IdentityChangeSocket: CollaborationSocket {
     private var first = true
     private var waiting: CheckedContinuation<Data?, Error>?
@@ -193,6 +218,28 @@ private actor FixtureSocket: CollaborationSocket {
 }
 
 extension WorldsCollaborationTests {
+    func testClearPresenceWaitsForInFlightSendAndIsLast() async throws {
+        let store = FixtureStore(), socket = DelayedPresenceSocket()
+        let session = try CollaborationSession(pageID: "p", workspaceID: "w", documentID: "p", expectedUserID: "user", serverURL: URL(string: "https://example.invalid")!, store: store, tokenProvider: { _ in "fixture-token" }, socketFactory: { _, _ in socket })
+        let run = Task { try await session.run() }
+        defer { Task { await socket.releaseSend(); await session.stop() } }
+        for _ in 0..<100 { if await session.accessLevel == "edit" { break }; try await Task.sleep(for: .milliseconds(10)) }
+        guard await session.accessLevel == "edit" else { await session.stop(); _ = try? await run.value; return XCTFail("Authentication was not observed") }
+        let send = Task { try await session.setPresence(name: "Fixture", color: "#123456") }
+        for _ in 0..<100 { if await socket.sendStarted { break }; try await Task.sleep(for: .milliseconds(10)) }
+        guard await socket.sendStarted else { send.cancel(); await session.stop(); _ = try? await run.value; return XCTFail("Presence send was not reached") }
+        let clear = Task { try await session.clearPresence() }
+        // Wait for the actor to apply the local removal before releasing send.
+        for _ in 0..<100 { if await session.presenceSnapshot().isEmpty { break }; try await Task.sleep(for: .milliseconds(10)) }
+        let locallyCleared = await session.presenceSnapshot().isEmpty
+        if !locallyCleared { await socket.releaseSend(); _ = try? await send.value; _ = try? await clear.value; await session.stop(); _ = try? await run.value; return XCTFail("Local presence was not cleared") }
+        let before = await socket.states; XCTAssertTrue(before.isEmpty)
+        await socket.releaseSend()
+        try await send.value; try await clear.value
+        let states = await socket.states
+        XCTAssertEqual(states.count, 2); XCTAssertNotEqual(states.first, "null"); XCTAssertEqual(states.last, "null")
+        await session.stop(); _ = try? await run.value
+    }
     func testChangedLocalAccountStopsSessionAndKeepsPendingOutbox() async throws {
         let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-editor-v11", withExtension: "db"))
         let copy = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-account-switch-\(UUID().uuidString).db")

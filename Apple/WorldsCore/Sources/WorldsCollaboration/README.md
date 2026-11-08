@@ -17,6 +17,11 @@ that a concurrent local update is denied and does not alter the outbox.
 If the local store rejects account or workspace identity, the session stops
 instead of retrying as a network failure. It leaves pending entries untouched;
 reopening them requires a separately authorized account and recovery flow.
+Local awareness sends are serialized; an in-flight announcement completes
+before a subsequent removal, and stale queued sends are discarded when the
+presence version or connection changes. A blocked socket send can delay that
+removal. Peers or services may retain information already received; this is
+not a guarantee of erasure or an enabled product privacy control.
 
 A `CollaborationStore` implementation must persist local replica updates and outbox rows atomically. It must record remote updates, return the largest pending row ID, acknowledge through that ID, and atomically preserve complete rejected CRDT state with its rejected entries. `SQLiteCollaborationStore` implements this contract through the Rust C ABI against existing Worlds schema versions 10 and 11; it is not connected to the app. If a write is rejected, networking stops after archival; recovery, server-state replacement and user review are not implemented. No claim of read-only permission enforcement is made by the client. Server authority remains required.
 

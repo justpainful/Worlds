@@ -99,6 +99,10 @@ public actor CollaborationSession {
     private var awareness: WorldsAwareness?
     private var presenceJSON: String?
     private var socket: (any CollaborationSocket)?
+    private var socketID = UUID()
+    private var presenceVersion: UInt64 = 0
+    private var presenceSending = false
+    private var presenceWaiters: [CheckedContinuation<Void, Never>] = []
     private var pending: [UInt64: Pending] = [:]
     private var batch: UInt64 = 0
     private var stopped = true
@@ -195,7 +199,7 @@ public actor CollaborationSession {
                 }
                 diagnostic("socket created")
                 guard !stopped, generation == runID else { await opened.close(); return }
-                connection = opened; socket = opened; pending.removeAll(); verifiedIdentity = false; synchronizedChannels.removeAll()
+                connection = opened; socket = opened; socketID = UUID(); pending.removeAll(); verifiedIdentity = false; synchronizedChannels.removeAll()
                 for channel: UInt64 in [0, 1] {
                     guard let doc = documents[channel] else { throw CollaborationError.notStarted }
                     diagnostic("send vector \(channel)")
@@ -218,7 +222,7 @@ public actor CollaborationSession {
                 if verifiedIdentity { attempt = 0 }
                 // Revoke local use of the connection before the first await.
                 // closeCode/close can suspend while other actor calls arrive.
-                socket = nil; pending.removeAll(); verifiedIdentity = false; synchronizedChannels.removeAll(); accessLevel = nil; awareness?.disconnected()
+                socket = nil; socketID = UUID(); pending.removeAll(); verifiedIdentity = false; synchronizedChannels.removeAll(); accessLevel = nil; awareness?.disconnected()
                 publishEditorChange()
                 if let connection {
                     let closeCode = await connection.closeCode()
@@ -249,11 +253,12 @@ public actor CollaborationSession {
         retryTask?.cancel()
         if let socket {
             if verifiedIdentity, presenceJSON != nil, let update = try? awareness?.setLocal(nil, at: Date().timeIntervalSince1970) {
-                try? await socket.send(WorldsSyncWire.encode(.awareness(update)))
+                presenceVersion &+= 1
+                try? await sendPresence(update, via: socket, connection: socketID, version: presenceVersion, allowStopped: true)
             }
             await socket.close()
         }
-        socket = nil; pending.removeAll(); verifiedIdentity = false; synchronizedChannels.removeAll(); accessLevel = nil; awareness?.disconnected()
+        socket = nil; socketID = UUID(); pending.removeAll(); verifiedIdentity = false; synchronizedChannels.removeAll(); accessLevel = nil; awareness?.disconnected()
         publishEditorChange()
     }
 
@@ -270,15 +275,27 @@ public actor CollaborationSession {
     private func removeEditorObserver(_ id: UUID) { editorObservers.removeValue(forKey: id) }
     private func publishEditorChange() { for continuation in editorObservers.values { continuation.yield(()) } }
 
+    private func sendPresence(_ update: Data, via target: any CollaborationSocket, connection: UUID, version: UInt64, allowStopped: Bool = false) async throws {
+        if presenceSending { await withCheckedContinuation { presenceWaiters.append($0) } }
+        else { presenceSending = true }
+        defer {
+            if presenceWaiters.isEmpty { presenceSending = false }
+            else { presenceWaiters.removeFirst().resume() }
+        }
+        guard socketID == connection, verifiedIdentity, (allowStopped || !stopped), version == presenceVersion else { return }
+        try await target.send(WorldsSyncWire.encode(.awareness(update)))
+    }
+
     /// Presence names and colors are ephemeral. The service enforces authenticated user identity.
     public func setPresence(name: String, color: String) async throws {
         let object: [String: Any] = ["user": ["id": expectedUserID, "name": name, "color": color]]
         let data = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
         guard let json = String(data: data, encoding: .utf8), data.count <= 32_000 else { throw CollaborationError.invalidFrame }
         presenceJSON = json
+        presenceVersion &+= 1
         guard awareness != nil else { return }
         let update = try awareness!.setLocal(json, at: Date().timeIntervalSince1970)
-        if verifiedIdentity, let socket { try await socket.send(WorldsSyncWire.encode(.awareness(update))) }
+        if verifiedIdentity, let socket { try await sendPresence(update, via: socket, connection: socketID, version: presenceVersion) }
     }
 
     /// Clear local presence and prevent automatic republishing on reconnect.
@@ -286,10 +303,11 @@ public actor CollaborationSession {
     /// its departure. A server or peer may retain data already received.
     public func clearPresence() async throws {
         presenceJSON = nil
+        presenceVersion &+= 1
         guard awareness != nil else { return }
         let update = try awareness!.setLocal(nil, at: Date().timeIntervalSince1970)
         if verifiedIdentity, let socket {
-            do { try await socket.send(WorldsSyncWire.encode(.awareness(update))) }
+            do { try await sendPresence(update, via: socket, connection: socketID, version: presenceVersion) }
             catch { await socket.close(); throw error }
         }
     }
@@ -298,7 +316,7 @@ public actor CollaborationSession {
 
     func pulseAwareness(at now: TimeInterval = Date().timeIntervalSince1970) async throws {
         guard !stopped, verifiedIdentity, let socket, let update = try awareness?.tick(at: now), presenceJSON != nil else { return }
-        do { try await socket.send(WorldsSyncWire.encode(.awareness(update))) }
+        do { try await sendPresence(update, via: socket, connection: socketID, version: presenceVersion) }
         catch { await socket.close(); throw error }
     }
 
@@ -446,15 +464,15 @@ public actor CollaborationSession {
             guard !stopped, verifiedIdentity else { return }
             if let presenceJSON, let update = try awareness?.setLocal(presenceJSON, at: Date().timeIntervalSince1970) {
                 diagnostic("send local awareness")
-                try await socket.send(WorldsSyncWire.encode(.awareness(update)))
+                try await sendPresence(update, via: socket, connection: socketID, version: presenceVersion)
             }
         case let .notice(code, message): lastNotice = "\(code): \(message)"
         case let .awareness(payload):
             diagnostic("awareness frame")
             guard verifiedIdentity else { failed = true; throw CollaborationError.accessRevoked }
             do {
-                if let response = try awareness?.apply(payload, at: Date().timeIntervalSince1970) {
-                    try await socket.send(WorldsSyncWire.encode(.awareness(response)))
+                if let response = try awareness?.apply(payload, at: Date().timeIntervalSince1970), presenceJSON != nil {
+                    try await sendPresence(response, via: socket, connection: socketID, version: presenceVersion)
                 }
             } catch WorldsAwareness.AwarenessError.clientIDCollision {
                 failed = true
