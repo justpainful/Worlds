@@ -108,6 +108,7 @@ jobs:
           grep -E 'testRejectsHardLinkedAttachment.*passed' logs/swift-test.log
           grep -E 'testOpenedAttachmentUsesOriginalDescriptorAfterPathReplacement.*passed' logs/swift-test.log
           grep -E 'testChangedOpenAttachmentIsRejectedBeforeReadAndPlaybackCopy.*passed' logs/swift-test.log
+          grep -E 'testOpenRejectsFileAboveExplicitLimit.*passed' logs/swift-test.log
           grep -E 'testHardLinkAddedAfterOpenIsRejected.*passed' logs/swift-test.log
           grep -E 'testOpenedVideoReportsPlaybackFailureAndIgnoresFailureAfterClose.*passed' logs/swift-test.log
           grep -E 'testResolutionBudgetPreservesSmallOriginalAndCapsLargeImage.*passed' logs/swift-test.log
@@ -853,6 +854,10 @@ jobs:
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/gallery-$device.log"; then
               grep -E 'testAddReorderReopenAndMissingAttachment.*passed' "logs/gallery-$device.log" || result=1
               grep -E 'testDraftCaptionReorderUndoSaveAndReopen.*passed' "logs/gallery-$device.log" || result=1
+              grep -E 'testFixtureImagesOpenFromAuthorizedHandlesInRTL.*passed' "logs/gallery-$device.log" || result=1
+              grep -E 'testMissingFixtureImageReportsErrorWithoutPreview.*passed' "logs/gallery-$device.log" || result=1
+              grep -E 'testChangedFixtureOwnerOrSizeBlocksPreview.*passed' "logs/gallery-$device.log" || result=1
+              grep -E 'testAttachmentChangedAfterOpenBlocksPreview.*passed' "logs/gallery-$device.log" || result=1
             else
               result=1
             fi
