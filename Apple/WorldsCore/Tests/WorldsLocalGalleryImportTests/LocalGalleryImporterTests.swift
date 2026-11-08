@@ -1,5 +1,6 @@
 import Foundation
 import SQLite3
+import Darwin
 import XCTest
 import WorldsLocalImport
 import WorldsModels
@@ -37,7 +38,16 @@ final class LocalGalleryImporterTests: XCTestCase {
         catch is CancellationError { } catch { XCTFail("Unexpected cancellation error: \(error)") }
         let first: JSONValue
         do { first = try await importer.importFile(source: media, galleryID: "gallery-test", base: revision, metadata: metadata, expected: expected, operationID: operation) }
-        catch { return XCTFail("Initial import failed: \(error)") }
+        catch {
+            func matchesRealPath(_ url: URL) -> Bool {
+                guard let resolved = realpath(url.path, nil) else { return false }
+                defer { free(resolved) }
+                return url.path == String(cString: resolved)
+            }
+            // The fixture is artificial. Report only boolean classifications,
+            // never the selected paths or the unfiltered Rust error.
+            return XCTFail("Initial import failed: \(error); source canonical: \(matchesRealPath(media)); copy canonical: \(matchesRealPath(copy.databaseURL))")
+        }
         let retry: JSONValue
         do { retry = try await importer.importFile(source: media, galleryID: "gallery-test", base: revision, metadata: metadata, expected: expected, operationID: operation) }
         catch { return XCTFail("Idempotent retry failed: \(error)") }

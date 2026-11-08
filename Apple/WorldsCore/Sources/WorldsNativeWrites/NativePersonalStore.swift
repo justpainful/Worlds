@@ -156,6 +156,17 @@ public actor NativePersonalStore {
                 if galleryCancellation != nil {
                     if message.hasPrefix("cancelled:") { throw CancellationError() }
                     if message.hasPrefix("conflict:") { throw NativeWriteError.conflict("The gallery or import request has changed.") }
+                    #if DEBUG
+                    // Only fixed classifications are exposed; the underlying
+                    // Rust error may contain user paths and must not be logged.
+                    if message.contains("no-follow directory component 0") {
+                        let stage = message.contains("open scoped source file") ? "source" : (message.contains("validate local copy directory") ? "copy" : "other")
+                        throw NativeWriteError.operationFailed("Fixture diagnostic: no-follow component zero rejected (\(stage)).")
+                    }
+                    if message.contains("database identity cannot be verified") {
+                        throw NativeWriteError.operationFailed("Fixture diagnostic: database identity check failed.")
+                    }
+                    #endif
                     throw NativeWriteError.operationFailed("The gallery file could not be imported.")
                 }
                 if message.hasPrefix("conflict:") { throw NativeWriteError.conflict(message) }
