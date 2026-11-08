@@ -174,14 +174,31 @@ final class CollaborationHarnessUITests: XCTestCase {
         let appended = NSPredicate(format: "label == %@ OR value == %@", result, result)
         expectation(for: appended, evaluatedWith: document)
         waitForExpectations(timeout: 30)
+        guard pasteboard.changeCount == testChangeCount else {
+            throw XCTSkip("The pasteboard changed before the deletion step.")
+        }
+        guard pasteboard.setString("مرحبا", forType: .string) else {
+            throw FixtureError.invalidResponse
+        }
+        testChangeCount = pasteboard.changeCount
+        let removal = app.textFields["checked.remove-text"]
+        XCTAssertTrue(removal.waitForExistence(timeout: 10))
+        removal.click()
+        removal.typeKey("v", modifierFlags: .command)
+        XCTAssertEqual(removal.value as? String, "مرحبا")
+        app.buttons["checked.remove"].click()
+        let deletedText = "Hello 🌍  👋"
+        let deleted = NSPredicate(format: "label == %@ OR value == %@", deletedText, deletedText)
+        expectation(for: deleted, evaluatedWith: document)
+        waitForExpectations(timeout: 30)
         let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = "Unicode insertion in isolated collaboration"
+        attachment.name = "Unicode range removed in isolated collaboration"
         attachment.lifetime = .keepAlways
         add(attachment)
         let undo = app.buttons["checked.undo"]
         XCTAssertTrue(undo.isEnabled)
         undo.click()
-        expectation(for: original, evaluatedWith: document)
+        expectation(for: appended, evaluatedWith: document)
         waitForExpectations(timeout: 30)
         XCTAssertFalse(undo.isEnabled)
     }

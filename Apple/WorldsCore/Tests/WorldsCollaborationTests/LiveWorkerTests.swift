@@ -189,6 +189,59 @@ final class LiveWorkerTests: XCTestCase {
         XCTAssertTrue(returned, "Alice should reappear after reconnecting")
     }
 
+    func testLiveArabicRangeDeletionAndConditionalRestore() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard env["WORLDS_REQUIRE_LIVE_SERVICE"] == "1" else { throw XCTSkip("Local Worker integration was not requested") }
+        guard env["WORLDS_LIVE_SYNC_URL"] == "ws://127.0.0.1:18790",
+              let token = env["WORLDS_LIVE_EDITOR_TOKEN"], !token.isEmpty else {
+            return XCTFail("Local Worker identity is required")
+        }
+        let path = try fixture("editor")
+        defer { try? FileManager.default.removeItem(at: path) }
+        let store = try makeStore(path, user: "editor")
+        let update = try XCTUnwrap(Data(base64Encoded: "AQTpBwAHAQdkZWZhdWx0AwlwYXJhZ3JhcGgoAOkHAANiaWQBdwdibG9jay0xBwDpBwAGBADpBwIKSGVsbG8g8J+MjQA="))
+        try await store.appendLocal(pageID: page, channel: 0, update: update)
+        let id = "arabic" + UUID().uuidString.replacingOccurrences(of: "-", with: "")
+        let session = try makeSession(store, user: "editor", token: token, document: id)
+        let run = Task { try await session.run() }
+        defer { Task { await session.stop() } }
+        func ready() async throws -> PlainEditorProjection {
+            for _ in 0..<200 {
+                if let snapshot = try? await session.plainEditorSnapshot() { return snapshot }
+                try await Task.sleep(for: .milliseconds(100))
+            }
+            throw CollaborationError.notStarted
+        }
+        func text(_ data: Data) throws -> String {
+            let root = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+            let blocks = try XCTUnwrap(root["content"] as? [[String: Any]])
+            let content = try XCTUnwrap(blocks.first?["content"] as? [[String: Any]])
+            return try content.map { try XCTUnwrap($0["text"] as? String) }.joined()
+        }
+        let initial = try await ready()
+        XCTAssertEqual(try text(initial.json), "Hello 🌍")
+        let suffix = " مرحبا 👋"
+        XCTAssertEqual("Hello 🌍".utf16.count, 8)
+        XCTAssertEqual(suffix.utf16.count, 9)
+        try await session.insertPlain(blockIndex: 0, blockID: "block-1", expected: "Hello 🌍", offset: 8, insertion: suffix, expectedState: initial.state)
+        let inserted = try await ready()
+        let full = "Hello 🌍 مرحبا 👋"
+        XCTAssertEqual(try text(inserted.json), full)
+        try await session.deletePlain(blockIndex: 0, blockID: "block-1", expected: full, offset: 9, length: 5, expectedState: inserted.state)
+        let removed = try await ready()
+        XCTAssertEqual(try text(removed.json), "Hello 🌍  👋")
+        do {
+            try await session.insertPlain(blockIndex: 0, blockID: "block-1", expected: "Hello 🌍  👋", offset: 9, insertion: "مرحبا", expectedState: inserted.state)
+            XCTFail("An old state must not authorize restoration")
+        } catch CollaborationError.staleProjection { }
+        try await session.insertPlain(blockIndex: 0, blockID: "block-1", expected: "Hello 🌍  👋", offset: 9, insertion: "مرحبا", expectedState: removed.state)
+        let restored = try await ready()
+        XCTAssertEqual(try text(restored.json), full)
+        await session.stop(); try await run.value
+        let reopened = try await document(store)
+        XCTAssertEqual(try text(reopened.plainProjection()), full)
+    }
+
     func testLiveCheckedEditorsConvergeAfterReconnect() async throws {
         let env = ProcessInfo.processInfo.environment
         guard env["WORLDS_REQUIRE_LIVE_SERVICE"] == "1" else { throw XCTSkip("Local Worker integration was not requested") }
