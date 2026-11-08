@@ -42,12 +42,22 @@ final class PageEditorHarnessUITests: XCTestCase {
         #if os(iOS)
         let formatting = app.scrollViews["editor-format-toolbar"]
         XCTAssertTrue(formatting.waitForExistence(timeout: 10))
+        if !formatting.isHittable {
+            let outer = app.scrollViews["harness-editor-scroll"].firstMatch
+            guard outer.isHittable else { captureFailure(app, named: "page-format-scroll-unavailable"); XCTFail("Editor scroll view unavailable"); return }
+            outer.swipeUp()
+        }
         let remove = app.buttons["editor-remove-link"]
         for _ in 0..<4 where !formatting.frame.contains(remove.frame) { formatting.swipeUp() }
         XCTAssertTrue(remove.isHittable)
         XCTAssertTrue(formatting.frame.contains(remove.frame), "The final formatting action must be fully visible after scrolling")
         let lists = app.scrollViews["editor-list-toolbar"]
         XCTAssertTrue(lists.waitForExistence(timeout: 10))
+        if !lists.isHittable {
+            let outer = app.scrollViews["harness-editor-scroll"].firstMatch
+            guard outer.isHittable else { captureFailure(app, named: "page-list-scroll-unavailable"); XCTFail("Editor scroll view unavailable"); return }
+            outer.swipeUp()
+        }
         let toggle = app.buttons["Toggle task"]
         for _ in 0..<4 where !lists.frame.contains(toggle.frame) { lists.swipeUp() }
         XCTAssertTrue(toggle.isHittable)

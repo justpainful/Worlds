@@ -29,6 +29,8 @@ public struct NativeEditorView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             VStack(alignment: .leading, spacing: 8) {
+                NativeTextSurface(model: model)
+                    .frame(minHeight: dynamicTypeSize.isAccessibilitySize ? 240 : 160)
                 ScrollView(.vertical) { LazyVGrid(columns: [GridItem(.adaptive(minimum: dynamicTypeSize.isAccessibilitySize ? 260 : 100), spacing: 8)], alignment: .leading, spacing: 8) {
                     Button("Undo") { model.undo() }.keyboardShortcut("z", modifiers: .command).disabled(!model.undoManager.canUndo)
                     Button("Redo") { model.redo() }.keyboardShortcut("z", modifiers: [.command, .shift]).disabled(!model.undoManager.canRedo)
@@ -125,8 +127,6 @@ public struct NativeEditorView: View {
                     .disabled(model.nativeEditPending || model.saving)
                 }
                 }.frame(maxHeight: 160) }
-                NativeTextSurface(model: model)
-                    .frame(minHeight: dynamicTypeSize.isAccessibilitySize ? 240 : 160)
             }
             .disabled(model.recoverableNativeText != nil)
             if let error = model.errorMessage { Text(error).font(.caption).foregroundStyle(.secondary) }
