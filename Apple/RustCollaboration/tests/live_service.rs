@@ -124,10 +124,19 @@ fn live_owned_outbox_survives_account_change_and_reconnect() {
  let token=std::env::var("WORLDS_LIVE_EDITOR_TOKEN").unwrap();
  let doc_id=format!("owned{}{}",std::process::id(),std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos());
  let path=fixture("owned","editor");
+ // Keep the local page and remote document identity equal, as required by
+ // Worlds. The generated identifier belongs only to this copied fixture.
+ {
+  let db=rusqlite::Connection::open(&path).unwrap();
+  db.execute("UPDATE blocks SET page_id=?1 WHERE page_id='fixture-page'",[&doc_id]).unwrap();
+  db.execute("UPDATE pages SET id=?1 WHERE id='fixture-page'",[&doc_id]).unwrap();
+ }
  let resource=format!("ws://127.0.0.1:18790/v1/workspaces/fixture-workspace/docs/{doc_id}/sync");
- let mut store=SyncStore::open(&path,"fixture-page","editor","fixture-workspace").unwrap();
+ let mut store=SyncStore::open(&path,&doc_id,"editor","fixture-workspace").unwrap();
  for channel in 0..2 {store.enroll_empty_owned_document(channel,&resource).unwrap();}
  store.append_owned_document(0,&resource,BASE).unwrap();
+ let other_resource=format!("ws://127.0.0.1:18790/v1/workspaces/fixture-workspace/docs/{doc_id}other/sync");
+ assert!(store.owned_document_batch(0,&other_resource,&[0]).is_err());
  owned_handshake(&mut store,&path,&token,&doc_id,true);
  assert!(store.owned_document_batch(0,&resource,&[0]).unwrap().1.is_some());
  owned_handshake(&mut store,&path,&token,&doc_id,false);
