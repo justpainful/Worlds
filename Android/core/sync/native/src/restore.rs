@@ -103,6 +103,46 @@ fn build(parent: &impl XmlFragment, txn: &mut TransactionMut, index: u32, desire
     }
     Ok(())
 }
+
+/// Duplicate one top-level paragraph or heading without changing the source node.
+pub fn duplicate_text_block(snapshot: &[u8], request: &[u8]) -> Result<Vec<u8>, String> {
+    let input: serde_json::Value = serde_json::from_slice(request).map_err(|e| e.to_string())?;
+    let source = input["source"].as_str().filter(|s| !s.is_empty() && s.len() <= 128).ok_or("Invalid source id")?;
+    let new_id = input["bid"].as_str().filter(|s| !s.is_empty() && s.len() <= 128).ok_or("Invalid block id")?;
+    if source == new_id { return Err("Duplicate block id".into()); }
+    let doc = super::load(snapshot)?;
+    let root = doc.get_or_insert_xml_fragment("default");
+    let (index, desired, vector) = {
+        let txn = doc.transact();
+        if txn.has_missing_updates() { return Err("Document has missing updates".into()); }
+        let existing_ids = block_parents(&root, &txn)?;
+        if existing_ids.contains_key(new_id) { return Err("Duplicate block id".into()); }
+        let mut found = None;
+        for (index, child) in root.children(&txn).enumerate() {
+            if let XmlOut::Element(element) = &child {
+                if matches!(element.get_attribute(&txn, "bid"), Some(Out::Any(Any::String(id))) if id.as_ref() == source) {
+                    if found.is_some() { return Err("Duplicate source id".into()); }
+                    found = Some((index as u32, collect(child, &txn, 0, &mut 0)?));
+                }
+            }
+        }
+        let (index, mut node) = found.ok_or("Missing source")?;
+        match &mut node {
+            Node::Element { tag, attrs, children } if matches!(tag.as_str(), "paragraph" | "heading") && children.iter().all(|child| matches!(child, Node::Text { .. })) => {
+                let size: usize = children.iter().map(|child| match child { Node::Text { runs, .. } => runs.iter().map(|(s, _)| s.len()).sum::<usize>(), _ => 0 }).sum();
+                if size > 1_000_000 { return Err("Text exceeds limit".into()); }
+                attrs.insert("bid".into(), Any::from(new_id.to_owned()));
+            }
+            _ => return Err("Unsupported block".into()),
+        }
+        (index, node, txn.state_vector())
+    };
+    let mut txn = doc.transact_mut();
+    build(&root, &mut txn, index + 1, &desired)?;
+    drop(txn);
+    let update = doc.transact().encode_state_as_update_v1(&vector);
+    Ok(update)
+}
 fn reconcile(parent: &impl XmlFragment, txn: &mut TransactionMut, desired: &[Node]) -> Result<(), String> {
     fn unique_ids(nodes: &[Node]) -> Result<(), String> {
         let mut seen = BTreeSet::new();
@@ -265,6 +305,31 @@ mod tests {
             other.insert(&mut txn, "keep", "yes");
         }
         bytes(&doc)
+    }
+    #[test]
+    fn duplicates_formatted_text_with_new_identity_and_preserves_concurrent_source_edits() {
+        let base = fixture();
+        let update = duplicate_text_block(&base, br#"{"source":"a","bid":"copy"}"#).unwrap();
+        let duplicate = super::super::merge(&base, &update).unwrap();
+        let content: serde_json::Value = serde_json::from_slice(&super::super::editor::read(&duplicate).unwrap()).unwrap();
+        let nodes = content["content"].as_array().unwrap();
+        assert_eq!(nodes.len(), 3);
+        assert_eq!(nodes[0]["attrs"]["bid"], "a");
+        assert_eq!(nodes[1]["attrs"]["bid"], "copy");
+        assert_eq!(nodes[1]["attrs"]["level"], nodes[0]["attrs"]["level"]);
+        assert_eq!(nodes[1]["content"], nodes[0]["content"]);
+        assert_eq!(super::super::editor::block_identity(&base, b"a").unwrap(), super::super::editor::block_identity(&duplicate, b"a").unwrap());
+        assert_ne!(super::super::editor::block_identity(&duplicate, b"copy").unwrap(), super::super::editor::block_identity(&duplicate, b"a").unwrap());
+        assert!(duplicate_text_block(&base, br#"{"source":"a","bid":"b"}"#).is_err());
+        assert!(duplicate_text_block(&base, br#"{"source":"missing","bid":"new"}"#).is_err());
+        let peer = super::super::load(&base).unwrap(); let root = peer.get_or_insert_xml_fragment("default");
+        { let mut txn = peer.transact_mut(); let source = match root.get(&txn, 0).unwrap() { XmlOut::Element(e) => e, _ => panic!() };
+          let text = match source.get(&txn, 0).unwrap() { XmlOut::Text(t) => t, _ => panic!() }; let len = text.len(&txn); text.insert(&mut txn, len, " peer"); }
+        let merged = super::super::merge(&bytes(&peer), &update).unwrap();
+        let doc: serde_json::Value = serde_json::from_slice(&super::super::editor::read(&merged).unwrap()).unwrap();
+        let text = |node: &serde_json::Value| node["content"].as_array().unwrap().iter().map(|n| n["text"].as_str().unwrap()).collect::<String>();
+        assert_eq!(text(&doc["content"][0]), "hello😀 peer");
+        assert_eq!(text(&doc["content"][1]), "hello😀");
     }
     #[test]
     fn restores_nested_content_marks_and_typed_attributes_preserving_other_roots() {

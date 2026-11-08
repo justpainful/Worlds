@@ -646,4 +646,5 @@
     <string name="shared_history_restoring">جارٍ حفظ نسخة احتياطية واستعادة الصفحة.</string>
     <string name="shared_history_restore_uncertain">ربما اكتملت الاستعادة. تحقق من الصفحة والسجل قبل إعادة المحاولة.</string>
     <string name="shared_history_restore_sync_error">لم يتأكد حفظ التعديلات السابقة، لذلك لم تُستعد الصفحة. أعد الاتصال وحاول مجددًا.</string>
+    <string name="shared_duplicate_error">تعذر تكرار العنصر. ربما تغيّر أو لم تعد تملك صلاحية التعديل.</string>
 </resources>

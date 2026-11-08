@@ -51,6 +51,24 @@ class SyncSessionTest {
         session.close(); event("closed:null")
     }
 
+    @Test fun offlineDuplicateIsRecoverableAndRejectsReplacedSource() {
+        val base = YrsNative.appendParagraph(byteArrayOf(), "source", "Original")
+        store.append(key, base, local = false)
+        val copy = OfflineEditor.duplicateTextBlock(store, key, base, "source", "copy")
+        val blocks = JSONObject(YrsNative.editorJson(copy)).getJSONArray("content")
+        assertEquals(2, blocks.length())
+        assertEquals("source", blocks.getJSONObject(0).getJSONObject("attrs").getString("bid"))
+        assertEquals("copy", blocks.getJSONObject(1).getJSONObject("attrs").getString("bid"))
+        assertEquals("Original", blocks.getJSONObject(1).getJSONArray("content").getJSONObject(0).getString("text"))
+        assertEquals(1, store.pending(key).size)
+        store.purgeRevokedPage(key)
+        assertEquals("Original", store.recovered(key).single().text)
+        val replacement = YrsNative.appendParagraph(byteArrayOf(), "source", "Replacement")
+        store.append(key, replacement, local = false)
+        assertTrue(runCatching { OfflineEditor.duplicateTextBlock(store, key, base, "source", "copy2") }.isFailure)
+        assertTrue(store.pending(key).isEmpty())
+    }
+
     @Test fun offlineInsertRejectsAnAnchorReplacedWithTheSameId() {
         val base = YrsNative.appendParagraph(byteArrayOf(), "anchor", "Original")
         store.append(key, base, local = false)

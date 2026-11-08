@@ -38,7 +38,9 @@ class SharedRecoveryUiTest {
 
     @Test fun longSharedTextSyncsToPeer() = onlineEditorScenario(stress = true)
 
-    private fun onlineEditorScenario(stress: Boolean) {
+    @Test fun duplicateHeadingSyncsToPeerAndRemainsIndependent() = onlineEditorScenario(stress = false, duplicate = true)
+
+    private fun onlineEditorScenario(stress: Boolean, duplicate: Boolean = false) {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext
         val name = "shared-append-${UUID.randomUUID()}.db"
         val authority = "https://identity.example"
@@ -99,6 +101,29 @@ class SharedRecoveryUiTest {
             assertEquals("heading", blocks.getJSONObject(1).getString("type"))
             assertEquals(2, blocks.getJSONObject(1).getJSONObject("attrs").getInt("level"))
             assertEquals("Shared heading", blocks.getJSONObject(1).getJSONArray("content").getJSONObject(0).getString("text"))
+            if (duplicate) {
+                val headingId = blocks.getJSONObject(1).getJSONObject("attrs").getString("bid")
+                compose.onNodeWithTag("shared_block_actions_$headingId").performScrollTo().performClick()
+                if (InstrumentationRegistry.getArguments().getString("captureUi") == "1") {
+                    compose.waitForIdle(); Thread.sleep(300)
+                    android.os.ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /sdcard/Download/worlds-shared-duplicate.png")).use { it.readBytes() }
+                }
+                compose.onNodeWithTag("shared_duplicate_$headingId").performClick()
+                compose.waitUntil(20_000) { controller.state.value.blocks.size == 3 && !controller.state.value.saving && store.pending(key).isEmpty() }
+                val copied = org.json.JSONObject(YrsNative.editorJson(remote.get())).getJSONArray("content")
+                assertEquals("heading", copied.getJSONObject(2).getString("type"))
+                assertEquals(2, copied.getJSONObject(2).getJSONObject("attrs").getInt("level"))
+                assertNotEquals(headingId, copied.getJSONObject(2).getJSONObject("attrs").getString("bid"))
+                assertEquals("Shared heading", worlds.content.InlineEditing.text(copied.getJSONObject(2).toString()))
+                controller.edit(controller.state.value.blocks.last())
+                controller.updateDraft("Independent copy")
+                controller.save()
+                compose.waitUntil(20_000) { controller.state.value.draft == null && controller.state.value.blocks.last().text == "Independent copy" && store.pending(key).isEmpty() }
+                val edited = org.json.JSONObject(YrsNative.editorJson(remote.get())).getJSONArray("content")
+                assertEquals("Shared heading", worlds.content.InlineEditing.text(edited.getJSONObject(1).toString()))
+                assertEquals("Independent copy", worlds.content.InlineEditing.text(edited.getJSONObject(2).toString()))
+                return
+            }
             if (stress) {
                 controller.addTextBlock("paragraph")
                 val original = "z".repeat(100_001) + "😀"

@@ -1,5 +1,16 @@
 # Android Yrs sync foundation
 
+Android also duplicates supported top-level shared paragraphs and headings,
+including text marks and attributes, using a fresh block id and the current
+locally known content. A replaced source is rejected. The update and copied
+text are journaled for offline synchronization and recovery after revocation.
+Rust and desktop Yjs interoperability tests cover formatting and concurrent
+source edits; Android 15 emulator tests cover the action, a synthetic peer,
+independent editing, offline recovery and stale source rejection. Other block
+types, unseen remote changes while offline, and production servers remain
+outside this verification.
+
+
 Android can create a paragraph or a level 1, 2 or 3 heading in a shared page
 after confirmed edit access, at the end or after a specific existing block. The
 new block uses the desktop Yjs XML fragment and a unique block id. Insertion

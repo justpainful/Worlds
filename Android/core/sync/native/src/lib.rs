@@ -15,6 +15,7 @@ pub fn editor_restore(snapshot: &[u8], version: &[u8]) -> Result<Vec<u8>, String
 pub fn editor_replace_text(snapshot: &[u8], request: &[u8]) -> Result<Vec<u8>, String> { editor::replace_text(snapshot, request) }
 pub fn editor_replace_block_text(snapshot: &[u8], request: &[u8]) -> Result<Vec<u8>, String> { editor::replace_block_text(snapshot, request) }
 pub fn editor_append_paragraph(snapshot: &[u8], request: &[u8]) -> Result<Vec<u8>, String> { editor::append_paragraph(snapshot, request) }
+pub fn editor_duplicate_text_block(snapshot: &[u8], request: &[u8]) -> Result<Vec<u8>, String> { restore::duplicate_text_block(snapshot, request) }
 
 // Stateless calls keep ownership explicit across JNI. Inputs are v1 Yjs wire data.
 fn load(snapshot: &[u8]) -> Result<Doc, String> {
@@ -91,6 +92,11 @@ pub extern "system" fn Java_worlds_sync_YrsNative_replaceBlockTextBytes(env: JNI
 #[no_mangle]
 pub extern "system" fn Java_worlds_sync_YrsNative_appendParagraphBytes(env: JNIEnv, _: JClass, snapshot: JByteArray, request: JByteArray) -> jbyteArray {
     invoke(env, snapshot, Some(request), editor::append_paragraph)
+}
+
+#[no_mangle]
+pub extern "system" fn Java_worlds_sync_YrsNative_duplicateTextBlockBytes(env: JNIEnv, _: JClass, snapshot: JByteArray, request: JByteArray) -> jbyteArray {
+    invoke(env, snapshot, Some(request), restore::duplicate_text_block)
 }
 
 #[no_mangle]

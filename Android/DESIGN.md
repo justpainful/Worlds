@@ -1,5 +1,12 @@
 # Worlds Android design decisions
 
+## Duplicate shared text blocks
+The existing block action menu offers Duplicate for supported shared paragraphs
+and headings. It uses the existing duplicate symbol, action label and compact
+menu, and places the new block directly after its source. The action uses the
+current shared state, works with a previously authorized offline page and reports
+failure without hiding the source. No new decorative motion is added.
+
 ## Long shared text
 The shared text editor shows a bounded portion of a long paragraph at a time.
 Previous and next actions and a part count use the existing labeled chevrons,

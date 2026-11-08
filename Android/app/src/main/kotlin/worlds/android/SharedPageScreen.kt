@@ -86,7 +86,7 @@ internal data class SharedPageState(val opening: Boolean = false, val access: St
     val noticesVisible: Boolean = false, val noticesLoading: Boolean = false, val noticesError: Boolean = false, val notices: List<SyncNotice> = emptyList(), val unread: Int = 0,
     val historySaving: Boolean = false, val historyRestoring: Boolean = false, val historyUncertain: Boolean = false, val historySyncFailed: Boolean = false, val draftBackupFailed: Boolean = false,
     val backgroundScheduleFailed: Boolean = false, val backgroundScheduleRetrying: Boolean = false,
-    val markdownExporting: Boolean = false, val markdownStatus: Int? = null)
+    val markdownExporting: Boolean = false, val markdownStatus: Int? = null, val duplicateError: Boolean = false)
 
 private data class SharedMarkdownSnapshot(val principal: SyncPrincipal, val page: String, val blocks: List<String>)
 
@@ -557,13 +557,13 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
 
     fun edit(block: SharedBlock) = synchronized(draftLock) {
         val state = mutable.value
-        if (closed.get() || state.draft != null || currentPrincipal == null || state.historySaving || state.access !in setOf("edit", "full") || !block.canEdit || state.snapshot == null) return
+        if (closed.get() || state.draft != null || currentPrincipal == null || state.saving || state.historySaving || state.access !in setOf("edit", "full") || !block.canEdit || state.snapshot == null) return
         draftToken = UUID.randomUUID().toString()
         mutable.update { it.copy(draft = SharedDraft(block, state.snapshot.copyOf(), block.text.orEmpty()), error = false, draftBackupFailed = false) }
     }
     fun addTextBlock(kind: String, after: String? = null) = synchronized(draftLock) {
         val state = mutable.value
-        if (closed.get() || state.draft != null || currentPrincipal == null || state.historySaving || state.disconnected || state.access !in setOf("edit", "full") || state.snapshot == null) return
+        if (closed.get() || state.draft != null || currentPrincipal == null || state.saving || state.historySaving || state.disconnected || state.access !in setOf("edit", "full") || state.snapshot == null) return
         if (kind !in setOf("paragraph", "heading") || (after != null && state.blocks.count { it.id == after } != 1)) return
         val id = UUID.randomUUID().toString().replace("-", "").take(26)
         draftToken = UUID.randomUUID().toString()
@@ -604,6 +604,49 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
         if (mutable.value.saving) return
         discardDraftBackup()
         mutable.update { it.copy(draft = null, draftBackupFailed = false) }
+    }
+    fun duplicateBlock(block: SharedBlock): Unit = synchronized(draftLock) {
+        val state = mutable.value
+        val principal = currentPrincipal ?: return
+        val source = block.id ?: return
+        val base = state.snapshot?.copyOf() ?: return
+        if (closed.get() || state.saving || state.historySaving || state.draft != null || state.disconnected || state.access !in setOf("edit", "full") || !block.canEdit || state.blocks.count { it.id == source } != 1) return
+        val id = UUID.randomUUID().toString().replace("-", "").take(26)
+        mutable.update { it.copy(saving = true, duplicateError = false) }
+        pendingLocalSave.set(true)
+        scope.launch {
+            while (isActive && !closed.get()) {
+                val current = mutable.value
+                val active = session
+                if (current.disconnected || (!current.offline && current.access != null && current.access !in setOf("edit", "full"))) {
+                    pendingLocalSave.set(false)
+                    mutable.update { it.copy(saving = false, duplicateError = true) }
+                    break
+                }
+                if (!current.offline && current.access in setOf("edit", "full") && active != null) {
+                    pendingLocalSave.set(false)
+                    active.duplicateTextBlock(base, source, id) { saved ->
+                        if (saved && !closed.get()) scheduleOutbox(principal, currentServer, currentPage)
+                        if (!closed.get()) mutable.update { it.copy(saving = false, duplicateError = !saved) }
+                    }
+                    break
+                }
+                if (!current.offline) { delay(50); continue }
+                try {
+                    val updated = runtime.duplicateOffline(principal, workspace, currentPage, base, source, id) { !closed.get() }
+                    acceptSnapshot(updated)
+                    scheduleOutbox(principal, currentServer, currentPage)
+                    pendingLocalSave.set(false)
+                    if (!closed.get()) mutable.update { it.copy(saving = false, duplicateError = false) }
+                    break
+                } catch (_: AccountSyncRuntime.SessionActive) { delay(50) }
+                catch (_: Exception) {
+                    pendingLocalSave.set(false)
+                    if (!closed.get()) mutable.update { it.copy(saving = false, duplicateError = true) }
+                    break
+                }
+            }
+        }
     }
     fun save() {
         val state = mutable.value; val draft = state.draft ?: return
@@ -1032,10 +1075,11 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
                         if (state.access in setOf("edit", "full") && !state.disconnected && block.id != null && blockIdCounts[block.id] == 1) {
                             var menu by remember(block.id) { mutableStateOf(false) }
                             Box {
-                                IconButton(onClick = { menu = true }, modifier = Modifier.testTag("shared_block_actions_${block.id}")) {
+                                IconButton(enabled = !state.saving && !state.historySaving, onClick = { menu = true }, modifier = Modifier.testTag("shared_block_actions_${block.id}")) {
                                     Icon(painterResource(R.drawable.ic_ellipsis_vertical), contentDescription = stringResource(R.string.block_actions), modifier = Modifier.size(20.dp))
                                 }
                                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                                    if (block.canEdit) DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_files) }, text = { Text(stringResource(R.string.duplicate_block)) }, onClick = { menu = false; controller.duplicateBlock(block) }, modifier = Modifier.testTag("shared_duplicate_${block.id}"))
                                     DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_plus) }, text = { Text(stringResource(R.string.insert_paragraph_after)) }, onClick = { menu = false; controller.addTextBlock("paragraph", block.id) })
                                     DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_heading_1) }, text = { Text(stringResource(R.string.insert_heading_after)) }, onClick = { menu = false; controller.addTextBlock("heading", block.id) })
                                 }
@@ -1053,6 +1097,7 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
                     }
                 }
             }
+            if (state.duplicateError) Text(stringResource(R.string.shared_duplicate_error), color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("shared_duplicate_error"))
             if (state.endpointProblem != null) Text(stringResource(if (state.endpointProblem == EndpointProblem.DIFFERENT_SERVER) R.string.shared_endpoint_conflict else R.string.shared_endpoint_unknown), color = MaterialTheme.colorScheme.error)
             else if (state.needsAttention) Text(stringResource(R.string.shared_attention), color = MaterialTheme.colorScheme.error)
             else if (state.reauth) Text(stringResource(R.string.shared_reauth), color = MaterialTheme.colorScheme.error)

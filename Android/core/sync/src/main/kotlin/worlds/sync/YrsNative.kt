@@ -27,6 +27,7 @@ object YrsNative {
     @JvmStatic private external fun replaceTextBytes(snapshot: ByteArray, request: ByteArray): ByteArray
     @JvmStatic private external fun replaceBlockTextBytes(snapshot: ByteArray, request: ByteArray): ByteArray
     @JvmStatic private external fun appendParagraphBytes(snapshot: ByteArray, request: ByteArray): ByteArray
+    @JvmStatic private external fun duplicateTextBlockBytes(snapshot: ByteArray, request: ByteArray): ByteArray
     @JvmStatic private external fun blockIdentityBytes(snapshot: ByteArray, bid: ByteArray): ByteArray
 
     internal fun blockIdentity(snapshot: ByteArray, blockId: String): ByteArray = blockIdentityBytes(snapshot, blockId.toByteArray(Charsets.UTF_8))
@@ -41,6 +42,29 @@ object YrsNative {
         validateText(text)
         val request = JSONObject().put("bid", blockId).put("text", text).put("kind", kind).put("level", level).put("after", after ?: JSONObject.NULL)
         return appendParagraphBytes(snapshot, request.toString().toByteArray(Charsets.UTF_8))
+    }
+
+    internal data class DuplicatedTextBlock(val update: ByteArray, val text: String) {
+        override fun toString() = "DuplicatedTextBlock(text=[redacted])"
+    }
+
+    internal fun duplicateTextBlock(snapshot: ByteArray, source: String, blockId: String): DuplicatedTextBlock {
+        require(source.isNotBlank() && source.length <= 128 && blockId.isNotBlank() && blockId.length <= 128 && source != blockId)
+        val request = JSONObject().put("source", source).put("bid", blockId).toString().toByteArray(Charsets.UTF_8)
+        val update = duplicateTextBlockBytes(snapshot, request)
+        val nodes = JSONObject(editorJson(snapshot)).getJSONArray("content")
+        val matches = (0 until nodes.length()).map { nodes.getJSONObject(it) }.filter { it.optJSONObject("attrs")?.optString("bid") == source }
+        require(matches.size == 1 && matches.single().optString("type") in setOf("paragraph", "heading"))
+        val content = matches.single().optJSONArray("content") ?: JSONArray()
+        val text = buildString {
+            for (index in 0 until content.length()) {
+                val node = content.getJSONObject(index)
+                require(node.optString("type") == "text")
+                append(node.getString("text"))
+            }
+        }
+        require(text.toByteArray(Charsets.UTF_8).size <= 1_000_000)
+        return DuplicatedTextBlock(update, text)
     }
 
     /** Tiptap-compatible JSON for the shared document's default XML fragment. */
