@@ -1220,6 +1220,7 @@ jobs:
           grep -q 'missing_file_rolls_back_entire_unpublished_bundle ... ok' logs/rust-store-tests.log
           grep -q 'imports_and_recovers_uncommitted_file_without_touching_source ... ok' logs/rust-store-tests.log
           grep -q 'ffi_import_retries_atomically_without_duplicate_attachment ... ok' logs/rust-store-tests.log
+          grep -q 'database_symlink_and_hardlink_are_rejected_before_mutation ... ok' logs/rust-store-tests.log
           grep -q 'cancellation_rolls_back_and_same_operation_can_retry ... ok' logs/rust-store-tests.log
           grep -q 'cancellation_and_commit_have_single_winner ... ok' logs/rust-store-tests.log
           grep -q 'stream_ffi_reads_and_saves_original_metadata_shape ... ok' logs/rust-store-tests.log
