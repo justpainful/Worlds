@@ -82,6 +82,7 @@ jobs:
           grep -E 'testDismissalDeclinesOnlyOnce.*passed' logs/swift-test.log
           grep -E 'testReviewEscapesDirectionalAndLineControls.*passed' logs/swift-test.log
           grep -E 'testWorkspaceAccessUsesCurrentAccountAndFailsClosed.*passed' logs/swift-test.log
+          grep -E 'testTokenProviderRejectsOtherAccount.*passed' logs/swift-test.log
           grep -E 'testWorkspaceAccessRejectsDuplicatePageEntries.*passed' logs/swift-test.log
           grep -E 'testWorkspaceAccessPreventsConcurrentAccountChange.*passed' logs/swift-test.log
           grep -q 'testActualYjsFixture' logs/swift-test.log
@@ -1579,6 +1580,7 @@ jobs:
           grep -q 'testDefaultSocketLifecycleWithLocalRefusal' logs/collaboration-discovery.log
           grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' logs/collaboration-discovery.log
           grep -q 'testPlainProjectionUsesYjsFixtureAndRejectsRichText' logs/collaboration-discovery.log
+          grep -q 'testHostRejectsMismatchedStoreAndRevokedServiceAccess' logs/collaboration-discovery.log
           grep -q 'testCheckedDeleteAndFormatPersistThroughNativeStore' logs/collaboration-discovery.log
           grep -q 'testViewerCannotPrepareEditorWrite' logs/collaboration-discovery.log
       - name: Discover and test collaboration editor on macOS
@@ -1620,6 +1622,12 @@ jobs:
           grep -E 'testPlainProjectionUsesYjsFixtureAndRejectsRichText.*passed' logs/collaboration-macos.log
           grep -E 'testCheckedDeleteAndFormatPersistThroughNativeStore.*passed' logs/collaboration-macos.log
           grep -q 'testViewerCannotPrepareEditorWrite' logs/collaboration-macos.log
+      - name: Test isolated collaboration host on macOS
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path Apple/WorldsCore --filter WorldsCollaborationHostTests 2>&1 | tee logs/collaboration-host-macos.log
+          grep -E 'testHostRejectsMismatchedStoreAndRevokedServiceAccess.*passed' logs/collaboration-host-macos.log
       - name: Test rejected archive service on macOS
         shell: bash
         run: |
@@ -1637,6 +1645,7 @@ jobs:
             -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.5' \
             -only-testing:WorldsCollaborationTests \
             -only-testing:WorldsRejectedArchivesTests \
+            -only-testing:WorldsCollaborationHostTests \
             -only-testing:WorldsCollaborationEditorTests \
             -resultBundlePath "$GITHUB_WORKSPACE/collaboration-simulator.xcresult" \
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
@@ -1658,6 +1667,7 @@ jobs:
           grep -q 'testDefaultSocketLifecycleWithLocalRefusal' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -E "Test Case .*testPlainProjectionUsesYjsFixtureAndRejectsRichText.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
+          grep -E "Test Case .*testHostRejectsMismatchedStoreAndRevokedServiceAccess.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -E "Test Case .*testCheckedDeleteAndFormatPersistThroughNativeStore.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testViewerCannotPrepareEditorWrite' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           for name in testPlansSinglePlainInsertionWithoutMutatingDocument testRejectsMarkedTextNonInsertionAndSurrogateSplit testRejectsDuplicateIDsAndRichText; do
