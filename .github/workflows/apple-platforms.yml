@@ -2155,6 +2155,8 @@ jobs:
             cargo test --locked --manifest-path Apple/RustCollaboration/Cargo.toml --test live_service -- --ignored --nocapture \
             2>&1 | tee logs/collaboration-local-worker.log
           grep -q 'live_native_replica_offline_merge_reconnect_and_refusal ... ok' logs/collaboration-local-worker.log
+          grep -q 'live_owned_outbox_survives_account_change_and_reconnect ... ok' logs/collaboration-local-worker.log
+          grep -Eq 'test result: ok\. 2 passed; 0 failed' logs/collaboration-local-worker.log
           cargo test --locked --manifest-path Apple/RustCollaboration/Cargo.toml --test interop -- --nocapture \
             2>&1 | tee logs/collaboration-interop-rust.log
           grep -q 'concurrent_ffi_document_lifetimes_preserve_buffers ... ok' logs/collaboration-interop-rust.log
