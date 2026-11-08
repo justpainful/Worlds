@@ -188,7 +188,17 @@ private struct WorldsLibraryView: View {
                             selectedID = target
                         }
                     } else {
-                        PageContentView(page: page, openInlineImage: inlineImageAction(for: page))
+                        PageContentView(
+                            page: page,
+                            openInlineImage: inlineImageAction(for: page),
+                            subpages: pages.filter { $0.parentID == page.id && $0.id != page.id && !$0.archived && !returnStack.contains($0.id) },
+                            openSubpage: { target in
+                                guard !returnStack.contains(target),
+                                      pages.contains(where: { $0.id == target && $0.parentID == page.id && !$0.archived && $0.id != page.id }) else { return }
+                                returnStack.append(page.id)
+                                selectedID = target
+                            }
+                        )
                     }
                 } else if loaded {
                     ContentUnavailableView("Select a page", systemImage: "doc.text")

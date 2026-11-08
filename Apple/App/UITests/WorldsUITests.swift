@@ -1,6 +1,77 @@
 import XCTest
 
 final class WorldsUITests: XCTestCase {
+    @MainActor func testSubpageCycleDoesNotRepeatAnAncestor() {
+        let app = XCUIApplication()
+        app.launchArguments.append("--ui-testing-reader-fixture")
+        app.launch()
+        let list = app.descendants(matching: .any)["personal-page-list"].firstMatch
+        guard list.waitForExistence(timeout: 30) else {
+            captureLaunchFailure(app, name: "cycle-page-list-missing")
+            XCTFail("Page list missing"); return
+        }
+        let start = app.descendants(matching: .any)["page.reader-cycle-a"].firstMatch
+        for _ in 0..<8 {
+            if start.exists && start.isHittable { break }
+            list.swipeUp()
+        }
+        guard start.exists && start.isHittable else {
+            captureLaunchFailure(app, name: "cycle-start-missing")
+            XCTFail("Cycle fixture page missing"); return
+        }
+        start.tap()
+        let child = app.buttons["subpage.reader-cycle-b"]
+        guard child.waitForExistence(timeout: 20) else {
+            captureLaunchFailure(app, name: "cycle-child-missing")
+            XCTFail("Cycle fixture child missing"); return
+        }
+        child.tap()
+        XCTAssertTrue(app.staticTexts["Cycle page B"].waitForExistence(timeout: 20))
+        XCTAssertFalse(app.buttons["subpage.reader-cycle-a"].exists)
+        let back = app.buttons["return-to-linked-page"]
+        XCTAssertTrue(back.waitForExistence(timeout: 10))
+        back.tap()
+        XCTAssertTrue(child.waitForExistence(timeout: 20))
+        capture("subpage-cycle-stopped", app: app)
+    }
+    @MainActor func testPersonalSubpagesNavigateAndReturn() {
+        let app = XCUIApplication()
+        app.launchArguments += ["--ui-testing-reader-fixture", "--ui-testing-rtl", "--ui-testing-large-text"]
+        app.launch()
+        let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
+        guard page.waitForExistence(timeout: 30) else {
+            captureLaunchFailure(app, name: "subpage-fixture-missing")
+            XCTFail("Parent page missing"); return
+        }
+        page.tap()
+        let child = app.buttons["subpage.reader-child"]
+        guard child.waitForExistence(timeout: 20) else {
+            captureLaunchFailure(app, name: "subpage-link-missing")
+            XCTFail("Personal subpage missing"); return
+        }
+        XCTAssertFalse(app.buttons["subpage.reader-archived-child"].exists)
+        XCTAssertFalse(app.buttons["subpage.reader-shared-child"].exists)
+        child.tap()
+        XCTAssertTrue(app.staticTexts["Child content"].waitForExistence(timeout: 20))
+        let grandchild = app.buttons["subpage.reader-grandchild"]
+        guard grandchild.waitForExistence(timeout: 20) else {
+            captureLaunchFailure(app, name: "subpage-grandchild-missing")
+            XCTFail("Nested subpage missing"); return
+        }
+        grandchild.tap()
+        XCTAssertTrue(app.staticTexts["Grandchild content"].waitForExistence(timeout: 20))
+        let back = app.buttons["return-to-linked-page"]
+        guard back.waitForExistence(timeout: 10) else {
+            captureLaunchFailure(app, name: "subpage-return-missing")
+            XCTFail("Return action missing"); return
+        }
+        back.tap()
+        XCTAssertTrue(app.staticTexts["Child content"].waitForExistence(timeout: 20))
+        back.tap()
+        XCTAssertTrue(app.staticTexts["Hello Worlds"].waitForExistence(timeout: 20))
+        XCTAssertTrue(child.exists)
+        capture("personal-subpages-rtl-returned", app: app)
+    }
     @MainActor
     func testOpeningScreen() throws {
         let app = XCUIApplication()

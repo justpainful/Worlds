@@ -74,6 +74,8 @@ struct PageContentView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let page: StoredPage
     var openInlineImage: ((String) -> Void)? = nil
+    var subpages: [StoredPage] = []
+    var openSubpage: ((String) -> Void)? = nil
 
     var body: some View {
         ScrollView {
@@ -94,6 +96,24 @@ struct PageContentView: View {
                     } else {
                         UnsupportedNodeView(name: block.type)
                     }
+                }
+                if !subpages.isEmpty, let openSubpage {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Subpages")
+                            .font(.headline)
+                            .accessibilityAddTraits(.isHeader)
+                        ForEach(subpages) { child in
+                            Button {
+                                openSubpage(child.id)
+                            } label: {
+                                Label(child.title.isEmpty ? "Untitled" : child.title, systemImage: "doc.text")
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .accessibilityIdentifier("subpage.\(child.id)")
+                            .accessibilityHint("Opens subpage")
+                        }
+                    }
+                    .accessibilityIdentifier("page-subpages")
                 }
                 Text("Read only")
                     .font(.body)
