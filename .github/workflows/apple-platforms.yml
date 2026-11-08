@@ -1255,6 +1255,7 @@ jobs:
           grep -q 'ffi_import_retries_atomically_without_duplicate_attachment ... ok' logs/rust-store-tests.log
           grep -q 'database_symlink_and_hardlink_are_rejected_before_mutation ... ok' logs/rust-store-tests.log
           grep -q 'swapped_destination_is_not_committed_or_deleted ... ok' logs/rust-store-tests.log
+          grep -q 'replacement_after_commit_reports_committed_without_touching_replacement ... ok' logs/rust-store-tests.log
           grep -q 'directory_identity_check_rejects_replacement_and_symlink ... ok' logs/rust-store-tests.log
           grep -q 'replaced_copy_directory_stops_before_output_and_preserves_replacement ... ok' logs/rust-store-tests.log
           grep -q 'private_copy_recheck_rejects_permissions_broadened_after_lock ... ok' logs/rust-store-tests.log
