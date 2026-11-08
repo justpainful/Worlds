@@ -27,6 +27,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -904,8 +906,51 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
                         onClick = { controller.setHeadingLevel(level) }, label = { Text(stringResource(R.string.heading_level, level)) },
                         modifier = Modifier.testTag("shared_heading_level_$level")) }
                 }
-                OutlinedTextField(value = draft.text, onValueChange = controller::updateDraft, enabled = !state.saving, label = { Text(stringResource(R.string.text_content)) }, modifier = Modifier.fillMaxWidth().testTag("shared_draft"), minLines = 3,
+                val offsets = remember(draft.text) { sharedTextPageOffsets(draft.text) }
+                var pageIndex by rememberSaveable(draft.block.id) { mutableIntStateOf(0) }
+                val currentPage = pageIndex.coerceIn(0, offsets.size - 2)
+                val from = offsets[currentPage]; val to = offsets[currentPage + 1]
+                val part = draft.text.substring(from, to)
+                var field by remember(draft.block.id, currentPage) { mutableStateOf(TextFieldValue(part, TextRange(part.length))) }
+                val shown = if (field.text == part) field else TextFieldValue(part, TextRange(field.selection.start.coerceIn(0, part.length), field.selection.end.coerceIn(0, part.length)))
+                var showPartPicker by rememberSaveable(draft.block.id) { mutableStateOf(false) }
+                var partNumber by rememberSaveable(draft.block.id) { mutableStateOf("") }
+                if (offsets.size > 2) {
+                    TextButton(onClick = { partNumber = (currentPage + 1).toString(); showPartPicker = true }, enabled = !state.saving, modifier = Modifier.testTag("shared_text_jump")) {
+                        WorldsActionLabel(R.drawable.ic_search, stringResource(R.string.shared_text_part, currentPage + 1, offsets.size - 1))
+                    }
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        TextButton(enabled = !state.saving && currentPage > 0, onClick = { pageIndex = currentPage - 1 }, modifier = Modifier.testTag("shared_text_previous")) {
+                            WorldsActionLabel(R.drawable.ic_chevron_left, stringResource(R.string.find_previous))
+                        }
+                        TextButton(enabled = !state.saving && currentPage < offsets.size - 2, onClick = { pageIndex = currentPage + 1 }, modifier = Modifier.testTag("shared_text_next")) {
+                            WorldsActionLabel(R.drawable.ic_chevron_right, stringResource(R.string.find_next))
+                        }
+                    }
+                }
+                OutlinedTextField(value = shown, onValueChange = { next ->
+                    field = next
+                    if (next.text != part) {
+                        val full = draft.text.replaceRange(from, to, next.text)
+                        val updatedOffsets = sharedTextPageOffsets(full)
+                        val caret = (from + next.selection.end).coerceIn(0, full.length)
+                        pageIndex = sharedTextPageForCaret(updatedOffsets, caret, currentPage)
+                        controller.updateDraft(full)
+                    }
+                }, enabled = !state.saving, label = { Text(stringResource(R.string.text_content)) }, modifier = Modifier.fillMaxWidth().testTag("shared_draft"), minLines = 3, maxLines = 10,
                     textStyle = LocalTextStyle.current.copy(textDirection = editorDirection(editorSettings.direction)), keyboardOptions = editorKeyboardOptions(editorSettings.suggestions))
+                if (showPartPicker) AlertDialog(onDismissRequest = { showPartPicker = false },
+                    title = { Text(stringResource(R.string.shared_text_go)) },
+                    text = { OutlinedTextField(value = partNumber, onValueChange = { value ->
+                        partNumber = value.mapNotNull { Character.digit(it, 10).takeIf { digit -> digit >= 0 }?.let { digit -> ('0'.code + digit).toChar() } }.take(8).joinToString("")
+                    },
+                        label = { Text(stringResource(R.string.shared_text_part_number)) }, singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), textStyle = LocalTextStyle.current.copy(textDirection = TextDirection.Ltr),
+                        modifier = Modifier.fillMaxWidth().testTag("shared_text_part_number")) },
+                    confirmButton = { TextButton(enabled = partNumber.toIntOrNull()?.let { it in 1 until offsets.size } == true, onClick = {
+                        pageIndex = partNumber.toInt() - 1; showPartPicker = false
+                    }, modifier = Modifier.testTag("shared_text_go_confirm")) { Text(stringResource(R.string.shared_text_go)) } },
+                    dismissButton = { TextButton(onClick = { showPartPicker = false }) { Text(stringResource(R.string.cancel)) } })
                 if (state.error) Text(stringResource(R.string.shared_edit_error), color = MaterialTheme.colorScheme.error)
                 if (state.draftBackupFailed) Text(stringResource(R.string.shared_draft_backup_error), color = MaterialTheme.colorScheme.error) } },
             confirmButton = { TextButton(enabled = !state.saving && !state.disconnected && state.snapshot != null, onClick = controller::save) { Text(stringResource(R.string.save)) } },

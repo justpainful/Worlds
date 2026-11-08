@@ -7,6 +7,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.performTextInputSelection
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.semantics.SemanticsActions
@@ -32,7 +34,11 @@ import java.util.UUID
 class SharedRecoveryUiTest {
     @get:Rule val compose = createComposeRule()
 
-    @Test fun editorAddsParagraphAndQueuesItForPeer() {
+    @Test fun editorAddsParagraphAndQueuesItForPeer() = onlineEditorScenario(stress = false)
+
+    @Test fun longSharedTextSyncsToPeer() = onlineEditorScenario(stress = true)
+
+    private fun onlineEditorScenario(stress: Boolean) {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext
         val name = "shared-append-${UUID.randomUUID()}.db"
         val authority = "https://identity.example"
@@ -93,6 +99,25 @@ class SharedRecoveryUiTest {
             assertEquals("heading", blocks.getJSONObject(1).getString("type"))
             assertEquals(2, blocks.getJSONObject(1).getJSONObject("attrs").getInt("level"))
             assertEquals("Shared heading", blocks.getJSONObject(1).getJSONArray("content").getJSONObject(0).getString("text"))
+            if (stress) {
+                controller.addTextBlock("paragraph")
+                val original = "z".repeat(100_001) + "😀"
+                controller.updateDraft(original)
+                compose.waitUntil(20_000) { compose.onAllNodes(androidx.compose.ui.test.hasTestTag("shared_text_next")).fetchSemanticsNodes().isNotEmpty() }
+                controller.save()
+                compose.waitUntil(30_000) { controller.state.value.draft == null && controller.state.value.blocks.size == 3 && store.pending(key).isEmpty() }
+                val peerCreated = org.json.JSONObject(YrsNative.editorJson(remote.get())).getJSONArray("content").getJSONObject(2)
+                assertEquals(original, worlds.content.InlineEditing.text(peerCreated.toString()))
+                controller.edit(controller.state.value.blocks.last())
+                compose.onNodeWithTag("shared_draft").performTextInputSelection(androidx.compose.ui.text.TextRange(0))
+                compose.onNodeWithTag("shared_draft").performTextInput("Peer 😀 ")
+                val updated = "Peer 😀 " + original
+                controller.save()
+                compose.waitUntil(30_000) { controller.state.value.draft == null && controller.state.value.blocks.last().text == updated && store.pending(key).isEmpty() }
+                val peerEdited = org.json.JSONObject(YrsNative.editorJson(remote.get())).getJSONArray("content").getJSONObject(2)
+                assertEquals(updated, worlds.content.InlineEditing.text(peerEdited.toString()))
+                return
+            }
             val output = app.cacheDir.resolve("shared-online-${UUID.randomUUID()}.md")
             try {
                 compose.onNodeWithTag("shared_markdown").performScrollTo().performClick()
@@ -164,7 +189,11 @@ class SharedRecoveryUiTest {
         }
     }
 
-    @Test fun offlineEditorAddsParagraphAndKeepsRejectedText() {
+    @Test fun offlineEditorAddsParagraphAndKeepsRejectedText() = offlineEditorScenario(stress = false)
+
+    @Test fun longSharedTextCanBeEditedAndSavedOffline() = offlineEditorScenario(stress = true)
+
+    private fun offlineEditorScenario(stress: Boolean) {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext
         val name = "shared-append-offline-${UUID.randomUUID()}.db"
         val authority = "https://identity.example"
@@ -179,6 +208,7 @@ class SharedRecoveryUiTest {
             offlinePrincipal = { SyncPrincipal(authority, "user", "device") },
             cachedPages = { server, account, device -> store.cachedPages(server, account, device) },
             loadCached = { doc -> store.load(doc).let { replica -> replica.updates.fold(replica.snapshot ?: byteArrayOf()) { state, update -> YrsNative.merge(state, update.bytes) } } },
+            offlineEdit = { doc, base, bid, start, end, text, draft -> OfflineEditor.replaceBlockText(store, doc, base, bid, start, end, text, draft) },
             offlineAppend = { doc, bid, text -> OfflineEditor.appendParagraph(store, doc, bid, text) },
             offlineInsert = { doc, base, bid, text, kind, level, after -> OfflineEditor.insertTextBlock(store, doc, base, bid, text, kind, level, after) },
             recoveredText = { store.recovered(it) },
@@ -202,6 +232,59 @@ class SharedRecoveryUiTest {
             compose.onNodeWithText(app.getString(R.string.save)).performClick()
             compose.waitUntil(20_000) { controller.state.value.draft == null && controller.state.value.blocks.size == 3 && store.pending(key).size == 2 }
             assertEquals(listOf("Existing", "Offline heading", "Offline draft"), controller.state.value.blocks.map { it.text })
+            if (stress) {
+                controller.addTextBlock("paragraph")
+                controller.updateDraft("x".repeat(100_001))
+                compose.waitUntil(20_000) { compose.onAllNodes(androidx.compose.ui.test.hasTestTag("shared_text_next")).fetchSemanticsNodes().isNotEmpty() }
+                compose.onNodeWithTag("shared_text_next").performClick()
+                compose.onNodeWithTag("shared_draft").performTextReplacement("changed😀")
+                val expected = "x".repeat(4_000) + "changed😀" + "x".repeat(92_001)
+                assertEquals(expected, controller.state.value.draft!!.text)
+                controller.cancelDraft()
+                controller.addTextBlock("paragraph")
+                compose.onNodeWithTag("shared_draft").performTextReplacement("x".repeat(100_001))
+                compose.waitUntil(20_000) { controller.state.value.draft?.text?.length == 100_001 }
+                compose.onNodeWithText(app.getString(R.string.shared_text_part, 26, 26)).assertIsDisplayed()
+                compose.onNodeWithTag("shared_text_jump").performClick()
+                compose.onNodeWithTag("shared_text_part_number").performTextReplacement("٢")
+                compose.onNodeWithTag("shared_text_go_confirm").performClick()
+                compose.onNodeWithText(app.getString(R.string.shared_text_part, 2, 26)).assertIsDisplayed()
+                compose.onNodeWithTag("shared_draft").performTextReplacement("middle😀")
+                val afterMiddle = "x".repeat(4_000) + "middle😀" + "x".repeat(92_001)
+                assertEquals(afterMiddle, controller.state.value.draft!!.text)
+                val offsets = sharedTextPageOffsets(afterMiddle)
+                compose.onNodeWithTag("shared_text_jump").performClick()
+                compose.onNodeWithTag("shared_text_part_number").performTextReplacement((offsets.size - 1).toString())
+                compose.onNodeWithTag("shared_text_go_confirm").performClick()
+                compose.onNodeWithTag("shared_draft").performTextReplacement("changed😀")
+                val pasted = afterMiddle.substring(0, offsets[offsets.size - 2]) + "changed😀"
+                assertEquals(pasted, controller.state.value.draft!!.text)
+                if (InstrumentationRegistry.getArguments().getString("captureUi") == "1") {
+                    compose.waitForIdle(); Thread.sleep(300)
+                    android.os.ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /sdcard/Download/worlds-shared-long-text.png")).use { it.readBytes() }
+                }
+                controller.save()
+                compose.waitUntil(30_000) { controller.state.value.draft == null && controller.state.value.blocks.size == 4 }
+                assertEquals(pasted, controller.state.value.blocks.last().text)
+                compose.waitForIdle()
+                compose.onNodeWithTag("shared_markdown").performScrollTo().assertIsDisplayed()
+                controller.edit(controller.state.value.blocks.last())
+                compose.onNodeWithTag("shared_draft").performTextInputSelection(androidx.compose.ui.text.TextRange(0))
+                compose.onNodeWithTag("shared_draft").performTextInput("BEGIN😀")
+                val edited = "BEGIN😀" + pasted
+                assertEquals(edited, controller.state.value.draft!!.text)
+                controller.save()
+                compose.waitUntil(30_000) { !controller.state.value.saving }
+                check(controller.state.value.draft == null && controller.state.value.blocks.last().text == edited) {
+                    "Long edit was not saved: error=${controller.state.value.error}, draft=${controller.state.value.draft != null}, actualLength=${controller.state.value.blocks.last().text?.length}, expectedLength=${edited.length}"
+                }
+                compose.waitForIdle()
+                val replica = store.load(key)
+                val snapshot = replica.updates.fold(replica.snapshot ?: byteArrayOf()) { saved, update -> YrsNative.merge(saved, update.bytes) }
+                val persisted = org.json.JSONObject(YrsNative.editorJson(snapshot)).getJSONArray("content").getJSONObject(3)
+                assertEquals(edited, worlds.content.InlineEditing.text(persisted.toString()))
+                return
+            }
             val output = app.cacheDir.resolve("shared-offline-${UUID.randomUUID()}.md")
             try {
                 assertTrue(controller.beginMarkdownExport())

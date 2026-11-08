@@ -210,6 +210,9 @@
     <string name="shared_unsupported">This block cannot be displayed yet. Its content is preserved.</string>
     <string name="shared_error">Could not open or read this shared page. Check the address and access.</string>
     <string name="shared_edit_error">Could not save this edit. Your draft is still available.</string>
+    <string name="shared_text_part">Part %1$d of %2$d</string>
+    <string name="shared_text_go">Go to part</string>
+    <string name="shared_text_part_number">Part number</string>
     <string name="shared_disconnected">Disconnected. Return to the workspace to reconnect.</string>
     <string name="shared_reconnecting">Connection lost. Reconnecting…</string>
     <string name="shared_offline">Offline. Edits are saved here until access is confirmed.</string>

@@ -1,5 +1,13 @@
 # Worlds Android design decisions
 
+## Long shared text
+The shared text editor shows a bounded portion of a long paragraph at a time.
+Previous and next actions and a part count use the existing labeled chevrons,
+warm action color and Android typography. The full text stays in the working
+draft and is saved together. Short text keeps the existing single field. A long
+paragraph can jump directly to a numbered part using a compact dialog. The part
+controls wrap on narrow screens and do not add decorative motion.
+
 ## Shared page Markdown export
 The shared page offers the existing download icon and a labeled Markdown action
 beside its history and conversation actions. A native dialog explains that the

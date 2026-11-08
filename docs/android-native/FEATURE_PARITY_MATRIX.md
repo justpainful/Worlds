@@ -33,9 +33,15 @@ can be omitted. Android 11 and 15 emulator tests verify output, picker cancellat
 offline edits, account changes and write failure. Android 15 also saved and read
 the actual file through the system picker and opened the Android sharesheet. Other
 document providers and delivery to an external sharing target remain unverified.
-An Android 11 emulator stopped responding during a synthetic test that placed
-over 100,000 characters in an open shared editor. Large shared text editing and
-preview performance require further investigation and device testing.
+An Android 11 emulator previously stalled while laying out over 100,000 characters
+in one shared text field. The editor now displays up to 4,000 UTF-16 units per
+part, with previous, next and numbered navigation while retaining the complete
+draft for saving. Synthetic Android 11 and 15 emulator tests pasted, navigated,
+edited, saved and reopened a 100,000-character paragraph without the earlier
+stall. They verified the full saved Yjs text, including emoji, and a mock peer
+received both creation and an edit. Selecting text across part boundaries is not
+supported. Production sync for this long-text case, larger documents, hardware
+performance and other input methods remain unverified.
 
 Each area requires further inspection of behavior, persistence, contracts,
 tests and source status before it can be expanded into feature-level rows.
