@@ -1294,6 +1294,7 @@ jobs:
           grep -q 'missing_file_rolls_back_entire_unpublished_bundle ... ok' logs/rust-store-tests.log
           grep -q 'imports_and_recovers_uncommitted_file_without_touching_source ... ok' logs/rust-store-tests.log
           grep -q 'ffi_import_retries_atomically_without_duplicate_attachment ... ok' logs/rust-store-tests.log
+          grep -q 'immediate_retry_snapshot_blocks_competing_permission_write ... ok' logs/rust-store-tests.log
           grep -q 'database_symlink_and_hardlink_are_rejected_before_mutation ... ok' logs/rust-store-tests.log
           grep -q 'swapped_destination_is_not_committed_or_deleted ... ok' logs/rust-store-tests.log
           grep -q 'replacement_after_commit_reports_committed_without_touching_replacement ... ok' logs/rust-store-tests.log
