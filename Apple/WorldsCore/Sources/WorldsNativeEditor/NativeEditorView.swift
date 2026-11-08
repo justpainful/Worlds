@@ -31,6 +31,13 @@ public struct NativeEditorView: View {
                     Button("Bold") { format("bold") }.keyboardShortcut("b", modifiers: .command)
                     Button("Italic") { format("italic") }.keyboardShortcut("i", modifiers: .command)
                     Button("Underline") { format("underline") }.keyboardShortcut("u", modifiers: .command)
+                    Button("Strikethrough") { format("strike") }.accessibilityIdentifier("editor-strikethrough")
+                    Menu("Text style") {
+                        Button("Paragraph") { heading(nil) }
+                        Button("Heading 1") { heading(1) }
+                        Button("Heading 2") { heading(2) }
+                        Button("Heading 3") { heading(3) }
+                    }.accessibilityIdentifier("editor-text-style")
                     Button("Link") {
                         guard model.selection.length > 0 else { model.report(NativeEditorError.unsupportedFormatting); return }
                         linkSelection = model.selection; linkSource = model.document.source; linkText = ""; showLink = true
@@ -111,6 +118,7 @@ public struct NativeEditorView: View {
         catch { model.report(error) }
     }
     private func list(_ kind: String) { do { try model.makeList(kind) } catch { model.report(error) } }
+    private func heading(_ level: Int?) { do { try model.setHeading(level) } catch { model.report(error) } }
 }
 
 #if canImport(UIKit)

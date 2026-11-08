@@ -70,6 +70,34 @@ public struct RichTextDocument: Sendable, Equatable {
         return RichTextProjection(text: text, spans: spans)
     }
 
+    /// Changes only a paragraph/heading node and its known level attribute.
+    /// Other attributes, children and marks stay in place. Persistence must
+    /// explicitly authorize this transformation before exposing it to users.
+    public mutating func setHeading(at path: RichTextPath, level: Int?) throws {
+        guard level.map({ (1...3).contains($0) }) ?? true else { throw RichTextError.invalidDocument }
+        try updateNode(&source, path: ArraySlice(path.indices)) { node in
+            guard case .string(let type)? = node["type"], type == "paragraph" || type == "heading" else { throw RichTextError.invalidDocument }
+            var attrs: [String: JSONValue] = [:]
+            if let raw = node["attrs"], raw != .null {
+                guard case .object(let fields) = raw else { throw RichTextError.invalidDocument }
+                attrs = fields
+            }
+            if type == "paragraph", attrs["level"] != nil { throw RichTextError.invalidDocument }
+            if type == "heading" {
+                guard case .integer(let oldLevel)? = attrs["level"], (1...3).contains(oldLevel) else { throw RichTextError.invalidDocument }
+            }
+            if let level {
+                node["type"] = .string("heading")
+                attrs["level"] = .integer(Int64(level))
+            } else {
+                node["type"] = .string("paragraph")
+                attrs.removeValue(forKey: "level")
+            }
+            if !attrs.isEmpty { node["attrs"] = .object(attrs) }
+            else if node["attrs"] != nil { node["attrs"] = .object([:]) }
+        }
+    }
+
     /// Converts one top-level plain paragraph to a one-item Worlds list.
     /// Refuses opaque paragraph or text data rather than relocating it.
     public mutating func makeList(blockIndex: Int, kind: String) throws {
@@ -555,7 +583,7 @@ extension RichTextDocument {
             if let descriptor = base.fontDescriptor.withSymbolicTraits(traits) { attributes[.font] = UIFont(descriptor: descriptor, size: base.pointSize) }
             #elseif canImport(AppKit)
             var traits: NSFontTraitMask = []
-            if bold { traits.insert(.boldFontMask) }
+            if bold || span.blockType == "heading" { traits.insert(.boldFontMask) }
             if italic { traits.insert(.italicFontMask) }
             let base = NSFont.systemFont(ofSize: NSFont.systemFontSize)
             attributes[.font] = NSFontManager.shared.convert(base, toHaveTrait: traits)

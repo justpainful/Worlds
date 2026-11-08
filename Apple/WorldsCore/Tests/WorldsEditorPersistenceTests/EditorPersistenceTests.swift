@@ -9,6 +9,48 @@ import WorldsLocalImport
 @testable import WorldsEditorPersistence
 
 final class EditorPersistenceTests: XCTestCase {
+    @MainActor func testUnsupportedLegacyHeadingDoesNotBlockOtherParagraphEdit() async throws {
+        let url = try fixture()
+        try exec(#"UPDATE blocks SET content='{"type":"heading","attrs":{"bid":"fixture-block","level":4},"content":[{"type":"text","text":"Legacy"}]}' WHERE id='fixture-block'"#, url: url)
+        try exec(#"INSERT INTO blocks(id,page_id,type,sort_key,content,text,direction,created_at,updated_at) SELECT 'other',page_id,'paragraph',10,'{"type":"paragraph","attrs":{"bid":"other"},"content":[{"type":"text","text":"Other"}]}','Other',direction,created_at,updated_at FROM blocks WHERE id='fixture-block'"#, url: url)
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let model = NativeEditorModel(document: bridge.initialDocument, baseRevision: bridge.initialRevision)
+        let text = model.projection.text as NSString
+        let range = text.range(of: "Other")
+        XCTAssertNotEqual(range.location, NSNotFound)
+        _ = try model.replace(range: range, with: "Changed")
+        try await model.save(using: bridge)
+        let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertTrue(reopened.initialDocument.project().text.contains("Legacy"))
+        XCTAssertTrue(reopened.initialDocument.project().text.contains("Changed"))
+    }
+    func testRawHeadingValidationPreservesUnsupportedLegacyHeading() async throws {
+        let url = try fixture()
+        try exec(#"UPDATE blocks SET content='{"type":"heading","attrs":{"bid":"fixture-block","level":4},"content":[{"type":"text","text":"Legacy"}]}' WHERE id='fixture-block'"#, url: url)
+        let legacy = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let original = legacy.initialDocument.source
+        let changed = #"{"type":"doc","content":[{"type":"paragraph","attrs":{"bid":"fixture-block","level":4},"content":[{"type":"text","text":"Legacy"}]}]}"#
+        do { _ = try await legacy.save(documentJSON: Data(changed.utf8), basedOn: legacy.initialRevision); XCTFail("Expected legacy heading protection") }
+        catch EditorBridgeError.invalidBlock { }
+        _ = try await legacy.save(documentJSON: try legacy.initialDocument.json(), basedOn: legacy.initialRevision)
+        let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(reopened.initialDocument.source, original)
+
+        try exec(#"UPDATE blocks SET content='{"type":"heading","attrs":{"bid":"fixture-block","level":2},"content":[{"type":"text","text":"Valid"}]}' WHERE id='fixture-block'"#, url: url)
+        let valid = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let missing = #"{"type":"doc","content":[{"type":"heading","attrs":{"bid":"fixture-block"},"content":[{"type":"text","text":"Valid"}]}]}"#
+        do { _ = try await valid.save(documentJSON: Data(missing.utf8), basedOn: valid.initialRevision); XCTFail("Expected missing-level rejection") }
+        catch EditorBridgeError.invalidBlock { }
+        let unchanged = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(unchanged.initialDocument.source, valid.initialDocument.source)
+
+        try exec(#"UPDATE blocks SET content='{"type":"paragraph","attrs":{"bid":"fixture-block"},"content":[{"type":"text","text":"Valid"}]}' WHERE id='fixture-block'"#, url: url)
+        let paragraph = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        do { _ = try await paragraph.save(documentJSON: Data(missing.utf8), basedOn: paragraph.initialRevision); XCTFail("Expected missing-level rejection") }
+        catch EditorBridgeError.invalidBlock { }
+        let final = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(final.initialDocument.source, paragraph.initialDocument.source)
+    }
     @MainActor func testLinkAcrossRunsPersistsAndReopens() async throws {
         let url = try fixture()
         try exec(#"UPDATE blocks SET content='{"type":"paragraph","attrs":{"bid":"fixture-block","dir":"rtl"},"content":[{"type":"text","text":"Hello ","marks":[{"type":"bold"}]},{"type":"text","text":"Worlds"}]}' WHERE id='fixture-block'"#, url: url)
@@ -162,6 +204,33 @@ final class EditorPersistenceTests: XCTestCase {
         XCTAssertEqual(node["futureNodeFlag"], .object(["keep": .bool(true)]))
         XCTAssertEqual(text["text"], .string("Hello Swift"))
         XCTAssertEqual(text["marks"], .array([.object(["type": .string("futureMark"), "attrs": .object(["flag": .integer(7)])])]))
+    }
+    @MainActor
+    func testHeadingSaveReopenPreservesOpaqueAttributesAndRejectsConflict() async throws {
+        let url = try fixture()
+        try exec(#"UPDATE blocks SET content='{"type":"paragraph","attrs":{"bid":"fixture-block","dir":"rtl","future":{"x":1}},"futureNodeFlag":{"keep":true},"content":[{"type":"text","text":"مرحبا"}]}' WHERE id='fixture-block'"#, url: url)
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let stale = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let tampered = #"{"type":"doc","content":[{"type":"heading","attrs":{"bid":"fixture-block","dir":"rtl","level":2,"future":{"x":2}},"futureNodeFlag":{"keep":true},"content":[{"type":"text","text":"مرحبا"}]}]}"#
+        do { _ = try await bridge.save(documentJSON: Data(tampered.utf8), basedOn: bridge.initialRevision); XCTFail("Expected opaque attribute rejection") }
+        catch EditorBridgeError.invalidBlock { }
+        let model = NativeEditorModel(document: bridge.initialDocument, baseRevision: bridge.initialRevision)
+        model.selection = NSRange(location: 0, length: 0)
+        try model.setHeading(2)
+        try await model.save(using: bridge)
+        let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        guard case .object(let root) = reopened.initialDocument.source, case .array(let blocks)? = root["content"], !blocks.isEmpty, case .object(let node) = blocks[0],
+              case .object(let attrs)? = node["attrs"] else { return XCTFail("Missing heading") }
+        XCTAssertEqual(node["type"], .string("heading"))
+        XCTAssertEqual(attrs["level"], .integer(2))
+        XCTAssertEqual(attrs["future"], .object(["x": .integer(1)]))
+        XCTAssertEqual(node["futureNodeFlag"], .object(["keep": .bool(true)]))
+        let staleModel = NativeEditorModel(document: stale.initialDocument, baseRevision: stale.initialRevision)
+        staleModel.selection = NSRange(location: 0, length: 0)
+        try staleModel.setHeading(1)
+        do { try await staleModel.save(using: stale); XCTFail("Expected a conflict") } catch { }
+        let after = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(after.initialDocument.source, reopened.initialDocument.source)
     }
     @MainActor
     func testPartialFormattingSurvivesRealStoreReopen() async throws {

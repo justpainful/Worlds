@@ -19,6 +19,7 @@ public actor PersonalEditorPersistence: EditorPersistence {
     private let store: NativePersonalStore
     private var baseline: [NativeBlockInput]
     private var opaqueRoots: [JSONValue]
+    private var unsupportedHeadings: [JSONValue]
     private var expectedRevision: Int64
     private var saving = false
     private var invalidated = false
@@ -56,6 +57,28 @@ public actor PersonalEditorPersistence: EditorPersistence {
         self.store = store
         baseline = original
         opaqueRoots = Self.opaqueValues(in: editable)
+        unsupportedHeadings = Self.invalidHeadingValues(in: editable)
+    }
+
+    // Legacy malformed headings can remain in a document unchanged, but no
+    // save may introduce one or mutate an existing one through raw JSON.
+    private static func invalidHeadingValues(in roots: [JSONValue]) -> [JSONValue] {
+        var result: [JSONValue] = []
+        func visit(_ value: JSONValue, path: String) {
+            guard case .object(let node) = value else { return }
+            if node["type"] == .string("heading") {
+                var valid = false
+                if case .object(let attrs)? = node["attrs"], case .integer(let level)? = attrs["level"] {
+                    valid = (1...3).contains(level)
+                }
+                if !valid { result.append(.object(["path": .string(path), "node": value])) }
+            }
+            if case .array(let children)? = node["content"] {
+                for (index, child) in children.enumerated() { visit(child, path: path + "/\(index)") }
+            }
+        }
+        for (index, root) in roots.enumerated() { visit(root, path: "/\(index)") }
+        return result
     }
 
     private static func opaqueValues(in roots: [JSONValue]) -> [JSONValue] {
@@ -67,18 +90,22 @@ public actor PersonalEditorPersistence: EditorPersistence {
             guard case .object(let node) = value, case .string(let type)? = node["type"], editableNodeTypes.contains(type) else {
                 append(value, owner: owner, path: path, kind: "node"); return
             }
+            // Paragraph and heading are two forms of the same text block.
+            // Other properties remain protected across that conversion.
+            let protectedType = (type == "paragraph" || type == "heading") ? "textBlock" : type
             var extras = node
             for key in ["type", "attrs", "content", "marks"] { extras.removeValue(forKey: key) }
             if type == "text", case .string(_)? = node["text"] { extras.removeValue(forKey: "text") }
-            if !extras.isEmpty { append(.object(extras), owner: owner, path: path, kind: "extra:\(type)") }
+            if !extras.isEmpty { append(.object(extras), owner: owner, path: path, kind: "extra:\(protectedType)") }
             if let attributes = node["attrs"] {
                 if case .object(var object) = attributes {
                     if path.isEmpty { object.removeValue(forKey: "bid") }
                     // A task checkbox is an explicitly supported editable
                     // property; every other task attribute remains protected.
                     if type == "taskItem", case .bool(_)? = object["checked"] { object.removeValue(forKey: "checked") }
-                    if !object.isEmpty { append(.object(object), owner: owner, path: path, kind: "attrs:\(type)") }
-                } else { append(attributes, owner: owner, path: path, kind: "attrs:\(type)") }
+                    if type == "heading", case .integer(let level)? = object["level"], (1...3).contains(level) { object.removeValue(forKey: "level") }
+                    if !object.isEmpty { append(.object(object), owner: owner, path: path, kind: "attrs:\(protectedType)") }
+                } else { append(attributes, owner: owner, path: path, kind: "attrs:\(protectedType)") }
             }
             if let marks = node["marks"] {
                 if case .array(let entries) = marks {
@@ -102,7 +129,7 @@ public actor PersonalEditorPersistence: EditorPersistence {
             if let content = node["content"] {
                 if case .array(let children) = content {
                     for (index, child) in children.enumerated() { visit(child, owner: owner, path: path + "/\(index)") }
-                } else { append(content, owner: owner, path: path, kind: "content:\(type)") }
+                } else { append(content, owner: owner, path: path, kind: "content:\(protectedType)") }
             }
         }
         for root in roots {
@@ -130,6 +157,7 @@ public actor PersonalEditorPersistence: EditorPersistence {
               root["type"] == .string("doc"), case .array(let nodes)? = root["content"] else { throw EditorBridgeError.invalidDocument }
         // Refuse edits that change protected data or its structural position.
         guard Self.opaqueValues(in: nodes) == opaqueRoots else { throw EditorBridgeError.invalidBlock }
+        guard Self.invalidHeadingValues(in: nodes) == unsupportedHeadings else { throw EditorBridgeError.invalidBlock }
         var updated: [NativeBlockInput] = []
         var ids = Set<String>()
         for value in nodes {
@@ -150,6 +178,7 @@ public actor PersonalEditorPersistence: EditorPersistence {
             expectedRevision = revision
             baseline = updated
             opaqueRoots = Self.opaqueValues(in: nodes)
+            unsupportedHeadings = Self.invalidHeadingValues(in: nodes)
             return revision
         } catch {
             // A transport/decoding error may happen after commit. Require a fresh snapshot.

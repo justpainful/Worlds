@@ -4,6 +4,23 @@ import WorldsModels
 @testable import WorldsRichText
 
 final class RichTextDocumentTests: XCTestCase {
+    func testHeadingConversionPreservesOpaqueDataAndRejectsAmbiguousLevel() throws {
+        let json = #"{"type":"doc","content":[{"type":"paragraph","attrs":{"bid":"a","dir":"rtl","future":{"v":1}},"content":[{"type":"text","text":"عربي 👋","marks":[{"type":"future","attrs":{"x":3}}]}]},{"type":"widget","attrs":{"payload":true}}]}"#
+        let original = try RichTextDocument(json: Data(json.utf8))
+        var doc = original
+        try doc.setHeading(at: RichTextPath([0]), level: 2)
+        XCTAssertEqual(doc.project().text, original.project().text)
+        try doc.setHeading(at: RichTextPath([0]), level: nil)
+        XCTAssertEqual(doc, original)
+        XCTAssertThrowsError(try doc.setHeading(at: RichTextPath([0]), level: 4))
+        XCTAssertThrowsError(try doc.setHeading(at: RichTextPath([1]), level: 1))
+        XCTAssertEqual(doc, original)
+        let ambiguous = #"{"type":"doc","content":[{"type":"paragraph","attrs":{"level":"future"},"content":[]}]}"#
+        var blocked = try RichTextDocument(json: Data(ambiguous.utf8))
+        let before = blocked
+        XCTAssertThrowsError(try blocked.setHeading(at: RichTextPath([0]), level: 1))
+        XCTAssertEqual(blocked, before)
+    }
     private let corpus = #"""
     {"type":"doc","attrs":{"custom":"untouched"},"content":[
       {"type":"paragraph","attrs":{"dir":"rtl","future":17},"content":[{"type":"text","text":"مرحبا 👋","marks":[{"type":"bold"},{"type":"futureMark","attrs":{"x":[1,2]}}]}]},

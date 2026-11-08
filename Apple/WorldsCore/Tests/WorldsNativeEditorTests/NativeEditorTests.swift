@@ -15,6 +15,17 @@ private actor FixturePersistence: EditorPersistence {
 
 @MainActor
 final class NativeEditorTests: XCTestCase {
+    func testStrikethroughPreservesArabicTextAndUndo() throws {
+        let json = #"{"type":"doc","content":[{"type":"paragraph","attrs":{"bid":"p","dir":"rtl"},"content":[{"type":"text","text":"مرحبا"}]}]}"#
+        let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 0)
+        let before = model.document.source
+        try model.toggleMark("strike", selection: NSRange(location: 0, length: 5))
+        XCTAssertEqual(model.projection.text, "مرحبا")
+        XCTAssertTrue(model.projection.spans[0].marks.contains(.object(["type": .string("strike")])))
+        let formatted = model.document.source
+        model.undo(); XCTAssertEqual(model.document.source, before)
+        model.redo(); XCTAssertEqual(model.document.source, formatted)
+    }
     func testNestedTaskEnterBackspaceRTLAndUndo() throws {
         let json = #"{"type":"doc","content":[{"type":"taskList","attrs":{"bid":"tasks"},"content":[{"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"أصل"}]},{"type":"taskList","content":[{"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"فرعي"}]}]}]}]}]}]}"#
         let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 0)

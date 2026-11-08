@@ -291,6 +291,25 @@ public final class NativeEditorModel: ObservableObject {
     }
     public func undo() { if recoverableNativeText == nil { undoManager.undo() } }
     public func redo() { if recoverableNativeText == nil { undoManager.redo() } }
+    public func setHeading(_ level: Int?) throws {
+        guard recoverableNativeText == nil, !nativeEditPending, !saving,
+              selection.location != NSNotFound, selection.location >= 0, selection.length >= 0,
+              selection.location <= Int.max - selection.length else { throw NativeEditorError.unsupportedFormatting }
+        let hits = projection.spans.filter {
+            selection.length == 0
+                ? selection.location >= $0.range.location && selection.location <= NSMaxRange($0.range)
+                : NSIntersectionRange($0.range, selection).length > 0
+        }
+        guard let first = hits.first, !first.path.indices.isEmpty else { throw NativeEditorError.unsupportedFormatting }
+        let parent = Array(first.path.indices.dropLast())
+        guard hits.allSatisfy({ Array($0.path.indices.dropLast()) == parent }),
+              selection.length == 0 || (selection.location >= first.range.location && NSMaxRange(selection) <= NSMaxRange(hits.last!.range)) else { throw NativeEditorError.unsupportedFormatting }
+        let before = document
+        do { try document.setHeading(at: RichTextPath(parent), level: level) }
+        catch { throw NativeEditorError.unsupportedFormatting }
+        guard document != before else { return }
+        registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
+    }
     public func makeList(_ kind: String) throws {
         guard recoverableNativeText == nil, !nativeEditPending, !saving,
               selection.location != NSNotFound, selection.location >= 0, selection.length >= 0,
