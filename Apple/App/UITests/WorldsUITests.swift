@@ -104,6 +104,25 @@ final class WorldsUITests: XCTestCase {
     }
 
     @MainActor
+    func testReaderShowsRTLQuotationAndOverflowingList() {
+        let app = XCUIApplication()
+        app.launchArguments += ["--ui-testing-reader-fixture", "--ui-testing-rtl"]
+        app.launch()
+        let page = app.descendants(matching: .any)["page.reader-fixture"].firstMatch
+        XCTAssertTrue(page.waitForExistence(timeout: 40)); page.tap()
+        let quote = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "اقتباس عربي محفوظ ١٢٣")).firstMatch
+        let overflow = app.staticTexts["Overflow item"].firstMatch
+        for _ in 0..<4 { app.swipeUp() }
+        XCTAssertTrue(quote.waitForExistence(timeout: 10))
+        XCTAssertTrue(quote.label.contains("Mixed quote"))
+        XCTAssertTrue(quote.label.contains("Invalid color preserved"))
+        XCTAssertTrue(quote.label.contains("Unsupported formatting: highlight color"))
+        XCTAssertTrue(overflow.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["9223372036854775807 + 1."].exists)
+        capture("reader-rtl-quotation-list", app: app)
+    }
+
+    @MainActor
     func testReaderToggleLeftToRight() throws {
         try checkReaderToggle(rightToLeft: false)
     }

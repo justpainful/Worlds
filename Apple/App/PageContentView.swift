@@ -3,6 +3,10 @@ import WorldsPersistence
 
 /// Read-only rendering does not rewrite or normalize the stored JSON.
 private struct PageNode: Decodable {
+    struct ColorValue: Decodable {
+        let value: String?
+        init(from decoder: Decoder) throws { value = try? decoder.singleValueContainer().decode(String.self) }
+    }
     struct Attributes: Decodable {
         let level: Int?
         let start: Int?
@@ -18,6 +22,7 @@ private struct PageNode: Decodable {
         let dir: String?
         let textAlign: String?
         let pstyle: String?
+        let color: ColorValue?
     }
     struct Mark: Decodable {
         let type: String
@@ -153,7 +158,7 @@ private struct NodeView: View {
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(Array((node.content ?? []).enumerated()), id: \.offset) { index, item in
                     HStack(alignment: .top, spacing: 8) {
-                        Text(node.type == "orderedList" ? "\((node.attrs?.start ?? 1) + index)." : "•")
+                        Text(node.type == "orderedList" ? orderedLabel(start: node.attrs?.start, index: index) : "•")
                             .foregroundStyle(.secondary)
                         NodeView(node: item)
                     }
@@ -167,8 +172,14 @@ private struct NodeView: View {
                     .accessibilityLabel(node.attrs?.checked == true ? "Completed" : "Not completed")
                 children
             }
-        case "listItem", "doc", "blockquote":
+        case "listItem", "doc":
             children
+        case "blockquote":
+            children
+            .padding(.leading, 12)
+            .overlay(alignment: .leading) { RoundedRectangle(cornerRadius: 1.5).fill(.secondary).frame(width: 3).accessibilityHidden(true) }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Quotation")
         case "table":
             ScrollView(.horizontal) {
                 VStack(alignment: .leading, spacing: 0) {
@@ -252,6 +263,10 @@ private struct NodeView: View {
         case 2: return .title3.weight(.semibold)
         default: return .headline
         }
+    }
+    private func orderedLabel(start: Int?, index: Int) -> String {
+        let (number, overflow) = (start ?? 1).addingReportingOverflow(index)
+        return overflow ? "\(start ?? 1) + \(index)." : "\(number)."
     }
 }
 
@@ -398,6 +413,11 @@ private func inlineContent(_ node: PageNode) -> AttributedString {
             case "strike": intent.insert(.strikethrough)
             case "code": intent.insert(.code)
             case "underline": text.underlineStyle = .single
+            case "highlight":
+                if let specified = mark.attrs?.color {
+                    if let value = specified.value, let color = readerColor(value) { text.backgroundColor = color }
+                    else { unsupported.append("highlight color") }
+                } else { text.backgroundColor = .yellow.opacity(0.4) }
             case "link":
                 if let href = mark.attrs?.href, let url = URL(string: href),
                    ["https", "http", "mailto"].contains(url.scheme?.lowercased() ?? "") {
@@ -427,4 +447,19 @@ private func inlineContent(_ node: PageNode) -> AttributedString {
         }
     }
     return result
+}
+
+/// The source editor emits six-digit hex colors and rgba marker colors.
+/// Unknown CSS is not interpreted as a different color.
+private func readerColor(_ value: String) -> Color? {
+    let value = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    if value.hasPrefix("#"), value.count == 7, let rgb = UInt32(value.dropFirst(), radix: 16) {
+        return Color(red: Double((rgb >> 16) & 255) / 255, green: Double((rgb >> 8) & 255) / 255, blue: Double(rgb & 255) / 255)
+    }
+    guard value.hasPrefix("rgba("), value.hasSuffix(")") else { return nil }
+    let parts = value.dropFirst(5).dropLast().split(separator: ",", omittingEmptySubsequences: false)
+    guard parts.count == 4 else { return nil }
+    let values = parts.compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+    guard values.count == 4, values.allSatisfy(\.isFinite), values.prefix(3).allSatisfy({ (0...255).contains($0) }), (0...1).contains(values[3]) else { return nil }
+    return Color(red: values[0] / 255, green: values[1] / 255, blue: values[2] / 255, opacity: values[3])
 }
