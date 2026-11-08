@@ -26,6 +26,14 @@ final class NativeEditorTests: XCTestCase {
         _ = try model.replace(range: model.selection, with: "X")
         XCTAssertEqual(model.projection.text, "AX\n👋zzz")
     }
+    func testDeleteTableRowRejectsWhenRemainingTableHasNoTextCaret() throws {
+        let json = #"{"type":"doc","content":[{"type":"table","attrs":{"bid":"t"},"content":[{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"futureWidget"}]}]},{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"B"}]}]}]}]}]}"#
+        let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 0, supportsDocumentFormatting: true)
+        let before = model.document.source
+        model.selection = NSRange(location: model.projection.text.utf16.count, length: 0)
+        XCTAssertThrowsError(try model.deleteSelectedLastTableRow())
+        XCTAssertEqual(model.document.source, before)
+    }
     func testDeleteLastTableRowRejectsOpaqueDataAndSupportsUndo() throws {
         let json = #"{"type":"doc","content":[{"type":"table","attrs":{"bid":"t","future":"keep"},"content":[{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"الأول"}]}]}]},{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"أخير","marks":[{"type":"bold"}]}]}]}]}]}]}"#
         let original = try RichTextDocument(json: Data(json.utf8))

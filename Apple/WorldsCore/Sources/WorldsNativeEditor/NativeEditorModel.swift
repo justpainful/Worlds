@@ -415,11 +415,14 @@ public final class NativeEditorModel: ObservableObject {
               span.path.indices.count >= 4 else { throw NativeEditorError.unsupportedFormatting }
         let before = document
         let tableIndex = span.path.indices[0]
+        let rowIndex = span.path.indices[1]
+        guard let remaining = projection.spans.last(where: { $0.path.indices.count >= 2 && $0.path.indices[0] == tableIndex && $0.path.indices[1] < rowIndex }) else {
+            throw NativeEditorError.unsupportedFormatting
+        }
         do { try document.removeLastPlainTableRow(at: RichTextPath([tableIndex]), selectedRow: span.path.indices[1]) }
         catch { throw NativeEditorError.unsupportedFormatting }
         let result = projection
-        let finalSpan = result.spans.last { $0.path.indices.first == tableIndex }
-        var position = min(finalSpan.map { NSMaxRange($0.range) } ?? 0, result.text.utf16.count)
+        var position = min(NSMaxRange(remaining.range), result.text.utf16.count)
         while position > 0 {
             let index = result.text.utf16.index(result.text.utf16.startIndex, offsetBy: position)
             if String.Index(index, within: result.text) != nil { break }
