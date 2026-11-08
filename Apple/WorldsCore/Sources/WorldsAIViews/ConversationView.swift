@@ -9,6 +9,9 @@ public struct ConversationView: View {
     @StateObject private var model: ConversationViewModel
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    #if DEBUG && os(macOS)
+    @State private var fixtureNativeDetails = "unavailable"
+    #endif
 
     public init(conversationID: String, service: any ConversationService) {
         _model = StateObject(wrappedValue: ConversationViewModel(conversationID: conversationID, service: service))
@@ -67,8 +70,9 @@ public struct ConversationView: View {
         .overlay(alignment: .topLeading) {
             if ProcessInfo.processInfo.arguments.contains("--isolated-ui-fixture") {
                 TimelineView(.periodic(from: .now, by: 1)) { _ in
-                    Text("loading=\(model.loading) loaded=\(model.loaded) running=\(model.running) active=\(NSApp.isActive) modal=\(NSApp.modalWindow != nil)")
+                    Text("loading=\(model.loading) loaded=\(model.loaded) running=\(model.running) active=\(NSApp.isActive) modal=\(NSApp.modalWindow != nil) native=\(fixtureNativeDetails)")
                         .font(.caption2).accessibilityIdentifier("conversation-fixture-diagnostics")
+                        .background(FixtureTextEditorProbe(output: $fixtureNativeDetails).frame(width: 0, height: 0).accessibilityHidden(true))
                 }
                 .allowsHitTesting(false)
             }
@@ -107,3 +111,33 @@ public struct ConversationView: View {
         switch status { case .running: return "Running"; case .succeeded: return "Completed"; case .failed: return "Failed" }
     }
 }
+
+#if DEBUG && os(macOS)
+/// Fixture-only observation. Does not focus, edit, or enable the native control.
+private struct FixtureTextEditorProbe: NSViewRepresentable {
+    @Binding var output: String
+    func makeNSView(context: Context) -> NSView { NSView(frame: .zero) }
+    func updateNSView(_ probe: NSView, context: Context) {
+        DispatchQueue.main.async {
+            guard let window = probe.window, let root = window.contentView else { return }
+            func collectText(_ view: NSView, into results: inout [NSTextView]) {
+                if let text = view as? NSTextView { results.append(text) }
+                for child in view.subviews { collectText(child, into: &results) }
+            }
+            var texts: [NSTextView] = []
+            collectText(root, into: &texts)
+            let details = texts.enumerated().map { index, text in
+                var ancestors: [String] = []
+                var cursor: NSView? = text
+                while let view = cursor {
+                    ancestors.append("\(type(of: view)):ax=\(view.isAccessibilityEnabled()),hidden=\(view.isHidden)")
+                    cursor = view.superview
+                }
+                return "index=\(index),editable=\(text.isEditable),selectable=\(text.isSelectable),key=\(window.isKeyWindow),firstResponder=\(window.firstResponder === text),ancestors=\(ancestors.joined(separator: ">"))"
+            }.joined(separator: " | ")
+            let report = "count=\(texts.count) \(details)"
+            if output != report { output = report }
+        }
+    }
+}
+#endif

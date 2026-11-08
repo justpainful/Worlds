@@ -79,7 +79,8 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
             captureFailure(XCUIApplication(), name: "composer-disabled")
             let app = XCUIApplication()
             let diagnostics = app.staticTexts["conversation-fixture-diagnostics"].firstMatch
-            XCTFail("Message editor did not become enabled; fixture state: \(diagnostics.label)")
+            let details = (diagnostics.value as? String) ?? diagnostics.label
+            XCTFail("Message editor did not become enabled; fixture state: \(details)")
             throw HarnessUIError.unavailable
         }
     }
