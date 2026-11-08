@@ -150,7 +150,7 @@ private struct HarnessEditor: View {
                 if state.saved && !model.dirty { Text("Page saved").accessibilityIdentifier("editor-page-saved") }
                 if state.reopenedHasBold { Text("Reopened bold formatting").accessibilityIdentifier("editor-reopened-bold") }
                 if state.reopenedArabic { Text("Reopened exact Arabic text").accessibilityIdentifier("editor-reopened-arabic") }
-            }.padding() }
+            }.padding() }.accessibilityIdentifier("harness-editor-scroll")
             .navigationTitle("Edit test page")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -169,5 +169,8 @@ private struct HarnessEditor: View {
             }
             .interactiveDismissDisabled(model.hasUnresolvedInput)
         }
+        #if os(macOS)
+        .frame(minWidth: 560, idealWidth: 700, maxWidth: 900, minHeight: 400, idealHeight: 560, maxHeight: 600)
+        #endif
     }
 }
