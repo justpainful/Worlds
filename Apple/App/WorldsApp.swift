@@ -50,6 +50,11 @@ private struct WorldsLibraryView: View {
     @State private var returnStack: [String] = []
     @State private var showPageHierarchy = false
     @State private var expandedPageIDs: Set<String> = []
+    #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_PERSONAL_TABS
+    @State private var personalTabs = PersonalTabSession(eligibleIDs: [])
+    @State private var tabCopyID: UUID?
+    private let tabPreferences = PersonalTabPreferences()
+    #endif
     #if WORLDS_EXPERIMENTAL_LOCAL_COPY
     @State private var hierarchyCopyID: UUID?
     private let hierarchyPreferences = PersonalHierarchyPreferences()
@@ -226,6 +231,14 @@ private struct WorldsLibraryView: View {
                     Color.clear
                 }
             }
+            #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_PERSONAL_TABS
+            .safeAreaInset(edge: .top) {
+                if tabCopyID != nil, !personalTabs.pageIDs.isEmpty {
+                    PersonalTabBar(session: personalTabs, pages: pages, select: selectPersonalTab, close: closePersonalTab)
+                        .disabled(databaseActionsDisabled)
+                }
+            }
+            #endif
             .toolbar {
                 #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_LOCAL_HISTORY
                 if let id = selectedID, let context = copyContext, let fixtureID = fixtureHistoryCopyID, context.copy.id == fixtureID,
@@ -385,6 +398,14 @@ private struct WorldsLibraryView: View {
         .sheet(isPresented: $showAccount) { AccountHostView() }
         #endif
         .searchable(text: $searchQuery, placement: .sidebar, prompt: "Search personal pages")
+        #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_PERSONAL_TABS
+        .onChange(of: selectedID) { _, id in
+            guard let id, id == selectedID, let copyID = tabCopyID,
+                  copyContext?.copy.id == copyID, !loading else { return }
+            personalTabs.select(id, eligibleIDs: Set(pages.map(\.id)))
+        }
+        .onChange(of: personalTabs) { _, _ in savePersonalTabs() }
+        #endif
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
         .onChange(of: expandedPageIDs) { _, _ in saveHierarchyPreferences() }
         .onChange(of: showPageHierarchy) { _, _ in saveHierarchyPreferences() }
@@ -578,6 +599,13 @@ private struct WorldsLibraryView: View {
                             NavigationLink(value: row.id) {
                                 PageListRow(page: row.page, parentTitle: row.detached ? "Parent unavailable" : nil)
                             }
+                            #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_PERSONAL_TABS
+                            .contextMenu {
+                                if tabCopyID != nil {
+                                    Button("Open in new tab") { openPersonalTab(row.id) }
+                                }
+                            }
+                            #endif
                             .accessibilityIdentifier("page.\(row.id)")
                             .accessibilityHint("Opens page")
                         }
@@ -591,6 +619,13 @@ private struct WorldsLibraryView: View {
                     NavigationLink(value: page.id) {
                         PageListRow(page: page, parentTitle: parentTitle(for: page))
                     }
+                    #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_PERSONAL_TABS
+                    .contextMenu {
+                        if tabCopyID != nil {
+                            Button("Open in new tab") { openPersonalTab(page.id) }
+                        }
+                    }
+                    #endif
                     .accessibilityIdentifier("page.\(page.id)")
                     .accessibilityHint("Opens page")
                 }
@@ -649,6 +684,13 @@ private struct WorldsLibraryView: View {
                         .padding(.vertical, 4)
                     }
                     .accessibilityIdentifier("search-result.\(hit.pageId)")
+                    #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_PERSONAL_TABS
+                    .contextMenu {
+                        if tabCopyID != nil, pages.contains(where: { $0.id == hit.pageId }) {
+                            Button("Open in new tab") { openPersonalTab(hit.pageId) }
+                        }
+                    }
+                    #endif
                     .accessibilityLabel(searchAccessibilityLabel(hit))
                     .accessibilityHint("Opens page")
                 }
@@ -750,6 +792,10 @@ private struct WorldsLibraryView: View {
             searchHits = []
             searchedQuery = nil
             pages = snapshot.pages
+            #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_PERSONAL_TABS
+            tabCopyID = nil
+            personalTabs = PersonalTabSession(eligibleIDs: [])
+            #endif
             #if WORLDS_EXPERIMENTAL_LOCAL_COPY
             hierarchyCopyID = nil
             #endif
@@ -810,6 +856,11 @@ private struct WorldsLibraryView: View {
                 hierarchyCopyID = copy.id
                 expandedPageIDs = stored.expanded
                 showPageHierarchy = stored.enabled
+                #if DEBUG && WORLDS_EXPERIMENTAL_PERSONAL_TABS
+                tabCopyID = copy.id
+                personalTabs = tabPreferences.load(copyID: copy.id, eligibleIDs: Set(pages.map(\.id)))
+                selectedID = personalTabs.activeID
+                #endif
             }
         } catch { errorMessage = error.localizedDescription }
     }
@@ -820,6 +871,39 @@ private struct WorldsLibraryView: View {
         guard let id = hierarchyCopyID, copyContext?.copy.id == id, !loading else { return }
         hierarchyPreferences.save(PersonalHierarchyState(enabled: showPageHierarchy, expanded: expandedPageIDs), copyID: id, eligibleIDs: hierarchyEligibleIDs)
     }
+    #if DEBUG && WORLDS_EXPERIMENTAL_PERSONAL_TABS
+    private func savePersonalTabs() {
+        guard let id = tabCopyID, copyContext?.copy.id == id, !loading else { return }
+        tabPreferences.save(personalTabs, copyID: id, eligibleIDs: Set(pages.map(\.id)))
+    }
+    private func openPersonalTab(_ id: String) {
+        guard let copyID = tabCopyID, copyContext?.copy.id == copyID, !databaseActionsDisabled else { return }
+        let previous = personalTabs.activeID
+        guard personalTabs.openTab(id, eligibleIDs: Set(pages.map(\.id))) else {
+            errorMessage = "This page cannot be opened in a tab, or the 20-tab limit was reached."
+            return
+        }
+        if personalTabs.activeID != previous { returnStack.removeAll() }
+        selectedID = personalTabs.activeID
+    }
+    private func selectPersonalTab(_ id: String) {
+        guard let copyID = tabCopyID, copyContext?.copy.id == copyID, !databaseActionsDisabled,
+              personalTabs.pageIDs.contains(id), pages.contains(where: { $0.id == id }) else { return }
+        let previous = personalTabs.activeID
+        personalTabs.select(id, eligibleIDs: Set(pages.map(\.id)))
+        if personalTabs.activeID != previous { returnStack.removeAll() }
+        selectedID = personalTabs.activeID
+    }
+    private func closePersonalTab(_ id: String) {
+        guard let copyID = tabCopyID, copyContext?.copy.id == copyID, !databaseActionsDisabled else { return }
+        let previous = personalTabs.activeID
+        personalTabs.close(id)
+        if personalTabs.activeID != previous {
+            returnStack.removeAll()
+            selectedID = personalTabs.activeID
+        }
+    }
+    #endif
     @MainActor private func refreshCopy(id: UUID, generation: UUID) async {
         guard let current = copyContext, current.copy.id == id, databaseGeneration == generation else { return }
         do {
@@ -828,6 +912,10 @@ private struct WorldsLibraryView: View {
             guard copyContext?.copy.id == id, databaseGeneration == generation else { return }
             pages = snapshot.pages
             expandedPageIDs.formIntersection(Set(pages.filter { !$0.archived && $0.kind != "template" }.map(\.id)))
+            #if DEBUG && WORLDS_EXPERIMENTAL_PERSONAL_TABS
+            personalTabs.filter(eligibleIDs: Set(pages.map(\.id)))
+            if selectedID != personalTabs.activeID { selectedID = personalTabs.activeID }
+            #endif
             if let selectedID, !pages.contains(where: { $0.id == selectedID }) { self.selectedID = nil }
             if !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { await search() }
         } catch {

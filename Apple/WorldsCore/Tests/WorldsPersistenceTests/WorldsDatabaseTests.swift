@@ -4,6 +4,55 @@ import XCTest
 @testable import WorldsPersistence
 
 final class WorldsDatabaseTests: XCTestCase {
+    func testPersonalTabSessionRestoresOnlyEligiblePagesPerCopy() throws {
+        let suite = "worlds-tabs-test-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let first = UUID(), second = UUID()
+        let store = PersonalTabPreferences(defaults: defaults)
+        var tabs = PersonalTabSession(eligibleIDs: ["a", "b"])
+        tabs.select("a", eligibleIDs: ["a", "b"])
+        XCTAssertTrue(tabs.openTab("b", eligibleIDs: ["a", "b"]))
+        XCTAssertFalse(tabs.openTab("shared", eligibleIDs: ["a", "b"]))
+        store.save(tabs, copyID: first, eligibleIDs: ["a", "b"])
+        let reopened = PersonalTabPreferences(defaults: defaults)
+        XCTAssertEqual(reopened.load(copyID: first, eligibleIDs: ["a", "b"]), tabs)
+        XCTAssertEqual(reopened.load(copyID: second, eligibleIDs: ["a", "b"]).pageIDs, [])
+        let filtered = reopened.load(copyID: first, eligibleIDs: ["a"])
+        XCTAssertEqual(filtered.pageIDs, ["a"])
+        XCTAssertEqual(filtered.activeID, "a")
+        tabs.close("b")
+        XCTAssertEqual(tabs.activeID, "a")
+        tabs.close("a")
+        XCTAssertNil(tabs.activeID)
+    }
+    func testRestoredTabsExcludeSharedAndDeletedSnapshotPages() async throws {
+        let url = try fixture()
+        try execute(url, """
+        INSERT INTO pages(id,title,metadata,created_at,updated_at) VALUES('shared','Shared','{"sync":{"shared":true}}',1,1);
+        INSERT INTO pages(id,title,deleted_at,created_at,updated_at) VALUES('deleted','Deleted',1,1,1);
+        """)
+        let database = try WorldsDatabase(url: url)
+        let snapshot = try await database.snapshot()
+        let eligible = Set(snapshot.pages.map(\.id))
+        let restored = PersonalTabSession(pageIDs: ["shared", "deleted", "fixture-page"], activeID: "shared", eligibleIDs: eligible)
+        XCTAssertEqual(restored.pageIDs, ["fixture-page"])
+        XCTAssertEqual(restored.activeID, "fixture-page")
+    }
+    func testPersonalTabsLimitAndCloseActiveNeighbor() {
+        let ids = (0..<21).map { "page-\($0)" }
+        let eligible = Set(ids)
+        var tabs = PersonalTabSession(eligibleIDs: eligible)
+        for id in ids.prefix(20) { XCTAssertTrue(tabs.openTab(id, eligibleIDs: eligible)) }
+        XCTAssertFalse(tabs.openTab(ids[20], eligibleIDs: eligible))
+        XCTAssertEqual(tabs.pageIDs.count, 20)
+        XCTAssertEqual(tabs.activeID, ids[19])
+        tabs.close(ids[19])
+        XCTAssertEqual(tabs.activeID, ids[18])
+        tabs.select(ids[0], eligibleIDs: eligible)
+        tabs.close(ids[0])
+        XCTAssertEqual(tabs.activeID, ids[1])
+    }
     func testHierarchyPreferencesArePerCopyAndFilterUnavailablePages() throws {
         let suite = "worlds-hierarchy-test-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))

@@ -19,6 +19,12 @@ enum LocalCopyUITestFixture {
         defer { sqlite3_close(database) }
         let sql = #"INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('harness-project','Fixture project','project','{"project":{"status":"active","description":"Original fixture","links":[]},"unknown":{"preserve":true}}',1,100);"#
         guard sqlite3_exec(database, sql, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+        #if WORLDS_EXPERIMENTAL_PERSONAL_TABS
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing-tabs-links") {
+            let links = #"UPDATE pages SET metadata='{"project":{"status":"active","description":"Original fixture","links":["fixture-page"]},"unknown":{"preserve":true}}' WHERE id='harness-project';"#
+            guard sqlite3_exec(database, links, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+        }
+        #endif
         #if WORLDS_EXPERIMENTAL_LOCAL_HISTORY
         if ProcessInfo.processInfo.arguments.contains("--ui-testing-history-fixture") {
             let history = "INSERT INTO history(page_id,actor,kind,summary,created_at) VALUES('fixture-page','user','renamed','Renamed fixture',1700000000002),('fixture-page','automation','edited','تعديل تجريبي',1700000000003);"
