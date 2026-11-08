@@ -1658,6 +1658,9 @@ jobs:
           grep -q 'idempotent_page_create_retries_after_commit_and_refuses_changed_inputs ... ok' logs/rust-store-tests.log
           grep -q 'idempotent_page_create_rolls_back_page_history_fts_and_changes ... ok' logs/rust-store-tests.log
           grep -q 'ffi_idempotent_page_create_retries_same_operation ... ok' logs/rust-store-tests.log
+          grep -q 'document_create_matches_source_defaults_and_retries_without_duplicates ... ok' logs/rust-store-tests.log
+          grep -q 'document_create_rejects_changed_parent_and_rolls_back_all_writes ... ok' logs/rust-store-tests.log
+          grep -q 'ffi_document_create_replays_same_operation ... ok' logs/rust-store-tests.log
           grep -q 'checked_rename_retries_without_duplicate_history_and_refuses_same_revision_change ... ok' logs/rust-store-tests.log
           grep -q 'checked_rename_rolls_back_page_history_fts_and_changes ... ok' logs/rust-store-tests.log
           grep -q 'ffi_checked_rename_retries_same_operation ... ok' logs/rust-store-tests.log

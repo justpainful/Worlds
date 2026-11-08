@@ -84,6 +84,13 @@ struct PageContentView: View {
                     .font(.title.weight(.semibold))
                     .accessibilityAddTraits(.isHeader)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_CREATE_DOCUMENT
+                if page.kind == "document" {
+                    Text("Paper layout is not yet displayed in this preview.")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .accessibilityIdentifier("document-preview-limit")
+                }
+                #endif
                 if page.blocks.isEmpty {
                     Text("This page has no content.")
                         .foregroundStyle(.secondary)

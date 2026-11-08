@@ -100,6 +100,9 @@ private struct WorldsLibraryView: View {
     @State private var showCopyExplanation = false
     @State private var showLocalCopies = false
     @State private var editingProject: ProjectEditorRequest?
+    #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DOCUMENT
+    @State private var creatingDocument: LocalCreateDocumentRequest?
+    #endif
     #if DEBUG && WORLDS_EXPERIMENTAL_MOVE_PAGE
     @State private var movingPage: LocalMovePageRequest?
     #endif
@@ -199,6 +202,16 @@ private struct WorldsLibraryView: View {
                     .disabled(databaseActionsDisabled)
                 }
                 #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+                #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DOCUMENT
+                if let context = copyContext, let source = openedVideoDatabase,
+                   source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
+                    ToolbarItem {
+                        Button("New document", systemImage: "doc.badge.plus") {
+                            creatingDocument = LocalCreateDocumentRequest(copy: context.copy, databaseIdentity: source.identity, generation: databaseGeneration)
+                        }.accessibilityIdentifier("new-local-document").disabled(databaseActionsDisabled)
+                    }
+                }
+                #endif
                 #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PAGE
                 if let context = copyContext, let source = openedVideoDatabase,
                    source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
@@ -404,6 +417,13 @@ private struct WorldsLibraryView: View {
             }
         }
         #endif
+        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DOCUMENT
+        .sheet(item: $creatingDocument) { request in
+            LocalCreateDocumentView(request: request) { id in
+                await showCreatedDocument(id, request: request)
+            }
+        }
+        #endif
         .sheet(item: $editingProject) { request in
             NavigationStack {
                 ProjectDraftView(projectID: request.id, repository: request.context.repository, candidates: request.candidates, allowsLinkEditing: projectLinkEditingEnabled) {
@@ -597,6 +617,9 @@ private struct WorldsLibraryView: View {
         #endif
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
         disabled = disabled || editingProject != nil
+        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DOCUMENT
+        disabled = disabled || creatingDocument != nil
+        #endif
         #if DEBUG && WORLDS_EXPERIMENTAL_MOVE_PAGE
         disabled = disabled || movingPage != nil
         #endif
@@ -1048,6 +1071,23 @@ private struct WorldsLibraryView: View {
         pages = snapshot.pages
         returnStack.removeAll()
         return LocalPagePlacement(parent: page.parentID, sortKey: page.sortKey, revision: page.updatedAt)
+    }
+    #endif
+    #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DOCUMENT
+    @MainActor private func showCreatedDocument(_ id: String, request: LocalCreateDocumentRequest) async -> Bool {
+        guard copyContext?.copy.id == request.copy.id, databaseGeneration == request.generation,
+              VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity else { return false }
+        do {
+            let database = try WorldsDatabase(url: request.copy.databaseURL)
+            let snapshot = try await database.snapshot()
+            guard copyContext?.copy.id == request.copy.id, databaseGeneration == request.generation,
+                  VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity,
+                  snapshot.pages.contains(where: { $0.id == id && $0.kind == "document" && $0.parentID == nil }) else { return false }
+            pages = snapshot.pages
+            returnStack.removeAll()
+            selectedID = id
+            return true
+        } catch { return false }
     }
     #endif
     @MainActor private func refreshCopy(id: UUID, generation: UUID) async {
