@@ -97,6 +97,14 @@ private struct LocalPageEditorContent: View {
                case .array(let rows)? = table["content"], rows.count == 2 {
                 Text("Fixture table has two rows").accessibilityIdentifier("fixture-table-two-rows")
             }
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-document-table"),
+               case .object(let root) = model.document.source, case .array(let blocks)? = root["content"],
+               let first = blocks.first, case .object(let table) = first, table["type"] == .string("table"),
+               case .object(let attrs)? = table["attrs"], attrs["future"] == .string("keep"),
+               case .array(let rows)? = table["content"], let firstRow = rows.first,
+               case .object(let row) = firstRow, case .array(let cells)? = row["content"], cells.count == 2 {
+                Text("Fixture table has two columns").accessibilityIdentifier("fixture-table-two-columns")
+            }
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-document-alignment"), model.projection.spans.contains(where: { $0.alignment == "center" && $0.direction == "rtl" }) {
                 Text("Fixture alignment saved").accessibilityIdentifier("fixture-alignment-centered")
             }

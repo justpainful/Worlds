@@ -15,6 +15,22 @@ private actor FixturePersistence: EditorPersistence {
 
 @MainActor
 final class NativeEditorTests: XCTestCase {
+    func testAppendTableColumnPreservesHeadersCellsAndRejectsMerged() throws {
+        let json = #"{"type":"doc","content":[{"type":"table","attrs":{"bid":"t","future":true},"content":[{"type":"tableRow","content":[{"type":"tableHeader","content":[{"type":"paragraph","content":[{"type":"text","text":"عنوان"}]}]}]},{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","attrs":{"dir":"rtl"},"content":[{"type":"text","text":"بيانات","marks":[{"type":"future"}]}]}]}]}]}]}"#
+        let initial = try RichTextDocument(json: Data(json.utf8))
+        let model = NativeEditorModel(document: initial, baseRevision: 0, supportsDocumentFormatting: true)
+        try model.appendTableColumn()
+        let changed = model.document.source
+        let expected = #"{"type":"doc","content":[{"type":"table","attrs":{"bid":"t","future":true},"content":[{"type":"tableRow","content":[{"type":"tableHeader","content":[{"type":"paragraph","content":[{"type":"text","text":"عنوان"}]}]},{"type":"tableHeader","content":[{"type":"paragraph","content":[]}]}]},{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","attrs":{"dir":"rtl"},"content":[{"type":"text","text":"بيانات","marks":[{"type":"future"}]}]}]},{"type":"tableCell","content":[{"type":"paragraph","content":[]}]}]}]}]}"#
+        XCTAssertEqual(changed, try RichTextDocument(json: Data(expected.utf8)).source)
+        model.undo(); XCTAssertEqual(model.document, initial)
+        model.redo(); XCTAssertEqual(model.document.source, changed)
+        let merged = json.replacingOccurrences(of: #""type":"tableCell","content"#, with: #""type":"tableCell","attrs":{"colspan":2},"content"#)
+        let blocked = NativeEditorModel(document: try RichTextDocument(json: Data(merged.utf8)), baseRevision: 0, supportsDocumentFormatting: true)
+        let before = blocked.document.source
+        XCTAssertThrowsError(try blocked.appendTableColumn())
+        XCTAssertEqual(blocked.document.source, before)
+    }
     func testAppendTableRowPreservesExistingDataAndUndo() throws {
         let json = #"{"type":"doc","content":[{"type":"table","attrs":{"bid":"t","future":"keep"},"content":[{"type":"tableRow","content":[{"type":"tableHeader","attrs":{"colspan":1,"rowspan":1,"colwidth":null},"content":[{"type":"paragraph","content":[{"type":"text","text":"عنوان"}]}]}]},{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colspan":1,"rowspan":1,"colwidth":null},"content":[{"type":"paragraph","attrs":{"dir":"rtl"},"content":[{"type":"text","text":"بيانات","marks":[{"type":"future","attrs":{"keep":true}}]}]}]}]}]}]}"#
         let document = try RichTextDocument(json: Data(json.utf8))

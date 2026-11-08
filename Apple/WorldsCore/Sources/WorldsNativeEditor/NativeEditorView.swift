@@ -80,6 +80,9 @@ public struct NativeEditorView: View {
                     Button("Add row at end") { do { try model.appendTableRow() } catch { model.report(error) } }
                         .accessibilityIdentifier("editor-add-table-row")
                         .disabled(model.nativeEditPending || model.saving)
+                    Button("Add column at end") { do { try model.appendTableColumn() } catch { model.report(error) } }
+                        .accessibilityIdentifier("editor-add-table-column")
+                        .disabled(model.nativeEditPending || model.saving)
                 }
                 if let description = model.currentListDescription { Text(description).font(.caption).accessibilityIdentifier("editor-list-status") }
                 if !model.listMarkers.isEmpty { ScrollView {

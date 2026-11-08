@@ -4,6 +4,20 @@ import WorldsModels
 @testable import WorldsRichText
 
 final class RichTextDocumentTests: XCTestCase {
+    func testAppendColumnRejectsLaterInvalidRowAtomically() throws {
+        let json = #"{"type":"doc","content":[{"type":"table","attrs":{"bid":"t"},"content":[{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"keep"}]}]}]},{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colspan":2},"content":[{"type":"paragraph","content":[]}]}]}]}]}"#
+        var document = try RichTextDocument(json: Data(json.utf8))
+        let before = document
+        XCTAssertThrowsError(try document.appendPlainTableColumn(at: RichTextPath([0])))
+        XCTAssertEqual(document, before)
+    }
+    func testAppendColumnUsesLastCellTypeInMixedRows() throws {
+        let json = #"{"type":"doc","content":[{"type":"table","attrs":{"bid":"t"},"content":[{"type":"tableRow","content":[{"type":"tableHeader","content":[{"type":"paragraph","content":[]}]},{"type":"tableCell","content":[{"type":"paragraph","content":[]}]}]},{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[]}]},{"type":"tableHeader","content":[{"type":"paragraph","content":[]}]}]}]}]}"#
+        let expected = #"{"type":"doc","content":[{"type":"table","attrs":{"bid":"t"},"content":[{"type":"tableRow","content":[{"type":"tableHeader","content":[{"type":"paragraph","content":[]}]},{"type":"tableCell","content":[{"type":"paragraph","content":[]}]},{"type":"tableCell","content":[{"type":"paragraph","content":[]}]}]},{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[]}]},{"type":"tableHeader","content":[{"type":"paragraph","content":[]}]},{"type":"tableHeader","content":[{"type":"paragraph","content":[]}]}]}]}]}"#
+        var document = try RichTextDocument(json: Data(json.utf8))
+        try document.appendPlainTableColumn(at: RichTextPath([0]))
+        XCTAssertEqual(document.source, try RichTextDocument(json: Data(expected.utf8)).source)
+    }
     func testHeadingConversionRejectsParagraphStyleWithoutChangingDocument() throws {
         for json in [
             #"{"type":"doc","content":[{"type":"paragraph","attrs":{"bid":"p","pstyle":"title","future":true},"content":[{"type":"text","text":"عربي"}]}]}"#,

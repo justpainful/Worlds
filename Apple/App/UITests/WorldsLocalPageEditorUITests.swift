@@ -2,6 +2,21 @@
 import XCTest
 
 final class WorldsLocalPageEditorUITests: XCTestCase {
+    @MainActor func testDocumentAppendTableColumnAndReopenRTL() {
+        let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-document-table", "--ui-testing-rtl"]; app.launch()
+        let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
+        XCTAssertTrue(page.waitForExistence(timeout: 30)); page.tap()
+        let edit = app.buttons["edit-local-page"]; XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
+        let editor = app.descendants(matching: .any)["native-editor-text"].firstMatch
+        XCTAssertTrue(editor.waitForExistence(timeout: 20)); editor.tap()
+        let add = app.buttons["editor-add-table-column"]
+        XCTAssertTrue(add.waitForExistence(timeout: 10)); add.tap()
+        XCTAssertTrue(app.staticTexts["fixture-table-two-columns"].waitForExistence(timeout: 10))
+        app.buttons["Save"].tap(); XCTAssertTrue(app.staticTexts["local-page-saved"].waitForExistence(timeout: 20))
+        app.buttons["Close"].tap(); XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
+        XCTAssertTrue(app.staticTexts["fixture-table-two-columns"].waitForExistence(timeout: 20))
+        XCTAssertTrue((app.descendants(matching: .any)["native-editor-text"].firstMatch.value as? String ?? "").contains("خلية"))
+    }
     @MainActor func testDocumentAppendTableRowAndReopenRTL() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-document-table", "--ui-testing-rtl"]; app.launch()
         let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch

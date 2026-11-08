@@ -166,6 +166,36 @@ public struct RichTextDocument: Sendable, Equatable {
             table["content"] = .array(rows)
         }
     }
+    /// Append a column without shifting any existing cell. Header and body
+    /// rows retain the type of their last cell; merged cells are refused.
+    public mutating func appendPlainTableColumn(at path: RichTextPath) throws {
+        guard path.indices.count == 1 else { throw RichTextError.invalidPath }
+        try updateNode(&source, path: ArraySlice(path.indices)) { table in
+            guard table["type"] == .string("table"), case .array(var rows)? = table["content"],
+                  !rows.isEmpty, rows.count <= 100 else { throw RichTextError.invalidDocument }
+            var width: Int?
+            for index in rows.indices {
+                guard case .object(var row) = rows[index], row["type"] == .string("tableRow"),
+                      case .array(var cells)? = row["content"], !cells.isEmpty, cells.count < 32,
+                      width == nil || width == cells.count else { throw RichTextError.invalidDocument }
+                width = cells.count
+                for value in cells {
+                    guard case .object(let cell) = value, case .string(let type)? = cell["type"],
+                          type == "tableCell" || type == "tableHeader" else { throw RichTextError.invalidDocument }
+                    if let raw = cell["attrs"], raw != .null {
+                        guard case .object(let attrs) = raw, Set(attrs.keys).isSubset(of: ["colspan", "rowspan", "colwidth"]),
+                              attrs["colspan"] == nil || attrs["colspan"] == .integer(1),
+                              attrs["rowspan"] == nil || attrs["rowspan"] == .integer(1),
+                              attrs["colwidth"] == nil || attrs["colwidth"] == .null else { throw RichTextError.invalidDocument }
+                    } else if cell["attrs"] == .null { throw RichTextError.invalidDocument }
+                }
+                guard case .object(let last) = cells[cells.count - 1], let type = last["type"] else { throw RichTextError.invalidDocument }
+                cells.append(.object(["type": type, "content": .array([.object(["type": .string("paragraph"), "content": .array([])])])]))
+                row["content"] = .array(cells); rows[index] = .object(row)
+            }
+            table["content"] = .array(rows)
+        }
+    }
 
     /// Converts one top-level plain paragraph to a one-item Worlds list.
     /// Refuses opaque paragraph or text data rather than relocating it.
