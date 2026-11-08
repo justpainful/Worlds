@@ -1307,6 +1307,7 @@ jobs:
           grep -q 'checked_page_save_preserves_unchanged_noncanonical_block_and_rolls_back ... ok' logs/rust-store-tests.log
           grep -q 'gallery_preserves_unknown_refs_and_noncanonical_block ... ok' logs/rust-store-tests.log
           grep -q 'background_color_change_preserves_media_and_unknown_fields ... ok' logs/rust-store-tests.log
+          grep -q 'adjacent_plain_text_swap_preserves_media_and_rejects_mixed_edits ... ok' logs/rust-store-tests.log
           grep -q 'presentation_media_owner_becoming_shared_blocks_save_atomically ... ok' logs/rust-store-tests.log
           grep -q 'unsupported_css_slide_color_survives_unrelated_edits ... ok' logs/rust-store-tests.log
           grep -q 'explicit_slide_delete_keeps_shared_assets_snapshots_and_rolls_back ... ok' logs/rust-store-tests.log
