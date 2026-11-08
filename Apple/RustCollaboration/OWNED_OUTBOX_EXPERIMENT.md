@@ -35,8 +35,12 @@ binding with the update, and compaction replaces the validated log with a bound
 snapshot atomically while leaving the outbox unchanged. These operations do not
 authenticate incoming data and are not connected to a network. The explicit
 `prepare_owned_receive` step upgrades earlier experimental enrollment without
-assigning old log entries or snapshots to any owner. Rejection recovery, native editor
-transactions and existing Worlds documents remain unsupported. The experiment does
+assigning old log entries or snapshots to any owner. An authenticated caller
+can quarantine a rejection atomically, retaining its full CRDT state and the
+rejected queue rows. Quarantine blocks further sends and ACKs even if access
+returns; reading the archive requires current cached view access. There is no
+automatic replay or conflict merge. Native editor transactions and existing
+Worlds documents remain unsupported. The experiment does
 not stop an original Worlds writer or consumer from bypassing its sidecars.
 
 `live_owned_outbox_survives_account_change_and_reconnect` is an ignored,

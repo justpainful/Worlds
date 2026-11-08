@@ -200,6 +200,41 @@ fn isolated_receive_and_compaction_preserve_outbox_and_causal_updates() {
 }
 
 #[test]
+fn owned_rejection_quarantines_without_replay_and_rolls_back_on_failure() {
+    use worlds_collaboration::CollaborationDoc;
+    let path=fixture(); let mut store=SyncStore::open(&path,"p","u","w").unwrap();
+    let server="wss://fixture.invalid/workspaces/w/docs/p";
+    store.enroll_empty_owned_document(0,server).unwrap();
+    let base=include_bytes!("fixtures/base.bin"); let update=include_bytes!("fixtures/alice-diff.bin");
+    store.append_owned_document(0,server,base).unwrap();
+    store.append_owned_remote(0,server,update).unwrap();
+    store.compact_owned_document(0,server).unwrap();
+    let (before,pending)=store.owned_document_batch(0,server,&[0]).unwrap();
+    let db=Connection::open(&path).unwrap();
+    assert!(matches!(store.quarantine_owned_rejection(0,"wss://other.invalid","denied"),Err(StoreError::Denied)));
+    db.execute_batch("CREATE TRIGGER fail_rejected BEFORE UPDATE ON sync_outbox BEGIN SELECT RAISE(ABORT,'fixture'); END;").unwrap();
+    assert!(store.quarantine_owned_rejection(0,server,"denied").is_err());
+    assert_eq!(store.owned_document_batch(0,server,&[0]).unwrap(),(before.clone(),pending));
+    assert_eq!(db.query_row("SELECT count(*) FROM native_sync_owned_rejection_v1",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+    db.execute_batch("DROP TRIGGER fail_rejected; UPDATE account_workspaces SET default_level='none' WHERE id='w';").unwrap();
+    store.quarantine_owned_rejection(0,server,"denied").unwrap();
+    assert!(matches!(store.read_owned_rejection(0,server),Err(StoreError::Denied)));
+    assert_eq!(db.query_row("SELECT count(*) FROM sync_outbox WHERE state='rejected'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+    db.execute("UPDATE account_workspaces SET default_level='edit' WHERE id='w'",[]).unwrap();
+    let archive=store.read_owned_rejection(0,server).unwrap();
+    let restored=CollaborationDoc::default(); restored.apply(&archive).unwrap();
+    let expected=CollaborationDoc::default(); expected.apply(base).unwrap(); expected.apply(update).unwrap();
+    assert_eq!(restored.diff(&[0]).unwrap(),expected.diff(&[0]).unwrap());
+    assert!(matches!(store.owned_document_batch(0,server,&[0]),Err(StoreError::Denied)));
+    assert!(matches!(store.acknowledge_owned_document(0,server,pending.unwrap()),Err(StoreError::Denied)));
+    assert!(matches!(store.quarantine_owned_rejection(0,server,"again"),Err(StoreError::Denied)));
+    db.execute("UPDATE account SET user_id='other' WHERE id=1",[]).unwrap();
+    let other=SyncStore::open(&path,"p","other","w").unwrap();
+    assert!(matches!(other.read_owned_rejection(0,server),Err(StoreError::Denied)));
+    assert_eq!(db.query_row("SELECT count(*) FROM sync_outbox",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+}
+
+#[test]
 fn incomplete_ancestry_never_falls_back_to_workspace_default_for_writes() {
     let path=fixture(); let mut store=SyncStore::open(&path,"p","u","w").unwrap();
     let db=Connection::open(&path).unwrap();

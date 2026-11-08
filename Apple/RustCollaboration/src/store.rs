@@ -189,6 +189,7 @@ impl SyncStore {
             CREATE TABLE IF NOT EXISTS native_sync_update_owner_v1(update_id INTEGER PRIMARY KEY,page_id TEXT NOT NULL,channel INTEGER NOT NULL,data BLOB NOT NULL,created_at INTEGER NOT NULL);
             CREATE TABLE IF NOT EXISTS native_sync_remote_source_v1(update_id INTEGER PRIMARY KEY,server TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS native_sync_snapshot_owner_v1(page_id TEXT NOT NULL,channel INTEGER NOT NULL,snapshot BLOB NOT NULL,snapshot_upto INTEGER NOT NULL,PRIMARY KEY(page_id,channel));
+            CREATE TABLE IF NOT EXISTS native_sync_owned_rejection_v1(page_id TEXT NOT NULL,channel INTEGER NOT NULL,user_id TEXT NOT NULL,workspace_id TEXT NOT NULL,server TEXT NOT NULL,data BLOB NOT NULL,reason TEXT NOT NULL,created_at INTEGER NOT NULL,PRIMARY KEY(page_id,channel));
             CREATE TABLE IF NOT EXISTS native_sync_outbox_owner_v1(outbox_id INTEGER PRIMARY KEY,page_id TEXT NOT NULL,channel INTEGER NOT NULL,user_id TEXT NOT NULL,workspace_id TEXT NOT NULL,data BLOB NOT NULL,created_at INTEGER NOT NULL)")?;
         let occupied: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM sync_docs WHERE page_id=?1 AND channel=?2) OR EXISTS(SELECT 1 FROM sync_updates WHERE page_id=?1 AND channel=?2) OR EXISTS(SELECT 1 FROM sync_outbox WHERE page_id=?1 AND channel=?2) OR EXISTS(SELECT 1 FROM native_sync_document_owner_v1 WHERE page_id=?1 AND channel=?2)",params![self.page,channel],|r|r.get(0))?;
         if occupied { return Err(StoreError::Denied); }
@@ -204,7 +205,8 @@ impl SyncStore {
         let bound: bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM native_sync_document_owner_v1 WHERE page_id=?1 AND channel=?2 AND user_id=?3 AND workspace_id=?4 AND server=?5)",params![self.page,channel,self.user,self.workspace,server],|r|r.get(0))?;
         if !bound { return Err(StoreError::Denied); }
         tx.execute_batch("CREATE TABLE IF NOT EXISTS native_sync_remote_source_v1(update_id INTEGER PRIMARY KEY,server TEXT NOT NULL);
-            CREATE TABLE IF NOT EXISTS native_sync_snapshot_owner_v1(page_id TEXT NOT NULL,channel INTEGER NOT NULL,snapshot BLOB NOT NULL,snapshot_upto INTEGER NOT NULL,PRIMARY KEY(page_id,channel))")?;
+            CREATE TABLE IF NOT EXISTS native_sync_snapshot_owner_v1(page_id TEXT NOT NULL,channel INTEGER NOT NULL,snapshot BLOB NOT NULL,snapshot_upto INTEGER NOT NULL,PRIMARY KEY(page_id,channel));
+            CREATE TABLE IF NOT EXISTS native_sync_owned_rejection_v1(page_id TEXT NOT NULL,channel INTEGER NOT NULL,user_id TEXT NOT NULL,workspace_id TEXT NOT NULL,server TEXT NOT NULL,data BLOB NOT NULL,reason TEXT NOT NULL,created_at INTEGER NOT NULL,PRIMARY KEY(page_id,channel))")?;
         self.require_owned_document(channel,server)?;
         tx.commit()?; Ok(())
     }
@@ -212,6 +214,8 @@ impl SyncStore {
     fn require_owned_document(&self, channel: i64, server: &str) -> Result<()> {
         let bound: bool = self.conn.query_row("SELECT EXISTS(SELECT 1 FROM native_sync_document_owner_v1 WHERE page_id=?1 AND channel=?2 AND user_id=?3 AND workspace_id=?4 AND server=?5)",params![self.page,channel,self.user,self.workspace,server],|r|r.get(0))?;
         if !bound { return Err(StoreError::Denied); }
+        let quarantined: bool=self.conn.query_row("SELECT EXISTS(SELECT 1 FROM native_sync_owned_rejection_v1 WHERE page_id=?1 AND channel=?2)",params![self.page,channel],|r|r.get(0))?;
+        if quarantined { return Err(StoreError::Denied); }
         let untrusted: bool = self.conn.query_row("SELECT EXISTS(SELECT 1 FROM sync_docs d WHERE d.page_id=?1 AND d.channel=?2 AND d.snapshot IS NOT NULL AND NOT EXISTS(SELECT 1 FROM native_sync_snapshot_owner_v1 s WHERE s.page_id=d.page_id AND s.channel=d.channel AND s.snapshot=d.snapshot AND s.snapshot_upto=d.snapshot_upto)) OR EXISTS(SELECT 1 FROM native_sync_snapshot_owner_v1 s WHERE s.page_id=?1 AND s.channel=?2 AND NOT EXISTS(SELECT 1 FROM sync_docs d WHERE d.page_id=s.page_id AND d.channel=s.channel AND d.snapshot=s.snapshot AND d.snapshot_upto=s.snapshot_upto)) OR EXISTS(SELECT 1 FROM sync_updates u LEFT JOIN native_sync_update_owner_v1 n ON n.update_id=u.id WHERE u.page_id=?1 AND u.channel=?2 AND (n.update_id IS NULL OR n.page_id!=u.page_id OR n.channel!=u.channel OR n.data!=u.data OR n.created_at!=u.created_at OR NOT ((u.origin='local' AND NOT EXISTS(SELECT 1 FROM native_sync_remote_source_v1 r WHERE r.update_id=u.id)) OR (u.origin='remote' AND EXISTS(SELECT 1 FROM native_sync_remote_source_v1 r WHERE r.update_id=u.id AND r.server=?3))))) OR EXISTS(SELECT 1 FROM native_sync_update_owner_v1 n LEFT JOIN sync_updates u ON u.id=n.update_id WHERE n.page_id=?1 AND n.channel=?2 AND (u.id IS NULL OR u.page_id!=n.page_id OR u.channel!=n.channel))",params![self.page,channel,server],|r|r.get(0))?;
         if untrusted { return Err(StoreError::Denied); }
         self.require_owned_pending(channel)
@@ -294,6 +298,43 @@ impl SyncStore {
         tx.execute("DELETE FROM native_sync_outbox_owner_v1 WHERE outbox_id IN (SELECT id FROM sync_outbox WHERE page_id=?1 AND channel=?2 AND state='pending' AND id<=?3)",params![self.page,channel,through])?;
         tx.execute("DELETE FROM sync_outbox WHERE page_id=?1 AND channel=?2 AND state='pending' AND id<=?3",params![self.page,channel,through])?;
         tx.commit()?; Ok(())
+    }
+
+    /// Quarantine a rejected channel without resetting its live document. The
+    /// caller must authenticate the rejection; no automatic replay is offered.
+    pub fn quarantine_owned_rejection(&mut self, channel: i64, server: &str, reason: &str) -> Result<()> {
+        if reason.len()>10_000 { return Err(StoreError::Invalid); }
+        let tx=rusqlite::Transaction::new_unchecked(&self.conn,rusqlite::TransactionBehavior::Immediate)?;
+        // Archival remains possible when cached page access was removed, but
+        // only for the pinned active account and workspace.
+        self.authorize_archive(channel)?; self.require_owned_document(channel,server)?;
+        let doc=crate::CollaborationDoc::default();
+        let snapshot: Option<Option<Vec<u8>>>=tx.query_row("SELECT snapshot FROM sync_docs WHERE page_id=?1 AND channel=?2",params![self.page,channel],|r|r.get(0)).optional()?;
+        if let Some(Some(bytes))=snapshot { doc.apply(&bytes).map_err(|_|StoreError::Invalid)?; }
+        {
+            let mut q=tx.prepare("SELECT data FROM sync_updates WHERE page_id=?1 AND channel=?2 ORDER BY id")?;
+            for value in q.query_map(params![self.page,channel],|r|r.get::<_,Vec<u8>>(0))? {
+                doc.apply(&value?).map_err(|_|StoreError::Invalid)?;
+            }
+        }
+        let state=doc.diff(&[0]).map_err(|_|StoreError::Invalid)?;
+        if state.len()>64*1024*1024 { return Err(StoreError::Invalid); }
+        tx.execute("INSERT INTO native_sync_owned_rejection_v1(page_id,channel,user_id,workspace_id,server,data,reason,created_at) VALUES(?1,?2,?3,?4,?5,?6,?7,?8)",params![self.page,channel,self.user,self.workspace,server,state,reason,now()])?;
+        tx.execute("UPDATE sync_outbox SET state='rejected',last_error=?3 WHERE page_id=?1 AND channel=?2 AND state='pending'",params![self.page,channel,reason])?;
+        tx.commit()?; Ok(())
+    }
+
+    /// Read the quarantined snapshot only with current cached view permission.
+    /// This operation does not alter the quarantine or resubmit any updates.
+    pub fn read_owned_rejection(&self, channel: i64, server: &str) -> Result<Vec<u8>> {
+        let tx=self.conn.unchecked_transaction()?;
+        self.check(channel,false)?;
+        let size: Option<i64>=tx.query_row("SELECT LENGTH(data) FROM native_sync_owned_rejection_v1 WHERE page_id=?1 AND channel=?2 AND user_id=?3 AND workspace_id=?4 AND server=?5",params![self.page,channel,self.user,self.workspace,server],|r|r.get(0)).optional()?;
+        if !(0..=64*1024*1024).contains(&size.ok_or(StoreError::Denied)?) { return Err(StoreError::Invalid); }
+        let bytes: Vec<u8>=tx.query_row("SELECT data FROM native_sync_owned_rejection_v1 WHERE page_id=?1 AND channel=?2 AND user_id=?3 AND workspace_id=?4 AND server=?5",params![self.page,channel,self.user,self.workspace,server],|r|r.get(0))?;
+        use yrs::updates::decoder::Decode;
+        yrs::Update::decode_v1(&bytes).map_err(|_|StoreError::Invalid)?;
+        tx.commit()?; Ok(bytes)
     }
 
     /// Rebuild and compare the complete CRDT state under an immediate SQLite transaction,
