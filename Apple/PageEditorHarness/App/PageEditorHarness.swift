@@ -116,7 +116,7 @@ private struct HarnessRoot: View {
     @StateObject private var state = HarnessState()
     var body: some View {
         NavigationStack {
-            VStack(spacing: 16) {
+            ScrollView { VStack(spacing: 16) {
                 Text("Isolated page editor test").font(.title2)
                 Text("Only a synthetic local copy is edited. Attachments and sync are unavailable. Unsupported structures and rich paste may be refused; recovery is in memory only.")
                 if let failure = state.failure { Text(failure).accessibilityIdentifier("editor-harness-error") }
@@ -124,7 +124,7 @@ private struct HarnessRoot: View {
                 else if state.copyURL == nil { Button("Import test copy") { Task { await state.importFixture() } } }
                 else { Button("Open test page") { Task { await state.openPage() } } }
                 if state.originalUnchanged { Text("Original unchanged").accessibilityIdentifier("editor-source-unchanged") }
-            }.padding()
+            }.frame(maxWidth: .infinity, alignment: .leading).padding() }
         }
         .sheet(isPresented: Binding(get: { state.model != nil }, set: { if !$0 { state.close() } })) {
             if let model = state.model { HarnessEditor(model: model, state: state) }

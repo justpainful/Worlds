@@ -21,14 +21,27 @@ struct ClaudeConversationHarnessApp: App {
         do {
             guard let executable = ClaudeExecutable.discover() else { throw ClaudeError.executableUnavailable }
             guard let fixture = Bundle.main.url(forResource: "worlds-v11", withExtension: "db") else { throw ClaudeConversationBridgeError.unavailable }
-            let root = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent("worlds-claude-\(UUID().uuidString)", isDirectory: true)
-            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+            let support = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+            let root = support.appendingPathComponent("WorldsClaudeHarness", isDirectory: true)
+            if !FileManager.default.fileExists(atPath: root.path) {
+                try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+            }
+            let journal = try IsolatedRecoveryJournal(directory: root)
             let database = root.appendingPathComponent("conversation.db")
-            try FileManager.default.copyItem(at: fixture, to: database)
-            let store = try SQLiteConversationStore(database: database)
+            if !FileManager.default.fileExists(atPath: database.path) {
+                try FileManager.default.copyItem(at: fixture, to: database)
+                try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: database.path)
+            }
+            let store = try SQLiteConversationStore(database: database, isolatedJournal: journal)
             let audit = try JSONLineRunAudit(url: root.appendingPathComponent("audit.jsonl"))
             let runner = try ClaudeRunner(executable: executable, audit: audit)
-            service = try ClaudeConversationService(conversationID: conversationID, store: store, runner: runner)
+            let owned = try await store.isolatedOwnedChatIDs()
+            guard owned.count <= 1 else { throw ClaudeConversationBridgeError.invalidResponse }
+            if let chatID = owned.first {
+                service = try await ClaudeConversationService.restoreIsolated(conversationID: conversationID, chatID: chatID, store: store, runner: runner, journal: journal)
+            } else {
+                service = try ClaudeConversationService(conversationID: conversationID, store: store, runner: runner, recoveryJournal: journal)
+            }
             error = nil
         } catch { self.error = error.localizedDescription }
     }
@@ -42,7 +55,7 @@ private struct HarnessRoot: View {
             } else {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Isolated Claude conversation").font(.title2.weight(.semibold))
-                    Text("Uses your local Claude Code runtime when you send a message. This temporary conversation has no Worlds page, attachment, MCP or tool access.")
+                    Text("Uses your local Claude Code runtime when you send a message. This private experimental conversation persists on this Mac. It has no Worlds page, attachment, MCP or tool access.")
                     if let error = state.error { Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.red) }
                     if state.loading { ProgressView("Preparing conversation") }
                     else { Button("Start") { Task { await state.start() } }.buttonStyle(.borderedProminent) }

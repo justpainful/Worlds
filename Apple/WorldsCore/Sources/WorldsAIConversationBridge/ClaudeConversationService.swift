@@ -30,11 +30,24 @@ public actor ClaudeConversationService: ConversationRecoveryService {
     private var chatID: String?
     private var activeRun: UUID?
     private var pendingSaveRun: UUID?
+    private var restoredPending: IsolatedPendingResponse?
     private var cancelled: Set<UUID> = []
-    public init(conversationID: String, store: SQLiteConversationStore, runner: any ConversationRunner) throws {
+    public init(conversationID: String, store: SQLiteConversationStore, runner: any ConversationRunner, recoveryJournal: IsolatedRecoveryJournal? = nil) throws {
         guard !conversationID.isEmpty else { throw ClaudeConversationBridgeError.unavailable }
         self.id = conversationID; self.store = store
-        self.coordinator = ConversationCoordinator(store: store, runner: runner)
+        self.coordinator = ConversationCoordinator(store: store, runner: runner, recoveryJournal: recoveryJournal)
+    }
+    public static func restoreIsolated(conversationID: String, chatID: String, store: SQLiteConversationStore,
+                                       runner: any ConversationRunner, journal: IsolatedRecoveryJournal) async throws -> ClaudeConversationService {
+        try await store.restoreIsolatedChat(chatID)
+        let records = try await store.isolatedPendingResponses().filter { $0.chatID == chatID }
+        guard records.count <= 1 else { throw ClaudeConversationBridgeError.invalidResponse }
+        let service = try ClaudeConversationService(conversationID: conversationID, store: store, runner: runner, recoveryJournal: journal)
+        await service.setRestored(chatID: chatID, pending: records.first)
+        return service
+    }
+    private func setRestored(chatID: String, pending: IsolatedPendingResponse?) {
+        self.chatID = chatID; self.restoredPending = pending; self.pendingSaveRun = pending?.runID
     }
     public func load(conversationID: String) async throws -> [ConversationMessage] {
         guard conversationID == id else { throw ClaudeConversationBridgeError.unavailable }
@@ -53,6 +66,12 @@ public actor ClaudeConversationService: ConversationRecoveryService {
     public func retryPendingSave() async throws {
         guard activeRun == nil, let runID = pendingSaveRun else { throw ClaudeConversationBridgeError.unavailable }
         do {
+            if let restoredPending {
+                try await store.recoverIsolatedResponse(restoredPending)
+                self.restoredPending = nil
+                pendingSaveRun = nil
+                return
+            }
             let result = try await coordinator.retrySave(runID: runID)
             chatID = result.chatID
             pendingSaveRun = nil
@@ -82,14 +101,20 @@ public actor ClaudeConversationService: ConversationRecoveryService {
             continuation.finish()
         } catch {
             input.finish()
+            // Preserve the coordinator's retry handle even if the event
+            // forwarding task also failed while loading the accepted message.
+            if let failure = error as? ConversationError, case .persistenceFailed = failure {
+                pendingSaveRun = runID
+                _ = try? await worker.value
+                continuation.finish(throwing: ClaudeConversationBridgeError.persistenceFailed)
+                return
+            }
             do { try await worker.value } catch { continuation.finish(throwing: error); return }
             if let failure = error as? ConversationError {
                 switch failure {
                 case .busy: continuation.finish(throwing: ClaudeConversationBridgeError.busy)
                 case .cancelled: continuation.finish(throwing: ClaudeConversationBridgeError.cancelled)
-                case .persistenceFailed:
-                    pendingSaveRun = runID
-                    continuation.finish(throwing: ClaudeConversationBridgeError.persistenceFailed)
+                case .persistenceFailed: continuation.finish(throwing: ClaudeConversationBridgeError.persistenceFailed)
                 case .unexpectedTool: continuation.finish(throwing: ClaudeConversationBridgeError.unexpectedTool)
                 case .eventLimitExceeded: continuation.finish(throwing: ClaudeConversationBridgeError.limitExceeded)
                 case .invalidRequest: continuation.finish(throwing: ClaudeConversationBridgeError.invalidResponse)

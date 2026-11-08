@@ -61,6 +61,24 @@ private final class EditorTextView: UITextView {
 }
 private struct NativeTextSurface: UIViewRepresentable {
     @ObservedObject var model: NativeEditorModel
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    private var category: UIContentSizeCategory {
+        switch dynamicTypeSize {
+        case .xSmall: return .extraSmall
+        case .small: return .small
+        case .medium: return .medium
+        case .large: return .large
+        case .xLarge: return .extraLarge
+        case .xxLarge: return .extraExtraLarge
+        case .xxxLarge: return .extraExtraExtraLarge
+        case .accessibility1: return .accessibilityMedium
+        case .accessibility2: return .accessibilityLarge
+        case .accessibility3: return .accessibilityExtraLarge
+        case .accessibility4: return .accessibilityExtraExtraLarge
+        case .accessibility5: return .accessibilityExtraExtraExtraLarge
+        @unknown default: return .large
+        }
+    }
     func makeCoordinator() -> Coordinator { Coordinator(model: model) }
     func makeUIView(context: Context) -> EditorTextView {
         let view = EditorTextView()
@@ -78,8 +96,14 @@ private struct NativeTextSurface: UIViewRepresentable {
         context.coordinator.updating = true
         defer { context.coordinator.updating = false }
         guard view.markedTextRange == nil, !context.coordinator.pendingNativeChange else { return }
-        let value = model.attributedText
+        context.coordinator.category = category
+        let value = context.coordinator.displayText()
         if !view.attributedText.isEqual(to: value) { view.attributedText = value }
+        #if DEBUG
+        if value.length > 0, let font = value.attribute(.font, at: 0, effectiveRange: nil) as? UIFont {
+            view.accessibilityLabel = "display-font-size:\(font.pointSize)"
+        }
+        #endif
         let selection = model.selection
         if NSMaxRange(selection) <= view.attributedText.length, view.selectedRange != selection { view.selectedRange = selection }
     }
@@ -87,7 +111,22 @@ private struct NativeTextSurface: UIViewRepresentable {
         let model: NativeEditorModel
         var updating = false
         var pendingNativeChange = false
+        var category: UIContentSizeCategory = .large
         init(model: NativeEditorModel) { self.model = model }
+        func displayText() -> NSAttributedString {
+            let result = NSMutableAttributedString(attributedString: model.attributedText)
+            let full = NSRange(location: 0, length: result.length)
+            let metrics = UIFontMetrics(forTextStyle: .body)
+            let system = UITraitCollection(preferredContentSizeCategory: UIApplication.shared.preferredContentSizeCategory)
+            let target = UITraitCollection(preferredContentSizeCategory: category)
+            let baseline = metrics.scaledValue(for: 100, compatibleWith: system) / 100
+            result.enumerateAttribute(.font, in: full) { value, range, _ in
+                guard let font = value as? UIFont else { return }
+                let size = metrics.scaledValue(for: font.pointSize / baseline, compatibleWith: target)
+                result.addAttribute(.font, value: font.withSize(size), range: range)
+            }
+            return result
+        }
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
             guard model.recoverableNativeText == nil else { model.report(NativeEditorError.unrecoveredNativeText); return false }
             pendingNativeChange = true
@@ -103,7 +142,7 @@ private struct NativeTextSurface: UIViewRepresentable {
             catch {
                 model.retainRejectedNativeText(textView.text ?? "")
                 updating = true
-                textView.attributedText = model.attributedText
+                textView.attributedText = displayText()
                 textView.selectedRange = NSRange(location: min(model.selection.location, textView.attributedText.length), length: 0)
                 updating = false
             }

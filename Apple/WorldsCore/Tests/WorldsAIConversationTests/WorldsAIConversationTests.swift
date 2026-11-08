@@ -28,6 +28,77 @@ private final class AcceptanceProbe: @unchecked Sendable {
     func state() -> (Bool, Bool) { lock.lock(); defer { lock.unlock() }; return (accepted, eventBeforeAcceptance) }
 }
 final class WorldsAIConversationTests: XCTestCase {
+    func testConcurrentStoresCannotShareIsolatedJournal() async throws {
+        let root = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+        defer { try? FileManager.default.removeItem(at: root) }
+        let url = root.appendingPathComponent("conversation.db")
+        try FileManager.default.copyItem(at: fixture(), to: url)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        let journal = try IsolatedRecoveryJournal(directory: root)
+        let opened = await withTaskGroup(of: SQLiteConversationStore?.self, returning: [SQLiteConversationStore].self) { group in
+            for _ in 0..<2 { group.addTask { try? SQLiteConversationStore(database: url, isolatedJournal: journal) } }
+            var stores: [SQLiteConversationStore] = []
+            for await store in group { if let store { stores.append(store) } }
+            return stores
+        }
+        XCTAssertEqual(opened.count, 1)
+        withExtendedLifetime(opened) {}
+    }
+    func testFailedSaveStagesResponseInIsolatedJournal() async throws {
+        let root = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+        defer { try? FileManager.default.removeItem(at: root) }
+        let url = root.appendingPathComponent("conversation.db")
+        try FileManager.default.copyItem(at: fixture(), to: url)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        let journal = try IsolatedRecoveryJournal(directory: root)
+        var raw: OpaquePointer?
+        guard sqlite3_open(url.path, &raw) == SQLITE_OK, let db = raw else { throw ConversationStorageError.database }
+        XCTAssertEqual(sqlite3_exec(db, "CREATE TRIGGER fail_result BEFORE INSERT ON ai_messages WHEN NEW.role='assistant' BEGIN SELECT RAISE(ABORT,'fixture'); END;", nil, nil, nil), SQLITE_OK)
+        sqlite3_close_v2(db)
+        let runID = UUID()
+        func stageInFirstStore() async throws -> [IsolatedPendingResponse] {
+            let store = try SQLiteConversationStore(database: url, isolatedJournal: journal)
+            XCTAssertThrowsError(try SQLiteConversationStore(database: url, isolatedJournal: journal))
+            let coordinator = ConversationCoordinator(store: store, runner: FakeConversationRunner(.normal), recoveryJournal: journal)
+            do { _ = try await coordinator.run(runID: runID, chatID: nil, prompt: "Question", systemPrompt: "", onEvent: { _ in }); XCTFail("Save should fail") }
+            catch ConversationError.persistenceFailed { } catch { XCTFail("Unexpected error: \(error)") }
+            return try await store.isolatedPendingResponses()
+        }
+        let records = try await stageInFirstStore()
+        XCTAssertEqual(records.count, 1)
+        XCTAssertEqual(records.first?.runID, runID)
+        XCTAssertEqual(records.first?.text, "Hello")
+        let response = try XCTUnwrap(records.first)
+        var retryRaw: OpaquePointer?
+        guard sqlite3_open(url.path, &retryRaw) == SQLITE_OK, let retryDB = retryRaw else { throw ConversationStorageError.database }
+        XCTAssertEqual(sqlite3_exec(retryDB, "DROP TRIGGER fail_result", nil, nil, nil), SQLITE_OK)
+        sqlite3_close_v2(retryDB)
+        let reopened = try SQLiteConversationStore(database: url, isolatedJournal: journal)
+        try await reopened.restoreIsolatedChat(response.chatID)
+        var conflictRaw: OpaquePointer?
+        guard sqlite3_open(url.path, &conflictRaw) == SQLITE_OK, let conflictDB = conflictRaw else { throw ConversationStorageError.database }
+        let conflictSQL = "INSERT INTO ai_messages(id,chat_id,role,content,steps,op_id,meta,created_at) VALUES('conflict','\(response.chatID)','assistant','different','[]','\(runID.uuidString.lowercased())','{}',1)"
+        XCTAssertEqual(sqlite3_exec(conflictDB, conflictSQL, nil, nil, nil), SQLITE_OK)
+        do { try await reopened.recoverIsolatedResponse(response); XCTFail("Conflicting response must not be replaced") }
+        catch ConversationStorageError.invalidData { } catch { XCTFail("Unexpected error: \(error)") }
+        let stillPending = try await reopened.isolatedPendingResponses()
+        XCTAssertEqual(stillPending.count, 1)
+        XCTAssertEqual(sqlite3_exec(conflictDB, "DELETE FROM ai_messages WHERE id='conflict'", nil, nil, nil), SQLITE_OK)
+        sqlite3_close_v2(conflictDB)
+        try await reopened.recoverIsolatedResponse(response)
+        let messages = try await reopened.messages(chatID: response.chatID)
+        XCTAssertEqual(messages.map(\.content), ["Question", "Hello"])
+        let remaining = try await reopened.isolatedPendingResponses()
+        XCTAssertTrue(remaining.isEmpty)
+        do { try await reopened.recoverIsolatedResponse(response); XCTFail("A consumed recovery must not be repeated") }
+        catch ConversationStorageError.unavailable { } catch { XCTFail("Unexpected error: \(error)") }
+        let resumed = ConversationCoordinator(store: reopened, runner: FakeConversationRunner(.normal), recoveryJournal: journal)
+        _ = try await resumed.run(runID: UUID(), chatID: response.chatID, prompt: "Follow up", systemPrompt: "", onEvent: { _ in })
+        let afterSuccess = try await reopened.isolatedPendingResponses()
+        XCTAssertTrue(afterSuccess.isEmpty, "A successful assistant commit must consume the staged response")
+    }
     private func fixture() throws -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("ai-\(UUID().uuidString).db")
         var ptr: OpaquePointer?

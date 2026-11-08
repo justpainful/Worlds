@@ -80,6 +80,31 @@ final class ClaudeConversationBridgeTests: XCTestCase {
         let messages = try await service.load(conversationID: "isolated")
         XCTAssertEqual(messages.map(\.text), ["Question", "Hello"])
     }
+    func testFailedForwardDoesNotLoseFailedSaveRecovery() async throws {
+        let (store, url) = try store()
+        var raw: OpaquePointer?
+        guard sqlite3_open(url.path, &raw) == SQLITE_OK, let db = raw else { throw ClaudeConversationBridgeError.unavailable }
+        let sql = """
+        CREATE TRIGGER corrupt_fixture AFTER INSERT ON ai_messages WHEN NEW.role='user'
+        BEGIN INSERT INTO ai_messages(id,chat_id,role,content,steps,op_id,meta,created_at) VALUES('bad',NEW.chat_id,'unknown','','[]',NULL,'{}',NEW.created_at); END;
+        CREATE TRIGGER refuse_assistant BEFORE INSERT ON ai_messages WHEN NEW.role='assistant' BEGIN SELECT RAISE(ABORT,'fixture'); END;
+        """
+        let created = sqlite3_exec(db, sql, nil, nil, nil); sqlite3_close_v2(db)
+        XCTAssertEqual(created, SQLITE_OK)
+        let service = try ClaudeConversationService(conversationID: "isolated", store: store, runner: FixtureRunner(.text))
+        do {
+            for try await _ in service.send(conversationID: "isolated", runID: UUID(), text: "Question") { }
+            XCTFail("Both forwarding and saving must fail")
+        } catch ClaudeConversationBridgeError.persistenceFailed { } catch { XCTFail("Unexpected error: \(error)") }
+        let pending = await service.hasPendingSave(); XCTAssertTrue(pending)
+        var retryRaw: OpaquePointer?
+        guard sqlite3_open(url.path, &retryRaw) == SQLITE_OK, let retryDB = retryRaw else { throw ClaudeConversationBridgeError.unavailable }
+        let fixed = sqlite3_exec(retryDB, "DROP TRIGGER refuse_assistant; DELETE FROM ai_messages WHERE id='bad';", nil, nil, nil)
+        sqlite3_close_v2(retryDB); XCTAssertEqual(fixed, SQLITE_OK)
+        try await service.retryPendingSave()
+        let messages = try await service.load(conversationID: "isolated")
+        XCTAssertEqual(messages.map(\.text), ["Question", "Hello"])
+    }
     func testCancelAfterAcceptanceStopsRun() async throws {
         let service = try ClaudeConversationService(conversationID: "isolated", store: store().0, runner: FixtureRunner(.slow))
         let runID = UUID()

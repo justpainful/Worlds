@@ -11,6 +11,12 @@ final class PageEditorHarnessUITests: XCTestCase {
         XCTAssertTrue(open.waitForExistence(timeout: 30)); open.tap()
         let editor = app.descendants(matching: .any)["native-editor-text"].firstMatch
         XCTAssertTrue(editor.waitForExistence(timeout: 20)); editor.tap()
+        #if os(iOS)
+        let label = editor.label
+        XCTAssertTrue(label.hasPrefix("display-font-size:"), "The editor should expose its measured display font in this debug harness")
+        let size = Double(label.replacingOccurrences(of: "display-font-size:", with: ""))
+        XCTAssertGreaterThan(try XCTUnwrap(size), 25, "Accessibility text must use a visibly enlarged font")
+        #endif
         selectAll(in: editor, app: app)
         editor.typeText("مسألة رياضيات 123")
         XCTAssertEqual(editor.value as? String, "مسألة رياضيات 123")

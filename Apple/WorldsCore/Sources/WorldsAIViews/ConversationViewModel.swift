@@ -27,8 +27,12 @@ public final class ConversationViewModel: ObservableObject {
         let token = UUID(); loadToken = token; loading = true; error = nil
         do {
             let loaded = try await service.load(conversationID: conversationID)
+            let pending: Bool
+            if let recovery = service as? any ConversationRecoveryService { pending = await recovery.hasPendingSave() }
+            else { pending = false }
             guard token == loadToken else { return }
-            messages = loaded; self.loaded = true; loading = false
+            messages = loaded; self.loaded = true; loading = false; canRetrySave = pending
+            if pending { error = "A response is waiting to be saved. Retry saving before sending another message." }
         } catch {
             guard token == loadToken else { return }
             self.loaded = false; self.error = error.localizedDescription; loading = false
@@ -36,7 +40,7 @@ public final class ConversationViewModel: ObservableObject {
     }
     public func send() async {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, loaded, !running, !loading else { return }
+        guard !text.isEmpty, loaded, !running, !loading, !canRetrySave else { return }
         let id = UUID(); activeRun = id; loadToken = UUID()
         running = true; stopping = false; error = nil; canRetrySave = false; streamedText = ""; tools = []
         // Retain the draft until the service confirms that it persisted a snapshot.

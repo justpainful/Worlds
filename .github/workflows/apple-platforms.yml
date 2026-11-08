@@ -30,10 +30,14 @@ jobs:
           mkdir -p logs
           swift test --package-path Apple/WorldsCore --skip WorldsDrawingVisualComparisonTests 2>&1 | tee logs/swift-test.log
           grep -q 'testSaveWaitsForNativeTextComposition' logs/swift-test.log
+          grep -E 'testExperimentalStrokeSceneRejectsUnsupportedElements.*passed' logs/swift-test.log
           grep -E 'testAcceptedPrecedesStreamAndSavedMessagesReload.*passed' logs/swift-test.log
           grep -E 'testUnexpectedToolIsRejectedWithoutMCP.*passed' logs/swift-test.log
           grep -E 'testCancelAfterAcceptanceStopsRun.*passed' logs/swift-test.log
           grep -E 'testFailedFinalSaveRemainsRecoverable.*passed' logs/swift-test.log
+          grep -E 'testFailedSaveStagesResponseInIsolatedJournal.*passed' logs/swift-test.log
+          grep -E 'testConcurrentStoresCannotShareIsolatedJournal.*passed' logs/swift-test.log
+          grep -E 'testFailedForwardDoesNotLoseFailedSaveRecovery.*passed' logs/swift-test.log
           grep -E 'testRejectedNativeTextIsRetainedAndBlocksSaveUntilDiscarded.*passed' logs/swift-test.log
           grep -E 'testKnownRichClipboardFormatsAreRejectedInsteadOfFlattened.*passed' logs/swift-test.log
           grep -q 'testStagesAndCleansUpAnIsolatedFile' logs/swift-test.log
@@ -114,7 +118,6 @@ jobs:
           grep -E 'Test Case .*testSourceCanvasAndNativeStrokePixels.*passed' "$GITHUB_WORKSPACE/logs/drawing-visual-comparison.log"
           grep -E 'Test Case .*testPressureSensitiveHighlighterRemainsUnsupported.*passed' "$GITHUB_WORKSPACE/logs/drawing-visual-comparison.log"
           grep -E 'Test Case .*testPersistedStrokeOperationAgainstSourceCanvas.*passed' "$GITHUB_WORKSPACE/logs/drawing-visual-comparison.log"
-          grep -E 'Test Case .*testExperimentalStrokeSceneRejectsUnsupportedElements.*passed' "$GITHUB_WORKSPACE/logs/drawing-visual-comparison.log"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -1028,7 +1031,7 @@ jobs:
     name: Rust collaboration with isolated local sync Worker
     runs-on: macos-26
     needs: collaboration-xcframework
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       WORLDS_REQUIRE_COLLABORATION: "1"
       WORLDS_REQUIRE_LIVE_SERVICE: "1"
@@ -1075,6 +1078,10 @@ jobs:
           grep -q 'testDiagnosticTwoClientsWithoutPresence' logs/local-swift-discovery.log
           grep -q 'testDiagnosticDefaultFactoryWithoutPresence' logs/local-swift-discovery.log
           grep -q 'testDiagnosticExplicitFactoryWithPresence' logs/local-swift-discovery.log
+      - name: Generate isolated collaboration harness
+        run: |
+          brew install xcodegen coreutils
+          xcodegen generate --spec Apple/CollaborationHarness/project.yml
       - name: Install isolated Worker dependencies
         working-directory: services/sync
         run: pnpm install --frozen-lockfile
@@ -1132,6 +1139,17 @@ jobs:
           grep -q 'editor_transaction_rejects_stale_and_rolls_back_outbox_failure ... ok' logs/collaboration-store-rust.log
           grep -q 'editor_ffi_commits_and_reports_stale_base ... ok' logs/collaboration-store-rust.log
           grep -q 'parallel_fixtures_have_distinct_databases_and_survive_peer_cleanup ... ok' logs/collaboration-store-rust.log
+          harness_status=0
+          if WORLDS_LIVE_SYNC_URL=ws://127.0.0.1:18790 \
+            WORLDS_LIVE_EDITOR_TOKEN="$editor_token" WORLDS_LIVE_VIEWER_TOKEN="$viewer_token" \
+            gtimeout --kill-after=30s 600s xcodebuild -project Apple/CollaborationHarness/WorldsCollaborationHarness.xcodeproj \
+            -scheme CollaborationHarness-macOS -destination 'platform=macOS' \
+            -resultBundlePath "$GITHUB_WORKSPACE/collaboration-harness.xcresult" \
+            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee logs/collaboration-harness.log; then
+            grep -E 'testLocalCollaborationScenario.*passed' logs/collaboration-harness.log || harness_status=1
+          else
+            harness_status=1
+          fi
           diagnostic_status=0
           for diagnostic in testDiagnosticDefaultTransportLoopbackHandshake testDiagnosticSharedSessionLoopbackHandshake testDiagnosticSingleClientWithPresence testDiagnosticTwoClientsWithoutPresence testDiagnosticDefaultFactoryWithoutPresence testDiagnosticExplicitFactoryWithPresence; do
             if WORLDS_LIVE_SYNC_URL=ws://127.0.0.1:18790 \
@@ -1161,6 +1179,7 @@ jobs:
           grep -E 'testLiveWorkerPongDoesNotCloseBinaryTransport.*passed' logs/collaboration-live-swift.log
           grep -Eq 'Executed 4 tests, with 0 failures' logs/collaboration-live-swift.log
           test "$diagnostic_status" = 0
+          test "$harness_status" = 0
       - name: Collect XCTest crash reports
         if: failure()
         shell: bash
@@ -1173,7 +1192,9 @@ jobs:
         if: always()
         with:
           name: Worlds-local-collaboration-worker-logs
-          path: logs/
+          path: |
+            logs/
+            collaboration-harness.xcresult/
           if-no-files-found: warn
 
   ui-tests:

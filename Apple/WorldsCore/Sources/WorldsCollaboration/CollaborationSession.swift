@@ -81,7 +81,9 @@ public actor CollaborationSession {
     private let endpoint: URL
     private let store: any CollaborationStore
     private let tokenProvider: TokenProvider
-    private let socketFactory: SocketFactory
+    // Keep the built-in transport out of an async default-argument closure.
+    // Explicit injected factories remain available for diagnostics and tests.
+    private let socketFactory: SocketFactory?
     private var documents: [UInt64: NativeCRDTDocument] = [:]
     private var awareness: WorldsAwareness?
     private var presenceJSON: String?
@@ -108,7 +110,7 @@ public actor CollaborationSession {
 
     public init(pageID: String, workspaceID: String, documentID: String, expectedUserID: String, serverURL: URL,
                 store: any CollaborationStore, tokenProvider: @escaping TokenProvider,
-                socketFactory: @escaping SocketFactory = { URLSessionCollaborationSocket(url: $0, token: $1) }) throws {
+                socketFactory: SocketFactory? = nil) throws {
         guard let scheme = serverURL.scheme?.lowercased(), ["https", "http"].contains(scheme),
               let host = serverURL.host, serverURL.query == nil, serverURL.fragment == nil,
               serverURL.user == nil, serverURL.password == nil,
@@ -171,7 +173,12 @@ public actor CollaborationSession {
                 guard !stopped, generation == runID else { return }
                 forceRefresh = false
                 diagnostic("create socket")
-                let opened = try await socketFactory(endpoint, token)
+                let opened: any CollaborationSocket
+                if let socketFactory {
+                    opened = try await socketFactory(endpoint, token)
+                } else {
+                    opened = URLSessionCollaborationSocket(url: endpoint, token: token)
+                }
                 diagnostic("socket created")
                 guard !stopped, generation == runID else { await opened.close(); return }
                 connection = opened; socket = opened; pending.removeAll(); verifiedIdentity = false

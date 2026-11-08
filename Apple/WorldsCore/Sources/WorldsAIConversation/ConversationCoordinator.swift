@@ -77,13 +77,24 @@ private final class EventAccumulator: @unchecked Sendable {
 public actor ConversationCoordinator {
     private let store: any ConversationStore
     private let runner: any ConversationRunner
+    private let recoveryJournal: IsolatedRecoveryJournal?
     private var activeID: UUID?
     private var running: Task<ClaudeResult, Error>?
     private var cancelled = false
     private struct PendingResult { let chatID: String; let text: String; let steps: [ConversationStep]; let isError: Bool; let sessionOK: Bool }
     private var pending: [UUID: PendingResult] = [:]
     private var saving: Set<UUID> = []
-    public init(store: any ConversationStore, runner: any ConversationRunner) { self.store = store; self.runner = runner }
+    public init(store: any ConversationStore, runner: any ConversationRunner, recoveryJournal: IsolatedRecoveryJournal? = nil) {
+        self.store = store; self.runner = runner; self.recoveryJournal = recoveryJournal
+    }
+
+    private func stage(_ result: PendingResult, runID: UUID) async throws {
+        guard let recoveryJournal else { return }
+        guard let isolatedStore = store as? SQLiteConversationStore else { throw ConversationError.persistenceFailed }
+        _ = recoveryJournal // Retain the private-directory lock for the complete run.
+        try await isolatedStore.stageIsolatedResponse(IsolatedPendingResponse(runID: runID, chatID: result.chatID, text: result.text,
+            steps: result.steps, isError: result.isError, sessionOK: result.sessionOK))
+    }
 
     public func cancel(runID: UUID) async {
         guard activeID == runID else { return }
@@ -95,8 +106,12 @@ public actor ConversationCoordinator {
     public func retrySave(runID: UUID) async throws -> ChatRunResult {
         guard let result = pending[runID], !saving.contains(runID) else { throw ConversationError.invalidRequest }
         saving.insert(runID); defer { saving.remove(runID) }
-        do { try await store.finish(chatID: result.chatID, runID: runID, text: result.text, steps: result.steps, isError: result.isError, sessionOK: result.sessionOK) }
+        do {
+            try await stage(result, runID: runID)
+            try await store.finish(chatID: result.chatID, runID: runID, text: result.text, steps: result.steps, isError: result.isError, sessionOK: result.sessionOK)
+        }
         catch { throw ConversationError.persistenceFailed }
+        // Records remain until an isolated host reconciles them with the store.
         pending.removeValue(forKey: runID)
         return ChatRunResult(chatID: result.chatID, text: result.text, isError: result.isError)
     }
@@ -135,9 +150,13 @@ public actor ConversationCoordinator {
             let (_, steps, exceeded) = accumulator.seal()
             guard !exceeded else { throw ConversationError.eventLimitExceeded }
             guard steps.isEmpty else { throw ConversationError.unexpectedTool }
-            do { try await store.finish(chatID: opened.chatID, runID: runID, text: result.text, steps: steps, isError: result.isError, sessionOK: !result.isError) }
+            let final = PendingResult(chatID: opened.chatID, text: result.text, steps: steps, isError: result.isError, sessionOK: !result.isError)
+            do {
+                try await stage(final, runID: runID)
+                try await store.finish(chatID: opened.chatID, runID: runID, text: result.text, steps: steps, isError: result.isError, sessionOK: !result.isError)
+            }
             catch {
-                pending[runID] = PendingResult(chatID: opened.chatID, text: result.text, steps: steps, isError: result.isError, sessionOK: !result.isError)
+                pending[runID] = final
                 throw ConversationError.persistenceFailed
             }
             return ChatRunResult(chatID: opened.chatID, text: result.text, isError: result.isError)
@@ -146,9 +165,13 @@ public actor ConversationCoordinator {
             let (partial, steps, exceeded) = accumulator.seal()
             // Do not expose process stderr or credentials in the saved transcript.
             let text = partial.isEmpty ? "Run did not complete." : partial
-            do { try await store.finish(chatID: opened.chatID, runID: runID, text: text, steps: steps, isError: true, sessionOK: false) }
+            let final = PendingResult(chatID: opened.chatID, text: text, steps: steps, isError: true, sessionOK: false)
+            do {
+                try await stage(final, runID: runID)
+                try await store.finish(chatID: opened.chatID, runID: runID, text: text, steps: steps, isError: true, sessionOK: false)
+            }
             catch {
-                pending[runID] = PendingResult(chatID: opened.chatID, text: text, steps: steps, isError: true, sessionOK: false)
+                pending[runID] = final
                 throw ConversationError.persistenceFailed
             }
             if cancelled || Task.isCancelled { throw ConversationError.cancelled }
