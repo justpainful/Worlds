@@ -44,6 +44,9 @@ jobs:
           grep -E 'testDocumentAlignmentPreservesRTLAndUnknownAttributesWithUndo.*passed' logs/swift-test.log
           grep -E 'testDocumentParagraphStylesPreserveRTLAndUndo.*passed' logs/swift-test.log
           grep -E 'testAppendTableRowPreservesExistingDataAndUndo.*passed' logs/swift-test.log
+          grep -E 'testAppendTableColumnPreservesHeadersCellsAndRejectsMerged.*passed' logs/swift-test.log
+          grep -E 'testAppendColumnRejectsLaterInvalidRowAtomically.*passed' logs/swift-test.log
+          grep -E 'testAppendColumnUsesLastCellTypeInMixedRows.*passed' logs/swift-test.log
           grep -E 'testIndentAndOutdentLastTaskWithUndoAndOpaqueRejection.*passed' logs/swift-test.log
           grep -E 'testEnterExitsLastEmptyRootTaskAndNewParagraphAcceptsRTLText.*passed' logs/swift-test.log
           grep -E 'testOutdentRejectsNestedMetadataAndKeepsDocument.*passed' logs/swift-test.log
@@ -604,6 +607,7 @@ jobs:
               grep -E 'testDocumentAlignmentSaveAndReopenRTL.*passed' "logs/local-page-editor-$device.log" || result=1
               grep -E 'testDocumentTitleStyleSaveAndReopenRTL.*passed' "logs/local-page-editor-$device.log" || result=1
               grep -E 'testDocumentAppendTableRowAndReopenRTL.*passed' "logs/local-page-editor-$device.log" || result=1
+              grep -E 'testDocumentAppendTableColumnAndReopenRTL.*passed' "logs/local-page-editor-$device.log" || result=1
               grep -E 'testLinkAcrossTextRunsSaveRemoveAndReopenRTL.*passed' "logs/local-page-editor-$device.log" || result=1
             else
               result=1
@@ -1314,6 +1318,7 @@ jobs:
           grep -q 'testDocumentAlignmentPersistsUnknownDataAndRejectsConflict' logs/editor-persistence-discovery.log
           grep -q 'testDocumentParagraphStyleSaveReopenAndConflict' logs/editor-persistence-discovery.log
           grep -q 'testAppendTableRowTypeSaveReopenAndRejectConflict' logs/editor-persistence-discovery.log
+          grep -q 'testAppendTableColumnTypeSaveReopenAndRejectConflict' logs/editor-persistence-discovery.log
           grep -q 'testDocumentUnknownParagraphStyleRemainsProtected' logs/editor-persistence-discovery.log
           grep -q 'testDocumentAlignmentDoesNotOverwriteUnknownLegacyValue' logs/editor-persistence-discovery.log
           grep -q 'testDocumentAlignmentRejectsKindChangeAtSameRevision' logs/editor-persistence-discovery.log
@@ -1351,6 +1356,7 @@ jobs:
           grep -E 'testDocumentAlignmentPersistsUnknownDataAndRejectsConflict.*passed' logs/editor-persistence-macos.log
           grep -E 'testDocumentParagraphStyleSaveReopenAndConflict.*passed' logs/editor-persistence-macos.log
           grep -E 'testAppendTableRowTypeSaveReopenAndRejectConflict.*passed' logs/editor-persistence-macos.log
+          grep -E 'testAppendTableColumnTypeSaveReopenAndRejectConflict.*passed' logs/editor-persistence-macos.log
           grep -E 'testDocumentUnknownParagraphStyleRemainsProtected.*passed' logs/editor-persistence-macos.log
           grep -E 'testDocumentAlignmentDoesNotOverwriteUnknownLegacyValue.*passed' logs/editor-persistence-macos.log
           grep -E 'testDocumentAlignmentRejectsKindChangeAtSameRevision.*passed' logs/editor-persistence-macos.log
@@ -1534,6 +1540,7 @@ jobs:
           grep -E 'testDocumentAlignmentPersistsUnknownDataAndRejectsConflict.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E 'testDocumentParagraphStyleSaveReopenAndConflict.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E 'testAppendTableRowTypeSaveReopenAndRejectConflict.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E 'testAppendTableColumnTypeSaveReopenAndRejectConflict.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E 'testDocumentUnknownParagraphStyleRemainsProtected.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E 'testDocumentAlignmentDoesNotOverwriteUnknownLegacyValue.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E 'testDocumentAlignmentRejectsKindChangeAtSameRevision.*passed' "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
