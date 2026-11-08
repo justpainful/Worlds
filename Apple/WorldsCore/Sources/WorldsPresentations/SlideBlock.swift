@@ -27,6 +27,14 @@ public struct SlideElement: Sendable, Equatable, Identifiable {
     public var rotation: Double { source.slideObject?["rot"]?.slideNumber ?? 0 }
     public var opacity: Double { source.slideObject?["opacity"]?.slideNumber ?? 1 }
     public var text: String? { source.slideObject?["text"]?.slideString }
+    public var editableFontWeight: Double? {
+        guard type == "text", let element = source.slideObject else { return nil }
+        guard let rawStyle = element["style"] else { return 500 }
+        guard let style = rawStyle.slideObject else { return nil }
+        guard let raw = style["fontWeight"] else { return 500 }
+        guard let value = raw.slideNumber, value.isFinite, (100...1000).contains(value) else { return nil }
+        return value
+    }
     public var editableTextAlignment: String? {
         guard type == "text", let element = source.slideObject else { return nil }
         guard let rawStyle = element["style"] else { return "left" }
@@ -151,6 +159,7 @@ public struct SlideBlock: Sendable, Equatable, Identifiable {
         try updateElement(id: elementID) { element in
             guard element["type"]?.slideString == "text" else { throw SlideError.unsupportedElement }
             if key == "align", SlideElement(source: .object(element)).editableTextAlignment == nil { throw SlideError.unsupportedElement }
+            if key == "fontWeight", SlideElement(source: .object(element)).editableFontWeight == nil { throw SlideError.unsupportedElement }
             if let existing = element["style"], existing.slideObject == nil { throw SlideError.unsupportedElement }
             var style = element["style"]?.slideObject ?? [:]
             style[key] = value

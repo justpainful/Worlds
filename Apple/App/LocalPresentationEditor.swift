@@ -54,6 +54,15 @@ import SQLite3
             self.session = session; slides = session.slides; saved = false; fixtureMediaPresent = false; error = nil
         } catch { self.error = "This text cannot be changed safely: \(error.localizedDescription)" }
     }
+    func toggleTextBold() {
+        guard !hasUnapplied else { return }
+        do {
+            guard var session, let index = session.slides.firstIndex(where: { $0.id == selectedID }), let element = currentElement, let weight = element.editableFontWeight else { return }
+            let nextWeight: Int64 = weight >= 700 ? 500 : 700
+            try session.update(at: index) { try $0.setTextStyle(elementID: element.id, key: "fontWeight", value: .integer(nextWeight)) }
+            self.session = session; slides = session.slides; saved = false; fixtureMediaPresent = false; error = nil
+        } catch { self.error = "This font weight cannot be changed safely: \(error.localizedDescription)" }
+    }
     func setTextAlignment(_ alignment: String) {
         guard !hasUnapplied else { return }
         do {
@@ -174,6 +183,15 @@ struct LocalPresentationEditor: View {
                     Button("Apply text") { state.applyText() }.disabled(!state.hasTextUnapplied)
                 }
                 if let element = state.currentElement {
+                    if let weight = element.editableFontWeight {
+                        Button { state.toggleTextBold() } label: { Label(weight >= 700 ? "Bold: On" : "Bold: Off", systemImage: "bold") }
+                            .accessibilityLabel("Bold text")
+                            .disabled(state.hasUnapplied)
+                            .accessibilityIdentifier("presentation-text-bold")
+                            .accessibilityValue(weight >= 700 ? "On" : "Off")
+                    } else {
+                        Text("This font weight cannot be edited safely.")
+                    }
                     if let alignment = element.editableTextAlignment {
                         Picker("Text alignment", selection: Binding(get: { alignment }, set: { state.setTextAlignment($0) })) {
                             Text("Left").tag("left")
