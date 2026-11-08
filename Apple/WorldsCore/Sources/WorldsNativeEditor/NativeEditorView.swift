@@ -25,7 +25,7 @@ public struct NativeEditorView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             VStack(alignment: .leading, spacing: 8) {
-                ScrollView(.vertical) { LazyVGrid(columns: [GridItem(.adaptive(minimum: dynamicTypeSize.isAccessibilitySize ? 160 : 100), spacing: 8)], alignment: .leading, spacing: 8) {
+                ScrollView(.vertical) { LazyVGrid(columns: [GridItem(.adaptive(minimum: dynamicTypeSize.isAccessibilitySize ? 260 : 100), spacing: 8)], alignment: .leading, spacing: 8) {
                     Button("Undo") { model.undo() }.keyboardShortcut("z", modifiers: .command).disabled(!model.undoManager.canUndo)
                     Button("Redo") { model.redo() }.keyboardShortcut("z", modifiers: [.command, .shift]).disabled(!model.undoManager.canRedo)
                     Button("Bold") { format("bold") }.keyboardShortcut("b", modifiers: .command)
@@ -56,10 +56,10 @@ public struct NativeEditorView: View {
                 }.buttonStyle(.bordered).controlSize(.large).fixedSize(horizontal: false, vertical: true) }
                 .accessibilityIdentifier("editor-format-toolbar")
                 .scrollIndicators(.visible)
-                .frame(maxHeight: dynamicTypeSize.isAccessibilitySize ? 200 : 120)
+                .frame(maxHeight: dynamicTypeSize.isAccessibilitySize ? 320 : 120)
                 .disabled(model.nativeEditPending || model.saving)
                 ScrollView(.vertical) {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: dynamicTypeSize.isAccessibilitySize ? 160 : 100), spacing: 8)], alignment: .leading, spacing: 8) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: dynamicTypeSize.isAccessibilitySize ? 260 : 100), spacing: 8)], alignment: .leading, spacing: 8) {
                         Button("Bullets") { list("bulletList") }
                         Button("Numbered") { list("orderedList") }
                         Button("Checklist") { list("taskList") }
@@ -68,7 +68,7 @@ public struct NativeEditorView: View {
                 }
                 .accessibilityIdentifier("editor-list-toolbar")
                 .scrollIndicators(.visible)
-                .frame(maxHeight: dynamicTypeSize.isAccessibilitySize ? 150 : 100)
+                .frame(maxHeight: dynamicTypeSize.isAccessibilitySize ? 320 : 100)
                 .disabled(model.nativeEditPending || model.saving)
                 if let description = model.currentListDescription { Text(description).font(.caption).accessibilityIdentifier("editor-list-status") }
                 if !model.listMarkers.isEmpty { ScrollView {
