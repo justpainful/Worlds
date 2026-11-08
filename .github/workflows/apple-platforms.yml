@@ -1476,6 +1476,8 @@ jobs:
           swift test --package-path Apple/WorldsCore list 2>&1 | tee logs/drawing-writes-discovery.log
           grep -q 'testPersonalDrawingOriginalSaveAndConflict' logs/drawing-writes-discovery.log
           grep -q 'testIndependentCopyImportsOnceAndPreservesSource' logs/drawing-writes-discovery.log
+          grep -q 'testCommittedCleanupPendingDoesNotRefreshReplacedDatabase' logs/drawing-writes-discovery.log
+          grep -q 'testGalleryDispositionRefreshesOnlyConfirmedSuccess' logs/drawing-writes-discovery.log
           grep -q 'testStrokePersistsAndStaleRevisionIsRejected' logs/drawing-writes-discovery.log
           grep -q 'testLockedLayerAndUnknownFrameAreRejected' logs/drawing-writes-discovery.log
           grep -q 'testPencilPressureAndOrientation' logs/drawing-writes-discovery.log
@@ -1509,6 +1511,8 @@ jobs:
           set -o pipefail
           swift test --package-path Apple/WorldsCore --filter WorldsLocalGalleryImportTests 2>&1 | tee logs/local-gallery-import-macos.log
           grep -E 'testIndependentCopyImportsOnceAndPreservesSource.*passed' logs/local-gallery-import-macos.log
+          grep -E 'testCommittedCleanupPendingDoesNotRefreshReplacedDatabase.*passed' logs/local-gallery-import-macos.log
+          grep -E 'testGalleryDispositionRefreshesOnlyConfirmedSuccess.*passed' logs/local-gallery-import-macos.log
       - name: Test native writes on iOS simulator
         shell: bash
         run: |
@@ -1584,6 +1588,8 @@ jobs:
           grep -E "Test Case .*testOriginalSceneFixtureAndInvalidFrame.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testPersonalDrawingOriginalSaveAndConflict.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testIndependentCopyImportsOnceAndPreservesSource.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testCommittedCleanupPendingDoesNotRefreshReplacedDatabase.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testGalleryDispositionRefreshesOnlyConfirmedSuccess.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testStrokePersistsAndStaleRevisionIsRejected.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testLockedLayerAndUnknownFrameAreRejected.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testPencilPressureAndOrientation.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
