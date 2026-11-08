@@ -5,6 +5,9 @@ import WorldsSearch
 #if WORLDS_EXPERIMENTAL_LOCAL_COPY
 import WorldsLocalImport
 import WorldsProjectEditingViews
+#if DEBUG && WORLDS_EXPERIMENTAL_RENAME_PAGE
+import WorldsNativeWrites
+#endif
 #endif
 
 @main
@@ -97,6 +100,9 @@ private struct WorldsLibraryView: View {
     @State private var showCopyExplanation = false
     @State private var showLocalCopies = false
     @State private var editingProject: ProjectEditorRequest?
+    #if DEBUG && WORLDS_EXPERIMENTAL_RENAME_PAGE
+    @State private var renamingPage: LocalRenamePageRequest?
+    #endif
     #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PAGE
     @State private var creatingPage: LocalCreatePageRequest?
     #endif
@@ -305,6 +311,17 @@ private struct WorldsLibraryView: View {
                     }
                 }
                 #endif
+                #if DEBUG && WORLDS_EXPERIMENTAL_RENAME_PAGE
+                if let id = selectedID, let page = pages.first(where: { $0.id == id && ($0.kind == "page" || $0.kind == "document") }),
+                   let context = copyContext, let source = openedVideoDatabase,
+                   source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Rename page", systemImage: "pencil.line") {
+                            renamingPage = LocalRenamePageRequest(pageID: id, originalTitle: page.title, originalRevision: page.updatedAt, copy: context.copy, databaseIdentity: source.identity, generation: databaseGeneration)
+                        }.accessibilityIdentifier("rename-local-page").disabled(databaseActionsDisabled)
+                    }
+                }
+                #endif
                 #if DEBUG && WORLDS_EXPERIMENTAL_PAGE_EDITOR
                 if let id = selectedID, let context = copyContext, pages.contains(where: { $0.id == id && ($0.kind == "page" || $0.kind == "document") }) {
                     ToolbarItem(placement: .primaryAction) {
@@ -356,6 +373,13 @@ private struct WorldsLibraryView: View {
         .sheet(item: $creatingPage) { request in
             LocalCreatePageView(request: request) { id in
                 await showCreatedPage(id, request: request)
+            }
+        }
+        #endif
+        #if DEBUG && WORLDS_EXPERIMENTAL_RENAME_PAGE
+        .sheet(item: $renamingPage) { request in
+            LocalRenamePageView(request: request) { baseline, title, operationID in
+                try await savePageName(request: request, baseline: baseline, title: title, operationID: operationID)
             }
         }
         #endif
@@ -552,6 +576,9 @@ private struct WorldsLibraryView: View {
         #endif
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
         disabled = disabled || editingProject != nil
+        #if DEBUG && WORLDS_EXPERIMENTAL_RENAME_PAGE
+        disabled = disabled || renamingPage != nil
+        #endif
         #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PAGE
         disabled = disabled || creatingPage != nil
         #endif
@@ -945,6 +972,26 @@ private struct WorldsLibraryView: View {
             selectedID = id
             return true
         } catch { return false }
+    }
+    #endif
+    #if DEBUG && WORLDS_EXPERIMENTAL_RENAME_PAGE
+    @MainActor private func savePageName(request: LocalRenamePageRequest, baseline: LocalPageNameRevision, title: String, operationID: UUID) async throws -> LocalPageNameRevision {
+        guard copyContext?.copy.id == request.copy.id, databaseGeneration == request.generation,
+              VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity else { throw NativeWriteError.invalidResponse }
+        let store = try NativePersonalStore(url: request.copy.databaseURL)
+        let result = try await store.renamePageChecked(id: request.pageID, base: baseline.revision, expectedTitle: baseline.title, title: title, operationID: operationID)
+        guard case .object(let values) = result, case .string(let savedID)? = values["id"], savedID == request.pageID,
+              case .string(let savedTitle)? = values["title"], savedTitle.utf8.elementsEqual(title.utf8),
+              case .integer(let savedRevision)? = values["updatedAt"],
+              VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity else { throw NativeWriteError.invalidResponse }
+        let database = try WorldsDatabase(url: request.copy.databaseURL)
+        let snapshot = try await database.snapshot()
+        guard copyContext?.copy.id == request.copy.id, databaseGeneration == request.generation,
+              VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity,
+              let page = snapshot.pages.first(where: { $0.id == request.pageID }),
+              page.title.utf8.elementsEqual(savedTitle.utf8), page.updatedAt == savedRevision else { throw NativeWriteError.invalidResponse }
+        pages = snapshot.pages
+        return LocalPageNameRevision(title: page.title, revision: page.updatedAt)
     }
     #endif
     @MainActor private func refreshCopy(id: UUID, generation: UUID) async {

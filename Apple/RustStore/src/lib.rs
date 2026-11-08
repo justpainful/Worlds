@@ -532,6 +532,19 @@ mod tests {
         drop(db);std::fs::remove_file(path).unwrap();
     }
     #[test]
+    fn checked_rename_rejects_canonically_equivalent_but_distinct_utf8() {
+        let path=fixture(); let db=Connection::open(&path).unwrap();
+        let base:i64=db.query_row("SELECT updated_at FROM pages WHERE id='fixture-page'",[],|r|r.get(0)).unwrap();
+        let decomposed="e\u{301}"; let composed="\u{e9}";
+        db.execute("UPDATE pages SET title=?1 WHERE id='fixture-page'",[decomposed]).unwrap();
+        let op=uuid::Uuid::new_v4().to_string();
+        assert!(rename_page_checked(&path,"fixture-page",base,composed.into(),"Overwrite".into(),&op).is_err());
+        let current:String=db.query_row("SELECT title FROM pages WHERE id='fixture-page'",[],|r|r.get(0)).unwrap();
+        assert_eq!(current.as_bytes(),decomposed.as_bytes());
+        assert_eq!(db.query_row("SELECT count(*) FROM history WHERE page_id='fixture-page' AND kind='renamed'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        drop(db);std::fs::remove_file(path).unwrap();
+    }
+    #[test]
     fn ffi_checked_rename_retries_same_operation() {
         let path=fixture(); let db=Connection::open(&path).unwrap();
         let (old,base):(String,i64)=db.query_row("SELECT title,updated_at FROM pages WHERE id='fixture-page'",[],|r|Ok((r.get(0)?,r.get(1)?))).unwrap();
