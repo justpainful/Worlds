@@ -237,6 +237,8 @@ pub fn create_page_idempotent(path: &Path, title: String, parent: Option<String>
     let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
     if let Some(parent_id) = parent.as_deref() { require_personal(&tx, parent_id)?; }
     tx.execute_batch("CREATE TABLE IF NOT EXISTS native_personal_page_creations_v1(operation_id TEXT PRIMARY KEY,title TEXT NOT NULL,parent_id TEXT,page_id TEXT NOT NULL,result_json TEXT NOT NULL)")?;
+    let documents_exist:bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='native_personal_document_creations_v1')",[],|r|r.get(0))?;
+    if documents_exist && tx.query_row("SELECT EXISTS(SELECT 1 FROM native_personal_document_creations_v1 WHERE operation_id=?1)",[&operation_id],|r|r.get::<_,bool>(0))? { bail!("conflict: creation operation belongs to another kind") }
     let previous: Option<(String,Option<String>,String,String)> = tx.query_row("SELECT title,parent_id,page_id,result_json FROM native_personal_page_creations_v1 WHERE operation_id=?1",[&operation_id],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?))).optional()?;
     if let Some((saved_title,saved_parent,page_id,result)) = previous {
         if saved_title != title || saved_parent != parent { bail!("conflict: creation operation input changed") }
@@ -249,6 +251,36 @@ pub fn create_page_idempotent(path: &Path, title: String, parent: Option<String>
     let result=serde_json::to_value(store::create_page(&tx,&store::Ctx::user(),input)?)?;
     let page_id=result.get("id").and_then(Value::as_str).ok_or_else(||anyhow::anyhow!("invalid created page"))?;
     tx.execute("INSERT INTO native_personal_page_creations_v1(operation_id,title,parent_id,page_id,result_json) VALUES(?1,?2,?3,?4,?5)",rusqlite::params![operation_id,title,parent,page_id,result.to_string()])?;
+    tx.commit()?; Ok(result)
+}
+
+/// A document uses the source application's document defaults and icon.
+pub fn create_document_idempotent(path:&Path,title:String,parent:Option<String>,parent_revision:Option<i64>,operation_id:&str)->Result<Value> {
+    if parent.is_some()!=parent_revision.is_some() { bail!("invalid document parent revision") }
+    let operation_id=uuid::Uuid::parse_str(operation_id)?.to_string();
+    let mut conn=open_existing(path)?;
+    let tx=conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+    if let Some(id)=parent.as_deref() { require_personal(&tx,id)?; }
+    tx.execute_batch("CREATE TABLE IF NOT EXISTS native_personal_document_creations_v1(operation_id TEXT PRIMARY KEY,title TEXT NOT NULL,parent_id TEXT,parent_revision INTEGER,page_id TEXT NOT NULL,result_json TEXT NOT NULL)")?;
+    let pages_exist:bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='native_personal_page_creations_v1')",[],|r|r.get(0))?;
+    if pages_exist && tx.query_row("SELECT EXISTS(SELECT 1 FROM native_personal_page_creations_v1 WHERE operation_id=?1)",[&operation_id],|r|r.get::<_,bool>(0))? { bail!("conflict: creation operation belongs to another kind") }
+    let prior:Option<(String,Option<String>,Option<i64>,String,String)>=tx.query_row("SELECT title,parent_id,parent_revision,page_id,result_json FROM native_personal_document_creations_v1 WHERE operation_id=?1",[&operation_id],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?))).optional()?;
+    if let Some((old_title,old_parent,old_revision,page_id,result))=prior {
+        if old_title!=title || old_parent!=parent || old_revision!=parent_revision { bail!("conflict: creation operation input changed") }
+        require_personal(&tx,&page_id)?;
+        let value:Value=serde_json::from_str(&result)?;
+        if value.get("id").and_then(Value::as_str)!=Some(page_id.as_str()) || value.get("kind").and_then(Value::as_str)!=Some("document") { bail!("conflict: invalid document creation record") }
+        tx.commit()?; return Ok(value)
+    }
+    if let (Some(id),Some(expected))=(parent.as_deref(),parent_revision) {
+        let current:i64=tx.query_row("SELECT updated_at FROM pages WHERE id=?1",[id],|r|r.get(0))?;
+        if current!=expected { bail!("conflict: parent changed") }
+    }
+    let metadata=serde_json::json!({"doc":{"size":"A4","orientation":"portrait","margins":{"top":25,"right":22,"bottom":25,"left":22},"header":"","footer":"","font":"Default","fontSize":12,"lineHeight":1.5}});
+    let input=store::NewPage { title:Some(title.clone()),icon:Some("pi:document".into()),parent_id:parent.clone(),kind:Some("document".into()),metadata:Some(metadata),..Default::default() };
+    let result=serde_json::to_value(store::create_page(&tx,&store::Ctx::user(),input)?)?;
+    let page_id=result.get("id").and_then(Value::as_str).ok_or_else(||anyhow::anyhow!("invalid created document"))?;
+    tx.execute("INSERT INTO native_personal_document_creations_v1(operation_id,title,parent_id,parent_revision,page_id,result_json) VALUES(?1,?2,?3,?4,?5,?6)",rusqlite::params![operation_id,title,parent,parent_revision,page_id,result.to_string()])?;
     tx.commit()?; Ok(result)
 }
 
@@ -349,6 +381,7 @@ enum Request {
     MovePageChecked { path: String, page: String, base: i64, expected_parent: Option<String>, expected_sort: f64, destination: Option<String>, destination_revision: Option<i64>, operation_id: String },
     CreatePage { path: String, title: String, parent: Option<String> },
     CreatePageIdempotent { path: String, title: String, parent: Option<String>, operation_id: String },
+    CreateDocumentIdempotent { path: String, title: String, parent: Option<String>, parent_revision: Option<i64>, operation_id: String },
     TrashPage { path: String, page: String, base: i64 },
 }
 
@@ -438,6 +471,7 @@ fn dispatch_inner(bytes: &[u8], cancellation: Option<&GalleryCancellation>) -> R
         Request::MovePageChecked { path, page, base, expected_parent, expected_sort, destination, destination_revision, operation_id } => move_page_checked(Path::new(&path), &page, base, expected_parent, expected_sort, destination, destination_revision, &operation_id),
         Request::CreatePage { path, title, parent } => create_page(Path::new(&path), title, parent),
         Request::CreatePageIdempotent { path, title, parent, operation_id } => create_page_idempotent(Path::new(&path), title, parent, &operation_id),
+        Request::CreateDocumentIdempotent { path, title, parent, parent_revision, operation_id } => create_document_idempotent(Path::new(&path), title, parent, parent_revision, &operation_id),
         Request::TrashPage { path, page, base } => { trash_page(Path::new(&path), &page, base)?; Ok(Value::Null) }
     }
 }
@@ -655,6 +689,57 @@ mod tests {
         let db=Connection::open(&path).unwrap();
         assert_eq!(db.query_row("SELECT count(*) FROM pages WHERE title='FFI fixture'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
         drop(db); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn document_create_matches_source_defaults_and_retries_without_duplicates() {
+        let path=fixture(); let db=Connection::open(&path).unwrap();
+        let revision:i64=db.query_row("SELECT updated_at FROM pages WHERE id='fixture-page'",[],|r|r.get(0)).unwrap();
+        let op=uuid::Uuid::new_v4().to_string();
+        let first=create_document_idempotent(&path,"Fixture document".into(),Some("fixture-page".into()),Some(revision),&op).unwrap();
+        let replay=create_document_idempotent(&path,"Fixture document".into(),Some("fixture-page".into()),Some(revision),&op).unwrap();
+        assert_eq!(first,replay); assert_eq!(first["kind"],"document");
+        let id=first["id"].as_str().unwrap();
+        let (icon,metadata):(String,String)=db.query_row("SELECT icon,metadata FROM pages WHERE id=?1",[id],|r|Ok((r.get(0)?,r.get(1)?))).unwrap();
+        assert_eq!(icon,"pi:document");
+        assert_eq!(serde_json::from_str::<Value>(&metadata).unwrap(),serde_json::json!({"doc":{"size":"A4","orientation":"portrait","margins":{"top":25,"right":22,"bottom":25,"left":22},"header":"","footer":"","font":"Default","fontSize":12,"lineHeight":1.5}}));
+        assert_eq!(db.query_row("SELECT count(*) FROM pages WHERE title='Fixture document'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        assert_eq!(db.query_row("SELECT count(*) FROM blocks WHERE page_id=?1",[id],|r|r.get::<_,i64>(0)).unwrap(),0);
+        assert_eq!(db.query_row("SELECT count(*) FROM history WHERE page_id=?1 AND kind='created'",[id],|r|r.get::<_,i64>(0)).unwrap(),1);
+        assert!(create_document_idempotent(&path,"Other".into(),Some("fixture-page".into()),Some(revision),&op).is_err());
+        assert!(create_page_idempotent(&path,"Fixture document".into(),Some("fixture-page".into()),&op).is_err());
+        let page_op=uuid::Uuid::new_v4().to_string();
+        create_page_idempotent(&path,"Fixture page".into(),None,&page_op).unwrap();
+        assert!(create_document_idempotent(&path,"Fixture page".into(),None,None,&page_op).is_err());
+        db.execute("UPDATE pages SET metadata='{\"sync\":{\"shared\":true}}' WHERE id='fixture-page'",[]).unwrap();
+        assert!(create_document_idempotent(&path,"Fixture document".into(),Some("fixture-page".into()),Some(revision),&op).is_err());
+        drop(db);std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn document_create_rejects_changed_parent_and_rolls_back_all_writes() {
+        let path=fixture(); let db=Connection::open(&path).unwrap();
+        let revision:i64=db.query_row("SELECT updated_at FROM pages WHERE id='fixture-page'",[],|r|r.get(0)).unwrap();
+        let op=uuid::Uuid::new_v4().to_string();
+        assert!(create_document_idempotent(&path,"Doc".into(),Some("fixture-page".into()),Some(revision+1),&op).is_err());
+        assert!(create_document_idempotent(&path,"Doc".into(),Some("fixture-page".into()),None,&op).is_err());
+        db.execute_batch("CREATE TABLE native_personal_document_creations_v1(operation_id TEXT PRIMARY KEY,title TEXT NOT NULL,parent_id TEXT,parent_revision INTEGER,page_id TEXT NOT NULL,result_json TEXT NOT NULL); CREATE TRIGGER fail_document_record BEFORE INSERT ON native_personal_document_creations_v1 BEGIN SELECT RAISE(ABORT,'fixture'); END;").unwrap();
+        let before:(i64,i64,i64)=db.query_row("SELECT (SELECT count(*) FROM pages),(SELECT count(*) FROM history),(SELECT count(*) FROM changes)",[],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).unwrap();
+        assert!(create_document_idempotent(&path,"Documentrollbackfixture".into(),Some("fixture-page".into()),Some(revision),&op).is_err());
+        let after:(i64,i64,i64)=db.query_row("SELECT (SELECT count(*) FROM pages),(SELECT count(*) FROM history),(SELECT count(*) FROM changes)",[],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).unwrap();
+        assert_eq!(before,after);
+        assert_eq!(db.query_row("SELECT count(*) FROM pages_fts WHERE pages_fts MATCH 'Documentrollbackfixture'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        db.execute_batch("DROP TRIGGER fail_document_record;").unwrap();
+        assert!(create_document_idempotent(&path,"Documentrollbackfixture".into(),Some("fixture-page".into()),Some(revision),&op).is_ok());
+        drop(db);std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn ffi_document_create_replays_same_operation() {
+        let path=fixture(); let db=Connection::open(&path).unwrap();
+        let revision:i64=db.query_row("SELECT updated_at FROM pages WHERE id='fixture-page'",[],|r|r.get(0)).unwrap();
+        let request=serde_json::json!({"operation":"create_document_idempotent","path":path,"title":"FFI document","parent":"fixture-page","parent_revision":revision,"operation_id":uuid::Uuid::new_v4().to_string()}).to_string();
+        let invoke=|| { let response=unsafe { worlds_store_call(request.as_ptr(),request.len()) }; let parsed:Value=serde_json::from_str(unsafe { std::ffi::CStr::from_ptr(response) }.to_str().unwrap()).unwrap(); unsafe { worlds_store_free(response) };parsed };
+        let first=invoke(); let replay=invoke(); assert_eq!(first["ok"],true,"{first}");assert_eq!(first,replay);
+        assert_eq!(db.query_row("SELECT count(*) FROM pages WHERE title='FFI document' AND kind='document'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        drop(db);std::fs::remove_file(path).unwrap();
     }
     #[test]
     fn ffi_rename_uses_real_store() {

@@ -39,6 +39,7 @@ private struct Request: Encodable, Sendable {
     var destination: String? = nil
     var destinationRevision: Int64? = nil
     var parent: String? = nil
+    var parentRevision: Int64? = nil
     var blocks: [NativeBlockInput]? = nil
     var expected: [NativeBlockInput]? = nil
     var expectedKind: String? = nil
@@ -55,6 +56,7 @@ private struct Request: Encodable, Sendable {
         case expectedKind = "expected_kind"
         case expectedTitle = "expected_title"
         case expectedParent = "expected_parent"
+        case parentRevision = "parent_revision"
         case expectedSort = "expected_sort"
         case destination
         case destinationRevision = "destination_revision"
@@ -95,6 +97,10 @@ public actor NativePersonalStore {
     /// The result describes the original commit; reload to see current page state.
     public func createPageIdempotent(title: String, parent: String? = nil, operationID: UUID) async throws -> JSONValue {
         try await call(Request(operation: "create_page_idempotent", path: url.path, title: title, parent: parent, operationID: operationID.uuidString))
+    }
+    /// Pass parent and its observed revision together, or nil for a root document.
+    public func createDocumentIdempotent(title: String, parent: String? = nil, parentRevision: Int64? = nil, operationID: UUID) async throws -> JSONValue {
+        try await call(Request(operation: "create_document_idempotent", path: url.path, title: title, parent: parent, parentRevision: parentRevision, operationID: operationID.uuidString))
     }
     public func renamePage(id: String, base: Int64, title: String) async throws -> JSONValue {
         try await call(Request(operation: "rename_page", path: url.path, page: id, base: base, title: title))
