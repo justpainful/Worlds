@@ -19,6 +19,16 @@ pub(crate) mod unix {
         if unsafe { libc::flock(directory.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0 { bail!("copy is in use") }
         Ok(Lock(directory))
     }
+    // Pinned descriptors allow detection of a changed path at each check. They
+    // cannot make pathname traversal and SQLite writes one atomic operation.
+    fn require_directory_identity(path: &Path, pinned: &File) -> Result<()> {
+        let expected=pinned.metadata()?;
+        let actual=crate::attachment_open::open_directory(path)?.metadata()?;
+        if !expected.is_dir() || !actual.is_dir() || expected.dev()!=actual.dev() || expected.ino()!=actual.ino() {
+            bail!("gallery directory identity changed")
+        }
+        Ok(())
+    }
     fn db(root: &Path) -> Result<Connection> {
         // Inspect the existing database before SQLite can create journal files
         // or our recovery tables. This is a point-in-time check, not a proof
@@ -98,7 +108,7 @@ pub(crate) mod unix {
         }
         Ok(())
     }
-    pub(crate) fn recover(root: &Path) -> Result<()> { let _lock=lock(root)?; let mut c=db(root)?; recover_locked(&mut c,root) }
+    pub(crate) fn recover(root: &Path) -> Result<()> { let held=lock(root)?; let mut c=db(root)?; require_directory_identity(root,&held.0)?; recover_locked(&mut c,root) }
 
     /// `source` is already security-scoped by the host. Only the private copy
     /// is mutated; source and its security scope must remain stable throughout.
@@ -113,7 +123,8 @@ pub(crate) mod unix {
     }
     fn import_with_hooks(root: &Path, source: &Path, page: &str, base: i64, metadata: Value, expected: Vec<BlockInput>, operation: &str, cancel: Option<&Cancellation>, after_create: impl FnOnce() -> Result<()>, after_intent: impl FnOnce() -> Result<()>, after_file_create: impl FnOnce() -> Result<()>) -> Result<Value> {
         let operation=uuid::Uuid::parse_str(operation)?.simple().to_string();
-        let _lock=lock(root).context("validate local copy directory")?; let mut c=db(root).context("open local copy database")?; recover_locked(&mut c,root).context("recover previous import")?;
+        let held=lock(root).context("validate local copy directory")?; let mut c=db(root).context("open local copy database")?;
+        require_directory_identity(root,&held.0)?; recover_locked(&mut c,root).context("recover previous import")?;
         let parent=source.parent().ok_or_else(||anyhow::anyhow!("invalid source"))?;
         let name=source.file_name().ok_or_else(||anyhow::anyhow!("invalid source"))?;
         let mut input=crate::attachment_open::open_confined(parent,Path::new(name)).context("open scoped source file")?;
@@ -142,10 +153,10 @@ pub(crate) mod unix {
         let id=operation.clone(); let rel=format!("native-import/{id}/asset.{ext}");
         let attachments=root.join("attachments");
         match std::fs::DirBuilder::new().mode(0o700).create(&attachments) { Ok(()) => { File::open(root)?.sync_all()?; }, Err(e) if e.kind()==std::io::ErrorKind::AlreadyExists => {}, Err(e) => return Err(e.into()) }
-        crate::attachment_open::open_directory(&attachments).context("validate attachment directory")?;
+        let attachments_handle=crate::attachment_open::open_directory(&attachments).context("validate attachment directory")?;
         let folder=attachments.join("native-import");
         match std::fs::create_dir(&folder) { Ok(()) => {}, Err(e) if e.kind()==std::io::ErrorKind::AlreadyExists => {}, Err(e) => return Err(e.into()) }
-        crate::attachment_open::open_directory(&folder).context("validate import directory")?;
+        let folder_handle=crate::attachment_open::open_directory(&folder).context("validate import directory")?;
         File::open(&attachments)?.sync_all()?;
         let item_dir=folder.join(&id);
         let mut builder=std::fs::DirBuilder::new(); builder.mode(0o700); builder.create(&item_dir)?;
@@ -153,10 +164,18 @@ pub(crate) mod unix {
         let item_handle=crate::attachment_open::open_directory(&item_dir).context("validate new import directory")?;
         let item_meta=item_handle.metadata()?;
         after_create()?;
+        require_directory_identity(root,&held.0)?;
+        require_directory_identity(&attachments,&attachments_handle)?;
+        require_directory_identity(&folder,&folder_handle)?;
+        require_directory_identity(&item_dir,&item_handle)?;
         c.execute("INSERT INTO native_gallery_import_intents_v2(id,rel_path,dir_device,dir_inode) VALUES(?1,?2,?3,?4)",params![id,rel,item_meta.dev() as i64,item_meta.ino() as i64])?;
         after_intent()?;
         let destination=attachments.join(&rel);
         let work=(|| -> Result<Value> {
+            require_directory_identity(root,&held.0)?;
+            require_directory_identity(&attachments,&attachments_handle)?;
+            require_directory_identity(&folder,&folder_handle)?;
+            require_directory_identity(&item_dir,&item_handle)?;
             let mut output=OpenOptions::new().write(true).create_new(true).mode(0o600).open(&destination)?;
             let created=output.metadata()?;
             item_handle.sync_all()?;
@@ -181,10 +200,16 @@ pub(crate) mod unix {
             next.push(BlockInput{id:bid.clone(),content:json!({"type":"galleryItem","attrs":{"bid":bid,"attachmentId":id,"name":filename,"mime":mime,"size":copied,"kind":kind,"caption":""}})});
             let result=crate::resource_ops::save_gallery_transaction(&tx,page,base,metadata.clone(),metadata,expected,next)?;
             tx.execute("INSERT INTO native_gallery_import_completed(id,request,result) VALUES(?1,?2,?3)",params![operation,request,result.to_string()])?;
+            require_directory_identity(root,&held.0)?;
+            require_directory_identity(&attachments,&attachments_handle)?;
+            require_directory_identity(&folder,&folder_handle)?;
+            require_directory_identity(&item_dir,&item_handle)?;
             require_output_identity(&attachments,&rel,&output,created.dev(),created.ino(),copied)?;
             if let Some(cancel)=cancel { cancel.commit()?; }
             tx.commit()?; Ok(result)
         })();
+        // Never run path-based cleanup against a replacement copy directory.
+        require_directory_identity(root,&held.0)?;
         match work {
             Ok(value) => {
                 if let Err(error)=recover_locked(&mut c,root) { bail!("committed: gallery import succeeded but recovery cleanup is pending: {error}") }
@@ -198,6 +223,48 @@ pub(crate) mod unix {
     mod tests {
         use super::*;
         use std::os::unix::fs::{PermissionsExt, DirBuilderExt};
+        #[test]
+        fn directory_identity_check_rejects_replacement_and_symlink() {
+            use std::os::unix::fs::symlink;
+            let root=std::env::temp_dir().canonicalize().unwrap().join(format!("gallery-dir-identity-{}",uuid::Uuid::new_v4()));
+            std::fs::DirBuilder::new().mode(0o700).create(&root).unwrap();
+            let path=root.join("selected"); let old=root.join("old");
+            std::fs::create_dir(&path).unwrap();
+            let handle=crate::attachment_open::open_directory(&path).unwrap();
+            assert!(require_directory_identity(&path,&handle).is_ok());
+            std::fs::rename(&path,&old).unwrap(); std::fs::create_dir(&path).unwrap();
+            assert!(require_directory_identity(&path,&handle).is_err());
+            std::fs::remove_dir(&path).unwrap(); symlink(&old,&path).unwrap();
+            assert!(require_directory_identity(&path,&handle).is_err());
+            drop(handle); std::fs::remove_dir_all(root).unwrap();
+        }
+        #[test]
+        fn replaced_copy_directory_stops_before_output_and_preserves_replacement() {
+            let parent=std::env::temp_dir().canonicalize().unwrap().join(format!("gallery-root-swap-{}",uuid::Uuid::new_v4()));
+            std::fs::DirBuilder::new().mode(0o700).create(&parent).unwrap();
+            let root=parent.join("copy"); std::fs::DirBuilder::new().mode(0o700).create(&root).unwrap();
+            std::fs::copy(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/worlds-v11.db"),root.join("worlds.db")).unwrap();
+            let c=Connection::open(root.join("worlds.db")).unwrap();
+            c.execute("INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('gallery-test','Gallery','gallery','{}',1,1)",[]).unwrap(); drop(c);
+            let source=parent.join("sample.mp3"); std::fs::write(&source,b"original source").unwrap();
+            let old=crate::resource_ops::read_resource(&root.join("worlds.db"),"gallery-test").unwrap();
+            let expected:Vec<BlockInput>=old["blocks"].as_array().unwrap().iter().map(|v|BlockInput{id:v["id"].as_str().unwrap().into(),content:v["content"].clone()}).collect();
+            let saved=parent.join("original-copy"); let operation=uuid::Uuid::new_v4().to_string();
+            let result=import_with_hooks(&root,&source,"gallery-test",old["revision"].as_i64().unwrap(),old["metadata"].clone(),expected,&operation,None,|| {
+                std::fs::rename(&root,&saved)?;
+                std::fs::DirBuilder::new().mode(0o700).create(&root)?;
+                std::fs::write(root.join("untouched"),b"replacement")?;
+                Ok(())
+            },||Ok(()),||Ok(()));
+            assert!(result.is_err());
+            assert_eq!(std::fs::read(&source).unwrap(),b"original source");
+            assert_eq!(std::fs::read(root.join("untouched")).unwrap(),b"replacement");
+            assert!(!root.join("attachments").exists());
+            let db=Connection::open(saved.join("worlds.db")).unwrap();
+            let count:i64=db.query_row("SELECT COUNT(*) FROM attachments WHERE page_id='gallery-test'",[],|r|r.get(0)).unwrap();
+            assert_eq!(count,0);
+            drop(db); std::fs::remove_dir_all(parent).unwrap();
+        }
         #[test]
         fn swapped_destination_is_not_committed_or_deleted() {
             let root=std::env::temp_dir().canonicalize().unwrap().join(format!("gallery-replaced-{}",uuid::Uuid::new_v4()));
