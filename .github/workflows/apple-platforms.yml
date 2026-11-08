@@ -2117,6 +2117,8 @@ jobs:
           grep -q 'editor_transaction_rejects_stale_and_rolls_back_outbox_failure ... ok' logs/collaboration-store-rust.log
           grep -q 'incomplete_ancestry_never_falls_back_to_workspace_default_for_writes ... ok' logs/collaboration-store-rust.log
           grep -q 'pending_causal_outbox_is_visible_in_snapshot_and_wire_before_ack ... ok' logs/collaboration-store-rust.log
+          grep -q 'owned_outbox_blocks_legacy_and_account_switch_without_deleting_rows ... ok' logs/collaboration-store-rust.log
+          grep -q 'owned_outbox_ack_watermark_and_atomic_rollback ... ok' logs/collaboration-store-rust.log
           grep -q 'replaced_database_path_is_rejected_without_writing_either_database ... ok' logs/collaboration-store-rust.log
           grep -q 'delete_transaction_preserves_outbox_on_failure_and_rejects_stale_or_viewer ... ok' logs/collaboration-store-rust.log
           grep -q 'formatting_transaction_is_durable_and_refuses_stale_or_readonly ... ok' logs/collaboration-store-rust.log
