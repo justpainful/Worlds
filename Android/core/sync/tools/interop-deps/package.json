@@ -1,0 +1,14 @@
+{
+  "name": "worlds-android-yjs-contract",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Pinned desktop collaboration dependencies for Android compatibility tests",
+  "dependencies": {
+    "@tiptap/y-tiptap": "3.0.9",
+    "prosemirror-model": "1.25.12",
+    "prosemirror-state": "1.4.4",
+    "prosemirror-view": "1.42.6",
+    "y-protocols": "1.0.7",
+    "yjs": "13.6.33"
+  }
+}

@@ -39,6 +39,13 @@ jobs:
           git diff --exit-code -- core/content/src/androidTest/assets/desktop-markdown.json core/content/src/androidTest/assets/desktop-markdown-import.json
       - name: Test native Yrs engine
         run: cargo test --locked --manifest-path core/sync/native/Cargo.toml
+      - name: Check Android and desktop Yjs compatibility
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund --prefix core/sync/tools/interop-deps
+          node core/sync/tools/check-desktop-lock.cjs
+          export NODE_PATH="$PWD/core/sync/tools/interop-deps/node_modules"
+          node core/sync/tools/check-yjs-interop.cjs
+          node core/sync/tools/check-editor-interop.cjs
       - name: Build libraries and run checks
         run: |
           chmod +x gradlew
@@ -93,7 +100,18 @@ jobs:
           target: google_apis
           disable-animations: true
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
-          script: cd Android && chmod +x gradlew && ./gradlew :app:connectedDebugAndroidTest :core:sync:connectedDebugAndroidTest :core:stylus:connectedDebugAndroidTest :core:content:connectedDebugAndroidTest :core:identity:connectedDebugAndroidTest
+          script: |
+            set -e
+            cd Android
+            chmod +x gradlew
+            ./gradlew :app:connectedDebugAndroidTest :core:sync:connectedDebugAndroidTest :core:stylus:connectedDebugAndroidTest :core:content:connectedDebugAndroidTest :core:identity:connectedDebugAndroidTest
+            mkdir -p build/full-app-test-results
+            cp -a app/build/reports/androidTests build/full-app-test-results/reports
+            cp -a app/build/outputs/androidTest-results build/full-app-test-results/results
+            ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=worlds.android.SharedRecoveryUiTest#sharedToolbarSupportsArabicLargeTextOffline,worlds.android.SharedRecoveryUiTest#duplicateHeadingSyncsToPeerAndRemainsIndependent -Pandroid.testInstrumentationRunnerArguments.captureUi=1
+            mkdir -p build/ci-screenshots
+            adb pull /sdcard/Download/worlds-shared-toolbar-ar.png build/ci-screenshots/shared-toolbar-ar.png
+            adb pull /sdcard/Download/worlds-shared-duplicate.png build/ci-screenshots/shared-duplicate.png
       - name: Upload instrumentation reports
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -104,6 +122,8 @@ jobs:
             Android/core/*/build/outputs/androidTest-results/
             Android/app/build/reports/androidTests/
             Android/app/build/outputs/androidTest-results/
+            Android/build/ci-screenshots/
+            Android/build/full-app-test-results/
           if-no-files-found: ignore
 
   packages:
@@ -159,4 +179,6 @@ jobs:
             docs/android-native/screenshots/shared-markdown.png
             docs/android-native/screenshots/shared-long-text.png
             docs/android-native/screenshots/shared-long-text-ar.png
+            docs/android-native/screenshots/shared-duplicate-compact.png
+            docs/android-native/screenshots/shared-toolbar-ar-large.png
           if-no-files-found: error

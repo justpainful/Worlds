@@ -66,4 +66,27 @@ assert.equal(duplicateNodes[1].content.map(n => n.text).join(''), 'A😀B');
 assert.deepStrictEqual(normalize({ marks: duplicateNodes[1].content[0].marks }), normalize({ marks: tiptap.yXmlFragmentToProsemirrorJSON(root).content[0].content[0].marks }));
 assert.throws(() => rust('duplicate', { source: 'block1', bid: 'block1' }));
 assert.throws(() => rust('duplicate', { source: 'missing', bid: 'another' }));
+// Delivery order must not affect concurrent edits or a remote deletion of the original.
+const remoteChanged = new Y.Doc(); Y.applyUpdate(remoteChanged, snapshot);
+const remoteBefore = Y.encodeStateVector(remoteChanged);
+remoteChanged.getXmlFragment('default').get(0).get(0).insert(4, ' peer');
+const changedUpdate = Y.encodeStateAsUpdate(remoteChanged, remoteBefore);
+function replayInOrder(first, second) {
+  const replica = new Y.Doc(); Y.applyUpdate(replica, snapshot);
+  Y.applyUpdate(replica, first); Y.applyUpdate(replica, second);
+  return normalize(tiptap.yXmlFragmentToProsemirrorJSON(replica.getXmlFragment('default')));
+}
+const changedFirst = replayInOrder(changedUpdate, duplicate);
+const duplicateFirst = replayInOrder(duplicate, changedUpdate);
+assert.deepStrictEqual(changedFirst, duplicateFirst);
+assert.equal(changedFirst.content[0].content.map(n => n.text).join(''), 'A😀B peer');
+assert.equal(changedFirst.content[1].content.map(n => n.text).join(''), 'A😀B');
+const deletedPeer = new Y.Doc(); Y.applyUpdate(deletedPeer, snapshot);
+const deleteVector = Y.encodeStateVector(deletedPeer);
+deletedPeer.getXmlFragment('default').delete(0, 1);
+const deleteUpdate = Y.encodeStateAsUpdate(deletedPeer, deleteVector);
+const deleteThenCopy = replayInOrder(deleteUpdate, duplicate);
+assert.deepStrictEqual(deleteThenCopy, replayInOrder(duplicate, deleteUpdate));
+assert.equal(deleteThenCopy.content[0].attrs.bid, 'android-copy');
+assert.equal(deleteThenCopy.content[0].content.map(n => n.text).join(''), 'A😀B');
 console.log('Tiptap JSON, block-id edits, UTF-16 and concurrent desktop edits agree');

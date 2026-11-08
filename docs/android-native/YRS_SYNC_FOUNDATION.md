@@ -1,5 +1,16 @@
 # Android Yrs sync foundation
 
+CI also runs the Android Yrs examples against the desktop's locked Yjs and
+Tiptap versions. It verifies mixed-script text, UTF-16 boundaries, formatting,
+block insertion, duplication, reverse-order updates and convergence after a
+concurrent edit or deletion. The pinned contract dependencies are checked
+against the desktop lockfile. This is a protocol compatibility test, not a
+production service or physical-device test. The emulator job captures fresh
+shared-page screenshots for both tested Android versions and uploads them with
+the test reports. The two capture tests passed locally on Android 11 and 15
+emulators; physical devices remain unverified.
+
+
 Shared-page access, comments, notices, versions and Markdown actions share a
 compact icon strip with accessibility labels and native tooltips. Android 15
 emulator checks cover accessible labels, a long-press tooltip, offline disabled
