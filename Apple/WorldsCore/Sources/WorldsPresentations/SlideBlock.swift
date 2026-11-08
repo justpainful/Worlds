@@ -27,6 +27,12 @@ public struct SlideElement: Sendable, Equatable, Identifiable {
     public var rotation: Double { source.slideObject?["rot"]?.slideNumber ?? 0 }
     public var opacity: Double { source.slideObject?["opacity"]?.slideNumber ?? 1 }
     public var text: String? { source.slideObject?["text"]?.slideString }
+    public var editableRotation: Double? {
+        guard type == "text", let element = source.slideObject else { return nil }
+        guard let raw = element["rot"] else { return 0 }
+        guard let value = raw.slideNumber, value.isFinite, abs(value) <= 1_000_000 else { return nil }
+        return value
+    }
     public var editablePosition: (x: Double, y: Double)? {
         guard type == "text", let element = source.slideObject,
               let x = element["x"]?.slideNumber, let y = element["y"]?.slideNumber,
@@ -205,6 +211,15 @@ public struct SlideBlock: Sendable, Equatable, Identifiable {
             guard let number = object[key]?.slideNumber, number.isFinite else { return false }
         }
         return true
+    }
+    public mutating func rotateText(elementID: String, degrees: Double) throws {
+        guard degrees == -1 || degrees == 1 else { throw SlideError.invalidGeometry }
+        try updateElement(id: elementID) { element in
+            guard let rotation = SlideElement(source: .object(element)).editableRotation else { throw SlideError.unsupportedElement }
+            let next = rotation + degrees
+            guard next.isFinite, abs(next) <= 1_000_000, next != rotation else { throw SlideError.invalidGeometry }
+            element["rot"] = .number(next)
+        }
     }
     public mutating func moveText(elementID: String, dx: Double, dy: Double) throws {
         guard dx.isFinite, dy.isFinite, abs(dx) + abs(dy) == 1 else { throw SlideError.invalidGeometry }

@@ -73,6 +73,14 @@ import SQLite3
             self.session = session; slides = session.slides; saved = false; fixtureMediaPresent = false; error = nil
         } catch { self.error = "This text cannot be changed safely: \(error.localizedDescription)" }
     }
+    func rotateText(clockwise: Bool) {
+        guard !hasUnapplied else { return }
+        do {
+            guard var session, let index = session.slides.firstIndex(where: { $0.id == selectedID }), let element = currentElement, element.editableRotation != nil else { return }
+            try session.update(at: index) { try $0.rotateText(elementID: element.id, degrees: clockwise ? 1 : -1) }
+            self.session = session; slides = session.slides; saved = false; fixtureMediaPresent = false; error = nil
+        } catch { self.error = "This rotation cannot be changed safely: \(error.localizedDescription)" }
+    }
     func moveText(dx: Double, dy: Double) {
         guard !hasUnapplied else { return }
         do {
@@ -274,6 +282,16 @@ struct LocalPresentationEditor: View {
                     Button("Apply text") { state.applyText() }.disabled(!state.hasTextUnapplied)
                 }
                 if let element = state.currentElement {
+                    if let rotation = element.editableRotation {
+                        Text("Rotation: \(rotation.formatted())°").accessibilityIdentifier("presentation-text-rotation")
+                        Button("Rotate text counterclockwise") { state.rotateText(clockwise: false) }
+                            .disabled(state.hasUnapplied || rotation < -999_999).accessibilityIdentifier("presentation-text-rotate-left")
+                        Button("Rotate text clockwise") { state.rotateText(clockwise: true) }
+                            .disabled(state.hasUnapplied || rotation > 999_999).accessibilityIdentifier("presentation-text-rotate-right")
+                        Text("A full slide preview is not available here.").font(.caption)
+                    } else {
+                        Text("This rotation cannot be edited safely.")
+                    }
                     if let position = element.editablePosition {
                         Text("Position: \(position.x.formatted()), \(position.y.formatted())").accessibilityIdentifier("presentation-text-position")
                         Text("Position uses slide coordinates. A full slide preview is not available here.").font(.caption)

@@ -62,6 +62,25 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         XCTAssertTrue(menu.waitForExistence(timeout: 20)); XCTAssertTrue(menu.label.contains("#f7f5f0"))
         XCTAssertTrue(app.staticTexts["presentation-unsupported-elements"].exists)
     }
+    @MainActor func testRotateTextUndoAndReopenKeepsMedia() {
+        let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-presentation-fixture"]; app.launch()
+        let page = app.descendants(matching: .any)["page.deck-test"].firstMatch
+        guard page.waitForExistence(timeout: 30) else { failure(app, "rotate-page-missing"); XCTFail("Presentation page missing"); return }; page.tap()
+        let edit = app.buttons["edit-local-presentation"]
+        guard edit.waitForExistence(timeout: 20) else { failure(app, "rotate-edit-missing"); XCTFail("Presentation editor missing"); return }; edit.tap()
+        let position = app.staticTexts["presentation-text-rotation"]
+        guard position.waitForExistence(timeout: 20) else { failure(app, "rotate-position-missing"); XCTFail("Text rotation missing"); return }
+        XCTAssertEqual(position.label, "Rotation: 0°")
+        app.buttons["presentation-text-rotate-right"].tap(); XCTAssertEqual(position.label, "Rotation: 1°")
+        app.buttons["Undo"].tap(); XCTAssertEqual(position.label, "Rotation: 0°")
+        app.buttons["Redo"].tap(); XCTAssertEqual(position.label, "Rotation: 1°")
+        app.buttons["Save"].tap()
+        guard app.staticTexts["presentation-edit-saved"].waitForExistence(timeout: 20) else { failure(app, "rotate-save-missing"); XCTFail("Rotation save missing"); return }
+        XCTAssertTrue(app.staticTexts["presentation-media-record-retained"].waitForExistence(timeout: 10))
+        app.buttons["Close"].tap(); XCTAssertTrue(edit.waitForExistence(timeout: 20)); edit.tap()
+        XCTAssertTrue(position.waitForExistence(timeout: 20)); XCTAssertEqual(position.label, "Rotation: 1°")
+        XCTAssertTrue(app.staticTexts["presentation-unsupported-elements"].exists)
+    }
     @MainActor func testMoveTextUndoAndReopenKeepsMedia() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-presentation-fixture"]; app.launch()
         let page = app.descendants(matching: .any)["page.deck-test"].firstMatch

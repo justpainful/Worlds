@@ -43,6 +43,27 @@ final class PresentationSessionTests: XCTestCase {
             XCTAssertEqual(rejected.slides[0], bad); XCTAssertFalse(rejected.canUndo)
         }
     }
+    func testRotateTextUndoAndProtectsMalformedRotation() throws {
+        let json = #"{"id":"one","content":{"type":"slide","attrs":{"elements":[{"id":"text","type":"text","text":"A","x":20,"y":30,"future":{"keep":true}},{"id":"image","type":"image","attachmentId":"image"}]}}}"#
+        let original = try SlideBlock(json: Data(json.utf8))
+        var session = try PresentationSession(slides: [original])
+        XCTAssertEqual(original.elements[0].editableRotation, 0)
+        try session.update(at: 0) { try $0.rotateText(elementID: "text", degrees: 1) }
+        let changed = session.slides[0]
+        XCTAssertEqual(changed.elements[0].editableRotation, 1)
+        XCTAssertEqual(changed.elements[0].editablePosition?.x, 20)
+        XCTAssertEqual(changed.elements[1], original.elements[1])
+        session.undo(); XCTAssertEqual(session.slides[0], original)
+        session.redo(); XCTAssertEqual(session.slides[0], changed)
+        for badRotation in [#"{"future":true}"#, "1000001"] {
+            let badJSON = json.replacingOccurrences(of: #""x":20"#, with: #""rot":ROTATION,"x":20"#.replacingOccurrences(of: "ROTATION", with: badRotation))
+            let bad = try SlideBlock(json: Data(badJSON.utf8))
+            var rejected = try PresentationSession(slides: [bad])
+            XCTAssertNil(bad.elements[0].editableRotation)
+            XCTAssertThrowsError(try rejected.update(at: 0) { try $0.rotateText(elementID: "text", degrees: 1) })
+            XCTAssertEqual(rejected.slides[0], bad); XCTAssertFalse(rejected.canUndo)
+        }
+    }
     func testAdjacentPlainTextReorderUndoAndProtectsOtherElements() throws {
         let json = #"{"id":"one","content":{"type":"slide","attrs":{"elements":[{"id":"a","type":"text","text":"A"},{"id":"b","type":"text","text":"B"},{"id":"image","type":"image","attachmentId":"image","future":{"keep":true}}]}}}"#
         let original = try SlideBlock(json: Data(json.utf8))
