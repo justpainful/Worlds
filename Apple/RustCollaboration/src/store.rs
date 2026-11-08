@@ -165,8 +165,15 @@ impl SyncStore {
     }
 
     pub fn max_pending(&self, channel: i64) -> Result<Option<i64>> {
+        self.max_pending_with_hook(channel, || Ok(()))
+    }
+    fn max_pending_with_hook(&self, channel: i64, after_authorize: impl FnOnce() -> Result<()>) -> Result<Option<i64>> {
+        let tx=self.conn.unchecked_transaction()?;
         self.check(channel,false)?;
-        Ok(self.conn.query_row("SELECT MAX(id) FROM sync_outbox WHERE page_id=?1 AND channel=?2 AND state='pending'",params![self.page,channel],|r|r.get(0))?)
+        after_authorize()?;
+        let pending=self.conn.query_row("SELECT MAX(id) FROM sync_outbox WHERE page_id=?1 AND channel=?2 AND state='pending'",params![self.page,channel],|r|r.get(0))?;
+        tx.commit()?;
+        Ok(pending)
     }
     pub fn acknowledge(&self, channel: i64, through: i64) -> Result<()> {
         let tx = self.conn.unchecked_transaction()?;
@@ -274,9 +281,11 @@ mod snapshot_tests {
             CREATE TABLE drawing_sync_state(page_id TEXT,user_id TEXT);
             CREATE TABLE sync_docs(page_id TEXT,channel INTEGER,snapshot BLOB,PRIMARY KEY(page_id,channel));
             CREATE TABLE sync_updates(id INTEGER PRIMARY KEY,page_id TEXT,channel INTEGER,data BLOB);
+            CREATE TABLE sync_outbox(id INTEGER PRIMARY KEY,page_id TEXT,channel INTEGER,state TEXT);
             INSERT INTO pages VALUES('p','w',NULL,NULL); INSERT INTO account VALUES(1,'u','active');
             INSERT INTO account_workspaces VALUES('w','member','edit');
-            INSERT INTO sync_docs VALUES('p',0,x'01'); INSERT INTO sync_updates VALUES(1,'p',0,x'02');").unwrap();
+            INSERT INTO sync_docs VALUES('p',0,x'01'); INSERT INTO sync_updates VALUES(1,'p',0,x'02');
+            INSERT INTO sync_outbox VALUES(7,'p',0,'pending');").unwrap();
         drop(conn);
         let store=SyncStore::open(&path,"p","u","w").unwrap();
         let result=store.load_with_hook(0,|| {
@@ -286,6 +295,14 @@ mod snapshot_tests {
         }).unwrap();
         assert_eq!(result,vec![vec![1],vec![2]]);
         assert!(matches!(store.load(0),Err(StoreError::Denied)));
+        let writer=Connection::open(&path).unwrap(); writer.execute("UPDATE account SET user_id='u' WHERE id=1",[]).unwrap(); drop(writer);
+        let pending=store.max_pending_with_hook(0,|| {
+            let writer=Connection::open(&path)?;
+            writer.execute_batch("BEGIN IMMEDIATE; UPDATE account SET user_id='other' WHERE id=1; INSERT INTO sync_outbox VALUES(8,'p',0,'pending'); COMMIT;")?;
+            Ok(())
+        }).unwrap();
+        assert_eq!(pending,Some(7));
+        assert!(matches!(store.max_pending(0),Err(StoreError::Denied)));
         drop(store); std::fs::remove_dir_all(directory).unwrap();
     }
 }
