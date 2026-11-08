@@ -2061,6 +2061,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee logs/ui-${{ matrix.device }}.log
           grep -Eq 'testRightToLeftNavigationAndReading.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testReaderShowsStructuredContentAndExpandsToggle.*passed' logs/ui-${{ matrix.device }}.log
+          grep -Eq 'testReaderShowsRTLQuotationAndOverflowingList.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testProjectSummaryAndLinkedPage.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testArabicProjectSummary.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testArabicProjectDark.*passed' logs/ui-${{ matrix.device }}.log
