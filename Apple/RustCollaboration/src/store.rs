@@ -48,9 +48,13 @@ impl SyncStore {
         let mut seen = HashSet::new();
         while let Some(id) = cur {
             if !seen.insert(id.clone()) || seen.len() > 128 { return Err(StoreError::Denied); }
+            // An incomplete or cross-workspace ancestry is not a root. Never
+            // fall back to the workspace default for a missing cached parent.
+            let parent: Option<Option<String>> = self.conn.query_row("SELECT parent_id FROM pages WHERE id=?1 AND workspace_id=?2 AND deleted_at IS NULL", params![id,self.workspace], |r| r.get(0)).optional()?;
+            let Some(parent) = parent else { return Err(StoreError::Denied) };
             let level: Option<String> = self.conn.query_row("SELECT level FROM account_page_access WHERE workspace_id=?1 AND page_id=?2", params![self.workspace,id], |r| r.get(0)).optional()?;
             if let Some(level) = level { return if rank(&level) >= required { Ok(()) } else { Err(StoreError::Denied) }; }
-            cur = self.conn.query_row("SELECT parent_id FROM pages WHERE id=?1 AND workspace_id=?2", params![id,self.workspace], |r| r.get(0)).optional()?.flatten();
+            cur = parent;
         }
         if role == "member" && rank(&default) >= required { Ok(()) } else { Err(StoreError::Denied) }
     }

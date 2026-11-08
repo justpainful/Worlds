@@ -37,6 +37,23 @@ INSERT INTO account_workspaces VALUES('w','member','edit');").unwrap();
     path
 }
 
+#[test]
+fn incomplete_ancestry_never_falls_back_to_workspace_default_for_writes() {
+    let path=fixture(); let mut store=SyncStore::open(&path,"p","u","w").unwrap();
+    let db=Connection::open(&path).unwrap();
+    db.execute("INSERT INTO pages VALUES('foreign','other',NULL,NULL)",[]).unwrap();
+    db.execute("INSERT INTO pages VALUES('deleted','w',NULL,1)",[]).unwrap();
+    for parent in ["missing","foreign","deleted"] {
+        db.execute("UPDATE pages SET parent_id=?1 WHERE id='p'",[parent]).unwrap();
+        assert!(matches!(store.append(0,b"fixture",true),Err(StoreError::Denied)),"{parent}");
+        assert_eq!(db.query_row("SELECT count(*) FROM sync_outbox",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        assert_eq!(db.query_row("SELECT count(*) FROM sync_updates",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+    }
+    db.execute("UPDATE pages SET parent_id=NULL WHERE id='p'",[]).unwrap();
+    store.append(0,b"fixture",true).unwrap();
+    assert_eq!(db.query_row("SELECT count(*) FROM sync_outbox",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+}
+
 #[cfg(any(target_os="macos", target_os="ios"))]
 #[test]
 fn replaced_database_path_is_rejected_without_writing_either_database() {
