@@ -268,6 +268,39 @@ public actor WorldsDatabase {
             entries.append(StoredHistoryEntry(id: sqlite3_column_int64(stmt, 0), kind: try Self.text(stmt, 1, "history.kind"), actor: try Self.text(stmt, 2, "history.actor"), summary: try Self.text(stmt, 3, "history.summary"), beforeJSON: try Self.optionalText(stmt, 4, "history.before"), afterJSON: try Self.optionalText(stmt, 5, "history.after"), createdAt: sqlite3_column_int64(stmt, 6)))
         }
     }
+
+    /// Authorizes a live personal page and reads its history in one snapshot.
+    /// An unavailable page is distinct from a page with no history.
+    /// This does not prove that historical entries were created while the page
+    /// was personal. Do not expose them without a separate provenance policy.
+    public func checkedPersonalHistory(pageID: String, limit: Int = 100) throws -> [StoredHistoryEntry] {
+        guard !pageID.isEmpty, !pageID.utf8.contains(0) else { throw WorldsDatabaseError.invalidData("page unavailable") }
+        let workspace = version >= 5 ? " AND p.workspace_id IS NULL" : ""
+        try Self.exec(db, "BEGIN DEFERRED TRANSACTION")
+        do {
+            let uniqueMetadata = """
+            CASE WHEN json_valid(p.metadata) THEN NOT EXISTS (
+                SELECT 1 FROM json_tree(p.metadata)
+                WHERE key IS NOT NULL GROUP BY parent, key HAVING COUNT(*) > 1
+            ) ELSE 0 END
+            """
+            let sql = "SELECT 1 FROM pages p WHERE p.id=?1 AND p.deleted_at IS NULL" + workspace + " AND (" + Self.personalMetadata + ") AND (" + uniqueMetadata + ")"
+            let stmt = try Self.prepare(db, sql)
+            defer { sqlite3_finalize(stmt) }
+            let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+            guard sqlite3_bind_text(stmt, 1, pageID, -1, transient) == SQLITE_OK else { throw Self.error(db) }
+            let result = sqlite3_step(stmt)
+            guard result != SQLITE_DONE else { throw WorldsDatabaseError.invalidData("page unavailable") }
+            guard result == SQLITE_ROW else { throw Self.error(db) }
+            guard sqlite3_step(stmt) == SQLITE_DONE else { throw WorldsDatabaseError.invalidData("page unavailable") }
+            let entries = try personalHistory(pageID: pageID, limit: limit)
+            try Self.exec(db, "COMMIT")
+            return entries
+        } catch {
+            try? Self.exec(db, "ROLLBACK")
+            throw error
+        }
+    }
     private func blocks(pageID: String) throws -> [StoredBlock] {
         let stmt = try Self.prepare(db, "SELECT id, type, content, properties, direction, sort_key FROM blocks WHERE page_id = ?1 ORDER BY sort_key")
         defer { sqlite3_finalize(stmt) }

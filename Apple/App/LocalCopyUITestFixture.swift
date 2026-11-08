@@ -19,6 +19,15 @@ enum LocalCopyUITestFixture {
         defer { sqlite3_close(database) }
         let sql = #"INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('harness-project','Fixture project','project','{"project":{"status":"active","description":"Original fixture","links":[]},"unknown":{"preserve":true}}',1,100);"#
         guard sqlite3_exec(database, sql, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+        #if WORLDS_EXPERIMENTAL_LOCAL_HISTORY
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing-history-fixture") {
+            let history = "INSERT INTO history(page_id,actor,kind,summary,created_at) VALUES('fixture-page','user','renamed','Renamed fixture',1700000000002),('fixture-page','automation','edited','تعديل تجريبي',1700000000003);"
+            guard sqlite3_exec(database, history, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+        }
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing-history-unavailable") {
+            guard sqlite3_exec(database, "ALTER TABLE history RENAME TO fixture_hidden_history", nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+        }
+        #endif
         #if WORLDS_EXPERIMENTAL_STREAM_EDITOR
         let stream = #"INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('fixture-stream','Fixture stream','stream','{"stream":{"url":"https://old.example/video.mp4"},"future":true}',1,100);"#
         guard sqlite3_exec(database, stream, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }

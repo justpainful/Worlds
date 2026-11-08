@@ -54,6 +54,11 @@ private struct WorldsLibraryView: View {
     @State private var errorMessage: String?
     @State private var searchEngine: WorldsSearch?
     @State private var databaseGeneration = UUID()
+    #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_LOCAL_HISTORY
+    @State private var localHistoryDatabase: WorldsDatabase?
+    @State private var historyRequest: LocalHistoryRequest?
+    @State private var fixtureHistoryCopyID: UUID?
+    #endif
     @State private var openedVideoDatabase: VideoDatabaseSource?
     #if WORLDS_EXPERIMENTAL_PERSONAL_VIDEO
     @State private var videoRequest: PersonalVideoRequest?
@@ -192,6 +197,19 @@ private struct WorldsLibraryView: View {
                 }
             }
             .toolbar {
+                #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_LOCAL_HISTORY
+                if let id = selectedID, let context = copyContext, let fixtureID = fixtureHistoryCopyID, context.copy.id == fixtureID,
+                   let database = localHistoryDatabase,
+                   let page = pages.first(where: { $0.id == id }) {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Page history", systemImage: "clock.arrow.circlepath") {
+                            historyRequest = LocalHistoryRequest(pageID: id, title: page.title, database: database)
+                        }
+                        .accessibilityIdentifier("open-local-history")
+                        .disabled(databaseActionsDisabled)
+                    }
+                }
+                #endif
                 #if WORLDS_EXPERIMENTAL_LOCAL_COPY
                 #if DEBUG && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
                 if let id = selectedID, let context = copyContext, let source = openedVideoDatabase,
@@ -258,6 +276,11 @@ private struct WorldsLibraryView: View {
             }
         }
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+        #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_HISTORY
+        .sheet(item: $historyRequest) { request in
+            LocalHistoryView(request: request)
+        }
+        #endif
         .safeAreaInset(edge: .bottom) {
             if copyContext != nil { LocalCopyNotice() }
         }
@@ -341,6 +364,9 @@ private struct WorldsLibraryView: View {
                     copyCoordinator = importer
                     let copy = try await importer.importCopy(from: source)
                     await activateCopy(copy)
+                    #if WORLDS_EXPERIMENTAL_LOCAL_HISTORY
+                    if copyContext?.copy.id == copy.id { fixtureHistoryCopyID = copy.id }
+                    #endif
                 } catch { errorMessage = error.localizedDescription }
                 return
             }
@@ -443,6 +469,9 @@ private struct WorldsLibraryView: View {
 
     private var databaseActionsDisabled: Bool {
         var disabled = loading
+        #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_LOCAL_HISTORY
+        disabled = disabled || historyRequest != nil
+        #endif
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
         disabled = disabled || editingProject != nil
         #if DEBUG && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
@@ -631,6 +660,9 @@ private struct WorldsLibraryView: View {
                 searchError = error.localizedDescription
             }
             databaseGeneration = UUID()
+            #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_LOCAL_HISTORY
+            localHistoryDatabase = preserveLocalCopy ? database : nil
+            #endif
             searchRequest = UUID()
             openedVideoDatabase = videoSource
             searchQuery = ""

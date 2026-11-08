@@ -69,6 +69,38 @@ final class WorldsDatabaseTests: XCTestCase {
         let changed = try await database.pageChangedSince(id: "fixture-page", base: 1700000000000)
         XCTAssertTrue(changed)
     }
+
+    func testCheckedHistoryDistinguishesEmptyFromUnavailable() async throws {
+        let url = try fixture()
+        let database = try WorldsDatabase(url: url)
+        let empty = try await database.checkedPersonalHistory(pageID: "fixture-page")
+        XCTAssertTrue(empty.isEmpty)
+        try execute(url, "INSERT INTO history(page_id,actor,kind,summary,created_at) VALUES('fixture-page','user','renamed','Renamed',1700000000002)")
+        let entries = try await database.checkedPersonalHistory(pageID: "fixture-page")
+        XCTAssertEqual(entries.map(\.summary), ["Renamed"])
+        for metadata in ["{\"sync\":{\"shared\":true}}", "{\"sync\":{\"shared\":false,\"shared\":true}}", "{\"nested\":{\"x\":1,\"x\":2}}", "{"] {
+            try execute(url, "UPDATE pages SET metadata='\(metadata)' WHERE id='fixture-page'")
+            do {
+                _ = try await database.checkedPersonalHistory(pageID: "fixture-page")
+                XCTFail("Unavailable history must not appear empty")
+            } catch WorldsDatabaseError.invalidData(let field) { XCTAssertEqual(field, "page unavailable") }
+        }
+        try execute(url, "UPDATE pages SET metadata='{}', deleted_at=1 WHERE id='fixture-page'")
+        do {
+            _ = try await database.checkedPersonalHistory(pageID: "fixture-page")
+            XCTFail("Deleted page history must not be exposed")
+        } catch WorldsDatabaseError.invalidData(let field) { XCTAssertEqual(field, "page unavailable") }
+    }
+
+    func testCheckedHistoryRejectsWorkspacePages() async throws {
+        let url = try fixture()
+        try execute(url, "ALTER TABLE pages ADD COLUMN workspace_id TEXT; UPDATE pages SET workspace_id='shared-workspace' WHERE id='fixture-page'; INSERT INTO history(page_id,actor,kind,summary,created_at) VALUES('fixture-page','user','edited','Private detail',1); PRAGMA user_version=5;")
+        let database = try WorldsDatabase(url: url)
+        do {
+            _ = try await database.checkedPersonalHistory(pageID: "fixture-page")
+            XCTFail("Workspace history must not be exposed")
+        } catch WorldsDatabaseError.invalidData(let field) { XCTAssertEqual(field, "page unavailable") }
+    }
     func testRejectsFutureSchemaWithoutMigration() async throws {
         let url = try fixture()
         try execute(url, "PRAGMA user_version=999")
