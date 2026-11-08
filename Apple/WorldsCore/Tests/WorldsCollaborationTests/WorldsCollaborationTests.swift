@@ -117,7 +117,7 @@ private actor PausedDisconnectSocket: CollaborationSocket {
     var waitingForReceive: Bool { receiveWaiter != nil }
     func send(_ data: Data) async throws { }
     func receive() async throws -> Data? {
-        if first { first = false; return WorldsSyncWire.encode(.authState(level: "edit", userID: "editor")) }
+        if first { first = false; return try WorldsSyncWire.encode(.authState(level: "edit", userID: "editor")) }
         return try await withCheckedThrowingContinuation { receiveWaiter = $0 }
     }
     func disconnect() { receiveWaiter?.resume(throwing: URLError(.networkConnectionLost)); receiveWaiter = nil }

@@ -2,13 +2,25 @@ import SwiftUI
 import PDFKit
 import ImageIO
 import CoreGraphics
+import UniformTypeIdentifiers
 import WorldsMedia
+
+private struct OriginalAttachmentDocument: FileDocument {
+    static let readableContentTypes: [UTType] = [.data]
+    let data: Data
+    init(data: Data) { self.data = data }
+    init(configuration: ReadConfiguration) throws { throw CocoaError(.fileReadUnsupportedScheme) }
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper { FileWrapper(regularFileWithContents: data) }
+}
 
 /// Consumes the already-authorized descriptor. The caller retains the folder
 /// security scope and is responsible for page and attachment authorization.
 public struct OpenedDocumentPreviewView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var model: OpenedDocumentModel
+    @State private var exporting = false
+    @State private var exportDocument: OriginalAttachmentDocument?
+    @State private var exportError: String?
     public init(attachment: WorldsAttachment, openedFile: AttachmentFile) {
         _model = StateObject(wrappedValue: OpenedDocumentModel(attachment: attachment, openedFile: openedFile))
     }
@@ -19,6 +31,11 @@ public struct OpenedDocumentPreviewView: View {
                 Spacer(minLength: 8)
                 Text(model.name).lineLimit(1).truncationMode(.middle)
                 Spacer(minLength: 8)
+                if let bytes = model.originalBytes {
+                    Button("Export", systemImage: "square.and.arrow.up") {
+                        exportError = nil; exportDocument = OriginalAttachmentDocument(data: bytes); exporting = true
+                    }.accessibilityIdentifier("export-original-attachment")
+                }
             }.padding()
             Divider()
             Group {
@@ -43,7 +60,15 @@ public struct OpenedDocumentPreviewView: View {
                         .accessibilityIdentifier("opened-document-error")
                 }
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
-        }.task { await model.load() }.onDisappear { model.close() }
+            if let exportError { Text(exportError).foregroundStyle(.secondary).padding() }
+        }
+        .fileExporter(isPresented: $exporting, document: exportDocument, contentType: .data, defaultFilename: model.exportName) { result in
+            exportDocument = nil
+            if case .failure = result { exportError = "The file could not be exported." }
+        }
+        .task { await model.load() }.onDisappear {
+            exporting = false; exportDocument = nil; model.close()
+        }
     }
 }
 
@@ -92,6 +117,7 @@ private enum DocumentPayload: @unchecked Sendable { case image(OpenedDocumentIma
     enum State { case loading, image(OpenedDocumentImage), pdf(PDFDocument), failure(String) }
     @Published private(set) var state: State = .loading
     @Published private(set) var resolutionError: String?
+    @Published private(set) var originalBytes: Data?
     let name: String
     private let format: AttachmentFormat
     private let expectedSize: Int64
@@ -101,6 +127,11 @@ private enum DocumentPayload: @unchecked Sendable { case image(OpenedDocumentIma
     private var generation = UUID()
     private var imageDecoding = false
     private var requestedDimension = 0
+    var exportName: String {
+        let last = (name as NSString).lastPathComponent
+        let clean = String(last.unicodeScalars.filter { !CharacterSet.controlCharacters.contains($0) })
+        return clean.isEmpty || clean == "." || clean == ".." ? "Attachment" : String(clean.prefix(180))
+    }
     init(attachment: WorldsAttachment, openedFile: AttachmentFile) {
         name = attachment.fileName; expectedSize = attachment.size
         format = WorldsMedia.format(name: attachment.fileName, mime: attachment.mime)
@@ -135,13 +166,13 @@ private enum DocumentPayload: @unchecked Sendable { case image(OpenedDocumentIma
             }.value
             guard token == generation else { return }
             switch payload {
-            case .image(let value): state = .image(value)
+            case .image(let value): originalBytes = value.encoded; state = .image(value)
             case .pdf(let data):
                 guard let document = PDFDocument(data: data) else { throw MediaError.invalidContent }
                 guard !document.isLocked else { throw DocumentPreviewError.lockedPDF }
                 guard document.pageCount > 0 else { throw MediaError.invalidContent }
                 guard document.pageCount <= 1000 else { throw DocumentPreviewError.tooManyPages }
-                state = .pdf(document)
+                originalBytes = data; state = .pdf(document)
             }
         } catch {
             guard token == generation else { return }
@@ -180,7 +211,7 @@ private enum DocumentPayload: @unchecked Sendable { case image(OpenedDocumentIma
             }
         }
     }
-    func close() { closed = true; generation = UUID(); source.discard(); state = .loading }
+    func close() { closed = true; generation = UUID(); source.discard(); originalBytes = nil; state = .loading }
 }
 
 private struct OpenedZoomImage: View {

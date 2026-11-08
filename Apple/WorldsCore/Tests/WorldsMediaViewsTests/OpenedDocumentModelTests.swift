@@ -48,10 +48,14 @@ import WorldsMedia
         await valid.load()
         guard case .pdf(let document) = valid.state else { return XCTFail("PDF was not decoded") }
         XCTAssertEqual(document.pageCount, 1)
+        XCTAssertEqual(valid.originalBytes, data as Data)
+        valid.close()
+        XCTAssertNil(valid.originalBytes)
         let mismatch = item("document.pdf", size: data.length + 1)
         let refused = OpenedDocumentModel(attachment: mismatch, openedFile: try AttachmentVault(root: root).open(mismatch))
         await refused.load()
         guard case .failure = refused.state else { return XCTFail("Changed size must fail closed") }
+        XCTAssertNil(refused.originalBytes)
     }
     func testLargeImageIsReportedAsDownsampled() async throws {
         let root = try root(); let path = root.appendingPathComponent("large.png")
