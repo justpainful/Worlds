@@ -1655,6 +1655,7 @@ jobs:
           grep -q 'testDisconnectedSocketCannotAuthorizeLocalWritesWhileClosing' logs/collaboration-discovery.log
           grep -q 'testPresenceIsExplicitAndClearSendsRemoval' logs/collaboration-discovery.log
           grep -q 'testChangedLocalAccountStopsSessionAndKeepsPendingOutbox' logs/collaboration-discovery.log
+          grep -q 'testClearPresenceWaitsForInFlightSendAndIsLast' logs/collaboration-discovery.log
           grep -q 'testViewerCannotPrepareEditorWrite' logs/collaboration-discovery.log
       - name: Discover and test collaboration editor on macOS
         shell: bash
@@ -1698,6 +1699,7 @@ jobs:
           grep -E 'testDisconnectedSocketCannotAuthorizeLocalWritesWhileClosing.*passed' logs/collaboration-macos.log
           grep -E 'testPresenceIsExplicitAndClearSendsRemoval.*passed' logs/collaboration-macos.log
           grep -E 'testChangedLocalAccountStopsSessionAndKeepsPendingOutbox.*passed' logs/collaboration-macos.log
+          grep -E 'testClearPresenceWaitsForInFlightSendAndIsLast.*passed' logs/collaboration-macos.log
           grep -q 'testViewerCannotPrepareEditorWrite' logs/collaboration-macos.log
       - name: Test isolated collaboration host on macOS
         shell: bash
@@ -1750,6 +1752,7 @@ jobs:
           grep -E "Test Case .*testDisconnectedSocketCannotAuthorizeLocalWritesWhileClosing.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -E "Test Case .*testPresenceIsExplicitAndClearSendsRemoval.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -E "Test Case .*testChangedLocalAccountStopsSessionAndKeepsPendingOutbox.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
+          grep -E "Test Case .*testClearPresenceWaitsForInFlightSendAndIsLast.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testViewerCannotPrepareEditorWrite' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           for name in testPlansSinglePlainInsertionWithoutMutatingDocument testRejectsMarkedTextNonInsertionAndSurrogateSplit testRejectsDuplicateIDsAndRichText; do
             grep -E "Test Case .*${name}.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
