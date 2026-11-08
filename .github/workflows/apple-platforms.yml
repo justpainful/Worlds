@@ -2186,6 +2186,7 @@ jobs:
           grep -q 'isolated_owned_document_batch_never_claims_legacy_or_other_accounts ... ok' logs/collaboration-store-rust.log
           grep -q 'isolated_owned_document_refuses_existing_history_and_rolls_back ... ok' logs/collaboration-store-rust.log
           grep -q 'isolated_receive_and_compaction_preserve_outbox_and_causal_updates ... ok' logs/collaboration-store-rust.log
+          grep -q 'owned_document_downgrade_blocks_diff_and_ack_without_losing_queue ... ok' logs/collaboration-store-rust.log
           grep -q 'replaced_database_path_is_rejected_without_writing_either_database ... ok' logs/collaboration-store-rust.log
           grep -q 'delete_transaction_preserves_outbox_on_failure_and_rejects_stale_or_viewer ... ok' logs/collaboration-store-rust.log
           grep -q 'formatting_transaction_is_durable_and_refuses_stale_or_readonly ... ok' logs/collaboration-store-rust.log
