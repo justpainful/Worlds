@@ -150,6 +150,16 @@ pub(crate) mod unix {
                 }
             }
             if old_request!=serde_json::from_str::<Value>(&request)? { bail!("conflict: import operation reused with different input") }
+            // An operation record is not proof that its attachment still
+            // exists. Never report a successful retry for a missing file.
+            let stored: Option<(String,i64)>=c.query_row(
+                "SELECT rel_path,size FROM attachments WHERE id=?1 AND page_id=?2",
+                params![operation,page],|r|Ok((r.get(0)?,r.get(1)?))).optional()?;
+            let (rel,size)=stored.ok_or_else(||anyhow::anyhow!("completed import attachment is unavailable"))?;
+            if !valid_relative(&operation,&rel) || size < 0 { bail!("completed import attachment is invalid") }
+            let file=crate::attachment_open::open_confined(&root.join("attachments"),Path::new(&rel))?;
+            let info=file.metadata()?;
+            if info.nlink()!=1 || info.len()!=size as u64 || info.len()!=before.len() { bail!("completed import attachment changed") }
             return Ok(serde_json::from_str(&result)?);
         }
         if let Some(cancel)=cancel { cancel.check()?; }
@@ -400,6 +410,11 @@ pub(crate) mod unix {
             let db=Connection::open(root.join("worlds.db")).unwrap();
             assert_eq!(db.query_row("SELECT count(*) FROM attachments WHERE page_id='gallery-test'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
             assert_eq!(db.query_row("SELECT count(*) FROM native_gallery_import_completed",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+            let rel:String=db.query_row("SELECT rel_path FROM attachments WHERE page_id='gallery-test'",[],|r|r.get(0)).unwrap();
+            std::fs::remove_file(root.join("attachments").join(rel)).unwrap();
+            let missing=call(); assert_eq!(missing["ok"],false,"missing attachment must not be reported as successful");
+            assert_eq!(db.query_row("SELECT count(*) FROM attachments WHERE page_id='gallery-test'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+            assert_eq!(std::fs::read(&source).unwrap(),b"synthetic");
             drop(db); std::fs::remove_dir_all(root).unwrap();
         }
         #[test]
