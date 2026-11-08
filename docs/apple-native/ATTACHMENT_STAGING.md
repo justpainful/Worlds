@@ -42,6 +42,14 @@ the filesystem. A same-user process with container access is outside the
 trust boundary. Directory entry durability after power loss is not established.
 The experiment remains unavailable to FFI and the application.
 
+Its internal `inspect_copy` interface reports authorized personal attachment
+IDs with missing, inaccessible or size/identity-mismatch classifications. It
+does not print filesystem paths, mutate the source or prove that the inspected
+folder belongs to the database. Unowned, shared or malformed records fail the
+whole inspection rather than exposing their details. Unverified bundled copies
+now use a distinct `worlds-unverified-bundle-` prefix so the regular
+`worlds-import-` inventory does not present them as ready local copies.
+
 The common Unix source and test code passed `cargo check --tests` for an
 Android target; this does not compile the Apple-specific `renamex_np` branch
 or run the tests. Apple compilation and execution remain required.

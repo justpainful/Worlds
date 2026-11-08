@@ -19,6 +19,15 @@ pub(crate) fn import(source: &Path, private_root: &Path) -> Result<PathBuf> {
 }
 
 fn import_with_hook(source: &Path, private_root: &Path, before_publish: impl FnOnce() -> Result<()>) -> Result<PathBuf> {
+    import_with_hooks(source, private_root, before_publish, |_| Ok(()))
+}
+
+#[cfg(unix)]
+pub(crate) fn import_with_source_validation(source: &Path, private_root: &Path, validate: impl FnMut(&Connection) -> Result<()>) -> Result<PathBuf> {
+    import_with_hooks(source, private_root, || Ok(()), validate)
+}
+
+fn import_with_hooks(source: &Path, private_root: &Path, before_publish: impl FnOnce() -> Result<()>, mut validate: impl FnMut(&Connection) -> Result<()>) -> Result<PathBuf> {
     if !source.is_absolute() || !private_root.is_absolute() || !source.is_file() || !private_root.is_dir() {
         bail!("source database and private container must exist at absolute paths")
     }
@@ -36,6 +45,7 @@ fn import_with_hook(source: &Path, private_root: &Path, before_publish: impl FnO
     std::fs::OpenOptions::new().write(true).create_new(true).open(&destination)?;
     let source_db = Connection::open_with_flags(source, OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX)?;
     source_db.busy_timeout(Duration::from_secs(5))?;
+    validate(&source_db)?;
     let mut target = Connection::open_with_flags(&destination, OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX)?;
     {
         let backup = Backup::new(&source_db, &mut target)?;
@@ -62,6 +72,7 @@ fn import_with_hook(source: &Path, private_root: &Path, before_publish: impl FnO
     target.prepare("SELECT id,kind,metadata,workspace_id,deleted_at,updated_at FROM pages LIMIT 0")?;
     target.prepare("SELECT id,page_id,content,sort_key FROM blocks LIMIT 0")?;
     target.prepare("SELECT page_id,kind,origin,at FROM changes LIMIT 0")?;
+    validate(&source_db)?;
     drop(target); drop(source_db);
     before_publish()?;
     std::fs::remove_file(marker)?;

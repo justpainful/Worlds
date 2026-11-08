@@ -10,7 +10,7 @@ const MAX_TOTAL: u64 = 4 * MAX_FILE;
 const MAX_FILES: usize = 10_000;
 
 #[derive(Debug)]
-pub(crate) struct Attachment { pub(crate) relative: PathBuf, pub(crate) size: u64 }
+pub(crate) struct Attachment { pub(crate) id: String, pub(crate) relative: PathBuf, pub(crate) size: u64 }
 
 fn valid_relative(value: &str) -> bool {
     !value.is_empty() && !value.contains(['\\', ':', '\0']) &&
@@ -21,19 +21,21 @@ fn valid_relative(value: &str) -> bool {
 /// Fail closed if any record is unowned, shared, malformed or ambiguous.
 /// This conservative inventory is not a complete embedded-reference audit.
 pub(crate) fn inventory(db: &Connection) -> Result<Vec<Attachment>> {
-    let mut statement = db.prepare("SELECT page_id,rel_path,size FROM attachments ORDER BY id")?;
+    let mut statement = db.prepare("SELECT id,page_id,rel_path,size FROM attachments ORDER BY id")?;
     let mut rows = statement.query([])?;
     let mut items = Vec::new(); let mut seen = HashSet::new(); let mut total = 0_u64;
     while let Some(row) = rows.next()? {
-        let owner: Option<String> = row.get(0)?;
+        let id: String = row.get(0)?;
+        if id.is_empty() || id.len()>1024 || id.as_bytes().contains(&0) { bail!("invalid attachment identifier") }
+        let owner: Option<String> = row.get(1)?;
         let owner = owner.filter(|id| !id.is_empty()).ok_or_else(|| anyhow::anyhow!("unowned attachment is unsupported"))?;
         crate::require_personal(db, &owner)?;
-        let relative: String = row.get(1)?;
-        let size: i64 = row.get(2)?;
+        let relative: String = row.get(2)?;
+        let size: i64 = row.get(3)?;
         if !valid_relative(&relative) || size < 0 || size as u64 > MAX_FILE || !seen.insert(relative.clone()) { bail!("invalid or ambiguous attachment") }
         total = total.checked_add(size as u64).ok_or_else(|| anyhow::anyhow!("attachment size overflow"))?;
         if total > MAX_TOTAL || items.len() >= MAX_FILES { bail!("attachment staging limit exceeded") }
-        items.push(Attachment { relative: PathBuf::from(relative), size: size as u64 });
+        items.push(Attachment { id, relative: PathBuf::from(relative), size: size as u64 });
     }
     Ok(items)
 }

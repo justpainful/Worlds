@@ -5,6 +5,35 @@ import XCTest
 @testable import WorldsDrawing
 
 final class WorldsDrawingVisualComparisonTests: XCTestCase {
+    func testPersistedStrokeOperationAgainstSourceCanvas() throws {
+        for kind in ["hard", "ink", "pencil"] {
+            var brush = ToolBrush(); brush.kind = kind; brush.size = 10; brush.opacity = 0.6; brush.flow = 0.7; brush.spacing = 0.25
+            brush.pressureSize = true; brush.pressureOpacity = true
+            let operation = try StrokeOperationBuilder.make(samples: samples(), brush: brush, tool: .brush,
+                nodeID: "node", operationID: "operation", actor: "artist", revision: 0,
+                timestamp: 1, layerID: "layer", frameID: "frame", nodeOrder: [], seed: 123)
+            let root = try XCTUnwrap(JSONSerialization.jsonObject(with: operation) as? [String: Any])
+            let changes = try XCTUnwrap(root["changes"] as? [[String: Any]])
+            let node = try XCTUnwrap(changes.first?["value"] as? [String: Any])
+            let sceneJSON: [String: Any] = ["schema": 1, "defaultFrameId": "frame", "frames": ["frame": ["x": 0, "y": 0, "w": 64, "h": 64, "background": "transparent", "clip": true]], "frameOrder": ["frame"], "layers": ["layer": ["visible": true, "opacity": 1, "blend": "source-over", "parentId": NSNull()]], "layerOrder": ["layer"], "nodes": ["node": node], "nodeOrder": ["node"], "assets": [:], "masks": [:], "steps": [:], "stepOrder": []]
+            let scene = try DrawingScene(json: JSONSerialization.data(withJSONObject: sceneJSON))
+            let actual = try bitmap(256) { context in
+                context.translateBy(x: 0, y: 256); context.scaleBy(x: 4, y: -4)
+                try ExperimentalStrokeSceneRenderer.render(scene: scene, frameID: "frame", in: context)
+            }
+            let reference = try XCTUnwrap(Bundle.module.url(forResource: "\(kind)-4x", withExtension: "png", subdirectory: "CanvasReferences"))
+            let expected = try readPNG(reference, dimension: 256)
+            let painted = stride(from: 0, to: actual.count, by: 4).filter { max(actual[$0 + 3], expected[$0 + 3]) > 4 }
+            XCTAssertFalse(painted.isEmpty)
+            let difference = painted.reduce(0.0) { sum, i in
+                sum + (0..<4).reduce(0.0) { $0 + abs(Double(actual[i+$1]) - Double(expected[i+$1])) }
+            }
+            let mean = difference / Double(max(1, painted.count) * 4 * 255)
+            let report = XCTAttachment(string: "Persisted \(kind) painted-union RGBA MAE: \(mean)")
+            report.name = "persisted-\(kind)-comparison"; report.lifetime = .keepAlways; add(report)
+            XCTAssertLessThan(mean, 0.02, "Persisted \(kind) stroke differs from source Canvas")
+        }
+    }
     func testSourceCanvasAndNativeStrokePixels() throws {
         let names = ["hard", "ink", "pencil", "highlighter", "layers", "hard-4x", "ink-4x", "pencil-4x", "highlighter-4x", "layers-4x", "hard-taper-4x", "highlighter-light-4x", "ink-handwriting-4x", "highlighter-preset-4x"]
         for name in names {

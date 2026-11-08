@@ -42,5 +42,10 @@ final class DrawingSceneTests: XCTestCase {
         let context = try XCTUnwrap(CGContext(data: nil, width: 32, height: 32, bitsPerComponent: 8, bytesPerRow: 128, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
         XCTAssertThrowsError(try DrawingRenderer().render(scene: scene, frameID: "missing", in: context))
     }
+    func testExperimentalStrokeSceneRejectsUnsupportedElements() throws {
+        let scene = try DrawingScene(json: Data(fixture.utf8))
+        let context = try XCTUnwrap(CGContext(data: nil, width: 32, height: 32, bitsPerComponent: 8, bytesPerRow: 128, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        XCTAssertThrowsError(try ExperimentalStrokeSceneRenderer.render(scene: scene, frameID: "f", in: context))
+    }
 }
 

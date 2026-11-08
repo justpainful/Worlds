@@ -5,7 +5,13 @@ import WorldsNativeEditor
 
 @main
 struct PageEditorHarnessApp: App {
-    var body: some Scene { WindowGroup { HarnessRoot() } }
+    var body: some Scene {
+        WindowGroup {
+            HarnessRoot()
+                .environment(\.layoutDirection, ProcessInfo.processInfo.arguments.contains("--test-rtl") ? .rightToLeft : .leftToRight)
+                .environment(\.dynamicTypeSize, ProcessInfo.processInfo.arguments.contains("--test-large-text") ? .accessibility3 : .large)
+        }
+    }
 }
 
 @MainActor private final class HarnessState: ObservableObject {
@@ -16,6 +22,7 @@ struct PageEditorHarnessApp: App {
     @Published var saved = false
     @Published var originalUnchanged = false
     @Published var reopenedHasBold = false
+    @Published var reopenedArabic = false
     private var sourceURL: URL?
     private var sourceBytes: Data?
     private var persistence: PersonalEditorPersistence?
@@ -47,9 +54,22 @@ struct PageEditorHarnessApp: App {
             persistence = store
             let document = try JSONSerialization.jsonObject(with: store.initialDocument.json())
             reopenedHasBold = originalUnchanged && hasExactBoldFixture(document)
+            reopenedArabic = originalUnchanged && hasExactArabicFixture(document)
             model = NativeEditorModel(document: store.initialDocument, baseRevision: store.initialRevision)
             saved = false; failure = nil
         } catch { failure = error.localizedDescription }
+    }
+    private func hasExactArabicFixture(_ value: Any) -> Bool {
+        guard let document = value as? [String: Any], document["type"] as? String == "doc",
+              let blocks = document["content"] as? [[String: Any]], blocks.count == 1,
+              blocks[0]["type"] as? String == "paragraph",
+              let runs = blocks[0]["content"] as? [[String: Any]], !runs.isEmpty else { return false }
+        var text = ""
+        for run in runs {
+            guard run["type"] as? String == "text", let fragment = run["text"] as? String else { return false }
+            text += fragment
+        }
+        return text == "مسألة رياضيات 123"
     }
     private func hasExactBoldFixture(_ value: Any) -> Bool {
         guard let document = value as? [String: Any], document["type"] as? String == "doc",
@@ -123,6 +143,7 @@ private struct HarnessEditor: View {
                 if let failure = state.failure { Text(failure).accessibilityIdentifier("editor-save-error") }
                 if state.saved && !model.dirty { Text("Page saved").accessibilityIdentifier("editor-page-saved") }
                 if state.reopenedHasBold { Text("Reopened bold formatting").accessibilityIdentifier("editor-reopened-bold") }
+                if state.reopenedArabic { Text("Reopened exact Arabic text").accessibilityIdentifier("editor-reopened-arabic") }
             }
             .padding()
             .navigationTitle("Edit test page")

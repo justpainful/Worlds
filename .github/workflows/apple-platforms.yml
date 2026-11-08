@@ -113,6 +113,8 @@ jobs:
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$GITHUB_WORKSPACE/logs/drawing-visual-comparison.log"
           grep -E 'Test Case .*testSourceCanvasAndNativeStrokePixels.*passed' "$GITHUB_WORKSPACE/logs/drawing-visual-comparison.log"
           grep -E 'Test Case .*testPressureSensitiveHighlighterRemainsUnsupported.*passed' "$GITHUB_WORKSPACE/logs/drawing-visual-comparison.log"
+          grep -E 'Test Case .*testPersistedStrokeOperationAgainstSourceCanvas.*passed' "$GITHUB_WORKSPACE/logs/drawing-visual-comparison.log"
+          grep -E 'Test Case .*testExperimentalStrokeSceneRejectsUnsupportedElements.*passed' "$GITHUB_WORKSPACE/logs/drawing-visual-comparison.log"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -334,7 +336,7 @@ jobs:
     name: Isolated page editor UI harness
     runs-on: macos-26
     needs: [ruststore-xcframework]
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       WORLDS_REQUIRE_NATIVE_WRITES: "1"
     steps:
@@ -357,18 +359,23 @@ jobs:
           sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
           brew install xcodegen coreutils
           xcodegen generate --spec Apple/PageEditorHarness/project.yml
-      - name: Exercise isolated page editor on macOS and iPhone
+      - name: Exercise isolated page editor on macOS, iPhone and iPad
         shell: bash
         run: |
           set -o pipefail
           result=0
-          for platform in macOS iOS; do
-            if [[ "$platform" == macOS ]]; then destination='platform=macOS'; else destination='platform=iOS Simulator,name=iPhone 17,OS=26.5'; fi
+          for device in macOS iPhone iPad; do
+            case "$device" in
+              macOS) platform=macOS; destination='platform=macOS' ;;
+              iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
+              iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
+            esac
             if gtimeout --kill-after=30s 600s xcodebuild -project Apple/PageEditorHarness/WorldsPageEditorHarness.xcodeproj \
               -scheme "PageEditorHarness-$platform" -destination "$destination" \
-              -resultBundlePath "$GITHUB_WORKSPACE/page-editor-$platform.xcresult" \
-              CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/page-editor-$platform.log"; then
-              grep -E 'testEditBoldSaveAndReopenIndependentCopy.*passed' "logs/page-editor-$platform.log" || result=1
+              -resultBundlePath "$GITHUB_WORKSPACE/page-editor-$device.xcresult" \
+              CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/page-editor-$device.log"; then
+              grep -E 'testEditBoldSaveAndReopenIndependentCopy.*passed' "logs/page-editor-$device.log" || result=1
+              grep -E 'testArabicRTLAndLargeTextSurvivesReopen.*passed' "logs/page-editor-$device.log" || result=1
             else
               result=1
             fi
@@ -642,10 +649,13 @@ jobs:
           grep -q 'stages_personal_files_and_rolls_back_if_any_file_is_missing ... ok' logs/rust-store-tests.log
           grep -q 'rejects_symlink_and_hardlink_sources_without_publishing ... ok' logs/rust-store-tests.log
           grep -q 'combined_bundle_publishes_database_and_personal_file_together ... ok' logs/rust-store-tests.log
+          grep -q 'sqlite_opened_replacement_is_rejected_after_original_path_is_restored ... ok' logs/rust-store-tests.log
           grep -q 'source_database_change_during_backup_never_publishes ... ok' logs/rust-store-tests.log
           grep -q 'source_attachment_change_after_staging_never_publishes ... ok' logs/rust-store-tests.log
           grep -q 'atomic_publication_does_not_replace_existing_directory ... ok' logs/rust-store-tests.log
           grep -q 'staging_inside_source_is_rejected_without_creating_copy ... ok' logs/rust-store-tests.log
+          grep -q 'inspection_reports_missing_inaccessible_and_mismatched_files_without_publishing ... ok' logs/rust-store-tests.log
+          grep -q 'missing_file_rolls_back_entire_unpublished_bundle ... ok' logs/rust-store-tests.log
           grep -q 'identity_probe_rejects_swapped_main_wal_and_shm_before_write ... ok' logs/rust-store-tests.log
           grep -q 'imports_committed_wal_into_independent_database_without_changing_source_content ... ok' logs/rust-store-tests.log
           grep -q 'failed_import_removes_partial_destination_and_keeps_original ... ok' logs/rust-store-tests.log
@@ -1261,7 +1271,7 @@ jobs:
     env:
       WORLDS_REQUIRE_NATIVE_WRITES: "1"
     timeout-minutes: 20
-    needs: [ruststore-xcframework, core-tests, rust-mcp-compatibility, ios, macos, native-writes, collaboration-bridge, collaboration-local-worker, ui-tests, project-editor-harness]
+    needs: [ruststore-xcframework, core-tests, rust-mcp-compatibility, ios, macos, native-writes, collaboration-bridge, collaboration-local-worker, ui-tests, project-editor-harness, experimental-project-links-ui]
     strategy:
       fail-fast: false
       matrix:
@@ -1343,7 +1353,7 @@ jobs:
     env:
       WORLDS_REQUIRE_NATIVE_WRITES: "1"
     timeout-minutes: 20
-    needs: [ruststore-xcframework, core-tests, rust-mcp-compatibility, ios, macos, native-writes, collaboration-bridge, collaboration-local-worker, ui-tests, project-editor-harness]
+    needs: [ruststore-xcframework, core-tests, rust-mcp-compatibility, ios, macos, native-writes, collaboration-bridge, collaboration-local-worker, ui-tests, project-editor-harness, experimental-project-links-ui]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4

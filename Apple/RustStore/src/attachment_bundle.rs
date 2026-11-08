@@ -1,7 +1,7 @@
 //! Experimental combined import. Never exposed to the application.
 //! Path and metadata checks do not establish atomic source identity for SQLite.
 #[cfg(unix)]
-mod unix {
+pub(crate) mod unix {
     use anyhow::{bail, Result};
     use rusqlite::{Connection, OpenFlags};
     use std::{ffi::CString, fs::File, os::unix::{ffi::OsStrExt, fs::{DirBuilderExt, MetadataExt}}, path::{Path, PathBuf}};
@@ -24,6 +24,57 @@ mod unix {
         }
     }
     fn optional_stamp(value: &Option<File>) -> Result<Option<Stamp>> { value.as_ref().map(stamp).transpose() }
+
+    // HAS_MOVED compares SQLite's own open file against its current pathname.
+    // It cannot prevent a concurrent swap and restoration between checks.
+    fn sqlite_source_matches(db: &Connection, source: &Path, expected: &Stamp) -> Result<()> {
+        let mut moved: std::ffi::c_int = -1;
+        let result = unsafe {
+            rusqlite::ffi::sqlite3_file_control(
+                db.handle(), b"main\0".as_ptr().cast(), rusqlite::ffi::SQLITE_FCNTL_HAS_MOVED,
+                (&mut moved as *mut std::ffi::c_int).cast(),
+            )
+        };
+        if result != rusqlite::ffi::SQLITE_OK || moved != 0 { bail!("SQLite source identity changed or cannot be verified") }
+        let current=crate::attachment_open::open_confined(source,Path::new("worlds.db"))?;
+        if &stamp(&current)? != expected { bail!("source database identity changed") }
+        Ok(())
+    }
+
+    #[derive(Debug, PartialEq, Eq)]
+    pub(crate) enum AttachmentIssueKind { Missing, Inaccessible, SizeOrIdentityMismatch }
+    #[derive(Debug, PartialEq, Eq)]
+    pub(crate) struct AttachmentIssue { pub(crate) id: String, pub(crate) kind: AttachmentIssueKind }
+    /// A read-only, point-in-time diagnostic, not proof that the directory
+    /// belongs to this database or a permit to expose/import its files.
+    pub(crate) fn inspect_copy(database_copy: &Path, source_attachments: &Path) -> Result<Vec<AttachmentIssue>> {
+        if !database_copy.is_absolute() || !source_attachments.is_absolute() { bail!("invalid inspection roots") }
+        let source_dir=crate::attachment_open::open_directory(source_attachments)?;
+        let mut db=Connection::open_with_flags(database_copy,OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX)?;
+        db.execute_batch("PRAGMA trusted_schema=OFF")?;
+        let version:i64=db.pragma_query_value(None,"user_version",|r|r.get(0))?;
+        if version!=11 { bail!("unsupported schema") }
+        let tx=db.transaction()?;
+        let records=crate::attachment_staging::inventory(&tx)?;
+        let mut issues=Vec::new();
+        for record in records {
+            let kind=match crate::attachment_open::open_confined(source_attachments,&record.relative) {
+                Ok(file) => {
+                    let meta=stamp(&file)?;
+                    if meta.links != 1 || meta.size != record.size { Some(AttachmentIssueKind::SizeOrIdentityMismatch) } else { None }
+                },
+                Err(error) => {
+                    let missing=error.downcast_ref::<std::io::Error>().is_some_and(|io|io.kind()==std::io::ErrorKind::NotFound);
+                    Some(if missing { AttachmentIssueKind::Missing } else { AttachmentIssueKind::Inaccessible })
+                }
+            };
+            if let Some(kind)=kind { issues.push(AttachmentIssue{id:record.id,kind}); }
+        }
+        let current=crate::attachment_open::open_directory(source_attachments)?;
+        if !same_directory(&source_dir,&current)? { bail!("source attachment directory changed") }
+        tx.commit()?;
+        Ok(issues)
+    }
 
     struct Pending(PathBuf);
     impl Drop for Pending { fn drop(&mut self) { let _=std::fs::remove_dir_all(&self.0); } }
@@ -60,7 +111,7 @@ mod unix {
         let pending_dir=private_root.join(format!("worlds-bundle-stage-{}",uuid::Uuid::new_v4()));
         let mut builder=std::fs::DirBuilder::new(); builder.mode(0o700); builder.create(&pending_dir)?;
         let _pending=Pending(pending_dir.clone());
-        let copy=crate::isolated_import::import(&source.join("worlds.db"),&pending_dir)?;
+        let copy=crate::isolated_import::import_with_source_validation(&source.join("worlds.db"),&pending_dir,|db|sqlite_source_matches(db,source,&db_before))?;
         after_backup()?;
         let db=Connection::open_with_flags(&copy,OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX)?;
         let entries=crate::attachment_staging::inventory(&db)?;
@@ -87,8 +138,9 @@ mod unix {
         }
         let copied_dir=copy.parent().ok_or_else(||anyhow::anyhow!("missing copy directory"))?;
         std::fs::rename(staged.join("attachments"),copied_dir.join("attachments"))?;
-        let name=copied_dir.file_name().ok_or_else(||anyhow::anyhow!("missing copy name"))?;
-        let published=private_root.join(name);
+        // This experimental bundle is not verified for product use. Its name
+        // must not match the ordinary local-copy inventory's worlds-import-*.
+        let published=private_root.join(format!("worlds-unverified-bundle-{}",uuid::Uuid::new_v4()));
         publish_noreplace(copied_dir,&published)?;
         Ok(published.join("worlds.db"))
     }
@@ -111,11 +163,28 @@ mod unix {
         fn combined_bundle_publishes_database_and_personal_file_together() {
             let (root,source,private)=fixture();
             let copy=prepare(&source,&private).unwrap();
+            assert!(copy.parent().unwrap().file_name().unwrap().to_string_lossy().starts_with("worlds-unverified-bundle-"));
             assert_eq!(std::fs::read(copy.parent().unwrap().join("attachments/2026-11/a.bin")).unwrap(),b"safe");
             assert!(!copy.parent().unwrap().join(".incomplete").exists());
             assert_eq!(std::fs::read(source.join("attachments/2026-11/a.bin")).unwrap(),b"safe");
             assert_eq!(std::fs::read_dir(&private).unwrap().count(),1);
             std::fs::remove_dir_all(root).unwrap();
+        }
+        #[test]
+        fn sqlite_opened_replacement_is_rejected_after_original_path_is_restored() {
+            let (root,source,_private)=fixture();
+            let original=crate::attachment_open::open_confined(&source,Path::new("worlds.db")).unwrap();
+            let expected=stamp(&original).unwrap();
+            let initial=Connection::open_with_flags(source.join("worlds.db"),OpenFlags::SQLITE_OPEN_READ_ONLY).unwrap();
+            sqlite_source_matches(&initial,&source,&expected).unwrap(); drop(initial);
+            let path=source.join("worlds.db"); let saved=source.join("saved.db");
+            std::fs::rename(&path,&saved).unwrap(); std::fs::copy(&saved,&path).unwrap();
+            let db=Connection::open_with_flags(&path,OpenFlags::SQLITE_OPEN_READ_ONLY).unwrap();
+            std::fs::remove_file(&path).unwrap(); std::fs::rename(&saved,&path).unwrap();
+            let expected=stamp(&original).unwrap();
+            assert_eq!(stamp(&crate::attachment_open::open_confined(&source,Path::new("worlds.db")).unwrap()).unwrap(),expected);
+            assert!(sqlite_source_matches(&db,&source,&expected).is_err());
+            drop(db); drop(original); std::fs::remove_dir_all(root).unwrap();
         }
         #[test]
         fn source_database_change_during_backup_never_publishes() {
@@ -134,6 +203,37 @@ mod unix {
                 std::fs::write(source.join("attachments/2026-11/a.bin"),b"different")?; Ok(())
             });
             assert!(result.is_err()); assert_eq!(std::fs::read_dir(&private).unwrap().count(),0);
+            std::fs::remove_dir_all(root).unwrap();
+        }
+        #[test]
+        fn inspection_reports_missing_inaccessible_and_mismatched_files_without_publishing() {
+            use std::os::unix::fs::symlink;
+            let (root,source,private)=fixture();
+            let db=Connection::open(source.join("worlds.db")).unwrap();
+            db.execute("INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('b','fixture-page','file','b','application/octet-stream',4,'2026-11/missing',1),('c','fixture-page','file','c','application/octet-stream',4,'2026-11/link',1),('d','fixture-page','file','d','application/octet-stream',9,'2026-11/small',1)",[]).unwrap();
+            drop(db);
+            symlink(source.join("attachments/2026-11/a.bin"),source.join("attachments/2026-11/link")).unwrap();
+            std::fs::write(source.join("attachments/2026-11/small"),b"x").unwrap();
+            let copy=crate::isolated_import::import(&source.join("worlds.db"),&private).unwrap();
+            let issues=inspect_copy(&copy,&source.join("attachments")).unwrap();
+            assert_eq!(issues,vec![
+                AttachmentIssue{id:"b".into(),kind:AttachmentIssueKind::Missing},
+                AttachmentIssue{id:"c".into(),kind:AttachmentIssueKind::Inaccessible},
+                AttachmentIssue{id:"d".into(),kind:AttachmentIssueKind::SizeOrIdentityMismatch},
+            ]);
+            assert_eq!(std::fs::read(source.join("attachments/2026-11/a.bin")).unwrap(),b"safe");
+            let db=Connection::open(&copy).unwrap();
+            db.execute("UPDATE pages SET workspace_id='team' WHERE id='fixture-page'",[]).unwrap(); drop(db);
+            assert!(inspect_copy(&copy,&source.join("attachments")).is_err());
+            std::fs::remove_dir_all(root).unwrap();
+        }
+        #[test]
+        fn missing_file_rolls_back_entire_unpublished_bundle() {
+            let (root,source,private)=fixture();
+            std::fs::remove_file(source.join("attachments/2026-11/a.bin")).unwrap();
+            assert!(prepare(&source,&private).is_err());
+            assert_eq!(std::fs::read_dir(&private).unwrap().count(),0);
+            assert!(source.join("worlds.db").exists());
             std::fs::remove_dir_all(root).unwrap();
         }
         #[test]

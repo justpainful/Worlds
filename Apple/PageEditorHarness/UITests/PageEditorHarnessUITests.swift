@@ -1,6 +1,33 @@
 import XCTest
 
 final class PageEditorHarnessUITests: XCTestCase {
+    @MainActor func testArabicRTLAndLargeTextSurvivesReopen() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["--test-rtl", "--test-large-text"]
+        app.launch()
+        let importButton = app.buttons["Import test copy"]
+        XCTAssertTrue(importButton.waitForExistence(timeout: 30)); importButton.tap()
+        let open = app.buttons["Open test page"]
+        XCTAssertTrue(open.waitForExistence(timeout: 30)); open.tap()
+        let editor = app.descendants(matching: .any)["native-editor-text"].firstMatch
+        XCTAssertTrue(editor.waitForExistence(timeout: 20)); editor.tap()
+        selectAll(in: editor, app: app)
+        editor.typeText("مسألة رياضيات 123")
+        XCTAssertEqual(editor.value as? String, "مسألة رياضيات 123")
+        capture(app, named: "page-editor-arabic-large-rtl-draft")
+        let save = app.buttons["Save"]
+        XCTAssertTrue(save.isHittable); XCTAssertTrue(save.isEnabled); save.tap()
+        XCTAssertTrue(app.staticTexts["editor-page-saved"].waitForExistence(timeout: 20))
+        app.buttons["Close"].tap()
+        XCTAssertTrue(app.staticTexts["editor-source-unchanged"].waitForExistence(timeout: 20))
+        open.tap()
+        let reopened = app.descendants(matching: .any)["native-editor-text"].firstMatch
+        XCTAssertTrue(reopened.waitForExistence(timeout: 20))
+        XCTAssertEqual(reopened.value as? String, "مسألة رياضيات 123")
+        XCTAssertTrue(app.staticTexts["editor-reopened-arabic"].waitForExistence(timeout: 10))
+        capture(app, named: "page-editor-arabic-large-rtl-reopened")
+    }
+
     @MainActor func testEditBoldSaveAndReopenIndependentCopy() throws {
         let app = XCUIApplication(); app.launch()
         let importButton = app.buttons["Import test copy"]

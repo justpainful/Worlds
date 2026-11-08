@@ -58,7 +58,7 @@ public actor ClaudeConversationService: ConversationRecoveryService {
             pendingSaveRun = nil
         } catch { throw ClaudeConversationBridgeError.persistenceFailed }
     }
-    public func cancel(runID: UUID) async throws {
+    public func cancel(runID: UUID) async {
         guard activeRun == runID else { return }
         cancelled.insert(runID)
         await coordinator.cancel(runID: runID)

@@ -15,6 +15,9 @@ final class ProjectEditorHarnessUITests: XCTestCase {
         #if os(macOS)
         description.typeKey("a", modifierFlags: .command)
         #else
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 10), "Tapping the description must open the keyboard")
+        let focus = expectation(for: NSPredicate(format: "hasKeyboardFocus == true"), evaluatedWith: description)
+        wait(for: [focus], timeout: 10)
         description.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 40))
         #endif
         description.typeText("Updated fixture")
