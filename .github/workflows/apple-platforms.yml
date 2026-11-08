@@ -903,6 +903,59 @@ jobs:
             local-history-*.xcresult/
           if-no-files-found: warn
 
+  experimental-rename-page-ui:
+    name: Experimental fixture-only rename page UI
+    runs-on: macos-26
+    needs: [ruststore-xcframework]
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Worlds-shared-ruststore-xcframework
+          path: ruststore-artifact
+      - name: Restore same-commit RustStore
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat ruststore-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd ruststore-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p logs Apple/WorldsCore/Artifacts
+          tar -xzf ruststore-artifact/ruststore-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
+          test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          brew install xcodegen coreutils
+          xcodegen generate --spec Apple/ProjectEditorHarness/rename-page-experimental.yml
+      - name: Test fixture-only page rename on Apple platforms
+        shell: bash
+        run: |
+          set -o pipefail
+          result=0
+          for device in macOS iPhone iPad; do
+            case "$device" in
+              macOS) platform=macOS; destination='platform=macOS' ;;
+              iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
+              iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
+            esac
+            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsRenamePageExperimental.xcodeproj \
+              -scheme "LocalCopy-$platform" -configuration Debug -destination "$destination" \
+              -resultBundlePath "$GITHUB_WORKSPACE/local-rename-page-$device.xcresult" \
+              CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-rename-page-$device.log"; then
+              grep -E 'testRenameAndUndo.*passed' "logs/local-rename-page-$device.log" || result=1
+            else
+              result=1
+            fi
+          done
+          test "$result" = 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-experimental-local-rename-page-results
+          path: |
+            logs/
+            local-rename-page-*.xcresult/
+          if-no-files-found: warn
+
   experimental-create-page-ui:
     name: Experimental fixture-only create page UI
     runs-on: macos-26
@@ -1555,6 +1608,7 @@ jobs:
           grep -q 'checked_rename_retries_without_duplicate_history_and_refuses_same_revision_change ... ok' logs/rust-store-tests.log
           grep -q 'checked_rename_rolls_back_page_history_fts_and_changes ... ok' logs/rust-store-tests.log
           grep -q 'ffi_checked_rename_retries_same_operation ... ok' logs/rust-store-tests.log
+          grep -q 'checked_rename_rejects_canonically_equivalent_but_distinct_utf8 ... ok' logs/rust-store-tests.log
           grep -q 'gallery_preserves_unknown_refs_and_noncanonical_block ... ok' logs/rust-store-tests.log
           grep -q 'gallery_caption_edit_cannot_discard_unknown_fields_or_malformed_caption ... ok' logs/rust-store-tests.log
           grep -q 'gallery_removal_refuses_nonempty_or_malformed_block_properties ... ok' logs/rust-store-tests.log
