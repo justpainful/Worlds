@@ -1288,6 +1288,7 @@ jobs:
           grep -q 'malformed_speaker_notes_are_preserved_and_cannot_be_replaced ... ok' logs/rust-store-tests.log
           grep -q 'malformed_slide_text_is_preserved_during_other_edits ... ok' logs/rust-store-tests.log
           grep -q 'unknown_slide_alignment_is_preserved_during_other_edits ... ok' logs/rust-store-tests.log
+          grep -q 'malformed_slide_style_and_geometry_survive_other_edits ... ok' logs/rust-store-tests.log
           grep -q 'explicit_slide_delete_keeps_shared_assets_snapshots_and_rolls_back ... ok' logs/rust-store-tests.log
           grep -q 'refuses_unknown_element_loss_slide_removal_and_stale_refs_atomically ... ok' logs/rust-store-tests.log
           grep -q 'identity_probe_rejects_swapped_main_wal_and_shm_before_write ... ok' logs/rust-store-tests.log
