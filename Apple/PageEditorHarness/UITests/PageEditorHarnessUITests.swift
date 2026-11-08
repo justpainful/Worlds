@@ -40,42 +40,38 @@ final class PageEditorHarnessUITests: XCTestCase {
         XCTAssertEqual(reopened.value as? String, "مسألة رياضيات 123")
         XCTAssertTrue(app.staticTexts["editor-reopened-arabic"].waitForExistence(timeout: 10))
         #if os(iOS)
-        let formatting = app.scrollViews["editor-format-toolbar"]
-        XCTAssertTrue(formatting.waitForExistence(timeout: 10))
-        if !formatting.isHittable {
-            let outer = app.scrollViews["harness-editor-scroll"].firstMatch
-            guard outer.isHittable else { captureFailure(app, named: "page-format-scroll-unavailable"); XCTFail("Editor scroll view unavailable"); return }
-            outer.swipeUp()
+        let outer = app.scrollViews["harness-editor-scroll"].firstMatch
+        guard outer.waitForExistence(timeout: 10), outer.isHittable else {
+            captureFailure(app, named: "page-format-scroll-unavailable")
+            XCTFail("Editor scroll view unavailable"); return
+        }
+        func scrollEditor() {
+            let start = outer.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.8))
+            let end = outer.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.2))
+            start.press(forDuration: 0.05, thenDragTo: end)
         }
         let remove = app.buttons["editor-remove-link"]
-        for _ in 0..<4 {
-            if remove.exists && formatting.frame.contains(remove.frame) { break }
-            formatting.swipeUp()
+        for _ in 0..<12 {
+            if remove.exists && remove.isHittable && outer.frame.contains(remove.frame) { break }
+            scrollEditor()
         }
         guard remove.exists, remove.isHittable else {
             captureFailure(app, named: "page-remove-link-not-visible")
             XCTFail("The final formatting action must be reachable")
             return
         }
-        XCTAssertTrue(formatting.frame.contains(remove.frame), "The final formatting action must be fully visible after scrolling")
-        let lists = app.scrollViews["editor-list-toolbar"]
-        XCTAssertTrue(lists.waitForExistence(timeout: 10))
-        if !lists.isHittable {
-            let outer = app.scrollViews["harness-editor-scroll"].firstMatch
-            guard outer.isHittable else { captureFailure(app, named: "page-list-scroll-unavailable"); XCTFail("Editor scroll view unavailable"); return }
-            outer.swipeUp()
-        }
+        XCTAssertTrue(outer.frame.contains(remove.frame), "The final formatting action must be fully visible after scrolling")
         let toggle = app.buttons["Toggle task"]
-        for _ in 0..<4 {
-            if toggle.exists && lists.frame.contains(toggle.frame) { break }
-            lists.swipeUp()
+        for _ in 0..<12 {
+            if toggle.exists && toggle.isHittable && outer.frame.contains(toggle.frame) { break }
+            scrollEditor()
         }
         guard toggle.exists, toggle.isHittable else {
             captureFailure(app, named: "page-toggle-task-not-visible")
             XCTFail("The final list action must be reachable")
             return
         }
-        XCTAssertTrue(lists.frame.contains(toggle.frame), "The final list action must be fully visible after scrolling")
+        XCTAssertTrue(outer.frame.contains(toggle.frame), "The final list action must be fully visible after scrolling")
         #endif
         capture(app, named: "page-editor-arabic-large-rtl-reopened")
     }
