@@ -237,7 +237,7 @@ pub fn create_page_idempotent(path: &Path, title: String, parent: Option<String>
     let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
     if let Some(parent_id) = parent.as_deref() { require_personal(&tx, parent_id)?; }
     tx.execute_batch("CREATE TABLE IF NOT EXISTS native_personal_page_creations_v1(operation_id TEXT PRIMARY KEY,title TEXT NOT NULL,parent_id TEXT,page_id TEXT NOT NULL,result_json TEXT NOT NULL)")?;
-    reject_creation_collision(&tx,&operation_id,&["native_personal_document_creations_v1","native_personal_project_creations_v1","native_personal_presentation_creations_v1","native_personal_gallery_creations_v1"])?;
+    reject_creation_collision(&tx,&operation_id,&["native_personal_document_creations_v1","native_personal_project_creations_v1","native_personal_presentation_creations_v1","native_personal_gallery_creations_v1","native_personal_stream_creations_v1"])?;
     let previous: Option<(String,Option<String>,String,String)> = tx.query_row("SELECT title,parent_id,page_id,result_json FROM native_personal_page_creations_v1 WHERE operation_id=?1",[&operation_id],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?))).optional()?;
     if let Some((saved_title,saved_parent,page_id,result)) = previous {
         if saved_title != title || saved_parent != parent { bail!("conflict: creation operation input changed") }
@@ -261,7 +261,7 @@ pub fn create_document_idempotent(path:&Path,title:String,parent:Option<String>,
     let tx=conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
     if let Some(id)=parent.as_deref() { require_personal(&tx,id)?; }
     tx.execute_batch("CREATE TABLE IF NOT EXISTS native_personal_document_creations_v1(operation_id TEXT PRIMARY KEY,title TEXT NOT NULL,parent_id TEXT,parent_revision INTEGER,page_id TEXT NOT NULL,result_json TEXT NOT NULL)")?;
-    reject_creation_collision(&tx,&operation_id,&["native_personal_page_creations_v1","native_personal_project_creations_v1","native_personal_presentation_creations_v1","native_personal_gallery_creations_v1"])?;
+    reject_creation_collision(&tx,&operation_id,&["native_personal_page_creations_v1","native_personal_project_creations_v1","native_personal_presentation_creations_v1","native_personal_gallery_creations_v1","native_personal_stream_creations_v1"])?;
     let prior:Option<(String,Option<String>,Option<i64>,String,String)>=tx.query_row("SELECT title,parent_id,parent_revision,page_id,result_json FROM native_personal_document_creations_v1 WHERE operation_id=?1",[&operation_id],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?))).optional()?;
     if let Some((old_title,old_parent,old_revision,page_id,result))=prior {
         if old_title!=title || old_parent!=parent || old_revision!=parent_revision { bail!("conflict: creation operation input changed") }
@@ -299,7 +299,7 @@ pub fn create_project_idempotent(path:&Path,title:String,parent:Option<String>,p
     let tx=conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
     if let Some(id)=parent.as_deref() { require_personal(&tx,id)?; }
     tx.execute_batch("CREATE TABLE IF NOT EXISTS native_personal_project_creations_v1(operation_id TEXT PRIMARY KEY,title TEXT NOT NULL,parent_id TEXT,parent_revision INTEGER,page_id TEXT NOT NULL,result_json TEXT NOT NULL)")?;
-    reject_creation_collision(&tx,&operation_id,&["native_personal_page_creations_v1","native_personal_document_creations_v1","native_personal_presentation_creations_v1","native_personal_gallery_creations_v1"])?;
+    reject_creation_collision(&tx,&operation_id,&["native_personal_page_creations_v1","native_personal_document_creations_v1","native_personal_presentation_creations_v1","native_personal_gallery_creations_v1","native_personal_stream_creations_v1"])?;
     let prior:Option<(String,Option<String>,Option<i64>,String,String)>=tx.query_row("SELECT title,parent_id,parent_revision,page_id,result_json FROM native_personal_project_creations_v1 WHERE operation_id=?1",[&operation_id],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?))).optional()?;
     if let Some((old_title,old_parent,old_revision,page_id,result))=prior {
         if old_title!=title || old_parent!=parent || old_revision!=parent_revision { bail!("conflict: creation operation input changed") }
@@ -328,7 +328,7 @@ pub fn create_gallery_idempotent(path:&Path,title:String,parent:Option<String>,p
     let tx=conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
     if let Some(id)=parent.as_deref() { require_personal(&tx,id)?; }
     tx.execute_batch("CREATE TABLE IF NOT EXISTS native_personal_gallery_creations_v1(operation_id TEXT PRIMARY KEY,title TEXT NOT NULL,parent_id TEXT,parent_revision INTEGER,page_id TEXT NOT NULL,result_json TEXT NOT NULL)")?;
-    reject_creation_collision(&tx,&operation_id,&["native_personal_page_creations_v1","native_personal_document_creations_v1","native_personal_presentation_creations_v1","native_personal_project_creations_v1"])?;
+    reject_creation_collision(&tx,&operation_id,&["native_personal_page_creations_v1","native_personal_document_creations_v1","native_personal_presentation_creations_v1","native_personal_project_creations_v1","native_personal_stream_creations_v1"])?;
     let prior:Option<(String,Option<String>,Option<i64>,String,String)>=tx.query_row("SELECT title,parent_id,parent_revision,page_id,result_json FROM native_personal_gallery_creations_v1 WHERE operation_id=?1",[&operation_id],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?))).optional()?;
     if let Some((old_title,old_parent,old_revision,page_id,result))=prior {
         if old_title!=title || old_parent!=parent || old_revision!=parent_revision { bail!("conflict: creation operation input changed") }
@@ -349,6 +349,41 @@ pub fn create_gallery_idempotent(path:&Path,title:String,parent:Option<String>,p
     tx.commit()?; Ok(result)
 }
 
+/// Creates a stream using the source resource defaults and icon.
+pub fn create_stream_idempotent(path:&Path,title:String,url:String,parent:Option<String>,parent_revision:Option<i64>,operation_id:&str)->Result<Value> {
+    let raw=url.trim();
+    if raw.is_empty() || raw.len()>65536 || raw.bytes().any(|b| b.is_ascii_control()) { bail!("invalid stream URL") }
+    let parsed=url::Url::parse(raw).map_err(|_|anyhow::anyhow!("invalid stream URL"))?;
+    if !matches!(parsed.scheme(),"http" | "https") || parsed.host_str().is_none() { bail!("invalid stream URL") }
+    let path_part=raw.split(['?', '#']).next().unwrap_or("").to_lowercase();
+    let format=if path_part.ends_with(".m3u8") || path_part.ends_with(".m3u") { "hls" } else if path_part.ends_with(".mpd") { "dash" } else { "progressive" };
+    if parent.is_some()!=parent_revision.is_some() { bail!("invalid stream parent revision") }
+    let operation_id=uuid::Uuid::parse_str(operation_id)?.to_string();
+    let mut conn=open_existing(path)?;
+    let tx=conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+    if let Some(id)=parent.as_deref() { require_personal(&tx,id)?; }
+    tx.execute_batch("CREATE TABLE IF NOT EXISTS native_personal_stream_creations_v1(operation_id TEXT PRIMARY KEY,title TEXT NOT NULL,url TEXT NOT NULL,parent_id TEXT,parent_revision INTEGER,page_id TEXT NOT NULL,result_json TEXT NOT NULL)")?;
+    reject_creation_collision(&tx,&operation_id,&["native_personal_page_creations_v1","native_personal_document_creations_v1","native_personal_presentation_creations_v1","native_personal_project_creations_v1","native_personal_gallery_creations_v1"])?;
+    let prior:Option<(String,String,Option<String>,Option<i64>,String,String)>=tx.query_row("SELECT title,url,parent_id,parent_revision,page_id,result_json FROM native_personal_stream_creations_v1 WHERE operation_id=?1",[&operation_id],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?,r.get(5)?))).optional()?;
+    if let Some((old_title,old_url,old_parent,old_revision,page_id,result))=prior {
+        if old_title!=title || old_url!=raw || old_parent!=parent || old_revision!=parent_revision { bail!("conflict: creation operation input changed") }
+        require_personal(&tx,&page_id)?;
+        let value:Value=serde_json::from_str(&result)?;
+        if value.get("id").and_then(Value::as_str)!=Some(page_id.as_str()) || value.get("kind").and_then(Value::as_str)!=Some("stream") { bail!("conflict: invalid stream creation record") }
+        tx.commit()?; return Ok(value)
+    }
+    if let (Some(id),Some(expected))=(parent.as_deref(),parent_revision) {
+        let current:i64=tx.query_row("SELECT updated_at FROM pages WHERE id=?1",[id],|r|r.get(0))?;
+        if current!=expected { bail!("conflict: parent changed") }
+    }
+    let metadata=serde_json::json!({"stream":{"url":raw,"format":format}});
+    let input=store::NewPage { title:Some(title.clone()),icon:Some("pi:film".into()),parent_id:parent.clone(),kind:Some("stream".into()),metadata:Some(metadata),..Default::default() };
+    let result=serde_json::to_value(store::create_page(&tx,&store::Ctx::user(),input)?)?;
+    let page_id=result.get("id").and_then(Value::as_str).ok_or_else(||anyhow::anyhow!("invalid created stream"))?;
+    tx.execute("INSERT INTO native_personal_stream_creations_v1(operation_id,title,url,parent_id,parent_revision,page_id,result_json) VALUES(?1,?2,?3,?4,?5,?6,?7)",rusqlite::params![operation_id,title,raw,parent,parent_revision,page_id,result.to_string()])?;
+    tx.commit()?; Ok(result)
+}
+
 /// Creates a presentation using the source resource defaults and icon.
 pub fn create_presentation_idempotent(path:&Path,title:String,parent:Option<String>,parent_revision:Option<i64>,operation_id:&str)->Result<Value> {
     if parent.is_some()!=parent_revision.is_some() { bail!("invalid presentation parent revision") }
@@ -357,7 +392,7 @@ pub fn create_presentation_idempotent(path:&Path,title:String,parent:Option<Stri
     let tx=conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
     if let Some(id)=parent.as_deref() { require_personal(&tx,id)?; }
     tx.execute_batch("CREATE TABLE IF NOT EXISTS native_personal_presentation_creations_v1(operation_id TEXT PRIMARY KEY,title TEXT NOT NULL,parent_id TEXT,parent_revision INTEGER,page_id TEXT NOT NULL,result_json TEXT NOT NULL)")?;
-    reject_creation_collision(&tx,&operation_id,&["native_personal_page_creations_v1","native_personal_document_creations_v1","native_personal_project_creations_v1","native_personal_gallery_creations_v1"])?;
+    reject_creation_collision(&tx,&operation_id,&["native_personal_page_creations_v1","native_personal_document_creations_v1","native_personal_project_creations_v1","native_personal_gallery_creations_v1","native_personal_stream_creations_v1"])?;
     let prior:Option<(String,Option<String>,Option<i64>,String,String)>=tx.query_row("SELECT title,parent_id,parent_revision,page_id,result_json FROM native_personal_presentation_creations_v1 WHERE operation_id=?1",[&operation_id],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?))).optional()?;
     if let Some((old_title,old_parent,old_revision,page_id,result))=prior {
         if old_title!=title || old_parent!=parent || old_revision!=parent_revision { bail!("conflict: creation operation input changed") }
@@ -487,6 +522,7 @@ enum Request {
     CreateProjectIdempotent { path: String, title: String, parent: Option<String>, parent_revision: Option<i64>, operation_id: String },
     CreatePresentationIdempotent { path: String, title: String, parent: Option<String>, parent_revision: Option<i64>, operation_id: String },
     CreateGalleryIdempotent { path: String, title: String, parent: Option<String>, parent_revision: Option<i64>, operation_id: String },
+    CreateStreamIdempotent { path: String, title: String, url: String, parent: Option<String>, parent_revision: Option<i64>, operation_id: String },
     TrashPage { path: String, page: String, base: i64 },
 }
 
@@ -580,6 +616,7 @@ fn dispatch_inner(bytes: &[u8], cancellation: Option<&GalleryCancellation>) -> R
         Request::CreateProjectIdempotent { path, title, parent, parent_revision, operation_id } => create_project_idempotent(Path::new(&path), title, parent, parent_revision, &operation_id),
         Request::CreatePresentationIdempotent { path, title, parent, parent_revision, operation_id } => create_presentation_idempotent(Path::new(&path), title, parent, parent_revision, &operation_id),
         Request::CreateGalleryIdempotent { path, title, parent, parent_revision, operation_id } => create_gallery_idempotent(Path::new(&path), title, parent, parent_revision, &operation_id),
+        Request::CreateStreamIdempotent { path, title, url, parent, parent_revision, operation_id } => create_stream_idempotent(Path::new(&path), title, url, parent, parent_revision, &operation_id),
         Request::TrashPage { path, page, base } => { trash_page(Path::new(&path), &page, base)?; Ok(Value::Null) }
     }
 }
@@ -897,6 +934,41 @@ mod tests {
         let first=invoke();let replay=invoke();assert_eq!(first["ok"],true,"{first}");assert_eq!(first,replay);
         assert_eq!(db.query_row("SELECT count(*) FROM pages WHERE title='FFI project' AND kind='project'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
         drop(db);std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn stream_create_formats_replay_and_collisions() {
+        let path=fixture(); let db=Connection::open(&path).unwrap();
+        let rev:i64=db.query_row("SELECT updated_at FROM pages WHERE id='fixture-page'",[],|r|r.get(0)).unwrap();
+        let op=uuid::Uuid::new_v4().to_string();
+        let make=|url:&str| create_stream_idempotent(&path,"Stream".into(),url.into(),Some("fixture-page".into()),Some(rev),&op);
+        let first=make("  https://example.test/Live.M3U8?key=fixture  ").unwrap();
+        assert_eq!(first,make("https://example.test/Live.M3U8?key=fixture").unwrap());
+        assert!(make("https://example.test/other").is_err());
+        let id=first["id"].as_str().unwrap();
+        let (kind,icon,meta):(String,String,String)=db.query_row("SELECT kind,icon,metadata FROM pages WHERE id=?1",[id],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).unwrap();
+        assert_eq!(kind,"stream");assert_eq!(icon,"pi:film");assert_eq!(serde_json::from_str::<Value>(&meta).unwrap(),serde_json::json!({"stream":{"url":"https://example.test/Live.M3U8?key=fixture","format":"hls"}}));
+        assert!(create_gallery_idempotent(&path,"other".into(),None,None,&op).is_err());
+        for (url,format) in [("https://example.test/x.m3u#frag","hls"),("https://example.test/x.MPD?x=1","dash"),("http://example.test/x.mp4","progressive")] {
+            let v=create_stream_idempotent(&path,"format".into(),url.into(),None,None,&uuid::Uuid::new_v4().to_string()).unwrap();
+            let raw:String=db.query_row("SELECT metadata FROM pages WHERE id=?1",[v["id"].as_str().unwrap()],|r|r.get(0)).unwrap();assert_eq!(serde_json::from_str::<Value>(&raw).unwrap()["stream"]["format"],format);
+        }
+        for url in ["file:///secret", "javascript:alert(1)","https://", "https://example.test/\nfoo"] { assert!(create_stream_idempotent(&path,"bad".into(),url.into(),None,None,&uuid::Uuid::new_v4().to_string()).is_err()); }
+        db.execute("UPDATE pages SET metadata='{\"sync\":{\"shared\":true}}' WHERE id='fixture-page'",[]).unwrap();assert!(make("https://example.test/Live.M3U8?key=fixture").is_err());
+        drop(db);std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn stream_create_rolls_back_and_checks_parent() {
+        let path=fixture();let db=Connection::open(&path).unwrap();let rev:i64=db.query_row("SELECT updated_at FROM pages WHERE id='fixture-page'",[],|r|r.get(0)).unwrap();let op=uuid::Uuid::new_v4().to_string();
+        let run=|base| create_stream_idempotent(&path,"Streamrollbackfixture".into(),"https://example.test/live".into(),Some("fixture-page".into()),base,&op);
+        assert!(run(Some(rev+1)).is_err());assert!(run(None).is_err());
+        db.execute_batch("CREATE TABLE native_personal_stream_creations_v1(operation_id TEXT PRIMARY KEY,title TEXT NOT NULL,url TEXT NOT NULL,parent_id TEXT,parent_revision INTEGER,page_id TEXT NOT NULL,result_json TEXT NOT NULL); CREATE TRIGGER fail_stream_record BEFORE INSERT ON native_personal_stream_creations_v1 BEGIN SELECT RAISE(ABORT,'fixture'); END;").unwrap();
+        let counts=||db.query_row("SELECT (SELECT count(*) FROM pages),(SELECT count(*) FROM history),(SELECT count(*) FROM changes)",[],|r|Ok((r.get::<_,i64>(0)?,r.get::<_,i64>(1)?,r.get::<_,i64>(2)?))).unwrap();let before=counts();assert!(run(Some(rev)).is_err());assert_eq!(before,counts());assert_eq!(db.query_row("SELECT count(*) FROM pages_fts WHERE pages_fts MATCH 'Streamrollbackfixture'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        db.execute_batch("DROP TRIGGER fail_stream_record").unwrap();assert!(run(Some(rev)).is_ok());drop(db);std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn ffi_stream_create_replays() {
+        let path=fixture();let request=serde_json::json!({"operation":"create_stream_idempotent","path":path,"title":"FFI stream","url":"https://example.test/video.mpd","operation_id":uuid::Uuid::new_v4().to_string()}).to_string();
+        let invoke=||{let p=unsafe{worlds_store_call(request.as_ptr(),request.len())};let v:Value=serde_json::from_str(unsafe{std::ffi::CStr::from_ptr(p)}.to_str().unwrap()).unwrap();unsafe{worlds_store_free(p)};v};let first=invoke();assert_eq!(first["ok"],true,"{first}");assert_eq!(first,invoke());std::fs::remove_file(path).unwrap();
     }
     #[test]
     fn gallery_create_preserves_source_defaults_and_idempotency() {
