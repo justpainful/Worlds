@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import WorldsCollaboration
+import WorldsCollaborationEditor
 
 /// Isolated operation panel for a single known plain-text fixture. This is not
 /// a general collaborative editor or a CRDT undo manager.

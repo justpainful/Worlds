@@ -2311,6 +2311,8 @@ jobs:
           grep -Eq 'testRightToLeftNavigationAndReading.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testReaderShowsStructuredContentAndExpandsToggle.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testReaderShowsRTLQuotationAndOverflowingList.*passed' logs/ui-${{ matrix.device }}.log
+          grep -Eq 'testPersonalSubpagesNavigateAndReturn.*passed' logs/ui-${{ matrix.device }}.log
+          grep -Eq 'testSubpageCycleDoesNotRepeatAnAncestor.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testProjectSummaryAndLinkedPage.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testArabicProjectSummary.*passed' logs/ui-${{ matrix.device }}.log
           grep -Eq 'testArabicProjectDark.*passed' logs/ui-${{ matrix.device }}.log
