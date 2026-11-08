@@ -107,6 +107,7 @@ jobs:
           grep -E 'testSignOutCannotRaceStoredSessionCheck.*passed' logs/swift-test.log
           grep -E 'testSignOutInvalidatesOutstandingPasskeyChallenge.*passed' logs/swift-test.log
           grep -E 'testSignOutRejectsPasskeyChallengeStillInFlight.*passed' logs/swift-test.log
+          grep -E 'testSignOutRejectsEmailChallengeStillInFlight.*passed' logs/swift-test.log
           grep -E 'testPasskeyManagementUsesAuthenticatedEndpointsAndRejectsUnsafeID.*passed' logs/swift-test.log
           grep -E 'testConcurrentRefreshUsesOneRotation.*passed' logs/swift-test.log
           grep -E 'testSignOutWaitsForActiveRefresh.*passed' logs/swift-test.log
