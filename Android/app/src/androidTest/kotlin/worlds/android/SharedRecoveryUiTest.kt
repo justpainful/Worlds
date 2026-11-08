@@ -2,7 +2,6 @@ package worlds.android
 
 import android.util.Base64
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -191,7 +190,8 @@ class SharedRecoveryUiTest {
                 android.os.ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /sdcard/Download/worlds-recovery-edit.png")).use { it.readBytes() }
             }
             compose.onNodeWithTag("confirm_restore_recovery").performClick()
-            compose.onNodeWithTag("shared_draft").assertIsDisplayed().assertTextEquals("My recovered paragraph")
+            compose.onNodeWithTag("shared_draft").assertIsDisplayed()
+            assertEquals("My recovered paragraph", compose.onNodeWithTag("shared_draft").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.EditableText].text)
             val layouts = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
             compose.onNodeWithTag("shared_draft").performSemanticsAction(SemanticsActions.GetTextLayoutResult) { action -> check(action(layouts)) }
             assertEquals(androidx.compose.ui.text.style.ResolvedTextDirection.Rtl, layouts.first().getParagraphDirection(0))

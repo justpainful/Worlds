@@ -57,7 +57,7 @@ class SharedConversationsUiTest {
             }
             compose.onNodeWithTag("conversation_reply_thread1").performClick()
             compose.onNodeWithTag("conversation_reply_text").performTextInput("Reviewed on Android")
-            compose.onNodeWithTag("conversation_send").performClick()
+            compose.onNodeWithTag("conversation_send").performScrollTo().performClick()
             compose.waitUntil(20_000) { controller.state.value.conversations.firstOrNull()?.comments?.size == 2 && store.pending(key).isEmpty() }
             val comment = controller.state.value.conversations.single().comments.last()
             assertEquals("user", comment.author); assertEquals("Reviewed on Android", comment.body)
@@ -74,7 +74,7 @@ class SharedConversationsUiTest {
                 Thread.sleep(400)
                 android.os.ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /sdcard/Download/worlds-edit-comment.png")).use { it.readBytes() }
             }
-            compose.onNodeWithTag("conversation_edit_save").performClick()
+            compose.onNodeWithTag("conversation_edit_save").performScrollTo().performClick()
             compose.waitUntil(20_000) { controller.state.value.conversations.single().comments.last().body == "Edited on Android" && store.pending(key).isEmpty() }
             assertTrue(controller.state.value.conversations.single().comments.last().editedAt > 0)
             compose.onNodeWithTag("conversation_delete_c1").assertDoesNotExist()

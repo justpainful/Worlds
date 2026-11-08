@@ -70,7 +70,7 @@ internal val PageFindSessionSaver = listSaver<PageFindSession, Any>(
     AlertDialog(onDismissRequest = { if (!busy) onDismiss() }, title = { WorldsActionLabel(R.drawable.ic_search, stringResource(R.string.find_replace)) },
         text = { Column(Modifier.heightIn(max = 450.dp).verticalScroll(rememberScrollState())) {
             Text(stringResource(R.string.find_scope), style = MaterialTheme.typography.bodySmall)
-            OutlinedTextField(value = query, onValueChange = { if (it.length <= 256) { query = it; index = 0; error = false } }, enabled = !busy,
+            OutlinedTextField(value = query, onValueChange = { if (it.length <= 256 && it != query) { query = it; index = 0; error = false } }, enabled = !busy,
                 label = { Text(stringResource(R.string.find_query)) }, modifier = Modifier.fillMaxWidth().onPreviewKeyEvent { event ->
                     if (!busy && matches.isNotEmpty() && result?.truncated == false && event.type == KeyEventType.KeyDown && event.nativeKeyEvent.repeatCount == 0 && event.key == Key.Enter && !event.isCtrlPressed && !event.isAltPressed && !event.isMetaPressed) {
                         index = if (event.isShiftPressed) (current + matches.size - 1) % matches.size else (current + 1) % matches.size

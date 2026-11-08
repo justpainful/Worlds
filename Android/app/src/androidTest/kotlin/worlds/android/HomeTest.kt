@@ -550,8 +550,9 @@ class HomeTest {
         pageAction(R.string.find_replace)
         compose.onNodeWithText(app.getString(R.string.find_query)).performTextInput("unique target")
         compose.waitUntil(20_000) { compose.onAllNodesWithText(app.getString(R.string.find_count, 1, 2)).fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText(app.getString(R.string.find_next)).performScrollTo().performClick()
-        compose.onNodeWithText(app.getString(R.string.find_count, 2, 2)).assertIsDisplayed()
+        compose.onNodeWithText(app.getString(R.string.find_next)).performScrollTo()
+        compose.onNodeWithText(app.getString(R.string.find_next)).performSemanticsAction(SemanticsActions.OnClick) { check(it()) }
+        compose.onNodeWithText(app.getString(R.string.find_count, 2, 2)).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText(app.getString(R.string.find_show_block)).performScrollTo().performClick()
         compose.waitUntil(20_000) { runCatching { compose.onNodeWithTag("find-revealed-block").assertIsDisplayed(); true }.getOrDefault(false) }
         compose.onNodeWithText("Distant unique target").assertIsDisplayed()
@@ -634,8 +635,10 @@ class HomeTest {
             compose.waitForIdle(); Thread.sleep(400)
             InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /sdcard/Download/worlds-find-replace.png").close()
         }
-        compose.onNodeWithText(app.getString(R.string.find_next)).performScrollTo().performClick()
-        compose.onNodeWithText(app.getString(R.string.find_count, 2, 2)).assertIsDisplayed()
+        compose.onNodeWithText(app.getString(R.string.find_next)).performScrollTo()
+        compose.onNodeWithText(app.getString(R.string.find_next)).performSemanticsAction(SemanticsActions.OnClick) { check(it()) }
+        compose.waitUntil(20_000) { compose.onAllNodesWithText(app.getString(R.string.find_count, 2, 2)).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText(app.getString(R.string.find_count, 2, 2)).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText(app.getString(R.string.find_replace_one)).performScrollTo().performClick()
         compose.waitUntil(20_000) { !model.state.value.busy && model.state.value.selected?.blocks?.firstOrNull()?.content?.contains("Hi") == true }
         check(worlds.content.InlineEditing.text(model.state.value.selected!!.blocks[0].content) == "Hello Hi")
@@ -771,7 +774,7 @@ class HomeTest {
         insertBlock(R.string.add_paragraph)
         compose.onNodeWithText(app.getString(R.string.text_content)).performTextInput("Hello world")
         compose.onNodeWithText(app.getString(R.string.text_content)).performTextInputSelection(TextRange(0, 5))
-        compose.onNodeWithText(app.getString(R.string.bold)).performClick()
+        compose.onNodeWithText(app.getString(R.string.bold)).performScrollTo().performClick()
         compose.onNodeWithText(app.getString(R.string.inline_link)).performScrollTo().performClick()
         compose.onNodeWithText(app.getString(R.string.inline_link_address)).performTextInput("javascript:bad")
         compose.onNodeWithText(app.getString(R.string.inline_link_apply)).performClick()
@@ -1378,14 +1381,7 @@ class HomeTest {
             while (System.currentTimeMillis() < deadline && !clicked) {
                 val target = findFile(automation.rootInActiveWindow)
                 if (target != null) {
-                    val bounds = android.graphics.Rect(); target.getBoundsInScreen(bounds)
-                    if (!bounds.isEmpty) {
-                        // DocumentsUI overlays a preview button at the thumbnail center.
-                        val x = bounds.left + bounds.width() / 4
-                        val y = bounds.top + bounds.height() / 4
-                        automation.executeShellCommand("input tap $x $y").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
-                        clicked = true
-                    }
+                    clicked = target.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
                 }
                 if (!clicked) Thread.sleep(200)
             }
@@ -1542,14 +1538,7 @@ class HomeTest {
                 val root = automation.rootInActiveWindow
                 val target = findFile(root)
                 if (target != null) {
-                    val bounds = android.graphics.Rect(); target.getBoundsInScreen(bounds)
-                    if (!bounds.isEmpty) {
-                        // DocumentsUI overlays a preview button at the thumbnail center.
-                        val x = bounds.left + bounds.width() / 4
-                        val y = bounds.top + bounds.height() / 4
-                        automation.executeShellCommand("input tap $x $y").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
-                        clicked = true
-                    }
+                    clicked = target.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
                 }
                 if (!clicked) Thread.sleep(200)
             }
@@ -1781,7 +1770,7 @@ class HomeTest {
         insertBlock(R.string.add_paragraph)
         compose.onNodeWithText(app.getString(R.string.text_content)).performTextInput("Hello world")
         compose.onNodeWithText(app.getString(R.string.text_content)).performTextInputSelection(TextRange(0, 5))
-        compose.onNodeWithText(app.getString(R.string.bold)).performClick()
+        compose.onNodeWithText(app.getString(R.string.bold)).performScrollTo().performClick()
         compose.onNodeWithText(app.getString(R.string.save)).performClick()
         compose.waitUntil(20_000) { model.state.value.editor == null && model.state.value.selected!!.blocks.isNotEmpty() }
         val block = model.state.value.selected!!.blocks.single().content
