@@ -75,6 +75,9 @@ private struct WorldsLibraryView: View {
     @State private var showCopyExplanation = false
     @State private var showLocalCopies = false
     @State private var editingProject: ProjectEditorRequest?
+    #if DEBUG && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
+    @State private var editingPresentation: LocalPresentationEditorRequest?
+    #endif
     #if DEBUG && WORLDS_EXPERIMENTAL_PAGE_EDITOR
     @State private var editingPage: LocalPageEditorRequest?
     #endif
@@ -163,6 +166,14 @@ private struct WorldsLibraryView: View {
             }
             .toolbar {
                 #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+                #if DEBUG && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
+                if let id = selectedID, let context = copyContext, pages.contains(where: { $0.id == id && $0.kind == "presentation" }) {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Edit presentation", systemImage: "pencil") { editingPresentation = LocalPresentationEditorRequest(id: id, context: context, generation: databaseGeneration) }
+                            .accessibilityIdentifier("edit-local-presentation").disabled(loading)
+                    }
+                }
+                #endif
                 #if DEBUG && WORLDS_EXPERIMENTAL_PAGE_EDITOR
                 if let id = selectedID, let context = copyContext, pages.contains(where: { $0.id == id && ($0.kind == "page" || $0.kind == "document") }) {
                     ToolbarItem(placement: .primaryAction) {
@@ -212,6 +223,13 @@ private struct WorldsLibraryView: View {
                 }
             }
         }
+        #if DEBUG && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
+        .sheet(item: $editingPresentation) { request in
+            LocalPresentationEditor(databaseURL: request.context.copy.databaseURL, pageID: request.id) {
+                Task { await refreshCopy(id: request.context.copy.id, generation: request.generation) }
+            }
+        }
+        #endif
         #if DEBUG && WORLDS_EXPERIMENTAL_PAGE_EDITOR
         .sheet(item: $editingPage) { request in
             LocalPageEditorView(databaseURL: request.context.copy.databaseURL, pageID: request.id) {
@@ -305,6 +323,9 @@ private struct WorldsLibraryView: View {
         var disabled = loading
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
         disabled = disabled || editingProject != nil
+        #if DEBUG && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
+        disabled = disabled || editingPresentation != nil
+        #endif
         #if DEBUG && WORLDS_EXPERIMENTAL_PAGE_EDITOR
         disabled = disabled || editingPage != nil
         #endif
@@ -573,6 +594,13 @@ private struct ProjectEditorRequest: Identifiable {
     let generation: UUID
     let candidates: [ProjectLinkCandidate]
 }
+#if DEBUG && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
+private struct LocalPresentationEditorRequest: Identifiable {
+    let id: String
+    let context: LocalCopyContext
+    let generation: UUID
+}
+#endif
 #if DEBUG && WORLDS_EXPERIMENTAL_PAGE_EDITOR
 private struct LocalPageEditorRequest: Identifiable {
     let id: String

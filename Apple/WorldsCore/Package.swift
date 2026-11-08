@@ -77,7 +77,7 @@ let package = Package(
         .testTarget(name: "WorldsAccountViewsTests", dependencies: ["WorldsAccountViews", "WorldsIdentity", "WorldsIdentityContinuity"]),
         .testTarget(name: "WorldsRichTextTests", dependencies: ["WorldsRichText", "WorldsModels"]),
         .testTarget(name: "WorldsDrawingVisualComparisonTests", dependencies: ["WorldsDrawing"], resources: [.copy("CanvasReferences")]),
-        .testTarget(name: "WorldsDrawingTests", dependencies: ["WorldsDrawing", "WorldsModels"], resources: [.copy("original-stroke-fixture.json"), .copy("original-shapes-fixture.json"), .copy("original-pressure-fixture.json"), .copy("original-journal-fixture.json"), .copy("original-dabs-fixture.json")]),
+        .testTarget(name: "WorldsDrawingTests", dependencies: ["WorldsDrawing", "WorldsModels"], resources: [.copy("original-stroke-fixture.json"), .copy("original-shapes-fixture.json"), .copy("original-pressure-fixture.json"), .copy("original-journal-fixture.json"), .copy("original-dabs-fixture.json"), .copy("recognition-source-corpus.json")]),
         .testTarget(name: "WorldsPresentationsTests", dependencies: ["WorldsPresentations", "WorldsModels"]),
         .testTarget(name: "WorldsMediaTests", dependencies: ["WorldsMedia"]),
         .testTarget(name: "WorldsLocalImportTests", dependencies: rustStoreAvailable ? ["WorldsLocalImport", "WorldsRustStore"] : ["WorldsLocalImport"], linkerSettings: [.linkedLibrary("sqlite3")]),
@@ -101,6 +101,9 @@ let package = Package(
 // The write bridge is present only after building the native XCFramework.
 // Read-only clients continue to build before the optional binary exists.
 if rustStoreAvailable {
+    package.products.append(.library(name: "WorldsLocalGalleryImport", targets: ["WorldsLocalGalleryImport"]))
+    package.targets.append(.target(name: "WorldsLocalGalleryImport", dependencies: ["WorldsLocalImport", "WorldsNativeWrites", "WorldsModels"]))
+    package.targets.append(.testTarget(name: "WorldsLocalGalleryImportTests", dependencies: ["WorldsLocalGalleryImport", "WorldsLocalImport", "WorldsNativeWrites", "WorldsModels"], resources: [.copy("worlds-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]))
     package.products.append(.library(name: "WorldsDrawingValidation", targets: ["WorldsDrawingValidation"]))
     package.targets.append(.target(name: "WorldsDrawingValidation", dependencies: ["WorldsRustStore"], exclude: ["README.md"], linkerSettings: [.linkedLibrary("sqlite3"), .linkedFramework("Security"), .linkedFramework("SystemConfiguration"), .linkedLibrary("resolv"), .linkedLibrary("iconv")]))
     package.targets.append(.testTarget(name: "WorldsDrawingValidationTests", dependencies: ["WorldsDrawingValidation"], resources: [.copy("original-journal-fixture.json")]))
@@ -138,6 +141,9 @@ if rustStoreAvailable {
 // CI sets WORLDS_REQUIRE_COLLABORATION=1 so missing binaries fail package resolution.
 // The application does not depend on this experimental module.
 if collaborationAvailable {
+    package.products.append(.library(name: "WorldsRejectedArchives", targets: ["WorldsRejectedArchives"]))
+    package.targets.append(.target(name: "WorldsRejectedArchives", dependencies: ["WorldsCollaboration"], exclude: ["DESIGN.md", "README.md"]))
+    package.targets.append(.testTarget(name: "WorldsRejectedArchivesTests", dependencies: ["WorldsRejectedArchives", "WorldsCollaboration"], resources: [.copy("worlds-collab-v11.db")]))
     package.products.append(.library(name: "WorldsCollaborationEditor", targets: ["WorldsCollaborationEditor"]))
     package.targets.append(.target(name: "WorldsCollaborationEditor", dependencies: ["WorldsModels", "WorldsRichText", "WorldsCollaboration"], exclude: ["README.md"]))
     package.targets.append(.testTarget(name: "WorldsCollaborationEditorTests", dependencies: ["WorldsCollaborationEditor", "WorldsModels", "WorldsRichText", "WorldsCollaboration"]))

@@ -25,6 +25,8 @@ public struct RejectedArchivePage: Sendable, Equatable {
 public actor SQLiteCollaborationStore: CheckedPlainEditorStore {
     nonisolated(unsafe) private let handle: OpaquePointer
     private let pageID: String
+    private let userID: String
+    private let workspaceID: String
 
     public init(databaseURL: URL, pageID: String, userID: String, workspaceID: String) throws {
         guard databaseURL.isFileURL, ![databaseURL.path, pageID, userID, workspaceID].contains(where: { $0.isEmpty || $0.utf8.contains(0) }) else {
@@ -44,6 +46,11 @@ public actor SQLiteCollaborationStore: CheckedPlainEditorStore {
         guard let output else { throw CollaborationStorageError.invalidResult }
         handle = output
         self.pageID = pageID
+        self.userID = userID
+        self.workspaceID = workspaceID
+    }
+    public func matchesIdentity(pageID: String, userID: String, workspaceID: String) -> Bool {
+        self.pageID == pageID && self.userID == userID && self.workspaceID == workspaceID
     }
     deinit { worlds_collaboration_store_free(handle) }
 

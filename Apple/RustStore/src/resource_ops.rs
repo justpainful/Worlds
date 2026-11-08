@@ -418,6 +418,49 @@ fn presentation_attachments(c: &Connection, entries: &[(String,Value)]) -> Resul
     Ok(())
 }
 
+fn presentation_unambiguous(c: &Connection, page: &str) -> Result<()> {
+    let count: i64 = c.query_row("SELECT COUNT(*) FROM blocks WHERE page_id=?1 AND CASE WHEN json_valid(content) THEN EXISTS(SELECT 1 FROM json_tree(content) WHERE typeof(key)='text' GROUP BY parent,key HAVING COUNT(*)>1) ELSE 1 END",[page],|r|r.get(0))?;
+    if count != 0 { bail!("unsupported presentation: ambiguous block content") }
+    Ok(())
+}
+fn presentation_refs(c: &Connection, page: &str, entries: &[(String,Value)]) -> Result<()> {
+    let mut expected = HashSet::new();
+    for (id,value) in entries {
+        let mut refs=Vec::new(); content::collect_refs(value,&mut refs);
+        expected.extend(refs.into_iter().map(|(target,kind)|(id.clone(),target,kind.to_string())));
+    }
+    let actual: HashSet<(String,String,String)>=c.prepare("SELECT source_block,target_page,kind FROM refs WHERE source_page=?1")?
+        .query_map([page],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?)))?.collect::<rusqlite::Result<_>>()?;
+    if actual != expected { bail!("unsupported presentation: reference index is inconsistent") }
+    Ok(())
+}
+
+// The experimental native presentation editor can change notes, text, geometry
+// and selected text-style fields. Preserve every other field and element until
+// a complete editor can prove an explicit operation is safe.
+fn protected_slide(value: &Value) -> Result<Value> {
+    let mut result=value.clone();
+    let attrs=result.get_mut("attrs").and_then(Value::as_object_mut).ok_or_else(||anyhow::anyhow!("invalid slide attributes"))?;
+    attrs.remove("notes");
+    if let Some(elements)=attrs.get_mut("elements") {
+        for element in elements.as_array_mut().ok_or_else(||anyhow::anyhow!("invalid slide elements"))? {
+            let Some(object)=element.as_object_mut() else { continue };
+            let kind=object.get("type").and_then(Value::as_str).unwrap_or("").to_string();
+            if ["text","image","video","shape"].contains(&kind.as_str()) {
+                for key in ["x","y","w","h","rot"] { object.remove(key); }
+            }
+            if kind=="text" {
+                object.remove("text");
+                if let Some(style)=object.get_mut("style").and_then(Value::as_object_mut) {
+                    for key in ["fontSize","fontWeight","color","align","font","italic"] { style.remove(key); }
+                    if style.is_empty() { object.remove("style"); }
+                }
+            }
+        }
+    }
+    Ok(result)
+}
+
 pub fn read_presentation(path: &Path, id: &str) -> Result<Value> {
     let mut connection = open_existing(path)?;
     let tx = connection.transaction_with_behavior(rusqlite::TransactionBehavior::Deferred)?;
@@ -429,32 +472,58 @@ fn presentation_snapshot(c: &Connection, id: &str) -> Result<Value> {
     let (kind,revision,raw): (String,i64,String) = c.query_row("SELECT kind,updated_at,metadata FROM pages WHERE id=?1",[id],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?)))?;
     if kind != "presentation" { bail!("invalid resource kind") }
     let metadata: Value = serde_json::from_str(&raw)?;
+    presentation_unambiguous(c,id)?;
     let current = blocks(c,id)?;
     presentation_attachments(c,&current)?;
     let entries: Vec<Value> = current.into_iter().map(|(id,content)|serde_json::json!({"id":id,"content":content})).collect();
     Ok(serde_json::json!({"id":id,"kind":kind,"revision":revision,"metadata":metadata,"blocks":entries}))
 }
 pub fn save_presentation(path: &Path, id: &str, base: i64, expected_metadata: Value, expected: Vec<BlockInput>, next: Vec<BlockInput>) -> Result<Value> {
+    save_presentation_deleting(path,id,base,expected_metadata,expected,next,vec![])
+}
+pub fn save_presentation_deleting(path: &Path, id: &str, base: i64, expected_metadata: Value, expected: Vec<BlockInput>, next: Vec<BlockInput>, deleting: Vec<String>) -> Result<Value> {
     let mut connection = open_existing(path)?;
     let tx = connection.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
     check_metadata(&tx,id,base,&expected_metadata,"presentation")?;
+    presentation_unambiguous(&tx,id)?;
     let before = blocks(&tx,id)?;
+    presentation_refs(&tx,id,&before)?;
     if before.len() != expected.len() || before.iter().zip(&expected).any(|((id,v),e)|id != &e.id || v != &e.content) { bail!("conflict: presentation blocks changed") }
     let next_pairs: Vec<_> = next.iter().map(|b|(b.id.clone(),b.content.clone())).collect();
     let old_opaque: Vec<_> = before.iter().filter(|(_,v)|v.get("type").and_then(Value::as_str) != Some("slide")).collect();
     let new_opaque: Vec<_> = next_pairs.iter().filter(|(_,v)|v.get("type").and_then(Value::as_str) != Some("slide")).collect();
     if old_opaque != new_opaque { bail!("invalid change: non-slide blocks must be preserved") }
+    let declared: HashSet<_> = deleting.iter().cloned().collect();
+    if declared.len() != deleting.len() { bail!("invalid change: duplicate deleted slide") }
+    let previous: HashSet<_> = before.iter().filter(|(_,v)|v.get("type").and_then(Value::as_str)==Some("slide")).map(|(id,_)|id.clone()).collect();
+    let remaining: HashSet<_> = next_pairs.iter().filter(|(_,v)|v.get("type").and_then(Value::as_str)==Some("slide")).map(|(id,_)|id.clone()).collect();
+    if remaining.is_empty() || previous.difference(&remaining).cloned().collect::<HashSet<_>>() != declared { bail!("invalid change: deleted slides must be explicitly identified") }
+    for deleted in &declared {
+        let raw: String=tx.query_row("SELECT properties FROM blocks WHERE page_id=?1 AND id=?2",rusqlite::params![id,deleted],|r|r.get(0))?;
+        if !serde_json::from_str::<Value>(&raw).ok().and_then(|v|v.as_object().map(|o|o.is_empty())).unwrap_or(false) { bail!("unsupported change: slide properties cannot be restored") }
+    }
+    for (block_id,old) in &before {
+        if old.get("type").and_then(Value::as_str) != Some("slide") { continue }
+        if declared.contains(block_id) { continue }
+        let new=next_pairs.iter().find(|(candidate,_)| candidate==block_id).map(|(_,v)|v)
+            .ok_or_else(||anyhow::anyhow!("unsupported change: slide removal is not yet available"))?;
+        if new.get("type").and_then(Value::as_str) != Some("slide") || protected_slide(old)? != protected_slide(new)? { bail!("unsupported change: slide content would lose protected fields") }
+    }
     let mut ids = HashSet::new();
     for item in &next {
         if item.id.is_empty() || !ids.insert(&item.id) { bail!("invalid block identity") }
-        if item.content.get("type").and_then(Value::as_str) == Some("slide") && item.content.pointer("/attrs/bid").and_then(Value::as_str) != Some(item.id.as_str()) { bail!("invalid slide identity") }
+        // The original save_blocks injects attrs.bid for every block. Refuse
+        // opaque content lacking it rather than silently changing that content.
+        if item.content.pointer("/attrs/bid").and_then(Value::as_str) != Some(item.id.as_str()) { bail!("invalid block identity") }
         let owner: Option<String> = tx.query_row("SELECT page_id FROM blocks WHERE id=?1",[&item.id],|r|r.get(0)).optional()?;
         if owner.as_deref().is_some_and(|other| other != id) { bail!("conflict: block belongs to another page") }
     }
     presentation_attachments(&tx,&before)?; presentation_attachments(&tx,&next_pairs)?;
-    store::snapshot_before_user_edit(&tx,id)?;
+    if declared.is_empty() { store::snapshot_before_user_edit(&tx,id)?; }
+    else { store::snapshot(&tx,id,"user",None,Some("Before slide deletion"))?; }
     let result = store::save_blocks(&tx,&store::Ctx::user(),id,next.into_iter().map(|b|store::BlockInput{id:b.id,content:b.content}).collect())?;
     if !result.remapped.is_empty() { bail!("conflict: block IDs were remapped") }
+    presentation_refs(&tx,id,&next_pairs)?;
     let output = presentation_snapshot(&tx,id)?;
     tx.commit()?; Ok(output)
 }
@@ -486,6 +555,17 @@ mod presentation_tests {
         std::fs::remove_file(path).unwrap();
     }
     #[test]
+    fn refuses_opaque_block_that_original_writer_would_mutate() {
+        let path=fixture();
+        let c=Connection::open(&path).unwrap();
+        c.execute("UPDATE blocks SET content='{\"type\":\"future\",\"attrs\":{\"payload\":true}}' WHERE id='o'",[]).unwrap(); drop(c);
+        let old=read_presentation(&path,"deck").unwrap();
+        let mut next=inputs(&old); next[0].content["attrs"]["notes"]=json!("changed");
+        assert!(save_presentation(&path,"deck",old["revision"].as_i64().unwrap(),old["metadata"].clone(),inputs(&old),next).is_err());
+        assert_eq!(read_presentation(&path,"deck").unwrap(),old);
+        std::fs::remove_file(path).unwrap();
+    }
+    #[test]
     fn same_revision_mutations_and_shared_attachment_fail_closed() {
         let path=fixture(); let old=read_presentation(&path,"deck").unwrap();
         let c=Connection::open(&path).unwrap();
@@ -513,5 +593,76 @@ mod presentation_tests {
         assert!(save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),next).is_err());
         assert_eq!(read_presentation(&path,"deck").unwrap(),old);
         std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn slide_reorder_roundtrips_media_and_unknown_elements_even_when_file_missing() {
+        let path=fixture(); let c=Connection::open(&path).unwrap();
+        c.execute("INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('image','deck','image','a.png','image/png',4,'missing/a.png',1)",[]).unwrap();
+        let rich=json!({"type":"slide","attrs":{"bid":"s","notes":"original","background":{"attachmentId":"image","mode":"crop"},"elements":[{"id":"text","type":"text","text":"مرحبا 🌍","style":{"fontSize":32,"plugin":"keep"},"future":{"keep":true}},{"id":"image-el","type":"image","attachmentId":"image","crop":{"x":3}},{"id":"unknown","type":"future","data":[1,2]}],"unknownField":{"a":1}}});
+        let other=json!({"type":"slide","attrs":{"bid":"s2","notes":"second","elements":[]}});
+        c.execute("UPDATE blocks SET content=?1,properties=?2 WHERE id='s'",rusqlite::params![rich.to_string(),r#"{"plugin":"keep"}"#]).unwrap();
+        c.execute("INSERT INTO blocks(id,page_id,type,sort_key,content,created_at,updated_at) VALUES('s2','deck','slide',2,?1,1,1)",[other.to_string()]).unwrap(); drop(c);
+        let old=read_presentation(&path,"deck").unwrap(); let mut next=inputs(&old);
+        next[0].content["attrs"]["elements"][0]["text"]=json!("تم 🌍"); next.swap(0,2);
+        let saved=save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),next).unwrap();
+        let mut expected=rich; expected["attrs"]["elements"][0]["text"]=json!("تم 🌍");
+        assert_eq!(saved["blocks"][2]["content"],expected);
+        assert_eq!(saved["blocks"][1],old["blocks"][1]);
+        let c=Connection::open(&path).unwrap();
+        assert_eq!(c.query_row("SELECT properties FROM blocks WHERE id='s'",[],|r|r.get::<_,String>(0)).unwrap(),r#"{"plugin":"keep"}"#);
+        assert_eq!(c.query_row("SELECT rel_path FROM attachments WHERE id='image'",[],|r|r.get::<_,String>(0)).unwrap(),"missing/a.png");
+        drop(c); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn refuses_unknown_element_loss_slide_removal_and_stale_refs_atomically() {
+        let path=fixture(); let c=Connection::open(&path).unwrap();
+        let rich=json!({"type":"slide","attrs":{"bid":"s","notes":"original","elements":[{"id":"future","type":"future","data":{"keep":true}}]}});
+        c.execute("UPDATE blocks SET content=?1 WHERE id='s'",[rich.to_string()]).unwrap(); drop(c);
+        let old=read_presentation(&path,"deck").unwrap(); let mut next=inputs(&old);
+        next[0].content["attrs"]["elements"]=json!([]);
+        assert!(save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),next).is_err());
+        let next=vec![inputs(&old).pop().unwrap()];
+        assert!(save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),next).is_err());
+        let c=Connection::open(&path).unwrap();
+        c.execute("INSERT INTO refs(source_page,source_block,target_page,kind) VALUES('deck','s','x','plugin')",[]).unwrap(); drop(c);
+        assert!(save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),inputs(&old)).is_err());
+        let c=Connection::open(&path).unwrap();
+        assert_eq!(c.query_row("SELECT content FROM blocks WHERE id='s'",[],|r|r.get::<_,String>(0)).unwrap(),rich.to_string());
+        assert_eq!(c.query_row("SELECT count(*) FROM refs WHERE source_page='deck'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        assert_eq!(c.query_row("SELECT count(*) FROM history WHERE page_id='deck'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        drop(c); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn explicit_slide_delete_keeps_shared_assets_snapshots_and_rolls_back() {
+        let path=fixture(); let media=path.with_extension("media"); std::fs::write(&media,b"original media").unwrap();
+        let c=Connection::open(&path).unwrap();
+        c.execute("INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('media','deck','image','a.png','image/png',14,'media/a.png',1)",[]).unwrap();
+        let first=json!({"type":"slide","attrs":{"bid":"s","elements":[{"id":"a","type":"image","attachmentId":"media"}]}});
+        let second=json!({"type":"slide","attrs":{"bid":"s2","elements":[{"id":"b","type":"image","attachmentId":"media"}]}});
+        c.execute("UPDATE blocks SET content=?1 WHERE id='s'",[first.to_string()]).unwrap();
+        c.execute("INSERT INTO blocks(id,page_id,type,sort_key,content,created_at,updated_at) VALUES('s2','deck','slide',2,?1,1,1)",[second.to_string()]).unwrap(); drop(c);
+        let old=read_presentation(&path,"deck").unwrap();
+        let next=|| inputs(&old).into_iter().filter(|block|block.id!="s").collect();
+        assert!(save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),next()).is_err());
+        assert!(save_presentation_deleting(&path,"deck",100,old["metadata"].clone(),inputs(&old),inputs(&old).into_iter().filter(|block|block.id=="o").collect(),vec!["s".into(),"s2".into()]).is_err());
+        let c=Connection::open(&path).unwrap();
+        c.execute("UPDATE blocks SET properties=?1 WHERE id='s'",[r#"{"plugin":true}"#]).unwrap(); drop(c);
+        assert!(save_presentation_deleting(&path,"deck",100,old["metadata"].clone(),inputs(&old),next(),vec!["s".into()]).is_err());
+        let c=Connection::open(&path).unwrap(); c.execute("UPDATE blocks SET properties='{}' WHERE id='s'",[]).unwrap();
+        c.execute_batch("CREATE TRIGGER fail_slide_delete BEFORE DELETE ON blocks WHEN OLD.id='s' BEGIN SELECT RAISE(ABORT,'fixture'); END;").unwrap(); drop(c);
+        assert!(save_presentation_deleting(&path,"deck",100,old["metadata"].clone(),inputs(&old),next(),vec!["s".into()]).is_err());
+        let c=Connection::open(&path).unwrap();
+        assert_eq!(c.query_row("SELECT count(*) FROM versions WHERE page_id='deck'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        assert_eq!(c.query_row("SELECT count(*) FROM blocks WHERE id='s'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        c.execute_batch("DROP TRIGGER fail_slide_delete").unwrap(); drop(c);
+        let saved=save_presentation_deleting(&path,"deck",100,old["metadata"].clone(),inputs(&old),next(),vec!["s".into()]).unwrap();
+        assert!(!saved["blocks"].as_array().unwrap().iter().any(|b|b["id"]=="s"));
+        let reopened=read_presentation(&path,"deck").unwrap(); assert_eq!(reopened,saved);
+        let c=Connection::open(&path).unwrap();
+        assert_eq!(c.query_row("SELECT count(*) FROM attachments WHERE id='media'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        let snap:String=c.query_row("SELECT snapshot FROM versions WHERE page_id='deck' ORDER BY created_at DESC LIMIT 1",[],|r|r.get(0)).unwrap();
+        assert!(serde_json::from_str::<Value>(&snap).unwrap()["blocks"].as_array().unwrap().iter().any(|v|v.pointer("/attrs/bid")==Some(&json!("s"))));
+        assert_eq!(std::fs::read(&media).unwrap(),b"original media");
+        drop(c); std::fs::remove_file(path).unwrap(); std::fs::remove_file(media).unwrap();
     }
 }

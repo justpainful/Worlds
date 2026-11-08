@@ -8,6 +8,8 @@ The authentication, collaboration and permissions traces and remaining verificat
 
 The focused navigation, reader, project, file and media traces are in [READER_RESOURCE_PARITY.md](READER_RESOURCE_PARITY.md). This detail can be newer than the high-level rows below; neither is a completed inventory.
 
+The separately counted storage, account, permissions and collaboration requirements are in [STORAGE_SYNC_REQUIREMENTS.md](STORAGE_SYNC_REQUIREMENTS.md). Their scoped count is not the denominator for the overall product.
+
 Status below refers to the Apple port. `Planned but Not Implemented` does not assert the source feature is fully working. `Blocked with Documented Reason` identifies a technical dependency needing a compatible implementation, not permission to omit the feature. Tests listed are required acceptance tests, not results.
 
 | Feature | Source behavior and evidence | Storage and integration | Native approach and required verification | Apple status |

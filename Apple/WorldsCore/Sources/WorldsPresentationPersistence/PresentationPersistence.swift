@@ -32,10 +32,15 @@ public actor PresentationPersistence {
     }
     /// Slides replace existing slide slots; non-slide blocks retain their exact
     /// content and relative order. Extra slides append after the last block.
-    public func save(slides: [SlideBlock]) async throws {
+    public func save(slides: [SlideBlock], deleting: Set<String> = []) async throws {
         guard !invalidated else { throw PresentationPersistenceError.reloadRequired }
         guard !busy else { throw PresentationPersistenceError.saveInProgress }
         guard !slides.isEmpty, Set(slides.map(\.id)).count == slides.count else { throw PresentationPersistenceError.invalidBlock }
+        let previous = Set(baseline.compactMap { block -> String? in
+            if case .object(let content) = block.content, content["type"] == .string("slide") { return block.id }
+            return nil
+        })
+        guard previous.subtracting(Set(slides.map(\.id))) == deleting else { throw PresentationPersistenceError.invalidBlock }
         var replacement = slides.makeIterator(), next: [NativeBlockInput] = []
         for block in baseline {
             if case .object(let content) = block.content, content["type"] == .string("slide") {
@@ -45,7 +50,7 @@ public actor PresentationPersistence {
         while let slide = replacement.next() { next.append(try Self.block(slide)) }
         busy = true; defer { busy = false }
         do {
-            let value = try await store.savePresentation(id: pageID, base: revision, expectedMetadata: metadata, expected: baseline, blocks: next)
+            let value = try await store.savePresentation(id: pageID, base: revision, expectedMetadata: metadata, expected: baseline, blocks: next, deleting: deleting.sorted())
             let parsed = try Self.parse(value)
             guard parsed.id == pageID else { throw PresentationPersistenceError.invalidResponse }
             revision = parsed.revision; metadata = parsed.metadata; baseline = parsed.blocks

@@ -19,6 +19,25 @@ enum LocalCopyUITestFixture {
         defer { sqlite3_close(database) }
         let sql = #"INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('harness-project','Fixture project','project','{"project":{"status":"active","description":"Original fixture","links":[]},"unknown":{"preserve":true}}',1,100);"#
         guard sqlite3_exec(database, sql, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+        #if WORLDS_EXPERIMENTAL_PAGE_EDITOR
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing-multi-task") {
+            let update = #"UPDATE blocks SET content='{"type":"taskList","attrs":{"bid":"fixture-block"},"content":[{"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"First task"}]},{"type":"taskList","content":[{"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[]}]}]}]},{"type":"taskItem","attrs":{"checked":true},"content":[{"type":"paragraph","content":[{"type":"text","text":"Second task"}]}]}]}' WHERE id='fixture-block'"#
+            guard sqlite3_exec(database, update, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+        }
+        #endif
+        #if WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing-presentation-fixture") {
+            let deck = #"""
+            INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('deck-test','Fixture deck','presentation','{}',1,100);
+            INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('slide-media','deck-test','image','asset.png','image/png',1,'fixture/asset.png',1);
+            INSERT INTO blocks(id,page_id,type,sort_key,content,created_at,updated_at) VALUES
+            ('slide-a','deck-test','slide',1,'{"type":"slide","attrs":{"bid":"slide-a","elements":[{"id":"title-a","type":"text","text":"First slide"},{"id":"unknown","type":"future","data":{"keep":true}},{"id":"media","type":"image","attachmentId":"slide-media"}]}}',1,1),
+            ('opaque','deck-test','future',2,'{"type":"future","attrs":{"bid":"opaque","keep":true}}',1,1),
+            ('slide-b','deck-test','slide',3,'{"type":"slide","attrs":{"bid":"slide-b","elements":[{"id":"title-a","type":"text","text":"Second slide"}]}}',1,1);
+            """#
+            guard sqlite3_exec(database, deck, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+        }
+        #endif
         if ProcessInfo.processInfo.arguments.contains("--ui-testing-duplicate-links") {
             let update = #"UPDATE pages SET metadata=json_set(metadata,'$.project.links',json('["fixture-page","fixture-page"]')) WHERE id='harness-project';"#
             guard sqlite3_exec(database, update, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }

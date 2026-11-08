@@ -69,8 +69,35 @@ private struct OriginalShapeFixture: Decodable {
     let points: [ToolPoint], result: Result
 }
 private struct OriginalPressureFixture: Decodable { let size: Double, opacity: Double }
+private struct RecognitionCorpusCase: Decodable {
+    let name: String
+    let points: [ToolPoint]
+    let result: OriginalShapeFixture.Result?
+}
 
 extension DrawingToolsTests {
+    func testRecognitionMatchesModifiedSourceCorpus() throws {
+        let url = try XCTUnwrap(Bundle.module.url(forResource: "recognition-source-corpus", withExtension: "json"))
+        let cases = try JSONDecoder().decode([RecognitionCorpusCase].self, from: Data(contentsOf: url))
+        XCTAssertEqual(cases.count, 12)
+        for item in cases {
+            let actual = ShapeRecognition.recognize(item.points)
+            guard let expected = item.result else { XCTAssertNil(actual, item.name); continue }
+            let result = try XCTUnwrap(actual, item.name)
+            XCTAssertEqual(result.shape, expected.shape, item.name)
+            XCTAssertEqual(result.x, expected.rect.x, accuracy: 0.000001, item.name)
+            XCTAssertEqual(result.y, expected.rect.y, accuracy: 0.000001, item.name)
+            XCTAssertEqual(result.width, expected.rect.w, accuracy: 0.000001, item.name)
+            XCTAssertEqual(result.height, expected.rect.h, accuracy: 0.000001, item.name)
+            XCTAssertEqual(result.confidence, expected.confidence, accuracy: 0.000001, item.name)
+            let expectedPoints = expected.points ?? []
+            XCTAssertEqual(result.points.count, expectedPoints.count, item.name)
+            for (actualPoint, expectedPoint) in zip(result.points, expectedPoints) {
+                XCTAssertEqual(actualPoint.x, expectedPoint.x, accuracy: 0.000001, item.name)
+                XCTAssertEqual(actualPoint.y, expectedPoint.y, accuracy: 0.000001, item.name)
+            }
+        }
+    }
     func testRecognitionMatchesOriginalShapeFixtures() throws {
         let url = try XCTUnwrap(Bundle.module.url(forResource: "original-shapes-fixture", withExtension: "json"))
         let fixtures = try JSONDecoder().decode([OriginalShapeFixture].self, from: Data(contentsOf: url))

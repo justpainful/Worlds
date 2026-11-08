@@ -74,6 +74,9 @@ public actor PersonalEditorPersistence: EditorPersistence {
             if let attributes = node["attrs"] {
                 if case .object(var object) = attributes {
                     if path.isEmpty { object.removeValue(forKey: "bid") }
+                    // A task checkbox is an explicitly supported editable
+                    // property; every other task attribute remains protected.
+                    if type == "taskItem", case .bool(_)? = object["checked"] { object.removeValue(forKey: "checked") }
                     if !object.isEmpty { append(.object(object), owner: owner, path: path, kind: "attrs:\(type)") }
                 } else { append(attributes, owner: owner, path: path, kind: "attrs:\(type)") }
             }

@@ -36,9 +36,14 @@ private struct Request: Encodable, Sendable {
     var expected: [NativeBlockInput]? = nil
     var expectedMetadata: JSONValue? = nil
     var metadata: JSONValue? = nil
+    var source: String? = nil
+    var operationID: String? = nil
+    var deleting: [String]? = nil
     enum CodingKeys: String, CodingKey {
-        case operation, path, page, base, title, parent, blocks, expected, metadata
+        case operation, path, page, base, title, parent, blocks, expected, metadata, deleting
         case expectedMetadata = "expected_metadata"
+        case source
+        case operationID = "operation_id"
     }
 }
 private struct Response: Decodable {
@@ -75,8 +80,8 @@ public actor NativePersonalStore {
     public func readPresentation(id: String) async throws -> JSONValue {
         try await call(Request(operation: "read_presentation", path: url.path, page: id))
     }
-    public func savePresentation(id: String, base: Int64, expectedMetadata: JSONValue, expected: [NativeBlockInput], blocks: [NativeBlockInput]) async throws -> JSONValue {
-        try await call(Request(operation: "save_presentation", path: url.path, page: id, base: base, blocks: blocks, expected: expected, expectedMetadata: expectedMetadata))
+    public func savePresentation(id: String, base: Int64, expectedMetadata: JSONValue, expected: [NativeBlockInput], blocks: [NativeBlockInput], deleting: [String] = []) async throws -> JSONValue {
+        try await call(Request(operation: "save_presentation", path: url.path, page: id, base: base, blocks: blocks, expected: expected, expectedMetadata: expectedMetadata, deleting: deleting))
     }
     public func saveProject(id: String, base: Int64, expectedMetadata: JSONValue, metadata: JSONValue) async throws -> JSONValue {
         try await call(Request(operation: "save_project", path: url.path, page: id, base: base, expectedMetadata: expectedMetadata, metadata: metadata))
@@ -84,15 +89,23 @@ public actor NativePersonalStore {
     public func saveGallery(id: String, base: Int64, expectedMetadata: JSONValue, metadata: JSONValue, expected: [NativeBlockInput], blocks: [NativeBlockInput]) async throws -> JSONValue {
         try await call(Request(operation: "save_gallery", path: url.path, page: id, base: base, blocks: blocks, expected: expected, expectedMetadata: expectedMetadata, metadata: metadata))
     }
+    /// Experimental: use only with a validated independent LocalProjectCopy.
+    /// Reuse operationID only to retry exactly the same request and source.
+    public func importLocalGalleryFile(id: String, base: Int64, metadata: JSONValue, expected: [NativeBlockInput], source: URL, operationID: UUID) async throws -> JSONValue {
+        guard source.isFileURL else { throw NativeWriteError.invalidFileURL }
+        return try await call(Request(operation: "import_local_gallery_file", path: url.path, page: id, base: base, expected: expected, metadata: metadata, source: source.path, operationID: operationID.uuidString.lowercased()), scopedSource: source)
+    }
     public func trashPage(id: String, base: Int64) async throws {
         _ = try await call(Request(operation: "trash_page", path: url.path, page: id, base: base))
     }
 
-    private func call(_ request: Request) async throws -> JSONValue {
+    private func call(_ request: Request, scopedSource: URL? = nil) async throws -> JSONValue {
         let url = self.url
         return try await Task.detached(priority: .userInitiated) {
             let scoped = url.startAccessingSecurityScopedResource()
             defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            let sourceScoped = scopedSource?.startAccessingSecurityScopedResource() ?? false
+            defer { if sourceScoped { scopedSource?.stopAccessingSecurityScopedResource() } }
             guard FileManager.default.fileExists(atPath: url.path) else { throw NativeWriteError.invalidFileURL }
             let data = try JSONEncoder().encode(request)
             let pointer = data.withUnsafeBytes { bytes in

@@ -9,6 +9,23 @@ import WorldsLocalImport
 @testable import WorldsEditorPersistence
 
 final class EditorPersistenceTests: XCTestCase {
+    @MainActor func testTaskListSaveToggleAndReopen() async throws {
+        let url = try fixture()
+        try exec(#"UPDATE blocks SET content='{"type":"paragraph","attrs":{"bid":"fixture-block"},"content":[{"type":"text","text":"Hello Worlds"}]}' WHERE id='fixture-block'"#, url: url)
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let model = NativeEditorModel(document: bridge.initialDocument, baseRevision: bridge.initialRevision)
+        model.selection = NSRange(location: 0, length: 0)
+        try model.makeList("taskList"); try model.toggleTask()
+        try await model.save(using: bridge)
+        let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let restored = NativeEditorModel(document: reopened.initialDocument, baseRevision: reopened.initialRevision)
+        XCTAssertEqual(restored.projection.text, "Hello Worlds")
+        XCTAssertEqual(restored.currentListDescription, "Task complete")
+        try restored.toggleTask(); try await restored.save(using: reopened)
+        let again = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let last = NativeEditorModel(document: again.initialDocument, baseRevision: again.initialRevision)
+        XCTAssertEqual(last.currentListDescription, "Task incomplete")
+    }
     private func fixture() throws -> URL {
         let source = try XCTUnwrap(Bundle.module.url(forResource: "editor-fixture", withExtension: "db"))
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -76,16 +93,24 @@ final class EditorPersistenceTests: XCTestCase {
     @MainActor
     func testPartialFormattingSurvivesRealStoreReopen() async throws {
         let url = try fixture()
+        // This case exercises supported plain text while retaining an opaque
+        // parent attribute. The shared fixture's unknown text mark correctly
+        // forbids splitting and is covered by the rejection tests.
+        try exec(#"UPDATE blocks SET content='{"type":"paragraph","attrs":{"bid":"fixture-block","custom":"preserve"},"futureNodeFlag":{"keep":true},"content":[{"type":"text","text":"Hello Worlds"}]}' WHERE id='fixture-block'"#, url: url)
         let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
         let model = NativeEditorModel(document: bridge.initialDocument, baseRevision: bridge.initialRevision)
         XCTAssertEqual(model.projection.text, "Hello Worlds")
         try model.toggleMark("bold", selection: NSRange(location: 6, length: 6))
+        try model.toggleMark("italic", selection: NSRange(location: 0, length: 12))
         try await model.save(using: bridge)
         let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
         let spans = reopened.initialDocument.project().spans
         XCTAssertEqual(reopened.initialDocument.project().text, "Hello Worlds")
         XCTAssertEqual(spans.count, 2)
-        XCTAssertEqual(spans[1].marks, [.object(["type": .string("bold")])])
+        XCTAssertEqual(spans[0].marks, [.object(["type": .string("italic")])])
+        XCTAssertEqual(spans[1].marks, [.object(["type": .string("bold")]), .object(["type": .string("italic")])])
+        guard case .object(let root) = reopened.initialDocument.source, case .array(let blocks)? = root["content"], case .object(let first) = blocks[0] else { return XCTFail("Missing paragraph") }
+        XCTAssertEqual(first["futureNodeFlag"], .object(["keep": .bool(true)]))
     }
     @MainActor
     func testUnappliedNativeInputBlocksRealStoreUntilExplicitDiscard() async throws {

@@ -57,6 +57,46 @@ public struct RichTextDocument: Sendable, Equatable {
         return RichTextProjection(text: text, spans: spans)
     }
 
+    /// Converts one top-level plain paragraph to a one-item Worlds list.
+    /// Refuses opaque paragraph or text data rather than relocating it.
+    public mutating func makeList(blockIndex: Int, kind: String) throws {
+        guard ["bulletList", "orderedList", "taskList"].contains(kind),
+              case .object(var root) = source, case .array(var blocks)? = root["content"], blocks.indices.contains(blockIndex),
+              case .object(var paragraph) = blocks[blockIndex], paragraph["type"] == .string("paragraph"),
+              Set(paragraph.keys).isSubset(of: ["type", "attrs", "content"]),
+              case .object(let attrs)? = paragraph["attrs"], case .string(let bid)? = attrs["bid"], !bid.isEmpty,
+              Set(attrs.keys).isSubset(of: ["bid"]), case .array(let children)? = paragraph["content"] else { throw RichTextError.invalidDocument }
+        for child in children {
+            guard case .object(let text) = child, text["type"] == .string("text"),
+                  Set(text.keys).isSubset(of: ["type", "text", "marks"]), case .string(_)? = text["text"] else { throw RichTextError.invalidDocument }
+            if let marks = text["marks"] {
+                guard case .array(let values) = marks, values.allSatisfy({ value in
+                    guard case .object(let mark) = value, Set(mark.keys) == Set(["type"]), case .string(let name)? = mark["type"] else { return false }
+                    return ["bold", "italic", "underline", "strike"].contains(name)
+                }) else { throw RichTextError.invalidDocument }
+            }
+        }
+        paragraph.removeValue(forKey: "attrs")
+        var item: [String: JSONValue] = ["type": .string(kind == "taskList" ? "taskItem" : "listItem"), "content": .array([.object(paragraph)])]
+        if kind == "taskList" { item["attrs"] = .object(["checked": .bool(false)]) }
+        blocks[blockIndex] = .object(["type": .string(kind), "attrs": .object(attrs), "content": .array([.object(item)])])
+        root["content"] = .array(blocks); source = .object(root)
+    }
+
+    public mutating func toggleTaskItem(at path: RichTextPath) throws {
+        guard path.indices.count >= 4 else { throw RichTextError.invalidPath }
+        let taskPath = Array(path.indices.prefix(2))
+        try toggleTaskItemNode(at: RichTextPath(taskPath))
+    }
+    public mutating func toggleTaskItemNode(at path: RichTextPath) throws {
+        guard path.indices.count >= 2 else { throw RichTextError.invalidPath }
+        try updateNode(&source, path: ArraySlice(path.indices)) { node in
+            guard node["type"] == .string("taskItem"), case .object(var attrs)? = node["attrs"],
+                  case .bool(let checked)? = attrs["checked"] else { throw RichTextError.invalidDocument }
+            attrs["checked"] = .bool(!checked); node["attrs"] = .object(attrs)
+        }
+    }
+
     /// Only text nodes are editable through this operation. Unsupported nodes
     /// remain opaque and untouched. The range is in UTF-16, as used by TextKit.
     public mutating func replaceText(at path: RichTextPath, range: NSRange, with replacement: String) throws {
@@ -120,6 +160,58 @@ public struct RichTextDocument: Sendable, Equatable {
             }
             let parts = [fragment(text[..<lo], marks), fragment(text[lo..<hi], newMarks), fragment(text[hi...], marks)].compactMap { $0 }
             children.replaceSubrange(index...index, with: parts)
+            node["content"] = .array(children)
+        }
+    }
+
+    /// Applies one formatting operation to adjacent text runs in one paragraph.
+    /// The full parent is checked before mutation to avoid shifting opaque data.
+    public mutating func toggleMarkAcrossRuns(_ selections: [(path: RichTextPath, range: NSRange)], mark: String) throws {
+        guard ["bold", "italic", "underline", "strike"].contains(mark), !selections.isEmpty,
+              let first = selections.first, first.path.indices.count >= 2 else { throw RichTextError.invalidRange }
+        let parent = Array(first.path.indices.dropLast())
+        let indices = selections.compactMap { $0.path.indices.last }
+        guard indices.count == selections.count, Set(indices).count == indices.count,
+              zip(indices, indices.dropFirst()).allSatisfy({ pair in pair.1 == pair.0 + 1 }),
+              selections.allSatisfy({ Array($0.path.indices.dropLast()) == parent && $0.range.location != NSNotFound && $0.range.location >= 0 && $0.range.length > 0 }) else { throw RichTextError.invalidRange }
+        try updateNode(&source, path: ArraySlice(parent)) { node in
+            guard case .string(let type)? = node["type"], ["paragraph", "heading"].contains(type),
+                  case .array(var children)? = node["content"], indices.allSatisfy({ children.indices.contains($0) }) else { throw RichTextError.invalidPath }
+            let known: Set<String> = ["bold", "italic", "underline", "strike"]
+            for child in children {
+                guard case .object(let object) = child, Set(object.keys).isSubset(of: ["type", "text", "marks"]),
+                      object["type"] == .string("text"), case .string(_)? = object["text"] else { throw RichTextError.invalidDocument }
+                if let marks = object["marks"] {
+                    guard case .array(let values) = marks, values.allSatisfy({ value in
+                        guard case .object(let m) = value, Set(m.keys) == Set(["type"]), case .string(let name)? = m["type"] else { return false }
+                        return known.contains(name)
+                    }) else { throw RichTextError.invalidDocument }
+                }
+            }
+            let target: JSONValue = .object(["type": .string(mark)])
+            let allMarked = indices.allSatisfy { index in
+                guard case .object(let object) = children[index], case .array(let values)? = object["marks"] else { return false }
+                return values.contains(target)
+            }
+            for (offset, selection) in selections.enumerated().reversed() {
+                let index = indices[offset]
+                guard case .object(let selected) = children[index], case .string(let text)? = selected["text"],
+                      selection.range.location <= text.utf16.count, selection.range.length <= text.utf16.count - selection.range.location,
+                      let lo16 = text.utf16.index(text.utf16.startIndex, offsetBy: selection.range.location, limitedBy: text.utf16.endIndex),
+                      let hi16 = text.utf16.index(lo16, offsetBy: selection.range.length, limitedBy: text.utf16.endIndex),
+                      let lo = String.Index(lo16, within: text), let hi = String.Index(hi16, within: text) else { throw RichTextError.invalidRange }
+                var original: [JSONValue] = []
+                if case .array(let values)? = selected["marks"] { original = values }
+                var changed = original.filter { $0 != target }
+                if !allMarked { changed.append(target) }
+                func fragment(_ value: Substring, _ marks: [JSONValue]) -> JSONValue? {
+                    guard !value.isEmpty else { return nil }
+                    var result: [String: JSONValue] = ["type": .string("text"), "text": .string(String(value))]
+                    if !marks.isEmpty { result["marks"] = .array(marks) }
+                    return .object(result)
+                }
+                children.replaceSubrange(index...index, with: [fragment(text[..<lo], original), fragment(text[lo..<hi], changed), fragment(text[hi...], original)].compactMap { $0 })
+            }
             node["content"] = .array(children)
         }
     }

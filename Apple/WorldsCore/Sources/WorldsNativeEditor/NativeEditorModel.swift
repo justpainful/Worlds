@@ -23,6 +23,16 @@ public enum NativeEditorError: Error, LocalizedError, Equatable {
 public protocol EditorPersistence: Sendable {
     func save(documentJSON: Data, basedOn: Int64) async throws -> Int64
 }
+struct NativeListMarker: Identifiable, Equatable {
+    let id: String
+    let location: Int
+    let label: String
+    let checked: Bool?
+    let text: String
+    let rightToLeft: Bool
+    let path: [Int]
+    let depth: Int
+}
 
 @MainActor
 public final class NativeEditorModel: ObservableObject {
@@ -45,6 +55,73 @@ public final class NativeEditorModel: ObservableObject {
     }
     public var projection: RichTextProjection { document.project() }
     public var attributedText: NSAttributedString { document.attributedString() }
+    var listMarkers: [NativeListMarker] {
+        let projected = projection
+        let ns = projected.text as NSString
+        var offset = 0, result: [NativeListMarker] = []
+        func walk(_ value: JSONValue, path: [Int], direction: String?, depth: Int) {
+            guard case .object(let node) = value, case .string(let type)? = node["type"] else { return }
+            var dir = direction
+            if case .object(let attrs)? = node["attrs"] {
+                if case .string(let value)? = attrs["dir"] { dir = value }
+                else if case .string(let value)? = attrs["direction"] { dir = value }
+            }
+            if type == "text", case .string(let text)? = node["text"] { offset += text.utf16.count; return }
+            if type == "hardBreak" { offset += 1; return }
+            if case .array(let children)? = node["content"] {
+                for (index, child) in children.enumerated() {
+                    if index > 0 && ["tableRow", "doc", "bulletList", "orderedList", "taskList", "table", "listItem", "taskItem", "blockquote", "tableCell", "tableHeader"].contains(type) { offset += 1 }
+                    let childPath = path + [index]
+                    if ["bulletList", "orderedList", "taskList"].contains(type), case .object(let item) = child,
+                       item["type"] == .string(type == "taskList" ? "taskItem" : "listItem") {
+                        var checked: Bool?
+                        if type == "taskList", case .object(let attrs)? = item["attrs"], case .bool(let value)? = attrs["checked"] { checked = value }
+                        var start: Int64 = 1
+                        if case .object(let attrs)? = node["attrs"], case .integer(let value)? = attrs["start"] { start = value }
+                        let (number, overflow) = start.addingReportingOverflow(Int64(index))
+                        if (type != "taskList" || checked != nil) && (type != "orderedList" || !overflow) {
+                            let paragraphPath = childPath + [0]
+                            let span = projected.spans.first { $0.path.indices.starts(with: paragraphPath) }
+                            var itemDirection = dir
+                            if case .array(let contents)? = item["content"], let first = contents.first,
+                               case .object(let paragraph) = first, case .object(let attrs)? = paragraph["attrs"] {
+                                if case .string(let value)? = attrs["dir"] { itemDirection = value }
+                                else if case .string(let value)? = attrs["direction"] { itemDirection = value }
+                            }
+                            let label = type == "bulletList" ? "•" : (type == "orderedList" ? "\(number)." : (checked == true ? "☑" : "☐"))
+                            let text = span.map { NSMaxRange($0.range) <= ns.length ? ns.substring(with: $0.range) : "" } ?? ""
+                            result.append(NativeListMarker(id: childPath.map { String($0) }.joined(separator: "."), location: offset, label: label, checked: checked,
+                                text: text.isEmpty ? "Empty task" : text, rightToLeft: (span?.direction ?? itemDirection) == "rtl", path: childPath, depth: depth))
+                        }
+                    }
+                    walk(child, path: childPath, direction: dir, depth: depth + (["bulletList", "orderedList", "taskList"].contains(type) ? 1 : 0))
+                }
+            } else if !["doc", "paragraph", "heading", "table", "tableRow", "tableCell", "tableHeader"].contains(type) { offset += 1 }
+        }
+        walk(document.source, path: [], direction: nil, depth: 0)
+        return result
+    }
+    public var currentListDescription: String? {
+        guard selection.location != NSNotFound, let span = projection.spans.first(where: { selection.location >= $0.range.location && selection.location <= NSMaxRange($0.range) }) else { return nil }
+        if let marker = listMarkers.filter({ span.path.indices.starts(with: $0.path) }).max(by: { $0.path.count < $1.path.count }) {
+            if let checked = marker.checked { return checked ? "Task complete" : "Task incomplete" }
+            return marker.label == "•" ? "Bulleted list" : "Numbered list"
+        }
+        guard
+              let index = span.path.indices.first, case .object(let root) = document.source,
+              case .array(let blocks)? = root["content"], blocks.indices.contains(index), case .object(let block) = blocks[index],
+              case .string(let kind)? = block["type"] else { return nil }
+        switch kind {
+        case "bulletList": return "Bulleted list"
+        case "orderedList": return "Numbered list"
+        case "taskList":
+            guard span.path.indices.count >= 2, case .array(let items)? = block["content"], items.indices.contains(span.path.indices[1]),
+                  case .object(let item) = items[span.path.indices[1]], case .object(let attrs)? = item["attrs"],
+                  case .bool(let checked)? = attrs["checked"] else { return "Checklist" }
+            return checked ? "Task complete" : "Task incomplete"
+        default: return nil
+        }
+    }
     /// Hosts must use this when deciding whether it is safe to close the editor.
     public var hasUnresolvedInput: Bool { dirty || saving || nativeEditPending || recoverableNativeText != nil }
 
@@ -100,8 +177,26 @@ public final class NativeEditorModel: ObservableObject {
         guard recoverableNativeText == nil else { throw NativeEditorError.unrecoveredNativeText }
         guard ["bold", "italic", "underline", "strike"].contains(name) else { throw NativeEditorError.unsupportedFormatting }
         guard range.location != NSNotFound, range.location >= 0, range.length > 0,
-              range.location <= Int.max - range.length,
-              let span = projection.spans.first(where: { range.location >= $0.range.location && NSMaxRange(range) <= NSMaxRange($0.range) }) else { throw NativeEditorError.unsupportedFormatting }
+              range.location <= Int.max - range.length else { throw NativeEditorError.unsupportedFormatting }
+        let hits = projection.spans.filter { NSIntersectionRange($0.range, range).length > 0 }
+        guard let span = hits.first else { throw NativeEditorError.unsupportedFormatting }
+        if hits.count > 1 {
+            var cursor = range.location
+            var pieces: [(path: RichTextPath, range: NSRange)] = []
+            for hit in hits {
+                let overlap = NSIntersectionRange(hit.range, range)
+                guard overlap.location == cursor else { throw NativeEditorError.unsupportedFormatting }
+                pieces.append((path: hit.path, range: NSRange(location: overlap.location - hit.range.location, length: overlap.length)))
+                cursor = NSMaxRange(overlap)
+            }
+            guard cursor == NSMaxRange(range) else { throw NativeEditorError.unsupportedFormatting }
+            let before = document
+            do { try document.toggleMarkAcrossRuns(pieces, mark: name) } catch { throw NativeEditorError.unsupportedFormatting }
+            registerRestore(before)
+            generation &+= 1; dirty = document.source != savedSource; errorMessage = nil; selection = range
+            return
+        }
+        guard range.location >= span.range.location, NSMaxRange(range) <= NSMaxRange(span.range) else { throw NativeEditorError.unsupportedFormatting }
         if span.range != range {
             let before = document
             do { try document.togglePartialMark(at: span.path, range: NSRange(location: range.location - span.range.location, length: range.length), mark: name) }
@@ -153,6 +248,30 @@ public final class NativeEditorModel: ObservableObject {
     }
     public func undo() { if recoverableNativeText == nil { undoManager.undo() } }
     public func redo() { if recoverableNativeText == nil { undoManager.redo() } }
+    public func makeList(_ kind: String) throws {
+        guard recoverableNativeText == nil, !nativeEditPending, !saving,
+              selection.location != NSNotFound, selection.location >= 0, selection.length >= 0,
+              selection.location <= Int.max - selection.length,
+              let span = projection.spans.first(where: { selection.location >= $0.range.location && NSMaxRange(selection) <= NSMaxRange($0.range) }),
+              let block = span.path.indices.first else { throw NativeEditorError.unsupportedFormatting }
+        let before = document
+        do { try document.makeList(blockIndex: block, kind: kind) } catch { throw NativeEditorError.unsupportedFormatting }
+        registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
+    }
+    public func toggleTask() throws {
+        guard recoverableNativeText == nil, !nativeEditPending, !saving,
+              selection.location != NSNotFound, selection.location >= 0, selection.length >= 0,
+              selection.location <= Int.max - selection.length,
+              let span = projection.spans.first(where: { selection.location >= $0.range.location && NSMaxRange(selection) <= NSMaxRange($0.range) }) else { throw NativeEditorError.unsupportedFormatting }
+        guard let marker = listMarkers.filter({ $0.checked != nil && span.path.indices.starts(with: $0.path) }).max(by: { $0.path.count < $1.path.count }) else { throw NativeEditorError.unsupportedFormatting }
+        try toggleTask(marker: marker)
+    }
+    func toggleTask(marker: NativeListMarker) throws {
+        guard marker.checked != nil, listMarkers.contains(marker), recoverableNativeText == nil, !nativeEditPending, !saving else { throw NativeEditorError.unsupportedFormatting }
+        let before = document
+        do { try document.toggleTaskItemNode(at: RichTextPath(marker.path)) } catch { throw NativeEditorError.unsupportedFormatting }
+        registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
+    }
     public func report(_ error: Error) { errorMessage = error.localizedDescription }
     public func setNativeEditPending(_ value: Bool) { nativeEditPending = value }
     public func retainRejectedNativeText(_ text: String) {

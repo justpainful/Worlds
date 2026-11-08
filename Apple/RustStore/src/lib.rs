@@ -89,7 +89,7 @@ fn require_personal(c: &Connection, id: &str) -> Result<()> {
 }
 
 /// Uses the current Rust store implementation. No migrations or shared writes.
-#[derive(serde::Deserialize)]
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct BlockInput { pub id: String, pub content: Value }
 
 pub fn save_blocks(path: &Path, page: &str, base: i64, blocks: Vec<BlockInput>) -> Result<Value> {
@@ -220,9 +220,10 @@ enum Request {
     AutomationDecline { path: String, action_id: String },
     ReadResource { path: String, page: String },
     ReadPresentation { path: String, page: String },
-    SavePresentation { path: String, page: String, base: i64, expected_metadata: Value, expected: Vec<BlockInput>, blocks: Vec<BlockInput> },
+    SavePresentation { path: String, page: String, base: i64, expected_metadata: Value, expected: Vec<BlockInput>, blocks: Vec<BlockInput>, #[serde(default)] deleting: Vec<String> },
     SaveProject { path: String, page: String, base: i64, expected_metadata: Value, metadata: Value },
     SaveGallery { path: String, page: String, base: i64, expected_metadata: Value, metadata: Value, expected: Vec<BlockInput>, blocks: Vec<BlockInput> },
+    ImportLocalGalleryFile { path: String, source: String, page: String, base: i64, metadata: Value, expected: Vec<BlockInput>, operation_id: String },
     SaveBlocks { path: String, page: String, base: i64, blocks: Vec<BlockInput> },
     SaveBlocksChecked { path: String, page: String, base: i64, expected: Vec<BlockInput>, blocks: Vec<BlockInput> },
     RenamePage { path: String, page: String, base: i64, title: String },
@@ -250,9 +251,24 @@ fn dispatch(bytes: &[u8]) -> Result<Value> {
         Request::AutomationDecline { path, action_id } => automation_ops::decline(Path::new(&path), &action_id, db::now()),
         Request::ReadResource { path, page } => resource_ops::read_resource(Path::new(&path), &page),
         Request::ReadPresentation { path, page } => resource_ops::read_presentation(Path::new(&path), &page),
-        Request::SavePresentation { path, page, base, expected_metadata, expected, blocks } => resource_ops::save_presentation(Path::new(&path), &page, base, expected_metadata, expected, blocks),
+        Request::SavePresentation { path, page, base, expected_metadata, expected, blocks, deleting } => resource_ops::save_presentation_deleting(Path::new(&path), &page, base, expected_metadata, expected, blocks, deleting),
         Request::SaveProject { path, page, base, expected_metadata, metadata } => resource_ops::save_project(Path::new(&path), &page, base, expected_metadata, metadata),
         Request::SaveGallery { path, page, base, expected_metadata, metadata, expected, blocks } => resource_ops::save_gallery(Path::new(&path), &page, base, expected_metadata, metadata, expected, blocks),
+        Request::ImportLocalGalleryFile { path, source, page, base, metadata, expected, operation_id } => {
+            #[cfg(unix)] {
+                let database=Path::new(&path);
+                let root=database.parent().ok_or_else(||anyhow::anyhow!("invalid local copy"))?;
+                let name=root.file_name().and_then(|s|s.to_str()).ok_or_else(||anyhow::anyhow!("invalid local copy"))?;
+                let suffix=name.strip_prefix("worlds-import-").ok_or_else(||anyhow::anyhow!("invalid local copy"))?;
+                if !database.is_absolute() || database.file_name().and_then(|s|s.to_str()) != Some("worlds.db") || uuid::Uuid::parse_str(suffix).is_err() || !Path::new(&source).is_absolute() { bail!("invalid local copy") }
+                match std::fs::symlink_metadata(root.join(".incomplete")) {
+                    Err(e) if e.kind()==std::io::ErrorKind::NotFound => {},
+                    _ => bail!("incomplete or unavailable local copy"),
+                }
+                gallery_file_import::unix::import_idempotent(root,Path::new(&source),&page,base,metadata,expected,&operation_id)
+            }
+            #[cfg(not(unix))] { let _=(path,source,page,base,metadata,expected,operation_id); bail!("local gallery import is unavailable on this platform") }
+        },
         Request::SaveBlocks { path, page, base, blocks } => save_blocks(Path::new(&path), &page, base, blocks),
         Request::SaveBlocksChecked { path, page, base, expected, blocks } => save_blocks_checked(Path::new(&path), &page, base, expected, blocks),
         Request::RenamePage { path, page, base, title } => rename_page(Path::new(&path), &page, base, title),

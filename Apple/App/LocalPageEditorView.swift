@@ -32,11 +32,11 @@ struct LocalPageEditorView: View {
             .toolbar {
                 if model == nil { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
             }
-            .confirmationDialog("Discard unsaved edits?", isPresented: $discard) {
+            .alert("Discard unsaved edits?", isPresented: $discard) {
                 Button("Discard", role: .destructive) { dismiss() }
                 Button("Cancel", role: .cancel) {}
             }
-            .confirmationDialog("Reload the saved page and discard this draft?", isPresented: $reload) {
+            .alert("Reload the saved page and discard this draft?", isPresented: $reload) {
                 Button("Discard draft and reload", role: .destructive) { Task { await open() } }
                 Button("Keep editing", role: .cancel) {}
             } message: { Text("Copy any text you need before reloading. Unsupported content remains in the saved page.") }
@@ -89,7 +89,7 @@ private struct LocalPageEditorContent: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Edits apply only to this local copy. Some content and input methods cannot be edited safely.").font(.body)
             NativeEditorView(model: model).frame(minHeight: 240)
-            if let error { Text(error).accessibilityIdentifier("local-page-error") }
+            if let error { Text(error).accessibilityLabel(error).accessibilityIdentifier("local-page-error") }
             if reloadRequired { Button("Reload saved page", action: onReload).accessibilityIdentifier("local-page-reload") }
             if saved && !model.dirty { Text("Page saved").accessibilityIdentifier("local-page-saved") }
         }

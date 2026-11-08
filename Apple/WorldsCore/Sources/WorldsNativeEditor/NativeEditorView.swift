@@ -24,6 +24,22 @@ public struct NativeEditorView: View {
                 }
                 .buttonStyle(.borderless)
                 .disabled(model.nativeEditPending || model.saving)
+                ScrollView(.horizontal) {
+                    HStack {
+                        Button("Bullets") { list("bulletList") }
+                        Button("Numbered") { list("orderedList") }
+                        Button("Checklist") { list("taskList") }
+                        Button("Toggle task") { do { try model.toggleTask() } catch { model.report(error) } }
+                    }.buttonStyle(.borderless)
+                }.disabled(model.nativeEditPending || model.saving)
+                if let description = model.currentListDescription { Text(description).font(.caption).accessibilityIdentifier("editor-list-status") }
+                ForEach(model.listMarkers.filter { $0.checked != nil }) { marker in
+                    Button("\(marker.checked == true ? "Mark incomplete" : "Mark complete"): \(marker.text)") {
+                        do { try model.toggleTask(marker: marker) } catch { model.report(error) }
+                    }
+                    .accessibilityIdentifier("editor-task.\(marker.id)")
+                    .disabled(model.nativeEditPending || model.saving)
+                }
                 NativeTextSurface(model: model)
             }
             .disabled(model.recoverableNativeText != nil)
@@ -44,6 +60,7 @@ public struct NativeEditorView: View {
         do { try model.toggleMark(mark, selection: model.selection) }
         catch { model.report(error) }
     }
+    private func list(_ kind: String) { do { try model.makeList(kind) } catch { model.report(error) } }
 }
 
 #if canImport(UIKit)
@@ -51,7 +68,20 @@ import UIKit
 
 private final class EditorTextView: UITextView {
     weak var editorModel: NativeEditorModel?
+    var markers: [NativeListMarker] = [] { didSet { if oldValue != markers { setNeedsDisplay() } } }
     override var undoManager: UndoManager? { nil }
+    override func draw(_ rect: CGRect) {
+        super.draw(rect)
+        let font = self.font ?? UIFont.preferredFont(forTextStyle: .body)
+        for marker in markers where marker.location <= textStorage.length {
+            let line: CGRect
+            if marker.location == textStorage.length { line = layoutManager.extraLineFragmentRect }
+            else { let glyph = layoutManager.glyphIndexForCharacter(at: marker.location); line = layoutManager.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil) }
+            let indent = CGFloat(min(marker.depth, 3)) * 10
+            let x = marker.rightToLeft ? bounds.width - 28 - indent : 4 + indent
+            (marker.label as NSString).draw(at: CGPoint(x: x, y: line.minY + textContainerInset.top), withAttributes: [.font: font, .foregroundColor: UIColor.secondaryLabel])
+        }
+    }
     override func paste(_ sender: Any?) {
         if NativePastePolicy.rejects(UIPasteboard.general.types) {
             editorModel?.report(NativeEditorError.unsupportedRichPaste)
@@ -87,6 +117,7 @@ private struct NativeTextSurface: UIViewRepresentable {
         view.accessibilityIdentifier = "native-editor-text"
         view.delegate = context.coordinator
         view.backgroundColor = .clear
+        view.textContainerInset = UIEdgeInsets(top: 8, left: 48, bottom: 8, right: 48)
         view.adjustsFontForContentSizeCategory = true
         view.isEditable = true
         view.isSelectable = true
@@ -98,6 +129,7 @@ private struct NativeTextSurface: UIViewRepresentable {
         defer { context.coordinator.updating = false }
         guard view.markedTextRange == nil, !context.coordinator.pendingNativeChange else { return }
         context.coordinator.category = category
+        view.markers = model.listMarkers
         let value = context.coordinator.displayText()
         if !view.attributedText.isEqual(to: value) { view.attributedText = value }
         #if DEBUG
@@ -161,7 +193,21 @@ import AppKit
 
 private final class EditorTextView: NSTextView {
     weak var editorModel: NativeEditorModel?
+    var markers: [NativeListMarker] = [] { didSet { if oldValue != markers { needsDisplay = true } } }
     override var undoManager: UndoManager? { nil }
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        guard let manager = layoutManager, let storage = textStorage else { return }
+        let font = self.font ?? NSFont.systemFont(ofSize: NSFont.systemFontSize)
+        for marker in markers where marker.location <= storage.length {
+            let line: NSRect
+            if marker.location == storage.length { line = manager.extraLineFragmentRect }
+            else { let glyph = manager.glyphIndexForCharacter(at: marker.location); line = manager.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil) }
+            let indent = CGFloat(min(marker.depth, 3)) * 10
+            let x: CGFloat = marker.rightToLeft ? bounds.width - 28 - indent : 4 + indent
+            (marker.label as NSString).draw(at: NSPoint(x: x, y: line.minY + textContainerInset.height), withAttributes: [.font: font, .foregroundColor: NSColor.secondaryLabelColor])
+        }
+    }
     override func paste(_ sender: Any?) {
         if NativePastePolicy.rejects((NSPasteboard.general.types ?? []).map(\.rawValue)) {
             editorModel?.report(NativeEditorError.unsupportedRichPaste)
@@ -181,6 +227,7 @@ private struct NativeTextSurface: NSViewRepresentable {
         view.delegate = context.coordinator
         view.isEditable = true; view.isSelectable = true
         view.drawsBackground = false
+        view.textContainerInset = NSSize(width: 48, height: 8)
         view.isRichText = false
         view.allowsUndo = false
         view.textContainer?.widthTracksTextView = true
@@ -193,6 +240,7 @@ private struct NativeTextSurface: NSViewRepresentable {
         context.coordinator.updating = true
         defer { context.coordinator.updating = false }
         guard !view.hasMarkedText(), !context.coordinator.pendingNativeChange else { return }
+        view.markers = model.listMarkers
         let value = model.attributedText
         if !view.attributedString().isEqual(to: value) { view.textStorage?.setAttributedString(value) }
         let selection = model.selection

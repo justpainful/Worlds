@@ -17,6 +17,7 @@ import WorldsResourceRepositories
     @Published var busy = false
     @Published var sourceUnchanged = false
     @Published var unknownPreserved = false
+    @Published var reopened = false
     private var source: URL?
     private var sourceBytes: Data?
     private var directory: URL?
@@ -82,11 +83,11 @@ import WorldsResourceRepositories
         } catch { self.error = error.localizedDescription }
     }
     func reopen() async {
-        guard !busy else { return }; busy = true; defer { busy = false }
+        guard !busy else { return }; busy = true; reopened = false; defer { busy = false }
         do {
             guard let copyURL else { throw HarnessError.fixture }
             repository = NativeResourceRepository(store: try NativePersonalStore(url: copyURL))
-            try await reload(); error = nil
+            try await reload(); error = nil; reopened = true
         } catch { self.error = error.localizedDescription }
     }
 }
@@ -114,6 +115,7 @@ private struct GalleryHarnessView: View {
                     }
                     if state.unknownPreserved { Text("Unknown block preserved").accessibilityIdentifier("gallery-unknown-preserved") }
                     if state.sourceUnchanged { Text("Original unchanged").accessibilityIdentifier("gallery-source-unchanged") }
+                    if state.reopened { Text("Gallery reopened").accessibilityIdentifier("gallery-reopened") }
                     Button("Reopen gallery") { Task { await state.reopen() } }
                 } else { Button("Prepare fixture") { Task { await state.prepare() } } }
             }.disabled(state.busy).navigationTitle("Gallery test")

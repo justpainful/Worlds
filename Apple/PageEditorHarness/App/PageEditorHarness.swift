@@ -114,6 +114,8 @@ private enum HarnessError: LocalizedError {
 
 private struct HarnessRoot: View {
     @StateObject private var state = HarnessState()
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.layoutDirection) private var layoutDirection
     var body: some View {
         NavigationStack {
             ScrollView { VStack(spacing: 16) {
@@ -127,7 +129,11 @@ private struct HarnessRoot: View {
             }.frame(maxWidth: .infinity, alignment: .leading).padding() }
         }
         .sheet(isPresented: Binding(get: { state.model != nil }, set: { if !$0 { state.close() } })) {
-            if let model = state.model { HarnessEditor(model: model, state: state) }
+            if let model = state.model {
+                HarnessEditor(model: model, state: state)
+                    .environment(\.dynamicTypeSize, dynamicTypeSize)
+                    .environment(\.layoutDirection, layoutDirection)
+            }
         }
     }
 }

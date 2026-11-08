@@ -40,4 +40,36 @@ final class PresentationPersistenceTests: XCTestCase {
         XCTAssertEqual(sqlite3_step(query), SQLITE_ROW)
         XCTAssertEqual(sqlite3_column_int(query, 0), 1)
     }
+    func testSaveAndReopenPreservesMissingMediaAndUnknownSlideFields() async throws {
+        let path = try database()
+        try execute(path, #"INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('image','deck','image','a.png','image/png',4,'missing/a.png',1); UPDATE blocks SET content='{"type":"slide","attrs":{"bid":"slide","notes":"old","background":{"attachmentId":"image","extra":true},"elements":[{"id":"title","type":"text","text":"قبل 🌍","future":{"keep":true}},{"id":"opaque","type":"future","data":{"keep":true}}]}}' WHERE id='slide';"#)
+        let store = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        var slide = try XCTUnwrap(store.initialSlides.first)
+        try slide.setText(elementID: "title", text: "بعد 🌍")
+        try await store.save(slides: [slide])
+        let reopened = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        let restored = try XCTUnwrap(reopened.initialSlides.first)
+        XCTAssertEqual(restored.elements.first?.text, "بعد 🌍")
+        XCTAssertEqual(restored.attributes["background"], slide.attributes["background"])
+        XCTAssertEqual(restored.elements.last?.source, slide.elements.last?.source)
+        XCTAssertEqual(restored.elements.first?.source, slide.elements.first?.source)
+    }
+    func testExplicitSlideDeletionKeepsMediaAndReopens() async throws {
+        let path = try database()
+        try execute(path, #"INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('image','deck','image','a.png','image/png',4,'missing/a.png',1); UPDATE blocks SET content='{"type":"slide","attrs":{"bid":"slide","elements":[{"id":"i","type":"image","attachmentId":"image"}]}}' WHERE id='slide'; INSERT INTO blocks(id,page_id,type,sort_key,content,created_at,updated_at) VALUES('slide2','deck','slide',2,'{"type":"slide","attrs":{"bid":"slide2","elements":[{"id":"j","type":"image","attachmentId":"image"}]}}',1,1);"#)
+        let store = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        let remaining = store.initialSlides.filter { $0.id == "slide2" }
+        do { try await store.save(slides: remaining); XCTFail("Deletion requires an explicit ID") }
+        catch PresentationPersistenceError.invalidBlock { } catch { XCTFail("Unexpected error: \(error)") }
+        try await store.save(slides: remaining, deleting: ["slide"])
+        let reopened = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        XCTAssertEqual(reopened.initialSlides.map(\.id), ["slide2"])
+        var db: OpaquePointer?
+        XCTAssertEqual(sqlite3_open_v2(path.path, &db, SQLITE_OPEN_READONLY, nil), SQLITE_OK)
+        let handle = try XCTUnwrap(db); defer { sqlite3_close(handle) }
+        var statement: OpaquePointer?
+        XCTAssertEqual(sqlite3_prepare_v2(handle, "SELECT count(*) FROM attachments WHERE id='image'", -1, &statement, nil), SQLITE_OK)
+        let query = try XCTUnwrap(statement); defer { sqlite3_finalize(query) }
+        XCTAssertEqual(sqlite3_step(query), SQLITE_ROW); XCTAssertEqual(sqlite3_column_int(query, 0), 1)
+    }
 }

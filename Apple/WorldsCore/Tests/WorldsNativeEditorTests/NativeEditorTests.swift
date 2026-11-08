@@ -15,6 +15,55 @@ private actor FixturePersistence: EditorPersistence {
 
 @MainActor
 final class NativeEditorTests: XCTestCase {
+    func testMarkersTrackEveryTaskAndNumberedStart() throws {
+        let json = #"{"type":"doc","content":[{"type":"taskList","attrs":{"bid":"tasks"},"content":[{"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","attrs":{"dir":"rtl"},"content":[{"type":"text","text":"أول"}]}]},{"type":"taskItem","attrs":{"checked":true},"content":[{"type":"paragraph","content":[{"type":"text","text":"ثان"}]}]}]},{"type":"orderedList","attrs":{"bid":"numbers","start":5},"content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"one"}]}]},{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"two"}]}]}]}]}"#
+        let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 0)
+        XCTAssertEqual(model.listMarkers.map(\.label), ["☐", "☑", "5.", "6."])
+        XCTAssertTrue(model.listMarkers[0].rightToLeft)
+        try model.toggleTask(marker: model.listMarkers[0])
+        XCTAssertEqual(model.listMarkers.map(\.label), ["☑", "☑", "5.", "6."])
+    }
+    func testNestedAndEmptyTaskMarkersRemainEditableWithoutChangingText() throws {
+        let json = #"{"type":"doc","content":[{"type":"taskList","attrs":{"bid":"tasks"},"content":[{"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"أصل"}]},{"type":"taskList","content":[{"type":"taskItem","attrs":{"checked":false,"future":"keep"},"content":[{"type":"paragraph","content":[]}]}]}]}]}]}"#
+        let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 0)
+        let before = model.document.source, text = model.projection.text
+        XCTAssertEqual(model.listMarkers.count, 2)
+        XCTAssertEqual(model.listMarkers.map(\.label), ["☐", "☐"])
+        XCTAssertEqual(model.listMarkers[1].depth, 1)
+        XCTAssertEqual(model.listMarkers[1].text, "Empty task")
+        let stale = model.listMarkers[1]
+        try model.toggleTask(marker: stale)
+        XCTAssertEqual(model.projection.text, text)
+        XCTAssertEqual(model.listMarkers[1].label, "☑")
+        let changed = model.document.source
+        XCTAssertThrowsError(try model.toggleTask(marker: stale))
+        XCTAssertEqual(model.document.source, changed)
+        model.undo(); XCTAssertEqual(model.document.source, before)
+    }
+    func testCreateListsAndToggleTaskWithUndoRedo() throws {
+        for kind in ["bulletList", "orderedList", "taskList"] {
+            let json = #"{"type":"doc","content":[{"type":"paragraph","attrs":{"bid":"p"},"content":[{"type":"text","text":"مرحبا"}]}]}"#
+            let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 0)
+            let original = model.document.source
+            model.selection = NSRange(location: 1, length: 0)
+            try model.makeList(kind)
+            XCTAssertEqual(model.projection.text, "مرحبا")
+            XCTAssertEqual(model.currentListDescription, kind == "taskList" ? "Task incomplete" : (kind == "bulletList" ? "Bulleted list" : "Numbered list"))
+            if kind == "taskList" {
+                try model.toggleTask(); XCTAssertEqual(model.currentListDescription, "Task complete")
+                model.undo(); XCTAssertEqual(model.currentListDescription, "Task incomplete")
+                model.redo(); XCTAssertEqual(model.currentListDescription, "Task complete")
+                model.undo()
+            }
+            model.undo(); XCTAssertEqual(model.document.source, original)
+            model.redo(); XCTAssertEqual(model.projection.text, "مرحبا")
+        }
+    }
+    func testListCreationRejectsUnknownContent() throws {
+        let model = try makeModel(), before = model.document.source
+        XCTAssertThrowsError(try model.makeList("bulletList"))
+        XCTAssertEqual(model.document.source, before)
+    }
     private func makeModel() throws -> NativeEditorModel {
         let json = #"{"type":"doc","content":[{"type":"paragraph","attrs":{"dir":"rtl"},"content":[{"type":"text","text":"مرحبا 👋","marks":[{"type":"future","attrs":{"keep":true}}]}]},{"type":"futureWidget","attrs":{"keep":true}}]}"#
         return try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 3)
@@ -88,6 +137,25 @@ final class NativeEditorTests: XCTestCase {
               case .object(let list) = blocks[0], case .object(let attrs)? = list["attrs"] else { return XCTFail("Missing list") }
         XCTAssertEqual(attrs["future"], .integer(42))
         XCTAssertEqual(try RichTextDocument(json: model.document.json()).source, model.document.source)
+    }
+    func testMultiRunFormattingInRTLListAndUndo() throws {
+        let json = #"{"type":"doc","content":[{"type":"bulletList","attrs":{"bid":"list","future":42},"content":[{"type":"listItem","content":[{"type":"paragraph","attrs":{"dir":"rtl"},"content":[{"type":"text","text":"أهلا ","marks":[{"type":"italic"}]},{"type":"text","text":"بالعالم"}]}]}]}]}"#
+        let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 0)
+        let original = model.document.source
+        try model.toggleMark("bold", selection: NSRange(location: 2, length: 6))
+        XCTAssertEqual(model.projection.text, "أهلا بالعالم")
+        let bold: JSONValue = .object(["type": .string("bold")])
+        XCTAssertEqual(model.projection.spans.filter { $0.marks.contains(bold) }.count, 2)
+        let saved = try RichTextDocument(json: model.document.json())
+        model.undo(); XCTAssertEqual(model.document.source, original)
+        model.redo(); XCTAssertEqual(model.document.source, saved.source)
+    }
+    func testMultiRunFormattingRejectsOpaqueSiblingWithoutChanges() throws {
+        let json = #"{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"one"},{"type":"text","text":"two","marks":[{"type":"future","attrs":{"keep":true}}]}]}]}"#
+        let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 0)
+        let original = model.document.source
+        XCTAssertThrowsError(try model.toggleMark("bold", selection: NSRange(location: 1, length: 4)))
+        XCTAssertEqual(model.document.source, original)
     }
     func testSaveUsesAbstractPersistenceAndBaseRevision() async throws {
         let model = try makeModel()

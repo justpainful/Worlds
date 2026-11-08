@@ -30,6 +30,11 @@ jobs:
           mkdir -p logs
           swift test --package-path Apple/WorldsCore --skip WorldsDrawingVisualComparisonTests 2>&1 | tee logs/swift-test.log
           grep -q 'testSaveWaitsForNativeTextComposition' logs/swift-test.log
+          grep -E 'testRecognitionMatchesModifiedSourceCorpus.*passed' logs/swift-test.log
+          grep -E 'testMarkersTrackEveryTaskAndNumberedStart.*passed' logs/swift-test.log
+          grep -E 'testNestedAndEmptyTaskMarkersRemainEditableWithoutChangingText.*passed' logs/swift-test.log
+          grep -E 'testCreateListsAndToggleTaskWithUndoRedo.*passed' logs/swift-test.log
+          grep -E 'testListCreationRejectsUnknownContent.*passed' logs/swift-test.log
           grep -E 'testPartialArabicFormattingRoundTripsAndUndoPreservesOpaqueBlocks.*passed' logs/swift-test.log
           grep -E 'testPartialFormattingRejectsUnknownMarksAndSurrogateSplit.*passed' logs/swift-test.log
           grep -E 'testPartialFormattingInsideRTLListPreservesListStructure.*passed' logs/swift-test.log
@@ -338,6 +343,63 @@ jobs:
           path: logs/
           if-no-files-found: warn
 
+  rejected-archive-harness:
+    name: Experimental rejected archive UI harness
+    runs-on: macos-26
+    needs: [collaboration-xcframework]
+    timeout-minutes: 40
+    env:
+      WORLDS_REQUIRE_COLLABORATION: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Worlds-shared-collaboration-xcframework
+          path: shared-artifact
+      - name: Verify and restore collaboration binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat shared-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd shared-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p logs Apple/WorldsCore/Artifacts
+          tar -xzf shared-artifact/collaboration-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
+          test -d Apple/WorldsCore/Artifacts/WorldsRustCollaboration.xcframework
+      - name: Generate isolated archive project
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          brew install xcodegen coreutils
+          xcodegen generate --spec Apple/RejectedArchiveHarness/project.yml
+      - name: Exercise archive and revocation on Apple platforms
+        shell: bash
+        run: |
+          set -o pipefail
+          result=0
+          for device in macOS iPhone iPad; do
+            case "$device" in
+              macOS) platform=macOS; destination='platform=macOS' ;;
+              iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
+              iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
+            esac
+            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/RejectedArchiveHarness/WorldsRejectedArchiveHarness.xcodeproj \
+              -scheme "RejectedArchiveHarness-$platform" -destination "$destination" \
+              -resultBundlePath "$GITHUB_WORKSPACE/rejected-archive-$device.xcresult" \
+              CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/rejected-archive-$device.log"; then
+              grep -E 'testListDetailsAndRevokedAccess.*passed' "logs/rejected-archive-$device.log" || result=1
+            else
+              result=1
+            fi
+          done
+          test "$result" = 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-rejected-archive-harness-results
+          path: |
+            logs/
+            rejected-archive-*.xcresult/
+          if-no-files-found: warn
+
   page-editor-harness:
     name: Isolated page editor UI harness
     runs-on: macos-26
@@ -441,6 +503,8 @@ jobs:
               grep -E 'testEditSaveAndReopenPersonalPage.*passed' "logs/local-page-editor-$device.log" || result=1
               grep -E 'testClosingDraftRequiresExplicitDiscard.*passed' "logs/local-page-editor-$device.log" || result=1
               grep -E 'testConflictKeepsDraftUntilConfirmedReload.*passed' "logs/local-page-editor-$device.log" || result=1
+              grep -E 'testCreateChecklistSaveAndReopen.*passed' "logs/local-page-editor-$device.log" || result=1
+              grep -E 'testMultipleTaskItemsToggleAndReopen.*passed' "logs/local-page-editor-$device.log" || result=1
             else
               result=1
             fi
@@ -453,6 +517,64 @@ jobs:
           path: |
             logs/
             local-page-editor-*.xcresult/
+          if-no-files-found: warn
+
+  experimental-presentation-editor-ui:
+    name: Experimental local presentation editor UI
+    runs-on: macos-26
+    needs: [ruststore-xcframework]
+    timeout-minutes: 40
+    env:
+      WORLDS_REQUIRE_NATIVE_WRITES: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Worlds-shared-ruststore-xcframework
+          path: ruststore-artifact
+      - name: Verify and restore RustStore
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat ruststore-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd ruststore-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p logs Apple/WorldsCore/Artifacts
+          tar -xzf ruststore-artifact/ruststore-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
+          test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
+      - name: Generate experimental local presentation editor project
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          brew install xcodegen coreutils
+          xcodegen generate --spec Apple/ProjectEditorHarness/presentation-editing-experimental.yml
+      - name: Exercise experimental local presentation editor on macOS, iPhone and iPad
+        shell: bash
+        run: |
+          set -o pipefail
+          result=0
+          for device in macOS iPhone iPad; do
+            case "$device" in
+              macOS) platform=macOS; destination='platform=macOS' ;;
+              iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
+              iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
+            esac
+            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsPresentationEditingExperimental.xcodeproj \
+              -scheme "LocalCopy-$platform" -destination "$destination" \
+              -resultBundlePath "$GITHUB_WORKSPACE/local-presentation-editor-$device.xcresult" \
+              CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-presentation-editor-$device.log"; then
+              grep -E 'testEditReorderSaveAndReopen.*passed' "logs/local-presentation-editor-$device.log" || result=1
+              grep -E 'testDeleteUndoRedoAndReopenKeepsAttachmentRecord.*passed' "logs/local-presentation-editor-$device.log" || result=1
+            else
+              result=1
+            fi
+          done
+          test "$result" = 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-experimental-local-presentation-editor-results
+          path: |
+            logs/
+            local-presentation-editor-*.xcresult/
           if-no-files-found: warn
 
   gallery-harness:
@@ -510,6 +632,63 @@ jobs:
           path: |
             logs/
             gallery-*.xcresult/
+          if-no-files-found: warn
+
+  presentation-harness:
+    name: Experimental isolated presentation UI harness
+    runs-on: macos-26
+    needs: [ruststore-xcframework]
+    timeout-minutes: 40
+    env:
+      WORLDS_REQUIRE_NATIVE_WRITES: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Worlds-shared-ruststore-xcframework
+          path: ruststore-artifact
+      - name: Verify and restore RustStore
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat ruststore-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd ruststore-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p logs Apple/WorldsCore/Artifacts
+          tar -xzf ruststore-artifact/ruststore-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
+          test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
+      - name: Generate isolated presentation project
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          brew install xcodegen coreutils
+          xcodegen generate --spec Apple/PresentationHarness/project.yml
+      - name: Exercise isolated presentation on macOS, iPhone and iPad
+        shell: bash
+        run: |
+          set -o pipefail
+          result=0
+          for device in macOS iPhone iPad; do
+            case "$device" in
+              macOS) platform=macOS; destination='platform=macOS' ;;
+              iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
+              iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
+            esac
+            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/PresentationHarness/WorldsPresentationHarness.xcodeproj \
+              -scheme "PresentationHarness-$platform" -destination "$destination" \
+              -resultBundlePath "$GITHUB_WORKSPACE/presentation-$device.xcresult" \
+              CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/presentation-$device.log"; then
+              grep -E 'testEditReorderSaveAndReopen.*passed' "logs/presentation-$device.log" || result=1
+            else
+              result=1
+            fi
+          done
+          test "$result" = 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-presentation-harness-results
+          path: |
+            logs/
+            presentation-*.xcresult/
           if-no-files-found: warn
 
   experimental-account-build:
@@ -779,10 +958,14 @@ jobs:
           grep -q 'inspection_reports_missing_inaccessible_and_mismatched_files_without_publishing ... ok' logs/rust-store-tests.log
           grep -q 'missing_file_rolls_back_entire_unpublished_bundle ... ok' logs/rust-store-tests.log
           grep -q 'imports_and_recovers_uncommitted_file_without_touching_source ... ok' logs/rust-store-tests.log
+          grep -q 'ffi_import_retries_atomically_without_duplicate_attachment ... ok' logs/rust-store-tests.log
           grep -q 'interruption_after_exclusive_create_leaves_unclaimed_file_and_recovery_continues ... ok' logs/rust-store-tests.log
           grep -q 'checked_roundtrip_keeps_rich_nodes_properties_and_reference_index ... ok' logs/rust-store-tests.log
           grep -q 'checked_save_refuses_ambiguous_content_and_unrecognized_reference_index ... ok' logs/rust-store-tests.log
           grep -q 'checked_save_rolls_back_if_reference_rebuild_is_blocked ... ok' logs/rust-store-tests.log
+          grep -q 'slide_reorder_roundtrips_media_and_unknown_elements_even_when_file_missing ... ok' logs/rust-store-tests.log
+          grep -q 'explicit_slide_delete_keeps_shared_assets_snapshots_and_rolls_back ... ok' logs/rust-store-tests.log
+          grep -q 'refuses_unknown_element_loss_slide_removal_and_stale_refs_atomically ... ok' logs/rust-store-tests.log
           grep -q 'identity_probe_rejects_swapped_main_wal_and_shm_before_write ... ok' logs/rust-store-tests.log
           grep -q 'imports_committed_wal_into_independent_database_without_changing_source_content ... ok' logs/rust-store-tests.log
           grep -q 'failed_import_removes_partial_destination_and_keeps_original ... ok' logs/rust-store-tests.log
@@ -823,6 +1006,7 @@ jobs:
           grep -q 'testImportedLocalPageEditSurvivesReopenAndPreservesSource' logs/editor-persistence-discovery.log
           grep -q 'testUnappliedNativeInputBlocksRealStoreUntilExplicitDiscard' logs/editor-persistence-discovery.log
           grep -q 'testPartialFormattingSurvivesRealStoreReopen' logs/editor-persistence-discovery.log
+          grep -q 'testTaskListSaveToggleAndReopen' logs/editor-persistence-discovery.log
       - name: Test editor persistence on macOS
         shell: bash
         run: |
@@ -839,6 +1023,7 @@ jobs:
           grep -q 'testImportedLocalPageEditSurvivesReopenAndPreservesSource' logs/editor-persistence-macos.log
           grep -q 'testUnappliedNativeInputBlocksRealStoreUntilExplicitDiscard' logs/editor-persistence-macos.log
           grep -q 'testPartialFormattingSurvivesRealStoreReopen' logs/editor-persistence-macos.log
+          grep -q 'testTaskListSaveToggleAndReopen' logs/editor-persistence-macos.log
       - name: Build experimental project editor views
         shell: bash
         run: |
@@ -898,12 +1083,16 @@ jobs:
           set -o pipefail
           swift test --package-path Apple/WorldsCore list 2>&1 | tee logs/presentation-persistence-discovery.log
           grep -q 'testSaveKeepsOpaqueAndConflictingSessionFails' logs/presentation-persistence-discovery.log
+          grep -q 'testSaveAndReopenPreservesMissingMediaAndUnknownSlideFields' logs/presentation-persistence-discovery.log
+          grep -q 'testExplicitSlideDeletionKeepsMediaAndReopens' logs/presentation-persistence-discovery.log
       - name: Test presentation persistence on macOS
         shell: bash
         run: |
           set -o pipefail
           swift test --package-path Apple/WorldsCore --filter WorldsPresentationPersistenceTests 2>&1 | tee logs/presentation-persistence-macos.log
           grep -q 'testSaveKeepsOpaqueAndConflictingSessionFails' logs/presentation-persistence-macos.log
+          grep -q 'testSaveAndReopenPreservesMissingMediaAndUnknownSlideFields' logs/presentation-persistence-macos.log
+          grep -q 'testExplicitSlideDeletionKeepsMediaAndReopens' logs/presentation-persistence-macos.log
       - name: Discover drawing validation tests
         shell: bash
         run: |
@@ -922,6 +1111,7 @@ jobs:
           set -o pipefail
           swift test --package-path Apple/WorldsCore list 2>&1 | tee logs/drawing-writes-discovery.log
           grep -q 'testPersonalDrawingOriginalSaveAndConflict' logs/drawing-writes-discovery.log
+          grep -q 'testIndependentCopyImportsOnceAndPreservesSource' logs/drawing-writes-discovery.log
           grep -q 'testStrokePersistsAndStaleRevisionIsRejected' logs/drawing-writes-discovery.log
           grep -q 'testLockedLayerAndUnknownFrameAreRejected' logs/drawing-writes-discovery.log
           grep -q 'testPencilPressureAndOrientation' logs/drawing-writes-discovery.log
@@ -942,6 +1132,12 @@ jobs:
           grep -E 'testPendingEstimateFailsWithoutDiscardingRawSamples.*passed' logs/drawing-pencil-input-macos.log
           grep -E 'testMoveSmoothingAndReleasePressureMatchSource.*passed' logs/drawing-pencil-input-macos.log
           grep -E 'testCapturedInputPersistsAndReopens.*passed' logs/drawing-pencil-input-macos.log
+      - name: Test isolated gallery import on macOS
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path Apple/WorldsCore --filter WorldsLocalGalleryImportTests 2>&1 | tee logs/local-gallery-import-macos.log
+          grep -E 'testIndependentCopyImportsOnceAndPreservesSource.*passed' logs/local-gallery-import-macos.log
       - name: Test native writes on iOS simulator
         shell: bash
         run: |
@@ -958,6 +1154,7 @@ jobs:
             -only-testing:WorldsPresentationPersistenceTests \
             -only-testing:WorldsDrawingValidationTests \
             -only-testing:WorldsDrawingNativeWritesTests \
+            -only-testing:WorldsLocalGalleryImportTests \
             -only-testing:WorldsDrawingStrokeSessionTests \
             -only-testing:WorldsDrawingPencilInputTests \
             -resultBundlePath "$GITHUB_WORKSPACE/native-writes-simulator.xcresult" \
@@ -974,6 +1171,7 @@ jobs:
           grep -E "Test Case .*testImportedLocalPageEditSurvivesReopenAndPreservesSource.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testUnappliedNativeInputBlocksRealStoreUntilExplicitDiscard.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testPartialFormattingSurvivesRealStoreReopen.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testTaskListSaveToggleAndReopen.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testProjectUsesNativeStoreAndRejectsSameTimestampChange.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testUndoAndFullBaselineConflictOnRealStore.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testNativeBackupImportsCommittedWALWithoutChangingSource.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
@@ -983,8 +1181,11 @@ jobs:
           grep -E "Test Case .*testIsolatedScheduleClaimRestartAndDecline.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testMissedScheduleIsSkippedWithoutApproval.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testSaveKeepsOpaqueAndConflictingSessionFails.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testSaveAndReopenPreservesMissingMediaAndUnknownSlideFields.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testExplicitSlideDeletionKeepsMediaAndReopens.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testOriginalSceneFixtureAndInvalidFrame.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testPersonalDrawingOriginalSaveAndConflict.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
+          grep -E "Test Case .*testIndependentCopyImportsOnceAndPreservesSource.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testStrokePersistsAndStaleRevisionIsRejected.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testLockedLayerAndUnknownFrameAreRejected.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
           grep -E "Test Case .*testPencilPressureAndOrientation.*passed" "$GITHUB_WORKSPACE/logs/native-writes-ios.log"
@@ -1078,6 +1279,8 @@ jobs:
           grep -q 'testDurableOutboxResentAfterFailedConnection' logs/collaboration-discovery.log
           grep -q 'testRejectionWaitsForPersistedLocalWriteBeforeArchiving' logs/collaboration-discovery.log
           grep -q 'testRejectedArchiveListAndReadRespectAccount' logs/collaboration-discovery.log
+          grep -q 'testRealSQLiteArchiveRefusesRevocationAndDoesNotRequeue' logs/collaboration-discovery.log
+          grep -q 'testServiceRejectsPermissionForAnotherAccount' logs/collaboration-discovery.log
           grep -q 'testParallelCRDTAllocationApplyAndFree' logs/collaboration-discovery.log
           grep -q 'testDefaultSocketLifecycleWithLocalRefusal' logs/collaboration-discovery.log
           grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' logs/collaboration-discovery.log
@@ -1119,6 +1322,13 @@ jobs:
           grep -q 'testDefaultSocketLifecycleWithLocalRefusal' logs/collaboration-macos.log
           grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' logs/collaboration-macos.log
           grep -q 'testViewerCannotPrepareEditorWrite' logs/collaboration-macos.log
+      - name: Test rejected archive service on macOS
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path Apple/WorldsCore --filter WorldsRejectedArchivesTests 2>&1 | tee logs/rejected-archives-macos.log
+          grep -E 'testRealSQLiteArchiveRefusesRevocationAndDoesNotRequeue.*passed' logs/rejected-archives-macos.log
+          grep -E 'testServiceRejectsPermissionForAnotherAccount.*passed' logs/rejected-archives-macos.log
       - name: Test collaboration bridge on iOS simulator
         shell: bash
         run: |
@@ -1127,6 +1337,7 @@ jobs:
           xcodebuild -scheme WorldsCore-Package \
             -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.5' \
             -only-testing:WorldsCollaborationTests \
+            -only-testing:WorldsRejectedArchivesTests \
             -only-testing:WorldsCollaborationEditorTests \
             -resultBundlePath "$GITHUB_WORKSPACE/collaboration-simulator.xcresult" \
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
@@ -1141,6 +1352,8 @@ jobs:
           grep -q 'testDurableOutboxResentAfterFailedConnection' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testRejectionWaitsForPersistedLocalWriteBeforeArchiving' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testRejectedArchiveListAndReadRespectAccount' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
+          grep -E "Test Case .*testRealSQLiteArchiveRefusesRevocationAndDoesNotRequeue.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
+          grep -E "Test Case .*testServiceRejectsPermissionForAnotherAccount.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -E 'testParallelCRDTAllocationApplyAndFree.*passed' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testDefaultSocketLifecycleWithLocalRefusal' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
