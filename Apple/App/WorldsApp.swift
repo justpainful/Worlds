@@ -48,6 +48,12 @@ private struct WorldsLibraryView: View {
     @State private var pages: [StoredPage] = []
     @State private var selectedID: String?
     @State private var returnStack: [String] = []
+    @State private var showPageHierarchy = false
+    @State private var expandedPageIDs: Set<String> = []
+    #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+    @State private var hierarchyCopyID: UUID?
+    private let hierarchyPreferences = PersonalHierarchyPreferences()
+    #endif
     @State private var showImporter = false
     @State private var loaded = false
     @State private var loading = false
@@ -141,6 +147,20 @@ private struct WorldsLibraryView: View {
                                             max: dynamicTypeSize.isAccessibilitySize ? 440 : 360)
             .navigationTitle("Pages")
             .toolbar {
+                if loaded {
+                    ToolbarItem {
+                        Button {
+                            showPageHierarchy.toggle()
+                            if showPageHierarchy, let selectedID {
+                                expandedPageIDs.formUnion(PersonalPageHierarchy.expandedAncestors(of: selectedID, pages: pages))
+                            }
+                        } label: {
+                            Label(showPageHierarchy ? "Show all pages" : "Show page hierarchy", systemImage: showPageHierarchy ? "list.bullet" : "list.bullet.indent")
+                        }
+                        .accessibilityIdentifier("toggle-page-hierarchy")
+                        .disabled(databaseActionsDisabled)
+                    }
+                }
                 #if WORLDS_EXPERIMENTAL_ACCOUNT
                 ToolbarItem {
                     Button { showAccount = true } label: { Label("Account", systemImage: "person.crop.circle") }
@@ -191,10 +211,10 @@ private struct WorldsLibraryView: View {
                         PageContentView(
                             page: page,
                             openInlineImage: inlineImageAction(for: page),
-                            subpages: pages.filter { $0.parentID == page.id && $0.id != page.id && !$0.archived && !returnStack.contains($0.id) },
+                            subpages: pages.filter { $0.parentID == page.id && $0.id != page.id && !$0.archived && $0.kind != "template" && !returnStack.contains($0.id) },
                             openSubpage: { target in
                                 guard !returnStack.contains(target),
-                                      pages.contains(where: { $0.id == target && $0.parentID == page.id && !$0.archived && $0.id != page.id }) else { return }
+                                      pages.contains(where: { $0.id == target && $0.parentID == page.id && !$0.archived && $0.kind != "template" && $0.id != page.id }) else { return }
                                 returnStack.append(page.id)
                                 selectedID = target
                             }
@@ -365,6 +385,10 @@ private struct WorldsLibraryView: View {
         .sheet(isPresented: $showAccount) { AccountHostView() }
         #endif
         .searchable(text: $searchQuery, placement: .sidebar, prompt: "Search personal pages")
+        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+        .onChange(of: expandedPageIDs) { _, _ in saveHierarchyPreferences() }
+        .onChange(of: showPageHierarchy) { _, _ in saveHierarchyPreferences() }
+        #endif
         .tint(WorldsPalette.accent(for: colorScheme))
         .task {
             #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY
@@ -528,15 +552,62 @@ private struct WorldsLibraryView: View {
     }
 
     private var pageList: some View {
-        List(pages, selection: sidebarSelection) { page in
-            NavigationLink(value: page.id) {
-                PageListRow(page: page, parentTitle: parentTitle(for: page))
+        Group {
+            if showPageHierarchy {
+                let rows = PersonalPageHierarchy.rows(pages: pages, expanded: expandedPageIDs)
+                if rows.isEmpty {
+                    ContentUnavailableView("No pages in hierarchy", systemImage: "list.bullet.indent", description: Text("Archived pages and templates remain available in all pages."))
+                } else {
+                  List(selection: sidebarSelection) {
+                    ForEach(rows) { row in
+                        HStack(spacing: 8) {
+                            if row.hasChildren {
+                                Button {
+                                    if row.isExpanded { expandedPageIDs.remove(row.id) }
+                                    else { expandedPageIDs.insert(row.id) }
+                                } label: {
+                                    Image(systemName: row.isExpanded ? "chevron.down" : "chevron.forward")
+                                        .frame(width: 24, height: 32)
+                                }
+                                .buttonStyle(.borderless)
+                                .accessibilityLabel("\(row.isExpanded ? "Collapse" : "Expand") \(row.page.title.isEmpty ? "Untitled" : row.page.title)")
+                                .accessibilityIdentifier("expand-page.\(row.id)")
+                            } else {
+                                Color.clear.frame(width: 24, height: 1).accessibilityHidden(true)
+                            }
+                            NavigationLink(value: row.id) {
+                                PageListRow(page: row.page, parentTitle: row.detached ? "Parent unavailable" : nil)
+                            }
+                            .accessibilityIdentifier("page.\(row.id)")
+                            .accessibilityHint("Opens page")
+                        }
+                        .padding(.leading, CGFloat(row.depth) * 12)
+                        .tag(row.id)
+                    }
+                  }
+                }
+            } else {
+                List(pages, selection: sidebarSelection) { page in
+                    NavigationLink(value: page.id) {
+                        PageListRow(page: page, parentTitle: parentTitle(for: page))
+                    }
+                    .accessibilityIdentifier("page.\(page.id)")
+                    .accessibilityHint("Opens page")
+                }
             }
-            .accessibilityIdentifier("page.\(page.id)")
-            .accessibilityHint("Opens page")
         }
         .contentMargins(.bottom, dynamicTypeSize.isAccessibilitySize ? 24 : 8, for: .scrollContent)
         .accessibilityIdentifier("personal-page-list")
+        .onAppear {
+            if showPageHierarchy, let selectedID {
+                expandedPageIDs.formUnion(PersonalPageHierarchy.expandedAncestors(of: selectedID, pages: pages))
+            }
+        }
+        .onChange(of: selectedID) { _, selected in
+            if showPageHierarchy, let selected {
+                expandedPageIDs.formUnion(PersonalPageHierarchy.expandedAncestors(of: selected, pages: pages))
+            }
+        }
     }
 
     private func parentTitle(for page: StoredPage) -> String? {
@@ -679,6 +750,11 @@ private struct WorldsLibraryView: View {
             searchHits = []
             searchedQuery = nil
             pages = snapshot.pages
+            #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+            hierarchyCopyID = nil
+            #endif
+            expandedPageIDs = []
+            showPageHierarchy = false
             selectedID = nil
             returnStack.removeAll()
             loaded = true
@@ -728,8 +804,21 @@ private struct WorldsLibraryView: View {
     @MainActor private func activateCopy(_ copy: LocalProjectCopy) async {
         do {
             let context = try LocalCopyContext(copy: copy)
-            if await open(copy.databaseURL, preserveLocalCopy: true) { copyContext = context }
+            if await open(copy.databaseURL, preserveLocalCopy: true) {
+                copyContext = context
+                let stored = hierarchyPreferences.load(copyID: copy.id, eligibleIDs: hierarchyEligibleIDs)
+                hierarchyCopyID = copy.id
+                expandedPageIDs = stored.expanded
+                showPageHierarchy = stored.enabled
+            }
         } catch { errorMessage = error.localizedDescription }
+    }
+    private var hierarchyEligibleIDs: Set<String> {
+        Set(pages.filter { !$0.archived && $0.kind != "template" }.map(\.id))
+    }
+    private func saveHierarchyPreferences() {
+        guard let id = hierarchyCopyID, copyContext?.copy.id == id, !loading else { return }
+        hierarchyPreferences.save(PersonalHierarchyState(enabled: showPageHierarchy, expanded: expandedPageIDs), copyID: id, eligibleIDs: hierarchyEligibleIDs)
     }
     @MainActor private func refreshCopy(id: UUID, generation: UUID) async {
         guard let current = copyContext, current.copy.id == id, databaseGeneration == generation else { return }
@@ -738,6 +827,7 @@ private struct WorldsLibraryView: View {
             let snapshot = try await database.snapshot()
             guard copyContext?.copy.id == id, databaseGeneration == generation else { return }
             pages = snapshot.pages
+            expandedPageIDs.formIntersection(Set(pages.filter { !$0.archived && $0.kind != "template" }.map(\.id)))
             if let selectedID, !pages.contains(where: { $0.id == selectedID }) { self.selectedID = nil }
             if !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { await search() }
         } catch {

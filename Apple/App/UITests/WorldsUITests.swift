@@ -1,6 +1,60 @@
 import XCTest
 
 final class WorldsUITests: XCTestCase {
+    @MainActor func testPersonalHierarchyExpandCollapseAndRetainState() {
+        let app = XCUIApplication()
+        app.launchArguments += ["--ui-testing-reader-fixture", "--ui-testing-rtl", "--ui-testing-large-text"]
+        app.launch()
+        let parent = app.descendants(matching: .any)["page.fixture-page"].firstMatch
+        guard parent.waitForExistence(timeout: 30) else {
+            captureLaunchFailure(app, name: "hierarchy-parent-missing")
+            XCTFail("Parent page missing"); return
+        }
+        let toggle = app.buttons["toggle-page-hierarchy"]
+        guard toggle.waitForExistence(timeout: 20) else {
+            captureLaunchFailure(app, name: "hierarchy-toggle-missing")
+            XCTFail("Hierarchy action missing"); return
+        }
+        toggle.tap()
+        let expandParent = app.buttons["expand-page.fixture-page"]
+        guard expandParent.waitForExistence(timeout: 20) else {
+            captureLaunchFailure(app, name: "hierarchy-parent-expansion-missing")
+            XCTFail("Parent expansion missing"); return
+        }
+        XCTAssertFalse(app.descendants(matching: .any)["page.reader-child"].exists)
+        expandParent.tap()
+        let child = app.descendants(matching: .any)["page.reader-child"].firstMatch
+        XCTAssertTrue(child.waitForExistence(timeout: 20))
+        XCTAssertFalse(app.descendants(matching: .any)["page.reader-archived-child"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["page.reader-shared-child"].exists)
+        let expandChild = app.buttons["expand-page.reader-child"]
+        XCTAssertTrue(expandChild.waitForExistence(timeout: 10))
+        expandChild.tap()
+        let grandchild = app.descendants(matching: .any)["page.reader-grandchild"].firstMatch
+        XCTAssertTrue(grandchild.waitForExistence(timeout: 10))
+        expandChild.tap()
+        XCTAssertFalse(grandchild.exists)
+        let search = app.searchFields.firstMatch
+        guard search.waitForExistence(timeout: 10) else {
+            captureLaunchFailure(app, name: "hierarchy-search-missing")
+            XCTFail("Search field missing"); return
+        }
+        search.tap()
+        #if os(iOS)
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 10))
+        #endif
+        search.typeText("qzx")
+        XCTAssertTrue(app.descendants(matching: .any)["search-empty"].firstMatch.waitForExistence(timeout: 20))
+        search.tap()
+        search.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 3))
+        XCTAssertTrue(child.waitForExistence(timeout: 20))
+        XCTAssertFalse(grandchild.exists)
+        toggle.tap()
+        toggle.tap()
+        XCTAssertTrue(child.waitForExistence(timeout: 10))
+        XCTAssertFalse(grandchild.exists)
+        capture("personal-hierarchy-rtl", app: app)
+    }
     @MainActor func testSubpageCycleDoesNotRepeatAnAncestor() {
         let app = XCUIApplication()
         app.launchArguments.append("--ui-testing-reader-fixture")

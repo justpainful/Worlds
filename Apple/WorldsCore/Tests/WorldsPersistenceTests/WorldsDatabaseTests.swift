@@ -4,6 +4,52 @@ import XCTest
 @testable import WorldsPersistence
 
 final class WorldsDatabaseTests: XCTestCase {
+    func testHierarchyPreferencesArePerCopyAndFilterUnavailablePages() throws {
+        let suite = "worlds-hierarchy-test-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let first = UUID(), other = UUID()
+        let store = PersonalHierarchyPreferences(defaults: defaults)
+        store.save(PersonalHierarchyState(enabled: true, expanded: ["parent", "hidden"]), copyID: first, eligibleIDs: ["parent"])
+        let reopened = PersonalHierarchyPreferences(defaults: defaults)
+        XCTAssertEqual(reopened.load(copyID: first, eligibleIDs: ["parent"]), PersonalHierarchyState(enabled: true, expanded: ["parent"]))
+        XCTAssertEqual(reopened.load(copyID: other, eligibleIDs: ["parent"]), PersonalHierarchyState(enabled: false, expanded: []))
+        XCTAssertEqual(reopened.load(copyID: first, eligibleIDs: []), PersonalHierarchyState(enabled: true, expanded: []))
+    }
+    func testPersonalHierarchyKeepsDetachedComponentsAndStopsCycles() async throws {
+        let url = try fixture()
+        try execute(url, """
+        INSERT INTO pages(id,title,parent_id,kind,archived,metadata,created_at,updated_at) VALUES
+          ('child','Child','fixture-page','page',0,'{}',2,2),
+          ('grandchild','Grandchild','child','page',0,'{}',3,3),
+          ('orphan','Orphan','hidden-parent','page',0,'{}',4,4),
+          ('cycle-a','Cycle A','cycle-b','page',0,'{}',5,5),
+          ('cycle-b','Cycle B','cycle-a','page',0,'{}',6,6),
+          ('archived','Archived','fixture-page','page',1,'{}',7,7),
+          ('archive-child','Child of archive','archived','page',0,'{}',7,7),
+          ('template','Template','fixture-page','template',0,'{}',8,8),
+          ('shared','Shared','fixture-page','page',0,'{"sync":{"shared":true}}',9,9),
+          ('shared-child','Personal child','shared','page',0,'{}',10,10);
+        """)
+        let database = try WorldsDatabase(url: url)
+        let pages = try await database.snapshot().pages
+        let collapsed = PersonalPageHierarchy.rows(pages: pages, expanded: [])
+        XCTAssertTrue(collapsed.contains { $0.id == "fixture-page" && $0.hasChildren && !$0.isExpanded })
+        XCTAssertFalse(collapsed.contains { $0.id == "child" || $0.id == "grandchild" })
+        XCTAssertTrue(collapsed.contains { $0.id == "orphan" && $0.detached })
+        XCTAssertTrue(collapsed.contains { $0.id == "archive-child" && $0.detached })
+        XCTAssertTrue(collapsed.contains { $0.id == "shared-child" && $0.detached })
+        let cycleRoot = try XCTUnwrap(collapsed.first { ["cycle-a", "cycle-b"].contains($0.id) })
+        XCTAssertTrue(cycleRoot.detached)
+        XCTAssertFalse(collapsed.contains { ["archived", "template", "shared"].contains($0.id) })
+        let expanded = PersonalPageHierarchy.rows(pages: pages, expanded: ["fixture-page", "child", "cycle-a", "cycle-b"])
+        XCTAssertEqual(expanded.filter { ["fixture-page", "child", "grandchild"].contains($0.id) }.map(\.id), ["fixture-page", "child", "grandchild"])
+        XCTAssertEqual(expanded.filter { ["cycle-a", "cycle-b"].contains($0.id) }.count, 2)
+        XCTAssertEqual(Set(expanded.map(\.id)).count, expanded.count)
+        XCTAssertEqual(PersonalPageHierarchy.expandedAncestors(of: "grandchild", pages: pages), ["fixture-page", "child"])
+        XCTAssertEqual(PersonalPageHierarchy.expandedAncestors(of: "cycle-a", pages: pages), ["cycle-b"])
+        XCTAssertTrue(PersonalPageHierarchy.expandedAncestors(of: "shared-child", pages: pages).isEmpty)
+    }
     private func fixture() throws -> URL {
         let original = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("worlds-v1-fixture.db")
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
