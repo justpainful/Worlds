@@ -9,6 +9,50 @@ import WorldsLocalImport
 @testable import WorldsEditorPersistence
 
 final class EditorPersistenceTests: XCTestCase {
+    func testLegacyHeadingIdentityAndMovementAreRejected() async throws {
+        let url = try fixture()
+        try exec(#"UPDATE blocks SET content='{"type":"heading","attrs":{"bid":"fixture-block","level":4},"content":[{"type":"text","text":"Legacy"}]}' WHERE id='fixture-block'"#, url: url)
+        try exec(#"INSERT INTO blocks(id,page_id,type,sort_key,content,text,direction,created_at,updated_at) SELECT 'other',page_id,'paragraph',10,'{"type":"paragraph","attrs":{"bid":"other"},"content":[{"type":"text","text":"Other"}]}','Other',direction,created_at,updated_at FROM blocks WHERE id='fixture-block'"#, url: url)
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let original = bridge.initialDocument.source
+        let attacks = [
+            #"{"type":"doc","content":[{"type":"heading","attrs":{"bid":"renamed","level":4},"content":[{"type":"text","text":"Legacy"}]},{"type":"paragraph","attrs":{"bid":"other"},"content":[{"type":"text","text":"Other"}]}]}"#,
+            #"{"type":"doc","content":[{"type":"heading","attrs":{"bid":"fixture-block","level":4},"content":[{"type":"text","text":"Legacy"}]},{"type":"paragraph","attrs":{"bid":"fixture-block"},"content":[{"type":"text","text":"Other"}]}]}"#,
+            #"{"type":"doc","content":[{"type":"paragraph","attrs":{"bid":"fixture-block"},"content":[]},{"type":"blockquote","attrs":{"bid":"other"},"content":[{"type":"heading","attrs":{"bid":"fixture-block","level":4},"content":[{"type":"text","text":"Legacy"}]}]}]}"#
+        ]
+        for attack in attacks {
+            do { _ = try await bridge.save(documentJSON: Data(attack.utf8), basedOn: bridge.initialRevision); XCTFail("Expected identity or movement rejection") }
+            catch EditorBridgeError.invalidBlock { }
+            let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+            XCTAssertEqual(reopened.initialDocument.source, original)
+        }
+    }
+    @MainActor func testExitListBeforeUnsupportedHeadingPreservesItOnSave() async throws {
+        let url = try fixture()
+        try exec(#"UPDATE blocks SET content='{"type":"taskList","attrs":{"bid":"fixture-block"},"content":[{"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"Parent"}]}]},{"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[]}]}]}' WHERE id='fixture-block'"#, url: url)
+        try exec(#"INSERT INTO blocks(id,page_id,type,sort_key,content,text,direction,created_at,updated_at) SELECT 'legacy',page_id,'heading',10,'{"type":"heading","attrs":{"bid":"legacy","level":4,"future":true},"content":[{"type":"text","text":"Legacy"}]}','Legacy',direction,created_at,updated_at FROM blocks WHERE id='fixture-block'"#, url: url)
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let model = NativeEditorModel(document: bridge.initialDocument, baseRevision: bridge.initialRevision)
+        let range = (model.projection.text as NSString).range(of: "Parent")
+        _ = try model.replace(range: NSRange(location: NSMaxRange(range) + 1, length: 0), with: "\n")
+        let expected = model.document.source
+        try await model.save(using: bridge)
+        let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(reopened.initialDocument.source, expected)
+        XCTAssertTrue(reopened.initialDocument.project().text.contains("Legacy"))
+    }
+    @MainActor func testExitEmptyRootTaskAndTypeSurvivesReopen() async throws {
+        let url = try fixture()
+        try exec(#"UPDATE blocks SET content='{"type":"taskList","attrs":{"bid":"fixture-block"},"content":[{"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"أصل"}]}]},{"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[]}]}]}' WHERE id='fixture-block'"#, url: url)
+        let bridge = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        let model = NativeEditorModel(document: bridge.initialDocument, baseRevision: bridge.initialRevision)
+        _ = try model.replace(range: NSRange(location: model.projection.text.utf16.count, length: 0), with: "\n")
+        _ = try model.replace(range: model.selection, with: "جديد")
+        let expected = model.document.source
+        try await model.save(using: bridge)
+        let reopened = try await PersonalEditorPersistence.open(databaseURL: url, pageID: "fixture-page")
+        XCTAssertEqual(reopened.initialDocument.source, expected)
+    }
     @MainActor func testEmptyNestedTaskEnterPersistsLiftAndRejectsStaleSession() async throws {
         let url = try fixture()
         try exec(#"UPDATE blocks SET content='{"type":"taskList","attrs":{"bid":"fixture-block"},"content":[{"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"أصل"}]},{"type":"taskList","content":[{"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[]}]}]}]}]}' WHERE id='fixture-block'"#, url: url)

@@ -132,7 +132,7 @@ public final class NativeEditorModel: ObservableObject {
         guard range.location != NSNotFound, range.location >= 0, range.length >= 0,
               range.location <= Int.max - range.length else { return false }
         if replacement == "\n", range.length == 0 {
-            return listMarkers.contains { $0.empty && $0.depth > 0 && $0.location == range.location } || projection.spans.contains { span in
+            return listMarkers.contains { $0.empty && $0.location == range.location } || projection.spans.contains { span in
                 range.location >= span.range.location && range.location <= NSMaxRange(span.range)
                     && listMarkers.contains { span.path.indices.starts(with: $0.path) }
             }
@@ -153,6 +153,14 @@ public final class NativeEditorModel: ObservableObject {
         if range.length == 0, replacement == "\n",
            let marker = listMarkers.filter({ $0.empty && $0.depth > 0 && $0.location == range.location }).max(by: { $0.depth < $1.depth }) {
             try liftListItem(marker: marker)
+            return selection
+        }
+        if range.length == 0, replacement == "\n", let marker = listMarkers.first(where: { $0.empty && $0.depth == 0 && $0.location == range.location }) {
+            let target: RichTextPath
+            do { target = try document.exitLastEmptyRootListItem(at: RichTextPath(marker.path)) }
+            catch { throw NativeEditorError.unsupportedFormatting }
+            registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
+            if let span = projection.spans.first(where: { $0.path.indices == target.indices }) { selection = NSRange(location: span.range.location, length: 0) }
             return selection
         }
         if range.length == 0, replacement == "\n",
@@ -177,6 +185,15 @@ public final class NativeEditorModel: ObservableObject {
             catch { throw NativeEditorError.crossesUnsupportedBoundary }
             registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
             let caret = NSRange(location: range.location + replacement.utf16.count, length: 0); selection = caret; return caret
+        }
+        if range.length == 0, !replacement.isEmpty, !replacement.contains("\n") {
+            let empty = projection.spans.filter { $0.range.length == 0 && $0.range.location == range.location }
+            if empty.count == 1 {
+                do { try document.insertIntoEmptyParagraph(at: empty[0].path, text: replacement) }
+                catch { throw NativeEditorError.crossesUnsupportedBoundary }
+                registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
+                let caret = NSRange(location: range.location + replacement.utf16.count, length: 0); selection = caret; return caret
+            }
         }
         let matches = projection.spans.filter { span in
             range.location >= span.range.location && NSMaxRange(range) <= NSMaxRange(span.range)

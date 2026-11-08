@@ -15,6 +15,21 @@ private actor FixturePersistence: EditorPersistence {
 
 @MainActor
 final class NativeEditorTests: XCTestCase {
+    func testEnterExitsLastEmptyRootTaskAndNewParagraphAcceptsRTLText() throws {
+        let json = #"{"type":"doc","content":[{"type":"taskList","attrs":{"bid":"list"},"content":[{"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"أصل"}]}]},{"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[]}]}]}]}"#
+        let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 0)
+        let original = model.document.source
+        let caret = NSRange(location: model.projection.text.utf16.count, length: 0)
+        _ = try model.replace(range: caret, with: "\n")
+        XCTAssertEqual(model.listMarkers.count, 1)
+        let exited = model.document.source
+        _ = try model.replace(range: model.selection, with: "جديد")
+        XCTAssertEqual(model.projection.text, "أصل\nجديد")
+        let typed = model.document.source
+        model.undo(); XCTAssertEqual(model.document.source, exited)
+        model.undo(); XCTAssertEqual(model.document.source, original)
+        model.redo(); model.redo(); XCTAssertEqual(model.document.source, typed)
+    }
     func testEnterOnEmptyNestedTaskLiftsAndUndoRestores() throws {
         let json = #"{"type":"doc","content":[{"type":"taskList","attrs":{"bid":"list","dir":"rtl"},"content":[{"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"أصل"}]},{"type":"taskList","content":[{"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[]}]}]}]}]}]}"#
         let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 0)

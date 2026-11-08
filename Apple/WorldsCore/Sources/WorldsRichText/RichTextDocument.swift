@@ -244,6 +244,45 @@ public struct RichTextDocument: Sendable, Equatable {
         }
         return RichTextPath(destination)
     }
+
+    /// Exit only the final empty root item, preserving existing list data.
+    public mutating func exitLastEmptyRootListItem(at path: RichTextPath) throws -> RichTextPath {
+        guard path.indices.count == 2, case .object(var root) = source,
+              case .array(var blocks)? = root["content"], blocks.indices.contains(path.indices[0]),
+              case .object(var list) = blocks[path.indices[0]], case .string(let kind)? = list["type"],
+              ["bulletList", "orderedList", "taskList"].contains(kind),
+              Set(list.keys).isSubset(of: ["type", "attrs", "content"]),
+              case .object(let attrs)? = list["attrs"], Set(attrs.keys) == Set(["bid"]),
+              case .string(let bid)? = attrs["bid"], !bid.isEmpty,
+              case .array(var items)? = list["content"], items.indices.contains(path.indices[1]),
+              path.indices[1] == items.count - 1, safeSimpleListItem(items[path.indices[1]], kind: kind),
+              case .object(let item) = items[path.indices[1]], item["attrs"] != .null,
+              case .array(let itemContent)? = item["content"], case .object(let paragraph) = itemContent[0],
+              case .array(let runs)? = paragraph["content"], runs.isEmpty else { throw RichTextError.invalidDocument }
+        if kind == "taskList" {
+            guard case .object(let itemAttrs)? = item["attrs"], itemAttrs["checked"] == .bool(false) else { throw RichTextError.invalidDocument }
+        }
+        var newID = bid
+        if items.count > 1 {
+            var used = Set<String>()
+            for block in blocks { if case .object(let value) = block, case .object(let fields)? = value["attrs"], case .string(let id)? = fields["bid"] { used.insert(id) } }
+            repeat { newID = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased() } while used.contains(newID)
+        }
+        let empty: JSONValue = .object(["type": .string("paragraph"), "attrs": .object(["bid": .string(newID)]), "content": .array([])])
+        let index = path.indices[0]
+        if items.count == 1 { blocks[index] = empty }
+        else { items.removeLast(); list["content"] = .array(items); blocks[index] = .object(list); blocks.insert(empty, at: index + 1) }
+        root["content"] = .array(blocks); source = .object(root)
+        return RichTextPath([index + (items.isEmpty || newID == bid ? 0 : 1)])
+    }
+
+    public mutating func insertIntoEmptyParagraph(at path: RichTextPath, text: String) throws {
+        guard !text.isEmpty, !text.contains("\n"), !text.contains("\r"), !text.contains("\u{fffc}") else { throw RichTextError.invalidRange }
+        try updateNode(&source, path: ArraySlice(path.indices)) { node in
+            guard node["type"] == .string("paragraph"), node["content"] == .array([]) else { throw RichTextError.invalidDocument }
+            node["content"] = .array([.object(["type": .string("text"), "text": .string(text)])])
+        }
+    }
     public mutating func toggleTaskItemNode(at path: RichTextPath) throws {
         guard path.indices.count >= 2 else { throw RichTextError.invalidPath }
         try updateNode(&source, path: ArraySlice(path.indices)) { node in
@@ -567,6 +606,9 @@ private func projectNode(_ value: JSONValue, path: [Int], direction: String?, bl
     }
     if type == "hardBreak" { text += "\n"; return }
     if case .array(let children)? = node["content"] {
+        if children.isEmpty && type == "paragraph" {
+            spans.append(RichTextSpan(path: RichTextPath(path), range: NSRange(location: text.utf16.count, length: 0), marks: [], direction: currentDirection, blockType: currentBlock))
+        }
         for (index, child) in children.enumerated() {
             if index > 0 {
                 if type == "tableRow" { text += "\t" }

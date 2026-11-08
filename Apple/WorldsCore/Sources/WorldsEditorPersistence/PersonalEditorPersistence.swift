@@ -64,20 +64,25 @@ public actor PersonalEditorPersistence: EditorPersistence {
     // save may introduce one or mutate an existing one through raw JSON.
     private static func invalidHeadingValues(in roots: [JSONValue]) -> [JSONValue] {
         var result: [JSONValue] = []
-        func visit(_ value: JSONValue, path: String) {
+        func visit(_ value: JSONValue, owner: JSONValue, path: String) {
             guard case .object(let node) = value else { return }
             if node["type"] == .string("heading") {
                 var valid = false
                 if case .object(let attrs)? = node["attrs"], case .integer(let level)? = attrs["level"] {
                     valid = (1...3).contains(level)
                 }
-                if !valid { result.append(.object(["path": .string(path), "node": value])) }
+                if !valid { result.append(.object(["owner": owner, "path": .string(path), "node": value])) }
             }
             if case .array(let children)? = node["content"] {
-                for (index, child) in children.enumerated() { visit(child, path: path + "/\(index)") }
+                for (index, child) in children.enumerated() { visit(child, owner: owner, path: path + "/\(index)") }
             }
         }
-        for (index, root) in roots.enumerated() { visit(root, path: "/\(index)") }
+        for root in roots {
+            let owner: JSONValue
+            if case .object(let node) = root, case .object(let attrs)? = node["attrs"], let id = attrs["bid"] { owner = id }
+            else { owner = .null }
+            visit(root, owner: owner, path: "")
+        }
         return result
     }
 
