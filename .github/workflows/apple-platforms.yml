@@ -1851,6 +1851,7 @@ jobs:
           grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' logs/collaboration-discovery.log
           grep -q 'testPlainProjectionUsesYjsFixtureAndRejectsRichText' logs/collaboration-discovery.log
           grep -q 'testHostRejectsMismatchedStoreAndRevokedServiceAccess' logs/collaboration-discovery.log
+          grep -q 'testHostRejectsUntrustedOriginBeforeIdentityCalls' logs/collaboration-discovery.log
           grep -q 'testCheckedDeleteAndFormatPersistThroughNativeStore' logs/collaboration-discovery.log
           grep -q 'testLivePermissionDowngradeBlocksNewContentWithoutDiscardingOutbox' logs/collaboration-discovery.log
           grep -q 'testDisconnectedSocketCannotAuthorizeLocalWritesWhileClosing' logs/collaboration-discovery.log
@@ -1924,6 +1925,7 @@ jobs:
           set -o pipefail
           swift test --package-path Apple/WorldsCore --filter WorldsCollaborationHostTests 2>&1 | tee logs/collaboration-host-macos.log
           grep -E 'testHostRejectsMismatchedStoreAndRevokedServiceAccess.*passed' logs/collaboration-host-macos.log
+          grep -E 'testHostRejectsUntrustedOriginBeforeIdentityCalls.*passed' logs/collaboration-host-macos.log
       - name: Test rejected archive service on macOS
         shell: bash
         run: |
@@ -1964,6 +1966,7 @@ jobs:
           grep -q 'testCheckedEditorWritePersistsAndRejectsStaleBase' "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -E "Test Case .*testPlainProjectionUsesYjsFixtureAndRejectsRichText.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -E "Test Case .*testHostRejectsMismatchedStoreAndRevokedServiceAccess.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
+          grep -E "Test Case .*testHostRejectsUntrustedOriginBeforeIdentityCalls.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -E "Test Case .*testCheckedDeleteAndFormatPersistThroughNativeStore.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -E "Test Case .*testLivePermissionDowngradeBlocksNewContentWithoutDiscardingOutbox.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
           grep -E "Test Case .*testDisconnectedSocketCannotAuthorizeLocalWritesWhileClosing.*passed" "$GITHUB_WORKSPACE/logs/collaboration-ios.log"
