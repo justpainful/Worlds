@@ -109,6 +109,27 @@ private actor RejectionSocket: CollaborationSocket {
     func closeCode() async -> Int { 0 }
 }
 
+private actor PausedDisconnectSocket: CollaborationSocket {
+    private var first = true
+    private var receiveWaiter: CheckedContinuation<Data?, Error>?
+    private var closeWaiter: CheckedContinuation<Void, Never>?
+    private(set) var waitingForCloseCode = false
+    var waitingForReceive: Bool { receiveWaiter != nil }
+    func send(_ data: Data) async throws { }
+    func receive() async throws -> Data? {
+        if first { first = false; return WorldsSyncWire.encode(.authState(level: "edit", userID: "editor")) }
+        return try await withCheckedThrowingContinuation { receiveWaiter = $0 }
+    }
+    func disconnect() { receiveWaiter?.resume(throwing: URLError(.networkConnectionLost)); receiveWaiter = nil }
+    func close() async { receiveWaiter?.resume(throwing: CancellationError()); receiveWaiter = nil }
+    func closeCode() async -> Int {
+        waitingForCloseCode = true
+        await withCheckedContinuation { closeWaiter = $0 }
+        return 0
+    }
+    func releaseClose() { closeWaiter?.resume(); closeWaiter = nil }
+}
+
 private actor FixtureSocket: CollaborationSocket {
     let level: String
     let userID: String
@@ -147,6 +168,30 @@ private actor FixtureSocket: CollaborationSocket {
 }
 
 extension WorldsCollaborationTests {
+    func testDisconnectedSocketCannotAuthorizeLocalWritesWhileClosing() async throws {
+        let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-editor-v11", withExtension: "db"))
+        let copy = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-closing-\(UUID().uuidString).db")
+        try FileManager.default.copyItem(at: source, to: copy)
+        defer { try? FileManager.default.removeItem(at: copy) }
+        let store = try SQLiteCollaborationStore(databaseURL: copy, pageID: "fixture-page", userID: "editor", workspaceID: "fixture-workspace")
+        let pending = try await store.maximumPendingID(pageID: "fixture-page", channel: 0)
+        let socket = PausedDisconnectSocket()
+        let session = try CollaborationSession(pageID: "fixture-page", workspaceID: "fixture-workspace", documentID: "fixture-page", expectedUserID: "editor", serverURL: URL(string: "https://example.invalid")!, store: store, tokenProvider: { _ in "fixture-token" }, socketFactory: { _, _ in socket })
+        let run = Task { try await session.run() }
+        defer { Task { await socket.releaseClose(); await session.stop() } }
+        for _ in 0..<100 { if await session.accessLevel == "edit" { break }; try await Task.sleep(for: .milliseconds(10)) }
+        guard await session.accessLevel == "edit" else { await session.stop(); _ = try? await run.value; return XCTFail("Authentication was not observed") }
+        for _ in 0..<100 { if await socket.waitingForReceive { break }; try await Task.sleep(for: .milliseconds(10)) }
+        guard await socket.waitingForReceive else { await session.stop(); _ = try? await run.value; return XCTFail("Receive was not reached") }
+        await socket.disconnect()
+        for _ in 0..<100 { if await socket.waitingForCloseCode { break }; try await Task.sleep(for: .milliseconds(10)) }
+        guard await socket.waitingForCloseCode else { await socket.releaseClose(); await session.stop(); _ = try? await run.value; return XCTFail("Close was not reached") }
+        do { try await session.appendLocal(channel: 0, update: Data([0, 0])); XCTFail("Closed connection must not authorize writes") }
+        catch CollaborationError.accessRevoked { }
+        let after = try await store.maximumPendingID(pageID: "fixture-page", channel: 0)
+        XCTAssertEqual(after, pending)
+        await session.stop(); await socket.releaseClose(); _ = try? await run.value
+    }
     func testLivePermissionDowngradeBlocksNewContentWithoutDiscardingOutbox() async throws {
         let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-editor-v11", withExtension: "db"))
         let copy = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-downgrade-\(UUID().uuidString).db")

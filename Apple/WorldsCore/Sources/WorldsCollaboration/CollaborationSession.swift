@@ -212,14 +212,16 @@ public actor CollaborationSession {
                 // Only an authenticated connection resets backoff. Opening a
                 // socket that immediately fails is not a successful session.
                 if verifiedIdentity { attempt = 0 }
+                // Revoke local use of the connection before the first await.
+                // closeCode/close can suspend while other actor calls arrive.
+                socket = nil; pending.removeAll(); verifiedIdentity = false; synchronizedChannels.removeAll(); accessLevel = nil; awareness?.disconnected()
+                publishEditorChange()
                 if let connection {
                     let closeCode = await connection.closeCode()
                     if closeCode == WorldsSyncWire.closeRevoked { revoked = true }
                     if closeCode == WorldsSyncWire.closeUnauthorized { forceRefresh = true }
                     await connection.close()
                 }
-                socket = nil; pending.removeAll(); verifiedIdentity = false; synchronizedChannels.removeAll(); accessLevel = nil; awareness?.disconnected()
-                publishEditorChange()
                 if stopped || generation != runID { return }
                 if revoked { throw CollaborationError.accessRevoked }
                 if failed { throw error }
