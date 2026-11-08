@@ -253,15 +253,14 @@ public actor CollaborationSession {
     public func stop() async {
         stopped = true; generation &+= 1
         retryTask?.cancel()
-        if let socket {
-            if verifiedIdentity, presenceJSON != nil, let update = try? awareness?.setLocal(nil, at: Date().timeIntervalSince1970) {
-                presenceVersion &+= 1
-                try? await sendPresence(update, via: socket, connection: socketID, version: presenceVersion, allowStopped: true)
-            }
-            await socket.close()
-        }
+        let closing = socket
+        presenceVersion &+= 1
+        _ = try? awareness?.setLocal(nil, at: Date().timeIntervalSince1970)
         socket = nil; socketID = UUID(); clearPending(); verifiedIdentity = false; synchronizedChannels.removeAll(); accessLevel = nil; awareness?.disconnected()
         publishEditorChange()
+        // The service removes this socket's awareness on close. Waiting for a
+        // queued awareness frame here can otherwise prevent closing forever.
+        if let closing { await closing.close() }
     }
 
     /// Coalesced invalidation signals only. Each consumer must call
@@ -288,14 +287,14 @@ public actor CollaborationSession {
         await socket.close()
     }
 
-    private func sendPresence(_ update: Data, via target: any CollaborationSocket, connection: UUID, version: UInt64, allowStopped: Bool = false) async throws {
+    private func sendPresence(_ update: Data, via target: any CollaborationSocket, connection: UUID, version: UInt64) async throws {
         if presenceSending { await withCheckedContinuation { presenceWaiters.append($0) } }
         else { presenceSending = true }
         defer {
             if presenceWaiters.isEmpty { presenceSending = false }
             else { presenceWaiters.removeFirst().resume() }
         }
-        guard socketID == connection, verifiedIdentity, (allowStopped || !stopped), version == presenceVersion else { return }
+        guard socketID == connection, verifiedIdentity, !stopped, version == presenceVersion else { return }
         try await target.send(WorldsSyncWire.encode(.awareness(update)))
     }
 

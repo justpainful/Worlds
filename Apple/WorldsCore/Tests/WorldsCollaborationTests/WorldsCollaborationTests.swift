@@ -131,10 +131,13 @@ private actor PausedDisconnectSocket: CollaborationSocket {
 }
 
 private actor DelayedPresenceSocket: CollaborationSocket {
+    private let userID: String
+    init(userID: String = "user") { self.userID = userID }
     private var firstReceive = true
     private var waiting: CheckedContinuation<Data?, Error>?
     private var sendWaiter: CheckedContinuation<Void, Never>?
     private(set) var sendStarted = false
+    private(set) var closed = false
     private(set) var states: [String] = []
     func send(_ data: Data) async throws {
         if case let .awareness(payload) = try WorldsSyncWire.decode(data) {
@@ -147,11 +150,11 @@ private actor DelayedPresenceSocket: CollaborationSocket {
         }
     }
     func receive() async throws -> Data? {
-        if firstReceive { firstReceive = false; return try WorldsSyncWire.encode(.authState(level: "edit", userID: "user")) }
+        if firstReceive { firstReceive = false; return try WorldsSyncWire.encode(.authState(level: "edit", userID: userID)) }
         return try await withCheckedThrowingContinuation { waiting = $0 }
     }
     func releaseSend() { sendWaiter?.resume(); sendWaiter = nil }
-    func close() async { waiting?.resume(throwing: CancellationError()); waiting = nil }
+    func close() async { closed = true; waiting?.resume(throwing: CancellationError()); waiting = nil }
     func closeCode() async -> Int { 0 }
 }
 
@@ -292,6 +295,34 @@ extension WorldsCollaborationTests {
         let states = await socket.states
         XCTAssertEqual(states.count, 2); XCTAssertNotEqual(states.first, "null"); XCTAssertEqual(states.last, "null")
         await session.stop(); _ = try? await run.value
+    }
+    func testStopClosesDuringBlockedPresenceAndPreservesOutbox() async throws {
+        let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-editor-v11", withExtension: "db"))
+        let copy = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-stop-\(UUID().uuidString).db")
+        try FileManager.default.copyItem(at: source, to: copy)
+        defer { try? FileManager.default.removeItem(at: copy) }
+        let store = try SQLiteCollaborationStore(databaseURL: copy, pageID: "fixture-page", userID: "editor", workspaceID: "fixture-workspace")
+        try await store.appendLocal(pageID: "fixture-page", channel: 0, update: Data([0, 0]))
+        let pending = try await store.maximumPendingID(pageID: "fixture-page", channel: 0)
+        XCTAssertNotNil(pending)
+        let socket = DelayedPresenceSocket(userID: "editor")
+        let session = try CollaborationSession(pageID: "fixture-page", workspaceID: "fixture-workspace", documentID: "fixture-page", expectedUserID: "editor", serverURL: URL(string: "https://example.invalid")!, store: store, tokenProvider: { _ in "fixture-token" }, socketFactory: { _, _ in socket })
+        let run = Task { try await session.run() }
+        defer { Task { await socket.releaseSend(); await session.stop() } }
+        for _ in 0..<100 { if await session.accessLevel == "edit" { break }; try await Task.sleep(for: .milliseconds(10)) }
+        guard await session.accessLevel == "edit" else { await session.stop(); _ = try? await run.value; return XCTFail("Authentication was not observed") }
+        let send = Task { try await session.setPresence(name: "Fixture", color: "#123456") }
+        for _ in 0..<100 { if await socket.sendStarted { break }; try await Task.sleep(for: .milliseconds(10)) }
+        guard await socket.sendStarted else { await socket.releaseSend(); await session.stop(); _ = try? await run.value; return XCTFail("Presence send was not reached") }
+        let stop = Task { await session.stop() }
+        for _ in 0..<100 { if await socket.closed { break }; try await Task.sleep(for: .milliseconds(10)) }
+        let closedBeforeRelease = await socket.closed
+        await socket.releaseSend()
+        _ = try? await send.value; await stop.value; _ = try? await run.value
+        XCTAssertTrue(closedBeforeRelease, "Stop must close the socket without waiting for an in-flight presence frame")
+        let reopened = try SQLiteCollaborationStore(databaseURL: copy, pageID: "fixture-page", userID: "editor", workspaceID: "fixture-workspace")
+        let remaining = try await reopened.maximumPendingID(pageID: "fixture-page", channel: 0)
+        XCTAssertEqual(remaining, pending)
     }
     func testChangedLocalAccountStopsSessionAndKeepsPendingOutbox() async throws {
         let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-editor-v11", withExtension: "db"))
