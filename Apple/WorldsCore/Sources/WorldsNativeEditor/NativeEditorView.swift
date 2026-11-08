@@ -74,6 +74,10 @@ public struct NativeEditorView: View {
                             .accessibilityIdentifier("editor-add-item.\(marker.id)")
                         Button("Add nested item") { addTarget = marker; addNested = true; itemText = ""; addItem = true }
                             .accessibilityIdentifier("editor-add-nested.\(marker.id)")
+                        if marker.depth > 0 {
+                            Button("Move out one level") { do { try model.liftListItem(marker: marker) } catch { model.report(error) } }
+                                .accessibilityIdentifier("editor-outdent.\(marker.id)")
+                        }
                     }
                     .disabled(model.nativeEditPending || model.saving)
                 }

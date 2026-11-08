@@ -132,7 +132,7 @@ public final class NativeEditorModel: ObservableObject {
         guard range.location != NSNotFound, range.location >= 0, range.length >= 0,
               range.location <= Int.max - range.length else { return false }
         if replacement == "\n", range.length == 0 {
-            return projection.spans.contains { span in
+            return listMarkers.contains { $0.empty && $0.depth > 0 && $0.location == range.location } || projection.spans.contains { span in
                 range.location >= span.range.location && range.location <= NSMaxRange(span.range)
                     && listMarkers.contains { span.path.indices.starts(with: $0.path) }
             }
@@ -150,6 +150,11 @@ public final class NativeEditorModel: ObservableObject {
         guard range.location != NSNotFound, range.location >= 0, range.length >= 0,
               range.location <= Int.max - range.length else { throw NativeEditorError.invalidSelection }
         let before = document
+        if range.length == 0, replacement == "\n",
+           let marker = listMarkers.filter({ $0.empty && $0.depth > 0 && $0.location == range.location }).max(by: { $0.depth < $1.depth }) {
+            try liftListItem(marker: marker)
+            return selection
+        }
         if range.length == 0, replacement == "\n",
            let span = projection.spans.first(where: { range.location >= $0.range.location && range.location <= NSMaxRange($0.range) }),
            listMarkers.contains(where: { span.path.indices.starts(with: $0.path) }) {
@@ -353,6 +358,17 @@ public final class NativeEditorModel: ObservableObject {
         let before = document
         do { try document.toggleTaskItemNode(at: RichTextPath(marker.path)) } catch { throw NativeEditorError.unsupportedFormatting }
         registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
+    }
+    func liftListItem(marker: NativeListMarker) throws {
+        guard marker.depth > 0, listMarkers.contains(marker), recoverableNativeText == nil, !nativeEditPending, !saving else { throw NativeEditorError.unsupportedFormatting }
+        let before = document
+        let target: RichTextPath
+        do { target = try document.liftLastNestedItem(at: RichTextPath(marker.path)) }
+        catch { throw NativeEditorError.unsupportedFormatting }
+        registerRestore(before); generation &+= 1; dirty = document.source != savedSource; errorMessage = nil
+        if let selected = listMarkers.first(where: { $0.path == target.indices }) {
+            selection = NSRange(location: selected.location, length: 0)
+        }
     }
     func addListItem(to marker: NativeListMarker, text: String, nested: Bool) throws {
         guard listMarkers.contains(marker), recoverableNativeText == nil, !nativeEditPending, !saving else { throw NativeEditorError.unsupportedFormatting }

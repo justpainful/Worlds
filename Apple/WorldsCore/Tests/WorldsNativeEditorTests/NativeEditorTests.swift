@@ -15,6 +15,28 @@ private actor FixturePersistence: EditorPersistence {
 
 @MainActor
 final class NativeEditorTests: XCTestCase {
+    func testEnterOnEmptyNestedTaskLiftsAndUndoRestores() throws {
+        let json = #"{"type":"doc","content":[{"type":"taskList","attrs":{"bid":"list","dir":"rtl"},"content":[{"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"أصل"}]},{"type":"taskList","content":[{"type":"taskItem","attrs":{"checked":false},"content":[{"type":"paragraph","content":[]}]}]}]}]}]}"#
+        let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 0)
+        let original = model.document.source
+        let nested = model.listMarkers.last!
+        XCTAssertTrue(nested.empty)
+        let caret = NSRange(location: nested.location, length: 0)
+        XCTAssertTrue(model.isListKeyboardEdit(range: caret, replacement: "\n"))
+        _ = try model.replace(range: caret, with: "\n")
+        XCTAssertEqual(model.listMarkers.map(\.depth), [0, 0])
+        XCTAssertTrue(model.listMarkers[1].empty)
+        let lifted = model.document.source
+        model.undo(); XCTAssertEqual(model.document.source, original)
+        model.redo(); XCTAssertEqual(model.document.source, lifted)
+    }
+    func testOutdentRejectsNestedMetadataAndKeepsDocument() throws {
+        let json = #"{"type":"doc","content":[{"type":"bulletList","attrs":{"bid":"list"},"content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Parent"}]},{"type":"bulletList","attrs":{"future":true},"content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Child"}]}]}]}]}]}]}"#
+        let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 0)
+        let original = model.document.source
+        XCTAssertThrowsError(try model.liftListItem(marker: model.listMarkers.last!))
+        XCTAssertEqual(model.document.source, original)
+    }
     func testListKeyboardBoundariesUseExactRangeWithRepeatedItems() throws {
         let json = #"{"type":"doc","content":[{"type":"bulletList","attrs":{"bid":"list"},"content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"aa"}]}]},{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"aa"}]}]}]}]}"#
         let model = try NativeEditorModel(document: RichTextDocument(json: Data(json.utf8)), baseRevision: 0)

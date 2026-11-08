@@ -4,6 +4,26 @@ import WorldsModels
 @testable import WorldsRichText
 
 final class RichTextDocumentTests: XCTestCase {
+    func testLiftRejectsNegativePathAndEmptyListWithoutMutation() throws {
+        let json = #"{"type":"doc","content":[{"type":"bulletList","attrs":{"bid":"list"},"content":[]}]}"#
+        var document = try RichTextDocument(json: Data(json.utf8))
+        let original = document
+        XCTAssertThrowsError(try document.liftLastNestedItem(at: RichTextPath([0, -1, 0, 0])))
+        XCTAssertEqual(document, original)
+        XCTAssertThrowsError(try document.liftLastNestedItem(at: RichTextPath([0, 0, -1, 0])))
+        XCTAssertEqual(document, original)
+    }
+    func testLiftRejectsNullAttributesThatPersistenceProtects() throws {
+        for (listAttrs, itemAttrs) in [("null", "{}"), ("{}", "null")] {
+            let json = """
+            {"type":"doc","content":[{"type":"bulletList","attrs":{"bid":"list"},"content":[{"type":"listItem","content":[{"type":"paragraph","content":[]},{"type":"bulletList","attrs":\(listAttrs),"content":[{"type":"listItem","attrs":\(itemAttrs),"content":[{"type":"paragraph","content":[]}]}]}]}]}]}
+            """
+            var document = try RichTextDocument(json: Data(json.utf8))
+            let original = document
+            XCTAssertThrowsError(try document.liftLastNestedItem(at: RichTextPath([0, 0, 1, 0])))
+            XCTAssertEqual(document, original)
+        }
+    }
     func testHeadingConversionPreservesOpaqueDataAndRejectsAmbiguousLevel() throws {
         let json = #"{"type":"doc","content":[{"type":"paragraph","attrs":{"bid":"a","dir":"rtl","future":{"v":1}},"content":[{"type":"text","text":"عربي 👋","marks":[{"type":"future","attrs":{"x":3}}]}]},{"type":"widget","attrs":{"payload":true}}]}"#
         let original = try RichTextDocument(json: Data(json.utf8))

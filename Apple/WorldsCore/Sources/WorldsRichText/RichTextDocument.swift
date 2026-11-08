@@ -215,6 +215,35 @@ public struct RichTextDocument: Sendable, Equatable {
         let taskPath = Array(path.indices.prefix(2))
         try toggleTaskItemNode(at: RichTextPath(taskPath))
     }
+
+    /// Lift the last simple nested item into the end of its parent list.
+    /// Restricting both insertions to the end avoids shifting opaque siblings.
+    public mutating func liftLastNestedItem(at path: RichTextPath) throws -> RichTextPath {
+        let p = path.indices
+        guard p.count >= 4, let nestedItemIndex = p.last else { throw RichTextError.invalidPath }
+        let outerPath = Array(p.dropLast(3)), outerItemIndex = p[p.count - 3], nestedListIndex = p[p.count - 2]
+        var destination: [Int] = []
+        try updateNode(&source, path: ArraySlice(outerPath)) { outer in
+            guard case .string(let kind)? = outer["type"], ["bulletList", "orderedList", "taskList"].contains(kind),
+                  case .array(var outerItems)? = outer["content"], outerItems.indices.contains(outerItemIndex), outerItemIndex == outerItems.count - 1,
+                  case .object(var parent) = outerItems[outerItemIndex], parent["type"] == .string(kind == "taskList" ? "taskItem" : "listItem"),
+                  case .array(var parentContent)? = parent["content"], parentContent.count >= 2, parentContent.indices.contains(nestedListIndex),
+                  case .object(let firstParagraph) = parentContent[0], firstParagraph["type"] == .string("paragraph"), nestedListIndex == parentContent.count - 1,
+                  case .object(var nested) = parentContent[nestedListIndex], nested["type"] == .string(kind),
+                  Set(nested.keys).isSubset(of: ["type", "attrs", "content"]),
+                  case .array(var nestedItems)? = nested["content"], nestedItemIndex == nestedItems.count - 1,
+                  nestedItems.indices.contains(nestedItemIndex), safeSimpleListItem(nestedItems[nestedItemIndex], kind: kind) else { throw RichTextError.invalidDocument }
+            if let attrs = nested["attrs"] { guard attrs == .object([:]) else { throw RichTextError.invalidDocument } }
+            if case .object(let item) = nestedItems[nestedItemIndex], item["attrs"] == .null { throw RichTextError.invalidDocument }
+            let lifted = nestedItems.removeLast()
+            if nestedItems.isEmpty { parentContent.removeLast() }
+            else { nested["content"] = .array(nestedItems); parentContent[nestedListIndex] = .object(nested) }
+            parent["content"] = .array(parentContent); outerItems[outerItemIndex] = .object(parent)
+            destination = outerPath + [outerItems.count]
+            outerItems.append(lifted); outer["content"] = .array(outerItems)
+        }
+        return RichTextPath(destination)
+    }
     public mutating func toggleTaskItemNode(at path: RichTextPath) throws {
         guard path.indices.count >= 2 else { throw RichTextError.invalidPath }
         try updateNode(&source, path: ArraySlice(path.indices)) { node in
