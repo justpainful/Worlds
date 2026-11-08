@@ -23,6 +23,37 @@ private struct PageNode: Decodable {
         let textAlign: String?
         let pstyle: String?
         let color: ColorValue?
+        let invalidFields: [String]
+
+        private enum CodingKeys: String, CodingKey {
+            case level, start, href, checked, open, active, tone, label, title, latex, code, dir, textAlign, pstyle, color
+        }
+        init(from decoder: Decoder) throws {
+            guard let container = try? decoder.container(keyedBy: CodingKeys.self) else {
+                level = nil; start = nil; href = nil; checked = nil; open = nil; active = nil
+                tone = nil; label = nil; title = nil; latex = nil; code = nil; dir = nil
+                textAlign = nil; pstyle = nil; color = nil; invalidFields = ["attributes"]
+                return
+            }
+            var invalid: [String] = []
+            func read<T: Decodable>(_ type: T.Type, _ key: CodingKeys) -> T? {
+                do {
+                    if (key == .start || key == .checked), container.contains(key), try container.decodeNil(forKey: key) {
+                        invalid.append(key.rawValue); return nil
+                    }
+                    return try container.decodeIfPresent(type, forKey: key)
+                }
+                catch { invalid.append(key.rawValue); return nil }
+            }
+            level = read(Int.self, .level); start = read(Int.self, .start)
+            href = read(String.self, .href); checked = read(Bool.self, .checked)
+            open = read(Bool.self, .open); active = read(Int.self, .active)
+            tone = read(String.self, .tone); label = read(String.self, .label)
+            title = read(String.self, .title); latex = read(String.self, .latex)
+            code = read(String.self, .code); dir = read(String.self, .dir)
+            textAlign = read(String.self, .textAlign); pstyle = read(String.self, .pstyle)
+            color = read(ColorValue.self, .color); invalidFields = invalid
+        }
     }
     struct Mark: Decodable {
         let type: String
@@ -97,7 +128,15 @@ private struct NodeView: View {
     var allowsSelection = true
 
     var body: some View {
-        nodeBody.environment(\.layoutDirection, nodeDirection)
+        Group {
+            if let fields = node.attrs?.invalidFields, !fields.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    nodeBody
+                    Text("Unsupported attributes: \(fields.joined(separator: ", "))")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            } else { nodeBody }
+        }.environment(\.layoutDirection, nodeDirection)
     }
 
     private var nodeDirection: LayoutDirection {
@@ -158,7 +197,7 @@ private struct NodeView: View {
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(Array((node.content ?? []).enumerated()), id: \.offset) { index, item in
                     HStack(alignment: .top, spacing: 8) {
-                        Text(node.type == "orderedList" ? orderedLabel(start: node.attrs?.start, index: index) : "•")
+                        Text(node.type == "orderedList" ? orderedLabel(start: node.attrs?.start, index: index, invalid: node.attrs?.invalidFields ?? []) : "•")
                             .foregroundStyle(.secondary)
                         NodeView(node: item)
                     }
@@ -168,8 +207,9 @@ private struct NodeView: View {
             children
         case "taskItem":
             HStack(alignment: .top, spacing: 8) {
-                Image(systemName: node.attrs?.checked == true ? "checkmark.square" : "square")
-                    .accessibilityLabel(node.attrs?.checked == true ? "Completed" : "Not completed")
+                let unknown = (node.attrs?.invalidFields ?? []).contains { $0 == "checked" || $0 == "attributes" }
+                Image(systemName: unknown ? "questionmark.square" : (node.attrs?.checked == true ? "checkmark.square" : "square"))
+                    .accessibilityLabel(unknown ? "Completion status unknown" : (node.attrs?.checked == true ? "Completed" : "Not completed"))
                 children
             }
         case "listItem", "doc":
@@ -264,7 +304,8 @@ private struct NodeView: View {
         default: return .headline
         }
     }
-    private func orderedLabel(start: Int?, index: Int) -> String {
+    private func orderedLabel(start: Int?, index: Int, invalid: [String]) -> String {
+        if invalid.contains("start") || invalid.contains("attributes") { return "?" }
         let (number, overflow) = (start ?? 1).addingReportingOverflow(index)
         return overflow ? "\(start ?? 1) + \(index)." : "\(number)."
     }
@@ -406,7 +447,9 @@ private func inlineContent(_ node: PageNode) -> AttributedString {
         var text = AttributedString(node.text ?? "")
         var intent: InlinePresentationIntent = []
         var unsupported: [String] = []
+        if let fields = node.attrs?.invalidFields { unsupported.append(contentsOf: fields.map { "text.\($0)" }) }
         for mark in node.marks ?? [] {
+            if let fields = mark.attrs?.invalidFields { unsupported.append(contentsOf: fields.map { "\(mark.type).\($0)" }) }
             switch mark.type {
             case "bold": intent.insert(.stronglyEmphasized)
             case "italic": intent.insert(.emphasized)
@@ -436,8 +479,16 @@ private func inlineContent(_ node: PageNode) -> AttributedString {
         return text
     }
     if node.type == "hardBreak" { return AttributedString("\n") }
-    if node.type == "mathInline" { return AttributedString("$" + (node.attrs?.latex ?? "") + "$") }
-    if node.type == "pageMention" { return AttributedString("@" + (node.attrs?.label ?? "")) }
+    if node.type == "mathInline" || node.type == "pageMention" {
+        let invalid = node.attrs?.invalidFields ?? []
+        let text: String
+        if node.type == "mathInline" {
+            if let latex = node.attrs?.latex { text = "$" + latex + "$" } else { text = "[Equation source unavailable]" }
+        } else {
+            if let label = node.attrs?.label { text = "@" + label } else { text = "[Page mention label unavailable]" }
+        }
+        return AttributedString(text + (invalid.isEmpty ? "" : " [Unsupported attributes: \(invalid.joined(separator: ", "))]"))
+    }
     var result = AttributedString()
     for child in node.content ?? [] {
         if ["text", "hardBreak", "mathInline", "pageMention"].contains(child.type ?? "") {

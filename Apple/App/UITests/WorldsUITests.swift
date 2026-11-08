@@ -119,6 +119,24 @@ final class WorldsUITests: XCTestCase {
         XCTAssertTrue(quote.label.contains("Unsupported formatting: highlight color"))
         XCTAssertTrue(overflow.waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["9223372036854775807 + 1."].exists)
+        XCTAssertTrue(app.staticTexts["Unsupported attributes: pstyle"].exists)
+        XCTAssertTrue(app.staticTexts["Unsupported attributes: start"].exists)
+        XCTAssertTrue(app.staticTexts["رقم غير صالح محفوظ"].exists)
+        XCTAssertTrue(app.staticTexts["Unsupported attributes: attributes"].exists)
+        XCTAssertTrue(app.staticTexts["نص بخصائص غير صالحة"].exists)
+        XCTAssertTrue(app.staticTexts["مهمة بحالة مجهولة"].exists)
+        XCTAssertTrue(app.images["Completion status unknown"].exists)
+        XCTAssertGreaterThanOrEqual(app.staticTexts.matching(identifier: "?").count, 2)
+        let inline = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "نص مضمن محفوظ")).firstMatch
+        XCTAssertTrue(inline.exists)
+        XCTAssertTrue(inline.label.contains("Unsupported formatting: text.dir"))
+        let badInline = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Equation source unavailable")).firstMatch
+        XCTAssertTrue(badInline.exists)
+        XCTAssertTrue(badInline.label.contains("Page mention label unavailable"))
+        XCTAssertEqual(badInline.label.components(separatedBy: "Equation source unavailable").count - 1, 2)
+        XCTAssertEqual(badInline.label.components(separatedBy: "Page mention label unavailable").count - 1, 2)
+        XCTAssertTrue(badInline.label.contains("قبل"))
+        XCTAssertTrue(badInline.label.contains("نهاية"))
         capture("reader-rtl-quotation-list", app: app)
     }
 
