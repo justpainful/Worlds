@@ -31,6 +31,29 @@ final class WorldsGalleryTests: XCTestCase {
         let audio = galleryBlock("c", attachment: "aud", name: "three.mp3", mime: "audio/mpeg")
         return try GalleryDocument(blocks: [image, other, video, audio], metadata: .object(["gallery": .object(["view": .string("grid"), "future": .bool(true)]), "other": .string("keep")]))
     }
+    func testDraftUndoSaveAndConflictPreserveAssets() async throws {
+        let initial = try fixture()
+        let baseline = GallerySnapshot(id: "gallery", kind: "gallery", revision: 1, blocks: initial.blocks, metadata: initial.metadata)
+        let repository = GalleryFixtureRepository(snapshot: baseline, accessible: ["img", "vid", "aud"])
+        var draft = try GalleryDraftSession(snapshot: baseline)
+        let stale = try GalleryDraftSession(snapshot: baseline)
+        try draft.setCaption(itemID: "a", text: "وصف")
+        try draft.move(from: 0, to: 2)
+        XCTAssertEqual(draft.document.items.map(\.id), ["b", "c", "a"])
+        draft.undo(); XCTAssertEqual(draft.document.items.map(\.id), ["a", "b", "c"])
+        draft.redo(); XCTAssertEqual(draft.document.items.map(\.id), ["b", "c", "a"])
+        let saved = try await draft.commit(to: repository)
+        let reopened = try GalleryDocument(blocks: saved.blocks, metadata: saved.metadata)
+        XCTAssertEqual(reopened.items.map(\.id), ["b", "c", "a"])
+        XCTAssertEqual(reopened.items.last?.caption, "وصف")
+        XCTAssertEqual(reopened.blocks[1], initial.blocks[1])
+        let retained = await repository.originalAttachments()
+        XCTAssertEqual(retained, ["img", "vid", "aud"])
+        do { _ = try await stale.commit(to: repository); XCTFail("Expected conflict") }
+        catch GalleryError.conflict { } catch { XCTFail("Unexpected error: \(error)") }
+        let actual = try await repository.readAuthorizedGallery(id: "gallery")
+        XCTAssertEqual(actual, saved)
+    }
     func testRoundTripPreservesUnknownBlocksAndFields() throws {
         let document = try fixture()
         let encoded = try JSONEncoder().encode(document.blocks)
@@ -44,6 +67,7 @@ final class WorldsGalleryTests: XCTestCase {
         let json = #"[{"id":"a","content":{"type":"galleryItem","attrs":{"bid":"a","attachmentId":"img","name":"a.png","mime":"image/png","size":1,"kind":"file","caption":{"future":true}}}}]"#
         let blocks = try JSONDecoder().decode([JSONValue].self, from: Data(json.utf8))
         var document = try GalleryDocument(blocks: blocks, metadata: .object([:]))
+        XCTAssertNil(document.editableCaption(itemID: "a"))
         XCTAssertThrowsError(try document.setCaption(itemID: "a", caption: "replacement"))
         XCTAssertEqual(document.blocks, blocks)
     }

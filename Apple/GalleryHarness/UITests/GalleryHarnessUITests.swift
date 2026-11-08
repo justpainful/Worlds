@@ -1,6 +1,35 @@
 import XCTest
 
 final class GalleryHarnessUITests: XCTestCase {
+    @MainActor func testDraftCaptionReorderUndoSaveAndReopen() {
+        let app = XCUIApplication(); app.launch()
+        let prepare = app.buttons["Prepare fixture"]
+        guard prepare.waitForExistence(timeout: 30) else { XCTFail("Fixture missing"); return }; prepare.tap()
+        let first = app.buttons["Add First.png"]
+        guard first.waitForExistence(timeout: 30) else { XCTFail("First file action missing"); return }; first.tap()
+        XCTAssertTrue(app.staticTexts["gallery-item.a"].waitForExistence(timeout: 20))
+        app.buttons["Add Second.png"].tap()
+        XCTAssertTrue(app.staticTexts["gallery-item.b"].waitForExistence(timeout: 20))
+        app.buttons["gallery-begin-draft"].tap()
+        let caption = app.descendants(matching: .any)["gallery-draft-caption"].firstMatch
+        guard caption.waitForExistence(timeout: 20) else { XCTFail("Caption field missing"); return }
+        caption.tap(); caption.typeText("Caption A"); app.buttons["Apply caption"].tap()
+        let a = app.buttons["gallery-draft-item.a"], b = app.buttons["gallery-draft-item.b"]
+        XCTAssertLessThan(a.frame.minY, b.frame.minY)
+        app.buttons["gallery-draft-move.b"].tap(); XCTAssertLessThan(b.frame.minY, a.frame.minY)
+        app.buttons["Undo draft"].tap(); XCTAssertLessThan(a.frame.minY, b.frame.minY)
+        app.buttons["Redo draft"].tap(); XCTAssertLessThan(b.frame.minY, a.frame.minY)
+        app.buttons["gallery-save-draft"].tap()
+        XCTAssertTrue(app.staticTexts["gallery-draft-saved"].waitForExistence(timeout: 20))
+        app.buttons["gallery-close-draft"].tap(); app.buttons["Reopen gallery"].tap()
+        XCTAssertTrue(app.staticTexts["gallery-reopened"].waitForExistence(timeout: 20))
+        XCTAssertTrue(app.staticTexts["gallery-unknown-preserved"].exists)
+        XCTAssertTrue(app.staticTexts["gallery-source-unchanged"].exists)
+        app.buttons["gallery-begin-draft"].tap()
+        XCTAssertLessThan(b.frame.minY, a.frame.minY); a.tap()
+        XCTAssertEqual(caption.value as? String, "Caption A")
+        let image = XCTAttachment(screenshot: app.screenshot()); image.name = "gallery-draft-reopened"; image.lifetime = .keepAlways; add(image)
+    }
     @MainActor func testAddReorderReopenAndMissingAttachment() {
         let app = XCUIApplication(); app.launch()
         let prepare = app.buttons["Prepare fixture"]

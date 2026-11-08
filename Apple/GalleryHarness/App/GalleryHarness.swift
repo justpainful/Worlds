@@ -18,6 +18,55 @@ import WorldsResourceRepositories
     @Published var sourceUnchanged = false
     @Published var unknownPreserved = false
     @Published var reopened = false
+    @Published var draft: GalleryDraftSession?
+    @Published var captionDraft = ""
+    @Published var draftItemID: String?
+    @Published var draftSaveUnconfirmed = false
+    @Published var draftRequiresReload = false
+    @Published var draftSaved = false
+    var currentDraftItem: GalleryItem? { draft?.document.items.first { $0.id == draftItemID } }
+    var editableDraftCaption: String? { guard let draft, let id = draftItemID else { return nil }; return draft.document.editableCaption(itemID: id) }
+    var captionPending: Bool { editableDraftCaption != nil && captionDraft != editableDraftCaption }
+    func beginDraft() {
+        guard !busy, !draftRequiresReload, let snapshot else { return }
+        do {
+            draft = try GalleryDraftSession(snapshot: snapshot)
+            draftItemID = draft?.document.items.first?.id; captionDraft = editableDraftCaption ?? ""
+            draftSaveUnconfirmed = false; draftSaved = false; error = nil
+        } catch { self.error = error.localizedDescription }
+    }
+    func selectDraftItem(_ id: String) { guard !captionPending else { return }; draftItemID = id; captionDraft = editableDraftCaption ?? "" }
+    func applyDraftCaption() {
+        guard var draft, let id = draftItemID else { return }
+        do { try draft.setCaption(itemID: id, text: captionDraft); self.draft = draft; draftSaved = false; error = nil }
+        catch { self.error = "This caption cannot be changed safely." }
+    }
+    func moveDraftUp(_ index: Int) {
+        guard !captionPending, var draft, index > 0 else { return }
+        do { try draft.move(from: index, to: index - 1); self.draft = draft; draftSaved = false; error = nil }
+        catch { self.error = "This order cannot be changed safely." }
+    }
+    func undoDraft(redo: Bool) {
+        guard !captionPending, var draft else { return }
+        if redo { draft.redo() } else { draft.undo() }
+        self.draft = draft; draftSaved = false; captionDraft = editableDraftCaption ?? ""
+    }
+    func saveDraft() async {
+        guard !busy, !captionPending, !draftSaveUnconfirmed, let draft, draft.dirty, let repository else { return }
+        busy = true; defer { busy = false }
+        do {
+            let saved = try await draft.commit(to: repository)
+            self.draft = try GalleryDraftSession(snapshot: saved); snapshot = saved
+            items = self.draft?.document.items ?? []; captionDraft = editableDraftCaption ?? ""
+            draftSaved = true; error = nil; reopened = false
+            do { try await reload() } catch { self.error = "Saved, but the fixture checks could not be refreshed." }
+        } catch {
+            draftSaveUnconfirmed = true; draftRequiresReload = true
+            self.error = "Save could not be confirmed. The draft is retained. Copy any needed text before discarding and reopening."
+        }
+    }
+    func discardDraft() { draft = nil; draftItemID = nil; captionDraft = ""; draftSaveUnconfirmed = false; draftSaved = false }
+
     private var source: URL?
     private var sourceBytes: Data?
     private var directory: URL?
@@ -87,7 +136,7 @@ import WorldsResourceRepositories
         do {
             guard let copyURL else { throw HarnessError.fixture }
             repository = NativeResourceRepository(store: try NativePersonalStore(url: copyURL))
-            try await reload(); error = nil; reopened = true
+            try await reload(); error = nil; draftRequiresReload = false; reopened = true
         } catch { self.error = error.localizedDescription }
     }
 }
@@ -97,12 +146,40 @@ private enum HarnessError: LocalizedError {
 }
 private struct GalleryHarnessView: View {
     @StateObject private var state = GalleryHarnessState()
+    @State private var confirmDiscard = false
     var body: some View {
         NavigationStack {
             List {
                 Text("Isolated gallery fixture. Files and edits stay in this temporary copy.")
                 if let error = state.error { Text(error).accessibilityIdentifier("gallery-error") }
                 if state.ready {
+                    if let draft = state.draft {
+                        Text("Changes stay in this temporary draft until saved.")
+                        if state.draftSaved && !draft.dirty && !state.captionPending { Text("Gallery draft saved").accessibilityIdentifier("gallery-draft-saved") }
+                        ForEach(Array(draft.document.items.enumerated()), id: \.element.id) { index, item in
+                            HStack {
+                                Button(item.name) { state.selectDraftItem(item.id) }.disabled(state.captionPending).accessibilityIdentifier("gallery-draft-item.\(item.attachmentID)")
+                                if index > 0 { Button("Move up") { state.moveDraftUp(index) }.disabled(state.captionPending || state.draftSaveUnconfirmed).accessibilityIdentifier("gallery-draft-move.\(item.attachmentID)") }
+                            }
+                        }
+                        if state.currentDraftItem != nil {
+                            if state.editableDraftCaption != nil {
+                                TextField("Caption", text: $state.captionDraft).accessibilityIdentifier("gallery-draft-caption")
+                                Button("Apply caption") { state.applyDraftCaption() }.disabled(!state.captionPending || state.draftSaveUnconfirmed)
+                            } else { Text("This caption cannot be edited safely.") }
+                        }
+                        Button("Undo draft") { state.undoDraft(redo: false) }.disabled(state.captionPending || !draft.canUndo || state.draftSaveUnconfirmed)
+                        Button("Redo draft") { state.undoDraft(redo: true) }.disabled(state.captionPending || !draft.canRedo || state.draftSaveUnconfirmed)
+                        Button("Save draft") { Task { await state.saveDraft() } }.disabled(state.captionPending || !draft.dirty || state.draftSaveUnconfirmed)
+                            .accessibilityIdentifier("gallery-save-draft")
+                        Button(draft.dirty || state.captionPending ? "Discard draft" : "Close draft") {
+                            if draft.dirty || state.captionPending { confirmDiscard = true } else { state.discardDraft() }
+                        }.accessibilityIdentifier("gallery-close-draft")
+                    } else {
+                        Button("Edit gallery draft") { state.beginDraft() }.disabled(state.draftRequiresReload).accessibilityIdentifier("gallery-begin-draft")
+                        if state.draftRequiresReload { Text("Reopen the gallery before starting another draft.") }
+                    }
+                    Group {
                     Button("Add First.png") { Task { await state.add(id: "a", name: "First.png") } }
                     Button("Add Second.png") { Task { await state.add(id: "b", name: "Second.png") } }
                     Button("Add Missing.png") { Task { await state.add(id: "missing", name: "Missing.png") } }
@@ -117,8 +194,13 @@ private struct GalleryHarnessView: View {
                     if state.sourceUnchanged { Text("Original unchanged").accessibilityIdentifier("gallery-source-unchanged") }
                     if state.reopened { Text("Gallery reopened").accessibilityIdentifier("gallery-reopened") }
                     Button("Reopen gallery") { Task { await state.reopen() } }
+                    }.disabled(state.draft != nil)
                 } else { Button("Prepare fixture") { Task { await state.prepare() } } }
             }.disabled(state.busy).navigationTitle("Gallery test")
+                .confirmationDialog("Discard unsaved gallery changes?", isPresented: $confirmDiscard) {
+                    Button("Discard", role: .destructive) { state.discardDraft() }
+                    Button("Cancel", role: .cancel) { }
+                }
         }
     }
 }

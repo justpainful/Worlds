@@ -74,6 +74,13 @@ public struct GalleryDocument: Sendable, Equatable {
         guard matches.count == 1, let position = matches.first else { throw GalleryError.missingItem }
         blocks.remove(at: position)
     }
+    public func editableCaption(itemID: String) -> String? {
+        let matches = galleryPositions().filter { blocks[$0].galleryObject?["id"]?.galleryString == itemID }
+        guard matches.count == 1, let position = matches.first,
+              let attrs = blocks[position].galleryObject?["content"]?.galleryObject?["attrs"]?.galleryObject else { return nil }
+        guard let value = attrs["caption"] else { return "" }
+        return value.galleryString
+    }
     public mutating func setCaption(itemID: String, caption: String) throws {
         let matches = galleryPositions().filter { blocks[$0].galleryObject?["id"]?.galleryString == itemID }
         guard matches.count == 1, let position = matches.first, var block = blocks[position].galleryObject,
