@@ -62,4 +62,3 @@ final class WorldsLocalRenamePageUITests: XCTestCase {
     }
 }
 #endif
-
