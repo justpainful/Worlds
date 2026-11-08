@@ -19,6 +19,19 @@ final class WorldsLocalPresentationUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["presentation-unsupported-elements"].exists)
         let screenshot = XCTAttachment(screenshot: app.screenshot()); screenshot.name = "presentation-notes-reopened"; screenshot.lifetime = .keepAlways; add(screenshot)
     }
+    @MainActor func testPartialPreviewUsesSelectedSlideAndShowsLimits() {
+        let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-presentation-fixture"]; app.launch()
+        let page = app.descendants(matching: .any)["page.deck-test"].firstMatch
+        guard page.waitForExistence(timeout: 30) else { failure(app, "preview-page-missing"); XCTFail("Presentation page missing"); return }; page.tap()
+        let edit = app.buttons["edit-local-presentation"]
+        guard edit.waitForExistence(timeout: 20) else { failure(app, "preview-edit-missing"); XCTFail("Presentation editor missing"); return }; edit.tap()
+        let toggle = app.descendants(matching: .any)["presentation-preview-toggle"].firstMatch
+        guard toggle.waitForExistence(timeout: 20) else { failure(app, "preview-toggle-missing"); XCTFail("Preview toggle missing"); return }; toggle.tap()
+        XCTAssertTrue(app.staticTexts["presentation-preview-limitations"].waitForExistence(timeout: 10))
+        let renderedText = app.staticTexts["First slide"].firstMatch
+        XCTAssertTrue(renderedText.waitForExistence(timeout: 10))
+        let image = XCTAttachment(screenshot: app.screenshot()); image.name = "presentation-partial-preview"; image.lifetime = .keepAlways; add(image)
+    }
     @MainActor func testReorderTextUndoAndReopenKeepsMedia() {
         let app = XCUIApplication(); app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-presentation-fixture", "--ui-testing-presentation-element-order"]; app.launch()
         let page = app.descendants(matching: .any)["page.deck-test"].firstMatch

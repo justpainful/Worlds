@@ -238,6 +238,7 @@ struct LocalPresentationEditor: View {
     @State private var discard = false
     @State private var reload = false
     @State private var deleteSlide = false
+    @State private var previewExpanded = false
     let onSaved: () -> Void
     init(databaseURL: URL, pageID: String, onSaved: @escaping () -> Void) {
         _state = StateObject(wrappedValue: PresentationEditorState(databaseURL: databaseURL, pageID: pageID)); self.onSaved = onSaved
@@ -257,6 +258,15 @@ struct LocalPresentationEditor: View {
                 ForEach(Array(state.slides.enumerated()), id: \.element.id) { index, slide in
                     Button("Slide \(index + 1)") { state.select(slide.id) }
                         .accessibilityIdentifier("presentation-slide.\(slide.id)").disabled(state.hasUnapplied)
+                }
+                if let slide = state.selected {
+                    DisclosureGroup("Partial slide preview", isExpanded: $previewExpanded) {
+                        Text("Images and video are unavailable. Some formatting may differ and unsupported elements may be omitted. Apply text changes to update this preview.")
+                            .font(.caption).accessibilityIdentifier("presentation-preview-limitations")
+                        NativeSlideView(slide: slide)
+                            .frame(maxWidth: 720)
+                            .accessibilityIdentifier("presentation-partial-preview")
+                    }.accessibilityIdentifier("presentation-preview-toggle")
                 }
                 if let slide = state.selected {
                     if let color = slide.editableBackgroundColor {
