@@ -24,6 +24,15 @@ while preserving the draft and the existing retry and cancel actions.
 The keyboard closes on a failed save to make room for the error; the text field
 can be focused again without discarding the draft.
 
+When editing the sync server on the workspace page list, the keyboard hides the
+large heading and secondary actions temporarily. The server field and scrollable
+real page list remain available. The heading and actions return when typing ends.
+
+On narrow phones the personal-space label sits above the creation actions,
+keeping the label readable without splitting words or compressing touch targets.
+The header spacing and empty-library illustration are reduced on these screens
+so the empty state remains visible without covering the page list.
+
 ## Subject
 Worlds is a personal and collaborative workspace for pages, documents, projects,
 drawings and files. This native surface lets the owner browse, search and create

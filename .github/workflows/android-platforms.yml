@@ -148,5 +148,8 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: worlds-android-visual-evidence
-          path: docs/android-native/screenshots/library-fixed.png
+          path: |
+            docs/android-native/screenshots/library-fixed.png
+            docs/android-native/screenshots/narrow-home-final.png
+            docs/android-native/screenshots/workspace-keyboard.png
           if-no-files-found: error

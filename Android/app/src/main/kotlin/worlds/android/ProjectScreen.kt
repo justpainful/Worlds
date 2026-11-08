@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -93,7 +94,7 @@ private fun projectStatusLabel(status: String): Int = when (status) {
             }
             if (actionError) Text(stringResource(R.string.project_action_error), color = MaterialTheme.colorScheme.error)
             if (info == null) Text(stringResource(R.string.project_metadata_error), color = MaterialTheme.colorScheme.error)
-            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyColumn(Modifier.weight(1f).testTag("project-resources"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (info != null) item(key = "overview") {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Spacer(Modifier.height(12.dp))

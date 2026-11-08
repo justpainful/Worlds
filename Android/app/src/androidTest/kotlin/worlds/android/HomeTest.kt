@@ -2,6 +2,10 @@ package worlds.android
 
 import android.app.Application
 import android.net.Uri
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import worlds.stylus.StrokeBrush
 import worlds.stylus.StrokeSample
 import androidx.compose.ui.test.assertIsDisplayed
@@ -9,6 +13,7 @@ import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -65,6 +70,15 @@ class HomeTest {
         val name = app.getString(label)
         if (compose.onAllNodes(androidx.compose.ui.test.hasContentDescription(name)).fetchSemanticsNodes().isNotEmpty()) compose.onNodeWithContentDescription(name).performClick()
         else compose.onNodeWithText(name).performClick()
+    }
+
+    @Test fun narrowEmptyLibraryKeepsItsMessageVisible() {
+        compose.setContent { WorldsTheme { Box(Modifier.size(274.dp, 488.dp)) { Home(model) } } }
+        compose.waitUntil(20_000) { !model.state.value.loading }
+        compose.onNodeWithText(app.getString(R.string.local_label)).assertIsDisplayed()
+        compose.onNodeWithText(app.getString(R.string.new_page)).assertIsDisplayed()
+        compose.onNodeWithText(app.getString(R.string.empty_title)).assertIsDisplayed()
+        compose.onNodeWithText(app.getString(R.string.empty_body)).assertIsDisplayed()
     }
 
     @Test fun templatePickerCreatesAnEditableIndependentPage() {
@@ -301,7 +315,8 @@ class HomeTest {
         compose.waitUntil(20_000) { !model.state.value.busy && runCatching { worlds.content.ProjectEditing.read(model.state.value.selected!!.resource.metadata).status == "paused" }.getOrDefault(false) }
         val info = worlds.content.ProjectEditing.read(model.state.value.selected!!.resource.metadata)
         check(info.start == "2026-11-08" && info.due == "2027-01-01" && info.description == "Prepare the release")
-        compose.onNodeWithText(app.getString(R.string.project_link_existing)).performScrollTo().performClick()
+        compose.onNodeWithTag("project-resources").performScrollToNode(hasText(app.getString(R.string.project_link_existing)))
+        compose.onNodeWithText(app.getString(R.string.project_link_existing)).performClick()
         compose.onNodeWithText("External notes").performScrollTo().performClick()
         compose.waitUntil(20_000) { !model.state.value.busy && worlds.content.ProjectEditing.read(model.state.value.selected!!.resource.metadata).links.contains(external.id) }
         ContentStore(app, database).use { check(it.load(external.id)!!.resource.parentId == null) }
@@ -312,13 +327,15 @@ class HomeTest {
         compose.waitUntil(20_000) { model.state.value.selected?.resource?.kind == "document" && model.state.value.selected?.resource?.parentId == projectId }
         compose.onNodeWithText(app.getString(R.string.back)).performClick()
         compose.waitUntil(20_000) { model.state.value.selected?.resource?.id == projectId }
-        compose.onNode(hasText("Project document") and hasClickAction()).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("project-resources").performScrollToNode(hasText("Project document") and hasClickAction())
+        compose.onNode(hasText("Project document") and hasClickAction()).assertIsDisplayed()
         check(model.state.value.projectActivity.any { it.resource.title == "Project document" && it.event.kind == "created" })
         if (InstrumentationRegistry.getArguments().getString("captureWorldsUi") == "true") {
             compose.waitForIdle(); Thread.sleep(400)
             InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /sdcard/Download/worlds-project.png").close()
         }
-        compose.onNodeWithText(app.getString(R.string.project_unlink)).performScrollTo().performClick()
+        compose.onNodeWithTag("project-resources").performScrollToNode(hasText(app.getString(R.string.project_unlink)))
+        compose.onNodeWithText(app.getString(R.string.project_unlink)).performClick()
         compose.onNodeWithText(app.getString(R.string.project_unlink_confirm, "External notes")).assertIsDisplayed()
         compose.onAllNodesWithText(app.getString(R.string.project_unlink)).let { it[it.fetchSemanticsNodes().lastIndex].performClick() }
         compose.waitUntil(20_000) { !model.state.value.busy && worlds.content.ProjectEditing.read(model.state.value.selected!!.resource.metadata).links.isEmpty() }
@@ -654,8 +671,10 @@ class HomeTest {
         compose.onNodeWithText(app.getString(R.string.document_footer)).performTextInput("Project footer")
         compose.onNodeWithText(app.getString(R.string.save)).performClick()
         compose.waitUntil(20_000) { !model.state.value.busy && org.json.JSONObject(model.state.value.selected!!.resource.metadata).getJSONObject("doc").optString("footer") == "Project footer" }
+        compose.onNodeWithTag("page-blocks").performScrollToNode(hasText("Project header"))
         compose.onNodeWithText("Project header").assertIsDisplayed()
-        compose.onNodeWithText("Project footer").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("page-blocks").performScrollToNode(hasText("Project footer"))
+        compose.onNodeWithText("Project footer").assertIsDisplayed()
         if (InstrumentationRegistry.getArguments().getString("captureWorldsUi") == "true") {
             compose.waitForIdle(); Thread.sleep(400)
             val screenshot = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
@@ -1287,14 +1306,21 @@ class HomeTest {
                 if (target != null) {
                     val bounds = android.graphics.Rect(); target.getBoundsInScreen(bounds)
                     if (!bounds.isEmpty) {
-                        automation.executeShellCommand("input tap ${bounds.centerX()} ${bounds.centerY()}").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
+                        // DocumentsUI overlays a preview button at the thumbnail center.
+                        val x = bounds.left + bounds.width() / 4
+                        val y = bounds.top + bounds.height() / 4
+                        automation.executeShellCommand("input tap $x $y").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
                         clicked = true
                     }
                 }
                 if (!clicked) Thread.sleep(200)
             }
             check(clicked) { "Background image was not found in system picker" }
-            compose.waitUntil(20_000) { !model.state.value.busy && org.json.JSONObject(model.state.value.selected!!.blocks.single().content).getJSONObject("attrs").getJSONObject("background").has("attachmentId") }
+            try {
+                compose.waitUntil(20_000) { !model.state.value.busy && org.json.JSONObject(model.state.value.selected!!.blocks.single().content).getJSONObject("attrs").getJSONObject("background").has("attachmentId") }
+            } catch (error: Throwable) {
+                throw AssertionError("Background import did not finish; status=${model.state.value.imageStatus}, active window=${automation.rootInActiveWindow?.packageName}", error)
+            }
             val attachment = org.json.JSONObject(model.state.value.selected!!.blocks.single().content).getJSONObject("attrs").getJSONObject("background").getString("attachmentId")
             check(ContentStore(app, database).use { it.imageBytes(attachment)!!.contentEquals(bytes) })
             compose.waitUntil(20_000) { compose.onAllNodes(androidx.compose.ui.test.hasContentDescription(app.getString(R.string.image_description))).fetchSemanticsNodes().isNotEmpty() }
@@ -1444,7 +1470,10 @@ class HomeTest {
                 if (target != null) {
                     val bounds = android.graphics.Rect(); target.getBoundsInScreen(bounds)
                     if (!bounds.isEmpty) {
-                        automation.executeShellCommand("input tap ${bounds.centerX()} ${bounds.centerY()}").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
+                        // DocumentsUI overlays a preview button at the thumbnail center.
+                        val x = bounds.left + bounds.width() / 4
+                        val y = bounds.top + bounds.height() / 4
+                        automation.executeShellCommand("input tap $x $y").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
                         clicked = true
                     }
                 }

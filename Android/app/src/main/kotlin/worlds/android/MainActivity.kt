@@ -1141,10 +1141,11 @@ private val Light = lightColorScheme(primary = Color(0xFF765127), onPrimary = Co
     val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
         val wide = maxWidth >= 840.dp
+        val narrow = maxWidth < 360.dp
         Row(Modifier.fillMaxSize()) {
             if (state.selected == null || wide) {
                 Column(Modifier.then(if (wide) Modifier.width(430.dp) else Modifier.fillMaxSize()).fillMaxHeight().padding(horizontal = 24.dp)) {
-                    Spacer(Modifier.height(if (keyboardVisible) 8.dp else 30.dp))
+                    Spacer(Modifier.height(if (keyboardVisible) 8.dp else if (narrow) 14.dp else 30.dp))
                     if (!keyboardVisible) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1157,18 +1158,20 @@ private val Light = lightColorScheme(primary = Color(0xFF765127), onPrimary = Co
                                 IconButton(onClick = { showAppearance = true }, modifier = Modifier.semantics { contentDescription = label }) { WorldsGlyph(R.drawable.ic_settings_2) }
                             }
                         }
-                        Spacer(Modifier.height(26.dp))
+                        Spacer(Modifier.height(if (narrow) 12.dp else 26.dp))
                     }
-                    Text(stringResource(R.string.home_title), fontSize = if (keyboardVisible) 22.sp else 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
-                    if (!keyboardVisible) Text(stringResource(R.string.home_subtitle), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 15.sp, lineHeight = 26.sp)
-                    Spacer(Modifier.height(if (keyboardVisible) 8.dp else 20.dp))
+                    Text(stringResource(R.string.home_title), fontSize = if (keyboardVisible || narrow) 22.sp else 30.sp, lineHeight = if (narrow) 30.sp else 38.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
+                    if (!keyboardVisible && !narrow) Text(stringResource(R.string.home_subtitle), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 15.sp, lineHeight = 26.sp)
+                    Spacer(Modifier.height(if (keyboardVisible || narrow) 8.dp else 20.dp))
                     OutlinedTextField(value = state.query, onValueChange = model::search, label = { Text(stringResource(R.string.search)) }, singleLine = true,
                         leadingIcon = { WorldsGlyph(R.drawable.ic_search) }, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search), keyboardActions = KeyboardActions(onSearch = { keyboard?.hide() }),
                         modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp))
                     if (!keyboardVisible) {
-                        Spacer(Modifier.height(18.dp))
+                        Spacer(Modifier.height(if (narrow) 8.dp else 18.dp))
+                        if (narrow) Text(stringResource(if (state.trash) R.string.trash else R.string.local_label), color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium, fontSize = 12.sp, maxLines = 1)
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(stringResource(if (state.trash) R.string.trash else R.string.local_label), color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                            if (!narrow) Text(stringResource(if (state.trash) R.string.trash else R.string.local_label), color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium, fontSize = 12.sp, modifier = Modifier.weight(1f), maxLines = 1)
+                            else Spacer(Modifier.weight(1f))
                             if (!state.trash) Button(enabled = !state.busy, onClick = { createParent = null; createKind = "page"; showCreate = true }) { WorldsActionLabel(R.drawable.ic_plus, stringResource(R.string.new_page)) }
                             Box {
                                 val menuLabel = stringResource(R.string.library_more_actions)
@@ -1197,7 +1200,7 @@ private val Light = lightColorScheme(primary = Color(0xFF765127), onPrimary = Co
                     when {
                         state.loading -> CircularProgressIndicator(Modifier.padding(16.dp))
                         state.error -> { Text(stringResource(R.string.error_loading), color = MaterialTheme.colorScheme.error); TextButton(onClick = model::refresh) { Text(stringResource(R.string.retry)) } }
-                        state.pages.isEmpty() -> if (!wide) EmptyPages(state.query.isNotBlank(), state.trash)
+                        state.pages.isEmpty() -> if (!wide) EmptyPages(state.query.isNotBlank(), state.trash, narrow)
                         else -> LazyColumn(Modifier.weight(1f)) {
                             items(state.pages, key = { it.id }) { page -> PageRow(page, page.id == state.selected?.resource?.id) { model.open(page.id) } }
                         }
@@ -1258,13 +1261,13 @@ private val Light = lightColorScheme(primary = Color(0xFF765127), onPrimary = Co
     }
 }
 
-@Composable private fun EmptyPages(searching: Boolean, trash: Boolean) {
-    Column(Modifier.fillMaxWidth().padding(vertical = 32.dp)) {
-        Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(52.dp)) {
+@Composable private fun EmptyPages(searching: Boolean, trash: Boolean, compact: Boolean) {
+    Column(Modifier.fillMaxWidth().padding(vertical = if (compact) 8.dp else 32.dp)) {
+        Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(if (compact) 40.dp else 52.dp)) {
             Box(contentAlignment = Alignment.Center) { CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant) { WorldsGlyph(if (searching) R.drawable.ic_search else if (trash) R.drawable.ic_trash_2 else R.drawable.ic_file_text, Modifier.size(24.dp)) } }
         }
-        Spacer(Modifier.height(16.dp))
-        Text(stringResource(if (searching) R.string.no_results else if (trash) R.string.trash_empty else R.string.empty_title), fontSize = 20.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onBackground)
+        Spacer(Modifier.height(if (compact) 8.dp else 16.dp))
+        Text(stringResource(if (searching) R.string.no_results else if (trash) R.string.trash_empty else R.string.empty_title), fontSize = if (compact) 16.sp else 20.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onBackground)
         if (!searching && !trash) Text(stringResource(R.string.empty_body), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp, lineHeight = 24.sp, modifier = Modifier.padding(top = 8.dp))
     }
 }
@@ -1557,7 +1560,7 @@ private data class PendingTableDelete(val revision: Long, val action: String, va
         val header = runningText?.optString("header").orEmpty()
         val footer = runningText?.optString("footer").orEmpty()
         val typography = remember(document.resource.metadata) { documentTypography(document.resource.metadata) }
-        LazyColumn(Modifier.weight(1f), state = blockListState) {
+        LazyColumn(Modifier.weight(1f).testTag("page-blocks"), state = blockListState) {
             if (document.resource.kind == "document" && header.isNotBlank()) item(key = "document-header") {
                 Text(header, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

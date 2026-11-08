@@ -128,7 +128,12 @@ class AndroidSyncStoreTest {
                 initial.saveRecoveredText(key, DraftCapture("block", "older recovery"))
                 initial.writableDatabase.execSQL("DROP INDEX recovered_draft_token")
                 initial.writableDatabase.execSQL("DROP TABLE offline_grants")
-                initial.writableDatabase.execSQL("ALTER TABLE recovered_text DROP COLUMN draft_token")
+                // Android 11 SQLite cannot drop a column. Recreate the v3 table instead.
+                initial.writableDatabase.execSQL("ALTER TABLE recovered_text RENAME TO recovered_text_new")
+                initial.writableDatabase.execSQL("CREATE TABLE recovered_text (id INTEGER PRIMARY KEY AUTOINCREMENT, account TEXT NOT NULL, workspace TEXT NOT NULL, page TEXT NOT NULL, channel INTEGER NOT NULL, block_id TEXT NOT NULL, text TEXT NOT NULL, reason TEXT NOT NULL, created_at INTEGER NOT NULL)")
+                initial.writableDatabase.execSQL("INSERT INTO recovered_text(id,account,workspace,page,channel,block_id,text,reason,created_at) SELECT id,account,workspace,page,channel,block_id,text,reason,created_at FROM recovered_text_new")
+                initial.writableDatabase.execSQL("DROP TABLE recovered_text_new")
+                initial.writableDatabase.execSQL("CREATE INDEX recovered_document ON recovered_text(account,workspace,page,channel,id)")
                 initial.writableDatabase.version = 3
             }
             AndroidSyncStore(context, oldName).use { upgraded ->

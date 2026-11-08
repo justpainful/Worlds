@@ -31,12 +31,18 @@ class WorkspacePagesUiTest {
             compose.onNodeWithText(app.getString(R.string.pages_invalid_server)).assertIsDisplayed()
             assertNull(target)
             compose.onNodeWithTag("pages_server").performTextInput("https://sync.example")
+            if (InstrumentationRegistry.getArguments().getString("captureUi") == "1") {
+                compose.waitForIdle(); Thread.sleep(600)
+                android.os.ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /sdcard/Download/worlds-workspace-keyboard.png")).use { it.readBytes() }
+            }
+            compose.onNodeWithTag("workspace_pages_list").performScrollToNode(hasTestTag("workspace_page_page-b"))
             compose.onNodeWithTag("workspace_page_page-b").performClick()
             assertEquals("page-b", target!!.page); assertEquals("edit", target!!.level); assertEquals("https://sync.example", target!!.endpoint)
             if (InstrumentationRegistry.getArguments().getString("captureUi") == "1") {
                 Thread.sleep(800)
                 android.os.ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /sdcard/Download/worlds-workspace-pages.png")).use { it.readBytes() }
             }
+            compose.waitUntil(15_000) { compose.onAllNodesWithTag("pages_refresh").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("pages_refresh").performClick()
             compose.waitUntil(15_000) { gateway.calls >= 2 }
             compose.onNodeWithTag("pages_manual").performClick(); assertTrue(manual)
