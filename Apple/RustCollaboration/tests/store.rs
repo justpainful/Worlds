@@ -235,6 +235,25 @@ fn owned_rejection_quarantines_without_replay_and_rolls_back_on_failure() {
 }
 
 #[test]
+fn owned_rejection_preserves_causally_pending_updates_after_restart() {
+    use worlds_collaboration::CollaborationDoc;
+    let path=fixture();let server="wss://fixture.invalid/workspaces/w/docs/p";
+    let base=include_bytes!("fixtures/base.bin");let pending=include_bytes!("fixtures/alice-diff.bin");
+    let mut store=SyncStore::open(&path,"p","u","w").unwrap();store.enroll_empty_owned_document(0,server).unwrap();
+    store.append_owned_document(0,server,pending).unwrap();
+    let db=Connection::open(&path).unwrap();db.execute("UPDATE account_workspaces SET default_level='none' WHERE id='w'",[]).unwrap();
+    store.quarantine_owned_rejection(0,server,"fixture rejection").unwrap();
+    assert!(matches!(store.read_owned_rejection(0,server),Err(StoreError::Denied)));drop(store);
+    db.execute("UPDATE account_workspaces SET default_level='edit' WHERE id='w'",[]).unwrap();
+    let store=SyncStore::open(&path,"p","u","w").unwrap();
+    let restored=CollaborationDoc::default();restored.apply(&store.read_owned_rejection(0,server).unwrap()).unwrap();restored.apply(base).unwrap();
+    let expected=CollaborationDoc::default();expected.apply(base).unwrap();expected.apply(pending).unwrap();
+    assert_eq!(restored.diff(&[0]).unwrap(),expected.diff(&[0]).unwrap());
+    assert!(matches!(store.owned_document_batch(0,server,&[0]),Err(StoreError::Denied)));
+    assert_eq!(db.query_row("SELECT count(*) FROM sync_outbox WHERE state='rejected'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+}
+
+#[test]
 fn incomplete_ancestry_never_falls_back_to_workspace_default_for_writes() {
     let path=fixture(); let mut store=SyncStore::open(&path,"p","u","w").unwrap();
     let db=Connection::open(&path).unwrap();
