@@ -157,9 +157,21 @@ pub(crate) mod unix {
                 params![operation,page],|r|Ok((r.get(0)?,r.get(1)?))).optional()?;
             let (rel,size)=stored.ok_or_else(||anyhow::anyhow!("completed import attachment is unavailable"))?;
             if !valid_relative(&operation,&rel) || size < 0 { bail!("completed import attachment is invalid") }
-            let file=crate::attachment_open::open_confined(&root.join("attachments"),Path::new(&rel))?;
+            let mut file=crate::attachment_open::open_confined(&root.join("attachments"),Path::new(&rel))?;
             let info=file.metadata()?;
             if info.nlink()!=1 || info.len()!=size as u64 || info.len()!=before.len() { bail!("completed import attachment changed") }
+            let mut source_buffer=[0_u8;64*1024]; let mut copied_buffer=[0_u8;64*1024];
+            let mut remaining=before.len();
+            while remaining>0 {
+                let count=remaining.min(source_buffer.len() as u64) as usize;
+                input.read_exact(&mut source_buffer[..count])?;
+                file.read_exact(&mut copied_buffer[..count])?;
+                if source_buffer[..count]!=copied_buffer[..count] { bail!("completed import attachment content changed") }
+                remaining-=count as u64;
+            }
+            let source_after=input.metadata()?; let copy_after=file.metadata()?;
+            let same=|a: &std::fs::Metadata,b: &std::fs::Metadata| a.dev()==b.dev() && a.ino()==b.ino() && a.len()==b.len() && a.nlink()==b.nlink() && a.mtime()==b.mtime() && a.mtime_nsec()==b.mtime_nsec() && a.ctime()==b.ctime() && a.ctime_nsec()==b.ctime_nsec();
+            if !same(&before,&source_after) || !same(&info,&copy_after) { bail!("completed import files changed during verification") }
             return Ok(serde_json::from_str(&result)?);
         }
         if let Some(cancel)=cancel { cancel.check()?; }
@@ -411,7 +423,10 @@ pub(crate) mod unix {
             assert_eq!(db.query_row("SELECT count(*) FROM attachments WHERE page_id='gallery-test'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
             assert_eq!(db.query_row("SELECT count(*) FROM native_gallery_import_completed",[],|r|r.get::<_,i64>(0)).unwrap(),1);
             let rel:String=db.query_row("SELECT rel_path FROM attachments WHERE page_id='gallery-test'",[],|r|r.get(0)).unwrap();
-            std::fs::remove_file(root.join("attachments").join(rel)).unwrap();
+            let imported=root.join("attachments").join(rel);
+            std::fs::write(&imported,b"different").unwrap();
+            let changed=call(); assert_eq!(changed["ok"],false,"same-size replacement must not be reported as successful");
+            std::fs::remove_file(imported).unwrap();
             let missing=call(); assert_eq!(missing["ok"],false,"missing attachment must not be reported as successful");
             assert_eq!(db.query_row("SELECT count(*) FROM attachments WHERE page_id='gallery-test'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
             assert_eq!(std::fs::read(&source).unwrap(),b"synthetic");
