@@ -92,21 +92,21 @@ public struct NativeEditorView: View {
             Button("Discard", role: .destructive) { model.discardRejectedNativeText() }
             Button("Cancel", role: .cancel) { }
         }
-        .confirmationDialog("Delete this table row?", isPresented: $confirmDeleteTableRow) {
+        .alert("Delete this table row?", isPresented: $confirmDeleteTableRow) {
             Button("Delete row", role: .destructive) {
                 defer { tableDeleteSource = nil }
                 guard tableDeleteSource == model.document.source, tableDeleteSelection == model.selection else { model.report(NativeEditorError.unsupportedFormatting); return }
                 do { try model.deleteSelectedTableRow() } catch { model.report(error) }
             }.accessibilityIdentifier("editor-confirm-delete-table-row")
-            Button("Cancel", role: .cancel) { tableDeleteSource = nil }
+            Button("Cancel", role: .cancel) { tableDeleteSource = nil }.accessibilityIdentifier("editor-cancel-delete-table-row")
         } message: { Text("The contents of this row will be removed when you save. You can undo this change.") }
-        .confirmationDialog("Delete this table column?", isPresented: $confirmDeleteTableColumn) {
+        .alert("Delete this table column?", isPresented: $confirmDeleteTableColumn) {
             Button("Delete column", role: .destructive) {
                 defer { tableDeleteSource = nil }
                 guard tableDeleteSource == model.document.source, tableDeleteSelection == model.selection else { model.report(NativeEditorError.unsupportedFormatting); return }
                 do { try model.deleteSelectedTableColumn() } catch { model.report(error) }
             }.accessibilityIdentifier("editor-confirm-delete-table-column")
-            Button("Cancel", role: .cancel) { tableDeleteSource = nil }
+            Button("Cancel", role: .cancel) { tableDeleteSource = nil }.accessibilityIdentifier("editor-cancel-delete-table-column")
         } message: { Text("The contents of this column will be removed when you save. You can undo this change.") }
         .alert(addNested ? "Add nested item" : "Add list item", isPresented: $addItem) {
             TextField("Item text", text: $itemText)

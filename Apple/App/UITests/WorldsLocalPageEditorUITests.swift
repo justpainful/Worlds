@@ -12,7 +12,7 @@ final class WorldsLocalPageEditorUITests: XCTestCase {
         editor.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: 0.05)).tap()
         let delete = app.buttons["editor-delete-table-column"]
         XCTAssertTrue(delete.waitForExistence(timeout: 10)); delete.tap()
-        let cancel = app.buttons["Cancel"].firstMatch
+        let cancel = app.buttons["editor-cancel-delete-table-column"].firstMatch
         guard cancel.waitForExistence(timeout: 10) else {
             recordFailureContext(app, "delete-column-cancel-missing")
             XCTFail("Cancel action did not appear")
@@ -38,7 +38,7 @@ final class WorldsLocalPageEditorUITests: XCTestCase {
         editor.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.14)).tap()
         let delete = app.buttons["editor-delete-table-row"]
         XCTAssertTrue(delete.waitForExistence(timeout: 10)); delete.tap()
-        let cancel = app.buttons["Cancel"].firstMatch
+        let cancel = app.buttons["editor-cancel-delete-table-row"].firstMatch
         guard cancel.waitForExistence(timeout: 10) else {
             recordFailureContext(app, "delete-row-cancel-missing")
             XCTFail("Cancel action did not appear")
