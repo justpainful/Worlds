@@ -34,7 +34,7 @@ final class PresentationSessionTests: XCTestCase {
         XCTAssertEqual(changed.editableBackgroundColor, "#f7f5f0")
         session.undo(); XCTAssertEqual(session.slides[0], original)
         session.redo(); XCTAssertEqual(session.slides[0], changed)
-        for background in [#"{"color":"#16161a","attachmentId":"image"}"#, #"{"color":"#16161a","future":{"keep":true}}"#, #"{"color":"rgba(1,2,3,.5)"}"#] {
+        for background in [##"{"color":"#16161a","attachmentId":"image"}"##, ##"{"color":"#16161a","future":{"keep":true}}"##, #"{"color":"rgba(1,2,3,.5)"}"#] {
             let json = #"{"id":"bad","content":{"type":"slide","attrs":{"background":BACKGROUND,"elements":[]}}}"#.replacingOccurrences(of: "BACKGROUND", with: background)
             let bad = try SlideBlock(json: Data(json.utf8))
             var rejected = try PresentationSession(slides: [bad])

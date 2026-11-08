@@ -24,7 +24,7 @@ final class PresentationPersistenceTests: XCTestCase {
     }
     func testShapeFillSaveAndConflictKeepsMedia() async throws {
         let path = try database()
-        try execute(path, #"INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('image','deck','image','a.png','image/png',4,'missing/a.png',1); UPDATE blocks SET content='{"type":"slide","attrs":{"bid":"slide","elements":[{"id":"shape","type":"shape","shape":"rect","fill":"#16161a","future":{"keep":true}},{"id":"image-el","type":"image","attachmentId":"image"}]}}' WHERE id='slide';"#)
+        try execute(path, ##"INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('image','deck','image','a.png','image/png',4,'missing/a.png',1); UPDATE blocks SET content='{"type":"slide","attrs":{"bid":"slide","elements":[{"id":"shape","type":"shape","shape":"rect","fill":"#16161a","future":{"keep":true}},{"id":"image-el","type":"image","attachmentId":"image"}]}}' WHERE id='slide';"##)
         let store = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
         let stale = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
         var slide = try XCTUnwrap(store.initialSlides.first)
@@ -55,7 +55,7 @@ final class PresentationPersistenceTests: XCTestCase {
     }
     func testSolidBackgroundSaveAndConflictKeepsMediaElement() async throws {
         let path = try database()
-        try execute(path, #"INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('image','deck','image','a.png','image/png',4,'missing/a.png',1); UPDATE blocks SET content='{"type":"slide","attrs":{"bid":"slide","background":{"color":"#16161a"},"elements":[{"id":"image-el","type":"image","attachmentId":"image","future":{"keep":true}}],"future":{"keep":true}}}' WHERE id='slide';"#)
+        try execute(path, ##"INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('image','deck','image','a.png','image/png',4,'missing/a.png',1); UPDATE blocks SET content='{"type":"slide","attrs":{"bid":"slide","background":{"color":"#16161a"},"elements":[{"id":"image-el","type":"image","attachmentId":"image","future":{"keep":true}}],"future":{"keep":true}}}' WHERE id='slide';"##)
         let store = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
         let stale = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
         var slide = try XCTUnwrap(store.initialSlides.first)

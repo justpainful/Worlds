@@ -6,7 +6,7 @@ import XCTest
 
 final class NativeSlideLayoutTests: XCTestCase {
     @MainActor func testNamedFontWeightChangesRenderedText() throws {
-        let json = #"{"id":"slide","content":{"type":"slide","attrs":{"background":{"color":"#000000"},"elements":[{"id":"text","type":"text","x":80,"y":100,"w":900,"h":150,"text":"Weighted Text","style":{"font":"Helvetica","fontSize":100,"fontWeight":400,"color":"#ffffff"}}]}}}"#
+        let json = ##"{"id":"slide","content":{"type":"slide","attrs":{"background":{"color":"#000000"},"elements":[{"id":"text","type":"text","x":80,"y":100,"w":900,"h":150,"text":"Weighted Text","style":{"font":"Helvetica","fontSize":100,"fontWeight":400,"color":"#ffffff"}}]}}}"##
         func render(_ source: String) throws -> Data {
             let slide = try SlideBlock(json: Data(source.utf8))
             let renderer = ImageRenderer(content: NativeSlideView(slide: slide).frame(width: 640, height: 360))
@@ -19,7 +19,7 @@ final class NativeSlideLayoutTests: XCTestCase {
         XCTAssertNotEqual(regular, bold, "The stored weight must affect a named font")
     }
     @MainActor func testLineUsesFourPointCenteredStroke() throws {
-        let json = #"{"id":"slide","content":{"type":"slide","attrs":{"background":{"color":"#000000"},"elements":[{"id":"line","type":"shape","shape":"line","x":500,"y":310,"w":200,"h":100,"stroke":"#ff0000"}]}}}"#
+        let json = ##"{"id":"slide","content":{"type":"slide","attrs":{"background":{"color":"#000000"},"elements":[{"id":"line","type":"shape","shape":"line","x":500,"y":310,"w":200,"h":100,"stroke":"#ff0000"}]}}}"##
         let slide = try SlideBlock(json: Data(json.utf8))
         let renderer = ImageRenderer(content: NativeSlideView(slide: slide).frame(width: 1280, height: 720))
         renderer.scale = 1
@@ -39,7 +39,7 @@ final class NativeSlideLayoutTests: XCTestCase {
         XCTAssertEqual(redRows, [358, 359, 360, 361])
     }
     @MainActor func testSlideCoordinatesAndPhysicalAlignmentDoNotMirrorInRTL() throws {
-        let json = #"{"id":"slide","content":{"type":"slide","attrs":{"background":{"color":"#16161a"},"elements":[{"id":"left","type":"text","x":80,"y":60,"w":400,"h":100,"text":"مرحبا Worlds","style":{"align":"left","color":"#ffffff","fontSize":40}},{"id":"right","type":"text","x":700,"y":250,"w":400,"h":100,"text":"عربي 123","style":{"align":"right","color":"#e5484d","fontSize":40}},{"id":"shape","type":"shape","shape":"rect","x":120,"y":440,"w":180,"h":100,"fill":"#0090ff"}]}}}"#
+        let json = ##"{"id":"slide","content":{"type":"slide","attrs":{"background":{"color":"#16161a"},"elements":[{"id":"left","type":"text","x":80,"y":60,"w":400,"h":100,"text":"مرحبا Worlds","style":{"align":"left","color":"#ffffff","fontSize":40}},{"id":"right","type":"text","x":700,"y":250,"w":400,"h":100,"text":"عربي 123","style":{"align":"right","color":"#e5484d","fontSize":40}},{"id":"shape","type":"shape","shape":"rect","x":120,"y":440,"w":180,"h":100,"fill":"#0090ff"}]}}}"##
         let slide = try SlideBlock(json: Data(json.utf8))
         func pixels(_ direction: LayoutDirection) throws -> Data {
             let content = NativeSlideView(slide: slide).frame(width: 320, height: 180).environment(\.layoutDirection, direction)
