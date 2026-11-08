@@ -38,6 +38,7 @@ jobs:
           grep -E 'testUnwrapMultipleItemsAndConvertNestedWithoutLosingUnknownBlock.*passed' logs/swift-test.log
           grep -E 'testNestedTaskEnterBackspaceRTLAndUndo.*passed' logs/swift-test.log
           grep -E 'testAppendEmptyNestedTaskThenTypeAndUndo.*passed' logs/swift-test.log
+          grep -E 'testListKeyboardBoundariesUseExactRangeWithRepeatedItems.*passed' logs/swift-test.log
           grep -E 'testStrikethroughPreservesArabicTextAndUndo.*passed' logs/swift-test.log
           grep -E 'testHeadingConversionPreservesOpaqueDataAndRejectsAmbiguousLevel.*passed' logs/swift-test.log
           grep -E 'testLinkAcrossRTLTextRunsAndUnsafeRejection.*passed' logs/swift-test.log
