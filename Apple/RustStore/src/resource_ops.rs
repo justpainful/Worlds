@@ -517,14 +517,22 @@ fn protected_slide(value: &Value) -> Result<Value> {
             let Some(object)=element.as_object_mut() else { continue };
             let kind=object.get("type").and_then(Value::as_str).unwrap_or("").to_string();
             if ["text","image","video","shape"].contains(&kind.as_str()) {
-                for key in ["x","y","w","h","rot"] { object.remove(key); }
+                for key in ["x","y","w","h","rot"] {
+                    let valid=object.get(key).and_then(Value::as_f64).is_some_and(|n|
+                        n.is_finite() && (key=="rot" || n.abs()<=1_000_000.0) && (!(key=="w" || key=="h") || n>0.0));
+                    if valid { object.remove(key); }
+                }
             }
             if kind=="text" {
                 // Unknown text payloads must survive unrelated edits; only
                 // ordinary strings are supported by the native editor.
                 if object.get("text").is_some_and(Value::is_string) { object.remove("text"); }
                 if let Some(style)=object.get_mut("style").and_then(Value::as_object_mut) {
-                    for key in ["fontSize","fontWeight","color","font","italic"] { style.remove(key); }
+                    for (key,min,max) in [("fontSize",1.0,2048.0),("fontWeight",100.0,1000.0)] {
+                        if style.get(key).and_then(Value::as_f64).is_some_and(|v|v.is_finite() && (min..=max).contains(&v)) { style.remove(key); }
+                    }
+                    for key in ["color","font"] { if style.get(key).is_some_and(Value::is_string) { style.remove(key); } }
+                    if style.get("italic").is_some_and(Value::is_boolean) { style.remove("italic"); }
                     if style.get("align").and_then(Value::as_str).is_some_and(|v|["left","center","right"].contains(&v)) { style.remove("align"); }
                     if style.is_empty() { object.remove("style"); }
                 }
@@ -729,6 +737,26 @@ mod presentation_tests {
         let mut safe=inputs(&old); safe[0].content["attrs"]["notes"]=json!("after");
         let saved=save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),safe).unwrap();
         assert_eq!(saved["blocks"][0]["content"]["attrs"]["elements"][0]["style"]["align"],"future");
+        std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn malformed_slide_style_and_geometry_survive_other_edits() {
+        let path=fixture(); let c=Connection::open(&path).unwrap();
+        let original=json!({"type":"slide","attrs":{"bid":"s","notes":"before","elements":[{"id":"t","type":"text","text":"text","x":{"future":1},"w":-1,"style":{"fontWeight":{"future":true},"fontSize":0,"italic":"future","font":null,"color":22}}]}});
+        c.execute("UPDATE blocks SET content=?1 WHERE id='s'",[original.to_string()]).unwrap(); drop(c);
+        let old=read_presentation(&path,"deck").unwrap();
+        for (key,value) in [("fontWeight",json!(700)),("fontSize",json!(32)),("italic",json!(true)),("font",json!("Arial")),("color",json!("red"))] {
+            let mut attack=inputs(&old); attack[0].content["attrs"]["elements"][0]["style"][key]=value;
+            assert!(save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),attack).is_err(),"{key}");
+            assert_eq!(read_presentation(&path,"deck").unwrap(),old);
+        }
+        for (key,value) in [("x",json!(3)),("w",json!(20))] {
+            let mut attack=inputs(&old); attack[0].content["attrs"]["elements"][0][key]=value;
+            assert!(save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),attack).is_err(),"{key}");
+        }
+        let mut safe=inputs(&old); safe[0].content["attrs"]["notes"]=json!("after");
+        let saved=save_presentation(&path,"deck",100,old["metadata"].clone(),inputs(&old),safe).unwrap();
+        assert_eq!(saved["blocks"][0]["content"]["attrs"]["elements"],original["attrs"]["elements"]);
         std::fs::remove_file(path).unwrap();
     }
     #[test]
