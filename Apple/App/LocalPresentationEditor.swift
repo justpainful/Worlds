@@ -54,6 +54,14 @@ import SQLite3
             self.session = session; slides = session.slides; saved = false; fixtureMediaPresent = false; error = nil
         } catch { self.error = "This text cannot be changed safely: \(error.localizedDescription)" }
     }
+    func toggleTextItalic() {
+        guard !hasUnapplied else { return }
+        do {
+            guard var session, let index = session.slides.firstIndex(where: { $0.id == selectedID }), let element = currentElement, let italic = element.editableItalic else { return }
+            try session.update(at: index) { try $0.setTextStyle(elementID: element.id, key: "italic", value: .bool(!italic)) }
+            self.session = session; slides = session.slides; saved = false; fixtureMediaPresent = false; error = nil
+        } catch { self.error = "Italic cannot be changed safely: \(error.localizedDescription)" }
+    }
     func toggleTextBold() {
         guard !hasUnapplied else { return }
         do {
@@ -183,6 +191,15 @@ struct LocalPresentationEditor: View {
                     Button("Apply text") { state.applyText() }.disabled(!state.hasTextUnapplied)
                 }
                 if let element = state.currentElement {
+                    if let italic = element.editableItalic {
+                        Button { state.toggleTextItalic() } label: { Label(italic ? "Italic: On" : "Italic: Off", systemImage: "italic") }
+                            .accessibilityLabel("Italic text")
+                            .disabled(state.hasUnapplied)
+                            .accessibilityIdentifier("presentation-text-italic")
+                            .accessibilityValue(italic ? "On" : "Off")
+                    } else {
+                        Text("This italic setting cannot be edited safely.")
+                    }
                     if let weight = element.editableFontWeight {
                         Button { state.toggleTextBold() } label: { Label(weight >= 700 ? "Bold: On" : "Bold: Off", systemImage: "bold") }
                             .accessibilityLabel("Bold text")
