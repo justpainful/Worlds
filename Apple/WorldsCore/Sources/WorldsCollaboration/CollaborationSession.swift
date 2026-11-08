@@ -92,6 +92,7 @@ public actor CollaborationSession {
     private let endpoint: URL
     private let store: any CollaborationStore
     private let tokenProvider: TokenProvider
+    private let acknowledgementTimeout: Duration
     // Keep the built-in transport out of an async default-argument closure.
     // Explicit injected factories remain available for diagnostics and tests.
     private let socketFactory: SocketFactory?
@@ -104,6 +105,7 @@ public actor CollaborationSession {
     private var presenceSending = false
     private var presenceWaiters: [CheckedContinuation<Void, Never>] = []
     private var pending: [UInt64: Pending] = [:]
+    private var acknowledgementTimers: [UInt64: Task<Void, Never>] = [:]
     private var batch: UInt64 = 0
     private var stopped = true
     private var running = false
@@ -128,12 +130,12 @@ public actor CollaborationSession {
 
     public init(pageID: String, workspaceID: String, documentID: String, expectedUserID: String, serverURL: URL,
                 store: any CollaborationStore, tokenProvider: @escaping TokenProvider,
-                socketFactory: SocketFactory? = nil) throws {
+                socketFactory: SocketFactory? = nil, acknowledgementTimeout: Duration = .seconds(30)) throws {
         guard let scheme = serverURL.scheme?.lowercased(), ["https", "http"].contains(scheme),
               let host = serverURL.host, serverURL.query == nil, serverURL.fragment == nil,
               serverURL.user == nil, serverURL.password == nil,
               scheme == "https" || ["localhost", "127.0.0.1", "::1"].contains(host),
-              !workspaceID.isEmpty, !documentID.isEmpty, !expectedUserID.isEmpty,
+              !workspaceID.isEmpty, !documentID.isEmpty, !expectedUserID.isEmpty, acknowledgementTimeout > .zero,
               workspaceID.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-" || $0 == "_") }),
               documentID.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-" || $0 == "_") }) else { throw CollaborationError.invalidEndpoint }
         guard var parts = URLComponents(url: serverURL, resolvingAgainstBaseURL: false),
@@ -145,7 +147,7 @@ public actor CollaborationSession {
         parts.path = "/" + ([parts.path, "v1", "workspaces", workspaceID, "docs", documentID, "sync"].filter { !$0.isEmpty }.joined(separator: "/"))
         guard let endpoint = parts.url else { throw CollaborationError.invalidEndpoint }
         self.endpoint = endpoint; self.pageID = pageID; self.expectedUserID = expectedUserID; self.store = store
-        self.tokenProvider = tokenProvider; self.socketFactory = socketFactory
+        self.tokenProvider = tokenProvider; self.socketFactory = socketFactory; self.acknowledgementTimeout = acknowledgementTimeout
     }
 
     /// The owner must start this on one task and call stop on teardown.
@@ -199,7 +201,7 @@ public actor CollaborationSession {
                 }
                 diagnostic("socket created")
                 guard !stopped, generation == runID else { await opened.close(); return }
-                connection = opened; socket = opened; socketID = UUID(); pending.removeAll(); verifiedIdentity = false; synchronizedChannels.removeAll()
+                connection = opened; socket = opened; socketID = UUID(); clearPending(); verifiedIdentity = false; synchronizedChannels.removeAll()
                 for channel: UInt64 in [0, 1] {
                     guard let doc = documents[channel] else { throw CollaborationError.notStarted }
                     diagnostic("send vector \(channel)")
@@ -222,7 +224,7 @@ public actor CollaborationSession {
                 if verifiedIdentity { attempt = 0 }
                 // Revoke local use of the connection before the first await.
                 // closeCode/close can suspend while other actor calls arrive.
-                socket = nil; socketID = UUID(); pending.removeAll(); verifiedIdentity = false; synchronizedChannels.removeAll(); accessLevel = nil; awareness?.disconnected()
+                socket = nil; socketID = UUID(); clearPending(); verifiedIdentity = false; synchronizedChannels.removeAll(); accessLevel = nil; awareness?.disconnected()
                 publishEditorChange()
                 if let connection {
                     let closeCode = await connection.closeCode()
@@ -258,7 +260,7 @@ public actor CollaborationSession {
             }
             await socket.close()
         }
-        socket = nil; socketID = UUID(); pending.removeAll(); verifiedIdentity = false; synchronizedChannels.removeAll(); accessLevel = nil; awareness?.disconnected()
+        socket = nil; socketID = UUID(); clearPending(); verifiedIdentity = false; synchronizedChannels.removeAll(); accessLevel = nil; awareness?.disconnected()
         publishEditorChange()
     }
 
@@ -274,6 +276,17 @@ public actor CollaborationSession {
     }
     private func removeEditorObserver(_ id: UUID) { editorObservers.removeValue(forKey: id) }
     private func publishEditorChange() { for continuation in editorObservers.values { continuation.yield(()) } }
+
+    private func clearPending() {
+        for timer in acknowledgementTimers.values { timer.cancel() }
+        acknowledgementTimers.removeAll(); pending.removeAll()
+    }
+    private func expireAcknowledgement(_ batchID: UInt64, connection: UUID) async {
+        guard !stopped, socketID == connection, pending[batchID] != nil, let socket else { return }
+        // Do not acknowledge or remove durable data. A new connection will
+        // negotiate state vectors and resend whatever the server lacks.
+        await socket.close()
+    }
 
     private func sendPresence(_ update: Data, via target: any CollaborationSocket, connection: UUID, version: UInt64, allowStopped: Bool = false) async throws {
         if presenceSending { await withCheckedContinuation { presenceWaiters.append($0) } }
@@ -428,7 +441,13 @@ public actor CollaborationSession {
                 batch += 1
                 pending[batch] = Pending(channel: channel, through: through)
                 diagnostic("send update \(channel)")
-                try await socket.send(WorldsSyncWire.encode(.update(batchID: batch, channel: channel, update: diff)))
+                let batchID = batch, connection = socketID, delay = acknowledgementTimeout
+                try await socket.send(WorldsSyncWire.encode(.update(batchID: batchID, channel: channel, update: diff)))
+                guard !stopped, socketID == connection, pending[batchID] != nil else { return }
+                acknowledgementTimers[batchID] = Task { [weak self] in
+                    do { try await Task.sleep(for: delay) } catch { return }
+                    await self?.expireAcknowledgement(batchID, connection: connection)
+                }
             } else if kind == 1 || kind == 2 {
                 diagnostic("apply remote \(channel)")
                 guard !remoteWriteInFlight, !localWriteInFlight else { throw CollaborationError.notStarted }
@@ -445,6 +464,7 @@ public actor CollaborationSession {
             diagnostic("acknowledgement")
             guard verifiedIdentity else { failed = true; throw CollaborationError.accessRevoked }
             guard let item = pending.removeValue(forKey: id) else { return }
+            acknowledgementTimers.removeValue(forKey: id)?.cancel()
             if status == 0 {
                 if let through = item.through { try await store.acknowledge(pageID: pageID, channel: item.channel, through: through) }
             } else {

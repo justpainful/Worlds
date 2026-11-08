@@ -24,6 +24,11 @@ reopening them requires a separately authorized account and recovery flow.
 An explicit token refresh checks that the same authenticated connection still
 exists after the token provider returns; a stopped or replaced socket does not
 receive that delayed token. This does not schedule token refresh automatically.
+If an update acknowledgement does not arrive within 30 seconds, the session
+closes the connection and renegotiates state vectors. The timeout never deletes
+the durable outbox; only a successful acknowledgement does so. Slow services
+may reconnect unnecessarily, and the isolated timeout fixture uses a synthetic
+socket rather than proving behavior against the live service.
 Local awareness sends are serialized; an in-flight announcement completes
 before a subsequent removal, and stale queued sends are discarded when the
 presence version or connection changes. A blocked socket send can delay that

@@ -579,7 +579,39 @@ private actor ReconnectingFactory {
     }
 }
 
+private actor MissingAcknowledgementFactory {
+    private(set) var count = 0
+    private let first = FixtureSocket(userID: "editor", acknowledges: false)
+    private let second = FixtureSocket(userID: "editor")
+    func next() -> any CollaborationSocket { count += 1; return count == 1 ? first : second }
+}
+
 extension WorldsCollaborationTests {
+    func testMissingAcknowledgementReconnectsAndResendsDurableOutbox() async throws {
+        let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-editor-v11", withExtension: "db"))
+        let copy = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-missing-ack-\(UUID().uuidString).db")
+        try FileManager.default.copyItem(at: source, to: copy)
+        defer { try? FileManager.default.removeItem(at: copy) }
+        let store = try SQLiteCollaborationStore(databaseURL: copy, pageID: "fixture-page", userID: "editor", workspaceID: "fixture-workspace")
+        try await store.appendLocal(pageID: "fixture-page", channel: 0, update: Data([0, 0]))
+        let pending = try await store.maximumPendingID(pageID: "fixture-page", channel: 0)
+        XCTAssertNotNil(pending)
+        let factory = MissingAcknowledgementFactory()
+        let session = try CollaborationSession(pageID: "fixture-page", workspaceID: "fixture-workspace", documentID: "fixture-page", expectedUserID: "editor", serverURL: URL(string: "https://example.invalid")!, store: store, tokenProvider: { _ in "fixture-token" }, socketFactory: { _, _ in await factory.next() }, acknowledgementTimeout: .milliseconds(100))
+        let run = Task { try await session.run() }
+        defer { Task { await session.stop() } }
+        var resent = false
+        for _ in 0..<250 {
+            let connections = await factory.count
+            let remaining = try await store.maximumPendingID(pageID: "fixture-page", channel: 0)
+            if connections >= 2 && remaining == nil { resent = true; break }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        await session.stop(); _ = try? await run.value
+        XCTAssertTrue(resent, "A missing acknowledgement must trigger reconnect and resend")
+        let updates = try await store.load(pageID: "fixture-page", channel: 0)
+        XCTAssertTrue(updates.contains(Data([0, 0])))
+    }
     func testDurableOutboxResentAfterFailedConnection() async throws {
         let source = try XCTUnwrap(Bundle.module.url(forResource: "worlds-collab-editor-v11", withExtension: "db"))
         let copy = FileManager.default.temporaryDirectory.appendingPathComponent("worlds-reconnect-\(UUID().uuidString).db")
