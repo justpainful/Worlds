@@ -4,6 +4,23 @@ import WorldsModels
 @testable import WorldsRichText
 
 final class RichTextDocumentTests: XCTestCase {
+    func testInsertRowRejectsLaterOpaqueRowWithoutMutation() throws {
+        let json = #"{"type":"doc","content":[{"type":"table","attrs":{"bid":"t"},"content":[{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[]}]}]},{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[]}]}]},{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","attrs":{"future":true},"content":[]}]}]}]}]}"#
+        var document = try RichTextDocument(json: Data(json.utf8))
+        let original = document
+        XCTAssertThrowsError(try document.insertPlainTableRow(at: RichTextPath([0]), afterRow: 0))
+        XCTAssertEqual(document, original)
+    }
+    func testInsertRowBelowMixedHeaderUsesSelectedCellTypes() throws {
+        let json = #"{"type":"doc","content":[{"type":"table","attrs":{"bid":"t"},"content":[{"type":"tableRow","content":[{"type":"tableHeader","content":[{"type":"paragraph","content":[]}]},{"type":"tableCell","content":[{"type":"paragraph","content":[]}]}]},{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[]}]},{"type":"tableCell","content":[{"type":"paragraph","content":[]}]}]}]}]}"#
+        var document = try RichTextDocument(json: Data(json.utf8))
+        try document.insertPlainTableRow(at: RichTextPath([0]), afterRow: 0)
+        guard case .object(let root) = document.source, case .array(let blocks)? = root["content"],
+              case .object(let table) = blocks[0], case .array(let rows)? = table["content"], rows.count == 3,
+              case .object(let inserted) = rows[1], case .array(let cells)? = inserted["content"], cells.count == 2,
+              case .object(let first) = cells[0], case .object(let second) = cells[1] else { return XCTFail("Missing inserted row") }
+        XCTAssertEqual(first["type"], .string("tableHeader")); XCTAssertEqual(second["type"], .string("tableCell"))
+    }
     func testAppendColumnRejectsLaterInvalidRowAtomically() throws {
         let json = #"{"type":"doc","content":[{"type":"table","attrs":{"bid":"t"},"content":[{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph","content":[{"type":"text","text":"keep"}]}]}]},{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colspan":2},"content":[{"type":"paragraph","content":[]}]}]}]}]}"#
         var document = try RichTextDocument(json: Data(json.utf8))
