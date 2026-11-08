@@ -132,6 +132,15 @@ private actor DelayedWorkspaceAccessTransport: IdentityTransport {
 }
 
 final class IdentityContinuityTests: XCTestCase {
+    func testTokenProviderRejectsOtherAccount() async throws {
+        let coordinator = try IdentitySessionCoordinator(baseURL: URL(string: "https://example.test")!, lockDirectory: directory(), transport: AccountFixtureTransport(profileID: "user"), secrets: MemorySecrets())
+        _ = try await coordinator.verifyEmail(challengeID: "fixture", code: "123456", deviceName: "Fixture", platform: "macos")
+        let token = try await coordinator.accessToken(expectedUserID: "user")
+        XCTAssertEqual(token, "fixture-access")
+        do { _ = try await coordinator.accessToken(expectedUserID: "other"); XCTFail("A different account must fail") }
+        catch IdentityContinuityError.accountMismatch { }
+        catch { XCTFail("Unexpected error: \(error)") }
+    }
     func testWorkspaceAccessUsesCurrentAccountAndFailsClosed() async throws {
         let coordinator = try IdentitySessionCoordinator(baseURL: URL(string: "https://example.test")!, lockDirectory: directory(), transport: AccountFixtureTransport(profileID: "user"), secrets: MemorySecrets())
         _ = try await coordinator.verifyEmail(challengeID: "fixture", code: "123456", deviceName: "Fixture", platform: "macos")

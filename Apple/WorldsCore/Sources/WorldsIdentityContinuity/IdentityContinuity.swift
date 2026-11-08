@@ -152,6 +152,17 @@ public actor IdentitySessionCoordinator {
         activeRequests += 1; defer { activeRequests -= 1 }
         return try await client.accessToken(forceRefresh: forceRefresh)
     }
+    /// Prevent a session owner from obtaining a token for a different account.
+    /// Session changes are blocked until both checks and any refresh complete.
+    public func accessToken(expectedUserID: String, forceRefresh: Bool = false) async throws -> String {
+        guard !expectedUserID.isEmpty else { throw IdentityContinuityError.accountMismatch }
+        guard !locallySignedOut, !changingSession else { throw IdentityContinuityError.signedOut }
+        activeRequests += 1; defer { activeRequests -= 1 }
+        guard try await client.currentUserID() == expectedUserID else { throw IdentityContinuityError.accountMismatch }
+        let token = try await client.accessToken(forceRefresh: forceRefresh)
+        guard try await client.currentUserID() == expectedUserID else { throw IdentityContinuityError.accountMismatch }
+        return token
+    }
     /// Reports only whether a usable durable session is present, without network access.
     public func hasStoredSession() async throws -> Bool {
         guard !changingSession else { throw IdentityContinuityError.busy }

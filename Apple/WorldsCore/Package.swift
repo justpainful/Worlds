@@ -170,6 +170,9 @@ if collaborationAvailable {
     package.targets.append(.binaryTarget(name: "WorldsRustCollaboration", path: collaborationPath))
     package.targets.append(.target(name: "WorldsCollaboration", dependencies: ["WorldsRustCollaboration", "WorldsSyncWire", "WorldsAwareness"], exclude: ["README.md"], linkerSettings: [.linkedFramework("Security"), .linkedFramework("SystemConfiguration"), .linkedLibrary("resolv"), .linkedLibrary("iconv")]))
     package.targets.append(.testTarget(name: "WorldsCollaborationTests", dependencies: ["WorldsCollaboration", "WorldsSyncWire"], resources: [.copy("worlds-collab-v11.db"), .copy("worlds-collab-editor-v11.db"), .copy("worlds-collab-viewer-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]))
+    package.products.append(.library(name: "WorldsCollaborationHost", targets: ["WorldsCollaborationHost"]))
+    package.targets.append(.target(name: "WorldsCollaborationHost", dependencies: ["WorldsCollaboration", "WorldsIdentityContinuity"]))
+    package.targets.append(.testTarget(name: "WorldsCollaborationHostTests", dependencies: ["WorldsCollaborationHost", "WorldsCollaboration", "WorldsIdentityContinuity"], resources: [.copy("worlds-collab-editor-v11.db")]))
 }
 
 
