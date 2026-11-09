@@ -192,6 +192,33 @@ pub unsafe extern "C" fn worlds_store_load(handle: *const CollaborationStoreHand
         write_result(out, data)
     })
 }
+/// Experimental owned-document bridge. Enrollment never claims existing rows.
+/// # Safety
+/// Handle and NUL-terminated server must remain valid for the call.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn worlds_store_owned_enroll(handle:*const CollaborationStoreHandle, channel:i64, server:*const std::ffi::c_char) -> i32 {
+    boundary(|| { if handle.is_null() { return Err(1); } let server=unsafe{ffi_str(server)?};
+        let mut store=unsafe{&*handle}.0.lock().map_err(|_|2)?; store.enroll_empty_owned_document(channel,server).map_err(store_error) })
+}
+/// # Safety
+/// Handle, server and bytes must remain valid until the call completes.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn worlds_store_owned_append(handle:*const CollaborationStoreHandle,channel:i64,server:*const std::ffi::c_char,data:*const u8,len:usize,local:i32)->i32 {
+    boundary(|| { if handle.is_null() || !(0..=1).contains(&local) { return Err(1); }
+        let server=unsafe{ffi_str(server)?};let data=unsafe{ffi_bytes(data,len)?};let mut store=unsafe{&*handle}.0.lock().map_err(|_|2)?;
+        if local==1 { store.append_owned_document(channel,server,data) } else { store.append_owned_remote(channel,server,data) }.map_err(store_error) })
+}
+/// # Safety
+/// Handle, server, vector and both writable outputs must remain valid. Free the
+/// output buffer on success. -1 means no pending watermark. No ACK is implied.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn worlds_store_owned_batch(handle:*const CollaborationStoreHandle,channel:i64,server:*const std::ffi::c_char,vector:*const u8,len:usize,out:*mut WorldsBuffer,watermark:*mut i64)->i32 {
+    boundary(|| { if handle.is_null() || out.is_null() || watermark.is_null() { return Err(1); }
+        let server=unsafe{ffi_str(server)?};let vector=unsafe{ffi_bytes(vector,len)?};let store=unsafe{&*handle}.0.lock().map_err(|_|2)?;
+        let (bytes,id)=store.owned_document_batch(channel,server,vector).map_err(store_error)?;
+        write_result(out,bytes)?;unsafe{watermark.write(id.unwrap_or(-1));} Ok(()) })
+}
+
 /// # Safety
 /// Handle and input byte range must remain valid. `local` is 0 or 1.
 #[unsafe(no_mangle)]

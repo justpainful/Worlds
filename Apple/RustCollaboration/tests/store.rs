@@ -235,6 +235,20 @@ fn owned_rejection_quarantines_without_replay_and_rolls_back_on_failure() {
 }
 
 #[test]
+fn owned_ffi_refuses_foreign_server_and_preserves_buffers() {
+    use worlds_collaboration::*;
+    use std::ffi::CString;
+    let path=fixture();let path_c=CString::new(path.to_str().unwrap()).unwrap();let page=CString::new("p").unwrap();let user=CString::new("u").unwrap();let workspace=CString::new("w").unwrap();let server=CString::new("https://fixture.invalid").unwrap();let other=CString::new("https://other.invalid").unwrap();
+    let mut h=std::ptr::null_mut();unsafe { assert_eq!(worlds_store_open(path_c.as_ptr(),page.as_ptr(),user.as_ptr(),workspace.as_ptr(),&mut h),0);assert_eq!(worlds_store_owned_enroll(h,0,server.as_ptr()),0);
+      let bytes=include_bytes!("fixtures/base.bin");assert_eq!(worlds_store_owned_append(h,0,other.as_ptr(),bytes.as_ptr(),bytes.len(),1),3);assert_eq!(worlds_store_owned_append(h,0,server.as_ptr(),bytes.as_ptr(),bytes.len(),1),0);
+      let mut out=WorldsBuffer{data:std::ptr::null_mut(),len:0};let mut watermark=-1;let vector=[0u8];
+      assert_eq!(worlds_store_owned_batch(h,0,other.as_ptr(),vector.as_ptr(),vector.len(),&mut out,&mut watermark),3);assert!(out.data.is_null());assert_eq!(watermark,-1);
+      assert_eq!(worlds_store_owned_batch(h,0,server.as_ptr(),vector.as_ptr(),vector.len(),&mut out,&mut watermark),0);assert!(out.len>0);assert!(watermark>0);worlds_buffer_free(out);worlds_collaboration_store_free(h);
+    }
+    let db=Connection::open(&path).unwrap();assert_eq!(db.query_row("SELECT count(*) FROM sync_outbox WHERE state='pending'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+}
+
+#[test]
 fn owned_ack_binds_watermark_to_connection_and_rechecks_account() {
     use worlds_collaboration::owned_ack::OwnedAckSession;
     let path=fixture();let server="wss://fixture.invalid/workspaces/w/docs/p";

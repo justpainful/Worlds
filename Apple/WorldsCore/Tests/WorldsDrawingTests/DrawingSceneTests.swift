@@ -47,5 +47,26 @@ final class DrawingSceneTests: XCTestCase {
         let context = try XCTUnwrap(CGContext(data: nil, width: 32, height: 32, bitsPerComponent: 8, bytesPerRow: 128, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
         XCTAssertThrowsError(try ExperimentalStrokeSceneRenderer.render(scene: scene, frameID: "f", in: context))
     }
+
+    func testTextNodeRenderingAndBlendModes() throws {
+        let textFixture = #"""
+        {"schema":1,"defaultFrameId":"f","frames":{"f":{"id":"f","x":0,"y":0,"w":100,"h":100,"background":"#ffffff","clip":true,"name":"Frame","status":"draft","exportScale":1}},"frameOrder":["f"],
+        "layers":{"l":{"id":"l","name":"Layer","visible":true,"opacity":0.9,"blend":"multiply","parentId":null}},"layerOrder":["l"],
+        "nodes":{"t":{"id":"t","kind":"text","text":"Hello Worlds","layerId":"l","frameId":"f","x":10,"y":10,"w":80,"h":30,"rotation":0,"opacity":1,"visible":true,"effects":[],"textStyle":{"font":"sans-serif","size":14,"weight":600,"color":"#000000","background":"transparent","border":"transparent","align":"left","direction":"ltr"}}},"nodeOrder":["t"],
+        "assets":{},"masks":{},"steps":{},"stepOrder":[]}
+        """#
+        let scene = try DrawingScene(json: Data(textFixture.utf8))
+        let context = try XCTUnwrap(CGContext(data: nil, width: 100, height: 100, bitsPerComponent: 8, bytesPerRow: 400, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        let report = try DrawingRenderer().render(scene: scene, frameID: "f", in: context)
+        XCTAssertEqual(report.renderedNodeCount, 1)
+    }
+
+    func testWorldsDrawPackageExport() throws {
+        let scene = try DrawingScene(json: Data(fixture.utf8))
+        let assetData = Data("sample-binary-asset".utf8)
+        let packageData = try DrawingPackageExporter.exportPackage(scene: scene, assets: ["sample.png": assetData])
+        XCTAssertFalse(packageData.isEmpty)
+        XCTAssertEqual(packageData.prefix(4), Data([0x50, 0x4B, 0x03, 0x04]))
+    }
 }
 

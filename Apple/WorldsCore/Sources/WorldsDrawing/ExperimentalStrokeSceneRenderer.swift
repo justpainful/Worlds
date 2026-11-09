@@ -54,7 +54,7 @@ public enum ExperimentalStrokeSceneRenderer {
               Set(decoded.layerOrder) == Set(decoded.layers.keys), Set(decoded.nodeOrder) == Set(decoded.nodes.keys) else { throw ExperimentalStrokeSceneError.unsupportedScene }
         let background = try color(frame.background)
         for layer in decoded.layers.values {
-            guard layer.parentId == nil, layer.blend == "source-over", layer.opacity.isFinite, (0...1).contains(layer.opacity) else { throw ExperimentalStrokeSceneError.unsupportedScene }
+            guard layer.parentId == nil, (layer.blend == "source-over" || layer.blend == "normal"), layer.opacity.isFinite, (0...1).contains(layer.opacity) else { throw ExperimentalStrokeSceneError.unsupportedScene }
         }
         for node in decoded.nodes.values {
             guard (node.kind == "stroke" || (allowCorrectedRightTriangles && node.kind == "shape" && node.shape == "right-triangle")), decoded.layers[node.layerId] != nil, node.frameId == frameID,

@@ -11,6 +11,7 @@ struct LocalCreatePageRequest: Identifiable {
     let databaseIdentity: VideoDatabaseIdentity
     let parentID: String?
     let generation: UUID
+    var initialTitle: String = ""
 }
 
 /// Experimental personal page creation in an independent copy. A response
@@ -52,6 +53,11 @@ struct LocalCreatePageView: View {
                 }
             }
             .interactiveDismissDisabled(busy)
+            .onAppear {
+                if title.isEmpty && !request.initialTitle.isEmpty {
+                    title = request.initialTitle
+                }
+            }
         }
         #if os(macOS)
         .frame(minWidth: 420, minHeight: 220)
@@ -71,8 +77,8 @@ struct LocalCreatePageView: View {
             let store = try NativePersonalStore(url: request.copy.databaseURL)
             let result = try await store.createPageIdempotent(title: title, parent: request.parentID, operationID: request.operationID)
             guard VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity,
-                  case .object(let fields) = result, case .string(let pageID)? = fields["id"],
-                  !pageID.isEmpty, !pageID.utf8.contains(0) else {
+                case .object(let fields) = result, case .string(let pageID)? = fields["id"],
+                !pageID.isEmpty, !pageID.utf8.contains(0) else {
                 message = "The creation result could not be verified. The page may have been created. Close and reopen the copy to check."
                 return
             }

@@ -1,0 +1,3 @@
+# Office view boundary
+
+An independent native read-only SwiftUI view for bounded DOCX plain text and XLSX cached cell values produced by WorldsOfficePreview. It shows parser limitations, sheet names, cell references and formulas as text. It does not preserve visual document layout, execute formulas, edit, save, export, provide permissions or coordinate file-provider access. The host must authorize every attachment before calling the loader and must run loading away from the main thread, show errors, cancel stale results and preserve the attachment root access policy. This module is not yet in Package.swift or the application. Synthetic tests exist but have not been run on Apple platforms.

@@ -43,8 +43,15 @@ let package = Package(
         .library(name: "WorldsScreenDrawing", targets: ["WorldsScreenDrawing"]),
         .library(name: "WorldsOfficePreview", targets: ["WorldsOfficePreview"]),
         .library(name: "WorldsGallery", targets: ["WorldsGallery"]),
+        .library(name: "WorldsMathDiagrams", targets: ["WorldsMathDiagrams"]),
+        .library(name: "WorldsOfficeViews", targets: ["WorldsOfficeViews"]),
+        .library(name: "Worlds3DViews", targets: ["Worlds3DViews"]),
     ],
-    dependencies: [.package(url: "https://github.com/weichsel/ZIPFoundation.git", exact: "0.9.20")],
+    dependencies: [
+        .package(url: "https://github.com/weichsel/ZIPFoundation.git", exact: "0.9.20"),
+        .package(url: "https://github.com/mgriebling/SwiftMath.git", exact: "1.7.3"),
+        .package(url: "https://github.com/2389-research/MermaidKit.git", exact: "2.10.2"),
+    ],
     targets: [
         .target(name: "WorldsModels"),
         .target(name: "WorldsSyncWire"),
@@ -57,7 +64,7 @@ let package = Package(
         .target(name: "WorldsMCPApprovalCoordinator", dependencies: ["WorldsMCPApprovalViews", "WorldsIdentityContinuity"]),
         .target(name: "WorldsRichText", dependencies: ["WorldsModels"], exclude: ["README.md"]),
         .target(name: "WorldsNativeDiagrams", dependencies: ["WorldsModels"], exclude: ["README.md"]),
-        .target(name: "WorldsDrawing", dependencies: ["WorldsModels"], exclude: ["README.md"]),
+        .target(name: "WorldsDrawing", dependencies: ["WorldsModels", .product(name: "ZIPFoundation", package: "ZIPFoundation")], exclude: ["README.md"]),
         .target(name: "WorldsDrawingStorage", linkerSettings: [.linkedLibrary("sqlite3")]),
         .target(name: "WorldsPresentations", dependencies: ["WorldsModels"], exclude: ["README.md"]),
         .target(name: "WorldsMedia", exclude: ["README.md"]),
@@ -74,6 +81,9 @@ let package = Package(
         .target(name: "WorldsScreenDrawing", exclude: ["README.md", "DESIGN.md"], linkerSettings: [.linkedFramework("ScreenCaptureKit", .when(platforms: [.macOS]))]),
         .target(name: "WorldsOfficePreview", dependencies: ["WorldsMedia", .product(name: "ZIPFoundation", package: "ZIPFoundation")], exclude: ["README.md"]),
         .target(name: "WorldsGallery", dependencies: ["WorldsModels"], exclude: ["README.md"]),
+        .target(name: "WorldsMathDiagrams", dependencies: ["WorldsModels", "WorldsNativeDiagrams", .product(name: "SwiftMath", package: "SwiftMath"), .product(name: "MermaidLayout", package: "MermaidKit")], exclude: ["README.md"]),
+        .target(name: "WorldsOfficeViews", dependencies: ["WorldsMedia", "WorldsOfficePreview"], exclude: ["README.md"]),
+        .target(name: "Worlds3DViews", dependencies: ["WorldsMedia"], exclude: ["README.md"]),
         .testTarget(name: "WorldsModelsTests", dependencies: ["WorldsModels"]),
         .testTarget(name: "WorldsSyncWireTests", dependencies: ["WorldsSyncWire"]),
         .testTarget(name: "WorldsAwarenessTests", dependencies: ["WorldsAwareness", "WorldsSyncWire"]),
@@ -104,6 +114,9 @@ let package = Package(
         .testTarget(name: "WorldsDrawingStorageTests", dependencies: ["WorldsDrawingStorage"], linkerSettings: [.linkedLibrary("sqlite3")]),
         .testTarget(name: "WorldsOfficePreviewTests", dependencies: ["WorldsOfficePreview", "WorldsMedia"], resources: [.copy("Fixtures")]),
         .testTarget(name: "WorldsGalleryTests", dependencies: ["WorldsGallery", "WorldsModels"]),
+        .testTarget(name: "WorldsMathDiagramsTests", dependencies: ["WorldsMathDiagrams", "WorldsModels"]),
+        .testTarget(name: "WorldsOfficeViewsTests", dependencies: ["WorldsOfficeViews", "WorldsMedia"], resources: [.copy("Fixtures")]),
+        .testTarget(name: "Worlds3DViewsTests", dependencies: ["Worlds3DViews", "WorldsMedia"]),
     ]
 )
 

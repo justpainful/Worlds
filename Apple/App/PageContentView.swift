@@ -1,5 +1,10 @@
 import SwiftUI
 import WorldsPersistence
+#if WORLDS_MAIN_APP_MODULES
+import WorldsMathDiagrams
+import WorldsNativeDiagrams
+import Worlds3DViews
+#endif
 
 /// Read-only rendering does not rewrite or normalize the stored JSON.
 private struct PageNode: Decodable {
@@ -221,16 +226,71 @@ private struct NodeView: View {
         case "tabs":
             TabsNodeView(node: node)
         case "mathBlock":
+            #if WORLDS_MAIN_APP_MODULES
+            if let latex = node.attrs?.latex, !latex.isEmpty {
+                MathBlockView(latex: latex)
+            } else {
+                sourceContent(label: "Equation source", source: node.attrs?.latex)
+            }
+            #else
             sourceContent(label: "Equation source", source: node.attrs?.latex)
+            #endif
         case "mermaid":
+            #if WORLDS_MAIN_APP_MODULES
+            if let code = node.attrs?.code, !code.isEmpty {
+                MermaidDiagramView(code: code)
+            } else {
+                sourceContent(label: "Diagram source", source: node.attrs?.code)
+            }
+            #else
             sourceContent(label: "Diagram source", source: node.attrs?.code)
+            #endif
         case "image":
+            let name = node.attrs?.name.flatMap { $0.isEmpty ? nil : $0 } ?? "Image"
+            #if WORLDS_MAIN_APP_MODULES
+            let is3D = Worlds3D.isSupported(name: name)
+            #else
+            let is3D = false
+            #endif
             VStack(alignment: .leading, spacing: 8) {
-                Label(node.attrs?.name.flatMap { $0.isEmpty ? nil : $0 } ?? "Image", systemImage: "photo")
+                Label(name, systemImage: is3D ? (name.lowercased().hasSuffix("dxf") ? "compass.drawing" : "cube") : "photo")
                 if let caption = node.attrs?.caption, !caption.isEmpty { Text(caption).textSelection(.enabled) }
-                if let openImage { Button("Open image", systemImage: "arrow.up.left.and.arrow.down.right", action: openImage).accessibilityIdentifier("open-inline-image") }
-                else { Text("Image preview is unavailable.").foregroundStyle(.secondary) }
+                if is3D {
+                    Text("3D/CAD model is available in resource view.")
+                        .font(.caption).foregroundStyle(.secondary)
+                } else if let openImage {
+                    Button("Open image", systemImage: "arrow.up.left.and.arrow.down.right", action: openImage)
+                        .accessibilityIdentifier("open-inline-image")
+                } else {
+                    Text("Image preview is unavailable.").foregroundStyle(.secondary)
+                }
             }.frame(maxWidth: .infinity, alignment: .leading)
+        case "model3d", "threeD", "cad":
+            let name = node.attrs?.name.flatMap { $0.isEmpty ? nil : $0 } ?? "3D Model"
+            let ext = (name as NSString).pathExtension.lowercased()
+            let isCAD = ext == "dxf" || ext == "stl"
+            VStack(alignment: .leading, spacing: 8) {
+                Label(name, systemImage: isCAD ? "compass.drawing" : "cube")
+                    .font(.headline)
+                if let caption = node.attrs?.caption, !caption.isEmpty {
+                    Text(caption).font(.caption).foregroundStyle(.secondary)
+                }
+                HStack(spacing: 8) {
+                    Label(isCAD ? "CAD Drawing" : "3D Model", systemImage: "cube.transparent")
+                        .font(.caption)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(.quaternary, in: Capsule())
+                    if !ext.isEmpty {
+                        Text(ext.uppercased())
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))
         case "bulletList", "orderedList":
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(Array((node.content ?? []).enumerated()), id: \.offset) { index, item in

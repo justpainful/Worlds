@@ -5,6 +5,10 @@ import Darwin
 import WorldsPersistence
 import WorldsMedia
 import WorldsMediaViews
+#if WORLDS_MAIN_APP_MODULES
+import WorldsOfficeViews
+import WorldsOfficePreview
+#endif
 
 private final class DocumentFolderLease {
     let root: URL
@@ -16,6 +20,9 @@ private struct DocumentSelection {
     let lease: DocumentFolderLease
     let attachment: WorldsAttachment
     let file: AttachmentFile
+    #if WORLDS_MAIN_APP_MODULES
+    var officeContent: OfficeContent? = nil
+    #endif
 }
 
 /// Experimental read-only route for an existing personal file page. The copy
@@ -35,7 +42,15 @@ struct PersonalDocumentView: View {
     var body: some View {
         Group {
             if let selection {
+                #if WORLDS_MAIN_APP_MODULES
+                if let office = selection.officeContent {
+                    OfficeContentView(content: office)
+                } else {
+                    OpenedDocumentPreviewView(attachment: selection.attachment, openedFile: selection.file)
+                }
+                #else
                 OpenedDocumentPreviewView(attachment: selection.attachment, openedFile: selection.file)
+                #endif
             } else {
                 VStack(spacing: 16) {
                     ContentUnavailableView("Choose the Worlds folder", systemImage: "folder", description: Text("Choose the folder containing the open worlds.db and its attachments."))
@@ -70,10 +85,13 @@ struct PersonalDocumentView: View {
             guard let item = resolved else { throw DocumentOpenError.unavailable }
             guard token == generation else { return }
             let kind = WorldsMedia.format(name: item.fileName, mime: item.mime)
-            guard inlineImageBlockID == nil ? (kind == .image || kind == .pdf) : kind == .image else { throw DocumentOpenError.unsupported }
+            let ext = (item.fileName as NSString).pathExtension.lowercased()
+            let isOffice = ext == "docx" || ext == "xlsx"
+            guard inlineImageBlockID == nil ? (kind == .image || kind == .pdf || isOffice) : kind == .image else { throw DocumentOpenError.unsupported }
             try Self.checkDatabase(folder: folder, selected: databaseURL, expected: databaseIdentity)
             let attachment = WorldsAttachment(id: item.id, pageId: item.pageID, kind: item.kind, fileName: item.fileName, mime: item.mime, size: item.size, relPath: item.relPath, width: item.width, height: item.height, createdAt: item.createdAt)
-            let file = try AttachmentVault(root: folder.appendingPathComponent("attachments", isDirectory: true)).open(attachment)
+            let root = folder.appendingPathComponent("attachments", isDirectory: true)
+            let file = try AttachmentVault(root: root).open(attachment)
             guard file.size == item.size else { throw DocumentOpenError.unavailable }
             let confirmed: StoredFileAttachment?
             if let inlineImageBlockID { confirmed = try await db.personalInlineImage(pageID: pageID, blockID: inlineImageBlockID) }
@@ -81,7 +99,12 @@ struct PersonalDocumentView: View {
             guard confirmed == item else { throw DocumentOpenError.unavailable }
             guard token == generation else { return }
             try Self.checkDatabase(folder: folder, selected: databaseURL, expected: databaseIdentity)
+            #if WORLDS_MAIN_APP_MODULES
+            let officeContent = isOffice ? (try? OfficeContentLoader.load(attachment: attachment, root: root)) : nil
+            selection = DocumentSelection(lease: lease, attachment: attachment, file: file, officeContent: officeContent)
+            #else
             selection = DocumentSelection(lease: lease, attachment: attachment, file: file)
+            #endif
         } catch {
             guard token == generation else { return }
             failure = (error as? DocumentOpenError)?.localizedDescription ?? "The file could not be opened."
@@ -110,7 +133,7 @@ struct PersonalDocumentView: View {
             switch self {
             case .wrongFolder: "This folder does not contain the open Worlds database."
             case .unavailable: "This personal attachment is unavailable or changed."
-            case .unsupported: "This preview supports images and PDF files only."
+            case .unsupported: "This preview supports images, PDF, DOCX, and XLSX files only."
             }
         }
     }

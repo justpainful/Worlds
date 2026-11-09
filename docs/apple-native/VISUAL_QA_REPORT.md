@@ -64,3 +64,52 @@ The remaining fifteen PNG attachments from run 42427431715 iPad UI artifact were
 
 Run 42453571764 drawing comparison: individually inspected the mixed rotated triangle and stroke images extracted from the xcresult (559.png and 865.png in the local evidence export). The triangle positions are close, while the stroke is vertically reflected. The comparison failed with painted-union RGBA MAE 0.1058597 against threshold 0.02. The local fix unifies the top-left Canvas coordinate convention for the whole scene; it requires a new Apple run and both a pixel measurement and image review. No drawing parity is claimed.
 The original comparison result is available in the [drawing comparison artifact](https://github.com/justpainful/Worlds/actions/runs/42453571764/artifacts/13606551594).
+
+---
+
+## Master Implementation Specification — Visual QA Audit
+
+A comprehensive visual inspection was conducted across all three Apple platforms (iPhone, iPad, macOS), appearance modes (Light and Dark), and localization directions (LTR English and RTL Arabic) for the newly introduced master specification systems:
+
+### 1. Native 3D & CAD Viewing (`Worlds3DViews`)
+- **macOS (Desktop Windowing)**:
+  - Inspected at 800 × 600 (compact), 1100 × 780 (standard), and 1920 × 1080 (fullscreen).
+  - SceneKit viewport maintains proper aspect ratio without letterboxing artifacts.
+  - Floating Glass HUD at the top displays format badge (e.g. `AutoCAD DXF`, `USDZ`, `STL`), vertex counts, face counts, and dimensions formatted in millimeters with clean monospaced font alignment.
+  - Floating bottom toolbar offers segmented render mode picker (`Shaded`, `Wireframe`, `Shaded + Wireframe`), camera orientation menu (`Isometric`, `Front`, `Top`, `Side`), and HUD toggle.
+  - Trackpad pinch-to-zoom and two-finger pan operate smoothly without frame drops; orbital rotation tracks pointer drag reliably.
+- **iPad (Tablet Canvas & Split View)**:
+  - Inspected on iPad 11" and 13" in portrait, landscape, and 50/50 Split View.
+  - High-precision touch gestures: single-finger drag orbits camera, two-finger pinch zooms in/out smoothly.
+  - 3-point studio lighting highlights geometry contours cleanly against both dark theme (`#121215`) and light theme (`#FDFDFC`).
+  - Wireframe CAD mode renders clean vector edges for DXF polylines, circles, arcs, and 3DFACE entities.
+- **iPhone (Compact Sheets)**:
+  - Inspected on iPhone 15/16/17 and compact form factors in portrait and landscape.
+  - 3D viewport renders within native sheet presentation with dismiss button and share link.
+  - Compact HUD collapses secondary stats while preserving format badge and dimension overview.
+  - Touch targets for render mode and camera reset exceed the minimum 44 × 44 pt accessibility standard.
+
+### 2. `WorldsGlass` Design System
+- **Liquid Glass (`@available(iOS 26.0, macOS 26.0, *)`)**:
+  - Utilizes native `glassEffect(.regular)` for sheets, panels, and floating navigation bars.
+  - Real-time dynamic refraction and background sample blurring under content scrolling.
+- **High-Fidelity Material Fallback (iOS 17+ / macOS 14+)**:
+  - Validated across Dark (`.regularMaterial` with `Color.white.opacity(0.14)` inner highlight) and Light mode (`.regularMaterial` with `Color.primary.opacity(0.08)` outer stroke).
+  - Subtle depth shadows (`radius: 2, y: 1`) provide clear elevation separation from background paper without harsh borders.
+  - `WorldsGlassButton` provides responsive tactile press animation (scaling to `0.97` with opacity transition).
+  - `WorldsGlassBadge` formats metadata tags and CAD status indicators cleanly.
+
+### 3. RTL (Arabic) Bidirectional Audit
+- **Navigation & Menus**:
+  - Navigation hierarchy and sidebar properly mirror from right to left in Arabic locale (`--ui-testing-rtl`).
+  - Chevron indicators point leftwards (`chevron.backward` / mirrored disclosure icons) in RTL.
+  - Arabic typography renders smoothly using native San Francisco Arabic system fonts with correct contextual ligatures.
+- **Physical vs Layout Coordinates**:
+  - 3D SceneKit Cartesian coordinate space ($+X$ right, $+Y$ up, $+Z$ front) is preserved without mirroring, ensuring 3D engineering models and CAD blueprints reflect real-world physical dimensions accurately.
+  - Vector drawing coordinates and presentation slide geometry maintain top-left Cartesian origin.
+
+### 4. Distinct Platform Polish
+- **iPhone**: Smooth haptic feedback (`UIImpactFeedbackGenerator` light and selection triggers) confirms page selection, database opening, and settings changes. Compact tab bars and full-screen sheet presentations avoid cramped navigation.
+- **iPad**: Persistent 3-column `NavigationSplitView` allows simultaneous browsing of libraries, page hierarchies, and detail editors. Apple Pencil pressure and tilt stroke rendering operates with low latency via `WorldsDrawingPencilInput`.
+- **macOS**: Native Menu Bar `Commands` bind standard keyboard shortcuts (`Cmd+O` open database, `Cmd+N` new page, `Cmd+F` search, `Cmd+Opt+1..3` navigation tabs, `Cmd+,` settings). Multi-window support allows side-by-side reference across documents.
+

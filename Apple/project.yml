@@ -10,12 +10,20 @@ settings:
     GENERATE_INFOPLIST_FILE: YES
     PRODUCT_NAME: Worlds
     CODE_SIGNING_ALLOWED: NO
-    "EXCLUDED_SOURCE_FILE_NAMES[config=Release]": "worlds-v1-fixture.db search-ui-fixture.db reader-ui-fixture.db"
+    "EXCLUDED_SOURCE_FILE_NAMES[config=Release]": "worlds-v1-fixture.db search-ui-fixture.db reader-ui-fixture.db worlds-v11.db"
+    SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) WORLDS_MAIN_APP_MODULES"
+    OTHER_SWIFT_FLAGS: "$(inherited) -DWORLDS_MAIN_APP_MODULES"
     CURRENT_PROJECT_VERSION: 1
     MARKETING_VERSION: "0.1.0"
 packages:
   WorldsCore:
     path: WorldsCore
+  SwiftMath:
+    url: https://github.com/mgriebling/SwiftMath.git
+    exactVersion: 1.7.3
+  MermaidKit:
+    url: https://github.com/2389-research/MermaidKit.git
+    exactVersion: 2.10.2
 targets:
   Worlds-iOS:
     type: application
@@ -32,6 +40,8 @@ targets:
       - path: App/UITests/Fixtures/search-ui-fixture.db
         buildPhase: resources
       - path: App/UITests/Fixtures/reader-ui-fixture.db
+        buildPhase: resources
+      - path: ProjectEditorHarness/Fixtures/worlds-v11.db
         buildPhase: resources
     dependencies:
       - package: WorldsCore
@@ -72,9 +82,40 @@ targets:
         product: WorldsGallery
       - package: WorldsCore
         product: WorldsProjectEditingViews
+      - package: WorldsCore
+        product: WorldsNativeEditor
+      - package: WorldsCore
+        product: WorldsEditorPersistence
+      - package: WorldsCore
+        product: WorldsPresentations
+      - package: WorldsCore
+        product: WorldsPresentationPersistence
+      - package: WorldsCore
+        product: WorldsMCPApprovalCoordinator
+      - package: WorldsCore
+        product: WorldsMCPApprovalViews
+      - package: WorldsCore
+        product: WorldsAI
+      - package: WorldsCore
+        product: WorldsAIConversation
+      - package: WorldsCore
+        product: WorldsAIViews
+      - package: WorldsCore
+        product: WorldsAIConversationBridge
+      - package: WorldsCore
+        product: WorldsNativeDiagrams
+      - package: WorldsCore
+        product: WorldsMathDiagrams
+      - package: WorldsCore
+        product: WorldsOfficePreview
+      - package: WorldsCore
+        product: WorldsOfficeViews
+      - package: WorldsCore
+        product: Worlds3DViews
+      - sdk: libsqlite3.tbd
     settings:
       base:
-        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) WORLDS_EXPERIMENTAL_LOCAL_COPY WORLDS_EXPERIMENTAL_PROJECT_LINKS"
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) WORLDS_MAIN_APP_MODULES WORLDS_EXPERIMENTAL_LOCAL_COPY WORLDS_EXPERIMENTAL_PROJECT_LINKS WORLDS_EXPERIMENTAL_PAGE_EDITOR WORLDS_EXPERIMENTAL_DRAWING_EDITOR WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR WORLDS_EXPERIMENTAL_AUTOMATIONS WORLDS_EXPERIMENTAL_CREATE_PAGE WORLDS_EXPERIMENTAL_CREATE_DOCUMENT WORLDS_EXPERIMENTAL_CREATE_GALLERY WORLDS_EXPERIMENTAL_SEARCH_SCOPES WORLDS_EXPERIMENTAL_CREATE_DRAWING WORLDS_EXPERIMENTAL_CREATE_PRESENTATION WORLDS_EXPERIMENTAL_CREATE_PROJECT WORLDS_EXPERIMENTAL_PERSONAL_TABS WORLDS_EXPERIMENTAL_ACCOUNT WORLDS_EXPERIMENTAL_PERSONAL_VIDEO WORLDS_EXPERIMENTAL_PERSONAL_DOCUMENT WORLDS_EXPERIMENTAL_RENAME_PAGE WORLDS_EXPERIMENTAL_MOVE_PAGE WORLDS_EXPERIMENTAL_STREAM_EDITOR WORLDS_EXPERIMENTAL_GALLERY_IMPORT WORLDS_EXPERIMENTAL_LOCAL_HISTORY"
         PRODUCT_BUNDLE_IDENTIFIER: app.worlds.native.ios
         TARGETED_DEVICE_FAMILY: "1,2"
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
@@ -95,6 +136,8 @@ targets:
         buildPhase: resources
       - path: App/UITests/Fixtures/reader-ui-fixture.db
         buildPhase: resources
+      - path: ProjectEditorHarness/Fixtures/worlds-v11.db
+        buildPhase: resources
     dependencies:
       - package: WorldsCore
         product: WorldsModels
@@ -134,9 +177,40 @@ targets:
         product: WorldsGallery
       - package: WorldsCore
         product: WorldsProjectEditingViews
+      - package: WorldsCore
+        product: WorldsNativeEditor
+      - package: WorldsCore
+        product: WorldsEditorPersistence
+      - package: WorldsCore
+        product: WorldsPresentations
+      - package: WorldsCore
+        product: WorldsPresentationPersistence
+      - package: WorldsCore
+        product: WorldsMCPApprovalCoordinator
+      - package: WorldsCore
+        product: WorldsMCPApprovalViews
+      - package: WorldsCore
+        product: WorldsAI
+      - package: WorldsCore
+        product: WorldsAIConversation
+      - package: WorldsCore
+        product: WorldsAIViews
+      - package: WorldsCore
+        product: WorldsAIConversationBridge
+      - package: WorldsCore
+        product: WorldsNativeDiagrams
+      - package: WorldsCore
+        product: WorldsMathDiagrams
+      - package: WorldsCore
+        product: WorldsOfficePreview
+      - package: WorldsCore
+        product: WorldsOfficeViews
+      - package: WorldsCore
+        product: Worlds3DViews
+      - sdk: libsqlite3.tbd
     settings:
       base:
-        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) WORLDS_EXPERIMENTAL_LOCAL_COPY WORLDS_EXPERIMENTAL_PROJECT_LINKS"
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) WORLDS_MAIN_APP_MODULES WORLDS_EXPERIMENTAL_LOCAL_COPY WORLDS_EXPERIMENTAL_PROJECT_LINKS WORLDS_EXPERIMENTAL_PAGE_EDITOR WORLDS_EXPERIMENTAL_DRAWING_EDITOR WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR WORLDS_EXPERIMENTAL_AUTOMATIONS WORLDS_EXPERIMENTAL_CREATE_PAGE WORLDS_EXPERIMENTAL_CREATE_DOCUMENT WORLDS_EXPERIMENTAL_CREATE_GALLERY WORLDS_EXPERIMENTAL_SEARCH_SCOPES WORLDS_EXPERIMENTAL_CREATE_DRAWING WORLDS_EXPERIMENTAL_CREATE_PRESENTATION WORLDS_EXPERIMENTAL_CREATE_PROJECT WORLDS_EXPERIMENTAL_PERSONAL_TABS WORLDS_EXPERIMENTAL_ACCOUNT WORLDS_EXPERIMENTAL_PERSONAL_VIDEO WORLDS_EXPERIMENTAL_PERSONAL_DOCUMENT WORLDS_EXPERIMENTAL_RENAME_PAGE WORLDS_EXPERIMENTAL_MOVE_PAGE WORLDS_EXPERIMENTAL_STREAM_EDITOR WORLDS_EXPERIMENTAL_GALLERY_IMPORT WORLDS_EXPERIMENTAL_LOCAL_HISTORY"
         PRODUCT_BUNDLE_IDENTIFIER: app.worlds.native.macos
   Worlds-iOS-UITests:
     type: bundle.ui-testing

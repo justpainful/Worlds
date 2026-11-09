@@ -1,5 +1,6 @@
 import Foundation
 import CoreGraphics
+import CoreText
 import WorldsModels
 
 public struct DrawingRenderIssue: Sendable, Equatable {
@@ -93,7 +94,7 @@ private func color(_ string: String) -> CGColor? {
                    alpha: s.count == 8 ? CGFloat(raw & 255) / 255 : 1)
 }
 private func blendMode(_ value: String) -> CGBlendMode? {
-    switch value { case "source-over": return .normal; case "multiply": return .multiply; case "screen": return .screen; case "overlay": return .overlay; case "darken": return .darken; case "lighten": return .lighten; default: return nil }
+    switch value { case "source-over", "normal": return .normal; case "multiply": return .multiply; case "screen": return .screen; case "overlay": return .overlay; case "darken": return .darken; case "lighten": return .lighten; default: return nil }
 }
 
 private func drawNode(_ node: [String: JSONValue], context: CGContext) throws -> String? {
@@ -162,6 +163,66 @@ private func drawNode(_ node: [String: JSONValue], context: CGContext) throws ->
             }
         }
         return "Brush preview approximates pressure, flow, spacing and smoothing"
+    }
+    if kind == "text" {
+        let text = node["text"]?.stringValue ?? ""
+        let textStyle = node["textStyle"]?.objectValue
+        let fontSize = (textStyle.flatMap { number($0, "size") }) ?? 16
+        let textColor = (textStyle?["color"]?.stringValue).flatMap(color) ?? CGColor(red: 0.11, green: 0.11, blue: 0.12, alpha: 1)
+        let bgColor = (textStyle?["background"]?.stringValue).flatMap(color)
+        let borderColor = (textStyle?["border"]?.stringValue).flatMap(color)
+        let rect = CGRect(x: 0, y: 0, width: width, height: height)
+        if let bgColor {
+            context.setFillColor(bgColor)
+            context.fill(rect)
+        }
+        if let borderColor {
+            context.setStrokeColor(borderColor)
+            context.setLineWidth(1)
+            context.stroke(rect.insetBy(dx: 0.5, dy: 0.5))
+        }
+        if !text.isEmpty {
+            context.saveGState()
+            context.translateBy(x: 0, y: height)
+            context.scaleBy(x: 1.0, y: -1.0)
+            
+            let fontName = textStyle?["font"]?.stringValue ?? "system"
+            let ctFont: CTFont
+            if fontName.contains("mono") {
+                ctFont = CTFontCreateWithName("Courier" as CFString, fontSize, nil)
+            } else if fontName.contains("serif") {
+                ctFont = CTFontCreateWithName("Times New Roman" as CFString, fontSize, nil)
+            } else {
+                ctFont = CTFontCreateUIFontForLanguage(.system, fontSize, nil) ?? CTFontCreateWithName("Helvetica" as CFString, fontSize, nil)
+            }
+            
+            let alignStr = textStyle?["align"]?.stringValue ?? "left"
+            var textAlignment: CTTextAlignment = .left
+            if alignStr == "center" { textAlignment = .center }
+            else if alignStr == "right" || alignStr == "end" { textAlignment = .right }
+            
+            let alignmentSetting = [
+                CTParagraphStyleSetting(
+                    spec: .alignment,
+                    valueSize: MemoryLayout<CTTextAlignment>.size,
+                    value: &textAlignment
+                )
+            ]
+            let paragraphStyle = CTParagraphStyleCreate(alignmentSetting, 1)
+            
+            let attributes: [CFString: Any] = [
+                kCTFontAttributeName: ctFont,
+                kCTForegroundColorAttributeName: textColor,
+                kCTParagraphStyleAttributeName: paragraphStyle
+            ]
+            let attrString = CFAttributedStringCreate(kCFAllocatorDefault, text as CFString, attributes as CFDictionary)!
+            let framesetter = CTFramesetterCreateWithAttributedString(attrString)
+            let path = CGPath(rect: CGRect(x: 4, y: 4, width: max(1, width - 8), height: max(1, height - 8)), transform: nil)
+            let frame = CTFramesetterCreateFrame(framesetter, CFRangeMake(0, 0), path, nil)
+            CTFrameDraw(frame, context)
+            context.restoreGState()
+        }
+        return nil
     }
     throw PreviewError.unsupported("Element type is not implemented")
 }

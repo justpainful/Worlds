@@ -40,6 +40,14 @@ enum LocalCopyUITestFixture {
             guard sqlite3_exec(database, gallery, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
         }
         #endif
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing-search-scopes") {
+            let search = "UPDATE pages SET title='Geometry project' WHERE id='harness-project'; INSERT INTO pages_fts(page_id,title,body) VALUES('harness-project','Geometry project','geometry fixture'),('fixture-page','Fixture page','geometry fixture');"
+            guard sqlite3_exec(database, search, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+        }
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing-trash-fixture") {
+            let trash = "INSERT INTO pages(id,title,kind,archived,metadata,created_at,updated_at) VALUES('trashed-fixture','Archived architecture notes','document',1,'{}',1,90),('trashed-sketch','Old wireframe sketch','drawing',1,'{}',1,80);"
+            guard sqlite3_exec(database, trash, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
+        }
         #if WORLDS_EXPERIMENTAL_PERSONAL_TABS
         if ProcessInfo.processInfo.arguments.contains("--ui-testing-tabs-links") {
             let links = #"UPDATE pages SET metadata='{"project":{"status":"active","description":"Original fixture","links":["fixture-page"]},"unknown":{"preserve":true}}' WHERE id='harness-project';"#

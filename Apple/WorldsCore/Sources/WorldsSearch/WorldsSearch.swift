@@ -12,6 +12,25 @@ public struct WorldsSearchHit: Sendable, Equatable, Identifiable {
     public let updatedAt: Int64
     public var id: String { pageId }
 }
+public enum WorldsSearchScope: String, CaseIterable, Sendable {
+    case all, pages, projects, media
+    public var label: String {
+        switch self {
+        case .all: return "All types"
+        case .pages: return "Pages and documents"
+        case .projects: return "Projects"
+        case .media: return "Media and presentations"
+        }
+    }
+    fileprivate var sqlFilter: String {
+        switch self {
+        case .all: return ""
+        case .pages: return " AND p.kind IN ('page','document')"
+        case .projects: return " AND p.kind = 'project'"
+        case .media: return " AND p.kind IN ('drawing','gallery','presentation','file','stream')"
+        }
+    }
+}
 public enum WorldsSearchError: Error, LocalizedError {
     case invalidURL, invalidQuery, unsupportedSchema(Int), database(String), malformedData
     public var errorDescription: String? {
@@ -57,12 +76,12 @@ public actor WorldsSearch {
 
     /// Uses Worlds' trigram MATCH, BM25, snippet markers, title fallback and
     /// ordering. Archived pages are included; deleted pages are excluded.
-    public func search(_ query: String, limit: Int = 30, includeTemplates: Bool = true) throws -> [WorldsSearchHit] {
+    public func search(_ query: String, limit: Int = 30, includeTemplates: Bool = true, scope: WorldsSearchScope = .all) throws -> [WorldsSearchHit] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty, limit > 0 else { return [] }
         guard q.utf8.count <= 4096, !q.utf8.contains(0) else { throw WorldsSearchError.invalidQuery }
         let cap = min(limit, 1000)
-        let kind = includeTemplates ? "" : " AND p.kind != 'template'"
+        let kind = (includeTemplates ? "" : " AND p.kind != 'template'") + scope.sqlFilter
         let access = Self.personal(alias: "p", schema: schema)
         let parentAccess = Self.personal(alias: "pp", schema: schema)
         let parent = "(SELECT pp.title FROM pages pp WHERE pp.id=p.parent_id AND \(parentAccess))"

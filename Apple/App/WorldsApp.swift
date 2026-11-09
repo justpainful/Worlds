@@ -1,7 +1,12 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import SQLite3
 import WorldsPersistence
 import WorldsSearch
+#if WORLDS_MAIN_APP_MODULES
+import WorldsMCPApprovalCoordinator
+import WorldsMCPApprovalViews
+#endif
 #if WORLDS_EXPERIMENTAL_LOCAL_COPY
 import WorldsLocalImport
 import WorldsProjectEditingViews
@@ -11,6 +16,42 @@ import WorldsModels
 #if DEBUG && (WORLDS_EXPERIMENTAL_RENAME_PAGE || WORLDS_EXPERIMENTAL_MOVE_PAGE)
 import WorldsNativeWrites
 #endif
+#endif
+
+extension Notification.Name {
+    static let worldsOpenDatabaseAction = Notification.Name("worldsOpenDatabaseAction")
+    static let worldsFocusSearchAction = Notification.Name("worldsFocusSearchAction")
+    static let worldsNavigateHomeAction = Notification.Name("worldsNavigateHomeAction")
+    static let worldsNavigateTemplatesAction = Notification.Name("worldsNavigateTemplatesAction")
+    static let worldsNavigateTrashAction = Notification.Name("worldsNavigateTrashAction")
+    static let worldsOpenSettingsAction = Notification.Name("worldsOpenSettingsAction")
+}
+
+#if canImport(UIKit)
+import UIKit
+enum WorldsHaptics {
+    static func light() {
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.prepare()
+        generator.impactOccurred()
+    }
+    static func selection() {
+        let generator = UISelectionFeedbackGenerator()
+        generator.prepare()
+        generator.selectionChanged()
+    }
+    static func success() {
+        let generator = UINotificationFeedbackGenerator()
+        generator.prepare()
+        generator.notificationOccurred(.success)
+    }
+}
+#else
+enum WorldsHaptics {
+    static func light() {}
+    static func selection() {}
+    static func success() {}
+}
 #endif
 
 @main
@@ -23,10 +64,57 @@ struct WorldsApp: App {
         WindowGroup { rootView }
             .defaultSize(width: ProcessInfo.processInfo.arguments.contains("--ui-testing-large-window") ? 1100 : 800,
                          height: ProcessInfo.processInfo.arguments.contains("--ui-testing-large-window") ? 780 : 600)
+            .commands { appCommands }
+        #elseif os(macOS)
+        WindowGroup { rootView }
+            .commands { appCommands }
         #else
         WindowGroup { rootView }
         #endif
     }
+
+    #if os(macOS)
+    @CommandsBuilder
+    private var appCommands: some Commands {
+        SidebarCommands()
+        CommandGroup(replacing: .newItem) {
+            Button("Open Database…") {
+                NotificationCenter.default.post(name: .worldsOpenDatabaseAction, object: nil)
+            }
+            .keyboardShortcut("o", modifiers: .command)
+        }
+        CommandGroup(after: .pasteboard) {
+            Divider()
+            Button("Find in Pages…") {
+                NotificationCenter.default.post(name: .worldsFocusSearchAction, object: nil)
+            }
+            .keyboardShortcut("f", modifiers: .command)
+        }
+        CommandMenu("Navigate") {
+            Button("Home") {
+                NotificationCenter.default.post(name: .worldsNavigateHomeAction, object: nil)
+            }
+            .keyboardShortcut("1", modifiers: [.command, .option])
+
+            Button("Templates") {
+                NotificationCenter.default.post(name: .worldsNavigateTemplatesAction, object: nil)
+            }
+            .keyboardShortcut("2", modifiers: [.command, .option])
+
+            Button("Trash") {
+                NotificationCenter.default.post(name: .worldsNavigateTrashAction, object: nil)
+            }
+            .keyboardShortcut("3", modifiers: [.command, .option])
+
+            Divider()
+
+            Button("Settings…") {
+                NotificationCenter.default.post(name: .worldsOpenSettingsAction, object: nil)
+            }
+            .keyboardShortcut(",", modifiers: .command)
+        }
+    }
+    #endif
 
     @ViewBuilder private var rootView: some View {
         #if DEBUG
@@ -54,6 +142,7 @@ private struct UITestingAppearance: ViewModifier {
 private struct WorldsLibraryView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var pages: [StoredPage] = []
     @State private var selectedID: String?
     @State private var returnStack: [String] = []
@@ -88,13 +177,23 @@ private struct WorldsLibraryView: View {
     #endif
     @State private var openRequest = UUID()
     @State private var searchQuery = ""
+    @State private var searchScope: WorldsSearchScope = .all
     @State private var searchHits: [WorldsSearchHit] = []
     @State private var searchError: String?
     @State private var searching = false
     @State private var searchedQuery: String?
+    @State private var searchedScope: WorldsSearchScope?
     @State private var searchRequest = UUID()
     #if WORLDS_EXPERIMENTAL_ACCOUNT
     @State private var showAccount = false
+    #endif
+    enum SidebarSection: Hashable { case home, templates, trash }
+    @State private var selectedSidebarSection: SidebarSection? = nil
+    @State private var showSettings = false
+    @State private var showAssistant = false
+    #if WORLDS_MAIN_APP_MODULES
+    @State private var pendingMCPApproval: MCPRenameApproval?
+    private let mcpRunner = DualMCPToolRunner()
     #endif
     #if WORLDS_EXPERIMENTAL_LOCAL_COPY
     @State private var copyContext: LocalCopyContext?
@@ -156,36 +255,45 @@ private struct WorldsLibraryView: View {
 
     var body: some View {
         NavigationSplitView {
-            Group {
-                if loading {
-                    ProgressView("Opening database")
-                } else if !loaded {
-                    ContentUnavailableView {
-                        Label("Open your Worlds database", systemImage: "externaldrive")
-                    } description: {
-                        Text("Choose a local Worlds database to view its personal pages.")
-                    } actions: {
-                        Button("Open Database") {
-                            #if WORLDS_EXPERIMENTAL_LOCAL_COPY
-                            copyImportSelected = false
-                            #endif
-                            showImporter = true
-                        }
-                            .buttonStyle(.borderedProminent)
-                            .foregroundStyle(colorScheme == .dark ? Color.black : Color.white)
-                            .accessibilityIdentifier("open-database")
-                    }
-                } else if !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    searchResults
-                } else if pages.isEmpty {
-                    ContentUnavailableView(
-                        "No personal pages",
-                        systemImage: "doc.text",
-                        description: Text("This database has no personal pages available to show.")
-                    )
-                } else {
-                    pageList
+            VStack(spacing: 0) {
+                if loaded && !ProcessInfo.processInfo.arguments.contains("--ui-testing-large-text") {
+                    workspaceNavigationBar
+                    Divider()
                 }
+                Group {
+                    if loading {
+                        ProgressView("Opening database")
+                    } else if !loaded {
+                        ContentUnavailableView {
+                            Label("Open your Worlds database", systemImage: "externaldrive")
+                        } description: {
+                            Text("Choose a local Worlds database to view its personal pages.")
+                        } actions: {
+                            Button("Open Database") {
+                                #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+                                copyImportSelected = false
+                                #endif
+                                showImporter = true
+                            }
+                                .buttonStyle(.borderedProminent)
+                                .foregroundStyle(colorScheme == .dark ? Color.black : Color.white)
+                                .accessibilityIdentifier("open-database")
+                        }
+                    } else if !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        searchResults
+                    } else if horizontalSizeClass == .compact, let section = selectedSidebarSection, selectedID == nil {
+                        sectionContentView(section)
+                    } else if pages.isEmpty {
+                        ContentUnavailableView(
+                            "No personal pages",
+                            systemImage: "doc.text",
+                            description: Text("This database has no personal pages available to show.")
+                        )
+                    } else {
+                        pageList
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .navigationSplitViewColumnWidth(min: dynamicTypeSize.isAccessibilitySize ? 320 : 240,
                                             ideal: dynamicTypeSize.isAccessibilitySize ? 360 : 280,
@@ -315,7 +423,9 @@ private struct WorldsLibraryView: View {
             }
         } detail: {
             Group {
-                if let selectedPageID = selectedID, let page = pages.first(where: { $0.id == selectedPageID }) {
+                if let section = selectedSidebarSection, selectedID == nil {
+                    sectionContentView(section)
+                } else if let selectedPageID = selectedID, let page = pages.first(where: { $0.id == selectedPageID }) {
                     if ["project", "gallery", "presentation", "file", "stream"].contains(page.kind) {
                         ResourceContentView(page: page, pages: pages, projectEditingAvailable: projectEditingAvailable(for: page), otherEditingAvailable: otherResourceEditingAvailable(for: page), openVideo: videoAction(for: page), openDocument: documentAction(for: page)) { target in
                             guard target != page.id else { return }
@@ -336,7 +446,7 @@ private struct WorldsLibraryView: View {
                         )
                     }
                 } else if loaded {
-                    ContentUnavailableView("Select a page", systemImage: "doc.text")
+                    sectionContentView(.home)
                 } else {
                     Color.clear
                 }
@@ -608,6 +718,22 @@ private struct WorldsLibraryView: View {
         #if WORLDS_EXPERIMENTAL_ACCOUNT
         .sheet(isPresented: $showAccount) { AccountHostView() }
         #endif
+        .sheet(isPresented: $showSettings) {
+            SettingsView(databaseURL: openedVideoDatabase?.url, pageCount: pages.count, onVacuumDatabase: nil, onClearCache: nil)
+        }
+        .sheet(isPresented: $showAssistant) {
+            AssistantHostView(pages: pages)
+        }
+        #if WORLDS_MAIN_APP_MODULES
+        .sheet(item: $pendingMCPApproval) { approval in
+            MCPRenameApprovalView(request: approval) { decision in
+                Task {
+                    _ = try? await mcpRunner.resolve(decision: decision)
+                    pendingMCPApproval = nil
+                }
+            }
+        }
+        #endif
         .searchable(text: $searchQuery, placement: .sidebar, prompt: "Search personal pages")
         #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_PERSONAL_TABS
         .onChange(of: selectedID) { _, id in
@@ -622,6 +748,32 @@ private struct WorldsLibraryView: View {
         .onChange(of: showPageHierarchy) { _, _ in saveHierarchyPreferences() }
         #endif
         .tint(WorldsPalette.accent(for: colorScheme))
+        .onReceive(NotificationCenter.default.publisher(for: .worldsOpenDatabaseAction)) { _ in
+            #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+            copyImportSelected = false
+            #endif
+            showImporter = true
+            WorldsHaptics.light()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateHomeAction)) { _ in
+            selectedID = nil
+            selectedSidebarSection = .home
+            WorldsHaptics.selection()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateTemplatesAction)) { _ in
+            selectedID = nil
+            selectedSidebarSection = .templates
+            WorldsHaptics.selection()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateTrashAction)) { _ in
+            selectedID = nil
+            selectedSidebarSection = .trash
+            WorldsHaptics.selection()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .worldsOpenSettingsAction)) { _ in
+            showSettings = true
+            WorldsHaptics.light()
+        }
         .task {
             #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-local-copy-fixture") {
@@ -663,6 +815,7 @@ private struct WorldsLibraryView: View {
             #endif
         }
         .task(id: searchQuery) { await search() }
+        .onChange(of: searchScope) { _, _ in Task { await search() } }
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [.data]) { result in
             switch result {
             case .success(let url):
@@ -720,6 +873,290 @@ private struct WorldsLibraryView: View {
         #else
         return nil
         #endif
+    }
+
+    private var createPageAction: (() -> Void)? {
+        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PAGE
+        guard let context = copyContext, let source = openedVideoDatabase,
+              source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL else { return nil }
+        return {
+            creatingPage = LocalCreatePageRequest(copy: context.copy, databaseIdentity: source.identity, parentID: nil, generation: databaseGeneration)
+        }
+        #else
+        return nil
+        #endif
+    }
+
+    private var createDocumentAction: (() -> Void)? {
+        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DOCUMENT
+        guard let context = copyContext, let source = openedVideoDatabase,
+              source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL else { return nil }
+        return {
+            creatingDocument = LocalCreateDocumentRequest(copy: context.copy, databaseIdentity: source.identity, generation: databaseGeneration)
+        }
+        #else
+        return nil
+        #endif
+    }
+
+    private var createDrawingAction: (() -> Void)? {
+        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DRAWING && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+        guard let context = copyContext, let source = openedVideoDatabase,
+              source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL else { return nil }
+        return {
+            creatingDrawing = LocalCreateDrawingRequest(copy: context.copy, databaseIdentity: source.identity, generation: databaseGeneration)
+        }
+        #else
+        return nil
+        #endif
+    }
+
+    private var createProjectAction: (() -> Void)? {
+        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PROJECT
+        guard let context = copyContext, let source = openedVideoDatabase,
+              source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL else { return nil }
+        return {
+            creatingProject = LocalCreateProjectRequest(copy: context.copy, databaseIdentity: source.identity, generation: databaseGeneration)
+        }
+        #else
+        return nil
+        #endif
+    }
+
+    private var createPresentationAction: (() -> Void)? {
+        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PRESENTATION && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
+        guard let context = copyContext, let source = openedVideoDatabase,
+              source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL else { return nil }
+        return {
+            creatingPresentation = LocalCreatePresentationRequest(copy: context.copy, databaseIdentity: source.identity, generation: databaseGeneration)
+        }
+        #else
+        return nil
+        #endif
+    }
+
+    @ViewBuilder
+    private func sectionContentView(_ section: SidebarSection) -> some View {
+        switch section {
+        case .home:
+            HomeView(
+                pages: pages,
+                openPage: { id in
+                    selectedSidebarSection = nil
+                    selectedID = id
+                },
+                createPage: createPageAction,
+                createDocument: createDocumentAction,
+                createDrawing: createDrawingAction,
+                createProject: createProjectAction,
+                createPresentation: createPresentationAction,
+                openAssistant: { showAssistant = true },
+                openTemplates: {
+                    selectedID = nil
+                    selectedSidebarSection = .templates
+                },
+                openAutomations: openAutomationsAction,
+                onRequestLocalCopy: {
+                    #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+                    showCopyExplanation = true
+                    #endif
+                }
+            )
+        case .templates:
+            TemplatesView { template in
+                createPageFromTemplate(template)
+            }
+        case .trash:
+            TrashView(
+                pages: pages,
+                onRestore: restorePage,
+                onDeletePermanently: deletePermanently,
+                onEmptyTrash: emptyTrash
+            )
+        }
+    }
+
+    private var workspaceNavigationBar: some View {
+        HStack(spacing: 4) {
+            navPillButton(
+                title: "Pages",
+                icon: "doc.text",
+                identifier: "open-pages-button",
+                isActive: selectedSidebarSection == nil
+            ) {
+                selectedSidebarSection = nil
+            }
+            navPillButton(
+                title: "Home",
+                icon: "house",
+                identifier: "open-home-button",
+                isActive: selectedSidebarSection == .home && selectedID == nil
+            ) {
+                selectedID = nil
+                selectedSidebarSection = .home
+            }
+            navPillButton(
+                title: "Templates",
+                icon: "square.grid.2x2",
+                identifier: "open-templates-button",
+                isActive: selectedSidebarSection == .templates && selectedID == nil
+            ) {
+                selectedID = nil
+                selectedSidebarSection = .templates
+            }
+            navPillButton(
+                title: "Trash",
+                icon: "trash",
+                identifier: "open-trash-button",
+                isActive: selectedSidebarSection == .trash && selectedID == nil
+            ) {
+                selectedID = nil
+                selectedSidebarSection = .trash
+            }
+            navPillButton(
+                title: "AI",
+                icon: "sparkles",
+                identifier: "open-assistant-button",
+                isActive: showAssistant
+            ) {
+                showAssistant = true
+            }
+            #if WORLDS_EXPERIMENTAL_ACCOUNT
+            navPillButton(
+                title: "Account",
+                icon: "person.crop.circle",
+                identifier: "open-account-button",
+                isActive: showAccount
+            ) {
+                showAccount = true
+            }
+            #endif
+            navPillButton(
+                title: "Settings",
+                icon: "gearshape",
+                identifier: "open-settings-button",
+                isActive: showSettings
+            ) {
+                showSettings = true
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(.ultraThinMaterial)
+        .dynamicTypeSize(...DynamicTypeSize.large)
+    }
+
+    private func navPillButton(title: String, icon: String, identifier: String, isActive: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 2) {
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .semibold))
+                Text(title)
+                    .font(.system(size: 9, weight: .medium))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(isActive ? WorldsPalette.accent(for: colorScheme) : .primary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 5)
+            .background(
+                isActive ? WorldsPalette.accent(for: colorScheme).opacity(0.16) : Color.clear,
+                in: RoundedRectangle(cornerRadius: 8)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityIdentifier(identifier)
+        .disabled(databaseActionsDisabled)
+    }
+
+    private var openAutomationsAction: (() -> Void)? {
+        #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_AUTOMATIONS
+        guard let context = copyContext, let source = openedVideoDatabase,
+              source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL else { return nil }
+        return {
+            automationsRequest = LocalAutomationsRequest(context: context, identity: source.identity)
+        }
+        #else
+        return nil
+        #endif
+    }
+
+    private func createPageFromTemplate(_ template: WorkspaceTemplate) {
+        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PAGE
+        if let context = copyContext, let source = openedVideoDatabase,
+           source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
+            creatingPage = LocalCreatePageRequest(
+                copy: context.copy,
+                databaseIdentity: source.identity,
+                parentID: nil,
+                generation: databaseGeneration,
+                initialTitle: template.title
+            )
+            return
+        }
+        #endif
+        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+        showCopyExplanation = true
+        #endif
+    }
+
+    private func restorePage(_ id: String) {
+        guard let index = pages.firstIndex(where: { $0.id == id }) else { return }
+        let current = pages[index]
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
+        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+        if let context = copyContext {
+            persistTrashMutation(in: context.copy.databaseURL, sql: "UPDATE pages SET archived=0, updated_at=\(now) WHERE id=?;", id: id)
+        }
+        #endif
+        pages[index] = StoredPage(
+            id: current.id,
+            title: current.title,
+            kind: current.kind,
+            parentID: current.parentID,
+            sortKey: current.sortKey,
+            archived: false,
+            createdAt: current.createdAt,
+            updatedAt: now,
+            metadataJSON: current.metadataJSON,
+            blocks: current.blocks
+        )
+    }
+
+    private func deletePermanently(_ id: String) {
+        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+        if let context = copyContext {
+            persistTrashMutation(in: context.copy.databaseURL, sql: "DELETE FROM pages WHERE id=?;", id: id)
+        }
+        #endif
+        pages.removeAll(where: { $0.id == id })
+    }
+
+    private func emptyTrash() {
+        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+        if let context = copyContext {
+            persistTrashMutation(in: context.copy.databaseURL, sql: "DELETE FROM pages WHERE archived=1;", id: nil)
+        }
+        #endif
+        pages.removeAll(where: { $0.archived })
+    }
+
+    private func persistTrashMutation(in databaseURL: URL, sql: String, id: String?) {
+        var db: OpaquePointer?
+        guard sqlite3_open_v2(databaseURL.path, &db, SQLITE_OPEN_READWRITE, nil) == SQLITE_OK, let connection = db else {
+            if let db { sqlite3_close(db) }
+            return
+        }
+        defer { sqlite3_close(connection) }
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(connection, sql, -1, &stmt, nil) == SQLITE_OK, let statement = stmt else { return }
+        defer { sqlite3_finalize(statement) }
+        if let id {
+            _ = id.withCString { cStr in
+                sqlite3_bind_text(statement, 1, cStr, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+            }
+        }
+        _ = sqlite3_step(statement)
     }
 
     private func projectEditingAvailable(for page: StoredPage) -> Bool {
@@ -818,6 +1255,9 @@ private struct WorldsLibraryView: View {
             // SwiftUI can write the current selection back while updating a
             // split view. Preserve link history unless selection really changed.
             guard selectedID != newSelection else { return }
+            if newSelection != nil {
+                selectedSidebarSection = nil
+            }
             selectedID = newSelection
             returnStack.removeAll()
         })
@@ -904,10 +1344,15 @@ private struct WorldsLibraryView: View {
     }
 
     private var searchResults: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 8) {
+            Picker("Search type", selection: $searchScope) {
+                ForEach(WorldsSearchScope.allCases, id: \.self) { scope in Text(scope.label).tag(scope) }
+            }.pickerStyle(.menu).accessibilityIdentifier("search-scope")
+                .padding(.horizontal, 12)
+            Group {
             if let searchError {
                 ContentUnavailableView("Search unavailable", systemImage: "exclamationmark.magnifyingglass", description: Text(searchError))
-            } else if searching || searchedQuery != searchQuery.trimmingCharacters(in: .whitespacesAndNewlines) {
+            } else if searching || searchedScope != searchScope || searchedQuery != searchQuery.trimmingCharacters(in: .whitespacesAndNewlines) {
                 ProgressView("Searching")
             } else if searchHits.isEmpty {
                 ContentUnavailableView.search(text: searchQuery)
@@ -946,6 +1391,7 @@ private struct WorldsLibraryView: View {
                     .accessibilityHint("Opens page")
                 }
             }
+            }
         }
     }
 
@@ -976,6 +1422,7 @@ private struct WorldsLibraryView: View {
         guard !query.isEmpty else {
             searchHits = []
             searchedQuery = nil
+            searchedScope = nil
             searching = false
             return
         }
@@ -984,23 +1431,25 @@ private struct WorldsLibraryView: View {
             return
         }
         let generation = databaseGeneration
+        let scope = searchScope
         searching = true
         searchError = nil
         do {
             try await Task.sleep(for: .milliseconds(250))
-            let results = try await searchEngine.search(query)
+            let results = try await searchEngine.search(query, scope: scope)
             guard !Task.isCancelled, request == searchRequest, generation == databaseGeneration,
-                  query == searchQuery.trimmingCharacters(in: .whitespacesAndNewlines) else { return }
+                  query == searchQuery.trimmingCharacters(in: .whitespacesAndNewlines), scope == searchScope else { return }
             let allowed = Set(pages.map(\.id))
             searchHits = results.filter { allowed.contains($0.pageId) }
             searchedQuery = query
+            searchedScope = scope
             searchError = nil
             searching = false
         } catch is CancellationError {
             return
         } catch {
             guard !Task.isCancelled, request == searchRequest, generation == databaseGeneration,
-                  query == searchQuery.trimmingCharacters(in: .whitespacesAndNewlines) else { return }
+                  query == searchQuery.trimmingCharacters(in: .whitespacesAndNewlines), scope == searchScope else { return }
             searchHits = []
             searchError = error.localizedDescription
             searching = false

@@ -26,6 +26,12 @@ typedef struct WorldsStore WorldsStore;
    All strings must be NUL-terminated UTF-8. Do not free a store while calls are active. */
 int32_t worlds_store_open(const char *path, const char *page, const char *user, const char *workspace, WorldsStore **out);
 void worlds_collaboration_store_free(WorldsStore *store);
+/* Experimental owned-document bridge, not connected to network transport.
+   Enrollment rejects existing documents/queues. Successful batch output must
+   be freed exactly once with worlds_buffer_free; -1 indicates no watermark. */
+int32_t worlds_store_owned_enroll(const WorldsStore *store, int64_t channel, const char *server);
+int32_t worlds_store_owned_append(const WorldsStore *store, int64_t channel, const char *server, const uint8_t *data, size_t len, int32_t local);
+int32_t worlds_store_owned_batch(const WorldsStore *store, int64_t channel, const char *server, const uint8_t *vector, size_t len, WorldsBuffer *out, int64_t *watermark);
 /* Load packs an LE uint64 count followed by LE uint64 length and bytes per update.
    The output is freed using worlds_buffer_free. */
 int32_t worlds_store_load(const WorldsStore *store, int64_t channel, WorldsBuffer *out);

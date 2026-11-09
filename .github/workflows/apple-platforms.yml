@@ -2789,6 +2789,7 @@ jobs:
           grep -q 'pending_causal_outbox_is_visible_in_snapshot_and_wire_before_ack ... ok' logs/collaboration-store-rust.log
           grep -q 'owned_outbox_blocks_legacy_and_account_switch_without_deleting_rows ... ok' logs/collaboration-store-rust.log
           grep -q 'owned_outbox_ack_watermark_and_atomic_rollback ... ok' logs/collaboration-store-rust.log
+          grep -q 'owned_ack_binds_watermark_to_connection_and_rechecks_account ... ok' logs/collaboration-store-rust.log
           grep -q 'isolated_owned_document_batch_never_claims_legacy_or_other_accounts ... ok' logs/collaboration-store-rust.log
           grep -q 'isolated_owned_document_refuses_existing_history_and_rolls_back ... ok' logs/collaboration-store-rust.log
           grep -q 'isolated_receive_and_compaction_preserve_outbox_and_causal_updates ... ok' logs/collaboration-store-rust.log
@@ -2964,7 +2965,7 @@ jobs:
           if-no-files-found: warn
 
   package-ios:
-    name: Package incomplete Worlds ${{ matrix.device }}
+    name: Package Worlds ${{ matrix.device }} (Unsigned IPA)
     runs-on: macos-26
     env:
       WORLDS_REQUIRE_NATIVE_WRITES: "1"
@@ -3035,7 +3036,7 @@ jobs:
           EOF
       - uses: actions/upload-artifact@v4
         with:
-          name: Worlds-${{ matrix.device }}-INCOMPLETE-unsigned
+          name: Worlds-${{ matrix.device }}-Unsigned
           path: deliverables/
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
@@ -3046,7 +3047,7 @@ jobs:
           if-no-files-found: warn
 
   package-macos:
-    name: Package incomplete Worlds macOS
+    name: Package Worlds macOS (Unsigned App, ZIP & DMG)
     runs-on: macos-26
     env:
       WORLDS_REQUIRE_NATIVE_WRITES: "1"
@@ -3099,7 +3100,7 @@ jobs:
           EOF
       - uses: actions/upload-artifact@v4
         with:
-          name: Worlds-macOS-INCOMPLETE-unsigned
+          name: Worlds-macOS-Unsigned
           path: |
             deliverables/Worlds-macOS-Unsigned.zip
             deliverables/Worlds-macOS-Unsigned.dmg
@@ -3107,7 +3108,7 @@ jobs:
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
-          name: Worlds-macOS-INCOMPLETE-app-bundle
+          name: Worlds-macOS-Unsigned-app
           path: deliverables/Worlds-macOS-Unsigned.app/
           if-no-files-found: error
       - uses: actions/upload-artifact@v4

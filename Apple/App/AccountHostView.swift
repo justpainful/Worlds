@@ -30,7 +30,12 @@ struct AccountHostView: View {
                 }
             }
             .navigationTitle("Account")
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { dismiss() }
+                        .accessibilityIdentifier("close-account-button")
+                }
+            }
             .task {
                 guard !started else { return }
                 started = true

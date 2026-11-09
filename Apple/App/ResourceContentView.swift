@@ -2,6 +2,11 @@ import SwiftUI
 import AVKit
 import WorldsPersistence
 import WorldsMedia
+#if WORLDS_MAIN_APP_MODULES
+import WorldsOfficeViews
+import WorldsOfficePreview
+import Worlds3DViews
+#endif
 
 private struct ResourceMetadata: Decodable {
     struct Project: Decodable {
@@ -46,6 +51,7 @@ struct ResourceContentView: View {
     var otherEditingAvailable: Bool = false
     var openVideo: (() -> Void)? = nil
     var openDocument: (() -> Void)? = nil
+    var open3D: (() -> Void)? = nil
     let openPage: (String) -> Void
 
     private var metadata: ResourceMetadata? { try? JSONDecoder().decode(ResourceMetadata.self, from: Data(page.metadataJSON.utf8)) }
@@ -117,7 +123,7 @@ struct ResourceContentView: View {
             ForEach(Array(blocks.enumerated()), id: \.offset) { _, pair in
                 if let block = pair.1, block.type == "galleryItem" {
                     VStack(alignment: .leading, spacing: 4) {
-                        Label(block.attrs?.name ?? "Gallery item details unavailable", systemImage: mediaSymbol(block.attrs?.mime))
+                        Label(block.attrs?.name ?? "Gallery item details unavailable", systemImage: mediaSymbol(block.attrs?.mime, name: block.attrs?.name))
                         if let caption = block.attrs?.caption, !caption.isEmpty { Text(caption).foregroundStyle(.secondary) }
                     }
                 } else { Text("Unsupported gallery content").foregroundStyle(.secondary) }
@@ -148,15 +154,34 @@ struct ResourceContentView: View {
                 if let name = info.name { detail("File", name) }
                 if let mime = info.mime { detail("Type", mime) }
                 if let size = info.size, size >= 0 { detail("Size", ByteCountFormatter.string(fromByteCount: size, countStyle: .file)) }
+                let ext = ((info.name ?? "") as NSString).pathExtension.lowercased()
+                let isOffice = ext == "docx" || ext == "xlsx"
+                #if WORLDS_MAIN_APP_MODULES
+                let is3D = Worlds3D.isSupported(name: info.name ?? "")
+                #else
+                let is3D = false
+                #endif
+                let isDoc = [.image, .pdf].contains(WorldsMedia.format(name: info.name ?? "", mime: info.mime ?? "")) || isOffice
                 if info.mime?.lowercased().hasPrefix("video/") == true, let openVideo {
                     Button("Open video", systemImage: "play.rectangle", action: openVideo)
                         .accessibilityIdentifier("open-personal-video")
                     Text("Choose the Worlds folder to open this personal video.").foregroundStyle(.secondary)
-                } else if let openDocument,
-                          [.image, .pdf].contains(WorldsMedia.format(name: info.name ?? "", mime: info.mime ?? "")) {
-                    Button("Open document", systemImage: "doc.richtext", action: openDocument)
+                } else if is3D {
+                    if let open3D {
+                        Button(ext == "dxf" ? "Open CAD drawing" : "Open 3D model",
+                               systemImage: ext == "dxf" ? "compass.drawing" : "cube.transparent", action: open3D)
+                            .accessibilityIdentifier("open-personal-3d")
+                        Text("Choose the Worlds folder to interactively view this personal \(ext == "dxf" ? "CAD drawing" : "3D model").").foregroundStyle(.secondary)
+                    } else {
+                        Label(ext == "dxf" ? "CAD Drawing (DXF)" : "3D Model (\(ext.uppercased()))", systemImage: ext == "dxf" ? "compass.drawing" : "cube")
+                            .font(.subheadline.weight(.medium))
+                        Text("Interactive 3D viewing with orbital gestures, wireframe/shaded rendering, and lighting is available.").foregroundStyle(.secondary)
+                    }
+                } else if let openDocument, isDoc {
+                    Button(isOffice ? (ext == "docx" ? "Open Word document" : "Open Excel spreadsheet") : "Open document",
+                           systemImage: isOffice ? "doc.text" : "doc.richtext", action: openDocument)
                         .accessibilityIdentifier("open-personal-document")
-                    Text("Choose the Worlds folder to open this personal file.").foregroundStyle(.secondary)
+                    Text("Choose the Worlds folder to open this personal \(isOffice ? (ext == "docx" ? "Word document" : "spreadsheet") : "file").").foregroundStyle(.secondary)
                 } else {
                     Text("File preview is unavailable in this reader.").foregroundStyle(.secondary)
                 }
@@ -210,11 +235,17 @@ struct ResourceContentView: View {
         if let start = info.start { detail("Start", start).frame(minWidth: 90) }
         if let due = info.due { detail("Due", due).frame(minWidth: 90) }
     }
-    private func mediaSymbol(_ mime: String?) -> String {
+    private func mediaSymbol(_ mime: String?, name: String? = nil) -> String {
+        #if WORLDS_MAIN_APP_MODULES
+        if let name, Worlds3D.isSupported(name: name) {
+            return (name as NSString).pathExtension.lowercased() == "dxf" ? "compass.drawing" : "cube"
+        }
+        #endif
         guard let mime else { return "doc" }
         if mime.hasPrefix("image/") { return "photo" }
         if mime.hasPrefix("video/") { return "film" }
         if mime.hasPrefix("audio/") { return "waveform" }
+        if mime.contains("model") || mime.contains("3d") || mime.contains("dxf") { return "cube" }
         return "doc"
     }
     private func linkedPages(_ ids: [String]) -> [StoredPage] {

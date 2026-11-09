@@ -99,6 +99,33 @@ public actor SQLiteCollaborationStore: CheckedPlainEditorStore, CheckedPlainDele
         guard let ptr = output.data else { throw CollaborationStorageError.invalidResult }
         return try unpack(Data(bytes: ptr, count: output.len))
     }
+    /// Experimental bridge only. The caller must independently authenticate
+    /// server and account; this does not authorize network access or ACKs.
+    public func enrollEmptyOwnedDocument(channel: UInt64, server: String) throws {
+        let channel = try validate(pageID, channel)
+        guard !server.isEmpty, !server.utf8.contains(0) else { throw CollaborationStorageError.invalidInput }
+        try Self.check(server.withCString { worlds_store_owned_enroll(handle, channel, $0) })
+    }
+    public func appendOwnedDocument(channel: UInt64, server: String, update: Data, local: Bool) throws {
+        let channel = try validate(pageID, channel)
+        guard !server.isEmpty, !server.utf8.contains(0) else { throw CollaborationStorageError.invalidInput }
+        let storage = update as NSData
+        try Self.check(server.withCString { worlds_store_owned_append(handle, channel, $0, storage.bytes.assumingMemoryBound(to: UInt8.self), storage.length, local ? 1 : 0) })
+    }
+    /// This watermark is not proof of delivery and cannot be acknowledged here.
+    public func ownedDocumentBatch(channel: UInt64, server: String, vector: Data) throws -> (data: Data, watermark: Int64?) {
+        let channel = try validate(pageID, channel)
+        guard !server.isEmpty, !server.utf8.contains(0) else { throw CollaborationStorageError.invalidInput }
+        guard let name = strdup(server) else { throw CollaborationStorageError.invalidResult }
+        defer { free(name) }
+        let storage = vector as NSData
+        var output = WorldsBuffer(data: nil, len: 0)
+        var watermark: Int64 = -1
+        try Self.check(worlds_store_owned_batch(handle, channel, name, storage.bytes.assumingMemoryBound(to: UInt8.self), storage.length, &output, &watermark))
+        defer { worlds_buffer_free(output) }
+        guard let pointer = output.data, watermark >= -1 else { throw CollaborationStorageError.invalidResult }
+        return (Data(bytes: pointer, count: output.len), watermark == -1 ? nil : watermark)
+    }
     private func append(pageID: String, channel: UInt64, update: Data, local: Bool) throws {
         let channel = try validate(pageID, channel)
         let result = update.withUnsafeBytes { bytes in

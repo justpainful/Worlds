@@ -88,6 +88,30 @@ final class WorldsSearchTests: XCTestCase {
         XCTAssertTrue(legacyFallback.contains { $0.pageId == "legacy" })
     }
 
+
+    func testScopeFiltersBeforeLimitAndKeepsPersonalBoundary() async throws {
+        let url = try database()
+        var handle: OpaquePointer?
+        guard sqlite3_open(url.path, &handle) == SQLITE_OK, let db = handle else { return XCTFail("Fixture open failed") }
+        let setup = #"""
+        WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<40)
+        INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) SELECT 'scope-page-' || x,'XY page ' || x,'page','{}',1,100+x FROM n;
+        INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('scope-project','XY project','project','{}',1,2),('scope-media','XY gallery','gallery','{}',1,3),('scope-secret','XY secret','project','{"sync":{"shared":true}}',1,999);
+        INSERT INTO pages_fts(page_id,title,body) VALUES('scope-project','XY project','geometry'),('scope-media','XY gallery','geometry'),('scope-secret','XY secret','geometry');
+        """#
+        let rc = sqlite3_exec(db, setup, nil, nil, nil)
+        sqlite3_close(db)
+        XCTAssertEqual(rc, SQLITE_OK)
+        let search = try WorldsSearch(url: url)
+        let project = try await search.search("XY", limit: 1, scope: .projects)
+        XCTAssertEqual(project.map(\.pageId), ["scope-project"])
+        let media = try await search.search("geometry", scope: .media)
+        XCTAssertEqual(media.map(\.pageId), ["scope-media"])
+        let pages = try await search.search("geometry", scope: .pages)
+        XCTAssertTrue(pages.contains { $0.pageId == "personal" })
+        XCTAssertFalse(pages.contains { ["template", "scope-project", "scope-secret"].contains($0.pageId) })
+    }
+
 }
 
 

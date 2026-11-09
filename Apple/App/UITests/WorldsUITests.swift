@@ -519,6 +519,136 @@ final class WorldsUITests: XCTestCase {
         let value = element.value as? String ?? ""
         return value.isEmpty ? element.label : value
     }
+
+    @MainActor
+    func testShowcaseWorkspaceSectionsAndModals() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "--ui-testing-local-copy-fixture",
+            "--ui-testing-presentation-fixture",
+            "--ui-testing-automation-fixture",
+            "--ui-testing-trash-fixture"
+        ]
+        app.launch()
+
+        let homeButton = app.buttons["open-home-button"].firstMatch
+        XCTAssertTrue(homeButton.waitForExistence(timeout: 30))
+        homeButton.tap()
+        XCTAssertTrue(app.staticTexts["Welcome to Worlds"].waitForExistence(timeout: 15))
+        capture("showcase-01-home-dashboard", app: app)
+
+        let templatesButton = app.buttons["open-templates-button"].firstMatch
+        XCTAssertTrue(templatesButton.waitForExistence(timeout: 10))
+        templatesButton.tap()
+        XCTAssertTrue(app.staticTexts["Workspace Templates"].waitForExistence(timeout: 15))
+        capture("showcase-02-templates-gallery", app: app)
+
+        let trashButton = app.buttons["open-trash-button"].firstMatch
+        XCTAssertTrue(trashButton.waitForExistence(timeout: 10))
+        trashButton.tap()
+        XCTAssertTrue(app.staticTexts["Archived architecture notes"].waitForExistence(timeout: 15))
+        capture("showcase-03-trash-view", app: app)
+
+        let assistantButton = app.buttons["open-assistant-button"].firstMatch
+        XCTAssertTrue(assistantButton.waitForExistence(timeout: 10))
+        assistantButton.tap()
+        XCTAssertTrue(app.staticTexts["Worlds Intelligence"].waitForExistence(timeout: 15))
+        capture("showcase-04-ai-assistant", app: app)
+        let closeAssistant = app.buttons["close-assistant-button"].firstMatch
+        XCTAssertTrue(closeAssistant.waitForExistence(timeout: 10))
+        closeAssistant.tap()
+
+        let accountButton = app.buttons["open-account-button"].firstMatch
+        if accountButton.waitForExistence(timeout: 10) {
+            accountButton.tap()
+            let closeAccount = app.buttons["close-account-button"].firstMatch
+            XCTAssertTrue(closeAccount.waitForExistence(timeout: 15))
+            capture("showcase-05-account-view", app: app)
+            closeAccount.tap()
+        }
+
+        let settingsButton = app.buttons["open-settings-button"].firstMatch
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 10))
+        settingsButton.tap()
+        let closeSettings = app.buttons["close-settings-button"].firstMatch
+        XCTAssertTrue(closeSettings.waitForExistence(timeout: 15))
+        capture("showcase-06-settings-view", app: app)
+        closeSettings.tap()
+
+        homeButton.tap()
+        let openAutomations = app.buttons["home-open-automations"].firstMatch
+        if openAutomations.waitForExistence(timeout: 10) {
+            openAutomations.tap()
+            XCTAssertTrue(app.staticTexts["Fixture automation"].waitForExistence(timeout: 15))
+            capture("showcase-10-automations-view", app: app)
+        }
+    }
+
+    @MainActor
+    func testShowcaseDrawingStudio() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["--ui-testing-local-copy-fixture"]
+        app.launch()
+
+        let drawingRow = app.descendants(matching: .any)["page.fixture-drawing"].firstMatch
+        XCTAssertTrue(drawingRow.waitForExistence(timeout: 30))
+        drawingRow.tap()
+
+        let editDrawing = app.buttons["edit-local-drawing"].firstMatch
+        XCTAssertTrue(editDrawing.waitForExistence(timeout: 20))
+        editDrawing.tap()
+
+        let canvas = app.descendants(matching: .any)["drawing-canvas"].firstMatch
+        XCTAssertTrue(canvas.waitForExistence(timeout: 20))
+        let start = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.28, dy: 0.35))
+        let end = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.72, dy: 0.65))
+        start.press(forDuration: 0.05, thenDragTo: end)
+        capture("showcase-07-drawing-editor", app: app)
+    }
+
+    @MainActor
+    func testShowcasePresentationEditor() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "--ui-testing-local-copy-fixture",
+            "--ui-testing-presentation-fixture",
+            "--ui-testing-presentation-shape"
+        ]
+        app.launch()
+
+        let deckRow = app.descendants(matching: .any)["page.deck-test"].firstMatch
+        XCTAssertTrue(deckRow.waitForExistence(timeout: 30))
+        deckRow.tap()
+
+        let editPresentation = app.buttons["edit-local-presentation"].firstMatch
+        XCTAssertTrue(editPresentation.waitForExistence(timeout: 20))
+        editPresentation.tap()
+
+        XCTAssertTrue(app.staticTexts["First slide"].waitForExistence(timeout: 20))
+        capture("showcase-08-presentation-editor", app: app)
+    }
+
+    @MainActor
+    func testShowcasePageAndTableEditor() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "--ui-testing-local-copy-fixture",
+            "--ui-testing-document-table-insert"
+        ]
+        app.launch()
+
+        let pageRow = app.descendants(matching: .any)["page.fixture-page"].firstMatch
+        XCTAssertTrue(pageRow.waitForExistence(timeout: 30))
+        pageRow.tap()
+
+        let editPage = app.buttons["edit-local-page"].firstMatch
+        XCTAssertTrue(editPage.waitForExistence(timeout: 20))
+        editPage.tap()
+
+        let editor = app.descendants(matching: .any)["native-editor-text"].firstMatch
+        XCTAssertTrue(editor.waitForExistence(timeout: 20))
+        capture("showcase-09-page-editor", app: app)
+    }
     @MainActor
     private func captureLaunchFailure(_ app: XCUIApplication, name: String) {
         let state = XCTAttachment(string: "state=\(app.state.rawValue) windows=\(app.windows.count)\n\(app.debugDescription)")
