@@ -29,6 +29,7 @@ extension Notification.Name {
 
 #if canImport(UIKit)
 import UIKit
+@MainActor
 enum WorldsHaptics {
     static func light() {
         let generator = UIImpactFeedbackGenerator(style: .light)
@@ -47,6 +48,7 @@ enum WorldsHaptics {
     }
 }
 #else
+@MainActor
 enum WorldsHaptics {
     static func light() {}
     static func selection() {}
@@ -1114,9 +1116,10 @@ private struct WorldsLibraryView: View {
             title: current.title,
             kind: current.kind,
             parentID: current.parentID,
-            sortKey: current.sortKey,
             archived: false,
+            sortKey: current.sortKey,
             createdAt: current.createdAt,
+            preview: current.preview,
             updatedAt: now,
             metadataJSON: current.metadataJSON,
             blocks: current.blocks

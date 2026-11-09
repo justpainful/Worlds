@@ -1,5 +1,4 @@
 import Foundation
-import WorldsModels
 import WorldsMCPApprovalViews
 
 /// In-process SQLite-backed rename gateway conforming to MCPRenameGateway.
@@ -27,11 +26,14 @@ public final class InProcessMCPGateway: MCPRenameGateway, @unchecked Sendable {
         try await readTitle(identity.pageID)
     }
 
-    public func commit(identity: MCPRunIdentity, title: String, expectedTitle: String, approvalID: UUID) async throws -> String {
+    private func claimApproval(_ approvalID: UUID) -> Bool {
         lock.lock()
-        let isFirstUse = approvedRuns.insert(approvalID).inserted
-        lock.unlock()
-        guard isFirstUse else {
+        defer { lock.unlock() }
+        return approvedRuns.insert(approvalID).inserted
+    }
+
+    public func commit(identity: MCPRunIdentity, title: String, expectedTitle: String, approvalID: UUID) async throws -> String {
+        guard claimApproval(approvalID) else {
             throw MCPApprovalCoordinatorError.denied
         }
         return try await writeTitle(identity.pageID, title, expectedTitle)

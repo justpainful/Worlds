@@ -1,5 +1,5 @@
 import Foundation
-import SceneKit
+@preconcurrency import SceneKit
 
 /// Genuine AutoCAD DXF ASCII parser converting 2D/3D CAD entities to SceneKit geometry.
 public final class CADDXFParser {
@@ -16,8 +16,8 @@ public final class CADDXFParser {
     }
 
     public static func parse(text: String) throws -> ParsedCADScene {
-        var lines: [SCNVector3] = []
-        var triangles: [(SCNVector3, SCNVector3, SCNVector3)] = []
+        var lines: [Vector3D] = []
+        var triangles: [(Vector3D, Vector3D, Vector3D)] = []
 
         let rawLines = text.components(separatedBy: .newlines)
         var i = 0
@@ -48,8 +48,8 @@ public final class CADDXFParser {
                 let entityType = pair.value
                 switch entityType {
                 case "LINE":
-                    var start = SCNVector3Zero
-                    var end = SCNVector3Zero
+                    var start = Vector3D.zero
+                    var end = Vector3D.zero
                     while let field = nextPair() {
                         if field.code == 0 {
                             // Back up one pair so outer loop reads next entity
@@ -70,7 +70,7 @@ public final class CADDXFParser {
                     lines.append(end)
 
                 case "3DFACE", "SOLID", "TRACE":
-                    var p1 = SCNVector3Zero, p2 = SCNVector3Zero, p3 = SCNVector3Zero, p4 = SCNVector3Zero
+                    var p1 = Vector3D.zero, p2 = Vector3D.zero, p3 = Vector3D.zero, p4 = Vector3D.zero
                     var hasP4 = false
                     while let field = nextPair() {
                         if field.code == 0 {
@@ -85,7 +85,7 @@ public final class CADDXFParser {
                         case 21: p2.y = Float(field.value) ?? 0
                         case 31: p2.z = Float(field.value) ?? 0
                         case 12: p3.x = Float(field.value) ?? 0
-                        case 20: p3.y = Float(field.value) ?? 0
+                        case 22: p3.y = Float(field.value) ?? 0
                         case 32: p3.z = Float(field.value) ?? 0
                         case 13: p4.x = Float(field.value) ?? 0; hasP4 = true
                         case 23: p4.y = Float(field.value) ?? 0
@@ -99,7 +99,7 @@ public final class CADDXFParser {
                     }
 
                 case "CIRCLE":
-                    var center = SCNVector3Zero
+                    var center = Vector3D.zero
                     var radius: Float = 0
                     while let field = nextPair() {
                         if field.code == 0 {
@@ -116,12 +116,12 @@ public final class CADDXFParser {
                     }
                     if radius > 0 {
                         let segments = 36
-                        var circlePoints: [SCNVector3] = []
+                        var circlePoints: [Vector3D] = []
                         for s in 0...segments {
                             let angle = (Float(s) / Float(segments)) * Float.pi * 2.0
                             let x = center.x + radius * cos(angle)
                             let y = center.y + radius * sin(angle)
-                            circlePoints.append(SCNVector3(x, y, center.z))
+                            circlePoints.append(Vector3D(x, y, center.z))
                         }
                         for s in 0..<segments {
                             lines.append(circlePoints[s])
@@ -130,7 +130,7 @@ public final class CADDXFParser {
                     }
 
                 case "ARC":
-                    var center = SCNVector3Zero
+                    var center = Vector3D.zero
                     var radius: Float = 0
                     var startAngleDeg: Float = 0
                     var endAngleDeg: Float = 360
@@ -150,17 +150,17 @@ public final class CADDXFParser {
                         }
                     }
                     if radius > 0 {
-                        var startAngle = startAngleDeg * Float.pi / 180.0
+                        let startAngle = startAngleDeg * Float.pi / 180.0
                         var endAngle = endAngleDeg * Float.pi / 180.0
                         if endAngle < startAngle { endAngle += Float.pi * 2.0 }
                         let segments = max(8, Int((endAngle - startAngle) / (Float.pi * 2.0) * 36.0))
-                        var arcPoints: [SCNVector3] = []
+                        var arcPoints: [Vector3D] = []
                         for s in 0...segments {
                             let t = Float(s) / Float(segments)
                             let angle = startAngle + t * (endAngle - startAngle)
                             let x = center.x + radius * cos(angle)
                             let y = center.y + radius * sin(angle)
-                            arcPoints.append(SCNVector3(x, y, center.z))
+                            arcPoints.append(Vector3D(x, y, center.z))
                         }
                         for s in 0..<segments {
                             lines.append(arcPoints[s])
@@ -171,8 +171,8 @@ public final class CADDXFParser {
                 case "LWPOLYLINE":
                     var elevation: Float = 0
                     var isClosed = false
-                    var polyPoints: [SCNVector3] = []
-                    var currentPt = SCNVector3Zero
+                    var polyPoints: [Vector3D] = []
+                    var currentPt = Vector3D.zero
                     var readingX = false
                     while let field = nextPair() {
                         if field.code == 0 {
@@ -208,7 +208,7 @@ public final class CADDXFParser {
                     }
 
                 case "POLYLINE":
-                    var polyPoints: [SCNVector3] = []
+                    var polyPoints: [Vector3D] = []
                     var isClosed = false
                     while let field = nextPair() {
                         if field.code == 70, let flag = Int(field.value) {
@@ -216,7 +216,7 @@ public final class CADDXFParser {
                         }
                         if field.code == 0 {
                             if field.value == "VERTEX" {
-                                var v = SCNVector3Zero
+                                var v = Vector3D.zero
                                 while let vfield = nextPair() {
                                     if vfield.code == 0 {
                                         i -= 2
@@ -266,7 +266,7 @@ public final class CADDXFParser {
         var maxY: Float = -.greatestFiniteMagnitude
         var maxZ: Float = -.greatestFiniteMagnitude
 
-        func updateBounds(_ v: SCNVector3) {
+        func updateBounds(_ v: Vector3D) {
             minX = min(minX, v.x); maxX = max(maxX, v.x)
             minY = min(minY, v.y); maxY = max(maxY, v.y)
             minZ = min(minZ, v.z); maxZ = max(maxZ, v.z)
@@ -275,7 +275,8 @@ public final class CADDXFParser {
         // Build line geometry if lines exist
         if !lines.isEmpty {
             for pt in lines { updateBounds(pt) }
-            let lineSource = SCNGeometrySource(vertices: lines)
+            let scnLines = lines.map(\.scnVector)
+            let lineSource = SCNGeometrySource(vertices: scnLines)
             var indices = Array<Int32>(0..<Int32(lines.count))
             let elementData = Data(bytes: &indices, count: indices.count * MemoryLayout<Int32>.size)
             let lineElement = SCNGeometryElement(
@@ -303,13 +304,13 @@ public final class CADDXFParser {
                 updateBounds(p1)
                 updateBounds(p2)
                 updateBounds(p3)
-                triVertices.append(p1)
-                triVertices.append(p2)
-                triVertices.append(p3)
+                triVertices.append(p1.scnVector)
+                triVertices.append(p2.scnVector)
+                triVertices.append(p3.scnVector)
 
-                let u = SCNVector3(p2.x - p1.x, p2.y - p1.y, p2.z - p1.z)
-                let v = SCNVector3(p3.x - p1.x, p3.y - p1.y, p3.z - p1.z)
-                var normal = SCNVector3(
+                let u = Vector3D(p2.x - p1.x, p2.y - p1.y, p2.z - p1.z)
+                let v = Vector3D(p3.x - p1.x, p3.y - p1.y, p3.z - p1.z)
+                var normal = Vector3D(
                     u.y * v.z - u.z * v.y,
                     u.z * v.x - u.x * v.z,
                     u.x * v.y - u.y * v.x
@@ -318,11 +319,12 @@ public final class CADDXFParser {
                 if len > 0.0001 {
                     normal.x /= len; normal.y /= len; normal.z /= len
                 } else {
-                    normal = SCNVector3(0, 0, 1)
+                    normal = Vector3D(0, 0, 1)
                 }
-                triNormals.append(normal)
-                triNormals.append(normal)
-                triNormals.append(normal)
+                let scnNormal = normal.scnVector
+                triNormals.append(scnNormal)
+                triNormals.append(scnNormal)
+                triNormals.append(scnNormal)
             }
             let vertexSource = SCNGeometrySource(vertices: triVertices)
             let normalSource = SCNGeometrySource(normals: triNormals)

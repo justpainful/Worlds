@@ -1,5 +1,5 @@
 import Foundation
-import SceneKit
+@preconcurrency import SceneKit
 
 /// Genuine parser for glTF 2.0 and GLB binary containers.
 public final class GLTFParser {
@@ -80,7 +80,7 @@ public final class GLTFParser {
         var maxY: Float = -.greatestFiniteMagnitude
         var maxZ: Float = -.greatestFiniteMagnitude
 
-        func updateBounds(_ v: SCNVector3) {
+        func updateBounds(_ v: Vector3D) {
             minX = min(minX, v.x); maxX = max(maxX, v.x)
             minY = min(minY, v.y); maxY = max(maxY, v.y)
             minZ = min(minZ, v.z); maxZ = max(maxZ, v.z)
@@ -124,8 +124,8 @@ public final class GLTFParser {
                         let x = raw.load(fromByteOffset: cur, as: Float.self)
                         let y = raw.load(fromByteOffset: cur + 4, as: Float.self)
                         let z = raw.load(fromByteOffset: cur + 8, as: Float.self)
-                        let v = SCNVector3(x, y, z)
-                        vertices.append(v)
+                        let v = Vector3D(x, y, z)
+                        vertices.append(v.scnVector)
                         updateBounds(v)
                         cur += 12
                     }

@@ -1,5 +1,5 @@
 import SwiftUI
-import SceneKit
+@preconcurrency import SceneKit
 
 /// Cross-platform SwiftUI Representable embedding SceneKit SCNView with gestures and camera controls.
 public struct Worlds3DSceneView: View {

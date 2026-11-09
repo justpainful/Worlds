@@ -1,5 +1,5 @@
 import Foundation
-import SceneKit
+@preconcurrency import SceneKit
 
 /// Genuine parser for Stereolithography (STL) files, supporting both Binary and ASCII formats.
 public final class STLParser {
@@ -56,7 +56,7 @@ public final class STLParser {
         var maxY: Float = -.greatestFiniteMagnitude
         var maxZ: Float = -.greatestFiniteMagnitude
 
-        func updateBounds(_ v: SCNVector3) {
+        func updateBounds(_ v: Vector3D) {
             minX = min(minX, v.x); maxX = max(maxX, v.x)
             minY = min(minY, v.y); maxY = max(maxY, v.y)
             minZ = min(minZ, v.z); maxZ = max(maxZ, v.z)
@@ -68,29 +68,29 @@ public final class STLParser {
                 let nx = rawPtr.load(fromByteOffset: offset, as: Float.self)
                 let ny = rawPtr.load(fromByteOffset: offset + 4, as: Float.self)
                 let nz = rawPtr.load(fromByteOffset: offset + 8, as: Float.self)
-                var normal = SCNVector3(nx, ny, nz)
+                var normal = Vector3D(nx, ny, nz)
 
                 let v1x = rawPtr.load(fromByteOffset: offset + 12, as: Float.self)
                 let v1y = rawPtr.load(fromByteOffset: offset + 16, as: Float.self)
                 let v1z = rawPtr.load(fromByteOffset: offset + 20, as: Float.self)
-                let p1 = SCNVector3(v1x, v1y, v1z)
+                let p1 = Vector3D(v1x, v1y, v1z)
 
                 let v2x = rawPtr.load(fromByteOffset: offset + 24, as: Float.self)
                 let v2y = rawPtr.load(fromByteOffset: offset + 28, as: Float.self)
                 let v2z = rawPtr.load(fromByteOffset: offset + 32, as: Float.self)
-                let p2 = SCNVector3(v2x, v2y, v2z)
+                let p2 = Vector3D(v2x, v2y, v2z)
 
                 let v3x = rawPtr.load(fromByteOffset: offset + 36, as: Float.self)
                 let v3y = rawPtr.load(fromByteOffset: offset + 40, as: Float.self)
                 let v3z = rawPtr.load(fromByteOffset: offset + 44, as: Float.self)
-                let p3 = SCNVector3(v3x, v3y, v3z)
+                let p3 = Vector3D(v3x, v3y, v3z)
 
                 // If normal is (0,0,0), compute from vertices
                 let nlen = sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z)
                 if nlen < 0.0001 {
-                    let u = SCNVector3(p2.x - p1.x, p2.y - p1.y, p2.z - p1.z)
-                    let v = SCNVector3(p3.x - p1.x, p3.y - p1.y, p3.z - p1.z)
-                    normal = SCNVector3(
+                    let u = Vector3D(p2.x - p1.x, p2.y - p1.y, p2.z - p1.z)
+                    let v = Vector3D(p3.x - p1.x, p3.y - p1.y, p3.z - p1.z)
+                    normal = Vector3D(
                         u.y * v.z - u.z * v.y,
                         u.z * v.x - u.x * v.z,
                         u.x * v.y - u.y * v.x
@@ -99,13 +99,13 @@ public final class STLParser {
                     if clen > 0.0001 {
                         normal.x /= clen; normal.y /= clen; normal.z /= clen
                     } else {
-                        normal = SCNVector3(0, 0, 1)
+                        normal = Vector3D(0, 0, 1)
                     }
                 }
 
                 updateBounds(p1); updateBounds(p2); updateBounds(p3)
-                vertices.append(p1); vertices.append(p2); vertices.append(p3)
-                normals.append(normal); normals.append(normal); normals.append(normal)
+                vertices.append(p1.scnVector); vertices.append(p2.scnVector); vertices.append(p3.scnVector)
+                normals.append(normal.scnVector); normals.append(normal.scnVector); normals.append(normal.scnVector)
 
                 offset += 50
             }
@@ -128,8 +128,8 @@ public final class STLParser {
         var vertices: [SCNVector3] = []
         var normals: [SCNVector3] = []
 
-        var currentNormal = SCNVector3(0, 0, 1)
-        var faceVertices: [SCNVector3] = []
+        var currentNormal = Vector3D(0, 0, 1)
+        var faceVertices: [Vector3D] = []
 
         var minX: Float = .greatestFiniteMagnitude
         var minY: Float = .greatestFiniteMagnitude
@@ -138,7 +138,7 @@ public final class STLParser {
         var maxY: Float = -.greatestFiniteMagnitude
         var maxZ: Float = -.greatestFiniteMagnitude
 
-        func updateBounds(_ v: SCNVector3) {
+        func updateBounds(_ v: Vector3D) {
             minX = min(minX, v.x); maxX = max(maxX, v.x)
             minY = min(minY, v.y); maxY = max(maxY, v.y)
             minZ = min(minZ, v.z); maxZ = max(maxZ, v.z)
@@ -154,8 +154,8 @@ public final class STLParser {
                 if parts.count >= 4 {
                     let nx = Float(parts[2]) ?? 0
                     let ny = Float(parts[3]) ?? 0
-                    let nz = Float(parts[4]) ?? 1
-                    currentNormal = SCNVector3(nx, ny, nz)
+                    let nz = Float(parts.count > 4 ? parts[4] : "1") ?? 1
+                    currentNormal = Vector3D(nx, ny, nz)
                 }
                 faceVertices.removeAll(keepingCapacity: true)
             } else if line.hasPrefix("vertex") {
@@ -164,14 +164,14 @@ public final class STLParser {
                     let x = Float(parts[1]) ?? 0
                     let y = Float(parts[2]) ?? 0
                     let z = Float(parts[3]) ?? 0
-                    faceVertices.append(SCNVector3(x, y, z))
+                    faceVertices.append(Vector3D(x, y, z))
                 }
             } else if line.hasPrefix("endfacet") {
                 if faceVertices.count == 3 {
                     let p1 = faceVertices[0], p2 = faceVertices[1], p3 = faceVertices[2]
                     updateBounds(p1); updateBounds(p2); updateBounds(p3)
-                    vertices.append(p1); vertices.append(p2); vertices.append(p3)
-                    normals.append(currentNormal); normals.append(currentNormal); normals.append(currentNormal)
+                    vertices.append(p1.scnVector); vertices.append(p2.scnVector); vertices.append(p3.scnVector)
+                    normals.append(currentNormal.scnVector); normals.append(currentNormal.scnVector); normals.append(currentNormal.scnVector)
                 }
             }
         }

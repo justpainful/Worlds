@@ -8,6 +8,22 @@ public struct StoredBlock: Sendable, Equatable {
     public let propertiesJSON: String
     public let direction: String
     public let sortKey: Double
+
+    public init(
+        id: String,
+        type: String,
+        contentJSON: String,
+        propertiesJSON: String,
+        direction: String,
+        sortKey: Double
+    ) {
+        self.id = id
+        self.type = type
+        self.contentJSON = contentJSON
+        self.propertiesJSON = propertiesJSON
+        self.direction = direction
+        self.sortKey = sortKey
+    }
 }
 
 public struct StoredPage: Sendable, Equatable, Identifiable {
@@ -22,6 +38,32 @@ public struct StoredPage: Sendable, Equatable, Identifiable {
     public let updatedAt: Int64
     public let metadataJSON: String
     public let blocks: [StoredBlock]
+
+    public init(
+        id: String,
+        title: String,
+        kind: String,
+        parentID: String?,
+        archived: Bool,
+        sortKey: Double,
+        createdAt: Int64,
+        preview: String,
+        updatedAt: Int64,
+        metadataJSON: String,
+        blocks: [StoredBlock]
+    ) {
+        self.id = id
+        self.title = title
+        self.kind = kind
+        self.parentID = parentID
+        self.archived = archived
+        self.sortKey = sortKey
+        self.createdAt = createdAt
+        self.preview = preview
+        self.updatedAt = updatedAt
+        self.metadataJSON = metadataJSON
+        self.blocks = blocks
+    }
 }
 
 /// Attachment metadata only. The caller must separately authorize and open

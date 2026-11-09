@@ -1,5 +1,5 @@
 import Foundation
-import SceneKit
+@preconcurrency import SceneKit
 import ModelIO
 
 #if canImport(SceneKit.ModelIO)
@@ -8,7 +8,7 @@ import SceneKit.ModelIO
 
 /// Unified loader for all 3D and CAD formats into normalized SceneKit scenes.
 public final class Worlds3DSceneLoader {
-    public struct LoadedScene: Sendable {
+    public struct LoadedScene: @unchecked Sendable {
         public let scene: SCNScene
         public let stats: Model3DStats
         public let format: Model3DFormat
@@ -80,18 +80,20 @@ public final class Worlds3DSceneLoader {
         var minVec = SCNVector3Zero
         var maxVec = SCNVector3Zero
         let hasBounds = root.getBoundingBoxMin(&minVec, max: &maxVec)
+        let bMin = Vector3D(minVec)
+        let bMax = Vector3D(maxVec)
 
-        let center: SCNVector3
+        let center: Vector3D
         let maxDimension: Float
-        if hasBounds && (maxVec.x > minVec.x || maxVec.y > minVec.y || maxVec.z > minVec.z) {
-            center = SCNVector3(
-                (minVec.x + maxVec.x) / 2.0,
-                (minVec.y + maxVec.y) / 2.0,
-                (minVec.z + maxVec.z) / 2.0
+        if hasBounds && (bMax.x > bMin.x || bMax.y > bMin.y || bMax.z > bMin.z) {
+            center = Vector3D(
+                (bMin.x + bMax.x) / 2.0,
+                (bMin.y + bMax.y) / 2.0,
+                (bMin.z + bMax.z) / 2.0
             )
-            maxDimension = max(max(maxVec.x - minVec.x, maxVec.y - minVec.y), maxVec.z - minVec.z)
+            maxDimension = max(max(bMax.x - bMin.x, bMax.y - bMin.y), bMax.z - bMin.z)
         } else {
-            center = SCNVector3(
+            center = Vector3D(
                 (stats.boundingBoxMin.x + stats.boundingBoxMax.x) / 2.0,
                 (stats.boundingBoxMin.y + stats.boundingBoxMax.y) / 2.0,
                 (stats.boundingBoxMin.z + stats.boundingBoxMax.z) / 2.0
@@ -193,9 +195,11 @@ public final class Worlds3DSceneLoader {
                 var nMin = SCNVector3Zero
                 var nMax = SCNVector3Zero
                 if node.getBoundingBoxMin(&nMin, max: &nMax) {
-                    minX = min(minX, nMin.x); maxX = max(maxX, nMax.x)
-                    minY = min(minY, nMin.y); maxY = max(maxY, nMax.y)
-                    minZ = min(minZ, nMin.z); maxZ = max(maxZ, nMax.z)
+                    let bMin = Vector3D(nMin)
+                    let bMax = Vector3D(nMax)
+                    minX = min(minX, bMin.x); maxX = max(maxX, bMax.x)
+                    minY = min(minY, bMin.y); maxY = max(maxY, bMax.y)
+                    minZ = min(minZ, bMin.z); maxZ = max(maxZ, bMax.z)
                 }
             }
         }

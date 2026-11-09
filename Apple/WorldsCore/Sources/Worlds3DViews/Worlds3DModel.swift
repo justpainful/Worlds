@@ -1,5 +1,44 @@
 import Foundation
-import SceneKit
+@preconcurrency import SceneKit
+
+#if os(macOS)
+import AppKit
+public typealias SCNColor = NSColor
+#else
+import UIKit
+public typealias SCNColor = UIColor
+#endif
+
+/// Cross-platform 3D float vector that is Sendable and Equatable on both macOS and iOS.
+public struct Vector3D: Sendable, Equatable {
+    public var x: Float
+    public var y: Float
+    public var z: Float
+
+    public init(_ x: Float, _ y: Float, _ z: Float) {
+        self.x = x
+        self.y = y
+        self.z = z
+    }
+
+    public init(x: Float, y: Float, z: Float) {
+        self.x = x
+        self.y = y
+        self.z = z
+    }
+
+    public init(_ scn: SCNVector3) {
+        self.x = Float(scn.x)
+        self.y = Float(scn.y)
+        self.z = Float(scn.z)
+    }
+
+    public var scnVector: SCNVector3 {
+        SCNVector3(x, y, z)
+    }
+
+    public static let zero = Vector3D(0, 0, 0)
+}
 
 /// Supported 3D and CAD file formats in Worlds.
 public enum Model3DFormat: String, Sendable, CaseIterable {
@@ -76,11 +115,45 @@ public struct Model3DStats: Sendable, Equatable {
     public let faceCount: Int
     public let lineCount: Int
     public let nodeCount: Int
-    public let boundingBoxMin: SCNVector3
-    public let boundingBoxMax: SCNVector3
+    public let boundingBoxMin: Vector3D
+    public let boundingBoxMax: Vector3D
 
-    public var dimensions: SCNVector3 {
-        SCNVector3(
+    public init(
+        vertexCount: Int,
+        faceCount: Int,
+        lineCount: Int,
+        nodeCount: Int,
+        boundingBoxMin: Vector3D,
+        boundingBoxMax: Vector3D
+    ) {
+        self.vertexCount = vertexCount
+        self.faceCount = faceCount
+        self.lineCount = lineCount
+        self.nodeCount = nodeCount
+        self.boundingBoxMin = boundingBoxMin
+        self.boundingBoxMax = boundingBoxMax
+    }
+
+    public init(
+        vertexCount: Int,
+        faceCount: Int,
+        lineCount: Int,
+        nodeCount: Int,
+        boundingBoxMin: SCNVector3,
+        boundingBoxMax: SCNVector3
+    ) {
+        self.init(
+            vertexCount: vertexCount,
+            faceCount: faceCount,
+            lineCount: lineCount,
+            nodeCount: nodeCount,
+            boundingBoxMin: Vector3D(boundingBoxMin),
+            boundingBoxMax: Vector3D(boundingBoxMax)
+        )
+    }
+
+    public var dimensions: Vector3D {
+        Vector3D(
             x: abs(boundingBoxMax.x - boundingBoxMin.x),
             y: abs(boundingBoxMax.y - boundingBoxMin.y),
             z: abs(boundingBoxMax.z - boundingBoxMin.z)
@@ -96,8 +169,8 @@ public struct Model3DStats: Sendable, Equatable {
         faceCount: 0,
         lineCount: 0,
         nodeCount: 0,
-        boundingBoxMin: SCNVector3Zero,
-        boundingBoxMax: SCNVector3Zero
+        boundingBoxMin: Vector3D.zero,
+        boundingBoxMax: Vector3D.zero
     )
 }
 

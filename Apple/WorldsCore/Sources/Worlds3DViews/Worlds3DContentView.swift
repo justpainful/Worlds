@@ -1,5 +1,5 @@
 import SwiftUI
-import SceneKit
+@preconcurrency import SceneKit
 import WorldsMedia
 
 /// Complete interactive SwiftUI viewer for 3D and CAD files (.usdz, .obj, .stl, .gltf, .glb, .dxf).
@@ -191,28 +191,25 @@ public struct Worlds3DContentView: View {
         let targetData = sourceData
         let name = fileName
 
-        Task.detached(priority: .userInitiated) {
+        Task {
             do {
-                let loaded: Worlds3DSceneLoader.LoadedScene
-                if let targetURL {
-                    loaded = try Worlds3DSceneLoader.load(from: targetURL)
-                } else if let targetData, let format = Worlds3D.format(name: name) {
-                    loaded = try Worlds3DSceneLoader.load(data: targetData, format: format)
-                } else {
-                    let ext = (name as NSString).pathExtension.lowercased()
-                    throw Worlds3DError.unsupportedFormat(ext)
-                }
+                let loaded = try await Task.detached(priority: .userInitiated) {
+                    if let targetURL {
+                        return try Worlds3DSceneLoader.load(from: targetURL)
+                    } else if let targetData, let format = Worlds3D.format(name: name) {
+                        return try Worlds3DSceneLoader.load(data: targetData, format: format)
+                    } else {
+                        let ext = (name as NSString).pathExtension.lowercased()
+                        throw Worlds3DError.unsupportedFormat(ext)
+                    }
+                }.value
 
-                await MainActor.run {
-                    self.loadedScene = loaded
-                    self.renderMode = loaded.format.defaultRenderMode
-                    self.isLoading = false
-                }
+                self.loadedScene = loaded
+                self.renderMode = loaded.format.defaultRenderMode
+                self.isLoading = false
             } catch {
-                await MainActor.run {
-                    self.errorMessage = error.localizedDescription
-                    self.isLoading = false
-                }
+                self.errorMessage = error.localizedDescription
+                self.isLoading = false
             }
         }
     }
