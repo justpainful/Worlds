@@ -28,37 +28,38 @@ The iPhone experience optimizes desktop-grade knowledge management and creativit
 +-----------------------------------------------------------------------------+
 |                               iPhone 17 (iOS 26)                            |
 +-----------------------------------------------------------------------------+
-| [01. Home & Quick Actions]       | [02. Compact Navigation & Search]        |
-| - Welcoming header & metrics     | - Stack navigation with back-pill        |
-| - 1-tap New Page/Drawing/Project | - Live FTS search & iOS virtual keyboard |
-| - Liquid Glass quick tiles       | - Expandable hierarchy tree              |
+| [01. Initial Database Startup]   | [02. Compact Navigation & Search]        |
+| - Local-first database prompt    | - Stack navigation with back-pill        |
+| - Liquid Glass storage drive     | - Live FTS search & iOS virtual keyboard |
+| - Open Database action           | - Expandable hierarchy tree              |
 +----------------------------------+------------------------------------------+
-| [03. Page Editor & Checklists]   | [04. Drawing Canvas & Touch Pencil]      |
-| - Rich text & Markdown blocks    | - Vector stroke rasterizer engine        |
-| - Bidirectional Arabic / English | - Brushes: Hard, Ink, Pencil, Highlight  |
-| - Interactive task toggling      | - Auto-shape correction (rect, triangle) |
+| [03. Document Reader & State]    | [04. Drawing Canvas & Touch Pencil]      |
+| - Clean reading typography       | - Vector stroke rasterizer engine        |
+| - Read-only pill badge           | - Multi-brush palette                    |
+| - Native iOS back-navigation     | - Pressure & touch input rendering       |
 +-----------------------------------------------------------------------------+
 ```
 
 ### 2.1 Screen Catalog & Visual References
 
-#### A. Home & Workspace Overview
-- **Component**: `HomeView.swift`
-- **Asset Path**: `docs/assets/screenshots/iphone/01_iphone_home_welcome.png`
+#### A. Initial Database Selection & Workspace Startup
+- **Component**: `WorldsApp.swift` / `InitialDatabaseSelectionView`
+- **Asset Path**: `docs/assets/screenshots/iphone/iphone_01_open_database.png`
 
-![01 Iphone Home Welcome](docs/assets/screenshots/iphone/01_iphone_home_welcome.png)
+![01 Iphone Initial Database Startup](docs/assets/screenshots/iphone/iphone_01_open_database.png)
 
+- **CI Test Origin**: `WorldsUITests.testOpeningScreen()` (`844C0F00-318D-4FF8-B1E1-CAF1FE13426C.png`)
 - **Key Capabilities**:
-  - Welcoming banner: *"Welcome to Worlds — Your local-first native Apple workspace"*.
-  - Quick Action grid: Instant buttons for New Page, New Document, New Drawing, New Project, and New Presentation.
-  - Real-time workspace metrics: Total Pages, Vector Drawings, Slide Decks, and 3D Media counters.
-  - Recent Pages list with live relative timestamp updates.
+  - Local-first database startup: Directs the user to open or connect a local SQLite database storage file (`worlds-v1-fixture.db`).
+  - Storage drive glyph: Prominent Liquid Glass styled database storage drive icon communicating local data persistence.
+  - Primary connection action: Clear "Open Database" button triggering synchronous SQLite connection and table verification.
+  - Empty workspace state: Displays the initial navigation bar with the "Pages" header ready to populate once opened.
 
 #### B. Compact Navigation & Real-Time Search
 - **Component**: `WorldsApp.swift` / `WorldsSearch`
-- **Asset Path**: `docs/assets/screenshots/iphone/02_iphone_search_keyboard.png`
+- **Asset Path**: `docs/assets/screenshots/iphone/iphone_05_search_results.png`
 
-![02 Iphone Search Keyboard](docs/assets/screenshots/iphone/02_iphone_search_keyboard.png)
+![02 Iphone Search Keyboard](docs/assets/screenshots/iphone/iphone_05_search_results.png)
 
 - **CI Test Origin**: `WorldsUITests.testPersonalSearchAndNavigation()` (`89B58971-76B8-4675-A7BD-7C9FD59DB226.png`)
 - **Key Capabilities**:
@@ -66,17 +67,18 @@ The iPhone experience optimizes desktop-grade knowledge management and creativit
   - Active native iOS virtual keyboard with instant FTS query filtering.
   - Floating card result presentation with highlight styling.
 
-#### C. Rich Page Editor & Checklists
-- **Component**: `LocalPageEditorView.swift` / `PageContentView.swift`
-- **Asset Path**: `docs/assets/screenshots/iphone/03_iphone_page_editor_tasks.png`
+#### C. Document Reader & Read-Only State Indicator
+- **Component**: `PageContentView.swift`
+- **Asset Path**: `docs/assets/screenshots/iphone/iphone_03_page_content.png`
 
-![03 Iphone Page Editor Tasks](docs/assets/screenshots/iphone/03_iphone_page_editor_tasks.png)
+![03 Iphone Document Reader](docs/assets/screenshots/iphone/iphone_03_page_content.png)
 
-- **CI Test Origin**: `WorldsLocalPageEditorUITests.testCreateChecklistSaveAndReopen()`
+- **CI Test Origin**: `WorldsUITests.testPersonalPageNavigation()` (`16F85F60-358E-49A6-9FBE-2DDD8877380B.png`)
 - **Key Capabilities**:
-  - Interactive checklists (`[x]`) with atomic database state updates.
-  - Markdown headings (H1, H2, H3) and callout containers.
-  - Bidirectional RTL Arabic shaping with preserved cursor positions.
+  - Document content presentation: Clean rendering of document title ("Fixture page") and body text ("Hello Worlds").
+  - Read-only protection: Native pill badge ("Read only") explicitly indicating that the opened document is in read-only inspection mode.
+  - Top navigation bar: Native iOS back-navigation chevron returning to the "Pages" hierarchy.
+  - Native typography: System font rendering adhering to iOS Human Interface Guidelines with automatic Dynamic Type sizing.
 
 #### D. Touch & Pencil Vector Drawing Canvas
 - **Component**: `LocalDrawingEditor.swift` / `DrawingHarnessView`
@@ -98,60 +100,62 @@ The iPhone experience optimizes desktop-grade knowledge management and creativit
   - Task toggle events trigger `.light()` impact.
   - Database save, local copy creation, and export trigger `.success()` notification feedback.
 
-#### F. Dark Mode vs. Light Mode Adaptation
+#### F. Workspace Startup vs. Document Reader Layouts
 - **Component**: `WorldsPalette.swift` & `UITestingAppearance`
 - **Asset Paths**:
-  - Dark: `docs/assets/screenshots/iphone/05_iphone_dark_mode.png`
+  - Startup View: `docs/assets/screenshots/iphone/iphone_01_open_database.png`
 
-    ![iPhone Dark Mode](docs/assets/screenshots/iphone/05_iphone_dark_mode.png)
- (`WorldsPalette.paper = #0C0C0E`, `accent = #D2A46E`)
-  - Light: `docs/assets/screenshots/iphone/06_iphone_light_mode.png`
+    ![iPhone Startup Screen](docs/assets/screenshots/iphone/iphone_01_open_database.png)
+ (`WorldsPalette.paper = #FFFFFF`, initial empty database connection screen)
+  - Document Reader: `docs/assets/screenshots/iphone/iphone_03_page_content.png`
 
-    ![iPhone Light Mode](docs/assets/screenshots/iphone/06_iphone_light_mode.png)
- (`WorldsPalette.paper = #FDFDFC`, `accent = #8A5820`)
+    ![iPhone Document Reader](docs/assets/screenshots/iphone/iphone_03_page_content.png)
+ (`WorldsPalette.paper = #FFFFFF`, document title and read-only status badge)
 
 ---
 
 ## 3. iPad (iPadOS) Visual Showcase
 
-The iPad implementation unlocks desktop-class productivity with spatial multitasking, hardware Apple Pencil pressure/tilt, and interactive SceneKit 3D CAD visualization.
+The iPad implementation unlocks desktop-class productivity with multi-column NavigationSplitView, hardware Apple Pencil pressure/tilt, and rich document summaries.
 
 ```
 +-----------------------------------------------------------------------------------------+
 |                                    iPad (A16) / iPad Pro                                |
 +-----------------------------------------------------------------------------------------+
 | [Column 1: Sidebar]      | [Column 2: Page Hierarchy]      | [Column 3: Detail Pane]    |
-| - Pages / Home pills     | - Personal page tree            | - 3D/CAD SceneKit Model    |
-| - Templates / Trash      | - Expand / collapse chevrons    | - Full-bleed drawing       |
-| - AI Assistant           | - Arabic & English titles       | - Rich document reader     |
-| - Database status        | - Real-time search scoping      | - Presentation editor      |
+| - Navigation bar pills   | - Personal page tree            | - Project summary card     |
+| - Search scoping         | - Expand / collapse chevrons    | - Full-bleed drawing       |
+| - Database connection    | - Arabic & English titles       | - Rich document reader     |
+| - Translucent glass      | - Empty selection state         | - Asset & media fallback   |
 +-----------------------------------------------------------------------------------------+
 ```
 
 ### 3.1 Screen Catalog & Visual References
 
-#### A. 3-Column NavigationSplitView
+#### A. 3-Column NavigationSplitView & Document Attachment
 - **Component**: `WorldsApp.swift` (`NavigationSplitView`)
-- **Asset Path**: `docs/assets/screenshots/ipad/01_ipad_3column_splitview.png`
+- **Asset Path**: `docs/assets/screenshots/ipad/ipad_14_file_summary.png`
 
-![01 Ipad 3Column Splitview](docs/assets/screenshots/ipad/01_ipad_3column_splitview.png)
+![01 Ipad 3Column Splitview](docs/assets/screenshots/ipad/ipad_14_file_summary.png)
 
 - **CI Test Origin**: `WorldsUITests.testFileSummary()` (`BC3A3F5C-C8D6-4DA4-BF47-C72A79A24FD1.png`)
 - **Key Capabilities**:
   - Primary Column: Workspace navigation bar (`workspaceNavigationBar`) with pill buttons.
   - Supplementary Column: Personal page hierarchy with expandable subpage nodes (`PersonalPageHierarchy`).
-  - Detail Column: Adaptive reader, editor, 3D viewer, or slide deck.
+  - Detail Column: Document attachment summary card (`lesson.pdf`) with metadata and reader status.
   - Dynamic Type responsive width clamping: `min: 320pt`, `ideal: 360pt`, `max: 440pt`.
 
-#### B. Stage Manager & Spatial Multitasking
-- **Component**: iPadOS multi-window and responsive layout
-- **Asset Path**: `docs/assets/screenshots/ipad/02_ipad_stage_manager.png`
+#### B. Media & Asset Reference Summary View
+- **Component**: `ResourceContentView.swift` / `GallerySummaryView`
+- **Asset Path**: `docs/assets/screenshots/ipad/ipad_12_gallery_summary.png`
 
-![02 Ipad Stage Manager](docs/assets/screenshots/ipad/02_ipad_stage_manager.png)
+![02 Ipad Media Reference Summary](docs/assets/screenshots/ipad/ipad_12_gallery_summary.png)
 
+- **CI Test Origin**: `WorldsUITests.testGallerySummary()` (`39FA32A4-0B91-4889-9AF9-85BDC2FA9DE2.png`)
 - **Key Capabilities**:
-  - Seamless resizing between compact (single column) and wide (3-column) configurations.
-  - Split View and Slide Over support alongside Safari, Files, and Mail.
+  - Media asset card presentation: Shows the embedded image card for `diagram.png` with "Reference diagram" subtitle and "Read only" pill badge.
+  - Reader fallback handling: Clear diagnostic notice ("Media previews are unavailable in this reader.") when running in light reader mode without external heavy graphics dependencies.
+  - Split navigation context: Retains the primary navigation sidebar and page index alongside the media summary detail.
 
 #### C. Spatial Drawing with Apple Pencil Pressure & Tilt
 - **Component**: `WorldsDrawingPencilInput` / `PencilStrokeController`
@@ -165,37 +169,37 @@ The iPad implementation unlocks desktop-class productivity with spatial multitas
   - Tilt-sensitive graphite shading: angle of Apple Pencil activates soft broad shading.
   - Ephemeral laser pointer trails with decaying temporal alpha for interactive presentation.
 
-#### D. Interactive 3D / CAD SceneKit Viewer
-- **Component**: `Worlds3DSceneView.swift` & `Worlds3DSceneLoader.swift`
-- **Asset Path**: `docs/assets/screenshots/ipad/04_ipad_scenekit_cad_viewer.png`
+#### D. Project Architecture & Linked Document Hierarchy
+- **Component**: `ProjectSummaryView.swift` / `PageContentView.swift`
+- **Asset Path**: `docs/assets/screenshots/ipad/ipad_11_project_summary.png`
 
-![04 Ipad Scenekit Cad Viewer](docs/assets/screenshots/ipad/04_ipad_scenekit_cad_viewer.png)
+![04 Ipad Project Summary](docs/assets/screenshots/ipad/ipad_11_project_summary.png)
 
-- **Supported Formats**: DXF CAD architectural/mechanical drawings, USDZ, OBJ, STL.
+- **CI Test Origin**: `WorldsUITests.testProjectSummaryAndLinkedPage()` (`B67717FD-FDC9-4927-9078-E9EDA3C82213.png`)
 - **Key Capabilities**:
-  - 60fps SceneKit orbital camera with two-finger rotate, pinch-to-zoom, and pan.
-  - Camera Preset buttons: **Isometric**, **Front**, **Top**, and **Side**.
-  - Render Mode toggles: **Shaded (Solid)**, **Wireframe (Lines)**, and **Shaded + Wireframe**.
+  - Project metadata dashboard: Native card presentation displaying active project status, timeline dates (Start: 2026-01-01, Due: 2026-01-15), and project description ("Prepare the lesson").
+  - Relational page linking: Interactive links to connected project pages, including "Linked pages: Reader fixture" and child nodes "Pages inside: Project child".
+  - Read-only protection: Badged with "Read only" pill to guarantee data integrity during inspection.
+  - Architectural 3D Note: Interactive 3D / CAD viewing (DXF CAD, USDZ, OBJ, STL) with SceneKit orbital camera controls is implemented in `Apple/WorldsCore/Sources/Worlds3DViews/` (`Worlds3DSceneView.swift`, `CADDXFParser.swift`), validated by Swift 6 core package test suites.
 
-#### E. Templates Gallery & Productivity Blueprints
-- **Component**: `TemplatesView.swift`
-- **Asset Path**: `docs/assets/screenshots/ipad/05_ipad_templates_catalog.png`
+#### E. Personal Workspace Pages & Navigation State
+- **Component**: `PersonalPageHierarchy.swift` / `NavigationSplitView`
+- **Asset Path**: `docs/assets/screenshots/ipad/ipad_02_personal_pages.png`
 
-![05 Ipad Templates Catalog](docs/assets/screenshots/ipad/05_ipad_templates_catalog.png)
+![05 Ipad Personal Pages Navigation](docs/assets/screenshots/ipad/ipad_02_personal_pages.png)
 
+- **CI Test Origin**: `WorldsUITests.testPersonalPageNavigation()` (`69E5930D-8D1F-4AF1-A6B9-15D8E1C13BD5.png`)
 - **Key Capabilities**:
-  - Curated template blueprints:
-    - *Productivity*: Meeting Notes (date, attendees, action items with owners).
-    - *Engineering*: Technical Specification (system architecture, API contracts, security invariants).
-    - *Design*: Presentation Pitch (structured slide outline).
-    - *Personal*: Weekly Review (wins, challenges, top priorities).
-  - 1-click instantiation into independent local copies.
+  - Multi-column navigation hierarchy: The iPadOS navigation split view displaying the "Pages" primary column and searchable personal pages list.
+  - Search integration: Embedded search field with magnifying glass glyph ready for full-text scoping.
+  - Detail pane placeholder: "Select a page" empty state placeholder when no document node is currently selected.
+  - Responsive Liquid Glass styling: Clean translucent sidebar with system divider lines.
 
 #### F. Structured Reader & Arabic RTL Alignment
 - **Component**: `PageContentView.swift`
-- **Asset Path**: `docs/assets/screenshots/ipad/06_ipad_structured_reader_rtl.png`
+- **Asset Path**: `docs/assets/screenshots/ipad/ipad_09_structured_reader_rtl.png`
 
-![06 Ipad Structured Reader Rtl](docs/assets/screenshots/ipad/06_ipad_structured_reader_rtl.png)
+![06 Ipad Structured Reader Rtl](docs/assets/screenshots/ipad/ipad_09_structured_reader_rtl.png)
 
 - **CI Test Origin**: `WorldsUITests.testReaderShowsStructuredContentAndExpandsToggle()` (`1CD3187E-F093-40D4-AFD1-4964EEDBEEF6.png`)
 - **Key Capabilities**:
@@ -212,84 +216,83 @@ The macOS experience provides a desktop pro workstation with native AppKit menu 
 +-----------------------------------------------------------------------------------------+
 | [Apple] File  Edit  View  Navigate  Window  Help                                 [100%] |
 +-----------------------------------------------------------------------------------------+
-| [macOS Window: Worlds Pro Workspace]                                                    |
+| [macOS Window: Worlds Desktop Architecture]                                             |
 | +-------------------------+-----------------------------------------------------------+ |
-| | (•)(•)(•) [Search Pages]| [Document Title: Technical Specification]                 | |
+| | (•)(•)(•) [Search Pages]| [Desktop Reader & Navigation]                             | |
 | |                         |                                                           | |
-| | > Technical Spec        | ## 1. System Architecture                                 | |
-| | > Mechanical CAD (DXF)  | - Swift 6 Native Pipeline                                 | |
-| | > Presentation Deck     | - Liquid Glass Floating Controls                          | |
-| | > Personal Workspace    |                                                           | |
-| |                         | [Word / Excel / 3D CAD Preview Panel]                     | |
+| | > Personal Workspace    | ## Workspace Architecture                                 | |
+| | > Project Summaries     | - Swift 6 Native Pipeline                                 | |
+| | > Document Attachments  | - Liquid Glass Floating Controls                          | |
+| | > Arabic RTL Content    | - Resilient Database Error Recovery                       | |
+| |                         |                                                           | |
+| |                         | [Document Attachment & PDF Summary Card]                  | |
 | +-------------------------+-----------------------------------------------------------+ |
 +-----------------------------------------------------------------------------------------+
 ```
 
 ### 4.1 Screen Catalog & Visual References
 
-#### A. Native Menu Bar Commands & Keyboard Shortcuts
-- **Component**: `WorldsApp.swift` (`appCommands`)
-- **Asset Path**: `docs/assets/screenshots/mac/01_mac_menu_bar_commands.png`
+#### A. Desktop Startup Window & Database Connection
+- **Component**: `WorldsApp.swift` / `InitialDatabaseSelectionView`
+- **Asset Path**: `docs/assets/screenshots/mac/mac_01_open_database.png`
 
-![01 Mac Menu Bar Commands](docs/assets/screenshots/mac/01_mac_menu_bar_commands.png)
+![01 Mac Startup Database Connection](docs/assets/screenshots/mac/mac_01_open_database.png)
 
-- **Command Architecture**:
-  - **File**: `Open Database…` (`⌘O`)
-  - **Edit**: `Find in Pages…` (`⌘F`)
-  - **View**: `SidebarCommands` (`⌃⌘S`)
-  - **Navigate**:
-    - `Home` (`⌥⌘1`)
-    - `Templates` (`⌥⌘2`)
-    - `Trash` (`⌥⌘3`)
-  - **App**: `Settings…` (`⌘,`)
+- **CI Test Origin**: `WorldsUITests.testOpeningScreen()` (`AA308F7E-348B-43F3-A4B3-00823DE2E443.png`)
+- **Key Capabilities**:
+  - Initial launch state: Clean AppKit window with native macOS titlebar, window control buttons (close/minimize/zoom), and prompt to "Open your Worlds database".
+  - Storage engine initialization: Local SQLite database connection button ("Open Database") providing local-first data isolation.
+  - Native keyboard shortcut and menu support: In production macOS operation, opening databases and window navigation are bound to standard AppKit menu commands (`⌘O` for File > Open Database, `⌘F` for Find in Pages, `⌘,` for Settings), verified programmatically via UI test actions and AppKit command hierarchies.
 
-#### B. Multi-Window Management & Window Lifecycle Diagnostics
-- **Component**: `WindowGroup` & `WindowLifecycleDiagnostics.swift`
-- **Asset Path**: `docs/assets/screenshots/mac/02_mac_multi_window.png`
+#### B. Large Desktop Window Profile & Arabic RTL Reading
+- **Component**: `WindowGroup` / `PageContentView.swift`
+- **Asset Path**: `docs/assets/screenshots/mac/mac_11_large_window_rtl.png`
 
-![02 Mac Multi Window](docs/assets/screenshots/mac/02_mac_multi_window.png)
+![02 Mac Large Window RTL](docs/assets/screenshots/mac/mac_11_large_window_rtl.png)
 
 - **CI Test Origin**: `WorldsUITests.testLargeReaderWindow()` (`4575DFAB-9DDF-4A16-8F84-2B782DDBFB7F.png`)
 - **Key Capabilities**:
-  - Multiple simultaneous windows for side-by-side document comparison.
-  - Large reader window profile (`1100 x 780 pt`) vs standard window profile (`800 x 600 pt`).
-  - Strict audit logging of window notifications (`NSWindowDidBecomeKey`, `NSWindowWillClose`).
+  - High-resolution window profile: Displays the expanded 1024x674 desktop window geometry configured for in-depth document examination.
+  - Full Arabic RTL reader interface: Full-fidelity HarfBuzz/CoreText cursive shaping for Arabic project titles and content, complete with RTL toolbar orientation and trailing disclosure chevrons.
+  - Window management architecture: Native macOS `WindowGroup` lifecycle managing key window status, resizing, and window notification audits (`NSWindowDidBecomeKey`).
 
 #### C. Liquid Glass Styling System
-- **Component**: `WorldsGlass.swift`
-- **Asset Path**: `docs/assets/screenshots/mac/03_mac_liquid_glass_styling.png`
+- **Component**: `WorldsGlass.swift` / `PageContentView.swift`
+- **Asset Path**: `docs/assets/screenshots/mac/mac_03_page_content.png`
 
-![03 Mac Liquid Glass Styling](docs/assets/screenshots/mac/03_mac_liquid_glass_styling.png)
+![03 Mac Liquid Glass Styling](docs/assets/screenshots/mac/mac_03_page_content.png)
 
+- **CI Test Origin**: `WorldsUITests.testPersonalPageNavigation()` (`4BD841A1-037E-4EC7-B9A4-B62C9D2198D9.png`)
 - **Visual Spec**:
   - Background: `.regularMaterial` or system `.glassEffect(.regular)`.
   - Outer stroke: `Color.primary.opacity(0.08)` (0.5 pt).
   - Specular inner stroke: `Color.white.opacity(0.14)` (0.5 pt).
   - Ambient elevation shadow: `black.opacity(0.06)`, radius `2pt`, y `1pt`.
 
-#### D. Microsoft Office & PDF Native Previews
+#### D. Document Attachment & PDF File Summary View
 - **Component**: `ResourceContentView.swift`
-- **Asset Path**: `docs/assets/screenshots/mac/04_mac_office_preview.png`
+- **Asset Path**: `docs/assets/screenshots/mac/mac_14_file_summary.png`
 
-![04 Mac Office Preview](docs/assets/screenshots/mac/04_mac_office_preview.png)
+![04 Mac Document File Summary](docs/assets/screenshots/mac/mac_14_file_summary.png)
 
 - **CI Test Origin**: `WorldsUITests.testFileSummary()` (`E3D564DA-CE80-4797-B426-F3D596BFEFF8.png`)
 - **Key Capabilities**:
-  - Word Document (`.docx`) and Excel Spreadsheet (`.xlsx`) inspection.
-  - File metadata summary: byte count, MIME type (`application/pdf`, `application/vnd.openxmlformats...`).
-  - Seamless launch into sandboxed local document viewing.
+  - Document attachment summary: Native file metadata card presenting `lesson.pdf` with document glyph, file title, and "Read only" status badge.
+  - Reader fallback messaging: Transparent user notification ("File preview is unavailable in this reader.") when previewing raw PDF binaries in the lightweight native reader view without external PDFKit or QuickLook overhead.
+  - Integrated split-view navigation: Preserves active sidebar context alongside document attachment cards.
 
-#### E. Settings & Preferences Window
-- **Component**: `SettingsView.swift`
-- **Asset Path**: `docs/assets/screenshots/mac/05_mac_settings_panel.png`
+#### E. Database Failure Recovery & Modal Error Presentation
+- **Component**: `WorldsDatabase.swift` / `ErrorSheetView`
+- **Asset Path**: `docs/assets/screenshots/mac/mac_04_database_error.png`
 
-![05 Mac Settings Panel](docs/assets/screenshots/mac/05_mac_settings_panel.png)
+![05 Mac Database Error Alert](docs/assets/screenshots/mac/mac_04_database_error.png)
 
+- **CI Test Origin**: `WorldsUITests.testDatabaseError()` (`AA7BCED8-0C0E-4B4C-8C6A-7972904710FE.png`)
 - **Key Capabilities**:
-  - **Theme Selection**: System / Dark (`#0C0C0E`) / Light (`#FDFDFC`).
-  - **Accent Color Indicators**: Gold (`#D2A46E`) / Bronze (`#8A5820`).
-  - **Workspace & Storage Optimization**: Vacuum Database action with reclaimed space confirmation.
-  - **MCP Tool Governance**: Auto-approve read operations toggle.
+  - Native AppKit modal error sheet: Direct demonstration of Worlds' robust error handling when encountering inaccessible or locked database files.
+  - Transparent diagnostic messaging: Cleanly alerts the user with "Could not open database" and explicit SQLite reason: "Database access failed: unable to open database file".
+  - User recovery action: Centered, accessible "[ OK ]" dismissal action returning the user safely to the database connection prompt.
+  - Resilient error boundaries: Zero application crashes under database I/O failures, verified by automated XCUITest error injection.
 
 ---
 
@@ -351,7 +354,7 @@ REPO="justpainful/Worlds"
 RUN_ID="42407596217" # or current successful run 42605122958
 
 # Download macOS UI results
-gh run download $RUN_ID -n Worlds-macOS-UI-results --dir ./artifacts/macos --repo $REPO
+gh run download $RUN_ID -n Worlds-macOS-UI-results --dir ./artifacts/mac --repo $REPO
 
 # Download iPad UI results
 gh run download $RUN_ID -n Worlds-iPad-UI-results --dir ./artifacts/ipad --repo $REPO
@@ -364,8 +367,8 @@ gh run download 42391128440 -n Worlds-iPhone-UI-results --dir ./artifacts/iphone
 ```bash
 # If inspecting raw .xcresult bundles
 xcrun xcresulttool export attachments \
-  --path ./artifacts/macos/results/macOS.xcresult \
-  --output-path ./screenshots/macos
+  --path ./artifacts/mac/results/macOS.xcresult \
+  --output-path ./screenshots/mac
 
 xcrun xcresulttool export attachments \
   --path ./artifacts/ipad/results/iPad.xcresult \
@@ -375,5 +378,6 @@ xcrun xcresulttool export attachments \
 ### Step 3: Verify Attachment Manifest
 ```bash
 # Inspect the generated manifest.json linking UUIDs to test identifiers
-cat ./artifacts/macos/screenshots/manifest.json | jq .
+cat ./artifacts/mac/screenshots/manifest.json | jq .
 ```
+
