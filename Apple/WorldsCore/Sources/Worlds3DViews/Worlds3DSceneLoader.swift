@@ -46,7 +46,8 @@ public final class Worlds3DSceneLoader {
             if let fileURL, let nativeScene = try? SCNScene(url: fileURL, options: nil) {
                 let stats = computeStats(for: nativeScene)
                 parsed = (nativeScene, stats)
-            } else if let fileURL, let mdlAsset = try? MDLAsset(url: fileURL) {
+            } else if let fileURL {
+                let mdlAsset = MDLAsset(url: fileURL)
                 #if canImport(SceneKit.ModelIO)
                 let scene = SCNScene(mdlAsset: mdlAsset)
                 let stats = computeStats(for: scene)
@@ -77,15 +78,14 @@ public final class Worlds3DSceneLoader {
         let root = scene.rootNode
 
         // Find overall bounding box of content nodes
-        var minVec = SCNVector3Zero
-        var maxVec = SCNVector3Zero
-        let hasBounds = root.getBoundingBoxMin(&minVec, max: &maxVec)
-        let bMin = Vector3D(minVec)
-        let bMax = Vector3D(maxVec)
+        let rootBounds = root.boundingBox
+        let bMin = Vector3D(rootBounds.min)
+        let bMax = Vector3D(rootBounds.max)
+        let hasBounds = (bMax.x > bMin.x || bMax.y > bMin.y || bMax.z > bMin.z)
 
         let center: Vector3D
         let maxDimension: Float
-        if hasBounds && (bMax.x > bMin.x || bMax.y > bMin.y || bMax.z > bMin.z) {
+        if hasBounds {
             center = Vector3D(
                 (bMin.x + bMax.x) / 2.0,
                 (bMin.y + bMax.y) / 2.0,
@@ -192,11 +192,10 @@ public final class Worlds3DSceneLoader {
                         lineCount += element.primitiveCount
                     }
                 }
-                var nMin = SCNVector3Zero
-                var nMax = SCNVector3Zero
-                if node.getBoundingBoxMin(&nMin, max: &nMax) {
-                    let bMin = Vector3D(nMin)
-                    let bMax = Vector3D(nMax)
+                let nBounds = node.boundingBox
+                let bMin = Vector3D(nBounds.min)
+                let bMax = Vector3D(nBounds.max)
+                if bMax.x > bMin.x || bMax.y > bMin.y || bMax.z > bMin.z {
                     minX = min(minX, bMin.x); maxX = max(maxX, bMax.x)
                     minY = min(minY, bMin.y); maxY = max(maxY, bMax.y)
                     minZ = min(minZ, bMin.z); maxZ = max(maxZ, bMax.z)

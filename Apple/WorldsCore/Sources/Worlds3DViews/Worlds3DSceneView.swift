@@ -61,6 +61,7 @@ private func applyRenderMode(_ renderMode: Model3DRenderMode, to scene: SCNScene
     }
 }
 
+@MainActor
 private func applyCameraPreset(_ preset: Model3DCameraPreset, to scnView: SCNView) {
     guard let cameraNode = scnView.pointOfView ?? scnView.scene?.rootNode.childNode(withName: "primary-camera", recursively: true) else { return }
 
