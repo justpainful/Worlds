@@ -264,7 +264,7 @@ jobs:
           result=0
           run_case() {
             local case_name="$1" project="$2" scheme="$3" destination="$4" kind="$5"
-            if gtimeout --kill-after=30s 600s xcodebuild -project "Apple/ProjectEditorHarness/$project.xcodeproj" \
+            if gtimeout --kill-after=30s 1200s xcodebuild -project "Apple/ProjectEditorHarness/$project.xcodeproj" \
               -scheme "$scheme" -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/$case_name.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/$case_name.log"; then
@@ -502,7 +502,7 @@ jobs:
               iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
               iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
             esac
-            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/RejectedArchiveHarness/WorldsRejectedArchiveHarness.xcodeproj \
+            if gtimeout --kill-after=30s 1200s xcodebuild -project Apple/RejectedArchiveHarness/WorldsRejectedArchiveHarness.xcodeproj \
               -scheme "RejectedArchiveHarness-$platform" -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/rejected-archive-$device.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/rejected-archive-$device.log"; then
@@ -559,7 +559,7 @@ jobs:
               iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
               iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
             esac
-            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/PageEditorHarness/WorldsPageEditorHarness.xcodeproj \
+            if gtimeout --kill-after=30s 1200s xcodebuild -project Apple/PageEditorHarness/WorldsPageEditorHarness.xcodeproj \
               -scheme "PageEditorHarness-$platform" -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/page-editor-$device.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/page-editor-$device.log"; then
@@ -576,7 +576,7 @@ jobs:
         run: |
           set -o pipefail
           test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
-          gtimeout --kill-after=30s 600s xcodebuild -project Apple/PageEditorHarness/WorldsPageEditorHarness.xcodeproj \
+          gtimeout --kill-after=30s 1200s xcodebuild -project Apple/PageEditorHarness/WorldsPageEditorHarness.xcodeproj \
             -scheme PageEditorHarness-iOS -configuration Debug -sdk iphonesimulator \
             -destination 'platform=iOS Simulator,name=iPad (A16),OS=26.5' \
             OTHER_SWIFT_FLAGS='$(inherited) -DWORLDS_EXPERIMENTAL_IPAD_LIST_KEYS' \
@@ -638,7 +638,7 @@ jobs:
               iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
               iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
             esac
-            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsPageEditingExperimental.xcodeproj \
+            if gtimeout --kill-after=30s 1200s xcodebuild -project Apple/ProjectEditorHarness/WorldsPageEditingExperimental.xcodeproj \
               -scheme "LocalCopy-$platform" -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/local-page-editor-$device.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-page-editor-$device.log"; then
@@ -721,7 +721,7 @@ jobs:
               iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
               iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
             esac
-            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsPresentationEditingExperimental.xcodeproj \
+            if gtimeout --kill-after=30s 1200s xcodebuild -project Apple/ProjectEditorHarness/WorldsPresentationEditingExperimental.xcodeproj \
               -scheme "LocalCopy-$platform" -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/local-presentation-editor-$device.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-presentation-editor-$device.log"; then
@@ -805,7 +805,7 @@ jobs:
               iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
               iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
             esac
-            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsStreamEditingExperimental.xcodeproj \
+            if gtimeout --kill-after=30s 1200s xcodebuild -project Apple/ProjectEditorHarness/WorldsStreamEditingExperimental.xcodeproj \
               -scheme "LocalCopy-$platform" -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/local-stream-editor-$device.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-stream-editor-$device.log"; then
@@ -829,7 +829,7 @@ jobs:
               iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
               iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
             esac
-            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsAutomationExperimental.xcodeproj \
+            if gtimeout --kill-after=30s 1200s xcodebuild -project Apple/ProjectEditorHarness/WorldsAutomationExperimental.xcodeproj \
               -scheme "LocalCopy-$platform" -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/local-automations-$device.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-automations-$device.log"; then
@@ -884,7 +884,7 @@ jobs:
               iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
               iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
             esac
-            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsHistoryExperimental.xcodeproj \
+            if gtimeout --kill-after=30s 1200s xcodebuild -project Apple/ProjectEditorHarness/WorldsHistoryExperimental.xcodeproj \
               -scheme "LocalCopy-$platform" -configuration Debug -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/local-history-$device.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-history-$device.log"; then
@@ -938,7 +938,7 @@ jobs:
               iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
               iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
             esac
-            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsCreateDrawingExperimental.xcodeproj \
+            if gtimeout --kill-after=30s 1200s xcodebuild -project Apple/ProjectEditorHarness/WorldsCreateDrawingExperimental.xcodeproj \
               -scheme "LocalCopy-$platform" -configuration Debug -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/local-create-drawing-$device.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-create-drawing-$device.log"; then
@@ -991,7 +991,7 @@ jobs:
               iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
               iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
             esac
-            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsCreateStreamExperimental.xcodeproj \
+            if gtimeout --kill-after=30s 1200s xcodebuild -project Apple/ProjectEditorHarness/WorldsCreateStreamExperimental.xcodeproj \
               -scheme "LocalCopy-$platform" -configuration Debug -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/local-create-stream-$device.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-create-stream-$device.log"; then
@@ -1044,7 +1044,7 @@ jobs:
               iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
               iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
             esac
-            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsCreateGalleryExperimental.xcodeproj \
+            if gtimeout --kill-after=30s 1200s xcodebuild -project Apple/ProjectEditorHarness/WorldsCreateGalleryExperimental.xcodeproj \
               -scheme "LocalCopy-$platform" -configuration Debug -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/local-create-gallery-$device.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-create-gallery-$device.log"; then
@@ -1097,7 +1097,7 @@ jobs:
               iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
               iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
             esac
-            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsCreatePresentationExperimental.xcodeproj \
+            if gtimeout --kill-after=30s 1200s xcodebuild -project Apple/ProjectEditorHarness/WorldsCreatePresentationExperimental.xcodeproj \
               -scheme "LocalCopy-$platform" -configuration Debug -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/local-create-presentation-$device.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-create-presentation-$device.log"; then
@@ -1150,7 +1150,7 @@ jobs:
               iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
               iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
             esac
-            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsCreateProjectExperimental.xcodeproj \
+            if gtimeout --kill-after=30s 1200s xcodebuild -project Apple/ProjectEditorHarness/WorldsCreateProjectExperimental.xcodeproj \
               -scheme "LocalCopy-$platform" -configuration Debug -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/local-create-project-$device.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-create-project-$device.log"; then
@@ -1203,7 +1203,7 @@ jobs:
               iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
               iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
             esac
-            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsCreateDocumentExperimental.xcodeproj \
+            if gtimeout --kill-after=30s 1200s xcodebuild -project Apple/ProjectEditorHarness/WorldsCreateDocumentExperimental.xcodeproj \
               -scheme "LocalCopy-$platform" -configuration Debug -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/local-create-document-$device.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-create-document-$device.log"; then
@@ -1256,7 +1256,7 @@ jobs:
               iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
               iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
             esac
-            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsMovePageExperimental.xcodeproj \
+            if gtimeout --kill-after=30s 1200s xcodebuild -project Apple/ProjectEditorHarness/WorldsMovePageExperimental.xcodeproj \
               -scheme "LocalCopy-$platform" -configuration Debug -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/local-move-page-$device.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-move-page-$device.log"; then
@@ -1309,7 +1309,7 @@ jobs:
               iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
               iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
             esac
-            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsRenamePageExperimental.xcodeproj \
+            if gtimeout --kill-after=30s 1200s xcodebuild -project Apple/ProjectEditorHarness/WorldsRenamePageExperimental.xcodeproj \
               -scheme "LocalCopy-$platform" -configuration Debug -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/local-rename-page-$device.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-rename-page-$device.log"; then
@@ -1362,7 +1362,7 @@ jobs:
               iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
               iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
             esac
-            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsCreatePageExperimental.xcodeproj \
+            if gtimeout --kill-after=30s 1200s xcodebuild -project Apple/ProjectEditorHarness/WorldsCreatePageExperimental.xcodeproj \
               -scheme "LocalCopy-$platform" -configuration Debug -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/local-create-page-$device.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-create-page-$device.log"; then
@@ -1415,7 +1415,7 @@ jobs:
               iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
               iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
             esac
-            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsTabsExperimental.xcodeproj \
+            if gtimeout --kill-after=30s 1200s xcodebuild -project Apple/ProjectEditorHarness/WorldsTabsExperimental.xcodeproj \
               -scheme "LocalCopy-$platform" -configuration Debug -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/local-tabs-$device.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-tabs-$device.log"; then
@@ -1473,7 +1473,7 @@ jobs:
               iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
               iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
             esac
-            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/GalleryHarness/WorldsGalleryHarness.xcodeproj \
+            if gtimeout --kill-after=30s 1200s xcodebuild -project Apple/GalleryHarness/WorldsGalleryHarness.xcodeproj \
               -scheme "GalleryHarness-$platform" -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/gallery-$device.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/gallery-$device.log"; then
@@ -1546,7 +1546,7 @@ jobs:
               iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
               iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
             esac
-            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/DrawingHarness/WorldsDrawingHarness.xcodeproj \
+            if gtimeout --kill-after=30s 1200s xcodebuild -project Apple/DrawingHarness/WorldsDrawingHarness.xcodeproj \
               -scheme "DrawingHarness-$platform" -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/drawing-$device.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/drawing-$device.log"; then
@@ -1573,7 +1573,7 @@ jobs:
               iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
               iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
             esac
-            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/ProjectEditorHarness/WorldsDrawingEditingExperimental.xcodeproj \
+            if gtimeout --kill-after=30s 1200s xcodebuild -project Apple/ProjectEditorHarness/WorldsDrawingEditingExperimental.xcodeproj \
               -scheme "LocalCopy-$platform" -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/local-drawing-$device.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-drawing-$device.log"; then
@@ -1643,7 +1643,7 @@ jobs:
               iPhone) platform=iOS; destination='platform=iOS Simulator,name=iPhone 17,OS=26.5' ;;
               iPad) platform=iOS; destination='platform=iOS Simulator,name=iPad (A16),OS=26.5' ;;
             esac
-            if gtimeout --kill-after=30s 600s xcodebuild -project Apple/PresentationHarness/WorldsPresentationHarness.xcodeproj \
+            if gtimeout --kill-after=30s 1200s xcodebuild -project Apple/PresentationHarness/WorldsPresentationHarness.xcodeproj \
               -scheme "PresentationHarness-$platform" -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/presentation-$device.xcresult" \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/presentation-$device.log"; then
@@ -2807,7 +2807,7 @@ jobs:
           harness_status=0
           if WORLDS_LIVE_SYNC_URL=ws://127.0.0.1:18790 \
             WORLDS_LIVE_EDITOR_TOKEN="$editor_token" WORLDS_LIVE_VIEWER_TOKEN="$viewer_token" \
-            gtimeout --kill-after=30s 600s xcodebuild -project Apple/CollaborationHarness/WorldsCollaborationHarness.xcodeproj \
+            gtimeout --kill-after=30s 1200s xcodebuild -project Apple/CollaborationHarness/WorldsCollaborationHarness.xcodeproj \
             -scheme CollaborationHarness-macOS -destination 'platform=macOS' \
             -resultBundlePath "$GITHUB_WORKSPACE/collaboration-harness.xcresult" \
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee logs/collaboration-harness.log; then

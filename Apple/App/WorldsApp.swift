@@ -256,10 +256,9 @@ private struct WorldsLibraryView: View {
     #endif
 
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
-    @State private var preferredCompactColumn: NavigationSplitViewColumn = .sidebar
 
     var body: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility, preferredCompactColumn: $preferredCompactColumn) {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             VStack(spacing: 0) {
                 if loaded && !ProcessInfo.processInfo.arguments.contains("--ui-testing-large-text") {
                     workspaceNavigationBar
@@ -575,9 +574,6 @@ private struct WorldsLibraryView: View {
                     }
                 }
             }
-        }
-        .onChange(of: selectedID) { _, newID in
-            preferredCompactColumn = newID != nil ? .detail : .sidebar
         }
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
         #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_HISTORY
