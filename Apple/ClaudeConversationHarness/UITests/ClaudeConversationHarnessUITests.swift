@@ -5,6 +5,7 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         let app = XCUIApplication()
         if app.state != .notRunning {
             app.terminate()
+            _ = XCTWaiter.wait(for: [XCTestExpectation(description: "teardown")], timeout: 1.0)
         }
         super.tearDown()
     }
@@ -41,17 +42,17 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         app.launch(); try start(app)
         let composer = app.textViews["Message"]
         XCTAssertTrue(composer.waitForExistence(timeout: 20)); try waitEnabled(composer)
-        composer.click(); composer.typeText("Recover question")
+        focusAndType("Recover question", into: composer)
         app.buttons["Send"].click()
         XCTAssertTrue(app.buttons["Retry saving response"].waitForExistence(timeout: 20))
-        app.terminate()
+        terminateAndClean(app)
 
         app.launchArguments = ["--isolated-ui-fixture", fixtureID, "--fixture-allow-save", "-ApplePersistenceIgnoreState", "YES"]
         app.launch(); try start(app)
         let retry = app.buttons["Retry saving response"]
         XCTAssertTrue(retry.waitForExistence(timeout: 20)); retry.click()
         XCTAssertTrue(text("Fixture response", in: app).waitForExistence(timeout: 20))
-        app.terminate()
+        terminateAndClean(app)
 
         app.launchArguments = ["--isolated-ui-fixture", fixtureID, "--fixture-allow-save", "-ApplePersistenceIgnoreState", "YES"]
         app.launch(); try start(app)
@@ -69,12 +70,12 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         let composer = app.textViews["Message"]
         XCTAssertTrue(composer.waitForExistence(timeout: 20))
         try waitEnabled(composer)
-        composer.click(); composer.typeText("Persisted question")
+        focusAndType("Persisted question", into: composer)
         app.buttons["Send"].click()
         XCTAssertTrue(text("Fixture response", in: app).waitForExistence(timeout: 20))
         // Wait until the saved response is reloaded and the composer is ready.
         try waitEnabled(composer)
-        app.terminate()
+        terminateAndClean(app)
 
         app.launchArguments = ["--isolated-ui-fixture", fixtureID, "-ApplePersistenceIgnoreState", "YES"]
         app.launch()
@@ -84,12 +85,12 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         let reopenedComposer = app.textViews["Message"]
         XCTAssertTrue(reopenedComposer.waitForExistence(timeout: 10))
         try waitEnabled(reopenedComposer)
-        reopenedComposer.click(); reopenedComposer.typeText("Cancel fixture")
+        focusAndType("Cancel fixture", into: reopenedComposer)
         app.buttons["Send"].click()
         let stop = app.buttons["Stop"]
         XCTAssertTrue(stop.waitForExistence(timeout: 10)); stop.click()
         XCTAssertTrue(text("The response was cancelled.", in: app).waitForExistence(timeout: 20))
-        app.terminate()
+        terminateAndClean(app)
 
         app.launchArguments = ["--isolated-ui-fixture", fixtureID, "-ApplePersistenceIgnoreState", "YES"]
         app.launch()
@@ -98,6 +99,18 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         XCTAssertTrue(text("Cancel fixture", in: app).waitForExistence(timeout: 20))
     }
 
+    @MainActor private func focusAndType(_ text: String, into element: XCUIElement) {
+        #if os(macOS)
+        element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+        #else
+        element.tap()
+        #endif
+        element.typeText(text)
+    }
+    @MainActor private func terminateAndClean(_ app: XCUIApplication) {
+        app.terminate()
+        _ = XCTWaiter.wait(for: [XCTestExpectation(description: "relaunch-wait")], timeout: 1.0)
+    }
     @MainActor private func start(_ app: XCUIApplication) throws {
         #if os(macOS)
         app.activate()
