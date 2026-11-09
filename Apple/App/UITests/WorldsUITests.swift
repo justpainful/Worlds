@@ -79,7 +79,14 @@ final class WorldsUITests: XCTestCase {
         let start = app.descendants(matching: .any)["page.reader-cycle-a"].firstMatch
         for _ in 0..<8 {
             if start.exists && start.isHittable { break }
+            #if os(macOS)
+            let scrollTarget = app.scrollViews.firstMatch.exists ? app.scrollViews.firstMatch : app.outlines.firstMatch
+            if scrollTarget.exists {
+                scrollTarget.scroll(byDeltaX: 0, deltaY: -120)
+            }
+            #else
             list.swipeUp()
+            #endif
         }
         guard start.exists && start.isHittable else {
             captureLaunchFailure(app, name: "cycle-start-missing")
@@ -389,7 +396,14 @@ final class WorldsUITests: XCTestCase {
         // List may create offscreen rows lazily, so scroll before querying the last row.
         for _ in 0..<6 {
             if last.exists && last.isHittable && list.frame.insetBy(dx: 0, dy: 1).contains(last.frame) { break }
+            #if os(macOS)
+            let scrollTarget = app.scrollViews.firstMatch.exists ? app.scrollViews.firstMatch : app.outlines.firstMatch
+            if scrollTarget.exists {
+                scrollTarget.scroll(byDeltaX: 0, deltaY: -120)
+            }
+            #else
             list.swipeUp()
+            #endif
         }
         XCTAssertTrue(last.waitForExistence(timeout: 10))
         XCTAssertTrue(last.isHittable)
@@ -414,7 +428,12 @@ final class WorldsUITests: XCTestCase {
         XCTAssertTrue(description.waitForExistence(timeout: 15))
         capture("16-project-large-text-dark-rtl", app: app)
         if !description.isHittable {
-            #if !os(macOS)
+            #if os(macOS)
+            let scrollTarget = app.scrollViews.firstMatch.exists ? app.scrollViews.firstMatch : app.outlines.firstMatch
+            if scrollTarget.exists {
+                scrollTarget.scroll(byDeltaX: 0, deltaY: -120)
+            }
+            #else
             app.swipeUp()
             #endif
         }
@@ -492,6 +511,10 @@ final class WorldsUITests: XCTestCase {
                 captureLaunchFailure(app, name: "resource-window-missing")
                 XCTFail("Application window did not appear")
                 throw FixtureLaunchError.unavailable
+            }
+            let scrollTarget = app.scrollViews.firstMatch.exists ? app.scrollViews.firstMatch : app.outlines.firstMatch
+            if scrollTarget.exists {
+                scrollTarget.scroll(byDeltaX: 0, deltaY: -120)
             }
             #else
             app.swipeUp()

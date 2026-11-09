@@ -5,7 +5,7 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         let app = XCUIApplication()
         if app.state != .notRunning {
             app.terminate()
-            _ = XCTWaiter.wait(for: [XCTestExpectation(description: "teardown")], timeout: 1.0)
+            _ = XCTWaiter.wait(for: [XCTestExpectation(description: "teardown")], timeout: 1.5)
         }
         super.tearDown()
     }
@@ -109,7 +109,7 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
     }
     @MainActor private func terminateAndClean(_ app: XCUIApplication) {
         app.terminate()
-        _ = XCTWaiter.wait(for: [XCTestExpectation(description: "relaunch-wait")], timeout: 1.0)
+        _ = XCTWaiter.wait(for: [XCTestExpectation(description: "relaunch-wait")], timeout: 1.5)
     }
     @MainActor private func start(_ app: XCUIApplication) throws {
         #if os(macOS)
@@ -128,10 +128,7 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         }
     }
     @MainActor private func text(_ expected: String, in app: XCUIApplication) -> XCUIElement {
-        let predicate = NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", expected, expected)
-        let element = app.staticTexts.matching(predicate).firstMatch
-        if element.exists { return element }
-        return app.descendants(matching: .staticText).matching(predicate).firstMatch
+        app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@ OR value CONTAINS[c] %@", expected, expected)).firstMatch
     }
     @MainActor private func waitEnabled(_ element: XCUIElement) throws {
         let app = XCUIApplication()
