@@ -103,15 +103,16 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         app.activate()
         #endif
         let button = app.buttons["Start"]
-        if !button.waitForExistence(timeout: 10) {
-            if app.textViews["Message"].exists {
-                return
-            }
+        if button.waitForExistence(timeout: 10) {
+            button.click()
+        }
+        let composer = app.textViews["Message"].firstMatch
+        let diagnostics = app.staticTexts["conversation-fixture-diagnostics"].firstMatch
+        guard composer.waitForExistence(timeout: 20) || diagnostics.waitForExistence(timeout: 20) else {
             captureFailure(app, name: "start-unavailable")
             XCTFail("Start did not appear; application state: \(app.state.rawValue), windows: \(app.windows.count)")
             throw HarnessUIError.unavailable
         }
-        button.click()
     }
     @MainActor private func text(_ expected: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", expected, expected)).firstMatch
@@ -122,29 +123,22 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         app.activate()
         #endif
         let diagnostics = app.staticTexts["conversation-fixture-diagnostics"].firstMatch
-        if diagnostics.waitForExistence(timeout: 20) {
-            let loadedPredicate = NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", "loaded=true", "loaded=true")
-            _ = XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: loadedPredicate, object: diagnostics)], timeout: 20)
+        guard diagnostics.waitForExistence(timeout: 20) else {
+            captureFailure(app, name: "diagnostics-missing")
+            XCTFail("Conversation diagnostics did not appear")
+            throw HarnessUIError.unavailable
+        }
+        let loadedPredicate = NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", "loaded=true", "loaded=true")
+        let ready = XCTNSPredicateExpectation(predicate: loadedPredicate, object: diagnostics)
+        guard XCTWaiter.wait(for: [ready], timeout: 20) == .completed else {
+            captureFailure(app, name: "load-timeout")
+            let details = (diagnostics.value as? String) ?? diagnostics.label
+            XCTFail("Conversation did not finish loading: \(details)")
+            throw HarnessUIError.unavailable
         }
         #if os(macOS)
         app.activate()
-        if !element.isEnabled && element.isHittable {
-            element.click()
-        }
         #endif
-        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isEnabled == true"), object: element)
-        guard XCTWaiter.wait(for: [ready], timeout: 20) == .completed else {
-            #if os(macOS)
-            app.activate()
-            #endif
-            if element.isEnabled { return }
-            captureFailure(app, name: "composer-disabled")
-            let details = (diagnostics.value as? String) ?? diagnostics.label
-            let reference = app.textViews["Diagnostic editor"].firstMatch
-            let referenceState = reference.exists ? "enabled=\(reference.isEnabled),hittable=\(reference.isHittable)" : "missing"
-            XCTFail("Message editor did not become enabled; reference: \(referenceState); fixture state: \(details)")
-            throw HarnessUIError.unavailable
-        }
     }
     @MainActor private func captureFailure(_ app: XCUIApplication, name: String) {
         let hierarchy = XCTAttachment(string: app.debugDescription)

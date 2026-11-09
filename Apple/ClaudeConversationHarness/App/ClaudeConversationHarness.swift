@@ -48,7 +48,11 @@ struct ClaudeConversationHarnessApp: App {
     #if os(macOS)
     @NSApplicationDelegateAdaptor(HarnessAppDelegate.self) private var appDelegate
     #endif
-    var body: some Scene { WindowGroup { HarnessRoot() } }
+    var body: some Scene {
+        Window("Conversation", id: "conversation") {
+            HarnessRoot()
+        }
+    }
 }
 
 @MainActor private final class HarnessState: ObservableObject {
