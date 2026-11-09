@@ -115,6 +115,7 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         #if os(macOS)
         app.activate()
         #endif
+        _ = app.windows.firstMatch.waitForExistence(timeout: 10)
         let button = app.buttons["Start"]
         if button.waitForExistence(timeout: 10) {
             button.click()
@@ -128,7 +129,15 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         }
     }
     @MainActor private func text(_ expected: String, in app: XCUIApplication) -> XCUIElement {
-        app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@ OR value CONTAINS[c] %@", expected, expected)).firstMatch
+        let predicate = NSPredicate(format: "label CONTAINS[c] %@ OR value CONTAINS[c] %@", expected, expected)
+        let other = app.otherElements.matching(predicate).firstMatch
+        if other.exists { return other }
+        let staticText = app.staticTexts.matching(predicate).firstMatch
+        if staticText.exists { return staticText }
+        if app.windows.firstMatch.exists {
+            return app.windows.firstMatch.descendants(matching: .any).matching(predicate).firstMatch
+        }
+        return other
     }
     @MainActor private func waitEnabled(_ element: XCUIElement) throws {
         let app = XCUIApplication()

@@ -258,12 +258,29 @@ final class WorldsUITests: XCTestCase {
         app.launchArguments += ["--ui-testing-reader-fixture", "--ui-testing-rtl"]
         app.launch()
         let page = app.descendants(matching: .any)["page.reader-fixture"].firstMatch
+        for _ in 0..<8 {
+            if page.exists && page.isHittable { break }
+            #if os(macOS)
+            let scrollTarget = app.scrollViews.firstMatch.exists ? app.scrollViews.firstMatch : app.outlines.firstMatch
+            if scrollTarget.exists {
+                scrollTarget.scroll(byDeltaX: 0, deltaY: -120)
+            }
+            #else
+            app.swipeUp()
+            #endif
+        }
         XCTAssertTrue(page.waitForExistence(timeout: 40)); page.tap()
         let quote = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", "اقتباس عربي محفوظ ١٢٣", "اقتباس عربي محفوظ ١٢٣")).firstMatch
         let overflow = app.staticTexts["Overflow item"].firstMatch
         let reader = app.scrollViews["page-content"].firstMatch
         XCTAssertTrue(reader.waitForExistence(timeout: 10))
-        for _ in 0..<4 { reader.swipeUp() }
+        for _ in 0..<4 {
+            #if os(macOS)
+            reader.scroll(byDeltaX: 0, deltaY: -120)
+            #else
+            reader.swipeUp()
+            #endif
+        }
         XCTAssertTrue(quote.waitForExistence(timeout: 10))
         XCTAssertTrue(accessibleText(quote).contains("Mixed quote"))
         XCTAssertTrue(accessibleText(quote).contains("Invalid color preserved"))
@@ -505,7 +522,8 @@ final class WorldsUITests: XCTestCase {
         prepareWindowTrace(app)
         app.launch()
         let row = app.descendants(matching: .any)["page.\(id)"].firstMatch
-        if !row.waitForExistence(timeout: 10) {
+        for _ in 0..<8 {
+            if row.exists && row.isHittable { break }
             #if os(macOS)
             guard app.windows.firstMatch.exists else {
                 captureLaunchFailure(app, name: "resource-window-missing")

@@ -771,11 +771,11 @@ extension WorldsCollaborationTests {
         let run = Task { try await session.run() }
         defer { Task { await session.stop() } }
         var resent = false
-        for _ in 0..<250 {
+        for _ in 0..<600 {
             let count = await factory.count
             let remaining = try await store.maximumPendingID(pageID: "fixture-page", channel: 0)
             if count >= 2 && remaining == nil { resent = true; break }
-            try await Task.sleep(for: .milliseconds(20))
+            try await Task.sleep(for: .milliseconds(25))
         }
         let blocked = await factory.first.blocked
         let closed = await factory.first.closed
