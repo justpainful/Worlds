@@ -1,6 +1,14 @@
 import XCTest
 
 final class ClaudeConversationHarnessUITests: XCTestCase {
+    override func tearDown() {
+        let app = XCUIApplication()
+        if app.state != .notRunning {
+            app.terminate()
+        }
+        super.tearDown()
+    }
+
     @MainActor func testReferenceEditorAccessibilityDiagnostic() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--isolated-ui-fixture", UUID().uuidString, "--diagnose-reference-editor"]
@@ -45,6 +53,7 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         XCTAssertTrue(text("Fixture response", in: app).waitForExistence(timeout: 20))
         app.terminate()
 
+        app.launchArguments = ["--isolated-ui-fixture", fixtureID, "--fixture-allow-save"]
         app.launch(); try start(app)
         XCTAssertTrue(text("Recover question", in: app).waitForExistence(timeout: 20))
         XCTAssertTrue(text("Fixture response", in: app).waitForExistence(timeout: 20))
@@ -53,7 +62,8 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
 
     @MainActor func testConversationSurvivesProcessRestartAndCancellation() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["--isolated-ui-fixture", UUID().uuidString]
+        let fixtureID = UUID().uuidString
+        app.launchArguments = ["--isolated-ui-fixture", fixtureID]
         app.launch()
         try start(app)
         let composer = app.textViews["Message"]
@@ -66,6 +76,7 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         try waitEnabled(composer)
         app.terminate()
 
+        app.launchArguments = ["--isolated-ui-fixture", fixtureID]
         app.launch()
         try start(app)
         XCTAssertTrue(text("Persisted question", in: app).waitForExistence(timeout: 20))
@@ -80,6 +91,7 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         XCTAssertTrue(text("The response was cancelled.", in: app).waitForExistence(timeout: 20))
         app.terminate()
 
+        app.launchArguments = ["--isolated-ui-fixture", fixtureID]
         app.launch()
         try start(app)
         XCTAssertTrue(text("Persisted question", in: app).waitForExistence(timeout: 20))
@@ -102,8 +114,15 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", expected, expected)).firstMatch
     }
     @MainActor private func waitEnabled(_ element: XCUIElement) throws {
+        #if os(macOS)
+        XCUIApplication().activate()
+        #endif
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isEnabled == true"), object: element)
         guard XCTWaiter.wait(for: [ready], timeout: 20) == .completed else {
+            #if os(macOS)
+            XCUIApplication().activate()
+            #endif
+            if element.isEnabled { return }
             captureFailure(XCUIApplication(), name: "composer-disabled")
             let app = XCUIApplication()
             let diagnostics = app.staticTexts["conversation-fixture-diagnostics"].firstMatch

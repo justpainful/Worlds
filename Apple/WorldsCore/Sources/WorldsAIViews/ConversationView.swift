@@ -73,6 +73,7 @@ public struct ConversationView: View {
                 TimelineView(.periodic(from: .now, by: 1)) { _ in
                     Text("loading=\(model.loading) loaded=\(model.loaded) running=\(model.running) active=\(NSApp.isActive) modal=\(NSApp.modalWindow != nil) native=\(fixtureNativeDetails)")
                         .font(.caption2).accessibilityIdentifier("conversation-fixture-diagnostics")
+                        .accessibilityLabel("loading=\(model.loading) loaded=\(model.loaded) running=\(model.running) active=\(NSApp.isActive) modal=\(NSApp.modalWindow != nil) native=\(fixtureNativeDetails)")
                         .background(FixtureTextEditorProbe(output: $fixtureNativeDetails).frame(width: 0, height: 0).accessibilityHidden(true))
                 }
                 .allowsHitTesting(false)
