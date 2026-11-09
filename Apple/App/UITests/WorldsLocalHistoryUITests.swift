@@ -34,7 +34,20 @@ final class WorldsLocalHistoryUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Renamed fixture"].exists || app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Renamed fixture")).firstMatch.exists)
         capture(app, "history-personal-rtl")
         app.buttons["Close"].tap()
+        #if os(iOS)
+        let showPages = app.navigationBars.buttons["Pages"].firstMatch
+        if showPages.exists { showPages.tap() }
+        #endif
         let project = app.descendants(matching: .any)["page.harness-project"].firstMatch
+        for _ in 0..<8 {
+            if project.exists && project.isHittable { break }
+            #if os(macOS)
+            let scrollTarget = app.scrollViews.firstMatch.exists ? app.scrollViews.firstMatch : app.outlines.firstMatch
+            if scrollTarget.exists { scrollTarget.scroll(byDeltaX: 0, deltaY: -120) }
+            #else
+            app.swipeUp()
+            #endif
+        }
         guard project.waitForExistence(timeout: 20) else { capture(app, "history-empty-page-missing"); XCTFail("Second page missing"); return }
         project.tap()
         guard open.waitForExistence(timeout: 20) else { capture(app, "history-empty-action-missing"); XCTFail("History action missing"); return }

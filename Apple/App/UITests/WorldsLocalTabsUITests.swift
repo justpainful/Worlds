@@ -15,6 +15,15 @@ final class WorldsLocalTabsUITests: XCTestCase {
         if showPages.exists { showPages.tap() }
         #endif
         let project = app.descendants(matching: .any)["page.harness-project"].firstMatch
+        for _ in 0..<8 {
+            if project.exists && project.isHittable { break }
+            #if os(macOS)
+            let scrollTarget = app.scrollViews.firstMatch.exists ? app.scrollViews.firstMatch : app.outlines.firstMatch
+            if scrollTarget.exists { scrollTarget.scroll(byDeltaX: 0, deltaY: -120) }
+            #else
+            app.swipeUp()
+            #endif
+        }
         guard project.waitForExistence(timeout: 20) else { capture(app, "tabs-return-project-missing"); XCTFail("Project missing"); return }
         #if os(macOS)
         project.rightClick()
@@ -51,6 +60,15 @@ final class WorldsLocalTabsUITests: XCTestCase {
         if showPages.exists { showPages.tap() }
         #endif
         let project = app.descendants(matching: .any)["page.harness-project"].firstMatch
+        for _ in 0..<8 {
+            if project.exists && project.isHittable { break }
+            #if os(macOS)
+            let scrollTarget = app.scrollViews.firstMatch.exists ? app.scrollViews.firstMatch : app.outlines.firstMatch
+            if scrollTarget.exists { scrollTarget.scroll(byDeltaX: 0, deltaY: -120) }
+            #else
+            app.swipeUp()
+            #endif
+        }
         guard project.waitForExistence(timeout: 20) else { capture(app, "tabs-project-missing"); XCTFail("Project page missing"); return }
         #if os(macOS)
         project.rightClick()
