@@ -149,7 +149,10 @@ final class WorldsUITests: XCTestCase {
     func testOpeningScreen() throws {
         let app = XCUIApplication()
         app.launch()
-        XCTAssertTrue(app.staticTexts["Open your Worlds database"].waitForExistence(timeout: 15))
+        #if os(macOS)
+        _ = app.windows.firstMatch.waitForExistence(timeout: 20)
+        #endif
+        XCTAssertTrue(app.staticTexts["Open your Worlds database"].waitForExistence(timeout: 20))
         XCTAssertTrue(app.buttons["open-database"].exists)
         capture("01-open-database", app: app)
     }
@@ -320,7 +323,21 @@ final class WorldsUITests: XCTestCase {
         if rightToLeft { app.launchArguments.append("--ui-testing-rtl") }
         prepareWindowTrace(app)
         app.launch()
+        #if os(macOS)
+        _ = app.windows.firstMatch.waitForExistence(timeout: 20)
+        #endif
         let page = app.descendants(matching: .any)["page.reader-fixture"].firstMatch
+        for _ in 0..<8 {
+            if page.exists && page.isHittable { break }
+            #if os(macOS)
+            let scrollTarget = app.scrollViews.firstMatch.exists ? app.scrollViews.firstMatch : app.outlines.firstMatch
+            if scrollTarget.exists {
+                scrollTarget.scroll(byDeltaX: 0, deltaY: -120)
+            }
+            #else
+            app.swipeUp()
+            #endif
+        }
         guard page.waitForExistence(timeout: 40) else {
             captureLaunchFailure(app, name: "reader-fixture-missing")
             XCTFail("Reader fixture did not appear")
@@ -521,15 +538,17 @@ final class WorldsUITests: XCTestCase {
         if light { app.launchArguments.append("--ui-testing-light") }
         prepareWindowTrace(app)
         app.launch()
+        #if os(macOS)
+        guard app.windows.firstMatch.waitForExistence(timeout: 20) else {
+            captureLaunchFailure(app, name: "resource-window-missing")
+            XCTFail("Application window did not appear")
+            throw FixtureLaunchError.unavailable
+        }
+        #endif
         let row = app.descendants(matching: .any)["page.\(id)"].firstMatch
         for _ in 0..<8 {
             if row.exists && row.isHittable { break }
             #if os(macOS)
-            guard app.windows.firstMatch.exists else {
-                captureLaunchFailure(app, name: "resource-window-missing")
-                XCTFail("Application window did not appear")
-                throw FixtureLaunchError.unavailable
-            }
             let scrollTarget = app.scrollViews.firstMatch.exists ? app.scrollViews.firstMatch : app.outlines.firstMatch
             if scrollTarget.exists {
                 scrollTarget.scroll(byDeltaX: 0, deltaY: -120)
@@ -550,9 +569,12 @@ final class WorldsUITests: XCTestCase {
         app.launchArguments.append("--ui-testing-missing-fixture")
         app.launch()
         #if os(macOS)
-        let dismiss = app.sheets.buttons["OK"]
+        _ = app.windows.firstMatch.waitForExistence(timeout: 20)
+        let dismiss = app.sheets.buttons["OK"].firstMatch.exists
+            ? app.sheets.buttons["OK"].firstMatch
+            : (app.dialogs.buttons["OK"].firstMatch.exists ? app.dialogs.buttons["OK"].firstMatch : app.buttons["OK"].firstMatch)
         #else
-        let dismiss = app.alerts.buttons["OK"]
+        let dismiss = app.alerts.buttons["OK"].firstMatch
         #endif
         XCTAssertTrue(dismiss.waitForExistence(timeout: 15))
         capture("04-database-error", app: app)

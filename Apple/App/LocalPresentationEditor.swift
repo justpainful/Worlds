@@ -2,6 +2,7 @@
 import SwiftUI
 import WorldsPresentations
 import WorldsPresentationPersistence
+import WorldsPresentationSession
 import SQLite3
 
 @MainActor private final class PresentationEditorState: ObservableObject {

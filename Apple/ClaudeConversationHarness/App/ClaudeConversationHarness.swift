@@ -23,25 +23,48 @@ import AppKit
 
 @MainActor
 final class HarnessAppDelegate: NSObject, NSApplicationDelegate {
+    private var fallbackWindow: NSWindow?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
-        Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { timer in
+        ensureWindow()
+        Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] timer in
             if let window = NSApp.windows.first {
                 window.makeKeyAndOrderFront(nil)
                 window.orderFrontRegardless()
                 timer.invalidate()
+            } else {
+                self?.ensureWindow()
             }
         }
     }
+
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag {
-            for window in sender.windows {
-                window.makeKeyAndOrderFront(nil)
-                window.orderFrontRegardless()
-            }
-        }
+        ensureWindow()
         return true
+    }
+
+    func ensureWindow() {
+        if let window = NSApp.windows.first {
+            window.makeKeyAndOrderFront(nil)
+            window.orderFrontRegardless()
+            return
+        }
+        if fallbackWindow == nil {
+            let win = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 640, height: 480),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                backing: .buffered,
+                defer: false
+            )
+            win.title = "Isolated Claude conversation"
+            win.contentView = NSHostingView(rootView: HarnessRoot())
+            win.center()
+            fallbackWindow = win
+        }
+        fallbackWindow?.makeKeyAndOrderFront(nil)
+        fallbackWindow?.orderFrontRegardless()
     }
 }
 #endif
