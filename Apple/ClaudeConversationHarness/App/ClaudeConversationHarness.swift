@@ -34,16 +34,11 @@ final class HarnessAppDelegate: NSObject, NSApplicationDelegate {
             }
         }
     }
-    func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
-        return true
-    }
-    func applicationOpenUntitledFile(_ sender: NSApplication) -> Bool {
-        return true
-    }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag {
             for window in sender.windows {
                 window.makeKeyAndOrderFront(nil)
+                window.orderFrontRegardless()
             }
         }
         return true
@@ -149,7 +144,10 @@ private struct HarnessRoot: View {
             #if os(macOS)
             NSApp.activate(ignoringOtherApps: true)
             DispatchQueue.main.async {
-                NSApp.windows.first?.makeKeyAndOrderFront(nil)
+                if let window = NSApp.windows.first {
+                    window.makeKeyAndOrderFront(nil)
+                    window.orderFrontRegardless()
+                }
             }
             #endif
         }

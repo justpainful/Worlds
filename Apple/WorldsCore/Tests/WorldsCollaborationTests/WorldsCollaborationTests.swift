@@ -752,9 +752,11 @@ private actor BlockedUpdateSocket: CollaborationSocket {
 }
 private actor BlockedUpdateFactory {
     let first = BlockedUpdateSocket()
-    let second = FixtureSocket(userID: "editor")
     private(set) var count = 0
-    func next() -> any CollaborationSocket { count += 1; return count == 1 ? first : second }
+    func next() -> any CollaborationSocket {
+        count += 1
+        return count == 1 ? first : FixtureSocket(userID: "editor")
+    }
 }
 
 extension WorldsCollaborationTests {
@@ -767,7 +769,7 @@ extension WorldsCollaborationTests {
         let update = try XCTUnwrap(Data(base64Encoded: "AQbpBwAEAQZzaGFyZWQKSGVsbG8g8J+MjQcBB2RlZmF1bHQDCXBhcmFncmFwaAcA6QcIBgYA6QcJBGJvbGQEdHJ1ZYTpBwoNWWpzIHJpY2ggdGV4dIbpBxcEYm9sZARudWxsAA=="))
         try await store.appendLocal(pageID: "fixture-page", channel: 0, update: update)
         let factory = BlockedUpdateFactory()
-        let session = try CollaborationSession(pageID: "fixture-page", workspaceID: "fixture-workspace", documentID: "fixture-page", expectedUserID: "editor", serverURL: URL(string: "https://example.invalid")!, store: store, tokenProvider: { _ in "fixture-token" }, socketFactory: { _, _ in await factory.next() }, acknowledgementTimeout: .milliseconds(100))
+        let session = try CollaborationSession(pageID: "fixture-page", workspaceID: "fixture-workspace", documentID: "fixture-page", expectedUserID: "editor", serverURL: URL(string: "https://example.invalid")!, store: store, tokenProvider: { _ in "fixture-token" }, socketFactory: { _, _ in await factory.next() }, acknowledgementTimeout: .milliseconds(500))
         let run = Task { try await session.run() }
         defer { Task { await session.stop() } }
         var resent = false
@@ -796,7 +798,7 @@ extension WorldsCollaborationTests {
         let pending = try await store.maximumPendingID(pageID: "fixture-page", channel: 0)
         XCTAssertNotNil(pending)
         let factory = MissingAcknowledgementFactory()
-        let session = try CollaborationSession(pageID: "fixture-page", workspaceID: "fixture-workspace", documentID: "fixture-page", expectedUserID: "editor", serverURL: URL(string: "https://example.invalid")!, store: store, tokenProvider: { _ in "fixture-token" }, socketFactory: { _, _ in await factory.next() }, acknowledgementTimeout: .milliseconds(100))
+        let session = try CollaborationSession(pageID: "fixture-page", workspaceID: "fixture-workspace", documentID: "fixture-page", expectedUserID: "editor", serverURL: URL(string: "https://example.invalid")!, store: store, tokenProvider: { _ in "fixture-token" }, socketFactory: { _, _ in await factory.next() }, acknowledgementTimeout: .milliseconds(500))
         let run = Task { try await session.run() }
         defer { Task { await session.stop() } }
         var resent = false
