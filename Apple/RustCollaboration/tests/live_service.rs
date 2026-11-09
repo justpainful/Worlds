@@ -128,8 +128,10 @@ fn live_owned_outbox_survives_account_change_and_reconnect() {
  // Worlds. The generated identifier belongs only to this copied fixture.
  {
   let db=rusqlite::Connection::open(&path).unwrap();
-  db.execute("UPDATE blocks SET page_id=?1 WHERE page_id='fixture-page'",[&doc_id]).unwrap();
+  db.execute_batch("PRAGMA foreign_keys = OFF;").unwrap();
   db.execute("UPDATE pages SET id=?1 WHERE id='fixture-page'",[&doc_id]).unwrap();
+  db.execute("UPDATE blocks SET page_id=?1 WHERE page_id='fixture-page'",[&doc_id]).unwrap();
+  db.execute_batch("PRAGMA foreign_keys = ON;").unwrap();
  }
  let resource=format!("ws://127.0.0.1:18790/v1/workspaces/fixture-workspace/docs/{doc_id}/sync");
  let mut store=SyncStore::open(&path,&doc_id,"editor","fixture-workspace").unwrap();

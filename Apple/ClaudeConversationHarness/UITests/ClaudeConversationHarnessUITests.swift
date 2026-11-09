@@ -87,6 +87,9 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
     }
 
     @MainActor private func start(_ app: XCUIApplication) throws {
+        #if os(macOS)
+        app.activate()
+        #endif
         let button = app.buttons["Start"]
         guard button.waitForExistence(timeout: 20) else {
             captureFailure(app, name: "start-unavailable")

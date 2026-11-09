@@ -1,0 +1,95 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "23C8F95C-765D-46A9-AE82-0BEE2921C8D7",
+        "deviceName" : "iPhone 17",
+        "exportedFileName" : "4727B1EE-AA6F-419E-A61D-71A434B0EB4C.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "04-database-error_0_A78A2C2A-B8A9-4359-AF71-822838AAC8AE.png",
+        "timestamp" : 1794068979.064
+      }
+    ],
+    "testIdentifier" : "WorldsUITests/testDatabaseError()",
+    "testIdentifierURL" : "test://com.apple.xcode/Worlds/Worlds-iOS-UITests/WorldsUITests/testDatabaseError"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "23C8F95C-765D-46A9-AE82-0BEE2921C8D7",
+        "deviceName" : "iPhone 17",
+        "exportedFileName" : "844C0F00-318D-4FF8-B1E1-CAF1FE13426C.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "01-open-database_0_D474FC87-6DCE-476E-9F01-775DA9118459.png",
+        "timestamp" : 1794068992.806
+      }
+    ],
+    "testIdentifier" : "WorldsUITests/testOpeningScreen()",
+    "testIdentifierURL" : "test://com.apple.xcode/Worlds/Worlds-iOS-UITests/WorldsUITests/testOpeningScreen"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "23C8F95C-765D-46A9-AE82-0BEE2921C8D7",
+        "deviceName" : "iPhone 17",
+        "exportedFileName" : "16F85F60-358E-49A6-9FBE-2DDD8877380B.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "03-page-content_0_2D061C19-1B67-43D5-8A5E-F20DAD045EA6.png",
+        "timestamp" : 1794069018.775
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "23C8F95C-765D-46A9-AE82-0BEE2921C8D7",
+        "deviceName" : "iPhone 17",
+        "exportedFileName" : "F1B2DB65-0DF8-4905-98FB-F609A5550133.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "02-personal-pages_0_8EB40ADD-1697-4E18-B3AF-922F19217664.png",
+        "timestamp" : 1794069011.4
+      }
+    ],
+    "testIdentifier" : "WorldsUITests/testPersonalPageNavigation()",
+    "testIdentifierURL" : "test://com.apple.xcode/Worlds/Worlds-iOS-UITests/WorldsUITests/testPersonalPageNavigation"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "23C8F95C-765D-46A9-AE82-0BEE2921C8D7",
+        "deviceName" : "iPhone 17",
+        "exportedFileName" : "1DBB4AA0-0C80-4C48-88E2-958B309D3DF1.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "06-search-result-page_0_4F5539E5-25D1-449A-9179-B77A9BF7E8C9.png",
+        "timestamp" : 1794069063.184
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "23C8F95C-765D-46A9-AE82-0BEE2921C8D7",
+        "deviceName" : "iPhone 17",
+        "exportedFileName" : "89B58971-76B8-4675-A7BD-7C9FD59DB226.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "05-personal-search-results_0_61CB635F-A500-4A11-8C0B-96860A2A06A6.png",
+        "timestamp" : 1794069059.463
+      }
+    ],
+    "testIdentifier" : "WorldsUITests/testPersonalSearchAndNavigation()",
+    "testIdentifierURL" : "test://com.apple.xcode/Worlds/Worlds-iOS-UITests/WorldsUITests/testPersonalSearchAndNavigation"
+  },
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "23C8F95C-765D-46A9-AE82-0BEE2921C8D7",
+        "deviceName" : "iPhone 17",
+        "exportedFileName" : "C63ABCCC-02A5-4B58-8A4D-9BFF3C5E6AE5.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "07-search-no-results_0_7812A414-F41A-4051-9390-27DA2C564DD4.png",
+        "timestamp" : 1794069086.13
+      }
+    ],
+    "testIdentifier" : "WorldsUITests/testSearchEmptyState()",
+    "testIdentifierURL" : "test://com.apple.xcode/Worlds/Worlds-iOS-UITests/WorldsUITests/testSearchEmptyState"
+  }
+]
