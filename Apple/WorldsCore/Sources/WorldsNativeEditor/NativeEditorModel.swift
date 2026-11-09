@@ -60,7 +60,7 @@ public final class NativeEditorModel: ObservableObject {
     public var attributedText: NSAttributedString { document.attributedString() }
     var listMarkers: [NativeListMarker] {
         let projected = projection
-        let ns = projected.text as NSString
+        let fullText = projected.text
         var offset = 0, result: [NativeListMarker] = []
         func walk(_ value: JSONValue, path: [Int], direction: String?, depth: Int) {
             guard case .object(let node) = value, case .string(let type)? = node["type"] else { return }
@@ -92,7 +92,12 @@ public final class NativeEditorModel: ObservableObject {
                                 else if case .string(let value)? = attrs["direction"] { itemDirection = value }
                             }
                             let label = type == "bulletList" ? "•" : (type == "orderedList" ? "\(number)." : (checked == true ? "☑" : "☐"))
-                            let text = span.map { NSMaxRange($0.range) <= ns.length ? ns.substring(with: $0.range) : "" } ?? ""
+                            let text: String
+                            if let span, let strRange = Range(span.range, in: fullText) {
+                                text = String(fullText[strRange])
+                            } else {
+                                text = ""
+                            }
                             result.append(NativeListMarker(id: childPath.map { String($0) }.joined(separator: "."), location: offset, label: label, checked: checked,
                                 text: text.isEmpty ? "Empty task" : text, rightToLeft: (span?.direction ?? itemDirection) == "rtl", path: childPath, depth: depth, empty: text.isEmpty))
                         }

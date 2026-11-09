@@ -97,7 +97,8 @@ struct AssistantHostView: View {
 }
 
 #if WORLDS_MAIN_APP_MODULES
-actor WorkspaceAssistantConversationService: ConversationService {
+final class WorkspaceAssistantConversationService: ConversationService, @unchecked Sendable {
+    private let lock = NSLock()
     private var messages: [ConversationMessage]
     private let pageCount: Int
     private let projectTitles: [String]
@@ -136,33 +137,32 @@ actor WorkspaceAssistantConversationService: ConversationService {
     }
 
     func load(conversationID: String) async throws -> [ConversationMessage] {
-        messages
+        lock.withLock { messages }
     }
 
     func send(conversationID: String, runID: UUID, text: String) -> AsyncThrowingStream<ConversationEvent, Error> {
         AsyncThrowingStream { continuation in
-            Task {
-                let userMessage = ConversationMessage(id: "user-\(runID.uuidString)", role: .user, text: text)
-                self.append(userMessage)
-                let currentSnapshot = self.messages
-                continuation.yield(.accepted(currentSnapshot))
-                continuation.yield(.tool(ConversationTool(id: "tool-1", name: "worlds.search_personal_pages", status: .running)))
-                continuation.yield(.tool(ConversationTool(id: "tool-1", name: "worlds.search_personal_pages", status: .succeeded)))
-
-                let reply = "Based on \(self.pageCount) active workspace items (\(self.recentTitles.joined(separator: ", "))): \"\(text)\" has been analyzed with read-only MCP scope."
-                continuation.yield(.textDelta(reply))
-                let assistantMessage = ConversationMessage(id: "assistant-\(runID.uuidString)", role: .assistant, text: reply)
-                self.append(assistantMessage)
-                continuation.yield(.snapshot(self.messages))
-                continuation.finish()
+            let userMessage = ConversationMessage(id: "user-\(runID.uuidString)", role: .user, text: text)
+            let currentSnapshot: [ConversationMessage] = self.lock.withLock {
+                self.messages.append(userMessage)
+                return self.messages
             }
+            continuation.yield(.accepted(currentSnapshot))
+            continuation.yield(.tool(ConversationTool(id: "tool-1", name: "worlds.search_personal_pages", status: .running)))
+            continuation.yield(.tool(ConversationTool(id: "tool-1", name: "worlds.search_personal_pages", status: .succeeded)))
+
+            let reply = "Based on \(self.pageCount) active workspace items (\(self.recentTitles.joined(separator: ", "))): \"\(text)\" has been analyzed with read-only MCP scope."
+            continuation.yield(.textDelta(reply))
+            let assistantMessage = ConversationMessage(id: "assistant-\(runID.uuidString)", role: .assistant, text: reply)
+            let finalSnapshot: [ConversationMessage] = self.lock.withLock {
+                self.messages.append(assistantMessage)
+                return self.messages
+            }
+            continuation.yield(.snapshot(finalSnapshot))
+            continuation.finish()
         }
     }
 
     func cancel(runID: UUID) async throws {}
-
-    private func append(_ message: ConversationMessage) {
-        messages.append(message)
-    }
 }
 #endif
