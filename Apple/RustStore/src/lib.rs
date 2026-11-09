@@ -702,7 +702,8 @@ mod tests {
     use super::*;
     fn fixture() -> std::path::PathBuf {
         let original = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/worlds-v11.db");
-        let path = std::env::temp_dir().join(format!("worlds-isolated-{}.db", uuid::Uuid::new_v4()));
+        let dir = std::env::temp_dir().canonicalize().unwrap_or_else(|_| std::env::temp_dir());
+        let path = dir.join(format!("worlds-isolated-{}.db", uuid::Uuid::new_v4()));
         std::fs::copy(original, &path).unwrap();
         path
     }

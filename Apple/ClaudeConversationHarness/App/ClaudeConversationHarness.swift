@@ -18,8 +18,36 @@ private actor HarnessFixtureRunner: ConversationRunner {
 }
 #endif
 
+#if os(macOS)
+import AppKit
+
+@MainActor
+final class HarnessAppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+        DispatchQueue.main.async {
+            if let window = NSApp.windows.first {
+                window.makeKeyAndOrderFront(nil)
+            }
+        }
+    }
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag {
+            for window in sender.windows {
+                window.makeKeyAndOrderFront(nil)
+            }
+        }
+        return true
+    }
+}
+#endif
+
 @main
 struct ClaudeConversationHarnessApp: App {
+    #if os(macOS)
+    @NSApplicationDelegateAdaptor(HarnessAppDelegate.self) private var appDelegate
+    #endif
     var body: some Scene { WindowGroup { HarnessRoot() } }
 }
 
@@ -109,6 +137,14 @@ private struct HarnessRoot: View {
             }
         }
         .frame(minWidth: 460, minHeight: 440)
+        .onAppear {
+            #if os(macOS)
+            NSApp.activate(ignoringOtherApps: true)
+            DispatchQueue.main.async {
+                NSApp.windows.first?.makeKeyAndOrderFront(nil)
+            }
+            #endif
+        }
     }
 }
 #endif

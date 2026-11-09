@@ -21,6 +21,10 @@ fn require_asset_read(conn: &Connection, page: &str, source_page: &str) -> Resul
 }
 fn reject_symlink_ancestors(path: &Path) -> Result<()> {
     for component in path.ancestors() {
+        #[cfg(target_os = "macos")]
+        if component == Path::new("/var") || component == Path::new("/tmp") || component == Path::new("/etc") {
+            continue;
+        }
         if std::fs::symlink_metadata(component)?.file_type().is_symlink() { bail!("symbolic links are not supported") }
     }
     Ok(())

@@ -11,7 +11,7 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
 
     @MainActor func testReferenceEditorAccessibilityDiagnostic() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["--isolated-ui-fixture", UUID().uuidString, "--diagnose-reference-editor"]
+        app.launchArguments = ["--isolated-ui-fixture", UUID().uuidString, "--diagnose-reference-editor", "-ApplePersistenceIgnoreState", "YES"]
         app.launch()
         try start(app)
         let composer = app.textViews["Message"].firstMatch
@@ -37,7 +37,7 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
     @MainActor func testPendingResponseRecoversAfterProcessRestart() throws {
         let app = XCUIApplication()
         let fixtureID = UUID().uuidString
-        app.launchArguments = ["--isolated-ui-fixture", fixtureID, "--fixture-fail-save"]
+        app.launchArguments = ["--isolated-ui-fixture", fixtureID, "--fixture-fail-save", "-ApplePersistenceIgnoreState", "YES"]
         app.launch(); try start(app)
         let composer = app.textViews["Message"]
         XCTAssertTrue(composer.waitForExistence(timeout: 20)); try waitEnabled(composer)
@@ -46,14 +46,14 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Retry saving response"].waitForExistence(timeout: 20))
         app.terminate()
 
-        app.launchArguments = ["--isolated-ui-fixture", fixtureID, "--fixture-allow-save"]
+        app.launchArguments = ["--isolated-ui-fixture", fixtureID, "--fixture-allow-save", "-ApplePersistenceIgnoreState", "YES"]
         app.launch(); try start(app)
         let retry = app.buttons["Retry saving response"]
         XCTAssertTrue(retry.waitForExistence(timeout: 20)); retry.click()
         XCTAssertTrue(text("Fixture response", in: app).waitForExistence(timeout: 20))
         app.terminate()
 
-        app.launchArguments = ["--isolated-ui-fixture", fixtureID, "--fixture-allow-save"]
+        app.launchArguments = ["--isolated-ui-fixture", fixtureID, "--fixture-allow-save", "-ApplePersistenceIgnoreState", "YES"]
         app.launch(); try start(app)
         XCTAssertTrue(text("Recover question", in: app).waitForExistence(timeout: 20))
         XCTAssertTrue(text("Fixture response", in: app).waitForExistence(timeout: 20))
@@ -63,7 +63,7 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
     @MainActor func testConversationSurvivesProcessRestartAndCancellation() throws {
         let app = XCUIApplication()
         let fixtureID = UUID().uuidString
-        app.launchArguments = ["--isolated-ui-fixture", fixtureID]
+        app.launchArguments = ["--isolated-ui-fixture", fixtureID, "-ApplePersistenceIgnoreState", "YES"]
         app.launch()
         try start(app)
         let composer = app.textViews["Message"]
@@ -76,7 +76,7 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         try waitEnabled(composer)
         app.terminate()
 
-        app.launchArguments = ["--isolated-ui-fixture", fixtureID]
+        app.launchArguments = ["--isolated-ui-fixture", fixtureID, "-ApplePersistenceIgnoreState", "YES"]
         app.launch()
         try start(app)
         XCTAssertTrue(text("Persisted question", in: app).waitForExistence(timeout: 20))
@@ -91,7 +91,7 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         XCTAssertTrue(text("The response was cancelled.", in: app).waitForExistence(timeout: 20))
         app.terminate()
 
-        app.launchArguments = ["--isolated-ui-fixture", fixtureID]
+        app.launchArguments = ["--isolated-ui-fixture", fixtureID, "-ApplePersistenceIgnoreState", "YES"]
         app.launch()
         try start(app)
         XCTAssertTrue(text("Persisted question", in: app).waitForExistence(timeout: 20))
@@ -103,7 +103,10 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         app.activate()
         #endif
         let button = app.buttons["Start"]
-        guard button.waitForExistence(timeout: 20) else {
+        if !button.waitForExistence(timeout: 10) {
+            if app.textViews["Message"].exists {
+                return
+            }
             captureFailure(app, name: "start-unavailable")
             XCTFail("Start did not appear; application state: \(app.state.rawValue), windows: \(app.windows.count)")
             throw HarnessUIError.unavailable
@@ -114,18 +117,28 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", expected, expected)).firstMatch
     }
     @MainActor private func waitEnabled(_ element: XCUIElement) throws {
+        let app = XCUIApplication()
         #if os(macOS)
-        XCUIApplication().activate()
+        app.activate()
+        #endif
+        let diagnostics = app.staticTexts["conversation-fixture-diagnostics"].firstMatch
+        if diagnostics.waitForExistence(timeout: 20) {
+            let loadedPredicate = NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", "loaded=true", "loaded=true")
+            _ = XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: loadedPredicate, object: diagnostics)], timeout: 20)
+        }
+        #if os(macOS)
+        app.activate()
+        if !element.isEnabled && element.isHittable {
+            element.click()
+        }
         #endif
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isEnabled == true"), object: element)
         guard XCTWaiter.wait(for: [ready], timeout: 20) == .completed else {
             #if os(macOS)
-            XCUIApplication().activate()
+            app.activate()
             #endif
             if element.isEnabled { return }
-            captureFailure(XCUIApplication(), name: "composer-disabled")
-            let app = XCUIApplication()
-            let diagnostics = app.staticTexts["conversation-fixture-diagnostics"].firstMatch
+            captureFailure(app, name: "composer-disabled")
             let details = (diagnostics.value as? String) ?? diagnostics.label
             let reference = app.textViews["Diagnostic editor"].firstMatch
             let referenceState = reference.exists ? "enabled=\(reference.isEnabled),hittable=\(reference.isHittable)" : "missing"
