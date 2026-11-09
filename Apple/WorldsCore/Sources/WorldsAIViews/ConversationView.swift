@@ -32,6 +32,7 @@ public struct ConversationView: View {
                         Text(message.text).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("conversation-message")
                 }
                 if !model.tools.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
@@ -52,7 +53,9 @@ public struct ConversationView: View {
                 }
                 if let error = model.error {
                     Label(error, systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.red).accessibilityLabel("Error: \(error)")
+                        .foregroundStyle(.red)
+                        .accessibilityIdentifier("conversation-error")
+                        .accessibilityLabel("Error: \(error)")
                     if model.canRetrySave {
                         Button("Retry saving response") { Task { await model.retrySave() } }
                             .disabled(model.retryingSave)

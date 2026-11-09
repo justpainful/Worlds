@@ -413,7 +413,11 @@ final class WorldsUITests: XCTestCase {
         let description = app.staticTexts["مَشْرُوع الرِّيَاضِيَّات: lesson ١٢٣"]
         XCTAssertTrue(description.waitForExistence(timeout: 15))
         capture("16-project-large-text-dark-rtl", app: app)
-        if !description.isHittable { app.swipeUp() }
+        if !description.isHittable {
+            #if !os(macOS)
+            app.swipeUp()
+            #endif
+        }
         XCTAssertTrue(description.isHittable)
         capture("17-project-large-text-dark-rtl-content", app: app)
     }
@@ -489,8 +493,9 @@ final class WorldsUITests: XCTestCase {
                 XCTFail("Application window did not appear")
                 throw FixtureLaunchError.unavailable
             }
-            #endif
+            #else
             app.swipeUp()
+            #endif
         }
         XCTAssertTrue(row.waitForExistence(timeout: 15))
         row.tap()

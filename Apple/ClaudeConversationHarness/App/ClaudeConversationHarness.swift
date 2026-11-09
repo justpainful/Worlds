@@ -32,6 +32,12 @@ final class HarnessAppDelegate: NSObject, NSApplicationDelegate {
             }
         }
     }
+    func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
+        return true
+    }
+    func applicationOpenUntitledFile(_ sender: NSApplication) -> Bool {
+        return true
+    }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag {
             for window in sender.windows {

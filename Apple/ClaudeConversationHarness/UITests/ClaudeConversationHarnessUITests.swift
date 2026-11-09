@@ -128,7 +128,10 @@ final class ClaudeConversationHarnessUITests: XCTestCase {
         }
     }
     @MainActor private func text(_ expected: String, in app: XCUIApplication) -> XCUIElement {
-        app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", expected, expected)).firstMatch
+        let predicate = NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", expected, expected)
+        let element = app.staticTexts.matching(predicate).firstMatch
+        if element.exists { return element }
+        return app.descendants(matching: .staticText).matching(predicate).firstMatch
     }
     @MainActor private func waitEnabled(_ element: XCUIElement) throws {
         let app = XCUIApplication()
