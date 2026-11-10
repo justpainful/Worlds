@@ -39,7 +39,8 @@ struct HomeView: View {
                 recentSection
             }
             .padding(dynamicTypeSize.isAccessibilitySize ? 16 : 24)
-            .frame(maxWidth: 960, alignment: .leading)
+            .padding(.bottom, 56)
+            .frame(maxWidth: 1020, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
         .background(WorldsPalette.paper(for: colorScheme))
@@ -84,7 +85,7 @@ struct HomeView: View {
                 }
             }
 
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 145), spacing: 12)], spacing: 12) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 162, maximum: 260), spacing: 12)], spacing: 12) {
                 actionButton(
                     title: "New Page",
                     icon: "doc.badge.plus",
@@ -93,28 +94,28 @@ struct HomeView: View {
                     action: createPage ?? onRequestLocalCopy ?? {}
                 )
                 actionButton(
-                    title: "New Document",
+                    title: "Document",
                     icon: "doc.richtext",
                     color: .indigo,
                     identifier: "home-new-document",
                     action: createDocument ?? onRequestLocalCopy ?? {}
                 )
                 actionButton(
-                    title: "New Drawing",
+                    title: "Drawing",
                     icon: "pencil.and.outline",
                     color: WorldsPalette.accent(for: colorScheme),
                     identifier: "home-new-drawing",
                     action: createDrawing ?? onRequestLocalCopy ?? {}
                 )
                 actionButton(
-                    title: "New Project",
+                    title: "Project",
                     icon: "folder.badge.plus",
                     color: .teal,
                     identifier: "home-new-project",
                     action: createProject ?? onRequestLocalCopy ?? {}
                 )
                 actionButton(
-                    title: "New Slides",
+                    title: "Slides Deck",
                     icon: "rectangle.inset.filled.and.person.filled",
                     color: .orange,
                     identifier: "home-new-slides",
@@ -131,7 +132,7 @@ struct HomeView: View {
                 }
                 if let openPlanning {
                     actionButton(
-                        title: "Planning & Tasks",
+                        title: "Planning",
                         icon: "checklist.checked",
                         color: .cyan,
                         identifier: "home-open-planning",
@@ -149,7 +150,7 @@ struct HomeView: View {
                 }
                 if let openStudio {
                     actionButton(
-                        title: "3D & Slides Studio",
+                        title: "3D Studio",
                         icon: "cube.transparent.fill",
                         color: .orange,
                         identifier: "home-open-studio",
@@ -200,9 +201,10 @@ struct HomeView: View {
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(WorldsPalette.ink(for: colorScheme))
                     .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 11)
             .frame(maxWidth: .infinity, alignment: .leading)
             .worldsGlass(cornerRadius: 12)
             .contentShape(Rectangle())

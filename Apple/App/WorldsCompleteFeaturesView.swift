@@ -18,72 +18,31 @@ struct NativeFocusTimerBar: View {
     @State private var completedSessions: Int = 3
 
     var body: some View {
-        HStack(spacing: 12) {
-            HStack(spacing: 6) {
-                Image(systemName: isRunning ? "timer.circle.fill" : "timer")
-                    .foregroundStyle(WorldsPalette.accent(for: colorScheme))
-                Text(formattedTime)
-                    .font(.system(.subheadline, design: .monospaced, weight: .bold))
-                    .foregroundStyle(WorldsPalette.ink(for: colorScheme))
+        ViewThatFits(in: .horizontal) {
+            // Wide horizontal layout (macOS / iPad Landscape)
+            HStack(spacing: 12) {
+                timerBadge
+                modePicker
+                    .frame(width: 245)
+                startButton
+                Spacer(minLength: 8)
+                readingRulerButton
+                streakBadge
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(WorldsPalette.accent(for: colorScheme).opacity(0.16), in: Capsule())
 
-            Picker("Mode", selection: $mode) {
-                Text("25m Pomodoro").tag("Focus 25m")
-                Text("50m Deep Work").tag("Deep 50m")
-                Text("5m Break").tag("Break 5m")
-            }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 260)
-            .onChange(of: mode) { _, newMode in
-                isRunning = false
-                switch newMode {
-                case "Deep 50m": remainingSeconds = 50 * 60
-                case "Break 5m": remainingSeconds = 5 * 60
-                default: remainingSeconds = 25 * 60
+            // Compact 2-row layout (iPhone / narrow split view)
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    timerBadge
+                    startButton
+                    Spacer(minLength: 6)
+                    readingRulerButton
                 }
-            }
-
-            Button {
-                isRunning.toggle()
-            } label: {
-                Label(isRunning ? "Pause" : "Start", systemImage: isRunning ? "pause.fill" : "play.fill")
-                    .font(.caption.weight(.semibold))
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(WorldsPalette.accent(for: colorScheme))
-            .accessibilityIdentifier("focus-timer-toggle")
-
-            Spacer()
-
-            Button {
-                readingRulerEnabled.toggle()
-            } label: {
-                HStack(spacing: 5) {
-                    Image(systemName: readingRulerEnabled ? "eye.fill" : "line.3.horizontal.decrease")
-                    Text("Reading Ruler")
-                        .font(.caption.weight(.medium))
+                HStack(spacing: 10) {
+                    modePicker
+                    Spacer(minLength: 6)
+                    streakBadge
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(
-                    readingRulerEnabled ? Color.cyan.opacity(0.22) : Color.secondary.opacity(0.12),
-                    in: Capsule()
-                )
-                .foregroundStyle(readingRulerEnabled ? Color.cyan : .secondary)
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("reading-ruler-toggle")
-
-            HStack(spacing: 4) {
-                Image(systemName: "flame.fill")
-                    .foregroundStyle(.orange)
-                    .font(.caption)
-                Text("\(completedSessions) sessions")
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
             }
         }
         .padding(.horizontal, 14)
@@ -92,10 +51,94 @@ struct NativeFocusTimerBar: View {
         .overlay(alignment: .bottom) {
             if readingRulerEnabled {
                 Rectangle()
-                    .fill(WorldsPalette.accent(for: colorScheme).opacity(0.35))
+                    .fill(WorldsPalette.accent(for: colorScheme).opacity(0.4))
                     .frame(height: 3)
             }
         }
+    }
+
+    private var timerBadge: some View {
+        HStack(spacing: 6) {
+            Image(systemName: isRunning ? "timer.circle.fill" : "timer")
+                .foregroundStyle(WorldsPalette.accent(for: colorScheme))
+            Text(formattedTime)
+                .font(.system(.subheadline, design: .monospaced, weight: .bold))
+                .foregroundStyle(WorldsPalette.ink(for: colorScheme))
+        }
+        .lineLimit(1)
+        .fixedSize(horizontal: true, vertical: false)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(WorldsPalette.accent(for: colorScheme).opacity(0.16), in: Capsule())
+    }
+
+    private var modePicker: some View {
+        Picker("Mode", selection: $mode) {
+            Text("25m Focus").tag("Focus 25m")
+            Text("50m Deep").tag("Deep 50m")
+            Text("5m Break").tag("Break 5m")
+        }
+        .pickerStyle(.segmented)
+        .onChange(of: mode) { _, newMode in
+            isRunning = false
+            switch newMode {
+            case "Deep 50m": remainingSeconds = 50 * 60
+            case "Break 5m": remainingSeconds = 5 * 60
+            default: remainingSeconds = 25 * 60
+            }
+        }
+    }
+
+    private var startButton: some View {
+        Button {
+            isRunning.toggle()
+        } label: {
+            Label(isRunning ? "Pause" : "Start", systemImage: isRunning ? "pause.fill" : "play.fill")
+                .font(.caption.weight(.semibold))
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(WorldsPalette.accent(for: colorScheme))
+        .fixedSize(horizontal: true, vertical: false)
+        .accessibilityIdentifier("focus-timer-toggle")
+    }
+
+    private var readingRulerButton: some View {
+        Button {
+            readingRulerEnabled.toggle()
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: readingRulerEnabled ? "eye.fill" : "line.3.horizontal.decrease")
+                Text("Reading Ruler")
+                    .font(.caption.weight(.medium))
+            }
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+                readingRulerEnabled ? Color.cyan.opacity(0.22) : Color.secondary.opacity(0.14),
+                in: Capsule()
+            )
+            .foregroundStyle(readingRulerEnabled ? Color.cyan : .secondary)
+        }
+        .buttonStyle(.plain)
+        .fixedSize(horizontal: true, vertical: false)
+        .accessibilityIdentifier("reading-ruler-toggle")
+    }
+
+    private var streakBadge: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "flame.fill")
+                .foregroundStyle(.orange)
+                .font(.caption)
+            Text("\(completedSessions) sessions")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+        }
+        .lineLimit(1)
+        .fixedSize(horizontal: true, vertical: false)
     }
 
     private var formattedTime: String {
@@ -149,7 +192,8 @@ struct WorldsSpreadsheetStudioView: View {
                 sheetTabsAndStatusBar
             }
             .padding(20)
-            .frame(maxWidth: 1060, alignment: .leading)
+            .padding(.bottom, 56)
+            .frame(maxWidth: 1120, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
         .background(WorldsPalette.paper(for: colorScheme))
@@ -160,6 +204,20 @@ struct WorldsSpreadsheetStudioView: View {
     }
 
     private var headerBar: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                sheetTitleCluster
+                Spacer(minLength: 12)
+                sheetActionButtons
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                sheetTitleCluster
+                sheetActionButtons
+            }
+        }
+    }
+
+    private var sheetTitleCluster: some View {
         HStack(spacing: 12) {
             Image(systemName: "tablecells.fill")
                 .font(.title2)
@@ -175,25 +233,34 @@ struct WorldsSpreadsheetStudioView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Spacer()
+        }
+    }
 
+    private var sheetActionButtons: some View {
+        HStack(spacing: 8) {
             Menu {
                 Button("Financial Budget & Cashflow") { loadTemplate("budget") }
                 Button("Company KPI & OKR Tracker") { loadTemplate("kpi") }
                 Button("Academic Gradebook & GPA") { loadTemplate("gpa") }
             } label: {
-                Label("Workbook Templates", systemImage: "sparkles.rectangle.stack")
+                Label("Templates", systemImage: "sparkles.rectangle.stack")
                     .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
             }
             .buttonStyle(.bordered)
+            .fixedSize(horizontal: true, vertical: false)
 
             Button {
                 showShortcutsSheet = true
             } label: {
                 Label("Shortcuts (F1)", systemImage: "keyboard")
                     .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
             }
             .buttonStyle(.bordered)
+            .fixedSize(horizontal: true, vertical: false)
             .accessibilityIdentifier("spreadsheet-shortcuts-button")
         }
     }
@@ -201,28 +268,35 @@ struct WorldsSpreadsheetStudioView: View {
     private var ribbonToolbar: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                ForEach(["Home", "Formulas", "Data & Filter", "View & Freeze"], id: \.self) { tab in
-                    Button {
-                        activeRibbonTab = tab
-                    } label: {
-                        Text(tab)
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 5)
-                            .background(
-                                activeRibbonTab == tab
-                                    ? WorldsPalette.accent(for: colorScheme).opacity(0.22)
-                                    : Color.clear,
-                                in: Capsule()
-                            )
-                            .foregroundStyle(activeRibbonTab == tab ? WorldsPalette.accent(for: colorScheme) : .secondary)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(["Home", "Formulas", "Data & Filter", "View & Freeze"], id: \.self) { tab in
+                            Button {
+                                activeRibbonTab = tab
+                            } label: {
+                                Text(tab)
+                                    .font(.caption.weight(.semibold))
+                                    .lineLimit(1)
+                                    .fixedSize(horizontal: true, vertical: false)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        activeRibbonTab == tab
+                                            ? WorldsPalette.accent(for: colorScheme).opacity(0.22)
+                                            : Color.clear,
+                                        in: Capsule()
+                                    )
+                                    .foregroundStyle(activeRibbonTab == tab ? WorldsPalette.accent(for: colorScheme) : .secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
-                    .buttonStyle(.plain)
                 }
-                Spacer()
-                Text("Auto-Saved · Revision 4")
+                Text("Auto-Saved · Rev 4")
                     .font(.caption2.monospaced())
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
@@ -413,53 +487,73 @@ struct WorldsSpreadsheetStudioView: View {
     }
 
     private var sheetTabsAndStatusBar: some View {
-        HStack(spacing: 10) {
-            ForEach(Array(sheets.enumerated()), id: \.offset) { idx, sheet in
-                Button {
-                    activeSheetIndex = idx
-                } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: "tablecells")
-                            .font(.caption2)
-                        Text(sheet)
-                            .font(.caption.weight(activeSheetIndex == idx ? .bold : .medium))
+        VStack(alignment: .leading, spacing: 8) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(Array(sheets.enumerated()), id: \.offset) { idx, sheet in
+                        Button {
+                            activeSheetIndex = idx
+                        } label: {
+                            HStack(spacing: 5) {
+                                Image(systemName: "tablecells")
+                                    .font(.caption2)
+                                Text(sheet)
+                                    .font(.caption.weight(activeSheetIndex == idx ? .bold : .medium))
+                            }
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                activeSheetIndex == idx
+                                    ? Color.green.opacity(0.2)
+                                    : Color.secondary.opacity(0.12),
+                                in: RoundedRectangle(cornerRadius: 8)
+                            )
+                            .foregroundStyle(activeSheetIndex == idx ? .green : .secondary)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(
-                        activeSheetIndex == idx
-                            ? Color.green.opacity(0.2)
-                            : Color.secondary.opacity(0.1),
-                        in: RoundedRectangle(cornerRadius: 8)
-                    )
-                    .foregroundStyle(activeSheetIndex == idx ? .green : .secondary)
+
+                    Button {
+                        sheets.append("Sheet \(sheets.count + 1)")
+                        activeSheetIndex = sheets.count - 1
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
 
-            Button {
-                sheets.append("Sheet \(sheets.count + 1)")
-                activeSheetIndex = sheets.count - 1
-            } label: {
-                Image(systemName: "plus.circle.fill")
-                    .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.plain)
+            Divider()
 
-            Spacer()
-
-            HStack(spacing: 14) {
-                Text("SUM: $187,500")
-                Text("AVG: $46,875")
-                Text("MIN: -$57,800")
-                Text("MAX: $184,500")
-                Text("COUNT: 16")
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 16) {
+                    statPill("SUM", "$187,500", color: .green)
+                    statPill("AVG", "$46,875", color: WorldsPalette.accent(for: colorScheme))
+                    statPill("MIN", "-$57,800", color: .red)
+                    statPill("MAX", "$184,500", color: .cyan)
+                    statPill("COUNT", "16 cells", color: .secondary)
+                }
             }
-            .font(.caption2.monospaced().weight(.semibold))
-            .foregroundStyle(.secondary)
         }
-        .padding(10)
+        .padding(12)
         .worldsGlass(cornerRadius: 10)
+    }
+
+    private func statPill(_ label: String, _ value: String, color: Color) -> some View {
+        HStack(spacing: 5) {
+            Text(label)
+                .font(.caption2.monospaced().weight(.bold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.caption2.monospaced().weight(.bold))
+                .foregroundStyle(color)
+        }
+        .lineLimit(1)
+        .fixedSize(horizontal: true, vertical: false)
     }
 
     private var spreadsheetShortcutsModal: some View {
@@ -650,82 +744,96 @@ struct VisualMindMapCanvasPreview: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "point.3.connected.trianglepath.dotted")
-                            .foregroundStyle(WorldsPalette.accent(for: colorScheme))
-                        Text("Visual Mind Maps & Concept Canvases — الخرائط الذهنية والمفاهيمية البصرية")
-                            .font(.headline)
-                            .foregroundStyle(WorldsPalette.ink(for: colorScheme))
-                    }
-                    Text("Interactive infinite-canvas node graphs with anchored connectors, plus 10 structured Mermaid & Cornell/Feynman templates.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center, spacing: 12) {
+                    mindMapHeaderText
+                    Spacer(minLength: 10)
+                    openCanvasButton
                 }
-                Spacer()
-                Button {
-                    onCreateCanvas?(selectedPreset)
-                } label: {
-                    Label("Open in Canvas", systemImage: "arrow.up.right.square")
-                        .font(.caption.weight(.semibold))
+                VStack(alignment: .leading, spacing: 10) {
+                    mindMapHeaderText
+                    openCanvasButton
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(WorldsPalette.accent(for: colorScheme))
-                .accessibilityIdentifier("create-visual-mindmap-canvas")
             }
 
-            HStack(spacing: 8) {
-                presetTab(id: "radial", title: "Radial Mind Map (خريطة شعاعية)", icon: "brain.head.profile", color: .purple)
-                presetTab(id: "concept", title: "Concept Network (شبكة مفاهيمية)", icon: "network", color: .indigo)
-                presetTab(id: "fishbone", title: "Fishbone Ishikawa (الأسباب الجذرية)", icon: "arrow.triangle.branch", color: .orange)
-                presetTab(id: "swot", title: "SWOT 2×2 Canvas (مصفوفة SWOT)", icon: "square.grid.2x2.fill", color: .green)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    presetTab(id: "radial", title: "Radial Mind Map · شعاعية", icon: "brain.head.profile", color: .purple)
+                    presetTab(id: "concept", title: "Concept Network · مفاهيمية", icon: "network", color: .indigo)
+                    presetTab(id: "fishbone", title: "Fishbone · الأسباب الجذرية", icon: "arrow.triangle.branch", color: .orange)
+                    presetTab(id: "swot", title: "SWOT 2×2 Canvas", icon: "square.grid.2x2.fill", color: .green)
+                }
             }
 
-            ZStack {
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(Color(red: 15 / 255, green: 16 / 255, blue: 20 / 255))
-                    .frame(height: 230)
-                    .overlay(
+            ScrollView(.horizontal, showsIndicators: false) {
+                GeometryReader { geo in
+                    let w = max(geo.size.width, 640)
+                    let h: CGFloat = 270
+                    let center = CGPoint(x: w * 0.5, y: h * 0.5)
+                    let topL = CGPoint(x: w * 0.20, y: h * 0.22)
+                    let topR = CGPoint(x: w * 0.80, y: h * 0.22)
+                    let botL = CGPoint(x: w * 0.20, y: h * 0.78)
+                    let botR = CGPoint(x: w * 0.80, y: h * 0.78)
+
+                    ZStack {
                         RoundedRectangle(cornerRadius: 14)
-                            .stroke(WorldsPalette.accent(for: colorScheme).opacity(0.3), lineWidth: 1)
-                    )
+                            .fill(Color(red: 15 / 255, green: 16 / 255, blue: 21 / 255))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .stroke(WorldsPalette.accent(for: colorScheme).opacity(0.32), lineWidth: 1)
+                            )
 
-                Canvas { context, size in
-                    let center = CGPoint(x: size.width / 2, y: size.height / 2)
-                    let branches: [(CGPoint, Color)] = [
-                        (CGPoint(x: size.width * 0.20, y: size.height * 0.26), .purple),
-                        (CGPoint(x: size.width * 0.80, y: size.height * 0.26), .blue),
-                        (CGPoint(x: size.width * 0.20, y: size.height * 0.76), .green),
-                        (CGPoint(x: size.width * 0.80, y: size.height * 0.76), .orange)
-                    ]
-                    for (pt, col) in branches {
-                        var path = Path()
-                        path.move(to: center)
-                        path.addQuadCurve(to: pt, control: CGPoint(x: (center.x + pt.x) / 2, y: center.y))
-                        context.stroke(path, with: .color(col.opacity(0.75)), lineWidth: 2.5)
-                    }
-                }
-                .frame(height: 230)
+                        Canvas { context, _ in
+                            let branches: [(CGPoint, Color)] = [
+                                (topL, .purple), (topR, .blue), (botL, .green), (botR, .orange)
+                            ]
+                            for (pt, col) in branches {
+                                var path = Path()
+                                path.move(to: center)
+                                path.addQuadCurve(to: pt, control: CGPoint(x: (center.x + pt.x) * 0.5, y: center.y))
+                                context.stroke(path, with: .color(col.opacity(0.8)), lineWidth: 2.5)
+                            }
+                        }
 
-                // Nodes overlay
-                VStack(spacing: 42) {
-                    HStack(spacing: 180) {
-                        mindMapNode(title: selectedPreset == "swot" ? "💪 Strengths (نقاط القوة)" : "المحور الأول · Core Architecture", subtitle: "2 sub-branches linked", color: .purple)
-                        mindMapNode(title: selectedPreset == "swot" ? "🩹 Weaknesses (نقاط الضعف)" : "المحور الثاني · Research & Data", subtitle: "Propositions verified", color: .blue)
+                        mindMapNode(
+                            title: selectedPreset == "swot" ? "Strengths · نقاط القوة" : "Core Architecture · المحور ١",
+                            subtitle: "2 sub-branches linked",
+                            color: .purple
+                        )
+                        .position(topL)
+
+                        mindMapNode(
+                            title: selectedPreset == "swot" ? "Weaknesses · نقاط الضعف" : "Research & Data · المحور ٢",
+                            subtitle: "Propositions verified",
+                            color: .blue
+                        )
+                        .position(topR)
+
+                        mindMapNode(
+                            title: selectedPreset == "swot" ? "Opportunities · الفرص" : "Execution Plan · المحور ٣",
+                            subtitle: "Actionable milestones",
+                            color: .green
+                        )
+                        .position(botL)
+
+                        mindMapNode(
+                            title: selectedPreset == "swot" ? "Threats · التهديدات" : "Outcomes & KPIs · المحور ٤",
+                            subtitle: "Measured impact",
+                            color: .orange
+                        )
+                        .position(botR)
+
+                        mindMapNode(
+                            title: presetCenterTitle,
+                            subtitle: "Central Concept Root",
+                            color: WorldsPalette.goldAccent,
+                            isRoot: true
+                        )
+                        .position(center)
                     }
-                    mindMapNode(
-                        title: presetCenterTitle,
-                        subtitle: "Central Concept Root",
-                        color: WorldsPalette.goldAccent,
-                        isRoot: true
-                    )
-                    HStack(spacing: 180) {
-                        mindMapNode(title: selectedPreset == "swot" ? "🌱 Opportunities (الفرص)" : "المحور الثالث · Execution Plan", subtitle: "Actionable milestones", color: .green)
-                        mindMapNode(title: selectedPreset == "swot" ? "⚡ Threats (التهديدات)" : "المحور الرابع · Outcomes & KPIs", subtitle: "Measured impact", color: .orange)
-                    }
+                    .frame(width: w, height: h)
                 }
-                .padding(16)
+                .frame(minWidth: 640, idealWidth: 780, height: 270)
             }
         }
         .padding(16)
@@ -733,12 +841,42 @@ struct VisualMindMapCanvasPreview: View {
         .accessibilityIdentifier("visual-mindmap-preview")
     }
 
+    private var mindMapHeaderText: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 8) {
+                Image(systemName: "point.3.connected.trianglepath.dotted")
+                    .foregroundStyle(WorldsPalette.accent(for: colorScheme))
+                Text("Visual Mind Maps & Concept Canvases")
+                    .font(.headline)
+                    .foregroundStyle(WorldsPalette.ink(for: colorScheme))
+            }
+            Text("Interactive node graphs with curved connectors plus 10 Mermaid & Cornell/Feynman templates.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var openCanvasButton: some View {
+        Button {
+            onCreateCanvas?(selectedPreset)
+        } label: {
+            Label("Open in Canvas", systemImage: "arrow.up.right.square")
+                .font(.caption.weight(.semibold))
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(WorldsPalette.accent(for: colorScheme))
+        .fixedSize(horizontal: true, vertical: false)
+        .accessibilityIdentifier("create-visual-mindmap-canvas")
+    }
+
     private var presetCenterTitle: String {
         switch selectedPreset {
-        case "concept": return "المفهوم الأساسي · Core Proposition"
-        case "fishbone": return "🎯 المشكلة الجذرية · Root Cause"
+        case "concept": return "Core Proposition · المفهوم الأساسي"
+        case "fishbone": return "Root Cause · المشكلة الجذرية"
         case "swot": return "SWOT Strategic Matrix"
-        default: return "الفكرة المركزية · Central Topic"
+        default: return "Central Topic · الفكرة المركزية"
         }
     }
 
@@ -753,9 +891,10 @@ struct VisualMindMapCanvasPreview: View {
                     .lineLimit(1)
             }
             .font(.caption.weight(.semibold))
-            .padding(.horizontal, 10)
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.horizontal, 12)
             .padding(.vertical, 6)
-            .background(selectedPreset == id ? color.opacity(0.22) : Color.secondary.opacity(0.1), in: Capsule())
+            .background(selectedPreset == id ? color.opacity(0.22) : Color.secondary.opacity(0.14), in: Capsule())
             .foregroundStyle(selectedPreset == id ? color : .primary)
         }
         .buttonStyle(.plain)
@@ -766,14 +905,21 @@ struct VisualMindMapCanvasPreview: View {
             Text(title)
                 .font((isRoot ? Font.subheadline : Font.caption).weight(.bold))
                 .foregroundStyle(.white)
+                .lineLimit(1)
             Text(subtitle)
-                .font(.system(size: 9))
+                .font(.system(size: 10))
                 .foregroundStyle(.white.opacity(0.75))
+                .lineLimit(1)
         }
-        .padding(.horizontal, isRoot ? 16 : 12)
-        .padding(.vertical, isRoot ? 10 : 6)
-        .background(color.opacity(isRoot ? 0.38 : 0.25), in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(color, lineWidth: isRoot ? 2 : 1.2))
+        .fixedSize(horizontal: true, vertical: false)
+        .padding(.horizontal, isRoot ? 18 : 14)
+        .padding(.vertical, isRoot ? 10 : 8)
+        .background(Color(red: 24 / 255, green: 25 / 255, blue: 32 / 255), in: RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(color.opacity(isRoot ? 0.30 : 0.20))
+        )
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(color, lineWidth: isRoot ? 2 : 1.4))
     }
 }
 
@@ -827,25 +973,29 @@ struct WorldsPlanningHubView: View {
                 }
 
                 // Sub-navigation pills
-                HStack(spacing: 8) {
-                    ForEach(["Tasks", "Goals & OKRs", "Calendar", "Inbox (3)", "Print Queue (3)"], id: \.self) { tab in
-                        Button {
-                            activeTab = tab
-                        } label: {
-                            Text(tab)
-                                .font(.subheadline.weight(.semibold))
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 8)
-                                .background(
-                                    activeTab == tab
-                                        ? WorldsPalette.accent(for: colorScheme).opacity(0.22)
-                                        : Color.secondary.opacity(0.1),
-                                    in: Capsule()
-                                )
-                                .foregroundStyle(activeTab == tab ? WorldsPalette.accent(for: colorScheme) : .primary)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(["Tasks", "Goals & OKRs", "Calendar", "Inbox (3)", "Print Queue (3)"], id: \.self) { tab in
+                            Button {
+                                activeTab = tab
+                            } label: {
+                                Text(tab)
+                                    .font(.subheadline.weight(.semibold))
+                                    .lineLimit(1)
+                                    .fixedSize(horizontal: true, vertical: false)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 8)
+                                    .background(
+                                        activeTab == tab
+                                            ? WorldsPalette.accent(for: colorScheme).opacity(0.22)
+                                            : Color.secondary.opacity(0.14),
+                                        in: Capsule()
+                                    )
+                                    .foregroundStyle(activeTab == tab ? WorldsPalette.accent(for: colorScheme) : .primary)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("planning-tab-\(tab)")
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("planning-tab-\(tab)")
                     }
                 }
 
@@ -853,7 +1003,7 @@ struct WorldsPlanningHubView: View {
                 HStack(spacing: 10) {
                     Image(systemName: "plus.circle.fill")
                         .foregroundStyle(WorldsPalette.accent(for: colorScheme))
-                    TextField("Quick capture task, goal, or inbox note… (Press Return)", text: $newTaskTitle)
+                    TextField("Quick capture task, goal, or inbox note…", text: $newTaskTitle)
                         .textFieldStyle(.plain)
                         .onSubmit {
                             guard !newTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty else { return }
@@ -867,6 +1017,7 @@ struct WorldsPlanningHubView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(WorldsPalette.accent(for: colorScheme))
+                    .fixedSize(horizontal: true, vertical: false)
                 }
                 .padding(12)
                 .worldsGlass(cornerRadius: 12)
@@ -883,16 +1034,23 @@ struct WorldsPlanningHubView: View {
                     tasksSection
                 }
 
-                // Always show compact Goals & Calendar overview underneath Tasks for rich dashboard visibility
+                // Always show compact Goals & Print Queue overview underneath Tasks for rich dashboard visibility
                 if activeTab == "Tasks" {
-                    HStack(alignment: .top, spacing: 16) {
-                        goalsSection
-                        printQueueSection
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .top, spacing: 16) {
+                            goalsSection.frame(minWidth: 280, maxWidth: .infinity, alignment: .leading)
+                            printQueueSection.frame(minWidth: 280, maxWidth: .infinity, alignment: .leading)
+                        }
+                        VStack(alignment: .leading, spacing: 16) {
+                            goalsSection
+                            printQueueSection
+                        }
                     }
                 }
             }
             .padding(24)
-            .frame(maxWidth: 1020, alignment: .leading)
+            .padding(.bottom, 56)
+            .frame(maxWidth: 1080, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
         .background(WorldsPalette.paper(for: colorScheme))
@@ -935,6 +1093,8 @@ struct WorldsPlanningHubView: View {
                     if item.printQueued {
                         Label("Print Queue", systemImage: "printer.fill")
                             .font(.caption2.weight(.semibold))
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
                             .background(Color.cyan.opacity(0.16), in: Capsule())
@@ -943,6 +1103,8 @@ struct WorldsPlanningHubView: View {
 
                     Text(item.priority)
                         .font(.caption2.weight(.bold))
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(priorityColor(item.priority).opacity(0.18), in: Capsule())
@@ -1077,20 +1239,31 @@ struct WorldsPlanningHubView: View {
 
     private var printQueueSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
+            HStack(spacing: 8) {
                 Image(systemName: "printer.fill")
                     .foregroundStyle(.cyan)
-                Text("Print Queue (طابور الطباعة)")
+                Text("Print Queue")
                     .font(.headline)
                     .foregroundStyle(WorldsPalette.ink(for: colorScheme))
-                Spacer()
+                Text("طابور الطباعة")
+                    .font(.caption2.weight(.semibold))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.cyan.opacity(0.14), in: Capsule())
+                    .foregroundStyle(.cyan)
+                Spacer(minLength: 8)
                 Button {
                 } label: {
                     Label("Print All (3)", systemImage: "printer")
                         .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.cyan)
+                .fixedSize(horizontal: true, vertical: false)
             }
 
             ForEach(tasks.filter(\.printQueued), id: \.id) { item in
@@ -1175,16 +1348,18 @@ struct WorldsStudyPackHubView: View {
                         .labelsHidden()
                 }
 
-                // 1. Subjects Grid
+                // 1. Subjects Grid (adaptive so never squished on compact width)
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Subjects & Courses (المواد الدراسية)")
+                    Text("Subjects & Courses · المواد الدراسية")
                         .font(.headline)
-                    HStack(spacing: 12) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 225, maximum: 380), spacing: 12)], spacing: 12) {
                         ForEach(subjects, id: \.code) { sub in
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
                                     Text(sub.code)
                                         .font(.caption.monospaced().weight(.bold))
+                                        .lineLimit(1)
+                                        .fixedSize(horizontal: true, vertical: false)
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 3)
                                         .background(sub.color.opacity(0.2), in: Capsule())
@@ -1193,10 +1368,13 @@ struct WorldsStudyPackHubView: View {
                                     Text(sub.room)
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                        .fixedSize(horizontal: true, vertical: false)
                                 }
                                 Text(sub.name)
                                     .font(.subheadline.weight(.bold))
                                     .foregroundStyle(WorldsPalette.ink(for: colorScheme))
+                                    .fixedSize(horizontal: false, vertical: true)
                                 Text(sub.teacher)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
@@ -1204,6 +1382,7 @@ struct WorldsStudyPackHubView: View {
                                 Label(sub.nextExam, systemImage: "bell.badge.fill")
                                     .font(.caption2.weight(.semibold))
                                     .foregroundStyle(sub.color)
+                                    .lineLimit(1)
                             }
                             .padding(14)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1212,105 +1391,52 @@ struct WorldsStudyPackHubView: View {
                     }
                 }
 
-                // 2. Weekly Timetable Grid
+                // 2. Weekly Timetable Grid (horizontally scrollable with crisp cell widths)
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
                         Image(systemName: "calendar.day.timeline.leading")
                             .foregroundStyle(WorldsPalette.accent(for: colorScheme))
-                        Text("Weekly Timetable (الجدول الدراسي الأسبوعي)")
+                        Text("Weekly Timetable · الجدول الدراسي الأسبوعي")
                             .font(.headline)
                     }
-                    VStack(spacing: 1) {
-                        HStack(spacing: 1) {
-                            Text("Day / اليوم")
-                                .font(.caption.weight(.bold))
-                                .frame(width: 110, height: 30)
-                                .background(WorldsPalette.surface(for: colorScheme))
-                            ForEach(["08:00 - 09:30", "09:45 - 11:15", "11:30 - 13:00", "13:30 - 15:00"], id: \.self) { slot in
-                                Text(slot)
-                                    .font(.caption2.monospaced().weight(.bold))
-                                    .frame(maxWidth: .infinity, minHeight: 30)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        VStack(spacing: 1) {
+                            HStack(spacing: 1) {
+                                Text("Day · اليوم")
+                                    .font(.caption.weight(.bold))
+                                    .frame(width: 115, height: 32)
                                     .background(WorldsPalette.surface(for: colorScheme))
+                                ForEach(["08:00 - 09:30", "09:45 - 11:15", "11:30 - 13:00", "13:30 - 15:00"], id: \.self) { slot in
+                                    Text(slot)
+                                        .font(.caption2.monospaced().weight(.bold))
+                                        .frame(width: 145, height: 32)
+                                        .background(WorldsPalette.surface(for: colorScheme))
+                                }
                             }
+                            timetableRow(day: "الأحد · Sun", slots: ["CS-301 · هندسة البرمجيات", "MATH-204 · الجبر الخطي", "فراغ / مكتبة", "AI-410 · الذكاء الاصطناعي"])
+                            timetableRow(day: "الإثنين · Mon", slots: ["MATH-204 · الجبر الخطي", "AI-410 · معمل الذكاء", "CS-301 · مراجعة مشروع", "ساعات مكتبية"])
+                            timetableRow(day: "الثلاثاء · Tue", slots: ["CS-301 · هندسة البرمجيات", "MATH-204 · تمارين وحلول", "AI-410 · الذكاء الاصطناعي", "مشروع التخرج"])
                         }
-                        timetableRow(day: "الأحد · Sun", slots: ["CS-301 · هندسة البرمجيات", "MATH-204 · الجبر الخطي", "فراغ / مكتبة", "AI-410 · الذكاء الاصطناعي"])
-                        timetableRow(day: "الإثنين · Mon", slots: ["MATH-204 · الجبر الخطي", "AI-410 · معمل الذكاء", "CS-301 · مراجعة مشروع", "ساعات مكتبية"])
-                        timetableRow(day: "الثلاثاء · Tue", slots: ["CS-301 · هندسة البرمجيات", "MATH-204 · تمارين وحلول", "AI-410 · الذكاء الاصطناعي", "مشروع التخرج"])
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.secondary.opacity(0.22), lineWidth: 1))
                     }
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.secondary.opacity(0.22), lineWidth: 1))
                 }
 
-                // 3. Textbooks & Solution Books + Subject Links side by side
-                HStack(alignment: .top, spacing: 16) {
-                    // Textbooks & Solution Books with current page bookmark
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            Image(systemName: "book.pages.fill")
-                                .foregroundStyle(.orange)
-                            Text("Textbooks & Solution Books (الكتب والحلول)")
-                                .font(.headline)
-                        }
-
-                        textbookCard(
-                            title: "Software Engineering: A Practitioner's Approach",
-                            kindBadge: "Textbook · كتاب المقرر",
-                            currentPage: $textbookPage1,
-                            totalPages: 420,
-                            solutionAttached: "Solution Manual Linked (PDF)"
-                        )
-
-                        textbookCard(
-                            title: "Linear Algebra & Its Applications (Gilbert Strang)",
-                            kindBadge: "Textbook + الحلول",
-                            currentPage: $textbookPage2,
-                            totalPages: 310,
-                            solutionAttached: "Chapter 4 Solutions Verified"
-                        )
+                // 3. Textbooks & Solution Books + Subject Links (adaptive)
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top, spacing: 16) {
+                        textbooksColumn.frame(minWidth: 280, maxWidth: .infinity, alignment: .leading)
+                        platformLinksColumn.frame(minWidth: 280, maxWidth: .infinity, alignment: .leading)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                    // Subject Links with Provider Badges
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            Image(systemName: "link.badge.plus")
-                                .foregroundStyle(.cyan)
-                            Text("Subject Platform Links (روابط المنصات)")
-                                .font(.headline)
-                        }
-
-                        ForEach(platformLinks, id: \.title) { link in
-                            HStack(spacing: 10) {
-                                Image(systemName: link.icon)
-                                    .foregroundStyle(link.color)
-                                    .frame(width: 28, height: 28)
-                                    .background(link.color.opacity(0.15), in: RoundedRectangle(cornerRadius: 7))
-
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(link.title)
-                                        .font(.caption.weight(.semibold))
-                                        .lineLimit(1)
-                                    Text(link.subject)
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Text(link.provider)
-                                    .font(.caption2.weight(.bold))
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 3)
-                                    .background(link.color.opacity(0.16), in: Capsule())
-                                    .foregroundStyle(link.color)
-                            }
-                            .padding(10)
-                            .worldsGlass(cornerRadius: 10)
-                        }
+                    VStack(alignment: .leading, spacing: 16) {
+                        textbooksColumn
+                        platformLinksColumn
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
             .padding(24)
-            .frame(maxWidth: 1040, alignment: .leading)
+            .padding(.bottom, 56)
+            .frame(maxWidth: 1080, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
         .background(WorldsPalette.paper(for: colorScheme))
@@ -1318,16 +1444,85 @@ struct WorldsStudyPackHubView: View {
         .accessibilityIdentifier("study-pack-hub-view")
     }
 
+    private var textbooksColumn: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Image(systemName: "book.pages.fill")
+                    .foregroundStyle(.orange)
+                Text("Textbooks & Solution Books · الكتب والحلول")
+                    .font(.headline)
+            }
+
+            textbookCard(
+                title: "Software Engineering: A Practitioner's Approach",
+                kindBadge: "Textbook · المقرر",
+                currentPage: $textbookPage1,
+                totalPages: 420,
+                solutionAttached: "Solution Manual Linked (PDF)"
+            )
+
+            textbookCard(
+                title: "Linear Algebra & Its Applications (Gilbert Strang)",
+                kindBadge: "Textbook + الحلول",
+                currentPage: $textbookPage2,
+                totalPages: 310,
+                solutionAttached: "Chapter 4 Solutions Verified"
+            )
+        }
+    }
+
+    private var platformLinksColumn: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Image(systemName: "link.badge.plus")
+                    .foregroundStyle(.cyan)
+                Text("Subject Platform Links · روابط المنصات")
+                    .font(.headline)
+            }
+
+            ForEach(platformLinks, id: \.title) { link in
+                HStack(spacing: 10) {
+                    Image(systemName: link.icon)
+                        .foregroundStyle(link.color)
+                        .frame(width: 28, height: 28)
+                        .background(link.color.opacity(0.15), in: RoundedRectangle(cornerRadius: 7))
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(link.title)
+                            .font(.caption.weight(.semibold))
+                            .lineLimit(1)
+                        Text(link.subject)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 6)
+                    Text(link.provider)
+                        .font(.caption2.weight(.bold))
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(link.color.opacity(0.16), in: Capsule())
+                        .foregroundStyle(link.color)
+                }
+                .padding(10)
+                .worldsGlass(cornerRadius: 10)
+            }
+        }
+    }
+
     private func timetableRow(day: String, slots: [String]) -> some View {
         HStack(spacing: 1) {
             Text(day)
                 .font(.caption.weight(.semibold))
-                .frame(width: 110, height: 34)
+                .frame(width: 115, height: 36)
                 .background(WorldsPalette.surface(for: colorScheme))
             ForEach(slots, id: \.self) { slot in
                 Text(slot)
                     .font(.caption2.weight(.medium))
-                    .frame(maxWidth: .infinity, minHeight: 34)
+                    .lineLimit(1)
+                    .padding(.horizontal, 4)
+                    .frame(width: 145, height: 36)
                     .background(WorldsPalette.paper(for: colorScheme))
             }
         }
@@ -1401,208 +1596,262 @@ struct WorldsCreativeStudioView: View {
 
                 // 1. Visual 16:9 Presentation Stage + Slide Thumbnails
                 VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Label("Visual Presentation Studio (16:9 Slide Canvas)", systemImage: "rectangle.inset.filled.and.person.filled")
-                            .font(.headline)
-                            .foregroundStyle(.orange)
-                        Spacer()
-                        Text("Slide \(selectedSlideIndex + 1) of 4 · ProMotion 120Hz")
-                            .font(.caption.monospaced())
-                            .foregroundStyle(.secondary)
+                    ViewThatFits(in: .horizontal) {
+                        HStack {
+                            Label("Visual Presentation Studio (16:9)", systemImage: "rectangle.inset.filled.and.person.filled")
+                                .font(.headline)
+                                .foregroundStyle(.orange)
+                            Spacer()
+                            Text("Slide \(selectedSlideIndex + 1) of 4 · ProMotion 120Hz")
+                                .font(.caption.monospaced())
+                                .foregroundStyle(.secondary)
+                        }
+                        VStack(alignment: .leading, spacing: 4) {
+                            Label("Visual Presentation Studio (16:9)", systemImage: "rectangle.inset.filled.and.person.filled")
+                                .font(.headline)
+                                .foregroundStyle(.orange)
+                            Text("Slide \(selectedSlideIndex + 1) of 4 · ProMotion 120Hz")
+                                .font(.caption.monospaced())
+                                .foregroundStyle(.secondary)
+                        }
                     }
 
-                    HStack(alignment: .top, spacing: 14) {
-                        // Slide Thumbnails
-                        VStack(spacing: 8) {
-                            ForEach(0..<4, id: \.self) { idx in
-                                Button {
-                                    selectedSlideIndex = idx
-                                } label: {
-                                    VStack(alignment: .leading, spacing: 3) {
-                                        Text("0\(idx + 1)")
-                                            .font(.caption2.monospaced().weight(.bold))
-                                            .foregroundStyle(.orange)
-                                        Text(slideTitle(idx))
-                                            .font(.caption2.weight(.semibold))
-                                            .lineLimit(1)
-                                    }
-                                    .padding(8)
-                                    .frame(width: 145, alignment: .leading)
-                                    .background(
-                                        selectedSlideIndex == idx ? Color.orange.opacity(0.22) : Color.secondary.opacity(0.1),
-                                        in: RoundedRectangle(cornerRadius: 8)
-                                    )
+                    ViewThatFits(in: .horizontal) {
+                        // Wide Desktop / iPad Landscape layout
+                        HStack(alignment: .top, spacing: 14) {
+                            VStack(spacing: 8) {
+                                ForEach(0..<4, id: \.self) { idx in
+                                    slideThumbButton(idx, width: 175)
                                 }
-                                .buttonStyle(.plain)
                             }
+                            activeSlideStage
                         }
-
-                        // Active 16:9 Slide Stage
-                        ZStack(alignment: .topLeading) {
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [Color(red: 20 / 255, green: 21 / 255, blue: 28 / 255), Color(red: 12 / 255, green: 12 / 255, blue: 16 / 255)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .frame(height: 220)
-                                .overlay(RoundedRectangle(cornerRadius: 14).stroke(WorldsPalette.goldAccent.opacity(0.45), lineWidth: 1.5))
-
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack {
-                                    Text("WORLDS NATIVE ARCHITECTURE · 2026")
-                                        .font(.caption2.monospaced().weight(.bold))
-                                        .foregroundStyle(WorldsPalette.goldAccent)
-                                    Spacer()
-                                    Text("16:9 STAGE")
-                                        .font(.caption2.monospaced())
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 3)
-                                        .background(Color.white.opacity(0.1), in: Capsule())
-                                        .foregroundStyle(.white.opacity(0.8))
-                                }
-
-                                Text(slideTitle(selectedSlideIndex))
-                                    .font(.title2.weight(.bold))
-                                    .foregroundStyle(.white)
-
-                                HStack(spacing: 14) {
-                                    slideMetricBox(label: "Local Engine", value: "SQLite + FTS5", color: WorldsPalette.goldAccent)
-                                    slideMetricBox(label: "Sync Protocol", value: "Yrs CRDT v1", color: .cyan)
-                                    slideMetricBox(label: "Apple UI", value: "Liquid Glass", color: .purple)
+                        // Compact iPhone / Narrow Split View layout
+                        VStack(alignment: .leading, spacing: 12) {
+                            activeSlideStage
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(0..<4, id: \.self) { idx in
+                                        slideThumbButton(idx, width: 155)
+                                    }
                                 }
                             }
-                            .padding(22)
                         }
                     }
                 }
                 .padding(16)
                 .worldsGlass(cornerRadius: 16)
 
-                // 2. Vector Drawing Canvas & 3D CAD Engineering Viewport side-by-side
-                HStack(alignment: .top, spacing: 16) {
-                    // Vector Drawing Canvas
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            Label("Apple Pencil Vector Canvas", systemImage: "pencil.tip.crop.circle.fill")
-                                .font(.headline)
-                                .foregroundStyle(WorldsPalette.accent(for: colorScheme))
-                            Spacer()
-                            Text(activeBrush)
-                                .font(.caption2.weight(.semibold))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(WorldsPalette.accent(for: colorScheme).opacity(0.18), in: Capsule())
-                        }
-
-                        HStack(spacing: 6) {
-                            ForEach(["Fountain Ink", "Pencil Tilt", "Highlighter", "Laser", "Shapes"], id: \.self) { tool in
-                                Button {
-                                    activeBrush = tool
-                                } label: {
-                                    Text(tool)
-                                        .font(.caption2.weight(.medium))
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(activeBrush == tool ? WorldsPalette.accent(for: colorScheme).opacity(0.22) : Color.secondary.opacity(0.1), in: Capsule())
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color(red: 16 / 255, green: 17 / 255, blue: 21 / 255))
-                                .frame(height: 180)
-                            Canvas { context, size in
-                                var curve = Path()
-                                curve.move(to: CGPoint(x: 30, y: 130))
-                                curve.addCurve(
-                                    to: CGPoint(x: size.width - 35, y: 50),
-                                    control1: CGPoint(x: size.width * 0.35, y: 20),
-                                    control2: CGPoint(x: size.width * 0.65, y: 160)
-                                )
-                                context.stroke(curve, with: .color(WorldsPalette.goldAccent), lineWidth: 3.5)
-
-                                let rect = CGRect(x: size.width * 0.35, y: 55, width: 130, height: 70)
-                                context.stroke(Path(roundedRect: rect, cornerRadius: 10), with: .color(.cyan), lineWidth: 2)
-                            }
-                            .frame(height: 180)
-                        }
+                // 2. Vector Drawing Canvas & 3D CAD Engineering Viewport (adaptive)
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top, spacing: 16) {
+                        vectorCanvasCard.frame(minWidth: 280, maxWidth: .infinity)
+                        cadViewportCard.frame(minWidth: 280, maxWidth: .infinity)
                     }
-                    .padding(16)
-                    .frame(maxWidth: .infinity)
-                    .worldsGlass(cornerRadius: 16)
-
-                    // 3D & CAD Engineering Viewport
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            Label("3D & AutoCAD DXF Viewport", systemImage: "cube.transparent.fill")
-                                .font(.headline)
-                                .foregroundStyle(.cyan)
-                            Spacer()
-                            Text("120 × 85 × 42 mm")
-                                .font(.caption2.monospaced())
-                                .foregroundStyle(.secondary)
-                        }
-
-                        HStack(spacing: 6) {
-                            ForEach(["Shaded + Wireframe", "Wireframe CAD", "Studio Shaded"], id: \.self) { mode in
-                                Button {
-                                    renderMode3D = mode
-                                } label: {
-                                    Text(mode)
-                                        .font(.caption2.weight(.medium))
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(renderMode3D == mode ? Color.cyan.opacity(0.22) : Color.secondary.opacity(0.1), in: Capsule())
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color(red: 14 / 255, green: 18 / 255, blue: 24 / 255))
-                                .frame(height: 180)
-
-                            Canvas { context, size in
-                                let cx = size.width / 2
-                                let cy = size.height / 2
-                                // Isometric CAD wireframe cube + internal cylinder axis
-                                let top = [
-                                    CGPoint(x: cx, y: cy - 60),
-                                    CGPoint(x: cx + 65, y: cy - 30),
-                                    CGPoint(x: cx, y: cy),
-                                    CGPoint(x: cx - 65, y: cy - 30)
-                                ]
-                                let bottom = top.map { CGPoint(x: $0.x, y: $0.y + 58) }
-                                var wire = Path()
-                                wire.addLines(top + [top[0]])
-                                wire.addLines(bottom + [bottom[0]])
-                                for i in 0..<4 {
-                                    wire.move(to: top[i])
-                                    wire.addLine(to: bottom[i])
-                                }
-                                context.stroke(wire, with: .color(.cyan), lineWidth: 2)
-                            }
-                            .frame(height: 180)
-                        }
+                    VStack(alignment: .leading, spacing: 16) {
+                        vectorCanvasCard
+                        cadViewportCard
                     }
-                    .padding(16)
-                    .frame(maxWidth: .infinity)
-                    .worldsGlass(cornerRadius: 16)
                 }
             }
             .padding(24)
-            .frame(maxWidth: 1040, alignment: .leading)
+            .padding(.bottom, 56)
+            .frame(maxWidth: 1080, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
         .background(WorldsPalette.paper(for: colorScheme))
         .navigationTitle("Studio")
         .accessibilityIdentifier("creative-studio-view")
+    }
+
+    private func slideThumbButton(_ idx: Int, width: CGFloat) -> some View {
+        Button {
+            selectedSlideIndex = idx
+        } label: {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("0\(idx + 1)")
+                    .font(.caption2.monospaced().weight(.bold))
+                    .foregroundStyle(.orange)
+                Text(slideTitle(idx))
+                    .font(.caption2.weight(.semibold))
+                    .lineLimit(1)
+            }
+            .padding(10)
+            .frame(width: width, alignment: .leading)
+            .background(
+                selectedSlideIndex == idx ? Color.orange.opacity(0.22) : Color.secondary.opacity(0.14),
+                in: RoundedRectangle(cornerRadius: 8)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var activeSlideStage: some View {
+        ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: 14)
+                .fill(
+                    LinearGradient(
+                        colors: [Color(red: 20 / 255, green: 21 / 255, blue: 28 / 255), Color(red: 12 / 255, green: 12 / 255, blue: 16 / 255)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(minHeight: 220)
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(WorldsPalette.goldAccent.opacity(0.45), lineWidth: 1.5))
+
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    Text("WORLDS NATIVE ARCHITECTURE · 2026")
+                        .font(.caption2.monospaced().weight(.bold))
+                        .foregroundStyle(WorldsPalette.goldAccent)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    Spacer()
+                    Text("16:9 STAGE")
+                        .font(.caption2.monospaced())
+                        .fixedSize(horizontal: true, vertical: false)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Color.white.opacity(0.12), in: Capsule())
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+
+                Text(slideTitle(selectedSlideIndex))
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 10) {
+                    slideMetricBox(label: "Local Engine", value: "SQLite + FTS5", color: WorldsPalette.goldAccent)
+                    slideMetricBox(label: "Sync Protocol", value: "Yrs CRDT v1", color: .cyan)
+                    slideMetricBox(label: "Apple UI", value: "Liquid Glass", color: .purple)
+                }
+            }
+            .padding(20)
+        }
+    }
+
+    private var vectorCanvasCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label("Apple Pencil Vector", systemImage: "pencil.tip.crop.circle.fill")
+                    .font(.headline)
+                    .foregroundStyle(WorldsPalette.accent(for: colorScheme))
+                Spacer()
+                Text(activeBrush)
+                    .font(.caption2.weight(.semibold))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(WorldsPalette.accent(for: colorScheme).opacity(0.18), in: Capsule())
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(["Fountain Ink", "Pencil Tilt", "Highlighter", "Laser", "Shapes"], id: \.self) { tool in
+                        Button {
+                            activeBrush = tool
+                        } label: {
+                            Text(tool)
+                                .font(.caption2.weight(.medium))
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(activeBrush == tool ? WorldsPalette.accent(for: colorScheme).opacity(0.22) : Color.secondary.opacity(0.14), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(red: 16 / 255, green: 17 / 255, blue: 21 / 255))
+                    .frame(height: 185)
+                Canvas { context, size in
+                    var curve = Path()
+                    curve.move(to: CGPoint(x: 30, y: 130))
+                    curve.addCurve(
+                        to: CGPoint(x: size.width - 35, y: 50),
+                        control1: CGPoint(x: size.width * 0.35, y: 20),
+                        control2: CGPoint(x: size.width * 0.65, y: 160)
+                    )
+                    context.stroke(curve, with: .color(WorldsPalette.goldAccent), lineWidth: 3.5)
+
+                    let rect = CGRect(x: size.width * 0.35, y: 55, width: 130, height: 70)
+                    context.stroke(Path(roundedRect: rect, cornerRadius: 10), with: .color(.cyan), lineWidth: 2)
+                }
+                .frame(height: 185)
+            }
+        }
+        .padding(16)
+        .worldsGlass(cornerRadius: 16)
+    }
+
+    private var cadViewportCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label("3D & AutoCAD DXF", systemImage: "cube.transparent.fill")
+                    .font(.headline)
+                    .foregroundStyle(.cyan)
+                Spacer()
+                Text("120 × 85 × 42 mm")
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(["Shaded + Wireframe", "Wireframe CAD", "Studio Shaded"], id: \.self) { mode in
+                        Button {
+                            renderMode3D = mode
+                        } label: {
+                            Text(mode)
+                                .font(.caption2.weight(.medium))
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(renderMode3D == mode ? Color.cyan.opacity(0.22) : Color.secondary.opacity(0.14), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(red: 14 / 255, green: 18 / 255, blue: 24 / 255))
+                    .frame(height: 185)
+
+                Canvas { context, size in
+                    let cx = size.width / 2
+                    let cy = size.height / 2
+                    let top = [
+                        CGPoint(x: cx, y: cy - 60),
+                        CGPoint(x: cx + 65, y: cy - 30),
+                        CGPoint(x: cx, y: cy),
+                        CGPoint(x: cx - 65, y: cy - 30)
+                    ]
+                    let bottom = top.map { CGPoint(x: $0.x, y: $0.y + 58) }
+                    var wire = Path()
+                    wire.addLines(top + [top[0]])
+                    wire.addLines(bottom + [bottom[0]])
+                    for i in 0..<4 {
+                        wire.move(to: top[i])
+                        wire.addLine(to: bottom[i])
+                    }
+                    context.stroke(wire, with: .color(.cyan), lineWidth: 2)
+                }
+                .frame(height: 185)
+            }
+        }
+        .padding(16)
+        .worldsGlass(cornerRadius: 16)
     }
 
     private func slideTitle(_ idx: Int) -> String {
@@ -1618,14 +1867,17 @@ struct WorldsCreativeStudioView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label)
                 .font(.caption2)
-                .foregroundStyle(.white.opacity(0.65))
+                .foregroundStyle(.white.opacity(0.70))
+                .lineLimit(1)
             Text(value)
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(color.opacity(0.14), in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(color.opacity(0.4), lineWidth: 1))
+        .background(Color(red: 28 / 255, green: 30 / 255, blue: 38 / 255).opacity(0.85), in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(color.opacity(0.45), lineWidth: 1))
     }
 }

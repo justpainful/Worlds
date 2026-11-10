@@ -120,6 +120,39 @@ jobs:
           command -v gtimeout >/dev/null || brew install coreutils
       - name: Generate project
         run: xcodegen generate --spec Apple/project.yml
+      - name: Configure Dark Theme and Display Resolution
+        shell: bash
+        run: |
+          if [[ "${{ matrix.device }}" == "macOS" ]]; then
+            defaults write -g AppleInterfaceStyle Dark || true
+            osascript -e 'tell application "System Events" to tell appearance preferences to set dark mode to true' || true
+            swift -e '
+            import CoreGraphics
+            let id = CGMainDisplayID()
+            print("Initial display:", CGDisplayPixelsWide(id), "x", CGDisplayPixelsHigh(id))
+            if let modes = CGDisplayCopyAllDisplayModes(id, nil) as? [CGDisplayMode] {
+                let sorted = modes.sorted { ($0.width * $0.height) > ($1.width * $1.height) }
+                if let best = sorted.first(where: { $0.width <= 1920 && $0.height <= 1200 && $0.width >= 1440 }) ?? sorted.first {
+                    var cfg: CGDisplayConfigRef?
+                    if CGBeginDisplayConfiguration(&cfg) == .success {
+                        CGConfigureDisplayWithDisplayMode(cfg, id, best, nil)
+                        let r = CGCompleteDisplayConfiguration(cfg, .forSession)
+                        print("Configured display:", best.width, "x", best.height, "status=", r.rawValue)
+                    }
+                }
+            }
+            ' || true
+          else
+            SIM_NAME="iPhone 17"
+            if [[ "${{ matrix.device }}" == "iPad" ]]; then SIM_NAME="iPad (A16)"; fi
+            SIM_UDID=$(xcrun simctl list devices available | grep "$SIM_NAME" | head -n 1 | grep -oE '[0-9A-Fa-f-]{36}' || true)
+            if [[ -n "$SIM_UDID" ]]; then
+              xcrun simctl boot "$SIM_UDID" || true
+              xcrun simctl bootstatus "$SIM_UDID" -b || true
+              xcrun simctl ui "$SIM_UDID" appearance dark || true
+              echo "Simulator $SIM_UDID set to dark appearance"
+            fi
+          fi
       - name: Run UI automation and retain results
         shell: bash
         run: |

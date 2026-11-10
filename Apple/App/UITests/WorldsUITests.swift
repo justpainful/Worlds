@@ -720,6 +720,11 @@ final class WorldsUITests: XCTestCase {
 
     @MainActor
     func testCompleteVisualShowcaseCaptures() throws {
+        #if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            XCUIDevice.shared.orientation = .landscapeLeft
+        }
+        #endif
         let app = XCUIApplication()
         app.launchArguments += [
             "-AppleInterfaceStyle", "Dark",
@@ -731,7 +736,13 @@ final class WorldsUITests: XCTestCase {
             "--ui-testing-dark"
         ]
         app.launch()
-        RunLoop.current.run(until: Date().addingTimeInterval(8))
+        RunLoop.current.run(until: Date().addingTimeInterval(6))
+        #if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .pad && XCUIDevice.shared.orientation != .landscapeLeft {
+            XCUIDevice.shared.orientation = .landscapeLeft
+            RunLoop.current.run(until: Date().addingTimeInterval(1))
+        }
+        #endif
         let launchShot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         launchShot.name = "debug-00-launch-state"; launchShot.lifetime = .keepAlways; add(launchShot)
 

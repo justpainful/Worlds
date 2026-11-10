@@ -220,6 +220,7 @@ struct TemplatesView: View {
                             } label: {
                                 Text(category)
                                     .font(.caption.weight(.semibold))
+                                    .fixedSize(horizontal: true, vertical: false)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 6)
                                     .background(
@@ -246,7 +247,8 @@ struct TemplatesView: View {
                 }
             }
             .padding(dynamicTypeSize.isAccessibilitySize ? 16 : 24)
-            .frame(maxWidth: 880, alignment: .leading)
+            .padding(.bottom, 56)
+            .frame(maxWidth: 1020, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
         .background(WorldsPalette.paper(for: colorScheme))

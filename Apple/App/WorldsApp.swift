@@ -63,27 +63,45 @@ enum WorldsHaptics {
 
 #if DEBUG && os(macOS)
 @MainActor final class WorldsAppTestingDelegate: NSObject, NSApplicationDelegate {
+    private static func configureShowcaseWindow(_ window: NSWindow, args: [String]) {
+        let dark = args.contains("--ui-testing-dark") || args.contains("--ui-testing-complete-showcase")
+        if dark {
+            NSApp.appearance = NSAppearance(named: .darkAqua)
+            window.appearance = NSAppearance(named: .darkAqua)
+            window.backgroundColor = NSColor(red: 12 / 255, green: 12 / 255, blue: 14 / 255, alpha: 1)
+        }
+        if args.contains("--ui-testing-complete-showcase") {
+            let screenFrame = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+            let targetW = min(screenFrame.width, 1440)
+            let targetH = min(screenFrame.height, 920)
+            let originX = screenFrame.origin.x + max(0, (screenFrame.width - targetW) / 2)
+            let originY = screenFrame.origin.y + max(0, (screenFrame.height - targetH) / 2)
+            window.setFrame(NSRect(x: originX, y: originY, width: targetW, height: targetH), display: true)
+        }
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         let args = ProcessInfo.processInfo.arguments
         if args.contains("--ui-testing-dark") || args.contains("--ui-testing-complete-showcase") {
             NSApp.appearance = NSAppearance(named: .darkAqua)
+            UserDefaults.standard.set("dark", forKey: "worlds_theme_preference")
         }
         if let window = NSApp.windows.first {
-            if args.contains("--ui-testing-dark") || args.contains("--ui-testing-complete-showcase") {
-                window.appearance = NSAppearance(named: .darkAqua)
-            }
+            Self.configureShowcaseWindow(window, args: args)
             window.makeKeyAndOrderFront(nil)
             window.orderFrontRegardless()
         }
-        Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { timer in
+        var ticks = 0
+        Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { timer in
+            ticks += 1
             if let window = NSApp.windows.first {
-                if args.contains("--ui-testing-dark") || args.contains("--ui-testing-complete-showcase") {
-                    window.appearance = NSAppearance(named: .darkAqua)
-                }
+                Self.configureShowcaseWindow(window, args: args)
                 window.makeKeyAndOrderFront(nil)
                 window.orderFrontRegardless()
+            }
+            if ticks >= 8 {
                 timer.invalidate()
             }
         }
@@ -100,11 +118,21 @@ struct WorldsApp: App {
     #endif
 
     init() {
-        #if DEBUG && os(macOS)
+        #if DEBUG
         let args = ProcessInfo.processInfo.arguments
-        if args.contains("--ui-testing-dark") || args.contains("--ui-testing-complete-showcase") {
+        let wantsDark = args.contains("--ui-testing-dark") || args.contains("--ui-testing-complete-showcase")
+        if wantsDark {
+            UserDefaults.standard.set("dark", forKey: "worlds_theme_preference")
+        }
+        #if os(macOS)
+        if wantsDark {
             NSApp.appearance = NSAppearance(named: .darkAqua)
         }
+        #elseif canImport(UIKit)
+        if wantsDark {
+            UIView.appearance().overrideUserInterfaceStyle = .dark
+        }
+        #endif
         #endif
     }
 
@@ -208,26 +236,61 @@ struct WorldsApp: App {
 private struct UITestingAppearance: ViewModifier {
     @Environment(\.layoutDirection) private var direction
     @Environment(\.dynamicTypeSize) private var textSize
+    @Environment(\.colorScheme) private var systemScheme
+    @AppStorage("worlds_theme_preference") private var themePreference: String = "system"
+
+    private var forcedColorScheme: ColorScheme? {
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("--ui-testing-dark") || args.contains("--ui-testing-complete-showcase") || themePreference == "dark" {
+            return .dark
+        }
+        if args.contains("--ui-testing-light") || themePreference == "light" {
+            return .light
+        }
+        return nil
+    }
+
     func body(content: Content) -> some View {
         let args = ProcessInfo.processInfo.arguments
+        let activeScheme = forcedColorScheme ?? systemScheme
         content
             .environment(\.layoutDirection, args.contains("--ui-testing-rtl") ? .rightToLeft : direction)
             .environment(\.dynamicTypeSize, args.contains("--ui-testing-large-text") ? .accessibility3 : textSize)
-            .preferredColorScheme((args.contains("--ui-testing-dark") || args.contains("--ui-testing-complete-showcase")) ? .dark : (args.contains("--ui-testing-light") ? .light : nil))
+            .environment(\.colorScheme, activeScheme)
+            .preferredColorScheme(forcedColorScheme)
             #if os(macOS)
             .onAppear {
                 NSApp.setActivationPolicy(.regular)
                 NSApp.activate(ignoringOtherApps: true)
-                if args.contains("--ui-testing-dark") || args.contains("--ui-testing-complete-showcase") {
+                if activeScheme == .dark {
                     NSApp.appearance = NSAppearance(named: .darkAqua)
                 }
                 DispatchQueue.main.async {
                     if let window = NSApp.windows.first {
+                        if activeScheme == .dark {
+                            window.appearance = NSAppearance(named: .darkAqua)
+                            window.backgroundColor = NSColor(red: 12 / 255, green: 12 / 255, blue: 14 / 255, alpha: 1)
+                        }
                         if args.contains("--ui-testing-complete-showcase") {
-                            window.setContentSize(NSSize(width: 1320, height: 860))
+                            let screenFrame = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+                            let targetW = min(screenFrame.width, 1440)
+                            let targetH = min(screenFrame.height, 920)
+                            let originX = screenFrame.origin.x + max(0, (screenFrame.width - targetW) / 2)
+                            let originY = screenFrame.origin.y + max(0, (screenFrame.height - targetH) / 2)
+                            window.setFrame(NSRect(x: originX, y: originY, width: targetW, height: targetH), display: true)
                         }
                         window.makeKeyAndOrderFront(nil)
                         window.orderFrontRegardless()
+                    }
+                }
+            }
+            #elseif canImport(UIKit)
+            .onAppear {
+                if forcedColorScheme == .dark {
+                    for scene in UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }) {
+                        for win in scene.windows {
+                            win.overrideUserInterfaceStyle = .dark
+                        }
                     }
                 }
             }
@@ -419,9 +482,9 @@ private struct WorldsLibraryView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .navigationSplitViewColumnWidth(min: dynamicTypeSize.isAccessibilitySize ? 320 : 240,
-                                            ideal: dynamicTypeSize.isAccessibilitySize ? 360 : 280,
-                                            max: dynamicTypeSize.isAccessibilitySize ? 440 : 360)
+            .navigationSplitViewColumnWidth(min: dynamicTypeSize.isAccessibilitySize ? 320 : 230,
+                                            ideal: dynamicTypeSize.isAccessibilitySize ? 360 : 255,
+                                            max: dynamicTypeSize.isAccessibilitySize ? 440 : 285)
             .navigationTitle("Pages")
             .toolbar {
                 if loaded {
@@ -844,9 +907,19 @@ private struct WorldsLibraryView: View {
         #endif
         .sheet(isPresented: $showSettings) {
             SettingsView(databaseURL: openedVideoDatabase?.url, pageCount: pages.count, onVacuumDatabase: nil, onClearCache: nil)
+                .environment(\.colorScheme, colorScheme)
+                .preferredColorScheme(colorScheme)
+                #if os(macOS)
+                .frame(minWidth: 560, idealWidth: 640, minHeight: 540, idealHeight: 620)
+                #endif
         }
         .sheet(isPresented: $showAssistant) {
             AssistantHostView(pages: pages)
+                .environment(\.colorScheme, colorScheme)
+                .preferredColorScheme(colorScheme)
+                #if os(macOS)
+                .frame(minWidth: 580, idealWidth: 660, minHeight: 520, idealHeight: 600)
+                #endif
         }
         #if WORLDS_MAIN_APP_MODULES
         .sheet(item: $pendingMCPApproval) { approval in
@@ -1167,129 +1240,127 @@ private struct WorldsLibraryView: View {
     }
 
     private var workspaceNavigationBar: some View {
-        VStack(spacing: 4) {
-            HStack(spacing: 4) {
-                navPillButton(
-                    title: "Pages",
-                    icon: "doc.text",
-                    identifier: "open-pages-button",
-                    isActive: selectedSidebarSection == nil
-                ) {
-                    selectedSidebarSection = nil
-                }
-                navPillButton(
-                    title: "Home",
-                    icon: "house",
-                    identifier: "open-home-button",
-                    isActive: selectedSidebarSection == .home && selectedID == nil
-                ) {
-                    selectedID = nil
-                    selectedSidebarSection = .home
-                }
-                navPillButton(
-                    title: "Templates",
-                    icon: "square.grid.2x2",
-                    identifier: "open-templates-button",
-                    isActive: selectedSidebarSection == .templates && selectedID == nil
-                ) {
-                    selectedID = nil
-                    selectedSidebarSection = .templates
-                }
-                navPillButton(
-                    title: "Trash",
-                    icon: "trash",
-                    identifier: "open-trash-button",
-                    isActive: selectedSidebarSection == .trash && selectedID == nil
-                ) {
-                    selectedID = nil
-                    selectedSidebarSection = .trash
-                }
-                navPillButton(
-                    title: "AI",
-                    icon: "sparkles",
-                    identifier: "open-assistant-button",
-                    isActive: showAssistant
-                ) {
-                    showAssistant = true
-                }
-                #if WORLDS_EXPERIMENTAL_ACCOUNT
-                navPillButton(
-                    title: "Account",
-                    icon: "person.crop.circle",
-                    identifier: "open-account-button",
-                    isActive: showAccount
-                ) {
-                    showAccount = true
-                }
-                #endif
-                navPillButton(
-                    title: "Settings",
-                    icon: "gearshape",
-                    identifier: "open-settings-button",
-                    isActive: showSettings
-                ) {
-                    showSettings = true
-                }
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 54), spacing: 4)], spacing: 4) {
+            navPillButton(
+                title: "Pages",
+                icon: "doc.text",
+                identifier: "open-pages-button",
+                isActive: selectedSidebarSection == nil
+            ) {
+                selectedSidebarSection = nil
             }
-            HStack(spacing: 4) {
-                navPillButton(
-                    title: "Sheets",
-                    icon: "tablecells.fill",
-                    identifier: "open-spreadsheets-button",
-                    isActive: selectedSidebarSection == .spreadsheets && selectedID == nil
-                ) {
-                    selectedID = nil
-                    selectedSidebarSection = .spreadsheets
-                }
-                navPillButton(
-                    title: "Planning",
-                    icon: "checklist.checked",
-                    identifier: "open-planning-button",
-                    isActive: selectedSidebarSection == .planning && selectedID == nil
-                ) {
-                    selectedID = nil
-                    selectedSidebarSection = .planning
-                }
-                navPillButton(
-                    title: "Study",
-                    icon: "graduationcap.fill",
-                    identifier: "open-study-button",
-                    isActive: selectedSidebarSection == .study && selectedID == nil
-                ) {
-                    selectedID = nil
-                    selectedSidebarSection = .study
-                }
-                navPillButton(
-                    title: "Studio",
-                    icon: "cube.transparent.fill",
-                    identifier: "open-studio-button",
-                    isActive: selectedSidebarSection == .studio && selectedID == nil
-                ) {
-                    selectedID = nil
-                    selectedSidebarSection = .studio
-                }
+            navPillButton(
+                title: "Home",
+                icon: "house",
+                identifier: "open-home-button",
+                isActive: selectedSidebarSection == .home && selectedID == nil
+            ) {
+                selectedID = nil
+                selectedSidebarSection = .home
+            }
+            navPillButton(
+                title: "Templates",
+                icon: "square.grid.2x2",
+                identifier: "open-templates-button",
+                isActive: selectedSidebarSection == .templates && selectedID == nil
+            ) {
+                selectedID = nil
+                selectedSidebarSection = .templates
+            }
+            navPillButton(
+                title: "Trash",
+                icon: "trash",
+                identifier: "open-trash-button",
+                isActive: selectedSidebarSection == .trash && selectedID == nil
+            ) {
+                selectedID = nil
+                selectedSidebarSection = .trash
+            }
+            navPillButton(
+                title: "Sheets",
+                icon: "tablecells.fill",
+                identifier: "open-spreadsheets-button",
+                isActive: selectedSidebarSection == .spreadsheets && selectedID == nil
+            ) {
+                selectedID = nil
+                selectedSidebarSection = .spreadsheets
+            }
+            navPillButton(
+                title: "Planning",
+                icon: "checklist.checked",
+                identifier: "open-planning-button",
+                isActive: selectedSidebarSection == .planning && selectedID == nil
+            ) {
+                selectedID = nil
+                selectedSidebarSection = .planning
+            }
+            navPillButton(
+                title: "Study",
+                icon: "graduationcap.fill",
+                identifier: "open-study-button",
+                isActive: selectedSidebarSection == .study && selectedID == nil
+            ) {
+                selectedID = nil
+                selectedSidebarSection = .study
+            }
+            navPillButton(
+                title: "Studio",
+                icon: "cube.transparent.fill",
+                identifier: "open-studio-button",
+                isActive: selectedSidebarSection == .studio && selectedID == nil
+            ) {
+                selectedID = nil
+                selectedSidebarSection = .studio
+            }
+            navPillButton(
+                title: "AI",
+                icon: "sparkles",
+                identifier: "open-assistant-button",
+                isActive: showAssistant
+            ) {
+                showAssistant = true
+            }
+            #if WORLDS_EXPERIMENTAL_ACCOUNT
+            navPillButton(
+                title: "Account",
+                icon: "person.crop.circle",
+                identifier: "open-account-button",
+                isActive: showAccount
+            ) {
+                showAccount = true
+            }
+            #endif
+            navPillButton(
+                title: "Settings",
+                icon: "gearshape",
+                identifier: "open-settings-button",
+                isActive: showSettings
+            ) {
+                showSettings = true
             }
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
-        .background(.ultraThinMaterial)
+        .background(colorScheme == .dark ? WorldsPalette.darkSidebar : WorldsPalette.surface(for: colorScheme))
         .dynamicTypeSize(...DynamicTypeSize.large)
     }
 
     private func navPillButton(title: String, icon: String, identifier: String, isActive: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 2) {
+            VStack(spacing: 3) {
                 Image(systemName: icon)
                     .font(.system(size: 12, weight: .semibold))
                 Text(title)
-                    .font(.system(size: 9, weight: .medium))
+                    .font(.system(size: 10, weight: .medium))
                     .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             .foregroundStyle(isActive ? WorldsPalette.accent(for: colorScheme) : .primary)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 5)
+            .padding(.vertical, 6)
+            .padding(.horizontal, 2)
             .background(
-                isActive ? WorldsPalette.accent(for: colorScheme).opacity(0.16) : Color.primary.opacity(0.001),
+                isActive ? WorldsPalette.accent(for: colorScheme).opacity(0.18) : Color.primary.opacity(0.001),
                 in: RoundedRectangle(cornerRadius: 8)
             )
             .contentShape(Rectangle())
