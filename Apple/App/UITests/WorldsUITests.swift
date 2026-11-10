@@ -762,8 +762,7 @@ final class WorldsUITests: XCTestCase {
             RunLoop.current.run(until: Date().addingTimeInterval(1))
         }
         #endif
-        let launchShot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        launchShot.name = "debug-00-launch-state"; launchShot.lifetime = .keepAlways; add(launchShot)
+        capture("debug-00-launch-state", app: app)
 
         // 01 Home Destination
         navigateDestination(tabTitle: "Home", macShortcut: "1", sidebarID: "sidebar-dest-home", app: app)
@@ -783,7 +782,7 @@ final class WorldsUITests: XCTestCase {
         RunLoop.current.run(until: Date().addingTimeInterval(1.2))
         #else
         if UIDevice.current.userInterfaceIdiom == .phone {
-            tapIdentifier("library-collection-Spreadsheets", app: app)
+            tapIdentifier("library-card-Spreadsheets", app: app)
         } else {
             tapIdentifier("sidebar-lib-Spreadsheets", app: app)
         }
@@ -795,25 +794,13 @@ final class WorldsUITests: XCTestCase {
         tapIdentifier("page.showcase-mindmap-arch", app: app)
         #else
         if UIDevice.current.userInterfaceIdiom == .phone {
-            navigateDestination(tabTitle: "Home", macShortcut: nil, sidebarID: nil, app: app)
-            tapIdentifier("home-card-showcase-mindmap-arch", app: app)
-            RunLoop.current.run(until: Date().addingTimeInterval(1.0))
+            tapIdentifier("library-filter-Mind Maps & Drawings", app: app)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.8))
         } else {
             tapIdentifier("page.showcase-mindmap-arch", app: app)
         }
         #endif
         capture("complete-05-mindmap-concept", app: app)
-
-        #if os(iOS)
-        if UIDevice.current.userInterfaceIdiom == .phone {
-            // Return from pushed detail on iPhone
-            let backBtn = app.navigationBars.buttons.firstMatch
-            if backBtn.exists && backBtn.isHittable {
-                backBtn.tap()
-                RunLoop.current.run(until: Date().addingTimeInterval(0.6))
-            }
-        }
-        #endif
 
         // 06 Creative Studio (3D & Slides)
         #if os(macOS)
@@ -821,8 +808,9 @@ final class WorldsUITests: XCTestCase {
         RunLoop.current.run(until: Date().addingTimeInterval(1.2))
         #else
         if UIDevice.current.userInterfaceIdiom == .phone {
-            navigateDestination(tabTitle: "Library", macShortcut: nil, sidebarID: nil, app: app)
-            tapIdentifier("library-collection-Slides & 3D CAD", app: app)
+            tapIdentifier("library-filter-All Resources", app: app)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.6))
+            tapIdentifier("library-card-Slides & 3D CAD", app: app)
         } else {
             tapIdentifier("sidebar-lib-Slides & 3D CAD", app: app)
         }
@@ -837,7 +825,7 @@ final class WorldsUITests: XCTestCase {
         navigateDestination(tabTitle: "Search", macShortcut: "s", sidebarID: "sidebar-dest-search", app: app)
         capture("complete-08-search-destination", app: app)
 
-        // 09 Create New Sheet + Inspector / Quick Note HUD
+        // 09 Create New Sheet / iPad Inspector / macOS Hot Corner Quick Note
         #if os(iOS)
         if UIDevice.current.userInterfaceIdiom == .pad {
             tapIdentifier("sidebar-dest-home", app: app)
@@ -875,16 +863,19 @@ final class WorldsUITests: XCTestCase {
         #else
         if UIDevice.current.userInterfaceIdiom == .phone {
             let tabBarButton = app.tabBars.buttons[tabTitle].firstMatch
-            if tabBarButton.waitForExistence(timeout: 4) {
+            if tabBarButton.waitForExistence(timeout: 4) && tabBarButton.isHittable {
                 tabBarButton.tap()
                 RunLoop.current.run(until: Date().addingTimeInterval(1.0))
                 return
             }
-            let looseButton = app.buttons[tabTitle].firstMatch
-            if looseButton.waitForExistence(timeout: 3) && looseButton.isHittable {
-                looseButton.tap()
-                RunLoop.current.run(until: Date().addingTimeInterval(1.0))
-                return
+            let allButtons = app.buttons.matching(NSPredicate(format: "label == %@", tabTitle))
+            if allButtons.count > 0 {
+                let candidate = allButtons.element(boundBy: allButtons.count - 1)
+                if candidate.exists && candidate.isHittable {
+                    candidate.tap()
+                    RunLoop.current.run(until: Date().addingTimeInterval(1.0))
+                    return
+                }
             }
         }
         #endif
@@ -897,6 +888,14 @@ final class WorldsUITests: XCTestCase {
     private func tapIdentifier(_ identifier: String, app: XCUIApplication) {
         let element = app.descendants(matching: .any)[identifier].firstMatch
         if element.waitForExistence(timeout: 4) {
+            if !element.isHittable {
+                let firstOutlineOrTable = app.outlines.firstMatch.exists ? app.outlines.firstMatch : app.tables.firstMatch
+                if firstOutlineOrTable.exists {
+                    firstOutlineOrTable.swipeDown()
+                    RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+                }
+            }
+            guard element.isHittable else { return }
             #if os(macOS)
             element.click()
             #else

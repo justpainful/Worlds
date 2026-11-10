@@ -131,12 +131,22 @@ struct HotCornerQuickNoteHUD: View {
                 .buttonStyle(.plain)
             }
 
-            TextEditor(text: $coordinator.quickNoteDraft)
-                .font(.subheadline)
-                .scrollContentBackground(.hidden)
-                .frame(height: 88)
-                .padding(8)
-                .background(WorldsPalette.cardBackground(for: colorScheme).opacity(0.6), in: RoundedRectangle(cornerRadius: 8))
+            ZStack(alignment: .topLeading) {
+                if coordinator.quickNoteDraft.isEmpty {
+                    Text("Capture a quick note, formula, or to-do…")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary.opacity(0.7))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 12)
+                        .allowsHitTesting(false)
+                }
+                TextEditor(text: $coordinator.quickNoteDraft)
+                    .font(.subheadline)
+                    .scrollContentBackground(.hidden)
+                    .frame(height: 88)
+                    .padding(8)
+            }
+            .background(WorldsPalette.cardBackground(for: colorScheme).opacity(0.6), in: RoundedRectangle(cornerRadius: 8))
 
             HStack {
                 Text("⌥Space or Bottom-Right Corner")

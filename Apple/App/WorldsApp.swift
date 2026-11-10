@@ -1168,25 +1168,17 @@ private struct WorldsLibraryView: View {
                 }
             }
 
-            Section("Library") {
-                ForEach(LibraryCollection.allCases) { col in
+            Section("Collections") {
+                ForEach(LibraryCollection.allCases.filter { $0 != .all }) { col in
                     Label(col.rawValue, systemImage: col.systemImage)
                         .tag(SidebarSelectionTag.library(col))
                         .accessibilityIdentifier("sidebar-lib-\(col.rawValue)")
                 }
             }
 
-            Section("Spaces") {
-                ForEach(SpacesSection.allCases.filter { $0 != .study || studyPackEnabled }) { sec in
-                    Label(sec.rawValue, systemImage: sec.systemImage)
-                        .tag(SidebarSelectionTag.spaces(sec))
-                        .accessibilityIdentifier("sidebar-space-\(sec.rawValue)")
-                }
-            }
-
             if !activeNonTemplatePages.isEmpty {
                 Section("Recent Files") {
-                    ForEach(activeNonTemplatePages.prefix(6)) { page in
+                    ForEach(activeNonTemplatePages.prefix(4)) { page in
                         Label(page.title.isEmpty ? "Untitled" : page.title, systemImage: sidebarIcon(for: page.kind))
                             .lineLimit(1)
                             .tag(SidebarSelectionTag.page(page.id))
@@ -1201,34 +1193,42 @@ private struct WorldsLibraryView: View {
         .scrollContentBackground(.hidden)
         .background(WorldsVibrancyView(material: .sidebar, blendingMode: .behindWindow).ignoresSafeArea())
         #endif
-        .safeAreaInset(edge: .bottom) {
-            HStack(spacing: 10) {
-                Button {
-                    showSettings = true
-                } label: {
-                    Label("Settings", systemImage: "gearshape")
-                        .font(.caption.weight(.medium))
-                }
-                .buttonStyle(.borderless)
-                .accessibilityIdentifier("open-settings-button")
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 0) {
+                Divider()
+                HStack(spacing: 10) {
+                    Button {
+                        showSettings = true
+                    } label: {
+                        Label("Settings", systemImage: "gearshape")
+                            .font(.caption.weight(.medium))
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityIdentifier("open-settings-button")
 
-                Spacer()
+                    Spacer()
 
-                Button {
-                    #if WORLDS_EXPERIMENTAL_LOCAL_COPY
-                    copyImportSelected = false
-                    #endif
-                    showImporter = true
-                } label: {
-                    Image(systemName: "externaldrive.badge.plus")
-                        .font(.caption)
+                    Button {
+                        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+                        copyImportSelected = false
+                        #endif
+                        showImporter = true
+                    } label: {
+                        Image(systemName: "externaldrive.badge.plus")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Open local database…")
+                    .accessibilityIdentifier("sidebar-open-database")
                 }
-                .buttonStyle(.borderless)
-                .help("Open local database…")
-                .accessibilityIdentifier("sidebar-open-database")
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 9)
+            #if os(macOS)
+            .background(.ultraThinMaterial)
+            #else
+            .background(.bar)
+            #endif
         }
     }
 
@@ -1436,6 +1436,14 @@ private struct WorldsLibraryView: View {
     }
 
     private func openCreateFormat(_ format: String) {
+        let presentDetail: (String) -> Void = { id in
+            if horizontalSizeClass == .compact {
+                phoneDetailPageID = id
+            } else {
+                selectedID = id
+            }
+        }
+
         switch format {
         case "page":
             if let createPageAction { createPageAction(); return }
@@ -1445,20 +1453,26 @@ private struct WorldsLibraryView: View {
             if let createDrawingAction { createDrawingAction(); return }
         case "project":
             if let createProjectAction { createProjectAction(); return }
+            selectedID = nil
+            phoneDetailPageID = nil
+            destination = .spaces
+            spacesSection = .projects
+            return
         case "presentation":
             if let createPresentationAction { createPresentationAction(); return }
         case "spreadsheet":
-            selectedID = "showcase-sheet-q4"
+            presentDetail("showcase-sheet-q4")
             return
         case "mindmap":
-            selectedID = "showcase-mindmap-arch"
+            presentDetail("showcase-mindmap-arch")
             return
         case "cad":
-            selectedID = "showcase-cad-turbine"
+            presentDetail("showcase-cad-turbine")
             return
         case "study":
             studyPackEnabled = true
             selectedID = nil
+            phoneDetailPageID = nil
             destination = .spaces
             spacesSection = .study
             return
@@ -1772,6 +1786,11 @@ private struct WorldsLibraryView: View {
         .onChange(of: expandedPageIDs) { _, _ in saveHierarchyPreferences() }
         .onChange(of: showPageHierarchy) { _, _ in saveHierarchyPreferences() }
         #endif
+        .onChange(of: destination) { _, _ in
+            if horizontalSizeClass == .compact {
+                phoneDetailPageID = nil
+            }
+        }
         .tint(WorldsPalette.accent(for: colorScheme))
         .onReceive(NotificationCenter.default.publisher(for: .worldsOpenDatabaseAction)) { _ in
             #if WORLDS_EXPERIMENTAL_LOCAL_COPY

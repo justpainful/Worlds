@@ -41,7 +41,8 @@ struct HomeView: View {
                 activitySummaryFooter
             }
             .padding(.horizontal, horizontalSizeClass == .compact ? 16 : 28)
-            .padding(.vertical, 20)
+            .padding(.top, 20)
+            .padding(.bottom, horizontalSizeClass == .compact ? 36 : 24)
             .frame(maxWidth: 1120, alignment: .leading)
             .frame(maxWidth: .infinity)
         }

@@ -267,6 +267,7 @@ struct LibraryDestinationView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("library-card-\(collection.rawValue)")
     }
 
     private func filteredResourceList(matchingKinds kinds: Set<String>?) -> some View {
