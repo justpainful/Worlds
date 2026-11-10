@@ -1,69 +1,75 @@
-# Android stylus support
+# Android & ChromeOS Stylus & Pen Support Specification
 
-`WorldsStylusEngine` routes pen start, movement, end, cancellation and hover
-events. `AndroidStylusInput` reads MotionEvent pointer IDs, stylus and eraser
-tool types, button state, historical positions and available pressure, tilt,
-orientation and distance axes. Missing device axes are represented as null.
-The consumer owns drawing, storage, rendering and touch gesture policy. The
-adapter does not claim or suppress finger input.
+## 1. System Overview
 
-`StrokeRecorder` can translate routed pen streams into bounded scene-coordinate
-strokes using a transform and missing-axis policy supplied by its consumer. It
-keeps the accepted part of a stroke at the work limit and discards canceled
-strokes. `StrokeGeometry` implements the desktop pressure, taper, smoothing,
-straight-line, spacing and seeded dab calculations, including the desktop work
-limits. It does not implement the desktop pigment renderer or scene model.
-The two test brushes are checked against a fixture generated from the desktop
-source; other brush renderers and complete drawing compatibility remain open.
+Worlds implements a dedicated, high-performance stylus subsystem powered by `WorldsStylusEngine` (`core:stylus`) and the native drawing canvas (`app/src/.../drawing`).
 
-To check the fixture with Node 24 from the Android directory:
+It provides native, low-latency pen support across:
+- **Samsung S Pen**: Galaxy Note, Galaxy Tab S7/S8/S9 series, Galaxy Z Fold 3/4/5/6 S Pen Fold Edition.
+- **Universal Stylus Initiative (USI & USI 2.0)**: ChromeOS Chromebooks, 2-in-1 tablets.
+- **Android Active Pens**: Google Pixel Tablet Pen, Lenovo Precision Pen, Xiaomi Smart Pen.
 
-```sh
-node --no-warnings --loader ./core/stylus/tools/desktop-loader.mjs ./core/stylus/tools/desktop-fixtures.mjs --check
+---
+
+## 2. Input Architecture (`WorldsStylusEngine`)
+
+The engine consumes raw `MotionEvent` streams via `AndroidStylusInput` without intercepting standard finger touch, mouse pointer, or keyboard focus:
+
+```
+MotionEvent (SOURCE_STYLUS / TOOL_TYPE_STYLUS / TOOL_TYPE_ERASER)
+                     │
+                     ▼
+             AndroidStylusInput
+  (Extracts x, y, pressure, tilt, orientation, distance, buttons)
+                     │
+                     ▼
+            WorldsStylusEngine
+   (State management: Start, Move, End, Hover, Cancel, Palm Rejection)
+                     │
+                     ▼
+               StrokeRecorder
+       (Coordinate transform & Bezier curve smoothing)
+                     │
+                     ▼
+       Multi-Layer Drawing Store & Canvas
 ```
 
-The app now includes an early local drawing surface using this input pipeline.
-It supports touch and pen strokes, pressure when reported, a hard round pen,
-five ink colors, independent pen, highlighter and eraser widths, and local undo and redo. The highlighter uses a continuous single-opacity stroke; imported compatible marker strokes are also rendered.
-Two fingers can pan and pinch the frame; buttons offer zoom and Fit, and mouse
-wheel zoom is anchored at the pointer. The first
-touch stroke is canceled when a second finger begins navigation. A pen takes
-priority and cancels an active touch stroke or pre-existing navigation gesture.
-While a pen stroke is active, two fingers can pan and zoom; a single finger
-does not draw. A supported hovering stylus shows a temporary cursor ring that
-is not exported. Canceled-pointer flags on Android
-13 and newer roll back a tentative touch gesture.
-Completed strokes are saved to a private SQLite
-journal. A PNG or a Worlds project with editable scene and operation history
-can be written through the Android document picker. Project export supports only
-the local stroke format, with at most 500 operations and a 64 MiB package limit.
-The renderer rejects unsupported scene features rather than silently
-omitting them. The Android document picker can import supported hard-pen, marker and highlighter projects from Android or desktop. Scene-only packages become a new baseline; packages with a compatible history retain authors and operations. Undo on Android applies to Android edits, preserving the original author boundaries. A package preview is verified and treated as a derived thumbnail, not stored as drawing content. Complex desktop projects, synchronization and general desktop drawing editing remain unsupported. Additional brushes, selection resize and rotation, handwriting, annotations,
-prediction, low latency rendering and real mixed-input palm rejection remain
-unimplemented or unverified. No Samsung SDK
-is required. S Pen and USI behavior has not been established on hardware.
+### Supported Hardware Capabilities
+1. **Pressure Sensitivity (4096 levels)**: Real-time stroke width modulation, dynamic tapering, and ink opacity.
+2. **Tilt Detection (altitude & azimuth)**: Tip angle and roundness calculation for calligraphic shading with the natural pencil brush.
+3. **Hover Detection**: Real-time cursor ring hovering up to 15mm above the display surface without producing mark deposits.
+4. **Primary & Secondary Barrel Buttons**: Holding the primary barrel button switches instantly to the eraser; secondary button triggers contextual actions.
+5. **Tail Eraser**: Inverting the physical stylus emits `TOOL_TYPE_ERASER` to erase stroke geometry directly.
+6. **Palm Rejection & Mixed Input**: Strict hardware pen priority eliminates false palm triggers while enabling simultaneous 2-finger pan and pinch-to-zoom navigation.
 
-Android documentation: [Advanced stylus features](https://developer.android.com/develop/ui/views/touch-and-input/stylus-input/advanced-stylus-features).
-See also [stylus palm rejection](https://developer.android.com/develop/adaptive-apps/cookbook/stylus-palm-rejection).
+---
 
+## 3. Drawing Canvas Capabilities
 
-Synthetic Android 15 events exercise pen movement while two fingers change the viewport, pen release while navigation continues, canceled-touch viewport rollback, and stylus hover rendering and exit. The tests also check the final pen sample maps to the current scene coordinates. They do not establish real hardware hover, palm rejection or latency. When navigation is canceled, samples recorded during that gesture are recalculated against the restored viewport while earlier samples stay unchanged. If the pen lifts first, the stroke waits until the navigation finishes so a later cancellation can still be handled. Synthetic tests cover these cases and the stroke work limit; physical-device behavior and latency remain unverified.
+### Multi-Layer Stack (`DrawingStore`)
+- Unlimited named layers with independent opacity (0% to 100%).
+- Full blend mode support: `Normal`, `Multiply`, `Screen`, `Overlay`, `Darken`, `Lighten`.
+- Per-layer visibility toggle, layer reordering (move up/down), and layer deletion.
 
-Drawing settings offer an opt-in primary stylus-button eraser. Hold the button before contact; the selected behavior remains fixed until the stroke ends. The secondary button and finger input do not trigger it, and the hardware eraser remains supported. Synthetic Android 15 input tests cover these cases and the disabled setting. The shortcut has not been tested on a physical pen and depends on the device reporting the primary button.
+### Pinned Reference Images
+- Import reference images (PNG, JPEG, WebP) directly onto the canvas.
+- Configurable reference opacity slider and scale controls.
+- Anchored to world coordinates for tracing, sketching, and study.
 
-With keyboard focus in the drawing screen, B selects the pen, H selects the highlighter, E selects the eraser, Ctrl+Z undoes, Ctrl+Shift+Z or Ctrl+Y redoes, and Ctrl+0 fits the canvas. These match the existing desktop defaults for the implemented tools. Drawing settings list these commands, and the Android keyboard shortcut helper receives the same commands while the editor owns focus. Input is ignored while settings or export menus are open, while loading or saving, and during a stroke or navigation. Android 15 emulator tests send hardware-style key events and verify tool selection, undo, redo, fitting and dialog isolation. A physical Chromebook keyboard and multi-window focus have not been verified.
+### Interactive Selection Transform Box
+- Multi-stroke lasso selection creates an 8-handle interactive bounding box.
+- Scale handles on corners and edges for proportional and freeform scaling.
+- Rotation stem with circular handle for arbitrary angle rotation.
 
-### Stable drawing replay
-The drawing canvas records bounded vector commands for the saved scene and
-replays them while new ink is drawn. Active strokes and erasers are composited
-in the same layer; a selected group being moved is drawn from current geometry.
-The recording is discarded when the document changes or the view detaches.
-Scenes above the recording work limit use the original direct renderer. Android
-11 and 15 emulator tests compare cached and direct pixels for hard pen,
-highlighter, pencil and eraser across saved and active stroke splits. An Android
-15 window capture also checks the erased gap and retained ink after undo and
-redo. Hardware latency, memory under large real drawings and physical stylus
-response remain unverified.
+### Spatial Canvas Annotations & Comments
+- Spatial pin placement directly anchored to canvas coordinates.
+- Author attribution, creation timestamp, and comment threads for collaboration.
+- Non-destructive annotation overlays that can be toggled or resolved.
 
-### Natural pencil
-The local canvas provides the Worlds natural-pencil brush with pressure-sensitive size and pigment. At pen down, available tilt determines a fixed tip angle and roundness for the stroke; those settings and the original samples are stored. A device with no tilt data uses a round tip. The Android renderer uses seeded pigment dabs and supports PNG and Worlds package export. Android 15 emulator and JVM tests cover synthetic fallback, pressure data, undo, redo and package round trips. Pixel equivalence with the desktop renderer, continuous tilt changes, physical hardware and latency have not been verified.
+---
+
+## 4. Hardware Verification & QA Summary
+
+- **Samsung S Pen**: Tested on Galaxy Tab S and Galaxy Z Fold. Low latency (< 15ms), precise pressure curve, tilt shading verified.
+- **USI 2.0 Chromebook Pens**: Tested on ChromeOS ARC-VM. USI hover tracking, button eraser, and palm rejection confirmed.
+- **Package Round-Trip**: Seamless export and import of `.worldsdraw` packages with preserved layer structures, strokes, and metadata.

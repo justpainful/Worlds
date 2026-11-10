@@ -13,8 +13,8 @@ const table = new Y.XmlElement('table'); const row = new Y.XmlElement('tableRow'
 const para = new Y.XmlElement('paragraph'); const inner = new Y.XmlText(); inner.insert(0, 'مرحبا');
 para.insert(0, [inner]); cell.insert(0, [para]); row.insert(0, [cell]); table.insert(0, [row]); root.insert(0, [heading, table]);
 const snapshot = Y.encodeStateAsUpdate(doc);
-function rust(mode, request) {
-  const args = ['run', '--quiet', '--locked', '--example', 'editor', '--', mode, Buffer.from(snapshot).toString('hex')];
+function rust(mode, request, base = snapshot) {
+  const args = ['run', '--quiet', '--locked', '--example', 'editor', '--', mode, Buffer.from(base).toString('hex')];
   if (request) args.push(JSON.stringify(request));
   const p = spawnSync('cargo', args, { cwd: path.join(__dirname, '../native'), encoding: 'utf8' });
   if (p.status !== 0) throw Error(p.stderr);
@@ -34,6 +34,36 @@ independent.getXmlFragment('default').get(0).get(0).insert(4, '!');
 Y.applyUpdate(independent, blockUpdate);
 assert.equal(independent.getXmlFragment('default').get(0).get(0).toDelta().map(x => x.insert).join(''), 'AZB!');
 assert.throws(() => rust('block', { bid: 'missing', start: 0, end: 0, text: 'x' }));
+const italic = rust('format', { bid: 'block1', start: 1, end: 3, mark: 'italic', enabled: true });
+const formattedPeer = new Y.Doc(); Y.applyUpdate(formattedPeer, snapshot);
+const formattedText = formattedPeer.getXmlFragment('default').get(0).get(0);
+formattedText.insert(4, ' peer');
+Y.applyUpdate(formattedPeer, italic);
+const formatDelta = formattedText.toDelta();
+assert.equal(formatDelta.map(run => run.insert).join(''), 'A😀B peer');
+const emoji = formatDelta.find(run => run.insert === '😀');
+assert.deepStrictEqual(emoji.attributes, { bold: {}, link: { href: 'https://example.test' }, italic: {} });
+const noBold = rust('format', { bid: 'block1', start: 1, end: 3, mark: 'bold', enabled: false });
+const removedPeer = new Y.Doc(); Y.applyUpdate(removedPeer, snapshot); Y.applyUpdate(removedPeer, noBold);
+const removed = removedPeer.getXmlFragment('default').get(0).get(0).toDelta();
+assert.deepStrictEqual(removed.find(run => run.insert === '😀').attributes, { link: { href: 'https://example.test' } });
+assert.throws(() => rust('format', { bid: 'block1', start: 2, end: 3, mark: 'bold', enabled: false }));
+assert.throws(() => rust('format', { bid: 'block1', start: 1, end: 1, mark: 'bold', enabled: true }));
+assert.throws(() => rust('format', { bid: 'block1', start: 0, end: 4, mark: 'link', enabled: true }));
+assert.throws(() => rust('format', { bid: 'missing', start: 0, end: 1, mark: 'bold', enabled: true }));
+const multi = new Y.Doc(); const multiRoot = multi.getXmlFragment('default');
+const multiParagraph = new Y.XmlElement('paragraph'); multiParagraph.setAttribute('bid', 'multi');
+const first = new Y.XmlText(); first.insert(0, 'A😀', { 'bold--abcdefgh': {}, italic: {} });
+const second = new Y.XmlText(); second.insert(0, 'بC', { link: { href: 'https://example.test' } });
+multiParagraph.insert(0, [first, second]); multiRoot.insert(0, [multiParagraph]);
+const multiBase = Y.encodeStateAsUpdate(multi);
+const across = rust('format', { bid: 'multi', start: 1, end: 4, mark: 'bold', enabled: true }, multiBase);
+Y.applyUpdate(multi, across);
+const firstDelta = first.toDelta(); const secondDelta = second.toDelta();
+assert.deepStrictEqual(firstDelta.find(run => run.insert === '😀').attributes, { italic: {}, bold: {} });
+assert.deepStrictEqual(secondDelta.find(run => run.insert === 'ب').attributes, { link: { href: 'https://example.test' }, bold: {} });
+assert.deepStrictEqual(firstDelta.find(run => run.insert === 'A').attributes, { 'bold--abcdefgh': {}, italic: {} });
+assert.deepStrictEqual(secondDelta.find(run => run.insert === 'C').attributes, { link: { href: 'https://example.test' } });
 const append = rust('append', { bid: 'android-new', text: 'Shared paragraph مرحبا' });
 const peer = new Y.Doc(); Y.applyUpdate(peer, snapshot);
 const peerRoot = peer.getXmlFragment('default');
@@ -78,6 +108,7 @@ function replayInOrder(first, second) {
 }
 const changedFirst = replayInOrder(changedUpdate, duplicate);
 const duplicateFirst = replayInOrder(duplicate, changedUpdate);
+assert.deepStrictEqual(replayInOrder(changedUpdate, italic), replayInOrder(italic, changedUpdate));
 assert.deepStrictEqual(changedFirst, duplicateFirst);
 assert.equal(changedFirst.content[0].content.map(n => n.text).join(''), 'A😀B peer');
 assert.equal(changedFirst.content[1].content.map(n => n.text).join(''), 'A😀B');

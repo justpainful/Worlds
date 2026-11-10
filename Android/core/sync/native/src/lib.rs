@@ -14,6 +14,7 @@ pub fn editor_read(snapshot: &[u8]) -> Result<Vec<u8>, String> { editor::read(sn
 pub fn editor_restore(snapshot: &[u8], version: &[u8]) -> Result<Vec<u8>, String> { restore::restore(snapshot, version) }
 pub fn editor_replace_text(snapshot: &[u8], request: &[u8]) -> Result<Vec<u8>, String> { editor::replace_text(snapshot, request) }
 pub fn editor_replace_block_text(snapshot: &[u8], request: &[u8]) -> Result<Vec<u8>, String> { editor::replace_block_text(snapshot, request) }
+pub fn editor_format_block_text(snapshot: &[u8], request: &[u8]) -> Result<Vec<u8>, String> { editor::format_block_text(snapshot, request) }
 pub fn editor_append_paragraph(snapshot: &[u8], request: &[u8]) -> Result<Vec<u8>, String> { editor::append_paragraph(snapshot, request) }
 pub fn editor_duplicate_text_block(snapshot: &[u8], request: &[u8]) -> Result<Vec<u8>, String> { restore::duplicate_text_block(snapshot, request) }
 
@@ -87,6 +88,11 @@ pub extern "system" fn Java_worlds_sync_YrsNative_replaceTextBytes(env: JNIEnv, 
 #[no_mangle]
 pub extern "system" fn Java_worlds_sync_YrsNative_replaceBlockTextBytes(env: JNIEnv, _: JClass, snapshot: JByteArray, request: JByteArray) -> jbyteArray {
     invoke(env, snapshot, Some(request), editor::replace_block_text)
+}
+
+#[no_mangle]
+pub extern "system" fn Java_worlds_sync_YrsNative_formatBlockTextBytes(env: JNIEnv, _: JClass, snapshot: JByteArray, request: JByteArray) -> jbyteArray {
+    invoke(env, snapshot, Some(request), editor::format_block_text)
 }
 
 #[no_mangle]

@@ -1,6 +1,9 @@
 use serde_json::{json, Map, Value};
 use yrs::{Out, ReadTxn, Text, Transact, Xml, XmlElementPrelim, XmlFragment, XmlOut, XmlTextPrelim};
 use yrs::types::ToJson;
+use yrs::types::Attrs;
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 fn value(out: &Out, txn: &impl ReadTxn) -> Result<Value, String> {
     let mut json = String::new();
@@ -244,6 +247,57 @@ pub fn replace_block_text(snapshot: &[u8], request: &[u8]) -> Result<Vec<u8>, St
             let attrs = before.or(after).flatten().map(|a| *a).unwrap_or_default();
             texts[target].0.insert_with_attributes(&mut txn, local_start, inserted, attrs);
         }
+    }
+    drop(txn);
+    let update = doc.transact().encode_state_as_update_v1(&vector);
+    Ok(update)
+}
+
+/// Change one mark on a UTF-16 range without replacing text or unrelated marks.
+pub fn format_block_text(snapshot: &[u8], request: &[u8]) -> Result<Vec<u8>, String> {
+    let input: Value = serde_json::from_slice(request).map_err(|e| e.to_string())?;
+    let bid = input["bid"].as_str().filter(|s| !s.is_empty() && s.len() <= 128).ok_or("Invalid block id")?;
+    let start = input["start"].as_u64().and_then(|v| u32::try_from(v).ok()).ok_or("Invalid start")?;
+    let end = input["end"].as_u64().and_then(|v| u32::try_from(v).ok()).ok_or("Invalid end")?;
+    let mark = input["mark"].as_str().filter(|m| matches!(*m, "bold" | "italic" | "underline" | "strike" | "code")).ok_or("Unsupported mark")?;
+    let enabled = input["enabled"].as_bool().ok_or("Invalid mark state")?;
+    if start >= end { return Err("Empty range".into()); }
+    let doc = super::load(snapshot)?;
+    let fragment = doc.get_or_insert_xml_fragment("default");
+    let vector = doc.transact().state_vector();
+    let mut txn = doc.transact_mut();
+    let mut found = None;
+    for child in fragment.children(&txn) {
+        if let XmlOut::Element(element) = child {
+            if matches!(element.get_attribute(&txn, "bid"), Some(Out::Any(yrs::Any::String(id))) if id.as_ref() == bid) {
+                if found.is_some() { return Err("Duplicate block id".into()); }
+                found = Some(element);
+            }
+        }
+    }
+    let block = found.ok_or("Missing block")?;
+    if !matches!(block.tag().as_ref(), "paragraph" | "heading") { return Err("Unsupported block type".into()); }
+    let mut texts = Vec::new(); let mut whole = String::new(); let mut aliases = HashSet::new();
+    for child in block.children(&txn) {
+        let text = match child { XmlOut::Text(text) => text, _ => return Err("Unsupported inline node".into()) };
+        let mut content = String::new();
+        for segment in text.diff(&txn, |_| ()) {
+            match segment.insert { Out::Any(yrs::Any::String(s)) => content.push_str(&s), _ => return Err("Unsupported embedded object".into()) }
+            if let Some(attrs) = segment.attributes { for key in attrs.keys() { if mark_name(key) == mark { aliases.insert(key.clone()); } } }
+        }
+        whole.push_str(&content); texts.push((text, content.encode_utf16().count() as u32));
+    }
+    let mut offsets = vec![0u32];
+    for c in whole.chars() { offsets.push(offsets.last().unwrap() + c.len_utf16() as u32); }
+    if !offsets.contains(&start) || !offsets.contains(&end) { return Err("Invalid UTF-16 range".into()); }
+    let mut format = Attrs::new();
+    for key in aliases { format.insert(key, yrs::Any::Null); }
+    if enabled { format.insert(mark.into(), yrs::Any::Map(Arc::new(HashMap::new()))); }
+    let mut base = 0u32;
+    for (text, len) in texts {
+        let from = start.saturating_sub(base).min(len); let to = end.saturating_sub(base).min(len);
+        if to > from && !format.is_empty() { text.format(&mut txn, from, to - from, format.clone()); }
+        base += len;
     }
     drop(txn);
     let update = doc.transact().encode_state_as_update_v1(&vector);

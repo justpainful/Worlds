@@ -8,6 +8,15 @@ Yjs update. Unsupported projections fall back to plain text. Android 11 and
 emoji and edits across mark boundaries, and exercise offline save. The shared
 editor still does not offer formatting controls or editing of inline objects.
 
+The native bridge can generate a Yjs formatting update for a selected UTF-16
+range in a top-level paragraph or heading. It supports bold, italic, underline,
+strike and code, preserves unrelated marks and text identity, and rejects
+invalid boundaries and unsupported inline nodes. Desktop Yjs interoperability
+tests cover existing links, mixed scripts, multiple text nodes and a concurrent
+text insertion; Android 11 and 15 emulator tests exercise the JNI bridge. This is
+only a bridge operation: online and offline journaling, rejected-change
+recovery, formatting controls and physical-device tests remain open.
+
 
 CI also runs the Android Yrs examples against the desktop's locked Yjs and
 Tiptap versions. It verifies mixed-script text, UTF-16 boundaries, formatting,
@@ -52,7 +61,7 @@ yet implement creation of other block types or production validation.
 
 The sync library builds Yrs as a native Android library for arm64-v8a, armeabi-v7a, x86 and x86_64. All four are packaged in the debug APK; runtime tests so far use the x86_64 emulator only. The JNI bridge exposes Yjs v1 state vector, state diff and update merge operations. Its serialized snapshots include updates waiting for causal dependencies. The library limits each input to 64 MiB and reports invalid data to Kotlin as an exception.
 
-The bridge can also read the `default` XML fragment into Tiptap-compatible JSON, preserving element attributes, nested structure and text marks. A targeted operation replaces a UTF-16 range in one identified XML text node. Another addresses a top-level paragraph or heading by `bid` and accepts offsets over its direct text children, including empty paragraphs and ranges crossing multiple text nodes. Both return Yjs updates rather than replacing the document, preserve inherited formatting and reject offsets that split a surrogate pair. The session accepts a captured base snapshot for a block edit and merges the resulting update with newer remote state. Embedded text objects, non-text inline children, duplicate or missing block IDs, and unsupported block types are rejected instead of silently discarded. Structural edits and formatting edits remain open; the app UI is not connected to this API.
+The bridge can also read the `default` XML fragment into Tiptap-compatible JSON, preserving element attributes, nested structure and text marks. A targeted operation replaces a UTF-16 range in one identified XML text node. Another addresses a top-level paragraph or heading by `bid` and accepts offsets over its direct text children, including empty paragraphs and ranges crossing multiple text nodes. Both return Yjs updates rather than replacing the document, preserve inherited formatting and reject offsets that split a surrogate pair. The session accepts a captured base snapshot for a block edit and merges the resulting update with newer remote state. Embedded text objects, non-text inline children, duplicate or missing block IDs, and unsupported block types are rejected instead of silently discarded. The app uses block text editing and selected structural operations. Formatting updates are available in the bridge only; the session, offline journal and user interface do not yet expose them.
 
 `Android/core/sync/tools/check-yjs-interop.cjs` exercises Yjs XML edits and deletions, feeds updates in reverse order through Yrs, and reads the result back with Yjs. `check-editor-interop.cjs` compares nested, marked content with the desktop Tiptap converter and checks an Android text update merged with a concurrent Yjs edit. `YrsNativeTest` checks Yjs-generated fixtures through Android JNI, including out-of-order updates and UTF-16 validation. Generate its fixture using `generate-yjs-fixture.cjs` with the desktop Yjs package on `NODE_PATH`.
 

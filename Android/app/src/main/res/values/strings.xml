@@ -649,4 +649,43 @@
     <string name="shared_history_restore_uncertain">The restore may have completed. Check the page and history before trying again.</string>
     <string name="shared_history_restore_sync_error">Earlier edits were not confirmed, so the page was not restored. Reconnect and try again.</string>
     <string name="shared_duplicate_error">Could not duplicate this block. It may have changed or your access may have been removed.</string>
+    <!-- Subsystems, Drawing, Document & Settings additions -->
+    <string name="ai_chat">AI Assistant</string>
+    <string name="automations">Automations</string>
+    <string name="discord">Discord</string>
+    <string name="profile">Profile</string>
+
+    <string name="drawing_layers">Layers</string>
+    <string name="drawing_add_layer">Add layer</string>
+    <string name="drawing_layer_name">Layer name</string>
+    <string name="drawing_layer_opacity">Opacity: %1$d%%</string>
+    <string name="drawing_layer_blend">Blend mode</string>
+    <string name="drawing_layer_visible">Toggle visibility</string>
+    <string name="drawing_delete_layer">Delete layer</string>
+    <string name="drawing_ref_image">Reference image</string>
+    <string name="drawing_add_ref_image">Add reference</string>
+    <string name="drawing_remove_ref_image">Remove reference</string>
+    <string name="drawing_comment">Comment</string>
+    <string name="drawing_add_comment">Add comment</string>
+    <string name="drawing_comments">Comments</string>
+    <string name="drawing_comment_placeholder">Write a note...</string>
+    <string name="drawing_scale_selection">Scale selection</string>
+    <string name="drawing_rotate_selection">Rotate selection</string>
+
+    <string name="document_print">Print / PDF</string>
+    <string name="document_paginated_mode">Paginated</string>
+    <string name="document_continuous_mode">Continuous</string>
+
+    <string name="profile_title">Profile</string>
+    <string name="profile_display_name">Display name</string>
+    <string name="profile_handle">Handle</string>
+    <string name="profile_avatar">Avatar color</string>
+    <string name="profile_saved">Profile updated</string>
+
+    <string name="appearance_glass_quality">Glass effects</string>
+    <string name="appearance_glass_specular">Specular</string>
+    <string name="appearance_glass_standard">Standard</string>
+    <string name="appearance_glass_disabled">Disabled</string>
+    <string name="appearance_animation">Animations</string>
+    <string name="appearance_reduce_motion">Reduce motion</string>
 </resources>

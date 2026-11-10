@@ -25,6 +25,10 @@ class ContentStore(context: Context, name: String = "worlds-content.db") :
     SQLiteOpenHelper(context.applicationContext, name, null, 6) {
     private val appContext = context.applicationContext
     override fun onConfigure(db: SQLiteDatabase) { db.setForeignKeyConstraintsEnabled(true) }
+    override fun onOpen(db: SQLiteDatabase) {
+        super.onOpen(db)
+        Automations.createTables(db)
+    }
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE resources (id TEXT PRIMARY KEY, title TEXT NOT NULL, kind TEXT NOT NULL, parent_id TEXT REFERENCES resources(id), sort_key REAL NOT NULL, metadata TEXT NOT NULL, instructions TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 0, deleted_at INTEGER, trash_group TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
         db.execSQL("CREATE INDEX resources_parent ON resources(parent_id,sort_key,created_at)")
@@ -1066,12 +1070,132 @@ class ContentStore(context: Context, name: String = "worlds-content.db") :
     private fun android.database.Cursor.resource() = Resource(getString(0), getString(1), getString(2), if (isNull(3)) null else getString(3), getDouble(4), getString(5), getString(6), getLong(7), if (isNull(8)) null else getLong(8), getLong(9), getLong(10))
     private inline fun <T> SQLiteDatabase.transaction(block: SQLiteDatabase.() -> T): T { beginTransaction(); try { val result = block(); setTransactionSuccessful(); return result } finally { endTransaction() } }
 
+    fun listAutomations(): List<Automation> = readableDatabase.let { db ->
+        Automations.createTables(db)
+        db.rawQuery("SELECT id, name, enabled, spec, next_run_at, last_run_at, created_at, updated_at, last_status FROM automations ORDER BY updated_at DESC", null).use { cursor ->
+            val list = mutableListOf<Automation>()
+            while (cursor.moveToNext()) {
+                val specJson = JSONObject(cursor.getString(3))
+                list.add(Automation(
+                    id = cursor.getString(0),
+                    name = cursor.getString(1),
+                    enabled = cursor.getInt(2) != 0,
+                    spec = Automations.specFromJson(specJson),
+                    nextRunAt = if (cursor.isNull(4)) null else cursor.getLong(4),
+                    lastRunAt = if (cursor.isNull(5)) null else cursor.getLong(5),
+                    createdAt = cursor.getLong(6),
+                    updatedAt = cursor.getLong(7),
+                    lastStatus = if (cursor.isNull(8)) null else cursor.getString(8)
+                ))
+            }
+            list
+        }
+    }
+
+    fun getAutomation(id: String): Automation? = readableDatabase.let { db ->
+        Automations.createTables(db)
+        db.rawQuery("SELECT id, name, enabled, spec, next_run_at, last_run_at, created_at, updated_at, last_status FROM automations WHERE id=?", arrayOf(id)).use { cursor ->
+            if (cursor.moveToFirst()) {
+                val specJson = JSONObject(cursor.getString(3))
+                Automation(
+                    id = cursor.getString(0),
+                    name = cursor.getString(1),
+                    enabled = cursor.getInt(2) != 0,
+                    spec = Automations.specFromJson(specJson),
+                    nextRunAt = if (cursor.isNull(4)) null else cursor.getLong(4),
+                    lastRunAt = if (cursor.isNull(5)) null else cursor.getLong(5),
+                    createdAt = cursor.getLong(6),
+                    updatedAt = cursor.getLong(7),
+                    lastStatus = if (cursor.isNull(8)) null else cursor.getString(8)
+                )
+            } else null
+        }
+    }
+
+    fun saveAutomation(automation: Automation): Automation = writableDatabase.transaction {
+        Automations.createTables(this)
+        val specJson = Automations.specToJson(automation.spec).toString()
+        val values = ContentValues().apply {
+            put("id", automation.id)
+            put("name", automation.name)
+            put("enabled", if (automation.enabled) 1 else 0)
+            put("spec", specJson)
+            if (automation.nextRunAt != null) put("next_run_at", automation.nextRunAt) else putNull("next_run_at")
+            if (automation.lastRunAt != null) put("last_run_at", automation.lastRunAt) else putNull("last_run_at")
+            put("created_at", automation.createdAt)
+            put("updated_at", automation.updatedAt)
+            if (automation.lastStatus != null) put("last_status", automation.lastStatus) else putNull("last_status")
+        }
+        val count = update("automations", values, "id=?", arrayOf(automation.id))
+        if (count == 0) {
+            insertOrThrow("automations", null, values)
+        }
+        automation
+    }
+
+    fun deleteAutomation(id: String): Boolean = writableDatabase.transaction {
+        Automations.createTables(this)
+        delete("automations", "id=?", arrayOf(id)) > 0
+    }
+
+    fun toggleAutomation(id: String, enabled: Boolean): Automation? = writableDatabase.transaction {
+        Automations.createTables(this)
+        val auto = getAutomation(id) ?: return@transaction null
+        val nextRun = if (enabled) Automations.nextRun(auto.spec.trigger, System.currentTimeMillis()) else null
+        val updated = auto.copy(enabled = enabled, nextRunAt = nextRun, updatedAt = System.currentTimeMillis())
+        saveAutomation(updated)
+    }
+
+    fun listAutomationRuns(automationId: String, limit: Int = 50): List<AutomationRun> = readableDatabase.let { db ->
+        Automations.createTables(db)
+        db.rawQuery("SELECT id, automation_id, status, trigger, scheduled_for, started_at, finished_at, version_id, output, error FROM automation_runs WHERE automation_id=? ORDER BY started_at DESC LIMIT ?", arrayOf(automationId, limit.toString())).use { cursor ->
+            val list = mutableListOf<AutomationRun>()
+            while (cursor.moveToNext()) {
+                list.add(AutomationRun(
+                    id = cursor.getString(0),
+                    automationId = cursor.getString(1),
+                    status = cursor.getString(2),
+                    trigger = cursor.getString(3),
+                    scheduledFor = if (cursor.isNull(4)) null else cursor.getLong(4),
+                    startedAt = if (cursor.isNull(5)) null else cursor.getLong(5),
+                    finishedAt = if (cursor.isNull(6)) null else cursor.getLong(6),
+                    versionId = if (cursor.isNull(7)) null else cursor.getString(7),
+                    output = if (cursor.isNull(8)) null else cursor.getString(8),
+                    error = if (cursor.isNull(9)) null else cursor.getString(9)
+                ))
+            }
+            list
+        }
+    }
+
+    fun recordAutomationRun(run: AutomationRun) = writableDatabase.transaction {
+        Automations.createTables(this)
+        val values = ContentValues().apply {
+            put("id", run.id)
+            put("automation_id", run.automationId)
+            put("status", run.status)
+            put("trigger", run.trigger)
+            if (run.scheduledFor != null) put("scheduled_for", run.scheduledFor) else putNull("scheduled_for")
+            if (run.startedAt != null) put("started_at", run.startedAt) else putNull("started_at")
+            if (run.finishedAt != null) put("finished_at", run.finishedAt) else putNull("finished_at")
+            if (run.versionId != null) put("version_id", run.versionId) else putNull("version_id")
+            if (run.output != null) put("output", run.output) else putNull("output")
+            if (run.error != null) put("error", run.error) else putNull("error")
+        }
+        insertOrThrow("automation_runs", null, values)
+        val autoValues = ContentValues().apply {
+            put("last_run_at", run.finishedAt ?: run.startedAt ?: System.currentTimeMillis())
+            put("last_status", run.status)
+        }
+        update("automations", autoValues, "id=?", arrayOf(run.automationId))
+    }
+
     companion object {
         private const val COLS = "id,title,kind,parent_id,sort_key,metadata,instructions,revision,deleted_at,created_at,updated_at"
         private const val EDIT_SNAPSHOT_INTERVAL_MS = 10 * 60 * 1000L
         private const val MAX_SNAPSHOT_BYTES = 64 * 1024 * 1024
         const val MAX_IMAGE_BYTES = 16 * 1024 * 1024
         const val MAX_GALLERY_MEDIA_BYTES = 512L * 1024 * 1024
-        private val KINDS = setOf("page", "document", "presentation", "project", "gallery", "file", "stream", "drawing", "template")
+        private val KINDS = setOf("page", "document", "presentation", "project", "gallery", "file", "stream", "drawing", "template", "spreadsheet", "task", "event", "inbox", "goal", "subject", "lesson", "assignment", "exam", "requirement")
     }
 }

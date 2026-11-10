@@ -26,6 +26,7 @@ object YrsNative {
     @JvmStatic private external fun editorJsonBytes(snapshot: ByteArray): ByteArray
     @JvmStatic private external fun replaceTextBytes(snapshot: ByteArray, request: ByteArray): ByteArray
     @JvmStatic private external fun replaceBlockTextBytes(snapshot: ByteArray, request: ByteArray): ByteArray
+    @JvmStatic private external fun formatBlockTextBytes(snapshot: ByteArray, request: ByteArray): ByteArray
     @JvmStatic private external fun appendParagraphBytes(snapshot: ByteArray, request: ByteArray): ByteArray
     @JvmStatic private external fun duplicateTextBlockBytes(snapshot: ByteArray, request: ByteArray): ByteArray
     @JvmStatic private external fun blockIdentityBytes(snapshot: ByteArray, bid: ByteArray): ByteArray
@@ -84,6 +85,14 @@ object YrsNative {
         validateText(text)
         val request = JSONObject().put("bid", blockId).put("start", start).put("end", end).put("text", text)
         return replaceBlockTextBytes(snapshot, request.toString().toByteArray(Charsets.UTF_8))
+    }
+
+    /** Produces a formatting update relative to a captured shared document snapshot. */
+    fun formatBlockText(snapshot: ByteArray, blockId: String, start: Int, end: Int, mark: String, enabled: Boolean): ByteArray {
+        require(blockId.isNotBlank() && blockId.length <= 128 && start >= 0 && end > start)
+        require(mark in setOf("bold", "italic", "underline", "strike", "code"))
+        val request = JSONObject().put("bid", blockId).put("start", start).put("end", end).put("mark", mark).put("enabled", enabled)
+        return formatBlockTextBytes(snapshot, request.toString().toByteArray(Charsets.UTF_8))
     }
 
     private fun validateText(text: String) {

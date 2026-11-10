@@ -649,4 +649,43 @@
     <string name="shared_history_restore_uncertain">ربما اكتملت الاستعادة. تحقق من الصفحة والسجل قبل إعادة المحاولة.</string>
     <string name="shared_history_restore_sync_error">لم يتأكد حفظ التعديلات السابقة، لذلك لم تُستعد الصفحة. أعد الاتصال وحاول مجددًا.</string>
     <string name="shared_duplicate_error">تعذر تكرار العنصر. ربما تغيّر أو لم تعد تملك صلاحية التعديل.</string>
+    <!-- Subsystems, Drawing, Document & Settings additions -->
+    <string name="ai_chat">مساعد الذكاء الاصطناعي</string>
+    <string name="automations">الأتمتة</string>
+    <string name="discord">ديسكورد</string>
+    <string name="profile">الملف الشخصي</string>
+
+    <string name="drawing_layers">الطبقات</string>
+    <string name="drawing_add_layer">إضافة طبقة</string>
+    <string name="drawing_layer_name">اسم الطبقة</string>
+    <string name="drawing_layer_opacity">الشفافية: %1$d%%</string>
+    <string name="drawing_layer_blend">وضع المزج</string>
+    <string name="drawing_layer_visible">تبديل الرؤية</string>
+    <string name="drawing_delete_layer">حذف الطبقة</string>
+    <string name="drawing_ref_image">صورة مرجعية</string>
+    <string name="drawing_add_ref_image">إضافة صورة مرجعية</string>
+    <string name="drawing_remove_ref_image">إزالة الصورة المرجعية</string>
+    <string name="drawing_comment">تعليق</string>
+    <string name="drawing_add_comment">إضافة تعليق</string>
+    <string name="drawing_comments">التعليقات</string>
+    <string name="drawing_comment_placeholder">اكتب ملاحظة...</string>
+    <string name="drawing_scale_selection">تحجيم المحدد</string>
+    <string name="drawing_rotate_selection">تدوير المحدد</string>
+
+    <string name="document_print">طباعة / PDF</string>
+    <string name="document_paginated_mode">عرض صفحات</string>
+    <string name="document_continuous_mode">عرض مستمر</string>
+
+    <string name="profile_title">الملف الشخصي</string>
+    <string name="profile_display_name">الاسم المعروض</string>
+    <string name="profile_handle">المعرف</string>
+    <string name="profile_avatar">لون الصورة الرمزية</string>
+    <string name="profile_saved">تم تحديث الملف الشخصي</string>
+
+    <string name="appearance_glass_quality">تأثيرات الزجاج</string>
+    <string name="appearance_glass_specular">انعكاسي</string>
+    <string name="appearance_glass_standard">قياسي</string>
+    <string name="appearance_glass_disabled">معطل</string>
+    <string name="appearance_animation">الحركات</string>
+    <string name="appearance_reduce_motion">تقليل الحركة</string>
 </resources>

@@ -23,9 +23,23 @@ android {
         }
     }
     buildFeatures { compose = true }
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+
+androidComponents {
+    beforeVariants { variantBuilder ->
+        try {
+            variantBuilder::class.java.getMethod("setEnableUnitTest", Boolean::class.javaPrimitiveType).invoke(variantBuilder, true)
+        } catch (_: Throwable) {}
+        try {
+            variantBuilder::class.java.getMethod("setUnitTestEnabled", Boolean::class.javaPrimitiveType).invoke(variantBuilder, true)
+        } catch (_: Throwable) {}
     }
 }
 

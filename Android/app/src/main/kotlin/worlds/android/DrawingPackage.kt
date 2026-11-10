@@ -10,6 +10,7 @@ import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
 import java.util.zip.GZIPInputStream
+import java.util.zip.ZipInputStream
 import org.json.JSONTokener
 import java.util.zip.GZIPOutputStream
 
@@ -134,8 +135,21 @@ internal object DrawingPackage {
     /** Read only packages whose complete scene and history this editor can preserve. */
     fun decode(input: InputStream): String {
         val compressed = input.use { boundedRead(it) }
-        require(compressed.size > header.size && compressed.copyOfRange(0, header.size).contentEquals(header)) { "Invalid drawing package" }
-        val raw = GZIPInputStream(compressed.inputStream(header.size, compressed.size - header.size)).use { boundedRead(it) }
+        val isPkZip = compressed.size >= 4 && compressed[0] == 0x50.toByte() && compressed[1] == 0x4B.toByte() && compressed[2] == 0x03.toByte() && compressed[3] == 0x04.toByte()
+        require(isPkZip || (compressed.size > header.size && compressed.copyOfRange(0, header.size).contentEquals(header))) { "Invalid drawing package" }
+        val raw = if (isPkZip) {
+            var sceneBytes: ByteArray? = null
+            ZipInputStream(compressed.inputStream()).use { zis ->
+                var entry = zis.nextEntry
+                while (entry != null) {
+                    if (entry.name == "scene.json") { sceneBytes = boundedRead(zis); break }
+                    entry = zis.nextEntry
+                }
+            }
+            requireNotNull(sceneBytes) { "Invalid drawing package: missing scene.json" }
+        } else {
+            GZIPInputStream(compressed.inputStream(header.size, compressed.size - header.size)).use { boundedRead(it) }
+        }
         val decoder = Charsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT)
         val json = decoder.decode(ByteBuffer.wrap(raw)).toString()
         val parser = JSONTokener(json)

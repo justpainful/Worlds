@@ -571,14 +571,26 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
         draftToken = UUID.randomUUID().toString()
         mutable.update { it.copy(draft = SharedDraft(block, state.snapshot.copyOf(), block.text.orEmpty()), error = false, draftBackupFailed = false) }
     }
-    fun addTextBlock(kind: String, after: String? = null) = synchronized(draftLock) {
+    fun addTextBlock(kind: String, after: String? = null, initialText: String = "") = synchronized(draftLock) {
         val state = mutable.value
         if (closed.get() || state.draft != null || currentPrincipal == null || state.saving || state.historySaving || state.disconnected || state.access !in setOf("edit", "full") || state.snapshot == null) return
         if (kind !in setOf("paragraph", "heading") || (after != null && state.blocks.count { it.id == after } != 1)) return
         val id = UUID.randomUUID().toString().replace("-", "").take(26)
         draftToken = UUID.randomUUID().toString()
-        val block = SharedBlock(id, "", "", true)
-        mutable.update { it.copy(draft = SharedDraft(block, state.snapshot.copyOf(), "", isNew = true, kind = kind, after = after), error = false, draftBackupFailed = false) }
+        val block = SharedBlock(id, initialText, initialText, true)
+        mutable.update { it.copy(draft = SharedDraft(block, state.snapshot.copyOf(), initialText, isNew = true, kind = kind, after = after), error = false, draftBackupFailed = false) }
+    }
+    fun addList(type: String, after: String? = null) {
+        val initial = when (type) {
+            "taskList" -> "- [ ] New task"
+            "orderedList" -> "1. First item"
+            else -> "- List item"
+        }
+        addTextBlock("paragraph", after, initial)
+    }
+    fun addTable(after: String? = null) {
+        val initial = "| Header 1 | Header 2 |\n| --- | --- |\n| Cell 1 | Cell 2 |"
+        addTextBlock("paragraph", after, initial)
     }
     fun setHeadingLevel(level: Int) { if (level in 1..3) mutable.update { state -> state.copy(draft = state.draft?.let { if (it.isNew && it.kind == "heading") it.copy(level = level) else it }) } }
     fun updateDraft(text: String) = synchronized(draftLock) {
@@ -1115,6 +1127,9 @@ private fun SharedPageTool(icon: Int, label: String, enabled: Boolean, tag: Stri
                                     if (block.canEdit) DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_files) }, text = { Text(stringResource(R.string.duplicate_block)) }, onClick = { menu = false; controller.duplicateBlock(block) }, modifier = Modifier.testTag("shared_duplicate_${block.id}"))
                                     DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_plus) }, text = { Text(stringResource(R.string.insert_paragraph_after)) }, onClick = { menu = false; controller.addTextBlock("paragraph", block.id) })
                                     DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_heading_1) }, text = { Text(stringResource(R.string.insert_heading_after)) }, onClick = { menu = false; controller.addTextBlock("heading", block.id) })
+                                    DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_list) }, text = { Text(stringResource(R.string.bullet_list)) }, onClick = { menu = false; controller.addList("bulletList", block.id) })
+                                    DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_list_todo) }, text = { Text(stringResource(R.string.task_list)) }, onClick = { menu = false; controller.addList("taskList", block.id) })
+                                    DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_table_2) }, text = { Text(stringResource(R.string.add_table)) }, onClick = { menu = false; controller.addTable(block.id) })
                                 }
                             }
                         }
@@ -1122,11 +1137,22 @@ private fun SharedPageTool(icon: Int, label: String, enabled: Boolean, tag: Stri
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
                 if (state.access in setOf("edit", "full") && !state.disconnected && state.snapshot != null) {
-                    TextButton(enabled = !state.saving && !state.historySaving, onClick = { controller.addTextBlock("paragraph") }, modifier = Modifier.testTag("shared_add_paragraph")) {
-                        WorldsActionLabel(R.drawable.ic_plus, stringResource(R.string.add_paragraph))
-                    }
-                    TextButton(enabled = !state.saving && !state.historySaving, onClick = { controller.addTextBlock("heading") }, modifier = Modifier.testTag("shared_add_heading")) {
-                        WorldsActionLabel(R.drawable.ic_heading_1, stringResource(R.string.add_heading))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(enabled = !state.saving && !state.historySaving, onClick = { controller.addTextBlock("paragraph") }, modifier = Modifier.testTag("shared_add_paragraph")) {
+                            WorldsActionLabel(R.drawable.ic_plus, stringResource(R.string.add_paragraph))
+                        }
+                        TextButton(enabled = !state.saving && !state.historySaving, onClick = { controller.addTextBlock("heading") }, modifier = Modifier.testTag("shared_add_heading")) {
+                            WorldsActionLabel(R.drawable.ic_heading_1, stringResource(R.string.add_heading))
+                        }
+                        TextButton(enabled = !state.saving && !state.historySaving, onClick = { controller.addList("bulletList") }) {
+                            WorldsActionLabel(R.drawable.ic_list, stringResource(R.string.bullet_list))
+                        }
+                        TextButton(enabled = !state.saving && !state.historySaving, onClick = { controller.addList("taskList") }) {
+                            WorldsActionLabel(R.drawable.ic_list_todo, stringResource(R.string.task_list))
+                        }
+                        TextButton(enabled = !state.saving && !state.historySaving, onClick = { controller.addTable() }) {
+                            WorldsActionLabel(R.drawable.ic_table_2, stringResource(R.string.add_table))
+                        }
                     }
                 }
             }

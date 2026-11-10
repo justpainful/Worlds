@@ -12,8 +12,7 @@ import worlds.stylus.StrokeGeometry
 import worlds.stylus.StrokeSample
 import java.util.UUID
 import java.io.InputStream
-import kotlin.math.max
-import kotlin.math.min
+import kotlin.math.*
 
 /** Local drawing journal. Only drawings created by this store are currently editable. */
 internal class DrawingStore(context: Context, name: String = "worlds-drawings.db") : SQLiteOpenHelper(context, name, null, 1) {
@@ -48,7 +47,7 @@ internal class DrawingStore(context: Context, name: String = "worlds-drawings.db
         return doc
     }
 
-    fun addStroke(id: String, revision: Int, samples: List<StrokeSample>, brush: StrokeBrush, erase: Boolean, color: String = "#202023"): JSONObject = transaction {
+    fun addStroke(id: String, revision: Int, samples: List<StrokeSample>, brush: StrokeBrush, erase: Boolean, color: String = "#202023", layerId: String? = null): JSONObject = transaction {
         val doc = checked(id, revision)
         require(samples.isNotEmpty())
         val b = brush.normalized()
@@ -57,7 +56,7 @@ internal class DrawingStore(context: Context, name: String = "worlds-drawings.db
         require(COLOR.matches(color)) { "Color is not supported" }
         StrokeGeometry.requireBudget(samples, b)
         val scene = doc.getJSONObject("scene")
-        val node = strokeNode(scene, samples, b, erase, color)
+        val node = strokeNode(scene, samples, b, erase, color, layerId)
         val opId = UUID.randomUUID().toString()
         val order = JSONArray(scene.getJSONArray("nodeOrder").toString()).put(node.getString("id"))
         val changes = JSONArray().put(JSONObject().put("type", "put").put("collection", "nodes").put("id", node.getString("id")).put("value", node))
@@ -139,6 +138,135 @@ internal class DrawingStore(context: Context, name: String = "worlds-drawings.db
         save(id, revision, doc)
     }
 
+    fun addLayer(id: String, revision: Int, name: String): JSONObject = transaction {
+        require(name.isNotBlank())
+        val doc = checked(id, revision); val scene = doc.getJSONObject("scene")
+        val layers = scene.getJSONObject("layers"); val order = scene.getJSONArray("layerOrder")
+        val layerId = UUID.randomUUID().toString()
+        val layer = JSONObject().put("id", layerId).put("name", name.trim()).put("visible", true).put("locked", false).put("positionLocked", false).put("alphaLocked", false).put("opacity", 1.0).put("blend", "source-over").put("parentId", JSONObject.NULL)
+        layers.put(layerId, layer)
+        val nextOrder = JSONArray(order.toString()).put(layerId)
+        val changes = JSONArray().put(JSONObject().put("type", "put").put("collection", "layers").put("id", layerId).put("value", layer))
+            .put(JSONObject().put("type", "order").put("list", "layerOrder").put("ids", nextOrder))
+        val op = JSONObject().put("id", UUID.randomUUID().toString()).put("actor", ACTOR).put("base", revision).put("at", System.currentTimeMillis())
+            .put("label", "Add layer").put("type", "edit").put("changes", changes)
+        doc.getJSONArray("operations").put(op); scene.put("layerOrder", nextOrder)
+        DrawingInk.parse(doc.toString())
+        save(id, revision, doc)
+    }
+
+    fun removeLayer(id: String, revision: Int, layerId: String): JSONObject = transaction {
+        val doc = checked(id, revision); val scene = doc.getJSONObject("scene")
+        val layers = scene.getJSONObject("layers"); val order = scene.getJSONArray("layerOrder")
+        require(order.length() > 1) { "Cannot delete last layer" }
+        require(layers.has(layerId)) { "Layer missing" }
+        val nextOrder = JSONArray()
+        for (i in 0 until order.length()) if (order.getString(i) != layerId) nextOrder.put(order.getString(i))
+        layers.remove(layerId)
+        val changes = JSONArray().put(JSONObject().put("type", "remove").put("collection", "layers").put("id", layerId))
+            .put(JSONObject().put("type", "order").put("list", "layerOrder").put("ids", nextOrder))
+        val op = JSONObject().put("id", UUID.randomUUID().toString()).put("actor", ACTOR).put("base", revision).put("at", System.currentTimeMillis())
+            .put("label", "Remove layer").put("type", "edit").put("changes", changes)
+        doc.getJSONArray("operations").put(op); scene.put("layerOrder", nextOrder)
+        DrawingInk.parse(doc.toString())
+        save(id, revision, doc)
+    }
+
+    fun updateLayer(id: String, revision: Int, layerId: String, visible: Boolean? = null, opacity: Double? = null, blend: String? = null, name: String? = null): JSONObject = transaction {
+        val doc = checked(id, revision); val scene = doc.getJSONObject("scene")
+        val layers = scene.getJSONObject("layers")
+        require(layers.has(layerId)) { "Layer missing" }
+        val layer = layers.getJSONObject(layerId)
+        val fields = JSONObject()
+        if (visible != null) { layer.put("visible", visible); fields.put("visible", visible) }
+        if (opacity != null) { require(opacity in 0.0..1.0); layer.put("opacity", opacity); fields.put("opacity", opacity) }
+        if (blend != null) {
+            require(blend in setOf("source-over", "normal", "multiply", "screen", "overlay", "darken", "lighten"))
+            val normalizedBlend = if (blend == "normal") "source-over" else blend
+            layer.put("blend", normalizedBlend)
+            fields.put("blend", normalizedBlend)
+        }
+        if (name != null) { require(name.isNotBlank()); layer.put("name", name.trim()); fields.put("name", name.trim()) }
+        val changes = JSONArray().put(JSONObject().put("type", "patch").put("collection", "layers").put("id", layerId).put("fields", fields))
+        val op = JSONObject().put("id", UUID.randomUUID().toString()).put("actor", ACTOR).put("base", revision).put("at", System.currentTimeMillis())
+            .put("label", "Update layer").put("type", "edit").put("changes", changes)
+        doc.getJSONArray("operations").put(op)
+        DrawingInk.parse(doc.toString())
+        save(id, revision, doc)
+    }
+
+    fun reorderLayers(id: String, revision: Int, newOrder: List<String>): JSONObject = transaction {
+        val doc = checked(id, revision); val scene = doc.getJSONObject("scene")
+        val order = scene.getJSONArray("layerOrder")
+        require(newOrder.size == order.length() && newOrder.toSet().size == order.length())
+        val nextOrder = JSONArray()
+        newOrder.forEach { nextOrder.put(it) }
+        val changes = JSONArray().put(JSONObject().put("type", "order").put("list", "layerOrder").put("ids", nextOrder))
+        val op = JSONObject().put("id", UUID.randomUUID().toString()).put("actor", ACTOR).put("base", revision).put("at", System.currentTimeMillis())
+            .put("label", "Reorder layers").put("type", "edit").put("changes", changes)
+        doc.getJSONArray("operations").put(op); scene.put("layerOrder", nextOrder)
+        DrawingInk.parse(doc.toString())
+        save(id, revision, doc)
+    }
+
+    fun scaleStrokes(id: String, revision: Int, nodeIds: Set<String>, scaleX: Double, scaleY: Double, originX: Double, originY: Double): JSONObject = transaction {
+        require(scaleX > 0.01 && scaleY > 0.01 && scaleX < 100.0 && scaleY < 100.0)
+        require(nodeIds.isNotEmpty() && nodeIds.size <= 1000)
+        val doc = checked(id, revision); val scene = doc.getJSONObject("scene")
+        val nodes = scene.getJSONObject("nodes"); val changes = JSONArray()
+        nodeIds.sorted().forEach { nodeId ->
+            val node = nodes.getJSONObject(nodeId)
+            require(node.getString("kind") == "stroke" && !node.optBoolean("erase") && !node.optBoolean("locked"))
+            val oldX = node.getDouble("x"); val oldY = node.getDouble("y")
+            val newX = originX + (oldX - originX) * scaleX
+            val newY = originY + (oldY - originY) * scaleY
+            val newW = max(1.0, node.getDouble("w") * scaleX)
+            val newH = max(1.0, node.getDouble("h") * scaleY)
+            val samples = node.getJSONArray("samples")
+            val nextSamples = JSONArray()
+            for (i in 0 until samples.length()) {
+                val pt = samples.getJSONObject(i)
+                nextSamples.put(JSONObject(pt.toString()).put("x", pt.getDouble("x") * scaleX).put("y", pt.getDouble("y") * scaleY))
+            }
+            val fields = JSONObject().put("x", newX).put("y", newY).put("w", newW).put("h", newH).put("samples", nextSamples)
+            node.put("x", newX).put("y", newY).put("w", newW).put("h", newH).put("samples", nextSamples)
+            changes.put(JSONObject().put("type", "patch").put("collection", "nodes").put("id", nodeId).put("fields", fields))
+        }
+        val op = JSONObject().put("id", UUID.randomUUID().toString()).put("actor", ACTOR).put("base", revision).put("at", System.currentTimeMillis())
+            .put("label", "Scale strokes").put("type", "edit").put("changes", changes)
+        doc.getJSONArray("operations").put(op)
+        DrawingInk.parse(doc.toString())
+        save(id, revision, doc)
+    }
+
+    fun rotateStrokes(id: String, revision: Int, nodeIds: Set<String>, angleDeg: Double, originX: Double, originY: Double): JSONObject = transaction {
+        require(angleDeg.isFinite())
+        require(nodeIds.isNotEmpty() && nodeIds.size <= 1000)
+        val doc = checked(id, revision); val scene = doc.getJSONObject("scene")
+        val nodes = scene.getJSONObject("nodes"); val changes = JSONArray()
+        val rad = Math.toRadians(angleDeg); val cosA = cos(rad); val sinA = sin(rad)
+        nodeIds.sorted().forEach { nodeId ->
+            val node = nodes.getJSONObject(nodeId)
+            require(node.getString("kind") == "stroke" && !node.optBoolean("erase") && !node.optBoolean("locked"))
+            val cx = node.getDouble("x") + node.getDouble("w") / 2.0
+            val cy = node.getDouble("y") + node.getDouble("h") / 2.0
+            val dx = cx - originX; val dy = cy - originY
+            val newCx = originX + (dx * cosA - dy * sinA)
+            val newCy = originY + (dx * sinA + dy * cosA)
+            val newX = newCx - node.getDouble("w") / 2.0
+            val newY = newCy - node.getDouble("h") / 2.0
+            val newRot = ((node.optDouble("rotation", 0.0) + angleDeg) % 360.0)
+            val fields = JSONObject().put("x", newX).put("y", newY).put("rotation", newRot)
+            node.put("x", newX).put("y", newY).put("rotation", newRot)
+            changes.put(JSONObject().put("type", "patch").put("collection", "nodes").put("id", nodeId).put("fields", fields))
+        }
+        val op = JSONObject().put("id", UUID.randomUUID().toString()).put("actor", ACTOR).put("base", revision).put("at", System.currentTimeMillis())
+            .put("label", "Rotate strokes").put("type", "edit").put("changes", changes)
+        doc.getJSONArray("operations").put(op)
+        DrawingInk.parse(doc.toString())
+        save(id, revision, doc)
+    }
+
     fun toggle(id: String, revision: Int, redo: Boolean): JSONObject = transaction {
         val doc = checked(id, revision)
         val operations = doc.getJSONArray("operations")
@@ -216,7 +344,7 @@ internal class DrawingStore(context: Context, name: String = "worlds-drawings.db
                 .put("assets", JSONObject()).put("masks", JSONObject()).put("steps", JSONObject()).put("stepOrder", JSONArray())
             return JSONObject().put("revision", 0).put("seed", seed).put("scene", JSONObject(seed.toString())).put("operations", JSONArray())
         }
-        private fun strokeNode(scene: JSONObject, samples: List<StrokeSample>, brush: StrokeBrush, erase: Boolean, color: String): JSONObject {
+        private fun strokeNode(scene: JSONObject, samples: List<StrokeSample>, brush: StrokeBrush, erase: Boolean, color: String, layerId: String? = null): JSONObject {
             val padding = brush.size / 2 + if (brush.kind == "natural-pencil") max(0.3, brush.size * 0.065) + 2 else 2.0
             val left = samples.minOf { it.x } - padding; val top = samples.minOf { it.y } - padding
             val width = max(1.0, samples.maxOf { it.x } - left + padding); val height = max(1.0, samples.maxOf { it.y } - top + padding)
@@ -230,7 +358,8 @@ internal class DrawingStore(context: Context, name: String = "worlds-drawings.db
             if (brush.straightLine) style.put("straightLine", true)
             val points = JSONArray()
             for (p in samples) points.put(JSONObject().put("x", p.x - left).put("y", p.y - top).put("pressure", p.pressure).put("tiltX", p.tiltX).put("tiltY", p.tiltY).put("time", p.time))
-            return JSONObject().put("id", nodeId).put("kind", "stroke").put("name", "stroke").put("layerId", scene.getJSONArray("layerOrder").getString(0))
+            val targetLayer = layerId ?: scene.getJSONArray("layerOrder").getString(0)
+            return JSONObject().put("id", nodeId).put("kind", "stroke").put("name", "stroke").put("layerId", targetLayer)
                 .put("frameId", scene.getString("defaultFrameId")).put("groupId", JSONObject.NULL).put("visible", true).put("locked", false).put("rotation", 0).put("opacity", 1).put("flipX", false).put("flipY", false)
                 .put("paint", paint).put("textStyle", text).put("effects", JSONArray()).put("x", left).put("y", top).put("w", width).put("h", height)
                 .put("brush", style).put("samples", points).put("erase", erase).put("seed", 1)

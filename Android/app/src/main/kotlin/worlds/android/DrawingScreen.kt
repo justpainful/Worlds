@@ -49,6 +49,10 @@ internal data class PendingStroke(val samples: List<StrokeSample>, val brush: St
 private enum class DrawingExport { IMAGE, PROJECT }
 private data class ExportSnapshot(val document: String, val format: DrawingExport)
 
+internal data class DrawingLayerInfo(val id: String, val name: String, val visible: Boolean, val opacity: Double, val blend: String)
+internal data class CanvasRefImage(val id: String = java.util.UUID.randomUUID().toString(), val uri: Uri, val x: Float = 40f, val y: Float = 40f, val scale: Float = 1.0f, val opacity: Float = 0.75f, val visible: Boolean = true)
+internal data class CanvasAnnotation(val id: String = java.util.UUID.randomUUID().toString(), val sceneX: Double, val sceneY: Double, val text: String, val author: String = "Author", val timestamp: Long = System.currentTimeMillis())
+
 private class DrawingModel(app: Application, private val resource: Resource, databaseName: String) : AndroidViewModel(app) {
     private val drawingId = resource.id
     private val content = ContentStore(app, databaseName)
@@ -64,6 +68,93 @@ private class DrawingModel(app: Application, private val resource: Resource, dat
     fun selectStrokes(ids: Set<String>) { selectedStrokes = ids.toSet() }
     var viewport by mutableStateOf(DrawingViewport()); private set
     private var exportSnapshot: ExportSnapshot? = null
+
+    var activeLayerId by mutableStateOf<String?>(null); private set
+    fun selectActiveLayer(id: String?) { activeLayerId = id }
+
+    var referenceImages by mutableStateOf<List<CanvasRefImage>>(emptyList()); private set
+    fun addReferenceImage(uri: Uri) { referenceImages = referenceImages + CanvasRefImage(uri = uri) }
+    fun updateReferenceImage(image: CanvasRefImage) { referenceImages = referenceImages.map { if (it.id == image.id) image else it } }
+    fun removeReferenceImage(id: String) { referenceImages = referenceImages.filterNot { it.id == id } }
+
+    var annotations by mutableStateOf<List<CanvasAnnotation>>(emptyList()); private set
+    fun addAnnotation(x: Double, y: Double, text: String) { annotations = annotations + CanvasAnnotation(sceneX = x, sceneY = y, text = text) }
+    fun removeAnnotation(id: String) { annotations = annotations.filterNot { it.id == id } }
+
+    fun addLayer(name: String) {
+        val doc = document ?: return
+        if (busy || pending != null || gesture) return
+        busy = true; failed = false
+        viewModelScope.launch {
+            val result = runCatching { withContext(Dispatchers.IO) { store.addLayer(drawingId, JSONObject(doc).getInt("revision"), name).toString() } }
+            if (result.isSuccess) {
+                document = result.getOrThrow()
+                val layers = JSONObject(document!!).getJSONObject("scene").getJSONObject("layers")
+                val keys = layers.keys()
+                while (keys.hasNext()) {
+                    val k = keys.next()
+                    if (layers.getJSONObject(k).optString("name") == name) { activeLayerId = k; break }
+                }
+            } else failed = true
+            busy = false
+        }
+    }
+
+    fun removeLayer(layerId: String) {
+        val doc = document ?: return
+        if (busy || pending != null || gesture) return
+        busy = true; failed = false
+        viewModelScope.launch {
+            val result = runCatching { withContext(Dispatchers.IO) { store.removeLayer(drawingId, JSONObject(doc).getInt("revision"), layerId).toString() } }
+            if (result.isSuccess) { document = result.getOrThrow(); if (activeLayerId == layerId) activeLayerId = null } else failed = true
+            busy = false
+        }
+    }
+
+    fun updateLayer(layerId: String, visible: Boolean? = null, opacity: Double? = null, blend: String? = null, name: String? = null) {
+        val doc = document ?: return
+        if (busy || pending != null || gesture) return
+        busy = true; failed = false
+        viewModelScope.launch {
+            val result = runCatching { withContext(Dispatchers.IO) { store.updateLayer(drawingId, JSONObject(doc).getInt("revision"), layerId, visible, opacity, blend, name).toString() } }
+            if (result.isSuccess) document = result.getOrThrow() else failed = true
+            busy = false
+        }
+    }
+
+    fun reorderLayers(order: List<String>) {
+        val doc = document ?: return
+        if (busy || pending != null || gesture) return
+        busy = true; failed = false
+        viewModelScope.launch {
+            val result = runCatching { withContext(Dispatchers.IO) { store.reorderLayers(drawingId, JSONObject(doc).getInt("revision"), order).toString() } }
+            if (result.isSuccess) document = result.getOrThrow() else failed = true
+            busy = false
+        }
+    }
+
+    fun scaleStrokes(ids: Set<String>, scaleX: Double, scaleY: Double, originX: Double, originY: Double) {
+        val doc = document ?: return
+        if (busy || pending != null) return
+        busy = true; failed = false
+        viewModelScope.launch {
+            val result = runCatching { withContext(Dispatchers.IO) { store.scaleStrokes(drawingId, JSONObject(doc).getInt("revision"), ids, scaleX, scaleY, originX, originY).toString() } }
+            if (result.isSuccess) document = result.getOrThrow() else failed = true
+            busy = false
+        }
+    }
+
+    fun rotateStrokes(ids: Set<String>, angleDeg: Double, originX: Double, originY: Double) {
+        val doc = document ?: return
+        if (busy || pending != null) return
+        busy = true; failed = false
+        viewModelScope.launch {
+            val result = runCatching { withContext(Dispatchers.IO) { store.rotateStrokes(drawingId, JSONObject(doc).getInt("revision"), ids, angleDeg, originX, originY).toString() } }
+            if (result.isSuccess) document = result.getOrThrow() else failed = true
+            busy = false
+        }
+    }
+
     fun updateGesture(active: Boolean) { gesture = active }
     fun updateViewport(value: DrawingViewport) { viewport = value }
     fun zoom(factor: Double) { if (!gesture && !busy && pending == null) viewport = viewport.zoomCentered(factor) }
@@ -83,7 +174,7 @@ private class DrawingModel(app: Application, private val resource: Resource, dat
         if (busy) return
         busy = true; failed = false
         viewModelScope.launch {
-            val result = runCatching { withContext(Dispatchers.IO) { store.addStroke(drawingId, JSONObject(doc).getInt("revision"), stroke.samples, stroke.brush, stroke.erase, stroke.color).toString() } }
+            val result = runCatching { withContext(Dispatchers.IO) { store.addStroke(drawingId, JSONObject(doc).getInt("revision"), stroke.samples, stroke.brush, stroke.erase, stroke.color, activeLayerId).toString() } }
             if (result.isSuccess) { document = result.getOrThrow(); pending = null } else failed = true
             busy = false
         }
@@ -195,16 +286,155 @@ private fun historyAvailable(json: String): Pair<Boolean, Boolean> {
     var eraserWidth by rememberSaveable(resource.id) { mutableFloatStateOf(24f) }
     var barrelEraser by rememberSaveable(resource.id) { mutableStateOf(false) }
     var showSettings by rememberSaveable(resource.id) { mutableStateOf(false) }
+    var showLayers by rememberSaveable(resource.id) { mutableStateOf(false) }
+    var showRefImages by rememberSaveable(resource.id) { mutableStateOf(false) }
+    var activeAnnotationDialog by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    var viewingAnnotation by remember { mutableStateOf<CanvasAnnotation?>(null) }
+    val refImagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> uri?.let { model.addReferenceImage(it) } }
     val exportPicker = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("image/png")) { uri -> model.exportTo(uri) }
     val projectPicker = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/x-worlds-drawing")) { uri -> model.exportTo(uri) }
     var showExport by remember { mutableStateOf(false) }
     val drawingFocus = remember(resource.id) { FocusRequester() }
     var drawingHasFocus by remember(resource.id) { mutableStateOf(false) }
     val activity = androidx.activity.compose.LocalActivity.current as? MainActivity
-    DisposableEffect(activity, drawingHasFocus, showSettings, showExport) {
+    DisposableEffect(activity, drawingHasFocus, showSettings, showExport, showLayers, showRefImages) {
         val owner = Any()
-        if (drawingHasFocus && !showSettings && !showExport) activity?.drawingShortcutOwner = owner
+        if (drawingHasFocus && !showSettings && !showExport && !showLayers && !showRefImages) activity?.drawingShortcutOwner = owner
         onDispose { if (activity?.drawingShortcutOwner === owner) activity.drawingShortcutOwner = null }
+    }
+    LaunchedEffect(resource.id) { drawingFocus.requestFocus() }
+    if (showLayers) {
+        val layers = remember(model.document) {
+            val doc = model.document
+            if (doc != null) runCatching {
+                val scene = JSONObject(doc).getJSONObject("scene")
+                val layersObj = scene.getJSONObject("layers")
+                val order = scene.getJSONArray("layerOrder")
+                (0 until order.length()).map { i ->
+                    val lid = order.getString(i)
+                    val l = layersObj.getJSONObject(lid)
+                    DrawingLayerInfo(lid, l.optString("name", "Layer ${i + 1}"), l.optBoolean("visible", true), l.optDouble("opacity", 1.0), l.optString("blend", "source-over"))
+                }
+            }.getOrDefault(emptyList()) else emptyList()
+        }
+        var newLayerName by remember { mutableStateOf("") }
+        var showAddLayerField by remember { mutableStateOf(false) }
+        AlertDialog(onDismissRequest = { showLayers = false },
+            title = { WorldsActionLabel(R.drawable.ic_files, stringResource(R.string.drawing_layers)) },
+            text = {
+                Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    layers.forEachIndexed { index, layer ->
+                        val isActive = (model.activeLayerId == layer.id) || (model.activeLayerId == null && index == 0)
+                        Card(colors = CardDefaults.cardColors(containerColor = if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)), modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(10.dp)) {
+                                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                    RadioButton(selected = isActive, onClick = { model.selectActiveLayer(layer.id) })
+                                    Text(layer.name, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                                    IconButton(onClick = { model.updateLayer(layer.id, visible = !layer.visible) }) {
+                                        WorldsGlyph(if (layer.visible) R.drawable.ic_check else R.drawable.ic_check, tint = if (layer.visible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
+                                    }
+                                    if (layers.size > 1) {
+                                        IconButton(onClick = { model.removeLayer(layer.id) }) {
+                                            WorldsGlyph(R.drawable.ic_trash_2, tint = MaterialTheme.colorScheme.error)
+                                        }
+                                    }
+                                }
+                                Text(stringResource(R.string.drawing_layer_opacity, (layer.opacity * 100).roundToInt()), style = MaterialTheme.typography.bodySmall)
+                                Slider(value = layer.opacity.toFloat(), onValueChange = { model.updateLayer(layer.id, opacity = it.toDouble()) }, valueRange = 0f..1f, steps = 10)
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    if (index > 0) {
+                                        TextButton(onClick = {
+                                            val reordered = layers.map { it.id }.toMutableList()
+                                            java.util.Collections.swap(reordered, index, index - 1)
+                                            model.reorderLayers(reordered)
+                                        }) { WorldsActionLabel(R.drawable.ic_arrow_up, "Up") }
+                                    }
+                                    if (index < layers.lastIndex) {
+                                        TextButton(onClick = {
+                                            val reordered = layers.map { it.id }.toMutableList()
+                                            java.util.Collections.swap(reordered, index, index + 1)
+                                            model.reorderLayers(reordered)
+                                        }) { WorldsActionLabel(R.drawable.ic_arrow_down, "Down") }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (showAddLayerField) {
+                        OutlinedTextField(value = newLayerName, onValueChange = { newLayerName = it.take(40) }, label = { Text(stringResource(R.string.drawing_layer_name)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(enabled = newLayerName.isNotBlank(), onClick = { model.addLayer(newLayerName.trim()); newLayerName = ""; showAddLayerField = false }) { Text(stringResource(R.string.create)) }
+                            TextButton(onClick = { showAddLayerField = false }) { Text(stringResource(R.string.cancel)) }
+                        }
+                    } else {
+                        Button(onClick = { showAddLayerField = true }) { WorldsActionLabel(R.drawable.ic_plus, stringResource(R.string.drawing_add_layer)) }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showLayers = false }) { Text(stringResource(R.string.close)) } }
+        )
+    }
+    if (showRefImages) {
+        AlertDialog(onDismissRequest = { showRefImages = false },
+            title = { WorldsActionLabel(R.drawable.ic_image, stringResource(R.string.drawing_ref_image)) },
+            text = {
+                Column(Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(onClick = { refImagePicker.launch("image/*") }) {
+                        WorldsActionLabel(R.drawable.ic_plus, stringResource(R.string.drawing_add_ref_image))
+                    }
+                    if (model.referenceImages.isEmpty()) {
+                        Text(stringResource(R.string.drawing_local_note), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    model.referenceImages.forEach { ref ->
+                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)), modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(10.dp)) {
+                                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                    Text("Ref Image", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                                    Switch(checked = ref.visible, onCheckedChange = { model.updateReferenceImage(ref.copy(visible = it)) })
+                                    IconButton(onClick = { model.removeReferenceImage(ref.id) }) {
+                                        WorldsGlyph(R.drawable.ic_trash_2, tint = MaterialTheme.colorScheme.error)
+                                    }
+                                }
+                                Text("Opacity: ${(ref.opacity * 100).roundToInt()}%", style = MaterialTheme.typography.bodySmall)
+                                Slider(value = ref.opacity, onValueChange = { model.updateReferenceImage(ref.copy(opacity = it)) }, valueRange = 0.1f..1.0f)
+                                Text("Scale: ${((ref.scale * 100).roundToInt()) / 100f}x", style = MaterialTheme.typography.bodySmall)
+                                Slider(value = ref.scale, onValueChange = { model.updateReferenceImage(ref.copy(scale = it)) }, valueRange = 0.2f..3.0f)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showRefImages = false }) { Text(stringResource(R.string.close)) } }
+        )
+    }
+    activeAnnotationDialog?.let { (x, y) ->
+        var noteText by remember { mutableStateOf("") }
+        AlertDialog(onDismissRequest = { activeAnnotationDialog = null },
+            title = { WorldsActionLabel(R.drawable.ic_message_circle, stringResource(R.string.drawing_add_comment)) },
+            text = {
+                OutlinedTextField(value = noteText, onValueChange = { noteText = it.take(500) }, placeholder = { Text(stringResource(R.string.drawing_comment_placeholder)) }, maxLines = 4, modifier = Modifier.fillMaxWidth())
+            },
+            confirmButton = {
+                Button(enabled = noteText.isNotBlank(), onClick = {
+                    model.addAnnotation(x, y, noteText.trim())
+                    activeAnnotationDialog = null
+                }) { Text(stringResource(R.string.save)) }
+            },
+            dismissButton = { TextButton(onClick = { activeAnnotationDialog = null }) { Text(stringResource(R.string.cancel)) } }
+        )
+    }
+    viewingAnnotation?.let { ann ->
+        AlertDialog(onDismissRequest = { viewingAnnotation = null },
+            title = { WorldsActionLabel(R.drawable.ic_message_circle, stringResource(R.string.drawing_comment)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(ann.author, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    Text(ann.text, style = MaterialTheme.typography.bodyLarge)
+                }
+            },
+            confirmButton = { TextButton(onClick = { viewingAnnotation = null }) { Text(stringResource(R.string.close)) } },
+            dismissButton = { TextButton(onClick = { model.removeAnnotation(ann.id); viewingAnnotation = null }) { Text(stringResource(R.string.remove), color = MaterialTheme.colorScheme.error) } }
+        )
     }
     LaunchedEffect(resource.id) { drawingFocus.requestFocus() }
     if (showSettings) {
@@ -296,15 +526,17 @@ private fun historyAvailable(json: String): Pair<Boolean, Boolean> {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
           if (maxWidth < 560.dp) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                listOf(Triple("pen", R.drawable.ic_pen_line, R.string.drawing_pen), Triple("pencil", R.drawable.ic_pencil, R.string.drawing_pencil), Triple("highlighter", R.drawable.ic_highlighter, R.string.drawing_highlighter), Triple("eraser", R.drawable.ic_eraser, R.string.drawing_eraser), Triple("select", R.drawable.ic_maximize, R.string.drawing_select)).forEach { (value, icon, labelId) ->
+                listOf(Triple("pen", R.drawable.ic_pen_line, R.string.drawing_pen), Triple("pencil", R.drawable.ic_pencil, R.string.drawing_pencil), Triple("highlighter", R.drawable.ic_highlighter, R.string.drawing_highlighter), Triple("eraser", R.drawable.ic_eraser, R.string.drawing_eraser), Triple("select", R.drawable.ic_maximize, R.string.drawing_select), Triple("comment", R.drawable.ic_message_circle, R.string.drawing_comment)).forEach { (value, icon, labelId) ->
                     val label = stringResource(labelId)
                     val chosen = tool == value
                     IconButton(enabled = !model.gesture && !model.busy, onClick = { tool = value; model.selectStroke(null) }, modifier = Modifier.semantics { contentDescription = label; selected = chosen }.background(if (chosen) MaterialTheme.colorScheme.primary.copy(alpha = 0.20f) else androidx.compose.ui.graphics.Color.Transparent, CircleShape)) {
                         WorldsGlyph(icon, tint = MaterialTheme.colorScheme.onSurface)
                     }
                 }
-                Text(stringResource(when (tool) { "pencil" -> R.string.drawing_pencil; "highlighter" -> R.string.drawing_highlighter; "eraser" -> R.string.drawing_eraser; "select" -> R.string.drawing_select; else -> R.string.drawing_pen }), modifier = Modifier.weight(1f).padding(start = 8.dp), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onBackground)
+                Text(stringResource(when (tool) { "pencil" -> R.string.drawing_pencil; "highlighter" -> R.string.drawing_highlighter; "eraser" -> R.string.drawing_eraser; "select" -> R.string.drawing_select; "comment" -> R.string.drawing_comment; else -> R.string.drawing_pen }), modifier = Modifier.weight(1f).padding(start = 8.dp), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onBackground)
                 val settingsLabel = stringResource(R.string.drawing_settings)
+                IconButton(enabled = !model.gesture && !model.busy && model.pending == null, onClick = { showLayers = true }) { WorldsGlyph(R.drawable.ic_files, tint = MaterialTheme.colorScheme.onBackground) }
+                IconButton(enabled = !model.gesture && !model.busy && model.pending == null, onClick = { showRefImages = true }) { WorldsGlyph(R.drawable.ic_image, tint = MaterialTheme.colorScheme.onBackground) }
                 IconButton(enabled = !model.gesture && !model.busy && model.pending == null, onClick = { showSettings = true }, modifier = Modifier.semantics { contentDescription = settingsLabel }) { WorldsGlyph(R.drawable.ic_sliders_horizontal, tint = MaterialTheme.colorScheme.onBackground) }
             }
           } else FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -314,6 +546,9 @@ private fun historyAvailable(json: String): Pair<Boolean, Boolean> {
             FilterChip(selected = tool == "highlighter", enabled = !model.gesture && !model.busy, onClick = { tool = "highlighter" }, colors = chipColors, leadingIcon = { WorldsGlyph(R.drawable.ic_highlighter, tint = if (tool == "highlighter") MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant) }, label = { Text(stringResource(R.string.drawing_highlighter)) })
             FilterChip(selected = erase, enabled = !model.gesture && !model.busy, onClick = { tool = "eraser" }, colors = chipColors, leadingIcon = { WorldsGlyph(R.drawable.ic_eraser, tint = if (erase) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant) }, label = { Text(stringResource(R.string.drawing_eraser)) })
             FilterChip(selected = tool == "select", enabled = !model.gesture && !model.busy, onClick = { tool = "select"; model.selectStroke(null) }, colors = chipColors, leadingIcon = { WorldsGlyph(R.drawable.ic_maximize) }, label = { Text(stringResource(R.string.drawing_select)) })
+            FilterChip(selected = tool == "comment", enabled = !model.gesture && !model.busy, onClick = { tool = "comment"; model.selectStroke(null) }, colors = chipColors, leadingIcon = { WorldsGlyph(R.drawable.ic_message_circle) }, label = { Text(stringResource(R.string.drawing_comment)) })
+            TextButton(enabled = !model.gesture && !model.busy && model.pending == null, onClick = { showLayers = true }) { WorldsActionLabel(R.drawable.ic_files, stringResource(R.string.drawing_layers)) }
+            TextButton(enabled = !model.gesture && !model.busy && model.pending == null, onClick = { showRefImages = true }) { WorldsActionLabel(R.drawable.ic_image, stringResource(R.string.drawing_ref_image)) }
             TextButton(enabled = !model.gesture && !model.busy && model.pending == null, onClick = { showSettings = true }) { WorldsActionLabel(R.drawable.ic_sliders_horizontal, stringResource(R.string.drawing_settings)) }
           }
         }
@@ -361,7 +596,7 @@ private fun historyAvailable(json: String): Pair<Boolean, Boolean> {
         if (current != null) {
             val canvasDescription = stringResource(R.string.drawing_canvas)
             AndroidView(factory = { context -> InkView(context) },
-                update = { view -> view.document = current; view.selectionMode = tool == "select"; view.multiSelect = multiSelect; view.selectedGroup = model.selectedStrokes; view.selectionGroupChanged = model::selectStrokes; view.moveStrokes = model::moveStrokes; view.erase = erase; view.barrelEraser = barrelEraser; view.highlighter = tool == "highlighter"; view.pencil = tool == "pencil"; view.inkColor = if (tool == "highlighter") highlightColor else inkColor; view.penWidth = penWidth.toDouble(); view.pencilWidth = pencilWidth.toDouble(); view.highlightWidth = highlightWidth.toDouble(); view.eraserWidth = eraserWidth.toDouble(); view.canDraw = !model.busy && model.pending == null; view.pending = model.pending; view.complete = model::commit; view.gestureChanged = model::updateGesture; view.viewport = model.viewport; view.viewportChanged = model::updateViewport; view.invalidate() },
+                update = { view -> view.document = current; view.selectionMode = tool == "select"; view.multiSelect = multiSelect; view.selectedGroup = model.selectedStrokes; view.selectionGroupChanged = model::selectStrokes; view.moveStrokes = model::moveStrokes; view.scaleStrokes = model::scaleStrokes; view.rotateStrokes = model::rotateStrokes; view.referenceImages = model.referenceImages; view.annotations = model.annotations; view.commentMode = tool == "comment"; view.onAnnotationClick = { viewingAnnotation = it }; view.onCanvasTappedForAnnotation = { x, y -> activeAnnotationDialog = x to y }; view.erase = erase; view.barrelEraser = barrelEraser; view.highlighter = tool == "highlighter"; view.pencil = tool == "pencil"; view.inkColor = if (tool == "highlighter") highlightColor else inkColor; view.penWidth = penWidth.toDouble(); view.pencilWidth = pencilWidth.toDouble(); view.highlightWidth = highlightWidth.toDouble(); view.eraserWidth = eraserWidth.toDouble(); view.canDraw = !model.busy && model.pending == null; view.pending = model.pending; view.complete = model::commit; view.gestureChanged = model::updateGesture; view.viewport = model.viewport; view.viewportChanged = model::updateViewport; view.invalidate() },
                 modifier = Modifier.fillMaxWidth().weight(1f).semantics { contentDescription = canvasDescription })
         } else if (model.busy) CircularProgressIndicator()
     }
@@ -378,6 +613,23 @@ internal class InkView(context: Context) : View(context) {
     var multiSelect = false
     var moveStroke: (String, Double, Double) -> Unit = { _, _, _ -> }
     var moveStrokes: ((Set<String>, Double, Double) -> Unit)? = null
+    var scaleStrokes: ((Set<String>, Double, Double, Double, Double) -> Unit)? = null
+    var rotateStrokes: ((Set<String>, Double, Double, Double) -> Unit)? = null
+    var referenceImages: List<CanvasRefImage> = emptyList()
+        set(value) { field = value; invalidate() }
+    var annotations: List<CanvasAnnotation> = emptyList()
+        set(value) { field = value; invalidate() }
+    var onAnnotationClick: ((CanvasAnnotation) -> Unit)? = null
+    var onCanvasTappedForAnnotation: ((Double, Double) -> Unit)? = null
+    var commentMode = false
+    private val imageBitmaps = mutableMapOf<Uri, android.graphics.Bitmap?>()
+    private var activeHandle: Int? = null
+    private var transformOriginX = 0.0
+    private var transformOriginY = 0.0
+    private var transformStartX = 0.0
+    private var transformStartY = 0.0
+    private var transformCurrentX = 0.0
+    private var transformCurrentY = 0.0
     var selectionChanged: (String?) -> Unit = {}
     var selectionGroupChanged: (Set<String>) -> Unit = {}
     var selected: String?
@@ -504,10 +756,19 @@ internal class InkView(context: Context) : View(context) {
         canvas.drawColor(android.graphics.Color.rgb(224, 224, 224))
         canvas.save(); canvas.translate(left.toFloat(), top.toFloat()); canvas.scale(scale.toFloat(), scale.toFloat())
         canvas.clipRect(0f, 0f, 1280f, 720f)
+        referenceImages.filter { it.visible }.forEach { img ->
+            val bmp = imageBitmaps.getOrPut(img.uri) {
+                runCatching { context.contentResolver.openInputStream(img.uri)?.use { android.graphics.BitmapFactory.decodeStream(it) } }.getOrNull()
+            }
+            if (bmp != null) {
+                val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { alpha = (img.opacity.coerceIn(0f, 1f) * 255).roundToInt() }
+                canvas.save(); canvas.translate(img.x, img.y); canvas.scale(img.scale, img.scale); canvas.drawBitmap(bmp, 0f, 0f, p); canvas.restore()
+            }
+        }
         val overlays = mutableListOf<InkStroke>()
         pending?.let { overlays.add(InkStroke(it.samples, it.brush, it.erase, android.graphics.Color.parseColor(it.color))) }
         active.forEach { (id, points) -> overlays.add(InkStroke(points, activeBrush.getValue(id), activeErase[id] == true, android.graphics.Color.parseColor(activeColor.getValue(id)))) }
-        val draggingSelection = selectionMode && selectionPointer != null
+        val draggingSelection = selectionMode && selectionPointer != null && activeHandle == null
         val shown = if (draggingSelection) saved.map { stroke ->
             if (stroke.id in selectedIds) stroke.copy(samples = stroke.samples.map { it.copy(x = it.x + selectionDx, y = it.y + selectionDy) }) else stroke
         } else saved
@@ -517,10 +778,41 @@ internal class InkView(context: Context) : View(context) {
             val picture = stablePicture
             if (picture != null) DrawingInk.drawCached(canvas, picture, overlays) else DrawingInk.draw(canvas, saved + overlays)
         }
-        if (selectionMode) shown.filter { it.id in selectedIds }.forEach { stroke ->
-            val pad = stroke.brush.size / 2 + 6.0 / scale
-            val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.rgb(169, 112, 50); style = android.graphics.Paint.Style.STROKE; strokeWidth = (2.0 / scale).toFloat(); pathEffect = android.graphics.DashPathEffect(floatArrayOf((6.0 / scale).toFloat(), (4.0 / scale).toFloat()), 0f) }
-            canvas.drawRect((stroke.samples.minOf { it.x } - pad).toFloat(), (stroke.samples.minOf { it.y } - pad).toFloat(), (stroke.samples.maxOf { it.x } + pad).toFloat(), (stroke.samples.maxOf { it.y } + pad).toFloat(), paint)
+        if (selectionMode && selectedIds.isNotEmpty()) {
+            val selectedList = shown.filter { it.id in selectedIds }
+            val allPts = selectedList.flatMap { it.samples }
+            if (allPts.isNotEmpty()) {
+                val minX = allPts.minOf { it.x }; val minY = allPts.minOf { it.y }
+                val maxX = allPts.maxOf { it.x }; val maxY = allPts.maxOf { it.y }
+                val pad = 10.0 / scale
+                val boxL = (minX - pad).toFloat(); val boxT = (minY - pad).toFloat()
+                val boxR = (maxX + pad).toFloat(); val boxB = (maxY + pad).toFloat()
+                val cx = (boxL + boxR) / 2f; val cy = (boxT + boxB) / 2f
+                val boxPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                    color = android.graphics.Color.rgb(169, 112, 50); style = android.graphics.Paint.Style.STROKE
+                    strokeWidth = (2.0 / scale).toFloat(); pathEffect = android.graphics.DashPathEffect(floatArrayOf((6.0 / scale).toFloat(), (4.0 / scale).toFloat()), 0f)
+                }
+                canvas.drawRect(boxL, boxT, boxR, boxB, boxPaint)
+                val fillP = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.WHITE; style = android.graphics.Paint.Style.FILL }
+                val strokeP = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.rgb(169, 112, 50); style = android.graphics.Paint.Style.STROKE; strokeWidth = (2.0 / scale).toFloat() }
+                val hs = (6.0 / scale).toFloat()
+                listOf(boxL to boxT, cx to boxT, boxR to boxT, boxR to cy, boxR to boxB, cx to boxB, boxL to boxB, boxL to cy).forEach { (hx, hy) ->
+                    canvas.drawRect(hx - hs, hy - hs, hx + hs, hy + hs, fillP)
+                    canvas.drawRect(hx - hs, hy - hs, hx + hs, hy + hs, strokeP)
+                }
+                val rotStem = (24.0 / scale).toFloat(); val rotY = boxT - rotStem
+                canvas.drawLine(cx, boxT, cx, rotY, strokeP)
+                canvas.drawCircle(cx, rotY, hs, fillP); canvas.drawCircle(cx, rotY, hs, strokeP)
+            }
+        }
+        annotations.forEach { ann ->
+            val pinP = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.rgb(230, 126, 34); style = android.graphics.Paint.Style.FILL }
+            val borderP = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.WHITE; style = android.graphics.Paint.Style.STROKE; strokeWidth = (2.0 / scale).toFloat() }
+            val r = (12.0 / scale).toFloat()
+            canvas.drawCircle(ann.sceneX.toFloat(), ann.sceneY.toFloat(), r, pinP)
+            canvas.drawCircle(ann.sceneX.toFloat(), ann.sceneY.toFloat(), r, borderP)
+            pinP.color = android.graphics.Color.WHITE
+            canvas.drawCircle(ann.sceneX.toFloat(), ann.sceneY.toFloat(), (4.0 / scale).toFloat(), pinP)
         }
         canvas.restore(); canvas.restore()
         if (!selectionMode) hoverPosition?.let { (x, y) ->
@@ -562,6 +854,36 @@ internal class InkView(context: Context) : View(context) {
         val action = event.actionMasked
         if (action == MotionEvent.ACTION_DOWN && canDraw) {
             val frame = transform(); val x = frame.sceneX(event.x.toDouble()); val y = frame.sceneY(event.y.toDouble())
+            val hitAnn = annotations.firstOrNull { hypot(it.sceneX - x, it.sceneY - y) <= 24.0 / frame.scale }
+            if (hitAnn != null) { onAnnotationClick?.invoke(hitAnn); return true }
+            if (selectedIds.isNotEmpty()) {
+                val selectedList = saved.filter { it.id in selectedIds }
+                val allPts = selectedList.flatMap { it.samples }
+                if (allPts.isNotEmpty()) {
+                    val pad = 10.0 / frame.scale
+                    val boxL = allPts.minOf { it.x } - pad; val boxT = allPts.minOf { it.y } - pad
+                    val boxR = allPts.maxOf { it.x } + pad; val boxB = allPts.maxOf { it.y } + pad
+                    val cx = (boxL + boxR) / 2.0; val cy = (boxT + boxB) / 2.0
+                    val rotY = boxT - 24.0 / frame.scale
+                    val hitRadius = 20.0 / frame.scale
+                    if (hypot(cx - x, rotY - y) <= hitRadius) {
+                        activeHandle = 8; transformOriginX = cx; transformOriginY = cy
+                        transformStartX = x; transformStartY = y; transformCurrentX = x; transformCurrentY = y
+                        selectionPointer = event.getPointerId(0); gestureChanged(true); invalidate(); return true
+                    }
+                    val handleCoords = listOf(boxL to boxT, cx to boxT, boxR to boxT, boxR to cy, boxR to boxB, cx to boxB, boxL to boxB, boxL to cy)
+                    val opposites = listOf(boxR to boxB, cx to boxB, boxL to boxB, boxL to cy, boxL to boxT, cx to boxT, boxR to boxT, boxR to cy)
+                    var handleHit = -1
+                    handleCoords.forEachIndexed { i, (hx, hy) -> if (hypot(hx - x, hy - y) <= hitRadius && handleHit == -1) handleHit = i }
+                    if (handleHit >= 0) {
+                        activeHandle = handleHit
+                        val (ox, oy) = opposites[handleHit]
+                        transformOriginX = ox; transformOriginY = oy
+                        transformStartX = x; transformStartY = y; transformCurrentX = x; transformCurrentY = y
+                        selectionPointer = event.getPointerId(0); gestureChanged(true); invalidate(); return true
+                    }
+                }
+            }
             val hit = if (x in 0.0..1280.0 && y in 0.0..720.0) hitStroke(x, y, 12.0 / frame.scale)?.id else null
             beginSelection(hit)
             selectionPointer = if (hit != null) event.getPointerId(0) else null
@@ -602,12 +924,45 @@ internal class InkView(context: Context) : View(context) {
                 nav.x = x; nav.y = y; nav.span = span; viewportChanged(viewport); invalidate()
             }
         }
+        if (action == MotionEvent.ACTION_MOVE && activeHandle != null) {
+            selectionPointer?.let { pointer ->
+                val i = event.findPointerIndex(pointer)
+                if (i >= 0) {
+                    val frame = transform()
+                    transformCurrentX = frame.sceneX(event.getX(i).toDouble())
+                    transformCurrentY = frame.sceneY(event.getY(i).toDouble())
+                    invalidate()
+                }
+            }
+            return true
+        }
         if (action == MotionEvent.ACTION_MOVE) selectionPointer?.let { pointer ->
             val i = event.findPointerIndex(pointer)
             if (i >= 0) updateSelection(event.getX(i).toDouble(), event.getY(i).toDouble())
         }
         if (action == MotionEvent.ACTION_POINTER_UP || action == MotionEvent.ACTION_UP) {
             val released = event.getPointerId(index)
+            if (released == selectionPointer && activeHandle != null) {
+                val h = activeHandle!!; activeHandle = null; selectionPointer = null
+                val frame = transform()
+                val endX = frame.sceneX(event.getX(index).toDouble())
+                val endY = frame.sceneY(event.getY(index).toDouble())
+                if (h == 8) {
+                    val startAngle = Math.toDegrees(atan2(transformStartY - transformOriginY, transformStartX - transformOriginX))
+                    val endAngle = Math.toDegrees(atan2(endY - transformOriginY, endX - transformOriginX))
+                    val angleDeg = endAngle - startAngle
+                    if (abs(angleDeg) >= 1.0) rotateStrokes?.invoke(selectedIds, angleDeg, transformOriginX, transformOriginY)
+                } else {
+                    val startDistX = abs(transformStartX - transformOriginX).coerceAtLeast(1.0)
+                    val startDistY = abs(transformStartY - transformOriginY).coerceAtLeast(1.0)
+                    val endDistX = abs(endX - transformOriginX).coerceAtLeast(1.0)
+                    val endDistY = abs(endY - transformOriginY).coerceAtLeast(1.0)
+                    val sx = (endDistX / startDistX).coerceIn(0.1, 10.0)
+                    val sy = (endDistY / startDistY).coerceIn(0.1, 10.0)
+                    if (abs(sx - 1.0) >= 0.03 || abs(sy - 1.0) >= 0.03) scaleStrokes?.invoke(selectedIds, sx, sy, transformOriginX, transformOriginY)
+                }
+                gestureChanged(navigation != null); invalidate(); return true
+            }
             if (released == selectionPointer) {
                 updateSelection(event.getX(index).toDouble(), event.getY(index).toDouble())
                 val ids = selectedIds; val frame = transform()
@@ -630,12 +985,21 @@ internal class InkView(context: Context) : View(context) {
             gestureChanged(selectionPointer != null || navigation != null)
         }
         if (action == MotionEvent.ACTION_CANCEL) {
+            activeHandle = null
             selectionPointer = null; selectionDx = 0.0; selectionDy = 0.0; toggleOnTap = null
             finishNavigation(true); gestureChanged(false); invalidate()
         }
         return true
     }
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (commentMode) {
+            if (event.actionMasked == MotionEvent.ACTION_UP) {
+                val frame = transform()
+                val x = frame.sceneX(event.x.toDouble()); val y = frame.sceneY(event.y.toDouble())
+                if (x in 0.0..1280.0 && y in 0.0..720.0) onCanvasTappedForAnnotation?.invoke(x, y)
+            }
+            return true
+        }
         if (selectionMode) return selectionTouch(event)
         if (!canDraw && active.isEmpty() && navigation == null) return true
         val index = event.actionIndex; val tool = event.getToolType(index); val pen = tool == MotionEvent.TOOL_TYPE_STYLUS || tool == MotionEvent.TOOL_TYPE_ERASER

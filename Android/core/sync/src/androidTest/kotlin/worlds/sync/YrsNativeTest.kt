@@ -10,6 +10,24 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class YrsNativeTest {
+    @Test fun formatSharedRangePreservesTextAndOtherMarks() {
+        val context = InstrumentationRegistry.getInstrumentation().context
+        val fixture = JSONObject(context.assets.open("yjs-fixture.json").bufferedReader().use { it.readText() })
+        val base = Base64.decode(fixture.getString("editorSnapshot"), Base64.DEFAULT)
+        val update = YrsNative.formatBlockText(base, "block1", 1, 3, "italic", true)
+        val merged = YrsNative.merge(base, update)
+        val content = JSONObject(YrsNative.editorJson(merged)).getJSONArray("content").getJSONObject(0).getJSONArray("content")
+        assertEquals("A😀B", (0 until content.length()).joinToString("") { content.getJSONObject(it).getString("text") })
+        val emoji = (0 until content.length()).map { content.getJSONObject(it) }.single { it.getString("text") == "😀" }
+        val marks = emoji.getJSONArray("marks")
+        assertEquals(setOf("bold", "italic", "link"), (0 until marks.length()).map { marks.getJSONObject(it).getString("type") }.toSet())
+        val removed = YrsNative.merge(merged, YrsNative.formatBlockText(merged, "block1", 1, 3, "bold", false))
+        val runs = JSONObject(YrsNative.editorJson(removed)).getJSONArray("content").getJSONObject(0).getJSONArray("content")
+        val selected = (0 until runs.length()).map { runs.getJSONObject(it) }.single { it.getString("text") == "😀" }.getJSONArray("marks")
+        assertEquals(setOf("italic", "link"), (0 until selected.length()).map { selected.getJSONObject(it).getString("type") }.toSet())
+        assertThrows(IllegalArgumentException::class.java) { YrsNative.formatBlockText(base, "block1", 2, 3, "bold", true) }
+        assertThrows(IllegalArgumentException::class.java) { YrsNative.formatBlockText(base, "block1", 1, 3, "link", true) }
+    }
     @Test fun yjsUpdatesConvergeEvenWhenCausalDependencyArrivesLate() {
         val context = InstrumentationRegistry.getInstrumentation().context
         val fixture = JSONObject(context.assets.open("yjs-fixture.json").bufferedReader().use { it.readText() })

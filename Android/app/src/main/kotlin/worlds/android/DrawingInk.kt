@@ -24,7 +24,7 @@ import worlds.stylus.StrokeGeometry
 import worlds.stylus.StrokeSample
 import java.io.ByteArrayOutputStream
 
-internal data class InkStroke(val samples: List<StrokeSample>, val brush: StrokeBrush, val erase: Boolean, val color: Int = Color.rgb(32, 32, 35), val id: String = "")
+internal data class InkStroke(val samples: List<StrokeSample>, val brush: StrokeBrush, val erase: Boolean, val color: Int = Color.rgb(32, 32, 35), val id: String = "", val layerId: String = "", val visible: Boolean = true, val layerOpacity: Double = 1.0)
 
 /** Rendering for the stroke-only local format. Unknown features fail closed. */
 internal object DrawingInk {
@@ -37,9 +37,17 @@ internal object DrawingInk {
         val frames = scene.getJSONObject("frames"); val frameId = scene.getString("defaultFrameId")
         val frame = frames.getJSONObject(frameId)
         require(frames.length() == 1 && frame.getInt("w") == WIDTH && frame.getInt("h") == HEIGHT && frame.getDouble("x") == 0.0 && frame.getDouble("y") == 0.0 && frame.getString("background") == "#ffffff" && frame.getBoolean("clip"))
-        require(scene.getJSONObject("layers").length() == 1 && scene.getJSONArray("layerOrder").length() == 1)
-        val layerId = scene.getJSONArray("layerOrder").getString(0); val layer = scene.getJSONObject("layers").getJSONObject(layerId)
-        require(layer.getBoolean("visible") && layer.getDouble("opacity") == 1.0 && layer.getString("blend") == "source-over" && layer.isNull("parentId"))
+        val layers = scene.getJSONObject("layers"); val layerOrder = scene.getJSONArray("layerOrder")
+        require(layers.length() >= 1 && layerOrder.length() >= 1)
+        val validLayers = (0 until layerOrder.length()).map { layerOrder.getString(it) }.toSet()
+        require(validLayers.size == layerOrder.length())
+        val layerMap = validLayers.associateWith { lId ->
+            val l = layers.getJSONObject(lId)
+            require(l.getString("blend") in setOf("source-over", "normal", "multiply", "screen", "overlay", "darken", "lighten"))
+            val op = l.optDouble("opacity", 1.0)
+            require(op in 0.0..1.0)
+            l
+        }
         require(scene.getJSONObject("assets").length() == 0 && scene.getJSONObject("masks").length() == 0 && scene.getJSONObject("steps").length() == 0)
         val nodes = scene.getJSONObject("nodes"); val order = scene.getJSONArray("nodeOrder")
         require(order.length() == nodes.length())
@@ -47,8 +55,13 @@ internal object DrawingInk {
         return (0 until order.length()).map { index ->
             val id = order.getString(index); require(seen.add(id))
             val node = nodes.getJSONObject(id)
-            require(node.getString("id") == id && node.getString("kind") == "stroke" && node.getString("layerId") == layerId && node.getString("frameId") == frameId)
-            require(node.getBoolean("visible") && node.getDouble("rotation") == 0.0 && node.getDouble("opacity") == 1.0 && !node.getBoolean("flipX") && !node.getBoolean("flipY"))
+            val nodeLayerId = node.getString("layerId")
+            require(node.getString("id") == id && node.getString("kind") == "stroke" && nodeLayerId in validLayers && node.getString("frameId") == frameId)
+            val layerObj = layerMap[nodeLayerId]!!
+            val layerVisible = layerObj.optBoolean("visible", true)
+            val layerOpacity = layerObj.optDouble("opacity", 1.0)
+            val strokeVisible = node.optBoolean("visible", true) && layerVisible
+            require(node.getDouble("rotation").isFinite() && node.getDouble("opacity") in 0.0..1.0 && !node.getBoolean("flipX") && !node.getBoolean("flipY"))
             require(!node.has("geometrySize") && !node.has("maskId") && !node.optBoolean("alphaLock") && node.getJSONArray("effects").length() == 0)
             val style = node.getJSONObject("brush")
             val color = style.getString("color")
@@ -73,7 +86,7 @@ internal object DrawingInk {
                 StrokeSample(p.getDouble("x") + x, p.getDouble("y") + y, p.getDouble("pressure"), p.getDouble("tiltX"), p.getDouble("tiltY"), p.getDouble("time"))
             }
             StrokeGeometry.requireBudget(samples, brush)
-            InkStroke(samples, brush, node.optBoolean("erase"), Color.parseColor(color), id)
+            InkStroke(samples, brush, node.optBoolean("erase"), Color.parseColor(color), id, nodeLayerId, strokeVisible, layerOpacity)
         }
     }
 
@@ -118,12 +131,16 @@ internal object DrawingInk {
     private fun drawStrokes(canvas: Canvas, strokes: List<InkStroke>) {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(32, 32, 35); style = Paint.Style.FILL }
         strokes.forEach { stroke ->
+            if (!stroke.visible) return@forEach
             if (stroke.brush.kind == "natural-pencil") {
                 drawPencil(canvas, stroke)
             } else if (stroke.brush.kind == "marker" || stroke.brush.kind == "highlighter") {
                 drawUniform(canvas, stroke)
             } else {
                 paint.color = stroke.color
+                if (stroke.layerOpacity < 1.0) {
+                    paint.alpha = (stroke.layerOpacity * 255).roundToInt().coerceIn(0, 255)
+                }
                 paint.xfermode = if (stroke.erase) PorterDuffXfermode(PorterDuff.Mode.CLEAR) else null
                 StrokeGeometry.dabs(stroke.samples, stroke.brush).forEach { canvas.drawCircle(it.x.toFloat(), it.y.toFloat(), (it.size / 2).toFloat(), paint) }
             }

@@ -8,8 +8,20 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.TextUnit
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalClipboardManager
 import org.json.JSONObject
 import worlds.content.CodeEditing
 import worlds.content.LinkAddress
@@ -130,3 +142,251 @@ internal fun previewBlock(raw: String, interactiveLinks: Boolean = true): BlockP
     if (paragraphStyle != null && paragraphStyle !in setOf("normal", "title", "subtitle", "caption")) incomplete = true
     return BlockPreview(output.toAnnotatedString(), heading, incomplete, alignment, paragraphStyle, hasCustomFontSize)
 }
+
+internal fun isMathBlock(raw: String): Boolean = runCatching {
+    val type = JSONObject(raw).optString("type")
+    type in setOf("mathBlock", "mathInline", "katexBlock")
+}.getOrDefault(false)
+
+internal fun isMermaidBlock(raw: String): Boolean = runCatching {
+    JSONObject(raw).optString("type") == "mermaid"
+}.getOrDefault(false)
+
+internal fun mathLatex(raw: String): String = runCatching {
+    JSONObject(raw).optJSONObject("attrs")?.optString("latex").orEmpty()
+}.getOrDefault("")
+
+internal fun mermaidCode(raw: String): String = runCatching {
+    JSONObject(raw).optJSONObject("attrs")?.optString("code").orEmpty()
+}.getOrDefault("")
+
+/**
+ * Visual renderer for KaTeX / LaTeX mathematical equations.
+ * Displays formatted formula preview with symbol substitutions and equation styling.
+ */
+@Composable
+internal fun MathBlock(latex: String, display: Boolean = true, modifier: Modifier = Modifier) {
+    val clipboard = LocalClipboardManager.current
+    var copied by remember { mutableStateOf(false) }
+
+    val formattedFormula = remember(latex) {
+        latex
+            .replace("\\frac", "")
+            .replace("\\sqrt", "√")
+            .replace("\\int", "∫")
+            .replace("\\sum", "∑")
+            .replace("\\prod", "∏")
+            .replace("\\alpha", "α")
+            .replace("\\beta", "β")
+            .replace("\\gamma", "γ")
+            .replace("\\delta", "δ")
+            .replace("\\theta", "θ")
+            .replace("\\lambda", "λ")
+            .replace("\\mu", "μ")
+            .replace("\\pi", "π")
+            .replace("\\sigma", "σ")
+            .replace("\\omega", "ω")
+            .replace("\\infty", "∞")
+            .replace("\\approx", "≈")
+            .replace("\\neq", "≠")
+            .replace("\\leq", "≤")
+            .replace("\\geq", "≥")
+            .replace("\\pm", "±")
+            .replace("\\times", "×")
+            .replace("\\div", "÷")
+            .replace("\\cdot", "·")
+            .replace("\\partial", "∂")
+            .replace("{", "(")
+            .replace("}", ")")
+            .replace("\\,", " ")
+            .replace("\\quad", "   ")
+            .trim()
+    }
+
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    WorldsGlyph(R.drawable.ic_code_2, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                    Text(
+                        "LaTeX Equation",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                TextButton(onClick = {
+                    clipboard.setText(AnnotatedString(latex))
+                    copied = true
+                }) {
+                    Text(if (copied) "Copied" else "Copy LaTeX", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
+                    .padding(vertical = 16.dp, horizontal = 20.dp),
+                contentAlignment = if (display) Alignment.Center else Alignment.CenterStart
+            ) {
+                Text(
+                    text = formattedFormula.ifBlank { "f(x) = y" },
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontFamily = FontFamily.Serif,
+                        fontStyle = FontStyle.Italic
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = if (display) TextAlign.Center else TextAlign.Start
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Visual renderer for Mermaid diagrams.
+ * Displays flowchart / graph structure with nodes, connector arrows, and code toggle.
+ */
+@Composable
+internal fun MermaidBlock(code: String, modifier: Modifier = Modifier) {
+    val clipboard = LocalClipboardManager.current
+    var showSource by remember { mutableStateOf(false) }
+    var copied by remember { mutableStateOf(false) }
+
+    val parsedDiagram = remember(code) {
+        val lines = code.lines().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("%%") }
+        val diagramType = lines.firstOrNull()?.split(" ")?.firstOrNull() ?: "graph"
+        val nodes = mutableListOf<String>()
+        val connections = mutableListOf<Pair<String, String>>()
+
+        val nodeRegex = Regex("([A-Za-z0-9_]+)(?:\\[(.*?)\\])?\\s*(?:-->|---|->)\\s*([A-Za-z0-9_]+)(?:\\[(.*?)\\])?")
+        lines.forEach { line ->
+            val match = nodeRegex.find(line)
+            if (match != null) {
+                val fromId = match.groupValues[1]
+                val fromLabel = match.groupValues[2].ifBlank { fromId }
+                val toId = match.groupValues[3]
+                val toLabel = match.groupValues[4].ifBlank { toId }
+                if (fromLabel !in nodes) nodes.add(fromLabel)
+                if (toLabel !in nodes) nodes.add(toLabel)
+                connections.add(fromLabel to toLabel)
+            }
+        }
+        Triple(diagramType, nodes.take(12), connections.take(12))
+    }
+
+    val (diagramType, nodes, _) = parsedDiagram
+
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    WorldsGlyph(R.drawable.ic_files, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                    Text(
+                        "Diagram (${diagramType.uppercase()})",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Row {
+                    TextButton(onClick = { showSource = !showSource }) {
+                        Text(if (showSource) "Diagram" else "Source", style = MaterialTheme.typography.labelSmall)
+                    }
+                    TextButton(onClick = {
+                        clipboard.setText(AnnotatedString(code))
+                        copied = true
+                    }) {
+                        Text(if (copied) "Copied" else "Copy", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            if (showSource) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
+                        .padding(12.dp)
+                ) {
+                    Text(
+                        text = code,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (nodes.isEmpty()) {
+                        Text(
+                            text = code.lines().take(6).joinToString("\n"),
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    } else {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            nodes.forEachIndexed { i, nodeName ->
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = nodeName,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                    )
+                                }
+                                if (i < nodes.lastIndex) {
+                                    WorldsGlyph(
+                                        R.drawable.ic_arrow_down,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+

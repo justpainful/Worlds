@@ -93,6 +93,9 @@ import worlds.content.newBlockId
 import org.json.JSONObject
 import java.text.DateFormat
 import java.util.Date
+import worlds.android.ai.AiChatScreen
+import worlds.android.automations.AutomationsScreen
+import worlds.android.discord.DiscordComposer
 
 class MainActivity : ComponentActivity() {
     internal var drawingShortcutOwner: Any? = null
@@ -804,6 +807,43 @@ class HomeModel(application: Application, internal val databaseName: String) : A
         val node = JSONObject().put("type", "codeBlock").put("attrs", JSONObject().put("bid", id).put("language", "")).toString()
         mutable.update { it.copy(editor = EditorTarget(doc.resource.id, id, doc.resource.revision, node, true, afterBlockId), editorSaveError = false) }
     }
+    fun addMathBlock(afterBlockId: String? = null, latex: String = "\\frac{a}{b}") = mutate { page ->
+        val id = newBlockId()
+        val node = JSONObject().put("type", "mathBlock").put("attrs", JSONObject().put("bid", id).put("latex", latex)).toString()
+        val blocks = requireNotNull(store.load(page.id)).blocks.toMutableList()
+        val insertIndex = afterBlockId?.let { after -> blocks.indexOfFirst { it.id == after } } ?: -1
+        val newBlock = worlds.content.ContentBlock(id, node)
+        if (insertIndex >= 0 && insertIndex < blocks.size) blocks.add(insertIndex + 1, newBlock) else blocks.add(newBlock)
+        store.saveBlocks(page.id, page.revision, blocks)
+        false
+    }
+    fun addMermaidBlock(afterBlockId: String? = null, code: String = "graph TD\n  A[Start] --> B[Process]\n  B --> C[End]") = mutate { page ->
+        val id = newBlockId()
+        val node = JSONObject().put("type", "mermaid").put("attrs", JSONObject().put("bid", id).put("code", code)).toString()
+        val blocks = requireNotNull(store.load(page.id)).blocks.toMutableList()
+        val insertIndex = afterBlockId?.let { after -> blocks.indexOfFirst { it.id == after } } ?: -1
+        val newBlock = worlds.content.ContentBlock(id, node)
+        if (insertIndex >= 0 && insertIndex < blocks.size) blocks.add(insertIndex + 1, newBlock) else blocks.add(newBlock)
+        store.saveBlocks(page.id, page.revision, blocks)
+        false
+    }
+    fun createWithContent(title: String, content: String) {
+        viewModelScope.launch {
+            val result = runCatching { withContext(Dispatchers.IO) {
+                val page = store.create(title.ifBlank { getApplication<Application>().getString(R.string.new_page) }, "page")
+                val id = newBlockId()
+                val node = JSONObject().put("type", "paragraph").put("attrs", JSONObject().put("bid", id))
+                    .put("content", org.json.JSONArray().put(JSONObject().put("type", "text").put("text", content))).toString()
+                val block = worlds.content.ContentBlock(id, node)
+                store.saveBlocks(page.id, page.revision, listOf(block))
+                page
+            } }
+            if (result.isSuccess) {
+                refresh()
+                open(result.getOrThrow().id)
+            }
+        }
+    }
     fun addContainer(type: String, afterBlockId: String? = null) {
         val doc = mutable.value.selected ?: return
         if (mutable.value.busy || doc.resource.deletedAt != null || doc.resource.kind !in setOf("page", "document", "template")) return
@@ -951,12 +991,32 @@ private val Light = lightColorScheme(primary = Color(0xFF765127), onPrimary = Co
     val state by model.state.collectAsStateWithLifecycle()
     var showAccount by rememberSaveable { mutableStateOf(false) }
     var showAppearance by rememberSaveable { mutableStateOf(false) }
+    var showAiChat by rememberSaveable { mutableStateOf(false) }
+    var showAutomations by rememberSaveable { mutableStateOf(false) }
+    var showDiscordComposer by rememberSaveable { mutableStateOf(false) }
+    var showProfile by rememberSaveable { mutableStateOf(false) }
     if (showAppearance) {
         AppearanceSettings(onBack = { showAppearance = false })
         return
     }
     if (showAccount && account != null) {
         AccountScreen(account, onBack = { showAccount = false })
+        return
+    }
+    if (showAiChat) {
+        AiChatScreen(databaseName = model.databaseName, onBack = { showAiChat = false }, onCreatePage = { title, content -> showAiChat = false; model.createWithContent(title, content) })
+        return
+    }
+    if (showAutomations) {
+        AutomationsScreen(databaseName = model.databaseName, onBack = { showAutomations = false })
+        return
+    }
+    if (showDiscordComposer) {
+        DiscordComposer(initialDocument = state.selected, databaseName = model.databaseName, onBack = { showDiscordComposer = false })
+        return
+    }
+    if (showProfile) {
+        ProfileScreen(onBack = { showProfile = false })
         return
     }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -1162,6 +1222,14 @@ private val Light = lightColorScheme(primary = Color(0xFF765127), onPrimary = Co
                                 Text("Worlds", color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
+                                val aiChatLabel = stringResource(R.string.ai_chat)
+                                val profileLabel = stringResource(R.string.profile)
+                                IconButton(onClick = { showAiChat = true }, modifier = Modifier.semantics { contentDescription = aiChatLabel }) {
+                                    WorldsGlyph(R.drawable.ic_message_circle, tint = MaterialTheme.colorScheme.primary)
+                                }
+                                IconButton(onClick = { showProfile = true }, modifier = Modifier.semantics { contentDescription = profileLabel }) {
+                                    WorldsGlyph(R.drawable.ic_circle_user)
+                                }
                                 if (account != null) TextButton(onClick = { showAccount = true }) { WorldsActionLabel(R.drawable.ic_circle_user, stringResource(R.string.account_title)) }
                                 val label = stringResource(R.string.appearance_title)
                                 IconButton(onClick = { showAppearance = true }, modifier = Modifier.semantics { contentDescription = label }) { WorldsGlyph(R.drawable.ic_settings_2) }
@@ -1191,8 +1259,14 @@ private val Light = lightColorScheme(primary = Color(0xFF765127), onPrimary = Co
                                         DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_image) }, text = { Text(stringResource(R.string.gallery_new)) }, onClick = { showLibraryActions = false; createParent = null; createKind = "gallery"; showCreate = true })
                                         DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_maximize) }, text = { Text(stringResource(R.string.presentation_new)) }, onClick = { showLibraryActions = false; createParent = null; createKind = "presentation"; showCreate = true })
                                         DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_file_text) }, text = { Text(stringResource(R.string.new_document)) }, onClick = { showLibraryActions = false; createParent = null; createKind = "document"; showCreate = true })
+                                        DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_table_2) }, text = { Text("New Spreadsheet") }, onClick = { showLibraryActions = false; createParent = null; createKind = "spreadsheet"; showCreate = true })
                                         DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_pen_line) }, text = { Text(stringResource(R.string.new_drawing)) }, onClick = { showLibraryActions = false; createParent = null; createKind = "drawing"; showCreate = true })
                                         DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_link) }, text = { Text(stringResource(R.string.stream_add)) }, onClick = { showLibraryActions = false; streamCreateParent = null; showStreamCreate = true })
+                                        HorizontalDivider()
+                                        DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_message_circle) }, text = { Text(stringResource(R.string.ai_chat)) }, onClick = { showLibraryActions = false; showAiChat = true })
+                                        DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_sliders_horizontal) }, text = { Text(stringResource(R.string.automations)) }, onClick = { showLibraryActions = false; showAutomations = true })
+                                        DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_share_2) }, text = { Text(stringResource(R.string.discord)) }, onClick = { showLibraryActions = false; showDiscordComposer = true })
+                                        DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_circle_user) }, text = { Text(stringResource(R.string.profile)) }, onClick = { showLibraryActions = false; showProfile = true })
                                         HorizontalDivider()
                                         DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_upload) }, text = { Text(stringResource(R.string.file_import)) }, onClick = { showLibraryActions = false; pickFile() })
                                         DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_upload) }, text = { Text(stringResource(R.string.drawing_import)) }, onClick = { showLibraryActions = false; runCatching { importPicker.launch(arrayOf("*/*")) }.onFailure { model.importPickerFailed() } })
@@ -1238,7 +1312,8 @@ private val Light = lightColorScheme(primary = Color(0xFF765127), onPrimary = Co
             }
             if (state.selected != null) {
                 if (wide) VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                if (state.selected!!.resource.kind == "drawing" && state.selected!!.resource.deletedAt == null) DrawingScreen(state.selected!!.resource, model::back, Modifier.weight(1f), model.databaseName)
+                if (state.selected!!.resource.kind == "spreadsheet" && state.selected!!.resource.deletedAt == null) SpreadsheetScreen(state.selected!!.resource, onBack = model::back, modifier = Modifier.weight(1f))
+                else if (state.selected!!.resource.kind == "drawing" && state.selected!!.resource.deletedAt == null) DrawingScreen(state.selected!!.resource, model::back, Modifier.weight(1f), model.databaseName)
                 else if (state.selected!!.resource.kind == "project" && state.selected!!.resource.deletedAt == null) ProjectScreen(state.selected!!.resource, state.children, state.projectResources, state.projectActivity, state.busy,
                     onBack = model::back, onOpen = model::open, onRename = { renameTitle = state.selected!!.resource.title; showRename = true }, onTrash = model::trash,
                     onCreateChild = model::createProjectChild, onUpdate = model::updateProject, onLinkChange = model::changeProjectLink, onImportFile = { pickFile(it) }, onAddStream = { streamCreateParent = it; showStreamCreate = true }, modifier = Modifier.weight(1f))
@@ -1262,8 +1337,9 @@ private val Light = lightColorScheme(primary = Color(0xFF765127), onPrimary = Co
                     onDocumentTypography = model::updateDocumentTypography,
                     onFindReplace = model::replacePageText,
                     onNewSubpage = { createParent = state.selected!!.resource.id; createParentRevision = state.selected!!.resource.revision; createKind = "page"; title = ""; showCreate = true }, onOpenSubpage = model::open,
-                    onTrash = model::trash, onRestore = model::restore, onVersions = model::showVersions, onAdd = model::addBlock, onAddCode = model::addCodeBlock, onEdit = model::editBlock, onMove = model::moveBlock, onRemove = model::removeBlock, onDuplicate = model::duplicateBlock,
+                    onTrash = model::trash, onRestore = model::restore, onVersions = model::showVersions, onAdd = model::addBlock, onAddCode = model::addCodeBlock, onAddMath = model::addMathBlock, onAddMermaid = model::addMermaidBlock, onEdit = model::editBlock, onMove = model::moveBlock, onRemove = model::removeBlock, onDuplicate = model::duplicateBlock,
                     onAddTable = model::addTable, onEditTable = model::editTableParagraph, onResizeTable = model::resizeTable, onTableAction = model::tableAction, onAddContainer = model::addContainer, onEditContainer = model::editContainerParagraph, onAppendContainer = model::appendContainerParagraph, onAddList = model::addList, onEditItem = model::editListItem, onToggleItem = model::toggleListItem, onAppendItem = model::appendListItem, onItemAction = model::listItemAction, markdownStatus = state.markdownStatus, onMarkdown = { showMarkdown = true }, onSaveTemplate = model::saveTemplate,
+                    onDiscord = { showDiscordComposer = true },
                     modifier = Modifier.weight(1f))
             }
         }
@@ -1284,7 +1360,7 @@ private val Light = lightColorScheme(primary = Color(0xFF765127), onPrimary = Co
 @Composable private fun PageRow(page: Resource, selected: Boolean, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).background(if (selected) MaterialTheme.colorScheme.surface else Color.Transparent, RoundedCornerShape(12.dp)).padding(horizontal = 12.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Surface(shape = RoundedCornerShape(11.dp), color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(42.dp)) {
-            Box(contentAlignment = Alignment.Center) { CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant) { WorldsGlyph(when (page.kind) { "drawing" -> R.drawable.ic_pen_line; "project" -> R.drawable.ic_folder; "gallery" -> R.drawable.ic_image; "presentation" -> R.drawable.ic_maximize; else -> R.drawable.ic_file_text }) } }
+            Box(contentAlignment = Alignment.Center) { CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant) { WorldsGlyph(when (page.kind) { "drawing" -> R.drawable.ic_pen_line; "spreadsheet" -> R.drawable.ic_table_2; "project" -> R.drawable.ic_folder; "gallery" -> R.drawable.ic_image; "presentation" -> R.drawable.ic_maximize; else -> R.drawable.ic_file_text }) } }
         }
         Column(Modifier.weight(1f)) {
             Text(page.title.ifBlank { stringResource(R.string.untitled) }, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onBackground, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -1449,10 +1525,11 @@ private data class PendingTableDelete(val revision: Long, val action: String, va
     onFindReplace: (ResourceDocument, String, String, Boolean, Int?, (ResourceDocument?) -> Unit) -> Unit,
     onMovePage: () -> Unit,
     onNewSubpage: () -> Unit, onOpenSubpage: (String) -> Unit,
-    onRename: () -> Unit, onTrash: () -> Unit, onRestore: () -> Unit, onVersions: () -> Unit, onAdd: (Boolean, String?) -> Unit, onEdit: (String) -> Unit, onMove: (String, Int) -> Unit, onRemove: (String, String, Long) -> Unit, onDuplicate: (String, String, Long) -> Unit,
-    onAddCode: (String?) -> Unit, onAddTable: () -> Unit, onEditTable: (String, Int, Int, Int) -> Unit, onResizeTable: (String, Boolean) -> Unit, onTableAction: (String, Long, String, Int, Int) -> Unit, onAddContainer: (String, String?) -> Unit, onEditContainer: (String, Int) -> Unit, onAppendContainer: (String) -> Unit, onAddList: (String, String?) -> Unit, onEditItem: (String, List<Int>) -> Unit, onToggleItem: (String, List<Int>, Boolean) -> Unit, onAppendItem: (String) -> Unit,
-    onItemAction: (String, List<Int>, String) -> Unit, markdownStatus: Int?, onMarkdown: () -> Unit, onSaveTemplate: () -> Unit, modifier: Modifier = Modifier) {
+    onRename: () -> Unit, onTrash: () -> Unit, onRestore: () -> Unit, onVersions: () -> Unit, onAdd: (Boolean, String?) -> Unit, onAddCode: (String?) -> Unit, onAddMath: (String?) -> Unit = {}, onAddMermaid: (String?) -> Unit = {}, onEdit: (String) -> Unit, onMove: (String, Int) -> Unit, onRemove: (String, String, Long) -> Unit, onDuplicate: (String, String, Long) -> Unit,
+    onAddTable: () -> Unit, onEditTable: (String, Int, Int, Int) -> Unit, onResizeTable: (String, Boolean) -> Unit, onTableAction: (String, Long, String, Int, Int) -> Unit, onAddContainer: (String, String?) -> Unit, onEditContainer: (String, Int) -> Unit, onAppendContainer: (String) -> Unit, onAddList: (String, String?) -> Unit, onEditItem: (String, List<Int>) -> Unit, onToggleItem: (String, List<Int>, Boolean) -> Unit, onAppendItem: (String) -> Unit,
+    onItemAction: (String, List<Int>, String) -> Unit, markdownStatus: Int?, onMarkdown: () -> Unit, onSaveTemplate: () -> Unit, onDiscord: () -> Unit = {}, modifier: Modifier = Modifier) {
     val editable = document.resource.deletedAt == null && document.resource.kind in setOf("page", "document", "template")
+    var paginatedMode by rememberSaveable(document.resource.id) { mutableStateOf(false) }
     val pageFocus = remember(document.resource.id) { FocusRequester() }
     var pageHasFocus by remember(document.resource.id) { mutableStateOf(false) }
     val blockListState = remember(document.resource.id) { LazyListState() }
@@ -1533,6 +1610,8 @@ private data class PendingTableDelete(val revision: Long, val action: String, va
                             DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_square_code) }, text = { Text(stringResource(R.string.add_code)) }, onClick = { insertMenu = false; onAddCode(null) })
                             DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_image) }, text = { Text(stringResource(R.string.image_insert)) }, onClick = { insertMenu = false; onAddImage(null) })
                             DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_table_2) }, text = { Text(stringResource(R.string.add_table)) }, onClick = { insertMenu = false; onAddTable() })
+                            DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_code_2) }, text = { Text("Math / LaTeX") }, onClick = { insertMenu = false; onAddMath(null) })
+                            DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_files) }, text = { Text("Mermaid Diagram") }, onClick = { insertMenu = false; onAddMermaid(null) })
                             listOf(Triple("blockquote", R.string.quote, R.drawable.ic_text_quote), Triple("callout", R.string.callout, R.drawable.ic_lightbulb), Triple("prompt", R.string.prompt, R.drawable.ic_square_terminal)).forEach { (type, label, icon) ->
                                 DropdownMenuItem(leadingIcon = { WorldsGlyph(icon) }, text = { Text(stringResource(label)) }, onClick = { insertMenu = false; onAddContainer(type, null) })
                             }
@@ -1547,8 +1626,11 @@ private data class PendingTableDelete(val revision: Long, val action: String, va
                     TextButton(enabled = !busy, onClick = { pageMenu = true }) { WorldsActionLabel(R.drawable.ic_ellipsis_vertical, stringResource(R.string.page_actions)) }
                     DropdownMenu(expanded = pageMenu, onDismissRequest = { pageMenu = false }) {
                         if (editable) DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_search) }, text = { Text(stringResource(R.string.find_replace)) }, onClick = { pageMenu = false; findTarget = document })
+                        if (document.resource.kind == "document") DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_files) }, text = { Text(stringResource(if (paginatedMode) R.string.document_continuous_mode else R.string.document_paginated_mode)) }, onClick = { pageMenu = false; paginatedMode = !paginatedMode })
+                        if (document.resource.kind == "document") DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_download) }, text = { Text(stringResource(R.string.document_print)) }, onClick = { pageMenu = false; pageActivity?.let { printWorldsDocument(it, document.resource.title, document.blocks) } })
                         if (document.resource.kind == "document") DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_settings_2) }, text = { Text(stringResource(R.string.document_running_text)) }, onClick = { pageMenu = false; runningTextTarget = document.resource })
                         if (document.resource.kind == "document") DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_type) }, text = { Text(stringResource(R.string.document_typography)) }, onClick = { pageMenu = false; typographyTarget = document.resource })
+                        DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_share_2) }, text = { Text(stringResource(R.string.discord)) }, onClick = { pageMenu = false; onDiscord() })
                         DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_pen_line) }, text = { Text(stringResource(R.string.rename)) }, onClick = { pageMenu = false; onRename() })
                         DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_history) }, text = { Text(stringResource(R.string.versions)) }, onClick = { pageMenu = false; onVersions() })
                         if (canMovePage && document.resource.kind in setOf("page", "document")) DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_folder) }, text = { Text(stringResource(R.string.move_page)) }, onClick = { pageMenu = false; onMovePage() })
@@ -1569,94 +1651,188 @@ private data class PendingTableDelete(val revision: Long, val action: String, va
         val header = runningText?.optString("header").orEmpty()
         val footer = runningText?.optString("footer").orEmpty()
         val typography = remember(document.resource.metadata) { documentTypography(document.resource.metadata) }
-        LazyColumn(Modifier.weight(1f).testTag("page-blocks"), state = blockListState) {
-            if (document.resource.kind == "document" && header.isNotBlank()) item(key = "document-header") {
-                Text(header, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                Spacer(Modifier.height(16.dp))
-            }
-            if (document.blocks.isEmpty()) item { Text(stringResource(R.string.page_empty), color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 26.sp) }
-            items(document.blocks, key = { "block-${it.id}" }) { block ->
-                val blockMatch = revealedMatch?.takeIf { it.blockId == block.id }
-                val isRevealed = blockMatch != null
-                Column(Modifier.fillMaxWidth().then(if (isRevealed) Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), RoundedCornerShape(8.dp)).testTag("find-revealed-block") else Modifier)) {
-                val list = remember(block.content) { runCatching { ListEditing.read(block.content) }.getOrNull() }
-                val container = remember(block.content) { runCatching { ContainerEditing.read(block.content) }.getOrNull() }
-                val table = remember(block.content) { runCatching { TableEditing.read(block.content) }.getOrNull() }
-                val image = remember(block.content) { runCatching { JSONObject(block.content).optString("type") == "image" }.getOrDefault(false) }
-                if (image) {
-                    ImageBlock(block.content, databaseName)
-                } else if (table != null) {
-                    TableBlockView(table, document.resource.revision, editable && !busy, blockMatch, onEdit = { row, col, index -> onEditTable(block.id, row, col, index) }, onResize = { onResizeTable(block.id, it) }, onAction = { revision, action, row, col -> onTableAction(block.id, revision, action, row, col) })
-                } else if (container != null) {
-                    ContainerBlockView(container, editable && !busy, blockMatch, onEdit = { onEditContainer(block.id, it) }, onAppend = { onAppendContainer(block.id) })
-                } else if (list != null) {
-                    ListBlockView(list, editable && !busy, blockMatch,
-                        onEdit = { index -> onEditItem(block.id, index) },
-                        onToggle = { index, value -> onToggleItem(block.id, index, value) },
-                        onAppend = { onAppendItem(block.id) },
-                        onAction = { path, action -> onItemAction(block.id, path, action) })
-                } else {
-                    val preview = remember(block.content) { previewBlock(block.content) }
-                    val match = blockMatch?.takeIf { it.path.isEmpty() }
-                    val baseSize = if (document.resource.kind == "document") typography.size * 4f / 3f else 16f
-                    val factor = when { preview.headingLevel == 1 -> 1.625f; preview.headingLevel == 2 -> 1.375f; preview.headingLevel == 3 -> 1.1875f; preview.paragraphStyle == "title" -> 2.4f; preview.paragraphStyle == "subtitle" -> 1.35f; preview.paragraphStyle == "caption" -> .82f; else -> 1f }
-                    val textSize = baseSize * factor
-                    if (preview.text.isNotEmpty()) Text(highlightedFindText(preview, block.content, match, MaterialTheme.colorScheme.primary.copy(alpha = 0.30f)), color = if (preview.paragraphStyle in setOf("subtitle", "caption")) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onBackground,
-                        fontSize = textSize.sp,
-                        fontWeight = if (preview.headingLevel != null || preview.paragraphStyle == "title") FontWeight.SemiBold else FontWeight.Normal,
-                        lineHeight = if (preview.hasCustomFontSize) androidx.compose.ui.unit.TextUnit.Unspecified else if (document.resource.kind == "document") (textSize * typography.leading).sp else 30.sp, textAlign = preview.alignment, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp).then(findRevealModifier(match)))
-                    if (preview.incomplete) Text(stringResource(R.string.preview_incomplete), color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 13.sp, lineHeight = 23.sp, modifier = Modifier.padding(bottom = 12.dp))
-                    if (preview.text.isEmpty() && !preview.incomplete) Spacer(Modifier.height(16.dp))
-                    if (editable && remember(block.content) { runCatching { InlineEditing.text(block.content) }.isSuccess || runCatching { CodeEditing.read(block.content) }.isSuccess })
-                        TextButton(enabled = !busy, onClick = { onEdit(block.id) }) { WorldsActionLabel(R.drawable.ic_pen_line, stringResource(R.string.edit_text)) }
-                }
-                if (editable) {
-                    var menu by remember { mutableStateOf(false) }
-                    Box {
-                        TextButton(enabled = !busy, onClick = { menu = true }) { WorldsActionLabel(R.drawable.ic_ellipsis_vertical, stringResource(R.string.block_actions)) }
-                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                            if (image)
-                                DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_sliders_horizontal) }, text = { Text(stringResource(R.string.image_settings)) }, onClick = { menu = false; imageSettings = ImageSettingsTarget(document.resource.id, block.id, document.resource.revision, block.content) })
-                            if (image) DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_download) }, text = { Text(stringResource(R.string.image_export)) }, onClick = { menu = false; onExportImage(block.id) })
-                            DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_type) }, text = { Text(stringResource(R.string.insert_paragraph_after)) }, onClick = { menu = false; onAdd(false, block.id) })
-                            DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_heading_1) }, text = { Text(stringResource(R.string.insert_heading_after)) }, onClick = { menu = false; onAdd(true, block.id) })
-                            DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_square_code) }, text = { Text(stringResource(R.string.insert_code_after)) }, onClick = { menu = false; onAddCode(block.id) })
-                            DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_image) }, text = { Text(stringResource(R.string.image_insert_after)) }, onClick = { menu = false; onAddImage(block.id) })
-                            val index = document.blocks.indexOfFirst { it.id == block.id }
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                            DropdownMenuItem(enabled = index > 0, leadingIcon = { WorldsGlyph(R.drawable.ic_arrow_up) }, text = { Text(stringResource(R.string.move_block_up)) }, onClick = { menu = false; onMove(block.id, -1) })
-                            DropdownMenuItem(enabled = index < document.blocks.lastIndex, leadingIcon = { WorldsGlyph(R.drawable.ic_arrow_down) }, text = { Text(stringResource(R.string.move_block_down)) }, onClick = { menu = false; onMove(block.id, 1) })
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                            DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_files) }, text = { Text(stringResource(R.string.duplicate_block)) }, onClick = { menu = false; onDuplicate(document.resource.id, block.id, document.resource.revision) })
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                            DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_trash_2) }, text = { Text(stringResource(R.string.remove_block)) }, onClick = { menu = false; pendingRemoval = block.id to document.resource.revision })
+        if (paginatedMode && document.resource.kind == "document") {
+            val pagesOfBlocks = remember(document.blocks) { if (document.blocks.isEmpty()) listOf(emptyList()) else document.blocks.chunked(6) }
+            val totalPages = pagesOfBlocks.size
+            LazyColumn(Modifier.weight(1f).testTag("page-blocks"), state = blockListState, horizontalAlignment = Alignment.CenterHorizontally) {
+                items(pagesOfBlocks.size, key = { "page-card-$it" }) { pageIndex ->
+                    val blocksOnPage = pagesOfBlocks[pageIndex]
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        shadowElevation = 3.dp,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                        modifier = Modifier.widthIn(max = 680.dp).fillMaxWidth().padding(vertical = 12.dp)
+                    ) {
+                        Column(Modifier.padding(horizontal = 32.dp, vertical = 28.dp)) {
+                            // Repeated running header on each page
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Text(header.ifBlank { document.resource.title.ifBlank { stringResource(R.string.untitled) } }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(DateFormat.getDateInstance(DateFormat.SHORT).format(Date(document.resource.updatedAt)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                            if (pageIndex == 0) {
+                                Text(document.resource.title.ifBlank { stringResource(R.string.untitled) }, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(bottom = 12.dp))
+                            }
+                            if (blocksOnPage.isEmpty()) {
+                                Text(stringResource(R.string.page_empty), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 16.dp))
+                            }
+                            blocksOnPage.forEach { block ->
+                                RenderSingleBlock(block, document, editable, busy, databaseName, typography, revealedMatch, onEdit, onEditTable, onResizeTable, onTableAction, onEditContainer, onAppendContainer, onEditItem, onToggleItem, onAppendItem, onItemAction, onAdd, onAddCode, onAddMath, onAddMermaid, onAddImage, onMove, onDuplicate, { pendingRemoval = it }, { imageSettings = it })
+                                Spacer(Modifier.height(8.dp))
+                            }
+                            Spacer(Modifier.height(20.dp))
+                            HorizontalDivider(Modifier.padding(bottom = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                            // Repeated running footer on each page
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Text(footer.ifBlank { "Worlds" }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("Page ${pageIndex + 1} of $totalPages", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }
-                }
-            }
-            if (document.resource.kind == "document" && footer.isNotBlank()) item(key = "document-footer") {
-                Spacer(Modifier.height(16.dp)); HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                Text(footer, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth().padding(top = 16.dp))
-            }
-            if (editable) {
-                item(key = "subpages-heading") {
-                    Spacer(Modifier.height(24.dp))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(stringResource(R.string.subpages_title), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        TextButton(enabled = !busy, onClick = onNewSubpage) { WorldsActionLabel(R.drawable.ic_plus, stringResource(R.string.new_subpage)) }
+                if (editable) {
+                    item(key = "subpages-heading") {
+                        Spacer(Modifier.height(24.dp))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(stringResource(R.string.subpages_title), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            TextButton(enabled = !busy, onClick = onNewSubpage) { WorldsActionLabel(R.drawable.ic_plus, stringResource(R.string.new_subpage)) }
+                        }
+                        if (children.isEmpty()) Text(stringResource(R.string.subpages_empty), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     }
-                    if (children.isEmpty()) Text(stringResource(R.string.subpages_empty), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    items(children, key = { "subpage-${it.id}" }) { child ->
+                        PageRow(child, false) { if (!busy) onOpenSubpage(child.id) }
+                    }
                 }
-                items(children, key = { "subpage-${it.id}" }) { child ->
-                    PageRow(child, false) { if (!busy) onOpenSubpage(child.id) }
+            }
+        } else {
+            LazyColumn(Modifier.weight(1f).testTag("page-blocks"), state = blockListState) {
+                if (document.resource.kind == "document" && header.isNotBlank()) item(key = "document-header") {
+                    Text(header, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Spacer(Modifier.height(16.dp))
+                }
+                if (document.blocks.isEmpty()) item { Text(stringResource(R.string.page_empty), color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 26.sp) }
+                items(document.blocks, key = { "block-${it.id}" }) { block ->
+                    RenderSingleBlock(block, document, editable, busy, databaseName, typography, revealedMatch, onEdit, onEditTable, onResizeTable, onTableAction, onEditContainer, onAppendContainer, onEditItem, onToggleItem, onAppendItem, onItemAction, onAdd, onAddCode, onAddMath, onAddMermaid, onAddImage, onMove, onDuplicate, { pendingRemoval = it }, { imageSettings = it })
+                }
+                if (document.resource.kind == "document" && footer.isNotBlank()) item(key = "document-footer") {
+                    Spacer(Modifier.height(16.dp)); HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Text(footer, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth().padding(top = 16.dp))
+                }
+                if (editable) {
+                    item(key = "subpages-heading") {
+                        Spacer(Modifier.height(24.dp))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(stringResource(R.string.subpages_title), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            TextButton(enabled = !busy, onClick = onNewSubpage) { WorldsActionLabel(R.drawable.ic_plus, stringResource(R.string.new_subpage)) }
+                        }
+                        if (children.isEmpty()) Text(stringResource(R.string.subpages_empty), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    }
+                    items(children, key = { "subpage-${it.id}" }) { child ->
+                        PageRow(child, false) { if (!busy) onOpenSubpage(child.id) }
+                    }
                 }
             }
         }
         if (!editable) Text(stringResource(R.string.read_only), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, lineHeight = 23.sp)
     }
+    }
+}
+
+@Composable
+private fun RenderSingleBlock(
+    block: worlds.content.ContentBlock,
+    document: ResourceDocument,
+    editable: Boolean,
+    busy: Boolean,
+    databaseName: String,
+    typography: DocumentTypography,
+    revealedMatch: PageMatch?,
+    onEdit: (String) -> Unit,
+    onEditTable: (String, Int, Int, Int) -> Unit,
+    onResizeTable: (String, Boolean) -> Unit,
+    onTableAction: (String, Long, String, Int, Int) -> Unit,
+    onEditContainer: (String, Int) -> Unit,
+    onAppendContainer: (String) -> Unit,
+    onEditItem: (String, List<Int>) -> Unit,
+    onToggleItem: (String, List<Int>, Boolean) -> Unit,
+    onAppendItem: (String) -> Unit,
+    onItemAction: (String, List<Int>, String) -> Unit,
+    onAdd: (Boolean, String?) -> Unit,
+    onAddCode: (String?) -> Unit,
+    onAddMath: (String?) -> Unit,
+    onAddMermaid: (String?) -> Unit,
+    onAddImage: (String?) -> Unit,
+    onMove: (String, Int) -> Unit,
+    onDuplicate: (String, String, Long) -> Unit,
+    onPendingRemoval: (Pair<String, Long>) -> Unit,
+    onImageSettings: (ImageSettingsTarget) -> Unit
+) {
+    val blockMatch = revealedMatch?.takeIf { it.blockId == block.id }
+    val isRevealed = blockMatch != null
+    Column(Modifier.fillMaxWidth().then(if (isRevealed) Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), RoundedCornerShape(8.dp)).testTag("find-revealed-block") else Modifier)) {
+        val list = remember(block.content) { runCatching { ListEditing.read(block.content) }.getOrNull() }
+        val container = remember(block.content) { runCatching { ContainerEditing.read(block.content) }.getOrNull() }
+        val table = remember(block.content) { runCatching { TableEditing.read(block.content) }.getOrNull() }
+        val image = remember(block.content) { runCatching { JSONObject(block.content).optString("type") == "image" }.getOrDefault(false) }
+        if (image) {
+            ImageBlock(block.content, databaseName)
+        } else if (isMathBlock(block.content)) {
+            MathBlock(latex = mathLatex(block.content))
+        } else if (isMermaidBlock(block.content)) {
+            MermaidBlock(code = mermaidCode(block.content))
+        } else if (table != null) {
+            TableBlockView(table, document.resource.revision, editable && !busy, blockMatch, onEdit = { row, col, index -> onEditTable(block.id, row, col, index) }, onResize = { onResizeTable(block.id, it) }, onAction = { revision, action, row, col -> onTableAction(block.id, revision, action, row, col) })
+        } else if (container != null) {
+            ContainerBlockView(container, editable && !busy, blockMatch, onEdit = { onEditContainer(block.id, it) }, onAppend = { onAppendContainer(block.id) })
+        } else if (list != null) {
+            ListBlockView(list, editable && !busy, blockMatch,
+                onEdit = { index -> onEditItem(block.id, index) },
+                onToggle = { index, value -> onToggleItem(block.id, index, value) },
+                onAppend = { onAppendItem(block.id) },
+                onAction = { path, action -> onItemAction(block.id, path, action) })
+        } else {
+            val preview = remember(block.content) { previewBlock(block.content) }
+            val match = blockMatch?.takeIf { it.path.isEmpty() }
+            val baseSize = if (document.resource.kind == "document") typography.size * 4f / 3f else 16f
+            val factor = when { preview.headingLevel == 1 -> 1.625f; preview.headingLevel == 2 -> 1.375f; preview.headingLevel == 3 -> 1.1875f; preview.paragraphStyle == "title" -> 2.4f; preview.paragraphStyle == "subtitle" -> 1.35f; preview.paragraphStyle == "caption" -> .82f; else -> 1f }
+            val textSize = baseSize * factor
+            if (preview.text.isNotEmpty()) Text(highlightedFindText(preview, block.content, match, MaterialTheme.colorScheme.primary.copy(alpha = 0.30f)), color = if (preview.paragraphStyle in setOf("subtitle", "caption")) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onBackground,
+                fontSize = textSize.sp,
+                fontWeight = if (preview.headingLevel != null || preview.paragraphStyle == "title") FontWeight.SemiBold else FontWeight.Normal,
+                lineHeight = if (preview.hasCustomFontSize) androidx.compose.ui.unit.TextUnit.Unspecified else if (document.resource.kind == "document") (textSize * typography.leading).sp else 30.sp, textAlign = preview.alignment, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp).then(findRevealModifier(match)))
+            if (preview.incomplete) Text(stringResource(R.string.preview_incomplete), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 13.sp, lineHeight = 23.sp, modifier = Modifier.padding(bottom = 12.dp))
+            if (preview.text.isEmpty() && !preview.incomplete) Spacer(Modifier.height(16.dp))
+            if (editable && remember(block.content) { runCatching { InlineEditing.text(block.content) }.isSuccess || runCatching { CodeEditing.read(block.content) }.isSuccess })
+                TextButton(enabled = !busy, onClick = { onEdit(block.id) }) { WorldsActionLabel(R.drawable.ic_pen_line, stringResource(R.string.edit_text)) }
+        }
+        if (editable) {
+            var menu by remember { mutableStateOf(false) }
+            Box {
+                TextButton(enabled = !busy, onClick = { menu = true }) { WorldsActionLabel(R.drawable.ic_ellipsis_vertical, stringResource(R.string.block_actions)) }
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    if (image)
+                        DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_sliders_horizontal) }, text = { Text(stringResource(R.string.image_settings)) }, onClick = { menu = false; onImageSettings(ImageSettingsTarget(document.resource.id, block.id, document.resource.revision, block.content)) })
+                    DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_type) }, text = { Text(stringResource(R.string.insert_paragraph_after)) }, onClick = { menu = false; onAdd(false, block.id) })
+                    DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_heading_1) }, text = { Text(stringResource(R.string.insert_heading_after)) }, onClick = { menu = false; onAdd(true, block.id) })
+                    DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_square_code) }, text = { Text(stringResource(R.string.insert_code_after)) }, onClick = { menu = false; onAddCode(block.id) })
+                    DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_code_2) }, text = { Text("Insert Math after") }, onClick = { menu = false; onAddMath(block.id) })
+                    DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_files) }, text = { Text("Insert Diagram after") }, onClick = { menu = false; onAddMermaid(block.id) })
+                    DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_image) }, text = { Text(stringResource(R.string.image_insert_after)) }, onClick = { menu = false; onAddImage(block.id) })
+                    val index = document.blocks.indexOfFirst { it.id == block.id }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    DropdownMenuItem(enabled = index > 0, leadingIcon = { WorldsGlyph(R.drawable.ic_arrow_up) }, text = { Text(stringResource(R.string.move_block_up)) }, onClick = { menu = false; onMove(block.id, -1) })
+                    DropdownMenuItem(enabled = index < document.blocks.lastIndex, leadingIcon = { WorldsGlyph(R.drawable.ic_arrow_down) }, text = { Text(stringResource(R.string.move_block_down)) }, onClick = { menu = false; onMove(block.id, 1) })
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_files) }, text = { Text(stringResource(R.string.duplicate_block)) }, onClick = { menu = false; onDuplicate(document.resource.id, block.id, document.resource.revision) })
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_trash_2) }, text = { Text(stringResource(R.string.remove_block)) }, onClick = { menu = false; onPendingRemoval(block.id to document.resource.revision) })
+                }
+            }
+        }
     }
 }
