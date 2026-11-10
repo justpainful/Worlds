@@ -218,11 +218,11 @@ struct HomeView: View {
                 .foregroundStyle(WorldsPalette.ink(for: colorScheme))
 
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), spacing: 12)], spacing: 12) {
-                metricCard(title: "Pages & Docs", count: max(activePages.filter { $0.kind == "page" || $0.kind == "document" }.count, 4), icon: "doc.text")
-                metricCard(title: "Spreadsheets", count: max(activePages.filter { $0.kind == "spreadsheet" }.count, 3), icon: "tablecells.fill")
-                metricCard(title: "Mind Maps & Canvas", count: max(activePages.filter { $0.kind == "drawing" }.count, 4), icon: "pencil.tip")
-                metricCard(title: "Projects & Goals", count: max(activePages.filter { $0.kind == "project" }.count, 3), icon: "folder")
-                metricCard(title: "Slides & 3D", count: max(activePages.filter { $0.kind == "presentation" }.count, 2), icon: "rectangle.on.rectangle")
+                metricCard(title: "Pages & Docs", count: activePages.filter { $0.kind == "page" || $0.kind == "document" }.count, icon: "doc.text")
+                metricCard(title: "Spreadsheets", count: activePages.filter { $0.kind == "spreadsheet" }.count, icon: "tablecells.fill")
+                metricCard(title: "Mind Maps & Canvas", count: activePages.filter { $0.kind == "drawing" }.count, icon: "pencil.tip")
+                metricCard(title: "Projects & Goals", count: activePages.filter { $0.kind == "project" }.count, icon: "folder")
+                metricCard(title: "Slides & 3D", count: activePages.filter { $0.kind == "presentation" }.count, icon: "rectangle.on.rectangle")
             }
         }
     }

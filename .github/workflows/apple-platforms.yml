@@ -132,11 +132,6 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/WorldsUI" \
             -resultBundlePath "$GITHUB_WORKSPACE/results/${{ matrix.device }}.xcresult" \
             -only-testing:${{ matrix.test_target }}/WorldsUITests/testCompleteVisualShowcaseCaptures \
-            -only-testing:${{ matrix.test_target }}/WorldsUITests/testShowcaseWorkspaceSectionsAndModals \
-            -only-testing:${{ matrix.test_target }}/WorldsUITests/testShowcaseDrawingStudio \
-            -only-testing:${{ matrix.test_target }}/WorldsUITests/testShowcasePresentationEditor \
-            -only-testing:${{ matrix.test_target }}/WorldsUITests/testShowcasePageAndTableEditor \
-            -only-testing:${{ matrix.test_target }}/WorldsUITests/testArabicProjectDark \
             -only-testing:${{ matrix.test_target }}/WorldsUITests/testRightToLeftNavigationAndReading \
             "${diagnostic_flags[@]}" CODE_SIGNING_ALLOWED=NO test 2>&1 | tee logs/ui-${{ matrix.device }}.log
           grep -Eq 'testCompleteVisualShowcaseCaptures.*passed' logs/ui-${{ matrix.device }}.log
@@ -160,6 +155,8 @@ jobs:
                       sug = node.get("suggestedHumanReadableName")
                       if exp and sug:
                           clean = re.sub(r"_[0-9]+_[0-9A-Fa-f-]+(\.[A-Za-z0-9]+)$", r"\1", sug)
+                          clean = re.sub(r"[^A-Za-z0-9._-]+", "_", clean)
+                          if not clean.lower().endswith((".png", ".jpg", ".jpeg", ".heic")): continue
                           src = os.path.join("screenshots", exp)
                           dst = os.path.join("screenshots", "named", clean)
                           if os.path.exists(src):
