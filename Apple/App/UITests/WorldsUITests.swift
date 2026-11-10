@@ -784,7 +784,7 @@ final class WorldsUITests: XCTestCase {
         if UIDevice.current.userInterfaceIdiom == .phone {
             tapIdentifier("library-card-Spreadsheets", app: app)
         } else {
-            tapIdentifier("sidebar-lib-Spreadsheets", app: app)
+            tapSidebarOrText(title: "Spreadsheets", identifier: "sidebar-lib-Spreadsheets", app: app)
         }
         #endif
         capture("complete-04-spreadsheet-excel", app: app)
@@ -794,10 +794,11 @@ final class WorldsUITests: XCTestCase {
         tapIdentifier("page.showcase-mindmap-arch", app: app)
         #else
         if UIDevice.current.userInterfaceIdiom == .phone {
-            tapIdentifier("library-filter-Mind Maps & Drawings", app: app)
-            RunLoop.current.run(until: Date().addingTimeInterval(0.8))
+            tapIdentifier("library-filter-All Resources", app: app)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.6))
+            tapIdentifier("library-card-Mind Maps & Drawings", app: app)
         } else {
-            tapIdentifier("page.showcase-mindmap-arch", app: app)
+            tapSidebarOrText(title: "Mind Maps & Drawings", identifier: "sidebar-lib-Mind Maps & Drawings", app: app)
         }
         #endif
         capture("complete-05-mindmap-concept", app: app)
@@ -812,7 +813,7 @@ final class WorldsUITests: XCTestCase {
             RunLoop.current.run(until: Date().addingTimeInterval(0.6))
             tapIdentifier("library-card-Slides & 3D CAD", app: app)
         } else {
-            tapIdentifier("sidebar-lib-Slides & 3D CAD", app: app)
+            tapSidebarOrText(title: "Slides & 3D CAD", identifier: "sidebar-lib-Slides & 3D CAD", app: app)
         }
         #endif
         capture("complete-06-studio-cad-slides", app: app)
@@ -828,7 +829,7 @@ final class WorldsUITests: XCTestCase {
         // 09 Create New Sheet / iPad Inspector / macOS Hot Corner Quick Note
         #if os(iOS)
         if UIDevice.current.userInterfaceIdiom == .pad {
-            tapIdentifier("sidebar-dest-home", app: app)
+            tapSidebarOrText(title: "Home", identifier: "sidebar-dest-home", app: app)
             tapIdentifier("toggle-inspector-button", app: app)
             capture("complete-09-ipad-inspector-open", app: app)
         } else {
@@ -880,8 +881,26 @@ final class WorldsUITests: XCTestCase {
         }
         #endif
         if let sidebarID {
-            tapIdentifier(sidebarID, app: app)
+            tapSidebarOrText(title: tabTitle, identifier: sidebarID, app: app)
         }
+    }
+
+    @MainActor
+    private func tapSidebarOrText(title: String, identifier: String, app: XCUIApplication) {
+        let matches = app.staticTexts.matching(NSPredicate(format: "label == %@", title))
+        for i in 0..<matches.count {
+            let candidate = matches.element(boundBy: i)
+            if candidate.exists && candidate.isHittable && candidate.frame.minX < 320 {
+                #if os(macOS)
+                candidate.click()
+                #else
+                candidate.tap()
+                #endif
+                RunLoop.current.run(until: Date().addingTimeInterval(1.1))
+                return
+            }
+        }
+        tapIdentifier(identifier, app: app)
     }
 
     @MainActor
@@ -998,14 +1017,15 @@ final class WorldsUITests: XCTestCase {
         #else
         let rawImage = XCUIScreen.main.screenshot().image
         let finalImage: UIImage
-        if UIDevice.current.userInterfaceIdiom == .pad && rawImage.size.height > rawImage.size.width {
-            let targetSize = CGSize(width: rawImage.size.height, height: rawImage.size.width)
+        if UIDevice.current.userInterfaceIdiom == .pad, let cg = rawImage.cgImage, cg.width < cg.height {
+            let targetSize = CGSize(width: cg.height, height: cg.width)
             let format = UIGraphicsImageRendererFormat()
-            format.scale = rawImage.scale
+            format.scale = 1.0
+            let normalized = UIImage(cgImage: cg, scale: 1.0, orientation: .up)
             finalImage = UIGraphicsImageRenderer(size: targetSize, format: format).image { ctx in
                 ctx.cgContext.translateBy(x: targetSize.width / 2, y: targetSize.height / 2)
                 ctx.cgContext.rotate(by: -.pi / 2)
-                rawImage.draw(in: CGRect(x: -rawImage.size.width / 2, y: -rawImage.size.height / 2, width: rawImage.size.width, height: rawImage.size.height))
+                normalized.draw(in: CGRect(x: -CGFloat(cg.width) / 2, y: -CGFloat(cg.height) / 2, width: CGFloat(cg.width), height: CGFloat(cg.height)))
             }
         } else {
             finalImage = rawImage
