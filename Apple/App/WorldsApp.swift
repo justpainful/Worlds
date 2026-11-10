@@ -1002,11 +1002,11 @@ private struct WorldsLibraryView: View {
                     kind: item.kind,
                     parentID: nil,
                     archived: false,
-                    sortKey: "0\(idx)",
+                    sortKey: Double(idx),
                     createdAt: now - Int64(idx * 3600_000),
                     preview: item.preview,
                     updatedAt: now - Int64(idx * 1800_000),
-                    metadataJSON: nil,
+                    metadataJSON: "{}",
                     blocks: []
                 ),
                 at: min(idx, pages.count)
@@ -1058,7 +1058,7 @@ private struct WorldsLibraryView: View {
                 }
             )
         case .spreadsheets:
-            WorldsSpreadsheetStudioView(metadataJSON: nil)
+            WorldsSpreadsheetStudioView(metadataJSON: "{}")
         case .planning:
             WorldsPlanningHubView()
         case .study:
