@@ -1,0 +1,13 @@
+# Isolated Claude conversation harness
+
+A separate macOS build target that discovers the local Claude Code executable and opens the existing native conversation UI over an isolated, temporary schema-v11 fixture. It never selects or opens a user's Worlds database. Sending is an explicit user action, and uses the local runtime and its configured account. MCP, page context, attachments and tools are not supplied. The process itself must be trusted: the host cannot prevent a malicious executable from ignoring its arguments.
+
+This target is not a product app, release artifact, screenshot demo or automated live-provider test. Normal use requires a compatible installed and authenticated Claude runtime and may fail under sandbox restrictions. The DEBUG-only UI fixture injects a synthetic runner and uses a UUID-named private directory in Application Support; it never invokes the CLI. Its UI test terminates and relaunches the application to check saved history and cancellation. Fixture directories remain on disk as isolated test data.
+
+Saved conversations and responses staged in the isolated database can be restored after reopening. A response that fails before it is staged can still be lost on termination. The journal and database checks assume a private, stable parent directory; they do not protect against every path replacement by another process with the same account privileges. The process runner does not guarantee terminating descendants. Full provider, approvals and collaboration parity remain incomplete, and iOS/iPadOS have no local Claude process runtime.
+
+The separate reference-editor diagnostic requires both the isolated fixture and
+the explicit `--diagnose-reference-editor` argument. It adds a second text
+editor, which changes layout and tab order, so it is not used by the ordinary
+behavior tests. The observation compares accessibility and hit-testing state;
+it does not prove the cause of a failure or record either editor's text.

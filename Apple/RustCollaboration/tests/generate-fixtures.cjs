@@ -1,0 +1,40 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const Y = require('yjs');
+const target = path.join(__dirname, 'fixtures');
+const write = (name, value) => fs.writeFileSync(path.join(target, name), value);
+const base = new Y.Doc();
+base.clientID = 1001;
+base.getText('shared').insert(0, 'Hello 🌍');
+const fragment = base.getXmlFragment('default');
+const paragraph = new Y.XmlElement('paragraph');
+const xmltext = new Y.XmlText();
+fragment.insert(0, [paragraph]);
+paragraph.insert(0, [xmltext]);
+xmltext.insert(0, 'Yjs rich text', { bold: true });
+write('base.bin', Y.encodeStateAsUpdate(base));
+write('base-vector.bin', Y.encodeStateVector(base));
+const a = new Y.Doc(); a.clientID = 2001; Y.applyUpdate(a, Y.encodeStateAsUpdate(base));
+const b = new Y.Doc(); b.clientID = 2002; Y.applyUpdate(b, Y.encodeStateAsUpdate(base));
+a.getText('shared').insert(6, 'Alice ');
+b.getText('shared').insert(6, 'Bob ');
+write('alice-diff.bin', Y.encodeStateAsUpdate(a, Y.encodeStateVector(base)));
+write('bob-diff.bin', Y.encodeStateAsUpdate(b, Y.encodeStateVector(base)));
+Y.applyUpdate(a, Y.encodeStateAsUpdate(b, Y.encodeStateVector(base)));
+write('merged.bin', Y.encodeStateAsUpdate(a));
+write('merged.txt', a.getText('shared').toString());
+write('xml.txt', fragment.toString());
+
+// Minimal editor fixture used to test UTF-16 offsets and concurrent inserts.
+const plain = new Y.Doc(); plain.clientID = 1001;
+const plainP = new Y.XmlElement('paragraph'), plainText = new Y.XmlText();
+plain.getXmlFragment('default').insert(0, [plainP]); plainP.setAttribute('bid', 'block-1'); plainP.insert(0, [plainText]);
+plainText.insert(0, 'Hello 🌍');
+write('plain-editor.bin', Y.encodeStateAsUpdate(plain));
+
+// Matching stable block ID plus a real Yjs formatting mark.
+const rich = new Y.Doc(); rich.clientID = 1002;
+const richP = new Y.XmlElement('paragraph'), richText = new Y.XmlText();
+rich.getXmlFragment('default').insert(0, [richP]); richP.setAttribute('bid', 'block-1'); richP.insert(0, [richText]);
+richText.insert(0, 'Yjs rich text', { bold: true });
+write('rich-editor.bin', Y.encodeStateAsUpdate(rich));

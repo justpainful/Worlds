@@ -1,0 +1,27 @@
+<!doctype html><meta charset="utf-8"><body><pre id="result">pending</pre><script src="worlds-render-ref.js"></script><script>
+try {
+const results={};
+const cases=[
+ ...['hard','ink','pencil','highlighter'].flatMap(kind=>[1,4].map(scale=>({name:kind+(scale===4?'-4x':''),kind,scale,patch:{}}))),
+ {name:'hard-taper-4x',kind:'hard',scale:4,patch:{taperStart:.4,taperEnd:.3,pressureFlow:true}},
+ {name:'highlighter-pressure-4x',kind:'highlighter',scale:4,patch:{pressureSize:true,taperStart:.2}},
+ {name:'highlighter-light-4x',kind:'highlighter',scale:4,patch:{opacity:.25,flow:.35}},
+ {name:'ink-handwriting-4x',kind:'ink',scale:4,patch:{size:7,opacity:1,flow:1,spacing:.07,taperStart:.08,taperEnd:.16,pressureSize:true,pressureOpacity:false,pressureCurve:.65}},
+ {name:'highlighter-preset-4x',kind:'highlighter',scale:4,patch:{size:28,opacity:.35,flow:1,spacing:.12,pressureSize:false,pressureOpacity:false}},
+];
+for (const item of cases) {
+ const {kind,scale}=item, scene=newScene(), layer=scene.layerOrder[0], frame=scene.defaultFrameId;scene.frames[frame].w=64;scene.frames[frame].h=64;
+ const node=newNode('stroke',layer,frame,{x:0,y:0,w:64,h:64});node.brush={...DEFAULT_BRUSH,kind,size:10,opacity:.6,flow:.7,spacing:.25,pressureSize:kind!=='highlighter',pressureOpacity:kind!=='highlighter',...item.patch};
+ node.samples=[{x:8,y:20,pressure:.25,tiltX:0,tiltY:0,time:0},{x:30,y:28,pressure:.8,tiltX:0,tiltY:0,time:1},{x:55,y:20,pressure:1,tiltX:0,tiltY:0,time:2}];node.seed=123;node.erase=false;node.alphaLock=false;
+ scene.nodes[node.id]=node;scene.nodeOrder=[node.id];const canvas=document.createElement('canvas');canvas.width=64*scale;canvas.height=64*scale;
+ new DrawingRenderer({tileBackend:'canvas',viewportCache:false}).render(canvas,scene,{x:0,y:0,w:64,h:64,scale},{frameId:frame,background:false,uncached:true});results[item.name]=canvas.toDataURL('image/png');
+}
+for(const scale of [1,4]) {
+ const scene=newScene(), first=scene.layerOrder[0], frame=scene.defaultFrameId;scene.frames[frame].w=64;scene.frames[frame].h=64;scene.layers[first].opacity=.6;
+ const second=structuredClone(scene.layers[first]);second.id='fixture-second';second.opacity=.5;scene.layers[second.id]=second;scene.layerOrder.push(second.id);
+ for(const [i,layer] of [first,second.id].entries()) {const n=newNode('stroke',layer,frame,{x:0,y:0,w:64,h:64});n.brush={...DEFAULT_BRUSH,kind:'hard',color:i?'#0066cc':'#ee4422',size:10,opacity:.6,flow:.7,spacing:.25,pressureSize:true,pressureOpacity:true};n.samples=[{x:8,y:i?26:20,pressure:.25,tiltX:0,tiltY:0,time:0},{x:30,y:i?20:28,pressure:.8,tiltX:0,tiltY:0,time:1},{x:55,y:i?26:20,pressure:1,tiltX:0,tiltY:0,time:2}];n.seed=123;n.erase=false;n.alphaLock=false;scene.nodes[n.id]=n;scene.nodeOrder.push(n.id);}
+ const canvas=document.createElement('canvas');canvas.width=64*scale;canvas.height=64*scale;new DrawingRenderer({tileBackend:'canvas',viewportCache:false}).render(canvas,scene,{x:0,y:0,w:64,h:64,scale},{frameId:frame,background:false,uncached:true});results['layers'+(scale===4?'-4x':'')]=canvas.toDataURL('image/png');
+}
+document.getElementById('result').textContent=JSON.stringify(results);
+}catch(e){document.getElementById('result').textContent='ERROR: '+(e.stack||e);}
+</script>

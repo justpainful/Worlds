@@ -1,0 +1,17 @@
+[package]
+name = "worlds-collaboration"
+version = "0.1.0"
+edition = "2024"
+license = "UNLICENSED"
+
+[lib]
+crate-type = ["rlib", "staticlib"]
+
+[dependencies]
+yrs = { version = "=0.28.1", features = ["sync"] }
+rusqlite = { version = "0.37", features = ["bundled"] }
+uuid = { version = "1", features = ["v4"] }
+serde_json = "1"
+
+[dev-dependencies]
+tungstenite = "0.30"

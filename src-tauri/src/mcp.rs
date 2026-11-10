@@ -20,6 +20,7 @@ mod more;
 mod more2;
 mod page_content;
 mod page_structure;
+mod protocol;
 mod profile_history;
 mod resources;
 mod tasks_tables;
@@ -41,57 +42,16 @@ pub fn run_stdio(args: &[String]) -> Result<()> {
     let mut stdout = std::io::stdout();
     for line in stdin.lock().lines() {
         let line = line?;
-        if line.trim().is_empty() {
-            continue;
-        }
-        let msg: Value = match serde_json::from_str(&line) {
-            Ok(v) => v,
-            Err(_) => continue,
-        };
-        let id = msg.get("id").cloned();
-        let method = msg.get("method").and_then(Value::as_str).unwrap_or("");
-        let params = msg.get("params").cloned().unwrap_or(json!({}));
-        let Some(id) = id else { continue }; // notification
-        let response = match method {
-            "initialize" => {
-                let version = params.get("protocolVersion").and_then(Value::as_str).unwrap_or("2025-06-18");
-                json!({ "jsonrpc": "2.0", "id": id, "result": {
-                    "protocolVersion": version,
-                    "capabilities": { "tools": {} },
-                    "serverInfo": { "name": "worlds", "version": env!("CARGO_PKG_VERSION") },
-                    "instructions": "Tools for the user's local Worlds workspace (pages made of blocks). Read before writing; change the smallest set of blocks; Discord sends are queued for the user's approval."
-                }})
-            }
-            "ping" => json!({ "jsonrpc": "2.0", "id": id, "result": {} }),
-            "tools/list" => json!({ "jsonrpc": "2.0", "id": id, "result": { "tools": tool_list() } }),
-            "tools/call" => {
-                let name = params.get("name").and_then(Value::as_str).unwrap_or("");
-                let a = params.get("arguments").cloned().unwrap_or(json!({}));
-                let result = (|| -> Result<Value> {
-                    let plan=crate::drawing_copy::Plan::tool(&conn,name,&a)?;
-                    let permit=crate::drawing_copy::authorize_stdio(plan)?;
-                    let tx = conn.unchecked_transaction();
-                    match tx {
-                        // Claude acts with the signed-in user's rights (Team workspaces).
-                        Ok(tx) => match crate::account::guarded_tool_call(&tx, name, &a, |c| call_tool(c, &ctx, name, &a,Some(&permit))) {
-                            Ok(v) => tx.commit().map(|_| v).map_err(anyhow::Error::from),
-                            Err(e) => Err(e),
-                        },
-                        Err(e) => Err(e.into()),
-                    }
-                })();
-                match result {
-                    Ok(v) => {
-                        let text = if v.is_string() { v.as_str().unwrap().to_string() } else { serde_json::to_string_pretty(&v)? };
-                        json!({ "jsonrpc": "2.0", "id": id, "result": { "content": [{ "type": "text", "text": text }] } })
-                    }
-                    Err(e) => json!({ "jsonrpc": "2.0", "id": id, "result": {
-                        "content": [{ "type": "text", "text": format!("Error: {e:#}") }], "isError": true
-                    }}),
-                }
-            }
-            _ => json!({ "jsonrpc": "2.0", "id": id, "error": { "code": -32601, "message": format!("unknown method {method}") } }),
-        };
+        let response = protocol::dispatch(&line, env!("CARGO_PKG_VERSION"), tool_list, |name, a| {
+            let plan = crate::drawing_copy::Plan::tool(&conn, name, a)?;
+            let permit = crate::drawing_copy::authorize_stdio(plan)?;
+            let tx = conn.unchecked_transaction()?;
+            // Claude acts with the signed-in user's rights (Team workspaces).
+            let result = crate::account::guarded_tool_call(&tx, name, a, |c| call_tool(c, &ctx, name, a, Some(&permit)))?;
+            tx.commit()?;
+            Ok(result)
+        })?;
+        let Some(response) = response else { continue };
         writeln!(stdout, "{}", response)?;
         stdout.flush()?;
     }

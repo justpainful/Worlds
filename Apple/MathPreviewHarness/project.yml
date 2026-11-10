@@ -1,0 +1,120 @@
+name: WorldsMathPreviewHarness
+options:
+  deploymentTarget:
+    iOS: "17.0"
+    macOS: "14.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    GENERATE_INFOPLIST_FILE: YES
+    CODE_SIGNING_ALLOWED: NO
+packages:
+  WorldsCore:
+    path: ../WorldsCore
+  SwiftMath:
+    url: https://github.com/mgriebling/SwiftMath.git
+    exactVersion: 1.7.3
+targets:
+  MathPreviewHarness-iOS:
+    type: application
+    platform: iOS
+    sources:
+      - App
+      - path: ../WorldsCore/Sources/WorldsMathSafePreview
+        excludes: [README.md]
+    dependencies:
+      - package: WorldsCore
+        product: WorldsModels
+      - package: SwiftMath
+        product: SwiftMath
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.worlds.test.math.ios
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+  MathPreviewHarness-macOS:
+    type: application
+    platform: macOS
+    sources:
+      - App
+      - path: ../WorldsCore/Sources/WorldsMathSafePreview
+        excludes: [README.md]
+    dependencies:
+      - package: WorldsCore
+        product: WorldsModels
+      - package: SwiftMath
+        product: SwiftMath
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.worlds.test.math.macos
+  MathPreviewHarness-iOS-UnitTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: ../WorldsCore/Sources/WorldsMathSafePreview
+        excludes: [README.md]
+      - ../WorldsCore/Tests/WorldsMathSafePreviewTests/MathSourceDocumentTests.swift
+    dependencies:
+      - target: MathPreviewHarness-iOS
+      - package: WorldsCore
+        product: WorldsModels
+      - package: SwiftMath
+        product: SwiftMath
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.worlds.test.math.ios.unit
+        TEST_TARGET_NAME: MathPreviewHarness-iOS
+  MathPreviewHarness-macOS-UnitTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: ../WorldsCore/Sources/WorldsMathSafePreview
+        excludes: [README.md]
+      - ../WorldsCore/Tests/WorldsMathSafePreviewTests/MathSourceDocumentTests.swift
+    dependencies:
+      - target: MathPreviewHarness-macOS
+      - package: WorldsCore
+        product: WorldsModels
+      - package: SwiftMath
+        product: SwiftMath
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.worlds.test.math.macos.unit
+        TEST_TARGET_NAME: MathPreviewHarness-macOS
+  MathPreviewHarness-iOS-UITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: MathPreviewHarness-iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.worlds.test.math.ios.uitests
+        TEST_TARGET_NAME: MathPreviewHarness-iOS
+  MathPreviewHarness-macOS-UITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources: [UITests]
+    dependencies:
+      - target: MathPreviewHarness-macOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.worlds.test.math.macos.uitests
+        TEST_TARGET_NAME: MathPreviewHarness-macOS
+schemes:
+  MathPreviewHarness-iOS:
+    build:
+      targets:
+        MathPreviewHarness-iOS: all
+        MathPreviewHarness-iOS-UITests: [test]
+        MathPreviewHarness-iOS-UnitTests: [test]
+    test:
+      targets: [MathPreviewHarness-iOS-UnitTests, MathPreviewHarness-iOS-UITests]
+  MathPreviewHarness-macOS:
+    build:
+      targets:
+        MathPreviewHarness-macOS: all
+        MathPreviewHarness-macOS-UITests: [test]
+        MathPreviewHarness-macOS-UnitTests: [test]
+    test:
+      targets: [MathPreviewHarness-macOS-UnitTests, MathPreviewHarness-macOS-UITests]

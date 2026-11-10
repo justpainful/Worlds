@@ -1,0 +1,196 @@
+// swift-tools-version: 6.0
+import PackageDescription
+import Foundation
+
+let rustStorePath = "Artifacts/WorldsRustStore.xcframework"
+let packageDirectory = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+let rustStoreAvailable = FileManager.default.fileExists(atPath: packageDirectory.appendingPathComponent(rustStorePath).path)
+
+precondition(ProcessInfo.processInfo.environment["WORLDS_REQUIRE_NATIVE_WRITES"] != "1" || rustStoreAvailable, "WorldsRustStore.xcframework must be built before resolving this package")
+let collaborationPath = "Artifacts/WorldsRustCollaboration.xcframework"
+let collaborationAvailable = FileManager.default.fileExists(atPath: packageDirectory.appendingPathComponent(collaborationPath).path)
+precondition(ProcessInfo.processInfo.environment["WORLDS_REQUIRE_COLLABORATION"] != "1" || collaborationAvailable, "WorldsRustCollaboration.xcframework must be built before resolving this package")
+
+let package = Package(
+    name: "WorldsCore",
+    platforms: [.iOS(.v17), .macOS(.v14)],
+    products: [
+        .library(name: "WorldsModels", targets: ["WorldsModels"]),
+        .library(name: "WorldsNativeDiagrams", targets: ["WorldsNativeDiagrams"]),
+        .library(name: "WorldsSyncWire", targets: ["WorldsSyncWire"]),
+        .library(name: "WorldsAwareness", targets: ["WorldsAwareness"]),
+        .library(name: "WorldsPersistence", targets: ["WorldsPersistence"]),
+        .library(name: "WorldsIdentity", targets: ["WorldsIdentity"]),
+        .library(name: "WorldsIdentityContinuity", targets: ["WorldsIdentityContinuity"]),
+        .library(name: "WorldsAccountViews", targets: ["WorldsAccountViews"]),
+        .library(name: "WorldsMCPApprovalViews", targets: ["WorldsMCPApprovalViews"]),
+        .library(name: "WorldsMCPApprovalCoordinator", targets: ["WorldsMCPApprovalCoordinator"]),
+        .library(name: "WorldsRichText", targets: ["WorldsRichText"]),
+        .library(name: "WorldsDrawing", targets: ["WorldsDrawing"]),
+        .library(name: "WorldsDrawingStorage", targets: ["WorldsDrawingStorage"]),
+        .library(name: "WorldsPresentations", targets: ["WorldsPresentations"]),
+        .library(name: "WorldsMedia", targets: ["WorldsMedia"]),
+        .library(name: "WorldsLocalImport", targets: ["WorldsLocalImport"]),
+        .library(name: "WorldsSearch", targets: ["WorldsSearch"]),
+        .library(name: "WorldsAI", targets: ["WorldsAI"]),
+        .library(name: "WorldsAIConversation", targets: ["WorldsAIConversation"]),
+        .library(name: "WorldsAIViews", targets: ["WorldsAIViews"]),
+        .library(name: "WorldsAIConversationBridge", targets: ["WorldsAIConversationBridge"]),
+        .library(name: "WorldsNativeEditor", targets: ["WorldsNativeEditor"]),
+        .library(name: "WorldsAutomations", targets: ["WorldsAutomations"]),
+        .library(name: "WorldsProjects", targets: ["WorldsProjects"]),
+        .library(name: "WorldsMediaViews", targets: ["WorldsMediaViews"]),
+        .library(name: "WorldsScreenDrawing", targets: ["WorldsScreenDrawing"]),
+        .library(name: "WorldsOfficePreview", targets: ["WorldsOfficePreview"]),
+        .library(name: "WorldsGallery", targets: ["WorldsGallery"]),
+        .library(name: "WorldsMathDiagrams", targets: ["WorldsMathDiagrams"]),
+        .library(name: "WorldsOfficeViews", targets: ["WorldsOfficeViews"]),
+        .library(name: "Worlds3DViews", targets: ["Worlds3DViews"]),
+    ],
+    dependencies: [
+        .package(url: "https://github.com/weichsel/ZIPFoundation.git", exact: "0.9.20"),
+        .package(url: "https://github.com/mgriebling/SwiftMath.git", exact: "1.7.3"),
+        .package(url: "https://github.com/2389-research/MermaidKit.git", exact: "2.10.2"),
+    ],
+    targets: [
+        .target(name: "WorldsModels"),
+        .target(name: "WorldsSyncWire"),
+        .target(name: "WorldsAwareness", dependencies: ["WorldsSyncWire"], exclude: ["README.md"]),
+        .target(name: "WorldsPersistence", exclude: ["README.md"], linkerSettings: [.linkedLibrary("sqlite3")]),
+        .target(name: "WorldsIdentity", exclude: ["README.md"], linkerSettings: [.linkedFramework("Security")]),
+        .target(name: "WorldsIdentityContinuity", dependencies: ["WorldsIdentity"], exclude: ["README.md"]),
+        .target(name: "WorldsAccountViews", dependencies: ["WorldsIdentity", "WorldsIdentityContinuity"], exclude: ["README.md"]),
+        .target(name: "WorldsMCPApprovalViews", exclude: ["DESIGN.md"]),
+        .target(name: "WorldsMCPApprovalCoordinator", dependencies: ["WorldsMCPApprovalViews", "WorldsIdentityContinuity"]),
+        .target(name: "WorldsRichText", dependencies: ["WorldsModels"], exclude: ["README.md"]),
+        .target(name: "WorldsNativeDiagrams", dependencies: ["WorldsModels"], exclude: ["README.md"]),
+        .target(name: "WorldsDrawing", dependencies: ["WorldsModels", .product(name: "ZIPFoundation", package: "ZIPFoundation")], exclude: ["README.md"]),
+        .target(name: "WorldsDrawingStorage", linkerSettings: [.linkedLibrary("sqlite3")]),
+        .target(name: "WorldsPresentations", dependencies: ["WorldsModels"], exclude: ["README.md"]),
+        .target(name: "WorldsMedia", exclude: ["README.md"]),
+        .target(name: "WorldsLocalImport", dependencies: rustStoreAvailable ? ["WorldsRustStore"] : [], linkerSettings: rustStoreAvailable ? [.linkedLibrary("sqlite3"), .linkedFramework("Security"), .linkedFramework("SystemConfiguration"), .linkedLibrary("resolv"), .linkedLibrary("iconv")] : [.linkedLibrary("sqlite3")]),
+        .target(name: "WorldsSearch", exclude: ["README.md"], linkerSettings: [.linkedLibrary("sqlite3")]),
+        .target(name: "WorldsAI", dependencies: ["WorldsModels"], exclude: ["README.md"]),
+        .target(name: "WorldsAIConversation", dependencies: ["WorldsAI", "WorldsModels"], exclude: ["README.md"], linkerSettings: [.linkedLibrary("sqlite3")]),
+        .target(name: "WorldsAIViews", exclude: ["README.md", "DESIGN.md"]),
+        .target(name: "WorldsAIConversationBridge", dependencies: ["WorldsAI", "WorldsAIConversation", "WorldsAIViews"]),
+        .target(name: "WorldsNativeEditor", dependencies: ["WorldsModels", "WorldsRichText"], exclude: ["README.md"]),
+        .target(name: "WorldsAutomations", dependencies: rustStoreAvailable ? ["WorldsModels", "WorldsRustStore"] : ["WorldsModels"], exclude: ["README.md"], linkerSettings: rustStoreAvailable ? [.linkedLibrary("sqlite3"), .linkedFramework("Security"), .linkedFramework("SystemConfiguration"), .linkedLibrary("resolv"), .linkedLibrary("iconv")] : [.linkedLibrary("sqlite3")]),
+        .target(name: "WorldsProjects", dependencies: ["WorldsModels"], exclude: ["README.md"]),
+        .target(name: "WorldsMediaViews", dependencies: ["WorldsMedia"], exclude: ["README.md"]),
+        .target(name: "WorldsScreenDrawing", exclude: ["README.md", "DESIGN.md"], linkerSettings: [.linkedFramework("ScreenCaptureKit", .when(platforms: [.macOS]))]),
+        .target(name: "WorldsOfficePreview", dependencies: ["WorldsMedia", .product(name: "ZIPFoundation", package: "ZIPFoundation")], exclude: ["README.md"]),
+        .target(name: "WorldsGallery", dependencies: ["WorldsModels"], exclude: ["README.md"]),
+        .target(name: "WorldsMathDiagrams", dependencies: ["WorldsModels", "WorldsNativeDiagrams", .product(name: "SwiftMath", package: "SwiftMath"), .product(name: "MermaidLayout", package: "MermaidKit")], exclude: ["README.md"]),
+        .target(name: "WorldsOfficeViews", dependencies: ["WorldsMedia", "WorldsOfficePreview"], exclude: ["README.md"]),
+        .target(name: "Worlds3DViews", dependencies: ["WorldsMedia"], exclude: ["README.md"]),
+        .testTarget(name: "WorldsModelsTests", dependencies: ["WorldsModels"]),
+        .testTarget(name: "WorldsSyncWireTests", dependencies: ["WorldsSyncWire"]),
+        .testTarget(name: "WorldsAwarenessTests", dependencies: ["WorldsAwareness", "WorldsSyncWire"]),
+        .testTarget(name: "WorldsPersistenceTests", dependencies: ["WorldsPersistence"], resources: [.copy("worlds-v1-fixture.db")], linkerSettings: [.linkedLibrary("sqlite3")]),
+        .testTarget(name: "WorldsIdentityTests", dependencies: ["WorldsIdentity"]),
+        .testTarget(name: "WorldsIdentityContinuityTests", dependencies: ["WorldsIdentityContinuity", "WorldsIdentity"]),
+        .testTarget(name: "WorldsAccountViewsTests", dependencies: ["WorldsAccountViews", "WorldsIdentity", "WorldsIdentityContinuity"]),
+        .testTarget(name: "WorldsMCPApprovalViewsTests", dependencies: ["WorldsMCPApprovalViews"]),
+        .testTarget(name: "WorldsMCPApprovalCoordinatorTests", dependencies: ["WorldsMCPApprovalCoordinator", "WorldsMCPApprovalViews"]),
+        .testTarget(name: "WorldsRichTextTests", dependencies: ["WorldsRichText", "WorldsModels"]),
+        .testTarget(name: "WorldsDrawingVisualComparisonTests", dependencies: ["WorldsDrawing"], resources: [.copy("CanvasReferences")]),
+        .testTarget(name: "WorldsDrawingTests", dependencies: ["WorldsDrawing", "WorldsModels"], resources: [.copy("original-stroke-fixture.json"), .copy("original-shapes-fixture.json"), .copy("original-pressure-fixture.json"), .copy("original-journal-fixture.json"), .copy("original-dabs-fixture.json"), .copy("recognition-source-corpus.json")]),
+        .testTarget(name: "WorldsPresentationsTests", dependencies: ["WorldsPresentations", "WorldsModels"]),
+        .testTarget(name: "WorldsMediaTests", dependencies: ["WorldsMedia"]),
+        .testTarget(name: "WorldsLocalImportTests", dependencies: rustStoreAvailable ? ["WorldsLocalImport", "WorldsRustStore"] : ["WorldsLocalImport"], linkerSettings: [.linkedLibrary("sqlite3")]),
+        .testTarget(name: "WorldsFileAccessTests", dependencies: ["WorldsPersistence", "WorldsMedia"], resources: [.copy("worlds-v1-fixture.db")], linkerSettings: [.linkedLibrary("sqlite3")]),
+        .testTarget(name: "WorldsSearchTests", dependencies: ["WorldsSearch"], resources: [.copy("worlds-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]),
+        .testTarget(name: "WorldsAIConversationTests", dependencies: ["WorldsAIConversation", "WorldsAI"], linkerSettings: [.linkedLibrary("sqlite3")]),
+        .testTarget(name: "WorldsAIViewsTests", dependencies: ["WorldsAIViews"]),
+        .testTarget(name: "WorldsAIConversationBridgeTests", dependencies: ["WorldsAIConversationBridge", "WorldsAI", "WorldsAIConversation", "WorldsAIViews"], linkerSettings: [.linkedLibrary("sqlite3")]),
+        .testTarget(name: "WorldsAITests", dependencies: ["WorldsAI", "WorldsModels"], resources: [.copy("Fixtures")]),
+        .testTarget(name: "WorldsNativeEditorTests", dependencies: ["WorldsNativeEditor", "WorldsModels", "WorldsRichText"]),
+        .testTarget(name: "WorldsNativeDiagramsTests", dependencies: ["WorldsNativeDiagrams", "WorldsModels"]),
+        .testTarget(name: "WorldsAutomationsTests", dependencies: rustStoreAvailable ? ["WorldsAutomations", "WorldsModels", "WorldsRustStore"] : ["WorldsAutomations", "WorldsModels"], resources: [.copy("automation-fixture.db")], linkerSettings: [.linkedLibrary("sqlite3")]),
+        .testTarget(name: "WorldsProjectsTests", dependencies: ["WorldsProjects", "WorldsModels"], resources: [.copy("worlds-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]),
+        .testTarget(name: "WorldsMediaViewsTests", dependencies: ["WorldsMediaViews", "WorldsMedia"]),
+        .testTarget(name: "WorldsScreenDrawingTests", dependencies: ["WorldsScreenDrawing"]),
+        .testTarget(name: "WorldsDrawingStorageTests", dependencies: ["WorldsDrawingStorage"], linkerSettings: [.linkedLibrary("sqlite3")]),
+        .testTarget(name: "WorldsOfficePreviewTests", dependencies: ["WorldsOfficePreview", "WorldsMedia"], resources: [.copy("Fixtures")]),
+        .testTarget(name: "WorldsGalleryTests", dependencies: ["WorldsGallery", "WorldsModels"]),
+        .testTarget(name: "WorldsMathDiagramsTests", dependencies: ["WorldsMathDiagrams", "WorldsModels"]),
+        .testTarget(name: "WorldsOfficeViewsTests", dependencies: ["WorldsOfficeViews", "WorldsMedia"], resources: [.copy("Fixtures")]),
+        .testTarget(name: "Worlds3DViewsTests", dependencies: ["Worlds3DViews", "WorldsMedia"]),
+    ]
+)
+
+// The write bridge is present only after building the native XCFramework.
+// Read-only clients continue to build before the optional binary exists.
+package.products.append(.library(name: "WorldsPresentationSession", targets: ["WorldsPresentationSession"]))
+package.targets.append(.target(name: "WorldsPresentationSession", dependencies: ["WorldsPresentations"], exclude: ["README.md"]))
+package.targets.append(.testTarget(name: "WorldsPresentationSessionTests", dependencies: ["WorldsPresentationSession", "WorldsPresentations"]))
+
+if rustStoreAvailable && ProcessInfo.processInfo.environment["WORLDS_FIXTURE_BUNDLE"] == "1" {
+    package.products.append(.library(name: "WorldsFixtureBundleImport", targets: ["WorldsFixtureBundleImport"]))
+    package.targets.append(.target(name: "WorldsFixtureBundleImport", dependencies: ["WorldsRustStore"], exclude: ["README.md"], linkerSettings: [.linkedLibrary("sqlite3"), .linkedFramework("Security"), .linkedFramework("SystemConfiguration"), .linkedLibrary("resolv"), .linkedLibrary("iconv")]))
+    package.targets.append(.testTarget(name: "WorldsFixtureBundleImportTests", dependencies: ["WorldsFixtureBundleImport"], resources: [.copy("worlds-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]))
+}
+
+if rustStoreAvailable {
+    package.products.append(.library(name: "WorldsLocalGalleryImport", targets: ["WorldsLocalGalleryImport"]))
+    package.targets.append(.target(name: "WorldsLocalGalleryImport", dependencies: ["WorldsLocalImport", "WorldsNativeWrites", "WorldsModels"]))
+    package.targets.append(.testTarget(name: "WorldsLocalGalleryImportTests", dependencies: ["WorldsLocalGalleryImport", "WorldsLocalImport", "WorldsNativeWrites", "WorldsModels"], resources: [.copy("worlds-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]))
+    package.products.append(.library(name: "WorldsDrawingValidation", targets: ["WorldsDrawingValidation"]))
+    package.targets.append(.target(name: "WorldsDrawingValidation", dependencies: ["WorldsRustStore"], exclude: ["README.md"], linkerSettings: [.linkedLibrary("sqlite3"), .linkedFramework("Security"), .linkedFramework("SystemConfiguration"), .linkedLibrary("resolv"), .linkedLibrary("iconv")]))
+    package.targets.append(.testTarget(name: "WorldsDrawingValidationTests", dependencies: ["WorldsDrawingValidation"], resources: [.copy("original-journal-fixture.json")]))
+    package.products.append(.library(name: "WorldsDrawingPencilInput", targets: ["WorldsDrawingPencilInput"]))
+    package.targets.append(.target(name: "WorldsDrawingPencilInput", dependencies: ["WorldsDrawing", "WorldsDrawingStrokeSession"], exclude: ["README.md"]))
+    package.targets.append(.testTarget(name: "WorldsDrawingPencilInputTests", dependencies: ["WorldsDrawingPencilInput", "WorldsDrawing", "WorldsDrawingNativeWrites", "WorldsDrawingStrokeSession"], resources: [.copy("worlds-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]))
+    package.products.append(.library(name: "WorldsDrawingStrokeSession", targets: ["WorldsDrawingStrokeSession"]))
+    package.targets.append(.target(name: "WorldsDrawingStrokeSession", dependencies: ["WorldsDrawing", "WorldsDrawingNativeWrites"], exclude: ["README.md"]))
+    package.targets.append(.testTarget(name: "WorldsDrawingStrokeSessionTests", dependencies: ["WorldsDrawingStrokeSession", "WorldsDrawing", "WorldsDrawingNativeWrites"], resources: [.copy("worlds-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]))
+    package.products.append(.library(name: "WorldsDrawingNativeWrites", targets: ["WorldsDrawingNativeWrites"]))
+    package.targets.append(.target(name: "WorldsDrawingNativeWrites", dependencies: ["WorldsRustStore"], exclude: ["README.md"], linkerSettings: [.linkedLibrary("sqlite3"), .linkedFramework("Security"), .linkedFramework("SystemConfiguration"), .linkedLibrary("resolv"), .linkedLibrary("iconv")]))
+    package.targets.append(.testTarget(name: "WorldsDrawingNativeWritesTests", dependencies: ["WorldsDrawingNativeWrites"], resources: [.copy("worlds-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]))
+    package.products.append(.library(name: "WorldsNativeWrites", targets: ["WorldsNativeWrites"]))
+    package.targets.append(.binaryTarget(name: "WorldsRustStore", path: rustStorePath))
+    package.targets.append(.target(name: "WorldsNativeWrites", dependencies: ["WorldsRustStore", "WorldsModels"], linkerSettings: [.linkedFramework("Security"), .linkedFramework("SystemConfiguration"), .linkedLibrary("resolv"), .linkedLibrary("iconv")]))
+    package.targets.append(.testTarget(name: "WorldsNativeWritesTests", dependencies: ["WorldsNativeWrites", "WorldsModels", "WorldsRustStore"], resources: [.copy("worlds-v11.db")]))
+    package.products.append(.library(name: "WorldsPresentationPersistence", targets: ["WorldsPresentationPersistence"]))
+    package.targets.append(.target(name: "WorldsPresentationPersistence", dependencies: ["WorldsModels", "WorldsNativeWrites", "WorldsPresentations"], exclude: ["README.md"]))
+    package.targets.append(.testTarget(name: "WorldsPresentationPersistenceTests", dependencies: ["WorldsPresentationPersistence", "WorldsPresentations", "WorldsNativeWrites"], resources: [.copy("worlds-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]))
+    package.products.append(.library(name: "WorldsEditorPersistence", targets: ["WorldsEditorPersistence"]))
+    package.targets.append(.target(name: "WorldsEditorPersistence", dependencies: ["WorldsModels", "WorldsPersistence", "WorldsRichText", "WorldsNativeEditor", "WorldsNativeWrites"], exclude: ["README.md"]))
+    package.targets.append(.testTarget(name: "WorldsEditorPersistenceTests", dependencies: ["WorldsEditorPersistence", "WorldsModels", "WorldsPersistence", "WorldsRichText", "WorldsNativeEditor", "WorldsNativeWrites", "WorldsLocalImport", "WorldsRustStore"], resources: [.copy("editor-fixture.db")], linkerSettings: [.linkedLibrary("sqlite3")]))
+    package.products.append(.library(name: "WorldsProjectEditingViews", targets: ["WorldsProjectEditingViews"]))
+    package.targets.append(.target(name: "WorldsProjectEditingViews", dependencies: ["WorldsProjectEditing", "WorldsProjects"], exclude: ["README.md"]))
+    package.products.append(.library(name: "WorldsProjectEditing", targets: ["WorldsProjectEditing"]))
+    package.targets.append(.target(name: "WorldsProjectEditing", dependencies: ["WorldsProjects", "WorldsModels"], exclude: ["README.md"]))
+    package.targets.append(.testTarget(name: "WorldsProjectEditingTests", dependencies: ["WorldsProjectEditing", "WorldsResourceRepositories", "WorldsNativeWrites", "WorldsProjects", "WorldsModels"], resources: [.copy("worlds-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]))
+    package.products.append(.library(name: "WorldsResourceRepositories", targets: ["WorldsResourceRepositories"]))
+    package.targets.append(.target(name: "WorldsResourceRepositories", dependencies: ["WorldsModels", "WorldsProjects", "WorldsGallery", "WorldsNativeWrites"], exclude: ["README.md"]))
+    package.targets.append(.testTarget(name: "WorldsResourceRepositoriesTests", dependencies: ["WorldsResourceRepositories", "WorldsModels", "WorldsProjects", "WorldsGallery", "WorldsNativeWrites"], resources: [.copy("worlds-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]))
+}
+
+
+
+// CI sets WORLDS_REQUIRE_COLLABORATION=1 so missing binaries fail package resolution.
+// The application does not depend on this experimental module.
+if collaborationAvailable {
+    package.products.append(.library(name: "WorldsRejectedArchives", targets: ["WorldsRejectedArchives"]))
+    package.targets.append(.target(name: "WorldsRejectedArchives", dependencies: ["WorldsCollaboration"], exclude: ["DESIGN.md", "README.md"]))
+    package.targets.append(.testTarget(name: "WorldsRejectedArchivesTests", dependencies: ["WorldsRejectedArchives", "WorldsCollaboration"], resources: [.copy("worlds-collab-v11.db"), .copy("rejected-comments-yjs.bin")]))
+    package.products.append(.library(name: "WorldsCollaborationEditor", targets: ["WorldsCollaborationEditor"]))
+    package.targets.append(.target(name: "WorldsCollaborationEditor", dependencies: ["WorldsModels", "WorldsRichText", "WorldsCollaboration"], exclude: ["README.md"]))
+    package.targets.append(.testTarget(name: "WorldsCollaborationEditorTests", dependencies: ["WorldsCollaborationEditor", "WorldsModels", "WorldsRichText", "WorldsCollaboration"]))
+    package.products.append(.library(name: "WorldsCollaboration", targets: ["WorldsCollaboration"]))
+    package.targets.append(.binaryTarget(name: "WorldsRustCollaboration", path: collaborationPath))
+    package.targets.append(.target(name: "WorldsCollaboration", dependencies: ["WorldsRustCollaboration", "WorldsSyncWire", "WorldsAwareness"], exclude: ["README.md"], linkerSettings: [.linkedFramework("Security"), .linkedFramework("SystemConfiguration"), .linkedLibrary("resolv"), .linkedLibrary("iconv")]))
+    package.targets.append(.testTarget(name: "WorldsCollaborationTests", dependencies: ["WorldsCollaboration", "WorldsSyncWire"], resources: [.copy("worlds-collab-v11.db"), .copy("worlds-collab-editor-v11.db"), .copy("worlds-collab-viewer-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]))
+    package.products.append(.library(name: "WorldsCollaborationHost", targets: ["WorldsCollaborationHost"]))
+    package.targets.append(.target(name: "WorldsCollaborationHost", dependencies: ["WorldsCollaboration", "WorldsIdentityContinuity"]))
+    package.targets.append(.testTarget(name: "WorldsCollaborationHostTests", dependencies: ["WorldsCollaborationHost", "WorldsCollaboration", "WorldsIdentityContinuity"], resources: [.copy("worlds-collab-editor-v11.db")]))
+}
+
+
+
+
+if rustStoreAvailable && collaborationAvailable {
+    package.targets.append(.testTarget(name: "WorldsCombinedFFITests", dependencies: ["WorldsRustStore", "WorldsRustCollaboration"], resources: [.copy("worlds-collab-editor-v11.db")], linkerSettings: [.linkedLibrary("sqlite3"), .linkedFramework("Security"), .linkedFramework("SystemConfiguration"), .linkedLibrary("resolv"), .linkedLibrary("iconv")]))
+}

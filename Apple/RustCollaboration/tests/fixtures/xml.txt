@@ -1,0 +1,1 @@
+<paragraph><bold>Yjs rich text</bold></paragraph>

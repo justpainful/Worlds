@@ -1,0 +1,312 @@
+name: Apple platforms
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apple-platforms-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ruststore-xcframework:
+    name: Build shared RustStore XCFramework
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select pinned Xcode
+        run: sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+      - uses: dtolnay/rust-toolchain@1.99.1
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios,aarch64-apple-darwin,x86_64-apple-darwin
+      - name: Build and archive RustStore
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p logs ruststore-artifact
+          bash Apple/RustStore/scripts/build-apple.sh 2>&1 | tee logs/ruststore-build.log
+          test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
+          tar -czf ruststore-artifact/ruststore-xcframework.tar.gz -C Apple/WorldsCore/Artifacts WorldsRustStore.xcframework
+          (cd ruststore-artifact && shasum -a 256 ruststore-xcframework.tar.gz > SHA256SUMS)
+          git rev-parse HEAD > ruststore-artifact/source-revision
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Worlds-shared-ruststore-xcframework
+          path: ruststore-artifact/
+          if-no-files-found: error
+          retention-days: 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-shared-ruststore-build-logs
+          path: logs/
+          if-no-files-found: warn
+
+  core-tests:
+    name: Swift core tests
+    runs-on: macos-26
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select and inspect Xcode
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          xcodebuild -version
+          swift --version
+      - name: Run Swift package tests
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p logs
+          swift test --package-path Apple/WorldsCore --skip WorldsDrawingVisualComparisonTests 2>&1 | tee logs/swift-test.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: WorldsCore-test-log
+          path: logs/
+          if-no-files-found: warn
+
+  ui-tests:
+    name: UI tests ${{ matrix.device }}
+    runs-on: macos-26
+    env:
+      WORLDS_REQUIRE_NATIVE_WRITES: "1"
+    needs: ruststore-xcframework
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - device: macOS
+            scheme: Worlds-macOS
+            test_target: Worlds-macOS-UITests
+            destination: 'platform=macOS'
+          - device: iPhone
+            scheme: Worlds-iOS
+            test_target: Worlds-iOS-UITests
+            destination: 'platform=iOS Simulator,name=iPhone 17,OS=26.5'
+          - device: iPad
+            scheme: Worlds-iOS
+            test_target: Worlds-iOS-UITests
+            destination: 'platform=iOS Simulator,name=iPad (A16),OS=26.5'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Worlds-shared-ruststore-xcframework
+          path: ruststore-artifact
+      - name: Verify and restore RustStore
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat ruststore-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd ruststore-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p Apple/WorldsCore/Artifacts
+          tar -xzf ruststore-artifact/ruststore-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
+          test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
+      - name: Select Xcode
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          xcodebuild -version
+          xcrun simctl list devices available
+      - name: Install project generator and timeout utility
+        run: |
+          brew install xcodegen
+          command -v gtimeout >/dev/null || brew install coreutils
+      - name: Generate project
+        run: xcodegen generate --spec Apple/project.yml
+      - name: Configure Dark Theme and Display Resolution
+        shell: bash
+        run: |
+          if [[ "${{ matrix.device }}" == "macOS" ]]; then
+            defaults write -g AppleInterfaceStyle Dark || true
+            osascript -e 'tell application "System Events" to tell appearance preferences to set dark mode to true' || true
+            swift -e '
+            import CoreGraphics
+            let id = CGMainDisplayID()
+            print("Initial display:", CGDisplayPixelsWide(id), "x", CGDisplayPixelsHigh(id))
+            if let modes = CGDisplayCopyAllDisplayModes(id, nil) as? [CGDisplayMode] {
+                let sorted = modes.sorted { ($0.width * $0.height) > ($1.width * $1.height) }
+                if let best = sorted.first(where: { $0.width <= 1920 && $0.height <= 1200 && $0.width >= 1440 }) ?? sorted.first {
+                    var cfg: CGDisplayConfigRef?
+                    if CGBeginDisplayConfiguration(&cfg) == .success {
+                        CGConfigureDisplayWithDisplayMode(cfg, id, best, nil)
+                        let r = CGCompleteDisplayConfiguration(cfg, .forSession)
+                        print("Configured display:", best.width, "x", best.height, "status=", r.rawValue)
+                    }
+                }
+            }
+            ' || true
+          else
+            SIM_NAME="iPhone 17"
+            if [[ "${{ matrix.device }}" == "iPad" ]]; then SIM_NAME="iPad (A16)"; fi
+            SIM_UDID=$(xcrun simctl list devices available | grep "$SIM_NAME" | head -n 1 | grep -oE '[0-9A-Fa-f-]{36}' || true)
+            if [[ -n "$SIM_UDID" ]]; then
+              xcrun simctl ui "$SIM_UDID" appearance dark || true
+            fi
+          fi
+      - name: Run UI automation and retain results
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p logs results
+          diagnostic_flags=()
+          if [[ "${{ matrix.device }}" == "macOS" ]]; then diagnostic_flags+=('OTHER_SWIFT_FLAGS=$(inherited) -DWORLDS_UI_WINDOW_DIAGNOSTICS'); fi
+          gtimeout --kill-after=30s 18m xcodebuild -project Apple/Worlds.xcodeproj -scheme '${{ matrix.scheme }}' \
+            -configuration Debug -destination '${{ matrix.destination }}' \
+            -derivedDataPath "$RUNNER_TEMP/WorldsUI" \
+            -resultBundlePath "$GITHUB_WORKSPACE/results/${{ matrix.device }}.xcresult" \
+            -only-testing:${{ matrix.test_target }}/WorldsUITests/testCompleteVisualShowcaseCaptures \
+            "${diagnostic_flags[@]}" CODE_SIGNING_ALLOWED=NO test 2>&1 | tee logs/ui-${{ matrix.device }}.log
+          grep -Eq 'testCompleteVisualShowcaseCaptures.*passed' logs/ui-${{ matrix.device }}.log
+      - name: Export screenshot attachments
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p screenshots screenshots/named
+          python3 Apple/scripts/export-screenshots.py "results/${{ matrix.device }}.xcresult" screenshots
+          ls -la screenshots/named || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-${{ matrix.device }}-UI-results
+          path: |
+            results/
+            screenshots/
+            logs/
+            Apple/App/UI_TEST_COVERAGE.md
+          if-no-files-found: warn
+
+  package-ios:
+    name: Package Worlds ${{ matrix.device }} (Unsigned IPA)
+    runs-on: macos-26
+    env:
+      WORLDS_REQUIRE_NATIVE_WRITES: "1"
+    timeout-minutes: 20
+    needs: [ruststore-xcframework, ui-tests]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - device: iPhone
+            family: 1
+          - device: iPad
+            family: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Worlds-shared-ruststore-xcframework
+          path: ruststore-artifact
+      - name: Verify and restore RustStore
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat ruststore-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd ruststore-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p Apple/WorldsCore/Artifacts
+          tar -xzf ruststore-artifact/ruststore-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
+          test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
+      - name: Select pinned Xcode and generate project
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          xcodebuild -version
+          brew install xcodegen
+          xcodegen generate --spec Apple/project.yml
+      - name: Build and package unsigned device app
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p logs deliverables "$RUNNER_TEMP/package/Payload"
+          xcodebuild -project Apple/Worlds.xcodeproj -scheme Worlds-iOS \
+            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/WorldsPackage" TARGETED_DEVICE_FAMILY=${{ matrix.family }} \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tee logs/ios-package.log
+          app="$RUNNER_TEMP/WorldsPackage/Build/Products/Release-iphoneos/Worlds.app"
+          test -d "$app"
+          ditto "$app" "$RUNNER_TEMP/package/Payload/Worlds.app"
+          (cd "$RUNNER_TEMP/package" && zip -qry "$GITHUB_WORKSPACE/deliverables/Worlds-${{ matrix.device }}-Unsigned.ipa" Payload)
+          xcodebuild -project Apple/Worlds.xcodeproj -scheme Worlds-iOS \
+            -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/WorldsSimulatorPackage" TARGETED_DEVICE_FAMILY=${{ matrix.family }} \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tee logs/ios-simulator-package.log
+          simulator_app="$RUNNER_TEMP/WorldsSimulatorPackage/Build/Products/Release-iphonesimulator/Worlds.app"
+          test -d "$simulator_app"
+          ditto -c -k --sequesterRsrc --keepParent "$simulator_app" "deliverables/Worlds-${{ matrix.device }}-Simulator.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Worlds-${{ matrix.device }}-Unsigned
+          path: deliverables/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-${{ matrix.device }}-package-build-log
+          path: logs/
+          if-no-files-found: warn
+
+  package-macos:
+    name: Package Worlds macOS (Unsigned App, ZIP & DMG)
+    runs-on: macos-26
+    env:
+      WORLDS_REQUIRE_NATIVE_WRITES: "1"
+    timeout-minutes: 20
+    needs: [ruststore-xcframework, ui-tests]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Worlds-shared-ruststore-xcframework
+          path: ruststore-artifact
+      - name: Verify and restore RustStore
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat ruststore-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd ruststore-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p Apple/WorldsCore/Artifacts
+          tar -xzf ruststore-artifact/ruststore-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
+          test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
+      - name: Select pinned Xcode and generate project
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+          xcodebuild -version
+          brew install xcodegen
+          xcodegen generate --spec Apple/project.yml
+      - name: Build and package unsigned macOS app
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p logs deliverables
+          xcodebuild -project Apple/Worlds.xcodeproj -scheme Worlds-macOS \
+            -configuration Release -destination 'generic/platform=macOS' \
+            -derivedDataPath "$RUNNER_TEMP/WorldsPackage" CODE_SIGNING_ALLOWED=NO build \
+            2>&1 | tee logs/macos-package.log
+          app="$RUNNER_TEMP/WorldsPackage/Build/Products/Release/Worlds.app"
+          test -d "$app"
+          ditto "$app" deliverables/Worlds-macOS-Unsigned.app
+          ditto -c -k --sequesterRsrc --keepParent deliverables/Worlds-macOS-Unsigned.app deliverables/Worlds-macOS-Unsigned.zip
+          hdiutil create -volname Worlds -srcfolder deliverables/Worlds-macOS-Unsigned.app -ov -format UDZO deliverables/Worlds-macOS-Unsigned.dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Worlds-macOS-Unsigned
+          path: |
+            deliverables/Worlds-macOS-Unsigned.zip
+            deliverables/Worlds-macOS-Unsigned.dmg
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Worlds-macOS-Unsigned-app
+          path: deliverables/Worlds-macOS-Unsigned.app/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-macOS-package-build-log
+          path: logs/
+          if-no-files-found: warn

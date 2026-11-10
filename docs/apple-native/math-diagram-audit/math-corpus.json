@@ -1,0 +1,22 @@
+[
+  {"id":"plain","latex":"x^2"},
+  {"id":"fraction","latex":"\\frac{1}{2}"},
+  {"id":"square-root","latex":"\\sqrt{x}"},
+  {"id":"worlds-block-placeholder","latex":"\\int_0^1 x^2\\,dx = \\frac{1}{3}"},
+  {"id":"worlds-inline-placeholder","latex":"e^{i\\pi} + 1 = 0"},
+  {"id":"sum","latex":"\\sum_{i=1}^{n} i"},
+  {"id":"greek","latex":"\\alpha + \\beta"},
+  {"id":"infinity","latex":"\\infty"},
+  {"id":"product","latex":"a \\cdot b"},
+  {"id":"delimiters","latex":"\\left(\\frac{x}{y}\\right)"},
+  {"id":"text","latex":"\\text{units}"},
+  {"id":"matrix","latex":"\\begin{matrix} a & b \\\\ c & d \\end{matrix}"},
+  {"id":"operator","latex":"\\operatorname{rank}(A)"},
+  {"id":"color","latex":"\\color{red}{x}"},
+  {"id":"accent","latex":"\\overline{x}"},
+  {"id":"trig","latex":"\\sin(x)"},
+  {"id":"limit","latex":"\\lim_{x \\to 0} x"},
+  {"id":"comparison","latex":"x \\le y"},
+  {"id":"times","latex":"a \\times b"},
+  {"id":"partial","latex":"\\partial_x f"}
+]

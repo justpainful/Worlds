@@ -1,0 +1,11 @@
+# WorldsGallery scope
+
+This independent data module models the galleryItem blocks used by GalleryView. It retains the original JSON blocks and metadata, including unknown fields and non-gallery blocks. It supports adding an already described attachment, moving items, removing an item from the gallery, updating captions and grid/list preferences, and resolving the image-only gallery icon value. Audio entries are excluded from the lightbox list. The supported filename extensions match the original picker.
+
+Removal removes only the gallery block; it does not delete an attachment. The model does not import or copy files, change attachment ownership, decode media, edit pixels, present a UI or synchronize data. A supplied repository must authorize the gallery and every original and resulting referenced attachment, and atomically compare a revision and commit all changes. The revision must reliably distinguish changes; millisecond timestamps alone may collide. `GalleryService` and its repository protocol are not a production persistence or permissions implementation and must not be connected to user data until the actual store, history, search and synchronization contracts are verified.
+
+The parser requires an ID and the standard attachmentId, name, mime, size and kind attributes for every galleryItem. Unknown attributes are preserved; legacy or malformed entries missing required fields fail closed pending compatibility analysis. The original GalleryView rewrites the gallery as galleryItem blocks only, while this module deliberately retains non-gallery blocks to avoid dropping unknown content.
+
+Tests use an isolated in-memory repository and synthetic image, video and audio records to check round-trip preservation, reorder, removal, attachment retention, conflicts and access denial. Four tests passed on macOS in Actions run 42389924247. The module is included in SwiftPM but is not connected to the app.
+
+An experimental RustStore adapter now exists in WorldsResourceRepositories. It compares complete block and metadata baselines and checks personal attachment owners inside the same transaction. It has not been linked to the app or verified on Apple; attachment import remains unavailable.

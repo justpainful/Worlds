@@ -1,0 +1,24 @@
+[package]
+name = "worlds-personal-store"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["staticlib", "rlib"]
+
+[features]
+fixture-bundle = []
+
+[dependencies]
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.37", features = ["backup", "bundled", "serde_json"] }
+uuid = { version = "1", features = ["v4", "v7"] }
+chrono = "0.4"
+mime_guess = "2"
+imagesize = "0.13"
+unicode-bidi = "0.3"
+url = "2"
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

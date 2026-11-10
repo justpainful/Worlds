@@ -1,0 +1,15 @@
+const path = require('path');
+const fs = require('fs');
+const os = require('os');
+const tools = path.join(os.tmpdir(), 'worlds-reference-tools', 'node_modules');
+const esbuild = require(path.join(tools,'esbuild'));
+const {chromium} = require(path.join(tools,'playwright-core'));
+(async () => {
+ const dir = process.cwd(), temp = fs.mkdtempSync(path.join(os.tmpdir(),'worlds-shape-ref-'));
+ await esbuild.build({entryPoints:[path.join(dir,'docs/apple-native/canvas-reference-generator/entry.ts')],bundle:true,format:'iife',platform:'browser',outfile:path.join(temp,'bundle.js'),plugins:[{name:'stub',setup(build){build.onResolve({filter:/\.\.\/lib\/api$/},()=>({path:path.join(dir,'docs/apple-native/canvas-reference-generator/api-stub.ts')}));}}]});
+ const browser = await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--no-sandbox','--allow-file-access-from-files']});
+ const page = await browser.newPage();
+ await page.setContent('<html><body></body></html>'); await page.addScriptTag({path:path.join(temp,'bundle.js')});
+ const data = await page.evaluate(()=>{Object.defineProperty(crypto,"randomUUID",{value:()=>"fixture-"+Math.random().toString(36).slice(2)});const scene=newScene(), layer=scene.layerOrder[0], frame=scene.defaultFrameId;scene.frames[frame].w=64;scene.frames[frame].h=64;const node=newNode('shape',layer,frame,{x:0,y:0,w:64,h:64});node.shape='right-triangle';node.points=[{x:8,y:8},{x:8,y:52},{x:52,y:52}];node.paint.fill='transparent';node.paint.stroke='#202023';node.paint.strokeWidth=3;scene.nodes[node.id]=node;scene.nodeOrder=[node.id];const canvas=document.createElement('canvas');canvas.width=256;canvas.height=256;new DrawingRenderer({tileBackend:'canvas',viewportCache:false}).render(canvas,scene,{x:0,y:0,w:64,h:64,scale:4},{frameId:frame,background:false,uncached:true});return canvas.toDataURL('image/png').split(',')[1];});
+ fs.writeFileSync(path.join(dir,'Apple/WorldsCore/Tests/WorldsDrawingVisualComparisonTests/CanvasReferences/right-triangle-4x.png'),Buffer.from(data,'base64')); await browser.close(); console.log('Created source renderer right-triangle-4x.png');
+})().catch(e=>{console.error(e);process.exit(1)});

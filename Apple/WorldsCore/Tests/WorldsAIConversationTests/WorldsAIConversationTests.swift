@@ -1,0 +1,276 @@
+import Foundation
+import SQLite3
+import XCTest
+@testable import WorldsAI
+@testable import WorldsAIConversation
+
+private actor FakeConversationRunner: ConversationRunner {
+    enum Mode: Equatable { case normal, unexpectedTool, slow, flood, oversized }
+    let mode: Mode
+    init(_ mode: Mode) { self.mode = mode }
+    func cancel(runID: UUID) async {}
+    func run(_ request: ClaudeRequest, timeout: TimeInterval, onEvent: @escaping @Sendable (ClaudeEvent) -> Void) async throws -> ClaudeResult {
+        XCTAssertNil(request.mcp)
+        if mode == .slow { try await Task.sleep(for: .seconds(10)) }
+        if mode == .flood { for _ in 0...20_000 { onEvent(.text("x")) } }
+        if mode == .oversized { onEvent(.text(String(repeating: "x", count: 8 * 1024 * 1024 + 1))) }
+        if mode == .unexpectedTool { onEvent(.tool(name: "unexpected", input: nil)); onEvent(.toolResult(isError: false)) }
+        onEvent(.text("Hello"))
+        return ClaudeResult(text: "Hello", isError: false)
+    }
+}
+private final class AcceptanceProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private var accepted = false
+    private var eventBeforeAcceptance = false
+    func markAccepted() { lock.lock(); defer { lock.unlock() }; accepted = true }
+    func markEvent() { lock.lock(); defer { lock.unlock() }; if !accepted { eventBeforeAcceptance = true } }
+    func state() -> (Bool, Bool) { lock.lock(); defer { lock.unlock() }; return (accepted, eventBeforeAcceptance) }
+}
+final class WorldsAIConversationTests: XCTestCase {
+    func testConcurrentStoresCannotShareIsolatedJournal() async throws {
+        let root = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+        defer { try? FileManager.default.removeItem(at: root) }
+        let url = root.appendingPathComponent("conversation.db")
+        try FileManager.default.copyItem(at: fixture(), to: url)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        let journal = try IsolatedRecoveryJournal(directory: root)
+        let opened = await withTaskGroup(of: SQLiteConversationStore?.self, returning: [SQLiteConversationStore].self) { group in
+            for _ in 0..<2 { group.addTask { try? SQLiteConversationStore(database: url, isolatedJournal: journal) } }
+            var stores: [SQLiteConversationStore] = []
+            for await store in group { if let store { stores.append(store) } }
+            return stores
+        }
+        XCTAssertEqual(opened.count, 1)
+        withExtendedLifetime(opened) {}
+    }
+    func testFailedSaveStagesResponseInIsolatedJournal() async throws {
+        let root = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+        defer { try? FileManager.default.removeItem(at: root) }
+        let url = root.appendingPathComponent("conversation.db")
+        try FileManager.default.copyItem(at: fixture(), to: url)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        let journal = try IsolatedRecoveryJournal(directory: root)
+        var raw: OpaquePointer?
+        guard sqlite3_open(url.path, &raw) == SQLITE_OK, let db = raw else { throw ConversationStorageError.database }
+        XCTAssertEqual(sqlite3_exec(db, "CREATE TRIGGER fail_result BEFORE INSERT ON ai_messages WHEN NEW.role='assistant' BEGIN SELECT RAISE(ABORT,'fixture'); END;", nil, nil, nil), SQLITE_OK)
+        sqlite3_close_v2(db)
+        let runID = UUID()
+        func stageInFirstStore() async throws -> [IsolatedPendingResponse] {
+            let store = try SQLiteConversationStore(database: url, isolatedJournal: journal)
+            XCTAssertThrowsError(try SQLiteConversationStore(database: url, isolatedJournal: journal))
+            let coordinator = ConversationCoordinator(store: store, runner: FakeConversationRunner(.normal), recoveryJournal: journal)
+            do { _ = try await coordinator.run(runID: runID, chatID: nil, prompt: "Question", systemPrompt: "", onEvent: { _ in }); XCTFail("Save should fail") }
+            catch ConversationError.persistenceFailed { } catch { XCTFail("Unexpected error: \(error)") }
+            return try await store.isolatedPendingResponses()
+        }
+        let records = try await stageInFirstStore()
+        XCTAssertEqual(records.count, 1)
+        XCTAssertEqual(records.first?.runID, runID)
+        XCTAssertEqual(records.first?.text, "Hello")
+        let response = try XCTUnwrap(records.first)
+        var retryRaw: OpaquePointer?
+        guard sqlite3_open(url.path, &retryRaw) == SQLITE_OK, let retryDB = retryRaw else { throw ConversationStorageError.database }
+        XCTAssertEqual(sqlite3_exec(retryDB, "DROP TRIGGER fail_result", nil, nil, nil), SQLITE_OK)
+        sqlite3_close_v2(retryDB)
+        let reopened = try SQLiteConversationStore(database: url, isolatedJournal: journal)
+        try await reopened.restoreIsolatedChat(response.chatID)
+        var conflictRaw: OpaquePointer?
+        guard sqlite3_open(url.path, &conflictRaw) == SQLITE_OK, let conflictDB = conflictRaw else { throw ConversationStorageError.database }
+        let conflictSQL = "INSERT INTO ai_messages(id,chat_id,role,content,steps,op_id,meta,created_at) VALUES('conflict','\(response.chatID)','assistant','different','[]','\(runID.uuidString.lowercased())','{}',1)"
+        XCTAssertEqual(sqlite3_exec(conflictDB, conflictSQL, nil, nil, nil), SQLITE_OK)
+        do { try await reopened.recoverIsolatedResponse(response); XCTFail("Conflicting response must not be replaced") }
+        catch ConversationStorageError.invalidData { } catch { XCTFail("Unexpected error: \(error)") }
+        let stillPending = try await reopened.isolatedPendingResponses()
+        XCTAssertEqual(stillPending.count, 1)
+        XCTAssertEqual(sqlite3_exec(conflictDB, "DELETE FROM ai_messages WHERE id='conflict'", nil, nil, nil), SQLITE_OK)
+        sqlite3_close_v2(conflictDB)
+        try await reopened.recoverIsolatedResponse(response)
+        let messages = try await reopened.messages(chatID: response.chatID)
+        XCTAssertEqual(messages.map(\.content), ["Question", "Hello"])
+        let remaining = try await reopened.isolatedPendingResponses()
+        XCTAssertTrue(remaining.isEmpty)
+        do { try await reopened.recoverIsolatedResponse(response); XCTFail("A consumed recovery must not be repeated") }
+        catch ConversationStorageError.unavailable { } catch { XCTFail("Unexpected error: \(error)") }
+        let resumed = ConversationCoordinator(store: reopened, runner: FakeConversationRunner(.normal), recoveryJournal: journal)
+        _ = try await resumed.run(runID: UUID(), chatID: response.chatID, prompt: "Follow up", systemPrompt: "", onEvent: { _ in })
+        let afterSuccess = try await reopened.isolatedPendingResponses()
+        XCTAssertTrue(afterSuccess.isEmpty, "A successful assistant commit must consume the staged response")
+    }
+    private func fixture() throws -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("ai-\(UUID().uuidString).db")
+        var ptr: OpaquePointer?
+        guard sqlite3_open(url.path, &ptr) == SQLITE_OK, let db = ptr else { throw ConversationStorageError.database }
+        defer { sqlite3_close_v2(db) }
+        let sql = """
+        PRAGMA user_version=11;
+        CREATE TABLE ai_chats(id TEXT PRIMARY KEY,title TEXT NOT NULL,page_id TEXT,session_id TEXT NOT NULL,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL);
+        CREATE TABLE ai_messages(id TEXT PRIMARY KEY,chat_id TEXT NOT NULL REFERENCES ai_chats(id),role TEXT NOT NULL,content TEXT NOT NULL,steps TEXT NOT NULL,op_id TEXT,meta TEXT NOT NULL,created_at INTEGER NOT NULL);
+        """
+        guard sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK else { throw ConversationStorageError.database }
+        addTeardownBlock { try? FileManager.default.removeItem(at: url) }
+        return url
+    }
+    func testRunnerWritesAndResumesOriginalTables() async throws {
+        let store = try SQLiteConversationStore(database: fixture())
+        let coordinator = ConversationCoordinator(store: store, runner: FakeConversationRunner(.normal))
+        let result = try await coordinator.run(runID: UUID(), chatID: nil, prompt: "Question", systemPrompt: "", onEvent: { _ in })
+        let messages = try await store.messages(chatID: result.chatID)
+        XCTAssertEqual(messages.map(\.role), ["user", "assistant"])
+        XCTAssertEqual(messages.last?.content, "Hello")
+        XCTAssertTrue(messages.last?.metadataJSON.contains("\"sessionOk\":true") == true)
+        let next = try await store.begin(chatID: result.chatID, prompt: "Follow up", runID: UUID())
+        XCTAssertTrue(next.resume)
+    }
+    func testUnexpectedToolIsRecordedAsErrorWithoutPermission() async throws {
+        let store = try SQLiteConversationStore(database: fixture())
+        let coordinator = ConversationCoordinator(store: store, runner: FakeConversationRunner(.unexpectedTool))
+        let seedID = UUID()
+        let opened = try await store.begin(chatID: nil, prompt: "First", runID: seedID)
+        try await store.finish(chatID: opened.chatID, runID: seedID, text: "seed", steps: [], isError: true, sessionOK: false)
+        do { _ = try await coordinator.run(runID: UUID(), chatID: opened.chatID, prompt: "Next", systemPrompt: "", onEvent: { _ in }); XCTFail("Unexpected tool must fail") }
+        catch ConversationError.unexpectedTool { } catch { XCTFail("Unexpected error: \(error)") }
+        let messages = try await store.messages(chatID: opened.chatID)
+        XCTAssertTrue(messages.last?.metadataJSON.contains("\"isError\":true") == true)
+        XCTAssertTrue(messages.last?.stepsJSON.contains("unexpected") == true)
+    }
+    func testCancellationKeepsUserAndFailureRecord() async throws {
+        let store = try SQLiteConversationStore(database: fixture())
+        let seedID = UUID()
+        let opened = try await store.begin(chatID: nil, prompt: "First", runID: seedID)
+        try await store.finish(chatID: opened.chatID, runID: seedID, text: "seed", steps: [], isError: true, sessionOK: false)
+        let coordinator = ConversationCoordinator(store: store, runner: FakeConversationRunner(.slow))
+        let id = UUID()
+        let task = Task { try await coordinator.run(runID: id, chatID: opened.chatID, prompt: "Next", systemPrompt: "", onEvent: { _ in }) }
+        for _ in 0..<100 {
+            let messages = try await store.messages(chatID: opened.chatID)
+            if messages.count >= 3 { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        await coordinator.cancel(runID: id)
+        do { _ = try await task.value; XCTFail("Cancellation must fail the run") }
+        catch ConversationError.cancelled { } catch { XCTFail("Unexpected error: \(error)") }
+        let messages = try await store.messages(chatID: opened.chatID)
+        XCTAssertEqual(messages.map(\.role), ["user", "assistant", "user", "assistant"])
+        XCTAssertTrue(messages.last?.metadataJSON.contains("\"sessionOk\":false") == true)
+    }
+    func testFailedAssistantSaveRollsBackAndCanRetry() async throws {
+        let url = try fixture(), store = try SQLiteConversationStore(database: url)
+        let id = UUID()
+        let chat = try await store.begin(chatID: nil, prompt: "Question", runID: id)
+        var ptr: OpaquePointer?
+        guard sqlite3_open(url.path, &ptr) == SQLITE_OK, let db = ptr else { return XCTFail("Could not open fixture") }
+        defer { sqlite3_close_v2(db) }
+        XCTAssertEqual(sqlite3_exec(db, "CREATE TRIGGER fail_result BEFORE INSERT ON ai_messages WHEN NEW.role='assistant' BEGIN SELECT RAISE(ABORT,'disk'); END;", nil, nil, nil), SQLITE_OK)
+        do { try await store.finish(chatID: chat.chatID, runID: id, text: "result", steps: [], isError: false, sessionOK: true); XCTFail("Injected fault must fail") }
+        catch ConversationStorageError.database { } catch { XCTFail("Unexpected error: \(error)") }
+        let before = try await store.messages(chatID: chat.chatID)
+        XCTAssertEqual(before.map(\.role), ["user"])
+        XCTAssertEqual(sqlite3_exec(db, "DROP TRIGGER fail_result", nil, nil, nil), SQLITE_OK)
+        try await store.finish(chatID: chat.chatID, runID: id, text: "result", steps: [], isError: false, sessionOK: true)
+        let after = try await store.messages(chatID: chat.chatID)
+        XCTAssertEqual(after.map(\.role), ["user", "assistant"])
+    }
+
+    func testAcknowledgementPrecedesStreamAndDuplicateRunIsRejected() async throws {
+        let store = try SQLiteConversationStore(database: fixture())
+        let coordinator = ConversationCoordinator(store: store, runner: FakeConversationRunner(.normal))
+        let runID = UUID(), probe = AcceptanceProbe()
+        let result = try await coordinator.run(runID: runID, chatID: nil, prompt: "Question", systemPrompt: "", onAccepted: { _ in probe.markAccepted() }, onEvent: { _ in probe.markEvent() })
+        let (accepted, early) = probe.state()
+        XCTAssertTrue(accepted); XCTAssertFalse(early)
+        let recovered = await store.acceptedChatID(runID: runID)
+        XCTAssertEqual(recovered, result.chatID)
+        do { _ = try await store.begin(chatID: result.chatID, prompt: "duplicate", runID: runID); XCTFail("Duplicate must fail") }
+        catch ConversationStorageError.unavailable { } catch { XCTFail("Unexpected error: \(error)") }
+        let rows = try await store.messages(chatID: result.chatID)
+        XCTAssertEqual(rows.count, 2)
+    }
+    func testAnotherStoreCannotAccessExistingConversation() async throws {
+        let url = try fixture()
+        let owner = try SQLiteConversationStore(database: url)
+        let chat = try await owner.begin(chatID: nil, prompt: "private", runID: UUID())
+        let other = try SQLiteConversationStore(database: url)
+        do { _ = try await other.messages(chatID: chat.chatID); XCTFail("Another store must not read the chat") }
+        catch ConversationStorageError.unavailable { } catch { XCTFail("Unexpected error: \(error)") }
+        do { _ = try await other.begin(chatID: chat.chatID, prompt: "other", runID: UUID()); XCTFail("Another store must not resume the chat") }
+        catch ConversationStorageError.unavailable { } catch { XCTFail("Unexpected error: \(error)") }
+    }
+
+    func testCoordinatorRetainsFailedResultForRetry() async throws {
+        let url = try fixture(), store = try SQLiteConversationStore(database: url)
+        var ptr: OpaquePointer?
+        guard sqlite3_open(url.path, &ptr) == SQLITE_OK, let db = ptr else { return XCTFail("Could not open fixture") }
+        defer { sqlite3_close_v2(db) }
+        XCTAssertEqual(sqlite3_exec(db, "CREATE TRIGGER fail_result BEFORE INSERT ON ai_messages WHEN NEW.role='assistant' BEGIN SELECT RAISE(ABORT,'disk'); END;", nil, nil, nil), SQLITE_OK)
+        let coordinator = ConversationCoordinator(store: store, runner: FakeConversationRunner(.normal)), id = UUID()
+        do { _ = try await coordinator.run(runID: id, chatID: nil, prompt: "Question", systemPrompt: "", onEvent: { _ in }); XCTFail("Save must fail") }
+        catch ConversationError.persistenceFailed { } catch { XCTFail("Unexpected error: \(error)") }
+        XCTAssertEqual(sqlite3_exec(db, "DROP TRIGGER fail_result", nil, nil, nil), SQLITE_OK)
+        let result = try await coordinator.retrySave(runID: id)
+        XCTAssertEqual(result.text, "Hello")
+        let rows = try await store.messages(chatID: result.chatID)
+        XCTAssertEqual(rows.map(\.role), ["user", "assistant"])
+    }
+
+    func testUnmatchedRunCannotFinishOrReleaseReservation() async throws {
+        let store = try SQLiteConversationStore(database: fixture()), acceptedID = UUID()
+        let chat = try await store.begin(chatID: nil, prompt: "Question", runID: acceptedID)
+        do { try await store.finish(chatID: chat.chatID, runID: UUID(), text: "wrong", steps: [], isError: false, sessionOK: true); XCTFail("Unmatched run must fail") }
+        catch ConversationStorageError.invalidData { } catch { XCTFail("Unexpected error: \(error)") }
+        let before = try await store.messages(chatID: chat.chatID)
+        XCTAssertEqual(before.map(\.role), ["user"])
+        try await store.finish(chatID: chat.chatID, runID: acceptedID, text: "right", steps: [], isError: false, sessionOK: true)
+        let after = try await store.messages(chatID: chat.chatID)
+        XCTAssertEqual(after.map(\.content), ["Question", "right"])
+    }
+    func testEventLimitsFailAndPreserveBoundedOutput() async throws {
+        for mode: FakeConversationRunner.Mode in [.flood, .oversized] {
+            let store = try SQLiteConversationStore(database: fixture())
+            let coordinator = ConversationCoordinator(store: store, runner: FakeConversationRunner(mode))
+            let id = UUID()
+            do { _ = try await coordinator.run(runID: id, chatID: nil, prompt: "Question", systemPrompt: "", onEvent: { _ in }); XCTFail("Limit must fail") }
+            catch ConversationError.eventLimitExceeded { } catch { XCTFail("Unexpected error: \(error)") }
+            let maybeChat = await store.acceptedChatID(runID: id)
+            let chat = try XCTUnwrap(maybeChat)
+            let messages = try await store.messages(chatID: chat)
+            XCTAssertTrue(messages.last?.metadataJSON.contains("\"isError\":true") == true)
+            XCTAssertLessThanOrEqual(messages.last?.content.utf8.count ?? .max, 8 * 1024 * 1024)
+        }
+    }
+
+    func testSessionReplacementCannotResumeReadOrComplete() async throws {
+        let url = try fixture(), store = try SQLiteConversationStore(database: url), id = UUID()
+        let chat = try await store.begin(chatID: nil, prompt: "Question", runID: id)
+        var handle: OpaquePointer?
+        guard sqlite3_open(url.path, &handle) == SQLITE_OK, let db = handle else { return XCTFail("Fixture open failed") }
+        defer { sqlite3_close_v2(db) }
+        let replacement = UUID().uuidString.lowercased()
+        XCTAssertEqual(sqlite3_exec(db, "UPDATE ai_chats SET session_id='\(replacement)' WHERE id='\(chat.chatID)'", nil, nil, nil), SQLITE_OK)
+        do { _ = try await store.messages(chatID: chat.chatID); XCTFail("Replaced session must not be read") }
+        catch ConversationStorageError.unavailable { } catch { XCTFail("Unexpected error: \(error)") }
+        do { try await store.finish(chatID: chat.chatID, runID: id, text: "wrong", steps: [], isError: false, sessionOK: true); XCTFail("Replaced session must not be completed") }
+        catch ConversationStorageError.unavailable { } catch { XCTFail("Unexpected error: \(error)") }
+        XCTAssertEqual(sqlite3_exec(db, "UPDATE ai_chats SET session_id='\(chat.sessionID)' WHERE id='\(chat.chatID)'", nil, nil, nil), SQLITE_OK)
+        try await store.finish(chatID: chat.chatID, runID: id, text: "saved", steps: [], isError: false, sessionOK: true)
+        let rows = try await store.messages(chatID: chat.chatID)
+        XCTAssertEqual(rows.map(\.content), ["Question", "saved"])
+    }
+    func testRecreatedStoreRefusesUnprovenConversationOwnership() async throws {
+        let url = try fixture()
+        func makeCompletedChat() async throws -> String {
+            let first = try SQLiteConversationStore(database: url)
+            let id = UUID()
+            let opened = try await first.begin(chatID: nil, prompt: "private", runID: id)
+            try await first.finish(chatID: opened.chatID, runID: id, text: "answer", steps: [], isError: false, sessionOK: true)
+            return opened.chatID
+        }
+        let chatID = try await makeCompletedChat()
+        let restored = try SQLiteConversationStore(database: url)
+        do { _ = try await restored.messages(chatID: chatID); XCTFail("Ownership must be established before recovery") }
+        catch ConversationStorageError.unavailable { } catch { XCTFail("Unexpected error: \(error)") }
+    }
+
+}

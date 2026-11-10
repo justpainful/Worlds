@@ -1,0 +1,52 @@
+# Experimental outbox ownership
+
+This Rust-only experiment is not connected to the Apple session or product.
+The optional `native_sync_outbox_owner_v1` table is created only by an explicit
+call. Its creation does not modify or claim existing Worlds outbox rows. New
+rows written through `append_owned` bind the account, workspace, page, channel,
+payload and creation time in the same SQLite transaction as the original log
+and outbox insertion. A mismatch, an unbound row or a different owner blocks
+watermark and acknowledgement. The latter removes only verified rows through
+the selected watermark, with its binding, in one transaction.
+
+Legacy writers are unchanged and produce unbound rows. Legacy queue consumers
+do not honor this side table, and a version-10/11 database is not automatically
+migrated. This table is local bookkeeping, not a server authorization, a secure
+boundary against another process with database write access, or evidence of
+ownership of Yjs snapshots and update history. In particular, the full document
+may include updates from another account even if its pending queue is bound.
+Do not attach this API to any network sender until document provenance, legacy
+writer interoperability, rejection recovery, account changes, and server
+authorization have been designed and verified. Never assign legacy rows to the
+current account merely because it is active. No existing rows are deleted or
+claimed during setup.
+
+An additional isolated document experiment enrolls only a channel without any
+existing document, log, or queue. It binds a caller-supplied server identifier,
+account and workspace, records the bytes of every admitted local log entry,
+and fails closed on untracked, altered or deleted log entries and nonempty
+snapshots. Batch construction reads the validated log and watermark in one
+SQLite snapshot; ACK repeats the checks in a write transaction. Both operations
+require cached write access; a downgrade retains the pending rows. Cached access
+is not current server authority. Tests simulate a peer and ACK, not the service.
+The server identifier is not itself
+authenticated. An isolated receive operation records the caller-supplied server
+binding with the update, and compaction replaces the validated log with a bound
+snapshot atomically while leaving the outbox unchanged. These operations do not
+authenticate incoming data and are not connected to a network. The explicit
+`prepare_owned_receive` step upgrades earlier experimental enrollment without
+assigning old log entries or snapshots to any owner. An authenticated caller
+can quarantine a rejection atomically, retaining its full CRDT state and the
+rejected queue rows. Quarantine blocks further sends and ACKs even if access
+returns; reading the archive requires current cached view access. There is no
+automatic replay or conflict merge. Native editor transactions and existing
+Worlds documents remain unsupported. The experiment does
+not stop an original Worlds writer or consumer from bypassing its sidecars.
+
+`live_owned_outbox_survives_account_change_and_reconnect` is an ignored,
+local-Worker-only integration harness. It pins the full fixture document URL,
+requires a synthetic editor token, verifies the returned user and level before
+sending, and checks that a changed local account prevents ACK before a new
+connection. It must be run against the isolated Worker fixture to establish
+its result; compiling it alone does not verify the Worker or Apple client. The
+local HTTP transport and synthetic token are not production authentication.

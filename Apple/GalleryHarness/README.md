@@ -1,0 +1,12 @@
+# Isolated gallery harness
+
+This test-only host creates a temporary synthetic database and two PNG files. Its buttons add existing fixture attachments and reorder actual gallery blocks through `GalleryService`, `NativeResourceRepository`, and RustStore. Reopen reads the database again. The missing-file case is rejected before a gallery edit; the host does not import files. No user databases or attachment directories are exposed.
+
+An unknown fixture block with a matching `attrs.bid` is checked for exact content after writes. Unknown blocks without that field are refused by RustStore, because the original `save_blocks` injects it and would otherwise alter the stored content. Physical attachment existence is checked only for this host's new fixture inputs; it is not an attachment authorization or import solution. Existing missing attachments, sandbox scope, non-fixture media, collaboration, and product image integration are not covered by this host. The UI is not part of the product. The Xcode project and UI test require Apple CI and have not been run locally.
+
+The isolated preview opens synthetic PNG attachments through an already-open AttachmentVault descriptor. It checks the authorized gallery snapshot, attachment owner, metadata and size before transferring the handle, and checks the snapshot again. Missing or changed fixture records are rejected. The authorization checks are snapshots, not a continuous access lease; they do not prove safety for a hostile replacement of the database path or revoke pixels already displayed. This remains outside the product and requires Apple tests and visual review.
+
+The preview offers named image actions and zoom buttons in addition to pinch.
+The large-text and RTL UI test checks that the zoom controls remain reachable.
+It does not establish VoiceOver behavior or full-resolution rendering for every
+image. Large images remain subject to the preview's documented memory cap.

@@ -1,0 +1,13 @@
+# Page reader coverage
+
+The native page screen is read-only. It displays paragraphs, headings, basic inline marks and safe links, lists, task state, tables, code, separators, callouts, prompts, columns, collapsible sections and tabs. The collapse and tab selection are local viewing state and do not edit the document. Columns fall back to a vertical arrangement when space is limited. Explicit block direction is honored, and auto direction inherits the interface direction.
+
+Inline math is shown as LaTeX source between dollar signs. Math blocks and Mermaid diagrams show their source with an explanatory label, not a rendered equation or diagram. Page mentions show the stored label and are not navigable. Unknown blocks and formatting are identified as unsupported; media, embeds, collections, charts, advanced marks and many specialized nodes are not implemented in this view. No content is written to the database.
+
+Source behavior was inspected in `src/editor/extensions/nodes.ts`, `pages2.ts`, `pages4.ts` and `suggest.tsx`. An isolated UI fixture covers callout, toggle, tabs, equations, diagram source and Arabic text. UI tests and visual review must run on Apple platforms before declaring this coverage verified. Nested explicit node directions and document paragraph styles are supported. Left, center and right alignment are mapped; justify falls back to leading alignment. Page-level text direction and full bidirectional paragraph inference remain incomplete.
+
+The toggle uses a native SwiftUI button containing both its indicator and title, with an accessibility value for expanded or collapsed state. This change addresses a macOS run where clicking the disclosure label focused it without opening the content. It requires new interaction tests and visual review on Apple platforms.
+
+On macOS the disclosure header uses an AppKit button that explicitly becomes first responder on mouse click, while iOS uses SwiftUI Button. Native keyboard activation, focus indication, very long header layout and RTL alignment require rechecking on Apple. The macOS title uses plain attributed content converted to text, so its original rich styling is not reproduced.
+
+The macOS toggle now uses semantic primary text color for its title and symbol, with a symbol sized to the body font. This addresses low contrast in the previous screenshot but awaits a fresh light and dark visual review and focus regression test.

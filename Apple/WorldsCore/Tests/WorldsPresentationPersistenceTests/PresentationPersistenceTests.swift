@@ -1,0 +1,213 @@
+import Foundation
+import SQLite3
+import XCTest
+import WorldsPresentations
+import WorldsNativeWrites
+@testable import WorldsPresentationPersistence
+
+final class PresentationPersistenceTests: XCTestCase {
+    private func execute(_ path: URL, _ sql: String) throws {
+        var db: OpaquePointer?
+        guard sqlite3_open(path.path, &db) == SQLITE_OK, let db else { throw PresentationPersistenceError.invalidResponse }
+        defer { sqlite3_close(db) }
+        guard sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK else { throw PresentationPersistenceError.invalidResponse }
+    }
+    private func database() throws -> URL {
+        let fixture = try XCTUnwrap(Bundle.module.url(forResource: "worlds-v11", withExtension: "db"))
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: false)
+        addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
+        let path = dir.appendingPathComponent("worlds.db")
+        try FileManager.default.copyItem(at: fixture, to: path)
+        try execute(path, #"INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('deck','Deck','presentation','{}',1,100); INSERT INTO blocks(id,page_id,type,sort_key,content,created_at,updated_at) VALUES('slide','deck','slide',0,'{"type":"slide","attrs":{"bid":"slide","notes":"old","elements":[]}}',1,1),('opaque','deck','future',1,'{"type":"future","attrs":{"bid":"opaque","keep":true}}',1,1);"#)
+        return path
+    }
+    func testShapeFillSaveAndConflictKeepsMedia() async throws {
+        let path = try database()
+        try execute(path, ##"INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('image','deck','image','a.png','image/png',4,'missing/a.png',1); UPDATE blocks SET content='{"type":"slide","attrs":{"bid":"slide","elements":[{"id":"shape","type":"shape","shape":"rect","fill":"#16161a","future":{"keep":true}},{"id":"image-el","type":"image","attachmentId":"image"}]}}' WHERE id='slide';"##)
+        let store = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        let stale = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        var slide = try XCTUnwrap(store.initialSlides.first)
+        let media = slide.elements.last?.source
+        try slide.setShapeFill(elementID: "shape", color: "#e5484d")
+        try await store.save(slides: [slide])
+        do { try await stale.save(slides: stale.initialSlides); XCTFail("Expected conflict") }
+        catch NativeWriteError.conflict { } catch { XCTFail("Unexpected error: \(error)") }
+        let reopened = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        XCTAssertEqual(reopened.initialSlides.first?.elements.first?.editableShapeFill, "#e5484d")
+        XCTAssertEqual(reopened.initialSlides.first?.elements.last?.source, media)
+        XCTAssertEqual(reopened.initialSlides.first?.elements.first?.source, slide.elements.first?.source)
+    }
+    func testAdjacentTextReorderSaveAndConflictKeepsMedia() async throws {
+        let path = try database()
+        try execute(path, #"INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('image','deck','image','a.png','image/png',4,'missing/a.png',1); UPDATE blocks SET content='{"type":"slide","attrs":{"bid":"slide","elements":[{"id":"a","type":"text","text":"A"},{"id":"b","type":"text","text":"B"},{"id":"image-el","type":"image","attachmentId":"image","future":{"keep":true}}]}}' WHERE id='slide';"#)
+        let store = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        let stale = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        var slide = try XCTUnwrap(store.initialSlides.first)
+        let media = slide.elements.last?.source
+        try slide.movePlainTextElement(elementID: "a", forward: true)
+        try await store.save(slides: [slide])
+        do { try await stale.save(slides: stale.initialSlides); XCTFail("Expected conflict") }
+        catch NativeWriteError.conflict { } catch { XCTFail("Unexpected error: \(error)") }
+        let reopened = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        XCTAssertEqual(reopened.initialSlides.first?.elements.map(\.id), ["b", "a", "image-el"])
+        XCTAssertEqual(reopened.initialSlides.first?.elements.last?.source, media)
+    }
+    func testSolidBackgroundSaveAndConflictKeepsMediaElement() async throws {
+        let path = try database()
+        try execute(path, ##"INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('image','deck','image','a.png','image/png',4,'missing/a.png',1); UPDATE blocks SET content='{"type":"slide","attrs":{"bid":"slide","background":{"color":"#16161a"},"elements":[{"id":"image-el","type":"image","attachmentId":"image","future":{"keep":true}}],"future":{"keep":true}}}' WHERE id='slide';"##)
+        let store = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        let stale = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        var slide = try XCTUnwrap(store.initialSlides.first)
+        let media = slide.elements.first?.source
+        try slide.setBackgroundColor("#f7f5f0")
+        try await store.save(slides: [slide])
+        do { try await stale.save(slides: stale.initialSlides); XCTFail("Expected conflict") }
+        catch NativeWriteError.conflict { } catch { XCTFail("Unexpected error: \(error)") }
+        let reopened = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        XCTAssertEqual(reopened.initialSlides.first?.editableBackgroundColor, "#f7f5f0")
+        XCTAssertEqual(reopened.initialSlides.first?.elements.first?.source, media)
+        XCTAssertEqual(reopened.initialSlides.first?.attributes["future"], slide.attributes["future"])
+    }
+    func testSaveKeepsOpaqueAndConflictingSessionFails() async throws {
+        let path = try database()
+        let first = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        let stale = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        var slide = try XCTUnwrap(first.initialSlides.first)
+        try slide.setNotes("changed")
+        try await first.save(slides: [slide])
+        do { try await stale.save(slides: stale.initialSlides); XCTFail("Expected conflict") } catch { }
+        let reloaded = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        XCTAssertEqual(reloaded.initialSlides.first?.notes, "changed")
+        var db: OpaquePointer?
+        XCTAssertEqual(sqlite3_open_v2(path.path, &db, SQLITE_OPEN_READONLY, nil), SQLITE_OK)
+        let handle = try XCTUnwrap(db); defer { sqlite3_close(handle) }
+        var stmt: OpaquePointer?
+        XCTAssertEqual(sqlite3_prepare_v2(handle, "SELECT count(*) FROM blocks WHERE id='opaque' AND json_extract(content,'$.attrs.keep')=1", -1, &stmt, nil), SQLITE_OK)
+        let query = try XCTUnwrap(stmt); defer { sqlite3_finalize(query) }
+        XCTAssertEqual(sqlite3_step(query), SQLITE_ROW)
+        XCTAssertEqual(sqlite3_column_int(query, 0), 1)
+    }
+    func testSaveAndReopenPreservesMissingMediaAndUnknownSlideFields() async throws {
+        func assertLargeInteger(_ slide: SlideBlock, file: StaticString = #filePath, line: UInt = #line) {
+            guard case .object(let element)? = slide.elements.first?.source,
+                  case .object(let future)? = element["future"],
+                  case .array(let mixed)? = future["mixed"], mixed.count == 5 else {
+                XCTFail("Missing unknown mixed values", file: file, line: line)
+                return
+            }
+            XCTAssertEqual(mixed[2], .integer(9_007_199_254_740_993), file: file, line: line)
+        }
+        let path = try database()
+        try execute(path, #"INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('image','deck','image','a.png','image/png',4,'missing/a.png',1); UPDATE blocks SET content='{"type":"slide","attrs":{"bid":"slide","notes":"old","background":{"attachmentId":"image","extra":true},"elements":[{"id":"title","type":"text","x":20,"y":30,"text":"قبل 🌍","future":{"keep":true,"mixed":[null,1.25,9007199254740993,"1",false]}},{"id":"opaque","type":"future","data":{"keep":true}}]}}' WHERE id='slide';"#)
+        let store = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        var slide = try XCTUnwrap(store.initialSlides.first)
+        assertLargeInteger(slide)
+        try slide.setText(elementID: "title", text: "بعد 🌍")
+        try slide.setNotes("Speaker notes")
+        try slide.setTextStyle(elementID: "title", key: "align", value: .string("center"))
+        try slide.setTextStyle(elementID: "title", key: "fontWeight", value: .integer(700))
+        try slide.setTextStyle(elementID: "title", key: "italic", value: .bool(true))
+        try slide.setTextStyle(elementID: "title", key: "fontSize", value: .integer(40))
+        try slide.setTextStyle(elementID: "title", key: "color", value: .string("#e5484d"))
+        try slide.moveText(elementID: "title", dx: 1, dy: 0)
+        try slide.rotateText(elementID: "title", degrees: 1)
+        try await store.save(slides: [slide])
+        let reopened = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        let restored = try XCTUnwrap(reopened.initialSlides.first)
+        XCTAssertEqual(restored.elements.first?.text, "بعد 🌍")
+        XCTAssertEqual(restored.editableNotes, "Speaker notes")
+        XCTAssertEqual(restored.elements.first?.editableTextAlignment, "center")
+        XCTAssertEqual(restored.elements.first?.editableFontWeight, 700)
+        XCTAssertEqual(restored.elements.first?.editableItalic, true)
+        XCTAssertEqual(restored.elements.first?.editableFontSize, 40)
+        XCTAssertEqual(restored.elements.first?.editableTextColor, "#e5484d")
+        XCTAssertEqual(restored.elements.first?.editablePosition?.x, 21)
+        XCTAssertEqual(restored.elements.first?.editablePosition?.y, 30)
+        XCTAssertEqual(restored.elements.first?.editableRotation, 1)
+        XCTAssertEqual(restored.attributes["background"], slide.attributes["background"])
+        XCTAssertEqual(restored.elements.last?.source, slide.elements.last?.source)
+        // Compare the whole JSON block after the same Codable round trip used
+        // for storage: integral doubles can decode as integers. This preserves
+        // exact types for strings, booleans, null, objects and arrays.
+        let encodedFirst = try SlideBlock(json: slide.json())
+        XCTAssertEqual(restored.source, encodedFirst.source)
+
+        var second = restored
+        try second.setNotes("Second save after reopen")
+        try await reopened.save(slides: [second])
+        let reopenedAgain = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        let final = try XCTUnwrap(reopenedAgain.initialSlides.first)
+        assertLargeInteger(final)
+        let encodedSecond = try SlideBlock(json: second.json())
+        XCTAssertEqual(final.source, encodedSecond.source)
+        XCTAssertEqual(final.editableNotes, "Second save after reopen")
+        XCTAssertEqual(final.attributes["background"], slide.attributes["background"])
+        XCTAssertEqual(final.elements.last?.source, slide.elements.last?.source)
+
+        do {
+            try await store.save(slides: [slide])
+            XCTFail("An older session must conflict after the second save")
+        } catch NativeWriteError.conflict { }
+        let afterConflict = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        XCTAssertEqual(afterConflict.initialSlides.first?.source, final.source)
+        var db: OpaquePointer?
+        XCTAssertEqual(sqlite3_open_v2(path.path, &db, SQLITE_OPEN_READONLY, nil), SQLITE_OK)
+        let handle = try XCTUnwrap(db); defer { sqlite3_close(handle) }
+        var statement: OpaquePointer?
+        let sql = "SELECT (SELECT count(*) FROM attachments WHERE id='image' AND page_id='deck' AND rel_path='missing/a.png' AND size=4), (SELECT count(*) FROM blocks WHERE id='opaque' AND json_extract(content,'$.type')='future' AND json_extract(content,'$.attrs.bid')='opaque' AND json_type(content,'$.attrs.keep')='true' AND (SELECT count(*) FROM json_each(content))=2 AND (SELECT count(*) FROM json_each(content,'$.attrs'))=2), (SELECT json_type(content,'$.attrs.elements[0].future.mixed[2]')='integer' FROM blocks WHERE id='slide'), (SELECT json_extract(content,'$.attrs.elements[0].future.mixed[2]') FROM blocks WHERE id='slide')"
+        XCTAssertEqual(sqlite3_prepare_v2(handle, sql, -1, &statement, nil), SQLITE_OK)
+        let query = try XCTUnwrap(statement); defer { sqlite3_finalize(query) }
+        XCTAssertEqual(sqlite3_step(query), SQLITE_ROW)
+        XCTAssertEqual(sqlite3_column_int(query, 0), 1)
+        XCTAssertEqual(sqlite3_column_int(query, 1), 1)
+        XCTAssertEqual(sqlite3_column_int(query, 2), 1)
+        XCTAssertEqual(sqlite3_column_type(query, 3), SQLITE_INTEGER)
+        XCTAssertEqual(sqlite3_column_int64(query, 3), 9_007_199_254_740_993)
+    }
+    func testInsertDuplicateAndReorderRoundTripsWithoutDroppingOpaqueBlocks() async throws {
+        let path = try database()
+        let store = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        let original = try XCTUnwrap(store.initialSlides.first)
+        let blank = try SlideBlock.blank(id: "new-slide")
+        let duplicate = try blank.duplicated(id: "copy-slide")
+        try await store.save(slides: [duplicate, original, blank])
+        let reopened = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        XCTAssertEqual(reopened.initialSlides.map(\.id), ["copy-slide", "slide", "new-slide"])
+        XCTAssertEqual(reopened.initialSlides[1], original)
+        var db: OpaquePointer?; XCTAssertEqual(sqlite3_open_v2(path.path, &db, SQLITE_OPEN_READONLY, nil), SQLITE_OK)
+        let handle = try XCTUnwrap(db); defer { sqlite3_close(handle) }
+        var statement: OpaquePointer?
+        XCTAssertEqual(sqlite3_prepare_v2(handle, "SELECT count(*) FROM blocks WHERE id='opaque' AND json_extract(content,'$.attrs.keep')=1", -1, &statement, nil), SQLITE_OK)
+        let query = try XCTUnwrap(statement); defer { sqlite3_finalize(query) }
+        XCTAssertEqual(sqlite3_step(query), SQLITE_ROW); XCTAssertEqual(sqlite3_column_int(query, 0), 1)
+    }
+    func testExplicitSlideDeletionKeepsMediaAndReopens() async throws {
+        let path = try database()
+        try execute(path, #"INSERT INTO attachments(id,page_id,kind,file_name,mime,size,rel_path,created_at) VALUES('image','deck','image','a.png','image/png',4,'missing/a.png',1); UPDATE blocks SET content='{"type":"slide","attrs":{"bid":"slide","elements":[{"id":"i","type":"image","attachmentId":"image"}]}}' WHERE id='slide'; INSERT INTO blocks(id,page_id,type,sort_key,content,created_at,updated_at) VALUES('slide2','deck','slide',2,'{"type":"slide","attrs":{"bid":"slide2","elements":[{"id":"j","type":"image","attachmentId":"image"}]}}',1,1);"#)
+        let store = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        let remaining = store.initialSlides.filter { $0.id == "slide2" }
+        do { try await store.save(slides: remaining); XCTFail("Deletion requires an explicit ID") }
+        catch PresentationPersistenceError.invalidBlock { } catch { XCTFail("Unexpected error: \(error)") }
+        try await store.save(slides: remaining, deleting: ["slide"])
+        let reopened = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        XCTAssertEqual(reopened.initialSlides.map(\.id), ["slide2"])
+        let recoveries = try await reopened.deletedSlides()
+        XCTAssertEqual(recoveries.count, 1)
+        let recovery = try XCTUnwrap(recoveries.first)
+        XCTAssertEqual(recovery.blockID, "slide")
+        let restored = try await reopened.restoreDeletedSlide(id: recovery.id)
+        XCTAssertEqual(restored.map(\.id), ["slide", "slide2"])
+        let pending = try await reopened.deletedSlides()
+        XCTAssertTrue(pending.isEmpty)
+        let reopenedAgain = try await PresentationPersistence.open(databaseURL: path, pageID: "deck")
+        XCTAssertEqual(reopenedAgain.initialSlides.map(\.id), ["slide", "slide2"])
+        var db: OpaquePointer?
+        XCTAssertEqual(sqlite3_open_v2(path.path, &db, SQLITE_OPEN_READONLY, nil), SQLITE_OK)
+        let handle = try XCTUnwrap(db); defer { sqlite3_close(handle) }
+        var statement: OpaquePointer?
+        XCTAssertEqual(sqlite3_prepare_v2(handle, "SELECT count(*) FROM attachments WHERE id='image'", -1, &statement, nil), SQLITE_OK)
+        let query = try XCTUnwrap(statement); defer { sqlite3_finalize(query) }
+        XCTAssertEqual(sqlite3_step(query), SQLITE_ROW); XCTAssertEqual(sqlite3_column_int(query, 0), 1)
+    }
+}
