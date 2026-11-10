@@ -185,7 +185,7 @@ private struct WorldsLibraryView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @State private var pages: [StoredPage] = []
+    @State private var pages: [StoredPage] = ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") ? WorldsLibraryView.makeShowcasePages() : []
     @State private var selectedID: String?
     @State private var returnStack: [String] = []
     @State private var showPageHierarchy = false
@@ -200,7 +200,7 @@ private struct WorldsLibraryView: View {
     private let hierarchyPreferences = PersonalHierarchyPreferences()
     #endif
     @State private var showImporter = false
-    @State private var loaded = false
+    @State private var loaded = ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase")
     @State private var loading = false
     @State private var errorMessage: String?
     @State private var searchEngine: WorldsSearch?
@@ -230,7 +230,7 @@ private struct WorldsLibraryView: View {
     @State private var showAccount = false
     #endif
     enum SidebarSection: Hashable { case home, spreadsheets, planning, study, studio, templates, trash }
-    @State private var selectedSidebarSection: SidebarSection? = nil
+    @State private var selectedSidebarSection: SidebarSection? = ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") ? .home : nil
     @State private var showSettings = false
     @State private var showAssistant = false
     #if WORLDS_MAIN_APP_MODULES
@@ -996,7 +996,7 @@ private struct WorldsLibraryView: View {
         #endif
     }
 
-    private func seedCompleteShowcasePages() {
+    static func makeShowcasePages() -> [StoredPage] {
         let now = Int64(Date().timeIntervalSince1970 * 1000)
         let showcaseItems: [(id: String, title: String, kind: String, preview: String)] = [
             ("showcase-sheet-q4", "Financial Budget & Cashflow 2026", "spreadsheet", "Multi-sheet Excel workbook · =SUM, =AVERAGE, =VLOOKUP, =PMT"),
@@ -1006,23 +1006,26 @@ private struct WorldsLibraryView: View {
             ("showcase-cad-turbine", "CAD Turbine Assembly Blueprint (DXF)", "file", "3D & AutoCAD DXF Engineering Viewport · Layer Inspector"),
             ("showcase-slides-deck", "Worlds Native Architecture Deck (16:9)", "presentation", "Liquid Glass Dark Obsidian · 4 Visual Slides")
         ]
-        for (idx, item) in showcaseItems.enumerated() where !pages.contains(where: { $0.id == item.id }) {
-            pages.insert(
-                StoredPage(
-                    id: item.id,
-                    title: item.title,
-                    kind: item.kind,
-                    parentID: nil,
-                    archived: false,
-                    sortKey: Double(idx),
-                    createdAt: now - Int64(idx * 3600_000),
-                    preview: item.preview,
-                    updatedAt: now - Int64(idx * 1800_000),
-                    metadataJSON: "{}",
-                    blocks: []
-                ),
-                at: min(idx, pages.count)
+        return showcaseItems.enumerated().map { idx, item in
+            StoredPage(
+                id: item.id,
+                title: item.title,
+                kind: item.kind,
+                parentID: nil,
+                archived: false,
+                sortKey: Double(idx),
+                createdAt: now - Int64(idx * 3600_000),
+                preview: item.preview,
+                updatedAt: now - Int64(idx * 1800_000),
+                metadataJSON: "{}",
+                blocks: []
             )
+        }
+    }
+
+    private func seedCompleteShowcasePages() {
+        if pages.isEmpty {
+            pages = Self.makeShowcasePages()
         }
     }
 
