@@ -1,5 +1,6 @@
 import SwiftUI
 import WorldsPersistence
+import WorldsSearch
 
 // MARK: - 2. Spaces Destination (Projects, Planning, Goals, Calendar, Inbox, Print Queue & Opt-In Study Pack)
 
