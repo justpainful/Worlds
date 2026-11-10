@@ -86,8 +86,8 @@ struct WorldsApp: App {
     var body: some Scene {
         #if os(macOS) && DEBUG
         WindowGroup { rootView }
-            .defaultSize(width: ProcessInfo.processInfo.arguments.contains("--ui-testing-large-window") ? 1100 : 800,
-                         height: ProcessInfo.processInfo.arguments.contains("--ui-testing-large-window") ? 780 : 600)
+            .defaultSize(width: ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") ? 1320 : (ProcessInfo.processInfo.arguments.contains("--ui-testing-large-window") ? 1100 : 800),
+                         height: ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") ? 860 : (ProcessInfo.processInfo.arguments.contains("--ui-testing-large-window") ? 780 : 600))
             .commands { appCommands }
         #elseif os(macOS)
         WindowGroup { rootView }
@@ -158,13 +158,19 @@ private struct UITestingAppearance: ViewModifier {
         content
             .environment(\.layoutDirection, args.contains("--ui-testing-rtl") ? .rightToLeft : direction)
             .environment(\.dynamicTypeSize, args.contains("--ui-testing-large-text") ? .accessibility3 : textSize)
-            .preferredColorScheme(args.contains("--ui-testing-dark") ? .dark : (args.contains("--ui-testing-light") ? .light : nil))
+            .preferredColorScheme((args.contains("--ui-testing-dark") || args.contains("--ui-testing-complete-showcase")) ? .dark : (args.contains("--ui-testing-light") ? .light : nil))
             #if os(macOS)
             .onAppear {
                 NSApp.setActivationPolicy(.regular)
                 NSApp.activate(ignoringOtherApps: true)
+                if args.contains("--ui-testing-dark") || args.contains("--ui-testing-complete-showcase") {
+                    NSApp.appearance = NSAppearance(named: .darkAqua)
+                }
                 DispatchQueue.main.async {
                     if let window = NSApp.windows.first {
+                        if args.contains("--ui-testing-complete-showcase") {
+                            window.setContentSize(NSSize(width: 1320, height: 860))
+                        }
                         window.makeKeyAndOrderFront(nil)
                         window.orderFrontRegardless()
                     }
@@ -223,7 +229,7 @@ private struct WorldsLibraryView: View {
     #if WORLDS_EXPERIMENTAL_ACCOUNT
     @State private var showAccount = false
     #endif
-    enum SidebarSection: Hashable { case home, templates, trash }
+    enum SidebarSection: Hashable { case home, spreadsheets, planning, study, studio, templates, trash }
     @State private var selectedSidebarSection: SidebarSection? = nil
     @State private var showSettings = false
     @State private var showAssistant = false
@@ -464,7 +470,7 @@ private struct WorldsLibraryView: View {
                 if let section = selectedSidebarSection, selectedID == nil {
                     sectionContentView(section)
                 } else if let selectedPageID = selectedID, let page = pages.first(where: { $0.id == selectedPageID }) {
-                    if ["project", "gallery", "presentation", "file", "stream"].contains(page.kind) {
+                    if ["project", "gallery", "presentation", "file", "stream", "spreadsheet"].contains(page.kind) {
                         ResourceContentView(page: page, pages: pages, projectEditingAvailable: projectEditingAvailable(for: page), otherEditingAvailable: otherResourceEditingAvailable(for: page), openVideo: videoAction(for: page), openDocument: documentAction(for: page)) { target in
                             guard target != page.id else { return }
                             returnStack.append(page.id)
@@ -833,6 +839,11 @@ private struct WorldsLibraryView: View {
                     #if WORLDS_EXPERIMENTAL_LOCAL_HISTORY
                     if copyContext?.copy.id == copy.id { fixtureHistoryCopyID = copy.id }
                     #endif
+                    if ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") {
+                        seedCompleteShowcasePages()
+                        selectedID = nil
+                        selectedSidebarSection = .home
+                    }
                 } catch { errorMessage = error.localizedDescription }
                 return
             }
@@ -973,6 +984,36 @@ private struct WorldsLibraryView: View {
         #endif
     }
 
+    private func seedCompleteShowcasePages() {
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
+        let showcaseItems: [(id: String, title: String, kind: String, preview: String)] = [
+            ("showcase-sheet-q4", "Financial Budget & Cashflow 2026", "spreadsheet", "Multi-sheet Excel workbook · =SUM, =AVERAGE, =VLOOKUP, =PMT"),
+            ("showcase-mindmap-arch", "System Architecture & Concept Graph", "drawing", "Interactive Mind Map & Concept Network · 14 connected nodes"),
+            ("showcase-okr-roadmap", "Q4 Engineering OKRs & Sprint Plan", "project", "Company KPIs, Sprint Tasks, Weekly Calendar & Print Queue"),
+            ("showcase-study-cs301", "CS-301 Algorithms & Graph Theory", "document", "Textbook p.148/420 · YouTube & Telegram Subject Links"),
+            ("showcase-cad-turbine", "CAD Turbine Assembly Blueprint (DXF)", "file", "3D & AutoCAD DXF Engineering Viewport · Layer Inspector"),
+            ("showcase-slides-deck", "Worlds Native Architecture Deck (16:9)", "presentation", "Liquid Glass Dark Obsidian · 4 Visual Slides")
+        ]
+        for (idx, item) in showcaseItems.enumerated() where !pages.contains(where: { $0.id == item.id }) {
+            pages.insert(
+                StoredPage(
+                    id: item.id,
+                    title: item.title,
+                    kind: item.kind,
+                    parentID: nil,
+                    archived: false,
+                    sortKey: "0\(idx)",
+                    createdAt: now - Int64(idx * 3600_000),
+                    preview: item.preview,
+                    updatedAt: now - Int64(idx * 1800_000),
+                    metadataJSON: nil,
+                    blocks: []
+                ),
+                at: min(idx, pages.count)
+            )
+        }
+    }
+
     @ViewBuilder
     private func sectionContentView(_ section: SidebarSection) -> some View {
         switch section {
@@ -994,12 +1035,36 @@ private struct WorldsLibraryView: View {
                     selectedSidebarSection = .templates
                 },
                 openAutomations: openAutomationsAction,
+                openSpreadsheets: {
+                    selectedID = nil
+                    selectedSidebarSection = .spreadsheets
+                },
+                openPlanning: {
+                    selectedID = nil
+                    selectedSidebarSection = .planning
+                },
+                openStudyPack: {
+                    selectedID = nil
+                    selectedSidebarSection = .study
+                },
+                openStudio: {
+                    selectedID = nil
+                    selectedSidebarSection = .studio
+                },
                 onRequestLocalCopy: {
                     #if WORLDS_EXPERIMENTAL_LOCAL_COPY
                     showCopyExplanation = true
                     #endif
                 }
             )
+        case .spreadsheets:
+            WorldsSpreadsheetStudioView(metadataJSON: nil)
+        case .planning:
+            WorldsPlanningHubView()
+        case .study:
+            WorldsStudyPackHubView()
+        case .studio:
+            WorldsCreativeStudioView()
         case .templates:
             TemplatesView { template in
                 createPageFromTemplate(template)
@@ -1015,67 +1080,107 @@ private struct WorldsLibraryView: View {
     }
 
     private var workspaceNavigationBar: some View {
-        HStack(spacing: 4) {
-            navPillButton(
-                title: "Pages",
-                icon: "doc.text",
-                identifier: "open-pages-button",
-                isActive: selectedSidebarSection == nil
-            ) {
-                selectedSidebarSection = nil
+        VStack(spacing: 4) {
+            HStack(spacing: 4) {
+                navPillButton(
+                    title: "Pages",
+                    icon: "doc.text",
+                    identifier: "open-pages-button",
+                    isActive: selectedSidebarSection == nil
+                ) {
+                    selectedSidebarSection = nil
+                }
+                navPillButton(
+                    title: "Home",
+                    icon: "house",
+                    identifier: "open-home-button",
+                    isActive: selectedSidebarSection == .home && selectedID == nil
+                ) {
+                    selectedID = nil
+                    selectedSidebarSection = .home
+                }
+                navPillButton(
+                    title: "Templates",
+                    icon: "square.grid.2x2",
+                    identifier: "open-templates-button",
+                    isActive: selectedSidebarSection == .templates && selectedID == nil
+                ) {
+                    selectedID = nil
+                    selectedSidebarSection = .templates
+                }
+                navPillButton(
+                    title: "Trash",
+                    icon: "trash",
+                    identifier: "open-trash-button",
+                    isActive: selectedSidebarSection == .trash && selectedID == nil
+                ) {
+                    selectedID = nil
+                    selectedSidebarSection = .trash
+                }
+                navPillButton(
+                    title: "AI",
+                    icon: "sparkles",
+                    identifier: "open-assistant-button",
+                    isActive: showAssistant
+                ) {
+                    showAssistant = true
+                }
+                #if WORLDS_EXPERIMENTAL_ACCOUNT
+                navPillButton(
+                    title: "Account",
+                    icon: "person.crop.circle",
+                    identifier: "open-account-button",
+                    isActive: showAccount
+                ) {
+                    showAccount = true
+                }
+                #endif
+                navPillButton(
+                    title: "Settings",
+                    icon: "gearshape",
+                    identifier: "open-settings-button",
+                    isActive: showSettings
+                ) {
+                    showSettings = true
+                }
             }
-            navPillButton(
-                title: "Home",
-                icon: "house",
-                identifier: "open-home-button",
-                isActive: selectedSidebarSection == .home && selectedID == nil
-            ) {
-                selectedID = nil
-                selectedSidebarSection = .home
-            }
-            navPillButton(
-                title: "Templates",
-                icon: "square.grid.2x2",
-                identifier: "open-templates-button",
-                isActive: selectedSidebarSection == .templates && selectedID == nil
-            ) {
-                selectedID = nil
-                selectedSidebarSection = .templates
-            }
-            navPillButton(
-                title: "Trash",
-                icon: "trash",
-                identifier: "open-trash-button",
-                isActive: selectedSidebarSection == .trash && selectedID == nil
-            ) {
-                selectedID = nil
-                selectedSidebarSection = .trash
-            }
-            navPillButton(
-                title: "AI",
-                icon: "sparkles",
-                identifier: "open-assistant-button",
-                isActive: showAssistant
-            ) {
-                showAssistant = true
-            }
-            #if WORLDS_EXPERIMENTAL_ACCOUNT
-            navPillButton(
-                title: "Account",
-                icon: "person.crop.circle",
-                identifier: "open-account-button",
-                isActive: showAccount
-            ) {
-                showAccount = true
-            }
-            #endif
-            navPillButton(
-                title: "Settings",
-                icon: "gearshape",
-                identifier: "open-settings-button",
-                isActive: showSettings
-            ) {
-                showSettings = true
+            HStack(spacing: 4) {
+                navPillButton(
+                    title: "Sheets",
+                    icon: "tablecells.fill",
+                    identifier: "open-spreadsheets-button",
+                    isActive: selectedSidebarSection == .spreadsheets && selectedID == nil
+                ) {
+                    selectedID = nil
+                    selectedSidebarSection = .spreadsheets
+                }
+                navPillButton(
+                    title: "Planning",
+                    icon: "checklist.checked",
+                    identifier: "open-planning-button",
+                    isActive: selectedSidebarSection == .planning && selectedID == nil
+                ) {
+                    selectedID = nil
+                    selectedSidebarSection = .planning
+                }
+                navPillButton(
+                    title: "Study",
+                    icon: "graduationcap.fill",
+                    identifier: "open-study-button",
+                    isActive: selectedSidebarSection == .study && selectedID == nil
+                ) {
+                    selectedID = nil
+                    selectedSidebarSection = .study
+                }
+                navPillButton(
+                    title: "Studio",
+                    icon: "cube.transparent.fill",
+                    identifier: "open-studio-button",
+                    isActive: selectedSidebarSection == .studio && selectedID == nil
+                ) {
+                    selectedID = nil
+                    selectedSidebarSection = .studio
+                }
             }
         }
         .padding(.horizontal, 8)

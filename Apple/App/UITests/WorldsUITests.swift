@@ -717,6 +717,74 @@ final class WorldsUITests: XCTestCase {
         XCTAssertTrue(editor.waitForExistence(timeout: 20))
         capture("showcase-09-page-editor", app: app)
     }
+
+    @MainActor
+    func testCompleteVisualShowcaseCaptures() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "--ui-testing-local-copy-fixture",
+            "--ui-testing-presentation-fixture",
+            "--ui-testing-automation-fixture",
+            "--ui-testing-trash-fixture",
+            "--ui-testing-complete-showcase",
+            "--ui-testing-dark"
+        ]
+        app.launch()
+
+        let homeButton = app.buttons["open-home-button"].firstMatch
+        XCTAssertTrue(homeButton.waitForExistence(timeout: 30))
+        homeButton.tap()
+        XCTAssertTrue(app.staticTexts["Welcome to Worlds"].waitForExistence(timeout: 15))
+        capture("complete-01-home-dashboard", app: app)
+
+        let sheetsButton = app.buttons["open-spreadsheets-button"].firstMatch
+        XCTAssertTrue(sheetsButton.waitForExistence(timeout: 10))
+        sheetsButton.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["spreadsheet-studio-view"].firstMatch.waitForExistence(timeout: 15))
+        capture("complete-02-spreadsheet-excel", app: app)
+
+        let templatesButton = app.buttons["open-templates-button"].firstMatch
+        XCTAssertTrue(templatesButton.waitForExistence(timeout: 10))
+        templatesButton.tap()
+        XCTAssertTrue(app.staticTexts["Workspace Templates"].waitForExistence(timeout: 15))
+        capture("complete-03-mindmap-templates", app: app)
+
+        let planningButton = app.buttons["open-planning-button"].firstMatch
+        XCTAssertTrue(planningButton.waitForExistence(timeout: 10))
+        planningButton.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["planning-hub-view"].firstMatch.waitForExistence(timeout: 15))
+        capture("complete-04-planning-tasks-goals", app: app)
+
+        let studyButton = app.buttons["open-study-button"].firstMatch
+        XCTAssertTrue(studyButton.waitForExistence(timeout: 10))
+        studyButton.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["study-pack-hub-view"].firstMatch.waitForExistence(timeout: 15))
+        capture("complete-05-study-pack-hub", app: app)
+
+        let studioButton = app.buttons["open-studio-button"].firstMatch
+        XCTAssertTrue(studioButton.waitForExistence(timeout: 10))
+        studioButton.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["creative-studio-view"].firstMatch.waitForExistence(timeout: 15))
+        capture("complete-06-creative-3d-studio", app: app)
+
+        let assistantButton = app.buttons["open-assistant-button"].firstMatch
+        XCTAssertTrue(assistantButton.waitForExistence(timeout: 10))
+        assistantButton.tap()
+        XCTAssertTrue(app.staticTexts["Worlds Intelligence"].waitForExistence(timeout: 15))
+        capture("complete-07-ai-assistant", app: app)
+        let closeAssistant = app.buttons["close-assistant-button"].firstMatch
+        if closeAssistant.waitForExistence(timeout: 10) {
+            closeAssistant.tap()
+        }
+
+        let settingsButton = app.buttons["open-settings-button"].firstMatch
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 10))
+        settingsButton.tap()
+        let closeSettings = app.buttons["close-settings-button"].firstMatch
+        XCTAssertTrue(closeSettings.waitForExistence(timeout: 15))
+        capture("complete-08-settings-packs", app: app)
+        closeSettings.tap()
+    }
     @MainActor
     private func captureLaunchFailure(_ app: XCUIApplication, name: String) {
         let state = XCTAttachment(string: "state=\(app.state.rawValue) windows=\(app.windows.count)\n\(app.debugDescription)")
