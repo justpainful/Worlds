@@ -24,6 +24,11 @@ extension Notification.Name {
     static let worldsNavigateHomeAction = Notification.Name("worldsNavigateHomeAction")
     static let worldsNavigateTemplatesAction = Notification.Name("worldsNavigateTemplatesAction")
     static let worldsNavigateTrashAction = Notification.Name("worldsNavigateTrashAction")
+    static let worldsNavigateSpreadsheetsAction = Notification.Name("worldsNavigateSpreadsheetsAction")
+    static let worldsNavigatePlanningAction = Notification.Name("worldsNavigatePlanningAction")
+    static let worldsNavigateStudyAction = Notification.Name("worldsNavigateStudyAction")
+    static let worldsNavigateStudioAction = Notification.Name("worldsNavigateStudioAction")
+    static let worldsOpenAssistantAction = Notification.Name("worldsOpenAssistantAction")
     static let worldsOpenSettingsAction = Notification.Name("worldsOpenSettingsAction")
 }
 
@@ -61,12 +66,22 @@ enum WorldsHaptics {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("--ui-testing-dark") || args.contains("--ui-testing-complete-showcase") {
+            NSApp.appearance = NSAppearance(named: .darkAqua)
+        }
         if let window = NSApp.windows.first {
+            if args.contains("--ui-testing-dark") || args.contains("--ui-testing-complete-showcase") {
+                window.appearance = NSAppearance(named: .darkAqua)
+            }
             window.makeKeyAndOrderFront(nil)
             window.orderFrontRegardless()
         }
         Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { timer in
             if let window = NSApp.windows.first {
+                if args.contains("--ui-testing-dark") || args.contains("--ui-testing-complete-showcase") {
+                    window.appearance = NSAppearance(named: .darkAqua)
+                }
                 window.makeKeyAndOrderFront(nil)
                 window.orderFrontRegardless()
                 timer.invalidate()
@@ -83,9 +98,20 @@ struct WorldsApp: App {
     #elseif DEBUG && os(macOS)
     @NSApplicationDelegateAdaptor(WorldsAppTestingDelegate.self) private var appTestingDelegate
     #endif
+
+    init() {
+        #if DEBUG && os(macOS)
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("--ui-testing-dark") || args.contains("--ui-testing-complete-showcase") {
+            NSApp.appearance = NSAppearance(named: .darkAqua)
+        }
+        #endif
+    }
+
     var body: some Scene {
         #if os(macOS) && DEBUG
         WindowGroup { rootView }
+            .preferredColorScheme((ProcessInfo.processInfo.arguments.contains("--ui-testing-dark") || ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase")) ? .dark : nil)
             .defaultSize(width: ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") ? 1320 : (ProcessInfo.processInfo.arguments.contains("--ui-testing-large-window") ? 1100 : 800),
                          height: ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") ? 860 : (ProcessInfo.processInfo.arguments.contains("--ui-testing-large-window") ? 780 : 600))
             .commands { appCommands }
@@ -129,6 +155,33 @@ struct WorldsApp: App {
                 NotificationCenter.default.post(name: .worldsNavigateTrashAction, object: nil)
             }
             .keyboardShortcut("3", modifiers: [.command, .option])
+
+            Button("Spreadsheets") {
+                NotificationCenter.default.post(name: .worldsNavigateSpreadsheetsAction, object: nil)
+            }
+            .keyboardShortcut("4", modifiers: [.command, .option])
+
+            Button("Planning") {
+                NotificationCenter.default.post(name: .worldsNavigatePlanningAction, object: nil)
+            }
+            .keyboardShortcut("5", modifiers: [.command, .option])
+
+            Button("Study") {
+                NotificationCenter.default.post(name: .worldsNavigateStudyAction, object: nil)
+            }
+            .keyboardShortcut("6", modifiers: [.command, .option])
+
+            Button("Studio") {
+                NotificationCenter.default.post(name: .worldsNavigateStudioAction, object: nil)
+            }
+            .keyboardShortcut("7", modifiers: [.command, .option])
+
+            Divider()
+
+            Button("AI Assistant") {
+                NotificationCenter.default.post(name: .worldsOpenAssistantAction, object: nil)
+            }
+            .keyboardShortcut("a", modifiers: [.command, .option])
 
             Divider()
 
@@ -814,6 +867,30 @@ private struct WorldsLibraryView: View {
             selectedSidebarSection = .trash
             WorldsHaptics.selection()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateSpreadsheetsAction)) { _ in
+            selectedID = nil
+            selectedSidebarSection = .spreadsheets
+            WorldsHaptics.selection()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .worldsNavigatePlanningAction)) { _ in
+            selectedID = nil
+            selectedSidebarSection = .planning
+            WorldsHaptics.selection()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateStudyAction)) { _ in
+            selectedID = nil
+            selectedSidebarSection = .study
+            WorldsHaptics.selection()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateStudioAction)) { _ in
+            selectedID = nil
+            selectedSidebarSection = .studio
+            WorldsHaptics.selection()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .worldsOpenAssistantAction)) { _ in
+            showAssistant = true
+            WorldsHaptics.light()
+        }
         .onReceive(NotificationCenter.default.publisher(for: .worldsOpenSettingsAction)) { _ in
             showSettings = true
             WorldsHaptics.light()
@@ -1217,9 +1294,10 @@ private struct WorldsLibraryView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 5)
             .background(
-                isActive ? WorldsPalette.accent(for: colorScheme).opacity(0.16) : Color.clear,
+                isActive ? WorldsPalette.accent(for: colorScheme).opacity(0.16) : Color.primary.opacity(0.001),
                 in: RoundedRectangle(cornerRadius: 8)
             )
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)

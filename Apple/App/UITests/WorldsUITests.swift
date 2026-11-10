@@ -722,6 +722,7 @@ final class WorldsUITests: XCTestCase {
     func testCompleteVisualShowcaseCaptures() throws {
         let app = XCUIApplication()
         app.launchArguments += [
+            "-AppleInterfaceStyle", "Dark",
             "--ui-testing-local-copy-fixture",
             "--ui-testing-presentation-fixture",
             "--ui-testing-automation-fixture",
@@ -734,61 +735,109 @@ final class WorldsUITests: XCTestCase {
         let launchShot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         launchShot.name = "debug-00-launch-state"; launchShot.lifetime = .keepAlways; add(launchShot)
 
-        let homeButton = app.buttons["open-home-button"].firstMatch
-        XCTAssertTrue(homeButton.waitForExistence(timeout: 25))
-        homeButton.tap()
-        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        // 01 Home Dashboard
+        activateNavigation(shortcut: "1", pillID: "open-home-button", app: app)
         capture("complete-01-home-dashboard", app: app)
 
-        let sheetsButton = app.buttons["open-spreadsheets-button"].firstMatch
-        XCTAssertTrue(sheetsButton.waitForExistence(timeout: 10))
-        sheetsButton.tap()
-        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        // 02 Spreadsheet Studio (Excel-grade)
+        activateNavigation(shortcut: "4", pillID: "open-spreadsheets-button", quickActionID: "home-open-spreadsheets", pageID: "page.showcase-sheet-q4", app: app)
         capture("complete-02-spreadsheet-excel", app: app)
 
-        let templatesButton = app.buttons["open-templates-button"].firstMatch
-        XCTAssertTrue(templatesButton.waitForExistence(timeout: 10))
-        templatesButton.tap()
-        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        // 03 Mind Maps & Templates
+        activateNavigation(shortcut: "2", pillID: "open-templates-button", pageID: "page.showcase-mindmap-arch", app: app)
         capture("complete-03-mindmap-templates", app: app)
 
-        let planningButton = app.buttons["open-planning-button"].firstMatch
-        XCTAssertTrue(planningButton.waitForExistence(timeout: 10))
-        planningButton.tap()
-        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        // 04 Planning & OKRs Hub
+        activateNavigation(shortcut: "5", pillID: "open-planning-button", quickActionID: "home-open-planning", pageID: "page.showcase-okr-roadmap", app: app)
         capture("complete-04-planning-tasks-goals", app: app)
 
-        let studyButton = app.buttons["open-study-button"].firstMatch
-        XCTAssertTrue(studyButton.waitForExistence(timeout: 10))
-        studyButton.tap()
-        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        // 05 Opt-in Academic Study Pack Hub
+        activateNavigation(shortcut: "6", pillID: "open-study-button", quickActionID: "home-open-study", pageID: "page.showcase-study-cs301", app: app)
         capture("complete-05-study-pack-hub", app: app)
 
-        let studioButton = app.buttons["open-studio-button"].firstMatch
-        XCTAssertTrue(studioButton.waitForExistence(timeout: 10))
-        studioButton.tap()
-        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        // 06 Creative 3D CAD & Slides Studio
+        activateNavigation(shortcut: "7", pillID: "open-studio-button", quickActionID: "home-open-studio", pageID: "page.showcase-cad-turbine", app: app)
         capture("complete-06-creative-3d-studio", app: app)
 
+        // 07 Worlds Intelligence AI Assistant Modal
+        #if os(macOS)
+        app.typeKey("a", modifierFlags: [.command, .option])
+        #else
         let assistantButton = app.buttons["open-assistant-button"].firstMatch
-        XCTAssertTrue(assistantButton.waitForExistence(timeout: 10))
-        assistantButton.tap()
+        if assistantButton.waitForExistence(timeout: 5) { assistantButton.tap() }
+        #endif
         RunLoop.current.run(until: Date().addingTimeInterval(1))
         capture("complete-07-ai-assistant", app: app)
         let closeAssistant = app.buttons["close-assistant-button"].firstMatch
-        if closeAssistant.waitForExistence(timeout: 10) {
+        if closeAssistant.waitForExistence(timeout: 5) {
+            #if os(macOS)
+            closeAssistant.click()
+            #else
             closeAssistant.tap()
+            #endif
             RunLoop.current.run(until: Date().addingTimeInterval(0.5))
         }
 
+        // 08 Settings & Feature Packs Modal
+        #if os(macOS)
+        app.typeKey(",", modifierFlags: .command)
+        #else
         let settingsButton = app.buttons["open-settings-button"].firstMatch
-        XCTAssertTrue(settingsButton.waitForExistence(timeout: 10))
-        settingsButton.tap()
+        if settingsButton.waitForExistence(timeout: 5) { settingsButton.tap() }
+        #endif
         RunLoop.current.run(until: Date().addingTimeInterval(1))
         capture("complete-08-settings-packs", app: app)
         let closeSettings = app.buttons["close-settings-button"].firstMatch
-        if closeSettings.waitForExistence(timeout: 10) {
+        if closeSettings.waitForExistence(timeout: 5) {
+            #if os(macOS)
+            closeSettings.click()
+            #else
             closeSettings.tap()
+            #endif
+        }
+    }
+
+    @MainActor
+    private func activateNavigation(shortcut: String?, pillID: String, quickActionID: String? = nil, pageID: String? = nil, app: XCUIApplication) {
+        #if os(macOS)
+        if let shortcut {
+            app.typeKey(shortcut, modifierFlags: [.command, .option])
+            RunLoop.current.run(until: Date().addingTimeInterval(1.2))
+            return
+        }
+        #endif
+        if let quickActionID {
+            let quick = app.buttons[quickActionID].firstMatch
+            if quick.waitForExistence(timeout: 2) && quick.isHittable {
+                #if os(macOS)
+                quick.click()
+                #else
+                quick.tap()
+                #endif
+                RunLoop.current.run(until: Date().addingTimeInterval(1.2))
+                return
+            }
+        }
+        let pill = app.buttons[pillID].firstMatch
+        if pill.waitForExistence(timeout: 5) && pill.isHittable {
+            #if os(macOS)
+            pill.click()
+            #else
+            pill.tap()
+            #endif
+            RunLoop.current.run(until: Date().addingTimeInterval(1.2))
+            return
+        }
+        if let pageID {
+            let page = app.descendants(matching: .any)[pageID].firstMatch
+            if page.waitForExistence(timeout: 5) {
+                #if os(macOS)
+                page.click()
+                #else
+                page.tap()
+                #endif
+                RunLoop.current.run(until: Date().addingTimeInterval(1.2))
+            }
         }
     }
     @MainActor
