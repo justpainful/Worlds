@@ -27,6 +27,13 @@ export function inkCorners(n: DrawingNode): Point[] {
   return [{ x: r.x, y: r.y }, { x: r.x + r.w, y: r.y }, { x: r.x + r.w, y: r.y + r.h }, { x: r.x, y: r.y + r.h }].map((p) => localToWorld(n, p));
 }
 export function worldInkBounds(n: DrawingNode): Rect { const scale = n.geometrySize ? Math.max(n.w / n.geometrySize.w, n.h / n.geometrySize.h) : 1; return bounds(inkCorners(n), n.kind === "stroke" ? 0 : n.paint.strokeWidth * scale / 2); }
+/** Conservative visible bounds including non-image filter bleed. */
+export function worldRenderBounds(n: DrawingNode): Rect {
+  const box = worldInkBounds(n);
+  if (n.kind === "image" || n.kind === "raster") return box;
+  const radius = n.effects.reduce((sum, effect) => sum + (effect.enabled && effect.kind === "blur" ? Math.max(0, effect.amount) * 3 : 0), 0);
+  return radius ? { x: box.x - radius, y: box.y - radius, w: box.w + radius * 2, h: box.h + radius * 2 } : box;
+}
 export function intersects(a: Rect, b: Rect): boolean { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
 export function anchorPoint(scene: DrawingScene, anchor: Anchor): { point: Point; missing: boolean } {
   const node = anchor.nodeId ? scene.nodes[anchor.nodeId] : undefined;
@@ -35,17 +42,18 @@ export function anchorPoint(scene: DrawingScene, anchor: Anchor): { point: Point
 }
 export function frameAt(scene: DrawingScene, p: Point): string | null {
   return [...scene.frameOrder].reverse().find((id) => {
-    const f = scene.frames[id]; return p.x >= f.x && p.y >= f.y && p.x <= f.x + f.w && p.y <= f.y + f.h;
+    const f = scene.frames[id]; return p.x >= f.x && p.y >= f.y && p.x < f.x + f.w && p.y < f.y + f.h;
   }) ?? null;
 }
 export function hitNode(scene: DrawingScene, p: Point): DrawingNode | null {
-  for(const id of [...scene.nodeOrder].reverse()){const n=scene.nodes[id];if(n.redaction&&n.visible&&layerShown(scene,n.layerId)&&contains(n,p))return n;}
+  const insideClip=(n:DrawingNode)=>{const f=n.frameId?scene.frames[n.frameId]:undefined;return !f?.clip||p.x>=f.x&&p.y>=f.y&&p.x<f.x+f.w&&p.y<f.y+f.h;};
+  for(const id of [...scene.nodeOrder].reverse()){const n=scene.nodes[id];if(n.redaction&&n.visible&&!n.locked&&layerShown(scene,n.layerId)&&!effectiveLayer(scene,n.layerId).locked&&insideClip(n)&&contains(n,p))return n;}
   for (const lid of layerDisplayOrder(scene).reverse()) {
     const layer = effectiveLayer(scene,lid);
     if (!layer.visible || layer.locked) continue;
     for (const nid of [...scene.nodeOrder].reverse()) {
       const n = scene.nodes[nid];
-      if (n.layerId === lid && n.visible && !n.locked && contains(n, p)) return n;
+      if (n.layerId === lid && n.visible && !n.locked && insideClip(n) && contains(n, p)) return n;
     }
   }
   return null;

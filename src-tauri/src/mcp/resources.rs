@@ -31,7 +31,7 @@ pub fn tools() -> Vec<Value> {
         tool(
             "resources_create",
             "Create a resource: kind is document, presentation, project, gallery or stream (pages use pages_create; files use files_add). For a stream give url. Returns the new id.",
-            json!({ "kind": { "type": "string" }, "title": { "type": "string" }, "parentId": id, "url": { "type": "string", "description": "stream only: http(s) link, m3u8 for HLS" } }),
+            json!({ "kind": { "type": "string" }, "title": { "type": "string" }, "parentId": id, "url": { "type": "string", "description": "stream only: http(s) link, m3u8 for HLS" }, "data": { "type": "object" } }),
             &["kind", "title"],
         ),
         tool(
@@ -161,7 +161,11 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value, permit: Option<
                 .filter(|p| kind.is_none_or(|k| p.kind == k))
                 .filter(|p| parent.is_none_or(|pid| p.parent_id.as_deref() == Some(pid)))
                 .take(limit)
-                .map(|p| json!({ "id": p.id, "title": p.title, "kind": p.kind, "parentId": p.parent_id, "updatedAt": p.updated_at }))
+                .map(|p| {
+                    let mut row = json!({ "id": p.id, "title": p.title, "kind": p.kind, "parentId": p.parent_id, "updatedAt": p.updated_at });
+                    if !p.data.is_null() { row["data"] = p.data; }
+                    row
+                })
                 .collect();
             json!(list)
         }
@@ -171,6 +175,7 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value, permit: Option<
                 "document" => json!({ "doc": { "size": "A4", "orientation": "portrait" } }),
                 "presentation" => json!({ "deck": { "aspect": "16:9" } }),
                 "drawing" => json!({}),
+                "spreadsheet" => json!({ "sheet": a.get("data").filter(|v| v.is_object()).cloned().unwrap_or(json!({})) }),
                 "project" => json!({ "project": { "status": "active", "description": "", "links": [] } }),
                 "gallery" => json!({ "gallery": { "view": "grid" } }),
                 "stream" => {
@@ -190,14 +195,25 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value, permit: Option<
                 }
                 "page" => bail!("use pages_create for pages"),
                 "file" => bail!("use files_add for files"),
+                k if store::DATA_KINDS.contains(&k) => json!({ k: a.get("data").filter(|v| v.is_object()).cloned().unwrap_or(json!({})) }),
                 other => bail!("unknown kind {other}"),
             };
             let icon = match kind {
                 "document" => "pi:document",
                 "presentation" => "pi:presentation",
                 "drawing" => "pi:paintbrush",
+                "spreadsheet" => "pi:spreadsheet",
                 "project" => "pi:briefcase",
                 "gallery" => "pi:image",
+                "task" => "pi:checklist",
+                "event" => "pi:calendar",
+                "inbox" => "pi:inbox",
+                "goal" => "pi:target",
+                "subject" => "pi:graduation",
+                "lesson" => "pi:notebook",
+                "assignment" => "pi:clipboard",
+                "exam" => "pi:medal",
+                "requirement" => "pi:printer",
                 _ => "pi:film",
             };
             let p = store::create_page(

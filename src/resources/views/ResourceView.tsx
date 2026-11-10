@@ -7,6 +7,10 @@ import { PresentationView } from "./PresentationView";
 import { ProjectView } from "./ProjectView";
 import { StreamView } from "./StreamView";
 import { DrawingView } from "../../drawing/DrawingView";
+import { SpreadsheetView } from "../../spreadsheet/SpreadsheetView";
+import { TaskView, EventView, GoalView } from "../../planning/ItemViews";
+import { SubjectView, StudyItemView } from "../../study/StudyViews";
+import { InboxView } from "../../planning/InboxView";
 
 /** Opens a resource with the view made for its kind. */
 export function ResourceView({ pageId, paneId }: { pageId: string; paneId: string }) {
@@ -14,6 +18,8 @@ export function ResourceView({ pageId, paneId }: { pageId: string; paneId: strin
   switch (kind) {
     case "drawing":
       return <DrawingView key={pageId} id={pageId} paneId={paneId} />;
+    case "spreadsheet":
+      return <SpreadsheetView key={pageId} pageId={pageId} />;
     case "document":
       return <DocumentView key={pageId} id={pageId} />;
     case "presentation":
@@ -26,8 +32,22 @@ export function ResourceView({ pageId, paneId }: { pageId: string; paneId: strin
       return <FileView key={pageId} id={pageId} />;
     case "stream":
       return <StreamView key={pageId} id={pageId} />;
+    case "task":
+      return <TaskView key={pageId} id={pageId} />;
+    case "event":
+      return <EventView key={pageId} id={pageId} />;
+    case "goal":
+      return <GoalView key={pageId} id={pageId} />;
+    case "inbox":
+      return <InboxView />;
+    case "subject":
+      return <SubjectView key={pageId} id={pageId} />;
+    case "assignment":
+    case "exam":
+    case "requirement":
+      return <StudyItemView key={pageId} id={pageId} />;
     default:
-      // Pages, templates, and anything not loaded yet (PageView handles missing pages).
+      // Pages, lessons, templates, and anything not loaded yet (PageView handles missing pages).
       return <PageView pageId={pageId} paneId={paneId} />;
   }
 }

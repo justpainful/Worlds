@@ -16,6 +16,7 @@ const NAMES: Record<BrushKind, [string, string]> = {
 export function resetToolBrush(brush: Brush, tool: Tool): Brush {
   const preset = BRUSH_PRESETS.find((p) => p.brush.kind === brush.kind)?.brush;
   if (tool === "laser") return { ...DEFAULT_BRUSH, color: brush.color, size: 6 };
+  if (tool === "highlighter") return { ...DEFAULT_BRUSH, kind: brush.kind === "marker" ? "marker" : "highlighter", color: brush.color, size: 28, opacity: 0.35, pressureSize: false };
   const next = normalizeBrush({ ...(preset ?? DEFAULT_BRUSH), kind: brush.kind, color: brush.color, ...(brush.kind === "soft" ? { hardness: 0.2 } : {}) });
   // A tip is an owned document asset, not a setting that reset should discard.
   if (brush.kind === "texture" && brush.tipAssetId) next.tipAssetId = brush.tipAssetId;
@@ -55,7 +56,7 @@ export function BrushSettings({ tool, brush, arabic, disabled, tipName, patch, r
     {!laser && <label className="drawing-field"><span>{t(dedicated ? "Tip shape" : "Brush type", dedicated ? "شكل الرأس" : "نوع الفرشاة")}</span><select value={brush.kind} onChange={(e) => patch({ kind: e.target.value as BrushKind, ...(e.target.value === "soft" && brush.hardness === 1 ? { hardness: 0.2 } : {}) })}>{(dedicated ? ["marker", "highlighter"] as const : BRUSH_KINDS).map((kind) => <option value={kind} key={kind} disabled={kind === "texture" && !brush.tipAssetId}>{NAMES[kind][arabic ? 1 : 0]}</option>)}</select></label>}
     {number("size", "Size in pixels", "الحجم بالبكسل", 1, 2048, 1, false)}
     {number("opacity", "Opacity", "الشفافية")}
-    {laser ? <BrushNumber label={t("Fade duration in milliseconds", "مدة التلاشي بالمللي ثانية")} value={laserLifetime} min={200} max={4000} step={100} percent={false} onChange={onLaserLifetime} /> : <>
+    {laser ? <BrushNumber label={t("Fade duration (seconds)", "مدة اختفاء الليزر بالثواني")} value={laserLifetime / 1000} min={0.2} max={4} step={0.1} percent={false} onChange={(seconds) => onLaserLifetime(Math.round(seconds * 1000))} /> : <>
       {number("flow", "Flow", "التدفق")}
       {!uniform && <>
         {!["texture", "oil", "crayon", "natural-pencil", "watercolor"].includes(brush.kind) && number("hardness", "Hardness", "الصلابة")}

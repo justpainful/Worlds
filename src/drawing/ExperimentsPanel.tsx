@@ -10,7 +10,7 @@ import { experimentDifferences, mergeExperiment, type AdoptionChoice, type Exper
 import { sceneChanges } from "./operations";
 type ExperimentRow = Awaited<ReturnType<typeof api.drawingExperiments>>[number];
 
-export function ExperimentsPanel({ document, session, canEdit, arabic, commit }: { document: DrawingDocument; session: DrawingSession; canEdit: boolean; arabic: boolean; commit: (label: string, changes: Change[]) => void }) {
+export function ExperimentsPanel({ document, session, canEdit, arabic, commit }: { document: DrawingDocument; session: DrawingSession; canEdit: boolean; arabic: boolean; commit: (label: string, changes: Change[], guard?:undefined, strictBase?:boolean) => string|null|undefined }) {
   const [entries, setEntries] = useState<ExperimentRow[]>([]), [creating, setCreating] = useState(false), [name, setName] = useState(""), [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null), [busy, setBusy] = useState(false), [comparing, setComparing] = useState<ExperimentRow | null>(null);
   const t = (en: string, ar: string) => arabic ? ar : en;
@@ -37,17 +37,17 @@ export function ExperimentsPanel({ document, session, canEdit, arabic, commit }:
 
 function CanvasComparisonView({ scene, view, onView, marked }: { scene: DrawingScene; view: Viewport; onView: (view: Viewport) => void; marked: Set<string> }) {
   const host = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement>(null), renderer = useRef<DrawingRenderer | null>(null);
-  const drag = useRef<{ x: number; y: number; view: Viewport } | null>(null), [size, setSize] = useState({ w: 500, h: 400 });
+  const drag = useRef<{ x: number; y: number; view: Viewport } | null>(null), [size, setSize] = useState({ w: 500, h: 400 }),[previewError,setPreviewError]=useState<string|null>(null);
   useEffect(() => { const r = new DrawingRenderer(); renderer.current = r; return () => r.dispose(); }, []);
   useEffect(() => { const observer = new ResizeObserver(() => { if (host.current) setSize({ w: host.current.clientWidth, h: host.current.clientHeight }); }); if (host.current) observer.observe(host.current); return () => observer.disconnect(); }, []);
   useEffect(() => {
     const r = renderer.current; let active = true;
     const draw = () => { if (active && canvas.current && r) { const dpr = devicePixelRatio || 1; canvas.current.width = Math.max(1, Math.round(size.w * dpr)); canvas.current.height = Math.max(1, Math.round(size.h * dpr)); r.render(canvas.current, scene, { ...view, w: size.w / view.scale, h: size.h / view.scale, scale: view.scale * dpr }); } };
-    if (r) { r.onAssetChange = draw; void r.prepare(scene).then(draw).catch(draw); }
+    if (r) { setPreviewError(null);r.onAssetChange = draw; void r.prepare(scene).then(draw).catch(error=>{if(active)setPreviewError(errorMessage(error));}); }
     return () => { active = false; };
   }, [scene, view, size]);
   return <div ref={host} className="drawing-compare-canvas" onPointerDown={(e) => { if (e.button !== 0) return; e.currentTarget.setPointerCapture(e.pointerId); drag.current = { x: e.clientX, y: e.clientY, view }; }} onPointerMove={(e) => { const d = drag.current; if (d) onView({ ...d.view, x: d.view.x - (e.clientX - d.x) / d.view.scale, y: d.view.y - (e.clientY - d.y) / d.view.scale }); }} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} onWheel={(e) => { const rect = e.currentTarget.getBoundingClientRect(), x = e.clientX - rect.left, y = e.clientY - rect.top, scale = Math.max(0.025, Math.min(8, view.scale * Math.exp(-e.deltaY * 0.0015))); onView({ ...view, scale, x: view.x + x / view.scale - x / scale, y: view.y + y / view.scale - y / scale }); }}>
-    <canvas ref={canvas} />{[...marked].map((id) => { const node = scene.nodes[id]; return node ? <div key={id} className="drawing-compare-mark" style={{ left: (node.x - view.x) * view.scale, top: (node.y - view.y) * view.scale, width: node.w * view.scale, height: node.h * view.scale, transform: `rotate(${node.rotation}deg)` }} /> : null; })}
+    <canvas ref={canvas} />{previewError&&<p role="alert">{previewError}</p>}{[...marked].map((id) => { const node = scene.nodes[id]; return node ? <div key={id} className="drawing-compare-mark" style={{ left: (node.x - view.x) * view.scale, top: (node.y - view.y) * view.scale, width: node.w * view.scale, height: node.h * view.scale, transform: `rotate(${node.rotation}deg)` }} /> : null; })}
   </div>;
 }
 
@@ -57,8 +57,8 @@ function propertyLabel(path: string[], arabic: boolean): string {
   const labels: Record<string, [string, string]> = { element: ["Element", "العنصر"], x: ["Horizontal position", "الموضع الأفقي"], y: ["Vertical position", "الموضع الرأسي"], w: ["Width", "العرض"], h: ["Height", "الارتفاع"], rotation: ["Rotation", "التدوير"], opacity: ["Opacity", "الشفافية"], fill: ["Fill color", "لون التعبئة"], stroke: ["Stroke color", "لون الخط"], strokeWidth: ["Line width", "عرض الخط"], text: ["Text", "النص"], name: ["Name", "الاسم"], visible: ["Visibility", "الظهور"], locked: ["Locked", "القفل"], font: ["Font", "الخط"], size: ["Size", "الحجم"], color: ["Color", "اللون"], effects: ["Adjustments", "التعديلات"], samples: ["Brush stroke", "ضربة الفرشاة"], nodeOrder: ["Element stacking", "ترتيب العناصر"], layerOrder: ["Layer stacking", "ترتيب الطبقات"], frameOrder: ["Frame order", "ترتيب الإطارات"], stepOrder: ["Step order", "ترتيب الخطوات"], defaultFrameId: ["Default preview", "الإطار الافتراضي"], pinnedVersionId: ["Pinned presentation", "إصدار العرض المثبت"], frameId: ["Frame", "الإطار"], layerId: ["Layer", "الطبقة"], maskId: ["Mask", "القناع"], assetId: ["Original image", "الصورة الأصلية"] };
   return labels[key]?.[arabic ? 1 : 0] ?? key.replace(/([A-Z])/g, " $1");
 }
-function ExperimentComparison({ entry, session, canEdit, arabic, commit, onClose }: { entry: ExperimentRow; session: DrawingSession; canEdit: boolean; arabic: boolean; commit: (label: string, changes: Change[]) => void; onClose: () => void }) {
-  const [loaded, setLoaded] = useState<{ main: DrawingDocument; branch: DrawingScene; differences: ExperimentDifference[] } | null>(null);
+function ExperimentComparison({ entry, session, canEdit, arabic, commit, onClose }: { entry: ExperimentRow; session: DrawingSession; canEdit: boolean; arabic: boolean; commit: (label: string, changes: Change[], guard?:undefined, strictBase?:boolean) => string|null|undefined; onClose: () => void }) {
+  const [loaded, setLoaded] = useState<{ main: DrawingDocument; branch: DrawingScene; branchRevision:number; differences: ExperimentDifference[] } | null>(null);
   const [view, setView] = useState<Viewport>({ x: -20, y: -20, w: 1400, h: 800, scale: 0.35 }), [rightView, setRightView] = useState(view);
   const [mode, setMode] = useState<"side" | "wipe" | "changes">("side"), [linked, setLinked] = useState(true), [wipe, setWipe] = useState(50), [scope, setScope] = useState("all");
   const [chosen, setChosen] = useState<Set<string>>(new Set()), [choices, setChoices] = useState<Record<string, AdoptionChoice>>({}), [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null);
@@ -66,7 +66,7 @@ function ExperimentComparison({ entry, session, canEdit, arabic, commit, onClose
   useEffect(() => {
     let active = true;
     const load = async () => {
-      try { await session.flush(); const main = session.snapshot().document!; const [branch, base] = await Promise.all([api.drawingLoad(entry.page.id), api.drawingVersionScene(session.pageId, entry.experiment.baseVersionId)]); if (!active) return; const differences = experimentDifferences(base, main.scene, branch.scene, entry.experiment.versionAliases); setLoaded({ main, branch: branch.scene, differences }); setChosen(new Set(differences.map((d) => d.key))); const f = main.scene.frames[main.scene.defaultFrameId], v = { x: f.x - 20, y: f.y - 20, w: f.w + 40, h: f.h + 40, scale: Math.max(0.025, Math.min(0.5, (innerWidth - 100) / 2 / (f.w + 40))) }; setView(v); setRightView(v); }
+      try { await session.flush(); const main = session.snapshot().document!; const [branch, base] = await Promise.all([api.drawingLoad(entry.page.id), api.drawingVersionScene(session.pageId, entry.experiment.baseVersionId)]); if (!active) return; const differences = experimentDifferences(base, main.scene, branch.scene, entry.experiment.versionAliases); setLoaded({ main, branch: branch.scene, branchRevision:branch.revision, differences }); setChosen(new Set(differences.map((d) => d.key))); const f = main.scene.frames[main.scene.defaultFrameId], v = { x: f.x - 20, y: f.y - 20, w: f.w + 40, h: f.h + 40, scale: Math.max(0.025, Math.min(0.5, (innerWidth - 100) / 2 / (f.w + 40))) }; setView(v); setRightView(v); }
       catch (e) { if (active) setError(errorMessage(e)); }
     }; void load(); return () => { active = false; };
   }, [entry.page.id, session]);
@@ -75,8 +75,9 @@ function ExperimentComparison({ entry, session, canEdit, arabic, commit, onClose
     if (difference.collection === "frames") return difference.id === scope;
     const nodes = [...Object.values(loaded.main.scene.nodes), ...Object.values(loaded.branch.nodes)].filter((n) => n.frameId === scope);
     if (difference.collection === "nodes") return nodes.some((n) => n.id === difference.id);
-    if (difference.collection === "masks") return nodes.some((n) => n.maskId === difference.id);
-    if (difference.collection === "assets") return nodes.some((n) => n.assetId === difference.id || n.brush?.tipAssetId === difference.id);
+    const maskIds=new Set(nodes.flatMap(n=>[n.maskId,...n.effects.map(e=>e.maskId)].filter((id):id is string=>!!id)));
+    if (difference.collection === "masks") return maskIds.has(difference.id);
+    if (difference.collection === "assets") return nodes.some((n) => n.assetId === difference.id || n.brush?.tipAssetId === difference.id)||[loaded.main.scene,loaded.branch].some(scene=>[...maskIds].some(id=>{const mask=scene.masks[id];return !!mask&&(mask.assetId===difference.id||mask.strokes.some(stroke=>stroke.brush.tipAssetId===difference.id));}));
     if (difference.collection === "steps") return (loaded.branch.steps[difference.id] ?? loaded.main.scene.steps[difference.id])?.frameId === scope;
     return false;
   };
@@ -88,11 +89,12 @@ function ExperimentComparison({ entry, session, canEdit, arabic, commit, onClose
     setBusy(true); setError(null);
     try {
       if (session.snapshot().document!.revision !== loaded.main.revision) throw new Error(t("The source changed. Reopen comparison to include its latest edits.", "تغيّر الأصل. أعد فتح المقارنة لتشمل آخر تعديلاته."));
+      const latestBranch=await api.drawingLoad(entry.page.id);if(latestBranch.revision!==loaded.branchRevision)throw new Error(t("The experiment changed. Reopen comparison to review its latest edits.","تغيّرت التجربة. أعد فتح المقارنة لمراجعة آخر تعديلاتها."));
       const selected = differences.filter((d) => chosen.has(d.key)); if (!selected.length) return;
       const merged = mergeExperiment(loaded.main.scene, loaded.branch, selected, choices);
       const owned = await api.drawingMaterializeAssets(session.pageId, merged, entry.page.id);
       if (session.snapshot().document!.revision !== loaded.main.revision) throw new Error("The source changed during adoption. Reopen comparison.");
-      commit(`Adopt experiment: ${entry.page.title}`, sceneChanges(loaded.main.scene, owned)); await session.flush();
+      const operation=commit(`Adopt experiment: ${entry.page.title}`, sceneChanges(loaded.main.scene, owned),undefined,true);if(!operation)throw new Error(t("The changes could not be applied. Check editing access and locked elements.","تعذر تطبيق التغييرات. تحقق من صلاحية التحرير والعناصر المقفلة."));await session.flush();
       if (session.snapshot().pending) throw new Error(session.snapshot().error ?? "The adoption has not been saved"); onClose();
     } catch (e) { setError(errorMessage(e)); } finally { setBusy(false); }
   };

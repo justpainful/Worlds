@@ -25,8 +25,9 @@ export function DrawingTransformDialog({ scene, selected, arabic, canEdit, onClo
     catch (e) { reservation.current?.cancel(); reservation.current = null; if (active.current) setError(describe(e)); }
     finally { if (active.current) setBusy(false); }
   };
-  const number = (key: "centerX" | "centerY" | "scale" | "rotation" | "width" | "height", en: string, ar: string, factor = 1) => <label className="drawing-field"><span>{t(en, ar)}</span><input type="number" step={key === "rotation" ? 1 : 0.1} value={Number.isFinite(values[key]) ? Number(((values[key] ?? 0) * factor).toFixed(4)) : ""} onChange={(e) => { const value = e.target.valueAsNumber; setValues((old) => ({ ...old, [key]: value / factor })); }} /></label>;
-  return <Modal title={t("Transform elements", "تحويل العناصر")} width={760} onClose={() => { if (!busy) onClose(); }} footer={<><Button disabled={busy} onClick={onClose}>{t("Cancel", "إلغاء")}</Button><Button variant="tinted" loading={busy} disabled={!canEdit || !!result.error || !before.length} onClick={submit}>{t("Apply transform", "تطبيق التحويل")}</Button></>}>
+  const number = (key: "centerX" | "centerY" | "scale" | "rotation" | "width" | "height", en: string, ar: string, factor = 1) => <label className="drawing-field"><span>{t(en, ar)}</span><input type="number" dir="ltr" aria-invalid={!Number.isFinite(values[key])} step={key === "rotation" ? 1 : 0.1} value={Number.isFinite(values[key]) ? Number(((values[key] ?? 0) * factor).toFixed(4)) : ""} onChange={(e) => { const value = e.target.valueAsNumber; setValues((old) => ({ ...old, [key]: value / factor })); }} /></label>;
+  return <Modal title={t("Transform elements", "تحويل العناصر")} width={760} className={`drawing-transform-dialog${arabic?' is-arabic':''}`} onClose={() => { if (!busy) onClose(); }} footer={<><Button disabled={busy} onClick={onClose}>{t("Cancel", "إلغاء")}</Button><Button variant="tinted" loading={busy} disabled={!canEdit || !!result.error || !before.length} onClick={submit}>{t("Apply transform", "تطبيق التحويل")}</Button></>}>
+    <div dir={arabic?'rtl':'ltr'} lang={arabic?'ar':undefined} aria-busy={busy}>
     <DrawingScenePreview scene={preview} camera={camera} label={t("Transform preview", "معاينة التحويل")} />
     <fieldset className="drawing-transform-fields" disabled={busy || !canEdit}>{number("centerX", "Center X", "المركز الأفقي")}{number("centerY", "Center Y", "المركز الرأسي")}
       {before.length === 1 && <label className="drawing-check"><input type="checkbox" checked={localSize} onChange={(e) => { setLocalSize(e.target.checked); setValues((old) => ({ ...old, scale: 1, width: e.target.checked ? before[0].w : undefined, height: e.target.checked ? before[0].h : undefined })); }} />{t("Set width and height on local axes", "تحديد العرض والارتفاع على محوري العنصر")}</label>}
@@ -37,5 +38,7 @@ export function DrawingTransformDialog({ scene, selected, arabic, canEdit, onClo
     </fieldset>
     <p>{t("Original strokes, paths and images stay intact. Linked endpoints outside this selection stay attached to their targets.", "تبقى نقاط الرسم والمسارات والصور الأصلية محفوظة. أطراف الأسهم المرتبطة بعناصر خارج التحديد تبقى متصلة بها.")}</p>
     {(error || result.error) && <p role="alert">{error ?? result.error}</p>}
+    {busy && <p role="status">{t("Applying transform", "جارٍ تطبيق التحويل")}</p>}
+    </div>
   </Modal>;
 }

@@ -1,0 +1,20 @@
+.screen-drawing { position: fixed; inset: 0; z-index: 9000; background: #242426; color: #f5f5f7; font: var(--t-ui); }
+.screen-drawing[dir="rtl"] { font-family: "IBM Plex Sans Arabic", sans-serif; font-size: 15.5px; line-height: 1.7; letter-spacing: 0; }
+.screen-drawing-stage { position: absolute; inset: 0; display: flex; }
+.screen-drawing-stage .drawing-stage { width: 100%; height: 100%; }
+.screen-drawing-bar { position: absolute; inset-block-start: 8px; inset-inline: 8px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; padding: 6px; background: #1c1c1e; border: 1px solid #55555a; border-radius: 8px; max-height: 38vh; overflow: auto; }
+.screen-drawing-bar button, .screen-drawing-prompt button { min-width: 36px; min-height: 36px; padding: 5px 9px; color: #f5f5f7; background: #303034; border: 1px solid #5b5b61; border-radius: 6px; cursor: pointer; }
+.screen-drawing-bar button[aria-pressed="true"] { background: #66513d; border-color: #d2a46e; }
+.screen-drawing-bar button:disabled { opacity: .45; cursor: default; }
+.screen-drawing-bar label { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.screen-drawing-bar input[type="range"] { width: 92px; accent-color: #d2a46e; }
+.screen-drawing-bar input[type="number"] { width: 62px; }
+.screen-drawing-bar input, .screen-drawing-bar select, .screen-drawing-prompt textarea { color: #f5f5f7; background: #303034; border: 1px solid #69696d; border-radius: 5px; }
+.screen-drawing-bar input[type="color"] { width: 34px; height: 32px; padding: 2px; }
+.screen-drawing-divider { height: 25px; border-inline-start: 1px solid #69696d; }
+.screen-drawing-still { position: absolute; inset-inline-start: 12px; bottom: 12px; padding: 4px 9px; color: #f5f5f7; background: #1c1c1e; border-radius: 6px; font-size: 12px; }
+.screen-drawing-alert { position: absolute; inset-inline: 16px; bottom: 16px; padding: 12px; background: #5c2525; border-radius: 8px; }
+.screen-drawing-alert button { float: inline-end; color: white; }
+.screen-drawing-prompt { position: absolute; inset: 50% auto auto 50%; transform: translate(-50%, -50%); width: min(460px, calc(100% - 32px)); box-sizing: border-box; padding: 18px; background: #1c1c1e; border: 1px solid #69696d; border-radius: 12px; }
+.screen-drawing-prompt textarea { box-sizing: border-box; width: 100%; min-height: 110px; padding: 10px; resize: vertical; }
+.screen-drawing-prompt div { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }

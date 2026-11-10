@@ -15,6 +15,11 @@ import { Tonal } from "../ui/tonal/Tonal";
 import { GlassBackdrop } from "../profile/GlassBackdrop";
 import { isResource } from "../resources/kinds";
 import { newResourceMenu } from "../resources/create";
+import { PACKS_ASKED_KEY, setPackEnabled, usePack } from "../packs/packs";
+import { formatTime, occurrences, tasksFor, today } from "../planning/model";
+import { createItem } from "../planning/actions";
+import { ItemRow, QuickAdd } from "../planning/ui";
+import { StudyHomeSection } from "../study/StudyViews";
 
 type View = "grid" | "list";
 
@@ -25,6 +30,10 @@ export function HomeView() {
   const settings = useStore((s) => s.settings);
   const setSetting = useStore((s) => s.setSetting);
   const view = (settings["home.view"] as View) ?? "grid";
+  const study = usePack("study");
+  const now = today();
+  const dueTasks = useMemo(() => tasksFor(pages, "today", now).slice(0, 6), [pages, now]);
+  const todayEvents = useMemo(() => occurrences(pages, now, now).filter((o) => o.kind === "event").slice(0, 4), [pages, now]);
   const [autos, setAutos] = useState<Automation[]>([]);
 
   useEffect(() => {
@@ -118,6 +127,13 @@ export function HomeView() {
         </div>
       </div>
 
+      {!settings[PACKS_ASKED_KEY] && <PackPrompt />}
+      <HomeSection title="Today" action={<button className="link-btn" onClick={() => open({ kind: "tasks" })}>All tasks</button>}>
+        <QuickAdd placeholder="Add a task for today" onAdd={(p) => createItem("task", { title: p.title, data: { due: p.due ?? now, time: p.time, priority: p.priority } })} />
+        {todayEvents.length > 0 && <div className="home-events">{todayEvents.map((o) => <button key={o.key} className="soon-row" onClick={() => open({ kind: "page", pageId: o.page.id })}><span className="soon-time"><span className="soon-hour">{o.start ? formatTime(o.start) : "All day"}</span></span><span className="soon-main"><span className="bidi">{pageTitle(o.page)}</span></span></button>)}</div>}
+        {dueTasks.length > 0 && <div className="pl-list">{dueTasks.map((p) => <ItemRow key={p.id} p={p} />)}</div>}
+      </HomeSection>
+      {study && <HomeSection title="Study" action={<button className="link-btn" onClick={() => open({ kind: "study" })}>All subjects</button>}><StudyHomeSection /></HomeSection>}
       {suggested.length > 0 && (
         <HomeSection title="Suggested">
           <PageCollection pages={suggested} view={view} />
@@ -163,6 +179,17 @@ export function HomeView() {
   );
 }
 
+function PackPrompt() {
+  const setSetting = useStore((s) => s.setSetting);
+  const open = useStore((s) => s.open);
+  const done = (study: boolean) => { setSetting(PACKS_ASKED_KEY, true); if (study) { setPackEnabled("study", true); open({ kind: "study" }); } };
+  return (
+    <div className="res-card pack-prompt">
+      <div className="pack-prompt-text"><strong>Do you use Worlds for school or university?</strong><span>Turn on the Study pack for subjects, a class timetable, assignments and exams. Otherwise it stays out of the way. You can change this anytime in Settings → Packs.</span></div>
+      <div className="pack-prompt-actions"><button className="btn btn-quiet btn-compact" onClick={() => done(false)}>No, keep it simple</button><button className="btn btn-tinted btn-compact" onClick={() => done(true)}>Turn on Study</button></div>
+    </div>
+  );
+}
 function HomeSection({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section className="home-section">

@@ -1,6 +1,7 @@
 import {imageHeader,ImageHeaderError} from './imageHeaders';
 import {decodeImageElement} from './imageElement';
 import {validatePixelDimensions} from './pixels';
+import {encodeFlattenedSvg} from './svgEncode';
 const NS='http://www.w3.org/2000/svg';
 export const MAX_SVG_BYTES=32*1024*1024;
 export class SvgError extends Error{constructor(readonly code:'format'|'size'|'dimensions'|'payload'){super(svgErrorMessage(code,false));this.name='SvgError';}}
@@ -63,7 +64,14 @@ export async function rasterizeSvg(bytes:Uint8Array,signal?:AbortSignal):Promise
 /** A self-contained flattened SVG. It contains only freshly rendered PNG
  * pixels, never document XML, hidden originals, fonts or live source links. */
 export async function flattenedSvg(png:Blob,signal?:AbortSignal):Promise<Blob>{
- abort(signal);if(png.size>24*1024*1024)throw new SvgError('payload');if(png.type!=='image/png')throw new SvgError('format');const bytes=new Uint8Array(await png.arrayBuffer());abort(signal);const header=imageHeader(bytes,1_000_000,24*1024*1024);if(header.mime!=='image/png')throw new SvgError('format');validatePixelDimensions(header.width,header.height);
- const chunks:string[]=[];for(let i=0;i<bytes.length;i+=32768)chunks.push(String.fromCharCode(...bytes.subarray(i,i+32768)));const data=btoa(chunks.join(''));abort(signal);
- return new Blob([`<svg xmlns="${NS}" width="${header.width}" height="${header.height}" viewBox="0 0 ${header.width} ${header.height}"><image width="${header.width}" height="${header.height}" href="data:image/png;base64,${data}"/></svg>`],{type:'image/svg+xml'});
+ abort(signal);if(png.size>24*1024*1024)throw new SvgError('payload');if(png.type!=='image/png')throw new SvgError('format');
+ if(typeof Worker==='undefined')return encodeFlattenedSvg(png,()=>abort(signal));
+ return new Promise((resolve,reject)=>{
+  let worker:Worker;try{worker=new Worker(new URL('./svgEncode.worker.ts',import.meta.url),{type:'module'});}catch{void encodeFlattenedSvg(png,()=>abort(signal)).then(resolve,reject);return;}
+  const stop=()=>{worker.terminate();signal?.removeEventListener('abort',cancel);},cancel=()=>{stop();reject(new DOMException('Cancelled','AbortError'));};
+  signal?.addEventListener('abort',cancel,{once:true});
+  worker.onmessage=(event:MessageEvent<{blob?:Blob;error?:string}>)=>{stop();if(event.data.error)reject(new Error(event.data.error));else if(event.data.blob)resolve(event.data.blob);else reject(new SvgError('format'));};
+  worker.onerror=()=>{stop();void encodeFlattenedSvg(png,()=>abort(signal)).then(resolve,reject);};
+  try{worker.postMessage({png});}catch{stop();void encodeFlattenedSvg(png,()=>abort(signal)).then(resolve,reject);}
+ });
 }

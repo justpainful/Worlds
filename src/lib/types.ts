@@ -57,7 +57,12 @@ export interface AiMessage {
 }
 
 /** What a resource is. A Page is one kind among several (docs/CONTENT.md). */
-export type ResourceKind = "page" | "document" | "presentation" | "project" | "gallery" | "file" | "stream" | "drawing";
+export type ResourceKind =
+  | "page" | "document" | "presentation" | "project" | "gallery" | "file" | "stream" | "drawing" | "spreadsheet"
+  // Planning, for everyone (docs/PACKS.md)
+  | "task" | "event" | "inbox" | "goal"
+  // Study pack, opt-in
+  | "subject" | "lesson" | "assignment" | "exam" | "requirement";
 
 export interface PageMeta {
   id: string;
@@ -82,6 +87,8 @@ export interface PageMeta {
   properties?: unknown[];
   /** Small presentation settings: cover crop, page style. */
   look?: { coverCrop?: string; font?: "default" | "serif" | "mono"; small?: boolean; full?: boolean };
+  /** Kind-specific data for planning and pack kinds (metadata.<kind>); see src/planning/model.ts. */
+  data?: unknown;
 }
 
 export interface Block {

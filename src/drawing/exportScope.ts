@@ -1,5 +1,5 @@
 import {effectiveLayer} from "./layers";
-import { intersects, worldInkBounds } from "./geometry";
+import { intersects, worldRenderBounds } from "./geometry";
 import type { DrawingNode, DrawingScene, Rect } from "./model";
 import {isRedaction,redactionShown,redactionBounds} from './redaction';
 export function exportNodeVisible(scene:DrawingScene,node:DrawingNode,frameId:string,region:Rect,annotations:boolean){
@@ -7,7 +7,7 @@ export function exportNodeVisible(scene:DrawingScene,node:DrawingNode,frameId:st
   const layer=effectiveLayer(scene,node.layerId);
   if(!node.visible||node.opacity<=0||!layer.visible||node.frameId!==null&&node.frameId!==frameId||!annotations&&(node.anchor||node.annotationGroup))return false;
   if(node.anchor||node.endAnchor)return true;
-  const box=worldInkBounds(node);
+  const box=worldRenderBounds(node);
   return intersects(box,region);
 }
 /** Preparing one frame must not load originals or live previews used only in

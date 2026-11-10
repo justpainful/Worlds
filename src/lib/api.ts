@@ -5,7 +5,7 @@ import type {
   Rendered, RenderOptions, Run, SearchHit, Version, DiscordInventory, BridgeState, AiChat, AiMessage, ResourceKind,
 } from "./types";
 import type { JSONContent } from "@tiptap/core";
-import { drawingExportEnvelope, type DrawingExportContext, type DrawingExportPolicyInfo, type DrawingExportPolicyUpdate } from "../drawing/exportPolicy";
+import { drawingExportEnvelope, drawingExportBlobEnvelope, type DrawingExportContext, type DrawingExportPolicyInfo, type DrawingExportPolicyUpdate } from "../drawing/exportPolicy";
 
 export const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
@@ -73,6 +73,12 @@ export const api = {
   drawingPackageInstall:(pageId:string,token:string,document:import('../drawing/model').DrawingDocument,experiments:import('../drawing/package').ImportedPackageExperiment[])=>invoke<{page:PageMeta;experiments:PageMeta[]}>('drawing_package_install',{pageId,token,document,experiments}),
   drawingHistoryImport:(pageId:string,document:import('../drawing/model').DrawingDocument)=>invoke<import('../drawing/model').DrawingDocument>('drawing_history_import',{pageId,document}),
   drawingExport: (path: string, bytes: Uint8Array, context: DrawingExportContext, token: string | null) => invoke<void>("drawing_export_raw", drawingExportEnvelope(bytes,context,token), { headers: { "x-worlds-path": encodeURIComponent(path) } }),
+  drawingExportBlob: async (path: string, blob: Blob, context: DrawingExportContext, token: string | null, signal?: AbortSignal, onCommit?: () => void) => {
+    const packet = await drawingExportBlobEnvelope(blob, context, token, signal);
+    if (signal?.aborted) throw new DOMException("Cancelled", "AbortError");
+    onCommit?.();
+    return invoke<void>("drawing_export_raw", packet, { headers: { "x-worlds-path": encodeURIComponent(path) } });
+  },
   drawingExportRequirements: (context: DrawingExportContext) => invoke<boolean>("drawing_export_requirements",{context}),
   drawingExportCheck: (context: DrawingExportContext, token: string | null) => invoke<void>("drawing_export_check",{context,token}),
   drawingExportPolicyCached: (pageId: string) => invoke<DrawingExportPolicyInfo>("drawing_export_policy_cached",{pageId}),
@@ -104,7 +110,7 @@ export const api = {
   updatePage: (id: string, patch: PagePatch) => invoke<PageMeta>("page_update", { id, patch }),
   /** Merge one key into a page's metadata (properties, look). */
   pageMarkdown: (id: string) => invoke<string>("page_markdown", { id }),
-  setPageMeta: (id: string, key: "properties" | "look" | "doc" | "deck" | "project" | "gallery" | "file" | "stream" | "experiment", value: unknown) => invoke<PageMeta>("page_meta_set", { id, key, value }),
+  setPageMeta: (id: string, key: "properties" | "look" | "doc" | "deck" | "project" | "gallery" | "file" | "stream" | "experiment" | "sheet" | import("../planning/model").DataKind, value: unknown) => invoke<PageMeta>("page_meta_set", { id, key, value }),
   movePage: (id: string, parentId: string | null, beforeId: string | null) =>
     invoke<PageMeta>("page_move", { id, parentId, beforeId }),
   deletePage: (id: string) => invoke<void>("page_delete", { id }),

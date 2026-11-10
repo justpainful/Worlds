@@ -1,0 +1,100 @@
+{
+  "passed": true,
+  "cases": [
+    {
+      "name": "current source retains half-alpha pigment",
+      "passed": true,
+      "detail": {
+        "actual": "#0000ff80",
+        "expected": "#0000ff80"
+      }
+    },
+    {
+      "name": "merged source applies multiply and half layer opacity",
+      "passed": true,
+      "detail": {
+        "actual": "#bf0000",
+        "expected": "#bf0000"
+      }
+    },
+    {
+      "name": "empty current source stays transparent",
+      "passed": true,
+      "detail": {
+        "actual": "#00000000",
+        "expected": "#00000000"
+      }
+    },
+    {
+      "name": "empty merged source includes frame background",
+      "passed": true,
+      "detail": {
+        "actual": "#ff0000",
+        "expected": "#ff0000"
+      }
+    },
+    {
+      "name": "cancel during preparation discards the result",
+      "passed": true
+    },
+    {
+      "name": "sampling does not mutate source or history",
+      "passed": true
+    }
+  ],
+  "limitations": [
+    "Actual production renderer and sampling helper; synthetic browser scene. Native UI/physical pen not exercised."
+  ],
+  "ui": {
+    "actualArabicSourceChooser": true,
+    "mergedClick": "#ffffff",
+    "currentClick": "#00000000",
+    "returnToBrushRetainsSample": "#ffffff",
+    "noArtworkMutation": true,
+    "raw": {
+      "images": [],
+      "owners": [
+        {
+          "owner": "Editor",
+          "savedSize": 28,
+          "shownSize": 28,
+          "savedColor": "#ffffff",
+          "otherOwnerSize": 17
+        }
+      ],
+      "transforms": [],
+      "selections": [
+        {
+          "revision": 0,
+          "pending": 0,
+          "operations": [],
+          "nodes": {},
+          "layers": {
+            "c146b6c2-f70f-44fd-ad91-bef0bf54c215": {
+              "id": "c146b6c2-f70f-44fd-ad91-bef0bf54c215",
+              "name": "Layer 1",
+              "visible": true,
+              "locked": false,
+              "positionLocked": false,
+              "alphaLocked": false,
+              "opacity": 1,
+              "blend": "source-over",
+              "parentId": null
+            }
+          },
+          "layerOrder": [
+            "c146b6c2-f70f-44fd-ad91-bef0bf54c215"
+          ],
+          "nodeOrder": [],
+          "masks": {},
+          "assets": {}
+        }
+      ],
+      "keys": [],
+      "clipboard": [],
+      "ingests": [],
+      "imageOriginals": []
+    },
+    "warnings": []
+  }
+}

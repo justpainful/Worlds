@@ -19,29 +19,34 @@ export function reservedShortcut(binding:string):boolean{
  if(['Space','Escape','Tab','Enter','F1','F5','F11','F12'].includes(key))return true;
  if(binding.includes('Alt+')&&['F4','ArrowLeft','ArrowRight','Home','End'].includes(key))return true;
  if(binding.includes('Mod+')&&binding.includes('Alt+'))return true;
- return /^Mod\+(Shift\+)?[qwntrlopfhujk,]$/.test(binding)||binding==='Mod+Shift+Delete';
+ return /^Mod\+(Shift\+)?[qwntrlopfhujk,\\]$/.test(binding)||binding==='Mod+Shift+Delete';
 }
-export function shortcutIssues(map:DrawingShortcutMap):{action:DrawingShortcutAction;kind:'invalid'|'reserved'|'duplicate';other?:DrawingShortcutAction}[]{
+export function shortcutIssues(map:DrawingShortcutMap):{action:DrawingShortcutAction;kind:'invalid'|'reserved'|'duplicate'|'alias';other?:DrawingShortcutAction}[]{
  const seen=new Map<string,DrawingShortcutAction>(),issues:ReturnType<typeof shortcutIssues>=[];
  for(const [action]of DRAWING_SHORTCUTS){const value=map[action];if(value===null)continue;const normalized=typeof value==='string'?normalizeShortcut(value):null;if(!normalized||normalized!==value){issues.push({action,kind:'invalid'});continue;}if(reservedShortcut(value)){issues.push({action,kind:'reserved'});continue;}const other=seen.get(value);if(other)issues.push({action,kind:'duplicate',other});else seen.set(value,action);}
+ for(const [binding,action,defaultBinding] of [['Backspace','delete','Delete'],['Mod+y','redo','Mod+Shift+z']] as const){
+  if(map[action]!==defaultBinding)continue;const conflict=seen.get(binding);
+  if(conflict&&conflict!==action)issues.push({action:conflict,kind:'alias',other:action});
+ }
  return issues;
 }
 export function readDrawingShortcuts(owner:string):DrawingShortcutMap{
  const defaults=defaultDrawingShortcuts();try{const stored=JSON.parse(localStorage.getItem(storageKey(owner))??'null');if(!stored||typeof stored!=='object'||Array.isArray(stored))return defaults;
-  const map={...defaults};for(const[action]of DRAWING_SHORTCUTS)if(Object.hasOwn(stored,action))map[action]=stored[action];return shortcutIssues(map).length?defaults:map;
+  const map={...defaults};for(const[action]of DRAWING_SHORTCUTS)if(Object.hasOwn(stored,action))map[action]=stored[action];return shortcutIssues(map).some(issue=>issue.kind!=='alias')?defaults:map;
  }catch{return defaults;}
 }
 export function saveDrawingShortcuts(owner:string,map:DrawingShortcutMap):boolean{if(shortcutIssues(map).length)return false;try{localStorage.setItem(storageKey(owner),JSON.stringify(Object.fromEntries(DRAWING_SHORTCUTS.map(([id])=>[id,map[id]]))));return true;}catch{return false;}}
 export type DrawingShortcutKey = Pick<KeyboardEvent,'key'|'code'|'ctrlKey'|'metaKey'|'shiftKey'|'altKey'> & Partial<Pick<KeyboardEvent,'defaultPrevented'|'isComposing'|'target'|'getModifierState'>>;
 export function shortcutFromKey(event:DrawingShortcutKey):string|null{
  if(event.isComposing||event.getModifierState?.('AltGraph'))return null;
- const code=event.code,key=/^Key[A-Z]$/.test(code)?code.slice(3).toLowerCase():/^Digit[0-9]$/.test(code)?code.slice(5):code==='BracketLeft'?'[':code==='BracketRight'?']':event.key;
+ const code=event.code,physical:Record<string,string>={BracketLeft:'[',BracketRight:']',Backslash:'\\',Comma:',',Period:'.',Slash:'/',Semicolon:';',Quote:"'",Minus:'-',Equal:'=',Backquote:'`'};
+ const key=/^Key[A-Z]$/.test(code)?code.slice(3).toLowerCase():/^Digit[0-9]$/.test(code)?code.slice(5):physical[code]??event.key;
  return normalizeShortcut([...(event.ctrlKey||event.metaKey?['Mod']:[]),...(event.altKey?['Alt']:[]),...(event.shiftKey?['Shift']:[]),key].join('+'));
 }
 export function drawingShortcutAction(event:DrawingShortcutKey,map:DrawingShortcutMap,context:{activePane:boolean;modalOpen?:boolean}):DrawingShortcutAction|null{
  if(!context.activePane||context.modalOpen||event.defaultPrevented||event.isComposing)return null;
  const target=event.target as {closest?:(selector:string)=>unknown}|null;
- if(target?.closest?.('input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"],[role="dialog"],[role="listbox"]'))return null;
+ if(target?.closest?.('input,textarea,select,button,a[href],.drawing-minimap,[contenteditable]:not([contenteditable="false"]),[role="textbox"],[role="button"],[role="dialog"],[role="listbox"],[role="option"],[role="menu"],[role="menuitem"],[role="slider"],[role="spinbutton"],[role="combobox"],[role="tab"],[role="separator"]'))return null;
  const binding=shortcutFromKey(event);if(!binding)return null;
  const direct=DRAWING_SHORTCUTS.find(([id])=>map[id]===binding)?.[0];if(direct)return direct;
  // Keep familiar aliases only while that command keeps its default binding.

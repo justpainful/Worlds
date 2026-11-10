@@ -1,0 +1,80 @@
+{
+  "passed": true,
+  "cases": [
+    {
+      "name": "scale1: final cover stays opaque despite zero layer opacity, higher source and fractional view",
+      "passed": true,
+      "scale": 1,
+      "box": [
+        7,
+        4,
+        16,
+        11
+      ],
+      "nonOpaque": 0
+    },
+    {
+      "name": "scale0.7: final cover stays opaque despite zero layer opacity, higher source and fractional view",
+      "passed": true,
+      "scale": 0.7,
+      "box": [
+        5,
+        2,
+        11,
+        8
+      ],
+      "nonOpaque": 0
+    },
+    {
+      "name": "scale0.25: final cover stays opaque despite zero layer opacity, higher source and fractional view",
+      "passed": true,
+      "scale": 0.25,
+      "box": [
+        1,
+        1,
+        4,
+        3
+      ],
+      "nonOpaque": 0
+    },
+    {
+      "name": "scale2: final cover stays opaque despite zero layer opacity, higher source and fractional view",
+      "passed": true,
+      "scale": 2,
+      "box": [
+        15,
+        8,
+        32,
+        21
+      ],
+      "nonOpaque": 0
+    },
+    {
+      "name": "scoped layer/node order cannot omit a shown global redaction",
+      "passed": true
+    },
+    {
+      "name": "frame clipping intersects in document space before device coverage",
+      "passed": true,
+      "blackPixels": 6,
+      "escapedPixels": 0
+    },
+    {
+      "name": "export preparation retains shown zero-opacity-layer redactions",
+      "passed": true
+    },
+    {
+      "name": "flattened PNG strips private text metadata and original payload",
+      "passed": true,
+      "chunks": [
+        "IHDR",
+        "IDAT",
+        "IDAT",
+        "IEND"
+      ],
+      "sourceBytes": 164,
+      "outputBytes": 156
+    }
+  ],
+  "scope": "Actual production renderer/export bytes with metadata-bearing original. Synthetic scene; native/UI acceptance separate. Device coverage and whole-frame clip cases use fixed independent boxes."
+}

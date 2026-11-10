@@ -60,12 +60,19 @@ pub fn save_as_template_authorized(conn: &Connection, ctx: &Ctx, page_id: &str, 
 }
 
 pub fn ensure_builtin_templates(conn: &Connection) -> Result<()> {
-    let seeded: Option<String> = conn.query_row("SELECT value FROM meta WHERE key = 'templates_v1'", [], |r| r.get(0)).optional()?;
-    if seeded.is_some() {
-        return Ok(());
-    }
     let ctx = Ctx { actor: "system".into(), op_id: None, origin: "ui".into() };
+    let mut created_any = false;
     for t in crate::templates::BUILTIN {
+        let existing: Option<String> = conn
+            .query_row(
+                "SELECT id FROM pages WHERE kind = 'template' AND json_extract(metadata, '$.builtin') = ?1 LIMIT 1",
+                [t.key],
+                |r| r.get(0),
+            )
+            .optional()?;
+        if existing.is_some() {
+            continue;
+        }
         create_page(
             conn,
             &ctx,
@@ -79,9 +86,12 @@ pub fn ensure_builtin_templates(conn: &Connection) -> Result<()> {
                 ..Default::default()
             },
         )?;
+        created_any = true;
     }
-    conn.execute("INSERT INTO meta (key, value) VALUES ('templates_v1', '1')", [])?;
-    // seeding is not user activity
-    conn.execute("DELETE FROM history WHERE actor = 'system'", [])?;
+    if created_any {
+        conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('templates_v2', '1')", [])?;
+        // seeding is not user activity
+        conn.execute("DELETE FROM history WHERE actor = 'system'", [])?;
+    }
     Ok(())
 }

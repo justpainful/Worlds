@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "checks": [
+    "Source View permits fresh linked preview despite independent project-export Full policy",
+    "Offline shared source returns explicit offline timestamp and no title/image/excerpt/source ID",
+    "Worker source revocation clears cached private data despite locally cached View",
+    "Restored source View recovers current preview",
+    "A different account token never reveals a bound source preview"
+  ],
+  "scope": "Two real Rust processes, actual local Worker authorization and native resolver; isolated test data"
+}

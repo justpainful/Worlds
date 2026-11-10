@@ -25,6 +25,7 @@ export function imageCropChanges(scene:DrawingScene,before:DrawingNode,crop:Rect
  const current=scene.nodes[before.id],asset=scene.assets[before.assetId??''];
  if(!current||!asset||!['image','raster'].includes(before.kind)||before.erase)throw Error('crop-source');
  if(sourceKey&&imageCropSourceKey(scene,before.id)!==sourceKey)throw Error('crop-stale');
+ if([before.maskId,...before.effects.map(effect=>effect.maskId)].some(maskId=>maskId&&!scene.masks[maskId]))throw Error('crop-mask-missing');
  const state=effectiveLayer(scene,current.layerId);if(current.locked||state.locked||state.positionLocked&&mode==='trim')throw Error('crop-locked');
  if(!validImageCrop(crop,asset.width,asset.height))throw Error('crop-bounds');
  const old=before.crop??{x:0,y:0,w:asset.width,h:asset.height},next={...structuredClone(current),crop:{...crop}},changes:Change[]=[];

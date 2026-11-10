@@ -24,3 +24,5 @@
 @import "./views/embed-colors.css";
 @import "./views/claude-chat.css";
 @import "./views/chat-attachments.css";
+@import "./views/planning.css";
+@import "./views/spreadsheet.css";

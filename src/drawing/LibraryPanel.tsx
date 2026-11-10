@@ -15,13 +15,16 @@ import { DrawingExportPolicyDialog } from "./ExportPolicyDialog";
 import { DrawingScenePreview } from "./ScenePreview";
 import {fontAvailable} from './textLayout';
 import {refreshDrawingResource} from './syncManager';
+import {effectiveLayer} from './layers';
+import {FontDependencies} from './FontDependencies';
 
-const LABELS: Record<LibraryKind, [string, string]> = { brush: ["Brush", "فرشاة"], palette: ["Palette", "لوحة ألوان"], elements: ["Shapes and groups", "أشكال ومجموعات"], style: ["Annotation style", "نمط تعليقات"], frame: ["Frame", "إطار"], template: ["Drawing template", "قالب رسم"], signature: ["Signature", "توقيع"] };
+const LABELS: Record<LibraryKind, [string, string]> = { brush: ["Brush", "فرشاة"], palette: ["Palette", "لوحة ألوان"], elements: ["Shapes and groups", "أشكال ومجموعات"], style: ["Element style", "نمط عنصر"], frame: ["Frame", "إطار"], template: ["Drawing template", "قالب رسم"], signature: ["Signature", "توقيع"] };
 interface Props { session: DrawingSession; scene: DrawingScene; selected: string[]; frameId: string; brush: Brush; colors: string[]; canEdit: boolean; arabic: boolean; commit: (label: string, changes: Change[]) => void; onBrush: (brush: Brush) => void; onPalette: (colors: string[]) => void; onSelect: (ids: string[]) => void; startSaveKind?: LibraryKind; onStartedSave?: () => void }
 export function LibraryPanel({ session, scene, selected, frameId, brush, colors, canEdit, arabic, commit, onBrush, onPalette, onSelect, startSaveKind, onStartedSave }: Props) {
   const [items, setItems] = useState<LibraryItem[]>([]), [query, setQuery] = useState(""), [scope, setScope] = useState("all"), [filter, setFilter] = useState("all");
   const [saving, setSaving] = useState(false), [name, setName] = useState(""), [tags, setTags] = useState(""), [kind, setKind] = useState<LibraryKind>("elements"), [saveScope, setSaveScope] = useState<"personal" | "workspace">("personal"), [existing, setExisting] = useState("");
   const [opened, setOpened] = useState<LibraryPublication | null>(null), [linked, setLinked] = useState(false), [replacing, setReplacing] = useState(false);
+  const [styleParts,setStyleParts]=useState({fill:true,stroke:true,text:true});
   const [showPolicy,setShowPolicy]=useState(false),exportPolicy=useDrawingExportPolicy(opened?.item.page.id??null),canExport=!!exportPolicy.info&&!exportPolicy.error&&canDrawingExport(exportPolicy.info.policy,exportPolicy.info.level,"projects");
   const [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null), [loaded, setLoaded] = useState(false);
   const [missingFonts,setMissingFonts]=useState<string[]>([]),[fontsChecking,setFontsChecking]=useState(false),[allowFallback,setAllowFallback]=useState(false);
@@ -39,7 +42,8 @@ export function LibraryPanel({ session, scene, selected, frameId, brush, colors,
   const linkedNode = selected.map((key) => scene.nodes[key]).find((n) => n?.libraryInstanceId), linkedFrame = scene.frames[frameId]?.libraryInstanceId ? scene.frames[frameId] : undefined, binding = linkedNode ?? linkedFrame;
   const sourceItem = items.find((item) => item.page.id === binding?.libraryItemId);
   const capture = (): { snapshot: DrawingScene; metadata: LibraryMetadata } => {
-    const current = session.snapshot().document!.scene, nodeIds = kind === "style" ? selected.slice(0, 1) : ["brush", "palette"].includes(kind) ? [] : selected;
+    const current = session.snapshot().document!.scene, nodeIds = kind === "style" ? selected.filter(key=>{const node=current.nodes[key];return node&&!node.redaction&&(node.kind==='shape'||node.kind==='text');}).slice(0, 1) : ["brush", "palette"].includes(kind) ? [] : selected;
+    if(kind==='style'&&!nodeIds.length)throw new Error(t("Select a shape or text element to capture its style", "حدد شكلًا أو عنصر نص لحفظ نمطه"));
     const snapshot = captureLibraryScene(current, kind, nodeIds, frameId, kind === "brush" ? brush : undefined);
     let payload: LibraryPayload = {};
     if (kind === "brush") {
@@ -63,7 +67,7 @@ export function LibraryPanel({ session, scene, selected, frameId, brush, colors,
   const insert = (replace = false) => run(async () => {
     if (!opened || !canEdit || !canExport || fontsChecking || missingFonts.length&&!allowFallback) return;
     const authorized = await api.drawingLibraryRead(opened.item.page.id, opened.version);
-    const owned = await api.drawingMaterializeAssets(session.pageId, authorized.scene, authorized.item.page.id), publication = { ...authorized, scene: owned };
+    const owned = opened.item.kind==='style'||opened.item.kind==='palette' ? authorized.scene : await api.drawingMaterializeAssets(session.pageId, authorized.scene, authorized.item.page.id), publication = { ...authorized, scene: owned };
     const current = session.snapshot().document!.scene;
     if (opened.item.kind === "palette") onPalette(authorized.payload.colors!);
     else if (opened.item.kind === "brush") {
@@ -72,7 +76,16 @@ export function LibraryPanel({ session, scene, selected, frameId, brush, colors,
       onBrush(next);
     } else if (opened.item.kind === "style") {
       if (!selected.length) throw new Error(t("Select elements to apply this style", "حدد عناصر لتطبيق النمط"));
-      commit("Apply library style", selected.filter((key) => current.nodes[key] && !current.nodes[key].locked).map((key) => ({ type: "patch", collection: "nodes", id: key, fields: {paint:authorized.payload.style!.paint,textStyle:authorized.payload.style!.textStyle} })));
+      if(!styleParts.fill&&!styleParts.stroke&&!styleParts.text)throw new Error(t("Choose at least one style property", "اختر خاصية واحدة للنمط على الأقل"));
+      const editable = selected.filter((key) => { const node = current.nodes[key]; return node && !node.redaction && (node.kind==='shape'||node.kind==='text') && !node.locked && !effectiveLayer(current, node.layerId).locked; });
+      if (!editable.length) throw new Error(t("Select an unlocked shape or text element", "حدد شكلًا أو نصًا غير مقفل"));
+      const source=authorized.payload.style!;
+      const changes:Change[]=editable.flatMap((key)=>{const node=current.nodes[key],fields:Record<string,unknown>={};
+        if(node.kind==='shape'&&(styleParts.fill||styleParts.stroke)){const paint=structuredClone(node.paint);if(styleParts.fill){paint.fill=source.paint.fill;paint.gradient=structuredClone(source.paint.gradient);}if(styleParts.stroke){paint.stroke=source.paint.stroke;paint.strokeWidth=source.paint.strokeWidth;paint.dash=structuredClone(source.paint.dash);paint.cap=source.paint.cap;paint.radius=source.paint.radius;}fields.paint=paint;}
+        if(node.kind==='text'&&styleParts.text)fields.textStyle=structuredClone(source.textStyle);
+        return Object.keys(fields).length?[{type:'patch' as const,collection:'nodes' as const,id:key,fields}]:[];});
+      if(!changes.length)throw new Error(t("The chosen properties do not match the selected elements", "الخصائص المختارة لا تنطبق على العناصر المحددة"));
+      commit("Apply library style", changes);
     } else {
       const f = current.frames[frameId] ?? current.frames[current.defaultFrameId], result = insertLibraryScene(current, publication, { x: f.x + 40, y: f.y + 40 }, f.id, linked || replace, replace ? binding?.libraryInstanceId : undefined);
       commit(replace ? "Update linked library instance" : "Insert library material", sceneChanges(current, result.scene)); onSelect(result.selected);
@@ -95,15 +108,23 @@ export function LibraryPanel({ session, scene, selected, frameId, brush, colors,
       <label>{t("Category", "الفئة")}<select disabled={!!existing} value={kind} onChange={(e) => {setKind(e.target.value as LibraryKind);setError(null);}}>{Object.entries(LABELS).map(([key, label]) => <option key={key} value={key}>{label[arabic ? 1 : 0]}</option>)}</select></label>
       <label>{t("Scope", "النطاق")}<select disabled={!!existing} value={saveScope} onChange={(e) => setSaveScope(e.target.value as typeof saveScope)}><option value="personal">{t("Personal", "شخصية")}</option><option value="workspace">{t("Current shared workspace", "مساحة العمل المشتركة الحالية")}</option></select></label>
       <label>{t("Tags, separated by commas", "وسوم مفصولة بفواصل")}<input dir="auto" value={tags} onChange={(e) => setTags(e.target.value)} /></label>
+      {!['brush','palette'].includes(kind)&&<FontDependencies arabic={arabic} scenes={[{...scene,nodes:Object.fromEntries(Object.entries(scene.nodes).filter(([key,node])=>kind==='template'||kind==='frame'&&node.frameId===frameId||kind!=='frame'&&selected.includes(key)))}]}/>}
       <p>{kind === "brush" ? t("Saves your current brush settings and a stroke preview.", "يحفظ إعدادات الفرشاة الحالية ومعاينة لضربتها.") : kind === "palette" ? t("Saves the active palette colors.", "يحفظ ألوان اللوحة الحالية.") : kind === "template" ? t("Saves the entire drawing, its originals and presentation dependencies.", "يحفظ الرسم كاملًا وأصوله وإصدارات عرضه.") : kind === "frame" ? t("Saves the selected frame and its contents.", "يحفظ الإطار الحالي ومحتوياته.") : t("Saves the selected elements and their originals.", "يحفظ العناصر المحددة وأصولها.")}</p>{error && <p role="alert">{error}</p>}
     </div></Modal>}
     {opened && <Modal title={opened.item.page.title} width={720} onClose={() => { request.current++; setOpened(null); }} footer={<><Button icon="lock" onClick={()=>setShowPolicy(true)}>{t("Export permissions","صلاحيات التصدير")}</Button><Button disabled={busy||!canExport} onClick={() => run(async () => { const verified = await api.drawingLibraryRead(opened.item.page.id, opened.version), metadata = { name: verified.item.page.title, kind: verified.item.kind, tags: verified.item.tags, payload: verified.payload }; await saveDrawingBlob(await createDrawingPackage(verified.scene, undefined, verified.item.page.id, metadata), `${metadata.name.replace(/[<>:"/\\|?*]/g, "_")}.worldsdraw`,await drawingProjectExportContext(verified.item.page.id,verified.scene)); })}>{t("Export item", "تصدير العنصر")}</Button><Button variant="tinted" loading={busy} disabled={!canEdit || !canExport || fontsChecking || !!missingFonts.length&&!allowFallback} onClick={() => insert(replacing)}>{replacing ? t("Replace linked instance", "استبدال النسخة المرتبطة") : t("Insert / apply", "إدراج أو تطبيق")}</Button></>}>
       {exportPolicy.info&&!exportPolicy.error&&exportPolicy.info.level!=="none"&&<DrawingScenePreview scene={opened.scene} label={t("Published library preview", "معاينة إصدار المكتبة")} />}
       {opened.item.sourceState&&opened.item.sourceState!=='available'&&<p role="status">{t('The original source is unavailable. This published version keeps its own content; source access and publication access are independent.','المصدر الأصلي غير متاح. يحتفظ الإصدار المنشور بمحتواه المملوك، وصلاحية المصدر مستقلة عن صلاحية المنشور.')}</p>}
       {opened.item.syncStatus&&opened.item.syncStatus!=='synced'&&<p role="status">{t('Publication status','حالة المنشور')}: {t(opened.item.syncStatus,({local:'محلي',pending:'بانتظار المزامنة',offline:'دون اتصال',conflict:'تعارض محفوظ محليًا',denied:'الوصول مرفوض'} as Record<string,string>)[opened.item.syncStatus]??opened.item.syncStatus)}</p>}
+      {opened.item.kind==='style'&&<div className="drawing-step"><p>{t('Choose which properties to apply to the selected shapes or text. Locked items and redactions are skipped.','اختر الخصائص التي تطبق على الأشكال أو النص المحدد. تُستثنى العناصر المقفلة والتنقيحات.')}</p>
+        <label className="drawing-check"><input type="checkbox" checked={styleParts.fill} onChange={e=>setStyleParts({...styleParts,fill:e.target.checked})}/>{t('Shape fill and gradient','تعبئة الشكل والتدرج')}</label>
+        <label className="drawing-check"><input type="checkbox" checked={styleParts.stroke} onChange={e=>setStyleParts({...styleParts,stroke:e.target.checked})}/>{t('Shape outline and corners','حدود الشكل وزواياه')}</label>
+        <label className="drawing-check"><input type="checkbox" checked={styleParts.text} onChange={e=>setStyleParts({...styleParts,text:e.target.checked})}/>{t('Text formatting','تنسيق النص')}</label>
+        {opened.item.canEdit&&<Button size="compact" disabled={!canEdit||busy} onClick={()=>{setKind('style');setExisting(opened.item.page.id);setName(opened.item.page.title);setTags(opened.item.tags.join(', '));setSaveScope(opened.item.scope);setOpened(null);setSaving(true);}}>{t('Publish new version from selection','نشر إصدار جديد من العنصر المحدد')}</Button>}
+      </div>}
       {fontsChecking&&<p role="status">{t('Checking required fonts','جارٍ التحقق من الخطوط المطلوبة')}</p>}
+      {Object.values(opened.scene.nodes).some(n=>n.kind==='text')&&<p>{t('Fonts used','الخطوط المستخدمة')}: {[...new Set(Object.values(opened.scene.nodes).filter(n=>n.kind==='text').map(n=>n.textStyle.font))].join('، ')}</p>}
       {!!missingFonts.length&&<div role="status"><p>{t('Missing fonts','خطوط غير متاحة')}: {missingFonts.join('، ')}</p><Button size="compact" icon="refresh" disabled={fontsChecking} onClick={()=>setFontCheck(value=>value+1)}>{t('Check fonts again','إعادة فحص الخطوط')}</Button><label className="drawing-check"><input type="checkbox" checked={allowFallback} onChange={e=>setAllowFallback(e.target.checked)}/>{t('Continue with a fallback font','المتابعة بخط بديل')}</label></div>}
-      {Object.values(opened.scene.nodes).some(n=>n.kind==='text')&&<p>{t('Font names are retained; font files are not embedded. Check your font license when sharing editable material.','تُحفظ أسماء الخطوط دون تضمين ملفاتها. تحقّق من ترخيص الخط عند مشاركة عناصر قابلة للتعديل.')}</p>}
+      {Object.values(opened.scene.nodes).some(n=>n.kind==='text')&&<p>{t('Font names are retained; font files are not embedded. Recipients need to install them separately. Check each font license before sharing; the app cannot verify licensing.','تُحفظ أسماء الخطوط دون تضمين ملفاتها، وعلى المستلم تثبيتها بنفسه. تحقّق من ترخيص كل خط قبل المشاركة؛ لا يستطيع التطبيق التحقق من الترخيص.')}</p>}
       {exportPolicy.error ? <p role="alert">{t("Copy permissions could not be checked.", "تعذر التحقق من صلاحيات النسخ.")} <Button onClick={exportPolicy.refresh}>{t("Retry", "إعادة المحاولة")}</Button></p> : !exportPolicy.info ? <p role="status">{t("Checking copy permissions", "جارٍ التحقق من صلاحيات النسخ")}</p> : !canExport && <p role="status">{t("The owner’s project export policy does not allow creating or exporting an editable copy with your current access.", "لا تسمح سياسة تصدير المشاريع بإنشاء نسخة قابلة للتعديل أو تصديرها بصلاحيتك الحالية.")}</p>}
       <p>{t('Version name','اسم الإصدار')}: {opened.scene.libraryPublication?.name??opened.item.page.title}</p><p>{t('Tags','الوسوم')}: {(opened.scene.libraryPublication?.tags??opened.item.tags).join('، ')||t('No tags','دون وسوم')}</p>
       <div className="drawing-step"><p>{LABELS[opened.item.kind][arabic ? 1 : 0]} · {t("Owner", "المالك")}: {opened.item.owner}</p><label>{t("Published version", "الإصدار المنشور")}<select disabled={busy || replacing} value={opened.version} onChange={(e) => open(opened.item, Number(e.target.value))}>{opened.item.versions.map((v) => <option key={v.version} value={v.version}>{v.version} · {new Date(v.createdAt).toLocaleString()}</option>)}</select></label>

@@ -16,13 +16,32 @@ export interface DrawingSessionIO {
 }
 export interface DrawingState { document: DrawingDocument | null; loading: boolean; pending: number; saving: boolean; error: string | null; recovered: boolean; restoring: boolean }
 const sessions = new Map<string, DrawingSession>();
+let closeWarningInstalled = false;
+function warnBeforeClosingUnsavedDrawing(event: BeforeUnloadEvent) {
+  if (![...sessions.values()].some(session => session.hasUnsettledWork())) return;
+  // The browser controls the wording and can ignore this prompt; it is a
+  // last warning, not a substitute for durable recovery storage.
+  event.preventDefault();
+  event.returnValue = true;
+}
 let database: Promise<IDBDatabase> | undefined;
 function db(): Promise<IDBDatabase> {
-  return database ??= new Promise((resolve, reject) => {
+  if (database) return database;
+  const opening = new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open("worlds-drawing-recovery", 1);
     request.onupgradeneeded = () => request.result.createObjectStore("journal");
-    request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const opened = request.result;
+      opened.onversionchange = () => { opened.close(); if (database === opening) database = undefined; };
+      opened.onclose = () => { if (database === opening) database = undefined; };
+      resolve(opened);
+    };
+    request.onerror = () => reject(request.error);
   });
+  database = opening;
+  // A temporary storage failure must not permanently poison all later retries.
+  void opening.catch(() => { if (database === opening) database = undefined; });
+  return opening;
 }
 async function recoveryRead(key: string): Promise<RecoveryRecord | undefined> {
   const database = await db();
@@ -52,19 +71,35 @@ export class DrawingSession {
   private pendingBefore: Record<string, DrawingPrecondition[]> = {};
   private checkpointing: Promise<void> | null = null;
   private checkpoints: Promise<void> = Promise.resolve();
+  private journalWrites: Promise<void> = Promise.resolve();
   private recoveryId: string | undefined;
   private historyRequest:PendingHistoryRequest|undefined;
   private historyFinishing=false;
   constructor(readonly pageId: string, private readonly io: DrawingSessionIO = { load: api.drawingLoad, apply: api.drawingApply, read: recoveryRead, write: recoveryWrite,history:api.drawingHistoryToggle }) { this.ready = this.load(); }
-  private write(record:RecoveryRecord){return this.io.write(this.pageId,{...record,...(this.historyRequest?{history:this.historyRequest}:{})});}
+  private enqueueWrite(record: RecoveryRecord) {
+    const write = this.journalWrites.then(() => this.io.write(this.pageId, record));
+    this.journalWrites = write.then(() => undefined, () => undefined);
+    return write;
+  }
+  private write(record:RecoveryRecord){return this.enqueueWrite({...record,...(this.historyRequest?{history:this.historyRequest}:{})});}
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
   snapshot = () => this.state;
+  hasUnsettledWork = () => this.pending.length > 0 || !!this.historyRequest;
+  /** Retry an initial load without discarding a recovery journal we could not read. */
+  async retryLoad(): Promise<void> {
+    if (this.state.loading || this.state.document) return;
+    this.set({ loading: true, error: null });
+    this.ready = this.load();
+    await this.ready;
+  }
   private set(patch: Partial<DrawingState>) { this.state = { ...this.state, ...patch }; this.listeners.forEach((l) => l()); }
   private async load() {
     try {
       const native = await this.io.load(this.pageId);
       this.acknowledged = native;
-      const stored = await this.io.read(this.pageId);
+      let stored: RecoveryRecord | undefined;
+      try { stored = await this.io.read(this.pageId); }
+      catch { throw new Error("Recovery storage is unavailable. Free space or restore storage access, then retry. Your recovery data has not been replaced."); }
       this.historyRequest=stored?.history&&!native.operations.some(op=>op.id===stored.history!.id)?stored.history:undefined;
       this.recoveryId = stored?.recoveryId;
       this.pendingBefore = stored?.preconditions ?? {};
@@ -124,7 +159,8 @@ export class DrawingSession {
       }
     } catch (e) {
       const error = errorMessage(e);
-      this.set({ error, recovered: error.startsWith("conflict:") });
+      const storageFull = /quota|disk full|database or disk is full|no space|not enough space|storage full/i.test(error);
+      this.set({ pending: this.pending.length, error: storageFull ? "Storage is full or its quota was exceeded. Some changes may be unsaved; free space and retry before closing the app." : error, recovered: error.startsWith("conflict:") });
     } finally { this.set({ saving: false }); }
   }
   /** Serialize a canonical native checkpoint with the local writer. Pointer input
@@ -178,7 +214,7 @@ export class DrawingSession {
             if(errorMessage(error).startsWith('history-stale:')){
               const native=await this.io.load(this.pageId);
               if(!native.operations.some(op=>op.id===request.id)){
-                await this.io.write(this.pageId,{acknowledged:native,pending:[],preconditions:{}});
+                await this.enqueueWrite({acknowledged:native,pending:[],preconditions:{}});
                 this.historyRequest=undefined;this.acknowledged=native;this.set({document:native,pending:0});
               }
             }
@@ -186,7 +222,7 @@ export class DrawingSession {
           }
         },true);
         const record={acknowledged:this.acknowledged!,pending:[...this.pending],preconditions:{...this.pendingBefore}};
-        await this.io.write(this.pageId,record);this.historyRequest=undefined;
+        await this.enqueueWrite(record);this.historyRequest=undefined;
       }catch(e){this.set({error:errorMessage(e)});throw e;}
       finally{this.historyFinishing=false;this.set({restoring:false,saving:false});}
     });
@@ -226,6 +262,10 @@ export class DrawingSession {
   }
 }
 export function drawingSession(pageId: string): DrawingSession {
+  if (!closeWarningInstalled && typeof window !== "undefined") {
+    window.addEventListener("beforeunload", warnBeforeClosingUnsavedDrawing);
+    closeWarningInstalled = true;
+  }
   let session = sessions.get(pageId);
   if (!session) { session = new DrawingSession(pageId); sessions.set(pageId, session); }
   return session;

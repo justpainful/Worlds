@@ -115,7 +115,7 @@ describe("drawing durable queue", () => {
     });
     await session.flush();
     session.dispatch(edit("owner", 0, "Name", [{ type: "patch", collection: "layers", id: native.scene.layerOrder[0], fields: { name: "Recovered ink" } }]));
-    await session.flush(); expect(session.snapshot()).toMatchObject({ pending: 1, saving: false, error: "disk full" });
+    await session.flush(); expect(session.snapshot()).toMatchObject({ pending: 1, saving: false, error: "Storage is full or its quota was exceeded. Some changes may be unsaved; free space and retry before closing the app." });
     expect(native.revision).toBe(0);
     writable = true; await session.flush(); expect(session.snapshot().pending).toBe(0); expect(native.revision).toBe(1);
   });

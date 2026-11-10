@@ -62,6 +62,7 @@ export function mergeExperiment(current: DrawingScene, experiment: DrawingScene,
     if (!next.layers[node.layerId]) next.layers[node.layerId] = structuredClone(experiment.layers[node.layerId] ?? current.layers[node.layerId]);
     if (node.frameId && !next.frames[node.frameId]) next.frames[node.frameId] = structuredClone(experiment.frames[node.frameId] ?? current.frames[node.frameId]);
     if (node.maskId && !next.masks[node.maskId]) next.masks[node.maskId] = structuredClone(experiment.masks[node.maskId] ?? current.masks[node.maskId]);
+    for(const effect of node.effects)if(effect.maskId&&!next.masks[effect.maskId]){const mask=experiment.masks[effect.maskId]??current.masks[effect.maskId];if(!mask)throw new Error("The experiment refers to a missing effect mask");next.masks[effect.maskId]=structuredClone(mask);}
   }
   const importAsset = (assetId?: string) => { if (assetId && !next.assets[assetId]) next.assets[assetId] = structuredClone(experiment.assets[assetId] ?? current.assets[assetId]); };
   for (const node of Object.values(next.nodes)) { importAsset(node.assetId); importAsset(node.brush?.tipAssetId); }

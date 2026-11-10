@@ -20,8 +20,9 @@ export async function readDrawingExportPolicy(pageId: string, update?: DrawingEx
   const result=cached.shared||update?await api.drawingExportPolicy(pageId,token,update):cached;
   if(!validExportPolicy(result.policy)||!["none","view","comment","edit","full"].includes(result.level))throw new Error("Invalid drawing export permissions");return result;
 }
-export async function drawingProjectExportContext(pageId: string, scene: DrawingScene): Promise<DrawingExportContext> {
+export async function drawingProjectExportContext(pageId: string, scene: DrawingScene, signal?: AbortSignal): Promise<DrawingExportContext> {
+  const check=()=>{if(signal?.aborted)throw new DOMException("Cancelled","AbortError");};check();
   const scenes=[{scene:structuredClone(scene)}],seen=new Set<string>(),pending=Object.values(scene.steps).flatMap((s)=>s.pinnedVersionId?[s.pinnedVersionId]:[]);
-  while(pending.length){const id=pending.pop()!;if(seen.has(id))continue;seen.add(id);if(seen.size>500)throw new Error("Too many pinned export versions");const snapshot=await api.drawingVersionScene(pageId,id);scenes.push({scene:snapshot});pending.push(...Object.values(snapshot.steps).flatMap((s)=>s.pinnedVersionId?[s.pinnedVersionId]:[]));}
+  while(pending.length){check();const id=pending.pop()!;if(seen.has(id))continue;seen.add(id);if(seen.size>500)throw new Error("Too many pinned export versions");const snapshot=await api.drawingVersionScene(pageId,id);check();scenes.push({scene:snapshot});pending.push(...Object.values(snapshot.steps).flatMap((s)=>s.pinnedVersionId?[s.pinnedVersionId]:[]));}
   return {pageId,kind:"projects",scenes};
 }

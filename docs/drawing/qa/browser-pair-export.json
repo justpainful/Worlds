@@ -1,0 +1,37 @@
+{
+  "passed": true,
+  "cases": [
+    {
+      "name": "clean.png CRC matches actual PNG bytes",
+      "passed": true
+    },
+    {
+      "name": "clean.png exact annotation pixels",
+      "passed": true
+    },
+    {
+      "name": "annotated.png CRC matches actual PNG bytes",
+      "passed": true
+    },
+    {
+      "name": "annotated.png exact annotation pixels",
+      "passed": true
+    },
+    {
+      "name": "archive contains exactly clean.png and annotated.png",
+      "passed": true
+    },
+    {
+      "name": "cancel produces no ZIP",
+      "passed": true
+    },
+    {
+      "name": "missing frame refused",
+      "passed": true
+    },
+    {
+      "name": "clean and annotated rendering preserves editable source",
+      "passed": true
+    }
+  ]
+}

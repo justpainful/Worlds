@@ -1,0 +1,35 @@
+{
+  "fixture": {
+    "frame": [
+      3840,
+      2160
+    ],
+    "layers": 30,
+    "nodes": 501,
+    "ownedOriginals": 1
+  },
+  "hardware": {
+    "arch": "x86_64",
+    "logicalCores": 20,
+    "os": "windows",
+    "processor": "Intel64 Family 6 Model 151 Stepping 2, GenuineIntel"
+  },
+  "limitations": [
+    "This measures the actual Rust/SQLite path on isolated files; native window paint, GPU preparation and device latency are separate acceptance."
+  ],
+  "nativeSqliteOnly": true,
+  "nativeWindowOrGpuAcceptance": false,
+  "openLoadValidateMilliseconds": [
+    92.8013,
+    40.8525,
+    42.4627
+  ],
+  "openTargetMet": true,
+  "saveMilliseconds": [
+    70.319,
+    81.7122,
+    85.18130000000001,
+    77.7238
+  ],
+  "saveTargetMet": true
+}

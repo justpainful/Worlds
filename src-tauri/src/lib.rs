@@ -7,6 +7,7 @@ pub mod content;
 pub mod db;
 pub mod discord;
 pub mod drawing;
+mod screen_drawing;
 pub mod drawing_copy;
 pub mod drawing_export;
 pub mod drawing_library;
@@ -141,6 +142,8 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            screen_drawing::capture_screen_for_drawing,
+            screen_drawing::end_screen_drawing,
             commands::bootstrap,
             account::commands::account,
             commands::backups_list,

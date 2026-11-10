@@ -110,6 +110,14 @@ export function routeLabel(route: Route, pages: ReturnType<typeof useStore.getSt
       return { title: "Material Lab", icon: "layers", emoji: null };
     case "chat":
       return { title: "Claude", icon: "assistant", emoji: null };
+    case "tasks":
+      return { title: "Tasks", icon: "checklist", emoji: null };
+    case "calendar":
+      return { title: "Calendar", icon: "calendar", emoji: null };
+    case "inbox":
+      return { title: "Inbox", icon: "inbox", emoji: null };
+    case "study":
+      return { title: "Study", icon: "folder", emoji: null };
   }
 }
 

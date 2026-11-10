@@ -1,6 +1,6 @@
 import {effectiveLayer,isolateLayerScene} from "./layers";
 import {makeAnnotationAnchor} from "./annotations";
-import { useEffect, useId, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { bounds, clamp, frameAt, hitNode, inkCorners, localToWorld, worldToLocal } from "./geometry";
 import { samplePointer, smoothSample } from "./brush";
 import { DrawingRenderer, type DraftClip, type Viewport } from "./renderer";
@@ -23,10 +23,19 @@ import {snapMove,snapPoint} from "./snapping";
 import { pathFromNode } from "./paths";
 import { samePixelTransform } from "./floatingPixels";
 import {sampleDrawingColor} from "./colorSample";
+import {viewportReferences} from "./viewportReferences";
 
 export type Tool = "select" | "brush" | "eraser" | "highlighter" | "laser" | "shape" | "text" | "eyedropper" | "fill" | "selection" | "redact";
+function nextBadgeNumber(scene: DrawingScene): number {
+  let maximum = 0;
+  for (const id of scene.nodeOrder) {
+    const node = scene.nodes[id], value = node?.number ?? 1;
+    if (node?.kind === "shape" && node.shape === "number" && typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value < 999999) maximum = Math.max(maximum, value);
+  }
+  return maximum + 1;
+}
 export interface PaintContext { selection:PixelSelection|null; signal:AbortSignal }
-interface Gesture { type: "pan" | "stroke" | "shape" | "move" | "transform" | "laser" | "selection"; pointerId: number; start: Point; screen: Point; view: Viewport; samples: Sample[]; input?: StrokeInput; node?: DrawingNode; laser?: LaserStroke; delta?: Point; ids?: string[]; before?: DrawingNode[]; lease?: Promise<DrawingGestureLease | null>; reservation?: DrawingGestureLease | null; dispose?: () => void; cancelled?: boolean; grip?: TransformGrip; transformFrame?: TransformFrame; sourceScene?: DrawingScene; transform?: ObjectTransform; selection?:PixelSelection|null; releaseSelection?:()=>void; commitController?:AbortController; selectionKind?:SelectionKind; selectionMode?:SelectionMode }
+interface Gesture { type: "pan" | "stroke" | "shape" | "move" | "transform" | "laser" | "selection"; pointerId: number; start: Point; startFrameId?:string|null; screen: Point; view: Viewport; samples: Sample[]; input?: StrokeInput; node?: DrawingNode; laser?: LaserStroke; delta?: Point; ids?: string[]; before?: DrawingNode[]; lease?: Promise<DrawingGestureLease | null>; reservation?: DrawingGestureLease | null; dispose?: () => void; cancelled?: boolean; grip?: TransformGrip; transformFrame?: TransformFrame; sourceScene?: DrawingScene; transform?: ObjectTransform; selection?:PixelSelection|null; releaseSelection?:()=>void; commitController?:AbortController; selectionKind?:SelectionKind; selectionMode?:SelectionMode }
 export interface StageProps {
   scene: DrawingScene; tool: Tool; brush: Brush; shape: Shape; layerId: string; frameId: string;
   editable: boolean; onError: (message: string) => void;
@@ -38,7 +47,7 @@ export interface StageProps {
   onResize: (width: number, height: number) => void;
   onAdd: (node: DrawingNode, correction?: DrawingNode, context?:PaintContext) => void|Promise<void>;
   onMove: (ids: string[], dx: number, dy: number, before?: DrawingNode[]) => Promise<string[]> | string[] | void;
-  onText: (point: Point, node?: DrawingNode) => void; onColor: (color: string) => void;
+  onText: (point: Point, node?: DrawingNode, frameId?:string|null) => void; onColor: (color: string) => void;
   onFill: (point: Point) => void; onRegion: (points: Point[], mode: SelectionMode,kind?:SelectionKind) => void;
   selectionKind: SelectionKind; selectionMode?:SelectionMode; pixelSelection?:PixelSelection|null;
   peers?: DrawingPeer[]; onPointer?: (point: Point | null) => void; onLaser?: (stroke: LaserStroke | null) => void; onInteraction?: () => void;
@@ -53,6 +62,7 @@ export interface StageProps {
   previewImages?:ReadonlyMap<string,HTMLImageElement>;
   interactiveIds?:string[];
   previewIdentity?:{node:DrawingNode;hiddenIds:string[]};
+  fillPreview?: { url: string; frameId: string; layerId: string; alphaLock: boolean; x: number; y: number; w: number; h: number } | null;
 }
 export function DrawingStage(props: StageProps) {
   const { scene, view } = props;
@@ -76,8 +86,19 @@ export function DrawingStage(props: StageProps) {
   const [selectionTrace,setSelectionTrace]=useState<Point[]>([]),[polygon,setPolygon]=useState<Point[]>([]);
   const polygonMode=useRef<SelectionMode>("replace"),finishPolygon=useRef(()=>{}),maskId=`selection-${useId().replace(/:/g,"")}`;
   const peerMasks=useRef(new WeakMap<AlphaMaskPreview,HTMLCanvasElement>());
+  const fillPreviewId=`fill-preview-${useId().replace(/:/g,"")}`;
+  const [fillImage,setFillImage]=useState<{url:string;image:HTMLImageElement}|null>(null);
+  useEffect(()=>{
+    const url=props.fillPreview?.url;if(!url){setFillImage(null);return;}
+    let active=true;const image=new Image();image.onload=()=>{if(active)setFillImage({url,image});};image.onerror=()=>{if(active)setFillImage(null);};image.src=url;
+    return()=>{active=false;image.onload=null;image.onerror=null;};
+  },[props.fillPreview?.url]);
+  const previewImages=useMemo(()=>{
+    if(!fillImage||fillImage.url!==props.fillPreview?.url)return props.previewImages;
+    const images=new Map<string,HTMLImageElement>(props.previewImages);images.set(fillPreviewId,fillImage.image);return images;
+  },[fillImage,props.fillPreview?.url,props.previewImages,fillPreviewId]);
   useEffect(()=>props.pixelSelection?.retain(),[props.pixelSelection]);
-  abortGesture.current = () => { keyboardEpoch.current++; const g = gesture.current ?? finishing.current; if (g) { g.cancelled = true; g.dispose?.(); g.reservation?.cancel(); g.commitController?.abort(); g.releaseSelection?.(); if (g.laser) g.laser.releasedAt = performance.now(); } gesture.current = null; latest.current.onLaser?.(null); latest.current.onDraft?.(null); latest.current.onTransformDraft?.([], null); latest.current.onObjectTransformDraft?.([], null); latest.current.onLeaseState?.(null); setDraft(undefined); setMove({ x: 0, y: 0 }); setTransformPreview(null); setSelectionTrace([]); setPolygon([]); };
+  abortGesture.current = () => { keyboardEpoch.current++; const g = gesture.current ?? finishing.current; if (g) { g.cancelled = true; g.dispose?.(); g.reservation?.cancel(); g.commitController?.abort(); g.releaseSelection?.(); if (g.laser) {g.laser.releasedAt = performance.now();latest.current.onLaser?.(g.laser);} } gesture.current = null; if(!g?.laser)latest.current.onLaser?.(null); latest.current.onDraft?.(null); latest.current.onTransformDraft?.([], null); latest.current.onObjectTransformDraft?.([], null); latest.current.onLeaseState?.(null); setDraft(undefined); setMove({ x: 0, y: 0 }); setTransformPreview(null); setSelectionTrace([]); setPolygon([]); };
   useEffect(() => { if (!props.editable) abortGesture.current(); }, [props.editable]);
   useEffect(() => { abortGesture.current(); }, [props.tool]);
   useEffect(() => { abortGesture.current(); }, [props.frameId,props.selectionKind]);
@@ -104,10 +125,10 @@ export function DrawingStage(props: StageProps) {
   useEffect(() => {
     const r = new DrawingRenderer({previewImages:latest.current.previewImages}); renderer.current = r;
     r.onAssetChange = () => setAssetVersion((version) => version + 1);
-    const refresh = setInterval(() => { void r.refreshReferences(latest.current.scene); }, 15000);
+    const refresh = setInterval(() => { const p=latest.current;void r.refreshReferences(viewportReferences(p.scene,p.view)); }, 15000);
     return () => { clearInterval(refresh); r.dispose(); renderer.current = null; cancelAnimationFrame(frame.current); };
   }, []);
-  useEffect(()=>{renderer.current?.setPreviewImages(props.previewImages);setAssetVersion(v=>v+1);},[props.previewImages]);
+  useEffect(()=>{renderer.current?.setPreviewImages(previewImages);setAssetVersion(v=>v+1);},[previewImages]);
   useEffect(() => {
     keyboardMounted.current = true;
     const keydown = (e: KeyboardEvent) => {
@@ -128,6 +149,11 @@ export function DrawingStage(props: StageProps) {
     const dpr = devicePixelRatio || 1;
     const peerPreview = remoteDrafts.current.project(scene, performance.now());
     let visibleScene = peerPreview.scene;
+    const fill=props.fillPreview;
+    if(fill&&fillImage?.url===fill.url&&visibleScene.layers[fill.layerId]&&visibleScene.frames[fill.frameId]){
+      const node=newNode("raster",fill.layerId,fill.frameId,{x:fill.x,y:fill.y,w:fill.w,h:fill.h});node.id=fillPreviewId;node.assetId=fillPreviewId;node.alphaLock=fill.alphaLock;
+      visibleScene={...visibleScene,nodes:{...visibleScene.nodes,[fillPreviewId]:node},nodeOrder:[...visibleScene.nodeOrder,fillPreviewId],assets:{...visibleScene.assets,[fillPreviewId]:{id:fillPreviewId,attachmentId:fillPreviewId,name:"Fill preview",mime:"image/png",width:fill.w,height:fill.h}}};
+    }
     if (move.x || move.y) {
       const originals = gesture.current?.before ?? (gesture.current?.ids ?? props.selected).map((id) => scene.nodes[id]).filter(Boolean);
       visibleScene = transformedScene(visibleScene, translateObjects(scene, originals, move));
@@ -140,7 +166,7 @@ export function DrawingStage(props: StageProps) {
     const identity=props.previewIdentity,hiddenNodeIds=identity&&visibleScene.nodes[identity.node.id]&&samePixelTransform(identity.node,visibleScene.nodes[identity.node.id])?identity.hiddenIds:undefined;
     try{renderer.current.render(c, visibleScene, { ...view, w: size.w / view.scale, h: size.h / view.scale, scale: view.scale * dpr }, {incremental:true,immutableScene:true,activeLayerId:props.layerId, draft, drafts: peerPreview.nodes,draftClips:clips,hiddenNodeIds });}catch(error){c.getContext("2d")?.clearRect(0,0,c.width,c.height);props.onError(error instanceof Error?error.message:String(error));}
     cancelAnimationFrame(frame.current); drawOverlay();
-  }, [scene, view, size, draft, move, transformPreview, props.selected, previewClock, assetVersion,props.previewIdentity,props.isolatedLayerId,props.layerId]);
+  }, [scene, view, size, draft, move, transformPreview, props.selected, previewClock, assetVersion,props.previewIdentity,props.isolatedLayerId,props.layerId,props.fillPreview,fillImage,fillPreviewId]);
   useEffect(() => { props.onResize?.(size.w, size.h); }, [size]);
   useEffect(()=>{if(props.keyboardActive===false){space.current=false;abortGesture.current();}},[props.keyboardActive]);
   useEffect(() => {
@@ -150,7 +176,10 @@ export function DrawingStage(props: StageProps) {
       if (!l) { lasers.current.removeActor(actor); remoteSequence.current.delete(peer.clientId); continue; }
       const sequence = `${l.id}:${l.sequence}`; if (remoteSequence.current.get(peer.clientId) === sequence) continue;
       remoteSequence.current.set(peer.clientId, sequence);
-      lasers.current.update({ id: `${actor}:${l.id}`, actor, color: l.color, width: l.width, opacity: l.opacity, points: l.points, releasedAt: performance.now(), lifetime: l.lifetime });
+      const now=performance.now(),strokeId=`${actor}:${l.id}`;
+      for(const stroke of lasers.current.strokes.values()) if(stroke.actor===actor&&stroke.id!==strokeId&&stroke.releasedAt===null) stroke.releasedAt=now;
+      const previous=lasers.current.strokes.get(strokeId);
+      lasers.current.update({ id: strokeId, actor, color: l.color, width: l.width, opacity: l.opacity, points: l.points, releasedAt: l.released ? previous?.releasedAt ?? now : null, lifetime: l.lifetime });
     }
     for (const client of remoteSequence.current.keys()) if (!active.has(client)) { lasers.current.removeActor(`peer:${client}`); remoteSequence.current.delete(client); }
     cancelAnimationFrame(frame.current); drawOverlay();
@@ -161,7 +190,7 @@ export function DrawingStage(props: StageProps) {
   };
   const makeStroke = (samples: Sample[], previous = gesture.current?.type === "stroke" ? gesture.current.node : undefined): DrawingNode => {
     const brush = previous?.brush ?? { ...props.brush, kind: props.tool === "highlighter" && props.brush.kind !== "marker" ? "highlighter" as const : props.brush.kind };
-    const box = strokeBounds(samples, brush), n = previous ? { ...previous, ...box } : newNode("stroke", props.layerId, frameAt(scene, samples[0]) ?? props.frameId, box);
+    const box = strokeBounds(samples, brush), n = previous ? { ...previous, ...box } : newNode("stroke", props.layerId, props.pixelSelection?.frame.id ?? frameAt(scene, samples[0]), box);
     n.name = props.tool === "eraser" ? "Eraser" : props.tool === "highlighter" ? "Highlighter" : "Brush stroke";
     n.samples = samples.map((p) => ({ ...p, x: p.x - box.x, y: p.y - box.y }));
     n.brush = brush; n.erase = props.tool === "eraser"; n.seed ??= Math.floor(Math.random() * 2147483647);
@@ -242,7 +271,7 @@ export function DrawingStage(props: StageProps) {
     if (gesture.current || finishing.current || (e.button !== 0 && e.button !== 1)) return;
     props.onInteraction?.();
     e.preventDefault(); host.current!.focus(); e.currentTarget.setPointerCapture(e.pointerId);
-    const raw=at(e),p=(props.tool==="shape"||props.tool==="text")?snapPoint(scene.frames[props.frameId],raw,view.scale,e.altKey):raw, base = { pointerId: e.pointerId, start: p, screen: { x: e.clientX, y: e.clientY }, view, samples: [samplePointer(e.nativeEvent, p.x, p.y)] };
+    const raw=at(e),under=frameAt(scene,raw),p=(props.tool==="shape"||props.tool==="text")&&under?snapPoint(scene.frames[under],raw,view.scale,e.altKey):raw, base = { pointerId: e.pointerId, start: p, startFrameId:under, screen: { x: e.clientX, y: e.clientY }, view, samples: [samplePointer(e.nativeEvent, p.x, p.y)] };
     if (space.current || e.button === 1 || e.pointerType === "touch") { gesture.current = { ...base, type: "pan" }; return; }
     if (props.tool === "eyedropper") {
       colorTask.current?.abort();const controller=new AbortController();colorTask.current=controller;
@@ -265,7 +294,11 @@ export function DrawingStage(props: StageProps) {
     if (props.tool === "selection") {
       const mode:SelectionMode=e.shiftKey&&e.altKey?"intersect":e.shiftKey?"add":e.altKey?"subtract":props.selectionMode??"replace";
       if(props.selectionKind==="magic"){props.onRegion([p],mode,"magic");return;}
-      if(props.selectionKind==="polygon"){if(!polygon.length)polygonMode.current=mode;setPolygon(points=>[...points,p]);return;}
+      if(props.selectionKind==="polygon"){
+        if(polygon.length>=65536){props.onError(arabic?"التحديد يحتوي نقاطًا كثيرة. أغلقه ثم استخدم الإضافة لبقية المنطقة.":"This selection has too many points. Close it and use Add for the rest.");return;}
+        if(!polygon.length)polygonMode.current=mode;
+        setPolygon(points=>{const last=points.at(-1);return last&&Math.hypot(last.x-p.x,last.y-p.y)*view.scale<2?points:[...points,p];});return;
+      }
       gesture.current = { ...base, type: "selection",selectionKind:props.selectionKind,selectionMode:mode };setSelectionTrace([p]);return;
     }
     if (props.tool === "laser") {
@@ -275,7 +308,7 @@ export function DrawingStage(props: StageProps) {
     const layer = effectiveLayer(scene,props.layerId); if (!scene.layers[props.layerId] || layer.locked || !props.editable) return;
     if(props.tool==="eraser"&&layer.alphaLocked){props.onError(arabic?"شفافية هذه الطبقة مقفلة":"This layer transparency is locked");return;}
     if (props.tool === "fill") { props.onFill(p); return; }
-    if (props.tool === "text") { props.onText(p); return; }
+    if (props.tool === "text") { props.onText(p,undefined,under); return; }
     gesture.current = { ...base, type: props.tool === "shape"||props.tool === "redact" ? "shape" : "stroke" };
     const selection=props.pixelSelection??null;gesture.current.selection=selection;gesture.current.releaseSelection=selection?.retain();
     if (props.tool !== "shape"&&props.tool!=="redact") {
@@ -289,19 +322,20 @@ export function DrawingStage(props: StageProps) {
     props.onPointer?.(p);
     const g = gesture.current; if (!g || g.pointerId !== e.pointerId) return;
     if (g.type === "pan") { props.onView({ ...g.view, x: g.view.x - (e.clientX - g.screen.x) / g.view.scale, y: g.view.y - (e.clientY - g.screen.y) / g.view.scale }); return; }
-    if (g.type === "move") { g.delta = snapMove(scene,scene.frames[props.frameId],g.before??[],{x:p.x-g.start.x,y:p.y-g.start.y},view.scale,e.altKey); if (g.cancelled || g.lease && g.reservation === undefined || g.reservation?.state() === "lost") return; setMove(g.delta); if (g.reservation?.state() === "locked") props.onTransformDraft?.(g.ids ?? [], g.delta); return; }
+    if (g.type === "move") { const nodes=g.before??[],owner=nodes[0]?.frameId,frame=owner&&nodes.every(n=>n.frameId===owner)?scene.frames[owner]:undefined,delta={x:p.x-g.start.x,y:p.y-g.start.y};g.delta=frame?snapMove(scene,frame,nodes,delta,view.scale,e.altKey):delta; if (g.cancelled || g.lease && g.reservation === undefined || g.reservation?.state() === "lost") return; setMove(g.delta); if (g.reservation?.state() === "locked") props.onTransformDraft?.(g.ids ?? [], g.delta); return; }
     if (g.type === "transform") { updateHandle(g, p, e.shiftKey, e.altKey); return; }
-    if (g.type === "laser") { g.laser!.points.push(p); if (g.laser!.points.length > 2048) g.laser!.points.splice(0, g.laser!.points.length - 2048); props.onLaser?.(g.laser!); return; }
+    if (g.type === "laser") { const events=e.nativeEvent.getCoalescedEvents?.()??[];for(const event of events.length?events:[e.nativeEvent])g.laser!.points.push(at(event));if (g.laser!.points.length > 2048) g.laser!.points.splice(0, g.laser!.points.length - 2048); props.onLaser?.(g.laser!); return; }
     if (g.type === "selection") {
       const events=e.nativeEvent.getCoalescedEvents?.()??[e.nativeEvent];
       for(const event of events.length?events:[e.nativeEvent]){if(g.samples.length>=65536){abortGesture.current();props.onError(arabic?"التحديد يحتوي نقاطًا كثيرة. أعد رسم حدوده على أجزاء باستخدام الإضافة.":"This selection has too many points. Select its boundary in parts using Add.");return;}const q=at(event);g.samples.push(samplePointer(event,q.x,q.y));}
       setSelectionTrace(g.selectionKind==="lasso"?[...g.samples]:[g.start,p]);return;
     }
     if (g.type === "shape") {
-      const snapped=snapPoint(scene.frames[props.frameId],p,view.scale,e.altKey);
+      const owner=g.startFrameId,snapped=owner?snapPoint(scene.frames[owner],p,view.scale,e.altKey):p;
       const end = e.shiftKey ? { x: g.start.x + Math.sign(p.x - g.start.x) * Math.max(Math.abs(p.x - g.start.x), Math.abs(p.y - g.start.y)), y: g.start.y + Math.sign(p.y - g.start.y) * Math.max(Math.abs(p.x - g.start.x), Math.abs(p.y - g.start.y)) } : snapped;
-      const box = bounds([g.start, end]), n = g.node ? { ...g.node, ...box } : newNode("shape", props.layerId, props.frameId, box);
+      const box = bounds([g.start, end]), n = g.node ? { ...g.node, ...box } : newNode("shape", props.layerId, g.selection?.frame.id ?? g.startFrameId ?? null, box);
       n.shape = props.shape;n.alphaLock=effectiveLayer(scene,props.layerId).alphaLocked; n.paint = { ...n.paint, stroke: props.brush.color, strokeWidth: props.brush.size };
+      if (n.shape === "number" && n.number === undefined) n.number = nextBadgeNumber(scene);
       if(props.shape==="curve"||props.shape==="polyline")n.path=pathFromNode({...n,path:undefined});
       if(props.shape==="highlight"){n.paint={...n.paint,fill:props.brush.color,stroke:"transparent"};n.opacity=0.35;}
       if (["line", "arrow", "double-arrow"].includes(props.shape)) n.points = [g.start, end].map((p) => ({ x: p.x - box.x, y: p.y - box.y }));
@@ -328,16 +362,26 @@ export function DrawingStage(props: StageProps) {
     const g = gesture.current; if (g && g.pointerId !== e.pointerId) return; gesture.current = null; setDraft(undefined);
     if (!g) return;
     if (g.type === "move" || g.type === "transform") { if (g.type === "transform") updateHandle(g, at(e), e.shiftKey, e.altKey); await finishEdit(g); return; }
-    if (g.type === "laser") { g.laser!.releasedAt = performance.now(); props.onLaser?.(g.laser!); return; }
+    if (g.type === "laser") { g.laser!.points.push(at(e));if(g.laser!.points.length>2048)g.laser!.points.shift();g.laser!.releasedAt = performance.now(); props.onLaser?.(g.laser!); return; }
     if (g.type === "selection") { const end=at(e);setSelectionTrace([]);props.onRegion(g.selectionKind==="lasso"?[...g.samples,end]:[g.start,end],g.selectionMode??"replace",g.selectionKind);return; }
-    if (g.type === "shape") {if(g.node)await savePaint(g,g.node);else g.releaseSelection?.();return;}
+    if (g.type === "shape") {
+      // Number badges can be placed by a single click as well as by dragging.
+      // Keep the same selection, layer locks and single-edit Undo as other shapes.
+      if (!g.node && props.tool === "shape" && props.shape === "number") {
+        const size=clamp(40/view.scale,16,256), owner=g.selection?.frame.id??g.startFrameId??null;
+        const node=newNode("shape",props.layerId,owner,{x:g.start.x-size/2,y:g.start.y-size/2,w:size,h:size});
+        node.shape="number";node.number=nextBadgeNumber(scene);node.alphaLock=effectiveLayer(scene,props.layerId).alphaLocked;
+        node.paint={...node.paint,stroke:props.brush.color,strokeWidth:props.brush.size};g.node=node;
+      }
+      if(g.node)await savePaint(g,g.node);else g.releaseSelection?.();return;
+    }
     if (g.type === "stroke") {
       const end = at(e); appendSample(g, { ...samplePointer(e.nativeEvent, end.x, end.y), pressure: g.samples.at(-1)!.pressure });
       const n = makeStroke(g.samples, g.node);
       const recognized = props.autoShape && props.tool === "brush" ? recognizeShape(g.samples) : null;
       let corrected: DrawingNode | undefined;
       if (recognized) {
-        corrected = { ...n, ...recognized.rect, kind: "shape", shape: recognized.shape, samples: undefined, originalSamples: n.samples,
+        corrected = { ...n, ...recognized.rect, kind: "shape", shape: recognized.shape, samples: undefined, originalSamples: n.samples?.map(sample=>({...sample,x:sample.x+n.x-recognized.rect.x,y:sample.y+n.y-recognized.rect.y})),
           points: recognized.points?.map((p) => ({ x: p.x - recognized.rect.x, y: p.y - recognized.rect.y })), paint: { ...n.paint, stroke: props.brush.color, strokeWidth: props.brush.size } };
       }
       await savePaint(g,n,corrected);
@@ -351,9 +395,9 @@ export function DrawingStage(props: StageProps) {
   const uniformCursor = props.tool === "laser" || props.tool === "highlighter" || props.brush.kind === "marker" || props.brush.kind === "highlighter";
   const cursorTip = uniformCursor ? { x: props.brush.size / 2, y: props.brush.size / 2 } : brushFootprint({ ...props.brush, angle: 0 });
   const squareCursor = props.tool !== "laser" && (props.tool === "highlighter" ? props.brush.kind !== "marker" : ["texture", "highlighter"].includes(props.brush.kind));
-  return <div className={`drawing-stage tool-${props.tool}`} ref={host} tabIndex={0} role="application" aria-label="Drawing canvas" aria-busy={keyboardPending > 0} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={() => abortGesture.current()} onPointerLeave={() => { setCursor(null); props.onPointer?.(null); }} onDoubleClick={(e) => { if(props.tool==="selection"&&props.selectionKind==="polygon"){e.preventDefault();finishPolygon.current();return;} const node = hitNode(props.isolatedLayerId?isolateLayerScene(scene,props.isolatedLayerId):scene, at(e)); if (props.editable && node?.kind === "text") props.onText(at(e), node); }} onWheel={(e) => {
+  return <div className={`drawing-stage tool-${props.tool}`} ref={host} tabIndex={0} role="application" aria-label="Drawing canvas" aria-busy={keyboardPending > 0} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={e => { if (gesture.current?.pointerId === e.pointerId) abortGesture.current(); }} onLostPointerCapture={e => { if (gesture.current?.pointerId === e.pointerId) abortGesture.current(); }} onPointerLeave={() => { setCursor(null); props.onPointer?.(null); }} onContextMenu={e => { if(props.tool==="selection"&&props.selectionKind==="polygon"&&polygon.length){e.preventDefault();e.stopPropagation();setPolygon(points=>points.slice(0,-1));} }} onDoubleClick={(e) => { if(props.tool==="selection"&&props.selectionKind==="polygon"){e.preventDefault();finishPolygon.current();return;} const node = hitNode(props.isolatedLayerId?isolateLayerScene(scene,props.isolatedLayerId):scene, at(e)); if (props.editable && node?.kind === "text") props.onText(at(e), node); }} onWheel={(e) => {
     e.preventDefault(); props.onInteraction?.(); const p = at(e), scale = clamp(view.scale * Math.exp(-e.deltaY * 0.0015), 0.025, 16), r = host.current!.getBoundingClientRect();
-    props.onView({ ...view, scale, x: p.x - (e.clientX - r.left) / scale, y: p.y - (e.clientY - r.top) / scale });
+    props.onView({ ...view, scale, x: p.x - (e.clientX - r.left) / scale, y: p.y - (e.clientY - r.top) / scale, w:r.width/scale, h:r.height/scale });
   }}>
     <canvas ref={canvas} width={Math.round(size.w * dpr)} height={Math.round(size.h * dpr)} className="drawing-pixels" />
     <canvas ref={overlay} width={Math.round(size.w * dpr)} height={Math.round(size.h * dpr)} className="drawing-overlay" />

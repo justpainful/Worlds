@@ -5522,6 +5522,7 @@ dependencies = [
  "keyring",
  "mime_guess",
  "percent-encoding",
+ "png 0.17.16",
  "reqwest 0.12.28",
  "rusqlite",
  "serde",

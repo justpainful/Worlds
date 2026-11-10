@@ -1,6 +1,7 @@
 import type { PageMeta } from "../lib/types";
 import { anchorPoint, bounds, localToWorld } from "./geometry";
 import { id, newScene, validateScene, type Brush, type DrawingNode, type DrawingScene, type Paint, type Point, type TextStyle } from "./model";
+import { translateWorldMask } from "./workflows";
 export type LibraryKind = "brush" | "palette" | "elements" | "style" | "frame" | "template" | "signature";
 export interface LibraryPayload { brush?: Brush; colors?: string[]; style?: { paint: Paint; textStyle: TextStyle } }
 export interface LibraryMetadata { name: string; kind: LibraryKind; tags: string[]; payload: LibraryPayload }
@@ -97,7 +98,7 @@ export function insertLibraryScene(target: DrawingScene, publication: LibraryPub
   for (const key of Object.keys(source.masks)) mapId(key);
   for (const key of source.stepOrder) mapId(key);
   for (const asset of Object.values(source.assets)) { const aid = mapId(asset.id); next.assets[aid] = { ...structuredClone(asset), id: aid }; }
-  for (const mask of Object.values(source.masks)) { const mid = mapId(mask.id), m = structuredClone(mask); m.id = mid; if (m.assetId) m.assetId = mapId(m.assetId); if (!m.linked) { m.x += offset.x; m.y += offset.y; } for (const stroke of m.strokes) if (stroke.brush.tipAssetId) stroke.brush.tipAssetId = mapId(stroke.brush.tipAssetId); next.masks[mid] = m; }
+  for (const mask of Object.values(source.masks)) { const mid = mapId(mask.id), m = translateWorldMask(mask, offset); m.id = mid; if (m.assetId) m.assetId = mapId(m.assetId); for (const stroke of m.strokes) if (stroke.brush.tipAssetId) stroke.brush.tipAssetId = mapId(stroke.brush.tipAssetId); next.masks[mid] = m; }
   const instance = replacingInstance ?? id(), selected: string[] = [];
   if (copyFrame) for (const key of source.frameOrder) { const f = source.frames[key], fid = mapId(key); next.frames[fid] = { ...f, id: fid, x: f.x + offset.x, y: f.y + offset.y, libraryInstanceId: linked ? instance : undefined, librarySourceFrameId: linked ? key : undefined, libraryItemId: linked ? publication.item.page.id : undefined, libraryVersion: linked ? publication.version : undefined }; if (!next.frameOrder.includes(fid)) next.frameOrder.push(fid); }
   for (const key of source.layerOrder) { const l = source.layers[key], lid = mapId(key); next.layers[lid] = { ...structuredClone(l), id: lid, parentId: l.parentId ? mapId(l.parentId) : null, libraryInstanceId: linked ? instance : undefined, librarySourceLayerId: linked ? key : undefined }; if (!next.layerOrder.includes(lid)) next.layerOrder.push(lid); }

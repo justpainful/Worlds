@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "checks": [
+    "Actual native save checks an independent text-only experiment project policy with no attachment owner",
+    "View on source with projects Full refuses and preserves an existing file",
+    "Fresh Full authorization permits byte-exact native save",
+    "Revoked independent experiment denies the next save and preserves saved bytes"
+  ],
+  "scope": "Two isolated Rust processes, real Workers authority, real raw native writer; no installed app data"
+}

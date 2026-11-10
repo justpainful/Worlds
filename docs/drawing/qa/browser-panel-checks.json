@@ -1,0 +1,32 @@
+{
+  "passed": true,
+  "browserId": "2",
+  "tab": 67,
+  "actualArabicUI": true,
+  "checks": [
+    {
+      "name": "keyboard End grows actual panel to420px",
+      "passed": true
+    },
+    {
+      "name": "RTL ArrowLeft reduces to410px",
+      "passed": true
+    },
+    {
+      "name": "collapse and active frame tab retained through owner switch and remount",
+      "passed": true
+    },
+    {
+      "name": "restored separator410 matches actual410px box",
+      "passed": true
+    },
+    {
+      "name": "real pointer drag410 to350 updates actual panel350px",
+      "passed": true
+    }
+  ],
+  "consoleWarnings": [],
+  "limitations": [
+    "Synthetic browser backend. Narrow/light/native visual acceptance stays open."
+  ]
+}

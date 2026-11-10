@@ -11,6 +11,11 @@ import { PageIcon, relTime } from "../ui/misc";
 import { pageOps } from "./pageActions";
 import { isResource } from "../resources/kinds";
 import { addStream, createResource, uploadFiles } from "../resources/create";
+import { isKindHidden } from "../packs/registry";
+import { createItem } from "../planning/actions";
+import { today } from "../planning/model";
+import { openQuickCapture } from "../planning/InboxView";
+import { createSubject } from "../study/StudyViews";
 
 interface Cmd {
   id: string;
@@ -58,9 +63,17 @@ function commands(): Cmd[] {
   const list: Cmd[] = [
     { id: "new", title: "Create Page", icon: "add", hint: "Ctrl+N", keywords: "new page", run: (w) => s.createPage({}, w) },
     { id: "home", title: "Go Home", icon: "home", run: (w) => s.open({ kind: "home" }, w) },
+    { id: "tasks", title: "Tasks", icon: "checklist", keywords: "todo due today upcoming مهام", run: (w) => s.open({ kind: "tasks" }, w) },
+    { id: "new-task", title: "New Task", icon: "checklist", keywords: "todo add task مهمة", run: (w) => { void createItem("task", { data: { due: today() }, open: w }); } },
+    { id: "calendar", title: "Calendar", icon: "calendar", keywords: "week agenda schedule events تقويم جدول", run: (w) => s.open({ kind: "calendar" }, w) },
+    { id: "new-event", title: "New Event", icon: "calendar", keywords: "meeting appointment موعد اجتماع", run: (w) => { void createItem("event", { data: { date: today(), start: "09:00", end: "10:00" }, open: w }); } },
+    { id: "inbox", title: "Inbox", icon: "inbox", keywords: "capture triage الوارد", run: (w) => s.open({ kind: "inbox" }, w) },
+    { id: "capture", title: "Quick Capture", icon: "inbox", hint: "Ctrl+Alt+N", keywords: "note inbox thought التقاط سريع", run: () => openQuickCapture() },
+    { id: "packs", title: "Settings: Packs", icon: "layers", keywords: "study school university packs حزم دراسة", run: (w) => s.open({ kind: "settings", section: "packs" }, w) },
     { id: "new-document", title: "New Document", icon: "text", keywords: "word write doc paper", run: () => createResource("document") },
+    { id: "new-spreadsheet", title: "New Spreadsheet", icon: "table", keywords: "excel sheet table formula csv xlsx جدول اكسل حسابات", run: (where) => { void createResource("spreadsheet", { where }); } },
     { id: "new-presentation", title: "New Presentation", icon: "monitor", keywords: "slides deck powerpoint keynote", run: () => createResource("presentation") },
-    { id: "new-drawing", title: "New Drawing", icon: "edit", keywords: "paint canvas brush draw رسم فرشاة", run: () => createResource("drawing") },
+    { id: "new-drawing", title: "New Drawing", icon: "edit", keywords: "paint canvas brush draw رسم رسمة لوحة فرشاة", run: (where) => { void createResource("drawing", { where }); } },
     { id: "new-project", title: "New Project", icon: "folder", keywords: "folder organize", run: () => createResource("project") },
     { id: "new-gallery", title: "New Gallery", icon: "image", keywords: "photos album pictures videos", run: () => createResource("gallery") },
     { id: "upload", title: "Upload Files", icon: "upload", keywords: "import add file pdf video image", run: () => uploadFiles() },
@@ -95,6 +108,12 @@ function commands(): Cmd[] {
       { id: "archive", title: page.archived ? "Unarchive Page" : "Archive Page", icon: "archive", run: () => pageOps.archive(page) },
     );
   }
+  if (!isKindHidden("subject")) {
+    list.push(
+      { id: "study", title: "Study", icon: "folder", keywords: "subjects timetable homework exams دراسة مواد", run: (w) => s.open({ kind: "study" }, w) },
+      { id: "new-subject", title: "New Subject", icon: "folder", keywords: "course class teacher مادة", run: () => { void createSubject(); } },
+    );
+  }
   if (s.settings["advanced.developer"]) {
     list.push({ id: "lab", title: "Material Lab", icon: "layers", keywords: "glass debug playground", run: (w) => s.open({ kind: "playground" }, w) });
   }
@@ -126,16 +145,20 @@ function Palette({ mode, onClose }: { mode: "all" | "pages" | "commands"; onClos
   useEffect(() => {
     if (mode === "commands" || !q.trim()) {
       setHits([]);
+      setSearching(false);
       return;
     }
+    let active = true;
+    setHits([]);
     setSearching(true);
     const t = window.setTimeout(() => {
       api
         .search(q, 24, true)
-        .then(setHits)
-        .finally(() => setSearching(false));
+        .then((result) => { if (active) setHits(result); })
+        .catch(() => { if (active) setHits([]); })
+        .finally(() => { if (active) setSearching(false); });
     }, 70);
-    return () => clearTimeout(t);
+    return () => { active = false; clearTimeout(t); };
   }, [q, mode]);
 
   const items: Item[] = useMemo(() => {
@@ -161,6 +184,7 @@ function Palette({ mode, onClose }: { mode: "all" | "pages" | "commands"; onClos
         }
       } else {
         for (const h of hits) {
+          if (isKindHidden(h.kind)) continue;
           const isTpl = h.kind === "template";
           out.push({
             key: `p${h.pageId}`,

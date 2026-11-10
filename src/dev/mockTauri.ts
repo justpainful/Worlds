@@ -9,6 +9,8 @@ import {mockHistoryCandidate} from "../drawing/undo";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { appendOperation, edit, newDrawing, sceneChanges } from "../drawing/operations";
+import { DEFAULT_BRUSH, newLayer, newNode } from "../drawing/model";
+import { newSlide, slideToBlock } from "../resources/deck/model";
 import type { DrawingDocument } from "../drawing/model";
 import type { LibraryPublication } from "../drawing/library";
 import { DEFAULT_EXPORT_RULES, canDrawingExport, type DrawingExportPolicy } from "../drawing/exportPolicy";
@@ -95,7 +97,73 @@ const chatMessages: Record<string, any[]> = {
   ],
 };
 
-const settings: Record<string, unknown> = { "advanced.developer": true, "advanced.perfOverlay": new URLSearchParams(location.search).has("perf"), "appearance.glassTone": new URLSearchParams(location.search).get("tone") ?? "auto" };
+// This is an explicitly synthetic gallery for screenshots. It never reads the
+// owner's database or reference images and only exists in a development mock.
+if (import.meta.env.DEV && new URLSearchParams(location.search).has("mock") && new URLSearchParams(location.search).has("demo")) {
+  profile.displayName = "Maya Studio";
+  profile.handle = "maya";
+  profile.bio = "A sample workspace for notes, creative work and projects.";
+  const requestedLanguage = new URLSearchParams(location.search).get("lang");
+  if (requestedLanguage === "ar" || requestedLanguage === "en") profile.language = requestedLanguage;
+  chats[0] = { ...chats[0], title: "Demo: planning a launch", messageCount: 4 };
+  chatMessages.c1 = [
+    { id: "demo-user-1", role: "user", content: "Help me organize the launch plan into clear milestones.", steps: [], opId: null, meta: {}, createdAt: now - 120000 },
+    { id: "demo-ai-1", role: "assistant", content: "I can organize the work into three milestones:\n\n1. **Prepare** the content and visual assets.\n2. **Review** the details with the team.\n3. **Launch** and collect feedback.\n\nWhich milestone would you like to expand first?", steps: [], opId: null, meta: {}, createdAt: now - 110000 },
+    { id: "demo-user-2", role: "user", content: "Start with the preparation checklist.", steps: [], opId: null, meta: {}, createdAt: now - 60000 },
+    { id: "demo-ai-2", role: "assistant", content: "Here is a practical starting checklist:\n\n- Confirm the audience and launch date.\n- Gather the final artwork and copy.\n- Prepare the announcement and review it with the team.\n\nThis is a demonstration conversation.", steps: [], opId: null, meta: {}, createdAt: now - 50000 },
+  ];
+  const project = addPage("Demo · Creative launch", "pi:folder", [], { kind: "project", favorite: true });
+  metadata[project] = { project: { status: "active", start: "2026-11-01", due: "2026-12-01", description: "A fictional workspace bringing the launch brief, presentation, visual ideas, and notes together.", links: [] } };
+  const doc = addPage("Demo · Launch brief", "pi:text", ["# Launch brief", "A shared outline for a thoughtful product launch.", "## The idea", "Bring the story, the artwork, and the practical work together in one place.", "## Priorities", "- Define the audience and the purpose", "- Prepare the visual direction", "- Review the announcement with the team", "> This document uses demonstration content."], { kind: "document", parentId: project });
+  metadata[doc] = { doc: { size: "A4", orientation: "portrait", margins: { top: 25, right: 22, bottom: 25, left: 22 }, font: "", fontSize: 12, lineHeight: 1.5 } };
+  const aiPage = addPage("Demo · مساحة مساعد الصفحة", "pi:page", ["# مساحة العمل مع Claude", "هذه صفحة توضيحية ببيانات تجريبية، تعرض كيف تساعدك الأوامر داخل الصفحة على تنظيم أفكارك.", "## موجز الإطلاق", "نجمع الفكرة والمواد وخطوات التنفيذ في مكان واحد لمراجعتها مع الفريق."], { parentId: project, favorite: true });
+  blocks[aiPage].push({ type: "prompt", attrs: { bid: id(), label: "Prompt" }, content: [{ type: "paragraph", content: [{ type: "text", text: "اقرأ موجز الإطلاق أعلاه، ثم اقترح قائمة مهام مرتبة حسب الأولوية." }] }] });
+  blocks[aiPage].push(...md(["## أسئلة للمراجعة", "- من الجمهور المستهدف؟", "- ما المواد التي تحتاج موافقة قبل الإطلاق؟"]));
+  chats.unshift(
+    { id: "demo-workspace-tools", title: "Demo: تنظيم صفحة المشروع", pageId: doc, createdAt: now - 300000, updatedAt: now - 30000, messageCount: 4 },
+    { id: "demo-files", title: "Demo: تحليل ملف", pageId: null, createdAt: now - 600000, updatedAt: now - 90000, messageCount: 2 },
+    { id: "demo-undone", title: "Demo: التراجع عن تعديل", pageId: doc, createdAt: now - 900000, updatedAt: now - 150000, messageCount: 2 },
+  );
+  chatMessages["demo-workspace-tools"] = [
+    { id: "demo-tools-user-1", role: "user", content: "اقرأ موجز الإطلاق ورتّب أولويات العمل في قائمة واضحة.", steps: [], opId: null, meta: { pageId: doc }, createdAt: now - 260000 },
+    { id: "demo-tools-ai-1", role: "assistant", content: "قرأت **موجز الإطلاق** وجهّزت قائمة عملية للمراجعة:\n\n1. تحديد الجمهور والهدف.\n2. تجهيز المواد والهوية البصرية.\n3. مراجعة نص الإعلان مع الفريق.\n\nهذه محادثة توضيحية ببيانات تجريبية.", steps: [{ tool: "pages_search", ok: true }, { tool: "pages_read", ok: true }, { tool: "blocks_update", ok: true }], opId: "demo-op-edit", meta: { changeCount: 3, pages: [{ id: doc, title: "Demo · Launch brief" }] }, createdAt: now - 240000 },
+    { id: "demo-tools-user-2", role: "user", content: "وش الخطوة التالية المقترحة؟", steps: [], opId: null, meta: { pageId: doc }, createdAt: now - 80000 },
+    { id: "demo-tools-ai-2", role: "assistant", content: "ابدأ بتحديد موعد مراجعة الموجز، ثم اجمع الملاحظات في صفحة واحدة قبل اعتماد خطة الإطلاق.", steps: [{ tool: "pages_read", ok: true }], opId: null, meta: {}, createdAt: now - 60000 },
+  ];
+  chatMessages["demo-files"] = [
+    { id: "demo-file-user", role: "user", content: "لخص الملف المرفق واقترح ثلاث نقاط عملية.", steps: [], opId: null, meta: { attachments: [{ id: "demo-brief-pdf", name: "Demo launch brief.pdf", mime: "application/pdf", kind: "file", size: 24576 }] }, createdAt: now - 580000 },
+    { id: "demo-file-ai", role: "assistant", content: "**ملخص تجريبي**\n\nيركز الموجز على تحديد الجمهور، وتجهيز المواد، ومراجعة المحتوى قبل الإطلاق.\n\n- اتفقوا على الهدف والموعد.\n- جهزوا قائمة المواد المطلوبة.\n- راجعوا النسخة النهائية مع الفريق.\n\nالمرفق والنتيجة للعرض فقط.", steps: [{ tool: "attachments_read_metadata", ok: true }, { tool: "pages_search", ok: true }], opId: null, meta: {}, createdAt: now - 560000 },
+  ];
+  chatMessages["demo-undone"] = [
+    { id: "demo-undo-user", role: "user", content: "رتب العناوين في موجز الإطلاق.", steps: [], opId: null, meta: { pageId: doc }, createdAt: now - 880000 },
+    { id: "demo-undo-ai", role: "assistant", content: "رتبت العناوين في الموجز. هذه حالة توضيحية لعملية تم التراجع عنها.", steps: [{ tool: "pages_read", ok: true }, { tool: "blocks_update", ok: true }], opId: "demo-op-undo", meta: { changeCount: 2, pages: [{ id: doc, title: "Demo · Launch brief" }], undone: true }, createdAt: now - 860000 },
+  ];
+  const deck = addPage("Demo · Launch presentation", "pi:presentation", [], { kind: "presentation", parentId: project });
+  metadata[deck] = { deck: { aspect: "16:9", theme: "dark" } };
+  const cover = newSlide("title"); cover.elements[0].text = "A thoughtful launch"; cover.elements[1].text = "Ideas, preparation and next steps";
+  const detail = newSlide("title-body"); detail.elements[0].text = "The plan"; detail.elements[1].text = "Prepare the story\nCreate the visual direction\nShare and refine together";
+  blocks[deck] = [slideToBlock(cover).content, slideToBlock(detail).content];
+  const drawing = addPage("Demo · Drawing studio", "pi:paintbrush", [], { kind: "drawing", parentId: project });
+  const document = newDrawing(), scene = document.scene, frame = scene.frames[scene.defaultFrameId];
+  Object.assign(frame, { name: "Ideas canvas", w: 1120, h: 720, background: "#f8f6ef" });
+  const base = scene.layers[scene.layerOrder[0]]; base.name = "Sketch";
+  const layer = newLayer("Notes and color"); scene.layers[layer.id] = layer; scene.layerOrder.push(layer.id);
+  const add = (node: ReturnType<typeof newNode>) => { scene.nodes[node.id] = node; scene.nodeOrder.push(node.id); return node; };
+  const title = add(newNode("text", layer.id, frame.id, { x: 65, y: 45, w: 950, h: 82 })); title.text = "Ideas take shape"; title.textStyle = { ...title.textStyle, size: 48, weight: 700, color: "#263d37" };
+  const subtitle = add(newNode("text", layer.id, frame.id, { x: 67, y: 130, w: 900, h: 45 })); subtitle.text = "A sample drawing made with Worlds"; subtitle.textStyle = { ...subtitle.textStyle, size: 24, color: "#6b756b" };
+  for (const [i, shape] of (["ellipse", "right-triangle", "roundrect"] as const).entries()) { const node = add(newNode("shape", base.id, frame.id, { x: 90 + i * 325, y: 230, w: 230, h: 215 })); node.shape = shape; node.paint = { ...node.paint, fill: ["#e2af68", "#83ad94", "#ce7866"][i], stroke: "#314b42", strokeWidth: 3 }; }
+  for (const [i, kind] of (["ink", "oil", "crayon", "watercolor", "highlighter"] as const).entries()) { const node = add(newNode("stroke", layer.id, frame.id, { x: 90, y: 500 + i * 31, w: 465, h: 35 })); node.name = `Sample ${kind}`; node.brush = { ...DEFAULT_BRUSH, kind, color: ["#315d49", "#ce6f53", "#e4ad45", "#6689a5", "#e9c74a"][i], size: i === 4 ? 22 : 11, opacity: i === 4 ? 0.4 : 1 }; node.samples = Array.from({ length: 54 }, (_, j) => ({ x: j * 8, y: 15 + Math.sin(j / 7) * 8, pressure: .75, tiltX: 0, tiltY: 0, time: j * 5 })); node.seed = i + 1; }
+  document.seed = structuredClone(scene); drawings[drawing] = document;
+  const gallery = addPage("Demo · Visual library", "pi:image", [], { kind: "gallery", parentId: project });
+  metadata[gallery] = { gallery: { view: "grid" } };
+  blocks[gallery] = ["mock-ref-5", "mock-ref-6", "mock-banner"].map((attachmentId, i) => ({ type: "galleryItem", attrs: { bid: `gallery-demo-${i}`, attachmentId, name: `Color study ${i + 1}.png`, mime: "image/png", size: 1024, kind: "image", caption: ["Warm light", "Natural tones", "Evening study"][i] } }));
+  const sampleFile = addPage("Demo · Color study.svg", "pi:image", [], { kind: "file", parentId: project });
+  metadata[sampleFile] = { file: { attachmentId: "mock-ref-5", name: "Color study.svg", mime: "image/svg+xml", size: 1024, kind: "image" } };
+  const sampleStream = addPage("Demo · Sample video", "pi:video", [], { kind: "stream", parentId: project });
+  metadata[sampleStream] = { stream: { url: "/src/dev/demo-stream.mp4", format: "progressive" } };
+}
+
+const settings: Record<string, unknown> = { "advanced.developer": true, "advanced.perfOverlay": new URLSearchParams(location.search).has("perf"), "appearance.glassTone": new URLSearchParams(location.search).get("tone") ?? "auto", ...(new URLSearchParams(location.search).has("demo") && !new URLSearchParams(location.search).has("onboarding") ? { "account.onboarded": true } : {}) };
 const callbacks = new Map<number, (v: any) => void>();
 const listeners = new Map<string, number[]>();
 let cbSeq = 1;
@@ -111,7 +179,7 @@ const art = (a: string, b: string, c: string) =>
     `<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="1600" height="900" fill="url(#g)"/><circle cx="1150" cy="300" r="260" fill="${c}" opacity="0.55"/><circle cx="380" cy="700" r="320" fill="${c}" opacity="0.3"/></svg>`,
   );
 const LOCAL = import.meta.glob("/private/reference/*", { eager: true, query: "?url", import: "default" }) as Record<string, string>;
-const local = (file: string, fallback: string) => LOCAL[`/private/reference/${file}`] ?? fallback;
+const local = (file: string, fallback: string) => new URLSearchParams(location.search).has("demo") ? fallback : LOCAL[`/private/reference/${file}`] ?? fallback;
 
 const ASSET: Record<string, string> = {
   "mock-banner": local("ref-7.webp", art("#1d2b64", "#f8cdda", "#7f7fd5")),
@@ -142,6 +210,21 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
   if (cmd.startsWith("plugin:")) return cmd.endsWith("is_enabled") ? false : null;
   const page = (pid: string) => pages[pid] && { ...pages[pid], metadata: metadata[pid] ?? {}, instructions: [], blocks: (blocks[pid] ?? []).map((c, i) => ({ id: c.attrs.bid, pageId: pid, type: c.type, order: i, content: c, properties: {}, direction: "auto", createdAt: now, updatedAt: now })), backlinks: [], attachments: [], breadcrumbs: [] };
   switch (cmd) {
+    case "capture_screen_for_drawing": {
+      if (!new URLSearchParams(location.search).has("demo")) throw new Error("Screen capture is unavailable in the browser mock");
+      const canvas = document.createElement("canvas"); canvas.width = 1920; canvas.height = 1080;
+      const ctx = canvas.getContext("2d"); if (!ctx) throw new Error("Demo canvas unavailable");
+      ctx.fillStyle = "#f4f2e9"; ctx.fillRect(0, 0, 1920, 1080);
+      ctx.fillStyle = "#1f302b"; ctx.fillRect(0, 0, 1920, 86);
+      ctx.fillStyle = "#ffffff"; ctx.font = "500 27px sans-serif"; ctx.fillText("MATHEMATICS LESSON   ·   DEMO", 72, 55);
+      ctx.fillStyle = "#243a33"; ctx.font = "600 52px sans-serif"; ctx.fillText("A right triangle", 180, 240);
+      ctx.font = "32px sans-serif"; ctx.fillStyle = "#5d6c63"; ctx.fillText("Find the missing length before continuing the lesson.", 180, 300);
+      ctx.beginPath(); ctx.moveTo(500, 710); ctx.lineTo(500, 400); ctx.lineTo(1020, 710); ctx.closePath(); ctx.strokeStyle = "#416c59"; ctx.lineWidth = 8; ctx.stroke();
+      ctx.font = "600 45px sans-serif"; ctx.fillStyle = "#243a33"; ctx.fillText("3", 432, 570); ctx.fillText("4", 750, 785); ctx.fillText("?", 785, 515);
+      ctx.fillStyle = "#d1a069"; ctx.fillRect(0, 1036, 1920, 8);
+      return { dataUrl: canvas.toDataURL("image/png"), width: 1920, height: 1080, wasFullscreen: false };
+    }
+    case "end_screen_drawing": return null;
     case "bootstrap": return { profile, pages: Object.values(pages), settings, dataDir: "C:\\mock" };
     case "launch_info": return { hidden: false };
     case "pages_list": return Object.values(pages);
@@ -228,9 +311,13 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
     case "page_create": {
       const pid = addPage(a.page.title ?? "", a.page.icon ?? null, [], { kind: a.page.kind ?? "page", parentId: a.page.parentId ?? null });
       metadata[pid] = a.page.metadata ?? {};
+      if (metadata[pid][pages[pid].kind] !== undefined) pages[pid].data = metadata[pid][pages[pid].kind];
       return pages[pid];
     }
-    case "page_delete": {const page=pages[a.id];if(page){page.deletedAt=Date.now();page.updatedAt=Date.now();}return;}
+    case "page_delete": {const page=pages[a.id];if(page){const t=Date.now();const walk=(pid:string)=>{if(pages[pid]&&!pages[pid].deletedAt){pages[pid].deletedAt=t;}for(const c of Object.values(pages))if(c.parentId===pid)walk(c.id);};walk(a.id);page.updatedAt=t;}return;}
+    case "page_restore": {const t=pages[a.id]?.deletedAt;if(t)for(const p of Object.values(pages))if(p.deletedAt===t)p.deletedAt=null;return;}
+    case "page_purge": {delete pages[a.id];delete metadata[a.id];return;}
+    case "page_move": {Object.assign(pages[a.id],{parentId:a.parentId??null,updatedAt:Date.now()});return pages[a.id];}
     case "page_update": {
       const { metadata: md, ...rest } = a.patch;
       if (md) metadata[a.id] = md;
@@ -239,6 +326,7 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
     }
     case "page_meta_set": {
       metadata[a.id] = { ...(metadata[a.id] ?? {}), [a.key]: a.value };
+      if (a.key === pages[a.id].kind) pages[a.id].data = a.value;
       pages[a.id].updatedAt = Date.now();
       return pages[a.id];
     }
@@ -297,6 +385,18 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
         chats.unshift({ id: chatId, title: a.request.prompt.slice(0, 40), pageId: null, createdAt: Date.now(), updatedAt: Date.now(), messageCount: 0 });
       }
       chatMessages[chatId].push({ id: id(), role: "user", content: a.request.prompt, steps: [], opId: null, meta: {}, createdAt: Date.now() });
+      if (new URLSearchParams(location.search).has("demo")) {
+        // Simulated events only; no service, network, or real workspace writes.
+        const answer = "**ملخص توضيحي**\n\n- حدد الجمهور وهدف الإطلاق.\n- اجمع المواد البصرية والنصوص.\n- راجع التفاصيل مع الفريق قبل النشر.\n\nهذه نتيجة تجريبية للعرض.";
+        setTimeout(() => emit("worlds://ai", { runId, kind: "tool", tool: "pages_read" }), 300);
+        setTimeout(() => emit("worlds://ai", { runId, kind: "tool_result", error: false }), 800);
+        setTimeout(() => emit("worlds://ai", { runId, kind: "text", text: answer }), 1100);
+        setTimeout(() => {
+          chatMessages[chatId].push({ id: id(), role: "assistant", content: answer, steps: [{ tool: "pages_read", ok: true }], opId: null, meta: { changeCount: 0 }, createdAt: Date.now() });
+          emit("worlds://ai", { runId, kind: "done", chatId, text: "ok" });
+        }, 1700);
+        return { runId, chatId };
+      }
       if (new URLSearchParams(location.search).has("fastai")) {
         // The whole run finishes before ai_run returns (tests the early-event path).
         chatMessages[chatId].push({ id: id(), role: "assistant", content: "Done already.", steps: [{ tool: "pages_read", ok: true }], opId: runId, meta: { changeCount: 0 }, createdAt: Date.now() });
@@ -314,8 +414,15 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
       }, 2600);
       return { runId, chatId };
     }
-    case "automations_list": return [];
-    case "automation_runs": return [];
+    case "automations_list": return new URLSearchParams(location.search).has("demo") ? [{
+      id: "demo-automation", name: "Demo · Weekly update", enabled: false,
+      spec: { trigger: { kind: "weekly", days: [1], time: "09:00" }, source: { pageId: p1 }, transform: { kind: "none" }, action: { kind: "discord.send" }, destination: { kind: "channel", id: "demo-channel", label: "#announcements (demo)" }, policy: { unattended: false } },
+      nextRunAt: null, lastRunAt: now - 86_400_000, createdAt: now - 14 * 86_400_000, updatedAt: now - 86_400_000, lastStatus: "succeeded",
+    }] : [];
+    case "automation_runs": return new URLSearchParams(location.search).has("demo") && (!a.automationId || a.automationId === "demo-automation") ? [{
+      id: "demo-run", automationId: "demo-automation", status: "succeeded", trigger: "scheduled", scheduledFor: now - 86_400_000, startedAt: now - 86_400_000, finishedAt: now - 86_400_000 + 1000, versionId: null, output: null, error: null,
+    }] : [];
+    case "automation_run_now": if (new URLSearchParams(location.search).has("demo")) throw new Error("This demonstration automation cannot send messages."); return null;
     case "pending_actions": return [];
     case "discord_destinations": return { guilds: [], users: [] };
     case "backups_list": return { backups: [{ file: "worlds-1-daily.db", createdAt: now - 3_600_000, reason: "daily", size: 2_400_000 }], pendingRestore: null, note: null, folder: "C:/Worlds/backups" };

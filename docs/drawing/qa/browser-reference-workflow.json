@@ -1,0 +1,48 @@
+{
+  "passed": true,
+  "cases": [
+    {
+      "name": "layout sheet contains both actual renderer canvases",
+      "passed": true
+    },
+    {
+      "name": "cancel writes no scene or journal changes",
+      "passed": true
+    },
+    {
+      "name": "layout applies one editable change without durable source text",
+      "passed": true
+    },
+    {
+      "name": "Undo restores original card dimensions",
+      "passed": true
+    },
+    {
+      "name": "source change refuses stale layout without editing",
+      "passed": true
+    },
+    {
+      "name": "frozen snapshot retains independent content and capture date",
+      "passed": true
+    },
+    {
+      "name": "deleted-source follow refuses and preserves frozen snapshot",
+      "passed": true
+    },
+    {
+      "name": "relink clears copied title and keeps card identity",
+      "passed": true
+    },
+    {
+      "name": "offline shared link hides title and displays last successful check",
+      "passed": true
+    },
+    {
+      "name": "reconnect recovers accessible source without changing card geometry",
+      "passed": true
+    }
+  ],
+  "limitations": [
+    "Real React controls and renderer using an explicit synthetic local backend. Native source authorization and owned-file snapshot checks are separate."
+  ]
+}

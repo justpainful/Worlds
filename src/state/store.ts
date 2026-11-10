@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { api, errorMessage, type NewPage } from "../lib/api";
 import type { PageMeta, Profile } from "../lib/types";
+import { isTreeKind, KIND_INFO } from "../resources/kinds";
+import { syncPackSettings } from "../packs/registry";
 
 // ---------------------------------------------------------------------------
 // Routes, tabs, panes
@@ -17,7 +19,14 @@ export type Route =
   | { kind: "integrations" }
   | { kind: "trash" }
   | { kind: "playground" }
-  | { kind: "chat"; chatId?: string };
+  | { kind: "chat"; chatId?: string }
+  | { kind: "tasks"; list?: TaskListId }
+  | { kind: "calendar" }
+  | { kind: "inbox" }
+  | { kind: "study" };
+
+/** Smart lists in Tasks. */
+export type TaskListId = "today" | "upcoming" | "all" | "someday" | "goals" | "print" | "done";
 
 export interface Tab {
   id: string;
@@ -147,6 +156,7 @@ export const useStore = create<State>((set, get) => ({
     let layout = session?.layout && validLayout(session.layout) ? session.layout : defaultLayout();
     // Drop tabs that point at pages that no longer exist.
     layout = sanitizeLayout(layout, pages);
+    syncPackSettings(boot.settings);
     set({
       ready: true,
       profile: boot.profile,
@@ -177,7 +187,9 @@ export const useStore = create<State>((set, get) => ({
   setProfile: (profile) => set({ profile }),
 
   setSetting: (key, value) => {
-    set({ settings: { ...get().settings, [key]: value } });
+    const settings = { ...get().settings, [key]: value };
+    syncPackSettings(settings);
+    set({ settings });
     api.setSetting(key, value).catch((e) => get().toast({ message: errorMessage(e), tone: "error" }));
   },
 
@@ -449,7 +461,7 @@ export function childrenOf(pages: Record<string, PageMeta>, parentId: string | n
     .filter(
       (p) =>
         p.parentId === parentId &&
-        p.kind !== "template" &&
+        isTreeKind(p.kind) &&
         !p.deletedAt &&
         (opts.archived ? true : !p.archived),
     )
@@ -460,6 +472,7 @@ export function pageTitle(p: PageMeta | undefined | null): string {
   if (!p) return "Missing page";
   if (p.title.trim()) return p.title.trim();
   // Untitled things still say what they are.
-  const kind: Record<string, string> = { document: "document", presentation: "presentation", drawing: "drawing", project: "project", gallery: "gallery", file: "file", stream: "stream" };
-  return kind[p.kind] ? `Untitled ${kind[p.kind]}` : "Untitled";
+  if (p.kind === "page" || p.kind === "template") return "Untitled";
+  const info = KIND_INFO[p.kind as keyof typeof KIND_INFO];
+  return info ? `Untitled ${info.label.toLowerCase()}` : "Untitled";
 }

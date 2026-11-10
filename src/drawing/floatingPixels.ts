@@ -38,7 +38,7 @@ export function checkPixelSource(scene:DrawingScene,selection:SelectionRaster&{f
 }
 /** Crop and apply authoritative alpha without changing source RGBA buffers. The
  * returned PNG domain retains the selection's interpolation neighbors. */
-export function extractSelectedPixels(image:Pixels,alpha:Uint8ClampedArray):Pixels|null{
+export function extractSelectedPixels(image:Pixels,alpha:Uint8ClampedArray):(Pixels & {data:Uint8ClampedArray<ArrayBuffer>})|null{
   validatePixels(image);if(alpha.length!==image.width*image.height)throw new PixelEditError("invalid");
   const data=new Uint8ClampedArray(image.data.length);let painted=false;
   for(let i=0;i<alpha.length;i++){

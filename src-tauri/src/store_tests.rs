@@ -161,8 +161,8 @@ fn attachment_names_are_plain_names() {
 fn resource_kinds_are_validated_and_searchable() {
     let (dir, conn) = temp_db("kinds");
     // Unknown kinds are refused; every known kind is accepted.
-    assert!(store::create_page(&conn, &Ctx::user(), NewPage { kind: Some("spreadsheet".into()), ..Default::default() }).is_err());
-    for k in ["document", "presentation", "project", "gallery", "file", "stream"] {
+    assert!(store::create_page(&conn, &Ctx::user(), NewPage { kind: Some("unknown_kind".into()), ..Default::default() }).is_err());
+    for k in ["document", "spreadsheet", "presentation", "project", "gallery", "file", "stream"] {
         let p =
             store::create_page(&conn, &Ctx::user(), NewPage { title: Some(format!("A {k}")), kind: Some(k.into()), ..Default::default() })
                 .unwrap();
@@ -203,5 +203,47 @@ fn resource_kinds_are_validated_and_searchable() {
     let meta: Value = serde_json::from_str(&meta).unwrap();
     assert_eq!(meta["stream"]["format"], "hls");
     assert_eq!(meta["look"]["full"], true);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn planning_and_study_kinds_carry_their_data_on_the_row() {
+    let (dir, conn) = temp_db("planning");
+    for k in ["task", "event", "inbox", "goal", "subject", "lesson", "assignment", "exam", "requirement"] {
+        let p = store::create_page(&conn, &Ctx::user(), NewPage { title: Some(format!("A {k}")), kind: Some(k.into()), ..Default::default() })
+            .unwrap();
+        assert_eq!(p.kind, k);
+        assert!(p.data.is_null(), "{k} starts without data");
+    }
+
+    // A subject owns an assignment through the tree; the assignment's data rides on its row.
+    let subject = store::create_page(&conn, &Ctx::user(), NewPage { title: Some("Chemistry".into()), kind: Some("subject".into()), ..Default::default() })
+        .unwrap();
+    let hw = store::create_page(
+        &conn,
+        &Ctx::user(),
+        NewPage { title: Some("Lab report".into()), kind: Some("assignment".into()), parent_id: Some(subject.id.clone()), ..Default::default() },
+    )
+    .unwrap();
+    store::set_page_meta(&conn, &Ctx::user(), &hw.id, "assignment", json!({ "due": "2026-11-12", "instructions": "titration of vinegar", "points": 20 }))
+        .unwrap();
+    let row = store::list_pages(&conn, false).unwrap().into_iter().find(|p| p.id == hw.id).unwrap();
+    assert_eq!(row.parent_id.as_deref(), Some(subject.id.as_str()));
+    assert_eq!(row.data["due"], "2026-11-12");
+    assert_eq!(row.data["points"], 20);
+
+    // Its text is searchable, and data is refused when it is not an object.
+    assert!(store::search(&conn, "titration", 10, false).unwrap().iter().any(|h| h.page_id == hw.id));
+    assert!(store::set_page_meta(&conn, &Ctx::user(), &hw.id, "assignment", json!("nope")).is_err());
+
+    // Pages never carry data, even when metadata happens to hold a same-named key.
+    let page = store::create_page(&conn, &Ctx::user(), NewPage { title: Some("Plain".into()), ..Default::default() }).unwrap();
+    assert!(store::page_meta_by_id(&conn, &page.id).unwrap().unwrap().data.is_null());
+
+    // Trashing a subject takes its work with it, and restoring brings it back.
+    store::delete_page(&conn, &Ctx::user(), &subject.id).unwrap();
+    assert!(store::page_meta_by_id(&conn, &hw.id).unwrap().unwrap().deleted_at.is_some());
+    store::restore_page(&conn, &Ctx::user(), &subject.id).unwrap();
+    assert!(store::page_meta_by_id(&conn, &hw.id).unwrap().unwrap().deleted_at.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }

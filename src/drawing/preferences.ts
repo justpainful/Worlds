@@ -17,7 +17,7 @@ export function readDrawingPreferences(owner: string, pageId?: string): DrawingP
         brushes[tool as Tool] = normalized;
       }
     }
-    return { brushes, recent: Array.isArray(raw.recent) ? raw.recent.filter((c) => typeof c === "string" && /^#[\da-f]{6}([\da-f]{2})?$/i.test(c)).slice(0, 12) : [], palette: Array.isArray(raw.palette) ? raw.palette.filter((c) => typeof c === "string" && /^#[\da-f]{6}([\da-f]{2})?$/i.test(c)).slice(0, 256) : [], background: /^#[\da-f]{6}$/i.test(raw.background) ? raw.background : defaults.background, autoShape: typeof raw.autoShape === "boolean" ? raw.autoShape : true, tipPageId: pageId, laserLifetime: typeof raw.laserLifetime === "number" && Number.isFinite(raw.laserLifetime) ? Math.max(200, Math.min(4000, raw.laserLifetime)) : 1200 };
+    return { brushes, recent: Array.isArray(raw.recent) ? raw.recent.filter((c) => typeof c === "string" && /^#[\da-f]{6}([\da-f]{2})?$/i.test(c)).slice(0, 12) : [], palette: Array.isArray(raw.palette) ? raw.palette.filter((c) => typeof c === "string" && /^#[\da-f]{6}([\da-f]{2})?$/i.test(c)).slice(0, 256) : [], background: typeof raw.background === "string" && /^#[\da-f]{6}([\da-f]{2})?$/i.test(raw.background) ? raw.background : defaults.background, autoShape: typeof raw.autoShape === "boolean" ? raw.autoShape : true, tipPageId: pageId, laserLifetime: typeof raw.laserLifetime === "number" && Number.isFinite(raw.laserLifetime) ? Math.max(200, Math.min(4000, raw.laserLifetime)) : 1200 };
   } catch { return defaults; }
 }
 export function saveDrawingPreferences(owner: string, preferences: DrawingPreferences): boolean {

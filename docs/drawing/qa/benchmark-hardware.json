@@ -1,0 +1,26 @@
+{
+  "capturedAt": "2026-11-06T07:39:53.3951806Z",
+  "cpu": [
+    {
+      "Name": "12th Gen Intel(R) Core(TM) i7-12700KF",
+      "NumberOfCores": 12,
+      "NumberOfLogicalProcessors": 20
+    }
+  ],
+  "gpu": [
+    {
+      "Name": "NVIDIA GeForce RTX 4070 SUPER",
+      "DriverVersion": "32.0.16.1074",
+      "CurrentHorizontalResolution": 2560,
+      "CurrentVerticalResolution": 1440
+    }
+  ],
+  "os": [
+    {
+      "Caption": "Microsoft Windows 11 Pro",
+      "Version": "10.0.26200",
+      "TotalVisibleMemorySize": 33392336
+    }
+  ],
+  "scope": "Actual machine inventory; browser renderer fixture is separate from native physical-input acceptance"
+}

@@ -10,6 +10,9 @@ import { Select } from "../../ui/Select";
 import { newResourceMenu } from "../create";
 import { KIND_INFO, isResource } from "../kinds";
 import { ResourceHeader, saveMeta, useResource } from "./ResourceHeader";
+import { createItem } from "../../planning/actions";
+import { dataOf, inSubject, taskSort } from "../../planning/model";
+import { ItemRow, QuickAdd } from "../../planning/ui";
 
 interface ProjectMeta {
   status: "planned" | "active" | "paused" | "done";
@@ -48,6 +51,8 @@ export function ProjectView({ id }: { id: string }) {
   }, [page]);
 
   const inside = useMemo(() => childrenOf(pages, id), [pages, id]);
+  const openTasks = useMemo(() => inSubject(pages, id, "task").filter((t) => !dataOf(t, "task").done).sort(taskSort), [pages, id]);
+  const doneTasks = useMemo(() => inSubject(pages, id, "task").filter((t) => dataOf(t, "task").done), [pages, id]);
   const linked = useMemo(() => (project?.links ?? []).map((l) => pages[l]).filter((p): p is PageMeta => !!p && !p.deletedAt), [project, pages]);
 
   // Recent activity across the project and everything in it.
@@ -99,6 +104,13 @@ export function ProjectView({ id }: { id: string }) {
           key={page.updatedAt}
           onBlur={(e) => e.target.value !== project.description && update({ description: e.target.value })}
         />
+      </section>
+
+      <section className="proj-group">
+        <h2 className="proj-group-title">Tasks {openTasks.length > 0 && <span className="pl-count">{openTasks.length}</span>}</h2>
+        <QuickAdd placeholder="Add a task in this project" onAdd={(q) => createItem("task", { title: q.title, parentId: id, data: { due: q.due, time: q.time, priority: q.priority } })} />
+        {openTasks.length > 0 && <div className="pl-list">{openTasks.map((t) => <ItemRow key={t.id} p={t} showParent={false} />)}</div>}
+        {doneTasks.length > 0 && <details className="pl-done-fold"><summary>{doneTasks.length} completed</summary><div className="pl-list">{doneTasks.map((t) => <ItemRow key={t.id} p={t} showParent={false} />)}</div></details>}
       </section>
 
       {groups.length === 0 && linked.length === 0 ? (

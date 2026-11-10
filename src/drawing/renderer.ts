@@ -4,7 +4,7 @@ import { fileUrl } from "../lib/api";
 import { iterateStrokeDabs, normalizeBrush, type Dab } from "./brush";
 import { requireStrokeBudget } from "./brushWork";
 import { straightStrokeSamples,uniformStrokeRadii } from "./uniformStroke";
-import { anchorPoint, bounds, contains, intersects, worldInkBounds } from "./geometry";
+import { anchorPoint, bounds, contains, intersects, worldRenderBounds } from "./geometry";
 import { sourceInkRect } from "./brushBounds";
 import type { Asset,DrawingNode, DrawingScene, Frame, Paint, Point, Rect,Mask } from "./model";
 import { runPixelTask } from "./pixelTasks";
@@ -21,6 +21,7 @@ import { orientDecodedImage } from "./imageDisplay";
 import {decodeDrawingImage} from "./imageIngest";
 import {canvasFont,textDirection,textLines} from "./textLayout";
 import {encodeBmpTask} from "./bmpTask";
+import {encodeExportCanvas} from "./exportEncode";
 import {pathSegments} from "./paths";
 import {isRedaction,redactionShown,redactionBounds} from './redaction';
 let effectQueue:Promise<unknown>=Promise.resolve();
@@ -33,6 +34,22 @@ export interface RenderOptions { frameId?: string; region?: Rect; layerId?: stri
 const surface = (w: number, h: number) => { const c = document.createElement("canvas"); c.width = Math.max(1, Math.ceil(w)); c.height = Math.max(1, Math.ceil(h)); return c; };
 function ctx2d(c: HTMLCanvasElement, pigment = false) { const ctx = c.getContext("2d", pigment ? { willReadFrequently: true } : undefined); if (!ctx) throw new Error("Drawing graphics are unavailable"); return ctx; }
 const rasterSubpixel = (value: number) => Math.round(value * 256) / 256;
+function canvasEffect(effect: DrawingNode["effects"][number]): string {
+  switch (effect.kind) {
+    case "brightness": return `brightness(${1 + effect.amount})`;
+    case "contrast": return `contrast(${1 + effect.amount})`;
+    case "saturation": return `saturate(${1 + effect.amount})`;
+    case "grayscale": return `grayscale(${effect.amount})`;
+    case "invert": return `invert(${effect.amount})`;
+    case "blur": return `blur(${effect.amount}px)`;
+    default: return "";
+  }
+}
+/** Some image-only effects have no equivalent in the vector canvas path. */
+export function unsupportedVectorEffects(node: DrawingNode): boolean {
+  return node.kind !== "image" && node.kind !== "raster" && !isRedaction(node)
+    && node.effects.some(effect => effect.enabled && !canvasEffect(effect));
+}
 
 /** Viewport-sized compositing surfaces; the world canvas never allocates its full bounds. */
 export class DrawingRenderer {
@@ -81,7 +98,14 @@ export class DrawingRenderer {
   onAssetChange?: () => void;
   dispose() {
     this.invalidatePrefix();this.immutablePrefixSource=null;document.fonts?.removeEventListener?.("loadingdone",this.assetChanged);
-    for(const canvas of this.groupSurfaces)canvas.width=canvas.height=1;this.groupSurfaces=[]; releaseTileCompositor(this); this.references.dispose(); this.onAssetChange = undefined; this.imageLifetime.abort();for(const dispose of this.imageResources.values())dispose();this.imageResources.clear();this.imageTasks.clear();this.failedImages.clear();this.images.clear(); this.strokes.clear(); this.spatial.clear(); this.spatialBytes = 0; this.emptyTile = null; this.effects.clear();this.effectCacheBytes=0; this.processing.clear(); this.strokeSurface = null; this.strokePadding = null; this.strokePatch = null; this.clipContent = null; this.clipAlpha = null; this.cacheBytes = 0; }
+    for(const canvas of this.groupSurfaces)canvas.width=canvas.height=1;this.groupSurfaces=[]; releaseTileCompositor(this); this.references.dispose(); this.onAssetChange = undefined; this.imageLifetime.abort();for(const dispose of this.imageResources.values())dispose();this.imageResources.clear();this.imageTasks.clear();this.failedImages.clear();
+    for (const image of this.images.values()) { image.onload = null; image.onerror = null; }
+    this.images.clear();
+    // Canvas backing stores can otherwise remain allocated until a later GC cycle.
+    for (const entry of this.strokes.values()) entry.canvas.width = entry.canvas.height = 1;
+    for (const canvas of this.effects.values()) canvas.width = canvas.height = 1;
+    for (const canvas of [this.emptyTile, this.strokeSurface, this.strokePadding, this.strokePatch, this.clipContent, this.clipAlpha]) if (canvas) canvas.width = canvas.height = 1;
+    this.strokes.clear(); this.spatial.clear(); this.spatialBytes = 0; this.emptyTile = null; this.effects.clear();this.effectCacheBytes=0; this.processing.clear(); this.strokeSurface = null; this.strokePadding = null; this.strokePatch = null; this.clipContent = null; this.clipAlpha = null; this.cacheBytes = 0; }
   asset(scene: DrawingScene, id: string | undefined): HTMLImageElement | null {
     const a = id && scene.assets[id]; if (!a) return null;
     return this.options.previewImages?.get(a.attachmentId)??this.attachment(a.attachmentId,a);
@@ -109,6 +133,8 @@ export class DrawingRenderer {
     return img.complete && img.naturalWidth ? img : null;
   }
   async prepare(scene: DrawingScene): Promise<void> {
+    if (Object.values(scene.nodes).some(node => node.visible && effectiveLayer(scene,node.layerId).visible && unsupportedVectorEffects(node)))
+      throw new Error("This drawing has an unsupported adjustment on a vector or text element. Disable or remove it before preparing or exporting the image.");
     await Promise.all([...new Set(Object.values(scene.nodes).filter(n=>n.kind==="reference"&&n.sourceMode!=="snapshot"&&n.sourceId).map(n=>n.sourceId!))].map(source=>this.references.ensure(source)));
     await Promise.all(Object.keys(scene.assets).map((id) => {
       this.asset(scene, id);
@@ -131,10 +157,25 @@ export class DrawingRenderer {
       const a=scene.assets[id];if(!a)throw Error("A mask original is missing");if(this.asset(scene,id))continue;const key=imageCacheKey(a.attachmentId,a),task=this.imageTasks.get(key),image=this.images.get(key);await(task??image?.decode());if(!this.asset(scene,id))throw Error("The mask image could not be loaded");
     }
   }
+  /** Draw mask pigment consistently in the editor, effects and export. */
+  private drawMaskStrokes(ctx:CanvasRenderingContext2D, matrix:Affine, mask:Mask):void {
+    for (const stroke of mask.strokes) {
+      const brush=normalizeBrush(stroke.brush);
+      ctx.globalCompositeOperation=stroke.reveal?"source-over":"destination-out";
+      for (const dab of iterateStrokeDabs(stroke.samples,brush)) {
+        ctx.setTransform(scaleMatrix(rotate(translate(matrix,dab.x,dab.y),dab.angle*Math.PI/180),1,dab.roundness));
+        ctx.globalAlpha=dab.opacity*brush.opacity;
+        const radius=dab.size/2;
+        if(brush.hardness<0.99){const gradient=ctx.createRadialGradient(0,0,radius*brush.hardness,0,0,radius);gradient.addColorStop(0,"#ffffff");gradient.addColorStop(1,"transparent");ctx.fillStyle=gradient;}
+        else ctx.fillStyle="#ffffff";
+        ctx.beginPath();ctx.arc(0,0,radius,0,Math.PI*2);ctx.fill();
+      }
+    }
+  }
   private maskSurface(scene:DrawingScene,n:DrawingNode,mask:Mask,w:number,h:number,matrix:Affine):HTMLCanvasElement{
     const canvas=surface(w,h),ctx=ctx2d(canvas);this.setMatrix(ctx,matrix);ctx.setTransform(translate(matrix,mask.x,mask.y));const mw=mask.w??(mask.linked?n.geometrySize?.w??n.w:n.w),mh=mask.h??(mask.linked?n.geometrySize?.h??n.h:n.h);
     ctx.fillStyle=`rgba(255,255,255,${mask.base??(mask.assetId?0:1)})`;ctx.fillRect(0,0,mw,mh);if(mask.assetId){const image=this.asset(scene,mask.assetId);if(!image)throw Error("The mask image is not loaded");ctx.drawImage(image,0,0,mw,mh);}
-    for(const stroke of mask.strokes){ctx.globalCompositeOperation=stroke.reveal?"source-over":"destination-out";ctx.fillStyle="#ffffff";for(const dab of iterateStrokeDabs(stroke.samples,stroke.brush)){ctx.setTransform(translate(matrix,dab.x,dab.y));ctx.globalAlpha=dab.opacity*stroke.brush.opacity;ctx.beginPath();ctx.arc(0,0,dab.size/2,0,Math.PI*2);ctx.fill();}}
+    this.drawMaskStrokes(ctx,matrix,mask);
     if(mask.inverted){const inverse=surface(w,h),ic=ctx2d(inverse);ic.fillStyle="#ffffff";ic.fillRect(0,0,w,h);ic.globalCompositeOperation="destination-out";ic.drawImage(canvas,0,0);ctx.resetTransform();ctx.clearRect(0,0,w,h);ctx.globalAlpha=1;ctx.globalCompositeOperation="source-over";ctx.drawImage(inverse,0,0);inverse.width=inverse.height=1;}
     return canvas;
   }
@@ -213,16 +254,16 @@ export class DrawingRenderer {
         if(isRedaction(n))continue;
         if (n.layerId !== lid || !n.visible || (options.frameId && n.frameId !== options.frameId && n.frameId !== null) || options.hiddenNodeIds?.includes(n.id)) continue;
         if (options.annotations === false && (n.anchor || n.annotationGroup)) continue;
-        if(dirtyWorld&&!n.anchor&&!n.endAnchor&&["stroke","text","image","raster"].includes(n.kind)&&!intersects(worldInkBounds(n),dirtyWorld))continue;
+        if(dirtyWorld&&!n.anchor&&!n.endAnchor&&["stroke","text","image","raster"].includes(n.kind)&&!intersects(worldRenderBounds(n),dirtyWorld))continue;
         const f = n.frameId && scene.frames[n.frameId];
         lc.save();
         if (f && f.clip) this.worldRect(lc, f, true);
         // Rotated bounds and attached arrows can extend outside their original box.
-        if (n.rotation || n.anchor || intersects(worldInkBounds(n), view)) { const clip=!scene.nodes[n.id]?options.draftClips?.get(n.id):undefined;if(clip)this.drawClippedNode(lc,scene,n,clip);else this.drawNode(lc, scene, n); }
+        if (n.rotation || n.anchor || intersects(worldRenderBounds(n), view)) { const clip=!scene.nodes[n.id]?options.draftClips?.get(n.id):undefined;if(clip)this.drawClippedNode(lc,scene,n,clip);else this.drawNode(lc, scene, n); }
         lc.restore();
       }
       if(!options.layerId)for(const child of tree.get(lid)??[])renderLayer(child,lc,depth+1);
-      target.save();target.resetTransform();target.globalAlpha=layer.opacity;target.globalCompositeOperation=layer.blend;
+      target.save();target.resetTransform();target.globalAlpha=layer.opacity;target.globalCompositeOperation=(layer.blend==="normal"||layer.blend==="source-over")?"source-over":layer.blend;
       target.drawImage(layerCanvas,depth===0?partial?.x??0:0,depth===0?partial?.y??0:0);target.restore();
     };
     if(this.groupSurfaces.some(c=>c.width!==workW||c.height!==workH)){for(const c of this.groupSurfaces)c.width=c.height=1;this.groupSurfaces=[];}
@@ -528,33 +569,50 @@ export class DrawingRenderer {
       mc.setTransform(translate(maskMatrix, x, y));
       mc.fillStyle = `rgba(255,255,255,${mask.base ?? (mask.assetId ? 0 : 1)})`; mc.fillRect(0, 0, w, h);
       const img = this.asset(scene, mask.assetId); if (img) mc.drawImage(img, 0, 0, w, h);
-      for (const stroke of mask.strokes) {
-        mc.globalCompositeOperation = stroke.reveal ? "source-over" : "destination-out";
-        mc.fillStyle = "#ffffff";
-        for (const dab of iterateStrokeDabs(stroke.samples, stroke.brush)) { mc.setTransform(translate(maskMatrix, dab.x, dab.y)); mc.globalAlpha = dab.opacity * stroke.brush.opacity; mc.beginPath(); mc.arc(0, 0, dab.size / 2, 0, Math.PI * 2); mc.fill(); }
-      }
+      this.drawMaskStrokes(mc,maskMatrix,mask);
       if (mask.inverted) {
         const inverted = surface(alpha.width, alpha.height), ic = ctx2d(inverted); ic.fillStyle = "#ffffff"; ic.fillRect(0, 0, inverted.width, inverted.height); ic.globalCompositeOperation = "destination-out"; ic.drawImage(alpha, 0, 0);
         mc.resetTransform(); mc.clearRect(0, 0, alpha.width, alpha.height); mc.globalCompositeOperation = "source-over"; mc.globalAlpha = 1; mc.drawImage(inverted, 0, 0);
+        inverted.width = inverted.height = 1;
       }
       cc.resetTransform(); cc.globalCompositeOperation = "destination-in"; cc.drawImage(alpha, 0, 0);
-      ctx.save(); ctx.resetTransform(); ctx.globalCompositeOperation = n.erase ? "destination-out" : n.alphaLock ? "source-atop" : "source-over"; ctx.drawImage(content, 0, 0); ctx.restore(); return;
+      ctx.save(); ctx.resetTransform(); ctx.globalCompositeOperation = n.erase ? "destination-out" : n.alphaLock ? "source-atop" : "source-over"; ctx.drawImage(content, 0, 0); ctx.restore();
+      content.width = content.height = alpha.width = alpha.height = 1; return;
+    }
+    // Non-image objects can use the same ordered, independently masked
+    // adjustments as images. Work in device coordinates so masks retain their
+    // linked or world placement under rotation and zoom.
+    if (n.kind !== "image" && n.kind !== "raster" && n.effects.some(e => e.enabled && e.maskId)) {
+      let current = surface(ctx.canvas.width, ctx.canvas.height);
+      const original = ctx2d(current); this.setMatrix(original, baseMatrix);
+      this.drawNode(original, scene, { ...n, effects: [], maskId: undefined, erase: false, alphaLock: false }, true);
+      for (const effect of n.effects) {
+        const filter = effect.enabled ? canvasEffect(effect) : "";
+        if (!filter) continue;
+        const effectMask = effect.maskId ? scene.masks[effect.maskId] : undefined;
+        // A missing mask must never accidentally expand an adjustment to the whole object.
+        if (effect.maskId && !effectMask) continue;
+        // Trigger asynchronous asset loading and retain the previous image until ready.
+        if (effectMask?.enabled && effectMask.assetId && !this.asset(scene, effectMask.assetId)) continue;
+        const filtered = surface(current.width, current.height), fc = ctx2d(filtered);
+        fc.filter = filter; fc.drawImage(current, 0, 0); fc.filter = "none";
+        if (effectMask?.enabled) {
+          const matrix = effectMask.linked ? nodeMatrix(baseMatrix, n) : baseMatrix;
+          const alpha = this.maskSurface(scene, n, effectMask, current.width, current.height, matrix);
+          fc.globalCompositeOperation = "destination-in"; fc.drawImage(alpha, 0, 0);
+          const cc = ctx2d(current); cc.globalCompositeOperation = "destination-out"; cc.drawImage(alpha, 0, 0);
+          cc.globalCompositeOperation = "lighter"; cc.drawImage(filtered, 0, 0); cc.globalCompositeOperation = "source-over";
+          alpha.width = alpha.height = filtered.width = filtered.height = 1;
+        } else { current.width = current.height = 1; current = filtered; }
+      }
+      ctx.save(); ctx.resetTransform(); ctx.globalCompositeOperation = n.erase ? "destination-out" : n.alphaLock ? "source-atop" : "source-over"; ctx.drawImage(current, 0, 0); ctx.restore();
+      current.width = current.height = 1; return;
     }
     ctx.save();
     ctx.globalAlpha = n.opacity;
     if (n.erase) ctx.globalCompositeOperation = "destination-out";
     else if (n.alphaLock) ctx.globalCompositeOperation = "source-atop";
-    const filters = n.effects.filter((e) => e.enabled).map((e) => {
-      switch (e.kind) {
-        case "brightness": return `brightness(${1 + e.amount})`;
-        case "contrast": return `contrast(${1 + e.amount})`;
-        case "saturation": return `saturate(${1 + e.amount})`;
-        case "grayscale": return `grayscale(${e.amount})`;
-        case "invert": return `invert(${e.amount})`;
-        case "blur": return `blur(${e.amount}px)`;
-        default: return "";
-      }
-    }).filter(Boolean).join(" ");
+    const filters = n.effects.filter((e) => e.enabled).map(canvasEffect).filter(Boolean).join(" ");
     if (filters && n.kind !== "image" && n.kind !== "raster") ctx.filter = filters;
     if (n.kind === "shape" && n.anchor) {
       const start = anchorPoint(scene, n.anchor).point, end = n.endAnchor ? anchorPoint(scene, n.endAnchor).point : { x: n.x + n.w, y: n.y + n.h };
@@ -678,10 +736,13 @@ export class DrawingRenderer {
   async exportFrame(scene: DrawingScene, frame: Frame, scale = 1, annotations = true, format: "image/png" | "image/jpeg" | "image/webp"|"image/bmp" = "image/png", quality = 0.92, matte = "#ffffff"): Promise<Blob> {
     if (!Number.isFinite(scale) || scale <= 0 || frame.w * frame.h * scale * scale > 64 * 1024 * 1024) throw new Error("The export exceeds the image memory limit");
     await this.prepare(exportPreparationScene(scene,frame.id,frame,annotations));
+    if (this.imageLifetime.signal.aborted) throw new DOMException("Cancelled", "AbortError");
     const canvas = surface(frame.w * scale, frame.h * scale);
-    this.render(canvas, scene, { ...frame, scale }, { frameId: frame.id, annotations });
+    try {
+    this.render(canvas,scene,{...frame,scale},{frameId:frame.id,annotations});
     if (format === "image/jpeg"||format==="image/bmp") { const ctx = ctx2d(canvas); ctx.globalCompositeOperation = "destination-over"; ctx.fillStyle = matte; ctx.fillRect(0, 0, canvas.width, canvas.height); }
-    if(format==="image/bmp"){const data=ctx2d(canvas).getImageData(0,0,canvas.width,canvas.height);try{return await encodeBmpTask({width:data.width,height:data.height,data:data.data},this.imageLifetime.signal);}finally{canvas.width=canvas.height=1;}}
-    return new Promise((resolve, reject) => canvas.toBlob((blob) => blob?.type === format ? resolve(blob) : reject(new Error("This image export format is unavailable")), format, quality));
+    if(format==="image/bmp"){const data=ctx2d(canvas).getImageData(0,0,canvas.width,canvas.height);return await encodeBmpTask({width:data.width,height:data.height,data:data.data},this.imageLifetime.signal);}
+    return await encodeExportCanvas(canvas, format, quality, this.imageLifetime.signal);
+    } finally { canvas.width = canvas.height = 1; }
   }
 }

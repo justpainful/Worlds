@@ -1,0 +1,56 @@
+{
+  "passed": true,
+  "cases": [
+    {
+      "name": "whole world screen at1x preserves nested opacity/blend and both frame papers",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 0
+    },
+    {
+      "name": "independent Frame 1 export preserves every pixel",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 0
+    },
+    {
+      "name": "independent Transparent frame export preserves every pixel",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 0
+    },
+    {
+      "name": "progress and originals are retained without mutation",
+      "passed": true,
+      "progress": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          2
+        ]
+      ],
+      "sourceUnchanged": true
+    },
+    {
+      "name": "redactions remain active after flattening and source-layer hiding",
+      "passed": true
+    },
+    {
+      "name": "one author Undo restores sources and retains a later foreign node on the output root",
+      "passed": true
+    },
+    {
+      "name": "cancelling a real rendered frame batch returns no merge result or source edit",
+      "passed": true
+    },
+    {
+      "name": "overlapping frame semantics are explicitly refused",
+      "passed": true
+    }
+  ],
+  "scope": "Actual renderer and PNG batch; source/screen/per-frame/Undo/cancel. Synthetic assets and authorization bypass only for this fixture. UI/source-rights/native transport separate.",
+  "tolerance": "Premultiplied RGBA8 maximum2; source data and progress exact."
+}

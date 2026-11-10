@@ -1,0 +1,3875 @@
+{
+  "capturedAt": "2026-11-06T03:18:17.657Z",
+  "paths": [
+    ".lab/drawing-handles-browser-34.json",
+    ".lab/drawing-handles-browser-35.json",
+    ".lab/drawing-handles-browser-37.json",
+    ".lab/drawing-handles-editor-38.json",
+    ".lab/drawing-handles-editor-39.json"
+  ],
+  "sourceHashes": {
+    "src/drawing/Stage.tsx": "147e4fa82b2104c037900c574695cd68e36db8b2441262053ab049f92f95d4ad",
+    "src/drawing/DrawingView.tsx": "968cd316b5c5fa4b0cd5200a64ec2f5188a1d0f1fa8e3fb24fcd2a29ffdc1948",
+    "src/drawing/objectTransforms.ts": "442b7c7965c3fb1b4fed99a1c0108e0a641d937364cdccf1b0b232bf057423d2",
+    "src/drawing/transformHandles.ts": "ccfdbe4f032270dbe8f379343d117bd45e5a2a19a29d516b5a93e15717b349e7",
+    "src/drawing/drafts.ts": "822328aefac99a44be6ecbc50af0e7a2b2d394500ccab3d85d8864a4b3244776",
+    "src/drawing/drawing.css": "8432431ed856dc0a0801660e5e37ad11e4ec0a9966b4ec0bc71a5294d827be73",
+    "services/sync/src/drawing-authority.ts": "f7a3ce84d6361898591ae6cc2929ae9d316576b9538cc1268257e15d8cb87c3e",
+    "services/sync/test/drawing-live.test.ts": "fe22432daa1c1a16f90c1f2ff4082b6439f766af83666ae259ee74883cf0b1aa",
+    "scripts/drawing-handles-smoke.tsx": "60b9c1e0e8985ec35b1ed9a2de3ef3f53f04ca0726bd8ffa88ce771a614a8bbe",
+    "scripts/drawing-input-smoke.tsx": "26b54730272c32904ef59399b5f70df91f46639231f7d8094365135695cc2f55"
+  },
+  "servedSourceMapMatches": {
+    "src/drawing/Stage.tsx": true,
+    "src/drawing/DrawingView.tsx": true,
+    "src/drawing/objectTransforms.ts": true,
+    "src/drawing/transformHandles.ts": true,
+    "src/drawing/drafts.ts": true
+  },
+  "checks": {
+    "pointerOneEdit": true,
+    "undoRestoresOriginalBox": true,
+    "reflectedSourceRetained": true,
+    "uniformMultipleObjects": true,
+    "pendingEscapeCancels": true,
+    "rightsLossCancels": true,
+    "independentBrushColorRetained": true,
+    "staleGeometryRefused": true,
+    "toolAndSelectionCancel": true,
+    "queuedEscapeCancels": true,
+    "lostReservationExplained": true,
+    "fiveQueuedKeys": true,
+    "arabicPointerOneEdit": true,
+    "arabicUndo": true,
+    "numericSheetCancel": true,
+    "arabicGripTargets": true,
+    "noArbitraryScaleCap": true,
+    "largeScaleUndo": true,
+    "finalSourceQueuedKeys": true,
+    "originalSamples": true,
+    "cleanConsole": true
+  },
+  "passed": true,
+  "visualAcceptance": false,
+  "nativeAcceptance": false,
+  "scope": "Real browser pointer/keyboard input. Isolated mock persistence. Delayed/lost leases are explicitly injected in Stage harness; server authority has a separate real two-client Worker test. Tab38 tests final Stage and ordinary transform behavior; tab39 tests the subsequent scale-range expansion on final source. Earlier scenarios retain their original source-stage limits. Screenshot capture failed and is not accepted as visual evidence.",
+  "records": [
+    {
+      "capturedAt": "2026-11-06T03:03:05.505Z",
+      "scope": "Actual production DrawingStage in an isolated mock-storage harness with explicitly injected lease states. Real browser pointer drag and keyboard inputs; no native app or visual screenshot acceptance.",
+      "baseline": {
+        "revision": 1,
+        "selected": [
+          "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+        ],
+        "tool": "select",
+        "editable": true,
+        "status": null,
+        "view": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 600,
+          "scale": 1
+        },
+        "nodes": [
+          {
+            "id": "512ba47b-ecf2-4b8b-99b8-85f022c395d5",
+            "kind": "stroke",
+            "name": "stroke",
+            "layerId": "d3263496-320e-4b18-b6fa-5ecf444c2850",
+            "frameId": "99e8cb84-baac-4be5-b62a-aae4589383f6",
+            "groupId": null,
+            "visible": true,
+            "locked": false,
+            "rotation": 20,
+            "opacity": 1,
+            "flipX": true,
+            "flipY": false,
+            "paint": {
+              "fill": "transparent",
+              "stroke": "#202023",
+              "strokeWidth": 3,
+              "dash": [],
+              "cap": "round",
+              "radius": 16
+            },
+            "textStyle": {
+              "font": "IBM Plex Sans Arabic",
+              "size": 28,
+              "weight": 400,
+              "italic": false,
+              "align": "start",
+              "direction": "auto",
+              "leading": 1.7,
+              "background": "transparent",
+              "color": "#202023",
+              "border": "transparent"
+            },
+            "effects": [],
+            "x": 160,
+            "y": 160,
+            "w": 200,
+            "h": 100,
+            "brush": {
+              "kind": "hard",
+              "size": 18,
+              "opacity": 1,
+              "flow": 1,
+              "hardness": 1,
+              "spacing": 0.12,
+              "angle": 0,
+              "roundness": 1,
+              "smoothing": 0.15,
+              "stabilizer": 0,
+              "taperStart": 0,
+              "taperEnd": 0,
+              "pressureSize": false,
+              "pressureOpacity": false,
+              "pressureFlow": false,
+              "pressureCurve": 1,
+              "color": "#cc3311"
+            },
+            "samples": [
+              {
+                "x": 20,
+                "y": 40,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 180,
+                "y": 60,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ],
+            "seed": 42
+          }
+        ],
+        "originalsIntact": true,
+        "grips": {
+          "nw": {
+            "x": 352.6944515013567,
+            "y": 221.39028800613178
+          },
+          "se": {
+            "x": 167.30554849864328,
+            "y": 198.60971199386822
+          },
+          "rotate": {
+            "x": 278.1270675962604,
+            "y": 160.19629109834685
+          }
+        },
+        "events": [
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          }
+        ]
+      },
+      "drag": {
+        "revision": 2,
+        "selected": [
+          "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+        ],
+        "tool": "select",
+        "editable": true,
+        "status": null,
+        "view": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 600,
+          "scale": 1
+        },
+        "nodes": [
+          {
+            "id": "512ba47b-ecf2-4b8b-99b8-85f022c395d5",
+            "kind": "stroke",
+            "name": "stroke",
+            "layerId": "d3263496-320e-4b18-b6fa-5ecf444c2850",
+            "frameId": "99e8cb84-baac-4be5-b62a-aae4589383f6",
+            "groupId": null,
+            "visible": true,
+            "locked": false,
+            "rotation": 20,
+            "opacity": 1,
+            "flipX": true,
+            "flipY": false,
+            "paint": {
+              "fill": "transparent",
+              "stroke": "#202023",
+              "strokeWidth": 3,
+              "dash": [],
+              "cap": "round",
+              "radius": 16
+            },
+            "textStyle": {
+              "font": "IBM Plex Sans Arabic",
+              "size": 28,
+              "weight": 400,
+              "italic": false,
+              "align": "start",
+              "direction": "auto",
+              "leading": 1.7,
+              "background": "transparent",
+              "color": "#202023",
+              "border": "transparent"
+            },
+            "effects": [],
+            "x": 106.76814516392582,
+            "y": 121.32444798903471,
+            "w": 249.4637096721484,
+            "h": 202.35110402193058,
+            "brush": {
+              "kind": "hard",
+              "size": 18,
+              "opacity": 1,
+              "flow": 1,
+              "hardness": 1,
+              "spacing": 0.12,
+              "angle": 0,
+              "roundness": 1,
+              "smoothing": 0.15,
+              "stabilizer": 0,
+              "taperStart": 0,
+              "taperEnd": 0,
+              "pressureSize": false,
+              "pressureOpacity": false,
+              "pressureFlow": false,
+              "pressureCurve": 1,
+              "color": "#cc3311"
+            },
+            "samples": [
+              {
+                "x": 20,
+                "y": 40,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 180,
+                "y": 60,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ],
+            "seed": 42,
+            "geometrySize": {
+              "w": 200,
+              "h": 100
+            }
+          }
+        ],
+        "originalsIntact": true,
+        "grips": {
+          "nw": {
+            "x": 352.69445150135675,
+            "y": 221.39028800613175
+          },
+          "se": {
+            "x": 110.30554849864332,
+            "y": 223.60971199386825
+          },
+          "rotate": {
+            "x": 256.9783568423559,
+            "y": 152.49878989082003
+          }
+        },
+        "events": [
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "finished": [
+              "afb2c437-e525-4629-9746-22b3484aec32"
+            ]
+          },
+          {
+            "draft": false,
+            "ids": []
+          }
+        ]
+      },
+      "undo": {
+        "revision": 3,
+        "selected": [
+          "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+        ],
+        "tool": "select",
+        "editable": true,
+        "status": null,
+        "view": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 600,
+          "scale": 1
+        },
+        "nodes": [
+          {
+            "id": "512ba47b-ecf2-4b8b-99b8-85f022c395d5",
+            "kind": "stroke",
+            "name": "stroke",
+            "layerId": "d3263496-320e-4b18-b6fa-5ecf444c2850",
+            "frameId": "99e8cb84-baac-4be5-b62a-aae4589383f6",
+            "groupId": null,
+            "visible": true,
+            "locked": false,
+            "rotation": 20,
+            "opacity": 1,
+            "flipX": true,
+            "flipY": false,
+            "paint": {
+              "fill": "transparent",
+              "stroke": "#202023",
+              "strokeWidth": 3,
+              "dash": [],
+              "cap": "round",
+              "radius": 16
+            },
+            "textStyle": {
+              "font": "IBM Plex Sans Arabic",
+              "size": 28,
+              "weight": 400,
+              "italic": false,
+              "align": "start",
+              "direction": "auto",
+              "leading": 1.7,
+              "background": "transparent",
+              "color": "#202023",
+              "border": "transparent"
+            },
+            "effects": [],
+            "x": 160,
+            "y": 160,
+            "w": 200,
+            "h": 100,
+            "brush": {
+              "kind": "hard",
+              "size": 18,
+              "opacity": 1,
+              "flow": 1,
+              "hardness": 1,
+              "spacing": 0.12,
+              "angle": 0,
+              "roundness": 1,
+              "smoothing": 0.15,
+              "stabilizer": 0,
+              "taperStart": 0,
+              "taperEnd": 0,
+              "pressureSize": false,
+              "pressureOpacity": false,
+              "pressureFlow": false,
+              "pressureCurve": 1,
+              "color": "#cc3311"
+            },
+            "samples": [
+              {
+                "x": 20,
+                "y": 40,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 180,
+                "y": 60,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ],
+            "seed": 42
+          }
+        ],
+        "originalsIntact": true,
+        "grips": {
+          "nw": {
+            "x": 352.6944515013567,
+            "y": 221.39028800613178
+          },
+          "se": {
+            "x": 167.30554849864328,
+            "y": 198.60971199386822
+          },
+          "rotate": {
+            "x": 278.1270675962604,
+            "y": 160.19629109834685
+          }
+        },
+        "events": [
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "finished": [
+              "afb2c437-e525-4629-9746-22b3484aec32"
+            ]
+          },
+          {
+            "draft": false,
+            "ids": []
+          }
+        ]
+      },
+      "rotation": {
+        "revision": 4,
+        "selected": [
+          "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+        ],
+        "tool": "select",
+        "editable": true,
+        "status": null,
+        "view": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 600,
+          "scale": 1
+        },
+        "nodes": [
+          {
+            "id": "512ba47b-ecf2-4b8b-99b8-85f022c395d5",
+            "kind": "stroke",
+            "name": "stroke",
+            "layerId": "d3263496-320e-4b18-b6fa-5ecf444c2850",
+            "frameId": "99e8cb84-baac-4be5-b62a-aae4589383f6",
+            "groupId": null,
+            "visible": true,
+            "locked": false,
+            "rotation": 35,
+            "opacity": 1,
+            "flipX": true,
+            "flipY": false,
+            "paint": {
+              "fill": "transparent",
+              "stroke": "#202023",
+              "strokeWidth": 3,
+              "dash": [],
+              "cap": "round",
+              "radius": 16
+            },
+            "textStyle": {
+              "font": "IBM Plex Sans Arabic",
+              "size": 28,
+              "weight": 400,
+              "italic": false,
+              "align": "start",
+              "direction": "auto",
+              "leading": 1.7,
+              "background": "transparent",
+              "color": "#202023",
+              "border": "transparent"
+            },
+            "effects": [],
+            "x": 160,
+            "y": 160,
+            "w": 200,
+            "h": 100,
+            "brush": {
+              "kind": "hard",
+              "size": 18,
+              "opacity": 1,
+              "flow": 1,
+              "hardness": 1,
+              "spacing": 0.12,
+              "angle": 0,
+              "roundness": 1,
+              "smoothing": 0.15,
+              "stabilizer": 0,
+              "taperStart": 0,
+              "taperEnd": 0,
+              "pressureSize": false,
+              "pressureOpacity": false,
+              "pressureFlow": false,
+              "pressureCurve": 1,
+              "color": "#cc3311"
+            },
+            "samples": [
+              {
+                "x": 20,
+                "y": 40,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 180,
+                "y": 60,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ],
+            "seed": 42
+          }
+        ],
+        "originalsIntact": true,
+        "grips": {
+          "nw": {
+            "x": 346.5879411936702,
+            "y": 244.99326277787637
+          },
+          "se": {
+            "x": 173.41205880632978,
+            "y": 175.00673722212363
+          },
+          "rotate": {
+            "x": 290.39955112660545,
+            "y": 166.58494165268343
+          }
+        },
+        "events": [
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "finished": [
+              "afb2c437-e525-4629-9746-22b3484aec32"
+            ]
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "finished": [
+              "194e3f05-09a7-4b3f-92ea-8d284f2e4bee"
+            ]
+          },
+          {
+            "draft": false,
+            "ids": []
+          }
+        ]
+      },
+      "pair": {
+        "revision": 5,
+        "selected": [
+          "512ba47b-ecf2-4b8b-99b8-85f022c395d5",
+          "13a8dc79-96aa-4a40-867e-dee21718d70e"
+        ],
+        "tool": "select",
+        "editable": true,
+        "status": null,
+        "view": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 600,
+          "scale": 1
+        },
+        "nodes": [
+          {
+            "id": "512ba47b-ecf2-4b8b-99b8-85f022c395d5",
+            "kind": "stroke",
+            "name": "stroke",
+            "layerId": "d3263496-320e-4b18-b6fa-5ecf444c2850",
+            "frameId": "99e8cb84-baac-4be5-b62a-aae4589383f6",
+            "groupId": null,
+            "visible": true,
+            "locked": false,
+            "rotation": 35,
+            "opacity": 1,
+            "flipX": true,
+            "flipY": false,
+            "paint": {
+              "fill": "transparent",
+              "stroke": "#202023",
+              "strokeWidth": 3,
+              "dash": [],
+              "cap": "round",
+              "radius": 16
+            },
+            "textStyle": {
+              "font": "IBM Plex Sans Arabic",
+              "size": 28,
+              "weight": 400,
+              "italic": false,
+              "align": "start",
+              "direction": "auto",
+              "leading": 1.7,
+              "background": "transparent",
+              "color": "#202023",
+              "border": "transparent"
+            },
+            "effects": [],
+            "x": 159.97258600741276,
+            "y": 160.0396484241272,
+            "w": 200.40879618831204,
+            "h": 100.20439809415602,
+            "brush": {
+              "kind": "hard",
+              "size": 18,
+              "opacity": 1,
+              "flow": 1,
+              "hardness": 1,
+              "spacing": 0.12,
+              "angle": 0,
+              "roundness": 1,
+              "smoothing": 0.15,
+              "stabilizer": 0,
+              "taperStart": 0,
+              "taperEnd": 0,
+              "pressureSize": false,
+              "pressureOpacity": false,
+              "pressureFlow": false,
+              "pressureCurve": 1,
+              "color": "#cc3311"
+            },
+            "samples": [
+              {
+                "x": 20,
+                "y": 40,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 180,
+                "y": 60,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ],
+            "seed": 42,
+            "geometrySize": {
+              "w": 200,
+              "h": 100
+            }
+          },
+          {
+            "id": "13a8dc79-96aa-4a40-867e-dee21718d70e",
+            "kind": "shape",
+            "name": "shape",
+            "layerId": "d3263496-320e-4b18-b6fa-5ecf444c2850",
+            "frameId": "99e8cb84-baac-4be5-b62a-aae4589383f6",
+            "groupId": null,
+            "visible": true,
+            "locked": false,
+            "rotation": -25,
+            "opacity": 1,
+            "flipX": false,
+            "flipY": false,
+            "paint": {
+              "fill": "#2277aa",
+              "stroke": "#202023",
+              "strokeWidth": 3,
+              "dash": [],
+              "cap": "round",
+              "radius": 16
+            },
+            "textStyle": {
+              "font": "IBM Plex Sans Arabic",
+              "size": 28,
+              "weight": 400,
+              "italic": false,
+              "align": "start",
+              "direction": "auto",
+              "leading": 1.7,
+              "background": "transparent",
+              "color": "#202023",
+              "border": "transparent"
+            },
+            "effects": [],
+            "x": 460.58578028988086,
+            "y": 220.16228728062077,
+            "w": 110.22483790357163,
+            "h": 80.16351847532482,
+            "geometrySize": {
+              "w": 110,
+              "h": 80
+            }
+          }
+        ],
+        "originalsIntact": true,
+        "grips": {
+          "nw": {
+            "x": 173.4120588063298,
+            "y": 140.60235136198605
+          },
+          "se": {
+            "x": 584.0893630880388,
+            "y": 321.36503770264596
+          },
+          "rotate": {
+            "x": 378.7507109471843,
+            "y": 108.60235136198604
+          }
+        },
+        "events": [
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "finished": [
+              "afb2c437-e525-4629-9746-22b3484aec32"
+            ]
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "finished": [
+              "194e3f05-09a7-4b3f-92ea-8d284f2e4bee"
+            ]
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "numericRequested": true
+          },
+          {
+            "finished": [
+              "c3a1d94a-d251-4ad5-a73e-bb7febe1af26"
+            ]
+          },
+          {
+            "draft": false,
+            "ids": []
+          }
+        ]
+      },
+      "waiting": {
+        "revision": 5,
+        "selected": [
+          "512ba47b-ecf2-4b8b-99b8-85f022c395d5",
+          "13a8dc79-96aa-4a40-867e-dee21718d70e"
+        ],
+        "tool": "select",
+        "editable": true,
+        "status": "waiting",
+        "view": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 600,
+          "scale": 1
+        },
+        "nodes": [
+          {
+            "id": "512ba47b-ecf2-4b8b-99b8-85f022c395d5",
+            "kind": "stroke",
+            "name": "stroke",
+            "layerId": "d3263496-320e-4b18-b6fa-5ecf444c2850",
+            "frameId": "99e8cb84-baac-4be5-b62a-aae4589383f6",
+            "groupId": null,
+            "visible": true,
+            "locked": false,
+            "rotation": 35,
+            "opacity": 1,
+            "flipX": true,
+            "flipY": false,
+            "paint": {
+              "fill": "transparent",
+              "stroke": "#202023",
+              "strokeWidth": 3,
+              "dash": [],
+              "cap": "round",
+              "radius": 16
+            },
+            "textStyle": {
+              "font": "IBM Plex Sans Arabic",
+              "size": 28,
+              "weight": 400,
+              "italic": false,
+              "align": "start",
+              "direction": "auto",
+              "leading": 1.7,
+              "background": "transparent",
+              "color": "#202023",
+              "border": "transparent"
+            },
+            "effects": [],
+            "x": 159.97258600741276,
+            "y": 160.0396484241272,
+            "w": 200.40879618831204,
+            "h": 100.20439809415602,
+            "brush": {
+              "kind": "hard",
+              "size": 18,
+              "opacity": 1,
+              "flow": 1,
+              "hardness": 1,
+              "spacing": 0.12,
+              "angle": 0,
+              "roundness": 1,
+              "smoothing": 0.15,
+              "stabilizer": 0,
+              "taperStart": 0,
+              "taperEnd": 0,
+              "pressureSize": false,
+              "pressureOpacity": false,
+              "pressureFlow": false,
+              "pressureCurve": 1,
+              "color": "#cc3311"
+            },
+            "samples": [
+              {
+                "x": 20,
+                "y": 40,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 180,
+                "y": 60,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ],
+            "seed": 42,
+            "geometrySize": {
+              "w": 200,
+              "h": 100
+            }
+          },
+          {
+            "id": "13a8dc79-96aa-4a40-867e-dee21718d70e",
+            "kind": "shape",
+            "name": "shape",
+            "layerId": "d3263496-320e-4b18-b6fa-5ecf444c2850",
+            "frameId": "99e8cb84-baac-4be5-b62a-aae4589383f6",
+            "groupId": null,
+            "visible": true,
+            "locked": false,
+            "rotation": -25,
+            "opacity": 1,
+            "flipX": false,
+            "flipY": false,
+            "paint": {
+              "fill": "#2277aa",
+              "stroke": "#202023",
+              "strokeWidth": 3,
+              "dash": [],
+              "cap": "round",
+              "radius": 16
+            },
+            "textStyle": {
+              "font": "IBM Plex Sans Arabic",
+              "size": 28,
+              "weight": 400,
+              "italic": false,
+              "align": "start",
+              "direction": "auto",
+              "leading": 1.7,
+              "background": "transparent",
+              "color": "#202023",
+              "border": "transparent"
+            },
+            "effects": [],
+            "x": 460.58578028988086,
+            "y": 220.16228728062077,
+            "w": 110.22483790357163,
+            "h": 80.16351847532482,
+            "geometrySize": {
+              "w": 110,
+              "h": 80
+            }
+          }
+        ],
+        "originalsIntact": true,
+        "grips": {
+          "nw": {
+            "x": 173.4120588063298,
+            "y": 140.60235136198605
+          },
+          "se": {
+            "x": 584.0893630880388,
+            "y": 321.36503770264596
+          },
+          "rotate": {
+            "x": 378.7507109471843,
+            "y": 108.60235136198604
+          }
+        },
+        "events": [
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "finished": [
+              "afb2c437-e525-4629-9746-22b3484aec32"
+            ]
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "finished": [
+              "194e3f05-09a7-4b3f-92ea-8d284f2e4bee"
+            ]
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "numericRequested": true
+          },
+          {
+            "finished": [
+              "c3a1d94a-d251-4ad5-a73e-bb7febe1af26"
+            ]
+          },
+          {
+            "draft": false,
+            "ids": []
+          }
+        ]
+      },
+      "cancel": {
+        "revision": 5,
+        "selected": [
+          "512ba47b-ecf2-4b8b-99b8-85f022c395d5",
+          "13a8dc79-96aa-4a40-867e-dee21718d70e"
+        ],
+        "tool": "select",
+        "editable": true,
+        "status": null,
+        "view": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 600,
+          "scale": 1
+        },
+        "nodes": [
+          {
+            "id": "512ba47b-ecf2-4b8b-99b8-85f022c395d5",
+            "kind": "stroke",
+            "name": "stroke",
+            "layerId": "d3263496-320e-4b18-b6fa-5ecf444c2850",
+            "frameId": "99e8cb84-baac-4be5-b62a-aae4589383f6",
+            "groupId": null,
+            "visible": true,
+            "locked": false,
+            "rotation": 35,
+            "opacity": 1,
+            "flipX": true,
+            "flipY": false,
+            "paint": {
+              "fill": "transparent",
+              "stroke": "#202023",
+              "strokeWidth": 3,
+              "dash": [],
+              "cap": "round",
+              "radius": 16
+            },
+            "textStyle": {
+              "font": "IBM Plex Sans Arabic",
+              "size": 28,
+              "weight": 400,
+              "italic": false,
+              "align": "start",
+              "direction": "auto",
+              "leading": 1.7,
+              "background": "transparent",
+              "color": "#202023",
+              "border": "transparent"
+            },
+            "effects": [],
+            "x": 159.97258600741276,
+            "y": 160.0396484241272,
+            "w": 200.40879618831204,
+            "h": 100.20439809415602,
+            "brush": {
+              "kind": "hard",
+              "size": 18,
+              "opacity": 1,
+              "flow": 1,
+              "hardness": 1,
+              "spacing": 0.12,
+              "angle": 0,
+              "roundness": 1,
+              "smoothing": 0.15,
+              "stabilizer": 0,
+              "taperStart": 0,
+              "taperEnd": 0,
+              "pressureSize": false,
+              "pressureOpacity": false,
+              "pressureFlow": false,
+              "pressureCurve": 1,
+              "color": "#cc3311"
+            },
+            "samples": [
+              {
+                "x": 20,
+                "y": 40,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 180,
+                "y": 60,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ],
+            "seed": 42,
+            "geometrySize": {
+              "w": 200,
+              "h": 100
+            }
+          },
+          {
+            "id": "13a8dc79-96aa-4a40-867e-dee21718d70e",
+            "kind": "shape",
+            "name": "shape",
+            "layerId": "d3263496-320e-4b18-b6fa-5ecf444c2850",
+            "frameId": "99e8cb84-baac-4be5-b62a-aae4589383f6",
+            "groupId": null,
+            "visible": true,
+            "locked": false,
+            "rotation": -25,
+            "opacity": 1,
+            "flipX": false,
+            "flipY": false,
+            "paint": {
+              "fill": "#2277aa",
+              "stroke": "#202023",
+              "strokeWidth": 3,
+              "dash": [],
+              "cap": "round",
+              "radius": 16
+            },
+            "textStyle": {
+              "font": "IBM Plex Sans Arabic",
+              "size": 28,
+              "weight": 400,
+              "italic": false,
+              "align": "start",
+              "direction": "auto",
+              "leading": 1.7,
+              "background": "transparent",
+              "color": "#202023",
+              "border": "transparent"
+            },
+            "effects": [],
+            "x": 460.58578028988086,
+            "y": 220.16228728062077,
+            "w": 110.22483790357163,
+            "h": 80.16351847532482,
+            "geometrySize": {
+              "w": 110,
+              "h": 80
+            }
+          }
+        ],
+        "originalsIntact": true,
+        "grips": {
+          "nw": {
+            "x": 173.4120588063298,
+            "y": 140.60235136198605
+          },
+          "se": {
+            "x": 584.0893630880388,
+            "y": 321.36503770264596
+          },
+          "rotate": {
+            "x": 378.7507109471843,
+            "y": 108.60235136198604
+          }
+        },
+        "events": [
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "finished": [
+              "afb2c437-e525-4629-9746-22b3484aec32"
+            ]
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "finished": [
+              "194e3f05-09a7-4b3f-92ea-8d284f2e4bee"
+            ]
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "numericRequested": true
+          },
+          {
+            "finished": [
+              "c3a1d94a-d251-4ad5-a73e-bb7febe1af26"
+            ]
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "cancelled": true
+          },
+          {
+            "cancelled": true
+          },
+          {
+            "draft": false,
+            "ids": []
+          }
+        ]
+      },
+      "readOnly": {
+        "revision": 5,
+        "selected": [
+          "512ba47b-ecf2-4b8b-99b8-85f022c395d5",
+          "13a8dc79-96aa-4a40-867e-dee21718d70e"
+        ],
+        "tool": "select",
+        "editable": false,
+        "status": null,
+        "view": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 600,
+          "scale": 1
+        },
+        "nodes": [
+          {
+            "id": "512ba47b-ecf2-4b8b-99b8-85f022c395d5",
+            "kind": "stroke",
+            "name": "stroke",
+            "layerId": "d3263496-320e-4b18-b6fa-5ecf444c2850",
+            "frameId": "99e8cb84-baac-4be5-b62a-aae4589383f6",
+            "groupId": null,
+            "visible": true,
+            "locked": false,
+            "rotation": 35,
+            "opacity": 1,
+            "flipX": true,
+            "flipY": false,
+            "paint": {
+              "fill": "transparent",
+              "stroke": "#202023",
+              "strokeWidth": 3,
+              "dash": [],
+              "cap": "round",
+              "radius": 16
+            },
+            "textStyle": {
+              "font": "IBM Plex Sans Arabic",
+              "size": 28,
+              "weight": 400,
+              "italic": false,
+              "align": "start",
+              "direction": "auto",
+              "leading": 1.7,
+              "background": "transparent",
+              "color": "#202023",
+              "border": "transparent"
+            },
+            "effects": [],
+            "x": 159.97258600741276,
+            "y": 160.0396484241272,
+            "w": 200.40879618831204,
+            "h": 100.20439809415602,
+            "brush": {
+              "kind": "hard",
+              "size": 18,
+              "opacity": 1,
+              "flow": 1,
+              "hardness": 1,
+              "spacing": 0.12,
+              "angle": 0,
+              "roundness": 1,
+              "smoothing": 0.15,
+              "stabilizer": 0,
+              "taperStart": 0,
+              "taperEnd": 0,
+              "pressureSize": false,
+              "pressureOpacity": false,
+              "pressureFlow": false,
+              "pressureCurve": 1,
+              "color": "#cc3311"
+            },
+            "samples": [
+              {
+                "x": 20,
+                "y": 40,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 180,
+                "y": 60,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ],
+            "seed": 42,
+            "geometrySize": {
+              "w": 200,
+              "h": 100
+            }
+          },
+          {
+            "id": "13a8dc79-96aa-4a40-867e-dee21718d70e",
+            "kind": "shape",
+            "name": "shape",
+            "layerId": "d3263496-320e-4b18-b6fa-5ecf444c2850",
+            "frameId": "99e8cb84-baac-4be5-b62a-aae4589383f6",
+            "groupId": null,
+            "visible": true,
+            "locked": false,
+            "rotation": -25,
+            "opacity": 1,
+            "flipX": false,
+            "flipY": false,
+            "paint": {
+              "fill": "#2277aa",
+              "stroke": "#202023",
+              "strokeWidth": 3,
+              "dash": [],
+              "cap": "round",
+              "radius": 16
+            },
+            "textStyle": {
+              "font": "IBM Plex Sans Arabic",
+              "size": 28,
+              "weight": 400,
+              "italic": false,
+              "align": "start",
+              "direction": "auto",
+              "leading": 1.7,
+              "background": "transparent",
+              "color": "#202023",
+              "border": "transparent"
+            },
+            "effects": [],
+            "x": 460.58578028988086,
+            "y": 220.16228728062077,
+            "w": 110.22483790357163,
+            "h": 80.16351847532482,
+            "geometrySize": {
+              "w": 110,
+              "h": 80
+            }
+          }
+        ],
+        "originalsIntact": true,
+        "grips": {
+          "nw": {
+            "x": 173.4120588063298,
+            "y": 140.60235136198605
+          },
+          "se": {
+            "x": 584.0893630880388,
+            "y": 321.36503770264596
+          },
+          "rotate": {
+            "x": 378.7507109471843,
+            "y": 108.60235136198604
+          }
+        },
+        "events": [
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "draft": true,
+            "ids": [
+              "512ba47b-ecf2-4b8b-99b8-85f022c395d5"
+            ]
+          },
+          {
+            "finished": [
+              "afb2c437-e525-4629-9746-22b3484aec32"
+            ]
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "finished": [
+              "194e3f05-09a7-4b3f-92ea-8d284f2e4bee"
+            ]
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "numericRequested": true
+          },
+          {
+            "finished": [
+              "c3a1d94a-d251-4ad5-a73e-bb7febe1af26"
+            ]
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "cancelled": true
+          },
+          {
+            "cancelled": true
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "cancelled": true
+          },
+          {
+            "cancelled": true
+          },
+          {
+            "draft": false,
+            "ids": []
+          }
+        ]
+      },
+      "screenshot": "Page.captureScreenshot timed out; no screenshot accepted",
+      "console": []
+    },
+    {
+      "capturedAt": "2026-11-06T03:06:23.313Z",
+      "base": {
+        "revision": 1,
+        "selected": [
+          "6d168f1e-0ea9-42d9-8f1b-d0c60e23992b"
+        ],
+        "tool": "select",
+        "editable": true,
+        "status": null,
+        "view": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 600,
+          "scale": 1
+        },
+        "nodes": [
+          {
+            "id": "6d168f1e-0ea9-42d9-8f1b-d0c60e23992b",
+            "kind": "stroke",
+            "name": "stroke",
+            "layerId": "b1cc1240-0bf3-42e6-9e9e-dd00be1415f5",
+            "frameId": "bcd1e4ae-41f1-4644-b3ab-5f0af2f556e4",
+            "groupId": null,
+            "visible": true,
+            "locked": false,
+            "rotation": 20,
+            "opacity": 1,
+            "flipX": true,
+            "flipY": false,
+            "paint": {
+              "fill": "transparent",
+              "stroke": "#202023",
+              "strokeWidth": 3,
+              "dash": [],
+              "cap": "round",
+              "radius": 16
+            },
+            "textStyle": {
+              "font": "IBM Plex Sans Arabic",
+              "size": 28,
+              "weight": 400,
+              "italic": false,
+              "align": "start",
+              "direction": "auto",
+              "leading": 1.7,
+              "background": "transparent",
+              "color": "#202023",
+              "border": "transparent"
+            },
+            "effects": [],
+            "x": 160,
+            "y": 160,
+            "w": 200,
+            "h": 100,
+            "brush": {
+              "kind": "hard",
+              "size": 18,
+              "opacity": 1,
+              "flow": 1,
+              "hardness": 1,
+              "spacing": 0.12,
+              "angle": 0,
+              "roundness": 1,
+              "smoothing": 0.15,
+              "stabilizer": 0,
+              "taperStart": 0,
+              "taperEnd": 0,
+              "pressureSize": false,
+              "pressureOpacity": false,
+              "pressureFlow": false,
+              "pressureCurve": 1,
+              "color": "#cc3311"
+            },
+            "samples": [
+              {
+                "x": 20,
+                "y": 40,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 180,
+                "y": 60,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ],
+            "seed": 42
+          }
+        ],
+        "originalsIntact": true,
+        "grips": {
+          "nw": {
+            "x": 352.6944515013567,
+            "y": 221.39028800613178
+          },
+          "se": {
+            "x": 167.30554849864328,
+            "y": 198.60971199386822
+          },
+          "rotate": {
+            "x": 278.1270675962604,
+            "y": 160.19629109834685
+          }
+        },
+        "events": [
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          }
+        ]
+      },
+      "color": {
+        "revision": 3,
+        "selected": [
+          "6d168f1e-0ea9-42d9-8f1b-d0c60e23992b"
+        ],
+        "tool": "select",
+        "editable": true,
+        "status": null,
+        "view": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 600,
+          "scale": 1
+        },
+        "nodes": [
+          {
+            "id": "6d168f1e-0ea9-42d9-8f1b-d0c60e23992b",
+            "kind": "stroke",
+            "name": "stroke",
+            "layerId": "b1cc1240-0bf3-42e6-9e9e-dd00be1415f5",
+            "frameId": "bcd1e4ae-41f1-4644-b3ab-5f0af2f556e4",
+            "groupId": null,
+            "visible": true,
+            "locked": false,
+            "rotation": 20,
+            "opacity": 1,
+            "flipX": true,
+            "flipY": false,
+            "paint": {
+              "fill": "transparent",
+              "stroke": "#202023",
+              "strokeWidth": 3,
+              "dash": [],
+              "cap": "round",
+              "radius": 16
+            },
+            "textStyle": {
+              "font": "IBM Plex Sans Arabic",
+              "size": 28,
+              "weight": 400,
+              "italic": false,
+              "align": "start",
+              "direction": "auto",
+              "leading": 1.7,
+              "background": "transparent",
+              "color": "#202023",
+              "border": "transparent"
+            },
+            "effects": [],
+            "x": 160.9578257375852,
+            "y": 160.16069690242165,
+            "w": 198.9673707463891,
+            "h": 100,
+            "brush": {
+              "kind": "hard",
+              "size": 18,
+              "opacity": 1,
+              "flow": 1,
+              "hardness": 1,
+              "spacing": 0.12,
+              "angle": 0,
+              "roundness": 1,
+              "smoothing": 0.15,
+              "stabilizer": 0,
+              "taperStart": 0,
+              "taperEnd": 0,
+              "pressureSize": false,
+              "pressureOpacity": false,
+              "pressureFlow": false,
+              "pressureCurve": 1,
+              "color": "#0088ff"
+            },
+            "samples": [
+              {
+                "x": 20,
+                "y": 40,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 180,
+                "y": 60,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ],
+            "seed": 42,
+            "geometrySize": {
+              "w": 200,
+              "h": 100
+            }
+          }
+        ],
+        "originalsIntact": true,
+        "grips": {
+          "nw": {
+            "x": 352.6944515013567,
+            "y": 221.39028800613178
+          },
+          "se": {
+            "x": 168.1885707202028,
+            "y": 198.9311057987115
+          },
+          "rotate": {
+            "x": 278.56857870704016,
+            "y": 160.3569880007685
+          }
+        },
+        "events": [
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "finished": [
+              "d9fec04e-8d0f-4ecd-a071-d2dec8c6ea63"
+            ]
+          },
+          {
+            "draft": false,
+            "ids": []
+          }
+        ]
+      },
+      "stale": {
+        "revision": 4,
+        "selected": [
+          "6d168f1e-0ea9-42d9-8f1b-d0c60e23992b"
+        ],
+        "tool": "select",
+        "editable": true,
+        "status": null,
+        "view": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 600,
+          "scale": 1
+        },
+        "nodes": [
+          {
+            "id": "6d168f1e-0ea9-42d9-8f1b-d0c60e23992b",
+            "kind": "stroke",
+            "name": "stroke",
+            "layerId": "b1cc1240-0bf3-42e6-9e9e-dd00be1415f5",
+            "frameId": "bcd1e4ae-41f1-4644-b3ab-5f0af2f556e4",
+            "groupId": null,
+            "visible": true,
+            "locked": false,
+            "rotation": 20,
+            "opacity": 1,
+            "flipX": true,
+            "flipY": false,
+            "paint": {
+              "fill": "transparent",
+              "stroke": "#202023",
+              "strokeWidth": 3,
+              "dash": [],
+              "cap": "round",
+              "radius": 16
+            },
+            "textStyle": {
+              "font": "IBM Plex Sans Arabic",
+              "size": 28,
+              "weight": 400,
+              "italic": false,
+              "align": "start",
+              "direction": "auto",
+              "leading": 1.7,
+              "background": "transparent",
+              "color": "#202023",
+              "border": "transparent"
+            },
+            "effects": [],
+            "x": 161.9578257375852,
+            "y": 160.16069690242165,
+            "w": 198.9673707463891,
+            "h": 100,
+            "brush": {
+              "kind": "hard",
+              "size": 18,
+              "opacity": 1,
+              "flow": 1,
+              "hardness": 1,
+              "spacing": 0.12,
+              "angle": 0,
+              "roundness": 1,
+              "smoothing": 0.15,
+              "stabilizer": 0,
+              "taperStart": 0,
+              "taperEnd": 0,
+              "pressureSize": false,
+              "pressureOpacity": false,
+              "pressureFlow": false,
+              "pressureCurve": 1,
+              "color": "#0088ff"
+            },
+            "samples": [
+              {
+                "x": 20,
+                "y": 40,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 180,
+                "y": 60,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ],
+            "seed": 42,
+            "geometrySize": {
+              "w": 200,
+              "h": 100
+            }
+          }
+        ],
+        "originalsIntact": true,
+        "grips": {
+          "nw": {
+            "x": 353.6944515013567,
+            "y": 221.39028800613178
+          },
+          "se": {
+            "x": 169.1885707202028,
+            "y": 198.9311057987115
+          },
+          "rotate": {
+            "x": 279.56857870704016,
+            "y": 160.3569880007685
+          }
+        },
+        "events": [
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "finished": [
+              "d9fec04e-8d0f-4ecd-a071-d2dec8c6ea63"
+            ]
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "cancelled": true
+          },
+          {
+            "error": "An element changed. Try the transform again."
+          },
+          {
+            "draft": false,
+            "ids": []
+          }
+        ]
+      },
+      "lost": {
+        "revision": 4,
+        "selected": [
+          "6d168f1e-0ea9-42d9-8f1b-d0c60e23992b"
+        ],
+        "tool": "select",
+        "editable": true,
+        "status": null,
+        "view": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 600,
+          "scale": 1
+        },
+        "nodes": [
+          {
+            "id": "6d168f1e-0ea9-42d9-8f1b-d0c60e23992b",
+            "kind": "stroke",
+            "name": "stroke",
+            "layerId": "b1cc1240-0bf3-42e6-9e9e-dd00be1415f5",
+            "frameId": "bcd1e4ae-41f1-4644-b3ab-5f0af2f556e4",
+            "groupId": null,
+            "visible": true,
+            "locked": false,
+            "rotation": 20,
+            "opacity": 1,
+            "flipX": true,
+            "flipY": false,
+            "paint": {
+              "fill": "transparent",
+              "stroke": "#202023",
+              "strokeWidth": 3,
+              "dash": [],
+              "cap": "round",
+              "radius": 16
+            },
+            "textStyle": {
+              "font": "IBM Plex Sans Arabic",
+              "size": 28,
+              "weight": 400,
+              "italic": false,
+              "align": "start",
+              "direction": "auto",
+              "leading": 1.7,
+              "background": "transparent",
+              "color": "#202023",
+              "border": "transparent"
+            },
+            "effects": [],
+            "x": 161.9578257375852,
+            "y": 160.16069690242165,
+            "w": 198.9673707463891,
+            "h": 100,
+            "brush": {
+              "kind": "hard",
+              "size": 18,
+              "opacity": 1,
+              "flow": 1,
+              "hardness": 1,
+              "spacing": 0.12,
+              "angle": 0,
+              "roundness": 1,
+              "smoothing": 0.15,
+              "stabilizer": 0,
+              "taperStart": 0,
+              "taperEnd": 0,
+              "pressureSize": false,
+              "pressureOpacity": false,
+              "pressureFlow": false,
+              "pressureCurve": 1,
+              "color": "#0088ff"
+            },
+            "samples": [
+              {
+                "x": 20,
+                "y": 40,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 180,
+                "y": 60,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ],
+            "seed": 42,
+            "geometrySize": {
+              "w": 200,
+              "h": 100
+            }
+          }
+        ],
+        "originalsIntact": true,
+        "grips": {
+          "nw": {
+            "x": 353.6944515013567,
+            "y": 221.39028800613178
+          },
+          "se": {
+            "x": 169.1885707202028,
+            "y": 198.9311057987115
+          },
+          "rotate": {
+            "x": 279.56857870704016,
+            "y": 160.3569880007685
+          }
+        },
+        "events": [
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "finished": [
+              "d9fec04e-8d0f-4ecd-a071-d2dec8c6ea63"
+            ]
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "cancelled": true
+          },
+          {
+            "error": "An element changed. Try the transform again."
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "cancelled": true
+          },
+          {
+            "draft": false,
+            "ids": []
+          }
+        ]
+      },
+      "tool": {
+        "revision": 4,
+        "selected": [
+          "6d168f1e-0ea9-42d9-8f1b-d0c60e23992b"
+        ],
+        "tool": "brush",
+        "editable": true,
+        "status": null,
+        "view": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 600,
+          "scale": 1
+        },
+        "nodes": [
+          {
+            "id": "6d168f1e-0ea9-42d9-8f1b-d0c60e23992b",
+            "kind": "stroke",
+            "name": "stroke",
+            "layerId": "b1cc1240-0bf3-42e6-9e9e-dd00be1415f5",
+            "frameId": "bcd1e4ae-41f1-4644-b3ab-5f0af2f556e4",
+            "groupId": null,
+            "visible": true,
+            "locked": false,
+            "rotation": 20,
+            "opacity": 1,
+            "flipX": true,
+            "flipY": false,
+            "paint": {
+              "fill": "transparent",
+              "stroke": "#202023",
+              "strokeWidth": 3,
+              "dash": [],
+              "cap": "round",
+              "radius": 16
+            },
+            "textStyle": {
+              "font": "IBM Plex Sans Arabic",
+              "size": 28,
+              "weight": 400,
+              "italic": false,
+              "align": "start",
+              "direction": "auto",
+              "leading": 1.7,
+              "background": "transparent",
+              "color": "#202023",
+              "border": "transparent"
+            },
+            "effects": [],
+            "x": 161.9578257375852,
+            "y": 160.16069690242165,
+            "w": 198.9673707463891,
+            "h": 100,
+            "brush": {
+              "kind": "hard",
+              "size": 18,
+              "opacity": 1,
+              "flow": 1,
+              "hardness": 1,
+              "spacing": 0.12,
+              "angle": 0,
+              "roundness": 1,
+              "smoothing": 0.15,
+              "stabilizer": 0,
+              "taperStart": 0,
+              "taperEnd": 0,
+              "pressureSize": false,
+              "pressureOpacity": false,
+              "pressureFlow": false,
+              "pressureCurve": 1,
+              "color": "#0088ff"
+            },
+            "samples": [
+              {
+                "x": 20,
+                "y": 40,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 180,
+                "y": 60,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ],
+            "seed": 42,
+            "geometrySize": {
+              "w": 200,
+              "h": 100
+            }
+          }
+        ],
+        "originalsIntact": true,
+        "grips": {
+          "nw": {
+            "x": 353.6944515013567,
+            "y": 221.39028800613178
+          },
+          "se": {
+            "x": 169.1885707202028,
+            "y": 198.9311057987115
+          },
+          "rotate": {
+            "x": 279.56857870704016,
+            "y": 160.3569880007685
+          }
+        },
+        "events": [
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "finished": [
+              "d9fec04e-8d0f-4ecd-a071-d2dec8c6ea63"
+            ]
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "cancelled": true
+          },
+          {
+            "error": "An element changed. Try the transform again."
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "cancelled": true
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "cancelled": true
+          },
+          {
+            "cancelled": true
+          },
+          {
+            "draft": false,
+            "ids": []
+          }
+        ]
+      },
+      "selection": {
+        "revision": 4,
+        "selected": [
+          "6d168f1e-0ea9-42d9-8f1b-d0c60e23992b",
+          "e1c7f4c5-3d43-4622-8b6b-e22ab0ee59ec"
+        ],
+        "tool": "select",
+        "editable": true,
+        "status": null,
+        "view": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 600,
+          "scale": 1
+        },
+        "nodes": [
+          {
+            "id": "6d168f1e-0ea9-42d9-8f1b-d0c60e23992b",
+            "kind": "stroke",
+            "name": "stroke",
+            "layerId": "b1cc1240-0bf3-42e6-9e9e-dd00be1415f5",
+            "frameId": "bcd1e4ae-41f1-4644-b3ab-5f0af2f556e4",
+            "groupId": null,
+            "visible": true,
+            "locked": false,
+            "rotation": 20,
+            "opacity": 1,
+            "flipX": true,
+            "flipY": false,
+            "paint": {
+              "fill": "transparent",
+              "stroke": "#202023",
+              "strokeWidth": 3,
+              "dash": [],
+              "cap": "round",
+              "radius": 16
+            },
+            "textStyle": {
+              "font": "IBM Plex Sans Arabic",
+              "size": 28,
+              "weight": 400,
+              "italic": false,
+              "align": "start",
+              "direction": "auto",
+              "leading": 1.7,
+              "background": "transparent",
+              "color": "#202023",
+              "border": "transparent"
+            },
+            "effects": [],
+            "x": 161.9578257375852,
+            "y": 160.16069690242165,
+            "w": 198.9673707463891,
+            "h": 100,
+            "brush": {
+              "kind": "hard",
+              "size": 18,
+              "opacity": 1,
+              "flow": 1,
+              "hardness": 1,
+              "spacing": 0.12,
+              "angle": 0,
+              "roundness": 1,
+              "smoothing": 0.15,
+              "stabilizer": 0,
+              "taperStart": 0,
+              "taperEnd": 0,
+              "pressureSize": false,
+              "pressureOpacity": false,
+              "pressureFlow": false,
+              "pressureCurve": 1,
+              "color": "#0088ff"
+            },
+            "samples": [
+              {
+                "x": 20,
+                "y": 40,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 180,
+                "y": 60,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ],
+            "seed": 42,
+            "geometrySize": {
+              "w": 200,
+              "h": 100
+            }
+          },
+          {
+            "id": "e1c7f4c5-3d43-4622-8b6b-e22ab0ee59ec",
+            "kind": "shape",
+            "name": "shape",
+            "layerId": "b1cc1240-0bf3-42e6-9e9e-dd00be1415f5",
+            "frameId": "bcd1e4ae-41f1-4644-b3ab-5f0af2f556e4",
+            "groupId": null,
+            "visible": true,
+            "locked": false,
+            "rotation": -25,
+            "opacity": 1,
+            "flipX": false,
+            "flipY": false,
+            "paint": {
+              "fill": "#2277aa",
+              "stroke": "#202023",
+              "strokeWidth": 3,
+              "dash": [],
+              "cap": "round",
+              "radius": 16
+            },
+            "textStyle": {
+              "font": "IBM Plex Sans Arabic",
+              "size": 28,
+              "weight": 400,
+              "italic": false,
+              "align": "start",
+              "direction": "auto",
+              "leading": 1.7,
+              "background": "transparent",
+              "color": "#202023",
+              "border": "transparent"
+            },
+            "effects": [],
+            "x": 460,
+            "y": 220,
+            "w": 110,
+            "h": 80
+          }
+        ],
+        "originalsIntact": true,
+        "grips": {
+          "nw": {
+            "x": 169.18857072020276,
+            "y": 159.46401572570335
+          },
+          "se": {
+            "x": 583.2516587566438,
+            "y": 320.99631587720444
+          },
+          "rotate": {
+            "x": 376.22011473842326,
+            "y": 127.46401572570336
+          }
+        },
+        "events": [
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "finished": [
+              "d9fec04e-8d0f-4ecd-a071-d2dec8c6ea63"
+            ]
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "cancelled": true
+          },
+          {
+            "error": "An element changed. Try the transform again."
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "cancelled": true
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "cancelled": true
+          },
+          {
+            "cancelled": true
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "cancelled": true
+          },
+          {
+            "cancelled": true
+          },
+          {
+            "draft": false,
+            "ids": []
+          }
+        ]
+      },
+      "console": [],
+      "scope": "Production Stage; isolated mock storage; explicitly injected delayed/lost lease states. No native or visual screenshot acceptance."
+    },
+    {
+      "capturedAt": "2026-11-06T03:10:58.728Z",
+      "waiting": {
+        "revision": 1,
+        "selected": [
+          "64e07e63-8e54-47a7-9f7d-313ea20755b2"
+        ],
+        "tool": "select",
+        "editable": true,
+        "status": "waiting",
+        "view": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 600,
+          "scale": 1
+        },
+        "nodes": [
+          {
+            "id": "64e07e63-8e54-47a7-9f7d-313ea20755b2",
+            "kind": "stroke",
+            "name": "stroke",
+            "layerId": "1ea32c5c-5d90-4ee5-b9e6-1e233c3ece33",
+            "frameId": "16191e31-c891-4a6e-afc7-d3f792577f01",
+            "groupId": null,
+            "visible": true,
+            "locked": false,
+            "rotation": 20,
+            "opacity": 1,
+            "flipX": true,
+            "flipY": false,
+            "paint": {
+              "fill": "transparent",
+              "stroke": "#202023",
+              "strokeWidth": 3,
+              "dash": [],
+              "cap": "round",
+              "radius": 16
+            },
+            "textStyle": {
+              "font": "IBM Plex Sans Arabic",
+              "size": 28,
+              "weight": 400,
+              "italic": false,
+              "align": "start",
+              "direction": "auto",
+              "leading": 1.7,
+              "background": "transparent",
+              "color": "#202023",
+              "border": "transparent"
+            },
+            "effects": [],
+            "x": 160,
+            "y": 160,
+            "w": 200,
+            "h": 100,
+            "brush": {
+              "kind": "hard",
+              "size": 18,
+              "opacity": 1,
+              "flow": 1,
+              "hardness": 1,
+              "spacing": 0.12,
+              "angle": 0,
+              "roundness": 1,
+              "smoothing": 0.15,
+              "stabilizer": 0,
+              "taperStart": 0,
+              "taperEnd": 0,
+              "pressureSize": false,
+              "pressureOpacity": false,
+              "pressureFlow": false,
+              "pressureCurve": 1,
+              "color": "#cc3311"
+            },
+            "samples": [
+              {
+                "x": 20,
+                "y": 40,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 180,
+                "y": 60,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ],
+            "seed": 42
+          }
+        ],
+        "originalsIntact": true,
+        "grips": {
+          "nw": {
+            "x": 352.6944515013567,
+            "y": 221.39028800613178
+          },
+          "se": {
+            "x": 167.30554849864328,
+            "y": 198.60971199386822
+          },
+          "rotate": {
+            "x": 278.1270675962604,
+            "y": 160.19629109834685
+          }
+        },
+        "events": [
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          }
+        ]
+      },
+      "cancelledQueue": {
+        "revision": 1,
+        "selected": [
+          "64e07e63-8e54-47a7-9f7d-313ea20755b2"
+        ],
+        "tool": "select",
+        "editable": true,
+        "status": null,
+        "view": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 600,
+          "scale": 1
+        },
+        "nodes": [
+          {
+            "id": "64e07e63-8e54-47a7-9f7d-313ea20755b2",
+            "kind": "stroke",
+            "name": "stroke",
+            "layerId": "1ea32c5c-5d90-4ee5-b9e6-1e233c3ece33",
+            "frameId": "16191e31-c891-4a6e-afc7-d3f792577f01",
+            "groupId": null,
+            "visible": true,
+            "locked": false,
+            "rotation": 20,
+            "opacity": 1,
+            "flipX": true,
+            "flipY": false,
+            "paint": {
+              "fill": "transparent",
+              "stroke": "#202023",
+              "strokeWidth": 3,
+              "dash": [],
+              "cap": "round",
+              "radius": 16
+            },
+            "textStyle": {
+              "font": "IBM Plex Sans Arabic",
+              "size": 28,
+              "weight": 400,
+              "italic": false,
+              "align": "start",
+              "direction": "auto",
+              "leading": 1.7,
+              "background": "transparent",
+              "color": "#202023",
+              "border": "transparent"
+            },
+            "effects": [],
+            "x": 160,
+            "y": 160,
+            "w": 200,
+            "h": 100,
+            "brush": {
+              "kind": "hard",
+              "size": 18,
+              "opacity": 1,
+              "flow": 1,
+              "hardness": 1,
+              "spacing": 0.12,
+              "angle": 0,
+              "roundness": 1,
+              "smoothing": 0.15,
+              "stabilizer": 0,
+              "taperStart": 0,
+              "taperEnd": 0,
+              "pressureSize": false,
+              "pressureOpacity": false,
+              "pressureFlow": false,
+              "pressureCurve": 1,
+              "color": "#cc3311"
+            },
+            "samples": [
+              {
+                "x": 20,
+                "y": 40,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 180,
+                "y": 60,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ],
+            "seed": 42
+          }
+        ],
+        "originalsIntact": true,
+        "grips": {
+          "nw": {
+            "x": 352.6944515013567,
+            "y": 221.39028800613178
+          },
+          "se": {
+            "x": 167.30554849864328,
+            "y": 198.60971199386822
+          },
+          "rotate": {
+            "x": 278.1270675962604,
+            "y": 160.19629109834685
+          }
+        },
+        "events": [
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "cancelled": true
+          },
+          {
+            "cancelled": true
+          },
+          {
+            "draft": false,
+            "ids": []
+          }
+        ]
+      },
+      "rejectedLease": {
+        "revision": 1,
+        "selected": [
+          "64e07e63-8e54-47a7-9f7d-313ea20755b2"
+        ],
+        "tool": "select",
+        "editable": true,
+        "status": null,
+        "view": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 600,
+          "scale": 1
+        },
+        "nodes": [
+          {
+            "id": "64e07e63-8e54-47a7-9f7d-313ea20755b2",
+            "kind": "stroke",
+            "name": "stroke",
+            "layerId": "1ea32c5c-5d90-4ee5-b9e6-1e233c3ece33",
+            "frameId": "16191e31-c891-4a6e-afc7-d3f792577f01",
+            "groupId": null,
+            "visible": true,
+            "locked": false,
+            "rotation": 20,
+            "opacity": 1,
+            "flipX": true,
+            "flipY": false,
+            "paint": {
+              "fill": "transparent",
+              "stroke": "#202023",
+              "strokeWidth": 3,
+              "dash": [],
+              "cap": "round",
+              "radius": 16
+            },
+            "textStyle": {
+              "font": "IBM Plex Sans Arabic",
+              "size": 28,
+              "weight": 400,
+              "italic": false,
+              "align": "start",
+              "direction": "auto",
+              "leading": 1.7,
+              "background": "transparent",
+              "color": "#202023",
+              "border": "transparent"
+            },
+            "effects": [],
+            "x": 160,
+            "y": 160,
+            "w": 200,
+            "h": 100,
+            "brush": {
+              "kind": "hard",
+              "size": 18,
+              "opacity": 1,
+              "flow": 1,
+              "hardness": 1,
+              "spacing": 0.12,
+              "angle": 0,
+              "roundness": 1,
+              "smoothing": 0.15,
+              "stabilizer": 0,
+              "taperStart": 0,
+              "taperEnd": 0,
+              "pressureSize": false,
+              "pressureOpacity": false,
+              "pressureFlow": false,
+              "pressureCurve": 1,
+              "color": "#cc3311"
+            },
+            "samples": [
+              {
+                "x": 20,
+                "y": 40,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 180,
+                "y": 60,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ],
+            "seed": 42
+          }
+        ],
+        "originalsIntact": true,
+        "grips": {
+          "nw": {
+            "x": 352.6944515013567,
+            "y": 221.39028800613178
+          },
+          "se": {
+            "x": 167.30554849864328,
+            "y": 198.60971199386822
+          },
+          "rotate": {
+            "x": 278.1270675962604,
+            "y": 160.19629109834685
+          }
+        },
+        "events": [
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "cancelled": true
+          },
+          {
+            "cancelled": true
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "error": "The element reservation was lost. The preview was cancelled; try again."
+          },
+          {
+            "draft": false,
+            "ids": []
+          },
+          {
+            "cancelled": true
+          },
+          {
+            "draft": false,
+            "ids": []
+          }
+        ]
+      },
+      "console": []
+    },
+    {
+      "capturedAt": "2026-11-06T03:13:22.319Z",
+      "scope": "Real Arabic DrawingView and Stage with explicit isolated mock persistence; native browser pointer and keyboard input. No native application or screenshot acceptance.",
+      "burst": {
+        "images": [],
+        "owners": [
+          {
+            "owner": "Editor",
+            "savedSize": 28,
+            "shownSize": 12,
+            "savedColor": "#f5d742",
+            "otherOwnerSize": 17
+          }
+        ],
+        "transforms": [
+          {
+            "revision": 6,
+            "w": 160,
+            "h": 40,
+            "rotation": 75,
+            "flipX": false,
+            "samples": [
+              {
+                "x": 20,
+                "y": 20,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 140,
+                "y": 20,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ]
+          }
+        ]
+      },
+      "drag": {
+        "images": [],
+        "owners": [
+          {
+            "owner": "Editor",
+            "savedSize": 28,
+            "shownSize": 12,
+            "savedColor": "#f5d742",
+            "otherOwnerSize": 17
+          },
+          {
+            "owner": "Editor",
+            "savedSize": 28,
+            "shownSize": 12,
+            "savedColor": "#f5d742",
+            "otherOwnerSize": 17
+          }
+        ],
+        "transforms": [
+          {
+            "revision": 6,
+            "w": 160,
+            "h": 40,
+            "rotation": 75,
+            "flipX": false,
+            "samples": [
+              {
+                "x": 20,
+                "y": 20,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 140,
+                "y": 20,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ]
+          },
+          {
+            "revision": 7,
+            "w": 210.32554725203545,
+            "h": 68.65496570777901,
+            "rotation": 75,
+            "flipX": false,
+            "geometrySize": {
+              "w": 160,
+              "h": 40
+            },
+            "samples": [
+              {
+                "x": 20,
+                "y": 20,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 140,
+                "y": 20,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ]
+          }
+        ]
+      },
+      "undo": {
+        "images": [],
+        "owners": [
+          {
+            "owner": "Editor",
+            "savedSize": 28,
+            "shownSize": 12,
+            "savedColor": "#f5d742",
+            "otherOwnerSize": 17
+          },
+          {
+            "owner": "Editor",
+            "savedSize": 28,
+            "shownSize": 12,
+            "savedColor": "#f5d742",
+            "otherOwnerSize": 17
+          },
+          {
+            "owner": "Editor",
+            "savedSize": 28,
+            "shownSize": 12,
+            "savedColor": "#f5d742",
+            "otherOwnerSize": 17
+          }
+        ],
+        "transforms": [
+          {
+            "revision": 6,
+            "w": 160,
+            "h": 40,
+            "rotation": 75,
+            "flipX": false,
+            "samples": [
+              {
+                "x": 20,
+                "y": 20,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 140,
+                "y": 20,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ]
+          },
+          {
+            "revision": 7,
+            "w": 210.32554725203545,
+            "h": 68.65496570777901,
+            "rotation": 75,
+            "flipX": false,
+            "geometrySize": {
+              "w": 160,
+              "h": 40
+            },
+            "samples": [
+              {
+                "x": 20,
+                "y": 20,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 140,
+                "y": 20,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ]
+          },
+          {
+            "revision": 8,
+            "w": 160,
+            "h": 40,
+            "rotation": 75,
+            "flipX": false,
+            "samples": [
+              {
+                "x": 20,
+                "y": 20,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 140,
+                "y": 20,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ]
+          }
+        ]
+      },
+      "cancelSheet": {
+        "images": [],
+        "owners": [
+          {
+            "owner": "Editor",
+            "savedSize": 28,
+            "shownSize": 12,
+            "savedColor": "#f5d742",
+            "otherOwnerSize": 17
+          },
+          {
+            "owner": "Editor",
+            "savedSize": 28,
+            "shownSize": 12,
+            "savedColor": "#f5d742",
+            "otherOwnerSize": 17
+          },
+          {
+            "owner": "Editor",
+            "savedSize": 28,
+            "shownSize": 12,
+            "savedColor": "#f5d742",
+            "otherOwnerSize": 17
+          },
+          {
+            "owner": "Editor",
+            "savedSize": 28,
+            "shownSize": 12,
+            "savedColor": "#f5d742",
+            "otherOwnerSize": 17
+          }
+        ],
+        "transforms": [
+          {
+            "revision": 6,
+            "w": 160,
+            "h": 40,
+            "rotation": 75,
+            "flipX": false,
+            "samples": [
+              {
+                "x": 20,
+                "y": 20,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 140,
+                "y": 20,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ]
+          },
+          {
+            "revision": 7,
+            "w": 210.32554725203545,
+            "h": 68.65496570777901,
+            "rotation": 75,
+            "flipX": false,
+            "geometrySize": {
+              "w": 160,
+              "h": 40
+            },
+            "samples": [
+              {
+                "x": 20,
+                "y": 20,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 140,
+                "y": 20,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ]
+          },
+          {
+            "revision": 8,
+            "w": 160,
+            "h": 40,
+            "rotation": 75,
+            "flipX": false,
+            "samples": [
+              {
+                "x": 20,
+                "y": 20,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 140,
+                "y": 20,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ]
+          },
+          {
+            "revision": 8,
+            "w": 160,
+            "h": 40,
+            "rotation": 75,
+            "flipX": false,
+            "samples": [
+              {
+                "x": 20,
+                "y": 20,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 140,
+                "y": 20,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ]
+          }
+        ]
+      },
+      "dom": {
+        "busy": "false",
+        "dir": "rtl",
+        "grips": [
+          {
+            "grip": "nw",
+            "height": 32,
+            "label": "تحجيم التحديد: أعلى اليسار",
+            "width": 32
+          },
+          {
+            "grip": "n",
+            "height": 32,
+            "label": "تحجيم التحديد: الأعلى",
+            "width": 32
+          },
+          {
+            "grip": "ne",
+            "height": 32,
+            "label": "تحجيم التحديد: أعلى اليمين",
+            "width": 32
+          },
+          {
+            "grip": "e",
+            "height": 32,
+            "label": "تحجيم التحديد: اليمين",
+            "width": 32
+          },
+          {
+            "grip": "se",
+            "height": 32,
+            "label": "تحجيم التحديد: أسفل اليمين",
+            "width": 32
+          },
+          {
+            "grip": "s",
+            "height": 32,
+            "label": "تحجيم التحديد: الأسفل",
+            "width": 32
+          },
+          {
+            "grip": "sw",
+            "height": 32,
+            "label": "تحجيم التحديد: أسفل اليسار",
+            "width": 32
+          },
+          {
+            "grip": "w",
+            "height": 32,
+            "label": "تحجيم التحديد: اليسار",
+            "width": 32
+          },
+          {
+            "grip": "rotate",
+            "height": 32,
+            "label": "تدوير التحديد",
+            "width": 32
+          }
+        ]
+      },
+      "console": []
+    },
+    {
+      "capturedAt": "2026-11-06T03:16:34.891Z",
+      "large": {
+        "images": [],
+        "owners": [
+          {
+            "owner": "Editor",
+            "savedSize": 28,
+            "shownSize": 12,
+            "savedColor": "#f5d742",
+            "otherOwnerSize": 17
+          }
+        ],
+        "transforms": [
+          {
+            "revision": 2,
+            "w": 1600000,
+            "h": 400000,
+            "rotation": 0,
+            "flipX": false,
+            "geometrySize": {
+              "w": 160,
+              "h": 40
+            },
+            "samples": [
+              {
+                "x": 20,
+                "y": 20,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 140,
+                "y": 20,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ]
+          }
+        ]
+      },
+      "restored": {
+        "images": [],
+        "owners": [
+          {
+            "owner": "Editor",
+            "savedSize": 28,
+            "shownSize": 12,
+            "savedColor": "#f5d742",
+            "otherOwnerSize": 17
+          },
+          {
+            "owner": "Editor",
+            "savedSize": 28,
+            "shownSize": 12,
+            "savedColor": "#f5d742",
+            "otherOwnerSize": 17
+          }
+        ],
+        "transforms": [
+          {
+            "revision": 2,
+            "w": 1600000,
+            "h": 400000,
+            "rotation": 0,
+            "flipX": false,
+            "geometrySize": {
+              "w": 160,
+              "h": 40
+            },
+            "samples": [
+              {
+                "x": 20,
+                "y": 20,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 140,
+                "y": 20,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ]
+          },
+          {
+            "revision": 3,
+            "w": 160,
+            "h": 40,
+            "rotation": 0,
+            "flipX": false,
+            "samples": [
+              {
+                "x": 20,
+                "y": 20,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 140,
+                "y": 20,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ]
+          }
+        ]
+      },
+      "rapid": {
+        "images": [],
+        "owners": [
+          {
+            "owner": "Editor",
+            "savedSize": 28,
+            "shownSize": 12,
+            "savedColor": "#f5d742",
+            "otherOwnerSize": 17
+          },
+          {
+            "owner": "Editor",
+            "savedSize": 28,
+            "shownSize": 12,
+            "savedColor": "#f5d742",
+            "otherOwnerSize": 17
+          },
+          {
+            "owner": "Editor",
+            "savedSize": 28,
+            "shownSize": 12,
+            "savedColor": "#f5d742",
+            "otherOwnerSize": 17
+          }
+        ],
+        "transforms": [
+          {
+            "revision": 2,
+            "w": 1600000,
+            "h": 400000,
+            "rotation": 0,
+            "flipX": false,
+            "geometrySize": {
+              "w": 160,
+              "h": 40
+            },
+            "samples": [
+              {
+                "x": 20,
+                "y": 20,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 140,
+                "y": 20,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ]
+          },
+          {
+            "revision": 3,
+            "w": 160,
+            "h": 40,
+            "rotation": 0,
+            "flipX": false,
+            "samples": [
+              {
+                "x": 20,
+                "y": 20,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 140,
+                "y": 20,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ]
+          },
+          {
+            "revision": 6,
+            "w": 160,
+            "h": 40,
+            "rotation": 45,
+            "flipX": false,
+            "samples": [
+              {
+                "x": 20,
+                "y": 20,
+                "pressure": 0.25,
+                "tiltX": 3,
+                "tiltY": -5,
+                "time": 0
+              },
+              {
+                "x": 140,
+                "y": 20,
+                "pressure": 1,
+                "tiltX": 10,
+                "tiltY": 15,
+                "time": 20
+              }
+            ]
+          }
+        ]
+      },
+      "busy": "false",
+      "console": [],
+      "scope": "Final source. Actual Arabic DrawingView with explicit mock storage. Scale 10000x, Undo, and three queued 15-degree rotations. Screenshot/native/pen acceptance not claimed."
+    }
+  ]
+}

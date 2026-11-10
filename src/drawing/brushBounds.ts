@@ -24,6 +24,7 @@ export function strokeBounds(points: Point[], brush: Brush): Rect {
 export function sourceInkRect(node: DrawingNode): Rect {
   if (node.kind === "stroke" && node.brush && node.samples?.length) return strokeBounds(node.samples, node.brush);
   if(node.path)return pathBounds(node.path);
+  if(node.points?.length){let x=Infinity,y=Infinity,right=-Infinity,bottom=-Infinity;for(const p of node.points){x=Math.min(x,p.x);y=Math.min(y,p.y);right=Math.max(right,p.x);bottom=Math.max(bottom,p.y);}return{x,y,w:Math.max(1,right-x),h:Math.max(1,bottom-y)};}
   return { x: 0, y: 0, w: node.geometrySize?.w ?? node.w, h: node.geometrySize?.h ?? node.h };
 }
 export function localInkRect(node: DrawingNode): Rect {

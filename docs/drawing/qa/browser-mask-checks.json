@@ -1,0 +1,182 @@
+{
+  "passed": true,
+  "cases": [
+    {
+      "name": "actual mask worker computes independent grayscale gradient",
+      "passed": true,
+      "alpha": [
+        32,
+        96,
+        159,
+        223
+      ]
+    },
+    {
+      "name": "actual worker PNG has exact independent alpha",
+      "passed": true,
+      "alpha": [
+        32,
+        96,
+        159,
+        223
+      ]
+    },
+    {
+      "name": "actual worker cancellation rejects without a result",
+      "passed": true
+    },
+    {
+      "name": "linked effect mask keeps red pigment and inverts only blue pixels",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 0
+    },
+    {
+      "name": "disabled effect mask applies the whole adjustment",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 0
+    },
+    {
+      "name": "inverted effect mask swaps the affected half",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 0
+    },
+    {
+      "name": "grayscale effect coverage blends in premultiplied RGBA",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 0
+    },
+    {
+      "name": "unlinked effect mask uses world coordinates",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 0
+    },
+    {
+      "name": "moving image invalidates world-mask effect cache",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 0
+    },
+    {
+      "name": "trim crop preserves linked node/effect mask placement and original pixels",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 0,
+      "sourceUnchanged": true
+    },
+    {
+      "name": "reversible rasterization preserves linked masks, effects and original ownership",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 0,
+      "sourceUnchanged": true,
+      "originalStillOwned": true
+    },
+    {
+      "name": "reversible rasterization bakes unlinked world masks at their current pose",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 0,
+      "sourceUnchanged": true,
+      "originalStillOwned": true
+    },
+    {
+      "name": "rasterization cancellation returns no PNG",
+      "passed": true
+    },
+    {
+      "name": "actual brightness worker matches independent constant-color output",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 0
+    },
+    {
+      "name": "actual contrast worker matches independent constant-color output",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 0
+    },
+    {
+      "name": "actual saturation worker matches independent constant-color output",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 0
+    },
+    {
+      "name": "actual temperature worker matches independent constant-color output",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 0
+    },
+    {
+      "name": "actual grayscale worker matches independent constant-color output",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 0
+    },
+    {
+      "name": "actual invert worker matches independent constant-color output",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 0
+    },
+    {
+      "name": "actual blur worker matches independent constant-color output",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 1
+    },
+    {
+      "name": "actual sharpen worker matches independent constant-color output",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 0
+    },
+    {
+      "name": "actual pixelate worker matches independent constant-color output",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 0
+    },
+    {
+      "name": "pixelate2x2 mixes red, hidden blue, half-alpha green and yellow in premultiplied space",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 0
+    },
+    {
+      "name": "sharpen cross-neighbor impulse matches independently calculated clamp values",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 0
+    },
+    {
+      "name": "effect order brightness then invert",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 0
+    },
+    {
+      "name": "effect order invert then brightness",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 0
+    },
+    {
+      "name": "reset adjustments restores exact original pigment",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 0
+    },
+    {
+      "name": "all rendering leaves encoded original unchanged",
+      "passed": true
+    }
+  ],
+  "scope": "Production mask/PNG/effect workers and renderer. Independent source-pixel goldens and crop spatial oracle. Synthetic owned-preview images; native/UI acceptance separate.",
+  "tolerance": "Premultiplied RGBA8 maximum2, exact mask PNG alpha."
+}

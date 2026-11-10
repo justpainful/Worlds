@@ -2,6 +2,13 @@ import { bounds, clamp, distance } from "./geometry";
 import type { Point, Rect, Shape } from "./model";
 
 export interface RecognizedShape { shape: Shape; rect: Rect; points?: Point[]; confidence: number }
+// Long pen gestures may contain thousands of coalesced samples. Keep recognition
+// responsive while preserving the first and last positions of the original stroke.
+function recognitionSamples(points: Point[]): Point[] {
+  const limit = 1200;
+  if (points.length <= limit) return points;
+  return Array.from({ length: limit }, (_, index) => points[Math.round(index * (points.length - 1) / (limit - 1))]);
+}
 function lineDistance(p: Point, a: Point, b: Point): number {
   const dx = b.x - a.x, dy = b.y - a.y;
   const t = clamp(((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1), 0, 1);
@@ -19,6 +26,7 @@ function simplify(points: Point[], tolerance: number): Point[] {
 /** Deliberately confidence-gated: free illustration should stay free illustration. */
 export function recognizeShape(points: Point[]): RecognizedShape | null {
   if (points.length < 6) return null;
+  points = recognitionSamples(points);
   const rect = bounds(points), diagonal = Math.hypot(rect.w, rect.h);
   if (diagonal < 24) return null;
   const first = points[0], last = points[points.length - 1];
@@ -26,7 +34,7 @@ export function recognizeShape(points: Point[]): RecognizedShape | null {
   if (distance(first, last) > diagonal * 0.24) {
     const error = points.reduce((n, p) => n + lineDistance(p, first, last), 0) / points.length;
     const straightness = distance(first, last) / Math.max(1, total);
-    if (error < diagonal * 0.035 && straightness > 0.94) return { shape: "line", rect, points: [first, last], confidence: straightness };
+    if (error < diagonal * 0.045 && straightness > 0.92) return { shape: "line", rect, points: [first, last], confidence: straightness };
     return null;
   }
   // Split the closed contour at its farthest pair so a start on an edge is harmless.
@@ -51,7 +59,8 @@ export function recognizeShape(points: Point[]): RecognizedShape | null {
         // Orthogonal projection preserves the orientation the person actually drew.
         const len = Math.hypot(ax, ay), ux = ax / len, uy = ay / len;
         const signed = bx * -uy + by * ux;
-        return { shape: "right-triangle", rect, points: [p, a, { x: p.x - uy * signed, y: p.y + ux * signed }], confidence: 1 - cosine * 0.3 };
+        const vertices=[p,a,{ x: p.x - uy * signed, y: p.y + ux * signed }];
+        return { shape: "right-triangle", rect:bounds(vertices), points:vertices, confidence: 1 - cosine * 0.3 };
       }
     }
     return { shape: "triangle", rect, points: corners, confidence: 0.91 };
@@ -59,6 +68,20 @@ export function recognizeShape(points: Point[]): RecognizedShape | null {
   if (corners.length === 4) {
     const closeToBoundary = corners.every((p) => Math.min(Math.abs(p.x - rect.x), Math.abs(p.x - rect.x - rect.w)) < diagonal * 0.09 && Math.min(Math.abs(p.y - rect.y), Math.abs(p.y - rect.y - rect.h)) < diagonal * 0.09);
     if (closeToBoundary) return { shape: "rect", rect, confidence: 0.93 };
+    // A rotated rectangle has no corners on the bounding box corners. Average
+    // the two opposing edges, then project the other pair onto its normal.
+    const [a, b, c, d] = corners;
+    const ux = (b.x - a.x + c.x - d.x) / 2, uy = (b.y - a.y + c.y - d.y) / 2;
+    const vx = (d.x - a.x + c.x - b.x) / 2, vy = (d.y - a.y + c.y - b.y) / 2;
+    const width = Math.hypot(ux, uy), height = Math.hypot(vx, vy);
+    const cosine = Math.abs((ux * vx + uy * vy) / (width * height || 1));
+    const closureError = Math.hypot(a.x + c.x - b.x - d.x, a.y + c.y - b.y - d.y) / diagonal;
+    if (width > diagonal * 0.12 && height > diagonal * 0.12 && cosine < 0.22 && closureError < 0.14) {
+      const ex = ux / width, ey = uy / width, signedHeight = vx * -ey + vy * ex;
+      const center = { x: (a.x + b.x + c.x + d.x) / 4, y: (a.y + b.y + c.y + d.y) / 4 };
+      const corners = [[-1,-1],[1,-1],[1,1],[-1,1]].map(([x,y]) => ({ x: center.x + x * ux / 2 - y * ey * signedHeight / 2, y: center.y + x * uy / 2 + y * ex * signedHeight / 2 }));
+      return { shape: "rect", rect: bounds(corners), points: corners, confidence: 1 - Math.max(cosine, closureError) };
+    }
   }
   const rx = rect.w / 2, ry = rect.h / 2;
   if (rx < 10 || ry < 10) return null;

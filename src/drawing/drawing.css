@@ -232,3 +232,29 @@
 .drawing-guide-row input,.drawing-guide-row select { min-width:0; width:100%; box-sizing:border-box; }
 
 .drawing-reference-layout.is-arabic { direction:rtl; font-family:"IBM Plex Sans Arabic",sans-serif; font-size:15.5px; line-height:1.7; letter-spacing:0; }
+
+/* Keep translated controls and user-supplied names readable at narrow widths. */
+.drawing-view :is(input,select,textarea), .drawing-step :is(input,select,textarea), .drawing-floating-dialog :is(input,select,textarea) { box-sizing: border-box; max-inline-size: 100%; }
+.drawing-view :is(.drawing-field,.drawing-options,.drawing-footer,.drawing-step,.drawing-library-row,.drawing-error,.drawing-pixel-progress) { min-inline-size: 0; }
+.drawing-view :is(.drawing-field > span,.drawing-layer > button,.drawing-frame-row,.drawing-library-row,.drawing-error,.drawing-pixel-progress,.drawing-step p,.drawing-step label) { overflow-wrap: anywhere; }
+.drawing-options .drawing-field { max-inline-size: 100%; }
+.drawing-options .drawing-field > span { min-inline-size: 0; }
+.drawing-tools button small { max-inline-size: 100%; overflow-wrap: anywhere; text-align: center; }
+.drawing-footer { flex-wrap: wrap; gap: 4px 14px; }
+.drawing-footer span { overflow-wrap: anywhere; }
+.drawing-library-filters { grid-template-columns: repeat(2, minmax(0,1fr)); }
+.drawing-step-actions > button { max-inline-size: 100%; white-space: normal; overflow-wrap: anywhere; }
+.drawing-presentation header h2 { min-inline-size: 0; max-block-size: 5em; overflow: auto; overflow-wrap: anywhere; }
+.drawing-presentation > p { max-block-size: 22vh; overflow: auto; overflow-wrap: anywhere; white-space: pre-wrap; }
+.drawing-presentation footer { flex-wrap: wrap; gap: 8px; }
+.drawing-presentation footer select { min-inline-size: 0; max-inline-size: 100%; }
+.drawing-minimap:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 600px) {
+  .drawing-library-filters { grid-template-columns: minmax(0,1fr); }
+  .drawing-presentation { padding: 8px; }
+  .drawing-presentation header, .drawing-presentation footer { gap: 6px; padding: 4px; }
+}
+.drawing-transform-dialog.is-arabic { direction: rtl; font-family: "IBM Plex Sans Arabic", sans-serif; font-size: 15.5px; line-height: 1.7; letter-spacing: 0; }
+.drawing-transform-dialog :is(p,label) { overflow-wrap: anywhere; }
+.drawing-transform-dialog .drawing-transform-fields { min-inline-size: 0; }
+.drawing-transform-dialog .drawing-field input { box-sizing: border-box; max-inline-size: 100%; }

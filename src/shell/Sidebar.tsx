@@ -12,6 +12,10 @@ import { pageMenu, renameRequests } from "./pageActions";
 import { api, errorMessage } from "../lib/api";
 import { isResource } from "../resources/kinds";
 import { newResourceMenu } from "../resources/create";
+import { usePack } from "../packs/packs";
+import { liveOfKind, subjects, tasksFor, today, dataOf } from "../planning/model";
+import { colorVar } from "../planning/ui";
+import { createSubject } from "../study/StudyViews";
 
 const ROW_H = 30;
 
@@ -54,6 +58,10 @@ export function Sidebar() {
   const toggleSidebar = useStore((s) => s.toggleSidebar);
   const setPalette = useStore((s) => s.setPalette);
   const active = useActiveRoute();
+  const study = usePack("study");
+  const dueCount = useMemo(() => tasksFor(pages, "today", today()).length, [pages]);
+  const inboxCount = useMemo(() => liveOfKind(pages, "inbox").length, [pages]);
+  const studySubjects = useMemo(() => (study ? subjects(pages) : []), [pages, study]);
 
   const rows = useMemo(() => flatten(pages, sidebar.expanded), [pages, sidebar.expanded]);
   const pinned = useMemo(
@@ -64,7 +72,7 @@ export function Sidebar() {
     [pages],
   );
 
-  const isActive = (r: Route) => !!active && (JSON.stringify(active) === JSON.stringify(r) || (r.kind === "chat" && active.kind === "chat"));
+  const isActive = (r: Route) => !!active && (JSON.stringify(active) === JSON.stringify(r) || (r.kind === "chat" && active.kind === "chat") || (r.kind === "tasks" && active.kind === "tasks"));
   const nav = (icon: IconName, label: string, route: Route, badge?: number, product?: ProductIconName) => (
     <button
       className={`side-item ${isActive(route) ? "is-active" : ""}`}
@@ -105,6 +113,10 @@ export function Sidebar() {
         <WorkspaceSwitcher />
         <nav className="side-nav">
           {nav("home", "Home", { kind: "home" }, undefined, "home")}
+          {nav("checklist", "Tasks", { kind: "tasks" }, dueCount || undefined, "checklist")}
+          {nav("calendar", "Calendar", { kind: "calendar" }, undefined, "calendar")}
+          {nav("inbox", "Inbox", { kind: "inbox" }, inboxCount || undefined, "inbox")}
+          {study && nav("folder", "Study", { kind: "study" }, undefined, "graduation")}
           {nav("assistant", "Claude", { kind: "chat" }, undefined, "claude")}
           {pendingCount > 0 && nav("inbox", "Needs approval", { kind: "activity" }, pendingCount)}
         </nav>
@@ -132,6 +144,15 @@ export function Sidebar() {
             )}
           </Section>
 
+          {study && (
+            <Section title="Subjects" action={<IconButton icon="add" label="New subject" className="side-section-action" onClick={() => createSubject()} />}>
+              {studySubjects.length === 0 ? (
+                <button className="side-empty" onClick={() => createSubject()}><Icon name="add" size={14} /><span>Add a subject</span></button>
+              ) : (
+                studySubjects.map((s) => <SubjectRow key={s.id} subject={s} active={isActive({ kind: "page", pageId: s.id })} />)
+              )}
+            </Section>
+          )}
           <Section title="Library">
             {nav("template", "Templates", { kind: "templates" }, undefined, "templates")}
             {nav("automation", "Automations", { kind: "automations" }, undefined, "automations")}
@@ -184,6 +205,17 @@ function PinnedRow({ page, active }: { page: PageMeta; active: boolean }) {
   );
 }
 
+function SubjectRow({ subject, active }: { subject: PageMeta; active: boolean }) {
+  const openPage = useStore((s) => s.openPage);
+  const show = useMenu((s) => s.show);
+  const color = colorVar(dataOf(subject, "subject").color);
+  return (
+    <button className={`side-item side-page ${active ? "is-active" : ""}`} onClick={(e) => openPage(subject.id, e.ctrlKey ? "tab" : e.altKey ? "right" : "current")} onContextMenu={(e) => { e.preventDefault(); show(e.clientX, e.clientY, pageMenu(subject)); }}>
+      <span className="side-dot" style={{ background: color ?? "var(--accent)" }} />
+      <span className="side-label bidi">{pageTitle(subject)}</span>
+    </button>
+  );
+}
 type DropZone = { id: string; zone: "before" | "after" | "inside" } | null;
 
 function Tree({ rows, activeRoute }: { rows: Row[]; activeRoute: Route | null }) {

@@ -16,11 +16,13 @@ import { ACCENTS } from "../shell/appearance";
 import { BridgeCard } from "./IntegrationsView";
 import { Select, DIRECTION_OPTIONS, LANGUAGE_OPTIONS } from "../ui/Select";
 import { AccountSettings } from "../account/AccountSettings";
+import { PACKS, setPackEnabled, usePack } from "../packs/packs";
 
 const SECTIONS: { id: string; label: string; tile: string; group: number; keywords: string }[] = [
   { id: "account", label: "Account", tile: "team", group: 0, keywords: "sign in passkey email devices workspaces team members sign out server" },
   { id: "appearance", label: "Appearance", tile: "design", group: 0, keywords: "theme accent language glass transparency window motion density background liquid" },
   { id: "editor", label: "Editor", tile: "writing", group: 0, keywords: "direction rtl arabic spell check paragraph" },
+  { id: "packs", label: "Packs", tile: "graduation", group: 0, keywords: "study school university subjects timetable assignments exams" },
   { id: "ai", label: "Claude", tile: "claude", group: 1, keywords: "ai model effort spark orbit nova instructions mcp" },
   { id: "automations", label: "Automations", tile: "automations", group: 1, keywords: "background tray startup windows schedule" },
   { id: "integrations", label: "Integrations", tile: "integrations", group: 2, keywords: "connect" },
@@ -71,6 +73,7 @@ export function SettingsView({ section = "appearance" }: { section?: string }) {
         {active === "account" && <AccountSettings />}
         {active === "appearance" && <Appearance />}
         {active === "editor" && <EditorSettings />}
+        {active === "packs" && <PackSettings />}
         {active === "ai" && <AiSettings />}
         {active === "automations" && <AutomationSettings />}
         {active === "discord" && <BridgeCard detailed />}
@@ -112,6 +115,33 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
   );
 }
 
+function PackSettings() {
+  return (
+    <>
+      {PACKS.map((p) => (
+        <PackCard key={p.id} pack={p} />
+      ))}
+    </>
+  );
+}
+
+function PackCard({ pack }: { pack: (typeof PACKS)[number] }) {
+  const on = usePack(pack.id);
+  return (
+    <Group title={pack.label} note="Turning a pack off hides its views and items without deleting anything; turning it back on brings them all back.">
+      <Row label={`${pack.label} pack`} hint={pack.blurb}>
+        <Toggle checked={on} onChange={(v) => setPackEnabled(pack.id, v)} label={pack.label} />
+      </Row>
+      <div className="set-row">
+        <ul className="pack-adds">
+          {pack.adds.map((a) => (
+            <li key={a}>{a}</li>
+          ))}
+        </ul>
+      </div>
+    </Group>
+  );
+}
 function Appearance() {
   const settings = useStore((s) => s.settings);
   const set = useStore((s) => s.setSetting);

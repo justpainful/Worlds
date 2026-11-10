@@ -1,5 +1,13 @@
 # Worlds Drawing: locked design decisions
 
+## Screen annotation decision
+
+Screen annotation holds a user-requested still capture beneath the actual drawing stage. The capture fills the display; a compact dark neutral toolbar uses the existing panel, text, accent and type roles above. Controls expose actual drawing actions, color, size and laser duration, plus saving to the current drawing and exiting. The image is local memory until the user chooses to save it. The still image does not control playback in the captured application.
+
+## Frozen screen drawing, 2026-11-06
+
+The screen mode captures the active monitor locally and presents that still image as the drawing surface, with a compact top tool strip based on the owner's reference. The strip uses the existing drawing tools and their actual colors, widths, laser and text controls. It keeps the lesson visible under the artwork, uses the existing neutral panel #1C1C1E and foreground #F5F5F7 with the current accent, and uses Instrument Sans, IBM Plex Sans Arabic and IBM Plex Mono as defined below. It does not tint the captured image. Saving or copying is explicit, and leaving restores the previous Worlds window. A still capture does not pause the underlying video; the interface must say this rather than implying that the source application is paused. Screen pixels stay local and are not transmitted or persisted without an explicit save.
+
 ## Annotation inspector decision, 2026-11-06
 
 The annotation inspector explains actual artwork with an independently movable text label, a connector and a normalized anchor on an existing element. It stays inside the existing inspector, using the six palette roles and Instrument Sans / IBM Plex Sans Arabic / IBM Plex Mono sizes defined below. A small edge-position selector represents the target's actual local rectangle; image rotation and reflection are resolved in document geometry, never by mirroring UI. Source review is a text list naming missing targets, changed originals and crops, with explicit repair or detach actions. Status and reusable appearance presets use compact native selects and existing neutral buttons. Presets change appearance only; they never copy target IDs, task links or label content. Apply is one fenced, stale-checked journal edit with Undo; cancel saves nothing. No new materials, decoration, animation or character assets are introduced.

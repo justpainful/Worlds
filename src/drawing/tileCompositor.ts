@@ -56,13 +56,15 @@ export class TileCompositor {
     const vertex = shader(gl.VERTEX_SHADER, `#version 300 es
       in vec2 position; in vec2 texcoord; uniform vec2 viewport; out vec2 uv;
       void main(){ gl_Position=vec4(position.x*2.0/viewport.x-1.0,1.0-position.y*2.0/viewport.y,0.0,1.0); uv=texcoord; }`);
-    const fragment = shader(gl.FRAGMENT_SHADER, `#version 300 es
+    let fragment: WebGLShader;
+    try { fragment = shader(gl.FRAGMENT_SHADER, `#version 300 es
       precision highp float; uniform sampler2D pigment; in vec2 uv; out vec4 color;
-      void main(){ color=texture(pigment,uv); }`);
-    const program = gl.createProgram(); if (!program) throw new Error("GPU program allocation failed"); gl.attachShader(program, vertex); gl.attachShader(program, fragment); gl.linkProgram(program); gl.deleteShader(vertex); gl.deleteShader(fragment);
+      void main(){ color=texture(pigment,uv); }`); }
+    catch (error) { gl.deleteShader(vertex); throw error; }
+    const program = gl.createProgram(); if (!program) { gl.deleteShader(vertex); gl.deleteShader(fragment); throw new Error("GPU program allocation failed"); } gl.attachShader(program, vertex); gl.attachShader(program, fragment); gl.linkProgram(program); gl.deleteShader(vertex); gl.deleteShader(fragment);
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) { gl.deleteProgram(program); throw new Error("GPU tile program could not link"); }
     const buffer = gl.createBuffer(), vao = gl.createVertexArray(), viewport = gl.getUniformLocation(program, "viewport");
-    if (!buffer || !vao || !viewport) throw new Error("GPU tile buffers are unavailable");
+    if (!buffer || !vao || !viewport) { if (buffer) gl.deleteBuffer(buffer); if (vao) gl.deleteVertexArray(vao); gl.deleteProgram(program); throw new Error("GPU tile buffers are unavailable"); }
     this.program = program; this.buffer = buffer; this.vao = vao; this.viewport = viewport;
     gl.bindVertexArray(vao); gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     for (const [name, offset] of [["position", 0], ["texcoord", 8]] as const) { const at = gl.getAttribLocation(program, name); gl.enableVertexAttribArray(at); gl.vertexAttribPointer(at, 2, gl.FLOAT, false, 16, offset); }
@@ -82,9 +84,11 @@ export class TileCompositor {
     if (entry && entry.key !== key) { gl.deleteTexture(entry.texture); this.residentBytes -= entry.bytes; this.textures.delete(cacheId); entry = undefined; }
     if (!entry) {
       const canvas = source(), texture = gl.createTexture(); if (!texture) throw new Error("GPU texture allocation failed");
-      gl.bindTexture(gl.TEXTURE_2D, texture); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+      try {
+        gl.bindTexture(gl.TEXTURE_2D, texture); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+      } catch (error) { gl.deleteTexture(texture); throw error; }
       entry = { owner, id, key, texture, bytes: canvas.width * canvas.height * 4 };
       while (this.residentBytes + entry.bytes > this.limit && this.textures.size) { const oldest = this.textures.keys().next().value!, old = this.textures.get(oldest)!; gl.deleteTexture(old.texture); this.residentBytes -= old.bytes; this.textures.delete(oldest); }
       this.textures.set(cacheId, entry); this.residentBytes += entry.bytes;

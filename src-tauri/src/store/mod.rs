@@ -83,6 +83,11 @@ pub struct PageMeta {
     pub properties: Value,
     /// Presentation settings (metadata.look): cover crop, font, width.
     pub look: Value,
+    /// Kind-specific data for planning and pack kinds (metadata.<kind>):
+    /// a task's due date, an event's time, a subject's colour. Lists read it
+    /// without opening every resource. Absent for other kinds.
+    #[serde(skip_serializing_if = "Value::is_null")]
+    pub data: Value,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -245,7 +250,9 @@ where
 // ---------------------------------------------------------------------------
 
 const PAGE_COLS: &str = "id, title, icon, cover, parent_id, sort_key, owner_id, kind, template_category, \
-    pinned, pin_order, favorite, archived, deleted_at, preview, created_at, updated_at, opened_at,     json_extract(metadata, '$.properties'), json_extract(metadata, '$.look')";
+    pinned, pin_order, favorite, archived, deleted_at, preview, created_at, updated_at, opened_at,     json_extract(metadata, '$.properties'), json_extract(metadata, '$.look'), \
+    CASE WHEN kind IN ('task','event','inbox','goal','subject','lesson','assignment','exam','requirement') \
+         THEN json_extract(metadata, '$.' || kind) END";
 
 fn page_meta(r: &Row) -> rusqlite::Result<PageMeta> {
     Ok(PageMeta {
@@ -269,6 +276,7 @@ fn page_meta(r: &Row) -> rusqlite::Result<PageMeta> {
         opened_at: r.get(17)?,
         properties: r.get::<_, Option<String>>(18)?.and_then(|s| serde_json::from_str(&s).ok()).unwrap_or(json!([])),
         look: r.get::<_, Option<String>>(19)?.and_then(|s| serde_json::from_str(&s).ok()).unwrap_or(json!({})),
+        data: r.get::<_, Option<String>>(20)?.and_then(|s| serde_json::from_str(&s).ok()).unwrap_or(Value::Null),
     })
 }
 
@@ -277,8 +285,11 @@ pub fn set_page_meta(conn: &Connection, ctx: &Ctx, id: &str, key: &str, value: V
     if key == "experiment" { crate::account::permissions::require(conn, id, crate::account::permissions::Level::Edit)?; }
     // One key of the metadata object at a time, so no editor can overwrite
     // what another part of the app keeps there.
-    if !matches!(key, "properties" | "look" | "doc" | "deck" | "project" | "gallery" | "file" | "stream" | "experiment") {
+    if !matches!(key, "properties" | "look" | "doc" | "deck" | "project" | "gallery" | "file" | "stream" | "experiment" | "sheet") && !DATA_KINDS.contains(&key) {
         bail!("unknown page setting {key}");
+    }
+    if !value.is_object() && DATA_KINDS.contains(&key) {
+        bail!("{key} data must be an object");
     }
     let value = if key == "properties" {
         let list: Vec<Value> = value
@@ -298,7 +309,7 @@ pub fn set_page_meta(conn: &Connection, ctx: &Ctx, id: &str, key: &str, value: V
         &format!("UPDATE pages SET metadata = json_set(metadata, '$.{key}', json(?1)), updated_at = ?2 WHERE id = ?3"),
         params![value.to_string(), now(), id],
     )?;
-    if matches!(key, "stream" | "project" | "doc" | "experiment") {
+    if key_is_indexed(key) {
         index_page(conn, id)?;
     }
     if key == "properties" && !ctx.is_user() {

@@ -1,0 +1,23 @@
+{
+  "capturedAt": "2026-11-06T09:20:00Z",
+  "scope": "Actual CUA pointer, keyboard, browser Clipboard API and full Worlds React UI, with explicit isolated ?mock backend. Not installed native-window, physical pen/touch or second-device acceptance.",
+  "observations": [
+    "Layer content search for the triangle returns its one layer; Solo hides other content and Show all restores it. Real thumbnail alpha coverage is215 notes,218 strokes and918 shapes at96x64.",
+    "Duplicate layer creates a fourth layer and one Undo restores three. Visible merge Apply and Undo restore the original names and editable source layers. Separate eight-case renderer/PNG/foreign-author Undo gate passes.",
+    "Image crop changes source bounds to60,40,320,240 from480x360, applies and can Undo. A subsequent crop marks its annotation as needing review; reopening the actual anchor picker and Apply clears the review state.",
+    "Element mask Hide all changes the actual preview, Apply closes after saving and one Undo restores the image. Rasterization preview and Cancel are functional. Full worker/effect/mask pixel gate passes28 cases.",
+    "PNG copy produces one image/png clipboard entry. Independent Pillow decodes1100x740 RGBA with no metadata. Actual trusted Paste opens floating preview;550x370 and15degree Apply creates a fourth layer; keyboard Ctrl+Z restores three. Prior empty clipboard restored as empty text.",
+    "Shortcut Move disabled, saved, reopened as disabled. Restore defaults followed by Cancel retains that saved state; Restore defaults followed by Save restores v and its toolbar hint. Actual Ctrl+Z works in the active editor.",
+    "Actual pointer drag creates an opaque redaction rectangle; keyboard Undo removes it. Eight independent redaction renderer/export cases pass.",
+    "Laser remembers cyan#37b4b8 independently, size6 and lifetime1200ms. Actual drag is visible in34-laser-drawn.jpg and gone in35-laser-faded.jpg at11656ms after release observation. This is before/after evidence, not a precise fade-latency measurement.",
+    "Annotation label created on the original image, status set active, warning appearance applied, independent label moved to690,620, start anchor moved to50percent/0percent and group marker3 created. Appearance published as a reusable native-library style through the real UI.",
+    "Current crop review is visible in33-annotation-review.jpg; explicit anchor repair accepts the new source and restores linked state. Automated annotation/native persistence evidence is recorded separately.",
+    "Library frame publication opens its real rendered preview with owner/version/tags and export-policy controls. Experiment comparison shows current and alternative frame papers with scoped acceptance controls.",
+    "Versions, populated presentation steps, frames/grid controls, image crop/mask/rasterize, image/project export, clipboard paste, shortcuts and linked-resource controls are captured in screenshots/."
+  ],
+  "limitations": [
+    "The installed owner application was not used for these captures; native storage, source authorization and transport are separate isolated Rust/SQLite/Worker evidence.",
+    "No blanket native accessibility, all resource kinds, hardware input, complete process-memory or30ms performance acceptance follows from these observations.",
+    "Screenshots have normal viewport dimensions; some long inspectors and sheets scroll.25-shortcuts.jpg was recaptured after its actual modal settled."
+  ]
+}

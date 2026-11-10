@@ -1,0 +1,331 @@
+{
+  "capturedAt": "2026-11-06T09:56:52.953Z",
+  "files": [
+    {
+      "file": "01-editor.jpg",
+      "title": "واجهة الرسم",
+      "sha256": "fbe775328d828b7c09a1b5ac34f6751b4b5d9d69483cf0a518e0d887309a5cc1",
+      "capturedAt": "2026-11-06T08:44:56.284Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "02-brushes.jpg",
+      "title": "أنواع الفرش",
+      "sha256": "6eabf02db5db33de262d65ea28cb4481990b70bd94105e5aea09449a91c32c07",
+      "capturedAt": "2026-11-06T09:40:35.438Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "03-laser-colors.jpg",
+      "title": "ألوان الليزر",
+      "sha256": "1ac60af670525acd8deda016618bae1aacac5409c2190628453a84ec1ca6d9a5",
+      "capturedAt": "2026-11-06T08:46:15.207Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "03-laser.jpg",
+      "title": "ألوان الليزر",
+      "sha256": "a2331d366fc2cb7286c4fabae58a7b3745fea8e0b42846b5fb73983d4be06829",
+      "capturedAt": "2026-11-06T08:45:20.705Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "04-laser-settings.jpg",
+      "title": "إعدادات الليزر",
+      "sha256": "0a518d2beed1f6efe45caa645092129c3f29d4eb23afc90d28571bf7e8ff9b9b",
+      "capturedAt": "2026-11-06T08:46:26.540Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "05-highlighter.jpg",
+      "title": "قلم التظليل",
+      "sha256": "97ae4247b8ffe385b569e0c001e2f9e4b4f6980f87bc411719dfaa78569f73a3",
+      "capturedAt": "2026-11-06T08:46:26.905Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "06-brush-settings.jpg",
+      "title": "خصائص الفرشاة",
+      "sha256": "2f4fc4f8420332dc7fe04055b4930e3037b230a576126f59dcff2dabf171c670",
+      "capturedAt": "2026-11-06T08:46:27.268Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "07-layers.jpg",
+      "title": "الطبقات",
+      "sha256": "fdd9fda97579ae91b3d705d76fd7c673f35ddb3bfad8564a61dd8336cf607907",
+      "capturedAt": "2026-11-06T08:48:29.198Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "08-layer-search-solo.jpg",
+      "title": "بحث الطبقات وعزلها",
+      "sha256": "8a5fdf655ed293989fce9af4b2faf708c8081aa40ee759070eb6b064eee60d31",
+      "capturedAt": "2026-11-06T08:49:08.899Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "09-layer-merge.jpg",
+      "title": "معاينة دمج الإطارات",
+      "sha256": "80cb6c22d9dd31ff6612cbaa4fafbf87e797fe51ce62ab3bbb3e10dc6461843f",
+      "capturedAt": "2026-11-06T08:50:49.684Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "10-frames.jpg",
+      "title": "الإطارات والشبكة",
+      "sha256": "d97ad5b4364ebe6c3c9d3c71ee5bedc52bbab7419235deccf3fee60edfee5734",
+      "capturedAt": "2026-11-06T08:50:57.698Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "11-versions.jpg",
+      "title": "الإصدارات",
+      "sha256": "474cb45cb537668b367abb9ebc9006f429c00c67c864c04e8f7fff9df0ed1449",
+      "capturedAt": "2026-11-06T08:56:24.997Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "12-steps.jpg",
+      "title": "خطوات العرض",
+      "sha256": "7a660cb7d895e3bef5baa0dc877c1a70b927e423f5c2c6d2d94e8ddfe0e52736",
+      "capturedAt": "2026-11-06T08:56:25.419Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "13-experiments.jpg",
+      "title": "التجارب",
+      "sha256": "f0b8c59039b1c6d454fb40fbfbd20e799dc86de40abd0caf6450d859db07e5e3",
+      "capturedAt": "2026-11-06T08:56:31.810Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "14-experiment-compare.jpg",
+      "title": "مقارنة التجارب",
+      "sha256": "fa618509d38e26beb438c68c44faad2995ecf3e5152562031ed31f3397036eaa",
+      "capturedAt": "2026-11-06T08:56:49.250Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "15-image-properties.jpg",
+      "title": "خصائص الصورة",
+      "sha256": "9569be70a463cdb7c3e424ccfaf9aba1588e112a5782db6ee229d84392809694",
+      "capturedAt": "2026-11-06T08:56:49.555Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "16-image-crop.jpg",
+      "title": "اقتصاص الصورة",
+      "sha256": "779c51b1e9331d98cbfdd6918f352989a1f9f1600d3ea4e345de0a51d50a9230",
+      "capturedAt": "2026-11-06T08:57:54.033Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "17-mask-editor.jpg",
+      "title": "محرر القناع",
+      "sha256": "a6df9b8dd6966742366109473d99796308865263fad8f1e4cb83ece8901eec62",
+      "capturedAt": "2026-11-06T08:59:15.549Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "18-mask-preview.jpg",
+      "title": "معاينة القناع",
+      "sha256": "ff3baf13f2a6f448a83d360df00befb955581abfe6420bee18837b9202da8f12",
+      "capturedAt": "2026-11-06T08:59:23.676Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "19-library-publish.jpg",
+      "title": "نشر عناصر المكتبة",
+      "sha256": "25486bb242ab6d602ca21719f16dc947871ae8b17ed079d6a94f21d072765857",
+      "capturedAt": "2026-11-06T09:48:21.981Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "20-library-preview.jpg",
+      "title": "معاينة المكتبة",
+      "sha256": "4c2874e3cb2ffdb6ac93dbe0f0a47da24436f37de0fb497be804123da47ea12d",
+      "capturedAt": "2026-11-06T09:01:27.920Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "21-export-policy.jpg",
+      "title": "صلاحيات التصدير",
+      "sha256": "faab0e8b0597e8df6f4af90e1a911dfe6f46387c4218f53d359931189b1f2584",
+      "capturedAt": "2026-11-06T09:01:36.424Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "22-image-rasterize.jpg",
+      "title": "معاينة التثبيت البكسلي",
+      "sha256": "31f2b18ecc150a6564da975693420f93593c5c8d404247e8340eab1486faa41b",
+      "capturedAt": "2026-11-06T09:01:36.991Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "23-worlds-links.jpg",
+      "title": "روابط Worlds",
+      "sha256": "3383c8cd4dc1c4c876d8569dfc1392c97bcea39ae4a7c497c013748fcf3091d6",
+      "capturedAt": "2026-11-06T09:01:54.335Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "24-comments.jpg",
+      "title": "التعليقات وحالة الاتصال",
+      "sha256": "9572f0f26b90d4c4728feeaed31b72c34e66eaa61b690921f1d359599828290b",
+      "capturedAt": "2026-11-06T09:01:54.692Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "25-shortcuts.jpg",
+      "title": "الاختصارات",
+      "sha256": "8150078beef509ee835786e5dee485ba15a4d9677ecea8c630dc47df5b836046",
+      "capturedAt": "2026-11-06T09:20:06.675Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "26-export-images.jpg",
+      "title": "تصدير الصور",
+      "sha256": "a569bfa8e17ab808547c53db627d3ee5bab475d00b08438cfa04625b6a4732a5",
+      "capturedAt": "2026-11-06T09:03:35.539Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "27-redaction.jpg",
+      "title": "الحجب المعتم",
+      "sha256": "3674bf70e8241a3ad94ff756abc5fdfb008cc28644740357a2dd32edae6a52f9",
+      "capturedAt": "2026-11-06T09:04:36.963Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "28-project-package.jpg",
+      "title": "حزمة المشروع والسجل والتجارب",
+      "sha256": "63acd2f0ec508a77be0d6b0fe0d4f9608c9dfe9d5dd05f3a18312b8cbcfc2cbd",
+      "capturedAt": "2026-11-06T09:06:22.937Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "29-clipboard-paste.jpg",
+      "title": "لصق صورة وتحويلها",
+      "sha256": "59754758e8b72059dbbc2d91c912634bdda45f5b8d812b25769aa2421ac334c3",
+      "capturedAt": "2026-11-06T09:07:57.782Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "30-annotation-anchor.jpg",
+      "title": "اختيار الارتباط",
+      "sha256": "f18477f7bf52407ca986e51689c1728b3a3aec5b2e381fffe0538dab2ed809f7",
+      "capturedAt": "2026-11-06T09:10:08.885Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "31-annotation-workflow.jpg",
+      "title": "الشروح المرتبطة",
+      "sha256": "0b2e8840ad313d88a0b6f269def2884fdd00c636534d6c02b724460b45dbf8d2",
+      "capturedAt": "2026-11-06T09:13:21.304Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "32-annotation-library-style.jpg",
+      "title": "أنماط الشروح",
+      "sha256": "6014be4e4d888883002313a745b7dc558b2481a9cba49c3ba9582baedc766eaf",
+      "capturedAt": "2026-11-06T09:14:19.712Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "33-annotation-review.jpg",
+      "title": "مراجعة المصدر المتغير",
+      "sha256": "e718cf537dca2eb00d8d2a419f6f56254dbf1d055d6f7fd8d691271a10ace875",
+      "capturedAt": "2026-11-06T09:15:43.255Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "34-laser-drawn.jpg",
+      "title": "الليزر بعد الرسم",
+      "sha256": "127f5fc48322e60f8b753e34b16eec412cfd0d937de42d30e8f3a0ae11e16376",
+      "capturedAt": "2026-11-06T09:20:07.097Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "35-laser-faded.jpg",
+      "title": "الليزر بعد التلاشي",
+      "sha256": "2756d96ab37ee3eaa77c5d08dbff001f5b7c950d531939fa7a53790713f84e4c",
+      "capturedAt": "2026-11-06T09:20:18.486Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "36-editor-review.jpg",
+      "title": "مراجعة الواجهة",
+      "sha256": "74bf2acdda83c61d9e2d353a68c44926cce7164a484454384a0981871cd32c6c",
+      "capturedAt": "2026-11-06T09:30:40.164Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "38-editor-760x520.jpg",
+      "title": "نافذة760×520",
+      "sha256": "3ffccd6c84e11bd76ee6226e7ee92992779424d13dc6793944900783b7c8fba9",
+      "capturedAt": "2026-11-06T09:36:15.956Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "39-focus-760x520.jpg",
+      "title": "وضع التركيز760×520",
+      "sha256": "01d8f2c51387e23854431a099d012e7b70c930de45f51270cfb798d65dabaf6a",
+      "capturedAt": "2026-11-06T09:36:22.355Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "40-svg-export.jpg",
+      "title": "تصدير SVG المسطح",
+      "sha256": "8617caf7399ed6633ef3eae4b39037a50ae060a701425f665377cc72bdd66875",
+      "capturedAt": "2026-11-06T09:36:44.748Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "41-create-menu.jpg",
+      "title": "مدخل إنشاء الرسم",
+      "sha256": "126f896b5dde182de087e0d850b432d36234f5fd09f267bcc0f457cc56ad405b",
+      "capturedAt": "2026-11-06T09:40:49.324Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "42-new-drawing.jpg",
+      "title": "لوحة جديدة",
+      "sha256": "2d90f3d3ca19f2766e28eebc7705b1846612d75799ab27551312eeca2b0d2997",
+      "capturedAt": "2026-11-06T09:43:20.254Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "43-path-editor.jpg",
+      "title": "محرر المسارات",
+      "sha256": "ad613a7c5400acec572f83fc66b0ac2b38571a5dbe014af21b49a05a2156ee94",
+      "capturedAt": "2026-11-06T09:45:59.969Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "44-object-transform.jpg",
+      "title": "تحويل العناصر",
+      "sha256": "7f0311819de0b8e0f6f3d8af487e307f12cbf57f6ef12dcc66e1d6f09c780323",
+      "capturedAt": "2026-11-06T09:46:33.430Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "45-project-import.jpg",
+      "title": "معاينة استيراد المشروع",
+      "sha256": "eabae58814557eb145a6443b4c5b1474c08d2fa82e29ca22ec7c4c1de8d056ce",
+      "capturedAt": "2026-11-06T09:48:44.610Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    },
+    {
+      "file": "46-reference-layout.jpg",
+      "title": "معاينة تخطيط الرابط",
+      "sha256": "6bb277f2503cd386f7a1a86d9b6720f2bf7b0b46d670afbe54ac80b1350a3503",
+      "capturedAt": "2026-11-06T09:50:55.657Z",
+      "scope": "Actual browser screenshot, isolated synthetic backend; not an installed native-window capture"
+    }
+  ],
+  "excluded": [
+    "37-viewport-override-not-applied.jpg"
+  ],
+  "notes": "The760x520 screenshots show an iframe with measured document dimensions760x520. Other captures use the normal1280x720 browser viewport."
+}

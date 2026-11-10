@@ -1,0 +1,1353 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "17 ordinary-format and metadata-orientation input checks",
+      "passed": true
+    },
+    {
+      "name": "Cancel leaves revision/nodes/assets/layers unchanged",
+      "passed": true
+    },
+    {
+      "name": "Apply creates exactly one image/new layer/asset and one operation",
+      "passed": true
+    },
+    {
+      "name": "Fit1280x10 retains4096x32 original dimensions",
+      "passed": true
+    },
+    {
+      "name": "Original encoded PNG SHA256 matches independent file",
+      "passed": true
+    },
+    {
+      "name": "One Undo removes pasted artwork/new layer/asset",
+      "passed": true
+    },
+    {
+      "name": "Cancel pending Clipboard API read leaves artwork unchanged",
+      "passed": true
+    },
+    {
+      "name": "21 asymmetric orientation cases match independent Pillow RGBA",
+      "passed": true
+    },
+    {
+      "name": "Applied WebP stores logical8x12 orientation6 and exact original",
+      "passed": true
+    }
+  ],
+  "input": {
+    "images": [],
+    "owners": [
+      {
+        "owner": "Editor",
+        "savedSize": 28,
+        "shownSize": 28,
+        "savedColor": "#f5d742",
+        "otherOwnerSize": 17
+      },
+      {
+        "owner": "Editor",
+        "savedSize": 28,
+        "shownSize": 28,
+        "savedColor": "#f5d742",
+        "otherOwnerSize": 17
+      },
+      {
+        "owner": "Editor",
+        "savedSize": 28,
+        "shownSize": 12,
+        "savedColor": "#f5d742",
+        "otherOwnerSize": 17
+      },
+      {
+        "owner": "Editor",
+        "savedSize": 28,
+        "shownSize": 12,
+        "savedColor": "#f5d742",
+        "otherOwnerSize": 17
+      },
+      {
+        "owner": "Editor",
+        "savedSize": 28,
+        "shownSize": 12,
+        "savedColor": "#f5d742",
+        "otherOwnerSize": 17
+      }
+    ],
+    "transforms": [],
+    "selections": [
+      {
+        "revision": 0,
+        "pending": 0,
+        "operations": [],
+        "nodes": {},
+        "layers": {
+          "ac362a50-0fa1-42d8-8820-13d0b8876bb1": {
+            "id": "ac362a50-0fa1-42d8-8820-13d0b8876bb1",
+            "name": "Layer 1",
+            "visible": true,
+            "locked": false,
+            "positionLocked": false,
+            "alphaLocked": false,
+            "opacity": 1,
+            "blend": "source-over",
+            "parentId": null
+          }
+        },
+        "layerOrder": [
+          "ac362a50-0fa1-42d8-8820-13d0b8876bb1"
+        ],
+        "nodeOrder": [],
+        "masks": {},
+        "assets": {}
+      },
+      {
+        "revision": 0,
+        "pending": 0,
+        "operations": [],
+        "nodes": {},
+        "layers": {
+          "ac362a50-0fa1-42d8-8820-13d0b8876bb1": {
+            "id": "ac362a50-0fa1-42d8-8820-13d0b8876bb1",
+            "name": "Layer 1",
+            "visible": true,
+            "locked": false,
+            "positionLocked": false,
+            "alphaLocked": false,
+            "opacity": 1,
+            "blend": "source-over",
+            "parentId": null
+          }
+        },
+        "layerOrder": [
+          "ac362a50-0fa1-42d8-8820-13d0b8876bb1"
+        ],
+        "nodeOrder": [],
+        "masks": {},
+        "assets": {}
+      },
+      {
+        "revision": 1,
+        "pending": 0,
+        "operations": [
+          {
+            "id": "ce561a7f-6a3a-4555-8695-87c12645cbcf",
+            "actor": "me",
+            "base": 0,
+            "at": 1793943392349,
+            "label": "import selected pixels",
+            "type": "edit",
+            "changes": [
+              {
+                "type": "put",
+                "collection": "layers",
+                "id": "cf61b07d-2113-4fd0-8335-fdc08b3662c6",
+                "value": {
+                  "id": "cf61b07d-2113-4fd0-8335-fdc08b3662c6",
+                  "name": "wide-original.png",
+                  "visible": true,
+                  "locked": false,
+                  "positionLocked": false,
+                  "alphaLocked": false,
+                  "opacity": 1,
+                  "blend": "source-over",
+                  "parentId": null
+                }
+              },
+              {
+                "type": "order",
+                "list": "layerOrder",
+                "ids": [
+                  "ac362a50-0fa1-42d8-8820-13d0b8876bb1",
+                  "cf61b07d-2113-4fd0-8335-fdc08b3662c6"
+                ]
+              },
+              {
+                "type": "put",
+                "collection": "assets",
+                "id": "c97dfdb2-21e9-4d4b-bb1d-5089b4922d75",
+                "value": {
+                  "id": "c97dfdb2-21e9-4d4b-bb1d-5089b4922d75",
+                  "attachmentId": "a3b1d70578dad6ae4423157c328",
+                  "name": "wide-original.png",
+                  "mime": "image/png",
+                  "width": 4096,
+                  "height": 32
+                }
+              },
+              {
+                "type": "put",
+                "collection": "nodes",
+                "id": "b0cfa4e7-4816-47a6-805a-dd86e4488c95",
+                "value": {
+                  "id": "b0cfa4e7-4816-47a6-805a-dd86e4488c95",
+                  "kind": "image",
+                  "name": "wide-original.png",
+                  "layerId": "cf61b07d-2113-4fd0-8335-fdc08b3662c6",
+                  "frameId": "d68b54c2-915e-4d48-8d07-a899c1571134",
+                  "groupId": null,
+                  "visible": true,
+                  "locked": false,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "flipX": false,
+                  "flipY": false,
+                  "paint": {
+                    "fill": "transparent",
+                    "stroke": "#202023",
+                    "strokeWidth": 3,
+                    "dash": [],
+                    "cap": "round",
+                    "radius": 16
+                  },
+                  "textStyle": {
+                    "font": "IBM Plex Sans Arabic",
+                    "size": 28,
+                    "weight": 400,
+                    "italic": false,
+                    "align": "start",
+                    "direction": "auto",
+                    "leading": 1.7,
+                    "background": "transparent",
+                    "color": "#202023",
+                    "border": "transparent"
+                  },
+                  "effects": [],
+                  "x": 0,
+                  "y": 355,
+                  "w": 1280,
+                  "h": 10,
+                  "assetId": "c97dfdb2-21e9-4d4b-bb1d-5089b4922d75",
+                  "geometrySize": {
+                    "w": 4096,
+                    "h": 32
+                  }
+                }
+              },
+              {
+                "type": "order",
+                "list": "nodeOrder",
+                "ids": [
+                  "b0cfa4e7-4816-47a6-805a-dd86e4488c95"
+                ]
+              }
+            ]
+          }
+        ],
+        "nodes": {
+          "b0cfa4e7-4816-47a6-805a-dd86e4488c95": {
+            "id": "b0cfa4e7-4816-47a6-805a-dd86e4488c95",
+            "kind": "image",
+            "name": "wide-original.png",
+            "layerId": "cf61b07d-2113-4fd0-8335-fdc08b3662c6",
+            "frameId": "d68b54c2-915e-4d48-8d07-a899c1571134",
+            "groupId": null,
+            "visible": true,
+            "locked": false,
+            "rotation": 0,
+            "opacity": 1,
+            "flipX": false,
+            "flipY": false,
+            "paint": {
+              "fill": "transparent",
+              "stroke": "#202023",
+              "strokeWidth": 3,
+              "dash": [],
+              "cap": "round",
+              "radius": 16
+            },
+            "textStyle": {
+              "font": "IBM Plex Sans Arabic",
+              "size": 28,
+              "weight": 400,
+              "italic": false,
+              "align": "start",
+              "direction": "auto",
+              "leading": 1.7,
+              "background": "transparent",
+              "color": "#202023",
+              "border": "transparent"
+            },
+            "effects": [],
+            "x": 0,
+            "y": 355,
+            "w": 1280,
+            "h": 10,
+            "assetId": "c97dfdb2-21e9-4d4b-bb1d-5089b4922d75",
+            "geometrySize": {
+              "w": 4096,
+              "h": 32
+            }
+          }
+        },
+        "layers": {
+          "ac362a50-0fa1-42d8-8820-13d0b8876bb1": {
+            "id": "ac362a50-0fa1-42d8-8820-13d0b8876bb1",
+            "name": "Layer 1",
+            "visible": true,
+            "locked": false,
+            "positionLocked": false,
+            "alphaLocked": false,
+            "opacity": 1,
+            "blend": "source-over",
+            "parentId": null
+          },
+          "cf61b07d-2113-4fd0-8335-fdc08b3662c6": {
+            "id": "cf61b07d-2113-4fd0-8335-fdc08b3662c6",
+            "name": "wide-original.png",
+            "visible": true,
+            "locked": false,
+            "positionLocked": false,
+            "alphaLocked": false,
+            "opacity": 1,
+            "blend": "source-over",
+            "parentId": null
+          }
+        },
+        "layerOrder": [
+          "ac362a50-0fa1-42d8-8820-13d0b8876bb1",
+          "cf61b07d-2113-4fd0-8335-fdc08b3662c6"
+        ],
+        "nodeOrder": [
+          "b0cfa4e7-4816-47a6-805a-dd86e4488c95"
+        ],
+        "masks": {},
+        "assets": {
+          "c97dfdb2-21e9-4d4b-bb1d-5089b4922d75": {
+            "id": "c97dfdb2-21e9-4d4b-bb1d-5089b4922d75",
+            "attachmentId": "a3b1d70578dad6ae4423157c328",
+            "name": "wide-original.png",
+            "mime": "image/png",
+            "width": 4096,
+            "height": 32
+          }
+        }
+      },
+      {
+        "revision": 2,
+        "pending": 0,
+        "operations": [
+          {
+            "id": "ce561a7f-6a3a-4555-8695-87c12645cbcf",
+            "actor": "me",
+            "base": 0,
+            "at": 1793943392349,
+            "label": "import selected pixels",
+            "type": "edit",
+            "changes": [
+              {
+                "type": "put",
+                "collection": "layers",
+                "id": "cf61b07d-2113-4fd0-8335-fdc08b3662c6",
+                "value": {
+                  "id": "cf61b07d-2113-4fd0-8335-fdc08b3662c6",
+                  "name": "wide-original.png",
+                  "visible": true,
+                  "locked": false,
+                  "positionLocked": false,
+                  "alphaLocked": false,
+                  "opacity": 1,
+                  "blend": "source-over",
+                  "parentId": null
+                }
+              },
+              {
+                "type": "order",
+                "list": "layerOrder",
+                "ids": [
+                  "ac362a50-0fa1-42d8-8820-13d0b8876bb1",
+                  "cf61b07d-2113-4fd0-8335-fdc08b3662c6"
+                ]
+              },
+              {
+                "type": "put",
+                "collection": "assets",
+                "id": "c97dfdb2-21e9-4d4b-bb1d-5089b4922d75",
+                "value": {
+                  "id": "c97dfdb2-21e9-4d4b-bb1d-5089b4922d75",
+                  "attachmentId": "a3b1d70578dad6ae4423157c328",
+                  "name": "wide-original.png",
+                  "mime": "image/png",
+                  "width": 4096,
+                  "height": 32
+                }
+              },
+              {
+                "type": "put",
+                "collection": "nodes",
+                "id": "b0cfa4e7-4816-47a6-805a-dd86e4488c95",
+                "value": {
+                  "id": "b0cfa4e7-4816-47a6-805a-dd86e4488c95",
+                  "kind": "image",
+                  "name": "wide-original.png",
+                  "layerId": "cf61b07d-2113-4fd0-8335-fdc08b3662c6",
+                  "frameId": "d68b54c2-915e-4d48-8d07-a899c1571134",
+                  "groupId": null,
+                  "visible": true,
+                  "locked": false,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "flipX": false,
+                  "flipY": false,
+                  "paint": {
+                    "fill": "transparent",
+                    "stroke": "#202023",
+                    "strokeWidth": 3,
+                    "dash": [],
+                    "cap": "round",
+                    "radius": 16
+                  },
+                  "textStyle": {
+                    "font": "IBM Plex Sans Arabic",
+                    "size": 28,
+                    "weight": 400,
+                    "italic": false,
+                    "align": "start",
+                    "direction": "auto",
+                    "leading": 1.7,
+                    "background": "transparent",
+                    "color": "#202023",
+                    "border": "transparent"
+                  },
+                  "effects": [],
+                  "x": 0,
+                  "y": 355,
+                  "w": 1280,
+                  "h": 10,
+                  "assetId": "c97dfdb2-21e9-4d4b-bb1d-5089b4922d75",
+                  "geometrySize": {
+                    "w": 4096,
+                    "h": 32
+                  }
+                }
+              },
+              {
+                "type": "order",
+                "list": "nodeOrder",
+                "ids": [
+                  "b0cfa4e7-4816-47a6-805a-dd86e4488c95"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "2290df4c-b0d2-4ac3-8a6c-b463b66d8e13",
+            "actor": "me",
+            "base": 1,
+            "at": 1793943399384,
+            "label": "Undo",
+            "type": "toggle",
+            "target": "ce561a7f-6a3a-4555-8695-87c12645cbcf",
+            "enabled": false
+          }
+        ],
+        "nodes": {},
+        "layers": {
+          "ac362a50-0fa1-42d8-8820-13d0b8876bb1": {
+            "id": "ac362a50-0fa1-42d8-8820-13d0b8876bb1",
+            "name": "Layer 1",
+            "visible": true,
+            "locked": false,
+            "positionLocked": false,
+            "alphaLocked": false,
+            "opacity": 1,
+            "blend": "source-over",
+            "parentId": null
+          }
+        },
+        "layerOrder": [
+          "ac362a50-0fa1-42d8-8820-13d0b8876bb1"
+        ],
+        "nodeOrder": [],
+        "masks": {},
+        "assets": {}
+      },
+      {
+        "revision": 2,
+        "pending": 0,
+        "operations": [
+          {
+            "id": "ce561a7f-6a3a-4555-8695-87c12645cbcf",
+            "actor": "me",
+            "base": 0,
+            "at": 1793943392349,
+            "label": "import selected pixels",
+            "type": "edit",
+            "changes": [
+              {
+                "type": "put",
+                "collection": "layers",
+                "id": "cf61b07d-2113-4fd0-8335-fdc08b3662c6",
+                "value": {
+                  "id": "cf61b07d-2113-4fd0-8335-fdc08b3662c6",
+                  "name": "wide-original.png",
+                  "visible": true,
+                  "locked": false,
+                  "positionLocked": false,
+                  "alphaLocked": false,
+                  "opacity": 1,
+                  "blend": "source-over",
+                  "parentId": null
+                }
+              },
+              {
+                "type": "order",
+                "list": "layerOrder",
+                "ids": [
+                  "ac362a50-0fa1-42d8-8820-13d0b8876bb1",
+                  "cf61b07d-2113-4fd0-8335-fdc08b3662c6"
+                ]
+              },
+              {
+                "type": "put",
+                "collection": "assets",
+                "id": "c97dfdb2-21e9-4d4b-bb1d-5089b4922d75",
+                "value": {
+                  "id": "c97dfdb2-21e9-4d4b-bb1d-5089b4922d75",
+                  "attachmentId": "a3b1d70578dad6ae4423157c328",
+                  "name": "wide-original.png",
+                  "mime": "image/png",
+                  "width": 4096,
+                  "height": 32
+                }
+              },
+              {
+                "type": "put",
+                "collection": "nodes",
+                "id": "b0cfa4e7-4816-47a6-805a-dd86e4488c95",
+                "value": {
+                  "id": "b0cfa4e7-4816-47a6-805a-dd86e4488c95",
+                  "kind": "image",
+                  "name": "wide-original.png",
+                  "layerId": "cf61b07d-2113-4fd0-8335-fdc08b3662c6",
+                  "frameId": "d68b54c2-915e-4d48-8d07-a899c1571134",
+                  "groupId": null,
+                  "visible": true,
+                  "locked": false,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "flipX": false,
+                  "flipY": false,
+                  "paint": {
+                    "fill": "transparent",
+                    "stroke": "#202023",
+                    "strokeWidth": 3,
+                    "dash": [],
+                    "cap": "round",
+                    "radius": 16
+                  },
+                  "textStyle": {
+                    "font": "IBM Plex Sans Arabic",
+                    "size": 28,
+                    "weight": 400,
+                    "italic": false,
+                    "align": "start",
+                    "direction": "auto",
+                    "leading": 1.7,
+                    "background": "transparent",
+                    "color": "#202023",
+                    "border": "transparent"
+                  },
+                  "effects": [],
+                  "x": 0,
+                  "y": 355,
+                  "w": 1280,
+                  "h": 10,
+                  "assetId": "c97dfdb2-21e9-4d4b-bb1d-5089b4922d75",
+                  "geometrySize": {
+                    "w": 4096,
+                    "h": 32
+                  }
+                }
+              },
+              {
+                "type": "order",
+                "list": "nodeOrder",
+                "ids": [
+                  "b0cfa4e7-4816-47a6-805a-dd86e4488c95"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "2290df4c-b0d2-4ac3-8a6c-b463b66d8e13",
+            "actor": "me",
+            "base": 1,
+            "at": 1793943399384,
+            "label": "Undo",
+            "type": "toggle",
+            "target": "ce561a7f-6a3a-4555-8695-87c12645cbcf",
+            "enabled": false
+          }
+        ],
+        "nodes": {},
+        "layers": {
+          "ac362a50-0fa1-42d8-8820-13d0b8876bb1": {
+            "id": "ac362a50-0fa1-42d8-8820-13d0b8876bb1",
+            "name": "Layer 1",
+            "visible": true,
+            "locked": false,
+            "positionLocked": false,
+            "alphaLocked": false,
+            "opacity": 1,
+            "blend": "source-over",
+            "parentId": null
+          }
+        },
+        "layerOrder": [
+          "ac362a50-0fa1-42d8-8820-13d0b8876bb1"
+        ],
+        "nodeOrder": [],
+        "masks": {},
+        "assets": {}
+      }
+    ],
+    "keys": [],
+    "clipboard": [],
+    "ingests": [
+      {
+        "name": "png",
+        "orientation": 1,
+        "codecAppliedOrientation": true,
+        "width": 17,
+        "height": 11,
+        "naturalWidth": 17,
+        "naturalHeight": 11,
+        "sha256": "2d32dc0156cef7ee1c2232de3a04355ff181b6463172904ca6f859c3d1686659",
+        "passed": true
+      },
+      {
+        "name": "jpeg",
+        "orientation": 1,
+        "codecAppliedOrientation": true,
+        "width": 17,
+        "height": 11,
+        "naturalWidth": 17,
+        "naturalHeight": 11,
+        "sha256": "01ddd586e4328cf99679ff9b1e220e7bccdf8d44c8444ca7e9e91a7c7b85dab3",
+        "passed": true
+      },
+      {
+        "name": "jpeg-progressive",
+        "orientation": 1,
+        "codecAppliedOrientation": true,
+        "width": 17,
+        "height": 11,
+        "naturalWidth": 17,
+        "naturalHeight": 11,
+        "sha256": "486d3eeaa7d4d23673d5cbd7428d83bf3f03e2e77e494dc0547838b43cf61b62",
+        "passed": true
+      },
+      {
+        "name": "webp-lossy",
+        "orientation": 1,
+        "codecAppliedOrientation": true,
+        "width": 17,
+        "height": 11,
+        "naturalWidth": 17,
+        "naturalHeight": 11,
+        "sha256": "fc298a8e939ba3cfa79abf5cc476ff83f303d651ed4cc5290c2d1f8276aea1e8",
+        "passed": true
+      },
+      {
+        "name": "webp-lossless",
+        "orientation": 1,
+        "codecAppliedOrientation": true,
+        "width": 17,
+        "height": 11,
+        "naturalWidth": 17,
+        "naturalHeight": 11,
+        "sha256": "3b62b376c6f89659e010b1d477f4c0fd3e061345fa993b075abebca506fc01af",
+        "passed": true
+      },
+      {
+        "name": "webp-alpha",
+        "orientation": 1,
+        "codecAppliedOrientation": true,
+        "width": 17,
+        "height": 11,
+        "naturalWidth": 17,
+        "naturalHeight": 11,
+        "sha256": "2418ba31abe4738ac71a74a93b8e610ce86860d5c642fe8700868e243a7059c8",
+        "passed": true
+      },
+      {
+        "name": "bmp",
+        "orientation": 1,
+        "codecAppliedOrientation": true,
+        "width": 17,
+        "height": 11,
+        "naturalWidth": 17,
+        "naturalHeight": 11,
+        "sha256": "158c4e94a9540fd3bf3e383ab7172fadc1626713c4a33f848bdb2db3f93a2c1f",
+        "passed": true
+      },
+      {
+        "name": "jpeg-orientation-1",
+        "orientation": 1,
+        "codecAppliedOrientation": true,
+        "width": 12,
+        "height": 8,
+        "naturalWidth": 12,
+        "naturalHeight": 8,
+        "sha256": "52b98bd42ffc944a70757aaff21b34c32ad269b75ea0e9ed03973d3e0891e146",
+        "passed": true
+      },
+      {
+        "name": "jpeg-orientation-2",
+        "orientation": 2,
+        "codecAppliedOrientation": true,
+        "width": 12,
+        "height": 8,
+        "naturalWidth": 12,
+        "naturalHeight": 8,
+        "sha256": "00230382d16712b86561d687de62ccea0388c6d6b5c09f2f40f759a964c86a00",
+        "passed": true
+      },
+      {
+        "name": "jpeg-orientation-3",
+        "orientation": 3,
+        "codecAppliedOrientation": true,
+        "width": 12,
+        "height": 8,
+        "naturalWidth": 12,
+        "naturalHeight": 8,
+        "sha256": "dfb154e36b2d3cfdd15bb2457576252bd7da4e3ba0906aae5c0c1a804a1be7c5",
+        "passed": true
+      },
+      {
+        "name": "jpeg-orientation-4",
+        "orientation": 4,
+        "codecAppliedOrientation": true,
+        "width": 12,
+        "height": 8,
+        "naturalWidth": 12,
+        "naturalHeight": 8,
+        "sha256": "b13aecd37da484b42f97cd3033de0e7b84e4f8e908528c986de27f5f768ecad0",
+        "passed": true
+      },
+      {
+        "name": "jpeg-orientation-5",
+        "orientation": 5,
+        "codecAppliedOrientation": true,
+        "width": 8,
+        "height": 12,
+        "naturalWidth": 8,
+        "naturalHeight": 12,
+        "sha256": "95e0b59581c289ac03c6ba5233d5584fc8732c3abcc86f1b7c04268a5b26a6e9",
+        "passed": true
+      },
+      {
+        "name": "jpeg-orientation-6",
+        "orientation": 6,
+        "codecAppliedOrientation": true,
+        "width": 8,
+        "height": 12,
+        "naturalWidth": 8,
+        "naturalHeight": 12,
+        "sha256": "1955d0ded7d3c55010f6eaafed35b6163a3ed7862d1d550fde37ed01ae5115f2",
+        "passed": true
+      },
+      {
+        "name": "jpeg-orientation-7",
+        "orientation": 7,
+        "codecAppliedOrientation": true,
+        "width": 8,
+        "height": 12,
+        "naturalWidth": 8,
+        "naturalHeight": 12,
+        "sha256": "fc819c97af7bad1c3f9fd0f916384041979c60f5ab7268366fcdfb07a87e6936",
+        "passed": true
+      },
+      {
+        "name": "jpeg-orientation-8",
+        "orientation": 8,
+        "codecAppliedOrientation": true,
+        "width": 8,
+        "height": 12,
+        "naturalWidth": 8,
+        "naturalHeight": 12,
+        "sha256": "2f54ce9ee44031d5f6a1756df82d1d5a0305c90ba6bf85573e4e2162396f2ee2",
+        "passed": true
+      },
+      {
+        "name": "png-orientation-6",
+        "orientation": 6,
+        "codecAppliedOrientation": true,
+        "width": 8,
+        "height": 12,
+        "naturalWidth": 8,
+        "naturalHeight": 12,
+        "sha256": "f6c467009df9da181547174d655a67edad1319bcfd51383659a9464792eea149",
+        "passed": true
+      },
+      {
+        "name": "webp-orientation-6",
+        "orientation": 6,
+        "codecAppliedOrientation": false,
+        "width": 8,
+        "height": 12,
+        "naturalWidth": 8,
+        "naturalHeight": 12,
+        "sha256": "af94b47dfb337d6b1159122e571e1bcc874b9d05449da0a0fbd26ec779ba642f",
+        "passed": true
+      }
+    ],
+    "imageOriginals": [
+      {
+        "id": "c97dfdb2-21e9-4d4b-bb1d-5089b4922d75",
+        "attachmentId": "a3b1d70578dad6ae4423157c328",
+        "width": 4096,
+        "height": 32,
+        "mime": "image/png",
+        "bytes": 684,
+        "sha256": "d89ac419ff8490d194f196c36f0382d4394624f45ce7b63eb288949ecfbfa611"
+      }
+    ]
+  },
+  "orientationAndWebP": {
+    "images": [],
+    "owners": [
+      {
+        "owner": "Editor",
+        "savedSize": 28,
+        "shownSize": 12,
+        "savedColor": "#f5d742",
+        "otherOwnerSize": 17
+      }
+    ],
+    "transforms": [],
+    "selections": [
+      {
+        "revision": 1,
+        "pending": 0,
+        "operations": [
+          {
+            "id": "62b62524-1943-449b-b49e-4c93e18145f6",
+            "actor": "me",
+            "base": 0,
+            "at": 1793943603634,
+            "label": "import image",
+            "type": "edit",
+            "changes": [
+              {
+                "type": "put",
+                "collection": "layers",
+                "id": "3b86b44b-9eed-497a-8080-62867dda9a84",
+                "value": {
+                  "id": "3b86b44b-9eed-497a-8080-62867dda9a84",
+                  "name": "oriented-quadrants.webp",
+                  "visible": true,
+                  "locked": false,
+                  "positionLocked": false,
+                  "alphaLocked": false,
+                  "opacity": 1,
+                  "blend": "source-over",
+                  "parentId": null
+                }
+              },
+              {
+                "type": "order",
+                "list": "layerOrder",
+                "ids": [
+                  "f7b15fbd-5616-4916-8281-e6017d4177f2",
+                  "3b86b44b-9eed-497a-8080-62867dda9a84"
+                ]
+              },
+              {
+                "type": "put",
+                "collection": "assets",
+                "id": "ac6b42e8-60ce-49ce-8577-cb653c8d868e",
+                "value": {
+                  "id": "ac6b42e8-60ce-49ce-8577-cb653c8d868e",
+                  "attachmentId": "8ff35acf3b45facb89c3e6148a8",
+                  "name": "oriented-quadrants.webp",
+                  "mime": "image/webp",
+                  "width": 8,
+                  "height": 12,
+                  "orientation": 6
+                }
+              },
+              {
+                "type": "put",
+                "collection": "nodes",
+                "id": "8f694529-51ff-4ea2-b284-d2b08294d85a",
+                "value": {
+                  "id": "8f694529-51ff-4ea2-b284-d2b08294d85a",
+                  "kind": "image",
+                  "name": "oriented-quadrants.webp",
+                  "layerId": "3b86b44b-9eed-497a-8080-62867dda9a84",
+                  "frameId": "003a100a-7e50-4b0f-bd1c-0a4e40b927af",
+                  "groupId": null,
+                  "visible": true,
+                  "locked": false,
+                  "rotation": 0,
+                  "opacity": 1,
+                  "flipX": false,
+                  "flipY": false,
+                  "paint": {
+                    "fill": "transparent",
+                    "stroke": "#202023",
+                    "strokeWidth": 3,
+                    "dash": [],
+                    "cap": "round",
+                    "radius": 16
+                  },
+                  "textStyle": {
+                    "font": "IBM Plex Sans Arabic",
+                    "size": 28,
+                    "weight": 400,
+                    "italic": false,
+                    "align": "start",
+                    "direction": "auto",
+                    "leading": 1.7,
+                    "background": "transparent",
+                    "color": "#202023",
+                    "border": "transparent"
+                  },
+                  "effects": [],
+                  "x": 400,
+                  "y": 0,
+                  "w": 480,
+                  "h": 720,
+                  "assetId": "ac6b42e8-60ce-49ce-8577-cb653c8d868e",
+                  "geometrySize": {
+                    "w": 8,
+                    "h": 12
+                  }
+                }
+              },
+              {
+                "type": "order",
+                "list": "nodeOrder",
+                "ids": [
+                  "8f694529-51ff-4ea2-b284-d2b08294d85a"
+                ]
+              }
+            ]
+          }
+        ],
+        "nodes": {
+          "8f694529-51ff-4ea2-b284-d2b08294d85a": {
+            "id": "8f694529-51ff-4ea2-b284-d2b08294d85a",
+            "kind": "image",
+            "name": "oriented-quadrants.webp",
+            "layerId": "3b86b44b-9eed-497a-8080-62867dda9a84",
+            "frameId": "003a100a-7e50-4b0f-bd1c-0a4e40b927af",
+            "groupId": null,
+            "visible": true,
+            "locked": false,
+            "rotation": 0,
+            "opacity": 1,
+            "flipX": false,
+            "flipY": false,
+            "paint": {
+              "fill": "transparent",
+              "stroke": "#202023",
+              "strokeWidth": 3,
+              "dash": [],
+              "cap": "round",
+              "radius": 16
+            },
+            "textStyle": {
+              "font": "IBM Plex Sans Arabic",
+              "size": 28,
+              "weight": 400,
+              "italic": false,
+              "align": "start",
+              "direction": "auto",
+              "leading": 1.7,
+              "background": "transparent",
+              "color": "#202023",
+              "border": "transparent"
+            },
+            "effects": [],
+            "x": 400,
+            "y": 0,
+            "w": 480,
+            "h": 720,
+            "assetId": "ac6b42e8-60ce-49ce-8577-cb653c8d868e",
+            "geometrySize": {
+              "w": 8,
+              "h": 12
+            }
+          }
+        },
+        "layers": {
+          "f7b15fbd-5616-4916-8281-e6017d4177f2": {
+            "id": "f7b15fbd-5616-4916-8281-e6017d4177f2",
+            "name": "Layer 1",
+            "visible": true,
+            "locked": false,
+            "positionLocked": false,
+            "alphaLocked": false,
+            "opacity": 1,
+            "blend": "source-over",
+            "parentId": null
+          },
+          "3b86b44b-9eed-497a-8080-62867dda9a84": {
+            "id": "3b86b44b-9eed-497a-8080-62867dda9a84",
+            "name": "oriented-quadrants.webp",
+            "visible": true,
+            "locked": false,
+            "positionLocked": false,
+            "alphaLocked": false,
+            "opacity": 1,
+            "blend": "source-over",
+            "parentId": null
+          }
+        },
+        "layerOrder": [
+          "f7b15fbd-5616-4916-8281-e6017d4177f2",
+          "3b86b44b-9eed-497a-8080-62867dda9a84"
+        ],
+        "nodeOrder": [
+          "8f694529-51ff-4ea2-b284-d2b08294d85a"
+        ],
+        "masks": {},
+        "assets": {
+          "ac6b42e8-60ce-49ce-8577-cb653c8d868e": {
+            "id": "ac6b42e8-60ce-49ce-8577-cb653c8d868e",
+            "attachmentId": "8ff35acf3b45facb89c3e6148a8",
+            "name": "oriented-quadrants.webp",
+            "mime": "image/webp",
+            "width": 8,
+            "height": 12,
+            "orientation": 6
+          }
+        }
+      }
+    ],
+    "keys": [],
+    "clipboard": [
+      {
+        "fixtureWritten": true,
+        "sha256": "2d32dc0156cef7ee1c2232de3a04355ff181b6463172904ca6f859c3d1686659",
+        "width": 17,
+        "height": 11
+      }
+    ],
+    "ingests": [
+      {
+        "name": "image/jpeg orientation 2 RGBA",
+        "preview": {
+          "maxError": 1,
+          "different": 0,
+          "passed": true
+        },
+        "freshRenderer": {
+          "maxError": 1,
+          "different": 0,
+          "passed": true
+        },
+        "passed": true
+      },
+      {
+        "name": "image/jpeg orientation 3 RGBA",
+        "preview": {
+          "maxError": 1,
+          "different": 0,
+          "passed": true
+        },
+        "freshRenderer": {
+          "maxError": 1,
+          "different": 0,
+          "passed": true
+        },
+        "passed": true
+      },
+      {
+        "name": "image/jpeg orientation 4 RGBA",
+        "preview": {
+          "maxError": 1,
+          "different": 0,
+          "passed": true
+        },
+        "freshRenderer": {
+          "maxError": 1,
+          "different": 0,
+          "passed": true
+        },
+        "passed": true
+      },
+      {
+        "name": "image/jpeg orientation 5 RGBA",
+        "preview": {
+          "maxError": 1,
+          "different": 0,
+          "passed": true
+        },
+        "freshRenderer": {
+          "maxError": 1,
+          "different": 0,
+          "passed": true
+        },
+        "passed": true
+      },
+      {
+        "name": "image/jpeg orientation 6 RGBA",
+        "preview": {
+          "maxError": 1,
+          "different": 0,
+          "passed": true
+        },
+        "freshRenderer": {
+          "maxError": 1,
+          "different": 0,
+          "passed": true
+        },
+        "passed": true
+      },
+      {
+        "name": "image/jpeg orientation 7 RGBA",
+        "preview": {
+          "maxError": 1,
+          "different": 0,
+          "passed": true
+        },
+        "freshRenderer": {
+          "maxError": 1,
+          "different": 0,
+          "passed": true
+        },
+        "passed": true
+      },
+      {
+        "name": "image/jpeg orientation 8 RGBA",
+        "preview": {
+          "maxError": 1,
+          "different": 0,
+          "passed": true
+        },
+        "freshRenderer": {
+          "maxError": 1,
+          "different": 0,
+          "passed": true
+        },
+        "passed": true
+      },
+      {
+        "name": "image/png orientation 2 RGBA",
+        "preview": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "freshRenderer": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "passed": true
+      },
+      {
+        "name": "image/png orientation 3 RGBA",
+        "preview": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "freshRenderer": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "passed": true
+      },
+      {
+        "name": "image/png orientation 4 RGBA",
+        "preview": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "freshRenderer": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "passed": true
+      },
+      {
+        "name": "image/png orientation 5 RGBA",
+        "preview": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "freshRenderer": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "passed": true
+      },
+      {
+        "name": "image/png orientation 6 RGBA",
+        "preview": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "freshRenderer": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "passed": true
+      },
+      {
+        "name": "image/png orientation 7 RGBA",
+        "preview": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "freshRenderer": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "passed": true
+      },
+      {
+        "name": "image/png orientation 8 RGBA",
+        "preview": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "freshRenderer": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "passed": true
+      },
+      {
+        "name": "image/webp orientation 2 RGBA",
+        "preview": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "freshRenderer": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "passed": true
+      },
+      {
+        "name": "image/webp orientation 3 RGBA",
+        "preview": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "freshRenderer": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "passed": true
+      },
+      {
+        "name": "image/webp orientation 4 RGBA",
+        "preview": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "freshRenderer": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "passed": true
+      },
+      {
+        "name": "image/webp orientation 5 RGBA",
+        "preview": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "freshRenderer": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "passed": true
+      },
+      {
+        "name": "image/webp orientation 6 RGBA",
+        "preview": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "freshRenderer": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "passed": true
+      },
+      {
+        "name": "image/webp orientation 7 RGBA",
+        "preview": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "freshRenderer": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "passed": true
+      },
+      {
+        "name": "image/webp orientation 8 RGBA",
+        "preview": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "freshRenderer": {
+          "maxError": 0,
+          "different": 0,
+          "passed": true
+        },
+        "passed": true
+      }
+    ],
+    "imageOriginals": [
+      {
+        "id": "ac6b42e8-60ce-49ce-8577-cb653c8d868e",
+        "attachmentId": "8ff35acf3b45facb89c3e6148a8",
+        "width": 8,
+        "height": 12,
+        "mime": "image/webp",
+        "orientation": 6,
+        "bytes": 124,
+        "sha256": "6d12895b0374cda2bc44446c6312f93733be88b6e4f618859347ee1a1f50c89a"
+      }
+    ]
+  },
+  "rawFiles": [
+    "drawing-input-checks (12).json",
+    "drawing-input-checks (15).json"
+  ],
+  "limitations": [
+    "Browser mock storage; no physical/native Clipboard API read acceptance.",
+    "Actual clipboard write succeeded; actual read remained pending and was canceled.",
+    "Fresh renderer from persisted-scene JSON, not actual native relaunch.",
+    "New animation source changes were made after these browser checks and remain unverified.",
+    "Visual screenshots reviewed in tool output only; full light/dark/narrow/native screenshot gate remains open."
+  ]
+}

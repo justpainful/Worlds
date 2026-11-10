@@ -1,0 +1,48 @@
+{
+  "passed": true,
+  "cases": [
+    {
+      "name": "version3 contains preview, history and editable experiment",
+      "passed": true
+    },
+    {
+      "name": "experiment points to newly owned source",
+      "passed": true
+    },
+    {
+      "name": "operation IDs change and source authors remain",
+      "passed": true
+    },
+    {
+      "name": "Imported main exact pixels",
+      "passed": true
+    },
+    {
+      "name": "Original comparison exact pixels",
+      "passed": true
+    },
+    {
+      "name": "Editable alternative exact pixels",
+      "passed": true
+    },
+    {
+      "name": "imported experiment accepts real editable operations",
+      "passed": true
+    },
+    {
+      "name": "editing imported branch leaves main and comparison unchanged",
+      "passed": true
+    },
+    {
+      "name": "Undo restores imported branch blue",
+      "passed": true
+    },
+    {
+      "name": "cancel rejects before staging",
+      "passed": true
+    }
+  ],
+  "limitations": [
+    "Synthetic browser backend. Native atomic install and source authorization have separate tests."
+  ]
+}

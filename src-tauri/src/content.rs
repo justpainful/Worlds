@@ -302,7 +302,12 @@ pub fn from_markdown(src: &str) -> Vec<Value> {
             }
             i += 1;
             let text = code.join("\n");
-            let mut node = json!({ "type": "codeBlock", "attrs": { "language": lang.trim() } });
+            let lang = lang.trim();
+            if lang.eq_ignore_ascii_case("mermaid") {
+                blocks.push(json!({ "type": "mermaid", "attrs": { "code": text } }));
+                continue;
+            }
+            let mut node = json!({ "type": "codeBlock", "attrs": { "language": lang } });
             if !text.is_empty() {
                 node["content"] = json!([text_node(&text, &[])]);
             }

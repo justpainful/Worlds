@@ -74,7 +74,7 @@ async function resumePending() {
   const pages = await api.drawingSyncPendingPages().catch(() => []);
   for (const page of pages ?? []) void open(page);
 }
-export async function retryDrawingSync(page: string) { const entry = entries.get(page); if (entry?.live.snapshot().info?.resetting && !entry.live.snapshot().error) await entry.live.retryPersistence(); if (entry?.live.snapshot().error) retire(page, entry); return open(page); }
+export async function retryDrawingSync(page: string) { const entry = entries.get(page); if (entry?.live.snapshot().info?.resetting && !entry.live.snapshot().error) await entry.live.retryPersistence(); if (entry?.live.snapshot().error) retire(page, entry); else if(entry?.live.snapshot().info?.state!=="synced")entry?.live.reconnect(); return open(page); }
 export async function beginDrawingGesture(page: string, ids: string[]) {
   return reserveDrawingTargets(page,ids.map(id=>`node:${id}`));
 }

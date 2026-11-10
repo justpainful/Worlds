@@ -1,0 +1,43 @@
+{
+  "passed": true,
+  "cases": [
+    {
+      "name": "source-over: mixed image, shape, text and layer opacity match independent alpha/blend equations",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 1
+    },
+    {
+      "name": "multiply: mixed image, shape, text and layer opacity match independent alpha/blend equations",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 1
+    },
+    {
+      "name": "screen: mixed image, shape, text and layer opacity match independent alpha/blend equations",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 1
+    },
+    {
+      "name": "overlay: mixed image, shape, text and layer opacity match independent alpha/blend equations",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 1
+    },
+    {
+      "name": "darken: mixed image, shape, text and layer opacity match independent alpha/blend equations",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 1
+    },
+    {
+      "name": "lighten: mixed image, shape, text and layer opacity match independent alpha/blend equations",
+      "passed": true,
+      "differentPixels": 0,
+      "maxError": 1
+    }
+  ],
+  "scope": "Production renderer mixed layers. Each isolated source pigment is measured separately, then the final blend is independently calculated in premultiplied sRGB8. No native/UI acceptance.",
+  "tolerance": "Maximum2 in premultiplied RGBA8."
+}

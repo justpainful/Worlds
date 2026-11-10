@@ -3,6 +3,16 @@ import { id,newLayer, type Change, type DrawingNode, type DrawingScene, type Fra
 import {removeNodes} from './operations';
 import { bounds, localToWorld } from "./geometry";
 
+/** Move every world-space component together. Linked masks use node-local coordinates. */
+export function translateWorldMask(mask: Mask, offset: Point): Mask {
+  const copy = structuredClone(mask);
+  if (!copy.linked) {
+    copy.x += offset.x; copy.y += offset.y;
+    for (const stroke of copy.strokes) stroke.samples = stroke.samples.map(sample => ({ ...sample, x: sample.x + offset.x, y: sample.y + offset.y }));
+  }
+  return copy;
+}
+
 function translatedNode(node: DrawingNode, offset: Point): DrawingNode {
   const next = { ...structuredClone(node), x: node.x + offset.x, y: node.y + offset.y };
   for (const key of ["anchor", "endAnchor"] as const) {
@@ -23,9 +33,9 @@ export function duplicateElements(scene: DrawingScene, nodeIds: string[], offset
     if (node.annotationGroup) { const key=`annotation:${node.annotationGroup}`;if (!groups.has(key)) groups.set(key,id());node.annotationGroup=groups.get(key)!; }
     for (const anchorKey of ["anchor", "endAnchor"] as const) {
       const anchor = node[anchorKey];
-      if (anchor?.nodeId && remap.has(anchor.nodeId)) node[anchorKey] = { ...anchor, nodeId: remap.get(anchor.nodeId)! };
+      if (anchor?.nodeId && remap.has(anchor.nodeId)) node[anchorKey] = { ...anchor, nodeId: remap.get(anchor.nodeId)!, fallback: { x: anchor.fallback.x + offset.x, y: anchor.fallback.y + offset.y } };
     }
-    const copyMask=(key:string)=>{if(!masks.has(key)){const original=scene.masks[key];if(original){const clone={...structuredClone(original),id:id(),x:original.x+(original.linked?0:offset.x),y:original.y+(original.linked?0:offset.y)};if(clone.assetId)clone.assetId=copyAsset(clone.assetId);for(const stroke of clone.strokes)if(stroke.brush.tipAssetId)stroke.brush.tipAssetId=copyAsset(stroke.brush.tipAssetId);masks.set(key,clone);}}return masks.get(key)?.id;};
+    const copyMask=(key:string)=>{if(!masks.has(key)){const original=scene.masks[key];if(original){const clone={...translateWorldMask(original,offset),id:id()};if(clone.assetId)clone.assetId=copyAsset(clone.assetId);for(const stroke of clone.strokes)if(stroke.brush.tipAssetId)stroke.brush.tipAssetId=copyAsset(stroke.brush.tipAssetId);masks.set(key,clone);}}return masks.get(key)?.id;};
     if(node.maskId)node.maskId=copyMask(node.maskId);node.effects=node.effects.map(e=>e.maskId?{...e,maskId:copyMask(e.maskId)}:e);
     return node;
   });
@@ -53,17 +63,18 @@ export function duplicateFrame(scene: DrawingScene, frameId: string): { frame: F
 export function moveFrame(scene: DrawingScene, frameId: string, position: Point): Change[] {
   const frame = scene.frames[frameId]; if (!frame) throw new Error("Frame not found");
   const offset = { x: position.x - frame.x, y: position.y - frame.y }, changes: Change[] = [{ type: "patch", collection: "frames", id: frameId, fields: { ...position } }];
-  const masks = new Map<string, Mask>();
-  for (const original of Object.values(scene.nodes).filter((n) => n.frameId === frameId)) {
+  const members=Object.values(scene.nodes).filter(n=>n.frameId===frameId),memberIds=new Set(members.map(n=>n.id));
+  for (const original of members) {
     const node = translatedNode(original, offset);
-    if (node.maskId && scene.masks[node.maskId] && !scene.masks[node.maskId].linked) {
-      if (!masks.has(node.maskId)) { const mask = scene.masks[node.maskId]; masks.set(mask.id, { ...structuredClone(mask), id: id(), x: mask.x + offset.x, y: mask.y + offset.y }); }
-      node.maskId = masks.get(node.maskId)!.id;
-    }
+    for(const key of ['anchor','endAnchor'] as const){const anchor=node[key];if(anchor?.nodeId&&(memberIds.has(anchor.nodeId)||!scene.nodes[anchor.nodeId]))node[key]={...anchor,fallback:{x:anchor.fallback.x+offset.x,y:anchor.fallback.y+offset.y}};}
+    // An unlinked mask is fixed in world coordinates even when its frame moves.
+    // Linked masks remain in node-local coordinates and follow the node naturally.
     const { id: _id, ...fields } = node;
     changes.push({ type: "patch", collection: "nodes", id: original.id, fields });
   }
-  changes.unshift(...[...masks.values()].map((m): Change => ({ type: "put", collection: "masks", id: m.id, value: m })));
+  // A live presentation step captures a world-space camera for this frame.
+  // Keep that camera on the moved content; pinned steps belong to an older snapshot.
+  for(const step of Object.values(scene.steps))if(step.frameId===frameId&&!step.pinnedVersionId)changes.push({type:'patch',collection:'steps',id:step.id,fields:{camera:{...step.camera,x:step.camera.x+offset.x,y:step.camera.y+offset.y}}});
   return changes;
 }
 export function alignElements(scene: DrawingScene, nodeIds: string[], alignment: "left" | "center" | "right" | "top" | "middle" | "bottom" | "horizontal" | "vertical"): Change[] {

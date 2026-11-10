@@ -32,7 +32,7 @@ export class DrawingLiveSession {
   subscribe = (fn: () => void) => { this.listeners.add(fn); return () => { this.listeners.delete(fn); }; };
   snapshot = () => this.state;
   private set(patch: Partial<DrawingLiveState>) { this.state = { ...this.state, ...patch }; for (const fn of this.listeners) fn(); }
-  start() { return this.startPromise ??= this.provider.init().then(() => { if (this.stopped) return; this.set({ ready: true, info: { ...this.provider.info, level: this.level } }); this.awareness.setLocalStateField("user", this.o.user); if (this.canComment) upsertPerson(this.comments, this.o.user); this.refresh(); }); }
+  start() { return this.startPromise ??= this.provider.init().then(() => { if (this.stopped) return; this.set({ ready: true, info: { ...this.provider.info, level: this.level },error:null }); this.awareness.setLocalStateField("user", this.o.user); if (this.canComment) upsertPerson(this.comments, this.o.user); this.refresh(); }).catch((error:unknown)=>{if(!this.stopped){this.set({ready:false,error:error instanceof Error?error.message:String(error)});this.clearVisible();}throw error;}); }
   get canComment() { return !this.stopped && this.state.ready && !this.state.info?.resetting && ["comment", "edit", "full"].includes(this.level); }
   private clearVisible() { if (this.timer) clearTimeout(this.timer); this.timer = null; this.presence = null; this.set({ peers: [], threads: [], following: null }); this.awareness.setLocalState(null); }
   private refresh() {
@@ -51,6 +51,13 @@ export class DrawingLiveSession {
   }
   update(patch: Partial<DrawingPresence>) {
     if (this.stopped || !this.state.ready || this.level === "none") return;
+    // The deployed awareness protocol uses six-digit laser colors. Preserve a
+    // selected color's alpha in opacity so transparent colors remain compatible
+    // with older servers and do not invalidate the whole presence update.
+    if(patch.laser&&/^#[a-f\d]{8}$/i.test(patch.laser.color)){
+      const color=patch.laser.color,alpha=parseInt(color.slice(7,9),16)/255;
+      patch={...patch,laser:{...patch.laser,color:color.slice(0,7),opacity:patch.laser.opacity*alpha}};
+    }
     const next = { frameId: "", tool: "brush", selected: [], cursor: null, camera: { x: 0, y: 0, w: 1280, h: 720 }, following: this.state.following, laser: null, ...this.presence, ...patch };
     const safe = readDrawingPresence(next); if (!safe) return; this.presence = safe;
     if (this.timer) return;
@@ -65,6 +72,7 @@ export class DrawingLiveSession {
   private requireComment(body?: string) { if (!this.canComment) throw new Error("Comment access is required"); if (body !== undefined && (!body.trim() || body.length > 10000)) throw new Error("Comments must contain 1 to 10000 characters"); }
   persisted() { return this.provider.persisted(); }
   retryPersistence() { return this.provider.retryPersistence(); }
+  reconnect() { if(!this.stopped&&!this.state.error&&!this.state.info?.resetting)this.provider.reconnect(); }
   async close() {
     if (this.stopped) return; this.stopped = true; if (this.timer) clearTimeout(this.timer); this.awareness.setLocalState(null); this.provider.pauseNetworking();
     await this.startPromise?.catch(() => {});

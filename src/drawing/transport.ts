@@ -14,6 +14,33 @@ export interface DrawingTransportIO {
   storeOriginal: (id: string, info: DrawingAssetInfo, bytes: Uint8Array) => Promise<void>;
 }
 export interface DrawingTransportInfo { status: "connecting" | DrawingReplica["status"]; pending: number; error: string | null; level: DrawingReplica["level"]; revision: number | null; leases?: PublicDrawingLease[] }
+/** Read no more than the already validated original size, even if the server
+ * sends a misleading Content-Length or an indefinitely growing response. */
+async function readDrawingOriginal(response: Response, size: number, signal: AbortSignal): Promise<Uint8Array> {
+  const advertised = response.headers.get("content-length");
+  const contentEncoding = response.headers.get("content-encoding");
+  if (advertised !== null && !contentEncoding && (!/^\d+$/.test(advertised) || Number(advertised) !== size)) throw new DrawingWireError("invalid", "Downloaded drawing original has an unexpected size");
+  if (!response.body) throw new DrawingWireError("unavailable", "Could not read the drawing original stream");
+  let result: Uint8Array;
+  try { result = new Uint8Array(size); }
+  catch { throw new DrawingWireError("unavailable", "Not enough memory to download this drawing original. Close other work and retry."); }
+  const reader = response.body.getReader(); let offset = 0;
+  const cancel = () => { void reader.cancel().catch(() => {}); };
+  signal.addEventListener("abort", cancel, { once: true });
+  try {
+    for (;;) {
+      if (signal.aborted) throw new DOMException("Stopped", "AbortError");
+      const { value, done } = await reader.read();
+      if (signal.aborted) throw new DOMException("Stopped", "AbortError");
+      if (done) break;
+      if (offset + value.byteLength > size) throw new DrawingWireError("invalid", "Downloaded drawing original exceeds its declared size");
+      result.set(value, offset); offset += value.byteLength;
+    }
+    if (offset !== size) throw new DrawingWireError("invalid", "Downloaded drawing original is incomplete");
+    return result;
+  } catch (error) { await reader.cancel().catch(() => {}); throw error; }
+  finally { signal.removeEventListener("abort", cancel); reader.releaseLock(); }
+}
 interface Options { pageId: string; workspaceId: string; serverUrl: string; userId: string; io: DrawingTransportIO; getToken: (refresh?: boolean) => Promise<string | null>; fetcher?: typeof fetch; onInfo?: (info: DrawingTransportInfo) => void }
 export function mergeDrawingWire(previous: DrawingWireState | null, incoming: DrawingWireState): DrawingWireState {
   validateDrawingDependencies(incoming);
@@ -114,10 +141,15 @@ export class DrawingTransport {
       else {
         const token = await this.o.getToken(); if (!token) throw new DrawingWireError("unavailable", "Sign in to download drawing originals");
         const r = await this.fetch(this.path(`attachments/${info.sha256}`), { headers: { authorization: `Bearer ${token}` } }); if (!r.ok) throw new DrawingWireError(r.status === 403 ? "denied" : "unavailable", "A drawing original could not be downloaded");
-        const { url } = await r.json() as { url: string }, got = await this.fetch(url); if (!got.ok) throw new Error("Drawing original download failed"); bytes = new Uint8Array(await got.arrayBuffer());
+        const { url } = await r.json() as { url: string }, got = await this.fetch(url); if (!got.ok) throw new Error("Drawing original download failed"); bytes = await readDrawingOriginal(got, info.size, this.abort.signal);
         if (bytes.length !== info.size || await sha256Hex(bytes) !== info.sha256) throw new DrawingWireError("invalid", "Downloaded drawing original checksum does not match");
       }
-      await this.o.io.storeOriginal(id, info, bytes); this.verified.set(id, info.sha256);
+      try { await this.o.io.storeOriginal(id, info, bytes); }
+      catch (error) {
+        if (/no space|disk full|not enough space|quota|storage full/i.test(error instanceof Error ? error.message : String(error))) throw new DrawingWireError("unavailable", "Could not save the drawing original. Free storage space and retry.");
+        throw error;
+      }
+      this.verified.set(id, info.sha256);
     }
   }
   private checkPublications(state:DrawingWireState){

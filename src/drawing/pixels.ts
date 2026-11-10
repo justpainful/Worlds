@@ -23,7 +23,7 @@ export function floodMask(image: Pixels, x: number, y: number, tolerance: number
   if (x < 0 || y < 0 || x >= image.width || y >= image.height) throw new Error("The fill point is outside the image");
   const { width, height, data } = image, size = width * height, seed = (y * width + x) * 4;
   if (selection && selection.length !== size) throw new Error("Selection dimensions do not match");
-  const result = new Uint8ClampedArray(size), seen = new Uint8Array(size);
+  const result = new Uint8ClampedArray(size);
   const limit = Math.max(0, Math.min(255, tolerance));
   // Premultiplied channels prevent invisible RGB values from breaking transparent fills.
   const alpha = data[seed + 3] / 255;
@@ -37,7 +37,7 @@ export function floodMask(image: Pixels, x: number, y: number, tolerance: number
     for (let i = 0; i < size; i++) if (matches(i)) result[i] = selection?.[i] ?? 255;
     return result;
   }
-  const stack: number[] = [y * width + x];
+  const seen = new Uint8Array(size), stack: number[] = [y * width + x];
   while (stack.length) {
     const at = stack.pop()!;
     if (seen[at]) continue;
@@ -47,10 +47,21 @@ export function floodMask(image: Pixels, x: number, y: number, tolerance: number
     const start = Math.floor(at / width) * width, end = start + width;
     while (left > start && !seen[left - 1] && matches(left - 1)) left--;
     while (right + 1 < end && !seen[right + 1] && matches(right + 1)) right++;
+    // One seed per matching neighboring run is enough. Pushing every pixel in
+    // a large solid area creates millions of duplicate stack entries.
+    let aboveRun = false, belowRun = false;
     for (let i = left; i <= right; i++) {
       seen[i] = 1; result[i] = selection?.[i] ?? 255;
-      if (i >= width && !seen[i - width]) stack.push(i - width);
-      if (i + width < size && !seen[i + width]) stack.push(i + width);
+      if (i >= width) {
+        const neighbor = i - width, eligible = !seen[neighbor] && matches(neighbor);
+        if (eligible && !aboveRun) stack.push(neighbor);
+        aboveRun = eligible;
+      }
+      if (i + width < size) {
+        const neighbor = i + width, eligible = !seen[neighbor] && matches(neighbor);
+        if (eligible && !belowRun) stack.push(neighbor);
+        belowRun = eligible;
+      }
     }
   }
   return result;
@@ -115,21 +126,35 @@ export function applyPixelEffect(image: Pixels, effect: PixelEffect): Pixels {
   validatePixels(image);
   const data = image.data.slice(), { width, height } = image, amount = effect.amount;
   if (effect.kind === "blur") {
-    const channels = Array.from({ length: 4 }, () => new Uint8ClampedArray(width * height));
-    for (let i = 0; i < width * height; i++) for (let c = 0; c < 4; c++) channels[c][i] = c === 3 ? data[i * 4 + c] : data[i * 4 + c] * data[i * 4 + 3] / 255;
-    const blurred = channels.map((channel) => featherMask(channel, width, height, amount));
-    for (let i = 0; i < width * height; i++) { const alpha = blurred[3][i]; for (let c = 0; c < 3; c++) data[i * 4 + c] = alpha ? blurred[c][i] * 255 / alpha : 0; data[i * 4 + 3] = alpha; }
+    const size = width * height, channel = new Uint8ClampedArray(size);
+    for (let i = 0; i < size; i++) channel[i] = image.data[i * 4 + 3];
+    const alpha = featherMask(channel, width, height, amount);
+    // Preserve the original premultiplied-channel rounding while processing one
+    // channel at a time. Four source and four output planes need not coexist.
+    for (let c = 0; c < 3; c++) {
+      for (let i = 0; i < size; i++) channel[i] = image.data[i * 4 + c] * image.data[i * 4 + 3] / 255;
+      const blurred = featherMask(channel, width, height, amount);
+      for (let i = 0; i < size; i++) data[i * 4 + c] = alpha[i] ? blurred[i] * 255 / alpha[i] : 0;
+    }
+    for (let i = 0; i < size; i++) data[i * 4 + 3] = alpha[i];
   } else if (effect.kind === "pixelate") {
     const size = Math.max(1, Math.min(256, Math.round(amount)));
     for (let y = 0; y < height; y += size) for (let x = 0; x < width; x += size) {
-      const channels = [0, 0, 0, 0]; let count = 0;
-      for (let yy = y; yy < Math.min(height, y + size); yy++) for (let xx = x; xx < Math.min(width, x + size); xx++) { const at = (yy * width + xx) * 4,alpha=image.data[at+3]; for (let c = 0; c < 3; c++) channels[c] += image.data[at + c]*alpha/255;channels[3]+=alpha; count++; }
-      for (let yy = y; yy < Math.min(height, y + size); yy++) for (let xx = x; xx < Math.min(width, x + size); xx++) { const at = (yy * width + xx) * 4;for(let c=0;c<3;c++)data[at+c]=channels[3]?channels[c]*255/channels[3]:0;data[at+3]=channels[3]/count; }
+      // Scalar accumulators avoid a temporary array for every block, which is
+      // especially costly when the block size is small on a large image.
+      let red = 0, green = 0, blue = 0, alphaSum = 0, count = 0;
+      for (let yy = y; yy < Math.min(height, y + size); yy++) for (let xx = x; xx < Math.min(width, x + size); xx++) { const at = (yy * width + xx) * 4,alpha=image.data[at+3]; red+=image.data[at]*alpha/255;green+=image.data[at+1]*alpha/255;blue+=image.data[at+2]*alpha/255;alphaSum+=alpha;count++; }
+      for (let yy = y; yy < Math.min(height, y + size); yy++) for (let xx = x; xx < Math.min(width, x + size); xx++) { const at = (yy * width + xx) * 4;data[at]=alphaSum?red*255/alphaSum:0;data[at+1]=alphaSum?green*255/alphaSum:0;data[at+2]=alphaSum?blue*255/alphaSum:0;data[at+3]=alphaSum/count; }
     }
   } else if (effect.kind === "sharpen") {
     for (let y = 1; y < height - 1; y++) for (let x = 1; x < width - 1; x++) {
       const at = (y * width + x) * 4;
-      for (let c = 0; c < 3; c++) {const alpha=image.data[at+3],pigment=(p:number)=>image.data[p+c]*image.data[p+3]/255,value=pigment(at)*(1+4*amount)-amount*(pigment(at-4)+pigment(at+4)+pigment(at-width*4)+pigment(at+width*4));data[at+c]=alpha?value*255/alpha:0;}
+      for (let c = 0; c < 3; c++) {
+        const alpha=image.data[at+3],left=at-4,right=at+4,top=at-width*4,bottom=at+width*4;
+        const centerPigment=image.data[at+c]*image.data[at+3]/255;
+        const value=centerPigment*(1+4*amount)-amount*(image.data[left+c]*image.data[left+3]/255+image.data[right+c]*image.data[right+3]/255+image.data[top+c]*image.data[top+3]/255+image.data[bottom+c]*image.data[bottom+3]/255);
+        data[at+c]=alpha?value*255/alpha:0;
+      }
     }
   } else for (let i = 0; i < data.length; i += 4) {
     const r = data[i], g = data[i + 1], b = data[i + 2], luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;

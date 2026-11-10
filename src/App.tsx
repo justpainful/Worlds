@@ -17,6 +17,7 @@ import { AutomationHost } from "./automations/AutomationEditor";
 import { markReady, startMonitor } from "./perf/monitor";
 import { PerfOverlay } from "./perf/PerfOverlay";
 import { startDrawingSyncManager } from "./drawing/syncManager";
+import { openQuickCapture } from "./planning/InboxView";
 
 export function App() {
   const ready = useStore((s) => s.ready);
@@ -88,6 +89,9 @@ export function App() {
       } else if (mod && e.key.toLowerCase() === "p") {
         e.preventDefault();
         s.setPalette(true, "pages");
+      } else if (mod && e.altKey && e.key.toLowerCase() === "n") {
+        e.preventDefault();
+        openQuickCapture();
       } else if (mod && e.key.toLowerCase() === "n") {
         e.preventDefault();
         s.createPage({}, e.shiftKey ? "right" : "current");

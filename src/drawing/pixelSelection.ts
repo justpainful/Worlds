@@ -52,7 +52,12 @@ export function computeSelection(request: SelectionRequest): SelectionRaster {
       if(operation.image.width!==width||operation.image.height!==height)throw new Error("Selection source dimensions do not match");
       mask=floodMask(operation.image,operation.point.x,operation.point.y,operation.tolerance,operation.contiguous);
     }
-    if (mode!=="replace") mask=combineMask(previous??new Uint8ClampedArray(size),mask,mode);
+    if (mode!=="replace") {
+      if (previous) mask=combineMask(previous,mask,mode);
+      // Combining against an empty selection needs no additional full-size
+      // mask: add keeps the new region, subtract/intersect produce nothing.
+      else if (mode!=="add") mask.fill(0);
+    }
   }
   return selectionRaster(width,height,mask);
 }

@@ -1,0 +1,75 @@
+{
+  "date": "2026-11-06",
+  "origin": "http://127.0.0.1:1421/scripts/drawing-render-smoke.html",
+  "browser": "ChatGPT in-app browser, tab 12",
+  "fixture": "Synthetic 4096x2048 Canvas 2D surfaces, seed 42",
+  "streamingChecksPassed": true,
+  "fullRasterAcceptance": false,
+  "screenshotCaptured": false,
+  "sourceSha256": {
+    "renderer": "1309408768E7FC191816B53558BF983B0F5BC1B113DF1EB7CE6AA9F75C733F73",
+    "brush": "D0C554A808EBBCD657DC39453848BE58749CFCF53861E14BAAFB6B8056F0D47C",
+    "harness": "D052048870FFA7A2F4CDB8ADC518EA25B0FE0B4BB20D970E49C5AED32E7A9237"
+  },
+  "comparison": "Streamed pigment versus materialized pigment on matching 512px tiles; all five reported max channel error 0, alpha error 0 and cache differences 0. Separate untiled comparison remains diagnostic and unresolved.",
+  "results": [
+    {
+      "cacheDifferences": 0,
+      "maxChannelError": 0,
+      "name": "2048 spray across two tile batches",
+      "differing": 0,
+      "untiledAlphaDifferences": 0,
+      "painted": 6706739,
+      "maxAlphaError": 0,
+      "untiledMaxAlphaError": 1
+    },
+    {
+      "cacheDifferences": 0,
+      "maxChannelError": 0,
+      "name": "crayon pigment across seams",
+      "differing": 0,
+      "untiledAlphaDifferences": 14,
+      "painted": 234466,
+      "maxAlphaError": 0,
+      "untiledMaxAlphaError": 46
+    },
+    {
+      "cacheDifferences": 0,
+      "maxChannelError": 0,
+      "name": "rotated soft brush",
+      "differing": 0,
+      "untiledAlphaDifferences": 724,
+      "painted": 193005,
+      "maxAlphaError": 0,
+      "untiledMaxAlphaError": 41
+    },
+    {
+      "cacheDifferences": 0,
+      "maxChannelError": 0,
+      "name": "uniform highlighter across tile batches",
+      "differing": 0,
+      "untiledAlphaDifferences": 69,
+      "painted": 654779,
+      "maxAlphaError": 0,
+      "untiledMaxAlphaError": 12
+    },
+    {
+      "cacheDifferences": 0,
+      "maxChannelError": 0,
+      "name": "zoomed clipped spray",
+      "differing": 0,
+      "untiledAlphaDifferences": 535,
+      "painted": 120244,
+      "maxAlphaError": 0,
+      "untiledMaxAlphaError": 39
+    }
+  ],
+  "scope": "Actual browser Canvas 2D comparison. No native UI, pen, Windows clipboard, hardware benchmark or full visual acceptance. Untiled alpha differences count pixels with error above 2.",
+  "revalidatedAfterServerRestart": true,
+  "servedSourceMapMatches": {
+    "src/dev/mockTauri.ts": true,
+    "src/drawing/renderer.ts": true,
+    "src/drawing/brush.ts": true
+  },
+  "supersededBy": "browser-compositing-pixels.json"
+}

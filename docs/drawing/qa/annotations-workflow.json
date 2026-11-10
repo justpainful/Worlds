@@ -1,0 +1,58 @@
+{
+  "scope": "F03 annotation workflow implementation and automated correctness. Native UI visual acceptance remains separate.",
+  "implementation": [
+    "Nine local anchor positions and exact percentages with an actual scene preview, target replacement and world detachment",
+    "Independent saved text labels with exact x/y and existing canvas drag handles",
+    "Deleted, cropped, replaced, relinked, explicit-review and unverified-original states",
+    "Group statuses, numbered markers, appearance presets and existing native library style save/apply",
+    "Root reservation, post-reservation source and permission checks, strict-base journal dispatch and author Undo/Redo",
+    "Independent annotation group remapping for duplicate, clipboard, library and experiment keep-both"
+  ],
+  "validation": {
+    "typecheck": "passed",
+    "typescript": {
+      "passed": 45,
+      "files": 7,
+      "annotationTests": 13,
+      "command": "npx vitest run src/drawing/annotations.test.ts src/drawing/library.test.ts src/drawing/workflows.test.ts src/drawing/experiments.test.ts src/drawing/package.test.ts src/drawing/objectTransforms.test.ts src/drawing/operations.test.ts"
+    },
+    "native": {
+      "passed": 3,
+      "command": "cargo test --lib drawing::annotations::tests -- --nocapture",
+      "includes": [
+        "Legacy and dangling target compatibility",
+        "Malformed anchors, statuses, metadata and unknown-field refusal",
+        "Actual temporary SQLite save, connection close, reopen, author Undo and Redo of anchors, label geometry and status"
+      ]
+    },
+    "designScan": {
+      "tier0": 0,
+      "tier1": 0
+    },
+    "longDashScan": {
+      "humanReadableHits": 0
+    }
+  },
+  "limits": [
+    "An older image original without a valid SHA256 remains explicitly unverified. Replacing it with same-sized content cannot be conclusively identified from dimensions alone.",
+    "The source fingerprint contains stable content/crop/source metadata, never local asset or attachment IDs. It is review metadata and grants no source access rights.",
+    "Legacy finite UV positions just outside a stroke's geometry are retained without endpoint jumps. The explicit anchor picker chooses positions within zero to one.",
+    "The legacy global Annotations group is retained as saved. Newly drawn arrows receive independent group IDs.",
+    "Dialogs reject any intervening scene change conservatively, including unrelated edits. Reopening is required.",
+    "No browser/native light, dark or RTL visual acceptance is claimed by this artifact. No owner database, installation or deployment was changed."
+  ],
+  "capturedAt": "2026-11-06T09:10:49.441Z",
+  "sourceSha256": {
+    "src/drawing/annotations.ts": "32188641848a8b8f5a036aa991628d617c681748abbe3aaa6d8e67d3a6bb38b7",
+    "src/drawing/AnnotationsPanel.tsx": "b84d35341ec6a43ca838e4dfa79c2bbf8700f323a190f8e2fbcaca4df3fc2bb6",
+    "src/drawing/annotations.test.ts": "86a49df0a5b4e5810704a3fdca8006cd714455b255cc32fd533410b137a6411c",
+    "src/drawing/annotations.css": "35998bc461e306302aabfecb1e2f92e084e14af7990e0d10a0322a04b3cd0075",
+    "src/drawing/Stage.tsx": "d40a18d16b1cd0d60debc7ce0cb021c2648a741fc1aa25b7c4e9ccff6daef110",
+    "src/drawing/DrawingView.tsx": "d2fadb45d587faa21d807f0a744b031873214771383f431abcd761cc5f1438a2",
+    "src/drawing/model.ts": "0bde82258aa96c3e96bacbaa7d2638f83be14dbbdef69640c3acd1b981854f9c",
+    "src/drawing/library.ts": "0cf6c789fa61247eea7b2dbf96b7945a3bd5a3630cbf4d1ab17a73f2f86d4be4",
+    "src/drawing/workflows.ts": "95b11ffb0465314f29ce500ce17c0c3236afad767b0f3e6e5f02eb28206a7b7c",
+    "src-tauri/src/drawing_annotations.rs": "15c011d83f6c444f881962c601bdcf7bd0eac0583b204aab49e3a4b039c35ac3",
+    "src-tauri/src/drawing.rs": "743ff4dda6d8248cada4d4a51851aaa5635b38280e7e31b2474f55e9861937e7"
+  }
+}

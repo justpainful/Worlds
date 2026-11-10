@@ -16,7 +16,7 @@ interface PreparedPixelBase {
   images:ReadonlyMap<string,HTMLImageElement>; lease:DrawingGestureLease|null; dispose:()=>void; signal:AbortSignal;
   acknowledging?:boolean;
 }
-export type PreparedPixelEdit=PreparedPixelBase&({kind:"selection";action:PixelAction;selection:PixelSelection;plan:PixelSourcePlan}|{kind:"image";action:"paste"|"import";animation?:{frameCount:number;index:number}});
+export type PreparedPixelEdit=PreparedPixelBase&({kind:"selection";action:PixelAction;selection:PixelSelection;plan:PixelSourcePlan}|{kind:"image";action:"paste"|"import";convertedFromSvg:boolean;animation?:{frameCount:number;index:number}});
 interface Options {
   pageId:string;canEdit:boolean;selection:PixelSelection|null;layerId:string;frameId:string;source:PixelSampleSource;
   scene:()=>DrawingScene|null;commit:(label:string,changes:Change[],guard?:PixelGuard)=>string|null|undefined;flush:()=>Promise<void>;
@@ -35,7 +35,10 @@ export function usePixelEdits(options:Options){
     if(!mounted.current||!o.canEdit)throw new Error("This drawing is read-only");
     if(p.lease?.state()==="lost")throw new Error("The pixel selection reservation was lost");
     if(!current)throw new PixelEditError("stale");
-    if(p.kind==="selection")checkPixelSource(current,p.selection,p.plan,p.art.erasers.length>0);
+    if(p.kind==="selection"){
+      if(o.selection?.id!==p.selection.id||o.frameId!==p.frame.id)throw new PixelEditError("stale");
+      checkPixelSource(current,p.selection,p.plan,p.art.erasers.length>0);
+    }
     else{const frame=current.frames[p.frame.id];if(!frame||["x","y","w","h"].some(key=>frame[key as "x"]!==p.frame[key as "x"]))throw new PixelEditError("stale");}
     return current;
   };
@@ -71,11 +74,13 @@ export function usePixelEdits(options:Options){
     let release=selection.retain(),lease:DrawingGestureLease|null=null,handedOff=false,imageDispose:(()=>void)|undefined,job:PreparedPixelEdit|undefined;
     try{
       const destructive=action==="move"||action==="cut"||action==="delete";
+      const currentSelection=()=>latest.current.selection?.id===selection.id&&latest.current.frameId===selection.frame.id;
+      if(!currentSelection())throw new PixelEditError("stale");
       if(action!=="copy"&&!o.canEdit)throw new Error("This drawing is read-only");
       const plan=pixelSourcePlan(scene,selection,o.layerId,o.source,destructive);
       if(destructive||action==="duplicate"&&o.source==="current"){lease=await reserveDrawingLayers(o.pageId,[...new Set(plan.layers.flatMap(id=>layerAncestors(scene,id).map(l=>l.id)))],(action==="move"||action==="duplicate")&&o.source==="current");abort(task.signal);if(lease?.state()==="lost")throw new Error("The pixel selection reservation was lost");}
       const captured=await captureSelectedPixels(o.pageId,scene,selection,o.layerId,o.source,task.signal,action!=="delete");abort(task.signal);
-      const current=latest.current.scene();if(!current)throw new PixelEditError("stale");checkPixelSource(current,selection,plan,destructive);
+      const current=latest.current.scene();if(!current||!currentSelection())throw new PixelEditError("stale");checkPixelSource(current,selection,plan,destructive);
       if(action==="copy"||action==="cut"){await copyDrawingImage(captured.blob,pixelExportContext(o.pageId,scene,plan));abort(task.signal);if(action==="copy"){setCompleted("copy");return;}}
       const art=floatingPixelArtwork(scene,plan,action);let disposed=false,unsubscribe:(()=>void)|undefined;
       const dispose=()=>{if(disposed)return;disposed=true;unsubscribe?.();imageDispose?.();release();};
@@ -105,7 +110,7 @@ export function usePixelEdits(options:Options){
       if(!current||!now||["x","y","w","h"].some(key=>now[key as "x"]!==frame[key as "x"]))throw new PixelEditError("stale");
       const art=imagePixelArtwork(frame,decoded.header.width,decoded.header.height,decoded.header.mime,decoded.name,decoded.orientation);
       if(decoded.animation)art.asset.frameIndex=decoded.animation.index;
-      const p:PreparedPixelEdit={kind:"image",action,animation:decoded.animation,scene:current,frame,region:{x:art.node.x,y:art.node.y,w:art.node.w,h:art.node.h},fileName:decoded.name,blob:decoded.original,art,images:new Map([[art.asset.attachmentId,decoded.source]]),lease:null,dispose:decoded.dispose,signal:task.signal};
+      const p:PreparedPixelEdit={kind:"image",action,animation:decoded.animation,convertedFromSvg:decoded.convertedFromSvg,scene:current,frame,region:{x:art.node.x,y:art.node.y,w:art.node.w,h:art.node.h},fileName:decoded.name,blob:decoded.original,art,images:new Map([[art.asset.attachmentId,decoded.source]]),lease:null,dispose:decoded.dispose,signal:task.signal};
       prepared.current=p;handedOff=true;setDraft(p);
     }catch(e){if(mounted.current&&!task.signal.aborted)setError(e);}
     finally{if(!handedOff){decoded?.dispose();if(controller.current===task)controller.current=null;}if(mounted.current&&(controller.current===task||!controller.current))setBusy(false);}

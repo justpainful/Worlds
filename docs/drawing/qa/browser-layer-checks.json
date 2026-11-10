@@ -1,0 +1,2473 @@
+{
+  "passed": true,
+  "cases": [
+    {
+      "name": "overlapping children receive parent opacity exactly once",
+      "expected": [
+        0,
+        0,
+        255,
+        128
+      ],
+      "actual": [
+        0,
+        0,
+        255,
+        128
+      ],
+      "differentBytes": 0,
+      "passed": true
+    },
+    {
+      "name": "hidden parent hides every child",
+      "expected": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "actual": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "differentBytes": 0,
+      "passed": true
+    },
+    {
+      "name": "child then parent opacity composite as isolated groups",
+      "expected": [
+        127,
+        0,
+        128,
+        128
+      ],
+      "actual": [
+        128,
+        0,
+        128,
+        128
+      ],
+      "differentBytes": 0,
+      "passed": true
+    },
+    {
+      "name": "restored parent settings preserve full child pixels",
+      "expected": [
+        0,
+        0,
+        255,
+        255
+      ],
+      "actual": [
+        0,
+        0,
+        255,
+        255
+      ],
+      "differentBytes": 0,
+      "passed": true
+    },
+    {
+      "name": "export uses same grouped scene",
+      "passed": true
+    }
+  ],
+  "limitations": [
+    "Synthetic renderer fixture; current UI and native journal acceptance separate."
+  ],
+  "ui": {
+    "raw": {
+      "images": [],
+      "owners": [
+        {
+          "owner": "Editor",
+          "savedSize": 28,
+          "shownSize": 28,
+          "savedColor": "#ffffff",
+          "otherOwnerSize": 17
+        },
+        {
+          "owner": "Editor",
+          "savedSize": 28,
+          "shownSize": 28,
+          "savedColor": "#ffffff",
+          "otherOwnerSize": 17
+        },
+        {
+          "owner": "Editor",
+          "savedSize": 28,
+          "shownSize": 12,
+          "savedColor": "#ffffff",
+          "otherOwnerSize": 17
+        },
+        {
+          "owner": "Editor",
+          "savedSize": 28,
+          "shownSize": 12,
+          "savedColor": "#ffffff",
+          "otherOwnerSize": 17
+        },
+        {
+          "owner": "Editor",
+          "savedSize": 28,
+          "shownSize": 12,
+          "savedColor": "#ffffff",
+          "otherOwnerSize": 17
+        }
+      ],
+      "transforms": [],
+      "selections": [
+        {
+          "revision": 4,
+          "pending": 0,
+          "operations": [
+            {
+              "id": "6a9f27f4-a319-4ec8-9f0b-230f8fd214ae",
+              "actor": "me",
+              "base": 0,
+              "at": 1793950130295,
+              "label": "Add layer",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "put",
+                  "collection": "layers",
+                  "id": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+                  "value": {
+                    "id": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+                    "name": "طبقة 2",
+                    "visible": true,
+                    "locked": false,
+                    "positionLocked": false,
+                    "alphaLocked": false,
+                    "opacity": 1,
+                    "blend": "source-over",
+                    "parentId": null
+                  }
+                },
+                {
+                  "type": "order",
+                  "list": "layerOrder",
+                  "ids": [
+                    "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+                    "b798951a-8a1d-4854-b2f3-2994b82d2e2b"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "0d4f295b-d814-4be5-8bd3-6b8fbb73e984",
+              "actor": "me",
+              "base": 1,
+              "at": 1793950130556,
+              "label": "Rename layer",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "patch",
+                  "collection": "layers",
+                  "id": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+                  "fields": {
+                    "name": "طبقة تابعة"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "c1afd3f1-c173-4859-86a9-a88f232422c4",
+              "actor": "me",
+              "base": 2,
+              "at": 1793950130598,
+              "label": "Change layer parent",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "patch",
+                  "collection": "layers",
+                  "id": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+                  "fields": {
+                    "parentId": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "30cee906-0b6e-4e8c-af66-5063bfda012c",
+              "actor": "me",
+              "base": 3,
+              "at": 1793950130859,
+              "label": "Brush stroke",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "put",
+                  "collection": "nodes",
+                  "id": "164c2bde-2243-48e6-b625-10a0ec6573bc",
+                  "value": {
+                    "id": "164c2bde-2243-48e6-b625-10a0ec6573bc",
+                    "kind": "stroke",
+                    "name": "Brush stroke",
+                    "layerId": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+                    "frameId": "7bf1d241-b0a5-4bcd-a6c9-c0fe8d0f70fd",
+                    "groupId": null,
+                    "visible": true,
+                    "locked": false,
+                    "rotation": 0,
+                    "opacity": 1,
+                    "flipX": false,
+                    "flipY": false,
+                    "paint": {
+                      "fill": "transparent",
+                      "stroke": "#202023",
+                      "strokeWidth": 3,
+                      "dash": [],
+                      "cap": "round",
+                      "radius": 16
+                    },
+                    "textStyle": {
+                      "font": "IBM Plex Sans Arabic",
+                      "size": 28,
+                      "weight": 400,
+                      "italic": false,
+                      "align": "start",
+                      "direction": "auto",
+                      "leading": 1.7,
+                      "background": "transparent",
+                      "color": "#202023",
+                      "border": "transparent",
+                      "resizeMode": "wrap"
+                    },
+                    "effects": [],
+                    "x": 86.85714285714286,
+                    "y": 101.12053571428572,
+                    "w": 174.85714285714286,
+                    "h": 89.14285714285714,
+                    "samples": [
+                      {
+                        "x": 16,
+                        "y": 16,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26603.79999999702
+                      },
+                      {
+                        "x": 31.785714285714292,
+                        "y": 22.07142857142857,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26637.39999999106
+                      },
+                      {
+                        "x": 48.724999999999994,
+                        "y": 29.053571428571416,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26660.79999999702
+                      },
+                      {
+                        "x": 67.05160714285716,
+                        "y": 36.17232142857145,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26679.70000000298
+                      },
+                      {
+                        "x": 84.3720267857143,
+                        "y": 43.31156250000001,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26699.79999999702
+                      },
+                      {
+                        "x": 102.75580401785714,
+                        "y": 50.45387723214287,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26719
+                      },
+                      {
+                        "x": 120.08479917410716,
+                        "y": 57.59665301339285,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26735.59999999404
+                      },
+                      {
+                        "x": 138.46986273325896,
+                        "y": 64.73949795200892,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26762.29999999702
+                      },
+                      {
+                        "x": 155.79905083856028,
+                        "y": 71.88235326422989,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26779.20000000298
+                      },
+                      {
+                        "x": 158.85714285714286,
+                        "y": 73.14285714285714,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26796.70000000298
+                      }
+                    ],
+                    "brush": {
+                      "kind": "hard",
+                      "size": 28,
+                      "opacity": 0.35,
+                      "flow": 1,
+                      "hardness": 1,
+                      "spacing": 0.12,
+                      "angle": 0,
+                      "roundness": 1,
+                      "smoothing": 0.15,
+                      "stabilizer": 0,
+                      "taperStart": 0,
+                      "taperEnd": 0,
+                      "pressureSize": false,
+                      "pressureOpacity": false,
+                      "pressureFlow": false,
+                      "pressureCurve": 0.65,
+                      "color": "#ffffff"
+                    },
+                    "erase": false,
+                    "seed": 1362675330,
+                    "alphaLock": false
+                  }
+                },
+                {
+                  "type": "order",
+                  "list": "nodeOrder",
+                  "ids": [
+                    "164c2bde-2243-48e6-b625-10a0ec6573bc"
+                  ]
+                }
+              ]
+            }
+          ],
+          "nodes": {
+            "164c2bde-2243-48e6-b625-10a0ec6573bc": {
+              "id": "164c2bde-2243-48e6-b625-10a0ec6573bc",
+              "kind": "stroke",
+              "name": "Brush stroke",
+              "layerId": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+              "frameId": "7bf1d241-b0a5-4bcd-a6c9-c0fe8d0f70fd",
+              "groupId": null,
+              "visible": true,
+              "locked": false,
+              "rotation": 0,
+              "opacity": 1,
+              "flipX": false,
+              "flipY": false,
+              "paint": {
+                "fill": "transparent",
+                "stroke": "#202023",
+                "strokeWidth": 3,
+                "dash": [],
+                "cap": "round",
+                "radius": 16
+              },
+              "textStyle": {
+                "font": "IBM Plex Sans Arabic",
+                "size": 28,
+                "weight": 400,
+                "italic": false,
+                "align": "start",
+                "direction": "auto",
+                "leading": 1.7,
+                "background": "transparent",
+                "color": "#202023",
+                "border": "transparent",
+                "resizeMode": "wrap"
+              },
+              "effects": [],
+              "x": 86.85714285714286,
+              "y": 101.12053571428572,
+              "w": 174.85714285714286,
+              "h": 89.14285714285714,
+              "samples": [
+                {
+                  "x": 16,
+                  "y": 16,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26603.79999999702
+                },
+                {
+                  "x": 31.785714285714292,
+                  "y": 22.07142857142857,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26637.39999999106
+                },
+                {
+                  "x": 48.724999999999994,
+                  "y": 29.053571428571416,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26660.79999999702
+                },
+                {
+                  "x": 67.05160714285716,
+                  "y": 36.17232142857145,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26679.70000000298
+                },
+                {
+                  "x": 84.3720267857143,
+                  "y": 43.31156250000001,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26699.79999999702
+                },
+                {
+                  "x": 102.75580401785714,
+                  "y": 50.45387723214287,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26719
+                },
+                {
+                  "x": 120.08479917410716,
+                  "y": 57.59665301339285,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26735.59999999404
+                },
+                {
+                  "x": 138.46986273325896,
+                  "y": 64.73949795200892,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26762.29999999702
+                },
+                {
+                  "x": 155.79905083856028,
+                  "y": 71.88235326422989,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26779.20000000298
+                },
+                {
+                  "x": 158.85714285714286,
+                  "y": 73.14285714285714,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26796.70000000298
+                }
+              ],
+              "brush": {
+                "kind": "hard",
+                "size": 28,
+                "opacity": 0.35,
+                "flow": 1,
+                "hardness": 1,
+                "spacing": 0.12,
+                "angle": 0,
+                "roundness": 1,
+                "smoothing": 0.15,
+                "stabilizer": 0,
+                "taperStart": 0,
+                "taperEnd": 0,
+                "pressureSize": false,
+                "pressureOpacity": false,
+                "pressureFlow": false,
+                "pressureCurve": 0.65,
+                "color": "#ffffff"
+              },
+              "erase": false,
+              "seed": 1362675330,
+              "alphaLock": false
+            }
+          },
+          "layers": {
+            "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f": {
+              "id": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+              "name": "Layer 1",
+              "visible": true,
+              "locked": false,
+              "positionLocked": false,
+              "alphaLocked": false,
+              "opacity": 1,
+              "blend": "source-over",
+              "parentId": null
+            },
+            "b798951a-8a1d-4854-b2f3-2994b82d2e2b": {
+              "id": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+              "name": "طبقة تابعة",
+              "visible": true,
+              "locked": false,
+              "positionLocked": false,
+              "alphaLocked": false,
+              "opacity": 1,
+              "blend": "source-over",
+              "parentId": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f"
+            }
+          },
+          "layerOrder": [
+            "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+            "b798951a-8a1d-4854-b2f3-2994b82d2e2b"
+          ],
+          "nodeOrder": [
+            "164c2bde-2243-48e6-b625-10a0ec6573bc"
+          ],
+          "masks": {},
+          "assets": {}
+        },
+        {
+          "revision": 5,
+          "pending": 0,
+          "operations": [
+            {
+              "id": "6a9f27f4-a319-4ec8-9f0b-230f8fd214ae",
+              "actor": "me",
+              "base": 0,
+              "at": 1793950130295,
+              "label": "Add layer",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "put",
+                  "collection": "layers",
+                  "id": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+                  "value": {
+                    "id": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+                    "name": "طبقة 2",
+                    "visible": true,
+                    "locked": false,
+                    "positionLocked": false,
+                    "alphaLocked": false,
+                    "opacity": 1,
+                    "blend": "source-over",
+                    "parentId": null
+                  }
+                },
+                {
+                  "type": "order",
+                  "list": "layerOrder",
+                  "ids": [
+                    "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+                    "b798951a-8a1d-4854-b2f3-2994b82d2e2b"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "0d4f295b-d814-4be5-8bd3-6b8fbb73e984",
+              "actor": "me",
+              "base": 1,
+              "at": 1793950130556,
+              "label": "Rename layer",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "patch",
+                  "collection": "layers",
+                  "id": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+                  "fields": {
+                    "name": "طبقة تابعة"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "c1afd3f1-c173-4859-86a9-a88f232422c4",
+              "actor": "me",
+              "base": 2,
+              "at": 1793950130598,
+              "label": "Change layer parent",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "patch",
+                  "collection": "layers",
+                  "id": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+                  "fields": {
+                    "parentId": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "30cee906-0b6e-4e8c-af66-5063bfda012c",
+              "actor": "me",
+              "base": 3,
+              "at": 1793950130859,
+              "label": "Brush stroke",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "put",
+                  "collection": "nodes",
+                  "id": "164c2bde-2243-48e6-b625-10a0ec6573bc",
+                  "value": {
+                    "id": "164c2bde-2243-48e6-b625-10a0ec6573bc",
+                    "kind": "stroke",
+                    "name": "Brush stroke",
+                    "layerId": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+                    "frameId": "7bf1d241-b0a5-4bcd-a6c9-c0fe8d0f70fd",
+                    "groupId": null,
+                    "visible": true,
+                    "locked": false,
+                    "rotation": 0,
+                    "opacity": 1,
+                    "flipX": false,
+                    "flipY": false,
+                    "paint": {
+                      "fill": "transparent",
+                      "stroke": "#202023",
+                      "strokeWidth": 3,
+                      "dash": [],
+                      "cap": "round",
+                      "radius": 16
+                    },
+                    "textStyle": {
+                      "font": "IBM Plex Sans Arabic",
+                      "size": 28,
+                      "weight": 400,
+                      "italic": false,
+                      "align": "start",
+                      "direction": "auto",
+                      "leading": 1.7,
+                      "background": "transparent",
+                      "color": "#202023",
+                      "border": "transparent",
+                      "resizeMode": "wrap"
+                    },
+                    "effects": [],
+                    "x": 86.85714285714286,
+                    "y": 101.12053571428572,
+                    "w": 174.85714285714286,
+                    "h": 89.14285714285714,
+                    "samples": [
+                      {
+                        "x": 16,
+                        "y": 16,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26603.79999999702
+                      },
+                      {
+                        "x": 31.785714285714292,
+                        "y": 22.07142857142857,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26637.39999999106
+                      },
+                      {
+                        "x": 48.724999999999994,
+                        "y": 29.053571428571416,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26660.79999999702
+                      },
+                      {
+                        "x": 67.05160714285716,
+                        "y": 36.17232142857145,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26679.70000000298
+                      },
+                      {
+                        "x": 84.3720267857143,
+                        "y": 43.31156250000001,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26699.79999999702
+                      },
+                      {
+                        "x": 102.75580401785714,
+                        "y": 50.45387723214287,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26719
+                      },
+                      {
+                        "x": 120.08479917410716,
+                        "y": 57.59665301339285,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26735.59999999404
+                      },
+                      {
+                        "x": 138.46986273325896,
+                        "y": 64.73949795200892,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26762.29999999702
+                      },
+                      {
+                        "x": 155.79905083856028,
+                        "y": 71.88235326422989,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26779.20000000298
+                      },
+                      {
+                        "x": 158.85714285714286,
+                        "y": 73.14285714285714,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26796.70000000298
+                      }
+                    ],
+                    "brush": {
+                      "kind": "hard",
+                      "size": 28,
+                      "opacity": 0.35,
+                      "flow": 1,
+                      "hardness": 1,
+                      "spacing": 0.12,
+                      "angle": 0,
+                      "roundness": 1,
+                      "smoothing": 0.15,
+                      "stabilizer": 0,
+                      "taperStart": 0,
+                      "taperEnd": 0,
+                      "pressureSize": false,
+                      "pressureOpacity": false,
+                      "pressureFlow": false,
+                      "pressureCurve": 0.65,
+                      "color": "#ffffff"
+                    },
+                    "erase": false,
+                    "seed": 1362675330,
+                    "alphaLock": false
+                  }
+                },
+                {
+                  "type": "order",
+                  "list": "nodeOrder",
+                  "ids": [
+                    "164c2bde-2243-48e6-b625-10a0ec6573bc"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "5704e976-58c1-4a2a-871f-c6a7d075b086",
+              "actor": "me",
+              "base": 4,
+              "at": 1793950131199,
+              "label": "Layer lock",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "patch",
+                  "collection": "layers",
+                  "id": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+                  "fields": {
+                    "locked": true
+                  }
+                }
+              ]
+            }
+          ],
+          "nodes": {
+            "164c2bde-2243-48e6-b625-10a0ec6573bc": {
+              "id": "164c2bde-2243-48e6-b625-10a0ec6573bc",
+              "kind": "stroke",
+              "name": "Brush stroke",
+              "layerId": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+              "frameId": "7bf1d241-b0a5-4bcd-a6c9-c0fe8d0f70fd",
+              "groupId": null,
+              "visible": true,
+              "locked": false,
+              "rotation": 0,
+              "opacity": 1,
+              "flipX": false,
+              "flipY": false,
+              "paint": {
+                "fill": "transparent",
+                "stroke": "#202023",
+                "strokeWidth": 3,
+                "dash": [],
+                "cap": "round",
+                "radius": 16
+              },
+              "textStyle": {
+                "font": "IBM Plex Sans Arabic",
+                "size": 28,
+                "weight": 400,
+                "italic": false,
+                "align": "start",
+                "direction": "auto",
+                "leading": 1.7,
+                "background": "transparent",
+                "color": "#202023",
+                "border": "transparent",
+                "resizeMode": "wrap"
+              },
+              "effects": [],
+              "x": 86.85714285714286,
+              "y": 101.12053571428572,
+              "w": 174.85714285714286,
+              "h": 89.14285714285714,
+              "samples": [
+                {
+                  "x": 16,
+                  "y": 16,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26603.79999999702
+                },
+                {
+                  "x": 31.785714285714292,
+                  "y": 22.07142857142857,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26637.39999999106
+                },
+                {
+                  "x": 48.724999999999994,
+                  "y": 29.053571428571416,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26660.79999999702
+                },
+                {
+                  "x": 67.05160714285716,
+                  "y": 36.17232142857145,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26679.70000000298
+                },
+                {
+                  "x": 84.3720267857143,
+                  "y": 43.31156250000001,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26699.79999999702
+                },
+                {
+                  "x": 102.75580401785714,
+                  "y": 50.45387723214287,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26719
+                },
+                {
+                  "x": 120.08479917410716,
+                  "y": 57.59665301339285,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26735.59999999404
+                },
+                {
+                  "x": 138.46986273325896,
+                  "y": 64.73949795200892,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26762.29999999702
+                },
+                {
+                  "x": 155.79905083856028,
+                  "y": 71.88235326422989,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26779.20000000298
+                },
+                {
+                  "x": 158.85714285714286,
+                  "y": 73.14285714285714,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26796.70000000298
+                }
+              ],
+              "brush": {
+                "kind": "hard",
+                "size": 28,
+                "opacity": 0.35,
+                "flow": 1,
+                "hardness": 1,
+                "spacing": 0.12,
+                "angle": 0,
+                "roundness": 1,
+                "smoothing": 0.15,
+                "stabilizer": 0,
+                "taperStart": 0,
+                "taperEnd": 0,
+                "pressureSize": false,
+                "pressureOpacity": false,
+                "pressureFlow": false,
+                "pressureCurve": 0.65,
+                "color": "#ffffff"
+              },
+              "erase": false,
+              "seed": 1362675330,
+              "alphaLock": false
+            }
+          },
+          "layers": {
+            "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f": {
+              "id": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+              "name": "Layer 1",
+              "visible": true,
+              "locked": true,
+              "positionLocked": false,
+              "alphaLocked": false,
+              "opacity": 1,
+              "blend": "source-over",
+              "parentId": null
+            },
+            "b798951a-8a1d-4854-b2f3-2994b82d2e2b": {
+              "id": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+              "name": "طبقة تابعة",
+              "visible": true,
+              "locked": false,
+              "positionLocked": false,
+              "alphaLocked": false,
+              "opacity": 1,
+              "blend": "source-over",
+              "parentId": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f"
+            }
+          },
+          "layerOrder": [
+            "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+            "b798951a-8a1d-4854-b2f3-2994b82d2e2b"
+          ],
+          "nodeOrder": [
+            "164c2bde-2243-48e6-b625-10a0ec6573bc"
+          ],
+          "masks": {},
+          "assets": {}
+        },
+        {
+          "revision": 7,
+          "pending": 0,
+          "operations": [
+            {
+              "id": "6a9f27f4-a319-4ec8-9f0b-230f8fd214ae",
+              "actor": "me",
+              "base": 0,
+              "at": 1793950130295,
+              "label": "Add layer",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "put",
+                  "collection": "layers",
+                  "id": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+                  "value": {
+                    "id": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+                    "name": "طبقة 2",
+                    "visible": true,
+                    "locked": false,
+                    "positionLocked": false,
+                    "alphaLocked": false,
+                    "opacity": 1,
+                    "blend": "source-over",
+                    "parentId": null
+                  }
+                },
+                {
+                  "type": "order",
+                  "list": "layerOrder",
+                  "ids": [
+                    "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+                    "b798951a-8a1d-4854-b2f3-2994b82d2e2b"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "0d4f295b-d814-4be5-8bd3-6b8fbb73e984",
+              "actor": "me",
+              "base": 1,
+              "at": 1793950130556,
+              "label": "Rename layer",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "patch",
+                  "collection": "layers",
+                  "id": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+                  "fields": {
+                    "name": "طبقة تابعة"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "c1afd3f1-c173-4859-86a9-a88f232422c4",
+              "actor": "me",
+              "base": 2,
+              "at": 1793950130598,
+              "label": "Change layer parent",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "patch",
+                  "collection": "layers",
+                  "id": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+                  "fields": {
+                    "parentId": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "30cee906-0b6e-4e8c-af66-5063bfda012c",
+              "actor": "me",
+              "base": 3,
+              "at": 1793950130859,
+              "label": "Brush stroke",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "put",
+                  "collection": "nodes",
+                  "id": "164c2bde-2243-48e6-b625-10a0ec6573bc",
+                  "value": {
+                    "id": "164c2bde-2243-48e6-b625-10a0ec6573bc",
+                    "kind": "stroke",
+                    "name": "Brush stroke",
+                    "layerId": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+                    "frameId": "7bf1d241-b0a5-4bcd-a6c9-c0fe8d0f70fd",
+                    "groupId": null,
+                    "visible": true,
+                    "locked": false,
+                    "rotation": 0,
+                    "opacity": 1,
+                    "flipX": false,
+                    "flipY": false,
+                    "paint": {
+                      "fill": "transparent",
+                      "stroke": "#202023",
+                      "strokeWidth": 3,
+                      "dash": [],
+                      "cap": "round",
+                      "radius": 16
+                    },
+                    "textStyle": {
+                      "font": "IBM Plex Sans Arabic",
+                      "size": 28,
+                      "weight": 400,
+                      "italic": false,
+                      "align": "start",
+                      "direction": "auto",
+                      "leading": 1.7,
+                      "background": "transparent",
+                      "color": "#202023",
+                      "border": "transparent",
+                      "resizeMode": "wrap"
+                    },
+                    "effects": [],
+                    "x": 86.85714285714286,
+                    "y": 101.12053571428572,
+                    "w": 174.85714285714286,
+                    "h": 89.14285714285714,
+                    "samples": [
+                      {
+                        "x": 16,
+                        "y": 16,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26603.79999999702
+                      },
+                      {
+                        "x": 31.785714285714292,
+                        "y": 22.07142857142857,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26637.39999999106
+                      },
+                      {
+                        "x": 48.724999999999994,
+                        "y": 29.053571428571416,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26660.79999999702
+                      },
+                      {
+                        "x": 67.05160714285716,
+                        "y": 36.17232142857145,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26679.70000000298
+                      },
+                      {
+                        "x": 84.3720267857143,
+                        "y": 43.31156250000001,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26699.79999999702
+                      },
+                      {
+                        "x": 102.75580401785714,
+                        "y": 50.45387723214287,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26719
+                      },
+                      {
+                        "x": 120.08479917410716,
+                        "y": 57.59665301339285,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26735.59999999404
+                      },
+                      {
+                        "x": 138.46986273325896,
+                        "y": 64.73949795200892,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26762.29999999702
+                      },
+                      {
+                        "x": 155.79905083856028,
+                        "y": 71.88235326422989,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26779.20000000298
+                      },
+                      {
+                        "x": 158.85714285714286,
+                        "y": 73.14285714285714,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26796.70000000298
+                      }
+                    ],
+                    "brush": {
+                      "kind": "hard",
+                      "size": 28,
+                      "opacity": 0.35,
+                      "flow": 1,
+                      "hardness": 1,
+                      "spacing": 0.12,
+                      "angle": 0,
+                      "roundness": 1,
+                      "smoothing": 0.15,
+                      "stabilizer": 0,
+                      "taperStart": 0,
+                      "taperEnd": 0,
+                      "pressureSize": false,
+                      "pressureOpacity": false,
+                      "pressureFlow": false,
+                      "pressureCurve": 0.65,
+                      "color": "#ffffff"
+                    },
+                    "erase": false,
+                    "seed": 1362675330,
+                    "alphaLock": false
+                  }
+                },
+                {
+                  "type": "order",
+                  "list": "nodeOrder",
+                  "ids": [
+                    "164c2bde-2243-48e6-b625-10a0ec6573bc"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "5704e976-58c1-4a2a-871f-c6a7d075b086",
+              "actor": "me",
+              "base": 4,
+              "at": 1793950131199,
+              "label": "Layer lock",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "patch",
+                  "collection": "layers",
+                  "id": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+                  "fields": {
+                    "locked": true
+                  }
+                }
+              ]
+            },
+            {
+              "id": "b1dcc591-cd3d-4d17-988f-ad7d80b44f61",
+              "actor": "me",
+              "base": 5,
+              "at": 1793950142244,
+              "label": "Layer lock",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "patch",
+                  "collection": "layers",
+                  "id": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+                  "fields": {
+                    "locked": false
+                  }
+                }
+              ]
+            },
+            {
+              "id": "5dcd89ee-d7cd-4a97-b070-02809f15e0a7",
+              "actor": "me",
+              "base": 6,
+              "at": 1793950142802,
+              "label": "Lock layer position",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "patch",
+                  "collection": "layers",
+                  "id": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+                  "fields": {
+                    "positionLocked": true
+                  }
+                }
+              ]
+            }
+          ],
+          "nodes": {
+            "164c2bde-2243-48e6-b625-10a0ec6573bc": {
+              "id": "164c2bde-2243-48e6-b625-10a0ec6573bc",
+              "kind": "stroke",
+              "name": "Brush stroke",
+              "layerId": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+              "frameId": "7bf1d241-b0a5-4bcd-a6c9-c0fe8d0f70fd",
+              "groupId": null,
+              "visible": true,
+              "locked": false,
+              "rotation": 0,
+              "opacity": 1,
+              "flipX": false,
+              "flipY": false,
+              "paint": {
+                "fill": "transparent",
+                "stroke": "#202023",
+                "strokeWidth": 3,
+                "dash": [],
+                "cap": "round",
+                "radius": 16
+              },
+              "textStyle": {
+                "font": "IBM Plex Sans Arabic",
+                "size": 28,
+                "weight": 400,
+                "italic": false,
+                "align": "start",
+                "direction": "auto",
+                "leading": 1.7,
+                "background": "transparent",
+                "color": "#202023",
+                "border": "transparent",
+                "resizeMode": "wrap"
+              },
+              "effects": [],
+              "x": 86.85714285714286,
+              "y": 101.12053571428572,
+              "w": 174.85714285714286,
+              "h": 89.14285714285714,
+              "samples": [
+                {
+                  "x": 16,
+                  "y": 16,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26603.79999999702
+                },
+                {
+                  "x": 31.785714285714292,
+                  "y": 22.07142857142857,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26637.39999999106
+                },
+                {
+                  "x": 48.724999999999994,
+                  "y": 29.053571428571416,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26660.79999999702
+                },
+                {
+                  "x": 67.05160714285716,
+                  "y": 36.17232142857145,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26679.70000000298
+                },
+                {
+                  "x": 84.3720267857143,
+                  "y": 43.31156250000001,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26699.79999999702
+                },
+                {
+                  "x": 102.75580401785714,
+                  "y": 50.45387723214287,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26719
+                },
+                {
+                  "x": 120.08479917410716,
+                  "y": 57.59665301339285,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26735.59999999404
+                },
+                {
+                  "x": 138.46986273325896,
+                  "y": 64.73949795200892,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26762.29999999702
+                },
+                {
+                  "x": 155.79905083856028,
+                  "y": 71.88235326422989,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26779.20000000298
+                },
+                {
+                  "x": 158.85714285714286,
+                  "y": 73.14285714285714,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26796.70000000298
+                }
+              ],
+              "brush": {
+                "kind": "hard",
+                "size": 28,
+                "opacity": 0.35,
+                "flow": 1,
+                "hardness": 1,
+                "spacing": 0.12,
+                "angle": 0,
+                "roundness": 1,
+                "smoothing": 0.15,
+                "stabilizer": 0,
+                "taperStart": 0,
+                "taperEnd": 0,
+                "pressureSize": false,
+                "pressureOpacity": false,
+                "pressureFlow": false,
+                "pressureCurve": 0.65,
+                "color": "#ffffff"
+              },
+              "erase": false,
+              "seed": 1362675330,
+              "alphaLock": false
+            }
+          },
+          "layers": {
+            "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f": {
+              "id": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+              "name": "Layer 1",
+              "visible": true,
+              "locked": false,
+              "positionLocked": true,
+              "alphaLocked": false,
+              "opacity": 1,
+              "blend": "source-over",
+              "parentId": null
+            },
+            "b798951a-8a1d-4854-b2f3-2994b82d2e2b": {
+              "id": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+              "name": "طبقة تابعة",
+              "visible": true,
+              "locked": false,
+              "positionLocked": false,
+              "alphaLocked": false,
+              "opacity": 1,
+              "blend": "source-over",
+              "parentId": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f"
+            }
+          },
+          "layerOrder": [
+            "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+            "b798951a-8a1d-4854-b2f3-2994b82d2e2b"
+          ],
+          "nodeOrder": [
+            "164c2bde-2243-48e6-b625-10a0ec6573bc"
+          ],
+          "masks": {},
+          "assets": {}
+        },
+        {
+          "revision": 8,
+          "pending": 0,
+          "operations": [
+            {
+              "id": "6a9f27f4-a319-4ec8-9f0b-230f8fd214ae",
+              "actor": "me",
+              "base": 0,
+              "at": 1793950130295,
+              "label": "Add layer",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "put",
+                  "collection": "layers",
+                  "id": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+                  "value": {
+                    "id": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+                    "name": "طبقة 2",
+                    "visible": true,
+                    "locked": false,
+                    "positionLocked": false,
+                    "alphaLocked": false,
+                    "opacity": 1,
+                    "blend": "source-over",
+                    "parentId": null
+                  }
+                },
+                {
+                  "type": "order",
+                  "list": "layerOrder",
+                  "ids": [
+                    "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+                    "b798951a-8a1d-4854-b2f3-2994b82d2e2b"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "0d4f295b-d814-4be5-8bd3-6b8fbb73e984",
+              "actor": "me",
+              "base": 1,
+              "at": 1793950130556,
+              "label": "Rename layer",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "patch",
+                  "collection": "layers",
+                  "id": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+                  "fields": {
+                    "name": "طبقة تابعة"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "c1afd3f1-c173-4859-86a9-a88f232422c4",
+              "actor": "me",
+              "base": 2,
+              "at": 1793950130598,
+              "label": "Change layer parent",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "patch",
+                  "collection": "layers",
+                  "id": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+                  "fields": {
+                    "parentId": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "30cee906-0b6e-4e8c-af66-5063bfda012c",
+              "actor": "me",
+              "base": 3,
+              "at": 1793950130859,
+              "label": "Brush stroke",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "put",
+                  "collection": "nodes",
+                  "id": "164c2bde-2243-48e6-b625-10a0ec6573bc",
+                  "value": {
+                    "id": "164c2bde-2243-48e6-b625-10a0ec6573bc",
+                    "kind": "stroke",
+                    "name": "Brush stroke",
+                    "layerId": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+                    "frameId": "7bf1d241-b0a5-4bcd-a6c9-c0fe8d0f70fd",
+                    "groupId": null,
+                    "visible": true,
+                    "locked": false,
+                    "rotation": 0,
+                    "opacity": 1,
+                    "flipX": false,
+                    "flipY": false,
+                    "paint": {
+                      "fill": "transparent",
+                      "stroke": "#202023",
+                      "strokeWidth": 3,
+                      "dash": [],
+                      "cap": "round",
+                      "radius": 16
+                    },
+                    "textStyle": {
+                      "font": "IBM Plex Sans Arabic",
+                      "size": 28,
+                      "weight": 400,
+                      "italic": false,
+                      "align": "start",
+                      "direction": "auto",
+                      "leading": 1.7,
+                      "background": "transparent",
+                      "color": "#202023",
+                      "border": "transparent",
+                      "resizeMode": "wrap"
+                    },
+                    "effects": [],
+                    "x": 86.85714285714286,
+                    "y": 101.12053571428572,
+                    "w": 174.85714285714286,
+                    "h": 89.14285714285714,
+                    "samples": [
+                      {
+                        "x": 16,
+                        "y": 16,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26603.79999999702
+                      },
+                      {
+                        "x": 31.785714285714292,
+                        "y": 22.07142857142857,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26637.39999999106
+                      },
+                      {
+                        "x": 48.724999999999994,
+                        "y": 29.053571428571416,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26660.79999999702
+                      },
+                      {
+                        "x": 67.05160714285716,
+                        "y": 36.17232142857145,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26679.70000000298
+                      },
+                      {
+                        "x": 84.3720267857143,
+                        "y": 43.31156250000001,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26699.79999999702
+                      },
+                      {
+                        "x": 102.75580401785714,
+                        "y": 50.45387723214287,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26719
+                      },
+                      {
+                        "x": 120.08479917410716,
+                        "y": 57.59665301339285,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26735.59999999404
+                      },
+                      {
+                        "x": 138.46986273325896,
+                        "y": 64.73949795200892,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26762.29999999702
+                      },
+                      {
+                        "x": 155.79905083856028,
+                        "y": 71.88235326422989,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26779.20000000298
+                      },
+                      {
+                        "x": 158.85714285714286,
+                        "y": 73.14285714285714,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26796.70000000298
+                      }
+                    ],
+                    "brush": {
+                      "kind": "hard",
+                      "size": 28,
+                      "opacity": 0.35,
+                      "flow": 1,
+                      "hardness": 1,
+                      "spacing": 0.12,
+                      "angle": 0,
+                      "roundness": 1,
+                      "smoothing": 0.15,
+                      "stabilizer": 0,
+                      "taperStart": 0,
+                      "taperEnd": 0,
+                      "pressureSize": false,
+                      "pressureOpacity": false,
+                      "pressureFlow": false,
+                      "pressureCurve": 0.65,
+                      "color": "#ffffff"
+                    },
+                    "erase": false,
+                    "seed": 1362675330,
+                    "alphaLock": false
+                  }
+                },
+                {
+                  "type": "order",
+                  "list": "nodeOrder",
+                  "ids": [
+                    "164c2bde-2243-48e6-b625-10a0ec6573bc"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "5704e976-58c1-4a2a-871f-c6a7d075b086",
+              "actor": "me",
+              "base": 4,
+              "at": 1793950131199,
+              "label": "Layer lock",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "patch",
+                  "collection": "layers",
+                  "id": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+                  "fields": {
+                    "locked": true
+                  }
+                }
+              ]
+            },
+            {
+              "id": "b1dcc591-cd3d-4d17-988f-ad7d80b44f61",
+              "actor": "me",
+              "base": 5,
+              "at": 1793950142244,
+              "label": "Layer lock",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "patch",
+                  "collection": "layers",
+                  "id": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+                  "fields": {
+                    "locked": false
+                  }
+                }
+              ]
+            },
+            {
+              "id": "5dcd89ee-d7cd-4a97-b070-02809f15e0a7",
+              "actor": "me",
+              "base": 6,
+              "at": 1793950142802,
+              "label": "Lock layer position",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "patch",
+                  "collection": "layers",
+                  "id": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+                  "fields": {
+                    "positionLocked": true
+                  }
+                }
+              ]
+            },
+            {
+              "id": "ca5fb9db-6fd9-4937-afe7-c0f89d434aa1",
+              "actor": "me",
+              "base": 7,
+              "at": 1793950157271,
+              "label": "Layer visibility",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "patch",
+                  "collection": "layers",
+                  "id": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+                  "fields": {
+                    "visible": false
+                  }
+                }
+              ]
+            }
+          ],
+          "nodes": {
+            "164c2bde-2243-48e6-b625-10a0ec6573bc": {
+              "id": "164c2bde-2243-48e6-b625-10a0ec6573bc",
+              "kind": "stroke",
+              "name": "Brush stroke",
+              "layerId": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+              "frameId": "7bf1d241-b0a5-4bcd-a6c9-c0fe8d0f70fd",
+              "groupId": null,
+              "visible": true,
+              "locked": false,
+              "rotation": 0,
+              "opacity": 1,
+              "flipX": false,
+              "flipY": false,
+              "paint": {
+                "fill": "transparent",
+                "stroke": "#202023",
+                "strokeWidth": 3,
+                "dash": [],
+                "cap": "round",
+                "radius": 16
+              },
+              "textStyle": {
+                "font": "IBM Plex Sans Arabic",
+                "size": 28,
+                "weight": 400,
+                "italic": false,
+                "align": "start",
+                "direction": "auto",
+                "leading": 1.7,
+                "background": "transparent",
+                "color": "#202023",
+                "border": "transparent",
+                "resizeMode": "wrap"
+              },
+              "effects": [],
+              "x": 86.85714285714286,
+              "y": 101.12053571428572,
+              "w": 174.85714285714286,
+              "h": 89.14285714285714,
+              "samples": [
+                {
+                  "x": 16,
+                  "y": 16,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26603.79999999702
+                },
+                {
+                  "x": 31.785714285714292,
+                  "y": 22.07142857142857,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26637.39999999106
+                },
+                {
+                  "x": 48.724999999999994,
+                  "y": 29.053571428571416,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26660.79999999702
+                },
+                {
+                  "x": 67.05160714285716,
+                  "y": 36.17232142857145,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26679.70000000298
+                },
+                {
+                  "x": 84.3720267857143,
+                  "y": 43.31156250000001,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26699.79999999702
+                },
+                {
+                  "x": 102.75580401785714,
+                  "y": 50.45387723214287,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26719
+                },
+                {
+                  "x": 120.08479917410716,
+                  "y": 57.59665301339285,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26735.59999999404
+                },
+                {
+                  "x": 138.46986273325896,
+                  "y": 64.73949795200892,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26762.29999999702
+                },
+                {
+                  "x": 155.79905083856028,
+                  "y": 71.88235326422989,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26779.20000000298
+                },
+                {
+                  "x": 158.85714285714286,
+                  "y": 73.14285714285714,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26796.70000000298
+                }
+              ],
+              "brush": {
+                "kind": "hard",
+                "size": 28,
+                "opacity": 0.35,
+                "flow": 1,
+                "hardness": 1,
+                "spacing": 0.12,
+                "angle": 0,
+                "roundness": 1,
+                "smoothing": 0.15,
+                "stabilizer": 0,
+                "taperStart": 0,
+                "taperEnd": 0,
+                "pressureSize": false,
+                "pressureOpacity": false,
+                "pressureFlow": false,
+                "pressureCurve": 0.65,
+                "color": "#ffffff"
+              },
+              "erase": false,
+              "seed": 1362675330,
+              "alphaLock": false
+            }
+          },
+          "layers": {
+            "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f": {
+              "id": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+              "name": "Layer 1",
+              "visible": false,
+              "locked": false,
+              "positionLocked": true,
+              "alphaLocked": false,
+              "opacity": 1,
+              "blend": "source-over",
+              "parentId": null
+            },
+            "b798951a-8a1d-4854-b2f3-2994b82d2e2b": {
+              "id": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+              "name": "طبقة تابعة",
+              "visible": true,
+              "locked": false,
+              "positionLocked": false,
+              "alphaLocked": false,
+              "opacity": 1,
+              "blend": "source-over",
+              "parentId": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f"
+            }
+          },
+          "layerOrder": [
+            "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+            "b798951a-8a1d-4854-b2f3-2994b82d2e2b"
+          ],
+          "nodeOrder": [
+            "164c2bde-2243-48e6-b625-10a0ec6573bc"
+          ],
+          "masks": {},
+          "assets": {}
+        },
+        {
+          "revision": 9,
+          "pending": 0,
+          "operations": [
+            {
+              "id": "6a9f27f4-a319-4ec8-9f0b-230f8fd214ae",
+              "actor": "me",
+              "base": 0,
+              "at": 1793950130295,
+              "label": "Add layer",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "put",
+                  "collection": "layers",
+                  "id": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+                  "value": {
+                    "id": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+                    "name": "طبقة 2",
+                    "visible": true,
+                    "locked": false,
+                    "positionLocked": false,
+                    "alphaLocked": false,
+                    "opacity": 1,
+                    "blend": "source-over",
+                    "parentId": null
+                  }
+                },
+                {
+                  "type": "order",
+                  "list": "layerOrder",
+                  "ids": [
+                    "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+                    "b798951a-8a1d-4854-b2f3-2994b82d2e2b"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "0d4f295b-d814-4be5-8bd3-6b8fbb73e984",
+              "actor": "me",
+              "base": 1,
+              "at": 1793950130556,
+              "label": "Rename layer",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "patch",
+                  "collection": "layers",
+                  "id": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+                  "fields": {
+                    "name": "طبقة تابعة"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "c1afd3f1-c173-4859-86a9-a88f232422c4",
+              "actor": "me",
+              "base": 2,
+              "at": 1793950130598,
+              "label": "Change layer parent",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "patch",
+                  "collection": "layers",
+                  "id": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+                  "fields": {
+                    "parentId": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "30cee906-0b6e-4e8c-af66-5063bfda012c",
+              "actor": "me",
+              "base": 3,
+              "at": 1793950130859,
+              "label": "Brush stroke",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "put",
+                  "collection": "nodes",
+                  "id": "164c2bde-2243-48e6-b625-10a0ec6573bc",
+                  "value": {
+                    "id": "164c2bde-2243-48e6-b625-10a0ec6573bc",
+                    "kind": "stroke",
+                    "name": "Brush stroke",
+                    "layerId": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+                    "frameId": "7bf1d241-b0a5-4bcd-a6c9-c0fe8d0f70fd",
+                    "groupId": null,
+                    "visible": true,
+                    "locked": false,
+                    "rotation": 0,
+                    "opacity": 1,
+                    "flipX": false,
+                    "flipY": false,
+                    "paint": {
+                      "fill": "transparent",
+                      "stroke": "#202023",
+                      "strokeWidth": 3,
+                      "dash": [],
+                      "cap": "round",
+                      "radius": 16
+                    },
+                    "textStyle": {
+                      "font": "IBM Plex Sans Arabic",
+                      "size": 28,
+                      "weight": 400,
+                      "italic": false,
+                      "align": "start",
+                      "direction": "auto",
+                      "leading": 1.7,
+                      "background": "transparent",
+                      "color": "#202023",
+                      "border": "transparent",
+                      "resizeMode": "wrap"
+                    },
+                    "effects": [],
+                    "x": 86.85714285714286,
+                    "y": 101.12053571428572,
+                    "w": 174.85714285714286,
+                    "h": 89.14285714285714,
+                    "samples": [
+                      {
+                        "x": 16,
+                        "y": 16,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26603.79999999702
+                      },
+                      {
+                        "x": 31.785714285714292,
+                        "y": 22.07142857142857,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26637.39999999106
+                      },
+                      {
+                        "x": 48.724999999999994,
+                        "y": 29.053571428571416,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26660.79999999702
+                      },
+                      {
+                        "x": 67.05160714285716,
+                        "y": 36.17232142857145,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26679.70000000298
+                      },
+                      {
+                        "x": 84.3720267857143,
+                        "y": 43.31156250000001,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26699.79999999702
+                      },
+                      {
+                        "x": 102.75580401785714,
+                        "y": 50.45387723214287,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26719
+                      },
+                      {
+                        "x": 120.08479917410716,
+                        "y": 57.59665301339285,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26735.59999999404
+                      },
+                      {
+                        "x": 138.46986273325896,
+                        "y": 64.73949795200892,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26762.29999999702
+                      },
+                      {
+                        "x": 155.79905083856028,
+                        "y": 71.88235326422989,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26779.20000000298
+                      },
+                      {
+                        "x": 158.85714285714286,
+                        "y": 73.14285714285714,
+                        "pressure": 1,
+                        "tiltX": 0,
+                        "tiltY": 0,
+                        "time": 26796.70000000298
+                      }
+                    ],
+                    "brush": {
+                      "kind": "hard",
+                      "size": 28,
+                      "opacity": 0.35,
+                      "flow": 1,
+                      "hardness": 1,
+                      "spacing": 0.12,
+                      "angle": 0,
+                      "roundness": 1,
+                      "smoothing": 0.15,
+                      "stabilizer": 0,
+                      "taperStart": 0,
+                      "taperEnd": 0,
+                      "pressureSize": false,
+                      "pressureOpacity": false,
+                      "pressureFlow": false,
+                      "pressureCurve": 0.65,
+                      "color": "#ffffff"
+                    },
+                    "erase": false,
+                    "seed": 1362675330,
+                    "alphaLock": false
+                  }
+                },
+                {
+                  "type": "order",
+                  "list": "nodeOrder",
+                  "ids": [
+                    "164c2bde-2243-48e6-b625-10a0ec6573bc"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "5704e976-58c1-4a2a-871f-c6a7d075b086",
+              "actor": "me",
+              "base": 4,
+              "at": 1793950131199,
+              "label": "Layer lock",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "patch",
+                  "collection": "layers",
+                  "id": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+                  "fields": {
+                    "locked": true
+                  }
+                }
+              ]
+            },
+            {
+              "id": "b1dcc591-cd3d-4d17-988f-ad7d80b44f61",
+              "actor": "me",
+              "base": 5,
+              "at": 1793950142244,
+              "label": "Layer lock",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "patch",
+                  "collection": "layers",
+                  "id": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+                  "fields": {
+                    "locked": false
+                  }
+                }
+              ]
+            },
+            {
+              "id": "5dcd89ee-d7cd-4a97-b070-02809f15e0a7",
+              "actor": "me",
+              "base": 6,
+              "at": 1793950142802,
+              "label": "Lock layer position",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "patch",
+                  "collection": "layers",
+                  "id": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+                  "fields": {
+                    "positionLocked": true
+                  }
+                }
+              ]
+            },
+            {
+              "id": "ca5fb9db-6fd9-4937-afe7-c0f89d434aa1",
+              "actor": "me",
+              "base": 7,
+              "at": 1793950157271,
+              "label": "Layer visibility",
+              "type": "edit",
+              "changes": [
+                {
+                  "type": "patch",
+                  "collection": "layers",
+                  "id": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+                  "fields": {
+                    "visible": false
+                  }
+                }
+              ]
+            },
+            {
+              "id": "d7f5fdba-08fe-4dfa-86d2-57e3c22024c5",
+              "actor": "me",
+              "base": 8,
+              "at": 1793950157860,
+              "label": "Undo",
+              "type": "toggle",
+              "target": "ca5fb9db-6fd9-4937-afe7-c0f89d434aa1",
+              "enabled": false
+            }
+          ],
+          "nodes": {
+            "164c2bde-2243-48e6-b625-10a0ec6573bc": {
+              "id": "164c2bde-2243-48e6-b625-10a0ec6573bc",
+              "kind": "stroke",
+              "name": "Brush stroke",
+              "layerId": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+              "frameId": "7bf1d241-b0a5-4bcd-a6c9-c0fe8d0f70fd",
+              "groupId": null,
+              "visible": true,
+              "locked": false,
+              "rotation": 0,
+              "opacity": 1,
+              "flipX": false,
+              "flipY": false,
+              "paint": {
+                "fill": "transparent",
+                "stroke": "#202023",
+                "strokeWidth": 3,
+                "dash": [],
+                "cap": "round",
+                "radius": 16
+              },
+              "textStyle": {
+                "font": "IBM Plex Sans Arabic",
+                "size": 28,
+                "weight": 400,
+                "italic": false,
+                "align": "start",
+                "direction": "auto",
+                "leading": 1.7,
+                "background": "transparent",
+                "color": "#202023",
+                "border": "transparent",
+                "resizeMode": "wrap"
+              },
+              "effects": [],
+              "x": 86.85714285714286,
+              "y": 101.12053571428572,
+              "w": 174.85714285714286,
+              "h": 89.14285714285714,
+              "samples": [
+                {
+                  "x": 16,
+                  "y": 16,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26603.79999999702
+                },
+                {
+                  "x": 31.785714285714292,
+                  "y": 22.07142857142857,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26637.39999999106
+                },
+                {
+                  "x": 48.724999999999994,
+                  "y": 29.053571428571416,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26660.79999999702
+                },
+                {
+                  "x": 67.05160714285716,
+                  "y": 36.17232142857145,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26679.70000000298
+                },
+                {
+                  "x": 84.3720267857143,
+                  "y": 43.31156250000001,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26699.79999999702
+                },
+                {
+                  "x": 102.75580401785714,
+                  "y": 50.45387723214287,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26719
+                },
+                {
+                  "x": 120.08479917410716,
+                  "y": 57.59665301339285,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26735.59999999404
+                },
+                {
+                  "x": 138.46986273325896,
+                  "y": 64.73949795200892,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26762.29999999702
+                },
+                {
+                  "x": 155.79905083856028,
+                  "y": 71.88235326422989,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26779.20000000298
+                },
+                {
+                  "x": 158.85714285714286,
+                  "y": 73.14285714285714,
+                  "pressure": 1,
+                  "tiltX": 0,
+                  "tiltY": 0,
+                  "time": 26796.70000000298
+                }
+              ],
+              "brush": {
+                "kind": "hard",
+                "size": 28,
+                "opacity": 0.35,
+                "flow": 1,
+                "hardness": 1,
+                "spacing": 0.12,
+                "angle": 0,
+                "roundness": 1,
+                "smoothing": 0.15,
+                "stabilizer": 0,
+                "taperStart": 0,
+                "taperEnd": 0,
+                "pressureSize": false,
+                "pressureOpacity": false,
+                "pressureFlow": false,
+                "pressureCurve": 0.65,
+                "color": "#ffffff"
+              },
+              "erase": false,
+              "seed": 1362675330,
+              "alphaLock": false
+            }
+          },
+          "layers": {
+            "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f": {
+              "id": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+              "name": "Layer 1",
+              "visible": true,
+              "locked": false,
+              "positionLocked": true,
+              "alphaLocked": false,
+              "opacity": 1,
+              "blend": "source-over",
+              "parentId": null
+            },
+            "b798951a-8a1d-4854-b2f3-2994b82d2e2b": {
+              "id": "b798951a-8a1d-4854-b2f3-2994b82d2e2b",
+              "name": "طبقة تابعة",
+              "visible": true,
+              "locked": false,
+              "positionLocked": false,
+              "alphaLocked": false,
+              "opacity": 1,
+              "blend": "source-over",
+              "parentId": "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f"
+            }
+          },
+          "layerOrder": [
+            "c1096fa1-85df-4ae2-bfa2-2e5a65807f1f",
+            "b798951a-8a1d-4854-b2f3-2994b82d2e2b"
+          ],
+          "nodeOrder": [
+            "164c2bde-2243-48e6-b625-10a0ec6573bc"
+          ],
+          "masks": {},
+          "assets": {}
+        }
+      ],
+      "keys": [],
+      "clipboard": [],
+      "ingests": [],
+      "imageOriginals": []
+    },
+    "parentSelectionExcludesDescendant": true,
+    "inheritedLockedPaintAddsNoNode": true,
+    "inheritedPositionLockAddsNoMove": true,
+    "lockedAndHiddenGripCounts": 0,
+    "hiddenSelectionCount": 0,
+    "parentVisibilityUndoPreservesSource": true,
+    "console": []
+  },
+  "nativeTests": "84 passed,1 ignored, includes ancestor receipt presence and stale metadata",
+  "serviceTests": "48 passed, includes ancestor receipt withheld from capability1 and accepted by capability2",
+  "limits": {
+    "groupSurfaceBytes": 268435456,
+    "maximumGroupDepth": 64
+  }
+}

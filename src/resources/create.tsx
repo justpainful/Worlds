@@ -12,16 +12,31 @@ import { menuAt, type MenuItem } from "../ui/Menu";
 import { Modal } from "../ui/Modal";
 import type { IconName } from "../ui/Icon";
 import { KIND_INFO, NEW_KINDS, defaultIcon, fileIcon } from "./kinds";
+import { isKindHidden } from "../packs/registry";
+import { createItem } from "../planning/actions";
+import { today } from "../planning/model";
+import { openQuickCapture } from "../planning/InboxView";
+import { createSubject } from "../study/StudyViews";
 
 const LINE_ICON: Record<ResourceKind, IconName> = {
   page: "page",
   document: "text",
   presentation: "monitor",
-  drawing: "appearance",
+  drawing: "edit",
+  spreadsheet: "table",
   project: "folder",
   gallery: "image",
   file: "upload",
   stream: "play",
+  task: "checklist",
+  event: "calendar",
+  inbox: "inbox",
+  goal: "success",
+  subject: "folder",
+  lesson: "page",
+  assignment: "edit",
+  exam: "info",
+  requirement: "file",
 };
 
 /** Starting data for each kind (persisted with the resource). */
@@ -35,6 +50,8 @@ function initialMetadata(kind: ResourceKind): Record<string, unknown> {
       return { project: { status: "active", start: null, due: null, description: "", links: [] } };
     case "gallery":
       return { gallery: { view: "grid" } };
+    case "spreadsheet":
+      return { sheet: { sheets: [{ id: "sh_1", name: "Sheet 1", rows: 60, cols: 26, cells: {}, colWidths: {}, rowHeights: {}, frozenRows: 0, frozenCols: 0, merges: [], conditionalRules: [] }], activeSheetId: "sh_1" } };
     default:
       return {};
   }
@@ -151,6 +168,11 @@ export function newResourceMenu(anchor: HTMLElement, opts: { parentId?: string |
     onSelect: () => createResource(k, { parentId: opts.parentId }),
   }));
   items.push(
+    { kind: "separator" },
+    { label: "Task", icon: "checklist", onSelect: () => createItem("task", { parentId: opts.parentId, data: { due: today() }, open: "current" }) },
+    { label: "Event", icon: "calendar", onSelect: () => createItem("event", { parentId: opts.parentId, data: { date: today(), start: "09:00", end: "10:00" }, open: "current" }) },
+    { label: "Quick Capture", icon: "inbox", shortcut: "Ctrl+Alt+N", onSelect: () => openQuickCapture() },
+    ...(!isKindHidden("subject") ? [{ label: "Subject", icon: "folder" as const, onSelect: () => createSubject() }] : []),
     { kind: "separator" },
     { label: "Upload Files", icon: "upload", onSelect: () => uploadFiles({ parentId: opts.parentId }) },
     { label: "Add Stream Link", icon: "link", onSelect: () => addStream({ parentId: opts.parentId }) },

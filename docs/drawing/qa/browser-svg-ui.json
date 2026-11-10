@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "svgTags": [
+    "svg",
+    "image"
+  ],
+  "embeddedPngDimensions": [
+    1100,
+    740
+  ],
+  "embeddedPngMetadata": [],
+  "editableVectorClaim": false,
+  "svgSha256": "359fb59eba861c91eb823a72c5b780f8729681ddc948d19a46c03b0311276b0c",
+  "uiImport": "Actual file chooser accepted8x4 sanitized SVG and opened floating import preview; Apply created an owned independent image layer",
+  "uiExport": "Actual export sheet generated and downloaded flattened SVG",
+  "scope": "Synthetic full-App browser data, independent XML/Pillow validation; native window/chooser acceptance separate."
+}

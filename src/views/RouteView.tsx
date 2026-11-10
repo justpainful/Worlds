@@ -12,6 +12,10 @@ import { IntegrationsView } from "./IntegrationsView";
 import { TrashView } from "./TrashView";
 import { MaterialLab } from "./MaterialLab";
 import { ChatView } from "./ChatView";
+import { TasksView } from "../planning/TasksView";
+import { CalendarView } from "../planning/CalendarView";
+import { InboxView } from "../planning/InboxView";
+import { StudyView } from "../study/StudyViews";
 
 export function RouteView(props: { route: Route; paneId: string; tabId: string }) {
   const key = JSON.stringify(props.route);
@@ -44,5 +48,13 @@ function RouteBody({ route, paneId }: { route: Route; paneId: string; tabId: str
       return <MaterialLab />;
     case "chat":
       return <ChatView chatId={route.chatId} paneId={paneId} />;
+    case "tasks":
+      return <TasksView list={route.list} />;
+    case "calendar":
+      return <CalendarView />;
+    case "inbox":
+      return <InboxView />;
+    case "study":
+      return <StudyView />;
   }
 }

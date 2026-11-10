@@ -9,9 +9,15 @@ export function DrawingScenePreview({ scene, label, frameId, camera,previewImage
     setError(null);
     const draw = () => {
       if (!active || !canvas.current || !host.current) return;
-      const f = camera ?? scene.frames[frameId ?? scene.defaultFrameId], w = host.current.clientWidth, h = host.current.clientHeight, scale = Math.min(w / f.w, h / f.h) * 0.9, dpr = devicePixelRatio || 1;
-      canvas.current.width = Math.max(1, Math.round(w * dpr)); canvas.current.height = Math.max(1, Math.round(h * dpr));
-      renderer.render(canvas.current, scene, { x: f.x - (w / scale - f.w) / 2, y: f.y - (h / scale - f.h) / 2, w: w / scale, h: h / scale, scale: scale * dpr }, { frameId, region: camera });
+      try {
+        const f = camera ?? scene.frames[frameId ?? scene.defaultFrameId], w = host.current.clientWidth, h = host.current.clientHeight;
+        if(!f||f.w<=0||f.h<=0)throw new Error("Preview frame is unavailable");
+        if(!w||!h)return;
+        const scale = Math.min(w / f.w, h / f.h) * 0.9, dpr = devicePixelRatio || 1;
+        canvas.current.width = Math.max(1, Math.round(w * dpr)); canvas.current.height = Math.max(1, Math.round(h * dpr));
+        renderer.render(canvas.current, scene, { x: f.x - (w / scale - f.w) / 2, y: f.y - (h / scale - f.h) / 2, w: w / scale, h: h / scale, scale: scale * dpr }, { frameId, region: camera });
+        setError(previous=>previous?null:previous);
+      }catch(e){canvas.current.getContext("2d")?.clearRect(0,0,canvas.current.width,canvas.current.height);setError(e instanceof Error?e.message:String(e));}
     };
     renderer.onAssetChange = draw;
     void renderer.prepare(preparation??scene).then(draw).catch((e) => { if (active) setError(String(e)); });

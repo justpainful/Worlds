@@ -34,7 +34,7 @@ export interface Frame extends Rect {
   guides?:{id:string;axis:"x"|"y";at:number}[];
   libraryInstanceId?: string; librarySourceFrameId?: string; libraryItemId?: string; libraryVersion?: number;
 }
-export type Blend = "source-over" | "multiply" | "screen" | "overlay" | "darken" | "lighten";
+export type Blend = "source-over" | "normal" | "multiply" | "screen" | "overlay" | "darken" | "lighten";
 export interface Layer {
   id: string; name: string; visible: boolean; locked: boolean; positionLocked: boolean;
   alphaLocked: boolean; opacity: number; blend: Blend; parentId: string | null;
@@ -190,7 +190,7 @@ export function validateScene(value: unknown): asserts value is DrawingScene {
   }
   for (const l of Object.values(s.layers)) {
     if (!Number.isFinite(l.opacity) || l.opacity < 0 || l.opacity > 1) throw new Error("Invalid layer opacity");
-    if (typeof l.name !== "string" || !["source-over", "multiply", "screen", "overlay", "darken", "lighten"].includes(l.blend)) throw new Error("Invalid layer appearance");
+    if (typeof l.name !== "string" || !["source-over", "normal", "multiply", "screen", "overlay", "darken", "lighten"].includes(l.blend)) throw new Error("Invalid layer appearance");
     const ancestors = new Set([l.id]);
     let parent = l.parentId;
     while (parent) {

@@ -1,11 +1,17 @@
 import {id,type Asset,type Change,type DrawingNode,type DrawingScene,type Mask,type Rect} from './model';
-import {worldInkBounds} from './geometry';
+import {bounds,worldRenderBounds} from './geometry';
+import {sourceInkRect,strokeBounds} from './brushBounds';
+import {identity,inverse,nodeMatrix,transformPoint} from './affine';
 import {effectiveLayer} from './layers';
 import {imageCropSourceKey} from './imageCrop';
 export function nodeMask(scene:DrawingScene,n:DrawingNode,effectId?:string){const key=effectId?n.effects.find(e=>e.id===effectId)?.maskId:n.maskId;return key?scene.masks[key]:undefined;}
-export function maskDomain(scene:DrawingScene,n:DrawingNode,linked:boolean):{linked:boolean;rect:Rect;width:number;height:number}{
- const geometry=n.geometrySize??{w:n.w,h:n.h},asset=scene.assets[n.assetId??''],image=['image','raster'].includes(n.kind),sourceWidth=image?n.crop?.w??asset?.width??geometry.w:geometry.w,sourceHeight=image?n.crop?.h??asset?.height??geometry.h:geometry.h,rect=linked?{x:0,y:0,w:geometry.w,h:geometry.h}:worldInkBounds(n),density=image?Math.max(sourceWidth/Math.max(n.w,.000001),sourceHeight/Math.max(n.h,.000001)):1;
- const width=Math.max(1,Math.ceil(linked?sourceWidth:rect.w*density)),height=Math.max(1,Math.ceil(linked?sourceHeight:rect.h*density));
+export function maskDomain(scene:DrawingScene,n:DrawingNode,linked:boolean,existing?:Mask):{linked:boolean;rect:Rect;width:number;height:number}{
+ const geometry=n.geometrySize??{w:n.w,h:n.h},asset=scene.assets[n.assetId??''],image=['image','raster'].includes(n.kind),sourceWidth=image?n.crop?.w??asset?.width??geometry.w:geometry.w,sourceHeight=image?n.crop?.h??asset?.height??geometry.h:geometry.h,density=image?Math.max(sourceWidth/Math.max(n.w,.000001),sourceHeight/Math.max(n.h,.000001)):1;
+ // Strokes and paths can extend well beyond their nominal geometry, including
+ // negative local coordinates. The linked mask must cover their actual ink.
+ const ink=image?{x:0,y:0,w:geometry.w,h:geometry.h}:sourceInkRect(n),scale=Math.max(.000001,Math.min(n.w/geometry.w,n.h/geometry.h)),blur=image?0:n.effects.reduce((sum,e)=>sum+(e.enabled&&e.kind==='blur'?Math.max(0,e.amount)*3/scale:0),0),pad=(image||n.kind==='stroke'?0:Math.max(0,n.paint.strokeWidth)/2)+blur,local={x:ink.x-pad,y:ink.y-pad,w:ink.w+pad*2,h:ink.h+pad*2};let rect=linked?local:worldRenderBounds(n);
+ if(existing){const fallbackW=existing.linked?geometry.w:n.w,fallbackH=existing.linked?geometry.h:n.h,parts:Rect[]=[{x:existing.x,y:existing.y,w:existing.w??fallbackW,h:existing.h??fallbackH},...existing.strokes.filter(s=>s.samples.length).map(s=>strokeBounds(s.samples,s.brush))],matrix=existing.linked===linked?identity():existing.linked?nodeMatrix(identity(),n):inverse(nodeMatrix(identity(),n)),points=parts.flatMap(r=>[{x:r.x,y:r.y},{x:r.x+r.w,y:r.y},{x:r.x+r.w,y:r.y+r.h},{x:r.x,y:r.y+r.h}].map(p=>transformPoint(matrix,p)));rect=bounds([{x:rect.x,y:rect.y},{x:rect.x+rect.w,y:rect.y+rect.h},...points]);}
+ const width=Math.max(1,Math.ceil(linked?rect.w*(image?sourceWidth/geometry.w:1):rect.w*density)),height=Math.max(1,Math.ceil(linked?rect.h*(image?sourceHeight/geometry.h:1):rect.h*density));
  if(!Number.isFinite(width)||!Number.isFinite(height)||width*height>16*1024*1024)throw Error('mask-size');return{linked,rect,width,height};
 }
 export function maskDraft(scene:DrawingScene,n:DrawingNode,mask:Mask,asset:Asset,effectId?:string):DrawingScene{

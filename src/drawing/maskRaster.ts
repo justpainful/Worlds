@@ -1,6 +1,6 @@
 import type {Point} from './model';
 export interface MaskRaster{width:number;height:number;alpha:Uint8ClampedArray}
-export type MaskRasterTask={kind:'paint';mask:MaskRaster;points:Point[];size:number;hardness:number;opacity:number;value:number}|{kind:'fill';mask:MaskRaster;point:Point;tolerance:number;value:number;contiguous:boolean}|{kind:'gradient';mask:MaskRaster;from:Point;to:Point;start:number;end:number}|{kind:'invert';mask:MaskRaster}|{kind:'solid';mask:MaskRaster;value:number};
+export type MaskRasterTask={kind:'paint';mask:MaskRaster;points:Point[];size:number;hardness:number;opacity:number;value:number}|{kind:'fill';mask:MaskRaster;point:Point;tolerance:number;value:number;contiguous:boolean}|{kind:'gradient';mask:MaskRaster;from:Point;to:Point;start:number;end:number;mode?:'linear'|'radial'}|{kind:'invert';mask:MaskRaster}|{kind:'solid';mask:MaskRaster;value:number};
 export function validateMaskRaster(mask:MaskRaster){if(!Number.isSafeInteger(mask.width)||!Number.isSafeInteger(mask.height)||mask.width<1||mask.height<1||mask.width*mask.height>16*1024*1024||mask.alpha.length!==mask.width*mask.height)throw Error('Mask dimensions exceed the working memory limit');}
 const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
 export function editMaskRaster(task:MaskRasterTask):MaskRaster{
@@ -8,8 +8,8 @@ export function editMaskRaster(task:MaskRasterTask):MaskRaster{
  if(task.kind==='invert'){for(let i=0;i<size;i++)alpha[i]=255-alpha[i];return result;}
  if(task.kind==='solid'){if(!Number.isFinite(task.value))throw Error('Invalid mask value');alpha.fill(clamp(task.value!,0,255));return result;}
  if(task.kind==='gradient'){
-  if(![task.from.x,task.from.y,task.to.x,task.to.y,task.start,task.end].every(Number.isFinite))throw Error('Invalid mask gradient');const dx=task.to.x-task.from.x,dy=task.to.y-task.from.y,length=dx*dx+dy*dy;if(length<.000001)return result;
-  for(let y=0;y<height;y++)for(let x=0;x<width;x++){const t=clamp(((x+.5-task.from.x)*dx+(y+.5-task.from.y)*dy)/length,0,1);alpha[y*width+x]=clamp(task.start+(task.end-task.start)*t,0,255);}return result;
+  if(![task.from.x,task.from.y,task.to.x,task.to.y,task.start,task.end].every(Number.isFinite)||task.mode!==undefined&&!['linear','radial'].includes(task.mode))throw Error('Invalid mask gradient');const dx=task.to.x-task.from.x,dy=task.to.y-task.from.y,length=dx*dx+dy*dy;if(length<.000001)return result;const radius=Math.sqrt(length);
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++){const px=x+.5-task.from.x,py=y+.5-task.from.y,t=clamp(task.mode==='radial'?Math.hypot(px,py)/radius:(px*dx+py*dy)/length,0,1);alpha[y*width+x]=clamp(task.start+(task.end-task.start)*t,0,255);}return result;
  }
  if(task.kind==='fill'){
   if(![task.point.x,task.point.y,task.tolerance,task.value].every(Number.isFinite))throw Error('Invalid mask fill');const x=Math.floor(task.point.x),y=Math.floor(task.point.y);if(x<0||y<0||x>=width||y>=height)throw Error('Mask fill starts outside the mask');const seed=y*width+x,target=alpha[seed],tolerance=clamp(task.tolerance,0,255),value=clamp(task.value,0,255);

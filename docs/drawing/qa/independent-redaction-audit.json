@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "decoder": "Pillow independent PNG decode",
+  "dimensions": [
+    28,
+    17
+  ],
+  "metadataKeys": [],
+  "opaqueBlackPixels": 30,
+  "expectedRectangle": [
+    7,
+    4,
+    13,
+    9
+  ],
+  "forbiddenMetadataPayloadFound": false,
+  "sha256": "5c4e52c05bcc3a89849e587753b60461ee1ff304fb66cc256cf517a59fed2644",
+  "scope": "Production renderer/export bytes from metadata-bearing synthetic original. Exact opaque coverage and decoded metadata audit; no native-window or stronger DRM claim."
+}
