@@ -111,7 +111,6 @@ struct WorldsApp: App {
     var body: some Scene {
         #if os(macOS) && DEBUG
         WindowGroup { rootView }
-            .preferredColorScheme((ProcessInfo.processInfo.arguments.contains("--ui-testing-dark") || ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase")) ? .dark : nil)
             .defaultSize(width: ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") ? 1320 : (ProcessInfo.processInfo.arguments.contains("--ui-testing-large-window") ? 1100 : 800),
                          height: ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") ? 860 : (ProcessInfo.processInfo.arguments.contains("--ui-testing-large-window") ? 780 : 600))
             .commands { appCommands }
@@ -141,54 +140,57 @@ struct WorldsApp: App {
             .keyboardShortcut("f", modifiers: .command)
         }
         CommandMenu("Navigate") {
-            Button("Home") {
-                NotificationCenter.default.post(name: .worldsNavigateHomeAction, object: nil)
+            Group {
+                Button("Home") {
+                    NotificationCenter.default.post(name: .worldsNavigateHomeAction, object: nil)
+                }
+                .keyboardShortcut("1", modifiers: [.command, .option])
+
+                Button("Templates") {
+                    NotificationCenter.default.post(name: .worldsNavigateTemplatesAction, object: nil)
+                }
+                .keyboardShortcut("2", modifiers: [.command, .option])
+
+                Button("Trash") {
+                    NotificationCenter.default.post(name: .worldsNavigateTrashAction, object: nil)
+                }
+                .keyboardShortcut("3", modifiers: [.command, .option])
+
+                Button("Spreadsheets") {
+                    NotificationCenter.default.post(name: .worldsNavigateSpreadsheetsAction, object: nil)
+                }
+                .keyboardShortcut("4", modifiers: [.command, .option])
+
+                Button("Planning") {
+                    NotificationCenter.default.post(name: .worldsNavigatePlanningAction, object: nil)
+                }
+                .keyboardShortcut("5", modifiers: [.command, .option])
             }
-            .keyboardShortcut("1", modifiers: [.command, .option])
+            Group {
+                Button("Study") {
+                    NotificationCenter.default.post(name: .worldsNavigateStudyAction, object: nil)
+                }
+                .keyboardShortcut("6", modifiers: [.command, .option])
 
-            Button("Templates") {
-                NotificationCenter.default.post(name: .worldsNavigateTemplatesAction, object: nil)
+                Button("Studio") {
+                    NotificationCenter.default.post(name: .worldsNavigateStudioAction, object: nil)
+                }
+                .keyboardShortcut("7", modifiers: [.command, .option])
+
+                Divider()
+
+                Button("AI Assistant") {
+                    NotificationCenter.default.post(name: .worldsOpenAssistantAction, object: nil)
+                }
+                .keyboardShortcut("a", modifiers: [.command, .option])
+
+                Divider()
+
+                Button("Settings…") {
+                    NotificationCenter.default.post(name: .worldsOpenSettingsAction, object: nil)
+                }
+                .keyboardShortcut(",", modifiers: .command)
             }
-            .keyboardShortcut("2", modifiers: [.command, .option])
-
-            Button("Trash") {
-                NotificationCenter.default.post(name: .worldsNavigateTrashAction, object: nil)
-            }
-            .keyboardShortcut("3", modifiers: [.command, .option])
-
-            Button("Spreadsheets") {
-                NotificationCenter.default.post(name: .worldsNavigateSpreadsheetsAction, object: nil)
-            }
-            .keyboardShortcut("4", modifiers: [.command, .option])
-
-            Button("Planning") {
-                NotificationCenter.default.post(name: .worldsNavigatePlanningAction, object: nil)
-            }
-            .keyboardShortcut("5", modifiers: [.command, .option])
-
-            Button("Study") {
-                NotificationCenter.default.post(name: .worldsNavigateStudyAction, object: nil)
-            }
-            .keyboardShortcut("6", modifiers: [.command, .option])
-
-            Button("Studio") {
-                NotificationCenter.default.post(name: .worldsNavigateStudioAction, object: nil)
-            }
-            .keyboardShortcut("7", modifiers: [.command, .option])
-
-            Divider()
-
-            Button("AI Assistant") {
-                NotificationCenter.default.post(name: .worldsOpenAssistantAction, object: nil)
-            }
-            .keyboardShortcut("a", modifiers: [.command, .option])
-
-            Divider()
-
-            Button("Settings…") {
-                NotificationCenter.default.post(name: .worldsOpenSettingsAction, object: nil)
-            }
-            .keyboardShortcut(",", modifiers: .command)
         }
     }
     #endif
@@ -233,6 +235,31 @@ private struct UITestingAppearance: ViewModifier {
     }
 }
 #endif
+
+private extension View {
+    func registerNavigationReceivers(
+        onHome: @escaping () -> Void,
+        onTemplates: @escaping () -> Void,
+        onTrash: @escaping () -> Void,
+        onSpreadsheets: @escaping () -> Void,
+        onPlanning: @escaping () -> Void,
+        onStudy: @escaping () -> Void,
+        onStudio: @escaping () -> Void,
+        onAssistant: @escaping () -> Void,
+        onSettings: @escaping () -> Void
+    ) -> some View {
+        self
+            .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateHomeAction)) { _ in onHome() }
+            .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateTemplatesAction)) { _ in onTemplates() }
+            .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateTrashAction)) { _ in onTrash() }
+            .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateSpreadsheetsAction)) { _ in onSpreadsheets() }
+            .onReceive(NotificationCenter.default.publisher(for: .worldsNavigatePlanningAction)) { _ in onPlanning() }
+            .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateStudyAction)) { _ in onStudy() }
+            .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateStudioAction)) { _ in onStudio() }
+            .onReceive(NotificationCenter.default.publisher(for: .worldsOpenAssistantAction)) { _ in onAssistant() }
+            .onReceive(NotificationCenter.default.publisher(for: .worldsOpenSettingsAction)) { _ in onSettings() }
+    }
+}
 
 private struct WorldsLibraryView: View {
     @Environment(\.colorScheme) private var colorScheme
@@ -852,49 +879,17 @@ private struct WorldsLibraryView: View {
             showImporter = true
             WorldsHaptics.light()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateHomeAction)) { _ in
-            selectedID = nil
-            selectedSidebarSection = .home
-            WorldsHaptics.selection()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateTemplatesAction)) { _ in
-            selectedID = nil
-            selectedSidebarSection = .templates
-            WorldsHaptics.selection()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateTrashAction)) { _ in
-            selectedID = nil
-            selectedSidebarSection = .trash
-            WorldsHaptics.selection()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateSpreadsheetsAction)) { _ in
-            selectedID = nil
-            selectedSidebarSection = .spreadsheets
-            WorldsHaptics.selection()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .worldsNavigatePlanningAction)) { _ in
-            selectedID = nil
-            selectedSidebarSection = .planning
-            WorldsHaptics.selection()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateStudyAction)) { _ in
-            selectedID = nil
-            selectedSidebarSection = .study
-            WorldsHaptics.selection()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateStudioAction)) { _ in
-            selectedID = nil
-            selectedSidebarSection = .studio
-            WorldsHaptics.selection()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .worldsOpenAssistantAction)) { _ in
-            showAssistant = true
-            WorldsHaptics.light()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .worldsOpenSettingsAction)) { _ in
-            showSettings = true
-            WorldsHaptics.light()
-        }
+        .registerNavigationReceivers(
+            onHome: { selectedID = nil; selectedSidebarSection = .home; WorldsHaptics.selection() },
+            onTemplates: { selectedID = nil; selectedSidebarSection = .templates; WorldsHaptics.selection() },
+            onTrash: { selectedID = nil; selectedSidebarSection = .trash; WorldsHaptics.selection() },
+            onSpreadsheets: { selectedID = nil; selectedSidebarSection = .spreadsheets; WorldsHaptics.selection() },
+            onPlanning: { selectedID = nil; selectedSidebarSection = .planning; WorldsHaptics.selection() },
+            onStudy: { selectedID = nil; selectedSidebarSection = .study; WorldsHaptics.selection() },
+            onStudio: { selectedID = nil; selectedSidebarSection = .studio; WorldsHaptics.selection() },
+            onAssistant: { showAssistant = true; WorldsHaptics.light() },
+            onSettings: { showSettings = true; WorldsHaptics.light() }
+        )
         .task {
             #if DEBUG
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") {
