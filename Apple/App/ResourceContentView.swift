@@ -355,3 +355,179 @@ private struct MacStreamPlayer: NSViewRepresentable {
         player?.pause(); player?.replaceCurrentItem(with: nil); player = nil; state = .failed
     }
 }
+
+struct NativeSpreadsheetEditorView: View {
+    let metadataJSON: String?
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var selectedCell: String = "A1"
+    @State private var formulaText: String = "=SUM(B2:B10)"
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Label("Spreadsheet Workbook", systemImage: "tablecells.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.green)
+                Spacer()
+                Text("Excel XLSX / CSV Native")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.bottom, 4)
+
+            HStack(spacing: 8) {
+                Text(selectedCell)
+                    .font(.caption.monospaced().weight(.bold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+                Image(systemName: "function")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+                TextField("Formula", text: $formulaText)
+                    .font(.caption.monospaced())
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            VStack(spacing: 1) {
+                HStack(spacing: 1) {
+                    Text("#")
+                        .font(.caption2.weight(.bold))
+                        .frame(width: 32, height: 26)
+                        .background(Color.secondary.opacity(0.15))
+                    ForEach(["A", "B", "C", "D"], id: \.self) { col in
+                        Text(col)
+                            .font(.caption2.weight(.bold))
+                            .frame(maxWidth: .infinity, minHeight: 26)
+                            .background(Color.secondary.opacity(0.15))
+                    }
+                }
+                ForEach(1...5, id: \.self) { row in
+                    HStack(spacing: 1) {
+                        Text("\(row)")
+                            .font(.caption2.monospaced())
+                            .frame(width: 32, height: 26)
+                            .background(Color.secondary.opacity(0.1))
+                        ForEach(["A", "B", "C", "D"], id: \.self) { col in
+                            let cellID = "\(col)\(row)"
+                            Button {
+                                selectedCell = cellID
+                            } label: {
+                                Text(sampleValue(col: col, row: row))
+                                    .font(.caption2.monospaced())
+                                    .frame(maxWidth: .infinity, minHeight: 26)
+                                    .background(selectedCell == cellID ? Color.accentColor.opacity(0.2) : Color.secondary.opacity(0.04))
+                                    .border(selectedCell == cellID ? Color.accentColor : Color.clear, width: 1)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.2), lineWidth: 1))
+        }
+        .padding(.vertical, 8)
+    }
+
+    private func sampleValue(col: String, row: Int) -> String {
+        switch (col, row) {
+        case ("A", 1): return "Item"
+        case ("B", 1): return "Qty"
+        case ("C", 1): return "Price"
+        case ("D", 1): return "Total"
+        case ("A", 2): return "Licensing"
+        case ("B", 2): return "10"
+        case ("C", 2): return "120.00"
+        case ("D", 2): return "1,200.00"
+        case ("A", 3): return "Hosting"
+        case ("B", 3): return "1"
+        case ("C", 3): return "450.00"
+        case ("D", 3): return "450.00"
+        default: return ""
+        }
+    }
+}
+
+struct NativePlanningAndStudyItemView: View {
+    let page: StoredPage
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 8) {
+                Image(systemName: iconForKind(page.kind))
+                    .foregroundStyle(colorForKind(page.kind))
+                Text(page.kind.capitalized)
+                    .font(.caption.weight(.bold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(colorForKind(page.kind).opacity(0.15), in: Capsule())
+                Spacer()
+                Text("Updated: \(formattedDate(page.updatedAt))")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
+            if !page.title.isEmpty {
+                Text(page.title)
+                    .font(.headline)
+            }
+
+            if let json = page.metadataJSON, !json.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Properties")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text(json)
+                        .font(.caption.monospaced())
+                        .padding(10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+                }
+            }
+        }
+        .padding(16)
+        .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+        .padding(.vertical, 4)
+    }
+
+    private func iconForKind(_ kind: String) -> String {
+        switch kind {
+        case "task": return "checklist"
+        case "event": return "calendar"
+        case "goal": return "target"
+        case "inbox": return "tray"
+        case "subject": return "book.closed"
+        case "lesson": return "text.book.closed"
+        case "assignment": return "doc.text"
+        case "exam": return "graduationcap"
+        case "requirement": return "checkmark.seal"
+        default: return "doc"
+        }
+    }
+
+    private func colorForKind(_ kind: String) -> Color {
+        switch kind {
+        case "task": return .blue
+        case "event": return .orange
+        case "goal": return .purple
+        case "inbox": return .teal
+        case "subject": return .indigo
+        case "lesson": return .cyan
+        case "assignment": return .yellow
+        case "exam": return .red
+        case "requirement": return .green
+        default: return .gray
+        }
+    }
+
+    private func formattedDate(_ epochMillis: Int64) -> String {
+        guard epochMillis > 0 else { return "None" }
+        let date = Date(timeIntervalSince1970: TimeInterval(epochMillis) / 1000.0)
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+}
