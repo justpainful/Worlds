@@ -737,7 +737,26 @@ final class WorldsUITests: XCTestCase {
         ]
         app.launch()
         RunLoop.current.run(until: Date().addingTimeInterval(6))
-        #if os(iOS)
+        #if os(macOS)
+        app.activate()
+        let firstWin = app.windows.firstMatch
+        if firstWin.waitForExistence(timeout: 5), (firstWin.frame.width < 1200 || firstWin.frame.height < 780) {
+            let winMenu = app.menuBars.menuBarItems["Window"].firstMatch
+            if winMenu.exists {
+                winMenu.click()
+                let fillItem = app.menuItems["Fill"].firstMatch
+                let zoomItem = app.menuItems["Zoom"].firstMatch
+                if fillItem.exists && fillItem.isEnabled {
+                    fillItem.click()
+                } else if zoomItem.exists && zoomItem.isEnabled {
+                    zoomItem.click()
+                } else {
+                    app.typeKey(.escape, modifierFlags: [])
+                }
+                RunLoop.current.run(until: Date().addingTimeInterval(1.0))
+            }
+        }
+        #elseif os(iOS)
         if UIDevice.current.userInterfaceIdiom == .pad && XCUIDevice.shared.orientation != .landscapeLeft {
             XCUIDevice.shared.orientation = .landscapeLeft
             RunLoop.current.run(until: Date().addingTimeInterval(1))
@@ -943,7 +962,7 @@ final class WorldsUITests: XCTestCase {
         XCTAssertTrue(window.waitForExistence(timeout: 5))
         let screenshot = window.screenshot()
         #else
-        let screenshot = XCUIScreen.main.screenshot()
+        let screenshot = app.screenshot()
         #endif
         let attachment = XCTAttachment(screenshot: screenshot)
         attachment.name = name

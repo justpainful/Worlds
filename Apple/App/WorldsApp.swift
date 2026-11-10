@@ -68,18 +68,27 @@ enum WorldsHaptics {
         if dark {
             NSApp.appearance = NSAppearance(named: .darkAqua)
         }
+        if args.contains("--ui-testing-complete-showcase") {
+            for key in UserDefaults.standard.dictionaryRepresentation().keys where key.hasPrefix("NSWindow Frame") {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
         for window in NSApp.windows where window.canBecomeMain || window.canBecomeKey {
             if dark {
                 window.appearance = NSAppearance(named: .darkAqua)
                 window.backgroundColor = NSColor(red: 12 / 255, green: 12 / 255, blue: 14 / 255, alpha: 1)
             }
             if args.contains("--ui-testing-complete-showcase") {
+                window.minSize = NSSize(width: 1280, height: 800)
                 let screenFrame = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1920, height: 1050)
                 let targetW = min(screenFrame.width, 1440)
                 let targetH = min(screenFrame.height, 900)
                 let originX = screenFrame.origin.x + max(0, (screenFrame.width - targetW) / 2)
                 let originY = screenFrame.origin.y + max(0, (screenFrame.height - targetH) / 2)
-                window.setFrame(NSRect(x: originX, y: originY, width: targetW, height: targetH), display: true)
+                let targetRect = NSRect(x: originX, y: originY, width: targetW, height: targetH)
+                if window.frame.width < 1200 || window.frame.height < 780 {
+                    window.setFrame(targetRect, display: true, animate: false)
+                }
             }
             window.makeKeyAndOrderFront(nil)
             window.orderFrontRegardless()
@@ -154,6 +163,7 @@ struct WorldsApp: App {
                     idealHeight: ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") ? 900 : nil
                 )
         }
+            .windowResizability(.contentMinSize)
             .defaultSize(width: ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") ? 1440 : (ProcessInfo.processInfo.arguments.contains("--ui-testing-large-window") ? 1100 : 800),
                          height: ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") ? 900 : (ProcessInfo.processInfo.arguments.contains("--ui-testing-large-window") ? 780 : 600))
             .commands { appCommands }
@@ -161,7 +171,10 @@ struct WorldsApp: App {
         WindowGroup { rootView }
             .commands { appCommands }
         #else
-        WindowGroup { rootView }
+        WindowGroup {
+            rootView
+                .preferredColorScheme((ProcessInfo.processInfo.arguments.contains("--ui-testing-dark") || ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase")) ? .dark : nil)
+        }
         #endif
     }
 
@@ -287,13 +300,21 @@ private struct UITestingAppearance: ViewModifier {
             }
             #elseif canImport(UIKit)
             .onAppear {
-                if forcedColorScheme == .dark {
-                    for scene in UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }) {
-                        for win in scene.windows {
-                            win.overrideUserInterfaceStyle = .dark
+                let applyDark: @Sendable () -> Void = {
+                    Task { @MainActor in
+                        if forcedColorScheme == .dark {
+                            UIView.appearance().overrideUserInterfaceStyle = .dark
+                            for scene in UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }) {
+                                for win in scene.windows {
+                                    win.overrideUserInterfaceStyle = .dark
+                                }
+                            }
                         }
                     }
                 }
+                applyDark()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { applyDark() }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { applyDark() }
             }
             #endif
     }

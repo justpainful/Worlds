@@ -74,8 +74,8 @@ struct NativeFocusTimerBar: View {
 
     private var modePicker: some View {
         Picker("Mode", selection: $mode) {
-            Text("25m Focus").tag("Focus 25m")
-            Text("50m Deep").tag("Deep 50m")
+            Text("25m").tag("Focus 25m")
+            Text("50m").tag("Deep 50m")
             Text("5m Break").tag("Break 5m")
         }
         .pickerStyle(.segmented)
@@ -765,80 +765,144 @@ struct VisualMindMapCanvasPreview: View {
                 }
             }
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                GeometryReader { geo in
-                    let w = max(geo.size.width, 640)
-                    let h: CGFloat = 270
-                    let center = CGPoint(x: w * 0.5, y: h * 0.5)
-                    let topL = CGPoint(x: w * 0.20, y: h * 0.22)
-                    let topR = CGPoint(x: w * 0.80, y: h * 0.22)
-                    let botL = CGPoint(x: w * 0.20, y: h * 0.78)
-                    let botR = CGPoint(x: w * 0.80, y: h * 0.78)
-
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 14)
-                            .fill(Color(red: 15 / 255, green: 16 / 255, blue: 21 / 255))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 14)
-                                    .stroke(WorldsPalette.accent(for: colorScheme).opacity(0.32), lineWidth: 1)
-                            )
-
-                        Canvas { context, _ in
-                            let branches: [(CGPoint, Color)] = [
-                                (topL, .purple), (topR, .blue), (botL, .green), (botR, .orange)
-                            ]
-                            for (pt, col) in branches {
-                                var path = Path()
-                                path.move(to: center)
-                                path.addQuadCurve(to: pt, control: CGPoint(x: (center.x + pt.x) * 0.5, y: center.y))
-                                context.stroke(path, with: .color(col.opacity(0.8)), lineWidth: 2.5)
-                            }
-                        }
-
-                        mindMapNode(
-                            title: selectedPreset == "swot" ? "Strengths · نقاط القوة" : "Core Architecture · المحور ١",
-                            subtitle: "2 sub-branches linked",
-                            color: .purple
-                        )
-                        .position(topL)
-
-                        mindMapNode(
-                            title: selectedPreset == "swot" ? "Weaknesses · نقاط الضعف" : "Research & Data · المحور ٢",
-                            subtitle: "Propositions verified",
-                            color: .blue
-                        )
-                        .position(topR)
-
-                        mindMapNode(
-                            title: selectedPreset == "swot" ? "Opportunities · الفرص" : "Execution Plan · المحور ٣",
-                            subtitle: "Actionable milestones",
-                            color: .green
-                        )
-                        .position(botL)
-
-                        mindMapNode(
-                            title: selectedPreset == "swot" ? "Threats · التهديدات" : "Outcomes & KPIs · المحور ٤",
-                            subtitle: "Measured impact",
-                            color: .orange
-                        )
-                        .position(botR)
-
-                        mindMapNode(
-                            title: presetCenterTitle,
-                            subtitle: "Central Concept Root",
-                            color: WorldsPalette.goldAccent,
-                            isRoot: true
-                        )
-                        .position(center)
-                    }
-                    .frame(width: w, height: h)
-                }
-                .frame(minWidth: 640, idealWidth: 780, minHeight: 270, idealHeight: 270)
+            ViewThatFits(in: .horizontal) {
+                wideMindMapCanvas
+                    .frame(minWidth: 600, idealWidth: 780, minHeight: 270, idealHeight: 270)
+                compactMindMapCanvas
             }
         }
         .padding(16)
         .worldsGlass(cornerRadius: 16)
         .accessibilityIdentifier("visual-mindmap-preview")
+    }
+
+    private var wideMindMapCanvas: some View {
+        GeometryReader { geo in
+            let w = max(geo.size.width, 600)
+            let h: CGFloat = 270
+            let center = CGPoint(x: w * 0.5, y: h * 0.5)
+            let topL = CGPoint(x: w * 0.20, y: h * 0.22)
+            let topR = CGPoint(x: w * 0.80, y: h * 0.22)
+            let botL = CGPoint(x: w * 0.20, y: h * 0.78)
+            let botR = CGPoint(x: w * 0.80, y: h * 0.78)
+
+            ZStack {
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Color(red: 15 / 255, green: 16 / 255, blue: 21 / 255))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(WorldsPalette.accent(for: colorScheme).opacity(0.32), lineWidth: 1)
+                    )
+
+                Canvas { context, _ in
+                    let branches: [(CGPoint, Color)] = [
+                        (topL, .purple), (topR, .blue), (botL, .green), (botR, .orange)
+                    ]
+                    for (pt, col) in branches {
+                        var path = Path()
+                        path.move(to: center)
+                        path.addQuadCurve(to: pt, control: CGPoint(x: (center.x + pt.x) * 0.5, y: center.y))
+                        context.stroke(path, with: .color(col.opacity(0.8)), lineWidth: 2.5)
+                    }
+                }
+
+                mindMapNode(
+                    title: selectedPreset == "swot" ? "Strengths · نقاط القوة" : "Core Architecture · المحور ١",
+                    subtitle: "2 sub-branches linked",
+                    color: .purple
+                )
+                .position(topL)
+
+                mindMapNode(
+                    title: selectedPreset == "swot" ? "Weaknesses · نقاط الضعف" : "Research & Data · المحور ٢",
+                    subtitle: "Propositions verified",
+                    color: .blue
+                )
+                .position(topR)
+
+                mindMapNode(
+                    title: selectedPreset == "swot" ? "Opportunities · الفرص" : "Execution Plan · المحور ٣",
+                    subtitle: "Actionable milestones",
+                    color: .green
+                )
+                .position(botL)
+
+                mindMapNode(
+                    title: selectedPreset == "swot" ? "Threats · التهديدات" : "Outcomes & KPIs · المحور ٤",
+                    subtitle: "Measured impact",
+                    color: .orange
+                )
+                .position(botR)
+
+                mindMapNode(
+                    title: presetCenterTitle,
+                    subtitle: "Central Concept Root",
+                    color: WorldsPalette.goldAccent,
+                    isRoot: true
+                )
+                .position(center)
+            }
+            .frame(width: w, height: h)
+        }
+    }
+
+    private var compactMindMapCanvas: some View {
+        VStack(spacing: 12) {
+            mindMapNode(
+                title: presetCenterTitle,
+                subtitle: "Central Concept Root",
+                color: WorldsPalette.goldAccent,
+                isRoot: true
+            )
+
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+                compactBranchCard(
+                    title: selectedPreset == "swot" ? "Strengths" : "المحور ١ · Architecture",
+                    subtitle: "2 sub-branches",
+                    color: .purple
+                )
+                compactBranchCard(
+                    title: selectedPreset == "swot" ? "Weaknesses" : "المحور ٢ · Research",
+                    subtitle: "Verified notes",
+                    color: .blue
+                )
+                compactBranchCard(
+                    title: selectedPreset == "swot" ? "Opportunities" : "المحور ٣ · Execution",
+                    subtitle: "Milestones",
+                    color: .green
+                )
+                compactBranchCard(
+                    title: selectedPreset == "swot" ? "Threats" : "المحور ٤ · Outcomes",
+                    subtitle: "Measured KPIs",
+                    color: .orange
+                )
+            }
+        }
+        .padding(14)
+        .background(Color(red: 15 / 255, green: 16 / 255, blue: 21 / 255), in: RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(WorldsPalette.accent(for: colorScheme).opacity(0.32), lineWidth: 1)
+        )
+    }
+
+    private func compactBranchCard(title: String, subtitle: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            Text(subtitle)
+                .font(.system(size: 10))
+                .foregroundStyle(.white.opacity(0.75))
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(Color(red: 24 / 255, green: 25 / 255, blue: 32 / 255), in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).fill(color.opacity(0.20)))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(color, lineWidth: 1.2))
     }
 
     private var mindMapHeaderText: some View {
@@ -1065,7 +1129,7 @@ struct WorldsPlanningHubView: View {
                 .foregroundStyle(WorldsPalette.ink(for: colorScheme))
 
             ForEach(Array(tasks.enumerated()), id: \.element.id) { idx, item in
-                HStack(spacing: 12) {
+                HStack(alignment: .top, spacing: 12) {
                     Button {
                         tasks[idx].done.toggle()
                     } label: {
@@ -1075,40 +1139,43 @@ struct WorldsPlanningHubView: View {
                     }
                     .buttonStyle(.plain)
 
-                    VStack(alignment: .leading, spacing: 3) {
+                    VStack(alignment: .leading, spacing: 6) {
                         Text(item.title)
                             .font(.body.weight(.medium))
                             .strikethrough(item.done)
                             .foregroundStyle(item.done ? .secondary : WorldsPalette.ink(for: colorScheme))
+                            .fixedSize(horizontal: false, vertical: true)
+
                         HStack(spacing: 8) {
                             Label(item.project, systemImage: "folder")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
                             Label(item.due, systemImage: "calendar")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                            Spacer(minLength: 4)
+                            if item.printQueued {
+                                Label("Print", systemImage: "printer.fill")
+                                    .font(.caption2.weight(.semibold))
+                                    .lineLimit(1)
+                                    .fixedSize(horizontal: true, vertical: false)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(Color.cyan.opacity(0.16), in: Capsule())
+                                    .foregroundStyle(.cyan)
+                            }
+                            Text(item.priority)
+                                .font(.caption2.weight(.bold))
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(priorityColor(item.priority).opacity(0.18), in: Capsule())
+                                .foregroundStyle(priorityColor(item.priority))
                         }
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
                     }
-
-                    Spacer()
-
-                    if item.printQueued {
-                        Label("Print Queue", systemImage: "printer.fill")
-                            .font(.caption2.weight(.semibold))
-                            .lineLimit(1)
-                            .fixedSize(horizontal: true, vertical: false)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color.cyan.opacity(0.16), in: Capsule())
-                            .foregroundStyle(.cyan)
-                    }
-
-                    Text(item.priority)
-                        .font(.caption2.weight(.bold))
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(priorityColor(item.priority).opacity(0.18), in: Capsule())
-                        .foregroundStyle(priorityColor(item.priority))
                 }
                 .padding(12)
                 .worldsGlass(cornerRadius: 12)
@@ -1721,9 +1788,9 @@ struct WorldsCreativeStudioView: View {
                     .foregroundStyle(.white)
                     .fixedSize(horizontal: false, vertical: true)
 
-                HStack(spacing: 10) {
-                    slideMetricBox(label: "Local Engine", value: "SQLite + FTS5", color: WorldsPalette.goldAccent)
-                    slideMetricBox(label: "Sync Protocol", value: "Yrs CRDT v1", color: .cyan)
+                HStack(spacing: 8) {
+                    slideMetricBox(label: "Engine", value: "SQLite + FTS5", color: WorldsPalette.goldAccent)
+                    slideMetricBox(label: "Sync", value: "Yrs CRDT", color: .cyan)
                     slideMetricBox(label: "Apple UI", value: "Liquid Glass", color: .purple)
                 }
             }
