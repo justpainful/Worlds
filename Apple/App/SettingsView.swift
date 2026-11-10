@@ -9,6 +9,7 @@ struct SettingsView: View {
     @AppStorage("worlds_theme_preference") private var themePreference: String = "system"
     @AppStorage("worlds_auto_save_interval") private var autoSaveInterval: Double = 3.0
     @AppStorage("worlds_mcp_auto_approve_reads") private var autoApproveReads: Bool = true
+    @AppStorage("worlds_pack_study") private var studyPackEnabled: Bool = false
 
     let databaseURL: URL?
     let pageCount: Int
@@ -50,7 +51,17 @@ struct SettingsView: View {
                     }
                 }
 
-                // Section 2: Workspace & Storage
+                // Section 2: Packs (Opt-In Domain Features)
+                Section("Packs (Opt-In Features)") {
+                    Toggle("Study Pack (Subjects, Timetable, Assignments, Exams)", isOn: $studyPackEnabled)
+                        .accessibilityIdentifier("toggle-study-pack")
+
+                    Text("Tasks, Calendar, Inbox, Goals, and Spreadsheets are always on for everyone. Turn on Study only if you are a student; when off, all academic views are hidden without losing any saved data.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                // Section 3: Workspace & Storage
                 Section("Workspace & Storage") {
                     if let databaseURL {
                         LabeledContent("Database Location", value: databaseURL.lastPathComponent)
@@ -82,7 +93,7 @@ struct SettingsView: View {
                     }
                 }
 
-                // Section 3: Model Context Protocol (MCP) & AI
+                // Section 4: Model Context Protocol (MCP) & AI
                 Section("Model Context Protocol & Assistant") {
                     #if os(macOS)
                     LabeledContent("MCP Architecture", value: "Dual (Process + Entitlements)")
@@ -97,14 +108,14 @@ struct SettingsView: View {
                     LabeledContent("Write Authorization Gate", value: "Single-Use Explicit Approval")
                 }
 
-                // Section 4: Collaboration & CRDT
+                // Section 5: Collaboration & CRDT
                 Section("Collaboration & Wire Protocol") {
                     LabeledContent("CRDT Engine", value: "Yrs Rust Native FFI")
                     LabeledContent("Sync Protocol", value: "worlds-sync.v1")
                     LabeledContent("Drawing Schema", value: "Schema 1 (.worldsdraw)")
                 }
 
-                // Section 5: About Worlds
+                // Section 6: About Worlds
                 Section("About Worlds") {
                     LabeledContent("Version", value: "0.1.0 (Build 1)")
                     LabeledContent("Platforms", value: "iOS 17+ · macOS 14+")

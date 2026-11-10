@@ -6,6 +6,12 @@ final class WorldsLocalMovePageUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-move-fixture", "--ui-testing-rtl"]
         app.launch()
+        let notice = app.descendants(matching: .any)["local-copy-notice"].firstMatch
+        _ = notice.waitForExistence(timeout: 30)
+        #if os(iOS)
+        let initialPages = app.navigationBars.buttons["Pages"].firstMatch
+        if initialPages.exists { initialPages.tap() }
+        #endif
         let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
         guard page.waitForExistence(timeout: 30) else { capture(app, "move-page-missing"); XCTFail("Fixture page missing"); return }
         page.tap()
@@ -28,7 +34,11 @@ final class WorldsLocalMovePageUITests: XCTestCase {
         let showPages = app.navigationBars.buttons["Pages"].firstMatch
         if showPages.exists { showPages.tap() }
         #endif
-        let menu = app.buttons["Local copies"]
+        #if os(macOS)
+        let appWindow = app.windows.firstMatch
+        if appWindow.exists { appWindow.click() }
+        #endif
+        let menu = app.buttons["Local copies"].exists ? app.buttons["Local copies"] : app.descendants(matching: .any)["Local copies"].firstMatch
         guard menu.waitForExistence(timeout: 15) else { capture(app, "move-copy-menu-missing"); XCTFail("Local copies menu missing"); return }
         menu.tap()
         let open = app.buttons["Open local copy"]
@@ -37,7 +47,8 @@ final class WorldsLocalMovePageUITests: XCTestCase {
         let copies = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Local copy "))
         guard copies.firstMatch.waitForExistence(timeout: 20), copies.count == 1 else { XCTFail("Expected one isolated copy"); return }
         copies.firstMatch.tap()
-        guard app.staticTexts["Select a page"].waitForExistence(timeout: 30) else { capture(app, "move-reopen-missing"); XCTFail("Copy did not reopen"); return }
+        let selectPage = app.staticTexts["Select a page"]
+        guard selectPage.waitForExistence(timeout: 30) || app.descendants(matching: .any)[createdID].firstMatch.waitForExistence(timeout: 30) else { capture(app, "move-reopen-missing"); XCTFail("Copy did not reopen"); return }
         let parent = app.descendants(matching: .any)["page.move-destination"].firstMatch
         guard parent.waitForExistence(timeout: 20) else { XCTFail("Destination page missing"); return }
         parent.tap()

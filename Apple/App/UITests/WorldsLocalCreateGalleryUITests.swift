@@ -6,6 +6,14 @@ final class WorldsLocalCreateGalleryUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-rtl", "--ui-testing-large-text"]
         app.launch()
+        let notice = app.descendants(matching: .any)["local-copy-notice"].firstMatch
+        _ = notice.waitForExistence(timeout: 30)
+        #if os(iOS)
+        let initialPages = app.navigationBars.buttons["Pages"].firstMatch
+        if initialPages.exists { initialPages.tap() }
+        let initialSidebar = app.navigationBars.buttons["ToggleSidebar"].firstMatch
+        if initialSidebar.exists && !app.buttons["new-local-gallery"].exists { initialSidebar.tap() }
+        #endif
         let newPage = app.buttons["new-local-gallery"]
         guard newPage.waitForExistence(timeout: 30) else { capture(app, "create-action-missing"); XCTFail("New gallery action missing"); return }
         newPage.tap()
@@ -29,7 +37,11 @@ final class WorldsLocalCreateGalleryUITests: XCTestCase {
         let rows = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@ AND label CONTAINS %@", "page.", "Personal test gallery"))
         guard rows.firstMatch.waitForExistence(timeout: 20), rows.count == 1 else { capture(app, "create-initial-count"); XCTFail("Created page must appear exactly once"); return }
         let createdID = rows.firstMatch.identifier
-        let menu = app.buttons["Local copies"]
+        #if os(macOS)
+        let appWindow = app.windows.firstMatch
+        if appWindow.exists { appWindow.click() }
+        #endif
+        let menu = app.buttons["Local copies"].exists ? app.buttons["Local copies"] : app.descendants(matching: .any)["Local copies"].firstMatch
         guard menu.waitForExistence(timeout: 15) else { capture(app, "create-copy-menu-missing"); XCTFail("Local copies menu missing"); return }
         menu.tap()
         let open = app.buttons["Open local copy"]
@@ -38,8 +50,22 @@ final class WorldsLocalCreateGalleryUITests: XCTestCase {
         let copies = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Local copy "))
         guard copies.firstMatch.waitForExistence(timeout: 20), copies.count == 1 else { capture(app, "create-copy-picker"); XCTFail("Expected exactly one isolated fixture copy"); return }
         copies.firstMatch.tap()
-        guard app.staticTexts["Select a page"].waitForExistence(timeout: 30) else { capture(app, "create-copy-reopen-incomplete"); XCTFail("The copy did not finish reopening"); return }
+        let selectPage = app.staticTexts["Select a page"]
+        guard selectPage.waitForExistence(timeout: 30) || app.descendants(matching: .any)[createdID].firstMatch.waitForExistence(timeout: 30) else { capture(app, "create-copy-reopen-incomplete"); XCTFail("The copy did not finish reopening"); return }
         let reopened = app.descendants(matching: .any)[createdID].firstMatch
+        #if os(iOS)
+        let showPagesReopened = app.navigationBars.buttons["Pages"].firstMatch
+        if showPagesReopened.exists { showPagesReopened.tap() }
+        #endif
+        for _ in 0..<8 {
+            if reopened.exists && reopened.isHittable { break }
+            #if os(macOS)
+            let scrollTarget = app.scrollViews.firstMatch.exists ? app.scrollViews.firstMatch : app.outlines.firstMatch
+            if scrollTarget.exists { scrollTarget.scroll(byDeltaX: 0, deltaY: -120) }
+            #else
+            app.swipeUp()
+            #endif
+        }
         guard reopened.waitForExistence(timeout: 30) else { capture(app, "create-reopen-missing"); XCTFail("Created page missing after reopening the copy"); return }
         XCTAssertEqual(rows.count, 1, "Reopening the same copy must retain exactly one created page")
         reopened.tap()

@@ -6,6 +6,12 @@ final class WorldsLocalRenamePageUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-rtl", "--ui-testing-large-text"]
         app.launch()
+        let notice = app.descendants(matching: .any)["local-copy-notice"].firstMatch
+        _ = notice.waitForExistence(timeout: 30)
+        #if os(iOS)
+        let initialPages = app.navigationBars.buttons["Pages"].firstMatch
+        if initialPages.exists { initialPages.tap() }
+        #endif
         let page = app.descendants(matching: .any)["page.fixture-page"].firstMatch
         guard page.waitForExistence(timeout: 30) else { capture(app, "rename-page-missing"); XCTFail("Fixture page missing"); return }
         page.tap()
@@ -39,7 +45,11 @@ final class WorldsLocalRenamePageUITests: XCTestCase {
         let showPages = app.navigationBars.buttons["Pages"].firstMatch
         if showPages.exists { showPages.tap() }
         #endif
-        let menu = app.buttons["Local copies"]
+        #if os(macOS)
+        let appWindow = app.windows.firstMatch
+        if appWindow.exists { appWindow.click() }
+        #endif
+        let menu = app.buttons["Local copies"].exists ? app.buttons["Local copies"] : app.descendants(matching: .any)["Local copies"].firstMatch
         guard menu.waitForExistence(timeout: 15) else { capture(app, "rename-copy-menu-missing"); XCTFail("Local copies menu missing"); return }
         menu.tap()
         let open = app.buttons["Open local copy"]

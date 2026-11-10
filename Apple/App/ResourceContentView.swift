@@ -70,6 +70,9 @@ struct ResourceContentView: View {
                 case "presentation": presentation
                 case "file": file
                 case "stream": stream
+                case "spreadsheet": NativeSpreadsheetEditorView(metadataJSON: page.metadataJSON)
+                case "task", "event", "goal", "inbox", "subject", "lesson", "assignment", "exam", "requirement":
+                    NativePlanningAndStudyItemView(page: page)
                 default: Text("This resource type is not available in the reader.")
                 }
                 Label(projectEditingAvailable ? "Project editing available in local copy" : (otherEditingAvailable ? "Editing available in local copy" : "Read only"), systemImage: (projectEditingAvailable || otherEditingAvailable) ? "pencil" : "eye")
