@@ -45,11 +45,24 @@ struct SettingsView: View {
                     HStack {
                         Text("Materials")
                         Spacer()
+                        #if os(macOS)
+                        Text("Liquid Glass · NSVisualEffectView Vibrancy")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        #else
                         Text("Liquid Glass")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                        #endif
                     }
                 }
+
+                #if os(macOS)
+                // macOS Experience: Vibrancy & Hot Corners
+                Section("macOS Experience & Hot Corners") {
+                    HotCornersSettingsRows()
+                }
+                #endif
 
                 // Section 2: Packs (Opt-In Domain Features)
                 Section("Packs (Opt-In Features)") {

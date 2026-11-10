@@ -22,6 +22,10 @@ extension Notification.Name {
     static let worldsOpenDatabaseAction = Notification.Name("worldsOpenDatabaseAction")
     static let worldsFocusSearchAction = Notification.Name("worldsFocusSearchAction")
     static let worldsNavigateHomeAction = Notification.Name("worldsNavigateHomeAction")
+    static let worldsNavigateSpacesAction = Notification.Name("worldsNavigateSpacesAction")
+    static let worldsNavigateLibraryAction = Notification.Name("worldsNavigateLibraryAction")
+    static let worldsNavigateAIAction = Notification.Name("worldsNavigateAIAction")
+    static let worldsNavigateSearchAction = Notification.Name("worldsNavigateSearchAction")
     static let worldsNavigateTemplatesAction = Notification.Name("worldsNavigateTemplatesAction")
     static let worldsNavigateTrashAction = Notification.Name("worldsNavigateTrashAction")
     static let worldsNavigateSpreadsheetsAction = Notification.Name("worldsNavigateSpreadsheetsAction")
@@ -30,6 +34,9 @@ extension Notification.Name {
     static let worldsNavigateStudioAction = Notification.Name("worldsNavigateStudioAction")
     static let worldsOpenAssistantAction = Notification.Name("worldsOpenAssistantAction")
     static let worldsOpenSettingsAction = Notification.Name("worldsOpenSettingsAction")
+    static let worldsToggleInspectorAction = Notification.Name("worldsToggleInspectorAction")
+    static let worldsOpenCreateAction = Notification.Name("worldsOpenCreateAction")
+    static let worldsQuickNoteAction = Notification.Name("worldsQuickNoteAction")
 }
 
 #if canImport(UIKit)
@@ -164,11 +171,13 @@ struct WorldsApp: App {
                 )
         }
             .windowResizability(.contentMinSize)
+            .windowToolbarStyle(.unified)
             .defaultSize(width: ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") ? 1440 : (ProcessInfo.processInfo.arguments.contains("--ui-testing-large-window") ? 1100 : 800),
                          height: ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") ? 900 : (ProcessInfo.processInfo.arguments.contains("--ui-testing-large-window") ? 780 : 600))
             .commands { appCommands }
         #elseif os(macOS)
         WindowGroup { rootView }
+            .windowToolbarStyle(.unified)
             .commands { appCommands }
         #else
         WindowGroup {
@@ -183,6 +192,18 @@ struct WorldsApp: App {
     private var appCommands: some Commands {
         SidebarCommands()
         CommandGroup(replacing: .newItem) {
+            Button("New Resource…") {
+                NotificationCenter.default.post(name: .worldsOpenCreateAction, object: nil)
+            }
+            .keyboardShortcut("n", modifiers: .command)
+
+            Button("Quick Note HUD") {
+                NotificationCenter.default.post(name: .worldsQuickNoteAction, object: nil)
+            }
+            .keyboardShortcut(.space, modifiers: .option)
+
+            Divider()
+
             Button("Open Database…") {
                 NotificationCenter.default.post(name: .worldsOpenDatabaseAction, object: nil)
             }
@@ -190,10 +211,16 @@ struct WorldsApp: App {
         }
         CommandGroup(after: .pasteboard) {
             Divider()
-            Button("Find in Pages…") {
+            Button("Find in Workspace…") {
                 NotificationCenter.default.post(name: .worldsFocusSearchAction, object: nil)
             }
             .keyboardShortcut("f", modifiers: .command)
+        }
+        CommandMenu("View") {
+            Button("Toggle Inspector") {
+                NotificationCenter.default.post(name: .worldsToggleInspectorAction, object: nil)
+            }
+            .keyboardShortcut("i", modifiers: [.command, .option])
         }
         CommandMenu("Navigate") {
             Group {
@@ -202,16 +229,28 @@ struct WorldsApp: App {
                 }
                 .keyboardShortcut("1", modifiers: [.command, .option])
 
-                Button("Templates") {
-                    NotificationCenter.default.post(name: .worldsNavigateTemplatesAction, object: nil)
+                Button("Spaces") {
+                    NotificationCenter.default.post(name: .worldsNavigateSpacesAction, object: nil)
                 }
                 .keyboardShortcut("2", modifiers: [.command, .option])
 
-                Button("Trash") {
-                    NotificationCenter.default.post(name: .worldsNavigateTrashAction, object: nil)
+                Button("Library") {
+                    NotificationCenter.default.post(name: .worldsNavigateLibraryAction, object: nil)
                 }
                 .keyboardShortcut("3", modifiers: [.command, .option])
 
+                Button("AI Assistant") {
+                    NotificationCenter.default.post(name: .worldsNavigateAIAction, object: nil)
+                }
+                .keyboardShortcut("a", modifiers: [.command, .option])
+
+                Button("Search") {
+                    NotificationCenter.default.post(name: .worldsNavigateSearchAction, object: nil)
+                }
+                .keyboardShortcut("s", modifiers: [.command, .option])
+            }
+            Divider()
+            Group {
                 Button("Spreadsheets") {
                     NotificationCenter.default.post(name: .worldsNavigateSpreadsheetsAction, object: nil)
                 }
@@ -221,24 +260,26 @@ struct WorldsApp: App {
                     NotificationCenter.default.post(name: .worldsNavigatePlanningAction, object: nil)
                 }
                 .keyboardShortcut("5", modifiers: [.command, .option])
-            }
-            Group {
+
                 Button("Study") {
                     NotificationCenter.default.post(name: .worldsNavigateStudyAction, object: nil)
                 }
                 .keyboardShortcut("6", modifiers: [.command, .option])
 
-                Button("Studio") {
+                Button("Creative Studio") {
                     NotificationCenter.default.post(name: .worldsNavigateStudioAction, object: nil)
                 }
                 .keyboardShortcut("7", modifiers: [.command, .option])
 
-                Divider()
-
-                Button("AI Assistant") {
-                    NotificationCenter.default.post(name: .worldsOpenAssistantAction, object: nil)
+                Button("Templates") {
+                    NotificationCenter.default.post(name: .worldsNavigateTemplatesAction, object: nil)
                 }
-                .keyboardShortcut("a", modifiers: [.command, .option])
+                .keyboardShortcut("t", modifiers: [.command, .option])
+
+                Button("Trash") {
+                    NotificationCenter.default.post(name: .worldsNavigateTrashAction, object: nil)
+                }
+                .keyboardShortcut("8", modifiers: [.command, .option])
 
                 Divider()
 
@@ -324,6 +365,10 @@ private struct UITestingAppearance: ViewModifier {
 private extension View {
     func registerNavigationReceivers(
         onHome: @escaping () -> Void,
+        onSpaces: @escaping () -> Void,
+        onLibrary: @escaping () -> Void,
+        onAI: @escaping () -> Void,
+        onSearch: @escaping () -> Void,
         onTemplates: @escaping () -> Void,
         onTrash: @escaping () -> Void,
         onSpreadsheets: @escaping () -> Void,
@@ -331,10 +376,17 @@ private extension View {
         onStudy: @escaping () -> Void,
         onStudio: @escaping () -> Void,
         onAssistant: @escaping () -> Void,
-        onSettings: @escaping () -> Void
+        onSettings: @escaping () -> Void,
+        onToggleInspector: @escaping () -> Void,
+        onOpenCreate: @escaping () -> Void,
+        onQuickNote: @escaping () -> Void
     ) -> some View {
         self
             .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateHomeAction)) { _ in onHome() }
+            .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateSpacesAction)) { _ in onSpaces() }
+            .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateLibraryAction)) { _ in onLibrary() }
+            .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateAIAction)) { _ in onAI() }
+            .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateSearchAction)) { _ in onSearch() }
             .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateTemplatesAction)) { _ in onTemplates() }
             .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateTrashAction)) { _ in onTrash() }
             .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateSpreadsheetsAction)) { _ in onSpreadsheets() }
@@ -343,6 +395,9 @@ private extension View {
             .onReceive(NotificationCenter.default.publisher(for: .worldsNavigateStudioAction)) { _ in onStudio() }
             .onReceive(NotificationCenter.default.publisher(for: .worldsOpenAssistantAction)) { _ in onAssistant() }
             .onReceive(NotificationCenter.default.publisher(for: .worldsOpenSettingsAction)) { _ in onSettings() }
+            .onReceive(NotificationCenter.default.publisher(for: .worldsToggleInspectorAction)) { _ in onToggleInspector() }
+            .onReceive(NotificationCenter.default.publisher(for: .worldsOpenCreateAction)) { _ in onOpenCreate() }
+            .onReceive(NotificationCenter.default.publisher(for: .worldsQuickNoteAction)) { _ in onQuickNote() }
     }
 }
 
@@ -350,8 +405,10 @@ private struct WorldsLibraryView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @AppStorage("worlds_pack_study") private var studyPackEnabled: Bool = false
     @State private var pages: [StoredPage] = ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") ? WorldsLibraryView.makeShowcasePages() : []
     @State private var selectedID: String?
+    @State private var phoneDetailPageID: String?
     @State private var returnStack: [String] = []
     @State private var showPageHierarchy = false
     @State private var expandedPageIDs: Set<String> = []
@@ -396,6 +453,17 @@ private struct WorldsLibraryView: View {
     #endif
     enum SidebarSection: Hashable { case home, spreadsheets, planning, study, studio, templates, trash }
     @State private var selectedSidebarSection: SidebarSection? = ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") ? .home : nil
+    @State private var destination: WorkspaceDestination = .home
+    @State private var spacesSection: SpacesSection = .projects
+    @State private var libraryCollection: LibraryCollection = .all
+    #if os(macOS)
+    @State private var showInspector: Bool = true
+    @StateObject private var hotCorners = WorldsHotCornersCoordinator()
+    #else
+    @State private var showInspector: Bool = false
+    #endif
+    @State private var showCreateSheet = false
+    @StateObject private var focusModel = FocusSessionModel()
     @State private var showSettings = false
     @State private var showAssistant = false
     #if WORLDS_MAIN_APP_MODULES
@@ -462,7 +530,41 @@ private struct WorldsLibraryView: View {
 
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
+    private var isLegacyFixtureRun: Bool {
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("--ui-testing-complete-showcase") { return false }
+        return args.contains("--ui-testing-fixture")
+            || args.contains("--ui-testing-search-fixture")
+            || args.contains("--ui-testing-reader-fixture")
+            || args.contains("--ui-testing-local-copy-fixture")
+            || args.contains("--ui-testing-missing-fixture")
+            || args.contains("--ui-testing-large-text")
+            || args.contains("--ui-testing-gallery-draft-fixture")
+    }
+
     var body: some View {
+        applyWorkspaceModifiers(to: activeWorkspaceContent)
+    }
+
+    @ViewBuilder
+    private var activeWorkspaceContent: some View {
+        if isLegacyFixtureRun {
+            legacyFixtureSplitView
+                .searchable(text: $searchQuery, placement: .sidebar, prompt: "Search personal pages")
+        } else {
+            #if os(iOS)
+            if horizontalSizeClass == .compact {
+                phoneTabShell
+            } else {
+                desktopAndTabletSplitShell
+            }
+            #else
+            desktopAndTabletSplitShell
+            #endif
+        }
+    }
+
+    private var legacyFixtureSplitView: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             VStack(spacing: 0) {
                 if loaded && !ProcessInfo.processInfo.arguments.contains("--ui-testing-large-text") {
@@ -780,6 +882,674 @@ private struct WorldsLibraryView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Modern Platform-Specific Shells (iPhone / iPad / macOS)
+
+    private enum SidebarSelectionTag: Hashable {
+        case destination(WorkspaceDestination)
+        case spaces(SpacesSection)
+        case library(LibraryCollection)
+        case page(String)
+    }
+
+    private var sidebarTagBinding: Binding<SidebarSelectionTag?> {
+        Binding(
+            get: {
+                if let id = selectedID { return .page(id) }
+                if destination == .library && libraryCollection != .all { return .library(libraryCollection) }
+                if destination == .spaces && spacesSection != .projects { return .spaces(spacesSection) }
+                return .destination(destination)
+            },
+            set: { newTag in
+                guard let newTag else { return }
+                returnStack.removeAll()
+                switch newTag {
+                case .destination(let dest):
+                    selectedID = nil
+                    destination = dest
+                case .spaces(let sec):
+                    selectedID = nil
+                    destination = .spaces
+                    spacesSection = sec
+                case .library(let col):
+                    selectedID = nil
+                    destination = .library
+                    libraryCollection = col
+                case .page(let id):
+                    selectedID = id
+                }
+            }
+        )
+    }
+
+    private var activeNonTemplatePages: [StoredPage] {
+        pages.filter { !$0.archived && $0.kind != "template" }
+            .sorted { $0.updatedAt > $1.updatedAt }
+    }
+
+    private func phoneDetailBinding(for tab: WorkspaceDestination) -> Binding<String?> {
+        Binding(
+            get: { destination == tab ? phoneDetailPageID : nil },
+            set: { newValue in
+                if destination == tab {
+                    phoneDetailPageID = newValue
+                }
+            }
+        )
+    }
+
+    @ViewBuilder
+    private var phoneTabShell: some View {
+        if #available(iOS 18.0, macOS 15.0, *) {
+            TabView(selection: $destination) {
+                Tab("Home", systemImage: "house", value: WorkspaceDestination.home) {
+                    phoneTabStack(for: .home) {
+                        HomeView(
+                            pages: pages,
+                            openPage: { openResourceOnPhone($0) },
+                            onOpenSpaces: { destination = .spaces },
+                            onOpenLibrary: { col in libraryCollection = col; destination = .library },
+                            onOpenCreateSheet: { showCreateSheet = true },
+                            onCreateFormat: { openCreateFormat($0) },
+                            onOpenAutomations: openAutomationsAction,
+                            onRequestLocalCopy: requestLocalCopyAction
+                        )
+                    }
+                }
+                Tab("Spaces", systemImage: "square.stack.3d.up", value: WorkspaceDestination.spaces) {
+                    phoneTabStack(for: .spaces) {
+                        SpacesDestinationView(
+                            selectedSection: $spacesSection,
+                            pages: pages,
+                            openPage: { openResourceOnPhone($0) },
+                            showSectionPicker: true
+                        )
+                    }
+                }
+                Tab("Library", systemImage: "folder", value: WorkspaceDestination.library) {
+                    phoneTabStack(for: .library) {
+                        LibraryDestinationView(
+                            selectedCollection: $libraryCollection,
+                            pages: pages,
+                            openPage: { openResourceOnPhone($0) },
+                            onSelectTemplate: createPageFromTemplate,
+                            onRestorePage: restorePage,
+                            onDeletePermanently: deletePermanently,
+                            onEmptyTrash: emptyTrash,
+                            onOpenCreateSheet: { showCreateSheet = true },
+                            showCollectionPicker: true
+                        )
+                    }
+                }
+                Tab("AI", systemImage: "sparkles", value: WorkspaceDestination.ai) {
+                    phoneTabStack(for: .ai) {
+                        AssistantHostView(pages: pages, embeddedInNavigation: true)
+                    }
+                }
+                Tab("Search", systemImage: "magnifyingglass", value: WorkspaceDestination.search, role: .search) {
+                    phoneTabStack(for: .search) {
+                        SearchDestinationView(
+                            searchQuery: $searchQuery,
+                            searchScope: $searchScope,
+                            pages: pages,
+                            searchHits: searchHits,
+                            openPage: { openResourceOnPhone($0) }
+                        )
+                    }
+                }
+            }
+            .accessibilityIdentifier("phone-liquid-glass-tabbar")
+        } else {
+            TabView(selection: $destination) {
+                phoneTabStack(for: .home) {
+                    HomeView(
+                        pages: pages,
+                        openPage: { openResourceOnPhone($0) },
+                        onOpenSpaces: { destination = .spaces },
+                        onOpenLibrary: { col in libraryCollection = col; destination = .library },
+                        onOpenCreateSheet: { showCreateSheet = true },
+                        onCreateFormat: { openCreateFormat($0) },
+                        onOpenAutomations: openAutomationsAction,
+                        onRequestLocalCopy: requestLocalCopyAction
+                    )
+                }
+                .tabItem { Label("Home", systemImage: "house") }
+                .tag(WorkspaceDestination.home)
+
+                phoneTabStack(for: .spaces) {
+                    SpacesDestinationView(selectedSection: $spacesSection, pages: pages, openPage: { openResourceOnPhone($0) }, showSectionPicker: true)
+                }
+                .tabItem { Label("Spaces", systemImage: "square.stack.3d.up") }
+                .tag(WorkspaceDestination.spaces)
+
+                phoneTabStack(for: .library) {
+                    LibraryDestinationView(
+                        selectedCollection: $libraryCollection,
+                        pages: pages,
+                        openPage: { openResourceOnPhone($0) },
+                        onSelectTemplate: createPageFromTemplate,
+                        onRestorePage: restorePage,
+                        onDeletePermanently: deletePermanently,
+                        onEmptyTrash: emptyTrash,
+                        onOpenCreateSheet: { showCreateSheet = true },
+                        showCollectionPicker: true
+                    )
+                }
+                .tabItem { Label("Library", systemImage: "folder") }
+                .tag(WorkspaceDestination.library)
+
+                phoneTabStack(for: .ai) {
+                    AssistantHostView(pages: pages, embeddedInNavigation: true)
+                }
+                .tabItem { Label("AI", systemImage: "sparkles") }
+                .tag(WorkspaceDestination.ai)
+
+                phoneTabStack(for: .search) {
+                    SearchDestinationView(searchQuery: $searchQuery, searchScope: $searchScope, pages: pages, searchHits: searchHits, openPage: { openResourceOnPhone($0) })
+                }
+                .tabItem { Label("Search", systemImage: "magnifyingglass") }
+                .tag(WorkspaceDestination.search)
+            }
+            .accessibilityIdentifier("phone-liquid-glass-tabbar")
+        }
+    }
+
+    @ViewBuilder
+    private func phoneTabStack<Content: View>(for tab: WorkspaceDestination, @ViewBuilder content: () -> Content) -> some View {
+        NavigationStack {
+            content()
+                .overlay { readingRulerOverlay }
+                .navigationDestination(item: phoneDetailBinding(for: tab)) { pageID in
+                    selectedResourceDetail(for: pageID)
+                        .overlay { readingRulerOverlay }
+                }
+                .toolbar {
+                    ToolbarItemGroup(placement: .primaryAction) {
+                        CompactFocusToolbarButton(model: focusModel)
+                        Button {
+                            showCreateSheet = true
+                        } label: {
+                            Label("New", systemImage: "plus")
+                        }
+                        .accessibilityIdentifier("open-create-sheet-button")
+
+                        Menu {
+                            Button {
+                                destination = .library
+                                libraryCollection = .templates
+                            } label: {
+                                Label("Templates", systemImage: "square.grid.2x2")
+                            }
+                            Button {
+                                destination = .library
+                                libraryCollection = .trash
+                            } label: {
+                                Label("Trash", systemImage: "trash")
+                            }
+                            Divider()
+                            #if WORLDS_EXPERIMENTAL_ACCOUNT
+                            Button { showAccount = true } label: {
+                                Label("Account", systemImage: "person.crop.circle")
+                            }
+                            #endif
+                            Button {
+                                #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+                                copyImportSelected = false
+                                #endif
+                                showImporter = true
+                            } label: {
+                                Label("Open Database…", systemImage: "folder")
+                            }
+                            Button { showSettings = true } label: {
+                                Label("Settings…", systemImage: "gearshape")
+                            }
+                        } label: {
+                            Label("More", systemImage: "ellipsis.circle")
+                        }
+                        .accessibilityIdentifier("phone-more-menu")
+                    }
+                }
+        }
+    }
+
+    @ViewBuilder
+    private var desktopAndTabletSplitShell: some View {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            modernSidebarView
+                .navigationSplitViewColumnWidth(
+                    min: dynamicTypeSize.isAccessibilitySize ? 280 : 210,
+                    ideal: dynamicTypeSize.isAccessibilitySize ? 320 : 242,
+                    max: dynamicTypeSize.isAccessibilitySize ? 380 : 288
+                )
+        } detail: {
+            modernDetailCanvas
+                .overlay { readingRulerOverlay }
+                .toolbar { desktopToolbarItems }
+                .inspector(isPresented: $showInspector) {
+                    WorkspaceInspectorPanel(
+                        selectedPage: selectedID.flatMap { id in pages.first(where: { $0.id == id }) },
+                        activeDestination: destination,
+                        activeCollection: libraryCollection,
+                        focusModel: focusModel,
+                        pageCount: pages.count,
+                        onOpenTemplates: {
+                            selectedID = nil
+                            destination = .library
+                            libraryCollection = .templates
+                        },
+                        onOpenSettings: { showSettings = true },
+                        onMoveToTrash: { id in moveToTrash(id) }
+                    )
+                    #if os(macOS)
+                    .background(WorldsVibrancyView(material: .sidebar, blendingMode: .withinWindow))
+                    #endif
+                    .inspectorColumnWidth(min: 250, ideal: 290, max: 340)
+                }
+        }
+        .navigationSplitViewStyle(.balanced)
+        .searchable(text: $searchQuery, placement: .sidebar, prompt: "Search workspace")
+        .onChange(of: searchQuery) { _, newValue in
+            let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty && !isLegacyFixtureRun {
+                selectedID = nil
+                destination = .search
+            }
+        }
+    }
+
+    private var modernSidebarView: some View {
+        List(selection: sidebarTagBinding) {
+            Section("Workspace") {
+                ForEach(WorkspaceDestination.allCases) { item in
+                    Label(item.title, systemImage: item.systemImage)
+                        .tag(SidebarSelectionTag.destination(item))
+                        .accessibilityIdentifier("sidebar-dest-\(item.rawValue)")
+                }
+            }
+
+            Section("Library") {
+                ForEach(LibraryCollection.allCases) { col in
+                    Label(col.rawValue, systemImage: col.systemImage)
+                        .tag(SidebarSelectionTag.library(col))
+                        .accessibilityIdentifier("sidebar-lib-\(col.rawValue)")
+                }
+            }
+
+            Section("Spaces") {
+                ForEach(SpacesSection.allCases.filter { $0 != .study || studyPackEnabled }) { sec in
+                    Label(sec.rawValue, systemImage: sec.systemImage)
+                        .tag(SidebarSelectionTag.spaces(sec))
+                        .accessibilityIdentifier("sidebar-space-\(sec.rawValue)")
+                }
+            }
+
+            if !activeNonTemplatePages.isEmpty {
+                Section("Recent Files") {
+                    ForEach(activeNonTemplatePages.prefix(6)) { page in
+                        Label(page.title.isEmpty ? "Untitled" : page.title, systemImage: sidebarIcon(for: page.kind))
+                            .lineLimit(1)
+                            .tag(SidebarSelectionTag.page(page.id))
+                            .accessibilityIdentifier("page.\(page.id)")
+                    }
+                }
+            }
+        }
+        .listStyle(.sidebar)
+        .navigationTitle("Worlds")
+        #if os(macOS)
+        .scrollContentBackground(.hidden)
+        .background(WorldsVibrancyView(material: .sidebar, blendingMode: .behindWindow).ignoresSafeArea())
+        #endif
+        .safeAreaInset(edge: .bottom) {
+            HStack(spacing: 10) {
+                Button {
+                    showSettings = true
+                } label: {
+                    Label("Settings", systemImage: "gearshape")
+                        .font(.caption.weight(.medium))
+                }
+                .buttonStyle(.borderless)
+                .accessibilityIdentifier("open-settings-button")
+
+                Spacer()
+
+                Button {
+                    #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+                    copyImportSelected = false
+                    #endif
+                    showImporter = true
+                } label: {
+                    Image(systemName: "externaldrive.badge.plus")
+                        .font(.caption)
+                }
+                .buttonStyle(.borderless)
+                .help("Open local database…")
+                .accessibilityIdentifier("sidebar-open-database")
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+        }
+    }
+
+    @ViewBuilder
+    private var modernDetailCanvas: some View {
+        if let selectedPageID = selectedID {
+            selectedResourceDetail(for: selectedPageID)
+        } else {
+            switch destination {
+            case .home:
+                HomeView(
+                    pages: pages,
+                    openPage: { openResourceInModernShell($0) },
+                    onOpenSpaces: { destination = .spaces },
+                    onOpenLibrary: { col in libraryCollection = col; destination = .library },
+                    onOpenCreateSheet: { showCreateSheet = true },
+                    onCreateFormat: { openCreateFormat($0) },
+                    onOpenInspectorForPage: { id in
+                        selectedID = id
+                        showInspector = true
+                    },
+                    onOpenAutomations: openAutomationsAction,
+                    onRequestLocalCopy: requestLocalCopyAction
+                )
+            case .spaces:
+                SpacesDestinationView(
+                    selectedSection: $spacesSection,
+                    pages: pages,
+                    openPage: { openResourceInModernShell($0) },
+                    showSectionPicker: true
+                )
+            case .library:
+                LibraryDestinationView(
+                    selectedCollection: $libraryCollection,
+                    pages: pages,
+                    openPage: { openResourceInModernShell($0) },
+                    onSelectTemplate: createPageFromTemplate,
+                    onRestorePage: restorePage,
+                    onDeletePermanently: deletePermanently,
+                    onEmptyTrash: emptyTrash,
+                    onOpenCreateSheet: { showCreateSheet = true },
+                    showCollectionPicker: true
+                )
+            case .ai:
+                AssistantHostView(pages: pages, embeddedInNavigation: true)
+            case .search:
+                SearchDestinationView(
+                    searchQuery: $searchQuery,
+                    searchScope: $searchScope,
+                    pages: pages,
+                    searchHits: searchHits,
+                    openPage: { openResourceInModernShell($0) }
+                )
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func selectedResourceDetail(for pageID: String) -> some View {
+        if pageID == "showcase-sheet-q4" {
+            WorldsSpreadsheetStudioView(metadataJSON: "{}")
+        } else if pageID == "showcase-mindmap-arch" {
+            ScrollView {
+                VisualMindMapCanvasPreview(onCreateCanvas: { _ in openCreateFormat("mindmap") })
+                    .padding(24)
+            }
+            .background(WorldsPalette.groupedCanvas(for: colorScheme))
+            .navigationTitle("Concept & Mind Map")
+        } else if pageID == "showcase-okr-roadmap" {
+            SpacesDestinationView(selectedSection: $spacesSection, pages: pages, openPage: { openResourceInModernShell($0) }, showSectionPicker: true)
+        } else if pageID == "showcase-study-cs301" {
+            WorldsStudyPackHubView()
+        } else if pageID == "showcase-cad-turbine" || pageID == "showcase-slides-deck" {
+            WorldsCreativeStudioView()
+        } else if let page = pages.first(where: { $0.id == pageID }) {
+            if ["project", "gallery", "presentation", "file", "stream", "spreadsheet"].contains(page.kind) {
+                ResourceContentView(
+                    page: page,
+                    pages: pages,
+                    projectEditingAvailable: projectEditingAvailable(for: page),
+                    otherEditingAvailable: otherResourceEditingAvailable(for: page),
+                    openVideo: videoAction(for: page),
+                    openDocument: documentAction(for: page)
+                ) { target in
+                    guard target != page.id else { return }
+                    returnStack.append(page.id)
+                    selectedID = target
+                }
+            } else {
+                PageContentView(
+                    page: page,
+                    openInlineImage: inlineImageAction(for: page),
+                    subpages: pages.filter { $0.parentID == page.id && $0.id != page.id && !$0.archived && $0.kind != "template" && !returnStack.contains($0.id) },
+                    openSubpage: { target in
+                        guard !returnStack.contains(target),
+                              pages.contains(where: { $0.id == target && $0.parentID == page.id && !$0.archived && $0.kind != "template" && $0.id != page.id }) else { return }
+                        returnStack.append(page.id)
+                        selectedID = target
+                    }
+                )
+            }
+        } else {
+            ContentUnavailableView("Resource not found", systemImage: "doc.questionmark")
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var desktopToolbarItems: some ToolbarContent {
+        if selectedID != nil {
+            ToolbarItem(placement: .navigation) {
+                Button {
+                    if let prev = returnStack.popLast() {
+                        selectedID = prev
+                    } else {
+                        selectedID = nil
+                    }
+                } label: {
+                    Label("Back", systemImage: "chevron.backward")
+                }
+                .accessibilityIdentifier("detail-back-button")
+            }
+        }
+
+        ToolbarItemGroup(placement: .primaryAction) {
+            CompactFocusToolbarButton(model: focusModel)
+
+            Button {
+                showCreateSheet = true
+            } label: {
+                Label("Create", systemImage: "plus")
+            }
+            .accessibilityIdentifier("open-create-sheet-button")
+
+            #if os(macOS)
+            Button {
+                hotCorners.openQuickNote()
+            } label: {
+                Label("Quick Note", systemImage: "note.text")
+            }
+            .accessibilityIdentifier("open-quick-note-button")
+            #endif
+
+            #if WORLDS_EXPERIMENTAL_ACCOUNT
+            Button { showAccount = true } label: {
+                Label("Account", systemImage: "person.crop.circle")
+            }
+            #endif
+
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showInspector.toggle()
+                }
+            } label: {
+                Label(showInspector ? "Hide Inspector" : "Show Inspector", systemImage: "sidebar.right")
+            }
+            .accessibilityIdentifier("toggle-inspector-button")
+        }
+    }
+
+    @ViewBuilder
+    private var readingRulerOverlay: some View {
+        if focusModel.readingRulerEnabled {
+            GeometryReader { proxy in
+                VStack {
+                    Spacer()
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(WorldsPalette.accent(for: colorScheme).opacity(0.09))
+                        .frame(height: 54)
+                        .overlay(
+                            Rectangle()
+                                .fill(WorldsPalette.accent(for: colorScheme).opacity(0.45))
+                                .frame(height: 1.5),
+                            alignment: .bottom
+                        )
+                        .padding(.horizontal, 12)
+                    Spacer()
+                }
+                .frame(width: proxy.size.width, height: proxy.size.height)
+            }
+            .allowsHitTesting(false)
+            .accessibilityIdentifier("reading-ruler-overlay")
+        }
+    }
+
+    private func openResourceOnPhone(_ id: String) {
+        if id == "showcase-okr-roadmap" {
+            destination = .spaces
+            spacesSection = .projects
+            phoneDetailPageID = nil
+            return
+        }
+        phoneDetailPageID = id
+    }
+
+    private func openResourceInModernShell(_ id: String) {
+        selectedID = id
+    }
+
+    private var requestLocalCopyAction: (() -> Void)? {
+        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+        return { showCopyExplanation = true }
+        #else
+        return nil
+        #endif
+    }
+
+    private func openCreateFormat(_ format: String) {
+        switch format {
+        case "page":
+            if let createPageAction { createPageAction(); return }
+        case "document":
+            if let createDocumentAction { createDocumentAction(); return }
+        case "drawing":
+            if let createDrawingAction { createDrawingAction(); return }
+        case "project":
+            if let createProjectAction { createProjectAction(); return }
+        case "presentation":
+            if let createPresentationAction { createPresentationAction(); return }
+        case "spreadsheet":
+            selectedID = "showcase-sheet-q4"
+            return
+        case "mindmap":
+            selectedID = "showcase-mindmap-arch"
+            return
+        case "cad":
+            selectedID = "showcase-cad-turbine"
+            return
+        case "study":
+            studyPackEnabled = true
+            selectedID = nil
+            destination = .spaces
+            spacesSection = .study
+            return
+        default:
+            break
+        }
+
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
+        let newID = "quick-\(format)-\(now)"
+        let titleMap = [
+            "page": "Untitled Note Page",
+            "document": "Untitled Document",
+            "drawing": "New Vector Canvas",
+            "project": "New Workspace Project",
+            "presentation": "New Presentation Deck"
+        ]
+        let newPage = StoredPage(
+            id: newID,
+            title: titleMap[format] ?? "Untitled Resource",
+            kind: format,
+            parentID: nil,
+            archived: false,
+            sortKey: 0,
+            createdAt: now,
+            preview: "Created in Worlds · Ready for editing",
+            updatedAt: now,
+            metadataJSON: "{}",
+            blocks: []
+        )
+        pages.insert(newPage, at: 0)
+        if horizontalSizeClass == .compact {
+            phoneDetailPageID = newID
+        } else {
+            selectedID = newID
+        }
+    }
+
+    private func moveToTrash(_ id: String) {
+        guard let index = pages.firstIndex(where: { $0.id == id }) else { return }
+        let current = pages[index]
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
+        pages[index] = StoredPage(
+            id: current.id,
+            title: current.title,
+            kind: current.kind,
+            parentID: current.parentID,
+            archived: true,
+            sortKey: current.sortKey,
+            createdAt: current.createdAt,
+            preview: current.preview,
+            updatedAt: now,
+            metadataJSON: current.metadataJSON,
+            blocks: current.blocks
+        )
+        if selectedID == id { selectedID = nil }
+        if phoneDetailPageID == id { phoneDetailPageID = nil }
+    }
+
+    private func appendQuickNote(_ text: String) {
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
+        let firstLine = text.split(separator: "\n", maxSplits: 1).first.map(String.init) ?? "Quick Note"
+        let note = StoredPage(
+            id: "quick-note-\(now)",
+            title: firstLine.prefix(48).description,
+            kind: "page",
+            parentID: nil,
+            archived: false,
+            sortKey: -1,
+            createdAt: now,
+            preview: text,
+            updatedAt: now,
+            metadataJSON: "{}",
+            blocks: []
+        )
+        pages.insert(note, at: 0)
+    }
+
+    private func sidebarIcon(for kind: String) -> String {
+        switch kind {
+        case "spreadsheet": return "tablecells.fill"
+        case "drawing": return "point.3.connected.trianglepath.dotted"
+        case "presentation": return "rectangle.inset.filled.and.person.filled"
+        case "file": return "cube.transparent.fill"
+        case "project": return "folder.fill"
+        case "document": return "doc.richtext"
+        default: return "doc.text"
+        }
+    }
+
+    private func applyWorkspaceModifiers<Content: View>(to content: Content) -> some View {
+        content
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
         #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_HISTORY
         .sheet(item: $historyRequest) { request in
@@ -953,7 +1723,43 @@ private struct WorldsLibraryView: View {
             }
         }
         #endif
-        .searchable(text: $searchQuery, placement: .sidebar, prompt: "Search personal pages")
+        .sheet(isPresented: $showCreateSheet) {
+            CreateWorkspaceItemSheet(
+                onSelectFormat: { format in openCreateFormat(format) },
+                onBrowseTemplates: {
+                    selectedID = nil
+                    phoneDetailPageID = nil
+                    destination = .library
+                    libraryCollection = .templates
+                }
+            )
+            .environment(\.colorScheme, colorScheme)
+            .preferredColorScheme(colorScheme)
+        }
+        #if os(macOS)
+        .overlay(alignment: .bottomTrailing) {
+            if !isLegacyFixtureRun && hotCorners.showingQuickNote {
+                HotCornerQuickNoteHUD(coordinator: hotCorners)
+                    .padding(20)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .onAppear {
+            hotCorners.onTriggerAssistant = {
+                selectedID = nil
+                destination = .ai
+                WorldsHaptics.light()
+            }
+            hotCorners.onTriggerFocus = {
+                focusModel.showingPopover.toggle()
+                WorldsHaptics.light()
+            }
+            hotCorners.onSaveQuickNote = { note in
+                appendQuickNote(note)
+            }
+            hotCorners.startMonitoring()
+        }
+        #endif
         #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_PERSONAL_TABS
         .onChange(of: selectedID) { _, id in
             guard let id, id == selectedID, let copyID = tabCopyID,
@@ -975,26 +1781,125 @@ private struct WorldsLibraryView: View {
             WorldsHaptics.light()
         }
         .registerNavigationReceivers(
-            onHome: { selectedID = nil; selectedSidebarSection = .home; WorldsHaptics.selection() },
-            onTemplates: { selectedID = nil; selectedSidebarSection = .templates; WorldsHaptics.selection() },
-            onTrash: { selectedID = nil; selectedSidebarSection = .trash; WorldsHaptics.selection() },
-            onSpreadsheets: { selectedID = nil; selectedSidebarSection = .spreadsheets; WorldsHaptics.selection() },
-            onPlanning: { selectedID = nil; selectedSidebarSection = .planning; WorldsHaptics.selection() },
-            onStudy: { selectedID = nil; selectedSidebarSection = .study; WorldsHaptics.selection() },
-            onStudio: { selectedID = nil; selectedSidebarSection = .studio; WorldsHaptics.selection() },
-            onAssistant: { showAssistant = true; WorldsHaptics.light() },
-            onSettings: { showSettings = true; WorldsHaptics.light() }
+            onHome: {
+                selectedID = nil
+                phoneDetailPageID = nil
+                selectedSidebarSection = .home
+                destination = .home
+                WorldsHaptics.selection()
+            },
+            onSpaces: {
+                selectedID = nil
+                phoneDetailPageID = nil
+                destination = .spaces
+                WorldsHaptics.selection()
+            },
+            onLibrary: {
+                selectedID = nil
+                phoneDetailPageID = nil
+                destination = .library
+                libraryCollection = .all
+                WorldsHaptics.selection()
+            },
+            onAI: {
+                selectedID = nil
+                phoneDetailPageID = nil
+                destination = .ai
+                WorldsHaptics.selection()
+            },
+            onSearch: {
+                selectedID = nil
+                phoneDetailPageID = nil
+                destination = .search
+                WorldsHaptics.selection()
+            },
+            onTemplates: {
+                selectedID = nil
+                phoneDetailPageID = nil
+                selectedSidebarSection = .templates
+                destination = .library
+                libraryCollection = .templates
+                WorldsHaptics.selection()
+            },
+            onTrash: {
+                selectedID = nil
+                phoneDetailPageID = nil
+                selectedSidebarSection = .trash
+                destination = .library
+                libraryCollection = .trash
+                WorldsHaptics.selection()
+            },
+            onSpreadsheets: {
+                selectedID = nil
+                phoneDetailPageID = nil
+                selectedSidebarSection = .spreadsheets
+                destination = .library
+                libraryCollection = .spreadsheets
+                WorldsHaptics.selection()
+            },
+            onPlanning: {
+                selectedID = nil
+                phoneDetailPageID = nil
+                selectedSidebarSection = .planning
+                destination = .spaces
+                spacesSection = .projects
+                WorldsHaptics.selection()
+            },
+            onStudy: {
+                studyPackEnabled = true
+                selectedID = nil
+                phoneDetailPageID = nil
+                selectedSidebarSection = .study
+                destination = .spaces
+                spacesSection = .study
+                WorldsHaptics.selection()
+            },
+            onStudio: {
+                selectedID = nil
+                phoneDetailPageID = nil
+                selectedSidebarSection = .studio
+                destination = .library
+                libraryCollection = .studio
+                WorldsHaptics.selection()
+            },
+            onAssistant: {
+                if isLegacyFixtureRun {
+                    showAssistant = true
+                } else {
+                    selectedID = nil
+                    phoneDetailPageID = nil
+                    destination = .ai
+                }
+                WorldsHaptics.light()
+            },
+            onSettings: { showSettings = true; WorldsHaptics.light() },
+            onToggleInspector: {
+                withAnimation(.easeInOut(duration: 0.2)) { showInspector.toggle() }
+                WorldsHaptics.light()
+            },
+            onOpenCreate: { showCreateSheet = true; WorldsHaptics.light() },
+            onQuickNote: {
+                #if os(macOS)
+                hotCorners.openQuickNote()
+                #else
+                showCreateSheet = true
+                #endif
+                WorldsHaptics.light()
+            }
         )
         .task {
             #if DEBUG
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") {
                 UserDefaults.standard.set(true, forKey: "worlds_pack_study")
+                studyPackEnabled = true
                 seedCompleteShowcasePages()
                 loaded = true
                 loading = false
                 errorMessage = nil
                 selectedID = nil
+                phoneDetailPageID = nil
                 selectedSidebarSection = .home
+                destination = .home
                 return
             }
             #endif
@@ -1206,38 +2111,24 @@ private struct WorldsLibraryView: View {
                     selectedSidebarSection = nil
                     selectedID = id
                 },
-                createPage: createPageAction,
-                createDocument: createDocumentAction,
-                createDrawing: createDrawingAction,
-                createProject: createProjectAction,
-                createPresentation: createPresentationAction,
-                openAssistant: { showAssistant = true },
-                openTemplates: {
-                    selectedID = nil
-                    selectedSidebarSection = .templates
-                },
-                openAutomations: openAutomationsAction,
-                openSpreadsheets: {
-                    selectedID = nil
-                    selectedSidebarSection = .spreadsheets
-                },
-                openPlanning: {
+                onOpenSpaces: {
                     selectedID = nil
                     selectedSidebarSection = .planning
                 },
-                openStudyPack: {
+                onOpenLibrary: { col in
                     selectedID = nil
-                    selectedSidebarSection = .study
+                    switch col {
+                    case .spreadsheets: selectedSidebarSection = .spreadsheets
+                    case .studio: selectedSidebarSection = .studio
+                    case .templates: selectedSidebarSection = .templates
+                    case .trash: selectedSidebarSection = .trash
+                    default: selectedSidebarSection = nil
+                    }
                 },
-                openStudio: {
-                    selectedID = nil
-                    selectedSidebarSection = .studio
-                },
-                onRequestLocalCopy: {
-                    #if WORLDS_EXPERIMENTAL_LOCAL_COPY
-                    showCopyExplanation = true
-                    #endif
-                }
+                onOpenCreateSheet: { showCreateSheet = true },
+                onCreateFormat: { format in openCreateFormat(format) },
+                onOpenAutomations: openAutomationsAction,
+                onRequestLocalCopy: requestLocalCopyAction
             )
         case .spreadsheets:
             WorldsSpreadsheetStudioView(metadataJSON: "{}")

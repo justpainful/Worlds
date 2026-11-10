@@ -992,6 +992,8 @@ struct VisualMindMapCanvasPreview: View {
 @MainActor
 struct WorldsPlanningHubView: View {
     @Environment(\.colorScheme) private var colorScheme
+    var initialTab: String = "Tasks"
+    var showSubTabs: Bool = true
     @State private var activeTab: String = "Tasks"
     @State private var newTaskTitle: String = ""
     @State private var tasks: [(id: String, title: String, priority: String, due: String, project: String, done: Bool, printQueued: Bool)] = [
@@ -1009,7 +1011,7 @@ struct WorldsPlanningHubView: View {
     ]
 
     private let inboxItems: [(title: String, note: String, time: String)] = [
-        ("Voice memo: Add Fischbone & SWOT visual presets to Canvas", "Captured from iPhone Quick Capture", "12m ago"),
+        ("Voice memo: Add Fishbone & SWOT visual presets to Canvas", "Captured from iPhone Quick Capture", "12m ago"),
         ("Client request: Export multi-sheet KPI workbook to .xlsx", "Needs formula preservation check", "1h ago"),
         ("Reading bookmark: Distributed Systems Chapter 6 notes", "Convert to Cornell + Feynman page", "3h ago")
     ]
@@ -1017,48 +1019,45 @@ struct WorldsPlanningHubView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                NativeFocusTimerBar()
-
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 10) {
-                            Image(systemName: "checklist.checked")
-                                .font(.title2.weight(.semibold))
-                                .foregroundStyle(WorldsPalette.accent(for: colorScheme))
-                            Text("Planning & Productivity Hub")
-                                .font(.system(.largeTitle, design: .default, weight: .bold))
-                                .foregroundStyle(WorldsPalette.ink(for: colorScheme))
-                        }
-                        Text("Universal workspace for teams, companies, and individuals — Tasks, OKR Goals, Calendar, Quick Capture Inbox, and Print Queue.")
-                            .font(.subheadline)
+                HStack(spacing: 10) {
+                    Image(systemName: "checklist.checked")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(WorldsPalette.accent(for: colorScheme))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Planning & Execution")
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(WorldsPalette.ink(for: colorScheme))
+                        Text("Tasks, OKRs, Schedule, Capture Inbox & Print Queue")
+                            .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
                 }
 
-                // Sub-navigation pills
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(["Tasks", "Goals & OKRs", "Calendar", "Inbox (3)", "Print Queue (3)"], id: \.self) { tab in
-                            Button {
-                                activeTab = tab
-                            } label: {
-                                Text(tab)
-                                    .font(.subheadline.weight(.semibold))
-                                    .lineLimit(1)
-                                    .fixedSize(horizontal: true, vertical: false)
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 8)
-                                    .background(
-                                        activeTab == tab
-                                            ? WorldsPalette.accent(for: colorScheme).opacity(0.22)
-                                            : Color.secondary.opacity(0.14),
-                                        in: Capsule()
-                                    )
-                                    .foregroundStyle(activeTab == tab ? WorldsPalette.accent(for: colorScheme) : .primary)
+                if showSubTabs {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(["Tasks", "Goals & OKRs", "Calendar", "Inbox (3)", "Print Queue (3)"], id: \.self) { tab in
+                                Button {
+                                    activeTab = tab
+                                } label: {
+                                    Text(tab)
+                                        .font(.caption.weight(.semibold))
+                                        .lineLimit(1)
+                                        .fixedSize(horizontal: true, vertical: false)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(
+                                            activeTab == tab
+                                                ? WorldsPalette.accent(for: colorScheme).opacity(0.20)
+                                                : Color.secondary.opacity(0.12),
+                                            in: Capsule()
+                                        )
+                                        .foregroundStyle(activeTab == tab ? WorldsPalette.accent(for: colorScheme) : .primary)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("planning-tab-\(tab)")
                             }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("planning-tab-\(tab)")
                         }
                     }
                 }
@@ -1117,8 +1116,9 @@ struct WorldsPlanningHubView: View {
             .frame(maxWidth: 1080, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
-        .background(WorldsPalette.paper(for: colorScheme))
-        .navigationTitle("Planning")
+        .background(WorldsPalette.groupedCanvas(for: colorScheme))
+        .onAppear { activeTab = initialTab }
+        .onChange(of: initialTab) { _, val in activeTab = val }
         .accessibilityIdentifier("planning-hub-view")
     }
 
@@ -1399,14 +1399,14 @@ struct WorldsStudyPackHubView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 10) {
                             Image(systemName: "graduationcap.fill")
-                                .font(.title2.weight(.semibold))
+                                .font(.title3.weight(.semibold))
                                 .foregroundStyle(.indigo)
-                            Text("Study & Academic Pack — الحقيبة الدراسية")
-                                .font(.system(.largeTitle, design: .default, weight: .bold))
+                            Text("Study Pack · الحقيبة الدراسية")
+                                .font(.title2.weight(.bold))
                                 .foregroundStyle(WorldsPalette.ink(for: colorScheme))
                         }
-                        Text("Opt-in Academic Workspace: Subjects, Weekly Timetable, Assignments, Exams, Textbooks with Current-Page Bookmarks, and Platform Links.")
-                            .font(.subheadline)
+                        Text("Subjects, weekly timetable, textbooks with page bookmarks & subject links")
+                            .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
@@ -1506,8 +1506,7 @@ struct WorldsStudyPackHubView: View {
             .frame(maxWidth: 1080, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
-        .background(WorldsPalette.paper(for: colorScheme))
-        .navigationTitle("Study Pack")
+        .background(WorldsPalette.groupedCanvas(for: colorScheme))
         .accessibilityIdentifier("study-pack-hub-view")
     }
 
@@ -1648,14 +1647,14 @@ struct WorldsCreativeStudioView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 10) {
                             Image(systemName: "paintbrush.pointed.fill")
-                                .font(.title2.weight(.semibold))
+                                .font(.title3.weight(.semibold))
                                 .foregroundStyle(WorldsPalette.accent(for: colorScheme))
-                            Text("Creative, Presentation & 3D CAD Studio")
-                                .font(.system(.largeTitle, design: .default, weight: .bold))
+                            Text("Creative, Presentation & 3D Studio")
+                                .font(.title2.weight(.bold))
                                 .foregroundStyle(WorldsPalette.ink(for: colorScheme))
                         }
-                        Text("Native Apple Pencil Vector Canvas (.worldsdraw), 16:9 Visual Presentation Deck, and SceneKit 3D / AutoCAD DXF Engineering Viewport.")
-                            .font(.subheadline)
+                        Text("16:9 Slide Canvas · Apple Pencil Vector (.worldsdraw) · SceneKit 3D / AutoCAD DXF")
+                            .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     Spacer()

@@ -765,109 +765,144 @@ final class WorldsUITests: XCTestCase {
         let launchShot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         launchShot.name = "debug-00-launch-state"; launchShot.lifetime = .keepAlways; add(launchShot)
 
-        // 01 Home Dashboard
-        activateNavigation(shortcut: "1", pillID: "open-home-button", app: app)
-        capture("complete-01-home-dashboard", app: app)
+        // 01 Home Destination
+        navigateDestination(tabTitle: "Home", macShortcut: "1", sidebarID: "sidebar-dest-home", app: app)
+        capture("complete-01-home-destination", app: app)
 
-        // 02 Spreadsheet Studio (Excel-grade)
-        activateNavigation(shortcut: "4", pillID: "open-spreadsheets-button", quickActionID: "home-open-spreadsheets", pageID: "page.showcase-sheet-q4", app: app)
-        capture("complete-02-spreadsheet-excel", app: app)
+        // 02 Spaces Destination (Projects, Goals, Calendar, Study Pack)
+        navigateDestination(tabTitle: "Spaces", macShortcut: "2", sidebarID: "sidebar-dest-spaces", app: app)
+        capture("complete-02-spaces-destination", app: app)
 
-        // 03 Mind Maps & Templates
-        activateNavigation(shortcut: "2", pillID: "open-templates-button", pageID: "page.showcase-mindmap-arch", app: app)
-        capture("complete-03-mindmap-templates", app: app)
+        // 03 Library Destination
+        navigateDestination(tabTitle: "Library", macShortcut: "3", sidebarID: "sidebar-dest-library", app: app)
+        capture("complete-03-library-destination", app: app)
 
-        // 04 Planning & OKRs Hub
-        activateNavigation(shortcut: "5", pillID: "open-planning-button", quickActionID: "home-open-planning", pageID: "page.showcase-okr-roadmap", app: app)
-        capture("complete-04-planning-tasks-goals", app: app)
-
-        // 05 Opt-in Academic Study Pack Hub
-        activateNavigation(shortcut: "6", pillID: "open-study-button", quickActionID: "home-open-study", pageID: "page.showcase-study-cs301", app: app)
-        capture("complete-05-study-pack-hub", app: app)
-
-        // 06 Creative 3D CAD & Slides Studio
-        activateNavigation(shortcut: "7", pillID: "open-studio-button", quickActionID: "home-open-studio", pageID: "page.showcase-cad-turbine", app: app)
-        capture("complete-06-creative-3d-studio", app: app)
-
-        // 07 Worlds Intelligence AI Assistant Modal
+        // 04 Spreadsheet Studio (Excel)
         #if os(macOS)
-        app.typeKey("a", modifierFlags: [.command, .option])
+        app.typeKey("4", modifierFlags: [.command, .option])
+        RunLoop.current.run(until: Date().addingTimeInterval(1.2))
         #else
-        let assistantButton = app.buttons["open-assistant-button"].firstMatch
-        if assistantButton.waitForExistence(timeout: 5) { assistantButton.tap() }
-        #endif
-        RunLoop.current.run(until: Date().addingTimeInterval(1))
-        capture("complete-07-ai-assistant", app: app)
-        let closeAssistant = app.buttons["close-assistant-button"].firstMatch
-        if closeAssistant.waitForExistence(timeout: 5) {
-            #if os(macOS)
-            closeAssistant.click()
-            #else
-            closeAssistant.tap()
-            #endif
-            RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            tapIdentifier("library-collection-Spreadsheets", app: app)
+        } else {
+            tapIdentifier("sidebar-lib-Spreadsheets", app: app)
         }
-
-        // 08 Settings & Feature Packs Modal
-        #if os(macOS)
-        app.typeKey(",", modifierFlags: .command)
-        #else
-        let settingsButton = app.buttons["open-settings-button"].firstMatch
-        if settingsButton.waitForExistence(timeout: 5) { settingsButton.tap() }
         #endif
-        RunLoop.current.run(until: Date().addingTimeInterval(1))
-        capture("complete-08-settings-packs", app: app)
+        capture("complete-04-spreadsheet-excel", app: app)
+
+        // 05 Mind Map & Concept Graph
+        #if os(macOS)
+        tapIdentifier("page.showcase-mindmap-arch", app: app)
+        #else
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            navigateDestination(tabTitle: "Home", macShortcut: nil, sidebarID: nil, app: app)
+            tapIdentifier("home-card-showcase-mindmap-arch", app: app)
+            RunLoop.current.run(until: Date().addingTimeInterval(1.0))
+        } else {
+            tapIdentifier("page.showcase-mindmap-arch", app: app)
+        }
+        #endif
+        capture("complete-05-mindmap-concept", app: app)
+
+        #if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            // Return from pushed detail on iPhone
+            let backBtn = app.navigationBars.buttons.firstMatch
+            if backBtn.exists && backBtn.isHittable {
+                backBtn.tap()
+                RunLoop.current.run(until: Date().addingTimeInterval(0.6))
+            }
+        }
+        #endif
+
+        // 06 Creative Studio (3D & Slides)
+        #if os(macOS)
+        app.typeKey("7", modifierFlags: [.command, .option])
+        RunLoop.current.run(until: Date().addingTimeInterval(1.2))
+        #else
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            navigateDestination(tabTitle: "Library", macShortcut: nil, sidebarID: nil, app: app)
+            tapIdentifier("library-collection-Slides & 3D CAD", app: app)
+        } else {
+            tapIdentifier("sidebar-lib-Slides & 3D CAD", app: app)
+        }
+        #endif
+        capture("complete-06-studio-cad-slides", app: app)
+
+        // 07 AI Assistant Destination
+        navigateDestination(tabTitle: "AI", macShortcut: "a", sidebarID: "sidebar-dest-ai", app: app)
+        capture("complete-07-ai-destination", app: app)
+
+        // 08 Unified Search Destination
+        navigateDestination(tabTitle: "Search", macShortcut: "s", sidebarID: "sidebar-dest-search", app: app)
+        capture("complete-08-search-destination", app: app)
+
+        // 09 Create New Sheet + Inspector / Quick Note HUD
+        #if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            tapIdentifier("sidebar-dest-home", app: app)
+            tapIdentifier("toggle-inspector-button", app: app)
+            capture("complete-09-ipad-inspector-open", app: app)
+        } else {
+            navigateDestination(tabTitle: "Home", macShortcut: nil, sidebarID: nil, app: app)
+            tapIdentifier("open-create-sheet-button", app: app)
+            capture("complete-09-iphone-create-sheet", app: app)
+            let cancelBtn = app.buttons["Cancel"].firstMatch
+            if cancelBtn.exists { cancelBtn.tap() }
+        }
+        #elseif os(macOS)
+        app.typeKey("1", modifierFlags: [.command, .option])
+        RunLoop.current.run(until: Date().addingTimeInterval(0.8))
+        tapIdentifier("open-quick-note-button", app: app)
+        capture("complete-09-mac-quicknote-hud", app: app)
+
+        app.typeKey(",", modifierFlags: .command)
+        RunLoop.current.run(until: Date().addingTimeInterval(1.0))
+        capture("complete-10-mac-settings-hotcorners", app: app)
         let closeSettings = app.buttons["close-settings-button"].firstMatch
-        if closeSettings.waitForExistence(timeout: 5) {
-            #if os(macOS)
-            closeSettings.click()
-            #else
-            closeSettings.tap()
-            #endif
+        if closeSettings.waitForExistence(timeout: 3) { closeSettings.click() }
+        #endif
+    }
+
+    @MainActor
+    private func navigateDestination(tabTitle: String, macShortcut: String?, sidebarID: String?, app: XCUIApplication) {
+        #if os(macOS)
+        if let macShortcut {
+            app.typeKey(macShortcut, modifierFlags: [.command, .option])
+            RunLoop.current.run(until: Date().addingTimeInterval(1.1))
+            return
+        }
+        #else
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            let tabBarButton = app.tabBars.buttons[tabTitle].firstMatch
+            if tabBarButton.waitForExistence(timeout: 4) {
+                tabBarButton.tap()
+                RunLoop.current.run(until: Date().addingTimeInterval(1.0))
+                return
+            }
+            let looseButton = app.buttons[tabTitle].firstMatch
+            if looseButton.waitForExistence(timeout: 3) && looseButton.isHittable {
+                looseButton.tap()
+                RunLoop.current.run(until: Date().addingTimeInterval(1.0))
+                return
+            }
+        }
+        #endif
+        if let sidebarID {
+            tapIdentifier(sidebarID, app: app)
         }
     }
 
     @MainActor
-    private func activateNavigation(shortcut: String?, pillID: String, quickActionID: String? = nil, pageID: String? = nil, app: XCUIApplication) {
-        #if os(macOS)
-        if let shortcut {
-            app.typeKey(shortcut, modifierFlags: [.command, .option])
-            RunLoop.current.run(until: Date().addingTimeInterval(1.2))
-            return
-        }
-        #endif
-        if let quickActionID {
-            let quick = app.buttons[quickActionID].firstMatch
-            if quick.waitForExistence(timeout: 2) && quick.isHittable {
-                #if os(macOS)
-                quick.click()
-                #else
-                quick.tap()
-                #endif
-                RunLoop.current.run(until: Date().addingTimeInterval(1.2))
-                return
-            }
-        }
-        let pill = app.buttons[pillID].firstMatch
-        if pill.waitForExistence(timeout: 5) && pill.isHittable {
+    private func tapIdentifier(_ identifier: String, app: XCUIApplication) {
+        let element = app.descendants(matching: .any)[identifier].firstMatch
+        if element.waitForExistence(timeout: 4) {
             #if os(macOS)
-            pill.click()
+            element.click()
             #else
-            pill.tap()
+            element.tap()
             #endif
-            RunLoop.current.run(until: Date().addingTimeInterval(1.2))
-            return
-        }
-        if let pageID {
-            let page = app.descendants(matching: .any)[pageID].firstMatch
-            if page.waitForExistence(timeout: 5) {
-                #if os(macOS)
-                page.click()
-                #else
-                page.tap()
-                #endif
-                RunLoop.current.run(until: Date().addingTimeInterval(1.2))
-            }
+            RunLoop.current.run(until: Date().addingTimeInterval(1.1))
         }
     }
     @MainActor

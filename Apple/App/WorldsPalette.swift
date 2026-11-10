@@ -24,4 +24,21 @@ enum WorldsPalette {
     static func surface(for scheme: ColorScheme) -> Color {
         scheme == .dark ? raisedSurface : Color(red: 245 / 255, green: 245 / 255, blue: 243 / 255)
     }
+
+    static func groupedCanvas(for scheme: ColorScheme) -> Color {
+        scheme == .dark ? darkCanvas : Color(red: 246 / 255, green: 246 / 255, blue: 244 / 255)
+    }
+
+    static func cardBackground(for scheme: ColorScheme) -> Color {
+        scheme == .dark
+            ? Color(red: 24 / 255, green: 24 / 255, blue: 28 / 255)
+            : Color.white
+    }
+
+    static func subtleBorder(for scheme: ColorScheme, highContrast: Bool = false) -> Color {
+        if highContrast {
+            return scheme == .dark ? Color.white.opacity(0.28) : Color.black.opacity(0.24)
+        }
+        return scheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.07)
+    }
 }

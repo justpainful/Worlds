@@ -8,6 +8,7 @@ struct AssistantHostView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     let pages: [StoredPage]
+    let embeddedInNavigation: Bool
     #if WORLDS_MAIN_APP_MODULES
     @State private var service: WorkspaceAssistantConversationService
     #else
@@ -15,53 +16,64 @@ struct AssistantHostView: View {
     @State private var fallbackMessages: [(role: String, text: String)] = []
     #endif
 
-    init(pages: [StoredPage]) {
+    init(pages: [StoredPage], embeddedInNavigation: Bool = false) {
         self.pages = pages
+        self.embeddedInNavigation = embeddedInNavigation
         #if WORLDS_MAIN_APP_MODULES
         _service = State(initialValue: WorkspaceAssistantConversationService(pages: pages))
         #endif
     }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                headerBanner
-                Divider()
-                #if WORLDS_MAIN_APP_MODULES
-                ConversationView(conversationID: "workspace-primary-assistant", service: service)
-                    .padding(.horizontal, 14)
-                #else
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 14) {
-                        ForEach(Array(fallbackMessages.enumerated()), id: \.offset) { _, msg in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(msg.role).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                                Text(msg.text).frame(maxWidth: .infinity, alignment: .leading)
+        Group {
+            if embeddedInNavigation {
+                assistantContent
+            } else {
+                NavigationStack {
+                    assistantContent
+                        #if os(iOS)
+                        .navigationBarTitleDisplayMode(.inline)
+                        #endif
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("Done") { dismiss() }
+                                    .accessibilityIdentifier("close-assistant-button")
                             }
-                            .padding(12)
-                            .worldsGlass(cornerRadius: 12)
                         }
-                    }
-                    .padding(16)
                 }
+                #if os(macOS)
+                .frame(minWidth: 640, minHeight: 540)
                 #endif
-            }
-            .background(WorldsPalette.paper(for: colorScheme))
-            .navigationTitle("AI Assistant")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                        .accessibilityIdentifier("close-assistant-button")
-                }
             }
         }
         .accessibilityIdentifier("assistant-view")
-        #if os(macOS)
-        .frame(minWidth: 640, minHeight: 540)
-        #endif
+    }
+
+    private var assistantContent: some View {
+        VStack(spacing: 0) {
+            headerBanner
+            Divider()
+            #if WORLDS_MAIN_APP_MODULES
+            ConversationView(conversationID: "workspace-primary-assistant", service: service)
+                .padding(.horizontal, 14)
+            #else
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    ForEach(Array(fallbackMessages.enumerated()), id: \.offset) { _, msg in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(msg.role).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                            Text(msg.text).frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .padding(12)
+                        .worldsContentCard(cornerRadius: 12)
+                    }
+                }
+                .padding(16)
+            }
+            #endif
+        }
+        .background(WorldsPalette.groupedCanvas(for: colorScheme))
+        .navigationTitle("AI Assistant")
     }
 
     private var headerBanner: some View {
