@@ -932,7 +932,7 @@ private struct WorldsLibraryView: View {
                 .environment(\.colorScheme, colorScheme)
                 .preferredColorScheme(colorScheme)
                 #if os(macOS)
-                .frame(minWidth: 560, idealWidth: 640, minHeight: 540, idealHeight: 620)
+                .frame(minWidth: 680, idealWidth: 740, minHeight: 580, idealHeight: 660)
                 #endif
         }
         .sheet(isPresented: $showAssistant) {
@@ -940,7 +940,7 @@ private struct WorldsLibraryView: View {
                 .environment(\.colorScheme, colorScheme)
                 .preferredColorScheme(colorScheme)
                 #if os(macOS)
-                .frame(minWidth: 580, idealWidth: 660, minHeight: 520, idealHeight: 600)
+                .frame(minWidth: 680, idealWidth: 740, minHeight: 580, idealHeight: 660)
                 #endif
         }
         #if WORLDS_MAIN_APP_MODULES

@@ -125,6 +125,7 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .formStyle(.grouped)
             .navigationTitle("Settings")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

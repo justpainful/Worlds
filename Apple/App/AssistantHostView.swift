@@ -29,6 +29,7 @@ struct AssistantHostView: View {
                 Divider()
                 #if WORLDS_MAIN_APP_MODULES
                 ConversationView(conversationID: "workspace-primary-assistant", service: service)
+                    .padding(.horizontal, 14)
                 #else
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {

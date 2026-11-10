@@ -960,11 +960,24 @@ final class WorldsUITests: XCTestCase {
         app.activate()
         let window = app.windows.firstMatch
         XCTAssertTrue(window.waitForExistence(timeout: 5))
-        let screenshot = window.screenshot()
+        let attachment = XCTAttachment(screenshot: window.screenshot())
         #else
-        let screenshot = app.screenshot()
+        let rawImage = XCUIScreen.main.screenshot().image
+        let finalImage: UIImage
+        if UIDevice.current.userInterfaceIdiom == .pad && rawImage.size.height > rawImage.size.width {
+            let targetSize = CGSize(width: rawImage.size.height, height: rawImage.size.width)
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = rawImage.scale
+            finalImage = UIGraphicsImageRenderer(size: targetSize, format: format).image { ctx in
+                ctx.cgContext.translateBy(x: targetSize.width / 2, y: targetSize.height / 2)
+                ctx.cgContext.rotate(by: -.pi / 2)
+                rawImage.draw(in: CGRect(x: -rawImage.size.width / 2, y: -rawImage.size.height / 2, width: rawImage.size.width, height: rawImage.size.height))
+            }
+        } else {
+            finalImage = rawImage
+        }
+        let attachment = XCTAttachment(image: finalImage)
         #endif
-        let attachment = XCTAttachment(screenshot: screenshot)
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
