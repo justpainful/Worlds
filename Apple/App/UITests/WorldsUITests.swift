@@ -730,6 +730,9 @@ final class WorldsUITests: XCTestCase {
             "--ui-testing-dark"
         ]
         app.launch()
+        RunLoop.current.run(until: Date().addingTimeInterval(8))
+        let launchShot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        launchShot.name = "debug-00-launch-state"; launchShot.lifetime = .keepAlways; add(launchShot)
 
         let homeButton = app.buttons["open-home-button"].firstMatch
         XCTAssertTrue(homeButton.waitForExistence(timeout: 30))

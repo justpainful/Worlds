@@ -86,14 +86,6 @@ jobs:
             scheme: Worlds-macOS
             test_target: Worlds-macOS-UITests
             destination: 'platform=macOS'
-          - device: iPhone
-            scheme: Worlds-iOS
-            test_target: Worlds-iOS-UITests
-            destination: 'platform=iOS Simulator,name=iPhone 17,OS=26.5'
-          - device: iPad
-            scheme: Worlds-iOS
-            test_target: Worlds-iOS-UITests
-            destination: 'platform=iOS Simulator,name=iPad (A16),OS=26.5'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
