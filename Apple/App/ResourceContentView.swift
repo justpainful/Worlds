@@ -474,12 +474,12 @@ struct NativePlanningAndStudyItemView: View {
                     .font(.headline)
             }
 
-            if let json = page.metadataJSON, !json.isEmpty {
+            if !page.metadataJSON.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Properties")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
-                    Text(json)
+                    Text(page.metadataJSON)
                         .font(.caption.monospaced())
                         .padding(10)
                         .frame(maxWidth: .infinity, alignment: .leading)
