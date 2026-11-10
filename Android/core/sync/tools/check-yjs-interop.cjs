@@ -1,0 +1,25 @@
+// Requires NODE_PATH to contain the desktop's Yjs dependency.
+const Y = require('yjs');
+const { spawnSync } = require('child_process');
+const path = require('path');
+const a = new Y.Doc(); a.clientID = 42;
+const fragment = a.getXmlFragment('default');
+const paragraph = new Y.XmlElement('paragraph');
+const text = new Y.XmlText();
+const updates = [];
+a.on('update', u => updates.push(u));
+fragment.insert(0, [paragraph]);
+paragraph.insert(0, [text]);
+text.insert(0, 'مرحبا Worlds');
+text.delete(0, 1);
+const b = new Y.Doc(); b.clientID = 77;
+Y.applyUpdate(b, Y.encodeStateAsUpdate(a));
+b.getXmlFragment('default').get(0).get(0).insert(0, '✦');
+updates.push(Y.encodeStateAsUpdate(b, Y.encodeStateVector(a)));
+const args = ['run', '--quiet', '--locked', '--example', 'interop', '--', ...updates.reverse().map(u => Buffer.from(u).toString('hex'))];
+const run = spawnSync('cargo', args, { cwd: path.join(__dirname, '../native'), encoding: 'utf8' });
+if (run.status !== 0) throw Error(run.stderr || String(run.error));
+const actual = new Y.Doc();
+Y.applyUpdate(actual, Buffer.from(run.stdout.trim(), 'hex'));
+if (actual.getXmlFragment('default').toString() !== b.getXmlFragment('default').toString()) throw Error('Yjs XML content differs');
+console.log('Yjs XML, deletion and reverse-order updates round trip through Yrs');

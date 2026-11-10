@@ -1,0 +1,135 @@
+# Android Yrs sync foundation
+
+The shared text editor displays existing text marks while a paragraph or
+heading is edited, including on either side of long-text page boundaries.
+The display is derived asynchronously from the draft and never modifies the
+Yjs update. Unsupported projections fall back to plain text. Android 11 and
+15 emulator tests compare the display with saved Yjs marks for mixed Arabic,
+emoji and edits across mark boundaries, and exercise offline save. The shared
+editor still does not offer formatting controls or editing of inline objects.
+
+The native bridge can generate a Yjs formatting update for a selected UTF-16
+range in a top-level paragraph or heading. It supports bold, italic, underline,
+strike and code, preserves unrelated marks and text identity, and rejects
+invalid boundaries and unsupported inline nodes. Desktop Yjs interoperability
+tests cover existing links, mixed scripts, multiple text nodes and a concurrent
+text insertion; Android 11 and 15 emulator tests exercise the JNI bridge. This is
+only a bridge operation: online and offline journaling, rejected-change
+recovery, formatting controls and physical-device tests remain open.
+
+
+CI also runs the Android Yrs examples against the desktop's locked Yjs and
+Tiptap versions. It verifies mixed-script text, UTF-16 boundaries, formatting,
+block insertion, duplication, reverse-order updates and convergence after a
+concurrent edit or deletion. The pinned contract dependencies are checked
+against the desktop lockfile. This is a protocol compatibility test, not a
+production service or physical-device test. The emulator job captures fresh
+shared-page screenshots for both tested Android versions and uploads them with
+the test reports. The two capture tests passed locally on Android 11 and 15
+emulators; physical devices remain unverified.
+
+
+Shared-page access, comments, notices, versions and Markdown actions share a
+compact icon strip with accessibility labels and native tooltips. Android 15
+emulator checks cover accessible labels, a long-press tooltip, offline disabled
+states, Arabic at 1.5x text size and the existing shared-page editing workflow.
+The Arabic phone screenshot was reviewed visually. Physical Chromebook pointer
+hover and other screen sizes remain unverified.
+
+
+Android also duplicates supported top-level shared paragraphs and headings,
+including text marks and attributes, using a fresh block id and the current
+locally known content. A replaced source is rejected. The update and copied
+text are journaled for offline synchronization and recovery after revocation.
+Rust and desktop Yjs interoperability tests cover formatting and concurrent
+source edits; Android 15 emulator tests cover the action, a synthetic peer,
+independent editing, offline recovery and stale source rejection. Other block
+types, unseen remote changes while offline, and production servers remain
+outside this verification.
+
+
+Android can create a paragraph or a level 1, 2 or 3 heading in a shared page
+after confirmed edit access, at the end or after a specific existing block. The
+new block uses the desktop Yjs XML fragment and a unique block id. Insertion
+after a block requires the original Yjs anchor identity to remain present.
+The update and recovery text are journaled before sending; an offline edit uses
+the last confirmed permission and is rechecked when synchronization resumes.
+Revocation retains unsent text in recovery. Concurrent appends were checked for
+convergence and the Android update was applied by desktop Yjs and Tiptap. A
+local Worker test checks delivery to another synthetic account. This does not
+yet implement creation of other block types or production validation.
+
+The sync library builds Yrs as a native Android library for arm64-v8a, armeabi-v7a, x86 and x86_64. All four are packaged in the debug APK; runtime tests so far use the x86_64 emulator only. The JNI bridge exposes Yjs v1 state vector, state diff and update merge operations. Its serialized snapshots include updates waiting for causal dependencies. The library limits each input to 64 MiB and reports invalid data to Kotlin as an exception.
+
+The bridge can also read the `default` XML fragment into Tiptap-compatible JSON, preserving element attributes, nested structure and text marks. A targeted operation replaces a UTF-16 range in one identified XML text node. Another addresses a top-level paragraph or heading by `bid` and accepts offsets over its direct text children, including empty paragraphs and ranges crossing multiple text nodes. Both return Yjs updates rather than replacing the document, preserve inherited formatting and reject offsets that split a surrogate pair. The session accepts a captured base snapshot for a block edit and merges the resulting update with newer remote state. Embedded text objects, non-text inline children, duplicate or missing block IDs, and unsupported block types are rejected instead of silently discarded. The app uses block text editing and selected structural operations. Formatting updates are available in the bridge only; the session, offline journal and user interface do not yet expose them.
+
+`Android/core/sync/tools/check-yjs-interop.cjs` exercises Yjs XML edits and deletions, feeds updates in reverse order through Yrs, and reads the result back with Yjs. `check-editor-interop.cjs` compares nested, marked content with the desktop Tiptap converter and checks an Android text update merged with a concurrent Yjs edit. `YrsNativeTest` checks Yjs-generated fixtures through Android JNI, including out-of-order updates and UTF-16 validation. Generate its fixture using `generate-yjs-fixture.cjs` with the desktop Yjs package on `NODE_PATH`.
+
+Android builds require Rust targets `aarch64-linux-android`, `armv7-linux-androideabi`, `x86_64-linux-android`, and `i686-linux-android`, and an installed Android NDK. Gradle builds the native libraries from the locked Cargo dependencies. The CI workflow installs these targets and NDK 28.2.
+
+The sync library also contains a standalone session that replays the SQLite journal, negotiates both channels, saves local updates before transmission, associates acknowledgements with individual batches, retains unacknowledged work on disconnect, archives rejected state, and purges cached page data when access is revoked. Instrumented tests exercise those paths with an in-memory transport and a real SQLite database and Yrs engine. Token refresh can be sent explicitly; scheduling refresh, reconnect and presence handling remain to be implemented.
+
+An opt-in instrumentation test also ran on Android 15 against the actual local `services/sync` Worker and its development identity stand-in. Two separately authenticated Android sessions exchanged a formatted document and a block-ID text edit over WebSocket; the test verified the server's persisted state, acknowledgements, and a 4403 revocation that purges the revoked account's cached replica without removing the other account's copy. It uses synthetic accounts, local cleartext over adb reverse and a development-only operator secret. It does not test production HTTPS, production identity, physical hardware or desktop UI interoperability.
+
+To repeat, install `services/sync` dependencies, run its documented local identity and sync Workers with `.dev.vars`, and run `adb reverse tcp:18790 tcp:8790` and `adb reverse tcp:18791 tcp:8791`. From `Android`, run `./gradlew :core:sync:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.liveSync=1 -Pandroid.testInstrumentationRunnerArguments.class=worlds.sync.LiveSyncWorkerTest`. To test the page UI, run `./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.liveSync=1 -Pandroid.testInstrumentationRunnerArguments.class=worlds.android.SharedPageLiveTest`. Cleartext is permitted for the standalone test app and loopback domains in the app's debug network configuration only.
+
+The app now includes an account-scoped session runtime. It obtains a fresh access token from the encrypted identity service, partitions the sync store by identity server and user, and closes tracked sessions before sign-in replacement or logout. It blocks session creation during those account operations. Identity loss on a workspace operation or explicit refresh also closes the tracked sessions. An account workspace exposes a shared page screen where a user supplies the sync server and page ID, reads the shared content and edits text in supported existing paragraphs and headings. Edits use the captured base and preserve concurrent remote work; a draft is retained if its block was removed before saving.
+
+The deleted-block check applies to removals already received before saving. A deletion concurrent with the save that has not reached this client can still win under Yjs semantics; explicit conflict recovery for that case is unfinished. The UI does not yet expose an acknowledgement indicator and hides account-bound content when the account changes.
+
+If the sync Worker refuses a WebSocket upgrade with its explicit `no access to this document` response, the session treats it as revocation and purges that account's cached page. An unrelated 403 is treated as a connection failure, preserving queued work.
+
+While the shared page screen is active, connection failures trigger exponential retry with a 30-second maximum delay. A previously authorized page can be opened from an account-scoped cached-page list and edited offline using the last confirmed permission. Cached permission is bound to the identity server, user, device and exact sync endpoint. Revocation purges the shared replica and cached permission, and the server rechecks queued writes when reconnecting. Offline saves are serialized against connection startup and account changes. Pending local updates are replayed from SQLite. The controller renews an expiring access token through the encrypted identity service and sends AUTH_REFRESH. Revocation, account changes, rejected writes, local processing failures and uncertain refresh stop retries. Reauthentication is requested if a refresh cannot be confirmed; a one-time refresh token is never blindly retried. An expired or quarantined identity session can prevent offline access, and changed server permissions cannot be known while disconnected.
+
+The cached list currently returns at most 500 entries and uses workspace and page identifiers because no local shared-page title catalogue exists. The emulator test `Android/tools/test-offline-process-restart.ps1` uses isolated synthetic credentials and a separate database: it creates the encrypted session and cached page, stops the target process, edits offline in a second process, stops it again and acknowledges the queued edit in a third. Its identity and sync transports are test doubles, so it does not prove production identity or network behavior. Background synchronization is not yet implemented.
+
+When Android reports no network at all, session refresh returns a network error before the one-time refresh token is sent or quarantined. The cached account remains usable offline. A network can disappear after this check or be present while the server is unreachable; in those cases an attempted refresh can still have an uncertain outcome and requires sign-in. This preserves the rule against retrying a potentially rotated token.
+
+An opt-in Compose test opens the screen using synthetic credentials, edits a shared heading, refreshes its access token against the local Worker, simulates a dropped socket, edits offline and verifies the edit reaches another session after reconnect. It then changes access to view and verifies another offline edit is retained in a rejected archive. Other instrumented tests cover a failed send, a save racing reconnection, account mismatch, sign-out and revocation. The test-only local HTTP exception is limited to loopback in the debug build; production transport requires HTTPS. This does not verify production identity or TLS, process death or sustained background operation. Shared-page discovery, creation and deletion, full rich editing, comments, background sync, presence and real-device ABI verification remain open.
+
+The database binds each account, workspace and page to a canonical sync endpoint before opening a socket. A different endpoint is refused once data exists; an empty binding can be changed, including after an interrupted first connection. Concurrent app sessions for the same page are refused. Pre-existing replicas without a recorded endpoint are retained but cannot be sent until an explicit recovery workflow is implemented; the UI explains this restriction. This prevents assuming an origin for older data.
+
+Pending supported paragraph and heading edits save their edited text atomically with the outbox update. Acknowledgement removes that recovery capture; on revocation or rejection, the text moves to account-scoped recovery while revocation removes the shared replica. The account recovery library works even if the workspace is no longer listed and supports copying and deleting entries. An unfinished editor draft is also backed up asynchronously while typing, with ordered writes and account-scoped storage; explicit discard or a successful save removes the working copy. The newest keystrokes can still be lost if the process dies before their queued disk write completes. A backup failure is reported in the editor. Legacy outbox entries and generic updates lack captured text and cannot be recovered this way. A concurrent remote block deletion can also win over a local edit. Opening an unbound legacy replica and migrating a page to a different sync server are not yet supported.
+
+When a recovered copy's original paragraph or heading is present and editable, the shared page can open that text as a draft in the existing block editor. A confirmation displays the current block text and explains that saving replaces it. Opening or cancelling the editor does not send an update, and the recovery copy remains until explicitly deleted. This action is unavailable if the block is absent or the current permission is read-only. It is text recovery, not restoration of an entire shared version.
+
+An opt-in Android UI test exercises a local identity and sync Worker with synthetic accounts: it edits offline, loses access, receives a personal recovery copy, regains edit access, reviews and saves the recovered text, and confirms a second sync session receives it. The same flow has not been verified against production services or a physical device.
+
+The shared page can list server version metadata, preview a selected Yjs state and create a version through the existing authenticated sync endpoints. Before creation, the active session waits for its content handshake and outstanding local content acknowledgements. Requests use the current account and device, refuse redirects and limit response sizes. If the creation response is uncertain, the UI requires a list refresh before another attempt; it does not automatically repeat the request. The history view is closed on disconnect or account change, and unsupported preview content is identified. Restoring a shared version in Android remains unimplemented. A remote collaborator can continue editing while a server snapshot is created. Production identity, TLS and physical devices have not been verified.
+
+
+## Foreground notifications
+
+An open shared page can show the authenticated sync-server inbox, refresh it, mark one or all items read, and open the referenced page. The feed is discarded when the connection or account changes. Android opens the referenced conversation and focuses its message after the comments sync handshake. A missing thread or message produces an explicit unavailable state. Same-page navigation reuses the active session, and cross-page navigation carries the destination identifiers. No system notifications are delivered. An emulator test uses a synthetic MockWebServer inbox to verify authorization, the selected read request, and the target page. A separate local Worker test verifies actual reply and mention notification generation with synthetic accounts. Production services remain unverified.
+
+
+## Existing conversations and replies
+
+The shared page can read the comments Yjs channel and reply to an existing thread when the authenticated account has comment, edit or full access. Replies use the current account identity, are journaled before sending and use the existing server permission and validation rules. Android can create page-level threads, resolve and reopen threads, and mention users whose names are present in the shared people map. Authors can delete their own eligible comments after confirmation, including removal of a thread with only one comment. The first comment cannot be deleted while replies remain. The client repeats these checks on the latest comments state, and the server applies its own authorization rules. Editing comments and navigating to text anchors remain unavailable. A local Worker test used two synthetic accounts and verified replies, page-level thread creation, resolve and reopen transitions, comment deletion, and reply and mention notifications. This is not production verification.
+
+A local Worker test verified a real mention notification opens the referenced message on the currently open page. An emulator mock test checked cross-page target propagation and unavailable threads. Cross-page navigation has not been verified end to end against production.
+
+
+## Workspace membership
+
+The Android workspace screen can list members and, according to the caller role, change another member role or remove an eligible member after confirmation. The identity server remains authoritative. Requests are tied to the account and device that loaded the list, and the screen is dismissed on account change. After a write or uncertain outcome, the UI refreshes from the server and disables further changes until reconciliation. A synthetic identity transport test verifies request contracts and account binding, an HTTPS mock test checks PATCH and redirect rejection, and emulator UI tests exercise role restrictions and uncertain removal. These tests do not demonstrate production membership management. Ownership transfer remains unimplemented on Android.
+
+
+## Workspace invitations
+
+Owners and admins can list invitations, create a workspace invitation for an allowed role and revoke an active invitation after confirmation. The server returns the secret URL only at creation. Android displays it in a temporary dialog and copies it only when the user selects Copy. A lost creation response triggers reconciliation rather than an automatic retry; a returned URL remains available in the dialog even if the list refresh fails. The invite and member operations remain bound to the authenticated account and device. Emulator tests use synthetic gateways for role restrictions, creation, confirmation, revocation and uncertain outcomes; identity contract tests use a fake transport. No live identity service or production invite was exercised by these tests.
+
+
+## Joining workspaces
+
+A signed-in user can paste a Worlds invite link or token, preview the workspace and role, and accept explicitly. The client extracts only the token and sends it to the configured identity server, not to the hostname in the pasted link. The preview and acceptance are bound to the same account and device; secrets are redacted from generated representations and discarded on leaving the screen or account change. Known revoked, expired and exhausted responses are shown explicitly. If acceptance may have committed but its response is lost, the UI prevents automatic retry and directs the user to refresh workspaces. Emulator tests use synthetic gateways and a fake transport; no live identity service, production account or physical device was used in this test. After joining, the user can open the workspace page picker. It lists accessible mirrored page identifiers; the identity service does not provide titles there.
+
+
+## Accessible workspace pages
+
+Android can query the identity workspace access endpoint and list mirrored page identifiers with view, comment, edit or full access. Entries with no access are excluded before they reach the screen. The endpoint does not return titles, so identifiers are displayed explicitly. A user-supplied HTTPS sync endpoint is required to open a page; the normal shared session still enforces current access and endpoint binding. The list is bound to the account and device and is discarded on account change. It can omit pages not mirrored into identity, for which manual page ID entry remains available. Emulator tests cover selection, URL validation, account binding and exclusion of no-access entries with synthetic responses. Live identity and production end-to-end verification remain outstanding.
+
+
+## Page access management
+
+The open shared page exposes identity access entries and indicates whether each is inherited. Accounts with full page access can add or override workspace, user and group access, remove direct entries, and change inheritance after confirmation. Guests cannot be granted full access by the UI, and the identity server remains authoritative. Existing entries are reloaded after changes; an uncertain response clears stale data and requires a refresh. The client does not claim a particular effective level for principals without an entry. These controls and account-bound request contracts were tested with synthetic gateways and transport. Live identity-service behavior, page invite creation, production and physical devices remain unverified.

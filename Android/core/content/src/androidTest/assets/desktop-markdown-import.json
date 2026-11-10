@@ -1,0 +1,1021 @@
+[
+  {
+    "name": "empty",
+    "nodes": [],
+    "source": ""
+  },
+  {
+    "name": "blank",
+    "nodes": [],
+    "source": "\n\n"
+  },
+  {
+    "name": "heading",
+    "nodes": [
+      {
+        "attrs": {
+          "level": 1
+        },
+        "content": [
+          {
+            "text": "Title",
+            "type": "text"
+          }
+        ],
+        "type": "heading"
+      },
+      {
+        "attrs": {
+          "level": 2
+        },
+        "content": [
+          {
+            "text": "Second",
+            "type": "text"
+          }
+        ],
+        "type": "heading"
+      },
+      {
+        "attrs": {
+          "level": 3
+        },
+        "content": [
+          {
+            "text": "Third",
+            "type": "text"
+          }
+        ],
+        "type": "heading"
+      }
+    ],
+    "source": "# Title\n\n## Second\n\n### Third"
+  },
+  {
+    "name": "paragraph",
+    "nodes": [
+      {
+        "content": [
+          {
+            "text": "First line",
+            "type": "text"
+          },
+          {
+            "type": "hardBreak"
+          },
+          {
+            "text": "Second line",
+            "type": "text"
+          }
+        ],
+        "type": "paragraph"
+      },
+      {
+        "content": [
+          {
+            "text": "Another",
+            "type": "text"
+          }
+        ],
+        "type": "paragraph"
+      }
+    ],
+    "source": "First line\nSecond line\n\nAnother"
+  },
+  {
+    "name": "unicode",
+    "nodes": [
+      {
+        "content": [
+          {
+            "text": "مرحبًا ",
+            "type": "text"
+          },
+          {
+            "marks": [
+              {
+                "type": "bold"
+              }
+            ],
+            "text": "بالعالم",
+            "type": "text"
+          },
+          {
+            "text": " 😀",
+            "type": "text"
+          },
+          {
+            "type": "hardBreak"
+          },
+          {
+            "text": "رابط ",
+            "type": "text"
+          },
+          {
+            "marks": [
+              {
+                "attrs": {
+                  "href": "https://example.com"
+                },
+                "type": "link"
+              }
+            ],
+            "text": "ملف",
+            "type": "text"
+          }
+        ],
+        "type": "paragraph"
+      }
+    ],
+    "source": "مرحبًا **بالعالم** 😀\nرابط [ملف](https://example.com)"
+  },
+  {
+    "name": "marks",
+    "nodes": [
+      {
+        "content": [
+          {
+            "marks": [
+              {
+                "type": "bold"
+              }
+            ],
+            "text": "bold *both",
+            "type": "text"
+          },
+          {
+            "text": "* ",
+            "type": "text"
+          },
+          {
+            "marks": [
+              {
+                "type": "strike"
+              }
+            ],
+            "text": "gone",
+            "type": "text"
+          },
+          {
+            "text": " ",
+            "type": "text"
+          },
+          {
+            "marks": [
+              {
+                "type": "highlight"
+              }
+            ],
+            "text": "highlight",
+            "type": "text"
+          },
+          {
+            "text": " ",
+            "type": "text"
+          },
+          {
+            "marks": [
+              {
+                "type": "code"
+              }
+            ],
+            "text": "code",
+            "type": "text"
+          }
+        ],
+        "type": "paragraph"
+      }
+    ],
+    "source": "**bold *both*** ~~gone~~ ==highlight== `code`"
+  },
+  {
+    "name": "links",
+    "nodes": [
+      {
+        "content": [
+          {
+            "attrs": {
+              "id": "abc",
+              "label": "Nova"
+            },
+            "type": "pageMention"
+          },
+          {
+            "text": " ",
+            "type": "text"
+          },
+          {
+            "marks": [
+              {
+                "attrs": {
+                  "href": "https://example.com/a"
+                },
+                "type": "link"
+              }
+            ],
+            "text": "site",
+            "type": "text"
+          },
+          {
+            "text": " [bad](two words)",
+            "type": "text"
+          }
+        ],
+        "type": "paragraph"
+      }
+    ],
+    "source": "@[Nova](page:abc) [site](https://example.com/a) [bad](two words)"
+  },
+  {
+    "name": "bad_marks",
+    "nodes": [
+      {
+        "content": [
+          {
+            "text": "open *",
+            "type": "text"
+          },
+          {
+            "marks": [
+              {
+                "type": "italic"
+              }
+            ],
+            "text": " and ` and ",
+            "type": "text"
+          }
+        ],
+        "type": "paragraph"
+      }
+    ],
+    "source": "open ** and ` and *"
+  },
+  {
+    "name": "bullets",
+    "nodes": [
+      {
+        "content": [
+          {
+            "content": [
+              {
+                "content": [
+                  {
+                    "text": "one",
+                    "type": "text"
+                  }
+                ],
+                "type": "paragraph"
+              }
+            ],
+            "type": "listItem"
+          },
+          {
+            "content": [
+              {
+                "content": [
+                  {
+                    "text": "two",
+                    "type": "text"
+                  }
+                ],
+                "type": "paragraph"
+              }
+            ],
+            "type": "listItem"
+          },
+          {
+            "content": [
+              {
+                "type": "paragraph"
+              }
+            ],
+            "type": "listItem"
+          },
+          {
+            "content": [
+              {
+                "content": [
+                  {
+                    "text": "last",
+                    "type": "text"
+                  }
+                ],
+                "type": "paragraph"
+              }
+            ],
+            "type": "listItem"
+          }
+        ],
+        "type": "bulletList"
+      }
+    ],
+    "source": "- one\n* two\n-\n- last"
+  },
+  {
+    "name": "tasks",
+    "nodes": [
+      {
+        "content": [
+          {
+            "attrs": {
+              "checked": false
+            },
+            "content": [
+              {
+                "content": [
+                  {
+                    "text": "open",
+                    "type": "text"
+                  }
+                ],
+                "type": "paragraph"
+              }
+            ],
+            "type": "taskItem"
+          },
+          {
+            "attrs": {
+              "checked": true
+            },
+            "content": [
+              {
+                "content": [
+                  {
+                    "text": "done",
+                    "type": "text"
+                  }
+                ],
+                "type": "paragraph"
+              }
+            ],
+            "type": "taskItem"
+          },
+          {
+            "attrs": {
+              "checked": true
+            },
+            "content": [
+              {
+                "content": [
+                  {
+                    "text": "uppercase",
+                    "type": "text"
+                  }
+                ],
+                "type": "paragraph"
+              }
+            ],
+            "type": "taskItem"
+          },
+          {
+            "attrs": {
+              "checked": false
+            },
+            "content": [
+              {
+                "type": "paragraph"
+              }
+            ],
+            "type": "taskItem"
+          }
+        ],
+        "type": "taskList"
+      }
+    ],
+    "source": "- [ ] open\n- [x] done\n- [X] uppercase\n- [ ]"
+  },
+  {
+    "name": "ordered",
+    "nodes": [
+      {
+        "content": [
+          {
+            "content": [
+              {
+                "content": [
+                  {
+                    "text": "first",
+                    "type": "text"
+                  }
+                ],
+                "type": "paragraph"
+              }
+            ],
+            "type": "listItem"
+          },
+          {
+            "content": [
+              {
+                "content": [
+                  {
+                    "text": "second",
+                    "type": "text"
+                  }
+                ],
+                "type": "paragraph"
+              }
+            ],
+            "type": "listItem"
+          },
+          {
+            "content": [
+              {
+                "type": "paragraph"
+              }
+            ],
+            "type": "listItem"
+          }
+        ],
+        "type": "orderedList"
+      }
+    ],
+    "source": "2. first\n4. second\n1."
+  },
+  {
+    "name": "nested_indent",
+    "nodes": [
+      {
+        "content": [
+          {
+            "content": [
+              {
+                "content": [
+                  {
+                    "text": "parent",
+                    "type": "text"
+                  }
+                ],
+                "type": "paragraph"
+              }
+            ],
+            "type": "listItem"
+          },
+          {
+            "content": [
+              {
+                "content": [
+                  {
+                    "text": "child",
+                    "type": "text"
+                  }
+                ],
+                "type": "paragraph"
+              }
+            ],
+            "type": "listItem"
+          },
+          {
+            "content": [
+              {
+                "content": [
+                  {
+                    "text": "next",
+                    "type": "text"
+                  }
+                ],
+                "type": "paragraph"
+              }
+            ],
+            "type": "listItem"
+          }
+        ],
+        "type": "bulletList"
+      }
+    ],
+    "source": "- parent\n  - child\n- next"
+  },
+  {
+    "name": "quotes",
+    "nodes": [
+      {
+        "content": [
+          {
+            "content": [
+              {
+                "text": "first",
+                "type": "text"
+              }
+            ],
+            "type": "paragraph"
+          },
+          {
+            "content": [
+              {
+                "text": "second",
+                "type": "text"
+              }
+            ],
+            "type": "paragraph"
+          },
+          {
+            "content": [
+              {
+                "text": "third",
+                "type": "text"
+              }
+            ],
+            "type": "paragraph"
+          }
+        ],
+        "type": "blockquote"
+      }
+    ],
+    "source": "> first\n>> second\n> third"
+  },
+  {
+    "name": "callout",
+    "nodes": [
+      {
+        "attrs": {
+          "tone": "warning"
+        },
+        "content": [
+          {
+            "content": [
+              {
+                "text": "Be careful",
+                "type": "text"
+              }
+            ],
+            "type": "paragraph"
+          },
+          {
+            "content": [
+              {
+                "text": "More",
+                "type": "text"
+              }
+            ],
+            "type": "paragraph"
+          }
+        ],
+        "type": "callout"
+      }
+    ],
+    "source": "> [!WARNING] Be careful\n> More"
+  },
+  {
+    "name": "prompt",
+    "nodes": [
+      {
+        "attrs": {
+          "label": "Prompt"
+        },
+        "content": [
+          {
+            "content": [
+              {
+                "text": "Answer",
+                "type": "text"
+              }
+            ],
+            "type": "paragraph"
+          }
+        ],
+        "type": "prompt"
+      }
+    ],
+    "source": "> [!prompt]\n> Answer"
+  },
+  {
+    "name": "empty_callout",
+    "nodes": [
+      {
+        "attrs": {
+          "tone": "note"
+        },
+        "content": [
+          {
+            "type": "paragraph"
+          }
+        ],
+        "type": "callout"
+      }
+    ],
+    "source": "> [!note]"
+  },
+  {
+    "name": "table",
+    "nodes": [
+      {
+        "content": [
+          {
+            "content": [
+              {
+                "content": [
+                  {
+                    "content": [
+                      {
+                        "text": "A",
+                        "type": "text"
+                      }
+                    ],
+                    "type": "paragraph"
+                  }
+                ],
+                "type": "tableHeader"
+              },
+              {
+                "content": [
+                  {
+                    "content": [
+                      {
+                        "text": "B",
+                        "type": "text"
+                      }
+                    ],
+                    "type": "paragraph"
+                  }
+                ],
+                "type": "tableHeader"
+              }
+            ],
+            "type": "tableRow"
+          },
+          {
+            "content": [
+              {
+                "content": [
+                  {
+                    "content": [
+                      {
+                        "text": "one",
+                        "type": "text"
+                      }
+                    ],
+                    "type": "paragraph"
+                  }
+                ],
+                "type": "tableCell"
+              },
+              {
+                "content": [
+                  {
+                    "content": [
+                      {
+                        "text": "two",
+                        "type": "text"
+                      }
+                    ],
+                    "type": "paragraph"
+                  }
+                ],
+                "type": "tableCell"
+              }
+            ],
+            "type": "tableRow"
+          }
+        ],
+        "type": "table"
+      }
+    ],
+    "source": "| A | B |\n|---|:---:|\n| one | two |"
+  },
+  {
+    "name": "table_empty",
+    "nodes": [
+      {
+        "content": [
+          {
+            "content": [
+              {
+                "content": [
+                  {
+                    "type": "paragraph"
+                  }
+                ],
+                "type": "tableHeader"
+              }
+            ],
+            "type": "tableRow"
+          },
+          {
+            "content": [
+              {
+                "content": [
+                  {
+                    "content": [
+                      {
+                        "text": "a",
+                        "type": "text"
+                      }
+                    ],
+                    "type": "paragraph"
+                  }
+                ],
+                "type": "tableCell"
+              },
+              {
+                "content": [
+                  {
+                    "content": [
+                      {
+                        "text": "b",
+                        "type": "text"
+                      }
+                    ],
+                    "type": "paragraph"
+                  }
+                ],
+                "type": "tableCell"
+              }
+            ],
+            "type": "tableRow"
+          }
+        ],
+        "type": "table"
+      }
+    ],
+    "source": "||\n| --- | --- |\n| a | b |"
+  },
+  {
+    "name": "code",
+    "nodes": [
+      {
+        "attrs": {
+          "language": "kotlin"
+        },
+        "content": [
+          {
+            "text": "val x = 1\n  x++",
+            "type": "text"
+          }
+        ],
+        "type": "codeBlock"
+      },
+      {
+        "content": [
+          {
+            "text": "After",
+            "type": "text"
+          }
+        ],
+        "type": "paragraph"
+      }
+    ],
+    "source": "```kotlin\nval x = 1\n  x++\n```\n\nAfter"
+  },
+  {
+    "name": "unclosed_code",
+    "nodes": [
+      {
+        "attrs": {
+          "language": "text"
+        },
+        "content": [
+          {
+            "text": "content",
+            "type": "text"
+          }
+        ],
+        "type": "codeBlock"
+      }
+    ],
+    "source": "```text\ncontent"
+  },
+  {
+    "name": "rules",
+    "nodes": [
+      {
+        "type": "horizontalRule"
+      },
+      {
+        "type": "horizontalRule"
+      }
+    ],
+    "source": "---\n\n***"
+  },
+  {
+    "name": "windows",
+    "nodes": [
+      {
+        "content": [
+          {
+            "text": "a",
+            "type": "text"
+          },
+          {
+            "type": "hardBreak"
+          },
+          {
+            "text": "b",
+            "type": "text"
+          }
+        ],
+        "type": "paragraph"
+      },
+      {
+        "attrs": {
+          "level": 1
+        },
+        "content": [
+          {
+            "text": "C",
+            "type": "text"
+          }
+        ],
+        "type": "heading"
+      }
+    ],
+    "source": "a\r\nb\r\n\r\n# C\r\n"
+  },
+  {
+    "name": "line_endings",
+    "nodes": [
+      {
+        "content": [
+          {
+            "text": "paragraph",
+            "type": "text"
+          },
+          {
+            "type": "hardBreak"
+          },
+          {
+            "text": "second",
+            "type": "text"
+          }
+        ],
+        "type": "paragraph"
+      }
+    ],
+    "source": "  paragraph   \n  second  \n"
+  },
+  {
+    "name": "mentions",
+    "nodes": [
+      {
+        "content": [
+          {
+            "attrs": {
+              "id": "one",
+              "label": "hello"
+            },
+            "type": "pageMention"
+          },
+          {
+            "text": " and ",
+            "type": "text"
+          },
+          {
+            "attrs": {
+              "id": "two",
+              "label": "x"
+            },
+            "type": "pageMention"
+          }
+        ],
+        "type": "paragraph"
+      }
+    ],
+    "source": "@[hello](page:one) and @[x](page:two)"
+  },
+  {
+    "name": "empty_marks",
+    "nodes": [
+      {
+        "content": [
+          {
+            "text": "*",
+            "type": "text"
+          },
+          {
+            "marks": [
+              {
+                "type": "bold"
+              }
+            ],
+            "text": "* ~~ ` == ",
+            "type": "text"
+          },
+          {
+            "text": "x**",
+            "type": "text"
+          }
+        ],
+        "type": "paragraph"
+      }
+    ],
+    "source": "**** ~~ ` == **x**"
+  },
+  {
+    "name": "special",
+    "nodes": [
+      {
+        "attrs": {
+          "level": 3
+        },
+        "content": [
+          {
+            "text": "heading",
+            "type": "text"
+          }
+        ],
+        "type": "heading"
+      },
+      {
+        "content": [
+          {
+            "text": "text with $x$",
+            "type": "text"
+          }
+        ],
+        "type": "paragraph"
+      },
+      {
+        "content": [
+          {
+            "marks": [
+              {
+                "attrs": {
+                  "href": ""
+                },
+                "type": "link"
+              }
+            ],
+            "text": "empty",
+            "type": "text"
+          }
+        ],
+        "type": "paragraph"
+      }
+    ],
+    "source": "### heading\ntext with $x$\n\n[empty]()"
+  },
+  {
+    "name": "emoji",
+    "nodes": [
+      {
+        "content": [
+          {
+            "text": "😀😀",
+            "type": "text"
+          },
+          {
+            "marks": [
+              {
+                "type": "bold"
+              }
+            ],
+            "text": "bold",
+            "type": "text"
+          },
+          {
+            "text": "😀 ",
+            "type": "text"
+          },
+          {
+            "marks": [
+              {
+                "attrs": {
+                  "href": "url"
+                },
+                "type": "link"
+              }
+            ],
+            "text": "😀",
+            "type": "text"
+          }
+        ],
+        "type": "paragraph"
+      }
+    ],
+    "source": "😀😀**bold**😀 [😀](url)"
+  },
+  {
+    "name": "unsupported",
+    "nodes": [
+      {
+        "content": [
+          {
+            "text": "!",
+            "type": "text"
+          },
+          {
+            "marks": [
+              {
+                "attrs": {
+                  "href": "asset.png"
+                },
+                "type": "link"
+              }
+            ],
+            "text": "picture",
+            "type": "text"
+          }
+        ],
+        "type": "paragraph"
+      },
+      {
+        "content": [
+          {
+            "text": "<div>html</div>",
+            "type": "text"
+          }
+        ],
+        "type": "paragraph"
+      }
+    ],
+    "source": "![picture](asset.png)\n\n<div>html</div>"
+  }
+]
