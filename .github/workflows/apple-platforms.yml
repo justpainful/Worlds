@@ -147,10 +147,7 @@ jobs:
             if [[ "${{ matrix.device }}" == "iPad" ]]; then SIM_NAME="iPad (A16)"; fi
             SIM_UDID=$(xcrun simctl list devices available | grep "$SIM_NAME" | head -n 1 | grep -oE '[0-9A-Fa-f-]{36}' || true)
             if [[ -n "$SIM_UDID" ]]; then
-              xcrun simctl boot "$SIM_UDID" || true
-              xcrun simctl bootstatus "$SIM_UDID" -b || true
               xcrun simctl ui "$SIM_UDID" appearance dark || true
-              echo "Simulator $SIM_UDID set to dark appearance"
             fi
           fi
       - name: Run UI automation and retain results

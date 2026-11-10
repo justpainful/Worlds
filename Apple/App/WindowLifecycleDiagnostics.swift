@@ -41,14 +41,15 @@ import Darwin
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
-        if let window = NSApp.windows.first {
-            window.makeKeyAndOrderFront(nil)
-            window.orderFrontRegardless()
-        }
-        Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { timer in
-            if let window = NSApp.windows.first {
-                window.makeKeyAndOrderFront(nil)
-                window.orderFrontRegardless()
+        let args = ProcessInfo.processInfo.arguments
+        WorldsShowcaseWindowHelper.configureWindows(args: args)
+        var ticks = 0
+        Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { timer in
+            ticks += 1
+            Task { @MainActor in
+                WorldsShowcaseWindowHelper.configureWindows(args: args)
+            }
+            if ticks >= 10 {
                 timer.invalidate()
             }
         }

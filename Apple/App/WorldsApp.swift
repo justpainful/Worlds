@@ -62,46 +62,50 @@ enum WorldsHaptics {
 #endif
 
 #if DEBUG && os(macOS)
-@MainActor final class WorldsAppTestingDelegate: NSObject, NSApplicationDelegate {
-    private static func configureShowcaseWindow(_ window: NSWindow, args: [String]) {
+@MainActor enum WorldsShowcaseWindowHelper {
+    static func configureWindows(args: [String]) {
         let dark = args.contains("--ui-testing-dark") || args.contains("--ui-testing-complete-showcase")
         if dark {
             NSApp.appearance = NSAppearance(named: .darkAqua)
-            window.appearance = NSAppearance(named: .darkAqua)
-            window.backgroundColor = NSColor(red: 12 / 255, green: 12 / 255, blue: 14 / 255, alpha: 1)
         }
-        if args.contains("--ui-testing-complete-showcase") {
-            let screenFrame = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-            let targetW = min(screenFrame.width, 1440)
-            let targetH = min(screenFrame.height, 920)
-            let originX = screenFrame.origin.x + max(0, (screenFrame.width - targetW) / 2)
-            let originY = screenFrame.origin.y + max(0, (screenFrame.height - targetH) / 2)
-            window.setFrame(NSRect(x: originX, y: originY, width: targetW, height: targetH), display: true)
+        for window in NSApp.windows where window.canBecomeMain || window.canBecomeKey {
+            if dark {
+                window.appearance = NSAppearance(named: .darkAqua)
+                window.backgroundColor = NSColor(red: 12 / 255, green: 12 / 255, blue: 14 / 255, alpha: 1)
+            }
+            if args.contains("--ui-testing-complete-showcase") {
+                let screenFrame = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1920, height: 1050)
+                let targetW = min(screenFrame.width, 1440)
+                let targetH = min(screenFrame.height, 900)
+                let originX = screenFrame.origin.x + max(0, (screenFrame.width - targetW) / 2)
+                let originY = screenFrame.origin.y + max(0, (screenFrame.height - targetH) / 2)
+                window.setFrame(NSRect(x: originX, y: originY, width: targetW, height: targetH), display: true)
+            }
+            window.makeKeyAndOrderFront(nil)
+            window.orderFrontRegardless()
         }
     }
+}
 
+@MainActor final class WorldsAppTestingDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         let args = ProcessInfo.processInfo.arguments
         if args.contains("--ui-testing-dark") || args.contains("--ui-testing-complete-showcase") {
-            NSApp.appearance = NSAppearance(named: .darkAqua)
             UserDefaults.standard.set("dark", forKey: "worlds_theme_preference")
         }
-        if let window = NSApp.windows.first {
-            Self.configureShowcaseWindow(window, args: args)
-            window.makeKeyAndOrderFront(nil)
-            window.orderFrontRegardless()
+        if args.contains("--ui-testing-complete-showcase") {
+            UserDefaults.standard.set(true, forKey: "worlds_pack_study")
         }
+        WorldsShowcaseWindowHelper.configureWindows(args: args)
         var ticks = 0
-        Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { timer in
+        Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { timer in
             ticks += 1
-            if let window = NSApp.windows.first {
-                Self.configureShowcaseWindow(window, args: args)
-                window.makeKeyAndOrderFront(nil)
-                window.orderFrontRegardless()
+            Task { @MainActor in
+                WorldsShowcaseWindowHelper.configureWindows(args: args)
             }
-            if ticks >= 8 {
+            if ticks >= 10 {
                 timer.invalidate()
             }
         }
@@ -124,6 +128,9 @@ struct WorldsApp: App {
         if wantsDark {
             UserDefaults.standard.set("dark", forKey: "worlds_theme_preference")
         }
+        if args.contains("--ui-testing-complete-showcase") {
+            UserDefaults.standard.set(true, forKey: "worlds_pack_study")
+        }
         #if os(macOS)
         if wantsDark {
             NSApp.appearance = NSAppearance(named: .darkAqua)
@@ -138,9 +145,17 @@ struct WorldsApp: App {
 
     var body: some Scene {
         #if os(macOS) && DEBUG
-        WindowGroup { rootView }
-            .defaultSize(width: ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") ? 1320 : (ProcessInfo.processInfo.arguments.contains("--ui-testing-large-window") ? 1100 : 800),
-                         height: ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") ? 860 : (ProcessInfo.processInfo.arguments.contains("--ui-testing-large-window") ? 780 : 600))
+        WindowGroup {
+            rootView
+                .frame(
+                    minWidth: ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") ? 1380 : nil,
+                    idealWidth: ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") ? 1440 : nil,
+                    minHeight: ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") ? 860 : nil,
+                    idealHeight: ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") ? 900 : nil
+                )
+        }
+            .defaultSize(width: ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") ? 1440 : (ProcessInfo.processInfo.arguments.contains("--ui-testing-large-window") ? 1100 : 800),
+                         height: ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") ? 900 : (ProcessInfo.processInfo.arguments.contains("--ui-testing-large-window") ? 780 : 600))
             .commands { appCommands }
         #elseif os(macOS)
         WindowGroup { rootView }
@@ -262,26 +277,12 @@ private struct UITestingAppearance: ViewModifier {
             .onAppear {
                 NSApp.setActivationPolicy(.regular)
                 NSApp.activate(ignoringOtherApps: true)
-                if activeScheme == .dark {
-                    NSApp.appearance = NSAppearance(named: .darkAqua)
-                }
+                WorldsShowcaseWindowHelper.configureWindows(args: args)
                 DispatchQueue.main.async {
-                    if let window = NSApp.windows.first {
-                        if activeScheme == .dark {
-                            window.appearance = NSAppearance(named: .darkAqua)
-                            window.backgroundColor = NSColor(red: 12 / 255, green: 12 / 255, blue: 14 / 255, alpha: 1)
-                        }
-                        if args.contains("--ui-testing-complete-showcase") {
-                            let screenFrame = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-                            let targetW = min(screenFrame.width, 1440)
-                            let targetH = min(screenFrame.height, 920)
-                            let originX = screenFrame.origin.x + max(0, (screenFrame.width - targetW) / 2)
-                            let originY = screenFrame.origin.y + max(0, (screenFrame.height - targetH) / 2)
-                            window.setFrame(NSRect(x: originX, y: originY, width: targetW, height: targetH), display: true)
-                        }
-                        window.makeKeyAndOrderFront(nil)
-                        window.orderFrontRegardless()
-                    }
+                    WorldsShowcaseWindowHelper.configureWindows(args: args)
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    WorldsShowcaseWindowHelper.configureWindows(args: args)
                 }
             }
             #elseif canImport(UIKit)
