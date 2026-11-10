@@ -39,6 +39,19 @@ import Darwin
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+        if let window = NSApp.windows.first {
+            window.makeKeyAndOrderFront(nil)
+            window.orderFrontRegardless()
+        }
+        Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { timer in
+            if let window = NSApp.windows.first {
+                window.makeKeyAndOrderFront(nil)
+                window.orderFrontRegardless()
+                timer.invalidate()
+            }
+        }
         guard output != nil else { return }
         record("didFinishLaunching")
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in

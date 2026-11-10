@@ -56,10 +56,32 @@ enum WorldsHaptics {
 }
 #endif
 
+#if DEBUG && os(macOS)
+@MainActor final class WorldsAppTestingDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+        if let window = NSApp.windows.first {
+            window.makeKeyAndOrderFront(nil)
+            window.orderFrontRegardless()
+        }
+        Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { timer in
+            if let window = NSApp.windows.first {
+                window.makeKeyAndOrderFront(nil)
+                window.orderFrontRegardless()
+                timer.invalidate()
+            }
+        }
+    }
+}
+#endif
+
 @main
 struct WorldsApp: App {
     #if DEBUG && os(macOS) && WORLDS_UI_WINDOW_DIAGNOSTICS
     @NSApplicationDelegateAdaptor(WindowLifecycleDiagnostics.self) private var windowLifecycleDiagnostics
+    #elseif DEBUG && os(macOS)
+    @NSApplicationDelegateAdaptor(WorldsAppTestingDelegate.self) private var appTestingDelegate
     #endif
     var body: some Scene {
         #if os(macOS) && DEBUG
@@ -137,6 +159,18 @@ private struct UITestingAppearance: ViewModifier {
             .environment(\.layoutDirection, args.contains("--ui-testing-rtl") ? .rightToLeft : direction)
             .environment(\.dynamicTypeSize, args.contains("--ui-testing-large-text") ? .accessibility3 : textSize)
             .preferredColorScheme(args.contains("--ui-testing-dark") ? .dark : (args.contains("--ui-testing-light") ? .light : nil))
+            #if os(macOS)
+            .onAppear {
+                NSApp.setActivationPolicy(.regular)
+                NSApp.activate(ignoringOtherApps: true)
+                DispatchQueue.main.async {
+                    if let window = NSApp.windows.first {
+                        window.makeKeyAndOrderFront(nil)
+                        window.orderFrontRegardless()
+                    }
+                }
+            }
+            #endif
     }
 }
 #endif
