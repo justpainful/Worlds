@@ -819,6 +819,18 @@ private struct WorldsLibraryView: View {
             WorldsHaptics.light()
         }
         .task {
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-complete-showcase") {
+                UserDefaults.standard.set(true, forKey: "worlds_pack_study")
+                seedCompleteShowcasePages()
+                loaded = true
+                loading = false
+                errorMessage = nil
+                selectedID = nil
+                selectedSidebarSection = .home
+                return
+            }
+            #endif
             #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-local-copy-fixture") {
                 do {

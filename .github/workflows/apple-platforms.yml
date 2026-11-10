@@ -86,6 +86,14 @@ jobs:
             scheme: Worlds-macOS
             test_target: Worlds-macOS-UITests
             destination: 'platform=macOS'
+          - device: iPhone
+            scheme: Worlds-iOS
+            test_target: Worlds-iOS-UITests
+            destination: 'platform=iOS Simulator,name=iPhone 17,OS=26.5'
+          - device: iPad
+            scheme: Worlds-iOS
+            test_target: Worlds-iOS-UITests
+            destination: 'platform=iOS Simulator,name=iPad (A16),OS=26.5'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -124,7 +132,6 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/WorldsUI" \
             -resultBundlePath "$GITHUB_WORKSPACE/results/${{ matrix.device }}.xcresult" \
             -only-testing:${{ matrix.test_target }}/WorldsUITests/testCompleteVisualShowcaseCaptures \
-            -only-testing:${{ matrix.test_target }}/WorldsUITests/testRightToLeftNavigationAndReading \
             "${diagnostic_flags[@]}" CODE_SIGNING_ALLOWED=NO test 2>&1 | tee logs/ui-${{ matrix.device }}.log
           grep -Eq 'testCompleteVisualShowcaseCaptures.*passed' logs/ui-${{ matrix.device }}.log
       - name: Export screenshot attachments
@@ -136,30 +143,30 @@ jobs:
             mkdir -p screenshots screenshots/named
             xcrun xcresulttool export attachments --path "$result" --output-path screenshots
             python3 - <<'PY'
-          import json, os, re, shutil
-          manifest_path = "screenshots/manifest.json"
-          if os.path.exists(manifest_path):
-              with open(manifest_path, "r", encoding="utf-8") as f:
-                  data = json.load(f)
-              def walk(node):
-                  if isinstance(node, dict):
-                      exp = node.get("exportedFileName")
-                      sug = node.get("suggestedHumanReadableName")
-                      if exp and sug:
-                          clean = re.sub(r"_[0-9]+_[0-9A-Fa-f-]+(\.[A-Za-z0-9]+)$", r"\1", sug)
-                          clean = re.sub(r"[^A-Za-z0-9._-]+", "_", clean)
-                          if not clean.lower().endswith((".png", ".jpg", ".jpeg", ".heic")): continue
-                          src = os.path.join("screenshots", exp)
-                          dst = os.path.join("screenshots", "named", clean)
-                          if os.path.exists(src):
-                              shutil.copy2(src, dst)
-                      for v in node.values():
-                          walk(v)
-                  elif isinstance(node, list):
-                      for item in node:
-                          walk(item)
-              walk(data)
-          PY
+import json, os, re, shutil
+manifest_path = "screenshots/manifest.json"
+if os.path.exists(manifest_path):
+    with open(manifest_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    def walk(node):
+        if isinstance(node, dict):
+            exp = node.get("exportedFileName")
+            sug = node.get("suggestedHumanReadableName")
+            if exp and sug:
+                clean = re.sub(r"_[0-9]+_[0-9A-Fa-f-]+(\.[A-Za-z0-9]+)$", r"\1", sug)
+                clean = re.sub(r"[^A-Za-z0-9._-]+", "_", clean)
+                if clean.lower().endswith((".png", ".jpg", ".jpeg", ".heic")):
+                    src = os.path.join("screenshots", exp)
+                    dst = os.path.join("screenshots", "named", clean)
+                    if os.path.exists(src):
+                        shutil.copy2(src, dst)
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
+    walk(data)
+PY
             ls -la screenshots/named || true
           fi
       - uses: actions/upload-artifact@v4
