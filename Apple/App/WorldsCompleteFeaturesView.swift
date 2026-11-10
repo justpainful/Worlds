@@ -833,7 +833,7 @@ struct VisualMindMapCanvasPreview: View {
                     }
                     .frame(width: w, height: h)
                 }
-                .frame(minWidth: 640, idealWidth: 780, height: 270)
+                .frame(minWidth: 640, idealWidth: 780, minHeight: 270, idealHeight: 270)
             }
         }
         .padding(16)
