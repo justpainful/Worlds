@@ -81,6 +81,46 @@ struct TemplatesView: View {
             initialMarkdown: "# شجرة القرارات والسيناريوهات\n\n```mermaid\nflowchart LR\n  D{\"القرار الرئيسي\"} -->|الخيار أ| A1[\"عائد مرتفع\"]\n  D -->|الخيار ب| B1[\"مخاطرة أقل\"]\n```\n\n| الخيار | المزايا | المخاطر | التقييم |\n|---|---|---|---|\n| الخيار أ | | | |"
         ),
         WorkspaceTemplate(
+            id: "argument-map",
+            title: "Argument & Logic Map — خريطة الحجج والمنطق",
+            category: "Mind Maps & Concepts",
+            icon: "scale.3d",
+            color: .teal,
+            description: "Structure claims, supporting premises, counterarguments, rebuttals, and evidence.",
+            suggestedKind: "page",
+            initialMarkdown: "# خريطة الحجج والمنطق\n\n- **الادعاء الرئيسي (Claim)**:\n- **الحجج الداعمة (Premises)**:\n- **الاعتراضات والردود (Rebuttals)**:"
+        ),
+        WorkspaceTemplate(
+            id: "systems-causal-loop",
+            title: "Systems Thinking & Causal Loop — التفكير النظمي",
+            category: "Mind Maps & Concepts",
+            icon: "arrow.triangle.2.circlepath",
+            color: .orange,
+            description: "Model reinforcing feedback loops, balancing loops, bottlenecks, and leverage points.",
+            suggestedKind: "page",
+            initialMarkdown: "# التفكير النظمي وحلقات التغذية الراجعة\n\n- **حلقة التعزيز (Reinforcing Loop R1)**:\n- **حلقة التوازن (Balancing Loop B1)**:"
+        ),
+        WorkspaceTemplate(
+            id: "compare-contrast",
+            title: "Compare & Contrast Matrix — مصفوفة المقارنة والمفاضلة",
+            category: "Mind Maps & Concepts",
+            icon: "rectangle.split.2x2",
+            color: .pink,
+            description: "Evaluate concepts, architectures, or vendors across weighted criteria.",
+            suggestedKind: "page",
+            initialMarkdown: "# مصفوفة المقارنة والمفاضلة\n\n| المعيار | الوزن | الخيار 1 | الخيار 2 |\n|---|---|---|---|\n| الأداء والتكلفة | 40% | | |"
+        ),
+        WorkspaceTemplate(
+            id: "knowledge-mastery-tree",
+            title: "Knowledge Mastery Tree — شجرة إتقان المعرفة والمهارات",
+            category: "Mind Maps & Concepts",
+            icon: "list.bullet.indent",
+            color: .yellow,
+            description: "Map prerequisites, core competencies, advanced topics, and mastery milestones.",
+            suggestedKind: "page",
+            initialMarkdown: "# شجرة إتقان المعرفة والمهارات\n\n- [ ] المستوى التأسيسي (Foundations)\n- [ ] المستوى المتوسط (Core Mastery)\n- [ ] المستوى المتقدم (Advanced Synthesis)"
+        ),
+        WorkspaceTemplate(
             id: "excel-spreadsheet-budget",
             title: "Excel Budget & KPI Workbook — جدول مالي ومؤشرات",
             category: "Spreadsheet",
@@ -155,16 +195,22 @@ struct TemplatesView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Templates")
+                    Text("Workspace Templates")
                         .font(.system(.largeTitle, design: .default, weight: .bold))
                         .foregroundStyle(WorldsPalette.ink(for: colorScheme))
                         .accessibilityAddTraits(.isHeader)
 
-                    Text("Start quickly with Mind Maps, Concept Networks, Spreadsheets, Technical Specs, and Visual Canvases.")
+                    Text("Start quickly with Visual Mind Maps, Concept Networks, Excel Spreadsheets, Technical Specs, and Study Canvases.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
                 .padding(.vertical, 4)
+
+                VisualMindMapCanvasPreview { preset in
+                    if let match = templates.first(where: { $0.id.contains(preset) }) ?? templates.first {
+                        onSelectTemplate(match)
+                    }
+                }
 
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {

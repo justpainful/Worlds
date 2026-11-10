@@ -70,7 +70,7 @@ struct ResourceContentView: View {
                 case "presentation": presentation
                 case "file": file
                 case "stream": stream
-                case "spreadsheet": NativeSpreadsheetEditorView(metadataJSON: page.metadataJSON)
+                case "spreadsheet": WorldsSpreadsheetStudioView(initialTitle: page.title.isEmpty ? "Spreadsheet Workbook" : page.title, metadataJSON: page.metadataJSON)
                 case "task", "event", "goal", "inbox", "subject", "lesson", "assignment", "exam", "requirement":
                     NativePlanningAndStudyItemView(page: page)
                 default: Text("This resource type is not available in the reader.")

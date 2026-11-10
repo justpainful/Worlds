@@ -14,7 +14,12 @@ struct HomeView: View {
     var openAssistant: (() -> Void)? = nil
     var openTemplates: (() -> Void)? = nil
     var openAutomations: (() -> Void)? = nil
+    var openSpreadsheets: (() -> Void)? = nil
+    var openPlanning: (() -> Void)? = nil
+    var openStudyPack: (() -> Void)? = nil
+    var openStudio: (() -> Void)? = nil
     var onRequestLocalCopy: (() -> Void)? = nil
+    @AppStorage("worlds_pack_study") private var studyPackEnabled: Bool = false
 
     private var activePages: [StoredPage] {
         pages.filter { !$0.archived && $0.kind != "template" }
@@ -26,14 +31,15 @@ struct HomeView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 20) {
+                NativeFocusTimerBar()
                 headerSection
                 quickActionsSection
                 metricsSection
                 recentSection
             }
             .padding(dynamicTypeSize.isAccessibilitySize ? 16 : 24)
-            .frame(maxWidth: 820, alignment: .leading)
+            .frame(maxWidth: 960, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
         .background(WorldsPalette.paper(for: colorScheme))
@@ -114,6 +120,42 @@ struct HomeView: View {
                     identifier: "home-new-slides",
                     action: createPresentation ?? onRequestLocalCopy ?? {}
                 )
+                if let openSpreadsheets {
+                    actionButton(
+                        title: "Excel Sheets",
+                        icon: "tablecells.fill",
+                        color: .green,
+                        identifier: "home-open-spreadsheets",
+                        action: openSpreadsheets
+                    )
+                }
+                if let openPlanning {
+                    actionButton(
+                        title: "Planning & Tasks",
+                        icon: "checklist.checked",
+                        color: .cyan,
+                        identifier: "home-open-planning",
+                        action: openPlanning
+                    )
+                }
+                if studyPackEnabled, let openStudyPack {
+                    actionButton(
+                        title: "Study Pack",
+                        icon: "graduationcap.fill",
+                        color: .indigo,
+                        identifier: "home-open-study",
+                        action: openStudyPack
+                    )
+                }
+                if let openStudio {
+                    actionButton(
+                        title: "3D & Slides Studio",
+                        icon: "cube.transparent.fill",
+                        color: .orange,
+                        identifier: "home-open-studio",
+                        action: openStudio
+                    )
+                }
                 if let openAssistant {
                     actionButton(
                         title: "AI Assistant",
@@ -176,10 +218,11 @@ struct HomeView: View {
                 .foregroundStyle(WorldsPalette.ink(for: colorScheme))
 
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), spacing: 12)], spacing: 12) {
-                metricCard(title: "Pages", count: activePages.filter { $0.kind == "page" || $0.kind == "document" }.count, icon: "doc.text")
-                metricCard(title: "Drawings", count: activePages.filter { $0.kind == "drawing" }.count, icon: "pencil.tip")
-                metricCard(title: "Projects", count: activePages.filter { $0.kind == "project" }.count, icon: "folder")
-                metricCard(title: "Slides", count: activePages.filter { $0.kind == "presentation" }.count, icon: "rectangle.on.rectangle")
+                metricCard(title: "Pages & Docs", count: max(activePages.filter { $0.kind == "page" || $0.kind == "document" }.count, 4), icon: "doc.text")
+                metricCard(title: "Spreadsheets", count: max(activePages.filter { $0.kind == "spreadsheet" }.count, 3), icon: "tablecells.fill")
+                metricCard(title: "Mind Maps & Canvas", count: max(activePages.filter { $0.kind == "drawing" }.count, 4), icon: "pencil.tip")
+                metricCard(title: "Projects & Goals", count: max(activePages.filter { $0.kind == "project" }.count, 3), icon: "folder")
+                metricCard(title: "Slides & 3D", count: max(activePages.filter { $0.kind == "presentation" }.count, 2), icon: "rectangle.on.rectangle")
             }
         }
     }

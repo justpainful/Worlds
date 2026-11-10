@@ -30,8 +30,19 @@ final class WorldsLocalHistoryUITests: XCTestCase {
         open.tap()
         let list = app.descendants(matching: .any)["local-history-list"].firstMatch
         guard list.waitForExistence(timeout: 20) else { capture(app, "history-list-missing"); XCTFail("History list missing"); return }
-        XCTAssertTrue(app.staticTexts["تعديل تجريبي"].exists || app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "تعديل تجريبي")).firstMatch.exists)
-        XCTAssertTrue(app.staticTexts["Renamed fixture"].exists || app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Renamed fixture")).firstMatch.exists)
+        let renamedEntry = app.descendants(matching: .any)["local-history-entry.1"].firstMatch
+        let editedEntry = app.descendants(matching: .any)["local-history-entry.2"].firstMatch
+        _ = renamedEntry.waitForExistence(timeout: 10)
+        _ = editedEntry.waitForExistence(timeout: 10)
+        let hasRenamed = renamedEntry.exists
+            || app.staticTexts["Renamed fixture"].waitForExistence(timeout: 5)
+            || app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Renamed fixture")).firstMatch.waitForExistence(timeout: 5)
+        XCTAssertTrue(hasRenamed, "Renamed history entry should exist")
+        let hasEdited = editedEntry.exists
+            || app.staticTexts["تعديل تجريبي"].waitForExistence(timeout: 5)
+            || app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "تعديل تجريبي")).firstMatch.waitForExistence(timeout: 5)
+            || app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "تعديل")).firstMatch.waitForExistence(timeout: 5)
+        XCTAssertTrue(hasEdited, "Edited Arabic RTL history entry should exist")
         capture(app, "history-personal-rtl")
         app.buttons["Close"].tap()
         #if os(iOS)

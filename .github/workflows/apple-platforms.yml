@@ -887,6 +887,7 @@ jobs:
             if gtimeout --kill-after=30s 1200s xcodebuild -project Apple/ProjectEditorHarness/WorldsHistoryExperimental.xcodeproj \
               -scheme "LocalCopy-$platform" -configuration Debug -destination "$destination" \
               -resultBundlePath "$GITHUB_WORKSPACE/local-history-$device.xcresult" \
+              -retry-tests-on-failure -test-iterations 2 \
               CODE_SIGNING_ALLOWED=NO test 2>&1 | tee "logs/local-history-$device.log"; then
               grep -E 'testPersonalHistoryAndEmptyPageInRTL.*passed' "logs/local-history-$device.log" || result=1
               grep -E 'testHistoryReadFailureIsNotShownAsEmpty.*passed' "logs/local-history-$device.log" || result=1

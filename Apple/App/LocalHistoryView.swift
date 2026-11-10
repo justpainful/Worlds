@@ -41,8 +41,9 @@ struct LocalHistoryView: View {
                                             Text("Time unavailable").font(.caption).foregroundStyle(.secondary)
                                         }
                                     }
-                                    .accessibilityElement(children: .combine)
+                                    .accessibilityElement(children: .contain)
                                     .accessibilityIdentifier("local-history-entry.\(entry.id)")
+                                    .accessibilityLabel("\(entry.summary), \(entry.actor)")
                                 }
                             } header: {
                                 VStack(alignment: .leading) {
