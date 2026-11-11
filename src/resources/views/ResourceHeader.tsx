@@ -81,7 +81,7 @@ export function ResourceHeader({ meta, actions, subtitle }: { meta: PageMeta; ac
         />
         <div className="res-sub">
           <span className="res-kind">{KIND_INFO[kind].label}</span>
-          <span>Edited {relTime(meta.updatedAt)}</span>
+          <span>{`Edited ${relTime(meta.updatedAt)}`}</span>
           {subtitle}
         </div>
       </div>

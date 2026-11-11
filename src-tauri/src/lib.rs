@@ -57,6 +57,32 @@ impl AppState {
     }
 }
 
+/// The tray menu lives outside the web page, so it follows the interface
+/// language here: Arabic when chosen, or automatic on an Arabic Windows.
+fn tray_in_arabic() -> bool {
+    let language = db::open(&db::db_path())
+        .ok()
+        .and_then(|c| c.query_row("SELECT language FROM profile LIMIT 1", [], |r| r.get::<_, String>(0)).ok())
+        .unwrap_or_else(|| "auto".into());
+    match language.as_str() {
+        "ar" => true,
+        "auto" => system_is_arabic(),
+        _ => false,
+    }
+}
+
+#[cfg(windows)]
+fn system_is_arabic() -> bool {
+    // The primary language id of LANG_ARABIC is 0x01.
+    let id = unsafe { windows_sys::Win32::Globalization::GetUserDefaultUILanguage() };
+    id & 0x3ff == 0x01
+}
+
+#[cfg(not(windows))]
+fn system_is_arabic() -> bool {
+    false
+}
+
 pub fn show_main(app: &tauri::AppHandle) {
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.unminimize();
@@ -96,8 +122,9 @@ pub fn run() {
 
             // Tray: the process stays alive (and keeps running automations)
             // when the window is closed.
-            let open = MenuItem::with_id(app, "open", "Open Worlds", true, None::<&str>)?;
-            let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+            let arabic = tray_in_arabic();
+            let open = MenuItem::with_id(app, "open", if arabic { "فتح Worlds" } else { "Open Worlds" }, true, None::<&str>)?;
+            let quit = MenuItem::with_id(app, "quit", if arabic { "إنهاء" } else { "Quit" }, true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&open, &quit])?;
             TrayIconBuilder::with_id("main")
                 .icon(app.default_window_icon().cloned().unwrap())

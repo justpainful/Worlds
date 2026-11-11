@@ -211,7 +211,7 @@ function Dynamic({ block, live }: { block: Extract<ProfileBlock, { type: "dynami
             <PageIcon icon={latest.icon} size={26} />
             <div className="pb-item-text">
               <span className="pb-item-title bidi">{pageTitle(latest)}</span>
-              <span className="pb-item-sub">Edited {relTime(latest.updatedAt)}</span>
+              <span className="pb-item-sub">{`Edited ${relTime(latest.updatedAt)}`}</span>
             </div>
           </div>
         </div>

@@ -38,7 +38,12 @@ export function PresentationView({ id }: { id: string }) {
   const meta = useStore((s) => s.pages[id]);
   const { page, error } = useResource(id);
   if (error) return <EmptyState icon="warning" title="This presentation could not be opened" text={error} />;
-  if (!page || !meta) return <div className="page-loading"><Spinner /></div>;
+  if (!page || !meta)
+    return (
+      <div className="page-loading">
+        <Spinner />
+      </div>
+    );
   return <Deck key={id} page={page} />;
 }
 
@@ -127,10 +132,15 @@ function Deck({ page }: { page: Page }) {
     timer.current = window.setTimeout(save, 500);
   };
   const slide = slides[Math.min(current, slides.length - 1)];
-  const setSlide = (s: Slide, record = true) => commit(slides.map((x, i) => (i === current ? s : x)), record);
+  const setSlide = (s: Slide, record = true) =>
+    commit(
+      slides.map((x, i) => (i === current ? s : x)),
+      record,
+    );
   const sel = slide.elements.filter((e) => selected.includes(e.id));
   const one = sel.length === 1 ? sel[0] : undefined;
-  const patchSel = (patch: (e: SlideElement) => SlideElement) => setSlide({ ...slide, elements: slide.elements.map((e) => (selected.includes(e.id) ? patch(e) : e)) });
+  const patchSel = (patch: (e: SlideElement) => SlideElement) =>
+    setSlide({ ...slide, elements: slide.elements.map((e) => (selected.includes(e.id) ? patch(e) : e)) });
 
   const doUndo = () => {
     const prev = undo.current.pop();
@@ -180,7 +190,16 @@ function Deck({ page }: { page: Page }) {
     setSelected([el.id]);
   };
   const addText = () => {
-    const el: SlideElement = { id: newId(), type: "text", x: 340, y: 300, w: 600, h: 110, text: "", style: { fontSize: 36, fontWeight: 500, color: THEME.ink, align: "left" } };
+    const el: SlideElement = {
+      id: newId(),
+      type: "text",
+      x: 340,
+      y: 300,
+      w: 600,
+      h: 110,
+      text: "",
+      style: { fontSize: 36, fontWeight: 500, color: THEME.ink, align: "left" },
+    };
     addElement(el);
     setEditing(el.id);
   };
@@ -194,7 +213,12 @@ function Deck({ page }: { page: Page }) {
     const picked = await openDialog({
       multiple: false,
       title: kind === "image" ? "Insert a picture" : "Insert a video",
-      filters: [{ name: kind === "image" ? "Pictures" : "Videos", extensions: kind === "image" ? ["png", "jpg", "jpeg", "gif", "webp", "avif", "svg"] : ["mp4", "webm", "mov", "m4v"] }],
+      filters: [
+        {
+          name: kind === "image" ? "Pictures" : "Videos",
+          extensions: kind === "image" ? ["png", "jpg", "jpeg", "gif", "webp", "avif", "svg"] : ["mp4", "webm", "mov", "m4v"],
+        },
+      ],
     });
     if (!picked || Array.isArray(picked)) return;
     try {
@@ -206,13 +230,26 @@ function Deck({ page }: { page: Page }) {
         h = 560;
         w = h * ratio;
       }
-      addElement({ id: newId(), type: kind, attachmentId: a.id, x: Math.round((STAGE_W - w) / 2), y: Math.round((STAGE_H - h) / 2), w: Math.round(w), h: Math.round(h), fit: kind === "image" ? "cover" : "contain" });
+      addElement({
+        id: newId(),
+        type: kind,
+        attachmentId: a.id,
+        x: Math.round((STAGE_W - w) / 2),
+        y: Math.round((STAGE_H - h) / 2),
+        w: Math.round(w),
+        h: Math.round(h),
+        fit: kind === "image" ? "cover" : "contain",
+      });
     } catch (e) {
       toast({ message: errorMessage(e), tone: "error" });
     }
   };
   const setBackgroundPicture = async () => {
-    const picked = await openDialog({ multiple: false, title: "Background picture", filters: [{ name: "Pictures", extensions: ["png", "jpg", "jpeg", "webp", "avif"] }] });
+    const picked = await openDialog({
+      multiple: false,
+      title: "Background picture",
+      filters: [{ name: "Pictures", extensions: ["png", "jpg", "jpeg", "webp", "avif"] }],
+    });
     if (!picked || Array.isArray(picked)) return;
     try {
       const a = await api.importFile(id, picked);
@@ -311,7 +348,14 @@ function Deck({ page }: { page: Page }) {
 
   // ---- toolbar ------------------------------------------------------------------------------
   const tb = (icon: IconName, label: string, run: () => void, opts: { on?: boolean; disabled?: boolean } = {}) => (
-    <button className={`dt-btn ${opts.on ? "is-on" : ""}`} aria-label={label} data-tip={label} disabled={opts.disabled} onMouseDown={(e) => e.preventDefault()} onClick={run}>
+    <button
+      className={`dt-btn ${opts.on ? "is-on" : ""}`}
+      aria-label={label}
+      data-tip={label}
+      disabled={opts.disabled}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={run}
+    >
       <Icon name={icon} size={16} />
     </button>
   );
@@ -326,18 +370,47 @@ function Deck({ page }: { page: Page }) {
       <ResourceHeader
         meta={meta}
         subtitle={<span>{saving ? "Saving" : `${slides.length} slide${slides.length === 1 ? "" : "s"}`}</span>}
-        actions={<Button variant="tinted" icon="play" onClick={() => setPresenting(true)}>Present</Button>}
+        actions={
+          <Button variant="tinted" icon="play" onClick={() => setPresenting(true)}>
+            Present
+          </Button>
+        }
       />
       <div className="doc-toolbar-wrap dk-toolbar-wrap">
         <Glass material="bar" layer={LAYER.floating} radius="var(--r-capsule)" className="doc-toolbar" contentClassName="doc-toolbar-row">
           {tb("text", "Text box", addText)}
           {tb("image", "Picture", () => addMedia("image"))}
           {tb("video", "Video", () => addMedia("video"))}
-          <button className="dt-btn" aria-label="Shape" data-tip="Shape" onMouseDown={(e) => e.preventDefault()} onClick={(e) => menuAt(e.currentTarget, [{ label: "Rectangle", onSelect: () => addShape("rect") }, { label: "Ellipse", onSelect: () => addShape("ellipse") }, { label: "Line", onSelect: () => addShape("line") }])}>
+          <button
+            className="dt-btn"
+            aria-label="Shape"
+            data-tip="Shape"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) =>
+              menuAt(e.currentTarget, [
+                { label: "Rectangle", onSelect: () => addShape("rect") },
+                { label: "Ellipse", onSelect: () => addShape("ellipse") },
+                { label: "Line", onSelect: () => addShape("line") },
+              ])
+            }
+          >
             <Icon name="square" size={16} />
           </button>
           <span className="dt-sep" />
-          <button className="dt-select" onMouseDown={(e) => e.preventDefault()} onClick={(e) => menuAt(e.currentTarget, LAYOUTS.map((l) => ({ label: l.label, checked: l.id === slide.layout, onSelect: () => setSlide(applyLayout(slide, l.id)) })))}>
+          <button
+            className="dt-select"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) =>
+              menuAt(
+                e.currentTarget,
+                LAYOUTS.map((l) => ({
+                  label: l.label,
+                  checked: l.id === slide.layout,
+                  onSelect: () => setSlide(applyLayout(slide, l.id)),
+                })),
+              )
+            }
+          >
             {LAYOUTS.find((l) => l.id === slide.layout)?.label ?? "Layout"} <Icon name="chevronDown" size={12} />
           </button>
           <button
@@ -347,10 +420,18 @@ function Deck({ page }: { page: Page }) {
             onMouseDown={(e) => e.preventDefault()}
             onClick={(e) =>
               menuAt(e.currentTarget, [
-                ...BACKGROUNDS.map((c) => ({ label: c, checked: slide.background.color === c && !slide.background.attachmentId, onSelect: () => setSlide({ ...slide, background: { color: c } }) })),
+                ...BACKGROUNDS.map((c) => ({
+                  label: c,
+                  checked: slide.background.color === c && !slide.background.attachmentId,
+                  onSelect: () => setSlide({ ...slide, background: { color: c } }),
+                })),
                 { kind: "separator" as const },
                 { label: "Picture…", icon: "image" as IconName, onSelect: setBackgroundPicture },
-                { label: "Remove Picture", disabled: !slide.background.attachmentId, onSelect: () => setSlide({ ...slide, background: { color: slide.background.color } }) },
+                {
+                  label: "Remove Picture",
+                  disabled: !slide.background.attachmentId,
+                  onSelect: () => setSlide({ ...slide, background: { color: slide.background.color } }),
+                },
               ])
             }
           >
@@ -359,23 +440,115 @@ function Deck({ page }: { page: Page }) {
           {textEls.length > 0 && (
             <>
               <span className="dt-sep" />
-              <button className="dt-btn dt-text" aria-label="Smaller" onMouseDown={(e) => e.preventDefault()} onClick={() => patchSel((x) => (x.type === "text" ? { ...x, style: { ...x.style!, fontSize: [...SIZES].reverse().find((s) => s < fontSize) ?? fontSize } } : x))}>−</button>
-              <button className="dt-btn dt-text dt-size-value" onMouseDown={(e) => e.preventDefault()} onClick={(e) => menuAt(e.currentTarget, SIZES.map((s) => ({ label: `${s}`, checked: s === fontSize, onSelect: () => patchSel((x) => (x.type === "text" ? { ...x, style: { ...x.style!, fontSize: s } } : x)) })))}>{fontSize}</button>
-              <button className="dt-btn dt-text" aria-label="Larger" onMouseDown={(e) => e.preventDefault()} onClick={() => patchSel((x) => (x.type === "text" ? { ...x, style: { ...x.style!, fontSize: SIZES.find((s) => s > fontSize) ?? fontSize } } : x))}>+</button>
-              <button className={`dt-btn dt-text is-bold ${(textEls[0].style?.fontWeight ?? 500) >= 700 ? "is-on" : ""}`} aria-label="Bold" onMouseDown={(e) => e.preventDefault()} onClick={() => patchSel((x) => (x.type === "text" ? { ...x, style: { ...x.style!, fontWeight: (x.style?.fontWeight ?? 500) >= 700 ? 500 : 700 } } : x))}>B</button>
-              <button className={`dt-btn dt-text is-italic ${textEls[0].style?.italic ? "is-on" : ""}`} aria-label="Italic" onMouseDown={(e) => e.preventDefault()} onClick={() => patchSel((x) => (x.type === "text" ? { ...x, style: { ...x.style!, italic: !x.style?.italic } } : x))}>I</button>
-              <button className="dt-btn" aria-label="Text colour" data-tip="Text colour" onMouseDown={(e) => e.preventDefault()} onClick={(e) => colorMenu(e.currentTarget, (c) => patchSel((x) => (x.type === "text" ? { ...x, style: { ...x.style!, color: c } } : x)))}>
-                <span className="dt-color" style={{ borderColor: textEls[0].style?.color }}>A</span>
+              <button
+                className="dt-btn dt-text"
+                aria-label="Smaller"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() =>
+                  patchSel((x) =>
+                    x.type === "text"
+                      ? { ...x, style: { ...x.style!, fontSize: [...SIZES].reverse().find((s) => s < fontSize) ?? fontSize } }
+                      : x,
+                  )
+                }
+              >
+                −
               </button>
-              {tb("alignLeft", "Align left", () => patchSel((x) => (x.type === "text" ? { ...x, style: { ...x.style!, align: "left" } } : x)), { on: textEls[0].style?.align === "left" })}
-              {tb("alignCenter", "Center", () => patchSel((x) => (x.type === "text" ? { ...x, style: { ...x.style!, align: "center" } } : x)), { on: textEls[0].style?.align === "center" })}
-              {tb("alignRight", "Align right", () => patchSel((x) => (x.type === "text" ? { ...x, style: { ...x.style!, align: "right" } } : x)), { on: textEls[0].style?.align === "right" })}
+              <button
+                className="dt-btn dt-text dt-size-value"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={(e) =>
+                  menuAt(
+                    e.currentTarget,
+                    SIZES.map((s) => ({
+                      label: `${s}`,
+                      checked: s === fontSize,
+                      onSelect: () => patchSel((x) => (x.type === "text" ? { ...x, style: { ...x.style!, fontSize: s } } : x)),
+                    })),
+                  )
+                }
+              >
+                {fontSize}
+              </button>
+              <button
+                className="dt-btn dt-text"
+                aria-label="Larger"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() =>
+                  patchSel((x) =>
+                    x.type === "text" ? { ...x, style: { ...x.style!, fontSize: SIZES.find((s) => s > fontSize) ?? fontSize } } : x,
+                  )
+                }
+              >
+                +
+              </button>
+              <button
+                className={`dt-btn dt-text is-bold ${(textEls[0].style?.fontWeight ?? 500) >= 700 ? "is-on" : ""}`}
+                aria-label="Bold"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() =>
+                  patchSel((x) =>
+                    x.type === "text" ? { ...x, style: { ...x.style!, fontWeight: (x.style?.fontWeight ?? 500) >= 700 ? 500 : 700 } } : x,
+                  )
+                }
+              >
+                B
+              </button>
+              <button
+                className={`dt-btn dt-text is-italic ${textEls[0].style?.italic ? "is-on" : ""}`}
+                aria-label="Italic"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => patchSel((x) => (x.type === "text" ? { ...x, style: { ...x.style!, italic: !x.style?.italic } } : x))}
+              >
+                I
+              </button>
+              <button
+                className="dt-btn"
+                aria-label="Text colour"
+                data-tip="Text colour"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={(e) =>
+                  colorMenu(e.currentTarget, (c) => patchSel((x) => (x.type === "text" ? { ...x, style: { ...x.style!, color: c } } : x)))
+                }
+              >
+                <span className="dt-color" style={{ borderColor: textEls[0].style?.color }}>
+                  A
+                </span>
+              </button>
+              {tb(
+                "alignLeft",
+                "Align left",
+                () => patchSel((x) => (x.type === "text" ? { ...x, style: { ...x.style!, align: "left" } } : x)),
+                { on: textEls[0].style?.align === "left" },
+              )}
+              {tb(
+                "alignCenter",
+                "Center",
+                () => patchSel((x) => (x.type === "text" ? { ...x, style: { ...x.style!, align: "center" } } : x)),
+                { on: textEls[0].style?.align === "center" },
+              )}
+              {tb(
+                "alignRight",
+                "Align right",
+                () => patchSel((x) => (x.type === "text" ? { ...x, style: { ...x.style!, align: "right" } } : x)),
+                { on: textEls[0].style?.align === "right" },
+              )}
             </>
           )}
           {shapeEls.length > 0 && (
             <>
               <span className="dt-sep" />
-              <button className="dt-btn" aria-label="Fill" data-tip="Fill" onMouseDown={(e) => e.preventDefault()} onClick={(e) => colorMenu(e.currentTarget, (c) => patchSel((x) => (x.type === "shape" ? (x.shape === "line" ? { ...x, stroke: c } : { ...x, fill: c }) : x)))}>
+              <button
+                className="dt-btn"
+                aria-label="Fill"
+                data-tip="Fill"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={(e) =>
+                  colorMenu(e.currentTarget, (c) =>
+                    patchSel((x) => (x.type === "shape" ? (x.shape === "line" ? { ...x, stroke: c } : { ...x, fill: c }) : x)),
+                  )
+                }
+              >
                 <span className="dk-bg-chip" style={{ background: shapeEls[0].fill ?? shapeEls[0].stroke }} />
               </button>
             </>
@@ -410,7 +583,19 @@ function Deck({ page }: { page: Page }) {
       </div>
 
       <div className="dk-body">
-        <Navigator slides={slides} current={current} onPick={(i) => { setCurrent(i); setSelected([]); setEditing(null); }} onMove={moveSlide} onAdd={addSlide} onDuplicate={duplicateSlide} onDelete={deleteSlide} />
+        <Navigator
+          slides={slides}
+          current={current}
+          onPick={(i) => {
+            setCurrent(i);
+            setSelected([]);
+            setEditing(null);
+          }}
+          onMove={moveSlide}
+          onAdd={addSlide}
+          onDuplicate={duplicateSlide}
+          onDelete={deleteSlide}
+        />
         <div className="dk-main">
           <div className="dk-area" ref={area}>
             <Canvas
@@ -447,7 +632,16 @@ function Deck({ page }: { page: Page }) {
           />
         </div>
       </div>
-      {presenting && <Present slides={slides} start={current} onClose={(at) => { setPresenting(false); setCurrent(at); }} />}
+      {presenting && (
+        <Present
+          slides={slides}
+          start={current}
+          onClose={(at) => {
+            setPresenting(false);
+            setCurrent(at);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -22,7 +22,18 @@ import { PropertiesPanel } from "../pages/PropertiesPanel";
 import { Outline } from "../pages/Outline";
 import { newProperty, propsOf } from "../pages/properties";
 import { isLight, useBannerTone } from "../profile/bannerColor";
-import { FindBar, StatusBar, StickyTitle, Starters, ShortcutsSheet, SubpagesSection, RelatedPages, copyMarkdown, downloadMarkdown, printPage } from "../pages/PageChrome";
+import {
+  FindBar,
+  StatusBar,
+  StickyTitle,
+  Starters,
+  ShortcutsSheet,
+  SubpagesSection,
+  RelatedPages,
+  copyMarkdown,
+  downloadMarkdown,
+  printPage,
+} from "../pages/PageChrome";
 
 export function PageView({ pageId, paneId }: { pageId: string; paneId: string }) {
   const meta = useStore((s) => s.pages[pageId]);
@@ -52,7 +63,12 @@ export function PageView({ pageId, paneId }: { pageId: string; paneId: string })
   }, [load]);
 
   if (error) return <EmptyState icon="warning" title="This page could not be opened" text={error} />;
-  if (page === undefined) return <div className="page-loading"><Spinner /></div>;
+  if (page === undefined)
+    return (
+      <div className="page-loading">
+        <Spinner />
+      </div>
+    );
   if (page === null || !meta) {
     return (
       <div className="page-view">
@@ -60,7 +76,11 @@ export function PageView({ pageId, paneId }: { pageId: string; paneId: string })
           icon="page"
           title="Missing page"
           text="This page was permanently deleted or never existed."
-          action={<button className="btn btn-tinted btn-standard" onClick={() => useStore.getState().open({ kind: "home" })}>Go Home</button>}
+          action={
+            <button className="btn btn-tinted btn-standard" onClick={() => useStore.getState().open({ kind: "home" })}>
+              Go Home
+            </button>
+          }
         />
       </div>
     );
@@ -215,7 +235,10 @@ function LoadedPage({ page, paneId, reload }: { page: Page; paneId: string; relo
   };
 
   return (
-    <div className={`page-view font-${look.font ?? "default"} ${look.small ? "is-small" : ""} ${look.full ? "is-full" : ""} ${meta.cover ? `has-cover ${isLight(coverTone.luma) ? "cover-bottom-light" : "cover-bottom-dark"} ${isLight(coverTone.lumaTopRight) ? "cover-top-light" : "cover-top-dark"}` : ""} ${locked ? "is-locked" : ""} ${focusMode ? "is-focus" : ""}`} ref={root}>
+    <div
+      className={`page-view font-${look.font ?? "default"} ${look.small ? "is-small" : ""} ${look.full ? "is-full" : ""} ${meta.cover ? `has-cover ${isLight(coverTone.luma) ? "cover-bottom-light" : "cover-bottom-dark"} ${isLight(coverTone.lumaTopRight) ? "cover-top-light" : "cover-top-dark"}` : ""} ${locked ? "is-locked" : ""} ${focusMode ? "is-focus" : ""}`}
+      ref={root}
+    >
       <StickyTitle page={meta} titleEl={titleRef} />
       {find && editor && <FindBar editor={editor} replace={find === "replace"} onClose={() => setFind(null)} />}
       <PageCover page={meta} />
@@ -245,10 +268,20 @@ function LoadedPage({ page, paneId, reload }: { page: Page; paneId: string; relo
                   Locked
                 </button>
               )}
-              <IconButton icon={meta.pinned ? "unpin" : "pin"} label={meta.pinned ? "Unpin" : "Pin"} active={meta.pinned} onClick={() => pageOps.togglePin(meta)} />
+              <IconButton
+                icon={meta.pinned ? "unpin" : "pin"}
+                label={meta.pinned ? "Unpin" : "Pin"}
+                active={meta.pinned}
+                onClick={() => pageOps.togglePin(meta)}
+              />
               <IconButton icon="discord" label="Send to Discord" onClick={() => setComposer(true)} />
               <IconButton icon="assistant" label="Ask Claude" onClick={() => emit("ai:open", { pageId: page.id })} />
-              <IconButton icon="history" label="History" active={inspector === "history"} onClick={() => setInspector(inspector === "history" ? null : "history")} />
+              <IconButton
+                icon="history"
+                label="History"
+                active={inspector === "history"}
+                onClick={() => setInspector(inspector === "history" ? null : "history")}
+              />
               <IconButton
                 icon="more"
                 label="More"
@@ -269,8 +302,18 @@ function LoadedPage({ page, paneId, reload }: { page: Page; paneId: string; relo
                           ]
                         : [{ label: "Add Cover", icon: "image" as const, onSelect: () => pickCover(meta) }]),
                       { label: "Find and Replace", icon: "search", shortcut: "Ctrl+F", onSelect: () => setFind("find") },
-                      { label: focusMode ? "Leave Focus Mode" : "Focus Mode", icon: "preview", shortcut: "Ctrl+Shift+F", onSelect: () => setFocusMode(!focusMode) },
-                      { label: locked ? "Unlock Page" : "Lock Page", icon: "lock", shortcut: "Ctrl+Alt+L", onSelect: () => setLook({ locked: !locked }) },
+                      {
+                        label: focusMode ? "Leave Focus Mode" : "Focus Mode",
+                        icon: "preview",
+                        shortcut: "Ctrl+Shift+F",
+                        onSelect: () => setFocusMode(!focusMode),
+                      },
+                      {
+                        label: locked ? "Unlock Page" : "Lock Page",
+                        icon: "lock",
+                        shortcut: "Ctrl+Alt+L",
+                        onSelect: () => setLook({ locked: !locked }),
+                      },
                       {
                         label: "Export",
                         icon: "download",
@@ -283,7 +326,11 @@ function LoadedPage({ page, paneId, reload }: { page: Page; paneId: string; relo
                       { label: "Keyboard Shortcuts", icon: "keyboard", shortcut: "Ctrl+/", onSelect: () => setShortcuts(true) },
                       { kind: "separator" },
                       { kind: "label", label: "Style" },
-                      { label: "Default font", checked: (look.font ?? "default") === "default", onSelect: () => setLook({ font: "default" }) },
+                      {
+                        label: "Default font",
+                        checked: (look.font ?? "default") === "default",
+                        onSelect: () => setLook({ font: "default" }),
+                      },
                       { label: "Serif", checked: look.font === "serif", onSelect: () => setLook({ font: "serif" }) },
                       { label: "Mono", checked: look.font === "mono", onSelect: () => setLook({ font: "mono" }) },
                       { label: "Small text", checked: !!look.small, onSelect: () => setLook({ small: !look.small }) },
@@ -324,7 +371,11 @@ function LoadedPage({ page, paneId, reload }: { page: Page; paneId: string; relo
             {propsOf(meta).length === 0 && (
               <button
                 className="page-icon-add"
-                onClick={() => api.setPageMeta(page.id, "properties", [newProperty("status", "Status")]).then((m) => useStore.getState().patchPageLocal(m))}
+                onClick={() =>
+                  api
+                    .setPageMeta(page.id, "properties", [newProperty("status", "Status")])
+                    .then((m) => useStore.getState().patchPageLocal(m))
+                }
               >
                 <Icon name="sliders" size={15} />
                 Add properties
@@ -368,12 +419,7 @@ function LoadedPage({ page, paneId, reload }: { page: Page; paneId: string; relo
         </header>
 
         <Starters editor={editor} pageId={page.id} />
-        <PageEditor
-          ref={editorRef}
-          page={page}
-          onSaved={(at) => setSavedAt(at)}
-          onSaving={setSaving}
-        />
+        <PageEditor ref={editorRef} page={page} onSaved={(at) => setSavedAt(at)} onSaving={setSaving} />
 
         <section className="page-foot">
           <SubpagesSection page={meta} onNew={() => createPage({ parentId: page.id }, "current")} />
@@ -406,7 +452,11 @@ function LoadedPage({ page, paneId, reload }: { page: Page; paneId: string; relo
               </div>
               <div className="backlinks">
                 {backlinks.map((b) => (
-                  <button key={`${b.pageId}-${b.blockId}`} className="backlink" onClick={(e) => openPage(b.pageId, e.ctrlKey ? "tab" : e.altKey ? "right" : "current")}>
+                  <button
+                    key={`${b.pageId}-${b.blockId}`}
+                    className="backlink"
+                    onClick={(e) => openPage(b.pageId, e.ctrlKey ? "tab" : e.altKey ? "right" : "current")}
+                  >
                     <PageIcon icon={b.icon} size={15} />
                     <span className="backlink-main">
                       <span className="backlink-title bidi">{b.title || "Untitled"}</span>
@@ -433,7 +483,9 @@ function LoadedPage({ page, paneId, reload }: { page: Page; paneId: string; relo
           paneId={paneId}
         />
       )}
-      {emojiAnchor && <EmojiPicker anchor={emojiAnchor} onPick={setIcon} onClose={() => setEmojiAnchor(null)} hasIcon={!!meta.icon} pageId={page.id} />}
+      {emojiAnchor && (
+        <EmojiPicker anchor={emojiAnchor} onPick={setIcon} onClose={() => setEmojiAnchor(null)} hasIcon={!!meta.icon} pageId={page.id} />
+      )}
       {composer && (
         <DiscordComposer
           pageId={page.id}
@@ -458,7 +510,13 @@ function autosize(el: HTMLTextAreaElement | null) {
  * The crumbs and page actions: plain on a page, a glass capsule when they sit
  * on a cover image (the engine then picks light or dark ink for the cover).
  */
-function HeadCapsule({ glass, as = "div", className, children, ...rest }: { glass: boolean; as?: "div" | "nav"; className: string; children: ReactNode } & HTMLAttributes<HTMLElement>) {
+function HeadCapsule({
+  glass,
+  as = "div",
+  className,
+  children,
+  ...rest
+}: { glass: boolean; as?: "div" | "nav"; className: string; children: ReactNode } & HTMLAttributes<HTMLElement>) {
   if (!glass) {
     const Tag = as;
     return (
@@ -468,7 +526,15 @@ function HeadCapsule({ glass, as = "div", className, children, ...rest }: { glas
     );
   }
   return (
-    <Glass as={as} className={`${className} is-glass`} contentClassName={`${className}-row`} material="control" layer={LAYER.chrome} radius="var(--r-capsule)" {...rest}>
+    <Glass
+      as={as}
+      className={`${className} is-glass`}
+      contentClassName={`${className}-row`}
+      material="control"
+      layer={LAYER.chrome}
+      radius="var(--r-capsule)"
+      {...rest}
+    >
       {children}
     </Glass>
   );

@@ -230,7 +230,7 @@ class HomeTest {
         compose.waitUntil(20_000) { model.state.value.editor == null && model.state.value.selected!!.blocks.first().content.contains("Completed") }
         ContentStore(app, database).use { store ->
             check(store.load(created.resource.id)!!.blocks.size == created.blocks.size)
-            check(store.ensureBuiltinTemplates().size == 9)
+            check(store.ensureBuiltinTemplates().size == worlds.content.BuiltinTemplates.all.size)
             val original = store.load(model.state.value.templates.single { it.title.startsWith("Weekly Update") }.id)!!
             check(original.blocks.first().content.contains("Shipped"))
         }

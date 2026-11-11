@@ -175,7 +175,12 @@ pub async fn ai_providers(state: State<'_, AppState>) -> CmdResult<Vec<Value>> {
 /// Saves a provider's base URL and/or API key. An empty key removes it; an
 /// absent key leaves it as it is. The key is never sent back.
 #[tauri::command]
-pub async fn ai_provider_save(state: State<'_, AppState>, id: String, base_url: Option<String>, api_key: Option<String>) -> CmdResult<Value> {
+pub async fn ai_provider_save(
+    state: State<'_, AppState>,
+    id: String,
+    base_url: Option<String>,
+    api_key: Option<String>,
+) -> CmdResult<Value> {
     let p = preset(&id).map_err(|e| e.to_string())?;
     if let Some(url) = base_url {
         if !p.editable_base_url {
@@ -214,7 +219,9 @@ pub async fn ai_provider_models(state: State<'_, AppState>, id: String) -> CmdRe
     if key.is_none() && p.key_required() {
         return Err(format!("Add your {} API key first.", p.name));
     }
-    let list = models::list(&client(), p, &base, key, Duration::from_secs(if p.is_local() { 5 } else { 20 })).await.map_err(|e| format!("{e:#}"))?;
+    let list = models::list(&client(), p, &base, key, Duration::from_secs(if p.is_local() { 5 } else { 20 }))
+        .await
+        .map_err(|e| format!("{e:#}"))?;
     let mut caps = tool_support().lock().unwrap_or_else(|e| e.into_inner());
     for m in &list {
         caps.insert(format!("{id}/{}", m.id), m.tools);
@@ -381,7 +388,14 @@ async fn run_api_inner(app: &tauri::AppHandle, r: ApiRun<'_>) -> Result<(Value, 
     if key.is_none() && p.key_required() {
         bail!("provider_auth: Add your {} API key in Settings, Providers.", p.name);
     }
-    let ep = Endpoint { dialect: p.dialect(), base: base.clone(), key, model: r.model.to_string(), provider: p.id.clone(), label: p.name.clone() };
+    let ep = Endpoint {
+        dialect: p.dialect(),
+        base: base.clone(),
+        key,
+        model: r.model.to_string(),
+        provider: p.id.clone(),
+        label: p.name.clone(),
+    };
     let http = client();
     let cache_key = format!("{}/{}", p.id, r.model);
     let mut supported = tool_support().lock().unwrap_or_else(|e| e.into_inner()).get(&cache_key).copied().flatten();

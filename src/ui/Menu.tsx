@@ -56,12 +56,20 @@ function MenuPanel({ x, y, items, onClose, origin, minWidth, from: _from, depth 
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const r = el.getBoundingClientRect();
-    let nx = origin === "top right" ? x - r.width : x;
-    let ny = y;
-    if (nx + r.width > window.innerWidth - 8) nx = window.innerWidth - r.width - 8;
-    if (ny + r.height > window.innerHeight - 8) ny = Math.max(8, y - r.height - 4);
-    setPos({ x: Math.max(8, nx), y: ny, ready: true });
+    const place = () => {
+      const r = el.getBoundingClientRect();
+      let nx = origin === "top right" ? x - r.width : x;
+      let ny = y;
+      if (nx + r.width > window.innerWidth - 8) nx = window.innerWidth - r.width - 8;
+      if (ny + r.height > window.innerHeight - 8) ny = Math.max(8, y - r.height - 4);
+      const next = { x: Math.max(8, nx), y: ny };
+      setPos((p) => (p.ready && p.x === next.x && p.y === next.y ? p : { ...next, ready: true }));
+    };
+    place();
+    // Labels can change width after opening (the Arabic interface replaces them).
+    const ro = new ResizeObserver(place);
+    ro.observe(el);
+    return () => ro.disconnect();
   }, [x, y, origin]);
 
   useEffect(() => {
@@ -170,12 +178,23 @@ export function Popover({
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const r = el.getBoundingClientRect();
-    let x = align === "end" ? anchor.right - r.width : align === "center" ? anchor.left + anchor.width / 2 - r.width / 2 : anchor.left;
-    let y = anchor.bottom + 8;
-    if (y + r.height > window.innerHeight - 10) y = Math.max(10, anchor.top - r.height - 8);
-    x = Math.min(Math.max(10, x), window.innerWidth - r.width - 10);
-    setPos({ x, y, ready: true });
+    const place = () => {
+      const r = el.getBoundingClientRect();
+      let x = align === "end" ? anchor.right - r.width : align === "center" ? anchor.left + anchor.width / 2 - r.width / 2 : anchor.left;
+      let y = anchor.bottom + 8;
+      // Below when it fits, else above when that fits, else wherever it shows the most.
+      if (y + r.height > window.innerHeight - 10) {
+        const above = anchor.top - r.height - 8;
+        y = above >= 10 ? above : Math.max(10, window.innerHeight - r.height - 10);
+      }
+      x = Math.min(Math.max(10, x), window.innerWidth - r.width - 10);
+      setPos((p) => (p.ready && p.x === x && p.y === y ? p : { x, y, ready: true }));
+    };
+    place();
+    // Content that loads after opening (model lists, providers) changes the height.
+    const ro = new ResizeObserver(place);
+    ro.observe(el);
+    return () => ro.disconnect();
   }, [anchor, align]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();

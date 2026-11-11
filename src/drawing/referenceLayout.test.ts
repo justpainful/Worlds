@@ -1,10 +1,95 @@
-import{describe,it,expect}from'vitest';import{newScene,newNode,newLayer,validateScene}from'./model';import{appendOperation,edit,historyToggle}from'./operations';import{referenceNodeKey,referenceSourceKey,referenceLayoutChanges,referencePreviewScene,referenceSnapshot,suggestedReferenceSize}from'./referenceLayout';import type{ReferencePreview}from'./referenceTypes';
-function fixture(){const scene=newScene(),node=newNode('reference',scene.layerOrder[0],scene.defaultFrameId,{x:20,y:30,w:240,h:160});node.sourceId='independent-source';node.sourceMode='live';scene.nodes[node.id]=node;scene.nodeOrder=[node.id];const data:ReferencePreview={state:'ready',sourceId:node.sourceId,title:'Private linked task',kind:'page',excerpt:'A longer source paragraph that can affect card layout.',tasksDone:1,tasksTotal:3,updatedAt:42,checkedAt:50};return{scene,node,data};}
-describe('safe live reference layout updates',()=>{
- it('renders private comparison copies without changing or persisting live content',()=>{const{scene,node,data}=fixture(),before=JSON.stringify(scene),preview=referencePreviewScene(scene,node,data,{w:500,h:300});validateScene(preview);expect(preview.nodes[node.id].referenceSnapshot?.title).toBe(data.title);expect(preview.nodes[node.id].w).toBe(500);expect(JSON.stringify(scene)).toBe(before);expect(scene.nodes[node.id].referenceSnapshot).toBeUndefined();expect(JSON.stringify(scene)).not.toContain(data.title!);});
- it('applies only geometry and a numeric accepted timestamp, as one author Undo',()=>{const{scene,node,data}=fixture(),changes=referenceLayoutChanges(scene,node.id,referenceNodeKey(scene,node.id),data,{w:520,h:320}),document={revision:0,seed:structuredClone(scene),scene,operations:[]};expect(JSON.stringify(changes)).not.toContain(data.title!);expect(JSON.stringify(changes)).not.toContain(data.excerpt!);let next=appendOperation(document,edit('owner',0,'Update reference layout',changes));expect(next.scene.nodes[node.id]).toMatchObject({w:520,h:320,sourceUpdatedAt:42,sourceMode:'live'});next=appendOperation(next,historyToggle(next,'owner')!);expect(next.scene.nodes[node.id]).toEqual(node);});
- it('rejects changed source links, moved cards, removed cards and locked parent groups',()=>{for(const change of['source','position','removed','parent-lock']){const{scene,node,data}=fixture(),key=referenceNodeKey(scene,node.id);if(change==='source')scene.nodes[node.id].sourceId='different-source';if(change==='position')scene.nodes[node.id].x++;if(change==='removed')delete scene.nodes[node.id];if(change==='parent-lock'){const group=newLayer('Locked parent');group.locked=true;scene.layers[group.id]=group;scene.layerOrder.push(group.id);scene.layers[node.layerId].parentId=group.id;}expect(()=>referenceLayoutChanges(scene,node.id,key,data,{w:400,h:300})).toThrow();}});
- it('requires ready access and finite bounded dimensions',()=>{const{scene,node,data}=fixture(),key=referenceNodeKey(scene,node.id);for(const state of['offline','unavailable','loading']as const)expect(()=>referenceLayoutChanges(scene,node.id,key,{...data,state},{w:400,h:300})).toThrow();for(const w of[NaN,Infinity,0,79,4097])expect(()=>referenceLayoutChanges(scene,node.id,key,data,{w,h:300})).toThrow();expect(suggestedReferenceSize(data).w).toBeGreaterThanOrEqual(320);});
- it('detects source content or image changes while ignoring a new permission-check timestamp',()=>{const{data}=fixture();expect(referenceSourceKey({...data,checkedAt:999})).toBe(referenceSourceKey(data));for(const patch of[{title:'Changed'},{updatedAt:43},{imageAttachmentId:'new-image'},{tasksDone:2}])expect(referenceSourceKey({...data,...patch})).not.toBe(referenceSourceKey(data));});
- it('frozen snapshots contain copied content and never contain source/attachment authority fields',()=>{const{data}=fixture(),snapshot=referenceSnapshot({...data,imageAttachmentId:'private-original'});expect(snapshot.title).toBe(data.title);expect(snapshot).not.toHaveProperty('sourceId');expect(snapshot).not.toHaveProperty('imageAttachmentId');expect(snapshot.checkedAt).toBe(50);});
+import { describe, it, expect } from "vitest";
+import { newScene, newNode, newLayer, validateScene } from "./model";
+import { appendOperation, edit, historyToggle } from "./operations";
+import {
+  referenceNodeKey,
+  referenceSourceKey,
+  referenceLayoutChanges,
+  referencePreviewScene,
+  referenceSnapshot,
+  suggestedReferenceSize,
+} from "./referenceLayout";
+import type { ReferencePreview } from "./referenceTypes";
+function fixture() {
+  const scene = newScene(),
+    node = newNode("reference", scene.layerOrder[0], scene.defaultFrameId, { x: 20, y: 30, w: 240, h: 160 });
+  node.sourceId = "independent-source";
+  node.sourceMode = "live";
+  scene.nodes[node.id] = node;
+  scene.nodeOrder = [node.id];
+  const data: ReferencePreview = {
+    state: "ready",
+    sourceId: node.sourceId,
+    title: "Private linked task",
+    kind: "page",
+    excerpt: "A longer source paragraph that can affect card layout.",
+    tasksDone: 1,
+    tasksTotal: 3,
+    updatedAt: 42,
+    checkedAt: 50,
+  };
+  return { scene, node, data };
+}
+describe("safe live reference layout updates", () => {
+  it("renders private comparison copies without changing or persisting live content", () => {
+    const { scene, node, data } = fixture(),
+      before = JSON.stringify(scene),
+      preview = referencePreviewScene(scene, node, data, { w: 500, h: 300 });
+    validateScene(preview);
+    expect(preview.nodes[node.id].referenceSnapshot?.title).toBe(data.title);
+    expect(preview.nodes[node.id].w).toBe(500);
+    expect(JSON.stringify(scene)).toBe(before);
+    expect(scene.nodes[node.id].referenceSnapshot).toBeUndefined();
+    expect(JSON.stringify(scene)).not.toContain(data.title!);
+  });
+  it("applies only geometry and a numeric accepted timestamp, as one author Undo", () => {
+    const { scene, node, data } = fixture(),
+      changes = referenceLayoutChanges(scene, node.id, referenceNodeKey(scene, node.id), data, { w: 520, h: 320 }),
+      document = { revision: 0, seed: structuredClone(scene), scene, operations: [] };
+    expect(JSON.stringify(changes)).not.toContain(data.title!);
+    expect(JSON.stringify(changes)).not.toContain(data.excerpt!);
+    let next = appendOperation(document, edit("owner", 0, "Update reference layout", changes));
+    expect(next.scene.nodes[node.id]).toMatchObject({ w: 520, h: 320, sourceUpdatedAt: 42, sourceMode: "live" });
+    next = appendOperation(next, historyToggle(next, "owner")!);
+    expect(next.scene.nodes[node.id]).toEqual(node);
+  });
+  it("rejects changed source links, moved cards, removed cards and locked parent groups", () => {
+    for (const change of ["source", "position", "removed", "parent-lock"]) {
+      const { scene, node, data } = fixture(),
+        key = referenceNodeKey(scene, node.id);
+      if (change === "source") scene.nodes[node.id].sourceId = "different-source";
+      if (change === "position") scene.nodes[node.id].x++;
+      if (change === "removed") delete scene.nodes[node.id];
+      if (change === "parent-lock") {
+        const group = newLayer("Locked parent");
+        group.locked = true;
+        scene.layers[group.id] = group;
+        scene.layerOrder.push(group.id);
+        scene.layers[node.layerId].parentId = group.id;
+      }
+      expect(() => referenceLayoutChanges(scene, node.id, key, data, { w: 400, h: 300 })).toThrow();
+    }
+  });
+  it("requires ready access and finite bounded dimensions", () => {
+    const { scene, node, data } = fixture(),
+      key = referenceNodeKey(scene, node.id);
+    for (const state of ["offline", "unavailable", "loading"] as const)
+      expect(() => referenceLayoutChanges(scene, node.id, key, { ...data, state }, { w: 400, h: 300 })).toThrow();
+    for (const w of [NaN, Infinity, 0, 79, 4097]) expect(() => referenceLayoutChanges(scene, node.id, key, data, { w, h: 300 })).toThrow();
+    expect(suggestedReferenceSize(data).w).toBeGreaterThanOrEqual(320);
+  });
+  it("detects source content or image changes while ignoring a new permission-check timestamp", () => {
+    const { data } = fixture();
+    expect(referenceSourceKey({ ...data, checkedAt: 999 })).toBe(referenceSourceKey(data));
+    for (const patch of [{ title: "Changed" }, { updatedAt: 43 }, { imageAttachmentId: "new-image" }, { tasksDone: 2 }])
+      expect(referenceSourceKey({ ...data, ...patch })).not.toBe(referenceSourceKey(data));
+  });
+  it("frozen snapshots contain copied content and never contain source/attachment authority fields", () => {
+    const { data } = fixture(),
+      snapshot = referenceSnapshot({ ...data, imageAttachmentId: "private-original" });
+    expect(snapshot.title).toBe(data.title);
+    expect(snapshot).not.toHaveProperty("sourceId");
+    expect(snapshot).not.toHaveProperty("imageAttachmentId");
+    expect(snapshot.checkedAt).toBe(50);
+  });
 });
