@@ -36,7 +36,7 @@ private val KEY_AVATAR_COLOR = stringPreferencesKey("profile_avatar_color")
 private val KEY_BIO = stringPreferencesKey("profile_bio")
 
 private val AVATAR_COLORS = listOf(
-    Color(0xffd2a46e), // Sand
+    Color(0xff0a84ff), // Blue
     Color(0xff8db39a), // Sage
     Color(0xff7fa7d9), // Sky
     Color(0xffd98c9a), // Rose

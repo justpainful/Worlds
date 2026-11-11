@@ -1,5 +1,6 @@
 package worlds.android.automations
 
+import worlds.android.Switch
 import worlds.android.WorldsTile
 import worlds.android.WorldsBackButton
 import worlds.android.AlertDialog

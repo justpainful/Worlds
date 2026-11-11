@@ -141,13 +141,13 @@ fun Modifier.worldsGlass(shape: Shape, kind: GlassKind = GlassKind.Bar): Modifie
             if (live && size.width > 0f && size.height > 0f) {
                 val blurPx = (if (kind == GlassKind.Menu) 22.dp else 13.dp).toPx()
                 val bend = (if (specular) 11.dp else 8.dp).toPx()
-                blurLayer.renderEffect = glassEffect(blurPx, if (dark) 1.6f else 1.35f, IntSize(size.width.toInt(), size.height.toInt()), pad, radius, bend, 15.dp.toPx()).asComposeRenderEffect()
+                blurLayer.renderEffect = glassEffect(blurPx, if (dark) 1.25f else 1.2f, IntSize(size.width.toInt(), size.height.toInt()), pad, radius, bend, 15.dp.toPx()).asComposeRenderEffect()
             }
             // Milky body: glass brightens what is behind it rather than darkening it.
             val body = when {
                 !live -> if (dark) Color(0xFF242428) else Color(0xFFFBFBFA)
                 kind == GlassKind.Menu -> if (dark) Color(0xB82A2A2F) else Color(0xCCFBFBFA)
-                dark -> Color(0x5C2C2C32)
+                dark -> Color(0x9E26262B)
                 else -> Color(0x8CFFFFFF)
             }
             val sheen = Brush.linearGradient(
@@ -200,9 +200,10 @@ fun Modifier.worldsGlassLens(shape: Shape): Modifier {
     val dark = LocalGlassDark.current
     return this.drawWithCache {
         val path = Path().apply { addOutline(shape.createOutline(size, layoutDirection, this@drawWithCache)) }
+        // Nearly opaque, so the selected label stays readable whatever scrolls behind the glass.
         val fill = Brush.verticalGradient(
-            0f to Color.White.copy(alpha = if (dark) 0.17f else 0.62f),
-            1f to Color.White.copy(alpha = if (dark) 0.09f else 0.40f),
+            0f to if (dark) Color(0xF2404046) else Color(0xF5FFFFFF),
+            1f to if (dark) Color(0xF2393940) else Color(0xF0FBFBFA),
         )
         onDrawWithContent { drawPath(path, fill); drawContent() }
     }

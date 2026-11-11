@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -128,7 +129,10 @@ private val TOOLBAR_HEIGHT = 48.dp
                         else -> {
                             val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + TOOLBAR_HEIGHT + 22.dp
                             val bottom = if (compact) TAB_BAR_HEIGHT + 34.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() else 28.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-                            val padding = PaddingValues(start = if (compact) 18.dp else 30.dp, end = if (compact) 18.dp else 30.dp, top = top, bottom = bottom)
+                            // On wide windows the content keeps a readable measure instead of stretching edge to edge.
+                            val contentWidth = shellWidth - if (!compact && sidebarOpen) 258.dp else 0.dp
+                            val side = if (compact) 18.dp else maxOf(30.dp, (contentWidth - 1040.dp) / 2)
+                            val padding = PaddingValues(start = side, end = side, top = top, bottom = bottom)
                             Box(Modifier.fillMaxSize().glassBackdropSource(backdrop).background(MaterialTheme.colorScheme.background)) {
                                 Crossfade(targetState = destination, animationSpec = if (reduceMotion) snap() else tween(180), label = "destination") { target ->
                                     when (target) {
@@ -140,6 +144,9 @@ private val TOOLBAR_HEIGHT = 48.dp
                                     }
                                 }
                             }
+                            val canvas = MaterialTheme.colorScheme.background
+                            if (destination != WorldsDestination.Ai) Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 26.dp).background(Brush.verticalGradient(0f to canvas, 0.62f to canvas.copy(alpha = 0.86f), 1f to Color.Transparent)))
+                            if (compact && !keyboardVisible && destination != WorldsDestination.Ai) Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 44.dp).background(Brush.verticalGradient(0f to Color.Transparent, 1f to canvas.copy(alpha = 0.9f))))
                             if (destination != WorldsDestination.Ai) WorldsToolbar(Modifier.align(Alignment.TopEnd).windowInsetsPadding(WindowInsets.statusBars).padding(top = 10.dp, end = if (compact) 14.dp else 22.dp), compact, narrow, actions, moreOpen, onMoreOpen, moreItems)
                             if (!compact && destination != WorldsDestination.Ai) SidebarToggle(Modifier.align(Alignment.TopStart).windowInsetsPadding(WindowInsets.statusBars).padding(top = 10.dp, start = 22.dp), sidebarOpen) { sidebarOpen = !sidebarOpen }
                             if (compact && !keyboardVisible) WorldsTabBar(Modifier.align(Alignment.BottomCenter), destination, narrow, reduceMotion, onDestination)
@@ -160,7 +167,7 @@ private val TOOLBAR_HEIGHT = 48.dp
         BoxWithConstraints(Modifier.weight(1f).height(TAB_BAR_HEIGHT).worldsGlass(capsule)) {
             val itemWidth = maxWidth / tabs.size
             val index = tabs.indexOf(destination)
-            val offset by animateDpAsState(targetValue = itemWidth * index.coerceAtLeast(0), animationSpec = if (reduceMotion) snap() else spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMediumLow), label = "tab lens")
+            val offset by animateDpAsState(targetValue = itemWidth * index.coerceAtLeast(0), animationSpec = if (reduceMotion) snap() else spring(dampingRatio = 1f, stiffness = Spring.StiffnessMediumLow), label = "tab lens")
             if (index >= 0) Box(Modifier.offset(x = offset).width(itemWidth).fillMaxHeight().padding(4.dp).worldsGlassLens(RoundedCornerShape(TAB_BAR_HEIGHT / 2 - 4.dp)))
             Row(Modifier.fillMaxSize()) {
                 tabs.forEach { tab -> TabItem(tab, tab == destination, narrow, Modifier.width(itemWidth).fillMaxHeight()) { onDestination(tab) } }
@@ -303,10 +310,10 @@ private val TOOLBAR_HEIGHT = 48.dp
 }
 
 @Composable private fun EmptyState(tile: Int, title: String, body: String?, action: (@Composable () -> Unit)? = null) {
-    Column(Modifier.fillMaxWidth().padding(vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        WorldsTile(tile, 60.dp)
-        Text(title, modifier = Modifier.padding(top = 6.dp), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
-        if (body != null) Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Column(Modifier.fillMaxWidth().padding(vertical = 22.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        WorldsTile(tile, 64.dp)
+        Text(title, modifier = Modifier.padding(top = 6.dp), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        if (body != null) Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         if (action != null) Box(Modifier.padding(top = 8.dp)) { action() }
     }
 }
@@ -329,7 +336,7 @@ private val TOOLBAR_HEIGHT = 48.dp
         Row(Modifier.fillMaxWidth().background(if (active) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
             WorldsTile(worldsTile(page.kind), 38.dp)
             Column(Modifier.weight(1f)) {
-                Text(page.title.ifBlank { stringResource(R.string.untitled) }, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(page.title.ifBlank { stringResource(R.string.untitled) }, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text("${kindLabel(page.kind)} · ${relativeTime(page.updatedAt)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
             Icon(painterResource(R.drawable.ic_chevron_right), contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -428,7 +435,7 @@ private val TOOLBAR_HEIGHT = 48.dp
 @Composable private fun ToolRow(tile: Int, label: String, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
         WorldsTile(tile, 38.dp)
-        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
         Icon(painterResource(R.drawable.ic_chevron_right), contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

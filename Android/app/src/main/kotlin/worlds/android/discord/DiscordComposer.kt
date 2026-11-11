@@ -1,5 +1,6 @@
 package worlds.android.discord
 
+import worlds.android.Switch
 import worlds.android.WorldsBackButton
 import worlds.android.AlertDialog
 import android.content.Context
@@ -38,7 +39,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 private val EMBED_COLORS = listOf(
-    "Gold" to 0xD2A46E,
+    "Blue" to 0x0A84FF,
     "Sage" to 0x8DB39A,
     "Sky" to 0x7FA7D9,
     "Rose" to 0xD98C9A,
@@ -63,7 +64,7 @@ fun DiscordComposer(
     var webhookUrl by remember { mutableStateOf("") }
     var wrapInEmbed by remember { mutableStateOf(true) }
     var includeTitle by remember { mutableStateOf(true) }
-    var selectedColor by remember { mutableStateOf(0xD2A46E) }
+    var selectedColor by remember { mutableStateOf(0x0A84FF) }
 
     var sending by remember { mutableStateOf(false) }
     var sendStatus by remember { mutableStateOf<String?>(null) }

@@ -830,7 +830,7 @@ class HomeModel(application: Application, internal val databaseName: String) : A
     fun createWithContent(title: String, content: String) {
         viewModelScope.launch {
             val result = runCatching { withContext(Dispatchers.IO) {
-                val page = store.create(title.ifBlank { getApplication<Application>().getString(R.string.new_page) }, "page")
+                val page = store.create("page", title.ifBlank { getApplication<Application>().getString(R.string.new_page) })
                 val id = newBlockId()
                 val node = JSONObject().put("type", "paragraph").put("attrs", JSONObject().put("bid", id))
                     .put("content", org.json.JSONArray().put(JSONObject().put("type", "text").put("text", content))).toString()
@@ -952,6 +952,7 @@ class HomeModel(application: Application, internal val databaseName: String) : A
     override fun onCleared() { close() }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable internal fun WorldsTheme(store: AppearanceStore? = null, content: @Composable () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val defaultStore = remember(context.applicationContext) { AppearanceStore(context.applicationContext) }
@@ -974,7 +975,7 @@ class HomeModel(application: Application, internal val databaseName: String) : A
     }
     CompositionLocalProvider(LocalAppearanceStore provides appearanceStore, LocalAppearancePreferences provides appearance) {
         MaterialTheme(colorScheme = scheme, typography = WorldsTypography, shapes = WorldsShapes) {
-            CompositionLocalProvider(LocalContentColor provides scheme.onBackground, worlds.android.glass.LocalGlassQuality provides appearance.glassQuality, worlds.android.glass.LocalGlassDark provides dark, content = content)
+            CompositionLocalProvider(LocalContentColor provides scheme.onBackground, worlds.android.glass.LocalGlassQuality provides appearance.glassQuality, worlds.android.glass.LocalGlassDark provides dark, androidx.compose.foundation.LocalIndication provides WorldsPressIndication(if (dark) Color(0x1FFFFFFF) else Color(0x14000000)), LocalRippleConfiguration provides RippleConfiguration(rippleAlpha = androidx.compose.material.ripple.RippleAlpha(0.05f, 0.08f, 0.05f, 0.10f)), content = content)
         }
     }
 }
@@ -1300,13 +1301,12 @@ class HomeModel(application: Application, internal val databaseName: String) : A
                     Checkbox(checked = item.checked == true, enabled = editable && item.checked != null,
                         onCheckedChange = { onToggle(item.path, it) }, modifier = Modifier.semantics { contentDescription = description })
                 } else Text(if (item.listType == "orderedList") "${item.number}." else "•", modifier = Modifier.padding(end = 12.dp))
-                Column(Modifier.weight(1f)) {
+                val canEditItem = editable && paragraph != null && remember(paragraph) { runCatching { InlineEditing.text(paragraph) }.isSuccess }
+                Column(Modifier.weight(1f).heightIn(min = 30.dp).tapToEdit(canEditItem) { onEdit(item.path) }) {
                     if (preview != null && preview.text.isNotEmpty()) Text(highlightedFindText(preview, paragraph, match, MaterialTheme.colorScheme.primary.copy(alpha = 0.30f)), color = MaterialTheme.colorScheme.onBackground, lineHeight = 28.sp, modifier = findRevealModifier(match))
                     else if (preview != null) Text(stringResource(R.string.empty_list_item), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (item.incomplete || preview?.incomplete == true) Text(stringResource(R.string.preview_incomplete), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, lineHeight = 23.sp)
                 }
-                if (editable && paragraph != null && remember(paragraph) { runCatching { InlineEditing.text(paragraph) }.isSuccess })
-                    TextButton(onClick = { onEdit(item.path) }) { Text(stringResource(R.string.edit_text)) }
                 if (editable && paragraph != null) {
                     val description = stringResource(R.string.list_item_actions, pathLabel)
                     Box {
@@ -1338,12 +1338,11 @@ class HomeModel(application: Application, internal val databaseName: String) : A
             else {
                 val preview = remember(paragraph) { previewBlock(paragraph) }
                 val match = reveal?.takeIf { it.path == listOf(index) }
+                val canEditParagraph = editable && remember(paragraph) { runCatching { InlineEditing.text(paragraph) }.isSuccess }
+                Column(Modifier.fillMaxWidth().heightIn(min = 30.dp).tapToEdit(canEditParagraph, stringResource(R.string.edit_container_paragraph, index + 1)) { onEdit(index) }) {
                 if (preview.text.isNotEmpty()) Text(highlightedFindText(preview, paragraph, match, MaterialTheme.colorScheme.primary.copy(alpha = 0.30f)), color = MaterialTheme.colorScheme.onSurface, lineHeight = 26.sp, modifier = findRevealModifier(match))
                 else Text(stringResource(R.string.empty_paragraph), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (preview.incomplete) Text(stringResource(R.string.preview_incomplete), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (editable && remember(paragraph) { runCatching { InlineEditing.text(paragraph) }.isSuccess }) {
-                    val description = stringResource(R.string.edit_container_paragraph, index + 1)
-                    TextButton(onClick = { onEdit(index) }, modifier = Modifier.semantics { contentDescription = description }) { Text(stringResource(R.string.edit_text)) }
                 }
             }
         }
@@ -1682,6 +1681,8 @@ private fun RenderSingleBlock(
         val container = remember(block.content) { runCatching { ContainerEditing.read(block.content) }.getOrNull() }
         val table = remember(block.content) { runCatching { TableEditing.read(block.content) }.getOrNull() }
         val image = remember(block.content) { runCatching { JSONObject(block.content).optString("type") == "image" }.getOrDefault(false) }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+        Column(Modifier.weight(1f)) {
         if (image) {
             ImageBlock(block.content, databaseName)
         } else if (isMathBlock(block.content)) {
@@ -1704,6 +1705,8 @@ private fun RenderSingleBlock(
             val baseSize = if (document.resource.kind == "document") typography.size * 4f / 3f else 16f
             val factor = when { preview.headingLevel == 1 -> 1.625f; preview.headingLevel == 2 -> 1.375f; preview.headingLevel == 3 -> 1.1875f; preview.paragraphStyle == "title" -> 2.4f; preview.paragraphStyle == "subtitle" -> 1.35f; preview.paragraphStyle == "caption" -> .82f; else -> 1f }
             val textSize = baseSize * factor
+            val canEdit = editable && !busy && remember(block.content) { runCatching { InlineEditing.text(block.content) }.isSuccess || runCatching { CodeEditing.read(block.content) }.isSuccess }
+            Column(Modifier.fillMaxWidth().heightIn(min = 30.dp).tapToEdit(canEdit) { onEdit(block.id) }) {
             if (preview.text.isNotEmpty()) Text(highlightedFindText(preview, block.content, match, MaterialTheme.colorScheme.primary.copy(alpha = 0.30f)), color = if (preview.paragraphStyle in setOf("subtitle", "caption")) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onBackground,
                 fontSize = textSize.sp,
                 fontWeight = if (preview.headingLevel != null || preview.paragraphStyle == "title") FontWeight.SemiBold else FontWeight.Normal,
@@ -1711,13 +1714,14 @@ private fun RenderSingleBlock(
             if (preview.incomplete) Text(stringResource(R.string.preview_incomplete), color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 13.sp, lineHeight = 23.sp, modifier = Modifier.padding(bottom = 12.dp))
             if (preview.text.isEmpty() && !preview.incomplete) Spacer(Modifier.height(16.dp))
-            if (editable && remember(block.content) { runCatching { InlineEditing.text(block.content) }.isSuccess || runCatching { CodeEditing.read(block.content) }.isSuccess })
-                TextButton(enabled = !busy, onClick = { onEdit(block.id) }) { WorldsActionLabel(R.drawable.ic_pen_line, stringResource(R.string.edit_text)) }
+            }
+        }
         }
         if (editable) {
             var menu by remember { mutableStateOf(false) }
+            val blockActionsLabel = stringResource(R.string.block_actions)
             Box {
-                TextButton(enabled = !busy, onClick = { menu = true }) { WorldsActionLabel(R.drawable.ic_ellipsis_vertical, stringResource(R.string.block_actions)) }
+                IconButton(enabled = !busy, onClick = { menu = true }, modifier = Modifier.size(34.dp).semantics { contentDescription = blockActionsLabel }) { Icon(painterResource(R.drawable.ic_ellipsis_vertical), contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant) }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     if (image)
                         DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_sliders_horizontal) }, text = { Text(stringResource(R.string.image_settings)) }, onClick = { menu = false; onImageSettings(ImageSettingsTarget(document.resource.id, block.id, document.resource.revision, block.content)) })
@@ -1737,6 +1741,7 @@ private fun RenderSingleBlock(
                     DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_trash_2) }, text = { Text(stringResource(R.string.remove_block)) }, onClick = { menu = false; onPendingRemoval(block.id to document.resource.revision) })
                 }
             }
+        }
         }
     }
 }

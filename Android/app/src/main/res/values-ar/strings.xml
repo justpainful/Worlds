@@ -12,7 +12,6 @@
     <string name="appearance_light">فاتح</string>
     <string name="appearance_dark">داكن</string>
     <string name="appearance_accent">اللون المميز</string>
-    <string name="appearance_sand">رملي</string>
     <string name="appearance_sage">مريمي</string>
     <string name="appearance_sky">سماوي</string>
     <string name="appearance_rose">وردي</string>
@@ -731,4 +730,6 @@
     <string name="spreadsheet_add_sheet">إضافة ورقة</string>
     <string name="spreadsheet_save_error">تعذر حفظ آخر التغييرات.</string>
     <string name="spreadsheet_load_error">تعذر فتح هذا الجدول.</string>
+    <string name="appearance_blue">أزرق</string>
+    <string name="appearance_white">أبيض</string>
 </resources>

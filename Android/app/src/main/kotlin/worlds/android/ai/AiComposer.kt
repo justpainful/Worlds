@@ -1,5 +1,6 @@
 package worlds.android.ai
 
+import worlds.android.OutlinedTextField
 import worlds.android.DropdownMenu
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*

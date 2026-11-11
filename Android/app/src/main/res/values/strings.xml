@@ -11,7 +11,6 @@
     <string name="appearance_light">Light</string>
     <string name="appearance_dark">Dark</string>
     <string name="appearance_accent">Accent color</string>
-    <string name="appearance_sand">Sand</string>
     <string name="appearance_sage">Sage</string>
     <string name="appearance_sky">Sky</string>
     <string name="appearance_rose">Rose</string>
@@ -27,7 +26,7 @@
     <string name="home_title">Your pages</string>
     <string name="library_more_actions">More library actions</string>
     <string name="home_subtitle">A place for your work</string>
-    <string name="local_label">PERSONAL SPACE</string>
+    <string name="local_label">Personal space</string>
     <string name="new_page">New page</string>
     <string name="search">Search pages</string>
     <string name="empty_title">Start with a page</string>
@@ -731,4 +730,6 @@
     <string name="spreadsheet_add_sheet">Add sheet</string>
     <string name="spreadsheet_save_error">Could not save the latest changes.</string>
     <string name="spreadsheet_load_error">Could not open this spreadsheet.</string>
+    <string name="appearance_blue">Blue</string>
+    <string name="appearance_white">White</string>
 </resources>
