@@ -142,10 +142,15 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value, permit: Option<
         "drawings_versions" => crate::drawing::versions(conn, s(a, "id")?)?,
         "drawing_library_list" => crate::drawing_library::list(conn, s(a, "id")?)?,
         "drawing_library_read" => crate::drawing_library::read(conn, s(a, "id")?, a["version"].as_i64())?,
-        "drawing_library_publish" => crate::drawing_library::publish_authorized(conn, serde_json::from_value(a["input"].clone())?,permit)?,
-        "drawing_library_remove" => { crate::drawing_library::remove(conn, s(a, "id")?)?; json!({ "removed": true }) }
+        "drawing_library_publish" => crate::drawing_library::publish_authorized(conn, serde_json::from_value(a["input"].clone())?, permit)?,
+        "drawing_library_remove" => {
+            crate::drawing_library::remove(conn, s(a, "id")?)?;
+            json!({ "removed": true })
+        }
         "drawing_reference_read" => crate::drawing_references::read(conn, s(a, "id")?)?,
-        "drawing_region_task" => json!(crate::drawing_references::create_task(conn, s(a, "id")?, s(a, "frameId")?, a["camera"].clone(), s(a, "title")?)?),
+        "drawing_region_task" => {
+            json!(crate::drawing_references::create_task(conn, s(a, "id")?, s(a, "frameId")?, a["camera"].clone(), s(a, "title")?)?)
+        }
         "drawings_apply" => {
             let mut op = a.get("operation").cloned().ok_or_else(|| anyhow!("missing drawing operation"))?;
             op["actor"] = json!(store::profile(conn)?.id);
@@ -162,8 +167,11 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value, permit: Option<
                 .filter(|p| parent.is_none_or(|pid| p.parent_id.as_deref() == Some(pid)))
                 .take(limit)
                 .map(|p| {
-                    let mut row = json!({ "id": p.id, "title": p.title, "kind": p.kind, "parentId": p.parent_id, "updatedAt": p.updated_at });
-                    if !p.data.is_null() { row["data"] = p.data; }
+                    let mut row =
+                        json!({ "id": p.id, "title": p.title, "kind": p.kind, "parentId": p.parent_id, "updatedAt": p.updated_at });
+                    if !p.data.is_null() {
+                        row["data"] = p.data;
+                    }
                     row
                 })
                 .collect();

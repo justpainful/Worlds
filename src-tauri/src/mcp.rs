@@ -20,8 +20,8 @@ mod more;
 mod more2;
 mod page_content;
 mod page_structure;
-mod protocol;
 mod profile_history;
+mod protocol;
 mod resources;
 mod tasks_tables;
 mod workspace;
@@ -373,7 +373,7 @@ fn call_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value, permit: Option
             Ok(json!(t))
         }
         "templates_instantiate" => {
-            let p = store::instantiate_template_authorized(conn, ctx, s(a, "templateId")?, os(a, "parentId"), os(a, "title"),permit)?;
+            let p = store::instantiate_template_authorized(conn, ctx, s(a, "templateId")?, os(a, "parentId"), os(a, "title"), permit)?;
             Ok(json!({ "pageId": p.id, "title": p.title }))
         }
         "automations_list" => Ok(json!(crate::automations::list(conn)?)),
@@ -598,7 +598,7 @@ fn call_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value, permit: Option
         }
         "pages_duplicate" => {
             let deep = a.get("deep").and_then(Value::as_bool).unwrap_or(true);
-            let p = store::duplicate_page_authorized(conn, ctx, s(a, "pageId")?, deep, None, None,permit)?;
+            let p = store::duplicate_page_authorized(conn, ctx, s(a, "pageId")?, deep, None, None, permit)?;
             Ok(json!({ "pageId": p.id, "title": p.title }))
         }
         "pages_delete" => {
@@ -623,7 +623,7 @@ fn call_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value, permit: Option
             Ok(json!({ "added": r.added, "changed": r.changed, "removed": r.removed }))
         }
         "templates_create_from_page" => {
-            let t = store::save_as_template_authorized(conn, ctx, s(a, "pageId")?,permit)?;
+            let t = store::save_as_template_authorized(conn, ctx, s(a, "pageId")?, permit)?;
             Ok(json!({ "templateId": t.id, "title": t.title }))
         }
         "chats_search" => {
@@ -680,7 +680,7 @@ fn call_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value, permit: Option
             if let Some(v) = more::call(conn, ctx, name, a)? {
                 return Ok(v);
             }
-            if let Some(v) = resources::call(conn, ctx, name, a,permit)? {
+            if let Some(v) = resources::call(conn, ctx, name, a, permit)? {
                 return Ok(v);
             }
             match more2::call(conn, ctx, name, a)? {

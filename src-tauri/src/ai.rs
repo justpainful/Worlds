@@ -788,7 +788,11 @@ pub async fn ai_token_save(state: State<'_, AppState>, token: String) -> CmdResu
     if !out.status.success() {
         let err = String::from_utf8_lossy(&out.stderr);
         let msg = err.trim().lines().last().unwrap_or("").to_string();
-        return Err(if is_signed_out(&err) { "Claude did not accept that token. Create a new one and paste it again.".into() } else { format!("Claude Code could not use the token: {msg}") });
+        return Err(if is_signed_out(&err) {
+            "Claude did not accept that token. Create a new one and paste it again.".into()
+        } else {
+            format!("Claude Code could not use the token: {msg}")
+        });
     }
     set_saved_token(Some(&token)).map_err(|e| e.to_string())?;
     Ok(())

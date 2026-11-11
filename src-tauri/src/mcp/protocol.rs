@@ -9,8 +9,13 @@ pub fn dispatch(
     tools: impl FnOnce() -> Vec<Value>,
     call: impl FnOnce(&str, &Value) -> Result<Value>,
 ) -> Result<Option<Value>> {
-    if line.trim().is_empty() { return Ok(None) }
-    let msg: Value = match serde_json::from_str(line) { Ok(value) => value, Err(_) => return Ok(None) };
+    if line.trim().is_empty() {
+        return Ok(None);
+    }
+    let msg: Value = match serde_json::from_str(line) {
+        Ok(value) => value,
+        Err(_) => return Ok(None),
+    };
     let id = msg.get("id").cloned();
     let method = msg.get("method").and_then(Value::as_str).unwrap_or("");
     let params = msg.get("params").cloned().unwrap_or(json!({}));

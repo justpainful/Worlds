@@ -376,18 +376,26 @@ pub fn duplicate_page(
     as_kind: Option<&str>,
     new_parent: Option<Option<&str>>,
 ) -> Result<PageMeta> {
-    duplicate_page_authorized(conn,ctx,id,deep,as_kind,new_parent,None)
+    duplicate_page_authorized(conn, ctx, id, deep, as_kind, new_parent, None)
 }
-pub fn duplicate_page_authorized(conn: &Connection, ctx: &Ctx, id: &str, deep: bool, as_kind: Option<&str>, new_parent: Option<Option<&str>>, permit: Option<&crate::drawing_copy::Permit>) -> Result<PageMeta> {
+pub fn duplicate_page_authorized(
+    conn: &Connection,
+    ctx: &Ctx,
+    id: &str,
+    deep: bool,
+    as_kind: Option<&str>,
+    new_parent: Option<Option<&str>>,
+    permit: Option<&crate::drawing_copy::Permit>,
+) -> Result<PageMeta> {
     if conn.is_autocommit() {
         let tx = conn.unchecked_transaction()?;
-        let result = duplicate_page_authorized(&tx, ctx, id, deep, as_kind, new_parent,permit)?;
+        let result = duplicate_page_authorized(&tx, ctx, id, deep, as_kind, new_parent, permit)?;
         tx.commit()?;
         return Ok(result);
     }
     let src = get_page(conn, id)?.ok_or_else(|| anyhow!("page not found"))?;
     if src.meta.kind == "drawing" || src.metadata["templateResourceKind"] == "drawing" {
-        crate::drawing_copy::require_current(conn,id,permit)?;
+        crate::drawing_copy::require_current(conn, id, permit)?;
     }
     let parent = match new_parent {
         Some(p) => p.map(str::to_string),
@@ -400,11 +408,13 @@ pub fn duplicate_page_authorized(conn: &Connection, ctx: &Ctx, id: &str, deep: b
         src.meta.title.clone()
     };
     let nodes: Vec<Value> = src.blocks.iter().map(|b| strip_bid(b.content.clone())).collect();
-    let mut metadata=src.metadata.clone();
-    if let Some(meta)=metadata.as_object_mut() {
+    let mut metadata = src.metadata.clone();
+    if let Some(meta) = metadata.as_object_mut() {
         // New identities inherit their destination workspace, not a personal
         // source's explicit sync binding or cached authorization response.
-        for key in ["sync","drawingExportPolicyCache","drawingExportPolicyRequest","drawingLibrary","experiment"] { meta.remove(key); }
+        for key in ["sync", "drawingExportPolicyCache", "drawingExportPolicyRequest", "drawingLibrary", "experiment"] {
+            meta.remove(key);
+        }
     }
     let created = create_page(
         conn,
@@ -431,7 +441,7 @@ pub fn duplicate_page_authorized(conn: &Connection, ctx: &Ctx, id: &str, deep: b
             .query_map([id], |r| r.get(0))?
             .collect::<rusqlite::Result<_>>()?;
         for kid in kids {
-            duplicate_page_authorized(conn, ctx, &kid, true, None, Some(Some(&created.id)),permit)?;
+            duplicate_page_authorized(conn, ctx, &kid, true, None, Some(Some(&created.id)), permit)?;
         }
     }
     Ok(created)

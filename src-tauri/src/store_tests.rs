@@ -210,23 +210,39 @@ fn resource_kinds_are_validated_and_searchable() {
 fn planning_and_study_kinds_carry_their_data_on_the_row() {
     let (dir, conn) = temp_db("planning");
     for k in ["task", "event", "inbox", "goal", "subject", "lesson", "assignment", "exam", "requirement"] {
-        let p = store::create_page(&conn, &Ctx::user(), NewPage { title: Some(format!("A {k}")), kind: Some(k.into()), ..Default::default() })
-            .unwrap();
+        let p =
+            store::create_page(&conn, &Ctx::user(), NewPage { title: Some(format!("A {k}")), kind: Some(k.into()), ..Default::default() })
+                .unwrap();
         assert_eq!(p.kind, k);
         assert!(p.data.is_null(), "{k} starts without data");
     }
 
     // A subject owns an assignment through the tree; the assignment's data rides on its row.
-    let subject = store::create_page(&conn, &Ctx::user(), NewPage { title: Some("Chemistry".into()), kind: Some("subject".into()), ..Default::default() })
-        .unwrap();
+    let subject = store::create_page(
+        &conn,
+        &Ctx::user(),
+        NewPage { title: Some("Chemistry".into()), kind: Some("subject".into()), ..Default::default() },
+    )
+    .unwrap();
     let hw = store::create_page(
         &conn,
         &Ctx::user(),
-        NewPage { title: Some("Lab report".into()), kind: Some("assignment".into()), parent_id: Some(subject.id.clone()), ..Default::default() },
+        NewPage {
+            title: Some("Lab report".into()),
+            kind: Some("assignment".into()),
+            parent_id: Some(subject.id.clone()),
+            ..Default::default()
+        },
     )
     .unwrap();
-    store::set_page_meta(&conn, &Ctx::user(), &hw.id, "assignment", json!({ "due": "2026-11-12", "instructions": "titration of vinegar", "points": 20 }))
-        .unwrap();
+    store::set_page_meta(
+        &conn,
+        &Ctx::user(),
+        &hw.id,
+        "assignment",
+        json!({ "due": "2026-11-12", "instructions": "titration of vinegar", "points": 20 }),
+    )
+    .unwrap();
     let row = store::list_pages(&conn, false).unwrap().into_iter().find(|p| p.id == hw.id).unwrap();
     assert_eq!(row.parent_id.as_deref(), Some(subject.id.as_str()));
     assert_eq!(row.data["due"], "2026-11-12");

@@ -92,8 +92,8 @@ pub struct Context {
     pub kind: Kind,
     pub scenes: Vec<Scene>,
     pub archive_id: Option<String>,
-    #[serde(default,skip_serializing_if="Vec::is_empty")]
-    pub source_page_ids:Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub source_page_ids: Vec<String>,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -292,10 +292,24 @@ fn ink_rect(node: &Value) -> (f64, f64, f64, f64) {
     let num = |v: &Value, key: &str, default: f64| v[key].as_f64().filter(|v| v.is_finite()).unwrap_or(default);
     let w = num(node, "w", 0.0);
     let h = num(node, "h", 0.0);
-    if let Some(vertices)=node["path"]["vertices"].as_array().filter(|v|!v.is_empty()){
-        let mut x=f64::INFINITY;let mut y=f64::INFINITY;let mut right=f64::NEG_INFINITY;let mut bottom=f64::NEG_INFINITY;
-        for vertex in vertices{for p in std::iter::once(vertex).chain(vertex.get("in")).chain(vertex.get("out")){let px=num(p,"x",0.0);let py=num(p,"y",0.0);x=x.min(px);y=y.min(py);right=right.max(px);bottom=bottom.max(py);}}
-        let sx=w/num(&node["geometrySize"],"w",w);let sy=h/num(&node["geometrySize"],"h",h);return(x*sx,y*sy,(right-x).max(1.0)*sx,(bottom-y).max(1.0)*sy);
+    if let Some(vertices) = node["path"]["vertices"].as_array().filter(|v| !v.is_empty()) {
+        let mut x = f64::INFINITY;
+        let mut y = f64::INFINITY;
+        let mut right = f64::NEG_INFINITY;
+        let mut bottom = f64::NEG_INFINITY;
+        for vertex in vertices {
+            for p in std::iter::once(vertex).chain(vertex.get("in")).chain(vertex.get("out")) {
+                let px = num(p, "x", 0.0);
+                let py = num(p, "y", 0.0);
+                x = x.min(px);
+                y = y.min(py);
+                right = right.max(px);
+                bottom = bottom.max(py);
+            }
+        }
+        let sx = w / num(&node["geometrySize"], "w", w);
+        let sy = h / num(&node["geometrySize"], "h", h);
+        return (x * sx, y * sy, (right - x).max(1.0) * sx, (bottom - y).max(1.0) * sy);
     }
     if node["kind"] != "stroke" || !node["brush"].is_object() {
         return (0.0, 0.0, w, h);
@@ -330,9 +344,11 @@ fn ink_rect(node: &Value) -> (f64, f64, f64, f64) {
     let mut y = f64::INFINITY;
     let mut right = f64::NEG_INFINITY;
     let mut bottom = f64::NEG_INFINITY;
-    let straight=b["straightLine"]==true&&matches!(b["kind"].as_str(),Some("highlighter"|"marker"));
-    for(index,p)in samples.iter().enumerate() {
-        if straight&&index!=0&&index!=samples.len()-1{continue;}
+    let straight = b["straightLine"] == true && matches!(b["kind"].as_str(), Some("highlighter" | "marker"));
+    for (index, p) in samples.iter().enumerate() {
+        if straight && index != 0 && index != samples.len() - 1 {
+            continue;
+        }
         let px = num(p, "x", 0.0);
         let py = num(p, "y", 0.0);
         x = x.min(px);
@@ -365,7 +381,11 @@ fn visible(scene: &Value, node: &Value, frame: Option<&str>, annotations: bool, 
     let num = |v: &Value, k: &str| v[k].as_f64().unwrap_or(0.0);
     let (x, y, w, h) = ink_rect(node);
     let angle = num(node, "rotation").to_radians();
-    let scale = if node["geometrySize"].is_object() { (num(node, "w") / num(&node["geometrySize"], "w")).max(num(node, "h") / num(&node["geometrySize"], "h")) } else { 1.0 };
+    let scale = if node["geometrySize"].is_object() {
+        (num(node, "w") / num(&node["geometrySize"], "w")).max(num(node, "h") / num(&node["geometrySize"], "h"))
+    } else {
+        1.0
+    };
     let padding = if node["kind"] == "stroke" { 0.0 } else { num(&node["paint"], "strokeWidth") * scale / 2.0 };
     let hw = (w * angle.cos().abs() + h * angle.sin().abs()) / 2.0 + padding;
     let hh = (w * angle.sin().abs() + h * angle.cos().abs()) / 2.0 + padding;
@@ -397,7 +417,15 @@ pub fn prepare(conn: &Connection, context: Context) -> Result<Prepared> {
     } else if context.scenes.is_empty() {
         bail!("Prepare the exported artwork first");
     }
-    if context.source_page_ids.len()>64||(!context.source_page_ids.is_empty()&&context.kind!=Kind::Projects)||context.source_page_ids.iter().any(|id|id.is_empty()||id.len()>160||!id.bytes().all(|c|c.is_ascii_alphanumeric()||c==b'_'||c==b'-')){bail!("Invalid independent project export sources");}
+    if context.source_page_ids.len() > 64
+        || (!context.source_page_ids.is_empty() && context.kind != Kind::Projects)
+        || context
+            .source_page_ids
+            .iter()
+            .any(|id| id.is_empty() || id.len() > 160 || !id.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'_' || c == b'-'))
+    {
+        bail!("Invalid independent project export sources");
+    }
     let mut pages = BTreeSet::new();
     for entry in &context.scenes {
         drawing::validate_scene(&entry.scene)?;
@@ -443,7 +471,20 @@ pub fn prepare(conn: &Connection, context: Context) -> Result<Prepared> {
     }
     let primary = remote_for(conn, &context.page_id, &user, context.kind.name())?;
     let mut requests = Vec::new();
-    for id in context.source_page_ids.iter().collect::<BTreeSet<_>>(){if id==&context.page_id{continue;}let p=available(conn,id)?;if p.kind!="drawing"{bail!("Choose a drawing project source");}if let Some(request)=remote_for(conn,id,&user,"projects")?{requests.push(request);}else if !allowed(&initial_policy(conn,id)?,page_level(conn,id)?,Kind::Projects){bail!("An included project export policy does not allow this export");}}
+    for id in context.source_page_ids.iter().collect::<BTreeSet<_>>() {
+        if id == &context.page_id {
+            continue;
+        }
+        let p = available(conn, id)?;
+        if p.kind != "drawing" {
+            bail!("Choose a drawing project source");
+        }
+        if let Some(request) = remote_for(conn, id, &user, "projects")? {
+            requests.push(request);
+        } else if !allowed(&initial_policy(conn, id)?, page_level(conn, id)?, Kind::Projects) {
+            bail!("An included project export policy does not allow this export");
+        }
+    }
     let mut foreign = BTreeMap::<String, Vec<Source>>::new();
     for page in pages {
         available(conn, &page)?;
@@ -478,7 +519,7 @@ pub(crate) fn prepare_read(conn: &Connection, page: &str) -> Result<Prepared> {
     let user = owner(conn, page)?;
     let requests = remote_for(conn, page, &user, "source")?.into_iter().collect();
     Ok(Prepared {
-        context: Context { page_id: page.into(), kind: Kind::Projects, scenes: vec![], archive_id: None,source_page_ids:vec![] },
+        context: Context { page_id: page.into(), kind: Kind::Projects, scenes: vec![], archive_id: None, source_page_ids: vec![] },
         owner: user,
         requests,
         source_only: true,
@@ -770,7 +811,7 @@ mod tests {
                 region: None,
             }],
             archive_id: None,
-            source_page_ids:vec![],
+            source_page_ids: vec![],
         }
     }
     #[test]

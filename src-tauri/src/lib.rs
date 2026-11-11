@@ -7,7 +7,6 @@ pub mod content;
 pub mod db;
 pub mod discord;
 pub mod drawing;
-mod screen_drawing;
 pub mod drawing_copy;
 pub mod drawing_export;
 pub mod drawing_library;
@@ -18,6 +17,7 @@ pub mod jobs;
 pub mod mcp;
 pub mod preview;
 pub mod protocol;
+mod screen_drawing;
 pub mod store;
 #[cfg(test)]
 mod store_tests;

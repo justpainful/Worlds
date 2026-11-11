@@ -28,7 +28,9 @@ fn serve_inner(request: &Request<Vec<u8>>) -> Result<Response<Vec<u8>>, StatusCo
     }
     let conn = db::open(&db::db_path()).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     let att = store::get_attachment(&conn, &id).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?.ok_or(StatusCode::NOT_FOUND)?;
-    if let Some(page) = &att.page_id { crate::account::permissions::require(&conn, page, crate::account::permissions::Level::View).map_err(|_| StatusCode::NOT_FOUND)?; }
+    if let Some(page) = &att.page_id {
+        crate::account::permissions::require(&conn, page, crate::account::permissions::Level::View).map_err(|_| StatusCode::NOT_FOUND)?;
+    }
     let abs = store::attachment_abs_path(&att);
     serve_file(request, &abs, &att.mime)
 }
@@ -36,7 +38,9 @@ fn serve_inner(request: &Request<Vec<u8>>) -> Result<Response<Vec<u8>>, StatusCo
 fn authorize_attachment(id: &str) -> Result<(), StatusCode> {
     let conn = db::open(&db::db_path()).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     let attachment = store::get_attachment(&conn, id).map_err(|_| StatusCode::NOT_FOUND)?.ok_or(StatusCode::NOT_FOUND)?;
-    if let Some(page) = &attachment.page_id { crate::account::permissions::require(&conn, page, crate::account::permissions::Level::View).map_err(|_| StatusCode::NOT_FOUND)?; }
+    if let Some(page) = &attachment.page_id {
+        crate::account::permissions::require(&conn, page, crate::account::permissions::Level::View).map_err(|_| StatusCode::NOT_FOUND)?;
+    }
     Ok(())
 }
 

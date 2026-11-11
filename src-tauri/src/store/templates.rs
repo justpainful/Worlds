@@ -12,17 +12,29 @@ pub fn instantiate_template(
     parent_id: Option<&str>,
     title: Option<&str>,
 ) -> Result<PageMeta> {
-    instantiate_template_authorized(conn,ctx,template_id,parent_id,title,None)
+    instantiate_template_authorized(conn, ctx, template_id, parent_id, title, None)
 }
-pub fn instantiate_template_authorized(conn: &Connection, ctx: &Ctx, template_id: &str, parent_id: Option<&str>, title: Option<&str>, permit: Option<&crate::drawing_copy::Permit>) -> Result<PageMeta> {
-    if conn.is_autocommit() {let tx=conn.unchecked_transaction()?;let page=instantiate_template_authorized(&tx,ctx,template_id,parent_id,title,permit)?;tx.commit()?;return Ok(page);}
+pub fn instantiate_template_authorized(
+    conn: &Connection,
+    ctx: &Ctx,
+    template_id: &str,
+    parent_id: Option<&str>,
+    title: Option<&str>,
+    permit: Option<&crate::drawing_copy::Permit>,
+) -> Result<PageMeta> {
+    if conn.is_autocommit() {
+        let tx = conn.unchecked_transaction()?;
+        let page = instantiate_template_authorized(&tx, ctx, template_id, parent_id, title, permit)?;
+        tx.commit()?;
+        return Ok(page);
+    }
     let t = require_page(conn, template_id)?;
     if t.kind != "template" {
         bail!("not a template");
     }
     let template = get_page(conn, template_id)?.ok_or_else(|| anyhow!("template not found"))?;
     let resource_kind = template.metadata.get("templateResourceKind").and_then(Value::as_str).unwrap_or("page");
-    let page = duplicate_page_authorized(conn, ctx, template_id, true, Some(resource_kind), Some(parent_id),permit)?;
+    let page = duplicate_page_authorized(conn, ctx, template_id, true, Some(resource_kind), Some(parent_id), permit)?;
     let today = chrono::Local::now().format("%Y-%m-%d").to_string();
     let final_title = title.map(str::to_string).unwrap_or_else(|| t.title.replace("{{date}}", &today));
     // Fill {{date}} tokens in blocks.
@@ -46,12 +58,22 @@ pub fn instantiate_template_authorized(conn: &Connection, ctx: &Ctx, template_id
 }
 
 pub fn save_as_template(conn: &Connection, ctx: &Ctx, page_id: &str) -> Result<PageMeta> {
-    save_as_template_authorized(conn,ctx,page_id,None)
+    save_as_template_authorized(conn, ctx, page_id, None)
 }
-pub fn save_as_template_authorized(conn: &Connection, ctx: &Ctx, page_id: &str, permit: Option<&crate::drawing_copy::Permit>) -> Result<PageMeta> {
-    if conn.is_autocommit() {let tx=conn.unchecked_transaction()?;let page=save_as_template_authorized(&tx,ctx,page_id,permit)?;tx.commit()?;return Ok(page);}
+pub fn save_as_template_authorized(
+    conn: &Connection,
+    ctx: &Ctx,
+    page_id: &str,
+    permit: Option<&crate::drawing_copy::Permit>,
+) -> Result<PageMeta> {
+    if conn.is_autocommit() {
+        let tx = conn.unchecked_transaction()?;
+        let page = save_as_template_authorized(&tx, ctx, page_id, permit)?;
+        tx.commit()?;
+        return Ok(page);
+    }
     let source = require_page(conn, page_id)?;
-    let t = duplicate_page_authorized(conn, ctx, page_id, true, Some("template"), Some(None),permit)?;
+    let t = duplicate_page_authorized(conn, ctx, page_id, true, Some("template"), Some(None), permit)?;
     if source.kind == "drawing" {
         conn.execute("UPDATE pages SET metadata = json_remove(json_set(metadata, '$.templateResourceKind', 'drawing'), '$.experiment') WHERE id = ?1", [&t.id])?;
     }
@@ -64,11 +86,9 @@ pub fn ensure_builtin_templates(conn: &Connection) -> Result<()> {
     let mut created_any = false;
     for t in crate::templates::BUILTIN {
         let existing: Option<String> = conn
-            .query_row(
-                "SELECT id FROM pages WHERE kind = 'template' AND json_extract(metadata, '$.builtin') = ?1 LIMIT 1",
-                [t.key],
-                |r| r.get(0),
-            )
+            .query_row("SELECT id FROM pages WHERE kind = 'template' AND json_extract(metadata, '$.builtin') = ?1 LIMIT 1", [t.key], |r| {
+                r.get(0)
+            })
             .optional()?;
         if existing.is_some() {
             continue;

@@ -34,12 +34,15 @@ pub fn open(path: &Path) -> Result<Connection> {
          PRAGMA busy_timeout = 5000;",
     )?;
     let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
-    if version > schema_version() { bail!("This database needs a newer Worlds version"); }
+    if version > schema_version() {
+        bail!("This database needs a newer Worlds version");
+    }
     // This gate also covers headless MCP and background connections. A failed
     // startup backup must never be followed by an unprotected migration.
     if version > 0 && version < schema_version() {
         let parent = path.parent().unwrap_or_else(|| Path::new("."));
-        crate::backup::backup_conn(&conn,parent,&format!("pre-migration-v{version}-{}",new_id())).context("keep the database before migrating")?;
+        crate::backup::backup_conn(&conn, parent, &format!("pre-migration-v{version}-{}", new_id()))
+            .context("keep the database before migrating")?;
     }
     migrate(&conn)?;
     Ok(conn)

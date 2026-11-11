@@ -94,7 +94,7 @@ fn context(conn: &Connection, source: &str, scene: Value, target: Option<&str>) 
         }
         index += 1;
     }
-    Ok(export::Context { page_id: source.into(), kind: export::Kind::Projects, scenes, archive_id: None,source_page_ids:vec![] })
+    Ok(export::Context { page_id: source.into(), kind: export::Kind::Projects, scenes, archive_id: None, source_page_ids: vec![] })
 }
 impl Plan {
     pub fn empty() -> Self {
@@ -449,10 +449,19 @@ mod tests {
         assert_eq!(counts(&conn), before);
         crate::drawing_library::read(&conn, item, Some(1)).unwrap();
         conn.execute_batch("DROP TRIGGER refuse_template_drawing; CREATE TRIGGER refuse_template_metadata BEFORE UPDATE OF metadata ON pages WHEN NEW.kind='template' AND json_extract(NEW.metadata,'$.templateResourceKind')='drawing' BEGIN SELECT RAISE(ABORT,'template metadata refused'); END;").unwrap();
-        assert!(store::save_as_template(&conn,&store::Ctx::user(),&source).unwrap_err().to_string().contains("template metadata refused"));assert_eq!(counts(&conn),before);
+        assert!(store::save_as_template(&conn, &store::Ctx::user(), &source)
+            .unwrap_err()
+            .to_string()
+            .contains("template metadata refused"));
+        assert_eq!(counts(&conn), before);
         conn.execute_batch("DROP TRIGGER refuse_template_metadata;").unwrap();
-        let template=store::save_as_template(&conn,&store::Ctx::user(),&source).unwrap();let before=counts(&conn);
+        let template = store::save_as_template(&conn, &store::Ctx::user(), &source).unwrap();
+        let before = counts(&conn);
         conn.execute_batch("CREATE TRIGGER refuse_template_use BEFORE UPDATE OF metadata ON pages WHEN json_extract(NEW.metadata,'$.fromTemplate') IS NOT NULL BEGIN SELECT RAISE(ABORT,'template use refused'); END;").unwrap();
-        assert!(store::instantiate_template(&conn,&store::Ctx::user(),&template.id,None,None).unwrap_err().to_string().contains("template use refused"));assert_eq!(counts(&conn),before);
+        assert!(store::instantiate_template(&conn, &store::Ctx::user(), &template.id, None, None)
+            .unwrap_err()
+            .to_string()
+            .contains("template use refused"));
+        assert_eq!(counts(&conn), before);
     }
 }

@@ -9,11 +9,27 @@ use super::*;
 /// search and sync for free; the interface decides where they are shown and
 /// hides a pack's kinds entirely while that pack is turned off.
 pub const KINDS: &[&str] = &[
-    "page", "document", "presentation", "drawing", "spreadsheet", "project", "gallery", "file", "stream", "template",
+    "page",
+    "document",
+    "presentation",
+    "drawing",
+    "spreadsheet",
+    "project",
+    "gallery",
+    "file",
+    "stream",
+    "template",
     // Planning (for everyone)
-    "task", "event", "inbox", "goal",
+    "task",
+    "event",
+    "inbox",
+    "goal",
     // Study pack (opt-in)
-    "subject", "lesson", "assignment", "exam", "requirement",
+    "subject",
+    "lesson",
+    "assignment",
+    "exam",
+    "requirement",
 ];
 
 /// Kinds whose data lives under `metadata.<kind>` and is carried on every

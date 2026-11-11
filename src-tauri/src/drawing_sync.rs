@@ -184,7 +184,7 @@ fn original_ids(value: &Value, ids: &mut HashSet<String>) {
 }
 pub fn snapshot(conn: &Connection, page: &str) -> Result<Value> {
     require(conn, page, Level::View)?;
-    crate::drawing_library::prepare_sync_versions(conn,page)?;
+    crate::drawing_library::prepare_sync_versions(conn, page)?;
     let (server, workspace, user, basis, remote, status, error): (String, String, String, String, Option<String>, String, Option<String>) =
         conn.query_row(
             "SELECT server_url,workspace_id,user_id,basis,remote,status,last_error FROM drawing_sync_state WHERE page_id = ?1",
@@ -236,7 +236,9 @@ fn validate_document(doc: &Value) -> Result<()> {
         {
             bail!("Invalid shared drawing operation");
         }
-        if op.get("requiresBase").is_some_and(|flag|flag.as_bool()!=Some(true)||op["type"]!="edit"){bail!("Invalid strict drawing base");}
+        if op.get("requiresBase").is_some_and(|flag| flag.as_bool() != Some(true) || op["type"] != "edit") {
+            bail!("Invalid strict drawing base");
+        }
         match str_at(op, "type")? {
             "edit" => {
                 if !op["changes"].is_array() {
@@ -375,9 +377,20 @@ fn equivalent_operation(old: &Value, canonical: &Value, before: &Value) -> bool 
 }
 static EMPTY: Vec<Value> = Vec::new();
 fn append_pending(doc: &mut Value, op: &Value, before: &Value) -> Result<Value> {
-    if let Some(flag)=op.get("requiresBase"){if flag.as_bool()!=Some(true)||op["type"]!="edit"{bail!("Invalid strict drawing base");}if op["base"]!=doc["revision"]{bail!("conflict: the drawing changed after this source was captured");}}
-    if op["type"]=="edit" && !op["pixelGuard"].is_null(){drawing::check_pixel_guard(&doc["scene"],&op["pixelGuard"])?;}
-    if !op["versionRestore"].is_null() && op["base"] != doc["revision"] { bail!("conflict: the drawing changed after the version restore preview"); }
+    if let Some(flag) = op.get("requiresBase") {
+        if flag.as_bool() != Some(true) || op["type"] != "edit" {
+            bail!("Invalid strict drawing base");
+        }
+        if op["base"] != doc["revision"] {
+            bail!("conflict: the drawing changed after this source was captured");
+        }
+    }
+    if op["type"] == "edit" && !op["pixelGuard"].is_null() {
+        drawing::check_pixel_guard(&doc["scene"], &op["pixelGuard"])?;
+    }
+    if !op["versionRestore"].is_null() && op["base"] != doc["revision"] {
+        bail!("conflict: the drawing changed after the version restore preview");
+    }
     let mut next = op.clone();
     next["base"] = doc["revision"].clone();
     if op["type"] == "edit" {
@@ -599,7 +612,7 @@ pub fn accept(conn: &Connection, page: &str, expected_revision: i64, incoming: V
             )?;
         }
     }
-    crate::drawing_library::install_sync_versions(conn,page,&incoming["versions"])?;
+    crate::drawing_library::install_sync_versions(conn, page, &incoming["versions"])?;
     install(conn, page, &projected)?;
     for id in acknowledged {
         conn.execute("DELETE FROM drawing_sync_outbox WHERE page_id=?1 AND operation_id=?2", params![page, id])?;
@@ -846,38 +859,89 @@ pub async fn drawing_sync_store_original(
 mod tests {
     use super::*;
     #[test]
-    fn strict_source_edit_never_rebases_over_foreign_optional_fields(){
-        let scene=drawing::initial_scene("strict-source");let layer=scene["layerOrder"][0].as_str().unwrap();let mut doc=json!({"revision":0,"seed":scene,"scene":scene,"operations":[]});let mut captured=op("alice",0,"captured",json!([]));captured["requiresBase"]=json!(true);let before=preconditions(&scene,&captured).unwrap();assert!(append_pending(&mut doc.clone(),&captured,&before).is_ok());append(&mut doc,op("bob",0,"foreign",json!([{"type":"patch","collection":"layers","id":layer,"fields":{"alphaLocked":true}}])));let original=doc.clone();assert!(append_pending(&mut doc,&captured,&before).unwrap_err().to_string().contains("source was captured"));assert_eq!(doc,original);captured["requiresBase"]=json!(false);assert!(append_pending(&mut doc,&captured,&before).is_err());
+    fn strict_source_edit_never_rebases_over_foreign_optional_fields() {
+        let scene = drawing::initial_scene("strict-source");
+        let layer = scene["layerOrder"][0].as_str().unwrap();
+        let mut doc = json!({"revision":0,"seed":scene,"scene":scene,"operations":[]});
+        let mut captured = op("alice", 0, "captured", json!([]));
+        captured["requiresBase"] = json!(true);
+        let before = preconditions(&scene, &captured).unwrap();
+        assert!(append_pending(&mut doc.clone(), &captured, &before).is_ok());
+        append(&mut doc, op("bob", 0, "foreign", json!([{"type":"patch","collection":"layers","id":layer,"fields":{"alphaLocked":true}}])));
+        let original = doc.clone();
+        assert!(append_pending(&mut doc, &captured, &before).unwrap_err().to_string().contains("source was captured"));
+        assert_eq!(doc, original);
+        captured["requiresBase"] = json!(false);
+        assert!(append_pending(&mut doc, &captured, &before).is_err());
     }
     #[test]
-    fn nested_pixel_receipts_require_unchanged_ancestor_metadata(){
-        let mut scene=drawing::initial_scene("nested-pixels");let frame=scene["defaultFrameId"].as_str().unwrap().to_owned();let child=scene["layerOrder"][0].as_str().unwrap().to_owned();let mut parent=scene["layers"][&child].clone();parent["id"]=json!("group");scene["layers"]["group"]=parent.clone();scene["layers"][&child]["parentId"]=json!("group");scene["layerOrder"]=json!(["group",child]);
-        let guard=json!({"frameId":frame,"layerId":child,"source":"current","expected":{"frame":scene["frames"][&frame],"layers":[scene["layers"][&child]],"ancestors":[parent],"nodes":[],"targets":{},"masks":{},"assets":{}}});
-        drawing::check_pixel_guard(&scene,&guard).unwrap();let mut legacy=guard.clone();legacy["expected"].as_object_mut().unwrap().remove("ancestors");assert!(drawing::check_pixel_guard(&scene,&legacy).is_err());scene["layers"]["group"]["opacity"]=json!(0.5);assert!(drawing::check_pixel_guard(&scene,&guard).is_err());
+    fn nested_pixel_receipts_require_unchanged_ancestor_metadata() {
+        let mut scene = drawing::initial_scene("nested-pixels");
+        let frame = scene["defaultFrameId"].as_str().unwrap().to_owned();
+        let child = scene["layerOrder"][0].as_str().unwrap().to_owned();
+        let mut parent = scene["layers"][&child].clone();
+        parent["id"] = json!("group");
+        scene["layers"]["group"] = parent.clone();
+        scene["layers"][&child]["parentId"] = json!("group");
+        scene["layerOrder"] = json!(["group", child]);
+        let guard = json!({"frameId":frame,"layerId":child,"source":"current","expected":{"frame":scene["frames"][&frame],"layers":[scene["layers"][&child]],"ancestors":[parent],"nodes":[],"targets":{},"masks":{},"assets":{}}});
+        drawing::check_pixel_guard(&scene, &guard).unwrap();
+        let mut legacy = guard.clone();
+        legacy["expected"].as_object_mut().unwrap().remove("ancestors");
+        assert!(drawing::check_pixel_guard(&scene, &legacy).is_err());
+        scene["layers"]["group"]["opacity"] = json!(0.5);
+        assert!(drawing::check_pixel_guard(&scene, &guard).is_err());
     }
     #[test]
-    fn pending_pixel_source_guard_refuses_new_source_nodes_and_accepts_other_layers(){
-        let scene=drawing::initial_scene("pixels");let frame=scene["defaultFrameId"].as_str().unwrap();let layer=scene["layerOrder"][0].as_str().unwrap();
-        let mut guarded=op("alice",0,"guarded",json!([]));
-        guarded["pixelGuard"]=json!({"frameId":frame,"layerId":layer,"source":"current","expected":{"frame":scene["frames"][frame],"layers":[scene["layers"][layer]],"nodes":[],"targets":{},"masks":{},"assets":{}}});
-        guarded["pixelGuard"]["expected"]["layers"][0]["opacity"]=json!(1);
-        drawing::check_pixel_guard(&scene,&guarded["pixelGuard"]).unwrap();
-        let before=preconditions(&scene,&guarded).unwrap();let mut doc=json!({"revision":0,"seed":scene,"scene":scene,"operations":[]});
-        let mut independent=scene["layers"][layer].clone();independent["id"]=json!("other");
-        append(&mut doc,op("bob",0,"other-layer",json!([{"type":"put","collection":"layers","id":"other","value":independent},{"type":"order","list":"layerOrder","ids":[layer,"other"]}])));
-        assert!(append_pending(&mut doc.clone(),&guarded,&before).is_ok());
-        let node=shape(&scene,"new-source");append(&mut doc,op("bob",1,"source",json!([{"type":"put","collection":"nodes","id":"new-source","value":node},{"type":"order","list":"nodeOrder","ids":["new-source"]}])));
-        let prior=doc.clone();assert!(append_pending(&mut doc,&guarded,&before).unwrap_err().to_string().contains("sampled pixel source changed"));assert_eq!(doc,prior);
+    fn pending_pixel_source_guard_refuses_new_source_nodes_and_accepts_other_layers() {
+        let scene = drawing::initial_scene("pixels");
+        let frame = scene["defaultFrameId"].as_str().unwrap();
+        let layer = scene["layerOrder"][0].as_str().unwrap();
+        let mut guarded = op("alice", 0, "guarded", json!([]));
+        guarded["pixelGuard"] = json!({"frameId":frame,"layerId":layer,"source":"current","expected":{"frame":scene["frames"][frame],"layers":[scene["layers"][layer]],"nodes":[],"targets":{},"masks":{},"assets":{}}});
+        guarded["pixelGuard"]["expected"]["layers"][0]["opacity"] = json!(1);
+        drawing::check_pixel_guard(&scene, &guarded["pixelGuard"]).unwrap();
+        let before = preconditions(&scene, &guarded).unwrap();
+        let mut doc = json!({"revision":0,"seed":scene,"scene":scene,"operations":[]});
+        let mut independent = scene["layers"][layer].clone();
+        independent["id"] = json!("other");
+        append(
+            &mut doc,
+            op(
+                "bob",
+                0,
+                "other-layer",
+                json!([{"type":"put","collection":"layers","id":"other","value":independent},{"type":"order","list":"layerOrder","ids":[layer,"other"]}]),
+            ),
+        );
+        assert!(append_pending(&mut doc.clone(), &guarded, &before).is_ok());
+        let node = shape(&scene, "new-source");
+        append(
+            &mut doc,
+            op(
+                "bob",
+                1,
+                "source",
+                json!([{"type":"put","collection":"nodes","id":"new-source","value":node},{"type":"order","list":"nodeOrder","ids":["new-source"]}]),
+            ),
+        );
+        let prior = doc.clone();
+        assert!(append_pending(&mut doc, &guarded, &before).unwrap_err().to_string().contains("sampled pixel source changed"));
+        assert_eq!(doc, prior);
     }
     #[test]
     fn pending_restore_cannot_be_rebased_over_even_an_independent_change() {
-        let scene=drawing::initial_scene("restore"); let layer=scene["layerOrder"][0].as_str().unwrap();
-        let mut doc=json!({"revision":0,"seed":scene,"scene":scene,"operations":[]});
-        let mut restore=op("alice",0,"restore",json!([{"type":"patch","collection":"layers","id":layer,"fields":{"name":"Restored"}}]));
-        restore["versionRestore"]=json!({"versionId":"saved","expectedRevision":0,"backupId":"restore"});
-        let before=preconditions(&doc["scene"],&restore).unwrap();
-        append(&mut doc,op("bob",0,"opacity",json!([{"type":"patch","collection":"layers","id":layer,"fields":{"opacity":0.4}}])));
-        let current=doc.clone(); assert!(append_pending(&mut doc,&restore,&before).unwrap_err().to_string().contains("after the version restore preview")); assert_eq!(doc,current);
+        let scene = drawing::initial_scene("restore");
+        let layer = scene["layerOrder"][0].as_str().unwrap();
+        let mut doc = json!({"revision":0,"seed":scene,"scene":scene,"operations":[]});
+        let mut restore =
+            op("alice", 0, "restore", json!([{"type":"patch","collection":"layers","id":layer,"fields":{"name":"Restored"}}]));
+        restore["versionRestore"] = json!({"versionId":"saved","expectedRevision":0,"backupId":"restore"});
+        let before = preconditions(&doc["scene"], &restore).unwrap();
+        append(&mut doc, op("bob", 0, "opacity", json!([{"type":"patch","collection":"layers","id":layer,"fields":{"opacity":0.4}}])));
+        let current = doc.clone();
+        assert!(append_pending(&mut doc, &restore, &before).unwrap_err().to_string().contains("after the version restore preview"));
+        assert_eq!(doc, current);
     }
     fn shape(scene: &Value, id: &str) -> Value {
         json!({"id":id,"kind":"shape","shape":"rect","name":id,"layerId":scene["layerOrder"][0],"frameId":scene["defaultFrameId"],"groupId":null,"visible":true,"locked":false,"rotation":0,"opacity":1,"flipX":false,"flipY":false,"x":0,"y":0,"w":100,"h":100,"paint":{"fill":"transparent","stroke":"#202023","strokeWidth":3,"dash":[],"cap":"round","radius":16},"textStyle":{"font":"IBM Plex Sans Arabic","size":28,"weight":400,"italic":false,"align":"start","direction":"auto","leading":1.7,"background":"transparent","color":"#202023","border":"transparent"},"effects":[]})

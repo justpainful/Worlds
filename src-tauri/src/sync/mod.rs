@@ -335,43 +335,78 @@ pub fn outbox_reject(conn: &Connection, ids: &[i64], reason: &str) -> Result<usi
 }
 
 fn rejection_owner(conn: &Connection, page: &str, owner: &str) -> Result<String> {
-    crate::drawing_sync::check_bound_identity(conn,page)?;
-    let account: Option<String> = conn.query_row("SELECT user_id FROM account WHERE id=1 AND status='active'",[],|r|r.get(0)).optional()?;
-    let bound: Option<String> = conn.query_row("SELECT user_id FROM drawing_sync_state WHERE page_id=?1",[page],|r|r.get(0)).optional()?;
+    crate::drawing_sync::check_bound_identity(conn, page)?;
+    let account: Option<String> =
+        conn.query_row("SELECT user_id FROM account WHERE id=1 AND status='active'", [], |r| r.get(0)).optional()?;
+    let bound: Option<String> =
+        conn.query_row("SELECT user_id FROM drawing_sync_state WHERE page_id=?1", [page], |r| r.get(0)).optional()?;
     let expected = account.or(bound).unwrap_or(store::profile(conn)?.id);
-    if !owner.is_empty() && owner != expected { anyhow::bail!("The refused edits belong to another account"); }
+    if !owner.is_empty() && owner != expected {
+        anyhow::bail!("The refused edits belong to another account");
+    }
     Ok(expected)
 }
 
 /// Archive a complete causal state before clearing the refused live replica.
 /// An interrupted reply can repeat the same ID; late local input updates it.
-pub fn archive_rejection(conn: &Connection, page: &str, channel: i64, id: &str, owner: &str, snapshot: &[u8], empty: &[u8], reason: &str) -> Result<()> {
-    check_channel(channel)?; uuid::Uuid::parse_str(id)?;
-    if snapshot.len() > 64*1024*1024 || empty.len() > 1024 || reason.len() > 10000 { anyhow::bail!("The refused-edit archive exceeds its size limit"); }
-    let tx=conn.unchecked_transaction()?; let owner=rejection_owner(&tx,page,owner)?;
-    let prior:Option<(String,String,i64)>=tx.query_row("SELECT page_id,owner_id,channel FROM sync_rejected_snapshots WHERE id=?1",[id],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).optional()?;
-    if prior.is_some_and(|p|p!=(page.to_string(),owner.clone(),channel)) { anyhow::bail!("Refused-edit archive identifier was reused"); }
+pub fn archive_rejection(
+    conn: &Connection,
+    page: &str,
+    channel: i64,
+    id: &str,
+    owner: &str,
+    snapshot: &[u8],
+    empty: &[u8],
+    reason: &str,
+) -> Result<()> {
+    check_channel(channel)?;
+    uuid::Uuid::parse_str(id)?;
+    if snapshot.len() > 64 * 1024 * 1024 || empty.len() > 1024 || reason.len() > 10000 {
+        anyhow::bail!("The refused-edit archive exceeds its size limit");
+    }
+    let tx = conn.unchecked_transaction()?;
+    let owner = rejection_owner(&tx, page, owner)?;
+    let prior: Option<(String, String, i64)> = tx
+        .query_row("SELECT page_id,owner_id,channel FROM sync_rejected_snapshots WHERE id=?1", [id], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?))
+        })
+        .optional()?;
+    if prior.is_some_and(|p| p != (page.to_string(), owner.clone(), channel)) {
+        anyhow::bail!("Refused-edit archive identifier was reused");
+    }
     tx.execute("INSERT INTO sync_rejected_snapshots(id,page_id,channel,owner_id,data,reason,created_at) VALUES (?1,?2,?3,?4,?5,?6,?7) ON CONFLICT(id) DO UPDATE SET data=excluded.data,reason=excluded.reason",params![id,page,channel,owner,snapshot,reason,now()])?;
-    tx.execute("UPDATE sync_outbox SET state='rejected',last_error=?3 WHERE page_id=?1 AND channel=?2 AND state='pending'",params![page,channel,reason])?;
-    ensure_doc(&tx,page,channel)?;
-    tx.execute("UPDATE sync_docs SET snapshot=?3,snapshot_upto=0,updated_at=?4 WHERE page_id=?1 AND channel=?2",params![page,channel,empty,now()])?;
-    tx.execute("DELETE FROM sync_updates WHERE page_id=?1 AND channel=?2",params![page,channel])?;
-    tx.commit()?; Ok(())
+    tx.execute(
+        "UPDATE sync_outbox SET state='rejected',last_error=?3 WHERE page_id=?1 AND channel=?2 AND state='pending'",
+        params![page, channel, reason],
+    )?;
+    ensure_doc(&tx, page, channel)?;
+    tx.execute(
+        "UPDATE sync_docs SET snapshot=?3,snapshot_upto=0,updated_at=?4 WHERE page_id=?1 AND channel=?2",
+        params![page, channel, empty, now()],
+    )?;
+    tx.execute("DELETE FROM sync_updates WHERE page_id=?1 AND channel=?2", params![page, channel])?;
+    tx.commit()?;
+    Ok(())
 }
 
-pub fn rejected_list(conn:&Connection,page:&str,owner:&str,before_time:Option<i64>,before_id:Option<&str>)->Result<Value>{
-    crate::account::permissions::require(conn,page,crate::account::permissions::Level::View)?;
-    let owner=rejection_owner(conn,page,owner)?;
+pub fn rejected_list(conn: &Connection, page: &str, owner: &str, before_time: Option<i64>, before_id: Option<&str>) -> Result<Value> {
+    crate::account::permissions::require(conn, page, crate::account::permissions::Level::View)?;
+    let owner = rejection_owner(conn, page, owner)?;
     let mut stmt=conn.prepare("SELECT id,channel,reason,created_at,LENGTH(data) FROM sync_rejected_snapshots WHERE page_id=?1 AND owner_id=?2 AND (?3 IS NULL OR created_at<?3 OR (created_at=?3 AND id<?4)) ORDER BY created_at DESC,id DESC LIMIT 101")?;
     let mut rows:Vec<Value>=stmt.query_map(params![page,owner,before_time,before_id],|r|Ok(serde_json::json!({"id":r.get::<_,String>(0)?,"channel":r.get::<_,i64>(1)?,"reason":r.get::<_,String>(2)?,"createdAt":r.get::<_,i64>(3)?,"size":r.get::<_,i64>(4)?})))?.collect::<rusqlite::Result<_>>()?;
-    let more=rows.len()>100; rows.truncate(100);
-    let next=if more {rows.last().map(|r|serde_json::json!({"createdAt":r["createdAt"],"id":r["id"]}))}else{None};
+    let more = rows.len() > 100;
+    rows.truncate(100);
+    let next = if more { rows.last().map(|r| serde_json::json!({"createdAt":r["createdAt"],"id":r["id"]})) } else { None };
     Ok(serde_json::json!({"items":rows,"next":next}))
 }
-pub fn rejected_read(conn:&Connection,page:&str,id:&str,owner:&str)->Result<String>{
-    crate::account::permissions::require(conn,page,crate::account::permissions::Level::View)?;
-    let owner=rejection_owner(conn,page,owner)?;
-    let data:Vec<u8>=conn.query_row("SELECT data FROM sync_rejected_snapshots WHERE id=?1 AND page_id=?2 AND owner_id=?3",params![id,page,owner],|r|r.get(0))?;
+pub fn rejected_read(conn: &Connection, page: &str, id: &str, owner: &str) -> Result<String> {
+    crate::account::permissions::require(conn, page, crate::account::permissions::Level::View)?;
+    let owner = rejection_owner(conn, page, owner)?;
+    let data: Vec<u8> = conn.query_row(
+        "SELECT data FROM sync_rejected_snapshots WHERE id=?1 AND page_id=?2 AND owner_id=?3",
+        params![id, page, owner],
+        |r| r.get(0),
+    )?;
     Ok(b64(&data))
 }
 

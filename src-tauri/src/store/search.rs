@@ -10,8 +10,14 @@ pub fn index_page(conn: &Connection, page_id: &str) -> Result<()> {
             Ok((r.get(0)?, r.get(1)?, r.get(2)?))
         })?;
     let meta_text = metadata_text(&serde_json::from_str(&metadata).unwrap_or(Value::Null));
-    let drawing_text: String = conn.query_row("SELECT search_text FROM drawing_documents WHERE page_id = ?1", [page_id], |r| r.get(0)).optional()?.unwrap_or_default();
-    let library_tags: String = conn.query_row("SELECT tags FROM drawing_library_items WHERE page_id = ?1", [page_id], |r| r.get(0)).optional()?.unwrap_or_default();
+    let drawing_text: String = conn
+        .query_row("SELECT search_text FROM drawing_documents WHERE page_id = ?1", [page_id], |r| r.get(0))
+        .optional()?
+        .unwrap_or_default();
+    let library_tags: String = conn
+        .query_row("SELECT tags FROM drawing_library_items WHERE page_id = ?1", [page_id], |r| r.get(0))
+        .optional()?
+        .unwrap_or_default();
     let texts: Vec<(String, String)> = conn
         .prepare("SELECT type, text FROM blocks WHERE page_id = ?1 ORDER BY sort_key")?
         .query_map([page_id], |r| Ok((r.get(0)?, r.get(1)?)))?
@@ -22,8 +28,12 @@ pub fn index_page(conn: &Connection, page_id: &str) -> Result<()> {
         .collect::<rusqlite::Result<_>>()?;
     let mut body: Vec<&str> = texts.iter().map(|(_, t)| t.as_str()).collect();
     body.extend(att.iter().map(String::as_str));
-    if !drawing_text.is_empty() { body.push(&drawing_text); }
-    if !library_tags.is_empty() { body.push(&library_tags); }
+    if !drawing_text.is_empty() {
+        body.push(&drawing_text);
+    }
+    if !library_tags.is_empty() {
+        body.push(&library_tags);
+    }
     if !meta_text.is_empty() {
         body.push(&meta_text);
     }
@@ -37,7 +47,9 @@ pub fn index_page(conn: &Connection, page_id: &str) -> Result<()> {
         .chars()
         .take(220)
         .collect();
-    if preview.is_empty() { preview = drawing_text.replace('\n', " · ").chars().take(220).collect(); }
+    if preview.is_empty() {
+        preview = drawing_text.replace('\n', " · ").chars().take(220).collect();
+    }
     conn.execute("UPDATE pages SET preview = ?1 WHERE id = ?2", params![preview, page_id])?;
     conn.execute("DELETE FROM pages_fts WHERE page_id = ?1", [page_id])?;
     if deleted.is_none() {

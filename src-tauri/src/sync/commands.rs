@@ -71,16 +71,31 @@ pub async fn sync_outbox_reject(state: State<'_, AppState>, ids: Vec<i64>, reaso
     with(&state, |c| outbox_reject(c, &ids, &reason))
 }
 #[tauri::command]
-pub async fn sync_archive_rejection(state: State<'_,AppState>,page_id:String,channel:i64,archive_id:String,owner:String,data:String,empty:String,reason:String)->CmdResult<()> {
-    with(&state,|c|archive_rejection(c,&page_id,channel,&archive_id,&owner,&unb64(&data)?,&unb64(&empty)?,&reason))
+pub async fn sync_archive_rejection(
+    state: State<'_, AppState>,
+    page_id: String,
+    channel: i64,
+    archive_id: String,
+    owner: String,
+    data: String,
+    empty: String,
+    reason: String,
+) -> CmdResult<()> {
+    with(&state, |c| archive_rejection(c, &page_id, channel, &archive_id, &owner, &unb64(&data)?, &unb64(&empty)?, &reason))
 }
 #[tauri::command]
-pub async fn sync_rejected_list(state:State<'_,AppState>,page_id:String,owner:String,before_time:Option<i64>,before_id:Option<String>)->CmdResult<Value>{
-    with(&state,|c|rejected_list(c,&page_id,&owner,before_time,before_id.as_deref()))
+pub async fn sync_rejected_list(
+    state: State<'_, AppState>,
+    page_id: String,
+    owner: String,
+    before_time: Option<i64>,
+    before_id: Option<String>,
+) -> CmdResult<Value> {
+    with(&state, |c| rejected_list(c, &page_id, &owner, before_time, before_id.as_deref()))
 }
 #[tauri::command]
-pub async fn sync_rejected_read(state:State<'_,AppState>,page_id:String,archive_id:String,owner:String)->CmdResult<String>{
-    with(&state,|c|rejected_read(c,&page_id,&archive_id,&owner))
+pub async fn sync_rejected_read(state: State<'_, AppState>, page_id: String, archive_id: String, owner: String) -> CmdResult<String> {
+    with(&state, |c| rejected_read(c, &page_id, &archive_id, &owner))
 }
 
 #[tauri::command]

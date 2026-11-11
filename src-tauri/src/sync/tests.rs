@@ -35,47 +35,82 @@ fn user_version(conn: &Connection) -> i64 {
 
 #[test]
 fn rejected_snapshots_are_atomic_owned_and_durable_without_reentering_the_send_queue() {
-    let dir=temp_dir("rejected-snapshot");let path=dir.join("worlds.db");let conn=db::open(&path).unwrap();let owner=store::profile(&conn).unwrap().id;
-    let id=page(&conn,"Drawing comments");let archive_id=db::new_id();
-    append(&conn,&id,CHANNEL_CONTENT,&[1,2],"local",true).unwrap();append(&conn,&id,CHANNEL_COMMENTS,&[3,4],"local",true).unwrap();
-    archive_rejection(&conn,&id,CHANNEL_COMMENTS,&archive_id,&owner,&[10,11,12],&[0,0],"Access changed").unwrap();
-    assert_eq!(unb64(&rejected_read(&conn,&id,&archive_id,&owner).unwrap()).unwrap(),vec![10,11,12]);
-    assert_eq!(outbox_list(&conn,Some(&id),100).unwrap().len(),1);assert_eq!(page_status(&conn,&id).unwrap().rejected,1);
-    assert_eq!(unb64(load(&conn,&id,CHANNEL_COMMENTS).unwrap().snapshot.as_deref().unwrap()).unwrap(),vec![0,0]);
-    assert!(load(&conn,&id,CHANNEL_COMMENTS).unwrap().updates.is_empty());
-    let first=rejected_list(&conn,&id,&owner,None,None).unwrap();assert_eq!(first["items"].as_array().unwrap().len(),1);
-    archive_rejection(&conn,&id,CHANNEL_COMMENTS,&archive_id,&owner,&[10,11,12,13],&[0,0],"Access changed").unwrap();
-    assert_eq!(rejected_list(&conn,&id,&owner,None,None).unwrap()["items"][0]["createdAt"],first["items"][0]["createdAt"]);
-    assert!(rejected_read(&conn,&id,&archive_id,"other-account").is_err());
-    let before=load(&conn,&id,CHANNEL_CONTENT).unwrap();let failed_id=db::new_id();
+    let dir = temp_dir("rejected-snapshot");
+    let path = dir.join("worlds.db");
+    let conn = db::open(&path).unwrap();
+    let owner = store::profile(&conn).unwrap().id;
+    let id = page(&conn, "Drawing comments");
+    let archive_id = db::new_id();
+    append(&conn, &id, CHANNEL_CONTENT, &[1, 2], "local", true).unwrap();
+    append(&conn, &id, CHANNEL_COMMENTS, &[3, 4], "local", true).unwrap();
+    archive_rejection(&conn, &id, CHANNEL_COMMENTS, &archive_id, &owner, &[10, 11, 12], &[0, 0], "Access changed").unwrap();
+    assert_eq!(unb64(&rejected_read(&conn, &id, &archive_id, &owner).unwrap()).unwrap(), vec![10, 11, 12]);
+    assert_eq!(outbox_list(&conn, Some(&id), 100).unwrap().len(), 1);
+    assert_eq!(page_status(&conn, &id).unwrap().rejected, 1);
+    assert_eq!(unb64(load(&conn, &id, CHANNEL_COMMENTS).unwrap().snapshot.as_deref().unwrap()).unwrap(), vec![0, 0]);
+    assert!(load(&conn, &id, CHANNEL_COMMENTS).unwrap().updates.is_empty());
+    let first = rejected_list(&conn, &id, &owner, None, None).unwrap();
+    assert_eq!(first["items"].as_array().unwrap().len(), 1);
+    archive_rejection(&conn, &id, CHANNEL_COMMENTS, &archive_id, &owner, &[10, 11, 12, 13], &[0, 0], "Access changed").unwrap();
+    assert_eq!(rejected_list(&conn, &id, &owner, None, None).unwrap()["items"][0]["createdAt"], first["items"][0]["createdAt"]);
+    assert!(rejected_read(&conn, &id, &archive_id, "other-account").is_err());
+    let before = load(&conn, &id, CHANNEL_CONTENT).unwrap();
+    let failed_id = db::new_id();
     conn.execute_batch("CREATE TRIGGER refuse_clear BEFORE UPDATE ON sync_docs BEGIN SELECT RAISE(ABORT,'cannot reset'); END;").unwrap();
-    assert!(archive_rejection(&conn,&id,CHANNEL_CONTENT,&failed_id,&owner,&[7,8],&[0,0],"Refused").is_err());
-    assert_eq!(load(&conn,&id,CHANNEL_CONTENT).unwrap().updates,before.updates);assert!(rejected_read(&conn,&id,&failed_id,&owner).is_err());assert_eq!(outbox_list(&conn,Some(&id),100).unwrap().len(),1);
-    conn.execute_batch("DROP TRIGGER refuse_clear;").unwrap();drop(conn);let conn=db::open(&path).unwrap();
-    assert_eq!(unb64(&rejected_read(&conn,&id,&archive_id,&owner).unwrap()).unwrap(),vec![10,11,12,13]);
-    conn.execute("INSERT INTO account_workspaces(id,name,role,synced_at) VALUES ('denied','Team','member',0)",[]).unwrap();conn.execute("UPDATE pages SET workspace_id='denied' WHERE id=?1",[&id]).unwrap();
-    assert!(rejected_list(&conn,&id,&owner,None,None).is_err());assert!(rejected_read(&conn,&id,&archive_id,&owner).is_err());
+    assert!(archive_rejection(&conn, &id, CHANNEL_CONTENT, &failed_id, &owner, &[7, 8], &[0, 0], "Refused").is_err());
+    assert_eq!(load(&conn, &id, CHANNEL_CONTENT).unwrap().updates, before.updates);
+    assert!(rejected_read(&conn, &id, &failed_id, &owner).is_err());
+    assert_eq!(outbox_list(&conn, Some(&id), 100).unwrap().len(), 1);
+    conn.execute_batch("DROP TRIGGER refuse_clear;").unwrap();
+    drop(conn);
+    let conn = db::open(&path).unwrap();
+    assert_eq!(unb64(&rejected_read(&conn, &id, &archive_id, &owner).unwrap()).unwrap(), vec![10, 11, 12, 13]);
+    conn.execute("INSERT INTO account_workspaces(id,name,role,synced_at) VALUES ('denied','Team','member',0)", []).unwrap();
+    conn.execute("UPDATE pages SET workspace_id='denied' WHERE id=?1", [&id]).unwrap();
+    assert!(rejected_list(&conn, &id, &owner, None, None).is_err());
+    assert!(rejected_read(&conn, &id, &archive_id, &owner).is_err());
 }
 
 #[test]
 fn migration_10_preserves_a_readable_version_9_backup_before_upgrading() {
-    let dir=temp_dir("rejected-upgrade");let path=dir.join("worlds.db");
-    {let conn=db::open(&path).unwrap();db::set_setting(&conn,"migration-probe",&json!("kept")).unwrap();conn.execute_batch("DROP TABLE sync_rejected_snapshots; PRAGMA user_version=9;").unwrap();}
-    crate::backup::prepare(&path,&dir).unwrap();
-    let backup=crate::backup::list(&dir).into_iter().find(|b|b.reason=="pre-migration-v9").unwrap();
-    let old=Connection::open(crate::backup::backups_dir(&dir).join(backup.file)).unwrap();assert_eq!(user_version(&old),9);assert_eq!(db::get_setting(&old,"migration-probe").unwrap(),Some(json!("kept")));drop(old);
-    let conn=db::open(&path).unwrap();assert_eq!(user_version(&conn),db::schema_version());assert!(tables(&conn).iter().any(|s|s=="sync_rejected_snapshots"));assert_eq!(db::get_setting(&conn,"migration-probe").unwrap(),Some(json!("kept")));
-    let central=crate::backup::list(&dir).into_iter().find(|b|b.reason.starts_with("pre-migration-v9-")).unwrap();
-    let old=Connection::open(crate::backup::backups_dir(&dir).join(central.file)).unwrap();assert_eq!(user_version(&old),9);assert_eq!(db::get_setting(&old,"migration-probe").unwrap(),Some(json!("kept")));
+    let dir = temp_dir("rejected-upgrade");
+    let path = dir.join("worlds.db");
+    {
+        let conn = db::open(&path).unwrap();
+        db::set_setting(&conn, "migration-probe", &json!("kept")).unwrap();
+        conn.execute_batch("DROP TABLE sync_rejected_snapshots; PRAGMA user_version=9;").unwrap();
+    }
+    crate::backup::prepare(&path, &dir).unwrap();
+    let backup = crate::backup::list(&dir).into_iter().find(|b| b.reason == "pre-migration-v9").unwrap();
+    let old = Connection::open(crate::backup::backups_dir(&dir).join(backup.file)).unwrap();
+    assert_eq!(user_version(&old), 9);
+    assert_eq!(db::get_setting(&old, "migration-probe").unwrap(), Some(json!("kept")));
+    drop(old);
+    let conn = db::open(&path).unwrap();
+    assert_eq!(user_version(&conn), db::schema_version());
+    assert!(tables(&conn).iter().any(|s| s == "sync_rejected_snapshots"));
+    assert_eq!(db::get_setting(&conn, "migration-probe").unwrap(), Some(json!("kept")));
+    let central = crate::backup::list(&dir).into_iter().find(|b| b.reason.starts_with("pre-migration-v9-")).unwrap();
+    let old = Connection::open(crate::backup::backups_dir(&dir).join(central.file)).unwrap();
+    assert_eq!(user_version(&old), 9);
+    assert_eq!(db::get_setting(&old, "migration-probe").unwrap(), Some(json!("kept")));
 }
 
 #[test]
 fn every_database_entrypoint_refuses_migration_when_its_backup_cannot_be_written() {
-    let dir=temp_dir("blocked-migration");let path=dir.join("worlds.db");
-    {let conn=db::open(&path).unwrap();db::set_setting(&conn,"probe",&json!("kept")).unwrap();conn.execute_batch("DROP TABLE sync_rejected_snapshots; PRAGMA user_version=9;").unwrap();}
-    std::fs::write(dir.join("backups"),b"path occupied").unwrap();
+    let dir = temp_dir("blocked-migration");
+    let path = dir.join("worlds.db");
+    {
+        let conn = db::open(&path).unwrap();
+        db::set_setting(&conn, "probe", &json!("kept")).unwrap();
+        conn.execute_batch("DROP TABLE sync_rejected_snapshots; PRAGMA user_version=9;").unwrap();
+    }
+    std::fs::write(dir.join("backups"), b"path occupied").unwrap();
     assert!(db::open(&path).err().unwrap().to_string().contains("before migrating"));
-    let raw=Connection::open(&path).unwrap();assert_eq!(user_version(&raw),9);assert!(!tables(&raw).iter().any(|s|s=="sync_rejected_snapshots"));assert_eq!(db::get_setting(&raw,"probe").unwrap(),Some(json!("kept")));
+    let raw = Connection::open(&path).unwrap();
+    assert_eq!(user_version(&raw), 9);
+    assert!(!tables(&raw).iter().any(|s| s == "sync_rejected_snapshots"));
+    assert_eq!(db::get_setting(&raw, "probe").unwrap(), Some(json!("kept")));
 }
 
 fn tables(conn: &Connection) -> Vec<String> {
@@ -110,7 +145,18 @@ fn migration_6_upgrades_a_version_5_database_and_keeps_data() {
         conn.execute("UPDATE pages SET workspace_id = 'team' WHERE id = ?1", [&id]).unwrap();
         // Roll the schema back to exactly what version 5 had.
         // Later migrations must be removed too: db::open applies all pending versions.
-        for t in ["sync_rejected_snapshots", "drawing_sync_originals", "drawing_sync_recoveries", "drawing_sync_outbox", "drawing_sync_state", "drawing_library_versions", "drawing_library_items", "drawing_versions", "drawing_operations", "drawing_documents"] {
+        for t in [
+            "sync_rejected_snapshots",
+            "drawing_sync_originals",
+            "drawing_sync_recoveries",
+            "drawing_sync_outbox",
+            "drawing_sync_state",
+            "drawing_library_versions",
+            "drawing_library_items",
+            "drawing_versions",
+            "drawing_operations",
+            "drawing_documents",
+        ] {
             conn.execute_batch(&format!("DROP TABLE {t}")).unwrap();
         }
         for t in SYNC_TABLES {
