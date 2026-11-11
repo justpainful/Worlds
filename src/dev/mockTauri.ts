@@ -55,7 +55,7 @@ const profile: any = {
   status: "Exploring Game Development",
   accent: "#2e92ff",
   theme: "dark",
-  language: "auto",
+  language: new URLSearchParams(location.search).get("lang") ?? "auto",
   textDirection: "auto",
   location: "Riyadh",
   links: [{ label: "Discord", url: "https://discord.com" }, { label: "GitHub", url: "https://github.com" }],

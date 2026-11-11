@@ -1,3 +1,4 @@
+import { tr } from "../../i18n/ui";
 import { useState } from "react";
 import { api, errorMessage, fileUrl } from "../../lib/api";
 import type { AiMessage, ChatAttachment } from "../../lib/types";
@@ -337,7 +338,7 @@ export function ChatEmpty({ hasPage, onPick }: { hasPage: boolean; onPick: (text
       </div>
       <div className="ai-suggest">
         {(hasPage ? SUGGESTIONS_PAGE : SUGGESTIONS_ANY).map((s) => (
-          <button key={s} className="ai-suggest-chip bidi" dir="auto" onClick={() => onPick(s)}>
+          <button key={s} className="ai-suggest-chip bidi" dir="auto" onClick={() => onPick(tr(s))}>
             {s}
           </button>
         ))}

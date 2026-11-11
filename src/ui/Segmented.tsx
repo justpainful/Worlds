@@ -40,24 +40,32 @@ export function Segmented<T extends string>({
     if (!t || !l) return;
     const btn = t.querySelector<HTMLElement>(`[data-value="${CSS.escape(value)}"]`);
     if (!btn) return;
-    const x = btn.offsetLeft;
-    const w = btn.offsetWidth;
     const apply = () => {
       const s = springs.current!;
       const stretch = Math.min(0.14, Math.abs(s.x.velocity) / 9000);
       l.style.transform = `translateX(${s.x.value}px) scaleX(${1 + stretch}) scaleY(${1 - stretch * 0.5})`;
       l.style.width = `${s.w.value}px`;
     };
-    if (!springs.current) {
-      springs.current = {
-        x: new Spring(x, SPRING_SNAPPY, apply, prefersReducedMotion),
-        w: new Spring(w, SPRING_SNAPPY, apply, prefersReducedMotion),
-      };
-      apply();
-    } else {
-      springs.current.x.set(x);
-      springs.current.w.set(w);
-    }
+    const place = () => {
+      const x = btn.offsetLeft;
+      const w = btn.offsetWidth;
+      if (!springs.current) {
+        springs.current = {
+          x: new Spring(x, SPRING_SNAPPY, apply, prefersReducedMotion),
+          w: new Spring(w, SPRING_SNAPPY, apply, prefersReducedMotion),
+        };
+        apply();
+      } else {
+        springs.current.x.set(x);
+        springs.current.w.set(w);
+      }
+    };
+    place();
+    // Labels can change width after the first layout (fonts loading, the
+    // Arabic interface replacing text), so follow the segments' sizes.
+    const ro = new ResizeObserver(() => place());
+    for (const cell of t.querySelectorAll<HTMLElement>("[data-value]")) ro.observe(cell);
+    return () => ro.disconnect();
   }, [value, options.length]);
 
   const idx = options.findIndex((o) => o.value === value);

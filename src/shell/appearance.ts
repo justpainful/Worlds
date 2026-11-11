@@ -3,6 +3,7 @@ import { glassEngine } from "../glass/engine";
 import type { QualityTier } from "../glass/profiles";
 import { setAdaptiveQuality } from "../perf/monitor";
 import { setTonalLook } from "../ui/tonal/scene";
+import { applyUiLanguage, resolveUiLanguage, setUserTexts } from "../i18n/ui";
 
 export const ACCENTS: { name: string; hex: string }[] = [
   { name: "Blue", hex: "#2e92ff" },
@@ -51,10 +52,10 @@ export function applyAppearance() {
   else delete root.dataset.motion;
   root.dataset.density = (settings["appearance.density"] as string) ?? "comfortable";
   root.dataset.transparency = (settings["appearance.transparency"] as string) ?? "off";
-  const lang = profile?.language && profile.language !== "auto" ? profile.language : undefined;
-  if (lang) root.lang = lang;
+  applyUiLanguage(resolveUiLanguage(profile?.language));
 }
 
 useStore.subscribe((s, prev) => {
+  if (s.pages !== prev.pages) setUserTexts(Object.values(s.pages).map((p) => p.title ?? ""));
   if (s.profile !== prev.profile || s.settings !== prev.settings) applyAppearance();
 });

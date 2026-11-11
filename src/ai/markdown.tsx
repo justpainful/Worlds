@@ -79,7 +79,7 @@ export function Markdown({ text, onOpenChat }: { text: string; onOpenChat?: (id:
       </p>,
     );
   }
-  return <div className="md">{out}</div>;
+  return <div className="md" translate="no">{out}</div>;
 }
 
 const INLINE = /(@\[[^\]]+\]\(page:[^)]+\)|#\[[^\]]+\]\(chat:[^)]+\)|\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\(https?:\/\/[^)\s]+\)|\*[^*\s][^*]*\*)/g;
