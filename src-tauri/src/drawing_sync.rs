@@ -630,22 +630,23 @@ pub fn accept(conn: &Connection, page: &str, expected_revision: i64, incoming: V
     )?;
     Ok(json!({ "status": "accepted", "document": projected }))
 }
-pub fn recover(
-    conn: &Connection,
-    page: &str,
-    expected_revision: i64,
-    recovery_id: &str,
-    renderer: Value,
-    record: Value,
-    incoming: Value,
-    title: &str,
-) -> Result<Value> {
+/// What the renderer hands over when it saves its unsent work as a copy.
+pub struct Recovery<'a> {
+    pub expected_revision: i64,
+    pub recovery_id: &'a str,
+    pub renderer: Value,
+    pub record: Value,
+    pub incoming: Value,
+    pub title: &'a str,
+}
+pub fn recover(conn: &Connection, page: &str, input: Recovery) -> Result<Value> {
     if conn.is_autocommit() {
         let tx = conn.unchecked_transaction()?;
-        let result = recover(&tx, page, expected_revision, recovery_id, renderer, record, incoming, title)?;
+        let result = recover(&tx, page, input)?;
         tx.commit()?;
         return Ok(result);
     }
+    let Recovery { expected_revision, recovery_id, renderer, record, incoming, title } = input;
     require(conn, page, Level::View)?;
     check_bound_identity(conn, page)?;
     uuid::Uuid::parse_str(recovery_id)?;
@@ -740,27 +741,20 @@ pub fn set_error(conn: &Connection, page: &str, status: &str, error: &str) -> Re
     )?;
     Ok(())
 }
-pub fn store_original(
-    conn: &Connection,
-    page: &str,
-    id: &str,
-    name: &str,
-    mime: &str,
-    sha: &str,
-    bytes: &[u8],
-) -> Result<store::Attachment> {
-    store_original_in(conn, &db::attachments_dir(), page, id, name, mime, sha, bytes)
+/// An original file another device shared, with the identity it claims.
+#[derive(Clone, Copy)]
+pub struct Original<'a> {
+    pub id: &'a str,
+    pub name: &'a str,
+    pub mime: &'a str,
+    pub sha: &'a str,
+    pub bytes: &'a [u8],
 }
-fn store_original_in(
-    conn: &Connection,
-    dir: &std::path::Path,
-    page: &str,
-    id: &str,
-    name: &str,
-    mime: &str,
-    sha: &str,
-    bytes: &[u8],
-) -> Result<store::Attachment> {
+pub fn store_original(conn: &Connection, page: &str, original: Original) -> Result<store::Attachment> {
+    store_original_in(conn, &db::attachments_dir(), page, original)
+}
+fn store_original_in(conn: &Connection, dir: &std::path::Path, page: &str, original: Original) -> Result<store::Attachment> {
+    let Original { id, name, mime, sha, bytes } = original;
     require(conn, page, Level::View)?;
     check_bound_identity(conn, page)?;
     let hash = format!("{:x}", Sha256::digest(bytes));
@@ -786,6 +780,7 @@ fn store_original_in(
     Ok(a)
 }
 #[tauri::command]
+#[allow(clippy::too_many_arguments)] // Each parameter is one named IPC argument the frontend sends.
 pub async fn drawing_sync_recover(
     state: State<'_, AppState>,
     page_id: String,
@@ -796,7 +791,8 @@ pub async fn drawing_sync_recover(
     remote: Value,
     title: String,
 ) -> Result<Value, String> {
-    recover(&state.conn(), &page_id, expected_revision, &recovery_id, document, record, remote, &title).map_err(|e| format!("{e:#}"))
+    let input = Recovery { expected_revision, recovery_id: &recovery_id, renderer: document, record, incoming: remote, title: &title };
+    recover(&state.conn(), &page_id, input).map_err(|e| format!("{e:#}"))
 }
 #[tauri::command]
 pub async fn drawing_sync_pending_pages(state: State<'_, AppState>) -> Result<Vec<String>, String> {
@@ -843,16 +839,9 @@ pub async fn drawing_sync_store_original(
             .map(|s| percent_encoding::percent_decode_str(s).decode_utf8_lossy().to_string())
             .unwrap_or_default()
     };
-    store_original(
-        &state.conn(),
-        &header("x-worlds-page"),
-        &header("x-worlds-id"),
-        &header("x-worlds-name"),
-        &header("x-worlds-mime"),
-        &header("x-worlds-sha256"),
-        bytes,
-    )
-    .map_err(|e| format!("{e:#}"))
+    let (id, name, mime, sha) = (header("x-worlds-id"), header("x-worlds-name"), header("x-worlds-mime"), header("x-worlds-sha256"));
+    let original = Original { id: &id, name: &name, mime: &mime, sha: &sha, bytes };
+    store_original(&state.conn(), &header("x-worlds-page"), original).map_err(|e| format!("{e:#}"))
 }
 
 #[cfg(test)]
@@ -1031,16 +1020,52 @@ mod tests {
         let incoming = wire(&remote, &generation);
         assert_eq!(accept(&conn, &page.id, 2, incoming.clone()).unwrap()["status"], "conflict");
         let id = uuid::Uuid::new_v4().to_string();
-        assert!(recover(&conn, &page.id, 1, &id, renderer.clone(), record.clone(), incoming.clone(), "نسختي").is_err());
+        assert!(recover(
+            &conn,
+            &page.id,
+            Recovery {
+                expected_revision: 1,
+                recovery_id: &id,
+                renderer: renderer.clone(),
+                record: record.clone(),
+                incoming: incoming.clone(),
+                title: "نسختي"
+            }
+        )
+        .is_err());
         assert_eq!(conn.query_row("SELECT COUNT(*) FROM pages", [], |r| r.get::<_, i64>(0)).unwrap(), 1);
         // A wrong generation fails after the copy has been prepared. The whole
         // transaction, including its originals and removed outbox, must roll back.
         let mut wrong = incoming.clone();
         wrong["generation"] = json!(uuid::Uuid::new_v4().to_string());
-        assert!(recover(&conn, &page.id, 2, &id, renderer.clone(), record.clone(), wrong, "نسختي").is_err());
+        assert!(recover(
+            &conn,
+            &page.id,
+            Recovery {
+                expected_revision: 2,
+                recovery_id: &id,
+                renderer: renderer.clone(),
+                record: record.clone(),
+                incoming: wrong,
+                title: "نسختي"
+            }
+        )
+        .is_err());
         assert_eq!(conn.query_row("SELECT COUNT(*) FROM pages", [], |r| r.get::<_, i64>(0)).unwrap(), 1);
         assert_eq!(snapshot(&conn, &page.id).unwrap()["pending"].as_array().unwrap().len(), 1);
-        let recovered = recover(&conn, &page.id, 2, &id, renderer.clone(), record.clone(), incoming.clone(), "نسختي").unwrap();
+        let recovered = recover(
+            &conn,
+            &page.id,
+            Recovery {
+                expected_revision: 2,
+                recovery_id: &id,
+                renderer: renderer.clone(),
+                record: record.clone(),
+                incoming: incoming.clone(),
+                title: "نسختي",
+            },
+        )
+        .unwrap();
         let copy = recovered["copy"]["id"].as_str().unwrap().to_string();
         assert_eq!(drawing::load(&conn, &copy).unwrap()["scene"]["nodes"]["shape"]["x"], 60);
         assert!(drawing::load(&conn, &copy).unwrap()["scene"]["nodes"].get("unsent-image").is_some());
@@ -1050,7 +1075,19 @@ mod tests {
         assert_eq!(recovered["document"]["scene"]["nodes"]["shape"]["x"], 99);
         assert!(snapshot(&conn, &page.id).unwrap()["pending"].as_array().unwrap().is_empty());
         assert_eq!(
-            recover(&conn, &page.id, 2, &id, renderer.clone(), record.clone(), incoming.clone(), "retry").unwrap()["copy"]["id"],
+            recover(
+                &conn,
+                &page.id,
+                Recovery {
+                    expected_revision: 2,
+                    recovery_id: &id,
+                    renderer: renderer.clone(),
+                    record: record.clone(),
+                    incoming: incoming.clone(),
+                    title: "retry"
+                }
+            )
+            .unwrap()["copy"]["id"],
             copy
         );
         assert_eq!(conn.query_row("SELECT COUNT(*) FROM drawing_sync_recoveries", [], |r| r.get::<_, i64>(0)).unwrap(), 1);
@@ -1061,10 +1098,14 @@ mod tests {
         )
         .unwrap();
         conn.execute("UPDATE pages SET workspace_id='workspace' WHERE id=?1", [&page.id]).unwrap();
-        assert!(recover(&conn, &page.id, 2, &id, renderer, record, incoming, "Denied retry")
-            .unwrap_err()
-            .to_string()
-            .contains("Permission denied"));
+        assert!(recover(
+            &conn,
+            &page.id,
+            Recovery { expected_revision: 2, recovery_id: &id, renderer, record, incoming, title: "Denied retry" }
+        )
+        .unwrap_err()
+        .to_string()
+        .contains("Permission denied"));
         drop(conn);
         let conn = db::open(&dir.join("worlds.db")).unwrap();
         assert!(drawing::load(&conn, &copy).is_ok());
@@ -1164,10 +1205,34 @@ mod tests {
             store::create_page(&conn, &store::Ctx::user(), store::NewPage { kind: Some("drawing".into()), ..Default::default() }).unwrap();
         let bytes = b"owned bytes";
         let hash = format!("{:x}", Sha256::digest(bytes));
-        assert!(store_original_in(&conn, &dir, &a.id, "original", "original.bin", "application/octet-stream", "wrong", bytes).is_err());
-        store_original_in(&conn, &dir, &a.id, "original", "original.bin", "application/octet-stream", &hash, bytes).unwrap();
-        assert!(store_original_in(&conn, &dir, &b.id, "original", "original.bin", "application/octet-stream", &hash, bytes).is_err());
-        store_original_in(&conn, &dir, &a.id, "original", "original.bin", "application/octet-stream", &hash, bytes).unwrap();
+        assert!(store_original_in(
+            &conn,
+            &dir,
+            &a.id,
+            Original { id: "original", name: "original.bin", mime: "application/octet-stream", sha: "wrong", bytes }
+        )
+        .is_err());
+        store_original_in(
+            &conn,
+            &dir,
+            &a.id,
+            Original { id: "original", name: "original.bin", mime: "application/octet-stream", sha: &hash, bytes },
+        )
+        .unwrap();
+        assert!(store_original_in(
+            &conn,
+            &dir,
+            &b.id,
+            Original { id: "original", name: "original.bin", mime: "application/octet-stream", sha: &hash, bytes }
+        )
+        .is_err());
+        store_original_in(
+            &conn,
+            &dir,
+            &a.id,
+            Original { id: "original", name: "original.bin", mime: "application/octet-stream", sha: &hash, bytes },
+        )
+        .unwrap();
         drop(conn);
         let _ = std::fs::remove_dir_all(dir);
     }

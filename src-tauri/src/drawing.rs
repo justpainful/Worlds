@@ -436,23 +436,23 @@ pub fn create_experiment_authorized(
         bail!("name the experiment");
     }
     let tx = conn;
-    let base = save_version(&tx, source, &format!("Experiment base: {name}"))?;
-    let page = store::duplicate_page_authorized(&tx, &store::Ctx::user(), source, false, Some("drawing"), Some(Some(source)), permit)?;
-    let before = load(&tx, source)?;
-    let after = load(&tx, &page.id)?;
+    let base = save_version(tx, source, &format!("Experiment base: {name}"))?;
+    let page = store::duplicate_page_authorized(tx, &store::Ctx::user(), source, false, Some("drawing"), Some(Some(source)), permit)?;
+    let before = load(tx, source)?;
+    let after = load(tx, &page.id)?;
     let mut aliases = serde_json::Map::new();
     for (id, step) in before["scene"]["steps"].as_object().unwrap() {
         if let (Some(old), Some(new)) = (step["pinnedVersionId"].as_str(), after["scene"]["steps"][id]["pinnedVersionId"].as_str()) {
             aliases.insert(new.into(), json!(old));
         }
     }
-    store::update_page(&tx, &store::Ctx::user(), &page.id, store::PagePatch { title: Some(name.trim().into()), ..Default::default() })?;
+    store::update_page(tx, &store::Ctx::user(), &page.id, store::PagePatch { title: Some(name.trim().into()), ..Default::default() })?;
     let page = store::set_page_meta(
-        &tx,
+        tx,
         &store::Ctx::user(),
         &page.id,
         "experiment",
-        json!({ "sourceId": source, "baseVersionId": base["id"], "author": store::profile(&tx)?.id, "createdAt": db::now(), "description": description, "status": "draft", "versionAliases": aliases }),
+        json!({ "sourceId": source, "baseVersionId": base["id"], "author": store::profile(tx)?.id, "createdAt": db::now(), "description": description, "status": "draft", "versionAliases": aliases }),
     )?;
     Ok(page)
 }
