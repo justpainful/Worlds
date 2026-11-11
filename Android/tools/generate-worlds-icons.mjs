@@ -11,7 +11,7 @@ const names = ['file-text', 'files', 'search', 'circle-user', 'plus', 'pen-line'
   'text-quote', 'square-terminal', 'lightbulb', 'list-ordered', 'list-todo', 'pencil', 'eraser',
   'highlighter', 'undo-2', 'redo-2', 'sliders-horizontal', 'zoom-in', 'zoom-out', 'maximize',
   'refresh-cw', 'log-out', 'server', 'mail', 'key-round', 'send-horizontal', 'users', 'folder',
-  'ellipsis-vertical', 'check', 'circle-check', 'lock-keyhole', 'heading-1', 'type', 'bell', 'message-circle', 'share-2', 'link', 'bold', 'italic', 'underline', 'strikethrough', 'code-2', 'image', 'align-left', 'align-center', 'align-right', 'align-justify', 'arrow-up', 'arrow-down', 'list-plus', 'list-tree', 'rows-3', 'columns-3'];
+  'ellipsis-vertical', 'check', 'circle-check', 'lock-keyhole', 'heading-1', 'type', 'bell', 'message-circle', 'share-2', 'link', 'bold', 'italic', 'underline', 'strikethrough', 'code-2', 'image', 'align-left', 'align-center', 'align-right', 'align-justify', 'arrow-up', 'arrow-down', 'list-plus', 'list-tree', 'rows-3', 'columns-3', 'calendar', 'graduation-cap'];
 const output = resolve('Android/app/src/main/res/drawable');
 await mkdir(output, { recursive: true });
 const pathFor = (type, a) => {

@@ -55,6 +55,7 @@ import worlds.android.glass.glassBackdropSource
 import worlds.android.glass.rememberGlassBackdrop
 import worlds.android.glass.worldsGlass
 import worlds.android.glass.worldsGlassLens
+import worlds.android.planning.PlanningSection
 import worlds.content.Resource
 
 /** The five destinations shared with iPhone, iPad and Mac. */
@@ -85,6 +86,15 @@ internal class ShellActions(
     val account: (() -> Unit)?,
     val automations: () -> Unit,
     val templates: () -> Unit,
+    val planning: (PlanningSection) -> Unit,
+)
+
+/** Tasks and Calendar for everyone, Study while the Study pack is on. */
+internal data class PlanningEntry(val section: PlanningSection, val label: Int, val tile: Int)
+internal fun planningEntries(studyPack: Boolean): List<PlanningEntry> = listOfNotNull(
+    PlanningEntry(PlanningSection.Tasks, R.string.plan_tasks, R.drawable.pi_checklist),
+    PlanningEntry(PlanningSection.Calendar, R.string.plan_calendar, R.drawable.pi_calendar),
+    if (studyPack) PlanningEntry(PlanningSection.Study, R.string.plan_study, R.drawable.pi_graduation) else null,
 )
 
 private val TAB_BAR_HEIGHT = 62.dp
@@ -248,6 +258,9 @@ private val TOOLBAR_HEIGHT = 48.dp
             libraryFilters.drop(1).forEach { filter -> SidebarRow(null, filter.tile, stringResource(filter.label), destination == WorldsDestination.Library && filterId == filter.id) { onSelect(WorldsDestination.Library, filter.id) } }
             SidebarRow(null, R.drawable.pi_templates, stringResource(R.string.templates_title), false, actions.templates)
             SidebarRow(null, R.drawable.pi_automations, stringResource(R.string.automations), false, actions.automations)
+            Spacer(Modifier.height(14.dp))
+            SidebarHeading(stringResource(R.string.section_planning))
+            planningEntries(LocalAppearancePreferences.current.studyPackEnabled).forEach { entry -> SidebarRow(null, entry.tile, stringResource(entry.label), false) { actions.planning(entry.section) } }
             val recents = state.pages.filter { it.deletedAt == null }.take(5)
             if (recents.isNotEmpty() && state.query.isBlank()) {
                 Spacer(Modifier.height(14.dp))
@@ -419,6 +432,18 @@ private val TOOLBAR_HEIGHT = 48.dp
                     Button(onClick = { actions.create("project") }) { WorldsActionLabel(R.drawable.ic_plus, stringResource(R.string.project_new)) }
                 }
             } else item { ResourceGroup(spaces, state.selected?.resource?.id, actions.open); Spacer(Modifier.height(22.dp)) }
+            item {
+                val entries = planningEntries(LocalAppearancePreferences.current.studyPackEnabled)
+                Column(Modifier.padding(bottom = 22.dp)) {
+                    WorldsSectionTitle(stringResource(R.string.section_planning), Modifier.padding(bottom = 10.dp))
+                    WorldsCard(Modifier.fillMaxWidth()) {
+                        entries.forEachIndexed { index, entry ->
+                            ToolRow(entry.tile, stringResource(entry.label)) { actions.planning(entry.section) }
+                            if (index < entries.lastIndex) HorizontalDivider(Modifier.padding(start = 65.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                        }
+                    }
+                }
+            }
             item {
                 WorldsSectionTitle(stringResource(R.string.workspace_tools), Modifier.padding(bottom = 10.dp))
                 WorldsCard(Modifier.fillMaxWidth()) {

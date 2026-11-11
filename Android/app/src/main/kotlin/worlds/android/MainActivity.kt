@@ -95,6 +95,8 @@ import java.text.DateFormat
 import java.util.Date
 import worlds.android.ai.AiChatScreen
 import worlds.android.automations.AutomationsScreen
+import worlds.android.planning.PlanningScreen
+import worlds.android.planning.PlanningSection
 import worlds.android.discord.DiscordComposer
 
 class MainActivity : ComponentActivity() {
@@ -202,7 +204,7 @@ class HomeModel(application: Application, internal val databaseName: String) : A
                 }
             } }
             if (request != requestId) return@launch
-            mutable.update { it.copy(pages = result.getOrDefault(emptyList()).filter { page -> trash || page.kind != "template" }, loading = false, error = result.isFailure) }
+            mutable.update { it.copy(pages = result.getOrDefault(emptyList()).filter { page -> trash || (page.kind != "template" && page.kind !in worlds.android.planning.OWN_VIEW_KINDS) }, loading = false, error = result.isFailure) }
         }
     }
     fun create(title: String, kind: String = "page") {
@@ -991,6 +993,7 @@ class HomeModel(application: Application, internal val databaseName: String) : A
     var showAutomations by rememberSaveable { mutableStateOf(false) }
     var showDiscordComposer by rememberSaveable { mutableStateOf(false) }
     var showProfile by rememberSaveable { mutableStateOf(false) }
+    var planningSection by rememberSaveable { mutableStateOf<String?>(null) }
     if (showAppearance) {
         AppearanceSettings(onBack = { showAppearance = false })
         return
@@ -1005,6 +1008,14 @@ class HomeModel(application: Application, internal val databaseName: String) : A
     }
     if (showAutomations) {
         AutomationsScreen(databaseName = model.databaseName, onBack = { showAutomations = false })
+        return
+    }
+    val openSection = planningSection?.let { name -> PlanningSection.entries.firstOrNull { it.name == name } }
+    if (openSection != null) {
+        // Lesson notes are pages, so they open in the page editor.
+        PlanningScreen(openSection, model.databaseName, LocalAppearancePreferences.current.studyPackEnabled,
+            onBack = { planningSection = null; model.refresh() },
+            onOpenPage = { id -> planningSection = null; model.refresh(); model.open(id) })
         return
     }
     if (showDiscordComposer) {
@@ -1218,6 +1229,7 @@ class HomeModel(application: Application, internal val databaseName: String) : A
         account = if (account != null) { { showAccount = true } } else null,
         automations = { showAutomations = true },
         templates = model::showTemplates,
+        planning = { section -> planningSection = section.name },
     ) }
     WorldsShell(state, shellActions, destination, ::selectDestination, showLibraryActions, { showLibraryActions = it },
         moreItems = {
@@ -1233,6 +1245,9 @@ class HomeModel(application: Application, internal val databaseName: String) : A
                 HorizontalDivider()
                 DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_message_circle) }, text = { Text(stringResource(R.string.ai_chat)) }, onClick = { showLibraryActions = false; destinationName = WorldsDestination.Ai.name })
                 DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_sliders_horizontal) }, text = { Text(stringResource(R.string.automations)) }, onClick = { showLibraryActions = false; showAutomations = true })
+                DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_list_todo) }, text = { Text(stringResource(R.string.plan_tasks)) }, onClick = { showLibraryActions = false; planningSection = PlanningSection.Tasks.name })
+                DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_calendar) }, text = { Text(stringResource(R.string.plan_calendar)) }, onClick = { showLibraryActions = false; planningSection = PlanningSection.Calendar.name })
+                if (LocalAppearancePreferences.current.studyPackEnabled) DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_graduation_cap) }, text = { Text(stringResource(R.string.plan_study)) }, onClick = { showLibraryActions = false; planningSection = PlanningSection.Study.name })
                 DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_share_2) }, text = { Text(stringResource(R.string.discord)) }, onClick = { showLibraryActions = false; showDiscordComposer = true })
                 DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_circle_user) }, text = { Text(stringResource(R.string.profile)) }, onClick = { showLibraryActions = false; showProfile = true })
                 HorizontalDivider()
