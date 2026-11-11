@@ -807,4 +807,34 @@
     <string name="ai_error_stream">أوقف %1$s الرد: %2$s</string>
     <string name="ai_error_stream_unknown">أوقف %1$s الرد.</string>
     <string name="ai_error_malformed">أرسل %1$s ردًا تعذر على Worlds قراءته.</string>
+    <!-- Automations -->
+    <string name="automations_subtitle">مشغّلات مجدولة وملخصات بالذكاء الاصطناعي وويب هوك ديسكورد وإشعارات.</string>
+    <string name="automation_transform">التحويل</string>
+    <string name="automation_transform_none">الصفحة كما هي</string>
+    <string name="automation_transform_ai">ملخص بالذكاء الاصطناعي</string>
+    <string name="automation_ai_instructions">تعليمات للذكاء الاصطناعي</string>
+    <string name="automation_ai_default_instructions">لخّص هذه الصفحة في نقاط قصيرة.</string>
+    <string name="automation_ai_uses_settings">يستخدم المزوّد والنموذج المختارين في إعدادات الذكاء الاصطناعي.</string>
+    <string name="automation_action">الإجراء</string>
+    <string name="automation_action_discord">ويب هوك ديسكورد</string>
+    <string name="automation_action_notification">إشعار على هذا الجهاز</string>
+    <string name="automation_webhook_url">رابط ويب هوك ديسكورد</string>
+    <string name="automation_notifications_off">الإشعارات متوقفة لتطبيق Worlds، وستفشل هذه الأتمتة حتى تسمح بها.</string>
+    <string name="automation_open_notification_settings">فتح إعدادات الإشعارات</string>
+    <string name="automation_notification_channel_description">نتائج الأتمتة التي تعرض إشعارًا.</string>
+    <string name="automation_output_ai">أُعدّ الملخص عبر %1$s.</string>
+    <string name="automation_output_discord">أُرسل إلى ديسكورد.</string>
+    <string name="automation_output_notification">عُرض الإشعار.</string>
+    <string name="automation_error_ai_failed">فشلت خطوة الذكاء الاصطناعي، فلم يُرسل شيء. %1$s</string>
+    <string name="automation_error_ai_timeout">تجاوزت خطوة الذكاء الاصطناعي %1$d دقائق فأُوقفت، ولم يُرسل شيء.</string>
+    <string name="automation_error_ai_empty">أرسل الذكاء الاصطناعي ردًا فارغًا، فلم يُرسل شيء.</string>
+    <string name="automation_error_page_missing">الصفحة المصدر لم تعد موجودة، فلم يُرسل شيء.</string>
+    <string name="automation_error_no_webhook">أضف رابط ويب هوك ديسكورد إلى هذه الأتمتة. لم يُرسل شيء.</string>
+    <string name="automation_error_bad_webhook">رابط ويب هوك ديسكورد ليس عنوان https صالحًا. لم يُرسل شيء.</string>
+    <string name="automation_error_discord_http">لم يقبل ديسكورد الرسالة (HTTP %1$d).</string>
+    <string name="automation_error_discord_offline">تعذر الوصول إلى ديسكورد. تحقق من اتصالك بالإنترنت.</string>
+    <string name="automation_error_notifications_off">الإشعارات متوقفة لتطبيق Worlds، فلم يُعرض شيء. اسمح بها من إعدادات أندرويد.</string>
+    <string name="automation_error_channel_off">قناة إشعارات الأتمتة متوقفة في إعدادات أندرويد، فلم يُعرض شيء.</string>
+    <string name="automation_error_unknown_action">لا يستطيع هذا الجهاز تنفيذ الإجراء \"%1$s\". لم يُنفّذ شيء.</string>
+    <string name="automation_error_unknown_transform">لا يستطيع هذا الجهاز تنفيذ التحويل \"%1$s\". لم يُرسل شيء.</string>
 </resources>

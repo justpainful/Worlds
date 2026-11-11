@@ -807,4 +807,34 @@
     <string name="ai_error_stream">%1$s stopped the reply: %2$s</string>
     <string name="ai_error_stream_unknown">%1$s stopped the reply.</string>
     <string name="ai_error_malformed">%1$s sent a reply Worlds could not read.</string>
+    <!-- Automations -->
+    <string name="automations_subtitle">Scheduled triggers, AI summaries, Discord webhooks and notifications.</string>
+    <string name="automation_transform">Transform</string>
+    <string name="automation_transform_none">Page as it is</string>
+    <string name="automation_transform_ai">AI summary</string>
+    <string name="automation_ai_instructions">Instructions for the AI</string>
+    <string name="automation_ai_default_instructions">Summarize this page in a few short points.</string>
+    <string name="automation_ai_uses_settings">Uses the provider and model chosen in AI settings.</string>
+    <string name="automation_action">Action</string>
+    <string name="automation_action_discord">Discord webhook</string>
+    <string name="automation_action_notification">Notification on this device</string>
+    <string name="automation_webhook_url">Discord webhook URL</string>
+    <string name="automation_notifications_off">Notifications are off for Worlds, so this automation will fail until you allow them.</string>
+    <string name="automation_open_notification_settings">Open notification settings</string>
+    <string name="automation_notification_channel_description">Results of automations that show a notification.</string>
+    <string name="automation_output_ai">AI summary by %1$s.</string>
+    <string name="automation_output_discord">Sent to Discord.</string>
+    <string name="automation_output_notification">Notification shown.</string>
+    <string name="automation_error_ai_failed">The AI step failed, so nothing was sent. %1$s</string>
+    <string name="automation_error_ai_timeout">The AI step took longer than %1$d minutes and was stopped. Nothing was sent.</string>
+    <string name="automation_error_ai_empty">The AI sent an empty reply, so nothing was sent.</string>
+    <string name="automation_error_page_missing">The source page no longer exists. Nothing was sent.</string>
+    <string name="automation_error_no_webhook">Add a Discord webhook URL to this automation. Nothing was sent.</string>
+    <string name="automation_error_bad_webhook">The Discord webhook URL is not a valid https address. Nothing was sent.</string>
+    <string name="automation_error_discord_http">Discord did not accept the message (HTTP %1$d).</string>
+    <string name="automation_error_discord_offline">Cannot reach Discord. Check your internet connection.</string>
+    <string name="automation_error_notifications_off">Notifications are off for Worlds, so nothing was shown. Allow them in Android settings.</string>
+    <string name="automation_error_channel_off">The Automations notification channel is off in Android settings, so nothing was shown.</string>
+    <string name="automation_error_unknown_action">This device cannot run the action \"%1$s\". Nothing was done.</string>
+    <string name="automation_error_unknown_transform">This device cannot run the transform \"%1$s\". Nothing was sent.</string>
 </resources>
