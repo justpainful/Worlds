@@ -1,0 +1,5 @@
+# pnpm 11 reads settings from here; the "pnpm" field in package.json is ignored.
+# Security overrides for packages that mermaid pulls in at vulnerable versions.
+overrides:
+  dompurify@<3.4.17: ^3.4.17
+  katex@<0.18.2: ^0.19.0

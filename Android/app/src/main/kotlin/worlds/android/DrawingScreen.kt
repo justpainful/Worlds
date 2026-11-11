@@ -827,17 +827,19 @@ internal class InkView(context: Context) : View(context) {
         }
     }
     private fun hitStroke(x: Double, y: Double, tolerance: Double): InkStroke? = saved.asReversed().firstOrNull { stroke ->
-        if (stroke.erase) false else {
-            val points = stroke.samples
-            fun distance(a: StrokeSample, b: StrokeSample): Double {
-                val dx = b.x - a.x; val dy = b.y - a.y; val length = dx * dx + dy * dy
-                val t = if (length == 0.0) 0.0 else (((x - a.x) * dx + (y - a.y) * dy) / length).coerceIn(0.0, 1.0)
-                return hypot(x - (a.x + t * dx), y - (a.y + t * dy))
-            }
-            val limit = tolerance + stroke.brush.size / 2
-            if (points.size == 1) hypot(x - points[0].x, y - points[0].y) <= limit
-            else points.zipWithNext().any { (a, b) -> distance(a, b) <= limit }
+        !stroke.erase && strokeDistance(stroke, x, y) <= tolerance
+    }
+    /** How far a scene point is from the painted edge of a stroke (0 inside it). */
+    private fun strokeDistance(stroke: InkStroke, x: Double, y: Double): Double {
+        val points = stroke.samples
+        if (points.isEmpty()) return Double.MAX_VALUE
+        fun distance(a: StrokeSample, b: StrokeSample): Double {
+            val dx = b.x - a.x; val dy = b.y - a.y; val length = dx * dx + dy * dy
+            val t = if (length == 0.0) 0.0 else (((x - a.x) * dx + (y - a.y) * dy) / length).coerceIn(0.0, 1.0)
+            return hypot(x - (a.x + t * dx), y - (a.y + t * dy))
         }
+        val centre = if (points.size == 1) hypot(x - points[0].x, y - points[0].y) else points.zipWithNext().minOf { (a, b) -> distance(a, b) }
+        return (centre - stroke.brush.size / 2).coerceAtLeast(0.0)
     }
     private fun updateSelection(screenX: Double, screenY: Double) {
         selectionScreenX = screenX; selectionScreenY = screenY
@@ -878,6 +880,14 @@ internal class InkView(context: Context) : View(context) {
                     val opposites = listOf(boxR to boxB, cx to boxB, boxL to boxB, boxL to cy, boxL to boxT, cx to boxT, boxR to boxT, boxR to cy)
                     var handleHit = -1
                     handleCoords.forEachIndexed { i, (hx, hy) -> if (hypot(hx - x, hy - y) <= hitRadius && handleHit == -1) handleHit = i }
+                    // The handles sit just outside the selection, so their touch area covers
+                    // the strokes' edges: a press closer to a selected stroke than to the
+                    // handle moves the selection instead of resizing it.
+                    if (handleHit >= 0) {
+                        val (hx, hy) = handleCoords[handleHit]
+                        val onStroke = selectedList.minOf { strokeDistance(it, x, y) }
+                        if (onStroke < hypot(hx - x, hy - y)) handleHit = -1
+                    }
                     if (handleHit >= 0) {
                         activeHandle = handleHit
                         val (ox, oy) = opposites[handleHit]

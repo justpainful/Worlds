@@ -240,7 +240,7 @@ async function account(action: string, a: Args): Promise<unknown> {
 }
 
 const w = window as any;
-if (import.meta.env.DEV && w.__WORLDS_MOCK__ && w.__TAURI_INTERNALS__) {
+if ((import.meta.env.DEV || import.meta.env.VITE_WEB_DEMO === "1") && w.__WORLDS_MOCK__ && w.__TAURI_INTERNALS__) {
   const original = w.__TAURI_INTERNALS__.invoke;
   w.__TAURI_INTERNALS__.invoke = (cmd: string, args: any, opts: unknown) =>
     cmd === "account" ? account(args.action, args.args ?? {}) : original(cmd, args, opts);

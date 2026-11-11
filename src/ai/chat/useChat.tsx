@@ -54,6 +54,8 @@ export interface Live {
   error?: string;
   /** Answer text streamed so far. */
   text?: string;
+  /** Something the provider wants the user to know (for example: this model cannot use tools). */
+  note?: string;
 }
 
 export function useChat(initialChatId: string | null) {
@@ -103,6 +105,9 @@ export function useChat(initialChatId: string | null) {
       let next: Live | null = cur;
       if (p.kind === "tool") next = { ...cur, steps: [...cur.steps, { tool: p.tool ?? "", ok: null }] };
       else if (p.kind === "text" && p.text) next = { ...cur, text: cur.text ? `${cur.text}\n\n${p.text}` : p.text };
+      // API providers stream small pieces that join without a gap.
+      else if (p.kind === "delta" && p.text) next = { ...cur, text: (cur.text ?? "") + p.text };
+      else if (p.kind === "note" && p.text) next = { ...cur, note: p.text };
       else if (p.kind === "tool_result") {
         const steps = [...cur.steps];
         const idx = steps.map((s) => s.ok).lastIndexOf(null);

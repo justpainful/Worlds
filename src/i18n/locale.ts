@@ -1,0 +1,45 @@
+/**
+ * Dates and relative times follow the interface language. Code across Worlds
+ * formats them with the default locale (`toLocaleDateString(undefined, …)`,
+ * `new Intl.RelativeTimeFormat(undefined, …)`), which is the system language.
+ * While the interface is Arabic, that default becomes Arabic with the
+ * Gregorian calendar and Western digits. Calls that name a locale are left
+ * alone, and numbers keep their usual format.
+ */
+export const ARABIC_LOCALE = "ar-u-ca-gregory-nu-latn";
+
+let arabic = false;
+let installed = false;
+
+const pick = (locales: Intl.LocalesArgument | undefined) => (locales === undefined && arabic ? ARABIC_LOCALE : locales);
+
+function install() {
+  if (installed) return;
+  installed = true;
+  const proto = Date.prototype as unknown as Record<string, (this: Date, l?: Intl.LocalesArgument, o?: Intl.DateTimeFormatOptions) => string>;
+  for (const name of ["toLocaleString", "toLocaleDateString", "toLocaleTimeString"]) {
+    const original = proto[name];
+    proto[name] = function (this: Date, locales?: Intl.LocalesArgument, options?: Intl.DateTimeFormatOptions) {
+      return original.call(this, pick(locales), options);
+    };
+  }
+  const intl = Intl as unknown as Record<string, unknown>;
+  const Relative = Intl.RelativeTimeFormat;
+  intl.RelativeTimeFormat = class extends Relative {
+    constructor(locales?: Intl.LocalesArgument, options?: Intl.RelativeTimeFormatOptions) {
+      super(pick(locales), options);
+    }
+  };
+  const DateTime = Intl.DateTimeFormat;
+  const wrapped = function (locales?: Intl.LocalesArgument, options?: Intl.DateTimeFormatOptions) {
+    return new DateTime(pick(locales), options);
+  } as unknown as typeof Intl.DateTimeFormat;
+  Object.defineProperty(wrapped, "prototype", { value: DateTime.prototype });
+  wrapped.supportedLocalesOf = DateTime.supportedLocalesOf;
+  intl.DateTimeFormat = wrapped;
+}
+
+export function setArabicDates(on: boolean): void {
+  arabic = on;
+  if (on) install();
+}

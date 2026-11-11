@@ -1,11 +1,12 @@
 {
   "name": "worlds",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:demo": "tsc -b && vite build --mode demo --base ./ --outDir dist-demo",
     "typecheck": "tsc -b --noEmit",
     "tauri": "tauri",
     "app:dev": "tauri dev",
@@ -56,7 +57,7 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "three": "^0.186.1",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+    "xlsx": "file:vendor/xlsx-0.20.3.tgz",
     "y-protocols": "^1.0.7",
     "yjs": "^13.6.33",
     "zustand": "^5.0.15"

@@ -52,8 +52,48 @@ export interface AiMessage {
     changeCount?: number;
     pages?: { id: string; title: string | null }[];
     undone?: boolean;
+    /** Provider id and model that answered (absent for older Claude Code messages). */
+    provider?: string;
+    model?: string;
+    chatOnly?: boolean;
   };
   createdAt: number;
+}
+
+/** A model provider from src/ai/providers.json, as the app reports it. Keys are never included. */
+export interface AiProvider {
+  id: string;
+  name: string;
+  api: string;
+  kind: "runner" | "cloud" | "local";
+  baseUrl: string;
+  defaultBaseUrl: string;
+  editableBaseUrl: boolean;
+  key: "none" | "required" | "optional";
+  hasKey: boolean;
+  note?: string | null;
+}
+
+export interface AiModelInfo {
+  id: string;
+  name: string;
+  /** Whether the model can use Worlds tools; null when the server does not say. */
+  tools: boolean | null;
+}
+
+export interface AiLocalServer {
+  id: string;
+  name: string;
+  baseUrl: string;
+  running: boolean;
+  models: AiModelInfo[];
+}
+
+export interface AiRunnerStatus {
+  installed: boolean;
+  signedIn: boolean;
+  version?: string | null;
+  method?: string;
 }
 
 /** What a resource is. A Page is one kind among several (docs/CONTENT.md). */

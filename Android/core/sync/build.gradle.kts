@@ -20,6 +20,12 @@ val buildYrs = tasks.register("buildYrs") {
             Triple("x86_64-linux-android", "x86_64", "x86_64-linux-android26-clang"),
             Triple("i686-linux-android", "x86", "i686-linux-android26-clang"),
         )
+        // A Cargo config or CARGO_TARGET_DIR may move the output, so ask Cargo where it builds.
+        val metadata = ProcessBuilder("cargo", "metadata", "--format-version", "1", "--no-deps")
+            .directory(file("native")).redirectError(ProcessBuilder.Redirect.INHERIT).start()
+        val metadataJson = metadata.inputStream.bufferedReader().readText()
+        check(metadata.waitFor() == 0) { "cargo metadata failed for Yrs" }
+        val targetDir = groovy.json.JsonSlurper().parseText(metadataJson).let { (it as Map<*, *>)["target_directory"] as String }
         configs.forEach { (target, abi, linker) ->
             val process = ProcessBuilder("cargo", "build", "--locked", "--release", "--target", target)
                 .directory(file("native")).inheritIO()
@@ -27,7 +33,7 @@ val buildYrs = tasks.register("buildYrs") {
             check(process.start().waitFor() == 0) { "Yrs build failed for $target" }
             val dest = nativeOutput.get().asFile.resolve(abi)
             dest.mkdirs()
-            file("native/target/$target/release/libworlds_sync_native.so").copyTo(dest.resolve("libworlds_sync_native.so"), overwrite = true)
+            file("$targetDir/$target/release/libworlds_sync_native.so").copyTo(dest.resolve("libworlds_sync_native.so"), overwrite = true)
         }
     }
 }

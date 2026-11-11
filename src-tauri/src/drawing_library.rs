@@ -142,8 +142,35 @@ pub fn validate_scene_publication(scene: &Value) -> Result<()> {
     validate(&publication_input(scene)?)?;
     Ok(())
 }
-fn descriptor(item: &str, version: i64, name: &str, kind: &str, tags: &Value, source: Option<&str>, payload: &Value, at: i64) -> Value {
-    json!({"schema":1,"itemId":item,"version":version,"name":name,"kind":kind,"tags":tags,"sourceId":source,"payload":payload,"createdAt":at})
+/// Fields of the immutable publication descriptor stored in a library scene.
+struct Descriptor<'a> {
+    item: &'a str,
+    version: i64,
+    name: &'a str,
+    kind: &'a str,
+    tags: &'a Value,
+    source: Option<&'a str>,
+    payload: &'a Value,
+    at: i64,
+}
+impl Descriptor<'_> {
+    fn to_json(&self) -> Value {
+        let Descriptor { item, version, name, kind, tags, source, payload, at } = self;
+        json!({"schema":1,"itemId":item,"version":version,"name":name,"kind":kind,"tags":tags,"sourceId":source,"payload":payload,"createdAt":at})
+    }
+}
+/// One saved library version joined with its snapshot, page and item rows.
+struct StoredVersion {
+    version: i64,
+    snapshot_id: String,
+    scene: String,
+    name: String,
+    kind: String,
+    tags: String,
+    source: Option<String>,
+    payload: String,
+    created_at: i64,
+    author: String,
 }
 /// Upgrade unpublished wire metadata by creating new immutable saved versions.
 /// Existing snapshot identifiers and already inserted copies remain untouched.
@@ -162,23 +189,38 @@ pub fn prepare_sync_versions(conn: &Connection, page: &str) -> Result<()> {
             params![page, store::profile(conn)?.id, account],
         )?;
     }
-    let rows:Vec<(i64,String,String,String,String,String,Option<String>,String,i64,String)>=conn.prepare("SELECT v.version,v.snapshot_id,d.scene,p.title,i.kind,i.tags,i.source_id,v.payload,v.created_at,v.author FROM drawing_library_versions v JOIN drawing_versions d ON d.id=v.snapshot_id JOIN drawing_library_items i ON i.page_id=v.page_id JOIN pages p ON p.id=v.page_id WHERE v.page_id=?1")?.query_map([page],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?,r.get(5)?,r.get(6)?,r.get(7)?,r.get(8)?,r.get(9)?)))?.collect::<rusqlite::Result<_>>()?;
-    for (version, old, raw, name, kind, tags, source, payload, at, author) in rows {
+    let rows: Vec<StoredVersion> = conn.prepare("SELECT v.version,v.snapshot_id,d.scene,p.title,i.kind,i.tags,i.source_id,v.payload,v.created_at,v.author FROM drawing_library_versions v JOIN drawing_versions d ON d.id=v.snapshot_id JOIN drawing_library_items i ON i.page_id=v.page_id JOIN pages p ON p.id=v.page_id WHERE v.page_id=?1")?.query_map([page], |r| {
+        Ok(StoredVersion {
+            version: r.get(0)?,
+            snapshot_id: r.get(1)?,
+            scene: r.get(2)?,
+            name: r.get(3)?,
+            kind: r.get(4)?,
+            tags: r.get(5)?,
+            source: r.get(6)?,
+            payload: r.get(7)?,
+            created_at: r.get(8)?,
+            author: r.get(9)?,
+        })
+    })?.collect::<rusqlite::Result<_>>()?;
+    for row in rows {
+        let StoredVersion { version, snapshot_id: old, scene: raw, name, kind, tags, source, payload, created_at: at, author } = row;
         let mut scene: Value = serde_json::from_str(&raw)?;
         if scene.get("libraryPublication").is_some() {
             validate_scene_publication(&scene)?;
             continue;
         }
-        scene["libraryPublication"] = descriptor(
-            page,
+        scene["libraryPublication"] = Descriptor {
+            item: page,
             version,
-            &name,
-            &kind,
-            &serde_json::from_str::<Value>(&tags)?,
-            source.as_deref(),
-            &serde_json::from_str::<Value>(&payload)?,
+            name: &name,
+            kind: &kind,
+            tags: &serde_json::from_str::<Value>(&tags)?,
+            source: source.as_deref(),
+            payload: &serde_json::from_str::<Value>(&payload)?,
             at,
-        );
+        }
+        .to_json();
         validate_scene_publication(&scene)?;
         let id = db::new_id();
         conn.execute(
@@ -422,8 +464,17 @@ pub fn publish_authorized(conn: &Connection, input: Publish, permit: Option<&cra
         bail!("The library publication history exceeds500 versions");
     }
     let at = db::now();
-    scene["libraryPublication"] =
-        descriptor(&item_id, version, input.name.trim(), &input.kind, &json!(input.tags), Some(&input.source_id), &input.payload, at);
+    scene["libraryPublication"] = Descriptor {
+        item: &item_id,
+        version,
+        name: input.name.trim(),
+        kind: &input.kind,
+        tags: &json!(input.tags),
+        source: Some(&input.source_id),
+        payload: &input.payload,
+        at,
+    }
+    .to_json();
     validate_scene_publication(&scene)?;
     let snapshot_id = db::new_id();
     conn.execute(

@@ -14,6 +14,9 @@ import { newSlide, slideToBlock } from "../resources/deck/model";
 import type { DrawingDocument } from "../drawing/model";
 import type { LibraryPublication } from "../drawing/library";
 import { DEFAULT_EXPORT_RULES, canDrawingExport, type DrawingExportPolicy } from "../drawing/exportPolicy";
+import providersJson from "../ai/providers.json";
+/** The public web demo build (`pnpm build:demo`): the mock is the whole backend there. */
+export const WEB_DEMO = import.meta.env.VITE_WEB_DEMO === "1";
 const exportPolicies:Record<string,DrawingExportPolicy>={};
 const drawings: Record<string, DrawingDocument> = {};
 const drawingLibrary: Record<string, LibraryPublication[]> = {};
@@ -35,6 +38,12 @@ function md(markdownLines: string[]) {
   });
 }
 
+/** Provider presets for the browser preview; `secret` stands in for the credential store and never leaves this file. */
+const mockProviders: { id: string; name: string; api: string; kind: "runner" | "cloud" | "local"; baseUrl: string; defaultBaseUrl: string; editableBaseUrl: boolean; key: "none" | "required" | "optional"; note?: string; secret?: string }[] =
+  ((providersJson as { providers: { id: string; name: string; api: string; kind: "runner" | "cloud" | "local"; baseUrl?: string; editableBaseUrl?: boolean; key: "none" | "required" | "optional"; note?: string }[] }).providers).map((p) => ({
+    id: p.id, name: p.name, api: p.api, kind: p.kind, baseUrl: p.baseUrl ?? "", defaultBaseUrl: p.baseUrl ?? "", editableBaseUrl: !!p.editableBaseUrl, key: p.key, note: p.note,
+  }));
+
 const profile: any = {
   id: "me",
   blocks: new URLSearchParams(location.search).has("frames")
@@ -55,7 +64,7 @@ const profile: any = {
   status: "Exploring Game Development",
   accent: "#2e92ff",
   theme: "dark",
-  language: "auto",
+  language: new URLSearchParams(location.search).get("lang") ?? "auto",
   textDirection: "auto",
   location: "Riyadh",
   links: [{ label: "Discord", url: "https://discord.com" }, { label: "GitHub", url: "https://github.com" }],
@@ -77,12 +86,12 @@ function addPage(title: string, icon: string | null, lines: string[], extra: any
   blocks[pid] = md(lines);
   return pid;
 }
-const p1 = addPage("اهلًا هذه تجربة!", "😎", ["# أهلا", "تجربة تجريبتين ثلاث تجارب، هذا نص عادي مع نص عريض.", "- [ ] مهمة أولى", "- [x] مهمة منتهية", "> ملاحظة: حدثنا Nova8 إلى v2.4.1."], { pinned: true, pinOrder: 1 });
-addPage("Release Notes", "🚀", ["Version v1.0.0 · Date 2026-10-03", "## Highlights", "- Native window frame", "## Fixes", "- Faster Discord reconnects"], { cover: new URLSearchParams(location.search).has("white") ? "mock-white" : "mock-ref-5" });
-addPage("Discord Announcement", "📣", ["# الاجتماع الإداري", "الوقت 8:00 PM", "## المواضيع", "- المتجر", "- السيرفر"]);
-addPage("Meeting Notes", "🪑", ["## Attendees", "- Alex", "## Decisions", "- Ship the glass redesign"], { pinned: true, pinOrder: 2 });
+const p1 = WEB_DEMO ? "" : addPage("اهلًا هذه تجربة!", "😎", ["# أهلا", "تجربة تجريبتين ثلاث تجارب، هذا نص عادي مع نص عريض.", "- [ ] مهمة أولى", "- [x] مهمة منتهية", "> ملاحظة: حدثنا Nova8 إلى v2.4.1."], { pinned: true, pinOrder: 1 });
+if (!WEB_DEMO) addPage("Release Notes", "🚀", ["Version v1.0.0 · Date 2026-10-03", "## Highlights", "- Native window frame", "## Fixes", "- Faster Discord reconnects"], { cover: new URLSearchParams(location.search).has("white") ? "mock-white" : "mock-ref-5" });
+if (!WEB_DEMO) addPage("Discord Announcement", "📣", ["# الاجتماع الإداري", "الوقت 8:00 PM", "## المواضيع", "- المتجر", "- السيرفر"]);
+if (!WEB_DEMO) addPage("Meeting Notes", "🪑", ["## Attendees", "- Alex", "## Decisions", "- Ship the glass redesign"], { pinned: true, pinOrder: 2 });
 
-const chats: any[] = [
+const chats: any[] = WEB_DEMO ? [] : [
   { id: "c1", title: "خطة المتجر", pageId: null, createdAt: now - 86_400_000, updatedAt: now - 86_400_000, messageCount: 2 },
   { id: "c2", title: "Release notes draft", pageId: null, createdAt: now - 3_600_000, updatedAt: now - 3_600_000, messageCount: 2 },
 ];
@@ -163,7 +172,7 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has("mock") && n
   metadata[sampleStream] = { stream: { url: "/src/dev/demo-stream.mp4", format: "progressive" } };
 }
 
-const settings: Record<string, unknown> = { "advanced.developer": true, "advanced.perfOverlay": new URLSearchParams(location.search).has("perf"), "appearance.glassTone": new URLSearchParams(location.search).get("tone") ?? "auto", ...(new URLSearchParams(location.search).has("demo") && !new URLSearchParams(location.search).has("onboarding") ? { "account.onboarded": true } : {}) };
+const settings: Record<string, unknown> = WEB_DEMO ? { "account.onboarded": true } : { "advanced.developer": true, "advanced.perfOverlay": new URLSearchParams(location.search).has("perf"), "appearance.glassTone": new URLSearchParams(location.search).get("tone") ?? "auto", ...(new URLSearchParams(location.search).has("demo") && !new URLSearchParams(location.search).has("onboarding") ? { "account.onboarded": true } : {}) };
 const callbacks = new Map<number, (v: any) => void>();
 const listeners = new Map<string, number[]>();
 let cbSeq = 1;
@@ -310,6 +319,8 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
     case "drawing_embed_insert": { (blocks[a.targetId] ??= []).push({ type: "drawingEmbed", attrs: { bid: id(), pageId: a.pageId, frameId: a.frameId, camera: a.camera, versionId: a.versionId } }); return; }
     case "page_create": {
       const pid = addPage(a.page.title ?? "", a.page.icon ?? null, [], { kind: a.page.kind ?? "page", parentId: a.page.parentId ?? null });
+      if (Array.isArray(a.page.blocks)) blocks[pid] = a.page.blocks.map((b: any) => ({ ...b, attrs: { ...(b.attrs ?? {}), bid: b.attrs?.bid ?? id() } }));
+      else if (typeof a.page.markdown === "string") blocks[pid] = md(a.page.markdown.split("\n"));
       metadata[pid] = a.page.metadata ?? {};
       if (metadata[pid][pages[pid].kind] !== undefined) pages[pid].data = metadata[pid][pages[pid].kind];
       return pages[pid];
@@ -373,6 +384,23 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
     case "ai_token_open_setup": return null;
     case "ai_token_save": if (!String(a?.token ?? "").startsWith("sk-ant-")) throw "That does not look like a Claude token. Copy the whole line that starts with sk-ant-."; return null;
     case "ai_token_clear": return null;
+    case "ai_providers": return mockProviders.map(({ secret, ...p }) => ({ ...p, hasKey: !!secret }));
+    case "ai_provider_save": {
+      const p = mockProviders.find((x) => x.id === a.id);
+      if (!p) throw `Unknown provider ${a.id}`;
+      if (typeof a.apiKey === "string") {
+        if (a.apiKey.trim().startsWith("sk-ant-oat")) throw "That is a Claude subscription sign-in token. Worlds cannot use those; create an API key in the Claude Console, or use Claude Code.";
+        p.secret = a.apiKey.trim();
+      }
+      if (typeof a.baseUrl === "string") p.baseUrl = a.baseUrl.trim() || p.defaultBaseUrl;
+      const { secret, ...rest } = p;
+      return { ...rest, hasKey: !!secret };
+    }
+    case "ai_provider_models": return a.id === "ollama" ? [{ id: "llama3.2:3b", name: "llama3.2:3b", tools: true }, { id: "gemma:2b", name: "gemma:2b", tools: false }] : [{ id: "gpt-5", name: "gpt-5", tools: null }];
+    case "ai_local_detect": return mockProviders.filter((p) => p.kind === "local").map((p) => ({ id: p.id, name: p.name, baseUrl: p.baseUrl, running: p.id === "ollama", models: p.id === "ollama" ? [{ id: "llama3.2:3b", name: "llama3.2:3b", tools: true }] : [] }));
+    case "ai_codex_status": return { installed: true, signedIn: false, version: "codex-cli 0.144.5", method: "" };
+    case "ai_claude_auth_status": return { installed: true, signedIn: true, method: "claude.ai" };
+    case "ai_codex_login": case "ai_claude_login": return null;
     case "ai_chats": return [...chats].sort((x, y) => y.updatedAt - x.updatedAt);
     case "ai_chat": return { id: a.id, messages: chatMessages[a.id] ?? [] };
     case "ai_chat_delete": return null;
@@ -385,7 +413,7 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
         chats.unshift({ id: chatId, title: a.request.prompt.slice(0, 40), pageId: null, createdAt: Date.now(), updatedAt: Date.now(), messageCount: 0 });
       }
       chatMessages[chatId].push({ id: id(), role: "user", content: a.request.prompt, steps: [], opId: null, meta: {}, createdAt: Date.now() });
-      if (new URLSearchParams(location.search).has("demo")) {
+      if (WEB_DEMO || new URLSearchParams(location.search).has("demo")) {
         // Simulated events only; no service, network, or real workspace writes.
         const answer = "**ملخص توضيحي**\n\n- حدد الجمهور وهدف الإطلاق.\n- اجمع المواد البصرية والنصوص.\n- راجع التفاصيل مع الفريق قبل النشر.\n\nهذه نتيجة تجريبية للعرض.";
         setTimeout(() => emit("worlds://ai", { runId, kind: "tool", tool: "pages_read" }), 300);
@@ -451,7 +479,7 @@ export function mockFileUrl(attachmentId: string): string {
   return ASSET[attachmentId] ?? "";
 }
 
-if (import.meta.env.DEV && !("__TAURI_INTERNALS__" in window) && new URLSearchParams(location.search).has("mock")) {
+if (!("__TAURI_INTERNALS__" in window) && (WEB_DEMO || (import.meta.env.DEV && new URLSearchParams(location.search).has("mock")))) {
   (window as any).__WORLDS_MOCK__ = true;
   (window as any).__TAURI_INTERNALS__ = {
     metadata: { currentWindow: { label: "main" }, currentWebview: { windowLabel: "main", label: "main" } },

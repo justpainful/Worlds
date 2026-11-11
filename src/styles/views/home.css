@@ -72,6 +72,7 @@
 .home-empty .home-hero { padding: 12vh 0 30px; text-align: center; }
 .home-empty .home-title { font-size: 40px; }
 .home-sub { color: var(--text-3); font: var(--t-ui); font-size: 15px; margin: 10px 0 26px; }
-.home-hero-actions { display: flex; justify-content: center; }
+.home-hero-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; }
+.home-sample-note { color: var(--text-3); font: var(--t-ui); font-size: 13px; max-width: 460px; margin: 16px auto 0; padding: 0 16px; line-height: 1.5; }
 .home-empty .home-section { max-width: 760px; margin-left: auto; margin-right: auto; }
 .home-empty .tpl-strip { justify-content: center; }

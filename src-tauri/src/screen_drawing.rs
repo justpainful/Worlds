@@ -100,7 +100,7 @@ fn capture(x: i32, y: i32, width: u32, height: u32) -> Result<Vec<u8>, String> {
         if rows != height as i32 {
             return Err("Could not capture the screen".into());
         }
-        for p in pixels.chunks_exact_mut(4) {
+        for p in pixels.as_chunks_mut::<4>().0 {
             p.swap(0, 2);
             p[3] = 255;
         }

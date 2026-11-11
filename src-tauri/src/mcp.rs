@@ -42,20 +42,36 @@ pub fn run_stdio(args: &[String]) -> Result<()> {
     let mut stdout = std::io::stdout();
     for line in stdin.lock().lines() {
         let line = line?;
-        let response = protocol::dispatch(&line, env!("CARGO_PKG_VERSION"), tool_list, |name, a| {
-            let plan = crate::drawing_copy::Plan::tool(&conn, name, a)?;
-            let permit = crate::drawing_copy::authorize_stdio(plan)?;
-            let tx = conn.unchecked_transaction()?;
-            // Claude acts with the signed-in user's rights (Team workspaces).
-            let result = crate::account::guarded_tool_call(&tx, name, a, |c| call_tool(c, &ctx, name, a, Some(&permit)))?;
-            tx.commit()?;
-            Ok(result)
-        })?;
+        let response = protocol::dispatch(&line, env!("CARGO_PKG_VERSION"), tool_list, |name, a| execute_tool(&conn, &ctx, name, a))?;
         let Some(response) = response else { continue };
         writeln!(stdout, "{}", response)?;
         stdout.flush()?;
     }
     Ok(())
+}
+
+/// The tool definitions the MCP server offers (name, description, inputSchema).
+pub fn tool_definitions() -> Vec<Value> {
+    tool_list()
+}
+
+/// Runs one tool exactly like the stdio server does: copy checks, the
+/// signed-in user's rights (Team workspaces), one transaction per call.
+pub fn execute_tool(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Value> {
+    let plan = crate::drawing_copy::Plan::tool(conn, name, a)?;
+    let permit = crate::drawing_copy::authorize_stdio(plan)?;
+    let tx = conn.unchecked_transaction()?;
+    let result = crate::account::guarded_tool_call(&tx, name, a, |c| call_tool(c, ctx, name, a, Some(&permit)))?;
+    tx.commit()?;
+    Ok(result)
+}
+
+/// A tool result as the text the stdio server sends back.
+pub fn result_text(v: &Value) -> String {
+    match v.as_str() {
+        Some(s) => s.to_string(),
+        None => serde_json::to_string_pretty(v).unwrap_or_else(|_| v.to_string()),
+    }
 }
 
 fn s<'a>(a: &'a Value, k: &str) -> Result<&'a str> {

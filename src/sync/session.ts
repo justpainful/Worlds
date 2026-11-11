@@ -415,7 +415,7 @@ export function localStore(): LocalStore {
   if (store) return store;
   const inTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
   // The browser mock (?mock) fakes Tauri but has no sync commands.
-  const mock = inTauri && import.meta.env.DEV && new URLSearchParams(window.location.search).has("mock");
+  const mock = inTauri && (import.meta.env.VITE_WEB_DEMO === "1" || (import.meta.env.DEV && new URLSearchParams(window.location.search).has("mock")));
   if (inTauri && !mock) store = new TauriLocalStore();
   else {
     const mem = new MemoryLocalStore();

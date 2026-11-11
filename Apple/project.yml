@@ -13,8 +13,8 @@ settings:
     "EXCLUDED_SOURCE_FILE_NAMES[config=Release]": "worlds-v1-fixture.db search-ui-fixture.db reader-ui-fixture.db worlds-v11.db"
     SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) WORLDS_MAIN_APP_MODULES"
     OTHER_SWIFT_FLAGS: "$(inherited) -DWORLDS_MAIN_APP_MODULES"
-    CURRENT_PROJECT_VERSION: 1
-    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: 2
+    MARKETING_VERSION: "0.2.0"
 packages:
   WorldsCore:
     path: WorldsCore
