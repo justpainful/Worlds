@@ -41,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -91,20 +92,20 @@ internal fun AiProviderSettingsScreen(onBack: () -> Unit, modifier: Modifier = M
         item {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 WorldsTile(R.drawable.pi_sparkles, 44.dp)
-                Text("AI providers", color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.headlineMedium)
+                Text(stringResource(R.string.ai_providers_title), color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.headlineMedium)
             }
         }
         item {
             Text(
-                "Worlds sends your messages to the provider you choose, with your own key. Keys are encrypted with the Android Keystore and stay on this device.",
+                stringResource(R.string.ai_providers_intro),
                 color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium
             )
         }
         val hosted = rows.filter { it.preset.requiresKey }
         val local = rows.filter { !it.preset.requiresKey }
-        item { Text("Hosted", color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.titleSmall) }
+        item { Text(stringResource(R.string.ai_hosted), color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.titleSmall) }
         item { ProviderGroup(hosted) { editing = it } }
-        item { Text("On your own computer or server", color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.titleSmall) }
+        item { Text(stringResource(R.string.ai_local_section), color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.titleSmall) }
         item { ProviderGroup(local) { editing = it } }
     }
 }
@@ -116,18 +117,18 @@ private fun ProviderGroup(rows: List<ProviderRowState>, onOpen: (String) -> Unit
             rows.forEachIndexed { index, row ->
                 if (index > 0) HorizontalDivider(Modifier.padding(start = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
                 val status = when {
-                    row.isDefault && row.model.isNotBlank() -> "In use, ${row.model}"
+                    row.isDefault && row.model.isNotBlank() -> stringResource(R.string.ai_status_in_use, row.model)
                     row.configured && row.model.isNotBlank() -> row.model
-                    row.configured -> "Ready, choose a model"
-                    row.preset.requiresKey -> "Needs an API key"
-                    else -> "Needs an address"
+                    row.configured -> stringResource(R.string.ai_status_ready)
+                    row.preset.requiresKey -> stringResource(R.string.ai_status_needs_key)
+                    else -> stringResource(R.string.ai_status_needs_address)
                 }
                 Row(
                     Modifier.fillMaxWidth().selectable(selected = row.isDefault, role = Role.Button, onClick = { onOpen(row.preset.id) }).heightIn(min = 60.dp).padding(start = 16.dp, end = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
-                        Text(row.preset.displayName, color = MaterialTheme.colorScheme.onSurface)
+                        Text(row.preset.label(), color = MaterialTheme.colorScheme.onSurface)
                         Text(status, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     if (row.isDefault) { WorldsGlyph(R.drawable.ic_check, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(8.dp)) }
@@ -140,7 +141,9 @@ private fun ProviderGroup(rows: List<ProviderRowState>, onOpen: (String) -> Unit
 
 @Composable
 private fun ProviderDetail(preset: AiProviderPreset, store: AiProviderStore, onBack: () -> Unit, modifier: Modifier) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val providerName = preset.label()
     var baseUrl by rememberSaveable(preset.id) { mutableStateOf("") }
     var keyDraft by remember(preset.id) { mutableStateOf("") }
     var hasKey by remember(preset.id) { mutableStateOf(false) }
@@ -171,8 +174,8 @@ private fun ProviderDetail(preset: AiProviderPreset, store: AiProviderStore, onB
 
     fun loadModels() {
         error = null; note = null
-        if (!AiRequests.isValidBase(baseUrl)) { error = AiError.BadUrl(preset.displayName).message; return }
-        if (preset.requiresKey && keyDraft.isBlank() && !hasKey) { error = AiError.NoKey(preset.displayName).message; return }
+        if (!AiRequests.isValidBase(baseUrl)) { error = AiError.BadUrl(preset.displayName).localized(context); return }
+        if (preset.requiresKey && keyDraft.isBlank() && !hasKey) { error = AiError.NoKey(preset.displayName).localized(context); return }
         loading = true
         val url = baseUrl.trim()
         val typedKey = keyDraft.trim()
@@ -188,11 +191,11 @@ private fun ProviderDetail(preset: AiProviderPreset, store: AiProviderStore, onB
                 models = list
                 if (model.isNotBlank() && list.none { it.id == model }) model = ""
                 withContext(Dispatchers.IO) { store.save(preset.id, AiProviderSettings(url, model, list)) }
-                note = if (list.isEmpty()) "${preset.displayName} returned no chat models. Type a model id below." else "${list.size} models available. Choose one."
+                note = if (list.isEmpty()) context.getString(R.string.ai_models_none, providerName) else context.getString(R.string.ai_models_count, list.size)
             } catch (e: AiError) {
-                error = e.message
+                error = e.localized(context)
             } catch (e: Exception) {
-                error = "Could not load models from ${preset.displayName}."
+                error = context.getString(R.string.ai_models_load_failed, providerName)
             } finally {
                 loading = false
             }
@@ -203,7 +206,7 @@ private fun ProviderDetail(preset: AiProviderPreset, store: AiProviderStore, onB
         model = id
         persist(chosen = id)
         scope.launch(Dispatchers.IO) { store.defaultProviderId = preset.id }
-        note = "${preset.displayName} with $id is now used for new conversations."
+        note = context.getString(R.string.ai_model_now_default, providerName, id)
     }
 
     BackHandler(onBack = onBack)
@@ -214,16 +217,16 @@ private fun ProviderDetail(preset: AiProviderPreset, store: AiProviderStore, onB
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item { WorldsBackButton(onBack) }
-        item { Text(preset.displayName, color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.headlineMedium) }
+        item { Text(providerName, color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.headlineMedium) }
         item {
-            val kind = if (preset.kind == AiProviderKind.Anthropic) "Anthropic Messages API" else "OpenAI compatible API"
-            Text("$kind. ${preset.keyHint}.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+            val kind = stringResource(if (preset.kind == AiProviderKind.Anthropic) R.string.ai_kind_anthropic else R.string.ai_kind_openai)
+            Text(stringResource(R.string.ai_provider_summary, kind, preset.hint()), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         }
         if (!loaded) { item { CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp) }; return@LazyColumn }
         item {
             OutlinedTextField(
                 value = baseUrl, onValueChange = { baseUrl = it; error = null },
-                label = { Text("Base URL") }, singleLine = true,
+                label = { Text(stringResource(R.string.ai_base_url)) }, singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                 modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth()
             )
@@ -231,7 +234,7 @@ private fun ProviderDetail(preset: AiProviderPreset, store: AiProviderStore, onB
         if (!preset.requiresKey) {
             item {
                 Text(
-                    "On a phone, localhost is the phone itself. To reach a server on your computer, use its network address, for example http://192.168.1.20:11434/v1.",
+                    stringResource(R.string.ai_localhost_note),
                     color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -239,8 +242,8 @@ private fun ProviderDetail(preset: AiProviderPreset, store: AiProviderStore, onB
         item {
             OutlinedTextField(
                 value = keyDraft, onValueChange = { keyDraft = it; error = null },
-                label = { Text(if (preset.requiresKey) "API key" else "API key (optional)") },
-                placeholder = { Text(if (hasKey) "Saved. Type a new key to replace it." else "Paste your key") },
+                label = { Text(stringResource(if (preset.requiresKey) R.string.ai_api_key else R.string.ai_api_key_optional)) },
+                placeholder = { Text(stringResource(if (hasKey) R.string.ai_key_saved_placeholder else R.string.ai_paste_key)) },
                 singleLine = true, visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
                 modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth()
@@ -248,13 +251,13 @@ private fun ProviderDetail(preset: AiProviderPreset, store: AiProviderStore, onB
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Button(onClick = { loadModels() }, enabled = !loading) { WorldsActionLabel(R.drawable.ic_refresh_cw, "Load models") }
+                Button(onClick = { loadModels() }, enabled = !loading) { WorldsActionLabel(R.drawable.ic_refresh_cw, stringResource(R.string.ai_load_models)) }
                 if (hasKey) {
                     WorldsActionButton(onClick = {
                         hasKey = false; keyDraft = ""
                         scope.launch(Dispatchers.IO) { store.saveKey(preset.id, null) }
-                        note = "Key removed from this device."
-                    }) { WorldsActionLabel(R.drawable.ic_trash_2, "Remove key") }
+                        note = context.getString(R.string.ai_key_removed)
+                    }) { WorldsActionLabel(R.drawable.ic_trash_2, stringResource(R.string.ai_remove_key)) }
                 }
                 if (loading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
             }
@@ -262,12 +265,12 @@ private fun ProviderDetail(preset: AiProviderPreset, store: AiProviderStore, onB
         error?.let { message -> item { Text(message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) } }
         note?.let { message -> item { Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium) } }
         if (models.isNotEmpty()) {
-            item { Text("Model", color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.titleSmall) }
+            item { Text(stringResource(R.string.ai_model), color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.titleSmall) }
             if (models.size > 12) {
                 item {
                     OutlinedTextField(
                         value = filter, onValueChange = { filter = it }, singleLine = true,
-                        placeholder = { Text("Filter ${models.size} models") },
+                        placeholder = { Text(stringResource(R.string.ai_filter_models, models.size)) },
                         leadingIcon = { WorldsGlyph(R.drawable.ic_search) },
                         modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth()
                     )
@@ -289,15 +292,15 @@ private fun ProviderDetail(preset: AiProviderPreset, store: AiProviderStore, onB
                                 Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) { if (option.id == model) WorldsGlyph(R.drawable.ic_check, tint = MaterialTheme.colorScheme.primary) }
                             }
                         }
-                        if (visible.isEmpty()) Text("No model matches.", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (visible.isEmpty()) Text(stringResource(R.string.ai_no_model_matches), Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
         }
-        item { Text("Model id", color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.titleSmall) }
+        item { Text(stringResource(R.string.ai_model_id), color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.titleSmall) }
         item {
             Text(
-                if (model.isBlank()) "No model chosen yet. Load models above, or type a model id the server accepts." else "In use: $model",
+                if (model.isBlank()) stringResource(R.string.ai_no_model_chosen) else stringResource(R.string.ai_in_use_model, model),
                 color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall
             )
         }
@@ -305,14 +308,14 @@ private fun ProviderDetail(preset: AiProviderPreset, store: AiProviderStore, onB
             Row(Modifier.widthIn(max = 600.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = manualModel, onValueChange = { manualModel = it }, singleLine = true,
-                    placeholder = { Text("Type a model id") },
+                    placeholder = { Text(stringResource(R.string.ai_type_model_id)) },
                     keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
                     modifier = Modifier.weight(1f)
                 )
                 WorldsActionButton(onClick = {
                     val id = manualModel.trim()
                     if (id.isNotEmpty()) { choose(id); manualModel = "" }
-                }, enabled = manualModel.isNotBlank()) { Text("Use") }
+                }, enabled = manualModel.isNotBlank()) { Text(stringResource(R.string.ai_use)) }
             }
         }
     }

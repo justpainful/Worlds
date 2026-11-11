@@ -6,6 +6,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import worlds.android.R
 
 class AiProvidersTest {
     private val anthropic = AiProvider("anthropic", "Anthropic", AiProviderKind.Anthropic, "https://api.anthropic.com", "test-anthropic-key")
@@ -169,7 +170,19 @@ class AiProvidersTest {
         assertTrue(AiRequests.httpError(openai, 429, """{"error":{"message":"Rate limit reached"}}""", "gpt-test") is AiError.RateLimited)
         val server = AiRequests.httpError(anthropic, 529, """{"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}""", "claude-test")
         assertTrue(server is AiError.Server)
+        assertEquals(R.string.ai_error_server, server.messageRes)
+        assertEquals(listOf<Any>("Anthropic", 529), server.messageArgs)
+        assertEquals("Overloaded", server.detail)
         assertTrue(server.message!!.contains("Overloaded"))
+    }
+
+    @Test fun errorsCarryTranslatableResources() {
+        assertEquals(R.string.ai_error_no_provider, AiError.NoProvider().messageRes)
+        assertEquals(listOf<Any>("OpenAI", "gpt-x"), AiError.ModelMissing("OpenAI", "gpt-x").messageArgs)
+        assertEquals(R.string.ai_error_offline_local, AiError.Offline("Ollama", "192.168.1.20:11434", true).messageRes)
+        assertEquals(R.string.ai_error_offline, AiError.Offline("OpenAI", "api.openai.com", false).messageRes)
+        assertEquals(R.string.ai_error_stream_unknown, AiError.Stream("Groq", "").messageRes)
+        assertEquals(listOf<Any>("Groq", "busy"), AiError.Stream("Groq", "busy").messageArgs)
     }
 
     @Test fun keysNeverAppearInDescriptions() {
@@ -189,6 +202,10 @@ class AiProvidersTest {
         val thread = ChatThread("abc", "Plan", "groq", "llama-test", listOf(ChatMessage("1", "user", "Hi", 5, listOf(ChatAttachment("p", "Page", "text/markdown", 2, "Hi")))), 1, 2)
         val back = ChatThreadJson.decode(ChatThreadJson.encode(thread))
         assertEquals(thread, back)
+        assertEquals("", chatTitle("  \n "))
+        assertTrue(thread.copy(title = "").hasPlaceholderTitle())
+        assertTrue(thread.copy(title = "New conversation").hasPlaceholderTitle())
+        assertFalse(thread.hasPlaceholderTitle())
         assertEquals("A long first line that keeps going and going and going pa...", chatTitle("A long first line that keeps going and going and going past the limit\nsecond"))
     }
 }

@@ -50,8 +50,12 @@ private const val SYSTEM_PROMPT = "You are the assistant inside Worlds, a local 
 
 private fun newThread(providerId: String, modelId: String): ChatThread {
     val now = System.currentTimeMillis()
-    return ChatThread(UUID.randomUUID().toString(), "New conversation", providerId, modelId, emptyList(), now, now)
+    // A blank title stands for "New conversation" and is translated where it is shown.
+    return ChatThread(UUID.randomUUID().toString(), "", providerId, modelId, emptyList(), now, now)
 }
+
+@Composable
+private fun ChatThread.displayTitle(): String = if (hasPlaceholderTitle()) stringResource(R.string.ai_new_conversation) else title
 
 @Composable
 fun AiChatScreen(
@@ -93,8 +97,9 @@ fun AiChatScreen(
                 configuredCount++
                 val settings = providers.settings(preset.id)
                 val models = settings.models.ifEmpty { if (settings.model.isNotBlank()) listOf(AiModelOption(settings.model, settings.model)) else emptyList() }
-                models.forEach { out.add(AiModelChoice(preset.id, preset.displayName, it.id, it.name)) }
-                if (settings.model.isNotBlank() && models.none { it.id == settings.model }) out.add(AiModelChoice(preset.id, preset.displayName, settings.model, settings.model))
+                val providerName = preset.label(context)
+                models.forEach { out.add(AiModelChoice(preset.id, providerName, it.id, it.name)) }
+                if (settings.model.isNotBlank() && models.none { it.id == settings.model }) out.add(AiModelChoice(preset.id, providerName, settings.model, settings.model))
             }
             val defaultId = providers.defaultProviderId?.takeIf { providers.isConfigured(it) } ?: AI_PROVIDER_PRESETS.firstOrNull { providers.isConfigured(it.id) }?.id
             Triple(out, configuredCount > 0, defaultId?.let { it to providers.settings(it).model })
@@ -157,7 +162,7 @@ fun AiChatScreen(
                 val partial = thread?.messages?.firstOrNull { it.id == replyId }
                 if (partial != null && partial.content.isBlank()) thread = thread?.let { t -> t.copy(messages = t.messages.filterNot { it.id == replyId }) }
             } catch (e: Exception) {
-                val message = (e as? AiError)?.message ?: "The reply failed: ${e.message ?: e.javaClass.simpleName}"
+                val message = (e as? AiError)?.localized(context) ?: context.getString(R.string.ai_reply_failed, e.message ?: e.javaClass.simpleName)
                 val partial = thread?.messages?.firstOrNull { it.id == replyId }
                 if (partial != null && partial.content.isNotBlank()) {
                     updateMessage(replyId) { it.copy(isStreaming = false) }
@@ -183,9 +188,9 @@ fun AiChatScreen(
     if (showAttachmentPicker) {
         AlertDialog(
             onDismissRequest = { showAttachmentPicker = false },
-            title = { WorldsActionLabel(R.drawable.ic_link, "Attach page context") },
+            title = { WorldsActionLabel(R.drawable.ic_link, stringResource(R.string.ai_attach_page_context)) },
             text = {
-                if (pages.isEmpty()) Text("No pages yet.")
+                if (pages.isEmpty()) Text(stringResource(R.string.ai_no_pages))
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth().heightIn(max = 380.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -202,7 +207,7 @@ fun AiChatScreen(
                                         val markdown = if (doc != null) MarkdownExport.page(doc) else ""
                                         val att = ChatAttachment(
                                             id = page.id,
-                                            name = page.title.ifBlank { "Untitled" },
+                                            name = page.title.ifBlank { context.getString(R.string.untitled) },
                                             mime = "text/markdown",
                                             size = markdown.length.toLong(),
                                             content = markdown
@@ -214,7 +219,7 @@ fun AiChatScreen(
                         ) {
                             Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 WorldsGlyph(R.drawable.ic_file_text)
-                                Text(page.title.ifBlank { "Untitled" }, style = MaterialTheme.typography.bodyMedium)
+                                Text(page.title.ifBlank { stringResource(R.string.untitled) }, style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                     }
@@ -229,11 +234,12 @@ fun AiChatScreen(
     }
 
     if (showHistory) {
+        val deleteLabel = stringResource(R.string.ai_delete_conversation)
         AlertDialog(
             onDismissRequest = { showHistory = false },
-            title = { WorldsActionLabel(R.drawable.ic_history, "Conversations") },
+            title = { WorldsActionLabel(R.drawable.ic_history, stringResource(R.string.ai_conversations)) },
             text = {
-                if (history.isEmpty()) Text("No saved conversations yet.")
+                if (history.isEmpty()) Text(stringResource(R.string.ai_no_conversations))
                 LazyColumn(Modifier.fillMaxWidth().heightIn(max = 420.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(history, key = { it.id }) { item ->
                         Surface(
@@ -245,8 +251,8 @@ fun AiChatScreen(
                         ) {
                             Row(Modifier.padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
-                                    Text(item.title, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    val providerName = aiPreset(item.providerId)?.displayName ?: "No provider"
+                                    Text(item.displayTitle(), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    val providerName = aiPreset(item.providerId)?.label() ?: stringResource(R.string.ai_no_provider)
                                     Text(listOf(providerName, item.modelId).filter { it.isNotBlank() }.joinToString(", "), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 }
                                 IconButton(
@@ -256,14 +262,14 @@ fun AiChatScreen(
                                         if (item.id == thread?.id && !isStreaming) thread = newThread(item.providerId, item.modelId)
                                     },
                                     enabled = !(isStreaming && item.id == thread?.id),
-                                    modifier = Modifier.semantics { contentDescription = "Delete conversation" }
+                                    modifier = Modifier.semantics { contentDescription = deleteLabel }
                                 ) { WorldsGlyph(R.drawable.ic_trash_2, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
                             }
                         }
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showHistory = false }) { Text("Done") } }
+            confirmButton = { TextButton(onClick = { showHistory = false }) { Text(stringResource(R.string.ai_done)) } }
         )
     }
 
@@ -283,17 +289,20 @@ fun AiChatScreen(
             Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (showBack) WorldsBackButton(onBack)
                 Column(Modifier.weight(1f, fill = false)) {
-                    Text("AI Assistant", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.ai_chat), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     val current = thread
                     if (current != null && current.messages.isNotEmpty()) {
-                        Text(current.title, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(current.displayTitle(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
+            val conversationsLabel = stringResource(R.string.ai_conversations)
+            val newConversationLabel = stringResource(R.string.ai_new_conversation)
+            val settingsLabel = stringResource(R.string.ai_providers_and_keys)
             Row {
                 IconButton(onClick = {
                     scope.launch { history = withContext(Dispatchers.IO) { conversations.list() }; showHistory = true }
-                }, modifier = Modifier.semantics { contentDescription = "Conversations" }) { WorldsGlyph(R.drawable.ic_history) }
+                }, modifier = Modifier.semantics { contentDescription = conversationsLabel }) { WorldsGlyph(R.drawable.ic_history) }
                 IconButton(
                     onClick = {
                         val current = thread
@@ -306,9 +315,9 @@ fun AiChatScreen(
                         }
                     },
                     enabled = !isStreaming,
-                    modifier = Modifier.semantics { contentDescription = "New conversation" }
+                    modifier = Modifier.semantics { contentDescription = newConversationLabel }
                 ) { WorldsGlyph(R.drawable.ic_plus) }
-                IconButton(onClick = { showSettings = true }, enabled = !isStreaming, modifier = Modifier.semantics { contentDescription = "AI providers and keys" }) {
+                IconButton(onClick = { showSettings = true }, enabled = !isStreaming, modifier = Modifier.semantics { contentDescription = settingsLabel }) {
                     WorldsGlyph(R.drawable.ic_settings_2)
                 }
             }
@@ -320,7 +329,7 @@ fun AiChatScreen(
         if (current != null && current.messages.isEmpty()) {
             EmptyConversation(
                 configured = anyConfigured,
-                providerName = aiPreset(current.providerId)?.displayName,
+                providerName = aiPreset(current.providerId)?.label(),
                 model = current.modelId,
                 onSetUp = { showSettings = true },
                 modifier = Modifier.weight(1f)
@@ -339,8 +348,8 @@ fun AiChatScreen(
                     MessageBubble(
                         message = msg,
                         onExport = {
-                            val name = thread?.title?.takeIf { it.isNotBlank() && it != "New conversation" }
-                                ?: ("AI note, " + DateFormat.getDateInstance(DateFormat.SHORT).format(Date()))
+                            val name = thread?.takeIf { !it.hasPlaceholderTitle() }?.title
+                                ?: context.getString(R.string.ai_note_title, DateFormat.getDateInstance(DateFormat.SHORT).format(Date()))
                             onCreatePage(name, msg.content)
                         },
                         onOpenSettings = { showSettings = true }
@@ -352,8 +361,8 @@ fun AiChatScreen(
         val selectedProvider = current?.providerId.orEmpty()
         val selectedModel = current?.modelId.orEmpty()
         val label = when {
-            selectedProvider.isBlank() -> "Choose a model"
-            selectedModel.isBlank() -> (aiPreset(selectedProvider)?.displayName ?: selectedProvider) + ", choose a model"
+            selectedProvider.isBlank() -> stringResource(R.string.ai_choose_model)
+            selectedModel.isBlank() -> stringResource(R.string.ai_provider_choose_model, aiPreset(selectedProvider)?.label() ?: selectedProvider)
             else -> choices.firstOrNull { it.providerId == selectedProvider && it.modelId == selectedModel }?.modelName ?: selectedModel
         }
         AiComposer(
@@ -388,20 +397,20 @@ private fun EmptyConversation(configured: Boolean, providerName: String?, model:
         Column(Modifier.widthIn(max = 420.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
             WorldsTile(R.drawable.pi_sparkles, 56.dp)
             if (!configured || providerName == null) {
-                Text("Connect an AI provider", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
+                Text(stringResource(R.string.ai_connect_provider), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
                 Text(
-                    "Use your own key from Anthropic, OpenAI, Gemini, Groq, DeepSeek, Mistral, xAI or OpenRouter, or a local server such as Ollama or LM Studio.",
+                    stringResource(R.string.ai_connect_provider_body),
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center
                 )
-                Button(onClick = onSetUp) { WorldsActionLabel(R.drawable.ic_key_round, "Set up a provider") }
+                Button(onClick = onSetUp) { WorldsActionLabel(R.drawable.ic_key_round, stringResource(R.string.ai_set_up_provider)) }
             } else if (model.isBlank()) {
-                Text("Choose a model", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
-                Text("Load the models $providerName offers and pick one.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-                Button(onClick = onSetUp) { WorldsActionLabel(R.drawable.ic_sliders_horizontal, "Choose a model") }
+                Text(stringResource(R.string.ai_choose_model), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
+                Text(stringResource(R.string.ai_load_models_hint, providerName), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                Button(onClick = onSetUp) { WorldsActionLabel(R.drawable.ic_sliders_horizontal, stringResource(R.string.ai_choose_model)) }
             } else {
-                Text("Ask anything", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
+                Text(stringResource(R.string.ai_ask_anything), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
                 Text(
-                    "Replies come from $model on $providerName. Attach pages with the link button to give it context.",
+                    stringResource(R.string.ai_replies_from, model, providerName),
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center
                 )
             }
@@ -458,7 +467,7 @@ private fun MessageBubble(
                     if (message.isStreaming && message.content.isEmpty()) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                            Text("Waiting for the reply", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.ai_waiting_reply), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     } else {
                         SelectionContainer {
@@ -476,14 +485,14 @@ private fun MessageBubble(
             }
 
             if (message.error) {
-                TextButton(onClick = onOpenSettings) { WorldsActionLabel(R.drawable.ic_key_round, "AI providers and keys") }
+                TextButton(onClick = onOpenSettings) { WorldsActionLabel(R.drawable.ic_key_round, stringResource(R.string.ai_providers_and_keys)) }
             } else if (!isUser && !message.isStreaming && message.content.isNotBlank()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     TextButton(onClick = { clipboard.setText(AnnotatedString(message.content)) }) {
-                        WorldsActionLabel(R.drawable.ic_files, "Copy")
+                        WorldsActionLabel(R.drawable.ic_files, stringResource(R.string.ai_copy))
                     }
                     TextButton(onClick = onExport) {
-                        WorldsActionLabel(R.drawable.ic_file_text, "Create page")
+                        WorldsActionLabel(R.drawable.ic_file_text, stringResource(R.string.ai_create_page))
                     }
                 }
             }

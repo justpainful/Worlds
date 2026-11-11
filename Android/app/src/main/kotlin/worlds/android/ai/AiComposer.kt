@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -42,6 +43,9 @@ fun AiComposer(
 ) {
     var modelMenuExpanded by remember { mutableStateOf(false) }
     val canSend = (text.isNotBlank() || attachments.isNotEmpty()) && !isStreaming
+    val attachLabel = stringResource(R.string.ai_attach_page)
+    val stopLabel = stringResource(R.string.ai_stop_reply)
+    val sendLabel = stringResource(R.string.ai_send)
 
     Column(
         modifier = modifier
@@ -70,7 +74,7 @@ fun AiComposer(
         OutlinedTextField(
             value = text,
             onValueChange = onTextChange,
-            placeholder = { Text("Message the assistant") },
+            placeholder = { Text(stringResource(R.string.ai_message_placeholder)) },
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = 56.dp, max = 140.dp),
@@ -118,14 +122,14 @@ fun AiComposer(
                         }
                         if (choices.isNotEmpty()) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         DropdownMenuItem(
-                            text = { Text("AI providers and keys") },
+                            text = { Text(stringResource(R.string.ai_providers_and_keys)) },
                             leadingIcon = { WorldsGlyph(R.drawable.ic_key_round) },
                             onClick = { modelMenuExpanded = false; onOpenSettings() }
                         )
                     }
                 }
 
-                IconButton(onClick = onAddAttachment, enabled = !isStreaming, modifier = Modifier.semantics { contentDescription = "Attach a page" }) {
+                IconButton(onClick = onAddAttachment, enabled = !isStreaming, modifier = Modifier.semantics { contentDescription = attachLabel }) {
                     WorldsGlyph(R.drawable.ic_link)
                 }
             }
@@ -136,7 +140,7 @@ fun AiComposer(
                     modifier = Modifier
                         .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
                         .size(44.dp)
-                        .semantics { contentDescription = "Stop the reply" }
+                        .semantics { contentDescription = stopLabel }
                 ) {
                     WorldsGlyph(R.drawable.ic_pause, tint = MaterialTheme.colorScheme.onSurface)
                 }
@@ -147,7 +151,7 @@ fun AiComposer(
                     modifier = Modifier
                         .background(if (canSend) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant, CircleShape)
                         .size(44.dp)
-                        .semantics { contentDescription = "Send" }
+                        .semantics { contentDescription = sendLabel }
                 ) {
                     WorldsGlyph(
                         R.drawable.ic_send_horizontal,

@@ -88,7 +88,14 @@ internal object ChatThreadJson {
     }
 }
 
+/** The title older versions saved for a conversation without one. Read as no title, so it shows translated. */
+internal const val LEGACY_NEW_CONVERSATION_TITLE = "New conversation"
+
+/** True while the conversation has no title of its own; screens then show the translated default title. */
+fun ChatThread.hasPlaceholderTitle(): Boolean = title.isBlank() || title == LEGACY_NEW_CONVERSATION_TITLE
+
+/** The first line of the prompt, shortened. Empty when there is nothing to name it by; screens show the default title then. */
 fun chatTitle(prompt: String): String {
     val line = prompt.lineSequence().map { it.trim() }.firstOrNull { it.isNotEmpty() }.orEmpty()
-    return if (line.length <= 60) line.ifEmpty { "New conversation" } else line.take(57).trimEnd() + "..."
+    return if (line.length <= 60) line else line.take(57).trimEnd() + "..."
 }

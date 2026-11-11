@@ -1,7 +1,12 @@
 package worlds.android.ai
 
+import android.content.Context
+import androidx.annotation.StringRes
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import org.json.JSONArray
 import org.json.JSONObject
+import worlds.android.R
 
 /**
  * The provider shape shared by Worlds on desktop, Android and Apple platforms.
@@ -29,7 +34,20 @@ data class AiProviderPreset(
     val requiresKey: Boolean,
     /** Where people get a key, shown as plain text in settings. */
     val keyHint: String,
+    /** A translated hint shown instead of [keyHint], for presets without a website. */
+    @StringRes val hintRes: Int? = null,
+    /** A translated name shown instead of [displayName]; brand names stay as they are. */
+    @StringRes val nameRes: Int? = null,
 )
+
+/** The name shown on screen: the brand name, or the translated name for the custom preset. */
+@Composable
+fun AiProviderPreset.label(): String = nameRes?.let { stringResource(it) } ?: displayName
+
+fun AiProviderPreset.label(context: Context): String = nameRes?.let { context.getString(it) } ?: displayName
+
+@Composable
+fun AiProviderPreset.hint(): String = hintRes?.let { stringResource(it) } ?: keyHint
 
 val AI_PROVIDER_PRESETS: List<AiProviderPreset> = listOf(
     AiProviderPreset("anthropic", "Anthropic", AiProviderKind.Anthropic, "https://api.anthropic.com", true, "console.anthropic.com"),
@@ -40,9 +58,9 @@ val AI_PROVIDER_PRESETS: List<AiProviderPreset> = listOf(
     AiProviderPreset("mistral", "Mistral", AiProviderKind.OpenAiCompatible, "https://api.mistral.ai/v1", true, "console.mistral.ai"),
     AiProviderPreset("xai", "xAI", AiProviderKind.OpenAiCompatible, "https://api.x.ai/v1", true, "console.x.ai"),
     AiProviderPreset("openrouter", "OpenRouter", AiProviderKind.OpenAiCompatible, "https://openrouter.ai/api/v1", true, "openrouter.ai"),
-    AiProviderPreset("ollama", "Ollama", AiProviderKind.OpenAiCompatible, "http://localhost:11434/v1", false, "Runs on your own computer"),
-    AiProviderPreset("lmstudio", "LM Studio", AiProviderKind.OpenAiCompatible, "http://localhost:1234/v1", false, "Runs on your own computer"),
-    AiProviderPreset("custom", "Custom", AiProviderKind.OpenAiCompatible, "", false, "Any OpenAI compatible server"),
+    AiProviderPreset("ollama", "Ollama", AiProviderKind.OpenAiCompatible, "http://localhost:11434/v1", false, "", hintRes = R.string.ai_hint_own_computer),
+    AiProviderPreset("lmstudio", "LM Studio", AiProviderKind.OpenAiCompatible, "http://localhost:1234/v1", false, "", hintRes = R.string.ai_hint_own_computer),
+    AiProviderPreset("custom", "Custom", AiProviderKind.OpenAiCompatible, "", false, "", hintRes = R.string.ai_hint_any_server, nameRes = R.string.ai_provider_custom),
 )
 
 fun aiPreset(id: String?): AiProviderPreset? = AI_PROVIDER_PRESETS.firstOrNull { it.id == id }
@@ -71,22 +89,54 @@ sealed class AiStreamEvent {
     data class Failure(val message: String) : AiStreamEvent()
 }
 
-/** Errors people can act on. Messages never include the key. */
-sealed class AiError(message: String) : Exception(message) {
-    class NoProvider : AiError("Choose an AI provider in AI settings to start.")
-    class NoKey(provider: String) : AiError("Add your $provider API key in AI settings.")
-    class NoModel(provider: String) : AiError("Choose a model for $provider in AI settings.")
-    class BadUrl(provider: String) : AiError("The $provider address is not a valid http or https URL.")
-    class BadKey(provider: String) : AiError("$provider rejected the API key. Check it in AI settings.")
-    class ModelMissing(provider: String, model: String) : AiError("$provider has no model named $model. Pick another model.")
+/**
+ * Errors people can act on. Messages never include the key.
+ *
+ * Errors are raised off the main thread where there is no Context, so each one
+ * carries a string resource and its format arguments; screens show [localized].
+ * The English [message] stays for logs and tests. [detail] is the provider's own
+ * text, shown after the sentence as it came.
+ */
+sealed class AiError(
+    message: String,
+    @StringRes val messageRes: Int,
+    val messageArgs: List<Any> = emptyList(),
+    val detail: String? = null,
+) : Exception(message) {
+    class NoProvider : AiError("Choose an AI provider in AI settings to start.", R.string.ai_error_no_provider)
+    class NoKey(provider: String) : AiError("Add your $provider API key in AI settings.", R.string.ai_error_no_key, listOf(provider))
+    class NoModel(provider: String) : AiError("Choose a model for $provider in AI settings.", R.string.ai_error_no_model, listOf(provider))
+    class BadUrl(provider: String) : AiError("The $provider address is not a valid http or https URL.", R.string.ai_error_bad_url, listOf(provider))
+    class BadKey(provider: String) : AiError("$provider rejected the API key. Check it in AI settings.", R.string.ai_error_bad_key, listOf(provider))
+    class ModelMissing(provider: String, model: String) : AiError("$provider has no model named $model. Pick another model.", R.string.ai_error_model_missing, listOf(provider, model))
     class Offline(provider: String, host: String, local: Boolean) : AiError(
         if (local) "Cannot reach $provider at $host. Check that it is running and reachable from this device."
-        else "Cannot reach $provider. Check your internet connection."
+        else "Cannot reach $provider. Check your internet connection.",
+        if (local) R.string.ai_error_offline_local else R.string.ai_error_offline,
+        if (local) listOf(provider, host) else listOf(provider)
     )
-    class RateLimited(provider: String, detail: String?) : AiError("$provider is limiting requests right now." + (detail?.let { " $it" } ?: ""))
-    class Server(provider: String, code: Int, detail: String?) : AiError("$provider returned an error ($code)." + (detail?.let { " $it" } ?: ""))
-    class Stream(provider: String, detail: String) : AiError("$provider stopped the reply: $detail")
-    class Malformed(provider: String) : AiError("$provider sent a reply Worlds could not read.")
+    class RateLimited(provider: String, detail: String?) : AiError(
+        "$provider is limiting requests right now." + (detail?.let { " $it" } ?: ""),
+        R.string.ai_error_rate_limited, listOf(provider), detail
+    )
+    class Server(provider: String, code: Int, detail: String?) : AiError(
+        "$provider returned an error ($code)." + (detail?.let { " $it" } ?: ""),
+        R.string.ai_error_server, listOf(provider, code), detail
+    )
+    class Stream(provider: String, detail: String) : AiError(
+        if (detail.isBlank()) "$provider stopped the reply." else "$provider stopped the reply: $detail",
+        if (detail.isBlank()) R.string.ai_error_stream_unknown else R.string.ai_error_stream,
+        if (detail.isBlank()) listOf(provider) else listOf(provider, detail)
+    )
+    class Malformed(provider: String) : AiError("$provider sent a reply Worlds could not read.", R.string.ai_error_malformed, listOf(provider))
+}
+
+/** The error in the interface language. The custom preset's English name is swapped for its translation. */
+fun AiError.localized(context: Context): String {
+    val custom = aiPreset("custom")
+    val args = messageArgs.map { arg -> if (custom != null && arg == custom.displayName) custom.label(context) else arg }
+    val sentence = context.getString(messageRes, *args.toTypedArray())
+    return if (detail.isNullOrBlank()) sentence else "$sentence $detail"
 }
 
 object AiRequests {
@@ -246,7 +296,8 @@ class AiStreamParser(private val kind: AiProviderKind) {
         val obj = try { JSONObject(data) } catch (_: Exception) { return emptyList() }
         obj.opt("error")?.let { error ->
             val message = when (error) { is JSONObject -> error.optString("message"); else -> error.toString() }
-            return listOf(AiStreamEvent.Failure(message.ifBlank { "Unknown error" }))
+            // A blank message becomes AiError.Stream without detail, which has its own translated sentence.
+            return listOf(AiStreamEvent.Failure(message.trim()))
         }
         return when (kind) {
             AiProviderKind.Anthropic -> anthropic(obj)
