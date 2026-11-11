@@ -11,7 +11,6 @@
  * Keys starting with "§" are patterns: `{0}`, `{1}` stand for the changing
  * parts, which are themselves translated when the dictionary knows them.
  */
-import dictionary from "./ar.json";
 import { setArabicDates } from "./locale";
 
 export type UiLanguage = "en" | "ar";
@@ -49,7 +48,13 @@ export function loadDictionary(dict: Record<string, string>): void {
   const literal = (re: RegExp) => re.source.replace(/\((?:\.[*+]\?|\\S\+)\)/g, "").length;
   patterns.sort((a, b) => literal(b.re) - literal(a.re));
 }
-loadDictionary(dictionary as Record<string, string>);
+/** The dictionary is only downloaded when the interface is Arabic. */
+let loading: Promise<void> | null = null;
+let dictionaryReady = false;
+function ensureDictionary(): Promise<void> {
+  loading ??= import("./ar.json").then((m) => loadDictionary(m.default as Record<string, string>));
+  return loading;
+}
 
 /** Arabic for one piece of interface text, or null when there is none. */
 export function translate(text: string, depth = 0): string | null {
@@ -204,6 +209,13 @@ function schedule(n: Node) {
 
 function start() {
   if (observer || typeof document === "undefined") return;
+  if (!dictionaryReady) {
+    void ensureDictionary().then(() => {
+      dictionaryReady = true;
+      if (current === "ar") start();
+    });
+    return;
+  }
   observer = new MutationObserver((records) => {
     for (const r of records) {
       if (r.type === "characterData") schedule(r.target);
