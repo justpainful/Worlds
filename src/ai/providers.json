@@ -1,0 +1,171 @@
+{
+  "version": 1,
+  "about": "Model providers Worlds can use. One shape for Windows, Android and Apple. api: anthropic (Messages API), openai (chat completions), or a local command line runner. Keys live in the platform credential store, never here.",
+  "providers": [
+    {
+      "id": "claude-code",
+      "name": "Claude Code",
+      "api": "claude-code",
+      "kind": "runner",
+      "baseUrl": "",
+      "key": "none",
+      "editableBaseUrl": false,
+      "note": "Runs your installed Claude Code with only the Worlds tools."
+    },
+    {
+      "id": "codex",
+      "name": "Codex",
+      "api": "codex",
+      "kind": "runner",
+      "baseUrl": "",
+      "key": "none",
+      "editableBaseUrl": false,
+      "note": "Runs your installed Codex with the Worlds tools. Sign in with ChatGPT to use your plan."
+    },
+    {
+      "id": "anthropic",
+      "name": "Anthropic",
+      "api": "anthropic",
+      "kind": "cloud",
+      "baseUrl": "https://api.anthropic.com",
+      "key": "required",
+      "editableBaseUrl": true,
+      "modelsPath": "/v1/models",
+      "note": "Claude models with an API key from the Claude Console."
+    },
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "api": "openai",
+      "kind": "cloud",
+      "baseUrl": "https://api.openai.com/v1",
+      "key": "required",
+      "editableBaseUrl": true,
+      "modelsPath": "/models",
+      "maxTools": 120
+    },
+    {
+      "id": "gemini",
+      "name": "Google Gemini",
+      "api": "openai",
+      "kind": "cloud",
+      "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
+      "key": "required",
+      "editableBaseUrl": true,
+      "modelsPath": "/models",
+      "maxTools": 120
+    },
+    {
+      "id": "groq",
+      "name": "Groq",
+      "api": "openai",
+      "kind": "cloud",
+      "baseUrl": "https://api.groq.com/openai/v1",
+      "key": "required",
+      "editableBaseUrl": true,
+      "modelsPath": "/models",
+      "maxTools": 120
+    },
+    {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "api": "openai",
+      "kind": "cloud",
+      "baseUrl": "https://api.deepseek.com/v1",
+      "key": "required",
+      "editableBaseUrl": true,
+      "modelsPath": "/models",
+      "maxTools": 120
+    },
+    {
+      "id": "mistral",
+      "name": "Mistral",
+      "api": "openai",
+      "kind": "cloud",
+      "baseUrl": "https://api.mistral.ai/v1",
+      "key": "required",
+      "editableBaseUrl": true,
+      "modelsPath": "/models",
+      "maxTools": 120
+    },
+    {
+      "id": "xai",
+      "name": "xAI",
+      "api": "openai",
+      "kind": "cloud",
+      "baseUrl": "https://api.x.ai/v1",
+      "key": "required",
+      "editableBaseUrl": true,
+      "modelsPath": "/models",
+      "maxTools": 120
+    },
+    {
+      "id": "openrouter",
+      "name": "OpenRouter",
+      "api": "openai",
+      "kind": "cloud",
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "key": "required",
+      "editableBaseUrl": true,
+      "modelsPath": "/models",
+      "maxTools": 120
+    },
+    {
+      "id": "litellm",
+      "name": "LiteLLM",
+      "api": "openai",
+      "kind": "cloud",
+      "baseUrl": "http://localhost:4000/v1",
+      "key": "optional",
+      "editableBaseUrl": true,
+      "modelsPath": "/models",
+      "maxTools": 120,
+      "note": "Your own LiteLLM proxy. Set its address."
+    },
+    {
+      "id": "custom",
+      "name": "Custom",
+      "api": "openai",
+      "kind": "cloud",
+      "baseUrl": "",
+      "key": "optional",
+      "editableBaseUrl": true,
+      "modelsPath": "/models",
+      "maxTools": 120,
+      "note": "Any server that speaks the OpenAI chat completions API."
+    },
+    {
+      "id": "ollama",
+      "name": "Ollama",
+      "api": "openai",
+      "kind": "local",
+      "baseUrl": "http://localhost:11434/v1",
+      "key": "none",
+      "editableBaseUrl": true,
+      "modelsPath": "/api/tags",
+      "maxTools": 32
+    },
+    {
+      "id": "lmstudio",
+      "name": "LM Studio",
+      "api": "openai",
+      "kind": "local",
+      "baseUrl": "http://localhost:1234/v1",
+      "key": "none",
+      "editableBaseUrl": true,
+      "modelsPath": "/models",
+      "maxTools": 32
+    },
+    {
+      "id": "llamacpp",
+      "name": "llama.cpp",
+      "api": "openai",
+      "kind": "local",
+      "baseUrl": "http://localhost:8080/v1",
+      "key": "none",
+      "editableBaseUrl": true,
+      "modelsPath": "/models",
+      "maxTools": 32
+    }
+  ]
+}
