@@ -58,7 +58,8 @@
     ],
     "windows": {
       "webviewInstallMode": {
-        "type": "skip"
+        "type": "offlineInstaller",
+        "silent": true
       }
     }
   }
