@@ -50,7 +50,7 @@ import java.util.Locale
 
 /* Pieces shared by Tasks, Calendar and Study, after the desktop's src/planning/ui.tsx. */
 
-@Composable internal fun currentLocale(): Locale = LocalConfiguration.current.locales[0] ?: Locale.getDefault()
+@Composable internal fun currentLocale(): Locale = LocalConfiguration.current.locales[0] ?: Locale.ROOT
 
 /** "Today", "Tomorrow", "Yesterday", a weekday within the week, or a short date. */
 @Composable internal fun dayName(date: String, now: String): String {
