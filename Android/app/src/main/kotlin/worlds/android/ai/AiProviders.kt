@@ -159,11 +159,18 @@ object AiRequests {
     }
 
     fun isLocal(baseUrl: String): Boolean {
-        val host = host(baseUrl).lowercase()
+        val host = hostName(baseUrl).lowercase()
         return host == "localhost" || host == "127.0.0.1" || host == "10.0.2.2" || host.startsWith("192.168.") || host.startsWith("10.") || host.endsWith(".local") || host == "[::1]"
     }
 
+    /** The address shown in messages, with its port, e.g. "localhost:11434". */
     fun host(baseUrl: String): String = normalizedBase(baseUrl).substringAfter("://").substringBefore('/').ifBlank { baseUrl }
+
+    /** The host name alone, without port or user info, e.g. "localhost". */
+    fun hostName(baseUrl: String): String {
+        val authority = host(baseUrl).substringAfterLast('@')
+        return if (authority.startsWith("[")) authority.substringBefore(']') + "]" else authority.substringBefore(':')
+    }
 
     fun headers(provider: AiProvider, streaming: Boolean): Map<String, String> {
         val headers = linkedMapOf("Accept" to if (streaming) "text/event-stream" else "application/json")
