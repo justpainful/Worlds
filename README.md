@@ -30,7 +30,7 @@
 
 حمّل آخر إصدار من [صفحة الإصدارات](https://github.com/justpainful/Worlds/releases/latest). الملفات غير موقّعة رقميًا:
 
-- **ويندوز:** شغّل المثبّت، وإذا ظهر تحذير اختر More info ثم Run anyway.
+- **ويندوز:** شغّل المثبّت، وإذا ظهر تحذير اختر More info ثم Run anyway. للتأكد أن الملف لم يتغير، قارن ناتج `Get-FileHash <الملف>` في PowerShell بالبصمة في `SHA256SUMS.txt`.
 - **أندرويد:** افتح ملف APK واسمح بالتثبيت من هذا المصدر. الملف موقّع بمفتاح تطوير.
 - **آيفون وآيباد:** وقّع ملف IPA وثبّته بأداة مثل SideStore أو AltStore أو Sideloadly.
 - **ماك:** انقل التطبيق إلى Applications، وافتحه أول مرة بالزر الأيمن ثم Open.
@@ -69,7 +69,7 @@ A browser demo with a sample student workspace runs without installing anything;
 
 ## Download and install
 
-Get the latest build from the [releases page](https://github.com/justpainful/Worlds/releases/latest). Builds are not code-signed: on Windows choose More info, then Run anyway; the Android APK uses a development key; IPA files must be signed with a tool such as SideStore, AltStore or Sideloadly; on Mac open the app the first time with right click, then Open.
+Get the latest build from the [releases page](https://github.com/justpainful/Worlds/releases/latest). Builds are not code-signed: on Windows choose More info, then Run anyway, and compare `Get-FileHash` with `SHA256SUMS.txt` to check the file; the Android APK uses a development key; IPA files must be signed with a tool such as SideStore, AltStore or Sideloadly; on Mac open the app the first time with right click, then Open.
 
 ## Build from source
 
