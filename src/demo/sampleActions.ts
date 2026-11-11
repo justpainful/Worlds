@@ -47,6 +47,24 @@ export async function loadSample(): Promise<boolean> {
   }
 }
 
+/**
+ * The public web demo (`pnpm build:demo`): once the app has started, fill it
+ * with the sample workspace and say plainly that this is a browser demo.
+ */
+export function startWebDemo(): void {
+  let started = false;
+  const go = () => {
+    if (started || !useStore.getState().ready) return;
+    started = true;
+    unsubscribe();
+    void loadSample().then(() =>
+      useStore.getState().toast({ message: "This is a web demo. Everything stays in this tab and is gone when you close it.", tone: "info" }),
+    );
+  };
+  const unsubscribe = useStore.subscribe(go);
+  go();
+}
+
 /** Move the sample to Trash. */
 export async function removeSample(): Promise<void> {
   try {

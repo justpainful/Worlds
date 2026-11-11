@@ -19,3 +19,4 @@ private/
 # Cloudflare deploy state (ids and keys made by services/deploy.mjs)
 services/.deploy/
 services/*/wrangler.deploy.toml
+dist-demo/

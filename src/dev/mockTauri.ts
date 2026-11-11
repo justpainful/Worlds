@@ -14,6 +14,8 @@ import { newSlide, slideToBlock } from "../resources/deck/model";
 import type { DrawingDocument } from "../drawing/model";
 import type { LibraryPublication } from "../drawing/library";
 import { DEFAULT_EXPORT_RULES, canDrawingExport, type DrawingExportPolicy } from "../drawing/exportPolicy";
+/** The public web demo build (`pnpm build:demo`): the mock is the whole backend there. */
+export const WEB_DEMO = import.meta.env.VITE_WEB_DEMO === "1";
 const exportPolicies:Record<string,DrawingExportPolicy>={};
 const drawings: Record<string, DrawingDocument> = {};
 const drawingLibrary: Record<string, LibraryPublication[]> = {};
@@ -77,12 +79,12 @@ function addPage(title: string, icon: string | null, lines: string[], extra: any
   blocks[pid] = md(lines);
   return pid;
 }
-const p1 = addPage("اهلًا هذه تجربة!", "😎", ["# أهلا", "تجربة تجريبتين ثلاث تجارب، هذا نص عادي مع نص عريض.", "- [ ] مهمة أولى", "- [x] مهمة منتهية", "> ملاحظة: حدثنا Nova8 إلى v2.4.1."], { pinned: true, pinOrder: 1 });
-addPage("Release Notes", "🚀", ["Version v1.0.0 · Date 2026-10-03", "## Highlights", "- Native window frame", "## Fixes", "- Faster Discord reconnects"], { cover: new URLSearchParams(location.search).has("white") ? "mock-white" : "mock-ref-5" });
-addPage("Discord Announcement", "📣", ["# الاجتماع الإداري", "الوقت 8:00 PM", "## المواضيع", "- المتجر", "- السيرفر"]);
-addPage("Meeting Notes", "🪑", ["## Attendees", "- Alex", "## Decisions", "- Ship the glass redesign"], { pinned: true, pinOrder: 2 });
+const p1 = WEB_DEMO ? "" : addPage("اهلًا هذه تجربة!", "😎", ["# أهلا", "تجربة تجريبتين ثلاث تجارب، هذا نص عادي مع نص عريض.", "- [ ] مهمة أولى", "- [x] مهمة منتهية", "> ملاحظة: حدثنا Nova8 إلى v2.4.1."], { pinned: true, pinOrder: 1 });
+if (!WEB_DEMO) addPage("Release Notes", "🚀", ["Version v1.0.0 · Date 2026-10-03", "## Highlights", "- Native window frame", "## Fixes", "- Faster Discord reconnects"], { cover: new URLSearchParams(location.search).has("white") ? "mock-white" : "mock-ref-5" });
+if (!WEB_DEMO) addPage("Discord Announcement", "📣", ["# الاجتماع الإداري", "الوقت 8:00 PM", "## المواضيع", "- المتجر", "- السيرفر"]);
+if (!WEB_DEMO) addPage("Meeting Notes", "🪑", ["## Attendees", "- Alex", "## Decisions", "- Ship the glass redesign"], { pinned: true, pinOrder: 2 });
 
-const chats: any[] = [
+const chats: any[] = WEB_DEMO ? [] : [
   { id: "c1", title: "خطة المتجر", pageId: null, createdAt: now - 86_400_000, updatedAt: now - 86_400_000, messageCount: 2 },
   { id: "c2", title: "Release notes draft", pageId: null, createdAt: now - 3_600_000, updatedAt: now - 3_600_000, messageCount: 2 },
 ];
@@ -163,7 +165,7 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has("mock") && n
   metadata[sampleStream] = { stream: { url: "/src/dev/demo-stream.mp4", format: "progressive" } };
 }
 
-const settings: Record<string, unknown> = { "advanced.developer": true, "advanced.perfOverlay": new URLSearchParams(location.search).has("perf"), "appearance.glassTone": new URLSearchParams(location.search).get("tone") ?? "auto", ...(new URLSearchParams(location.search).has("demo") && !new URLSearchParams(location.search).has("onboarding") ? { "account.onboarded": true } : {}) };
+const settings: Record<string, unknown> = WEB_DEMO ? { "account.onboarded": true } : { "advanced.developer": true, "advanced.perfOverlay": new URLSearchParams(location.search).has("perf"), "appearance.glassTone": new URLSearchParams(location.search).get("tone") ?? "auto", ...(new URLSearchParams(location.search).has("demo") && !new URLSearchParams(location.search).has("onboarding") ? { "account.onboarded": true } : {}) };
 const callbacks = new Map<number, (v: any) => void>();
 const listeners = new Map<string, number[]>();
 let cbSeq = 1;
@@ -310,6 +312,8 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
     case "drawing_embed_insert": { (blocks[a.targetId] ??= []).push({ type: "drawingEmbed", attrs: { bid: id(), pageId: a.pageId, frameId: a.frameId, camera: a.camera, versionId: a.versionId } }); return; }
     case "page_create": {
       const pid = addPage(a.page.title ?? "", a.page.icon ?? null, [], { kind: a.page.kind ?? "page", parentId: a.page.parentId ?? null });
+      if (Array.isArray(a.page.blocks)) blocks[pid] = a.page.blocks.map((b: any) => ({ ...b, attrs: { ...(b.attrs ?? {}), bid: b.attrs?.bid ?? id() } }));
+      else if (typeof a.page.markdown === "string") blocks[pid] = md(a.page.markdown.split("\n"));
       metadata[pid] = a.page.metadata ?? {};
       if (metadata[pid][pages[pid].kind] !== undefined) pages[pid].data = metadata[pid][pages[pid].kind];
       return pages[pid];
@@ -385,7 +389,7 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
         chats.unshift({ id: chatId, title: a.request.prompt.slice(0, 40), pageId: null, createdAt: Date.now(), updatedAt: Date.now(), messageCount: 0 });
       }
       chatMessages[chatId].push({ id: id(), role: "user", content: a.request.prompt, steps: [], opId: null, meta: {}, createdAt: Date.now() });
-      if (new URLSearchParams(location.search).has("demo")) {
+      if (WEB_DEMO || new URLSearchParams(location.search).has("demo")) {
         // Simulated events only; no service, network, or real workspace writes.
         const answer = "**ملخص توضيحي**\n\n- حدد الجمهور وهدف الإطلاق.\n- اجمع المواد البصرية والنصوص.\n- راجع التفاصيل مع الفريق قبل النشر.\n\nهذه نتيجة تجريبية للعرض.";
         setTimeout(() => emit("worlds://ai", { runId, kind: "tool", tool: "pages_read" }), 300);
@@ -451,7 +455,7 @@ export function mockFileUrl(attachmentId: string): string {
   return ASSET[attachmentId] ?? "";
 }
 
-if (import.meta.env.DEV && !("__TAURI_INTERNALS__" in window) && new URLSearchParams(location.search).has("mock")) {
+if (!("__TAURI_INTERNALS__" in window) && (WEB_DEMO || (import.meta.env.DEV && new URLSearchParams(location.search).has("mock")))) {
   (window as any).__WORLDS_MOCK__ = true;
   (window as any).__TAURI_INTERNALS__ = {
     metadata: { currentWindow: { label: "main" }, currentWebview: { windowLabel: "main", label: "main" } },
