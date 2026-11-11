@@ -41,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
@@ -64,6 +65,7 @@ private data class ProviderRowState(val preset: AiProviderPreset, val configured
 @Composable
 internal fun AiProviderSettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val store = remember { AiProviderStore(context) }
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
     var version by remember { mutableIntStateOf(0) }
@@ -142,6 +144,7 @@ private fun ProviderGroup(rows: List<ProviderRowState>, onOpen: (String) -> Unit
 @Composable
 private fun ProviderDetail(preset: AiProviderPreset, store: AiProviderStore, onBack: () -> Unit, modifier: Modifier) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val scope = rememberCoroutineScope()
     val providerName = preset.label()
     var baseUrl by rememberSaveable(preset.id) { mutableStateOf("") }
@@ -191,11 +194,11 @@ private fun ProviderDetail(preset: AiProviderPreset, store: AiProviderStore, onB
                 models = list
                 if (model.isNotBlank() && list.none { it.id == model }) model = ""
                 withContext(Dispatchers.IO) { store.save(preset.id, AiProviderSettings(url, model, list)) }
-                note = if (list.isEmpty()) context.getString(R.string.ai_models_none, providerName) else context.getString(R.string.ai_models_count, list.size)
+                note = if (list.isEmpty()) resources.getString(R.string.ai_models_none, providerName) else resources.getString(R.string.ai_models_count, list.size)
             } catch (e: AiError) {
                 error = e.localized(context)
             } catch (e: Exception) {
-                error = context.getString(R.string.ai_models_load_failed, providerName)
+                error = resources.getString(R.string.ai_models_load_failed, providerName)
             } finally {
                 loading = false
             }
@@ -206,7 +209,7 @@ private fun ProviderDetail(preset: AiProviderPreset, store: AiProviderStore, onB
         model = id
         persist(chosen = id)
         scope.launch(Dispatchers.IO) { store.defaultProviderId = preset.id }
-        note = context.getString(R.string.ai_model_now_default, providerName, id)
+        note = resources.getString(R.string.ai_model_now_default, providerName, id)
     }
 
     BackHandler(onBack = onBack)
@@ -256,7 +259,7 @@ private fun ProviderDetail(preset: AiProviderPreset, store: AiProviderStore, onB
                     WorldsActionButton(onClick = {
                         hasKey = false; keyDraft = ""
                         scope.launch(Dispatchers.IO) { store.saveKey(preset.id, null) }
-                        note = context.getString(R.string.ai_key_removed)
+                        note = resources.getString(R.string.ai_key_removed)
                     }) { WorldsActionLabel(R.drawable.ic_trash_2, stringResource(R.string.ai_remove_key)) }
                 }
                 if (loading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)

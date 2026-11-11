@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -66,6 +67,7 @@ fun AiChatScreen(
     showBack: Boolean = true
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val store = remember { ContentStore(context, databaseName) }
     val providers = remember { AiProviderStore(context) }
     val conversations = remember { AiConversationStore(context) }
@@ -162,7 +164,7 @@ fun AiChatScreen(
                 val partial = thread?.messages?.firstOrNull { it.id == replyId }
                 if (partial != null && partial.content.isBlank()) thread = thread?.let { t -> t.copy(messages = t.messages.filterNot { it.id == replyId }) }
             } catch (e: Exception) {
-                val message = (e as? AiError)?.localized(context) ?: context.getString(R.string.ai_reply_failed, e.message ?: e.javaClass.simpleName)
+                val message = (e as? AiError)?.localized(context) ?: resources.getString(R.string.ai_reply_failed, e.message ?: e.javaClass.simpleName)
                 val partial = thread?.messages?.firstOrNull { it.id == replyId }
                 if (partial != null && partial.content.isNotBlank()) {
                     updateMessage(replyId) { it.copy(isStreaming = false) }
@@ -207,7 +209,7 @@ fun AiChatScreen(
                                         val markdown = if (doc != null) MarkdownExport.page(doc) else ""
                                         val att = ChatAttachment(
                                             id = page.id,
-                                            name = page.title.ifBlank { context.getString(R.string.untitled) },
+                                            name = page.title.ifBlank { resources.getString(R.string.untitled) },
                                             mime = "text/markdown",
                                             size = markdown.length.toLong(),
                                             content = markdown
@@ -349,7 +351,7 @@ fun AiChatScreen(
                         message = msg,
                         onExport = {
                             val name = thread?.takeIf { !it.hasPlaceholderTitle() }?.title
-                                ?: context.getString(R.string.ai_note_title, DateFormat.getDateInstance(DateFormat.SHORT).format(Date()))
+                                ?: resources.getString(R.string.ai_note_title, DateFormat.getDateInstance(DateFormat.SHORT).format(Date()))
                             onCreatePage(name, msg.content)
                         },
                         onOpenSettings = { showSettings = true }
