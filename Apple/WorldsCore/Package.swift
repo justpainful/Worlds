@@ -70,7 +70,7 @@ let package = Package(
         .target(name: "WorldsMedia", exclude: ["README.md"]),
         .target(name: "WorldsLocalImport", dependencies: rustStoreAvailable ? ["WorldsRustStore"] : [], linkerSettings: rustStoreAvailable ? [.linkedLibrary("sqlite3"), .linkedFramework("Security"), .linkedFramework("SystemConfiguration"), .linkedLibrary("resolv"), .linkedLibrary("iconv")] : [.linkedLibrary("sqlite3")]),
         .target(name: "WorldsSearch", exclude: ["README.md"], linkerSettings: [.linkedLibrary("sqlite3")]),
-        .target(name: "WorldsAI", dependencies: ["WorldsModels"], exclude: ["README.md"]),
+        .target(name: "WorldsAI", dependencies: ["WorldsModels"], exclude: ["README.md"], linkerSettings: [.linkedFramework("Security")]),
         .target(name: "WorldsAIConversation", dependencies: ["WorldsAI", "WorldsModels"], exclude: ["README.md"], linkerSettings: [.linkedLibrary("sqlite3")]),
         .target(name: "WorldsAIViews", exclude: ["README.md", "DESIGN.md"]),
         .target(name: "WorldsAIConversationBridge", dependencies: ["WorldsAI", "WorldsAIConversation", "WorldsAIViews"]),

@@ -1,0 +1,3 @@
+/* Worlds Apple app Info.plist strings. */
+
+"NSLocalNetworkUsageDescription" = "يتصل Worlds بخوادم نماذج الذكاء الاصطناعي على شبكتك المحلية، مثل Ollama أو LM Studio، عندما تختار أحدها.";

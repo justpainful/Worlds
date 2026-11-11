@@ -27,7 +27,7 @@ public struct ConversationView: View {
                 }
                 ForEach(model.messages) { message in
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(message.role == .user ? "You" : "Assistant")
+                        Text(message.role == .user ? LocalizedStringKey("You") : LocalizedStringKey("Assistant"))
                             .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                         Text(message.text).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -49,7 +49,7 @@ public struct ConversationView: View {
                         Text(model.streamedText).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
                     }.accessibilityElement(children: .combine)
                 } else if model.running {
-                    ProgressView(model.stopping ? "Stopping" : "Waiting for a response")
+                    ProgressView(model.stopping ? LocalizedStringKey("Stopping") : LocalizedStringKey("Waiting for a response"))
                 }
                 if let error = model.error {
                     Label(error, systemImage: "exclamationmark.triangle")
