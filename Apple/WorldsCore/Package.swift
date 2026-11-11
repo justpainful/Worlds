@@ -46,6 +46,7 @@ let package = Package(
         .library(name: "WorldsMathDiagrams", targets: ["WorldsMathDiagrams"]),
         .library(name: "WorldsOfficeViews", targets: ["WorldsOfficeViews"]),
         .library(name: "Worlds3DViews", targets: ["Worlds3DViews"]),
+        .library(name: "WorldsSpreadsheet", targets: ["WorldsSpreadsheet"]),
     ],
     dependencies: [
         .package(url: "https://github.com/weichsel/ZIPFoundation.git", exact: "0.9.20"),
@@ -84,6 +85,7 @@ let package = Package(
         .target(name: "WorldsMathDiagrams", dependencies: ["WorldsModels", "WorldsNativeDiagrams", .product(name: "SwiftMath", package: "SwiftMath"), .product(name: "MermaidLayout", package: "MermaidKit")], exclude: ["README.md"]),
         .target(name: "WorldsOfficeViews", dependencies: ["WorldsMedia", "WorldsOfficePreview"], exclude: ["README.md"]),
         .target(name: "Worlds3DViews", dependencies: ["WorldsMedia"], exclude: ["README.md"]),
+        .target(name: "WorldsSpreadsheet", dependencies: ["WorldsModels"], exclude: ["README.md"]),
         .testTarget(name: "WorldsModelsTests", dependencies: ["WorldsModels"]),
         .testTarget(name: "WorldsSyncWireTests", dependencies: ["WorldsSyncWire"]),
         .testTarget(name: "WorldsAwarenessTests", dependencies: ["WorldsAwareness", "WorldsSyncWire"]),
@@ -117,6 +119,7 @@ let package = Package(
         .testTarget(name: "WorldsMathDiagramsTests", dependencies: ["WorldsMathDiagrams", "WorldsModels"]),
         .testTarget(name: "WorldsOfficeViewsTests", dependencies: ["WorldsOfficeViews", "WorldsMedia"], resources: [.copy("Fixtures")]),
         .testTarget(name: "Worlds3DViewsTests", dependencies: ["Worlds3DViews", "WorldsMedia"]),
+        .testTarget(name: "WorldsSpreadsheetTests", dependencies: ["WorldsSpreadsheet", "WorldsModels"]),
     ]
 )
 
