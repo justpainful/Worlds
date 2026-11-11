@@ -168,6 +168,11 @@ public actor NativePersonalStore {
     public func saveStream(id: String, base: Int64, expectedMetadata: JSONValue, url: String) async throws -> JSONValue {
         try await call(Request(operation: "save_stream", path: self.url.path, page: id, base: base, expectedMetadata: expectedMetadata, streamURL: url))
     }
+    /// Replaces only `metadata.sheet` of a personal spreadsheet, comparing the
+    /// complete metadata baseline and revision; other metadata keys must be unchanged.
+    public func saveSpreadsheet(id: String, base: Int64, expectedMetadata: JSONValue, metadata: JSONValue) async throws -> JSONValue {
+        try await call(Request(operation: "save_spreadsheet", path: url.path, page: id, base: base, expectedMetadata: expectedMetadata, metadata: metadata))
+    }
     public func saveGallery(id: String, base: Int64, expectedMetadata: JSONValue, metadata: JSONValue, expected: [NativeBlockInput], blocks: [NativeBlockInput]) async throws -> JSONValue {
         try await call(Request(operation: "save_gallery", path: url.path, page: id, base: base, blocks: blocks, expected: expected, expectedMetadata: expectedMetadata, metadata: metadata))
     }

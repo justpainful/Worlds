@@ -517,6 +517,9 @@ private struct WorldsLibraryView: View {
     #if DEBUG && WORLDS_EXPERIMENTAL_STREAM_EDITOR
     @State private var editingStream: LocalStreamEditorRequest?
     #endif
+    #if DEBUG && WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
+    @State private var editingSpreadsheet: LocalSpreadsheetEditorRequest?
+    #endif
     #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_IMPORT
     @State private var importingGallery: LocalGalleryImportRequest?
     #endif
@@ -801,6 +804,17 @@ private struct WorldsLibraryView: View {
                     ToolbarItem(placement: .primaryAction) {
                         Button("Edit link", systemImage: "link") { editingStream = LocalStreamEditorRequest(id: id, context: context, generation: databaseGeneration) }
                             .disabled(loading)
+                    }
+                }
+                #endif
+                #if DEBUG && WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
+                if let id = selectedID, let context = copyContext, let page = pages.first(where: { $0.id == id && $0.kind == "spreadsheet" }) {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Edit spreadsheet", systemImage: "tablecells") {
+                            editingSpreadsheet = LocalSpreadsheetEditorRequest(id: id, title: page.title, context: context, generation: databaseGeneration)
+                        }
+                        .accessibilityIdentifier("edit-local-spreadsheet")
+                        .disabled(loading)
                     }
                 }
                 #endif
@@ -1676,6 +1690,13 @@ private struct WorldsLibraryView: View {
             }
         }
         #endif
+        #if DEBUG && WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
+        .sheet(item: $editingSpreadsheet) { request in
+            LocalSpreadsheetEditor(copy: request.context.copy, pageID: request.id, title: request.title) {
+                Task { await refreshCopy(id: request.context.copy.id, generation: request.generation) }
+            }
+        }
+        #endif
         #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_IMPORT
         .sheet(item: $importingGallery) { request in
             LocalGalleryImportView(copy: request.context.copy, pageID: request.id) {
@@ -2408,6 +2429,9 @@ private struct WorldsLibraryView: View {
         #if WORLDS_EXPERIMENTAL_STREAM_EDITOR
         if page.kind == "stream" { return true }
         #endif
+        #if WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
+        if page.kind == "spreadsheet" { return true }
+        #endif
         #if WORLDS_EXPERIMENTAL_GALLERY_IMPORT
         if page.kind == "gallery" { return true }
         #endif
@@ -2460,6 +2484,9 @@ private struct WorldsLibraryView: View {
         #endif
         #if DEBUG && WORLDS_EXPERIMENTAL_STREAM_EDITOR
         disabled = disabled || editingStream != nil
+        #endif
+        #if DEBUG && WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
+        disabled = disabled || editingSpreadsheet != nil
         #endif
         #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_IMPORT
         disabled = disabled || importingGallery != nil
@@ -3067,6 +3094,14 @@ private struct ProjectEditorRequest: Identifiable {
 #if DEBUG && WORLDS_EXPERIMENTAL_STREAM_EDITOR
 private struct LocalStreamEditorRequest: Identifiable {
     let id: String
+    let context: LocalCopyContext
+    let generation: UUID
+}
+#endif
+#if DEBUG && WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
+private struct LocalSpreadsheetEditorRequest: Identifiable {
+    let id: String
+    let title: String
     let context: LocalCopyContext
     let generation: UUID
 }
