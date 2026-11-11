@@ -1,6 +1,6 @@
 [package]
 name = "worlds"
-version = "0.1.0"
+version = "0.2.0"
 description = "Worlds: a local-first personal workspace"
 edition = "2021"
 default-run = "worlds"
