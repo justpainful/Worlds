@@ -349,16 +349,17 @@ fn rejection_owner(conn: &Connection, page: &str, owner: &str) -> Result<String>
 
 /// Archive a complete causal state before clearing the refused live replica.
 /// An interrupted reply can repeat the same ID; late local input updates it.
-pub fn archive_rejection(
-    conn: &Connection,
-    page: &str,
-    channel: i64,
-    id: &str,
-    owner: &str,
-    snapshot: &[u8],
-    empty: &[u8],
-    reason: &str,
-) -> Result<()> {
+/// The refused replica to archive and the empty state that replaces it.
+#[derive(Clone, Copy)]
+pub struct RejectedArchive<'a> {
+    pub id: &'a str,
+    pub owner: &'a str,
+    pub snapshot: &'a [u8],
+    pub empty: &'a [u8],
+    pub reason: &'a str,
+}
+pub fn archive_rejection(conn: &Connection, page: &str, channel: i64, archive: RejectedArchive) -> Result<()> {
+    let RejectedArchive { id, owner, snapshot, empty, reason } = archive;
     check_channel(channel)?;
     uuid::Uuid::parse_str(id)?;
     if snapshot.len() > 64 * 1024 * 1024 || empty.len() > 1024 || reason.len() > 10000 {

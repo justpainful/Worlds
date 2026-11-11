@@ -54,7 +54,7 @@ pub fn apply(conn: &Connection, ctx: &store::Ctx, page: &str, op: Value) -> Resu
         bail!("drawing operation is too large; split the stroke into segments");
     }
     let tx = conn;
-    let doc = load(&tx, page)?;
+    let doc = load(tx, page)?;
     let mut ops = doc["operations"].as_array().unwrap().clone();
     if let Some(old) = ops.iter().find(|p| p["id"] == op["id"]) {
         if old != &op {
@@ -96,9 +96,9 @@ pub fn apply(conn: &Connection, ctx: &store::Ctx, page: &str, op: Value) -> Resu
     }
     validate_scene(&scene)?;
     for asset in scene["assets"].as_object().unwrap().values() {
-        let a = store::get_attachment(&tx, text(asset, "attachmentId")?)?.ok_or_else(|| anyhow!("missing original attachment"))?;
+        let a = store::get_attachment(tx, text(asset, "attachmentId")?)?.ok_or_else(|| anyhow!("missing original attachment"))?;
         if let Some(source_page) = a.page_id {
-            super::require_asset_read(&tx, page, &source_page)?;
+            super::require_asset_read(tx, page, &source_page)?;
         }
     }
     let search = search_text(&scene);
@@ -109,10 +109,10 @@ pub fn apply(conn: &Connection, ctx: &store::Ctx, page: &str, op: Value) -> Resu
     )?;
     crate::drawing_sync::queue_local(tx, page, &doc["scene"], &op)?;
     tx.execute("UPDATE pages SET updated_at = ?1 WHERE id = ?2", params![db::now(), page])?;
-    store::index_page(&tx, page)?;
-    rebuild_links(&tx, page, &scene)?;
+    store::index_page(tx, page)?;
+    rebuild_links(tx, page, &scene)?;
     store::record(
-        &tx,
+        tx,
         ctx,
         Some(page),
         "drawing",
@@ -122,7 +122,7 @@ pub fn apply(conn: &Connection, ctx: &store::Ctx, page: &str, op: Value) -> Resu
         None,
         json!({ "drawingOperationId": op["id"], "revision": revision + 1 }),
     )?;
-    db::mark_change(&tx, Some(page), "drawing", &ctx.origin)?;
+    db::mark_change(tx, Some(page), "drawing", &ctx.origin)?;
     ops.push(op);
     Ok(json!({ "revision": revision + 1, "seed": doc["seed"], "scene": scene, "operations": ops, "experiment": doc.get("experiment") }))
 }

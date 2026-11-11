@@ -31,16 +31,11 @@ impl Default for Rules {
         Self { images: ExportLevel::View, projects: ExportLevel::View, comments: ExportLevel::View }
     }
 }
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Policy {
     pub revision: u64,
     pub rules: Rules,
-}
-impl Default for Policy {
-    fn default() -> Self {
-        Self { revision: 0, rules: Rules::default() }
-    }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]

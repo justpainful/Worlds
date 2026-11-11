@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: ["**"]
   pull_request:
 
 concurrency:
@@ -26,6 +26,10 @@ jobs:
         run: pnpm typecheck
       - name: Unit tests
         run: pnpm test
+      # The e2e suites are opaque-box protocol and file-format checks that run
+      # in Node; none of them needs a running app, browser or device.
+      - name: End-to-end tests
+        run: pnpm exec vitest run --config tests/e2e/vitest.config.ts
       - name: Production build
         run: pnpm build
 
