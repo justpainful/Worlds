@@ -196,7 +196,7 @@ fun AutomationsScreen(
         }
 
         Text(
-            "Scheduled triggers, AI transforms, and Discord webhooks.",
+            stringResource(R.string.automations_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -329,9 +329,9 @@ private fun AutomationCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                if (automation.spec.transformKind == "claude") {
+                if (automation.spec.transformKind == AutomationSteps.TRANSFORM_AI) {
                     Surface(shape = RoundedCornerShape(6.dp), color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)) {
-                        Text("Claude AI", modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        Text(stringResource(R.string.automation_transform_ai),modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
                     }
                 }
             }

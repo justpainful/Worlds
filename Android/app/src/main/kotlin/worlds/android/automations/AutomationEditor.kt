@@ -4,6 +4,15 @@ import worlds.android.Switch
 import worlds.android.OutlinedTextField
 import worlds.android.AlertDialog
 import worlds.android.DropdownMenu
+import android.Manifest
+import android.app.NotificationManager
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -13,7 +22,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import worlds.android.R
@@ -22,6 +33,15 @@ import worlds.android.WorldsGlyph
 import worlds.content.*
 import java.util.UUID
 
+/** True when Android will show this app's notifications: the Android 13 permission, and notifications not turned off. */
+internal fun notificationsAllowed(context: Context): Boolean {
+    val granted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+        context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+    val manager = context.getSystemService(NotificationManager::class.java)
+    return granted && (manager?.areNotificationsEnabled() ?: true)
+}
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AutomationEditor(
     automation: Automation?,
@@ -52,9 +72,30 @@ fun AutomationEditor(
         )
     }
     var selectedPageId by remember { mutableStateOf(automation?.spec?.sourcePageId ?: pages.firstOrNull()?.id.orEmpty()) }
-    var transformKind by remember { mutableStateOf(automation?.spec?.transformKind ?: "none") }
-    var transformPrompt by remember { mutableStateOf(automation?.spec?.transformInstructions ?: "Summarize this page for Discord:") }
+    var transformKind by remember { mutableStateOf(automation?.spec?.transformKind ?: AutomationSteps.TRANSFORM_NONE) }
+    val defaultInstructions = stringResource(R.string.automation_ai_default_instructions)
+    var transformPrompt by remember { mutableStateOf(automation?.spec?.transformInstructions ?: defaultInstructions) }
+    var actionKind by remember { mutableStateOf(automation?.spec?.actionKind ?: AutomationSteps.ACTION_DISCORD) }
     var webhookUrl by remember { mutableStateOf(automation?.spec?.destinationWebhook.orEmpty()) }
+
+    val context = LocalContext.current
+    var canNotify by remember { mutableStateOf(notificationsAllowed(context)) }
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        canNotify = notificationsAllowed(context)
+    }
+    // Back from Android settings, read the state again.
+    LifecycleResumeEffect(Unit) {
+        canNotify = notificationsAllowed(context)
+        onPauseOrDispose { }
+    }
+    fun chooseNotification() {
+        actionKind = AutomationSteps.ACTION_NOTIFICATION
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
     var unattended by remember { mutableStateOf(automation?.spec?.policy?.unattended ?: false) }
     var graceMinutesStr by remember { mutableStateOf((automation?.spec?.policy?.graceMinutes ?: 60L).toString()) }
 
@@ -133,40 +174,79 @@ fun AutomationEditor(
                     }
                 }
 
-                Text("Transform", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.automation_transform), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
-                        selected = transformKind == "none",
-                        onClick = { transformKind = "none" },
-                        label = { Text("None (Raw)") }
+                        selected = transformKind == AutomationSteps.TRANSFORM_NONE,
+                        onClick = { transformKind = AutomationSteps.TRANSFORM_NONE },
+                        label = { Text(stringResource(R.string.automation_transform_none)) }
                     )
                     FilterChip(
-                        selected = transformKind == "claude",
-                        onClick = { transformKind = "claude" },
-                        label = { Text("Claude AI") }
+                        selected = transformKind == AutomationSteps.TRANSFORM_AI,
+                        onClick = { transformKind = AutomationSteps.TRANSFORM_AI },
+                        label = { Text(stringResource(R.string.automation_transform_ai)) }
                     )
                 }
 
-                if (transformKind == "claude") {
+                if (transformKind == AutomationSteps.TRANSFORM_AI) {
                     OutlinedTextField(
                         value = transformPrompt,
                         onValueChange = { transformPrompt = it },
-                        label = { Text("AI prompt / instructions") },
+                        label = { Text(stringResource(R.string.automation_ai_instructions)) },
                         modifier = Modifier.fillMaxWidth(),
                         maxLines = 3,
                         shape = RoundedCornerShape(12.dp)
                     )
+                    Text(
+                        stringResource(R.string.automation_ai_uses_settings),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
 
-                Text("Destination", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground)
-                OutlinedTextField(
-                    value = webhookUrl,
-                    onValueChange = { webhookUrl = it },
-                    label = { Text("Discord webhook URL") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
+                Text(stringResource(R.string.automation_action), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = actionKind == AutomationSteps.ACTION_DISCORD,
+                        onClick = { actionKind = AutomationSteps.ACTION_DISCORD },
+                        label = { Text(stringResource(R.string.automation_action_discord)) }
+                    )
+                    FilterChip(
+                        selected = actionKind == AutomationSteps.ACTION_NOTIFICATION,
+                        onClick = { chooseNotification() },
+                        label = { Text(stringResource(R.string.automation_action_notification)) }
+                    )
+                }
+
+                if (actionKind == AutomationSteps.ACTION_DISCORD) {
+                    OutlinedTextField(
+                        value = webhookUrl,
+                        onValueChange = { webhookUrl = it },
+                        label = { Text(stringResource(R.string.automation_webhook_url)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
+
+                if (actionKind == AutomationSteps.ACTION_NOTIFICATION && !canNotify) {
+                    Text(
+                        stringResource(R.string.automation_notifications_off),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    OutlinedButton(
+                        onClick = {
+                            val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            runCatching { context.startActivity(intent) }
+                        },
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        WorldsActionLabel(R.drawable.ic_bell, stringResource(R.string.automation_open_notification_settings))
+                    }
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -183,7 +263,9 @@ fun AutomationEditor(
         },
         confirmButton = {
             Button(
-                enabled = name.isNotBlank() && selectedPageId.isNotBlank(),
+                // Discord needs a webhook here, unless desktop set a bot channel for this automation.
+                enabled = name.isNotBlank() && selectedPageId.isNotBlank() &&
+                    (actionKind != AutomationSteps.ACTION_DISCORD || webhookUrl.isNotBlank() || automation?.spec?.destinationChannel != null),
                 onClick = {
                     val trigger = when (triggerKind) {
                         "daily" -> Trigger.Daily(timeStr)
@@ -193,13 +275,14 @@ fun AutomationEditor(
                     }
                     val now = System.currentTimeMillis()
                     val next = Automations.nextRun(trigger, now)
-                    val spec = AutomationSpec(
+                    // Start from the saved spec so fields this editor does not show (set on desktop) are kept.
+                    val spec = (automation?.spec ?: AutomationSpec(trigger = trigger, sourcePageId = selectedPageId)).copy(
                         trigger = trigger,
                         sourcePageId = selectedPageId,
                         transformKind = transformKind,
-                        transformInstructions = if (transformKind == "claude") transformPrompt else null,
-                        actionKind = "discord.send",
-                        destinationWebhook = webhookUrl.ifBlank { null },
+                        transformInstructions = if (transformKind == AutomationSteps.TRANSFORM_AI) transformPrompt.trim().ifBlank { defaultInstructions } else null,
+                        actionKind = actionKind,
+                        destinationWebhook = webhookUrl.trim().ifBlank { null },
                         policy = AutomationPolicy(
                             unattended = unattended,
                             graceMinutes = graceMinutesStr.toLongOrNull() ?: 60L
