@@ -6,11 +6,11 @@ enum WorldsPalette {
     static let raisedSurface = Color(red: 36 / 255, green: 36 / 255, blue: 40 / 255) // #242428
     static let lightPaper = Color(red: 253 / 255, green: 253 / 255, blue: 252 / 255) // #FDFDFC
     static let lightPaperInk = Color(red: 28 / 255, green: 28 / 255, blue: 31 / 255) // #1C1C1F
-    static let goldAccent = Color(red: 210 / 255, green: 164 / 255, blue: 110 / 255) // #D2A46E
-    static let lightAccent = Color(red: 138 / 255, green: 88 / 255, blue: 32 / 255) // #8A5820
+    static let blueAccent = Color(red: 46 / 255, green: 146 / 255, blue: 255 / 255) // #2E92FF
+    static let lightAccent = Color(red: 0 / 255, green: 102 / 255, blue: 204 / 255) // #0066CC
 
     static func accent(for scheme: ColorScheme) -> Color {
-        scheme == .dark ? goldAccent : lightAccent
+        scheme == .dark ? blueAccent : lightAccent
     }
 
     static func paper(for scheme: ColorScheme) -> Color {

@@ -84,7 +84,7 @@ public struct ConversationView: View {
         }
         #endif
         .navigationTitle("Conversation")
-        .tint(colorScheme == .dark ? Color(red: 210/255, green: 164/255, blue: 110/255) : Color(red: 138/255, green: 88/255, blue: 32/255))
+        .tint(colorScheme == .dark ? Color(red: 46/255, green: 146/255, blue: 255/255) : Color(red: 0/255, green: 102/255, blue: 204/255))
         .task {
             #if os(macOS)
             NSApp.activate(ignoringOtherApps: true)

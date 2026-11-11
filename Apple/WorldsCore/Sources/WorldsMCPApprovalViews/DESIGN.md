@@ -4,7 +4,7 @@
 - Vocabulary: the page title, replacement title, selected local copy and the
   original Worlds approval pattern used for queued Discord actions.
 - Palette: native semantic background and text, with Worlds paper #000000,
-  sidebar #111113, surface #1c1c1e, text #f5f5f7 and warm accent #d2a46e in
+  sidebar #111113, surface #1c1c1e, text #f5f5f7 and accent #2e92ff in
   dark appearance. System semantics provide contrast in light appearance.
 - Type: Apple system title2 for the heading, body for names and caption for
   context, scaled through Dynamic Type.

@@ -65,7 +65,7 @@
   font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
-.count-badge.is-accent { background: var(--accent); color: #14110d; }
+.count-badge.is-accent { background: var(--accent); color: var(--on-accent); }
 
 /* ---- Carets and selections (CollaborationCaret) ------------------------- */
 .collab-caret {

@@ -837,7 +837,7 @@ struct VisualMindMapCanvasPreview: View {
                 mindMapNode(
                     title: presetCenterTitle,
                     subtitle: "Central Concept Root",
-                    color: WorldsPalette.goldAccent,
+                    color: WorldsPalette.blueAccent,
                     isRoot: true
                 )
                 .position(center)
@@ -851,7 +851,7 @@ struct VisualMindMapCanvasPreview: View {
             mindMapNode(
                 title: presetCenterTitle,
                 subtitle: "Central Concept Root",
-                color: WorldsPalette.goldAccent,
+                color: WorldsPalette.blueAccent,
                 isRoot: true
             )
 
@@ -1763,13 +1763,13 @@ struct WorldsCreativeStudioView: View {
                     )
                 )
                 .frame(minHeight: 220)
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(WorldsPalette.goldAccent.opacity(0.45), lineWidth: 1.5))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(WorldsPalette.blueAccent.opacity(0.45), lineWidth: 1.5))
 
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
                     Text("WORLDS NATIVE ARCHITECTURE · 2026")
                         .font(.caption2.monospaced().weight(.bold))
-                        .foregroundStyle(WorldsPalette.goldAccent)
+                        .foregroundStyle(WorldsPalette.blueAccent)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                     Spacer()
@@ -1788,7 +1788,7 @@ struct WorldsCreativeStudioView: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 HStack(spacing: 8) {
-                    slideMetricBox(label: "Engine", value: "SQLite + FTS5", color: WorldsPalette.goldAccent)
+                    slideMetricBox(label: "Engine", value: "SQLite + FTS5", color: WorldsPalette.blueAccent)
                     slideMetricBox(label: "Sync", value: "Yrs CRDT", color: .cyan)
                     slideMetricBox(label: "Apple UI", value: "Liquid Glass", color: .purple)
                 }
@@ -1844,7 +1844,7 @@ struct WorldsCreativeStudioView: View {
                         control1: CGPoint(x: size.width * 0.35, y: 20),
                         control2: CGPoint(x: size.width * 0.65, y: 160)
                     )
-                    context.stroke(curve, with: .color(WorldsPalette.goldAccent), lineWidth: 3.5)
+                    context.stroke(curve, with: .color(WorldsPalette.blueAccent), lineWidth: 3.5)
 
                     let rect = CGRect(x: size.width * 0.35, y: 55, width: 130, height: 70)
                     context.stroke(Path(roundedRect: rect, cornerRadius: 10), with: .color(.cyan), lineWidth: 2)

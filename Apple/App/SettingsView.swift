@@ -37,7 +37,7 @@ struct SettingsView: View {
                         Circle()
                             .fill(WorldsPalette.accent(for: colorScheme))
                             .frame(width: 20, height: 20)
-                        Text(colorScheme == .dark ? "Gold (#D2A46E)" : "Warm Bronze (#8A5820)")
+                        Text(colorScheme == .dark ? "Blue (#2E92FF)" : "Blue (#0066CC)")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }

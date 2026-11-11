@@ -287,7 +287,7 @@ public final class CADDXFParser {
             )
             let geom = SCNGeometry(sources: [lineSource], elements: [lineElement])
             let mat = SCNMaterial()
-            mat.diffuse.contents = SCNColor(red: 0.85, green: 0.65, blue: 0.40, alpha: 1.0) // warm accent
+            mat.diffuse.contents = SCNColor(red: 0.18, green: 0.57, blue: 1.0, alpha: 1.0) // accent
             mat.isDoubleSided = true
             geom.materials = [mat]
 

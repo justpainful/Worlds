@@ -175,7 +175,7 @@ struct TemplatesView: View {
             title: "Visual Mind Map & Architecture Canvas",
             category: "Drawing",
             icon: "pencil.and.outline",
-            color: Color(red: 210 / 255, green: 164 / 255, blue: 110 / 255),
+            color: WorldsPalette.blueAccent,
             description: "Infinite canvas drawing preset for visual mind maps, concept networks, and system diagrams.",
             suggestedKind: "drawing",
             initialMarkdown: "Drawing canvas preset"

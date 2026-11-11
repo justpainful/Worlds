@@ -12,7 +12,7 @@ import { Avatar, formatBytes, relTime, Spinner } from "../ui/misc";
 import { confirmDialog } from "../ui/Modal";
 import { ProductIcon } from "../ui/ProductIcon";
 import { SearchField } from "../ui/SearchField";
-import { ACCENTS } from "../shell/appearance";
+import { ACCENTS, effectiveAccent } from "../shell/appearance";
 import { BridgeCard } from "./IntegrationsView";
 import { Select, DIRECTION_OPTIONS, LANGUAGE_OPTIONS } from "../ui/Select";
 import { AccountSettings } from "../account/AccountSettings";
@@ -158,7 +158,7 @@ function Appearance() {
             {ACCENTS.map((a) => (
               <button
                 key={a.hex}
-                className={`swatch ${(profile.accent ?? ACCENTS[0].hex) === a.hex ? "is-on" : ""}`}
+                className={`swatch ${effectiveAccent(profile.accent) === a.hex ? "is-on" : ""}`}
                 style={{ background: a.hex }}
                 aria-label={a.name}
                 data-tip={a.name}

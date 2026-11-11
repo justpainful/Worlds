@@ -50,7 +50,7 @@
 .btn-plain:hover:not(:disabled) { background: var(--fill-3); }
 .btn-quiet { color: var(--text-2); }
 .btn-quiet:hover:not(:disabled) { background: var(--fill-1); color: var(--text-1); }
-.btn-tinted { background: var(--accent); color: #141210; }
+.btn-tinted { background: var(--accent); color: var(--on-accent); }
 .btn-tinted:hover:not(:disabled) { filter: brightness(1.06); }
 .btn-danger { background: var(--red); color: #fff; }
 .btn:active:not(:disabled) { transform: scale(0.97); transition-duration: var(--d-press-in); }

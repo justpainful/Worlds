@@ -118,7 +118,7 @@
 /* primary (tinted): accent with a lit face */
 .btn-tinted {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 60%), var(--accent);
-  color: #14110d;
+  color: var(--on-accent);
   box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.3), 0 4px 12px -4px rgba(var(--accent-rgb), 0.55);
 }
 .btn-tinted:hover:not(:disabled) { filter: brightness(1.05) saturate(1.04); }
@@ -259,7 +259,7 @@ input[type="range"] { height: 4px; }
 .chip-btn:active:not(:disabled), .ai-suggest-chip:active, .related-chip:active, .tpl-chip:active { transform: scale(0.96); transition-duration: 70ms; }
 .tag, .status-chip { border-radius: var(--r-capsule); background: rgba(255, 255, 255, 0.06); box-shadow: none; color: var(--text-3); font: var(--t-footnote); }
 .side-badge, .pf-media-badge, .col-count { font-variant-numeric: tabular-nums; }
-.side-badge { min-width: 18px; height: 18px; padding: 0 6px; border-radius: var(--r-capsule); background: var(--accent); color: #14110d; font: 700 10.5px/18px var(--font-ui); text-align: center; }
+.side-badge { min-width: 18px; height: 18px; padding: 0 6px; border-radius: var(--r-capsule); background: var(--accent); color: var(--on-accent); font: 700 10.5px/18px var(--font-ui); text-align: center; }
 
 /* ==========================================================================
    Cards by role. Separation comes from material and depth, not borders.

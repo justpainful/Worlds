@@ -53,7 +53,7 @@ const profile: any = {
   banner: new URLSearchParams(location.search).has("white") ? "mock-white" : "mock-banner",
   bio: "Building calm tools for thinking. أحب التصميم الهادئ والتفاصيل.",
   status: "Exploring Game Development",
-  accent: "#d2a46e",
+  accent: "#2e92ff",
   theme: "dark",
   language: "auto",
   textDirection: "auto",

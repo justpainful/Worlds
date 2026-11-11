@@ -26,7 +26,7 @@ export const intToHex = (n: number) => `#${n.toString(16).padStart(6, "0")}`;
 
 /** The colour of the accent bar on the Discord message (Components V2 container). */
 export function EmbedColorPicker({ value, onChange }: { value: EmbedColor; onChange: (v: EmbedColor) => void }) {
-  const profileAccent = useStore((s) => s.profile?.accent) ?? "#d2a46e";
+  const profileAccent = useStore((s) => s.profile?.accent) ?? "#2e92ff";
   const effective = value.noAccent ? null : value.accentColor !== undefined ? intToHex(value.accentColor) : profileAccent.toLowerCase();
   const [hex, setHex] = useState(effective ?? "");
   useEffect(() => setHex(effective ?? ""), [effective]);

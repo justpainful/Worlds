@@ -2,7 +2,7 @@
 
 - Subject: viewing and continuing an actual Worlds conversation through an injected authorized service.
 - Source: Worlds' existing conversation list, streamed answer and tool activity; the interface shows only data delivered by the service.
-- Palette: system semantic backgrounds and text for light and dark, plus the existing Worlds accent #d2a46e in dark and #8a5820 in light from the current native design.
+- Palette: system semantic backgrounds and text for light and dark, plus the existing Worlds accent #2e92ff in dark and #0066cc in light from the current native design.
 - Type: Apple system title, body and caption using Dynamic Type. Messages remain selectable and preserve bidirectional text.
 - Signature: the streamed answer and its real tool activity share one timeline, keeping the user's conversation as the focus.
 - Motion: native scrolling and progress only, with no decorative animation. Reduce Motion is respected by avoiding forced animated scrolling.

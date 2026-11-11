@@ -46,7 +46,7 @@
   text-align: start;
 }
 .settings-nav-item:hover { background: rgba(255, 255, 255, 0.05); }
-.settings-nav-item.is-active { background: var(--accent); color: #fff; }
+.settings-nav-item.is-active { background: var(--accent); color: var(--on-accent); }
 .settings-nav-item .product-icon { flex: none; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.3)); }
 .settings-none { padding: 8px 10px; font: var(--t-small); color: var(--text-3); }
 

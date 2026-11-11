@@ -93,7 +93,7 @@
 .col-filter input { width: 110px; border: 0; outline: 0; background: none; color: var(--text-1); font: var(--t-small); }
 .col-btn { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 8px; color: var(--text-3); }
 .col-btn:hover { background: rgba(255, 255, 255, 0.07); color: var(--text-1); }
-.col-new { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 11px; border-radius: 8px; background: var(--accent); color: #fff; font: var(--t-small); font-weight: 650; }
+.col-new { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 11px; border-radius: 8px; background: var(--accent); color: var(--on-accent); font: var(--t-small); font-weight: 650; }
 .col-empty { padding: 18px 8px; font: var(--t-small); color: var(--text-3); }
 .col-time { font: var(--t-caption); color: var(--text-4); white-space: nowrap; }
 

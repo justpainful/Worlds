@@ -35,7 +35,7 @@
 .ae-summary { color: var(--accent-text); font: var(--t-small); }
 .day-toggles { display: flex; gap: 4px; }
 .day-toggle { width: 32px; height: 32px; border-radius: 50%; background: var(--fill-1); color: var(--text-3); font: var(--t-small); font-weight: 600; transition: background-color var(--d-select), color var(--d-select); }
-.day-toggle.is-on { background: var(--accent); color: #141210; }
+.day-toggle.is-on { background: var(--accent); color: var(--on-accent); }
 .ae-source { display: flex; align-items: center; gap: 10px; height: 42px; padding: 0 8px 0 12px; border-radius: 12px; background: var(--fill-1); font: var(--t-ui); }
 .ae-source-list { display: flex; flex-direction: column; gap: 1px; margin-top: 6px; max-height: 200px; overflow-y: auto; }
 .ae-preview { display: flex; flex-direction: column; min-width: 0; }

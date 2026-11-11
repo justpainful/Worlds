@@ -30,8 +30,9 @@
   --fill-press: rgba(255, 255, 255, 0.14);
 
   /* ---- Accent (configurable; set from profile) ------------------------- */
-  --accent: #d2a46e;
-  --accent-rgb: 210, 164, 110;
+  --accent: #2e92ff;
+  --accent-rgb: 46, 146, 255;
+  --on-accent: #ffffff;
   --accent-soft: rgba(var(--accent-rgb), 0.16);
   --accent-text: rgb(var(--accent-rgb));
 
@@ -44,8 +45,8 @@
   --yellow-soft: rgba(226, 180, 85, 0.14);
   --blue: #6ea6e6;
   --blue-soft: rgba(110, 166, 230, 0.14);
-  --mention: #c9b38f;
-  --mention-bg: rgba(201, 179, 143, 0.10);
+  --mention: #8ebcf2;
+  --mention-bg: rgba(142, 188, 242, 0.12);
 
   /* ---- Geometry -------------------------------------------------------- */
   --r-xs: 8px;

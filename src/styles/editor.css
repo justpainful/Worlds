@@ -71,8 +71,8 @@
   content: "";
   width: 9px;
   height: 5px;
-  border-left: 2px solid #141210;
-  border-bottom: 2px solid #141210;
+  border-left: 2px solid var(--on-accent);
+  border-bottom: 2px solid var(--on-accent);
   transform: translateY(-1px) rotate(-45deg);
 }
 .prose ul[data-type="taskList"] li[data-checked="true"] > div { color: var(--text-3); text-decoration: line-through; text-decoration-color: var(--text-4); }
@@ -145,7 +145,7 @@
   transition: background-color var(--d-hover);
   box-decoration-break: clone;
 }
-.mention:hover { background: rgba(201, 179, 143, 0.2); }
+.mention:hover { background: rgba(142, 188, 242, 0.2); }
 .mention.ProseMirror-selectednode { box-shadow: 0 0 0 1.5px rgba(var(--accent-rgb), 0.6); }
 
 /* Placeholder */
