@@ -51,7 +51,18 @@ pub fn args(r: &CodexRun<'_>) -> Vec<String> {
     a.extend(["--json".into(), "--skip-git-repo-check".into(), "--ignore-user-config".into()]);
     a.extend(["-c".into(), "sandbox_mode=\"read-only\"".into()]);
     // Only the Worlds tools: no shell, browser, apps, plugins, hooks, sub-agents or memories.
-    for f in ["shell_tool", "browser_use", "computer_use", "in_app_browser", "image_generation", "apps", "plugins", "hooks", "multi_agent", "memories"] {
+    for f in [
+        "shell_tool",
+        "browser_use",
+        "computer_use",
+        "in_app_browser",
+        "image_generation",
+        "apps",
+        "plugins",
+        "hooks",
+        "multi_agent",
+        "memories",
+    ] {
         a.extend(["--disable".into(), f.into()]);
     }
     let worlds_args = json!(["--mcp", "--actor", "ai", "--op", r.run_id]).to_string();
@@ -129,7 +140,9 @@ impl CodexParser {
 
 fn tool_event(item: &Value) -> CodexEvent {
     match item["type"].as_str() {
-        Some("mcp_tool_call") => CodexEvent::Tool { name: item["tool"].as_str().unwrap_or("").to_string(), input: item["arguments"].clone() },
+        Some("mcp_tool_call") => {
+            CodexEvent::Tool { name: item["tool"].as_str().unwrap_or("").to_string(), input: item["arguments"].clone() }
+        }
         Some("command_execution") => CodexEvent::Tool { name: "shell".into(), input: json!({ "command": item["command"] }) },
         _ => CodexEvent::Tool { name: item["type"].as_str().unwrap_or("tool").to_string(), input: json!({}) },
     }

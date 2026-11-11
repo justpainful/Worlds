@@ -24,8 +24,21 @@ fn presets_parse_with_unique_ids() {
     ids.dedup();
     assert_eq!(ids.len(), all.len(), "duplicate provider ids");
     for id in [
-        "claude-code", "codex", "anthropic", "openai", "gemini", "groq", "deepseek", "mistral", "xai", "openrouter", "litellm", "custom",
-        "ollama", "lmstudio", "llamacpp",
+        "claude-code",
+        "codex",
+        "anthropic",
+        "openai",
+        "gemini",
+        "groq",
+        "deepseek",
+        "mistral",
+        "xai",
+        "openrouter",
+        "litellm",
+        "custom",
+        "ollama",
+        "lmstudio",
+        "llamacpp",
     ] {
         assert!(preset(id).is_ok(), "missing preset {id}");
     }
@@ -171,7 +184,8 @@ fn endpoint(d: Dialect, key: Option<&str>, provider: &str) -> Endpoint {
 #[test]
 fn auth_headers_per_dialect() {
     let client = reqwest::Client::new();
-    let r = endpoint(Dialect::Anthropic, Some("sk-ant-api03-k"), "anthropic").authorize(client.post("https://example.test")).build().unwrap();
+    let r =
+        endpoint(Dialect::Anthropic, Some("sk-ant-api03-k"), "anthropic").authorize(client.post("https://example.test")).build().unwrap();
     assert_eq!(r.headers()["x-api-key"], "sk-ant-api03-k");
     assert_eq!(r.headers()["anthropic-version"], "2023-06-01");
     assert!(r.headers().get("authorization").is_none());
@@ -404,7 +418,10 @@ fn anthropic_stream_text_and_tool_calls() {
     let events = sse(&[
         ("message_start", json!({ "type": "message_start", "message": { "id": "msg_1" } })),
         ("content_block_start", json!({ "type": "content_block_start", "index": 0, "content_block": { "type": "text", "text": "" } })),
-        ("content_block_delta", json!({ "type": "content_block_delta", "index": 0, "delta": { "type": "text_delta", "text": "Reading " } })),
+        (
+            "content_block_delta",
+            json!({ "type": "content_block_delta", "index": 0, "delta": { "type": "text_delta", "text": "Reading " } }),
+        ),
         ("content_block_delta", json!({ "type": "content_block_delta", "index": 0, "delta": { "type": "text_delta", "text": "it." } })),
         ("content_block_stop", json!({ "type": "content_block_stop", "index": 0 })),
         (
@@ -448,8 +465,13 @@ fn anthropic_stream_text_and_tool_calls() {
 #[test]
 fn anthropic_stream_tool_without_input_and_errors() {
     let mut s = AnthropicStream::default();
-    s.feed(&sse(&[("", json!({ "type": "content_block_start", "index": 0, "content_block": { "type": "tool_use", "id": "t", "name": "time_now" } }))])[0])
-        .unwrap();
+    s.feed(
+        &sse(&[(
+            "",
+            json!({ "type": "content_block_start", "index": 0, "content_block": { "type": "tool_use", "id": "t", "name": "time_now" } }),
+        )])[0],
+    )
+    .unwrap();
     assert_eq!(s.finish().calls[0].input, json!({}));
     let mut s = AnthropicStream::default();
     let err = s
@@ -488,7 +510,10 @@ fn openai_stream_text_and_split_tool_calls() {
                 { "index": 0, "id": "call_a", "type": "function", "function": { "name": "pages_read", "arguments": "" } }
             ] } }] }),
         ),
-        ("", json!({ "choices": [{ "index": 0, "delta": { "tool_calls": [{ "index": 0, "function": { "arguments": "{\"pageId\":" } }] } }] })),
+        (
+            "",
+            json!({ "choices": [{ "index": 0, "delta": { "tool_calls": [{ "index": 0, "function": { "arguments": "{\"pageId\":" } }] } }] }),
+        ),
         (
             "",
             json!({ "choices": [{ "index": 0, "delta": { "tool_calls": [
@@ -542,7 +567,8 @@ fn openai_stream_quirks_of_local_servers() {
 
     // A call that never got a name is dropped.
     let mut s = OpenAiStream::default();
-    s.feed(&sse(&[("", json!({ "choices": [{ "delta": { "tool_calls": [{ "index": 0, "function": { "arguments": "{}" } }] } }] }))])[0]).unwrap();
+    s.feed(&sse(&[("", json!({ "choices": [{ "delta": { "tool_calls": [{ "index": 0, "function": { "arguments": "{}" } }] } }] }))])[0])
+        .unwrap();
     assert!(s.finish().calls.is_empty());
 
     // An error inside the stream fails the turn.
@@ -637,7 +663,10 @@ fn model_lists_parse() {
     assert_eq!(o[2].tools, Some(true));
     assert_eq!(o[3].tools, Some(false));
 
-    assert_eq!(models::parse_ollama_tags(&json!({ "models": [{ "name": "llama3.2:3b" }, { "model": "qwen3:8b" }] })), vec!["llama3.2:3b", "qwen3:8b"]);
+    assert_eq!(
+        models::parse_ollama_tags(&json!({ "models": [{ "name": "llama3.2:3b" }, { "model": "qwen3:8b" }] })),
+        vec!["llama3.2:3b", "qwen3:8b"]
+    );
     assert_eq!(models::parse_ollama_show(&json!({ "capabilities": ["completion", "tools"] })), Some(true));
     assert_eq!(models::parse_ollama_show(&json!({ "capabilities": ["completion"] })), Some(false));
     assert_eq!(models::parse_ollama_show(&json!({})), None);
@@ -741,10 +770,8 @@ async fn fake_server(responses: Vec<(u16, &'static str, String)>) -> (String, to
             }
             let req_body: Value = serde_json::from_slice(&buf[body_start..body_start + len]).unwrap_or(Value::Null);
             seen.push((head, req_body));
-            let reply = format!(
-                "HTTP/1.1 {status} X\r\nContent-Type: {kind}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
-                body.len()
-            );
+            let reply =
+                format!("HTTP/1.1 {status} X\r\nContent-Type: {kind}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len());
             sock.write_all(reply.as_bytes()).await.unwrap();
             sock.shutdown().await.ok();
         }
@@ -938,7 +965,15 @@ fn codex_arguments() {
     let exe = PathBuf::from("codex.exe");
     let worlds = PathBuf::from(r"C:\Program Files\Worlds\worlds.exe");
     let images = vec![PathBuf::from(r"C:\data\a.png")];
-    let r = CodexRun { exe: &exe, worlds_exe: &worlds, run_id: "run1", dir: Path::new("."), model: Some("gpt-5-codex"), thread: None, images: &images };
+    let r = CodexRun {
+        exe: &exe,
+        worlds_exe: &worlds,
+        run_id: "run1",
+        dir: Path::new("."),
+        model: Some("gpt-5-codex"),
+        thread: None,
+        images: &images,
+    };
     let a = codex::args(&r);
     assert_eq!(a[0], "exec");
     assert_ne!(a[1], "resume");
@@ -959,7 +994,15 @@ fn codex_arguments() {
     // The prompt never goes on the command line.
     assert!(!a.iter().any(|x| x.contains("sandbox_mode=\"danger")));
 
-    let r = CodexRun { exe: &exe, worlds_exe: &worlds, run_id: "run2", dir: Path::new("."), model: Some(""), thread: Some("th_9"), images: &[] };
+    let r = CodexRun {
+        exe: &exe,
+        worlds_exe: &worlds,
+        run_id: "run2",
+        dir: Path::new("."),
+        model: Some(""),
+        thread: Some("th_9"),
+        images: &[],
+    };
     let a = codex::args(&r);
     assert_eq!(&a[..3], &["exec", "resume", "th_9"]);
     assert!(!a.iter().any(|x| x == "-m" || x == "-i"));
@@ -1007,7 +1050,10 @@ fn codex_failures_and_other_tools() {
         p.feed(r#"{"type":"item.completed","item":{"id":"m","type":"mcp_tool_call","tool":"x","result":{"isError":true}}}"#)[1],
         CodexEvent::ToolResult { error: true }
     );
-    assert_eq!(p.feed(r#"{"type":"turn.failed","error":{"message":"You are not logged in"}}"#), vec![CodexEvent::Failed("You are not logged in".into())]);
+    assert_eq!(
+        p.feed(r#"{"type":"turn.failed","error":{"message":"You are not logged in"}}"#),
+        vec![CodexEvent::Failed("You are not logged in".into())]
+    );
     assert_eq!(p.feed(r#"{"type":"error","message":"stream disconnected"}"#), vec![CodexEvent::Failed("stream disconnected".into())]);
     assert!(codex::is_signed_out("You are not logged in. Run codex login"));
     assert!(codex::is_signed_out("401 Unauthorized"));

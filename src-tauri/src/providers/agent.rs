@@ -87,8 +87,14 @@ pub enum LoopEvent {
     /// Streamed answer text.
     Delta(String),
     /// A tool call is about to run.
-    Tool { name: String, input: Value },
-    ToolResult { name: String, error: bool },
+    Tool {
+        name: String,
+        input: Value,
+    },
+    ToolResult {
+        name: String,
+        error: bool,
+    },
     /// Something the user should know (for example: chat only).
     Note(String),
 }
@@ -162,11 +168,8 @@ async fn one_turn(
         return Err(http_error(&ep.label, status, &text));
     }
     let mut stream = Stream::new(ep.dialect);
-    let is_json = resp
-        .headers()
-        .get(reqwest::header::CONTENT_TYPE)
-        .and_then(|v| v.to_str().ok())
-        .is_some_and(|v| v.contains("application/json"));
+    let is_json =
+        resp.headers().get(reqwest::header::CONTENT_TYPE).and_then(|v| v.to_str().ok()).is_some_and(|v| v.contains("application/json"));
     if is_json {
         // A server that ignored `stream: true`.
         let v: Value = resp.json().await.map_err(|e| anyhow!("{} sent an unreadable answer: {}", ep.label, e.without_url()))?;
