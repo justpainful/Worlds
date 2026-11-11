@@ -102,7 +102,7 @@ const SKIP = [
 ].join(",");
 const ATTRS = ["title", "placeholder", "aria-label"] as const;
 
-const texts = new Map<Text, { en: string; ar: string }>();
+const texts = new Map<Text, { en: string; ar: string; group?: boolean }>();
 const attrs = new Map<Element, Map<string, { en: string; ar: string }>>();
 let observer: MutationObserver | null = null;
 let queued = new Set<Node>();
@@ -133,10 +133,55 @@ function isFragment(node: Text): boolean {
   return !!parent && INLINE.has(parent.tagName) && (wordy(parent.previousSibling) || wordy(parent.nextSibling));
 }
 
+/** An element holding only text pieces, as JSX makes of `Edited {time}` or `{n} pages`. */
+function isTextGroup(el: Element | null): el is Element {
+  if (!el || el.childNodes.length < 2) return false;
+  for (const c of el.childNodes) if (c.nodeType !== Node.TEXT_NODE) return false;
+  return true;
+}
+
+/** Translate the pieces of a text group as one sentence; false when there is no translation. */
+function doGroup(el: Element): boolean {
+  const nodes = [...el.childNodes] as Text[];
+  const english = nodes.map((n) => {
+    const t = texts.get(n);
+    return t && n.data === t.ar ? t.en : n.data;
+  });
+  const joined = english.join("");
+  const key = joined.replace(/\s+/g, " ").trim();
+  if (userTexts.has(key)) return true;
+  const ar = translate(joined);
+  if (ar === null) return false;
+  nodes.forEach((n, i) => {
+    const out = i === 0 ? swap(joined, ar) : "";
+    texts.set(n, { en: english[i], ar: out, group: true });
+    if (n.data !== out) n.data = out;
+  });
+  return true;
+}
+
 function doText(node: Text) {
   const prev = texts.get(node);
   if (prev && node.data === prev.ar) return;
   if (skipped(node.parentElement)) return;
+  const parent = node.parentElement;
+  if (isTextGroup(parent)) {
+    if (doGroup(parent)) return;
+    // No sentence translation now: pieces translated together earlier go back to English.
+    // Pieces translated on their own are left alone, or the two would undo each other forever.
+    for (const c of parent.childNodes) {
+      const t = texts.get(c as Text);
+      if (!t?.group) continue;
+      texts.delete(c as Text);
+      if ((c as Text).data === t.ar) (c as Text).data = t.en;
+    }
+  }
+  doSingle(node, texts.get(node));
+}
+
+function doSingle(node: Text, prev: { en: string; ar: string; group?: boolean } | undefined) {
+  if (prev && node.data === prev.ar) return;
+  if (!node.data.trim()) return;
   const key = node.data.replace(/\s+/g, " ").trim();
   // One word inside a longer sentence ("Find <b>pages</b> I haven't…") is not a label on its own.
   if (!key.includes(" ") && isFragment(node)) return;

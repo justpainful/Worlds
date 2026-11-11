@@ -1,20 +1,135 @@
-import type {DrawingScene} from './model';
-import type {LibraryKind,LibraryPayload} from './library';
+import type { DrawingScene } from "./model";
+import type { LibraryKind, LibraryPayload } from "./library";
 /** Immutable per-version publication data travels with the existing saved-scene
  * dependency channel. Page/workspace/account rights remain authoritative. */
-export interface PublishedLibraryMetadata{schema:1;itemId:string;version:number;name:string;kind:LibraryKind;tags:string[];sourceId:string|null;payload:LibraryPayload;createdAt:number}
-export function validateLibraryPublication(value:unknown,scene:DrawingScene):asserts value is PublishedLibraryMetadata{
- const p=value as PublishedLibraryMetadata,validId=(v:unknown)=>typeof v==='string'&&/^[A-Za-z0-9_-]{1,160}$/.test(v),color=(c:unknown)=>typeof c==='string'&&/^#[\da-f]{6}([\da-f]{2})?$/i.test(c);
- if(!p||Object.keys(p).length!==9||Object.keys(p).some(k=>!['schema','itemId','version','name','kind','tags','sourceId','payload','createdAt'].includes(k))||p.schema!==1||!validId(p.itemId)||!Number.isSafeInteger(p.version)||p.version<1||p.version>500||typeof p.name!=='string'||!p.name.trim()||p.name.length>160||!['brush','palette','elements','style','frame','template','signature'].includes(p.kind)||!Array.isArray(p.tags)||p.tags.length>24||p.tags.some(t=>typeof t!=='string'||t.length>64)||p.sourceId!==null&&!validId(p.sourceId)||!Number.isSafeInteger(p.createdAt)||p.createdAt<0||!p.payload||typeof p.payload!=='object'||Array.isArray(p.payload)||new TextEncoder().encode(JSON.stringify(p.payload)).length>65536)throw new Error('Invalid published library metadata');
- if(p.kind==='palette'&&(!Array.isArray(p.payload.colors)||!p.payload.colors.length||p.payload.colors.length>256||p.payload.colors.some(c=>!color(c))))throw new Error('Invalid published palette');
- if(p.kind==='brush'){const b=p.payload.brush,range=(key:keyof NonNullable<typeof b>,min:number,max:number)=>b&&typeof b[key]==='number'&&Number.isFinite(b[key])&&(b[key]as number)>=min&&(b[key]as number)<=max;
- if(!b||!['hard','soft','pencil','ink','marker','highlighter','spray','texture','calligraphy','oil','crayon','natural-pencil','watercolor'].includes(b.kind)||!range('size',1,2048)||!range('spacing',.01,2)||!range('opacity',0,1)||!range('flow',0,1)||!range('hardness',0,1)||!range('roundness',.01,1)||!range('angle',-360,360)||!range('smoothing',0,1)||!range('stabilizer',0,200)||!range('taperStart',0,1)||!range('taperEnd',0,1)||!range('pressureCurve',.1,4)||!color(b.color)||[b.pressureSize,b.pressureOpacity,b.pressureFlow].some(v=>typeof v!=='boolean')||b.tipAssetId&&!scene.assets[b.tipAssetId])throw new Error('Invalid published brush');}
- if(p.kind==='style'){if(!p.payload.style||Object.keys(p.payload.style).length!==2||Object.keys(p.payload.style).some(key=>!['paint','textStyle'].includes(key)))throw new Error('Invalid published style fields');const n=Object.values(scene.nodes)[0],stable=(v:unknown):string=>Array.isArray(v)?`[${v.map(stable).join(',')}]`:v&&typeof v==='object'?`{${Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stable((v as Record<string,unknown>)[k])).join(',')}}`:JSON.stringify(v);if(!n||stable(p.payload.style?.paint)!==stable(n.paint)||stable(p.payload.style?.textStyle)!==stable(n.textStyle))throw new Error('Invalid published style preview');}
+export interface PublishedLibraryMetadata {
+  schema: 1;
+  itemId: string;
+  version: number;
+  name: string;
+  kind: LibraryKind;
+  tags: string[];
+  sourceId: string | null;
+  payload: LibraryPayload;
+  createdAt: number;
+}
+export function validateLibraryPublication(value: unknown, scene: DrawingScene): asserts value is PublishedLibraryMetadata {
+  const p = value as PublishedLibraryMetadata,
+    validId = (v: unknown) => typeof v === "string" && /^[A-Za-z0-9_-]{1,160}$/.test(v),
+    color = (c: unknown) => typeof c === "string" && /^#[\da-f]{6}([\da-f]{2})?$/i.test(c);
+  if (
+    !p ||
+    Object.keys(p).length !== 9 ||
+    Object.keys(p).some((k) => !["schema", "itemId", "version", "name", "kind", "tags", "sourceId", "payload", "createdAt"].includes(k)) ||
+    p.schema !== 1 ||
+    !validId(p.itemId) ||
+    !Number.isSafeInteger(p.version) ||
+    p.version < 1 ||
+    p.version > 500 ||
+    typeof p.name !== "string" ||
+    !p.name.trim() ||
+    p.name.length > 160 ||
+    !["brush", "palette", "elements", "style", "frame", "template", "signature"].includes(p.kind) ||
+    !Array.isArray(p.tags) ||
+    p.tags.length > 24 ||
+    p.tags.some((t) => typeof t !== "string" || t.length > 64) ||
+    (p.sourceId !== null && !validId(p.sourceId)) ||
+    !Number.isSafeInteger(p.createdAt) ||
+    p.createdAt < 0 ||
+    !p.payload ||
+    typeof p.payload !== "object" ||
+    Array.isArray(p.payload) ||
+    new TextEncoder().encode(JSON.stringify(p.payload)).length > 65536
+  )
+    throw new Error("Invalid published library metadata");
+  if (
+    p.kind === "palette" &&
+    (!Array.isArray(p.payload.colors) ||
+      !p.payload.colors.length ||
+      p.payload.colors.length > 256 ||
+      p.payload.colors.some((c) => !color(c)))
+  )
+    throw new Error("Invalid published palette");
+  if (p.kind === "brush") {
+    const b = p.payload.brush,
+      range = (key: keyof NonNullable<typeof b>, min: number, max: number) =>
+        b && typeof b[key] === "number" && Number.isFinite(b[key]) && (b[key] as number) >= min && (b[key] as number) <= max;
+    if (
+      !b ||
+      ![
+        "hard",
+        "soft",
+        "pencil",
+        "ink",
+        "marker",
+        "highlighter",
+        "spray",
+        "texture",
+        "calligraphy",
+        "oil",
+        "crayon",
+        "natural-pencil",
+        "watercolor",
+      ].includes(b.kind) ||
+      !range("size", 1, 2048) ||
+      !range("spacing", 0.01, 2) ||
+      !range("opacity", 0, 1) ||
+      !range("flow", 0, 1) ||
+      !range("hardness", 0, 1) ||
+      !range("roundness", 0.01, 1) ||
+      !range("angle", -360, 360) ||
+      !range("smoothing", 0, 1) ||
+      !range("stabilizer", 0, 200) ||
+      !range("taperStart", 0, 1) ||
+      !range("taperEnd", 0, 1) ||
+      !range("pressureCurve", 0.1, 4) ||
+      !color(b.color) ||
+      [b.pressureSize, b.pressureOpacity, b.pressureFlow].some((v) => typeof v !== "boolean") ||
+      (b.tipAssetId && !scene.assets[b.tipAssetId])
+    )
+      throw new Error("Invalid published brush");
+  }
+  if (p.kind === "style") {
+    if (
+      !p.payload.style ||
+      Object.keys(p.payload.style).length !== 2 ||
+      Object.keys(p.payload.style).some((key) => !["paint", "textStyle"].includes(key))
+    )
+      throw new Error("Invalid published style fields");
+    const n = Object.values(scene.nodes)[0],
+      stable = (v: unknown): string =>
+        Array.isArray(v)
+          ? `[${v.map(stable).join(",")}]`
+          : v && typeof v === "object"
+            ? `{${Object.keys(v)
+                .sort()
+                .map((k) => JSON.stringify(k) + ":" + stable((v as Record<string, unknown>)[k]))
+                .join(",")}}`
+            : JSON.stringify(v);
+    if (!n || stable(p.payload.style?.paint) !== stable(n.paint) || stable(p.payload.style?.textStyle) !== stable(n.textStyle))
+      throw new Error("Invalid published style preview");
+  }
 }
 /** Validate the complete immutable publication history before the authority
  * persists dependencies. A malformed descriptor must never poison readers. */
-export function validateLibraryDirectory(versions:Record<string,{scene:DrawingScene;revision:number;createdAt:number}>,pageId:string){
- const publications=new Map<number,string>();let kind:LibraryKind|undefined;
- for(const[id,version]of Object.entries(versions)){const p=version.scene.libraryPublication;if(!p)continue;validateLibraryPublication(p,version.scene);if(!pageId||p.itemId!==pageId||p.version!==version.revision||p.createdAt!==version.createdAt)throw new Error('Publication descriptor does not match its saved version');if(kind&&p.kind!==kind)throw new Error('Published library category changed');kind=p.kind;if(publications.has(p.version))throw new Error('Immutable library publication version was reused');publications.set(p.version,id);}
- const latest=Math.max(0,...publications.keys());for(let version=1;version<=latest;version++)if(!publications.has(version))throw new Error('Missing immutable library publication history');
+export function validateLibraryDirectory(
+  versions: Record<string, { scene: DrawingScene; revision: number; createdAt: number }>,
+  pageId: string,
+) {
+  const publications = new Map<number, string>();
+  let kind: LibraryKind | undefined;
+  for (const [id, version] of Object.entries(versions)) {
+    const p = version.scene.libraryPublication;
+    if (!p) continue;
+    validateLibraryPublication(p, version.scene);
+    if (!pageId || p.itemId !== pageId || p.version !== version.revision || p.createdAt !== version.createdAt)
+      throw new Error("Publication descriptor does not match its saved version");
+    if (kind && p.kind !== kind) throw new Error("Published library category changed");
+    kind = p.kind;
+    if (publications.has(p.version)) throw new Error("Immutable library publication version was reused");
+    publications.set(p.version, id);
+  }
+  const latest = Math.max(0, ...publications.keys());
+  for (let version = 1; version <= latest; version++)
+    if (!publications.has(version)) throw new Error("Missing immutable library publication history");
 }

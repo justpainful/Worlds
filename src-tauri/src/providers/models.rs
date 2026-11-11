@@ -38,7 +38,9 @@ pub fn parse_anthropic(v: &Value) -> Vec<ModelInfo> {
 /// Ids that are clearly not chat models.
 fn not_chat(id: &str) -> bool {
     let id = id.to_lowercase();
-    ["embed", "whisper", "tts", "dall-e", "moderation", "transcribe", "realtime", "audio", "image", "rerank", "guard"].iter().any(|k| id.contains(k))
+    ["embed", "whisper", "tts", "dall-e", "moderation", "transcribe", "realtime", "audio", "image", "rerank", "guard"]
+        .iter()
+        .any(|k| id.contains(k))
 }
 
 pub fn parse_openai(v: &Value) -> Vec<ModelInfo> {
@@ -104,7 +106,14 @@ pub async fn ollama_tools(client: &reqwest::Client, base: &str, model_id: &str) 
 }
 
 pub async fn list(client: &reqwest::Client, preset: &Preset, base: &str, key: Option<String>, timeout: Duration) -> Result<Vec<ModelInfo>> {
-    let ep = Endpoint { dialect: preset.dialect(), base: base.to_string(), key, model: String::new(), provider: preset.id.clone(), label: preset.name.clone() };
+    let ep = Endpoint {
+        dialect: preset.dialect(),
+        base: base.to_string(),
+        key,
+        model: String::new(),
+        provider: preset.id.clone(),
+        label: preset.name.clone(),
+    };
     let base = trim_base(base);
     match (preset.dialect(), preset.id.as_str()) {
         (Dialect::Anthropic, _) => {

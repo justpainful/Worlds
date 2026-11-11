@@ -1,15 +1,204 @@
-import{describe,it,expect}from'vitest';import{newScene,newNode,newLayer}from'./model';import{duplicateElements,duplicateLayerTree,reorderLayerTree,deleteLayerTree}from'./workflows';import{applyChanges,appendOperation,edit,historyToggle,newDrawing}from'./operations';import{visibleMergePlan,mergedLayerChanges}from'./layerMerge';import{canonicalOperation,drawingPreconditions}from'./canonical';
-function nested(){const s=newScene(),root=s.layers[s.layerOrder[0]],child=newLayer('Child'),sibling=newLayer('Sibling');child.parentId=root.id;s.layers[child.id]=child;s.layers[sibling.id]=sibling;s.layerOrder.push(child.id,sibling.id);const a=newNode('shape',child.id,s.defaultFrameId);a.shape='rect';a.maskId='alpha';a.effects=[{id:'effect',kind:'invert',amount:1,enabled:true,maskId:'alpha'}];s.masks.alpha={id:'alpha',name:'Alpha',enabled:true,inverted:false,linked:true,x:0,y:0,w:100,h:100,base:1,strokes:[]};s.nodes[a.id]=a;s.nodeOrder.push(a.id);return{s,root,child,sibling,a};}
-describe('nested layer workflows',()=>{
- it('duplicates the entire tree and independently remaps shared node/effect masks',()=>{const{s,root,child,a}=nested(),original=structuredClone(s),copy=duplicateLayerTree(s,root.id),next=applyChanges(s,copy.changes),layers=Object.values(next.layers).filter(l=>!s.layers[l.id]),node=Object.values(next.nodes).find(n=>!s.nodes[n.id])!;expect(layers).toHaveLength(2);expect(next.layers[node.layerId].parentId).toBe(copy.layerId);expect(node.layerId).not.toBe(child.id);expect(node.maskId).not.toBe(a.maskId);expect(node.effects[0].maskId).toBe(node.maskId);expect(next.masks[node.maskId!]).toMatchObject({base:1});expect(s).toEqual(original);});
- it('forks copied asset metadata while preserving immutable encoded ownership',()=>{const{s,root,a}=nested();a.kind='image';a.assetId='original';s.assets.original={id:'original',attachmentId:'immutable-encoded-file',name:'Original',mime:'image/png',width:1,height:1};s.masks.alpha.assetId='original';const next=applyChanges(s,duplicateLayerTree(s,root.id).changes),node=Object.values(next.nodes).find(n=>!s.nodes[n.id])!;expect(node.assetId).not.toBe('original');expect(next.assets[node.assetId!].attachmentId).toBe('immutable-encoded-file');expect(next.masks[node.maskId!].assetId).toBe(node.assetId);expect(s.assets.original.id).toBe('original');});
- it('reorders complete sibling subtrees without moving children across parents',()=>{const{s,root,child,sibling}=nested(),next=applyChanges(s,reorderLayerTree(s,root.id,1));expect(next.layerOrder).toEqual([sibling.id,root.id,child.id]);expect(next.layers[child.id].parentId).toBe(root.id);expect(reorderLayerTree(s,child.id,1)).toEqual([]);});
- it('deletes complete trees, preserves external anchor fallback, and retains one usable layer',()=>{const{s,root,a,sibling}=nested(),external=newNode('shape',sibling.id,s.defaultFrameId);external.shape='arrow';external.anchor={nodeId:a.id,u:.5,v:.5,fallback:{x:0,y:0}};s.nodes[external.id]=external;s.nodeOrder.push(external.id);const result=deleteLayerTree(s,root.id),next=applyChanges(s,result.changes);expect(next.nodes[a.id]).toBeUndefined();expect(next.nodes[external.id].anchor?.fallback).toEqual({x:a.x+a.w/2,y:a.y+a.h/2});expect(Object.keys(next.layers)).toEqual([sibling.id]);const blank=newScene(),empty=applyChanges(blank,deleteLayerTree(blank,blank.layerOrder[0]).changes);expect(empty.layerOrder).toHaveLength(1);});
- it('refuses deleting locked descendants before producing any change',()=>{const{s,root,child}=nested();child.locked=true;expect(()=>deleteLayerTree(s,root.id)).toThrow('layer-locked');expect(s.layers[child.id]).toBe(child);});
+import { describe, it, expect } from "vitest";
+import { newScene, newNode, newLayer } from "./model";
+import { duplicateElements, duplicateLayerTree, reorderLayerTree, deleteLayerTree } from "./workflows";
+import { applyChanges, appendOperation, edit, historyToggle, newDrawing } from "./operations";
+import { visibleMergePlan, mergedLayerChanges } from "./layerMerge";
+import { canonicalOperation, drawingPreconditions } from "./canonical";
+function nested() {
+  const s = newScene(),
+    root = s.layers[s.layerOrder[0]],
+    child = newLayer("Child"),
+    sibling = newLayer("Sibling");
+  child.parentId = root.id;
+  s.layers[child.id] = child;
+  s.layers[sibling.id] = sibling;
+  s.layerOrder.push(child.id, sibling.id);
+  const a = newNode("shape", child.id, s.defaultFrameId);
+  a.shape = "rect";
+  a.maskId = "alpha";
+  a.effects = [{ id: "effect", kind: "invert", amount: 1, enabled: true, maskId: "alpha" }];
+  s.masks.alpha = {
+    id: "alpha",
+    name: "Alpha",
+    enabled: true,
+    inverted: false,
+    linked: true,
+    x: 0,
+    y: 0,
+    w: 100,
+    h: 100,
+    base: 1,
+    strokes: [],
+  };
+  s.nodes[a.id] = a;
+  s.nodeOrder.push(a.id);
+  return { s, root, child, sibling, a };
+}
+describe("nested layer workflows", () => {
+  it("duplicates the entire tree and independently remaps shared node/effect masks", () => {
+    const { s, root, child, a } = nested(),
+      original = structuredClone(s),
+      copy = duplicateLayerTree(s, root.id),
+      next = applyChanges(s, copy.changes),
+      layers = Object.values(next.layers).filter((l) => !s.layers[l.id]),
+      node = Object.values(next.nodes).find((n) => !s.nodes[n.id])!;
+    expect(layers).toHaveLength(2);
+    expect(next.layers[node.layerId].parentId).toBe(copy.layerId);
+    expect(node.layerId).not.toBe(child.id);
+    expect(node.maskId).not.toBe(a.maskId);
+    expect(node.effects[0].maskId).toBe(node.maskId);
+    expect(next.masks[node.maskId!]).toMatchObject({ base: 1 });
+    expect(s).toEqual(original);
+  });
+  it("forks copied asset metadata while preserving immutable encoded ownership", () => {
+    const { s, root, a } = nested();
+    a.kind = "image";
+    a.assetId = "original";
+    s.assets.original = {
+      id: "original",
+      attachmentId: "immutable-encoded-file",
+      name: "Original",
+      mime: "image/png",
+      width: 1,
+      height: 1,
+    };
+    s.masks.alpha.assetId = "original";
+    const next = applyChanges(s, duplicateLayerTree(s, root.id).changes),
+      node = Object.values(next.nodes).find((n) => !s.nodes[n.id])!;
+    expect(node.assetId).not.toBe("original");
+    expect(next.assets[node.assetId!].attachmentId).toBe("immutable-encoded-file");
+    expect(next.masks[node.maskId!].assetId).toBe(node.assetId);
+    expect(s.assets.original.id).toBe("original");
+  });
+  it("reorders complete sibling subtrees without moving children across parents", () => {
+    const { s, root, child, sibling } = nested(),
+      next = applyChanges(s, reorderLayerTree(s, root.id, 1));
+    expect(next.layerOrder).toEqual([sibling.id, root.id, child.id]);
+    expect(next.layers[child.id].parentId).toBe(root.id);
+    expect(reorderLayerTree(s, child.id, 1)).toEqual([]);
+  });
+  it("deletes complete trees, preserves external anchor fallback, and retains one usable layer", () => {
+    const { s, root, a, sibling } = nested(),
+      external = newNode("shape", sibling.id, s.defaultFrameId);
+    external.shape = "arrow";
+    external.anchor = { nodeId: a.id, u: 0.5, v: 0.5, fallback: { x: 0, y: 0 } };
+    s.nodes[external.id] = external;
+    s.nodeOrder.push(external.id);
+    const result = deleteLayerTree(s, root.id),
+      next = applyChanges(s, result.changes);
+    expect(next.nodes[a.id]).toBeUndefined();
+    expect(next.nodes[external.id].anchor?.fallback).toEqual({ x: a.x + a.w / 2, y: a.y + a.h / 2 });
+    expect(Object.keys(next.layers)).toEqual([sibling.id]);
+    const blank = newScene(),
+      empty = applyChanges(blank, deleteLayerTree(blank, blank.layerOrder[0]).changes);
+    expect(empty.layerOrder).toHaveLength(1);
+  });
+  it("refuses deleting locked descendants before producing any change", () => {
+    const { s, root, child } = nested();
+    child.locked = true;
+    expect(() => deleteLayerTree(s, root.id)).toThrow("layer-locked");
+    expect(s.layers[child.id]).toBe(child);
+  });
 });
-describe('visible raster merge',()=>{
- it('rejects world items, overlaps and unbounded layouts rather than cropping them',()=>{const{s,a}=nested();a.frameId=null;expect(()=>visibleMergePlan(s)).toThrow('merge-world');a.frameId=s.defaultFrameId;s.frames[s.defaultFrameId].clip=false;expect(()=>visibleMergePlan(s)).toThrow('merge-frame-layout');});
- it('retains originals with one author Undo and refuses stale source edits',()=>{const{s,root,a}=nested(),plan=visibleMergePlan(s),frame=s.frames[s.defaultFrameId],frames=[{frameId:frame.id,blob:new Blob(),asset:{id:'merged-asset',attachmentId:'owned-PNG',name:'Merged',mime:'image/png',width:frame.w,height:frame.h}}],result=mergedLayerChanges(s,plan,frames),d={...newDrawing(),seed:structuredClone(s),scene:structuredClone(s)},op=edit('alice',0,'Merge visible',result.changes);op.requiresBase=true;const merged=appendOperation(d,op);expect(merged.scene.nodes[a.id]).toMatchObject({...a,visible:false});expect(merged.scene.layers[root.id].visible).toBe(true);const foreign=newNode('shape',result.layerId,s.defaultFrameId);foreign.shape='rect';const remote=appendOperation(merged,edit('bob',1,'Foreign stroke',[{type:'put',collection:'nodes',id:foreign.id,value:foreign},{type:'order',list:'nodeOrder',ids:[...merged.scene.nodeOrder,foreign.id]}]));const undone=appendOperation(remote,historyToggle(remote,'alice')!);expect(undone.scene.nodes[foreign.id]).toBeDefined();expect(undone.scene.layers[root.id].visible).toBe(true);expect(()=>mergedLayerChanges({...s,nodes:{...s.nodes,[a.id]:{...a,opacity:.5}}},plan,frames)).toThrow('merge-stale');});
- it('does not rebase a merge over a foreign optional-field addition',()=>{const{s,a}=nested(),d={...newDrawing(),seed:structuredClone(s),scene:structuredClone(s)},plan=visibleMergePlan(s),f=s.frames[s.defaultFrameId],result=mergedLayerChanges(s,plan,[{frameId:f.id,blob:new Blob(),asset:{id:'asset',attachmentId:'original',name:'Merge',mime:'image/png',width:f.w,height:f.h}}]),merge=edit('alice',0,'Merge',result.changes);merge.requiresBase=true;const foreign=appendOperation(d,edit('bob',0,'New optional property',[{type:'patch',collection:'nodes',id:a.id,fields:{path:{closed:true,vertices:[{x:0,y:0},{x:100,y:0},{x:100,y:100}]}}}]));expect(()=>canonicalOperation(foreign,merge,'alice',drawingPreconditions(s,merge))).toThrow();});
- it('retains a foreign copied bitmap and its forked asset after merge author Undo',()=>{const{s}=nested(),doc={...newDrawing(),seed:structuredClone(s),scene:structuredClone(s)},plan=visibleMergePlan(s),frame=s.frames[s.defaultFrameId],result=mergedLayerChanges(s,plan,[{frameId:frame.id,blob:new Blob(),asset:{id:'baked',attachmentId:'immutable-baked-PNG',name:'Merge',mime:'image/png',width:frame.w,height:frame.h}}]),merge=edit('alice',0,'Merge',result.changes);merge.requiresBase=true;const merged=appendOperation(doc,merge),image=Object.values(merged.scene.nodes).find(n=>n.assetId==='baked')!,copy=duplicateElements(merged.scene,[image.id]),foreign=appendOperation(merged,edit('bob',1,'Copy baked image',copy.changes)),undone=appendOperation(foreign,historyToggle(foreign,'alice')!),copied=undone.scene.nodes[copy.nodes[0].id];expect(copied).toBeDefined();expect(copied.assetId).not.toBe('baked');expect(undone.scene.assets[copied.assetId!].attachmentId).toBe('immutable-baked-PNG');});
+describe("visible raster merge", () => {
+  it("rejects world items, overlaps and unbounded layouts rather than cropping them", () => {
+    const { s, a } = nested();
+    a.frameId = null;
+    expect(() => visibleMergePlan(s)).toThrow("merge-world");
+    a.frameId = s.defaultFrameId;
+    s.frames[s.defaultFrameId].clip = false;
+    expect(() => visibleMergePlan(s)).toThrow("merge-frame-layout");
+  });
+  it("retains originals with one author Undo and refuses stale source edits", () => {
+    const { s, root, a } = nested(),
+      plan = visibleMergePlan(s),
+      frame = s.frames[s.defaultFrameId],
+      frames = [
+        {
+          frameId: frame.id,
+          blob: new Blob(),
+          asset: { id: "merged-asset", attachmentId: "owned-PNG", name: "Merged", mime: "image/png", width: frame.w, height: frame.h },
+        },
+      ],
+      result = mergedLayerChanges(s, plan, frames),
+      d = { ...newDrawing(), seed: structuredClone(s), scene: structuredClone(s) },
+      op = edit("alice", 0, "Merge visible", result.changes);
+    op.requiresBase = true;
+    const merged = appendOperation(d, op);
+    expect(merged.scene.nodes[a.id]).toMatchObject({ ...a, visible: false });
+    expect(merged.scene.layers[root.id].visible).toBe(true);
+    const foreign = newNode("shape", result.layerId, s.defaultFrameId);
+    foreign.shape = "rect";
+    const remote = appendOperation(
+      merged,
+      edit("bob", 1, "Foreign stroke", [
+        { type: "put", collection: "nodes", id: foreign.id, value: foreign },
+        { type: "order", list: "nodeOrder", ids: [...merged.scene.nodeOrder, foreign.id] },
+      ]),
+    );
+    const undone = appendOperation(remote, historyToggle(remote, "alice")!);
+    expect(undone.scene.nodes[foreign.id]).toBeDefined();
+    expect(undone.scene.layers[root.id].visible).toBe(true);
+    expect(() => mergedLayerChanges({ ...s, nodes: { ...s.nodes, [a.id]: { ...a, opacity: 0.5 } } }, plan, frames)).toThrow("merge-stale");
+  });
+  it("does not rebase a merge over a foreign optional-field addition", () => {
+    const { s, a } = nested(),
+      d = { ...newDrawing(), seed: structuredClone(s), scene: structuredClone(s) },
+      plan = visibleMergePlan(s),
+      f = s.frames[s.defaultFrameId],
+      result = mergedLayerChanges(s, plan, [
+        {
+          frameId: f.id,
+          blob: new Blob(),
+          asset: { id: "asset", attachmentId: "original", name: "Merge", mime: "image/png", width: f.w, height: f.h },
+        },
+      ]),
+      merge = edit("alice", 0, "Merge", result.changes);
+    merge.requiresBase = true;
+    const foreign = appendOperation(
+      d,
+      edit("bob", 0, "New optional property", [
+        {
+          type: "patch",
+          collection: "nodes",
+          id: a.id,
+          fields: {
+            path: {
+              closed: true,
+              vertices: [
+                { x: 0, y: 0 },
+                { x: 100, y: 0 },
+                { x: 100, y: 100 },
+              ],
+            },
+          },
+        },
+      ]),
+    );
+    expect(() => canonicalOperation(foreign, merge, "alice", drawingPreconditions(s, merge))).toThrow();
+  });
+  it("retains a foreign copied bitmap and its forked asset after merge author Undo", () => {
+    const { s } = nested(),
+      doc = { ...newDrawing(), seed: structuredClone(s), scene: structuredClone(s) },
+      plan = visibleMergePlan(s),
+      frame = s.frames[s.defaultFrameId],
+      result = mergedLayerChanges(s, plan, [
+        {
+          frameId: frame.id,
+          blob: new Blob(),
+          asset: { id: "baked", attachmentId: "immutable-baked-PNG", name: "Merge", mime: "image/png", width: frame.w, height: frame.h },
+        },
+      ]),
+      merge = edit("alice", 0, "Merge", result.changes);
+    merge.requiresBase = true;
+    const merged = appendOperation(doc, merge),
+      image = Object.values(merged.scene.nodes).find((n) => n.assetId === "baked")!,
+      copy = duplicateElements(merged.scene, [image.id]),
+      foreign = appendOperation(merged, edit("bob", 1, "Copy baked image", copy.changes)),
+      undone = appendOperation(foreign, historyToggle(foreign, "alice")!),
+      copied = undone.scene.nodes[copy.nodes[0].id];
+    expect(copied).toBeDefined();
+    expect(copied.assetId).not.toBe("baked");
+    expect(undone.scene.assets[copied.assetId!].attachmentId).toBe("immutable-baked-PNG");
+  });
 });

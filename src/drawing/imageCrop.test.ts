@@ -1,10 +1,93 @@
-import {describe,it,expect} from 'vitest';
-import {newScene,newNode} from './model';
-import {dragImageCrop,imageCropChanges,imageCropSourceKey,validImageCrop} from './imageCrop';
-import {localToWorld} from './geometry';
-function fixture(){const s=newScene(),n=newNode('image',s.layerOrder[0],s.defaultFrameId,{x:100,y:200,w:200,h:100});n.assetId='image';s.assets.image={id:'image',attachmentId:'immutable-original',name:'Original',mime:'image/png',width:400,height:200};s.nodes[n.id]=n;s.nodeOrder=[n.id];return{s,n};}
-describe('nondestructive image crop',()=>{
- it('clamps every drag to source pixels without crossing an opposite edge',()=>{const start={x:10,y:20,w:50,h:30};expect(dragImageCrop(start,'move',-100,200,100,100)).toEqual({x:0,y:70,w:50,h:30});expect(dragImageCrop(start,'nw',100,100,100,100)).toEqual({x:59,y:49,w:1,h:1});expect(validImageCrop({x:0,y:0,w:101,h:100},100,100)).toBe(false);});
- it('trims rotated/reflected geometry while retaining original asset and linked-mask world placement',()=>{const{s,n}=fixture();n.rotation=35;n.flipX=true;n.maskId='mask';s.masks.mask={id:'mask',name:'Alpha',enabled:true,inverted:false,linked:true,x:0,y:0,w:200,h:100,base:1,strokes:[{reveal:false,brush:{kind:'hard',size:4,opacity:1,flow:1,hardness:1,spacing:.1,angle:0,roundness:1,smoothing:0,stabilizer:0,taperStart:0,taperEnd:0,pressureSize:false,pressureOpacity:false,pressureFlow:false,pressureCurve:1,color:'#ffffff'},samples:[{x:100,y:50,pressure:1,tiltX:0,tiltY:0,time:1}]}]};const original=structuredClone(s),crop={x:100,y:40,w:200,h:120},result=imageCropChanges(s,n,crop,'trim');expect(result.node.w).toBe(100);expect(result.node.h).toBe(60);expect(result.node.assetId).toBe('image');expect(result.node.geometrySize).toEqual({w:100,h:60});const beforePoint=localToWorld(n,{x:100,y:50}),afterPoint=localToWorld(result.node,{x:50,y:30});expect(afterPoint.x).toBeCloseTo(beforePoint.x);expect(afterPoint.y).toBeCloseTo(beforePoint.y);expect(result.changes[0].type).toBe('put');const mask=result.changes[0].type==='put'?result.changes[0].value as typeof s.masks.mask:null;expect(mask?.strokes[0].samples[0]).toMatchObject({x:50,y:30});expect(s).toEqual(original);});
- it('fit preserves geometry, cancel/no-op needs no operation, stale assets and inherited locks refuse apply',()=>{const{s,n}=fixture(),key=imageCropSourceKey(s,n.id),crop={x:100,y:0,w:200,h:200};const fit=imageCropChanges(s,n,crop,'fit',key);expect(fit.node).toMatchObject({x:100,y:200,w:200,h:100});expect(fit.changes).toEqual([{type:'patch',collection:'nodes',id:n.id,fields:{crop}}]);expect(imageCropChanges(s,n,{x:0,y:0,w:400,h:200},'trim',key).changes).toEqual([]);s.assets.image.attachmentId='replaced';expect(()=>imageCropChanges(s,n,crop,'trim',key)).toThrow('crop-stale');s.layers[n.layerId].positionLocked=true;expect(()=>imageCropChanges(s,n,crop,'trim')).toThrow('crop-locked');expect(()=>imageCropChanges(s,n,crop,'fit')).not.toThrow();});
+import { describe, it, expect } from "vitest";
+import { newScene, newNode } from "./model";
+import { dragImageCrop, imageCropChanges, imageCropSourceKey, validImageCrop } from "./imageCrop";
+import { localToWorld } from "./geometry";
+function fixture() {
+  const s = newScene(),
+    n = newNode("image", s.layerOrder[0], s.defaultFrameId, { x: 100, y: 200, w: 200, h: 100 });
+  n.assetId = "image";
+  s.assets.image = { id: "image", attachmentId: "immutable-original", name: "Original", mime: "image/png", width: 400, height: 200 };
+  s.nodes[n.id] = n;
+  s.nodeOrder = [n.id];
+  return { s, n };
+}
+describe("nondestructive image crop", () => {
+  it("clamps every drag to source pixels without crossing an opposite edge", () => {
+    const start = { x: 10, y: 20, w: 50, h: 30 };
+    expect(dragImageCrop(start, "move", -100, 200, 100, 100)).toEqual({ x: 0, y: 70, w: 50, h: 30 });
+    expect(dragImageCrop(start, "nw", 100, 100, 100, 100)).toEqual({ x: 59, y: 49, w: 1, h: 1 });
+    expect(validImageCrop({ x: 0, y: 0, w: 101, h: 100 }, 100, 100)).toBe(false);
+  });
+  it("trims rotated/reflected geometry while retaining original asset and linked-mask world placement", () => {
+    const { s, n } = fixture();
+    n.rotation = 35;
+    n.flipX = true;
+    n.maskId = "mask";
+    s.masks.mask = {
+      id: "mask",
+      name: "Alpha",
+      enabled: true,
+      inverted: false,
+      linked: true,
+      x: 0,
+      y: 0,
+      w: 200,
+      h: 100,
+      base: 1,
+      strokes: [
+        {
+          reveal: false,
+          brush: {
+            kind: "hard",
+            size: 4,
+            opacity: 1,
+            flow: 1,
+            hardness: 1,
+            spacing: 0.1,
+            angle: 0,
+            roundness: 1,
+            smoothing: 0,
+            stabilizer: 0,
+            taperStart: 0,
+            taperEnd: 0,
+            pressureSize: false,
+            pressureOpacity: false,
+            pressureFlow: false,
+            pressureCurve: 1,
+            color: "#ffffff",
+          },
+          samples: [{ x: 100, y: 50, pressure: 1, tiltX: 0, tiltY: 0, time: 1 }],
+        },
+      ],
+    };
+    const original = structuredClone(s),
+      crop = { x: 100, y: 40, w: 200, h: 120 },
+      result = imageCropChanges(s, n, crop, "trim");
+    expect(result.node.w).toBe(100);
+    expect(result.node.h).toBe(60);
+    expect(result.node.assetId).toBe("image");
+    expect(result.node.geometrySize).toEqual({ w: 100, h: 60 });
+    const beforePoint = localToWorld(n, { x: 100, y: 50 }),
+      afterPoint = localToWorld(result.node, { x: 50, y: 30 });
+    expect(afterPoint.x).toBeCloseTo(beforePoint.x);
+    expect(afterPoint.y).toBeCloseTo(beforePoint.y);
+    expect(result.changes[0].type).toBe("put");
+    const mask = result.changes[0].type === "put" ? (result.changes[0].value as typeof s.masks.mask) : null;
+    expect(mask?.strokes[0].samples[0]).toMatchObject({ x: 50, y: 30 });
+    expect(s).toEqual(original);
+  });
+  it("fit preserves geometry, cancel/no-op needs no operation, stale assets and inherited locks refuse apply", () => {
+    const { s, n } = fixture(),
+      key = imageCropSourceKey(s, n.id),
+      crop = { x: 100, y: 0, w: 200, h: 200 };
+    const fit = imageCropChanges(s, n, crop, "fit", key);
+    expect(fit.node).toMatchObject({ x: 100, y: 200, w: 200, h: 100 });
+    expect(fit.changes).toEqual([{ type: "patch", collection: "nodes", id: n.id, fields: { crop } }]);
+    expect(imageCropChanges(s, n, { x: 0, y: 0, w: 400, h: 200 }, "trim", key).changes).toEqual([]);
+    s.assets.image.attachmentId = "replaced";
+    expect(() => imageCropChanges(s, n, crop, "trim", key)).toThrow("crop-stale");
+    s.layers[n.layerId].positionLocked = true;
+    expect(() => imageCropChanges(s, n, crop, "trim")).toThrow("crop-locked");
+    expect(() => imageCropChanges(s, n, crop, "fit")).not.toThrow();
+  });
 });

@@ -1,18 +1,153 @@
-import type {DrawingNode,Gradient,Paint} from "./model";
-import {ColorField} from "./ColorField";
-export function PaintInspector({node,arabic,onChange}:{node:DrawingNode;arabic:boolean;onChange:(paint:Paint)=>void}){
- const p=node.paint,t=(en:string,ar:string)=>arabic?ar:en,patch=(value:Partial<Paint>)=>onChange({...p,...value}),g=p.gradient;
- const gradient=(patch:Partial<Gradient>)=>onChange({...p,gradient:{...g!,...patch}}),field=(en:string,ar:string,value:React.ReactNode)=><label key={en} className="drawing-field"><span>{t(en,ar)}</span>{value}</label>;
- return <section aria-label={t("Shape appearance","مظهر الشكل")}>
-  <ColorField label={t("Fill","التعبئة")} value={p.fill} arabic={arabic} onChange={fill=>patch({fill})}/><ColorField label={t("Stroke","الحدود")} value={p.stroke} arabic={arabic} onChange={stroke=>patch({stroke})}/>
-  {field("Stroke width","سماكة الحدود",<input type="number" min={0} max={2048} value={p.strokeWidth} onChange={e=>{const strokeWidth=e.target.valueAsNumber;if(strokeWidth>=0&&strokeWidth<=2048)patch({strokeWidth});}}/>)}
-  {field("Line ends","نهايات الخط",<select value={p.cap} onChange={e=>patch({cap:e.target.value as Paint["cap"]})}><option value="round">{t("Round","دائرية")}</option><option value="butt">{t("Flat","مسطحة")}</option><option value="square">{t("Square","مربعة")}</option></select>)}
-  {field("Dashes","تقطيع الحدود",<select value={p.dash.length?p.dash.length===2&&p.dash[0]===p.dash[1]?"dash":"dot":"solid"} onChange={e=>patch({dash:e.target.value==="solid"?[]:e.target.value==="dash"?[12,12]:[2,8]})}><option value="solid">{t("Solid","متصل")}</option><option value="dash">{t("Dashed","متقطع")}</option><option value="dot">{t("Dotted","منقط")}</option></select>)}
-  {field("Corner radius","استدارة الزوايا",<input type="number" min={0} max={1000000} value={p.radius} onChange={e=>{const radius=e.target.valueAsNumber;if(radius>=0&&radius<=1000000)patch({radius});}}/>)}
-  {field("Gradient","التدرج اللوني",<select value={g?.type??"none"} onChange={e=>patch({gradient:e.target.value==="none"?undefined:{type:e.target.value as Gradient["type"],from:g?.from??{x:0,y:0},to:g?.to??{x:node.geometrySize?.w??node.w,y:node.geometrySize?.h??node.h},stops:g?.stops??[{at:0,color:p.fill==="transparent"?"#ffffff":p.fill},{at:1,color:p.stroke}]}})}><option value="none">{t("None","بدون")}</option><option value="linear">{t("Linear","خطي")}</option><option value="radial">{t("Radial","دائري")}</option></select>)}
-  {g&&<>{(["from","to"]as const).map(point=><div className="drawing-transform-fields" key={point}>{(["x","y"]as const).map(axis=>field(`${point} ${axis}`,`${point==="from"?"البداية":"النهاية"} ${axis}`,<input type="number" value={g[point][axis]} onChange={e=>{const value=e.target.valueAsNumber;if(Number.isFinite(value)&&Math.abs(value)<=1e9)gradient({[point]:{...g[point],[axis]:value}});}}/>))}</div>)}
-   {g.stops.map((stop,index)=><div className="drawing-gradient-stop" key={index}><ColorField label={t(`Stop ${index+1}`,`اللون ${index+1}`)} arabic={arabic} value={stop.color} onChange={color=>gradient({stops:g.stops.map((s,i)=>i===index?{...s,color}:s)})}/>{field("Position percent","الموضع بالمئة",<input type="number" min={0} max={100} value={Math.round(stop.at*100)} onChange={e=>{const at=e.target.valueAsNumber/100;if(at>=0&&at<=1)gradient({stops:g.stops.map((s,i)=>i===index?{...s,at}:s).sort((a,b)=>a.at-b.at)});}}/>)}<button disabled={g.stops.length<=2} onClick={()=>gradient({stops:g.stops.filter((_,i)=>i!==index)})}>{t("Remove color","حذف اللون")}</button></div>)}
-   <button disabled={g.stops.length>=32} onClick={()=>gradient({stops:[...g.stops,{at:0.5,color:"#808080"}].sort((a,b)=>a.at-b.at)})}>{t("Add color stop","إضافة لون للتدرج")}</button>
-  </>}
- </section>;
+import type { DrawingNode, Gradient, Paint } from "./model";
+import { ColorField } from "./ColorField";
+export function PaintInspector({ node, arabic, onChange }: { node: DrawingNode; arabic: boolean; onChange: (paint: Paint) => void }) {
+  const p = node.paint,
+    t = (en: string, ar: string) => (arabic ? ar : en),
+    patch = (value: Partial<Paint>) => onChange({ ...p, ...value }),
+    g = p.gradient;
+  const gradient = (patch: Partial<Gradient>) => onChange({ ...p, gradient: { ...g!, ...patch } }),
+    field = (en: string, ar: string, value: React.ReactNode) => (
+      <label key={en} className="drawing-field">
+        <span>{t(en, ar)}</span>
+        {value}
+      </label>
+    );
+  return (
+    <section aria-label={t("Shape appearance", "مظهر الشكل")}>
+      <ColorField label={t("Fill", "التعبئة")} value={p.fill} arabic={arabic} onChange={(fill) => patch({ fill })} />
+      <ColorField label={t("Stroke", "الحدود")} value={p.stroke} arabic={arabic} onChange={(stroke) => patch({ stroke })} />
+      {field(
+        "Stroke width",
+        "سماكة الحدود",
+        <input
+          type="number"
+          min={0}
+          max={2048}
+          value={p.strokeWidth}
+          onChange={(e) => {
+            const strokeWidth = e.target.valueAsNumber;
+            if (strokeWidth >= 0 && strokeWidth <= 2048) patch({ strokeWidth });
+          }}
+        />,
+      )}
+      {field(
+        "Line ends",
+        "نهايات الخط",
+        <select value={p.cap} onChange={(e) => patch({ cap: e.target.value as Paint["cap"] })}>
+          <option value="round">{t("Round", "دائرية")}</option>
+          <option value="butt">{t("Flat", "مسطحة")}</option>
+          <option value="square">{t("Square", "مربعة")}</option>
+        </select>,
+      )}
+      {field(
+        "Dashes",
+        "تقطيع الحدود",
+        <select
+          value={p.dash.length ? (p.dash.length === 2 && p.dash[0] === p.dash[1] ? "dash" : "dot") : "solid"}
+          onChange={(e) => patch({ dash: e.target.value === "solid" ? [] : e.target.value === "dash" ? [12, 12] : [2, 8] })}
+        >
+          <option value="solid">{t("Solid", "متصل")}</option>
+          <option value="dash">{t("Dashed", "متقطع")}</option>
+          <option value="dot">{t("Dotted", "منقط")}</option>
+        </select>,
+      )}
+      {field(
+        "Corner radius",
+        "استدارة الزوايا",
+        <input
+          type="number"
+          min={0}
+          max={1000000}
+          value={p.radius}
+          onChange={(e) => {
+            const radius = e.target.valueAsNumber;
+            if (radius >= 0 && radius <= 1000000) patch({ radius });
+          }}
+        />,
+      )}
+      {field(
+        "Gradient",
+        "التدرج اللوني",
+        <select
+          value={g?.type ?? "none"}
+          onChange={(e) =>
+            patch({
+              gradient:
+                e.target.value === "none"
+                  ? undefined
+                  : {
+                      type: e.target.value as Gradient["type"],
+                      from: g?.from ?? { x: 0, y: 0 },
+                      to: g?.to ?? { x: node.geometrySize?.w ?? node.w, y: node.geometrySize?.h ?? node.h },
+                      stops: g?.stops ?? [
+                        { at: 0, color: p.fill === "transparent" ? "#ffffff" : p.fill },
+                        { at: 1, color: p.stroke },
+                      ],
+                    },
+            })
+          }
+        >
+          <option value="none">{t("None", "بدون")}</option>
+          <option value="linear">{t("Linear", "خطي")}</option>
+          <option value="radial">{t("Radial", "دائري")}</option>
+        </select>,
+      )}
+      {g && (
+        <>
+          {(["from", "to"] as const).map((point) => (
+            <div className="drawing-transform-fields" key={point}>
+              {(["x", "y"] as const).map((axis) =>
+                field(
+                  `${point} ${axis}`,
+                  `${point === "from" ? "البداية" : "النهاية"} ${axis}`,
+                  <input
+                    type="number"
+                    value={g[point][axis]}
+                    onChange={(e) => {
+                      const value = e.target.valueAsNumber;
+                      if (Number.isFinite(value) && Math.abs(value) <= 1e9) gradient({ [point]: { ...g[point], [axis]: value } });
+                    }}
+                  />,
+                ),
+              )}
+            </div>
+          ))}
+          {g.stops.map((stop, index) => (
+            <div className="drawing-gradient-stop" key={index}>
+              <ColorField
+                label={t(`Stop ${index + 1}`, `اللون ${index + 1}`)}
+                arabic={arabic}
+                value={stop.color}
+                onChange={(color) => gradient({ stops: g.stops.map((s, i) => (i === index ? { ...s, color } : s)) })}
+              />
+              {field(
+                "Position percent",
+                "الموضع بالمئة",
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={Math.round(stop.at * 100)}
+                  onChange={(e) => {
+                    const at = e.target.valueAsNumber / 100;
+                    if (at >= 0 && at <= 1)
+                      gradient({ stops: g.stops.map((s, i) => (i === index ? { ...s, at } : s)).sort((a, b) => a.at - b.at) });
+                  }}
+                />,
+              )}
+              <button disabled={g.stops.length <= 2} onClick={() => gradient({ stops: g.stops.filter((_, i) => i !== index) })}>
+                {t("Remove color", "حذف اللون")}
+              </button>
+            </div>
+          ))}
+          <button
+            disabled={g.stops.length >= 32}
+            onClick={() => gradient({ stops: [...g.stops, { at: 0.5, color: "#808080" }].sort((a, b) => a.at - b.at) })}
+          >
+            {t("Add color stop", "إضافة لون للتدرج")}
+          </button>
+        </>
+      )}
+    </section>
+  );
 }

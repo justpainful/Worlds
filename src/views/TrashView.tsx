@@ -79,7 +79,7 @@ export function TrashView() {
             <div key={p.id} className="list-row">
               <PageIcon icon={p.icon} size={16} />
               <button className="list-row-title bidi as-link" onClick={() => useStore.getState().openPage(p.id)}>{pageTitle(p)}</button>
-              <span className="list-row-sub">Edited {relTime(p.updatedAt)}</span>
+              <span className="list-row-sub">{`Edited ${relTime(p.updatedAt)}`}</span>
               <button className="chip-btn" onClick={async () => { await api.updatePage(p.id, { archived: false }); refresh(); }}>
                 <Icon name="unarchive" size={13} />
                 Unarchive

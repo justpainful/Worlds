@@ -23,11 +23,25 @@ pub enum Role {
 pub enum Part {
     Text(String),
     /// Base64 image.
-    Image { mime: String, data: String },
+    Image {
+        mime: String,
+        data: String,
+    },
     /// Base64 PDF.
-    Document { name: String, data: String },
-    ToolCall { id: String, name: String, input: Value },
-    ToolResult { id: String, output: String, is_error: bool },
+    Document {
+        name: String,
+        data: String,
+    },
+    ToolCall {
+        id: String,
+        name: String,
+        input: Value,
+    },
+    ToolResult {
+        id: String,
+        output: String,
+        is_error: bool,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -128,7 +142,9 @@ pub fn anthropic_request(model: &str, system: &str, msgs: &[Msg], tools: &[ToolD
                 .iter()
                 .map(|p| match p {
                     Part::Text(t) => json!({ "type": "text", "text": t }),
-                    Part::Image { mime, data } => json!({ "type": "image", "source": { "type": "base64", "media_type": mime, "data": data } }),
+                    Part::Image { mime, data } => {
+                        json!({ "type": "image", "source": { "type": "base64", "media_type": mime, "data": data } })
+                    }
                     Part::Document { name, data } => json!({
                         "type": "document",
                         "source": { "type": "base64", "media_type": "application/pdf", "data": data },
@@ -220,7 +236,9 @@ pub fn openai_request(model: &str, system: &str, msgs: &[Msg], tools: &[ToolDef]
         body["tools"] = Value::Array(
             tools
                 .iter()
-                .map(|t| json!({ "type": "function", "function": { "name": t.name, "description": t.description, "parameters": t.schema } }))
+                .map(
+                    |t| json!({ "type": "function", "function": { "name": t.name, "description": t.description, "parameters": t.schema } }),
+                )
                 .collect(),
         );
     }
