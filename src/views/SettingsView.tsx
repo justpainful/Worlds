@@ -18,6 +18,7 @@ import { BridgeCard } from "./IntegrationsView";
 import { Select, DIRECTION_OPTIONS, LANGUAGE_OPTIONS } from "../ui/Select";
 import { AccountSettings } from "../account/AccountSettings";
 import { PACKS, setPackEnabled, usePack } from "../packs/packs";
+import { loadSample, removeSample, useSampleLoaded } from "../demo/sampleActions";
 
 const SECTIONS: { id: string; label: string; ar?: string; tile: string; group: number; keywords: string }[] = [
   { id: "account", label: "Account", tile: "team", group: 0, keywords: "sign in passkey email devices workspaces team members sign out server" },
@@ -36,7 +37,7 @@ const SECTIONS: { id: string; label: string; ar?: string; tile: string; group: n
   { id: "automations", label: "Automations", tile: "automations", group: 1, keywords: "background tray startup windows schedule" },
   { id: "integrations", label: "Integrations", tile: "integrations", group: 2, keywords: "connect" },
   { id: "discord", label: "Discord", tile: "discord", group: 2, keywords: "bot bridge host tunnel" },
-  { id: "storage", label: "Storage", tile: "archive", group: 3, keywords: "data folder database backup" },
+  { id: "storage", label: "Storage", tile: "archive", group: 3, keywords: "data folder database backup sample demo workspace" },
   { id: "advanced", label: "Advanced", tile: "settings", group: 3, keywords: "developer lab reset layout" },
 ];
 
@@ -479,6 +480,7 @@ function StorageSettings() {
           <Button variant="plain" icon="folderOpen" onClick={() => revealItemInDir(`${dataDir}\worlds.db`)}>Show in Explorer</Button>
         </Row>
       </Group>
+      <SampleWorkspaceSettings />
       <Group
         title="Backups"
         note="Worlds copies the database once a day, before every update to its storage format, and whenever you ask. Restoring takes effect the next time Worlds starts."
@@ -508,6 +510,37 @@ function StorageSettings() {
         )}
       </Group>
     </>
+  );
+}
+
+function SampleWorkspaceSettings() {
+  const loaded = useSampleLoaded();
+  const [busy, setBusy] = useState(false);
+  const run = (task: () => Promise<unknown>) => {
+    setBusy(true);
+    task().finally(() => setBusy(false));
+  };
+  const remove = async () => {
+    const ok = await confirmDialog({
+      title: "Remove the sample workspace?",
+      message: "Its pages, subjects, tasks and events move to Trash, including anything you added inside them. Your own pages stay as they are.",
+      confirm: "Move to Trash",
+      danger: true,
+    });
+    if (ok) await removeSample();
+  };
+  return (
+    <Group title="Sample workspace" note="A first year student's week in Arabic and English, made on this device without a connection. Loading it twice does not duplicate it.">
+      {loaded ? (
+        <Row label="Sample workspace" hint="Loaded. Remove it when you are done looking around.">
+          <Button variant="plain" icon="delete" loading={busy} onClick={() => run(remove)}>Remove</Button>
+        </Row>
+      ) : (
+        <Row label="Sample workspace" hint="Pages, a document, a spreadsheet, a drawing, slides, two subjects with lessons and an exam, tasks and events.">
+          <Button variant="plain" icon="folderOpen" loading={busy} onClick={() => run(loadSample)}>Load</Button>
+        </Row>
+      )}
+    </Group>
   );
 }
 

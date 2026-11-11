@@ -1,0 +1,50 @@
+name: Web demo
+
+# Publishes the browser demo (the app over its in-browser stand-in backend,
+# filled with the sample workspace) to GitHub Pages. Runs only when started
+# by hand from the Actions tab. The site also serves qr.svg, a QR code that
+# points to the demo, for printing.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: web-demo
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build the web demo
+        run: pnpm build:demo
+      - id: pages
+        uses: actions/configure-pages@v5
+      - name: QR code for the demo address
+        run: pnpm dlx qrcode@1.5.4 -t svg -o dist-demo/qr.svg "${{ steps.pages.outputs.base_url }}/"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist-demo
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

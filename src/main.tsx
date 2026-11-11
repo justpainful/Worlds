@@ -36,6 +36,8 @@ if ("__TAURI_INTERNALS__" in window) {
   window.addEventListener("unhandledrejection", (e) => report(`unhandled: ${e.reason instanceof Error ? e.reason.stack ?? e.reason.message : String(e.reason)}`));
 }
 
+if (import.meta.env.VITE_WEB_DEMO === "1") void import("./demo/sampleActions").then((m) => m.startWebDemo());
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     {import.meta.env.DEV && location.search.includes("glasslab2") ? <GlassLabV2 /> : import.meta.env.DEV && location.search.includes("glasslab") ? <GlassLab /> : <App />}
