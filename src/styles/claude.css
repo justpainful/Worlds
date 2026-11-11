@@ -339,3 +339,24 @@
 .ssi-paste .field { width: 260px; max-width: 100%; }
 .stay-signed-in.is-compact { margin-top: 8px; }
 .ssi-error { font: var(--t-small); }
+
+/* ---- Providers: chat picker and Settings, Providers ---------------------- */
+.ai-model-label { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.provider-pick .provider-select { width: 100%; }
+.provider-pick .provider-model-input { width: 100%; }
+.provider-pick .intel-head .btn { margin-inline-start: auto; }
+.provider-pick .warn { margin-top: 0; }
+.provider-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.provider-muted { font: var(--t-small); color: var(--text-3); white-space: nowrap; }
+.provider-actions .ok-text, .provider-actions .provider-muted { display: inline-flex; align-items: center; gap: 5px; }
+.set-row.provider-edit { flex-direction: column; align-items: stretch; gap: 8px; padding-top: 4px; padding-bottom: 12px; }
+.provider-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.provider-line .field { flex: 1 1 260px; min-width: 0; }
+.provider-models { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; max-height: 132px; overflow-y: auto; }
+.provider-models li { padding: 2px 8px; border-radius: 7px; background: var(--fill-1, rgba(255, 255, 255, 0.07)); font: var(--t-small); color: var(--text-2); }
+.provider-models li.is-chat-only { color: var(--text-4, var(--text-3)); }
+.set-row.provider-detect { justify-content: flex-end; min-height: 40px; }
+.provider-settings[dir="rtl"] .set-row + .set-row::before { left: 0; right: 14px; }
+.provider-settings[dir="rtl"] .set-title, .provider-settings[dir="rtl"] .set-note { text-align: start; }
+.provider-pick[dir="rtl"] .intel-title, :lang(ar) .provider-pick .intel-title { letter-spacing: 0; text-transform: none; }
+.provider-pick .intel-note, .provider-pick .warn span, .provider-edit .bad-text { unicode-bidi: plaintext; text-align: start; }

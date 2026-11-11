@@ -86,9 +86,9 @@ pub fn server_root(base: &str) -> String {
 }
 
 async fn get_json(client: &reqwest::Client, ep: &Endpoint, url: &str, timeout: Duration) -> Result<Value> {
-    let resp = ep.authorize(client.get(url)).timeout(timeout).send().await.map_err(|e| connect_error(&ep.label, &e))?;
+    let resp = ep.authorize(client.get(url)).timeout(timeout).send().await.map_err(|e| connect_error(&ep.label, e))?;
     let status = resp.status().as_u16();
-    let text = resp.text().await.map_err(|e| connect_error(&ep.label, &e))?;
+    let text = resp.text().await.map_err(|e| connect_error(&ep.label, e))?;
     if !(200..300).contains(&status) {
         return Err(http_error(&ep.label, status, &text));
     }

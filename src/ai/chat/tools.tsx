@@ -1,5 +1,7 @@
 import { Icon, type IconName } from "../../ui/Icon";
+import { useStore } from "../../state/store";
 import { StaySignedIn } from "../StaySignedIn";
+import { plainError, useT } from "../providers";
 
 // ---------------------------------------------------------------------------
 // Tool labels
@@ -51,7 +53,27 @@ export const TOOL_LABEL: Record<string, [string, IconName]> = {
   chats_read: ["Reading an earlier chat", "assistant"],
 };
 
-export const isAuthError = (t?: string | null) => !!t && /claude_signed_out|failed to authenticate|oauth|not logged in|please run \/login|invalid api key/i.test(t);
+/** A provider other than Claude Code needs a key or a sign-in (checked before isAuthError). */
+export const isProviderAuthError = (t?: string | null) => !!t && /^(provider_auth|codex_signed_out):/.test(t);
+
+export const isAuthError = (t?: string | null) =>
+  !!t && !isProviderAuthError(t) && /claude_signed_out|failed to authenticate|oauth|not logged in|please run \/login|invalid api key/i.test(t);
+
+/** An API key was refused or Codex is signed out: point to Settings, Providers. */
+export function ProviderAuthHelp({ message }: { message: string }) {
+  const t = useT();
+  return (
+    <div className="warn warn-warn ai-auth">
+      <Icon name="lock" size={14} />
+      <div>
+        <div dir="auto">{plainError(message)}</div>
+        <button className="link-btn" onClick={() => useStore.getState().open({ kind: "settings", section: "providers" }, "tab")}>
+          {t("Open Settings, Providers", "افتح الإعدادات، المزوّدون")}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 /** Claude Code is signed out: offer to stay signed in for good (a long-lived token). */
 export function AuthHelp() {

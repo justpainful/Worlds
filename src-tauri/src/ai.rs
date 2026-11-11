@@ -58,6 +58,11 @@ fn set_saved_token(v: Option<&str>) -> Result<()> {
     Ok(())
 }
 
+/// Whether a long-lived Claude Code token is saved (never the token itself).
+pub fn has_saved_token() -> bool {
+    saved_token().is_some()
+}
+
 /// Messages Claude Code prints when its login is gone or expired.
 fn is_signed_out(text: &str) -> bool {
     let t = text.to_lowercase();
@@ -131,6 +136,11 @@ fn prepare_claude(cmd: &mut tokio::process::Command) {
     cmd.creation_flags(0x0800_0000);
 }
 
+/// `prepare_claude` for other modules (sign-in status checks).
+pub fn prepare_claude_cmd(cmd: &mut tokio::process::Command) {
+    prepare_claude(cmd);
+}
+
 const DIALECT: &str = "Block content uses Worlds Markdown: `# `/`## `/`### ` headings, `- ` bullets, `1. ` numbered, \
 `- [ ] `/`- [x] ` checklist, `> ` quote, `> [!note] text` callout (tones: note, highlight, warning, success), \
 `> [!prompt] text` prompt, ``` fenced code, `---` divider, pipe tables, inline **bold** *italic* ~~strike~~ ==highlight== `code` \
@@ -184,6 +194,8 @@ pub struct AiRequest {
     pub block_ids: Option<Vec<String>>,
     pub model: Option<String>,
     pub effort: Option<String>,
+    /// Provider id from providers.json; None uses the saved choice.
+    pub provider: Option<String>,
     /// Continue this conversation; None starts a new one.
     pub chat_id: Option<String>,
     /// Worlds attachment ids to show Claude with this message.
@@ -275,7 +287,7 @@ fn build_content(text: &str, atts: &[store::Attachment]) -> Value {
     Value::Array(blocks)
 }
 
-fn emit(app: &tauri::AppHandle, run_id: &str, kind: &str, data: Value) {
+pub fn emit(app: &tauri::AppHandle, run_id: &str, kind: &str, data: Value) {
     let mut v = json!({ "runId": run_id, "kind": kind, "at": now() });
     if let (Some(o), Some(d)) = (v.as_object_mut(), data.as_object()) {
         for (k, val) in d {
@@ -395,17 +407,46 @@ fn add_message(
     Ok(())
 }
 
+/// How one request runs.
+enum Runner {
+    Claude { exe: PathBuf, model: String, effort: String, session: String, resume: bool },
+    Codex { model: String, thread: Option<String> },
+    Api { provider: String, model: String, history: Vec<crate::providers::wire::Msg> },
+}
+
 #[tauri::command]
 pub async fn ai_run(app: tauri::AppHandle, state: State<'_, AppState>, request: AiRequest) -> CmdResult<Value> {
     let run_id = db::new_id();
-    let (claude, system, model, effort, chat_id, session, resume, refs, atts) = {
+    let (runner, system, chat_id, refs, atts) = {
         let c = state.conn();
-        let claude = claude_path(&c).ok_or("Claude Code is not installed or not on PATH.")?;
+        let provider = selected_provider(&c, request.provider.as_deref());
         let system = system_prompt(&c, request.page_id.as_deref()).map_err(|e| e.to_string())?;
-        let model = request.model.clone().unwrap_or_else(|| setting_str(&c, "ai.model", "haiku"));
-        let effort = request.effort.clone().unwrap_or_else(|| setting_str(&c, "ai.effort", "low"));
+        // Earlier turns, read before this message is added (API providers resend them).
+        let earlier = request.chat_id.as_deref().map(|id| chat_rows(&c, id)).unwrap_or_default();
         let (chat_id, session, resume) =
             open_chat(&c, request.chat_id.as_deref(), request.page_id.as_deref(), &request.prompt).map_err(|e| e.to_string())?;
+        let runner = match provider.as_str() {
+            crate::providers::CLAUDE_CODE => Runner::Claude {
+                exe: claude_path(&c).ok_or("Claude Code is not installed or not on PATH.")?,
+                model: request.model.clone().unwrap_or_else(|| setting_str(&c, "ai.model", "haiku")),
+                effort: request.effort.clone().unwrap_or_else(|| setting_str(&c, "ai.effort", "low")),
+                session,
+                resume,
+            },
+            crate::providers::CODEX => Runner::Codex {
+                model: request.model.clone().unwrap_or_else(|| provider_model(&c, &provider)),
+                thread: request.chat_id.as_deref().and_then(|id| codex_thread(&c, id)),
+            },
+            _ => Runner::Api {
+                model: request.model.clone().unwrap_or_else(|| provider_model(&c, &provider)),
+                history: if request.chat_id.as_deref() == Some(chat_id.as_str()) {
+                    crate::providers::agent::history_from_rows(&earlier, 40, 60_000)
+                } else {
+                    vec![]
+                },
+                provider,
+            },
+        };
         let atts: Vec<store::Attachment> = request
             .attachments
             .clone()
@@ -427,17 +468,12 @@ pub async fn ai_run(app: tauri::AppHandle, state: State<'_, AppState>, request: 
         )
         .map_err(|e| e.to_string())?;
         let refs = referenced_chats(&c, &request.prompt, &chat_id);
-        (claude, system, model, effort, chat_id, session, resume, refs, atts)
+        (runner, system, chat_id, refs, atts)
     };
     // "@[Pages](tool:pages_create,...)" shows as a short chip to the user; Claude gets the tool names.
     let (mut prompt, tools) = expand_tool_tokens(&request.prompt);
     if !tools.is_empty() {
-        prompt.push_str(&format!(
-            "
-
-(The user picked these Worlds tools for this request; prefer them: {}.)",
-            tools.join(", ")
-        ));
+        prompt.push_str(&format!("\n\n(The user picked these Worlds tools for this request; prefer them: {}.)", tools.join(", ")));
     }
     prompt.push_str(&refs);
     if let Some(ids) = &request.block_ids {
@@ -449,24 +485,58 @@ pub async fn ai_run(app: tauri::AppHandle, state: State<'_, AppState>, request: 
         // The page in view can change between messages of one chat.
         prompt.push_str(&format!("\n\n(Current page id: {pid})"));
     }
+    if matches!(runner, Runner::Api { .. }) {
+        // Registered before the run starts so Stop works from the first moment.
+        crate::providers::register_run(&run_id);
+    }
     let app2 = app.clone();
     let rid = run_id.clone();
     let cid = chat_id.clone();
     tauri::async_runtime::spawn(async move {
-        emit(&app2, &rid, "start", json!({ "model": model, "pageId": request.page_id, "chatId": cid }));
+        let (provider, shown_model) = match &runner {
+            Runner::Claude { model, .. } => (crate::providers::CLAUDE_CODE.to_string(), model.clone()),
+            Runner::Codex { model, .. } => (crate::providers::CODEX.to_string(), model.clone()),
+            Runner::Api { provider, model, .. } => (provider.clone(), model.clone()),
+        };
+        emit(&app2, &rid, "start", json!({ "model": shown_model, "provider": provider, "pageId": request.page_id, "chatId": cid }));
         let content = build_content(&prompt, &atts);
-        let outcome = run_claude(&app2, &rid, &claude, &system, &content, &model, &effort, &session, resume).await;
+        let outcome = match runner {
+            Runner::Claude { exe, model, effort, session, resume } => {
+                run_claude(&app2, &rid, &exe, &system, &content, &model, &effort, &session, resume).await
+            }
+            Runner::Codex { model, thread } => run_codex(&app2, &rid, &system, &prompt, &atts, &model, thread.as_deref()).await,
+            Runner::Api { provider, model, mut history } => {
+                history.push(crate::providers::wire::Msg {
+                    role: crate::providers::wire::Role::User,
+                    parts: crate::providers::wire::parts_from_content(&content),
+                });
+                let run = crate::providers::ApiRun {
+                    run_id: &rid,
+                    provider: &provider,
+                    model: &model,
+                    system: &system,
+                    messages: history,
+                    picked: &tools,
+                };
+                crate::providers::run_api(&app2, run).await
+            }
+        };
         let state = app2.state::<AppState>();
         match outcome {
             Ok((summary, steps)) => {
                 let text = summary.get("text").and_then(Value::as_str).unwrap_or("").to_string();
                 let is_error = summary.get("isError").and_then(Value::as_bool).unwrap_or(false);
                 let meta = json!({
-                    "sessionOk": !is_error,
+                    // Only a Claude Code run creates the session a follow-up resumes.
+                    "sessionOk": !is_error && provider == crate::providers::CLAUDE_CODE,
                     "isError": is_error,
                     "changeCount": summary.get("changeCount"),
                     "pages": summary.get("pages"),
                     "durationMs": summary.get("durationMs"),
+                    "provider": provider,
+                    "model": shown_model,
+                    "codexThread": summary.get("codexThread"),
+                    "chatOnly": summary.get("chatOnly"),
                 });
                 let _ = add_message(&state.conn(), &cid, "assistant", &text, &steps, Some(&rid), &meta);
                 let mut done = summary;
@@ -475,11 +545,12 @@ pub async fn ai_run(app: tauri::AppHandle, state: State<'_, AppState>, request: 
             }
             Err(e) => {
                 let msg = format!("{e:#}");
-                let _ = add_message(&state.conn(), &cid, "assistant", &msg, &json!([]), Some(&rid), &json!({ "isError": true }));
+                let meta = json!({ "isError": true, "provider": provider });
+                let _ = add_message(&state.conn(), &cid, "assistant", &msg, &json!([]), Some(&rid), &meta);
                 emit(&app2, &rid, "error", json!({ "message": msg, "chatId": cid }));
             }
         }
-        RUNNING.lock().unwrap().get_or_insert_with(HashMap::new).remove(&rid);
+        RUNNING.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(HashMap::new).remove(&rid);
     });
     Ok(json!({ "runId": run_id, "chatId": chat_id }))
 }
@@ -617,7 +688,12 @@ async fn run_claude(
         }
         result = json!({ "text": final_text });
     }
-    // What did this run change?
+    attach_changes(app, run_id, &mut result);
+    Ok((result, Value::Array(steps)))
+}
+
+/// Adds what a run changed (op id, change count, touched pages) to its summary.
+pub fn attach_changes(app: &tauri::AppHandle, run_id: &str, result: &mut Value) {
     let state = app.state::<AppState>();
     let changes = store::list_history(&state.conn(), None, Some(run_id), 500).unwrap_or_default();
     let mut pages: Vec<Value> = Vec::new();
@@ -631,7 +707,133 @@ async fn run_claude(
     result["opId"] = json!(run_id);
     result["changeCount"] = json!(changes.len());
     result["pages"] = json!(pages);
-    Ok((result, Value::Array(steps)))
+}
+
+/// Earlier messages of a chat as (role, text, failed), oldest first, for API providers.
+fn chat_rows(conn: &rusqlite::Connection, chat_id: &str) -> Vec<(String, String, bool)> {
+    let Ok(mut stmt) = conn.prepare("SELECT role, content, meta FROM ai_messages WHERE chat_id = ?1 ORDER BY created_at, rowid") else {
+        return vec![];
+    };
+    stmt.query_map([chat_id], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, String>(2)?)))
+        .map(|rows| {
+            rows.filter_map(Result::ok)
+                .map(|(role, content, meta)| {
+                    let failed = serde_json::from_str::<Value>(&meta).ok().and_then(|m| m["isError"].as_bool()).unwrap_or(false);
+                    let text = if role == "user" { expand_tool_tokens(&content).0 } else { content };
+                    (role, text, failed)
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// The Codex thread of a chat's latest Codex answer, to continue it.
+fn codex_thread(conn: &rusqlite::Connection, chat_id: &str) -> Option<String> {
+    use rusqlite::OptionalExtension;
+    conn.query_row(
+        "SELECT json_extract(meta, '$.codexThread') FROM ai_messages WHERE chat_id = ?1 AND role = 'assistant' ORDER BY created_at DESC, rowid DESC LIMIT 1",
+        [chat_id],
+        |r| r.get::<_, Option<String>>(0),
+    )
+    .optional()
+    .ok()
+    .flatten()
+    .flatten()
+}
+
+/// The selected provider: the request's, else the saved one, else Claude Code.
+fn selected_provider(conn: &rusqlite::Connection, requested: Option<&str>) -> String {
+    let id = requested
+        .map(str::to_string)
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| setting_str(conn, "ai.provider", crate::providers::CLAUDE_CODE));
+    if crate::providers::preset(&id).is_ok() {
+        id
+    } else {
+        crate::providers::CLAUDE_CODE.to_string()
+    }
+}
+
+/// The saved model for a provider other than Claude Code (empty when none).
+fn provider_model(conn: &rusqlite::Connection, provider: &str) -> String {
+    db::get_setting(conn, "ai.models").ok().flatten().and_then(|v| v[provider].as_str().map(str::to_string)).unwrap_or_default()
+}
+
+/// Codex: the prompt as text plus image files (it reads images, not PDFs).
+fn codex_input(prompt: &str, atts: &[store::Attachment]) -> (String, Vec<PathBuf>) {
+    let mut images = Vec::new();
+    let mut text = String::new();
+    for p in crate::providers::wire::parts_from_content(&build_content(prompt, atts)) {
+        if let crate::providers::wire::Part::Text(t) = p {
+            if !text.is_empty() {
+                text.push_str("\n\n");
+            }
+            text.push_str(&t);
+        }
+    }
+    for a in atts {
+        let image = matches!(a.mime.as_str(), "image/png" | "image/jpeg" | "image/gif" | "image/webp");
+        if image && a.size <= MAX_IMAGE_BYTES {
+            images.push(store::attachment_abs_path(a));
+        } else if a.mime == "application/pdf" {
+            text.push_str(&format!("\n\n[{} is a PDF; Codex cannot read PDFs here, so ask the user to paste the text]", a.file_name));
+        }
+    }
+    (text, images)
+}
+
+async fn run_codex(
+    app: &tauri::AppHandle,
+    run_id: &str,
+    system: &str,
+    prompt: &str,
+    atts: &[store::Attachment],
+    model: &str,
+    thread: Option<&str>,
+) -> Result<(Value, Value)> {
+    let started = std::time::Instant::now();
+    let exe = crate::providers::codex::codex_path()
+        .ok_or_else(|| anyhow!("Codex is not installed. Install it, then sign in from Settings, Providers."))?;
+    let worlds_exe = std::env::current_exe()?;
+    let dir = db::data_dir().join("ai").join("codex");
+    let (text, images) = codex_input(prompt, atts);
+    // Codex has no system prompt flag; a new thread starts with Worlds' rules.
+    let input = if thread.is_some() { text } else { format!("{system}\n\n---\n\n{text}") };
+    let run = crate::providers::codex::CodexRun {
+        exe: &exe,
+        worlds_exe: &worlds_exe,
+        run_id,
+        dir: &dir,
+        model: Some(model).filter(|m| !m.is_empty()),
+        thread,
+        images: &images,
+    };
+    let rid = run_id.to_string();
+    let app2 = app.clone();
+    let mut on = move |e: &crate::providers::codex::CodexEvent| {
+        use crate::providers::codex::CodexEvent;
+        match e {
+            CodexEvent::Text(t) => emit(&app2, &rid, "text", json!({ "text": t })),
+            CodexEvent::Tool { name, input } => emit(&app2, &rid, "tool", json!({ "tool": name, "input": input })),
+            CodexEvent::ToolResult { error } => emit(&app2, &rid, "tool_result", json!({ "error": error })),
+            CodexEvent::Thread(_) | CodexEvent::Failed(_) => {}
+        }
+    };
+    let rid = run_id.to_string();
+    let mut on_pid = move |pid: u32| {
+        RUNNING.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(HashMap::new).insert(rid.clone(), pid);
+    };
+    let out = crate::providers::codex::run(&run, &input, &mut on, &mut on_pid).await?;
+    let mut result = json!({
+        "text": out.text,
+        "isError": false,
+        "durationMs": started.elapsed().as_millis() as u64,
+        "provider": crate::providers::CODEX,
+        "model": model,
+        "codexThread": out.thread,
+    });
+    attach_changes(app, run_id, &mut result);
+    Ok((result, Value::Array(out.steps)))
 }
 
 #[tauri::command]
@@ -701,7 +903,9 @@ pub async fn ai_chat_rename(state: State<'_, AppState>, id: String, title: Strin
 
 #[tauri::command]
 pub async fn ai_cancel(run_id: String) -> CmdResult<()> {
-    let pid = RUNNING.lock().unwrap().get_or_insert_with(HashMap::new).remove(&run_id);
+    // API runs stop through their signal; Claude Code and Codex runs are processes.
+    crate::providers::cancel(&run_id);
+    let pid = RUNNING.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(HashMap::new).remove(&run_id);
     if let Some(pid) = pid {
         let mut k = std::process::Command::new("taskkill");
         k.args(["/PID", &pid.to_string(), "/T", "/F"]);
@@ -828,7 +1032,49 @@ pub async fn ai_register_mcp(state: State<'_, AppState>) -> CmdResult<String> {
 }
 
 /// Automation transform: rewrite a page snapshot as Markdown. No tools.
+fn transform_system(global: &[String]) -> String {
+    format!(
+        "You transform a snapshot of a page from Worlds before it is delivered. Output ONLY the resulting page, with no commentary, \
+no code fences around it. Preserve the language(s) and structure unless told otherwise. Today is {}.\n\n{DIALECT}\n{}",
+        chrono::Local::now().format("%A %Y-%m-%d"),
+        if global.is_empty() { String::new() } else { format!("Global instructions:\n- {}", global.join("\n- ")) }
+    )
+}
+
+/// The transformed page without stray code fences; empty is an error.
+fn clean_transform(text: &str) -> Result<String> {
+    let text = text.trim().trim_start_matches("```markdown").trim_start_matches("```").trim_end_matches("```").trim().to_string();
+    if text.is_empty() {
+        bail!("The model returned nothing");
+    }
+    Ok(text)
+}
+
+/// The API provider and model an automation transform uses, when one is selected.
+fn transform_provider(app: &tauri::AppHandle) -> Option<(String, String, String)> {
+    let state = app.state::<AppState>();
+    let c = state.conn();
+    let provider = selected_provider(&c, None);
+    let model = provider_model(&c, &provider);
+    let p = crate::providers::preset(&provider).ok()?;
+    if p.is_runner() || model.is_empty() {
+        return None;
+    }
+    Some((provider, model, crate::providers::base_url(&c, p)))
+}
+
 pub async fn transform_markdown(app: &tauri::AppHandle, page_md: &str, instructions: &str, model: Option<String>) -> Result<String> {
+    let prompt = format!("Instructions:\n{instructions}\n\n---- PAGE SNAPSHOT ----\n{page_md}");
+    // An API provider picked in the model menu does the transform itself.
+    if let Some((provider, api_model, base)) = transform_provider(app) {
+        let system = {
+            let state = app.state::<AppState>();
+            let c = state.conn();
+            transform_system(&global_instructions(&c))
+        };
+        let text = crate::providers::complete_text(&provider, &api_model, &base, &system, &prompt).await?;
+        return clean_transform(&text);
+    }
     let (claude, model, effort, global) = {
         let state = app.state::<AppState>();
         let c = state.conn();
@@ -840,13 +1086,7 @@ pub async fn transform_markdown(app: &tauri::AppHandle, page_md: &str, instructi
             global_instructions(&c),
         )
     };
-    let system = format!(
-        "You transform a snapshot of a page from Worlds before it is delivered. Output ONLY the resulting page, with no commentary, \
-no code fences around it. Preserve the language(s) and structure unless told otherwise. Today is {}.\n\n{DIALECT}\n{}",
-        chrono::Local::now().format("%A %Y-%m-%d"),
-        if global.is_empty() { String::new() } else { format!("Global instructions:\n- {}", global.join("\n- ")) }
-    );
-    let prompt = format!("Instructions:\n{instructions}\n\n---- PAGE SNAPSHOT ----\n{page_md}");
+    let system = transform_system(&global);
     let empty_mcp = db::data_dir().join("ai").join("mcp-none.json");
     std::fs::create_dir_all(empty_mcp.parent().unwrap())?;
     std::fs::write(&empty_mcp, r#"{"mcpServers":{}}"#)?;
@@ -884,10 +1124,5 @@ no code fences around it. Preserve the language(s) and structure unless told oth
     if v.get("is_error").and_then(Value::as_bool).unwrap_or(false) {
         bail!("{}", v.get("result").and_then(Value::as_str).unwrap_or("Claude returned an error"));
     }
-    let text = v.get("result").and_then(Value::as_str).unwrap_or("").trim().to_string();
-    let text = text.trim_start_matches("```markdown").trim_start_matches("```").trim_end_matches("```").trim().to_string();
-    if text.is_empty() {
-        bail!("Claude returned nothing");
-    }
-    Ok(text)
+    clean_transform(v.get("result").and_then(Value::as_str).unwrap_or(""))
 }

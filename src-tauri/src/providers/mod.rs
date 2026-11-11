@@ -262,17 +262,20 @@ pub async fn ai_local_detect(state: State<'_, AppState>) -> CmdResult<Vec<Value>
 // Running a request through an API provider
 // ---------------------------------------------------------------------------
 
+/// One tool call for the tools thread: name, input, and where the (output, failed) answer goes.
+type ToolJob = (String, Value, tokio::sync::oneshot::Sender<(String, bool)>);
+
 /// Runs Worlds tools on a thread of its own with its own database
 /// connection, exactly like the MCP server process does (copy checks, one
 /// transaction per call, the signed-in user's rights, history under the
 /// run's op id so the run can be undone in one step).
 pub struct WorldsTools {
-    tx: std::sync::mpsc::Sender<(String, Value, tokio::sync::oneshot::Sender<(String, bool)>)>,
+    tx: std::sync::mpsc::Sender<ToolJob>,
 }
 
 impl WorldsTools {
     pub fn spawn(run_id: &str) -> Self {
-        let (tx, rx) = std::sync::mpsc::channel::<(String, Value, tokio::sync::oneshot::Sender<(String, bool)>)>();
+        let (tx, rx) = std::sync::mpsc::channel::<ToolJob>();
         let ctx = crate::store::Ctx { actor: "ai".into(), op_id: Some(run_id.to_string()), origin: "mcp".into() };
         std::thread::spawn(move || {
             let conn = db::open(&db::db_path());
@@ -310,14 +313,29 @@ fn stops() -> &'static Mutex<HashMap<String, Arc<tokio::sync::Notify>>> {
     M.get_or_init(Default::default)
 }
 
-/// Stops an API run; false when no such run is going.
+/// Makes an API run stoppable before it starts (Stop may come first).
+pub fn register_run(run_id: &str) -> Arc<tokio::sync::Notify> {
+    stops().lock().unwrap_or_else(|e| e.into_inner()).entry(run_id.to_string()).or_default().clone()
+}
+
+/// Stops an API run; false when no such run is going. The signal is kept
+/// until the run ends, so a run that has not reached its loop yet still stops.
 pub fn cancel(run_id: &str) -> bool {
-    match stops().lock().unwrap_or_else(|e| e.into_inner()).remove(run_id) {
+    match stops().lock().unwrap_or_else(|e| e.into_inner()).get(run_id) {
         Some(n) => {
             n.notify_one();
             true
         }
         None => false,
+    }
+}
+
+/// Forgets a run's stop signal when the run ends, however it ends.
+struct StopGuard(String);
+
+impl Drop for StopGuard {
+    fn drop(&mut self) {
+        stops().lock().unwrap_or_else(|e| e.into_inner()).remove(&self.0);
     }
 }
 
@@ -334,6 +352,15 @@ pub struct ApiRun<'a> {
 /// Runs one request through an API provider; returns (summary, steps) like
 /// the Claude Code runner does.
 pub async fn run_api(app: &tauri::AppHandle, r: ApiRun<'_>) -> Result<(Value, Value)> {
+    let stop = register_run(r.run_id);
+    let _guard = StopGuard(r.run_id.to_string());
+    tokio::select! {
+        out = run_api_inner(app, r) => out,
+        _ = stop.notified() => Err(anyhow!("Stopped.")),
+    }
+}
+
+async fn run_api_inner(app: &tauri::AppHandle, r: ApiRun<'_>) -> Result<(Value, Value)> {
     let started = std::time::Instant::now();
     let p = preset(r.provider)?;
     if p.is_runner() {
@@ -365,8 +392,6 @@ pub async fn run_api(app: &tauri::AppHandle, r: ApiRun<'_>) -> Result<(Value, Va
     let tools = agent::select_tools(&all, r.picked, p.max_tools.unwrap_or(usize::MAX));
     let system = r.system.replace("mcp__worlds tools", "Worlds tools");
     let mut host = WorldsTools::spawn(r.run_id);
-    let stop = Arc::new(tokio::sync::Notify::new());
-    stops().lock().unwrap_or_else(|e| e.into_inner()).insert(r.run_id.to_string(), stop.clone());
     let run_id = r.run_id.to_string();
     let app2 = app.clone();
     let mut sink = move |e: LoopEvent| match e {
@@ -376,12 +401,7 @@ pub async fn run_api(app: &tauri::AppHandle, r: ApiRun<'_>) -> Result<(Value, Va
         LoopEvent::Note(t) => crate::ai::emit(&app2, &run_id, "note", json!({ "text": t })),
     };
     let job = agent::Job { system: &system, messages: r.messages, tools: &tools, tools_supported: supported };
-    let result = tokio::select! {
-        r = agent::run(&http, &ep, job, &mut host, &mut sink) => r,
-        _ = stop.notified() => Err(anyhow!("Stopped.")),
-    };
-    stops().lock().unwrap_or_else(|e| e.into_inner()).remove(r.run_id);
-    let outcome = result?;
+    let outcome = agent::run(&http, &ep, job, &mut host, &mut sink).await?;
     if outcome.chat_only {
         tool_support().lock().unwrap_or_else(|e| e.into_inner()).insert(cache_key, Some(false));
     }

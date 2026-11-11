@@ -5,11 +5,11 @@ import { useStore, pageTitle } from "../../state/store";
 import { Icon, type IconName } from "../../ui/Icon";
 import { menuAt, Popover } from "../../ui/Menu";
 import { PageIcon, Spinner, formatBytes } from "../../ui/misc";
-import { IntelligenceControls, useModelSetting } from "../models";
+import { ProviderModelPicker, useModelLabel, useT } from "../providers";
 import { MENTION_TOOLS } from "../mentions";
 import { ProductIcon } from "../../ui/ProductIcon";
 import { Markdown } from "../markdown";
-import { TOOL_LABEL, isAuthError, AuthHelp } from "./tools";
+import { TOOL_LABEL, isAuthError, AuthHelp, isProviderAuthError, ProviderAuthHelp } from "./tools";
 import { type Live } from "./useChat";
 import { isResource } from "../../resources/kinds";
 
@@ -66,6 +66,7 @@ export function MessageList({
   contextPageId: string | null;
   empty: React.ReactNode;
 }) {
+  const t = useT();
   if (loading && messages.length === 0) return <Spinner />;
   if (messages.length === 0 && !live) return <>{empty}</>;
   const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant")?.id;
@@ -90,6 +91,16 @@ export function MessageList({
               {s.ok === null ? <Spinner size={12} /> : s.ok ? <Icon name="check" size={12} /> : <Icon name="error" size={12} />}
             </div>
           ))}
+          {live.note && (
+            <div className="warn warn-info">
+              <Icon name="info" size={14} />
+              <span dir="auto">
+                {live.note.startsWith("This model cannot use Worlds tools")
+                  ? t(live.note, "هذا النموذج لا يستطيع استخدام أدوات Worlds، لذلك يمكنه المحادثة لكنه لا يقرأ صفحاتك ولا يعدّلها.")
+                  : live.note}
+              </span>
+            </div>
+          )}
           {live.status === "running" ? (
             live.text ? (
               <div className="ai-answer is-streaming">
@@ -100,6 +111,8 @@ export function MessageList({
                 <span className="shimmer">{live.steps.length ? "Working" : "Thinking"}</span>
               </div>
             )
+          ) : isProviderAuthError(live.error) ? (
+            <ProviderAuthHelp message={live.error ?? ""} />
           ) : isAuthError(live.error) ? (
             <AuthHelp />
           ) : (
@@ -178,6 +191,7 @@ export function MessageView({
       </div>
     );
   }
+  if (isProviderAuthError(m.content)) return <ProviderAuthHelp message={m.content} />;
   if (isAuthError(m.content)) return <AuthHelp />;
   if (m.meta.isError) {
     return (
@@ -348,18 +362,23 @@ export function ChatEmpty({ hasPage, onPick }: { hasPage: boolean; onPick: (text
 
 /** Quick model switch (applies to the next messages). */
 export function ModelButton() {
-  const m = useModelSetting();
+  const m = useModelLabel();
+  const t = useT();
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
+  const openSettings = () => {
+    setAnchor(null);
+    useStore.getState().open({ kind: "settings", section: "providers" }, "tab");
+  };
   return (
     <>
-      <button className="ai-model-btn" onClick={(e) => setAnchor(e.currentTarget.getBoundingClientRect())} aria-label="Model and effort">
-        <span className="ai-model-dot" style={{ ["--lvl" as string]: m.modelIndex }} />
-        {m.model.name} · {m.effort.name}
+      <button className="ai-model-btn" onClick={(e) => setAnchor(e.currentTarget.getBoundingClientRect())} aria-label={t("Provider and model", "المزوّد والنموذج")}>
+        <span className="ai-model-dot" style={{ ["--lvl" as string]: m.level }} />
+        <span className="ai-model-label isolate">{m.label}</span>
         <Icon name="chevronDown" size={11} />
       </button>
       {anchor && (
         <Popover anchor={anchor} onClose={() => setAnchor(null)} width={320} className="intel-pop">
-          <IntelligenceControls />
+          <ProviderModelPicker onOpenSettings={openSettings} />
         </Popover>
       )}
     </>

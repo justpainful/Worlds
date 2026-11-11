@@ -14,6 +14,7 @@ import { newSlide, slideToBlock } from "../resources/deck/model";
 import type { DrawingDocument } from "../drawing/model";
 import type { LibraryPublication } from "../drawing/library";
 import { DEFAULT_EXPORT_RULES, canDrawingExport, type DrawingExportPolicy } from "../drawing/exportPolicy";
+import providersJson from "../ai/providers.json";
 const exportPolicies:Record<string,DrawingExportPolicy>={};
 const drawings: Record<string, DrawingDocument> = {};
 const drawingLibrary: Record<string, LibraryPublication[]> = {};
@@ -34,6 +35,12 @@ function md(markdownLines: string[]) {
     return { type: "paragraph", attrs: { bid }, content: l ? [{ type: "text", text: l }] : undefined };
   });
 }
+
+/** Provider presets for the browser preview; `secret` stands in for the credential store and never leaves this file. */
+const mockProviders: { id: string; name: string; api: string; kind: "runner" | "cloud" | "local"; baseUrl: string; defaultBaseUrl: string; editableBaseUrl: boolean; key: "none" | "required" | "optional"; note?: string; secret?: string }[] =
+  ((providersJson as { providers: { id: string; name: string; api: string; kind: "runner" | "cloud" | "local"; baseUrl?: string; editableBaseUrl?: boolean; key: "none" | "required" | "optional"; note?: string }[] }).providers).map((p) => ({
+    id: p.id, name: p.name, api: p.api, kind: p.kind, baseUrl: p.baseUrl ?? "", defaultBaseUrl: p.baseUrl ?? "", editableBaseUrl: !!p.editableBaseUrl, key: p.key, note: p.note,
+  }));
 
 const profile: any = {
   id: "me",
@@ -373,6 +380,23 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
     case "ai_token_open_setup": return null;
     case "ai_token_save": if (!String(a?.token ?? "").startsWith("sk-ant-")) throw "That does not look like a Claude token. Copy the whole line that starts with sk-ant-."; return null;
     case "ai_token_clear": return null;
+    case "ai_providers": return mockProviders.map(({ secret, ...p }) => ({ ...p, hasKey: !!secret }));
+    case "ai_provider_save": {
+      const p = mockProviders.find((x) => x.id === a.id);
+      if (!p) throw `Unknown provider ${a.id}`;
+      if (typeof a.apiKey === "string") {
+        if (a.apiKey.trim().startsWith("sk-ant-oat")) throw "That is a Claude subscription sign-in token. Worlds cannot use those; create an API key in the Claude Console, or use Claude Code.";
+        p.secret = a.apiKey.trim();
+      }
+      if (typeof a.baseUrl === "string") p.baseUrl = a.baseUrl.trim() || p.defaultBaseUrl;
+      const { secret, ...rest } = p;
+      return { ...rest, hasKey: !!secret };
+    }
+    case "ai_provider_models": return a.id === "ollama" ? [{ id: "llama3.2:3b", name: "llama3.2:3b", tools: true }, { id: "gemma:2b", name: "gemma:2b", tools: false }] : [{ id: "gpt-5", name: "gpt-5", tools: null }];
+    case "ai_local_detect": return mockProviders.filter((p) => p.kind === "local").map((p) => ({ id: p.id, name: p.name, baseUrl: p.baseUrl, running: p.id === "ollama", models: p.id === "ollama" ? [{ id: "llama3.2:3b", name: "llama3.2:3b", tools: true }] : [] }));
+    case "ai_codex_status": return { installed: true, signedIn: false, version: "codex-cli 0.144.5", method: "" };
+    case "ai_claude_auth_status": return { installed: true, signedIn: true, method: "claude.ai" };
+    case "ai_codex_login": case "ai_claude_login": return null;
     case "ai_chats": return [...chats].sort((x, y) => y.updatedAt - x.updatedAt);
     case "ai_chat": return { id: a.id, messages: chatMessages[a.id] ?? [] };
     case "ai_chat_delete": return null;

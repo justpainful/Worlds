@@ -3,6 +3,7 @@ import { StaySignedIn } from "../ai/StaySignedIn";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { enable as enableAutostart, disable as disableAutostart, isEnabled as autostartEnabled } from "@tauri-apps/plugin-autostart";
 import { IntelligenceControls } from "../ai/models";
+import { ProviderSettings, useArabic, useT } from "../ai/providers";
 import { api, errorMessage, type BackupInfo, type BackupState } from "../lib/api";
 import { useStore } from "../state/store";
 import { Segmented } from "../ui/Segmented";
@@ -18,12 +19,20 @@ import { Select, DIRECTION_OPTIONS, LANGUAGE_OPTIONS } from "../ui/Select";
 import { AccountSettings } from "../account/AccountSettings";
 import { PACKS, setPackEnabled, usePack } from "../packs/packs";
 
-const SECTIONS: { id: string; label: string; tile: string; group: number; keywords: string }[] = [
+const SECTIONS: { id: string; label: string; ar?: string; tile: string; group: number; keywords: string }[] = [
   { id: "account", label: "Account", tile: "team", group: 0, keywords: "sign in passkey email devices workspaces team members sign out server" },
   { id: "appearance", label: "Appearance", tile: "design", group: 0, keywords: "theme accent language glass transparency window motion density background liquid" },
   { id: "editor", label: "Editor", tile: "writing", group: 0, keywords: "direction rtl arabic spell check paragraph" },
   { id: "packs", label: "Packs", tile: "graduation", group: 0, keywords: "study school university subjects timetable assignments exams" },
   { id: "ai", label: "Claude", tile: "claude", group: 1, keywords: "ai model effort spark orbit nova instructions mcp" },
+  {
+    id: "providers",
+    label: "Providers",
+    ar: "المزوّدون",
+    tile: "ai-brain",
+    group: 1,
+    keywords: "ai provider api key openai chatgpt codex anthropic gemini groq deepseek mistral xai openrouter litellm ollama lm studio llama local models مزود مفتاح نماذج محلي",
+  },
   { id: "automations", label: "Automations", tile: "automations", group: 1, keywords: "background tray startup windows schedule" },
   { id: "integrations", label: "Integrations", tile: "integrations", group: 2, keywords: "connect" },
   { id: "discord", label: "Discord", tile: "discord", group: 2, keywords: "bot bridge host tunnel" },
@@ -36,9 +45,11 @@ export function SettingsView({ section = "appearance" }: { section?: string }) {
   const [query, setQuery] = useState("");
   const open = useStore((s) => s.open);
   const profile = useStore((s) => s.profile);
+  const arabic = useArabic();
+  const label = (s: (typeof SECTIONS)[number]) => (arabic && s.ar ? s.ar : s.label);
   useEffect(() => setActive(section), [section]);
   const q = query.trim().toLowerCase();
-  const visible = q ? SECTIONS.filter((s) => `${s.label} ${s.keywords}`.toLowerCase().includes(q)) : SECTIONS;
+  const visible = q ? SECTIONS.filter((s) => `${s.label} ${s.ar ?? ""} ${s.keywords}`.toLowerCase().includes(q)) : SECTIONS;
   const current = SECTIONS.find((s) => s.id === active) ?? SECTIONS[0];
   const pick = (id: string) => (id === "integrations" ? open({ kind: "integrations" }) : setActive(id));
   return (
@@ -59,7 +70,7 @@ export function SettingsView({ section = "appearance" }: { section?: string }) {
           <div key={s.id} className={i > 0 && visible[i - 1].group !== s.group && !q ? "settings-nav-gap" : undefined}>
             <button className={`settings-nav-item ${active === s.id ? "is-active" : ""}`} onClick={() => pick(s.id)}>
               <ProductIcon name={s.tile} size={22} />
-              <span>{s.label}</span>
+              <span>{label(s)}</span>
             </button>
           </div>
         ))}
@@ -68,13 +79,14 @@ export function SettingsView({ section = "appearance" }: { section?: string }) {
       <div className="settings-body">
         <header className="settings-head">
           <ProductIcon name={current.tile} size={34} />
-          <h1>{current.label}</h1>
+          <h1>{label(current)}</h1>
         </header>
         {active === "account" && <AccountSettings />}
         {active === "appearance" && <Appearance />}
         {active === "editor" && <EditorSettings />}
         {active === "packs" && <PackSettings />}
         {active === "ai" && <AiSettings />}
+        {active === "providers" && <ProviderSettings Group={Group} Row={Row} />}
         {active === "automations" && <AutomationSettings />}
         {active === "discord" && <BridgeCard detailed />}
         {active === "storage" && <StorageSettings />}
@@ -300,12 +312,19 @@ function AiSettings() {
   const [registering, setRegistering] = useState(false);
   const instructions = (settings["ai.instructions"] as string[]) ?? [];
   const [draft, setDraft] = useState("");
+  const t = useT();
   useEffect(() => {
     api.aiStatus().then(setStatus).catch(() => setStatus({ available: false }));
   }, []);
   return (
     <>
-      <Group title="Claude Code" note="Worlds does not call a model provider itself. It runs your local Claude Code with every built-in tool disabled and only the Worlds tools enabled.">
+      <Group
+        title="Claude Code"
+        note={t(
+          "Worlds runs your local Claude Code with every built-in tool disabled and only the Worlds tools enabled. Other model providers are in Settings, Providers.",
+          "يشغّل Worlds تطبيق Claude Code المثبّت لديك مع تعطيل كل أدواته المدمجة وتفعيل أدوات Worlds فقط. مزوّدو النماذج الآخرون في الإعدادات، المزوّدون.",
+        )}
+      >
         <Row label="Status" hint={status?.path}>
           {!status ? <Spinner /> : status.available ? <span className="ok-text"><Icon name="success" size={14} /> {status.version}</span> : <span className="bad-text">Not found on this PC</span>}
         </Row>

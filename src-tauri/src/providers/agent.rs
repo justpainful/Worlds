@@ -131,7 +131,7 @@ pub fn http_error(provider: &str, status: u16, body: &str) -> anyhow::Error {
     }
 }
 
-pub fn connect_error(provider: &str, e: &reqwest::Error) -> anyhow::Error {
+pub fn connect_error(provider: &str, e: reqwest::Error) -> anyhow::Error {
     if e.is_connect() {
         anyhow!("Could not reach {provider}. Check that it is running and the address in Settings, Providers is right.")
     } else if e.is_timeout() {
@@ -152,7 +152,7 @@ async fn one_turn(
     sink: &mut (dyn FnMut(LoopEvent) + Send),
 ) -> Result<Option<Turn>> {
     let req = ep.authorize(client.post(ep.chat_url()).json(body));
-    let mut resp = req.send().await.map_err(|e| connect_error(&ep.label, &e))?;
+    let mut resp = req.send().await.map_err(|e| connect_error(&ep.label, e))?;
     let status = resp.status().as_u16();
     if !(200..300).contains(&status) {
         let text = resp.text().await.unwrap_or_default();
@@ -176,7 +176,7 @@ async fn one_turn(
         return Ok(Some(stream.finish()));
     }
     let mut sse = SseParser::default();
-    while let Some(chunk) = resp.chunk().await.map_err(|e| connect_error(&ep.label, &e))? {
+    while let Some(chunk) = resp.chunk().await.map_err(|e| connect_error(&ep.label, e))? {
         for ev in sse.push(&chunk) {
             if let Some(t) = stream.feed(&ev)? {
                 sink(LoopEvent::Delta(t));
@@ -308,7 +308,7 @@ pub fn select_tools(all: &[ToolDef], picked: &[String], limit: usize) -> Vec<Too
         return all.to_vec();
     }
     let mut out: Vec<ToolDef> = Vec::new();
-    let mut add = |t: &ToolDef, out: &mut Vec<ToolDef>| {
+    let add = |t: &ToolDef, out: &mut Vec<ToolDef>| {
         if out.len() < limit && !out.iter().any(|o| o.name == t.name) {
             out.push(t.clone());
         }

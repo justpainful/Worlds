@@ -17,6 +17,7 @@ pub mod jobs;
 pub mod mcp;
 pub mod preview;
 pub mod protocol;
+pub mod providers;
 mod screen_drawing;
 pub mod store;
 #[cfg(test)]
@@ -235,6 +236,14 @@ pub fn run() {
             ai::ai_chat,
             ai::ai_chat_delete,
             ai::ai_chat_rename,
+            providers::ai_providers,
+            providers::ai_provider_save,
+            providers::ai_provider_models,
+            providers::ai_local_detect,
+            providers::ai_codex_status,
+            providers::ai_codex_login,
+            providers::ai_claude_login,
+            providers::ai_claude_auth_status,
             automations::automations_list,
             automations::automation_get,
             automations::automation_save,

@@ -50,7 +50,8 @@ pub fn args(r: &CodexRun<'_>) -> Vec<String> {
     // runs set the sandbox through config and the folder as the process cwd.
     a.extend(["--json".into(), "--skip-git-repo-check".into(), "--ignore-user-config".into()]);
     a.extend(["-c".into(), "sandbox_mode=\"read-only\"".into()]);
-    for f in ["shell_tool", "browser_use", "computer_use", "in_app_browser", "image_generation", "apps"] {
+    // Only the Worlds tools: no shell, browser, apps, plugins, hooks, sub-agents or memories.
+    for f in ["shell_tool", "browser_use", "computer_use", "in_app_browser", "image_generation", "apps", "plugins", "hooks", "multi_agent", "memories"] {
         a.extend(["--disable".into(), f.into()]);
     }
     let worlds_args = json!(["--mcp", "--actor", "ai", "--op", r.run_id]).to_string();

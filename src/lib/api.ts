@@ -3,6 +3,7 @@ import { mockFileUrl as mockAsset } from "../dev/mockTauri";
 import type {
   Attachment, Automation, AutomationSpec, Destination, HistoryEntry, Page, PageMeta, PendingAction, Profile,
   Rendered, RenderOptions, Run, SearchHit, Version, DiscordInventory, BridgeState, AiChat, AiMessage, ResourceKind,
+  AiProvider, AiModelInfo, AiLocalServer, AiRunnerStatus,
 } from "./types";
 import type { JSONContent } from "@tiptap/core";
 import { drawingExportEnvelope, drawingExportBlobEnvelope, type DrawingExportContext, type DrawingExportPolicyInfo, type DrawingExportPolicyUpdate } from "../drawing/exportPolicy";
@@ -154,7 +155,7 @@ export const api = {
   setTransparency: (level: "off" | "mica" | "acrylic") => invoke<void>("window_set_transparency", { level }),
 
   // AI
-  aiRun: (request: { prompt: string; pageId?: string | null; chatId?: string | null; attachments?: string[]; blockIds?: string[]; model?: string; effort?: string }) =>
+  aiRun: (request: { prompt: string; pageId?: string | null; chatId?: string | null; attachments?: string[]; blockIds?: string[]; model?: string; effort?: string; provider?: string }) =>
     invoke<{ runId: string; chatId: string }>("ai_run", { request }),
   aiChats: (limit = 100) => invoke<AiChat[]>("ai_chats", { limit }),
   aiChat: (id: string) => invoke<{ id: string; messages: AiMessage[] }>("ai_chat", { id }),
@@ -169,6 +170,16 @@ export const api = {
   aiTokenOpenSetup: () => invoke<void>("ai_token_open_setup"),
   aiTokenSave: (token: string) => invoke<void>("ai_token_save", { token }),
   aiTokenClear: () => invoke<void>("ai_token_clear"),
+  /** Model providers. Keys go in and are never sent back; `hasKey` only says one is saved. */
+  aiProviders: () => invoke<AiProvider[]>("ai_providers"),
+  aiProviderSave: (id: string, change: { baseUrl?: string; apiKey?: string }) =>
+    invoke<AiProvider>("ai_provider_save", { id, baseUrl: change.baseUrl ?? null, apiKey: change.apiKey ?? null }),
+  aiProviderModels: (id: string) => invoke<AiModelInfo[]>("ai_provider_models", { id }),
+  aiLocalDetect: () => invoke<AiLocalServer[]>("ai_local_detect"),
+  aiCodexStatus: () => invoke<AiRunnerStatus>("ai_codex_status"),
+  aiCodexLogin: () => invoke<void>("ai_codex_login"),
+  aiClaudeLogin: () => invoke<void>("ai_claude_login"),
+  aiClaudeAuthStatus: () => invoke<AiRunnerStatus>("ai_claude_auth_status"),
 
   // Automations
   automations: () => invoke<Automation[]>("automations_list"),
