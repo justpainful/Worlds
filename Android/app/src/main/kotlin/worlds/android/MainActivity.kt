@@ -1581,7 +1581,7 @@ private data class PendingTableDelete(val revision: Long, val action: String, va
                                 Text(stringResource(R.string.page_empty), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 16.dp))
                             }
                             blocksOnPage.forEach { block ->
-                                RenderSingleBlock(block, document, editable, busy, databaseName, typography, revealedMatch, onEdit, onEditTable, onResizeTable, onTableAction, onEditContainer, onAppendContainer, onEditItem, onToggleItem, onAppendItem, onItemAction, onAdd, onAddCode, onAddMath, onAddMermaid, onAddImage, onMove, onDuplicate, { pendingRemoval = it }, { imageSettings = it })
+                                RenderSingleBlock(block, document, editable, busy, databaseName, typography, revealedMatch, onEdit, onEditTable, onResizeTable, onTableAction, onEditContainer, onAppendContainer, onEditItem, onToggleItem, onAppendItem, onItemAction, onAdd, onAddCode, onAddMath, onAddMermaid, onAddImage, onMove, onDuplicate, { pendingRemoval = it }, { imageSettings = it }, onExportImage)
                                 Spacer(Modifier.height(8.dp))
                             }
                             Spacer(Modifier.height(20.dp))
@@ -1618,7 +1618,7 @@ private data class PendingTableDelete(val revision: Long, val action: String, va
                 }
                 if (document.blocks.isEmpty()) item { Text(stringResource(R.string.page_empty), color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 26.sp) }
                 items(document.blocks, key = { "block-${it.id}" }) { block ->
-                    RenderSingleBlock(block, document, editable, busy, databaseName, typography, revealedMatch, onEdit, onEditTable, onResizeTable, onTableAction, onEditContainer, onAppendContainer, onEditItem, onToggleItem, onAppendItem, onItemAction, onAdd, onAddCode, onAddMath, onAddMermaid, onAddImage, onMove, onDuplicate, { pendingRemoval = it }, { imageSettings = it })
+                    RenderSingleBlock(block, document, editable, busy, databaseName, typography, revealedMatch, onEdit, onEditTable, onResizeTable, onTableAction, onEditContainer, onAppendContainer, onEditItem, onToggleItem, onAppendItem, onItemAction, onAdd, onAddCode, onAddMath, onAddMermaid, onAddImage, onMove, onDuplicate, { pendingRemoval = it }, { imageSettings = it }, onExportImage)
                 }
                 if (document.resource.kind == "document" && footer.isNotBlank()) item(key = "document-footer") {
                     Spacer(Modifier.height(16.dp)); HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -1672,7 +1672,8 @@ private fun RenderSingleBlock(
     onMove: (String, Int) -> Unit,
     onDuplicate: (String, String, Long) -> Unit,
     onPendingRemoval: (Pair<String, Long>) -> Unit,
-    onImageSettings: (ImageSettingsTarget) -> Unit
+    onImageSettings: (ImageSettingsTarget) -> Unit,
+    onExportImage: (String) -> Unit
 ) {
     val blockMatch = revealedMatch?.takeIf { it.blockId == block.id }
     val isRevealed = blockMatch != null
@@ -1725,6 +1726,7 @@ private fun RenderSingleBlock(
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     if (image)
                         DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_sliders_horizontal) }, text = { Text(stringResource(R.string.image_settings)) }, onClick = { menu = false; onImageSettings(ImageSettingsTarget(document.resource.id, block.id, document.resource.revision, block.content)) })
+                    if (image) DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_download) }, text = { Text(stringResource(R.string.image_export)) }, onClick = { menu = false; onExportImage(block.id) })
                     DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_type) }, text = { Text(stringResource(R.string.insert_paragraph_after)) }, onClick = { menu = false; onAdd(false, block.id) })
                     DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_heading_1) }, text = { Text(stringResource(R.string.insert_heading_after)) }, onClick = { menu = false; onAdd(true, block.id) })
                     DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_square_code) }, text = { Text(stringResource(R.string.insert_code_after)) }, onClick = { menu = false; onAddCode(block.id) })
