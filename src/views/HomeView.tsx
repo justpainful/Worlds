@@ -34,7 +34,13 @@ export function HomeView() {
   const study = usePack("study");
   const now = today();
   const dueTasks = useMemo(() => tasksFor(pages, "today", now).slice(0, 6), [pages, now]);
-  const todayEvents = useMemo(() => occurrences(pages, now, now).filter((o) => o.kind === "event").slice(0, 4), [pages, now]);
+  const todayEvents = useMemo(
+    () =>
+      occurrences(pages, now, now)
+        .filter((o) => o.kind === "event")
+        .slice(0, 4),
+    [pages, now],
+  );
   const [autos, setAutos] = useState<Automation[]>([]);
   const [loadingSample, setLoadingSample] = useState(false);
   const sample = () => {
@@ -43,7 +49,11 @@ export function HomeView() {
   };
 
   useEffect(() => {
-    const load = () => api.automations().then(setAutos).catch(() => {});
+    const load = () =>
+      api
+        .automations()
+        .then(setAutos)
+        .catch(() => {});
     load();
     window.addEventListener("worlds:changed", load);
     return () => window.removeEventListener("worlds:changed", load);
@@ -51,14 +61,14 @@ export function HomeView() {
 
   const all = useMemo(() => Object.values(pages).filter((p) => isResource(p) && !p.deletedAt && !p.archived), [pages]);
   const templates = useMemo(
-    () => Object.values(pages).filter((p) => p.kind === "template" && !p.deletedAt).sort((a, b) => a.sortKey - b.sortKey),
+    () =>
+      Object.values(pages)
+        .filter((p) => p.kind === "template" && !p.deletedAt)
+        .sort((a, b) => a.sortKey - b.sortKey),
     [pages],
   );
   const pinned = useMemo(() => all.filter((p) => p.pinned).sort((a, b) => (a.pinOrder ?? 0) - (b.pinOrder ?? 0)), [all]);
-  const recent = useMemo(
-    () => [...all].sort((a, b) => (b.openedAt ?? b.updatedAt) - (a.openedAt ?? a.updatedAt)).slice(0, 12),
-    [all],
-  );
+  const recent = useMemo(() => [...all].sort((a, b) => (b.openedAt ?? b.updatedAt) - (a.openedAt ?? a.updatedAt)).slice(0, 12), [all]);
   // Suggested: favourites and recently edited pages you have not opened lately.
   const suggested = useMemo(() => {
     const recentIds = new Set(recent.slice(0, 4).map((p) => p.id));
@@ -96,7 +106,10 @@ export function HomeView() {
               Load sample workspace
             </GlassButton>
           </div>
-          <p className="home-sample-note">A student's week in Arabic and English: pages, a document, a spreadsheet, a drawing, slides, subjects and tasks. It stays on this device, and you can remove it anytime in Settings.</p>
+          <p className="home-sample-note">
+            A student's week in Arabic and English: pages, a document, a spreadsheet, a drawing, slides, subjects and tasks. It stays on
+            this device, and you can remove it anytime in Settings.
+          </p>
         </div>
         <TemplateRow templates={templates} />
       </div>
@@ -133,17 +146,59 @@ export function HomeView() {
               { value: "list", icon: "listView" },
             ]}
           />
-          <GlassButton icon="add" prominent onClick={(e) => newResourceMenu(e.currentTarget, { align: "end" })}>New</GlassButton>
+          <GlassButton icon="add" prominent onClick={(e) => newResourceMenu(e.currentTarget, { align: "end" })}>
+            New
+          </GlassButton>
         </div>
       </div>
 
       {!settings[PACKS_ASKED_KEY] && <PackPrompt />}
-      <HomeSection title="Today" action={<button className="link-btn" onClick={() => open({ kind: "tasks" })}>All tasks</button>}>
-        <QuickAdd placeholder="Add a task for today" onAdd={(p) => createItem("task", { title: p.title, data: { due: p.due ?? now, time: p.time, priority: p.priority } })} />
-        {todayEvents.length > 0 && <div className="home-events">{todayEvents.map((o) => <button key={o.key} className="soon-row" onClick={() => open({ kind: "page", pageId: o.page.id })}><span className="soon-time"><span className="soon-hour">{o.start ? formatTime(o.start) : "All day"}</span></span><span className="soon-main"><span className="bidi">{pageTitle(o.page)}</span></span></button>)}</div>}
-        {dueTasks.length > 0 && <div className="pl-list">{dueTasks.map((p) => <ItemRow key={p.id} p={p} />)}</div>}
+      <HomeSection
+        title="Today"
+        action={
+          <button className="link-btn" onClick={() => open({ kind: "tasks" })}>
+            All tasks
+          </button>
+        }
+      >
+        <QuickAdd
+          placeholder="Add a task for today"
+          onAdd={(p) => createItem("task", { title: p.title, data: { due: p.due ?? now, time: p.time, priority: p.priority } })}
+        />
+        {todayEvents.length > 0 && (
+          <div className="home-events">
+            {todayEvents.map((o) => (
+              <button key={o.key} className="soon-row" onClick={() => open({ kind: "page", pageId: o.page.id })}>
+                <span className="soon-time">
+                  <span className="soon-hour">{o.start ? formatTime(o.start) : "All day"}</span>
+                </span>
+                <span className="soon-main">
+                  <span className="bidi">{pageTitle(o.page)}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+        {dueTasks.length > 0 && (
+          <div className="pl-list">
+            {dueTasks.map((p) => (
+              <ItemRow key={p.id} p={p} />
+            ))}
+          </div>
+        )}
       </HomeSection>
-      {study && <HomeSection title="Study" action={<button className="link-btn" onClick={() => open({ kind: "study" })}>All subjects</button>}><StudyHomeSection /></HomeSection>}
+      {study && (
+        <HomeSection
+          title="Study"
+          action={
+            <button className="link-btn" onClick={() => open({ kind: "study" })}>
+              All subjects
+            </button>
+          }
+        >
+          <StudyHomeSection />
+        </HomeSection>
+      )}
       {suggested.length > 0 && (
         <HomeSection title="Suggested">
           <PageCollection pages={suggested} view={view} />
@@ -154,7 +209,12 @@ export function HomeView() {
         {pinned.length ? (
           <PageCollection pages={pinned} view={view} />
         ) : (
-          <EmptyState compact icon="pin" title="No pinned pages" text="Pin pages you return to often. They stay at the top of the sidebar too." />
+          <EmptyState
+            compact
+            icon="pin"
+            title="No pinned pages"
+            text="Pin pages you return to often. They stay at the top of the sidebar too."
+          />
         )}
       </HomeSection>
 
@@ -162,20 +222,41 @@ export function HomeView() {
         {recent.length ? <PageCollection pages={recent} view={view} /> : <EmptyState compact icon="clock" title="No recent pages" />}
       </HomeSection>
 
-      <HomeSection title="Scheduled soon" action={<button className="link-btn" onClick={() => open({ kind: "automations" })}>All automations</button>}>
+      <HomeSection
+        title="Scheduled soon"
+        action={
+          <button className="link-btn" onClick={() => open({ kind: "automations" })}>
+            All automations
+          </button>
+        }
+      >
         {soon.length === 0 ? (
-          <EmptyState compact icon="schedule" title="No scheduled runs" text="Nothing is due this week." action={<button className="chip-btn" onClick={() => emit("automation:new", { pageId: null })}>Create automation</button>} />
+          <EmptyState
+            compact
+            icon="schedule"
+            title="No scheduled runs"
+            text="Nothing is due this week."
+            action={
+              <button className="chip-btn" onClick={() => emit("automation:new", { pageId: null })}>
+                Create automation
+              </button>
+            }
+          />
         ) : (
           <div className="soon-list">
             {soon.map((a) => (
               <button key={a.id} className="soon-row" onClick={() => open({ kind: "automations", automationId: a.id })}>
                 <span className="soon-time">
                   <span className="soon-day">{new Date(a.nextRunAt!).toLocaleDateString(undefined, { weekday: "short" })}</span>
-                  <span className="soon-hour">{new Date(a.nextRunAt!).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span>
+                  <span className="soon-hour">
+                    {new Date(a.nextRunAt!).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+                  </span>
                 </span>
                 <span className="soon-main">
                   <span className="bidi">{a.name}</span>
-                  <span className="soon-sub">{describeTrigger(a.spec.trigger)} · <bdi>{describeDestination(a.spec.destination)}</bdi></span>
+                  <span className="soon-sub">
+                    {describeTrigger(a.spec.trigger)} · <bdi>{describeDestination(a.spec.destination)}</bdi>
+                  </span>
                 </span>
                 <span className="soon-rel">{relTime(a.nextRunAt)}</span>
               </button>
@@ -192,11 +273,30 @@ export function HomeView() {
 function PackPrompt() {
   const setSetting = useStore((s) => s.setSetting);
   const open = useStore((s) => s.open);
-  const done = (study: boolean) => { setSetting(PACKS_ASKED_KEY, true); if (study) { setPackEnabled("study", true); open({ kind: "study" }); } };
+  const done = (study: boolean) => {
+    setSetting(PACKS_ASKED_KEY, true);
+    if (study) {
+      setPackEnabled("study", true);
+      open({ kind: "study" });
+    }
+  };
   return (
     <div className="res-card pack-prompt">
-      <div className="pack-prompt-text"><strong>Do you use Worlds for school or university?</strong><span>Turn on the Study pack for subjects, a class timetable, assignments and exams. Otherwise it stays out of the way. You can change this anytime in Settings → Packs.</span></div>
-      <div className="pack-prompt-actions"><button className="btn btn-quiet btn-compact" onClick={() => done(false)}>No, keep it simple</button><button className="btn btn-tinted btn-compact" onClick={() => done(true)}>Turn on Study</button></div>
+      <div className="pack-prompt-text">
+        <strong>Do you use Worlds for school or university?</strong>
+        <span>
+          Turn on the Study pack for subjects, a class timetable, assignments and exams. Otherwise it stays out of the way. You can change
+          this anytime in Settings → Packs.
+        </span>
+      </div>
+      <div className="pack-prompt-actions">
+        <button className="btn btn-quiet btn-compact" onClick={() => done(false)}>
+          No, keep it simple
+        </button>
+        <button className="btn btn-tinted btn-compact" onClick={() => done(true)}>
+          Turn on Study
+        </button>
+      </div>
     </div>
   );
 }
@@ -224,7 +324,14 @@ function TemplateRow({ templates }: { templates: PageMeta[] }) {
     );
   }
   return (
-    <HomeSection title="Templates" action={<button className="link-btn" onClick={() => open({ kind: "templates" })}>All templates</button>}>
+    <HomeSection
+      title="Templates"
+      action={
+        <button className="link-btn" onClick={() => open({ kind: "templates" })}>
+          All templates
+        </button>
+      }
+    >
       <div className="tpl-strip">
         {templates.slice(0, 6).map((t) => (
           <button

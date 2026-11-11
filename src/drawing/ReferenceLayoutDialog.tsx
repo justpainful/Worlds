@@ -1,18 +1,220 @@
-import {useEffect,useMemo,useRef,useState} from 'react';
-import {Modal} from '../ui/Modal';import {Button} from '../ui/Button';import {errorMessage} from '../lib/api';
-import {DrawingScenePreview} from './ScenePreview';import type {DrawingNode,DrawingScene,Change} from './model';import type {DrawingSession} from './session';
-import {beginDrawingGesture} from './syncManager';import type {DrawingGestureLease} from './gestureLeases';
-import {readDrawingReference} from './references';import type {ReferencePreview} from './referenceTypes';
-import {referenceNodeKey,referenceSourceKey,referenceLayoutChanges,referencePreviewCamera,referencePreviewScene,suggestedReferenceSize} from './referenceLayout';
-interface Props{session:DrawingSession;scene:DrawingScene;node:DrawingNode;data:ReferencePreview;canEdit:boolean;arabic:boolean;commit:(label:string,changes:Change[],guard?:undefined,strictBase?:boolean)=>string|null|void;onClose:()=>void}
-export function ReferenceLayoutDialog(p:Props){const t=(en:string,ar:string)=>p.arabic?ar:en,before=useRef(referenceNodeKey(p.scene,p.node.id)).current,sourceKey=useRef(referenceSourceKey(p.data)).current;
- const[size,setSize]=useState(()=>suggestedReferenceSize(p.data)),[current,setCurrent]=useState<ReferencePreview|null>(p.data),[error,setError]=useState(''),[busy,setBusy]=useState(false),[leaseState,setLeaseState]=useState('');const active=useRef(true),lease=useRef<DrawingGestureLease|null>(null);
- useEffect(()=>{active.current=true;let checking=false,generation=0;const refresh=async(force=false)=>{if(checking&&!force)return;checking=true;const request=++generation;setCurrent(null);try{const data=await readDrawingReference(p.node.sourceId!);if(active.current&&request===generation)setCurrent(data);}finally{if(request===generation)checking=false;}};void refresh();const timer=setInterval(()=>void refresh(),5000),invalidate=()=>{setCurrent(null);void refresh(true);};window.addEventListener('offline',invalidate);window.addEventListener('online',invalidate);window.addEventListener('focus',invalidate);return()=>{active.current=false;clearInterval(timer);window.removeEventListener('offline',invalidate);window.removeEventListener('online',invalidate);window.removeEventListener('focus',invalidate);lease.current?.cancel();};},[p.node.sourceId]);
- const valid=current?.state==='ready'&&referenceSourceKey(current)===sourceKey,changed=!!current&&current.state==='ready'&&!valid;
- const previews=useMemo(()=>{if(!valid||!current)return null;try{const a=referencePreviewScene(p.scene,p.node,current),b=referencePreviewScene(p.scene,p.node,current,size);return{a,b,camera:referencePreviewCamera(a.nodes[p.node.id],b.nodes[p.node.id])};}catch{return null;}},[p.scene,p.node,current,size,valid]);
- const submit=async()=>{if(busy||!p.canEdit||!valid)return;setBusy(true);setError('');let unsubscribe=()=>{};try{lease.current=await beginDrawingGesture(p.session.pageId,[p.node.id]);unsubscribe=lease.current?.subscribe(()=>setLeaseState(lease.current?.state()??''))??unsubscribe;setLeaseState(lease.current?.state()??'');if(!active.current||lease.current?.state()==='lost')throw Error(t('The reservation was lost','فُقد حجز العنصر'));const data=await readDrawingReference(p.node.sourceId!);if(data.state!=='ready'||referenceSourceKey(data)!==sourceKey){setCurrent(data);throw Error(t('The source changed or became unavailable. Reopen the preview.','تغيّر المصدر أو أصبح غير متاح. أعد فتح المعاينة.'));}if(!active.current||lease.current?.state()==='lost')throw Error(t('The reservation was lost','فُقد حجز العنصر'));const changes=referenceLayoutChanges(p.session.snapshot().document!.scene,p.node.id,before,data,size),op=p.commit('Update linked card layout',changes,undefined,true);if(!op)throw Error(t('The layout could not be saved','تعذر حفظ التخطيط'));await p.session.flush();if(p.session.snapshot().error)throw Error(p.session.snapshot().error!);lease.current?.finish([op]);lease.current=null;p.onClose();}catch(e){lease.current?.cancel();lease.current=null;if(active.current)setError(errorMessage(e));}finally{unsubscribe();if(active.current)setBusy(false);}};
- return <Modal className={`drawing-reference-layout${p.arabic?" is-arabic":""}`} title={t('Preview linked card layout','معاينة تخطيط البطاقة المرتبطة')} width={800} onClose={()=>{if(!busy)p.onClose();}} footer={<><Button disabled={busy} onClick={p.onClose}>{t('Cancel','إلغاء')}</Button><Button variant="tinted" loading={busy} disabled={!p.canEdit||!valid||!previews||![size.w,size.h].every(v=>Number.isFinite(v)&&v>=80&&v<=4096)} onClick={()=>void submit()}>{t('Apply layout','تطبيق التخطيط')}</Button></>}>
- {previews?<div className="drawing-compare"><div className="drawing-compare-side"><strong>{t('Current dimensions','الأبعاد الحالية')}: {p.node.w} × {p.node.h}</strong><DrawingScenePreview scene={previews.a} camera={previews.camera} label={t('Current linked card layout','التخطيط الحالي للبطاقة')}/></div><div className="drawing-compare-side"><strong>{t('Proposed dimensions','الأبعاد المقترحة')}: {size.w} × {size.h}</strong><DrawingScenePreview scene={previews.b} camera={previews.camera} label={t('Proposed linked card layout','التخطيط المقترح للبطاقة')}/></div></div>:<p role="status">{changed?t('The source changed. Cancel and reopen this preview.','تغيّر المصدر. ألغِ المعاينة ثم افتحها من جديد.'):current?.state==='offline'?t('Offline. Source content is hidden until permissions can be checked.','غير متصل. يختفي محتوى المصدر حتى نتحقق من الصلاحية.'):current?.state==='unavailable'?t('Source unavailable. Relink it to continue.','المصدر غير متاح. غيّر الارتباط للمتابعة.'):t('Checking current source access','جارٍ التحقق من صلاحية المصدر')}</p>}
- <fieldset className="drawing-transform-fields" disabled={busy||!p.canEdit}><label>{t('Width (px)','العرض بالبكسل')}<input type="number" min={80} max={4096} value={Number.isFinite(size.w)?size.w:""} onChange={e=>setSize(v=>({...v,w:e.target.valueAsNumber}))}/></label><label>{t('Height (px)','الارتفاع بالبكسل')}<input type="number" min={80} max={4096} value={Number.isFinite(size.h)?size.h:""} onChange={e=>setSize(v=>({...v,h:e.target.valueAsNumber}))}/></label></fieldset><p>{t('Titles and task counts update inside the existing card. Only Apply changes its dimensions, as one reversible edit. Cancel leaves artwork unchanged.','يتحدث العنوان وعدد المهام داخل البطاقة الحالية. يتغير حجمها عند التطبيق فقط، ويمكن التراجع عنه. الإلغاء يحفظ الرسم كما هو.')}</p>{leaseState==='offline'&&<p role="status">{t('Offline drawing reservation. Source access must still be current.','حجز الرسم محلي دون اتصال. تبقى صلاحية المصدر الحالية مطلوبة.')}</p>}{error&&<p role="alert">{error}</p>}
- </Modal>;
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Modal } from "../ui/Modal";
+import { Button } from "../ui/Button";
+import { errorMessage } from "../lib/api";
+import { DrawingScenePreview } from "./ScenePreview";
+import type { DrawingNode, DrawingScene, Change } from "./model";
+import type { DrawingSession } from "./session";
+import { beginDrawingGesture } from "./syncManager";
+import type { DrawingGestureLease } from "./gestureLeases";
+import { readDrawingReference } from "./references";
+import type { ReferencePreview } from "./referenceTypes";
+import {
+  referenceNodeKey,
+  referenceSourceKey,
+  referenceLayoutChanges,
+  referencePreviewCamera,
+  referencePreviewScene,
+  suggestedReferenceSize,
+} from "./referenceLayout";
+interface Props {
+  session: DrawingSession;
+  scene: DrawingScene;
+  node: DrawingNode;
+  data: ReferencePreview;
+  canEdit: boolean;
+  arabic: boolean;
+  commit: (label: string, changes: Change[], guard?: undefined, strictBase?: boolean) => string | null | void;
+  onClose: () => void;
+}
+export function ReferenceLayoutDialog(p: Props) {
+  const t = (en: string, ar: string) => (p.arabic ? ar : en),
+    before = useRef(referenceNodeKey(p.scene, p.node.id)).current,
+    sourceKey = useRef(referenceSourceKey(p.data)).current;
+  const [size, setSize] = useState(() => suggestedReferenceSize(p.data)),
+    [current, setCurrent] = useState<ReferencePreview | null>(p.data),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false),
+    [leaseState, setLeaseState] = useState("");
+  const active = useRef(true),
+    lease = useRef<DrawingGestureLease | null>(null);
+  useEffect(() => {
+    active.current = true;
+    let checking = false,
+      generation = 0;
+    const refresh = async (force = false) => {
+      if (checking && !force) return;
+      checking = true;
+      const request = ++generation;
+      setCurrent(null);
+      try {
+        const data = await readDrawingReference(p.node.sourceId!);
+        if (active.current && request === generation) setCurrent(data);
+      } finally {
+        if (request === generation) checking = false;
+      }
+    };
+    void refresh();
+    const timer = setInterval(() => void refresh(), 5000),
+      invalidate = () => {
+        setCurrent(null);
+        void refresh(true);
+      };
+    window.addEventListener("offline", invalidate);
+    window.addEventListener("online", invalidate);
+    window.addEventListener("focus", invalidate);
+    return () => {
+      active.current = false;
+      clearInterval(timer);
+      window.removeEventListener("offline", invalidate);
+      window.removeEventListener("online", invalidate);
+      window.removeEventListener("focus", invalidate);
+      lease.current?.cancel();
+    };
+  }, [p.node.sourceId]);
+  const valid = current?.state === "ready" && referenceSourceKey(current) === sourceKey,
+    changed = !!current && current.state === "ready" && !valid;
+  const previews = useMemo(() => {
+    if (!valid || !current) return null;
+    try {
+      const a = referencePreviewScene(p.scene, p.node, current),
+        b = referencePreviewScene(p.scene, p.node, current, size);
+      return { a, b, camera: referencePreviewCamera(a.nodes[p.node.id], b.nodes[p.node.id]) };
+    } catch {
+      return null;
+    }
+  }, [p.scene, p.node, current, size, valid]);
+  const submit = async () => {
+    if (busy || !p.canEdit || !valid) return;
+    setBusy(true);
+    setError("");
+    let unsubscribe = () => {};
+    try {
+      lease.current = await beginDrawingGesture(p.session.pageId, [p.node.id]);
+      unsubscribe = lease.current?.subscribe(() => setLeaseState(lease.current?.state() ?? "")) ?? unsubscribe;
+      setLeaseState(lease.current?.state() ?? "");
+      if (!active.current || lease.current?.state() === "lost") throw Error(t("The reservation was lost", "فُقد حجز العنصر"));
+      const data = await readDrawingReference(p.node.sourceId!);
+      if (data.state !== "ready" || referenceSourceKey(data) !== sourceKey) {
+        setCurrent(data);
+        throw Error(t("The source changed or became unavailable. Reopen the preview.", "تغيّر المصدر أو أصبح غير متاح. أعد فتح المعاينة."));
+      }
+      if (!active.current || lease.current?.state() === "lost") throw Error(t("The reservation was lost", "فُقد حجز العنصر"));
+      const changes = referenceLayoutChanges(p.session.snapshot().document!.scene, p.node.id, before, data, size),
+        op = p.commit("Update linked card layout", changes, undefined, true);
+      if (!op) throw Error(t("The layout could not be saved", "تعذر حفظ التخطيط"));
+      await p.session.flush();
+      if (p.session.snapshot().error) throw Error(p.session.snapshot().error!);
+      lease.current?.finish([op]);
+      lease.current = null;
+      p.onClose();
+    } catch (e) {
+      lease.current?.cancel();
+      lease.current = null;
+      if (active.current) setError(errorMessage(e));
+    } finally {
+      unsubscribe();
+      if (active.current) setBusy(false);
+    }
+  };
+  return (
+    <Modal
+      className={`drawing-reference-layout${p.arabic ? " is-arabic" : ""}`}
+      title={t("Preview linked card layout", "معاينة تخطيط البطاقة المرتبطة")}
+      width={800}
+      onClose={() => {
+        if (!busy) p.onClose();
+      }}
+      footer={
+        <>
+          <Button disabled={busy} onClick={p.onClose}>
+            {t("Cancel", "إلغاء")}
+          </Button>
+          <Button
+            variant="tinted"
+            loading={busy}
+            disabled={!p.canEdit || !valid || !previews || ![size.w, size.h].every((v) => Number.isFinite(v) && v >= 80 && v <= 4096)}
+            onClick={() => void submit()}
+          >
+            {t("Apply layout", "تطبيق التخطيط")}
+          </Button>
+        </>
+      }
+    >
+      {previews ? (
+        <div className="drawing-compare">
+          <div className="drawing-compare-side">
+            <strong>
+              {t("Current dimensions", "الأبعاد الحالية")}: {p.node.w} × {p.node.h}
+            </strong>
+            <DrawingScenePreview
+              scene={previews.a}
+              camera={previews.camera}
+              label={t("Current linked card layout", "التخطيط الحالي للبطاقة")}
+            />
+          </div>
+          <div className="drawing-compare-side">
+            <strong>
+              {t("Proposed dimensions", "الأبعاد المقترحة")}: {size.w} × {size.h}
+            </strong>
+            <DrawingScenePreview
+              scene={previews.b}
+              camera={previews.camera}
+              label={t("Proposed linked card layout", "التخطيط المقترح للبطاقة")}
+            />
+          </div>
+        </div>
+      ) : (
+        <p role="status">
+          {changed
+            ? t("The source changed. Cancel and reopen this preview.", "تغيّر المصدر. ألغِ المعاينة ثم افتحها من جديد.")
+            : current?.state === "offline"
+              ? t(
+                  "Offline. Source content is hidden until permissions can be checked.",
+                  "غير متصل. يختفي محتوى المصدر حتى نتحقق من الصلاحية.",
+                )
+              : current?.state === "unavailable"
+                ? t("Source unavailable. Relink it to continue.", "المصدر غير متاح. غيّر الارتباط للمتابعة.")
+                : t("Checking current source access", "جارٍ التحقق من صلاحية المصدر")}
+        </p>
+      )}
+      <fieldset className="drawing-transform-fields" disabled={busy || !p.canEdit}>
+        <label>
+          {t("Width (px)", "العرض بالبكسل")}
+          <input
+            type="number"
+            min={80}
+            max={4096}
+            value={Number.isFinite(size.w) ? size.w : ""}
+            onChange={(e) => setSize((v) => ({ ...v, w: e.target.valueAsNumber }))}
+          />
+        </label>
+        <label>
+          {t("Height (px)", "الارتفاع بالبكسل")}
+          <input
+            type="number"
+            min={80}
+            max={4096}
+            value={Number.isFinite(size.h) ? size.h : ""}
+            onChange={(e) => setSize((v) => ({ ...v, h: e.target.valueAsNumber }))}
+          />
+        </label>
+      </fieldset>
+      <p>
+        {t(
+          "Titles and task counts update inside the existing card. Only Apply changes its dimensions, as one reversible edit. Cancel leaves artwork unchanged.",
+          "يتحدث العنوان وعدد المهام داخل البطاقة الحالية. يتغير حجمها عند التطبيق فقط، ويمكن التراجع عنه. الإلغاء يحفظ الرسم كما هو.",
+        )}
+      </p>
+      {leaseState === "offline" && (
+        <p role="status">
+          {t(
+            "Offline drawing reservation. Source access must still be current.",
+            "حجز الرسم محلي دون اتصال. تبقى صلاحية المصدر الحالية مطلوبة.",
+          )}
+        </p>
+      )}
+      {error && <p role="alert">{error}</p>}
+    </Modal>
+  );
 }
