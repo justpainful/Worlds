@@ -23,7 +23,7 @@ data class DiscordEmbed(
     val title: String? = null,
     val description: String? = null,
     val url: String? = null,
-    val color: Int = 0xD2A46E, // Default Worlds Gold
+    val color: Int = 0x0A84FF, // Default Worlds Blue
     val fields: List<EmbedField> = emptyList(),
     val footerText: String? = "Worlds Android",
     val timestamp: String? = null
@@ -32,7 +32,7 @@ data class DiscordEmbed(
 data class DiscordOptions(
     val includeTitle: Boolean = true,
     val wrapInEmbed: Boolean = true,
-    val color: Int = 0xD2A46E,
+    val color: Int = 0x0A84FF,
     val footerText: String? = "Shared from Worlds"
 )
 

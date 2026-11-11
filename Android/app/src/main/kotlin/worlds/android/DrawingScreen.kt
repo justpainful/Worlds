@@ -520,13 +520,14 @@ private fun historyAvailable(json: String): Pair<Boolean, Boolean> {
         val current = model.document
         val canvasDescription = stringResource(R.string.drawing_canvas)
         val surround = MaterialTheme.colorScheme.surfaceContainerLow.toArgb()
+        val accentArgb = MaterialTheme.colorScheme.primary.toArgb()
         val chromeEnabled = !model.gesture && !model.busy
         val panelsEnabled = chromeEnabled && model.pending == null
         CompositionLocalProvider(LocalGlassBackdrop provides backdrop) {
             Box(Modifier.fillMaxSize()) {
                 Box(Modifier.fillMaxSize().glassBackdropSource(backdrop).background(MaterialTheme.colorScheme.surfaceContainerLow), contentAlignment = androidx.compose.ui.Alignment.Center) {
                     if (current != null) AndroidView(factory = { context -> InkView(context) },
-                        update = { view -> view.document = current; view.selectionMode = tool == "select"; view.multiSelect = multiSelect; view.selectedGroup = model.selectedStrokes; view.selectionGroupChanged = model::selectStrokes; view.moveStrokes = model::moveStrokes; view.scaleStrokes = model::scaleStrokes; view.rotateStrokes = model::rotateStrokes; view.referenceImages = model.referenceImages; view.annotations = model.annotations; view.commentMode = tool == "comment"; view.onAnnotationClick = { viewingAnnotation = it }; view.onCanvasTappedForAnnotation = { x, y -> activeAnnotationDialog = x to y }; view.erase = erase; view.barrelEraser = barrelEraser; view.highlighter = tool == "highlighter"; view.pencil = tool == "pencil"; view.inkColor = if (tool == "highlighter") highlightColor else inkColor; view.penWidth = penWidth.toDouble(); view.pencilWidth = pencilWidth.toDouble(); view.highlightWidth = highlightWidth.toDouble(); view.eraserWidth = eraserWidth.toDouble(); view.canDraw = !model.busy && model.pending == null; view.pending = model.pending; view.complete = model::commit; view.gestureChanged = model::updateGesture; view.viewport = model.viewport; view.viewportChanged = model::updateViewport; view.surroundColor = surround; view.invalidate() },
+                        update = { view -> view.document = current; view.selectionMode = tool == "select"; view.multiSelect = multiSelect; view.selectedGroup = model.selectedStrokes; view.selectionGroupChanged = model::selectStrokes; view.moveStrokes = model::moveStrokes; view.scaleStrokes = model::scaleStrokes; view.rotateStrokes = model::rotateStrokes; view.referenceImages = model.referenceImages; view.annotations = model.annotations; view.commentMode = tool == "comment"; view.onAnnotationClick = { viewingAnnotation = it }; view.onCanvasTappedForAnnotation = { x, y -> activeAnnotationDialog = x to y }; view.erase = erase; view.barrelEraser = barrelEraser; view.highlighter = tool == "highlighter"; view.pencil = tool == "pencil"; view.inkColor = if (tool == "highlighter") highlightColor else inkColor; view.penWidth = penWidth.toDouble(); view.pencilWidth = pencilWidth.toDouble(); view.highlightWidth = highlightWidth.toDouble(); view.eraserWidth = eraserWidth.toDouble(); view.canDraw = !model.busy && model.pending == null; view.pending = model.pending; view.complete = model::commit; view.gestureChanged = model::updateGesture; view.viewport = model.viewport; view.viewportChanged = model::updateViewport; view.surroundColor = surround; view.accentColor = accentArgb; view.invalidate() },
                         modifier = Modifier.fillMaxSize().semantics { contentDescription = canvasDescription })
                     else if (model.busy) CircularProgressIndicator()
                 }
@@ -650,6 +651,7 @@ internal class InkView(context: Context) : View(context) {
     var highlighter = false
     var pencil = false
     var surroundColor = android.graphics.Color.rgb(224, 224, 224)
+    var accentColor = android.graphics.Color.rgb(10, 132, 255)
     var inkColor = "#202023"
     var penWidth = 8.0
     var pencilWidth = 4.0
@@ -790,12 +792,12 @@ internal class InkView(context: Context) : View(context) {
                 val boxR = (maxX + pad).toFloat(); val boxB = (maxY + pad).toFloat()
                 val cx = (boxL + boxR) / 2f; val cy = (boxT + boxB) / 2f
                 val boxPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                    color = android.graphics.Color.rgb(169, 112, 50); style = android.graphics.Paint.Style.STROKE
+                    color = accentColor; style = android.graphics.Paint.Style.STROKE
                     strokeWidth = (2.0 / scale).toFloat(); pathEffect = android.graphics.DashPathEffect(floatArrayOf((6.0 / scale).toFloat(), (4.0 / scale).toFloat()), 0f)
                 }
                 canvas.drawRect(boxL, boxT, boxR, boxB, boxPaint)
                 val fillP = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.WHITE; style = android.graphics.Paint.Style.FILL }
-                val strokeP = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.rgb(169, 112, 50); style = android.graphics.Paint.Style.STROKE; strokeWidth = (2.0 / scale).toFloat() }
+                val strokeP = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = accentColor; style = android.graphics.Paint.Style.STROKE; strokeWidth = (2.0 / scale).toFloat() }
                 val hs = (6.0 / scale).toFloat()
                 listOf(boxL to boxT, cx to boxT, boxR to boxT, boxR to cy, boxR to boxB, cx to boxB, boxL to boxB, boxL to cy).forEach { (hx, hy) ->
                     canvas.drawRect(hx - hs, hy - hs, hx + hs, hy + hs, fillP)
@@ -807,7 +809,7 @@ internal class InkView(context: Context) : View(context) {
             }
         }
         annotations.forEach { ann ->
-            val pinP = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.rgb(230, 126, 34); style = android.graphics.Paint.Style.FILL }
+            val pinP = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = accentColor; style = android.graphics.Paint.Style.FILL }
             val borderP = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.WHITE; style = android.graphics.Paint.Style.STROKE; strokeWidth = (2.0 / scale).toFloat() }
             val r = (12.0 / scale).toFloat()
             canvas.drawCircle(ann.sceneX.toFloat(), ann.sceneY.toFloat(), r, pinP)

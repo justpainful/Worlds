@@ -6,7 +6,7 @@ Locked before code. Every value below comes from the Windows and Apple apps, so 
 Worlds is a local-first workspace for pages, documents, spreadsheets, drawings and study. On Android it runs on phones, foldables, tablets and Chromebooks, and one person moves between those and the desktop.
 
 ## Vernacular
-What the product already owns: a near-black obsidian canvas, a warm sand accent, the 3D product icon tiles from the desktop sidebar, capsule toolbars, the five destinations Home, Spaces, Library, AI and Search, the focus timer capsule.
+What the product already owns: a near-black obsidian canvas, Apple's system blue as the accent, the 3D product icon tiles from the desktop sidebar, capsule toolbars, the five destinations Home, Spaces, Library, AI and Search, the focus timer capsule.
 
 ## Palette
 | Role | Dark | Light | Source |
@@ -16,7 +16,7 @@ What the product already owns: a near-black obsidian canvas, a warm sand accent,
 | Card | `#18181C` | `#FFFFFF` | Apple `cardBackground` |
 | Raised | `#242428` | `#F5F5F3` | Apple `raisedSurface` |
 | Ink | `#F5F5F7` | `#1C1C1F` | Windows `--text-1` |
-| Accent (sand) | `#D2A46E` | `#8A5820` | Windows `--accent`, Apple `lightAccent` |
+| Accent (blue) | `#2E92FF` | `#0066CC` | Apple system blue, lifted just enough to pass 4.5:1 on selected surfaces; white is the alternative |
 
 Hairlines are white at 8% in dark and black at 7% in light. Dark mode is the default look because the sibling apps are dark first; light is fully supported.
 
@@ -39,3 +39,6 @@ The glass request is the owner's brief and is derived from the product's own mat
 
 ## Motion
 Press 100ms, selection 280ms with a spring, panel 300ms. Reduce motion removes the springs. Glass quality Disabled, and Android below 12, use solid surfaces with the same geometry.
+
+## Apple control rules
+Toggles are round thumb pills, sliders are thin with a white thumb, fields are filled with no outline, list selection is a trailing check, alerts centre the title above split buttons, and press feedback appears on touch down with no spreading ripple.

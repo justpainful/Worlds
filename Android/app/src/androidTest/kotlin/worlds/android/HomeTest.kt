@@ -1,5 +1,6 @@
 package worlds.android
 
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import android.app.Application
 import android.net.Uri
 import androidx.compose.foundation.layout.Box
@@ -57,6 +58,7 @@ class HomeTest {
         model = HomeModel(app, database)
     }
     @After fun cleanup() { model.close(); app.deleteDatabase(database) }
+    private val editableText get() = androidx.compose.ui.test.SemanticsMatcher("can edit text") { it.config.getOrNull(SemanticsActions.OnClick)?.label == app.getString(R.string.edit_text) }
     private fun libraryAction(label: Int) {
         compose.onNodeWithContentDescription(app.getString(R.string.library_more_actions)).performClick()
         compose.onNodeWithText(app.getString(label)).performScrollTo().performClick()
@@ -221,7 +223,7 @@ class HomeTest {
         val created = model.state.value.selected!!
         check(created.resource.kind == "page" && created.blocks.isNotEmpty())
         compose.onNodeWithText("Shipped").assertIsDisplayed()
-        compose.onAllNodesWithText(app.getString(R.string.edit_text))[0].performClick()
+        compose.onAllNodes(editableText)[0].performClick()
         compose.onNodeWithText(app.getString(R.string.text_content)).performTextClearance()
         compose.onNodeWithText(app.getString(R.string.text_content)).performTextInput("Completed")
         compose.onNodeWithText(app.getString(R.string.save)).performClick()
@@ -273,7 +275,7 @@ class HomeTest {
         compose.onNodeWithContentDescription(app.getString(R.string.template_actions, template.title)).performScrollTo().performClick()
         compose.onNodeWithText(app.getString(R.string.template_edit)).performClick()
         compose.waitUntil(20_000) { model.state.value.selected?.resource?.id == template.id }
-        compose.onAllNodesWithText(app.getString(R.string.edit_text))[0].performClick()
+        compose.onAllNodes(editableText)[0].performClick()
         compose.onNodeWithText(app.getString(R.string.text_content)).performTextClearance()
         compose.onNodeWithText(app.getString(R.string.text_content)).performTextInput("Delivered")
         compose.onNodeWithText(app.getString(R.string.save)).performClick()
@@ -366,7 +368,7 @@ class HomeTest {
         model.open(page.id)
         compose.waitUntil(20_000) { model.state.value.selected?.resource?.id == page.id }
         fun selectRemove() {
-            compose.onAllNodesWithText(app.getString(R.string.block_actions))[0].performClick()
+            compose.onAllNodesWithContentDescription(app.getString(R.string.block_actions))[0].performClick()
             if (InstrumentationRegistry.getArguments().getString("captureWorldsUi") == "true") {
                 compose.onNodeWithText(app.getString(R.string.insert_paragraph_after)).assertIsDisplayed()
                 compose.waitForIdle()
@@ -404,13 +406,13 @@ class HomeTest {
         compose.setContent { WorldsTheme { Home(model) } }
         model.open(page.id)
         compose.waitUntil(20_000) { model.state.value.selected?.resource?.id == page.id }
-        compose.onAllNodesWithText(app.getString(R.string.block_actions))[0].performClick()
+        compose.onAllNodesWithContentDescription(app.getString(R.string.block_actions))[0].performClick()
         compose.onNodeWithText(app.getString(R.string.duplicate_block)).performScrollTo().performClick()
         compose.waitUntil(20_000) { !model.state.value.busy && model.state.value.selected?.blocks?.size == 3 }
         val blocks = model.state.value.selected!!.blocks
         check(blocks.first().id == "first" && blocks.last().id == "last" && blocks[1].id != "first")
         check(blocks[1].content.contains("bold"))
-        compose.onAllNodesWithText(app.getString(R.string.edit_text))[1].performScrollTo().performClick()
+        compose.onAllNodes(editableText)[1].performScrollTo().performClick()
         compose.onNodeWithText(app.getString(R.string.text_content)).performTextClearance()
         compose.onNodeWithText(app.getString(R.string.text_content)).performTextInput("Copy changed")
         compose.onNodeWithText(app.getString(R.string.save)).performClick()
@@ -520,7 +522,7 @@ class HomeTest {
         key(android.view.KeyEvent.KEYCODE_H, ctrl)
         compose.waitUntil(20_000) { compose.onAllNodesWithText(app.getString(R.string.find_count, 1, 2)).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText(app.getString(R.string.close)).performClick()
-        compose.onNodeWithText(app.getString(R.string.edit_text)).performClick()
+        compose.onNode(editableText).performClick()
         compose.onNodeWithText(app.getString(R.string.text_content)).assertIsDisplayed()
         key(android.view.KeyEvent.KEYCODE_F, ctrl)
         check(compose.onAllNodesWithText(app.getString(R.string.find_query)).fetchSemanticsNodes().isEmpty())
@@ -839,7 +841,7 @@ class HomeTest {
         check(worlds.content.InlineEditing.hasMark(saved, 0, 5, "bold") && worlds.content.InlineEditing.hasMark(saved, 0, 5, "link"))
         val marks = org.json.JSONObject(saved).getJSONArray("content").getJSONObject(0).getJSONArray("marks")
         check((0 until marks.length()).any { marks.getJSONObject(it).optJSONObject("attrs")?.optString("href") == "https://example.com" })
-        compose.onNodeWithText(app.getString(R.string.edit_text)).performClick()
+        compose.onNode(editableText).performClick()
         compose.onNodeWithText(app.getString(R.string.text_content)).performTextInputSelection(TextRange(0, 5))
         compose.onNodeWithText(app.getString(R.string.inline_link)).performScrollTo().performClick()
         compose.onNodeWithText(app.getString(R.string.save)).performClick()
@@ -891,7 +893,7 @@ class HomeTest {
         val marks = org.json.JSONObject(raw).getJSONArray("content").getJSONObject(0).getJSONArray("marks")
         val style = (0 until marks.length()).map { marks.getJSONObject(it) }.single { it.getString("type") == "textStyle" }.getJSONObject("attrs")
         check(style.getString("color") == "#64a8ff" && style.getString("backgroundColor") == "rgba(255, 111, 111, 0.24)")
-        compose.onNodeWithText(app.getString(R.string.edit_text)).performClick()
+        compose.onNode(editableText).performClick()
         compose.onNodeWithText(app.getString(R.string.text_content)).assertIsDisplayed()
     }
 
@@ -1623,7 +1625,7 @@ class HomeTest {
         try {
             compose.setContent { WorldsTheme { Home(model) } }; model.open(page.id)
             compose.waitUntil(20_000) { model.state.value.selected?.resource?.id == page.id }
-            compose.onNodeWithText(app.getString(R.string.block_actions)).performScrollTo().performClick()
+            compose.onNodeWithContentDescription(app.getString(R.string.block_actions)).performScrollTo().performClick()
             compose.onNodeWithText(app.getString(R.string.image_export)).performClick()
             val deadline = System.currentTimeMillis() + 20_000
             var clicked = false
@@ -1678,7 +1680,7 @@ class HomeTest {
                 check(model.state.value.imageStatus == R.string.image_export_error)
                 compose.runOnIdle { checkNotNull(model.beginImageExport(blockId)); model.finishImageExport(null) }
             } finally { destination.delete() }
-            compose.onNodeWithText(app.getString(R.string.block_actions)).performClick()
+            compose.onNodeWithContentDescription(app.getString(R.string.block_actions)).performClick()
             compose.onNodeWithText(app.getString(R.string.image_export)).assertIsDisplayed()
             if (InstrumentationRegistry.getArguments().getString("captureWorldsUi") == "true") {
                 compose.waitForIdle(); Thread.sleep(500)
@@ -1849,7 +1851,7 @@ class HomeTest {
         compose.onNodeWithText(app.getString(R.string.save)).performClick()
         compose.waitUntil(20_000) { model.state.value.editor == null && model.state.value.selected!!.blocks.isNotEmpty() }
         compose.onNodeWithText("println(42)").assertIsDisplayed()
-        compose.onNodeWithText(app.getString(R.string.edit_text)).performClick()
+        compose.onNode(editableText).performClick()
         compose.onNodeWithText(app.getString(R.string.code_content)).performTextInput("!")
         compose.onNodeWithText(app.getString(R.string.save)).performClick()
         compose.waitUntil(20_000) { model.state.value.editor == null && worlds.content.CodeEditing.read(model.state.value.selected!!.blocks.single().content).text.contains("!") }
@@ -1952,7 +1954,7 @@ class HomeTest {
         compose.setContent { WorldsTheme { Home(model) } }
         model.open(page.id)
         compose.waitUntil(20_000) { model.state.value.selected != null }
-        compose.onAllNodesWithText(app.getString(R.string.block_actions))[0].performClick()
+        compose.onAllNodesWithContentDescription(app.getString(R.string.block_actions))[0].performClick()
         compose.onNodeWithText(app.getString(R.string.insert_heading_after)).performClick()
         compose.onNodeWithText(app.getString(R.string.heading_level, 2)).performClick()
         compose.onNodeWithText(app.getString(R.string.text_content)).performTextInput("Middle")
@@ -1961,7 +1963,7 @@ class HomeTest {
         val inserted = model.state.value.selected!!.blocks
         check(inserted[0].id == "a" && inserted[2].id == "diagram")
         check(org.json.JSONObject(inserted[1].content).getJSONObject("attrs").getInt("level") == 2)
-        compose.onAllNodesWithText(app.getString(R.string.block_actions))[1].performScrollTo().performClick()
+        compose.onAllNodesWithContentDescription(app.getString(R.string.block_actions))[1].performScrollTo().performClick()
         compose.onNodeWithText(app.getString(R.string.move_block_down)).performClick()
         compose.waitUntil(20_000) { model.state.value.selected!!.blocks.last().id == inserted[1].id && !model.state.value.busy }
         check(model.state.value.selected!!.blocks[1].content == diagram)
@@ -1981,7 +1983,7 @@ class HomeTest {
         compose.waitUntil(20_000) { model.state.value.selected?.resource?.revision == 2L && !model.state.value.busy }
         compose.onNodeWithText(app.getString(R.string.add_list_item)).performClick()
         compose.waitUntil(20_000) { model.state.value.selected?.resource?.revision == 3L && !model.state.value.busy }
-        compose.onAllNodesWithText(app.getString(R.string.edit_text))[1].performClick()
+        compose.onAllNodes(editableText)[1].performClick()
         compose.onNodeWithText(app.getString(R.string.text_content)).performTextInput("Second task")
         compose.onNodeWithText(app.getString(R.string.save)).performClick()
         compose.waitUntil(20_000) { model.state.value.editor == null && model.state.value.selected?.resource?.revision == 4L }
@@ -2003,7 +2005,7 @@ class HomeTest {
         compose.onNodeWithContentDescription(app.getString(R.string.list_item_actions, "1")).performClick()
         compose.onNodeWithText(app.getString(R.string.list_add_nested)).performClick()
         compose.waitUntil(20_000) { model.state.value.selected?.resource?.revision == 2L && !model.state.value.busy }
-        compose.onAllNodesWithText(app.getString(R.string.edit_text))[1].performClick()
+        compose.onAllNodes(editableText)[1].performClick()
         compose.onNodeWithText(app.getString(R.string.text_content)).performTextInput("Child")
         compose.onNodeWithText(app.getString(R.string.save)).performClick()
         compose.waitUntil(20_000) { model.state.value.selected?.resource?.revision == 3L && model.state.value.editor == null }

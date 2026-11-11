@@ -441,13 +441,13 @@ private data class SlideDragging(val target: SlideMoveTarget, val handle: String
             if (selected != null) {
                 val handles = slideHandles(selected); val corners = listOf(0, 2, 4, 6, 0)
                 corners.zipWithNext().forEach { (a, b) ->
-                    drawLine(Color(0xffd2a46e), androidx.compose.ui.geometry.Offset((handles[a].x * pixelsPerUnit).toFloat(), (handles[a].y * pixelsPerUnit).toFloat()), androidx.compose.ui.geometry.Offset((handles[b].x * pixelsPerUnit).toFloat(), (handles[b].y * pixelsPerUnit).toFloat()), strokeWidth = 2.dp.toPx())
+                    drawLine(Color(0xff0a84ff), androidx.compose.ui.geometry.Offset((handles[a].x * pixelsPerUnit).toFloat(), (handles[a].y * pixelsPerUnit).toFloat()), androidx.compose.ui.geometry.Offset((handles[b].x * pixelsPerUnit).toFloat(), (handles[b].y * pixelsPerUnit).toFloat()), strokeWidth = 2.dp.toPx())
                 }
                 handles.forEach { handle ->
                     val radius = 5.dp.toPx(); val point = androidx.compose.ui.geometry.Offset((handle.x * pixelsPerUnit).toFloat() - radius, (handle.y * pixelsPerUnit).toFloat() - radius)
                     val handleSize = androidx.compose.ui.geometry.Size(radius * 2, radius * 2)
                     drawRect(Color.White, point, handleSize)
-                    drawRect(Color(0xff765127), point, handleSize, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx()))
+                    drawRect(Color(0xff0a84ff), point, handleSize, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx()))
                 }
             }
         }

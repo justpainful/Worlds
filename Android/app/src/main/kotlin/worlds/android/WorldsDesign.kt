@@ -1,5 +1,42 @@
 package worlds.android
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.foundation.gestures.detectTapGestures
+import kotlinx.coroutines.launch
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.node.invalidateDraw
+import androidx.compose.ui.node.DrawModifierNode
+import androidx.compose.ui.node.DelegatableNode
+import androidx.compose.ui.graphics.drawscope.ContentDrawScope
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.draw.shadow
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TextFieldColors
+import androidx.compose.material3.TextField
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.InteractionSource
+import androidx.compose.foundation.IndicationNodeFactory
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.animateColorAsState
 import android.os.Build
 import android.view.WindowManager
 import androidx.compose.foundation.BorderStroke
@@ -11,8 +48,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -22,6 +57,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
@@ -41,6 +77,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.layout
 import worlds.android.glass.worldsGlass
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -49,6 +86,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -91,7 +129,7 @@ private fun style(size: Float, line: Float, weight: FontWeight) =
 internal val WorldsTypography = Typography(
     displayLarge = style(40f, 48f, FontWeight.SemiBold),
     displayMedium = style(36f, 44f, FontWeight.SemiBold),
-    displaySmall = style(34f, 42f, FontWeight.SemiBold),
+    displaySmall = style(34f, 42f, FontWeight.Bold),
     headlineLarge = style(30f, 38f, FontWeight.SemiBold),
     headlineMedium = style(25f, 33f, FontWeight.SemiBold),
     headlineSmall = style(22f, 30f, FontWeight.SemiBold),
@@ -115,7 +153,8 @@ internal val WorldsShapes = Shapes(
 )
 
 internal fun worldsColorScheme(dark: Boolean, primary: Color): ColorScheme {
-    val on = if (dark) Color(0xFF171719) else Color.White
+    // Text on the accent follows the accent's own brightness, so white and blue both stay readable.
+    val on = if (primary.luminance() > 0.33f) Color(0xFF0C0C0E) else Color.White
     val container = lerp(primary, if (dark) WorldsTokens.cardDark else Color.White, 0.84f)
     return if (dark) darkColorScheme(
         primary = primary, onPrimary = on, primaryContainer = container, onPrimaryContainer = primary,
@@ -179,9 +218,9 @@ internal fun worldsTile(kind: String): Int = when (kind) {
     }
 }
 
-/** Secondary action in a screen's action row: a neutral capsule, so only the primary action carries the accent. */
+/** Secondary action in a screen's action row: a compact neutral capsule, so only the primary action carries the accent. */
 @Composable internal fun WorldsActionButton(onClick: () -> Unit, enabled: Boolean = true, content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit) {
-    androidx.compose.material3.FilledTonalButton(onClick = onClick, enabled = enabled, colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh, contentColor = MaterialTheme.colorScheme.onSurface), content = content)
+    androidx.compose.material3.FilledTonalButton(onClick = onClick, enabled = enabled, modifier = Modifier.heightIn(min = 36.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 13.dp, vertical = 6.dp), colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh, contentColor = MaterialTheme.colorScheme.onSurface), content = content)
 }
 
 /** Back control for screens whose chrome floats on glass. */
@@ -202,7 +241,6 @@ internal fun Modifier.bleedHorizontally(inset: Dp): Modifier = layout { measurab
 }
 
 /** Dialogs everywhere in the app: one raised sheet, blur behind on Android 12 and later. */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable internal fun AlertDialog(
     onDismissRequest: () -> Unit,
     confirmButton: @Composable () -> Unit,
@@ -222,19 +260,26 @@ internal fun Modifier.bleedHorizontally(inset: Dp): Modifier = layout { measurab
             onDispose { }
         }
         val shape = RoundedCornerShape(26.dp)
-        Column(modifier.widthIn(min = 280.dp, max = 460.dp).fillMaxWidth().clip(shape).background(MaterialTheme.colorScheme.surfaceContainerHigh).border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline), shape).padding(22.dp)) {
+        Column(modifier.widthIn(min = 280.dp, max = 460.dp).fillMaxWidth().clip(shape).background(MaterialTheme.colorScheme.surfaceContainerHigh).border(BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline), shape)) {
             CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
-                if (title != null) {
-                    CompositionLocalProvider(LocalTextStyle provides MaterialTheme.typography.titleLarge) { title() }
-                    androidx.compose.foundation.layout.Spacer(Modifier.size(10.dp))
+                Column(Modifier.weight(1f, fill = false).padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 16.dp)) {
+                    if (title != null) {
+                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            CompositionLocalProvider(LocalTextStyle provides MaterialTheme.typography.titleMedium.copy(textAlign = TextAlign.Center)) { title() }
+                        }
+                        androidx.compose.foundation.layout.Spacer(Modifier.size(10.dp))
+                    }
+                    if (text != null) Box(Modifier.weight(1f, fill = false)) {
+                        CompositionLocalProvider(LocalTextStyle provides MaterialTheme.typography.bodyMedium) { text() }
+                    }
                 }
-                if (text != null) Box(Modifier.weight(1f, fill = false)) {
-                    CompositionLocalProvider(LocalTextStyle provides MaterialTheme.typography.bodyMedium) { text() }
-                }
-                androidx.compose.foundation.layout.Spacer(Modifier.size(14.dp))
-                FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End)) {
-                    dismissButton?.invoke()
-                    confirmButton()
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+                Row(Modifier.fillMaxWidth().heightIn(min = 50.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (dismissButton != null) {
+                        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { dismissButton() }
+                        Box(Modifier.size(width = 0.5.dp, height = 50.dp).background(MaterialTheme.colorScheme.outline))
+                    }
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { confirmButton() }
                 }
             }
         }
@@ -248,4 +293,77 @@ internal fun Modifier.bleedHorizontally(inset: Dp): Modifier = layout { measurab
         shape = RoundedCornerShape(20.dp), containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = 0.dp, shadowElevation = 18.dp, border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline), content = content,
     )
+}
+
+/** Apple style toggle: a fixed round thumb that slides on a pill. */
+@Composable internal fun Switch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    val reduce = LocalAppearancePreferences.current.reduceMotion
+    val offset by animateDpAsState(if (checked) 21.dp else 2.dp, if (reduce) snap() else spring(dampingRatio = 1f, stiffness = Spring.StiffnessMediumLow), label = "toggle")
+    val track by animateColorAsState(if (checked) Color(0xFF34C759) else MaterialTheme.colorScheme.surfaceContainerHighest, label = "toggle track")
+    val interactive = if (onCheckedChange != null) Modifier.toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange) else Modifier
+    Box(modifier.then(interactive).size(width = 51.dp, height = 31.dp).clip(CircleShape).background(track.copy(alpha = if (enabled) 1f else 0.4f))) {
+        Box(Modifier.offset(x = offset, y = 2.dp).size(27.dp).shadow(2.dp, CircleShape).background(Color.White, CircleShape))
+    }
+}
+
+/** Apple style slider: a thin track and a round white thumb. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable internal fun Slider(value: Float, onValueChange: (Float) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, valueRange: ClosedFloatingPointRange<Float> = 0f..1f, steps: Int = 0, onValueChangeFinished: (() -> Unit)? = null) {
+    val interaction = remember { MutableInteractionSource() }
+    androidx.compose.material3.Slider(value = value, onValueChange = onValueChange, modifier = modifier, enabled = enabled, valueRange = valueRange, steps = steps, onValueChangeFinished = onValueChangeFinished, interactionSource = interaction,
+        thumb = { Box(Modifier.size(26.dp).shadow(3.dp, CircleShape).background(Color.White, CircleShape)) },
+        track = { state -> SliderDefaults.Track(sliderState = state, modifier = Modifier.height(4.dp), enabled = enabled, drawStopIndicator = null, thumbTrackGapSize = 0.dp, trackInsideCornerSize = 2.dp, colors = SliderDefaults.colors(activeTrackColor = MaterialTheme.colorScheme.primary, inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest, activeTickColor = Color.Transparent, inactiveTickColor = Color.Transparent)) })
+}
+
+@Composable private fun worldsFieldColors(): TextFieldColors = TextFieldDefaults.colors(
+    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest, unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest, disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest, errorContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+    focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent, disabledIndicatorColor = Color.Transparent, errorIndicatorColor = Color.Transparent,
+    focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant, unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+)
+
+/** Text fields everywhere: a filled rounded field with no outline, as on Apple platforms. */
+@Composable internal fun OutlinedTextField(
+    value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, readOnly: Boolean = false, textStyle: TextStyle = LocalTextStyle.current,
+    label: (@Composable () -> Unit)? = null, placeholder: (@Composable () -> Unit)? = null, leadingIcon: (@Composable () -> Unit)? = null, trailingIcon: (@Composable () -> Unit)? = null,
+    prefix: (@Composable () -> Unit)? = null, suffix: (@Composable () -> Unit)? = null, supportingText: (@Composable () -> Unit)? = null, isError: Boolean = false, visualTransformation: VisualTransformation = VisualTransformation.None,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default, keyboardActions: KeyboardActions = KeyboardActions.Default, singleLine: Boolean = false, maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE, minLines: Int = 1,
+    @Suppress("UNUSED_PARAMETER") shape: Shape? = null, @Suppress("UNUSED_PARAMETER") colors: TextFieldColors? = null,
+) = TextField(value = value, onValueChange = onValueChange, modifier = modifier, enabled = enabled, readOnly = readOnly, textStyle = textStyle, label = label, placeholder = placeholder, leadingIcon = leadingIcon, trailingIcon = trailingIcon, prefix = prefix, suffix = suffix, supportingText = supportingText, isError = isError, visualTransformation = visualTransformation, keyboardOptions = keyboardOptions, keyboardActions = keyboardActions, singleLine = singleLine, maxLines = maxLines, minLines = minLines, shape = RoundedCornerShape(14.dp), colors = worldsFieldColors())
+
+@Composable internal fun OutlinedTextField(
+    value: TextFieldValue, onValueChange: (TextFieldValue) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, readOnly: Boolean = false, textStyle: TextStyle = LocalTextStyle.current,
+    label: (@Composable () -> Unit)? = null, placeholder: (@Composable () -> Unit)? = null, leadingIcon: (@Composable () -> Unit)? = null, trailingIcon: (@Composable () -> Unit)? = null,
+    supportingText: (@Composable () -> Unit)? = null, isError: Boolean = false, visualTransformation: VisualTransformation = VisualTransformation.None,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default, keyboardActions: KeyboardActions = KeyboardActions.Default, singleLine: Boolean = false, maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE, minLines: Int = 1,
+    @Suppress("UNUSED_PARAMETER") shape: Shape? = null, @Suppress("UNUSED_PARAMETER") colors: TextFieldColors? = null,
+) = TextField(value = value, onValueChange = onValueChange, modifier = modifier, enabled = enabled, readOnly = readOnly, textStyle = textStyle, label = label, placeholder = placeholder, leadingIcon = leadingIcon, trailingIcon = trailingIcon, supportingText = supportingText, isError = isError, visualTransformation = visualTransformation, keyboardOptions = keyboardOptions, keyboardActions = keyboardActions, singleLine = singleLine, maxLines = maxLines, minLines = minLines, shape = RoundedCornerShape(14.dp), colors = worldsFieldColors())
+
+/** Press feedback appears the instant a finger lands, with no spreading ripple. */
+internal class WorldsPressIndication(private val tint: Color) : IndicationNodeFactory {
+    override fun create(interactionSource: InteractionSource): DelegatableNode = PressNode(interactionSource, tint)
+    override fun equals(other: Any?) = other is WorldsPressIndication && other.tint == tint
+    override fun hashCode() = tint.hashCode()
+    private class PressNode(private val source: InteractionSource, private val tint: Color) : Modifier.Node(), DrawModifierNode {
+        private var pressed = false
+        override fun onAttach() {
+            coroutineScope.launch {
+                source.interactions.collect { interaction ->
+                    val next = when (interaction) { is PressInteraction.Press -> true; is PressInteraction.Release, is PressInteraction.Cancel -> false; else -> pressed }
+                    if (next != pressed) { pressed = next; invalidateDraw() }
+                }
+            }
+        }
+        override fun ContentDrawScope.draw() { drawContent(); if (pressed) drawRect(tint) }
+    }
+}
+
+/** Tap text to edit it, as in Apple's editors. The text keeps its own semantics and the action is named for screen readers. */
+@Composable internal fun Modifier.tapToEdit(enabled: Boolean, description: String? = null, onEdit: () -> Unit): Modifier {
+    if (!enabled) return this
+    val label = stringResource(R.string.edit_text)
+    val action by rememberUpdatedState(onEdit)
+    return this.pointerInput(Unit) { detectTapGestures(onTap = { action() }) }.semantics {
+        onClick(label = label) { action(); true }
+        if (description != null) contentDescription = description
+    }
 }

@@ -32,10 +32,11 @@ import kotlinx.coroutines.launch
 import java.io.IOException
 
 private val Context.appearanceDataStore by preferencesDataStore(name = "worlds_appearance")
-internal data class AppearancePreferences(val theme: String = "system", val accent: String = "sand", val direction: String = "auto", val suggestions: Boolean = true, val glassQuality: String = "standard", val reduceMotion: Boolean = false, val studyPackEnabled: Boolean = false)
+internal data class AppearancePreferences(val theme: String = "system", val accent: String = "blue", val direction: String = "auto", val suggestions: Boolean = true, val glassQuality: String = "standard", val reduceMotion: Boolean = false, val studyPackEnabled: Boolean = false)
 internal data class AppearanceAccent(val id: String, val label: Int, val dark: Color, val light: Color)
 internal val appearanceAccents = listOf(
-    AppearanceAccent("sand", R.string.appearance_sand, Color(0xffd2a46e), Color(0xff765127)),
+    AppearanceAccent("blue", R.string.appearance_blue, Color(0xff2e92ff), Color(0xff0066cc)),
+    AppearanceAccent("white", R.string.appearance_white, Color(0xffffffff), Color(0xff1c1c1f)),
     AppearanceAccent("sage", R.string.appearance_sage, Color(0xff8db39a), Color(0xff38624b)),
     AppearanceAccent("sky", R.string.appearance_sky, Color(0xff7fa7d9), Color(0xff345e8e)),
     AppearanceAccent("rose", R.string.appearance_rose, Color(0xffd98c9a), Color(0xff8a3d50)),
@@ -54,7 +55,7 @@ internal class AppearanceStore(private val dataStore: DataStore<Preferences>) {
     private val studyPack = booleanPreferencesKey("worlds_pack_study")
     val values = dataStore.data.catch { error -> if (error is IOException) emit(emptyPreferences()) else throw error }.map { preferences ->
         AppearancePreferences(preferences[theme]?.takeIf { it in setOf("system", "light", "dark") } ?: "system",
-            preferences[accent]?.takeIf { id -> appearanceAccents.any { it.id == id } } ?: "sand",
+            preferences[accent]?.takeIf { id -> appearanceAccents.any { it.id == id } } ?: "blue",
             preferences[direction]?.takeIf { it in setOf("auto", "ltr", "rtl") } ?: "auto",
             preferences[suggestions] ?: true,
             preferences[glassQuality]?.takeIf { it in setOf("specular", "standard", "disabled") } ?: "standard",
@@ -156,6 +157,6 @@ internal val LocalAppearancePreferences = staticCompositionLocalOf { AppearanceP
     Row(Modifier.fillMaxWidth().selectable(selected = selected, role = Role.RadioButton, onClick = onClick).heightIn(min = 52.dp).padding(start = 16.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         if (swatch != null) { Box(Modifier.size(24.dp).background(swatch, CircleShape)); Spacer(Modifier.width(12.dp)) }
         Text(label, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface)
-        RadioButton(selected = selected, onClick = null)
+        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) { if (selected) WorldsGlyph(R.drawable.ic_check, tint = MaterialTheme.colorScheme.primary) }
     }
 }

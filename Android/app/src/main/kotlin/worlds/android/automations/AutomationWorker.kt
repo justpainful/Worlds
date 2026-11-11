@@ -141,7 +141,7 @@ class AutomationWorker(
             val embed = JSONObject().apply {
                 put("title", title)
                 put("description", content.take(4000))
-                put("color", 0xD2A46E) // Worlds Gold
+                put("color", 0x0A84FF) // Worlds Blue
                 put("footer", JSONObject().put("text", "Automated by Worlds Android"))
             }
             put("embeds", org.json.JSONArray().put(embed))
