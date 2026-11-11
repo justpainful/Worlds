@@ -125,7 +125,7 @@ public struct DrawingRenderer {
             context.saveGState()
             context.setAlpha(1)
             context.setBlendMode(.normal)
-            context.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 1))
+            context.setFillColor(CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 1))
             context.fill(CGRect(x: left, y: top, width: ceil(x + w) - left, height: ceil(y + h) - top))
             context.restoreGState()
             count += 1
@@ -160,13 +160,13 @@ private func ancestorsVisible(_ id: String, layers: [String: JSONValue]) -> Bool
 // MARK: Colours and blend modes
 
 private func rgb(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat, _ a: CGFloat = 1) -> CGColor {
-    CGColor(red: r / 255, green: g / 255, blue: b / 255, alpha: a)
+    CGColor(srgbRed: r / 255, green: g / 255, blue: b / 255, alpha: a)
 }
 /// Hex (3, 4, 6 or 8 digits), rgb()/rgba(), `transparent` and common names.
 private func color(_ raw: String) -> CGColor? {
     let string = raw.trimmingCharacters(in: .whitespaces).lowercased()
     switch string {
-    case "transparent": return CGColor(red: 0, green: 0, blue: 0, alpha: 0)
+    case "transparent": return CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 0)
     case "black": return rgb(0, 0, 0)
     case "white": return rgb(255, 255, 255)
     case "red": return rgb(255, 0, 0)
@@ -446,12 +446,12 @@ private func maskAlpha(_ mask: MaskSpec, geometry: NodeGeometry, base: CGAffineT
     let mw = mask.w ?? (mask.linked ? (geometry.geometrySize?.width ?? geometry.w) : geometry.w)
     let mh = mask.h ?? (mask.linked ? (geometry.geometrySize?.height ?? geometry.h) : geometry.h)
     let fill = min(1, max(0, mask.base ?? (mask.hasAsset ? 0 : 1)))
-    c.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: fill))
+    c.setFillColor(CGColor(srgbRed: 1, green: 1, blue: 1, alpha: fill))
     c.fill(CGRect(x: mask.x, y: mask.y, width: mw, height: mh))
-    let white = CGColor(red: 1, green: 1, blue: 1, alpha: 1)
+    let white = CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1)
     for stroke in mask.strokes {
         let dabs = try StrokeDabEngine.generate(samples: stroke.samples, brush: stroke.brush)
-        let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: [white, white.copy(alpha: 0) ?? white] as CFArray, locations: [0, 1])
+        let gradient = CGGradient(colorsSpace: drawingColorSpace(), colors: [white, white.copy(alpha: 0) ?? white] as CFArray, locations: [0, 1])
         c.saveGState()
         c.setBlendMode(stroke.reveal ? .normal : .destinationOut)
         c.setFillColor(white)
@@ -702,7 +702,7 @@ private func fillGradient(_ gradient: [String: JSONValue], path: CGPath, context
         let neighbour = (colors[..<i].last(where: { $0.alpha > 0 })) ?? colors[(i + 1)...].first(where: { $0.alpha > 0 })
         if let neighbour, let faded = neighbour.copy(alpha: 0) { colors[i] = faded }
     }
-    guard let cg = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors as CFArray, locations: stops.map { $0.0 }) else { return false }
+    guard let cg = CGGradient(colorsSpace: drawingColorSpace(), colors: colors as CFArray, locations: stops.map { $0.0 }) else { return false }
     c.saveGState()
     c.addPath(path)
     c.clip(using: .winding)
@@ -831,8 +831,8 @@ private func drawStroke(_ node: [String: JSONValue], opacity: CGFloat, context c
     c.setBlendMode(.normal)
     if uniform { drawUniformStroke(brush.straightLine == true ? straightened(samples) : samples, brush: brush, ink: ink, context: c) }
     else {
-        let soft = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: [ink.copy(alpha: 1) ?? ink, ink.copy(alpha: 0) ?? ink] as CFArray, locations: [0, 1])
-        let wash = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: [ink, ink, ink.copy(alpha: 0) ?? ink] as CFArray, locations: [0, 0.65, 1])
+        let soft = CGGradient(colorsSpace: drawingColorSpace(), colors: [ink.copy(alpha: 1) ?? ink, ink.copy(alpha: 0) ?? ink] as CFArray, locations: [0, 1])
+        let wash = CGGradient(colorsSpace: drawingColorSpace(), colors: [ink, ink, ink.copy(alpha: 0) ?? ink] as CFArray, locations: [0, 0.65, 1])
         for dab in dabs { paintDab(dab, brush: brush, ink: ink, soft: soft, wash: wash, context: c) }
     }
     c.restoreGState()
@@ -964,7 +964,7 @@ private func drawText(_ node: [String: JSONValue], width: CGFloat, height: CGFlo
     let text = node["text"]?.stringValue ?? ""
     let textStyle = node["textStyle"]?.objectValue
     let fontSize = (textStyle.flatMap { number($0, "size") }) ?? 16
-    let textColor = (textStyle?["color"]?.stringValue).flatMap(color) ?? CGColor(red: 0.11, green: 0.11, blue: 0.12, alpha: 1)
+    let textColor = (textStyle?["color"]?.stringValue).flatMap(color) ?? CGColor(srgbRed: 0.11, green: 0.11, blue: 0.12, alpha: 1)
     let bgColor = (textStyle?["background"]?.stringValue).flatMap(color)
     let borderColor = (textStyle?["border"]?.stringValue).flatMap(color)
     let rect = CGRect(x: 0, y: 0, width: width, height: height)
@@ -1030,7 +1030,7 @@ private struct RasterSurface {
     init?(width: Int, height: Int) {
         guard width > 0, height > 0,
               let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
-                                      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+                                      space: drawingColorSpace(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
         self.context = context
         self.width = width; self.height = height; self.rowBytes = context.bytesPerRow
     }
@@ -1139,4 +1139,10 @@ private struct RasterSurface {
             }
         }
     }
+}
+
+/// Drawings are sRGB on every platform, like the desktop canvas. Colours, gradients and
+/// offscreen buffers all use it, so a colour comes out exactly as written.
+func drawingColorSpace() -> CGColorSpace {
+    CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
 }

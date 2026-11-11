@@ -32,7 +32,7 @@ final class DrawingCompositingTests: XCTestCase {
     }
     private func render(_ scene: DrawingScene) throws -> (CGContext, DrawingRenderReport) {
         let context = try XCTUnwrap(CGContext(data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: size * 4,
-                                              space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+                                              space: try XCTUnwrap(CGColorSpace(name: CGColorSpace.sRGB)), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
         context.translateBy(x: 0, y: CGFloat(size))
         context.scaleBy(x: 1, y: -1)
         let report = try DrawingRenderer().render(scene: scene, frameID: "f", in: context)
