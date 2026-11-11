@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import * as XLSX from "xlsx";
 import { api, errorMessage } from "../lib/api";
 import { useStore } from "../state/store";
 import { ResourceHeader } from "../resources/views/ResourceHeader";
@@ -556,8 +555,10 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
 
   // Import / Export XLSX & CSV
   const exportFile = useCallback(
-    (format: "xlsx" | "csv") => {
+    async (format: "xlsx" | "csv") => {
       if (!wb || !sheet) return;
+      // Loaded on demand so the spreadsheet library stays out of the startup bundle.
+      const XLSX = await import("xlsx");
       const book = XLSX.utils.book_new();
       for (const s of wb.sheets) {
         const evMap = evaluated[s.id] ?? {};
@@ -616,6 +617,7 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
       if (!file) return;
       try {
         const buf = await file.arrayBuffer();
+        const XLSX = await import("xlsx");
         const book = XLSX.read(buf, { cellFormula: true, cellDates: true });
         const importedSheets: SheetData[] = book.SheetNames.map((name, idx) => {
           const ws = book.Sheets[name];

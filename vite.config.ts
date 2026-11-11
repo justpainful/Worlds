@@ -12,6 +12,19 @@ export default defineConfig({
   build: {
     target: "chrome120",
     sourcemap: false,
-    chunkSizeWarningLimit: 2000,
+    chunkSizeWarningLimit: 1200,
+    rollupOptions: {
+      output: {
+        // Large libraries get their own files so the app shell parses first and updates cache well.
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (/[\/](react|react-dom|scheduler)[\/]/.test(id)) return "vendor-react";
+          if (/@tiptap|prosemirror/.test(id)) return "vendor-editor";
+          if (/[\/](yjs|y-protocols|lib0|y-prosemirror)[\/]/.test(id)) return "vendor-sync";
+          if (/[\/]katex[\/]/.test(id)) return "vendor-katex";
+          return undefined;
+        },
+      },
+    },
   },
 });

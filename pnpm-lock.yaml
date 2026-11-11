@@ -130,8 +130,8 @@ importers:
         specifier: ^0.186.1
         version: 0.186.1
       xlsx:
-        specifier: https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz
-        version: https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz
+        specifier: file:vendor/xlsx-0.20.3.tgz
+        version: file:vendor/xlsx-0.20.3.tgz
       y-protocols:
         specifier: ^1.0.7
         version: 1.0.7(yjs@13.6.33)
@@ -1649,8 +1649,8 @@ packages:
     engines: {node: '>=20.11'}
     hasBin: true
 
-  xlsx@https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz:
-    resolution: {integrity: sha512-oLDq3jw7AcLqKWH2AhCpVTZl8mf6X2YReP+Neh0SJUzV/BdZYjth94tG5toiMB1PPrYtxOCfaoUCkvtuH+3AJA==, tarball: https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz}
+  xlsx@file:vendor/xlsx-0.20.3.tgz:
+    resolution: {integrity: sha512-Z6O7rAh9KnhmYRlWWWliDY9XZhcz5Z9T0nX7rKOK9nxDXeni6CBLs6Z2/SmJ2ZWKyjHuHAbXgXMN/cNmSWp/XQ==, tarball: file:vendor/xlsx-0.20.3.tgz}
     version: 0.20.3
     engines: {node: '>=0.8'}
     hasBin: true
@@ -3016,7 +3016,7 @@ snapshots:
 
   why-is-node-running@3.2.1: {}
 
-  xlsx@https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz: {}
+  xlsx@file:vendor/xlsx-0.20.3.tgz: {}
 
   y-protocols@1.0.7(yjs@13.6.33):
     dependencies:
