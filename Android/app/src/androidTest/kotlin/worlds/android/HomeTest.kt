@@ -208,7 +208,7 @@ class HomeTest {
         compose.waitUntil(20_000) { !model.state.value.loading }
         libraryAction(R.string.templates_title)
         compose.waitUntil(20_000) { model.state.value.templatesVisible && !model.state.value.templatesLoading }
-        check(model.state.value.templates.size == 9)
+        check(model.state.value.templates.size == worlds.content.BuiltinTemplates.all.size)
         compose.onNodeWithText("Weekly Update").performScrollTo().assertIsDisplayed()
         if (InstrumentationRegistry.getArguments().getString("captureWorldsUi") == "true") {
             Thread.sleep(500)
@@ -1803,7 +1803,8 @@ class HomeTest {
     }
 
     @Test fun previewShowsTextAndWarnsAboutUnsupportedBlocks() {
-        val diagram = """{"type":"mermaid","attrs":{"code":"graph TD; A-->B"}}"""
+        // A block from a newer desktop version that Android does not know yet.
+        val diagram = """{"type":"futureWidget","attrs":{"code":"graph TD; A-->B"}}"""
         ContentStore(app, database).use {
             val page = it.create("page", "Formatting test")
             val paragraph = """{"type":"paragraph","content":[{"type":"text","text":"Bold sample","marks":[{"type":"bold"}]}]}"""
