@@ -611,8 +611,9 @@ class ContentStoreTest {
 
     @Test fun builtinsAreSeededOnceAndCreateIndependentStructuredPages() {
         val catalog = store.ensureBuiltinTemplates()
-        assertEquals(9, catalog.size)
-        assertEquals(9, catalog.map { JSONObject(it.metadata).getString("builtin") }.toSet().size)
+        val total = BuiltinTemplates.all.size
+        assertEquals(total, catalog.size)
+        assertEquals(total, catalog.map { JSONObject(it.metadata).getString("builtin") }.toSet().size)
         val weekly = catalog.single { JSONObject(it.metadata).getString("builtin") == "weekly" }
         val original = store.load(weekly.id)!!
         val first = store.instantiateTemplate(weekly.id, "2030-04-05")
@@ -630,10 +631,10 @@ class ContentStoreTest {
         assertTrue(projectDoc.blocks.any { it.content.contains("2030-04-05") })
         assertFalse(projectDoc.blocks.any { it.content.contains("{{date}}") })
         store.trash(weekly.id)
-        assertEquals(8, store.ensureBuiltinTemplates().size)
+        assertEquals(total - 1, store.ensureBuiltinTemplates().size)
         assertTrue(runCatching { store.instantiateTemplate(weekly.id) }.isFailure)
         store.close(); store = ContentStore(context, name)
-        assertEquals(8, store.ensureBuiltinTemplates().size)
+        assertEquals(total - 1, store.ensureBuiltinTemplates().size)
         assertEquals(firstDoc, store.load(first.id))
     }
 
