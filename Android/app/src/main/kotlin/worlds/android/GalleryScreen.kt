@@ -58,17 +58,17 @@ import worlds.content.ResourceDocument
             val rows = galleryItems.chunked(columns)
             LazyColumn(Modifier.widthIn(max = 1100.dp).fillMaxSize().padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(vertical = 20.dp)) {
                 item {
-                    TextButton(onClick = onBack) { WorldsActionLabel(R.drawable.ic_chevron_left, stringResource(R.string.back)) }
+                    WorldsBackButton(onBack)
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        WorldsGlyph(R.drawable.ic_image, tint = MaterialTheme.colorScheme.primary)
+                        WorldsTile(R.drawable.pi_image, 44.dp)
                         Text(gallery.title.ifBlank { stringResource(R.string.untitled) }, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
                     }
                     Text(stringResource(R.string.gallery_item_count, galleryItems.size), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilledTonalButton(enabled = !busy, onClick = onAdd) { WorldsActionLabel(R.drawable.ic_plus, stringResource(R.string.gallery_add)) }
-                        TextButton(enabled = !busy, onClick = { onLayout(gallery, if (view == "grid") "list" else "grid") { failure = !it } }) { WorldsActionLabel(R.drawable.ic_list, stringResource(if (view == "grid") R.string.gallery_list else R.string.gallery_grid)) }
+                        WorldsActionButton(enabled = !busy, onClick = { onLayout(gallery, if (view == "grid") "list" else "grid") { failure = !it } }) { WorldsActionLabel(R.drawable.ic_list, stringResource(if (view == "grid") R.string.gallery_list else R.string.gallery_grid)) }
                         var menu by remember { mutableStateOf(false) }
-                        Box { TextButton(enabled = !busy, onClick = { menu = true }) { WorldsActionLabel(R.drawable.ic_ellipsis_vertical, stringResource(R.string.page_actions)) }
+                        Box { WorldsActionButton(enabled = !busy, onClick = { menu = true }) { WorldsActionLabel(R.drawable.ic_ellipsis_vertical, stringResource(R.string.page_actions)) }
                             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                                 DropdownMenuItem(text = { Text(stringResource(R.string.rename)) }, leadingIcon = { WorldsGlyph(R.drawable.ic_pen_line) }, onClick = { menu = false; onRename() })
                                 DropdownMenuItem(text = { Text(stringResource(R.string.move_to_trash)) }, leadingIcon = { WorldsGlyph(R.drawable.ic_trash_2) }, onClick = { menu = false; trash = true })

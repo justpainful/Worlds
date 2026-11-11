@@ -100,21 +100,21 @@ internal fun fileOpenIntent(context: android.content.Context, attachment: FileAt
     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
         Box(modifier.fillMaxHeight(), contentAlignment = Alignment.TopCenter) {
             Column(Modifier.widthIn(max = 900.dp).fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                TextButton(onClick = onBack) { WorldsActionLabel(R.drawable.ic_chevron_left, stringResource(R.string.back)) }
+                WorldsBackButton(onBack)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    WorldsGlyph(R.drawable.ic_file_text, tint = MaterialTheme.colorScheme.primary)
+                    WorldsTile(R.drawable.pi_file, 44.dp)
                     Text(resource.title.ifBlank { stringResource(R.string.untitled) }, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold, maxLines = 3, overflow = TextOverflow.Ellipsis)
                 }
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilledTonalButton(enabled = !busy && file != null && attachment != null, onClick = {
                         openError = runCatching {
                             context.startActivity(fileOpenIntent(context, attachment!!, file!!))
                         }.isFailure
                     }) { WorldsActionLabel(R.drawable.ic_upload, stringResource(R.string.file_open)) }
-                    TextButton(enabled = !busy && file != null, onClick = onExport) { WorldsActionLabel(R.drawable.ic_download, stringResource(R.string.file_save_copy)) }
-                    if (attachment != null && (attachment.mime.startsWith("image/") || attachment.mime.startsWith("video/"))) TextButton(enabled = !busy && file != null, onClick = { galleryOpen = true; gallerySaved = false; loadGalleries() }) { WorldsActionLabel(R.drawable.ic_image, stringResource(R.string.file_add_gallery)) }
+                    WorldsActionButton(enabled = !busy && file != null, onClick = onExport) { WorldsActionLabel(R.drawable.ic_download, stringResource(R.string.file_save_copy)) }
+                    if (attachment != null && (attachment.mime.startsWith("image/") || attachment.mime.startsWith("video/"))) WorldsActionButton(enabled = !busy && file != null, onClick = { galleryOpen = true; gallerySaved = false; loadGalleries() }) { WorldsActionLabel(R.drawable.ic_image, stringResource(R.string.file_add_gallery)) }
                     var menu by remember { mutableStateOf(false) }
-                    Box { TextButton(enabled = !busy, onClick = { menu = true }) { WorldsActionLabel(R.drawable.ic_ellipsis_vertical, stringResource(R.string.page_actions)) }
+                    Box { WorldsActionButton(enabled = !busy, onClick = { menu = true }) { WorldsActionLabel(R.drawable.ic_ellipsis_vertical, stringResource(R.string.page_actions)) }
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                             DropdownMenuItem(text = { Text(stringResource(R.string.rename)) }, leadingIcon = { WorldsGlyph(R.drawable.ic_pen_line) }, onClick = { menu = false; onRename() })
                             DropdownMenuItem(text = { Text(stringResource(R.string.move_to_trash)) }, leadingIcon = { WorldsGlyph(R.drawable.ic_trash_2) }, onClick = { menu = false; confirmTrash = true })

@@ -9,6 +9,7 @@ import androidx.compose.ui.unit.dp
 import worlds.stylus.StrokeBrush
 import worlds.stylus.StrokeSample
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertIsOn
@@ -33,6 +34,7 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.text.TextRange
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.After
@@ -71,6 +73,49 @@ class HomeTest {
         val name = app.getString(label)
         if (compose.onAllNodes(androidx.compose.ui.test.hasContentDescription(name)).fetchSemanticsNodes().isNotEmpty()) compose.onNodeWithContentDescription(name).performClick()
         else compose.onNodeWithText(name).performClick()
+    }
+
+    @Test fun spreadsheetEditsSurviveClosingAndReopening() {
+        val page = ContentStore(app, database).use { it.create("spreadsheet", "Budget sheet") }
+        fun enter(cell: String, value: String) {
+            compose.onNodeWithTag("cell-$cell").performClick()
+            compose.onNodeWithTag("spreadsheet-formula").performTextClearance()
+            compose.onNodeWithTag("spreadsheet-formula").performTextInput(value)
+            compose.onNodeWithTag("spreadsheet-apply").performClick()
+        }
+        fun cellShows(cell: String, text: String) = compose.onNodeWithTag("cell-$cell", useUnmergedTree = true).fetchSemanticsNode().children.any { it.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text)?.joinToString("") == text }
+        fun openSheet() {
+            model.open(page.id)
+            compose.waitUntil(20_000) { runCatching { compose.onNodeWithTag("cell-A1").assertExists(); true }.getOrDefault(false) }
+        }
+        compose.setContent { WorldsTheme { Home(model) } }
+        openSheet()
+        check(!cellShows("A1", "Sales Revenue"))
+        enter("A1", "20")
+        enter("A2", "22")
+        enter("A3", "=SUM(A1:A2)")
+        compose.waitForIdle()
+        check(cellShows("A3", "42"))
+        compose.onNodeWithText(app.getString(R.string.back)).performClick()
+        compose.waitUntil(20_000) { model.state.value.selected == null }
+        compose.waitUntil(20_000) { ContentStore(app, database).use { store -> org.json.JSONObject(store.load(page.id)!!.resource.metadata).optJSONObject("sheet")?.toString().orEmpty().contains("SUM(A1:A2)") } }
+        openSheet()
+        compose.waitUntil(20_000) { runCatching { cellShows("A3", "42") }.getOrDefault(false) }
+        compose.onNodeWithTag("cell-A3").performClick()
+        compose.onNodeWithTag("spreadsheet-formula").assertTextContains("=SUM(A1:A2)")
+        compose.onNodeWithContentDescription(app.getString(R.string.spreadsheet_add_sheet)).performClick()
+        compose.waitForIdle()
+        check(!cellShows("A3", "42"))
+        compose.onNodeWithText("Sheet 1").performClick()
+        compose.waitForIdle()
+        check(cellShows("A3", "42"))
+        if (InstrumentationRegistry.getArguments().getString("exportSpreadsheet") == "true") {
+            compose.onNodeWithText(app.getString(R.string.back)).performClick()
+            compose.waitUntil(20_000) { model.state.value.selected == null }
+            Thread.sleep(1500)
+            val metadata = ContentStore(app, database).use { it.load(page.id)!!.resource.metadata }
+            java.io.File(app.getExternalFilesDir(null), "spreadsheet-android.json").writeText(metadata)
+        }
     }
 
     @Test fun narrowEmptyLibraryKeepsItsMessageVisible() {
@@ -273,6 +318,7 @@ class HomeTest {
         compose.runOnIdle { model.refresh() }
         compose.waitUntil(20_000) { !model.state.value.loading && model.state.value.pages.any { it.id == sourceChild } }
         check(model.state.value.pages.none { it.id == templateChild })
+        compose.onNodeWithContentDescription(app.getString(R.string.tab_search)).performClick()
         compose.onNodeWithText(app.getString(R.string.search)).performTextInput("Unique child")
         compose.waitUntil(20_000) { !model.state.value.loading && model.state.value.query == "Unique child" && model.state.value.pages.any { it.id == sourceChild } }
         check(model.state.value.pages.none { it.id == templateChild })
@@ -1706,6 +1752,7 @@ class HomeTest {
         compose.onNodeWithText("Orchard notes").assertIsDisplayed()
         compose.onNodeWithText(app.getString(R.string.back)).performClick()
         compose.waitUntil(10_000) { model.state.value.pages.any { it.title == "Orchard notes" } }
+        compose.onNodeWithContentDescription(app.getString(R.string.tab_search)).performClick()
         compose.onNodeWithText(app.getString(R.string.search)).performTextInput("Missing phrase")
         compose.waitUntil(10_000) { model.state.value.query == "Missing phrase" && model.state.value.pages.isEmpty() }
         compose.onNodeWithText(app.getString(R.string.no_results)).assertIsDisplayed()
@@ -2149,7 +2196,7 @@ class HomeTest {
             compose.waitForIdle(); Thread.sleep(400)
             InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /sdcard/Download/worlds-drawing-cached-eraser.png").close()
         }
-        compose.onNodeWithText(app.getString(R.string.drawing_export)).performClick()
+        drawingControl(R.string.drawing_export)
         compose.onNodeWithText(app.getString(R.string.drawing_export_png)).assertIsDisplayed()
         compose.onNodeWithText(app.getString(R.string.drawing_export_project)).assertIsDisplayed()
         InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
@@ -2171,10 +2218,10 @@ class HomeTest {
         compose.waitUntil(20_000) { DrawingStore(app).use { it.loadOrCreate(page.id).getInt("revision") == 2 } }
         val before = DrawingStore(app).use { it.loadOrCreate(page.id).getJSONObject("scene").toString() }
         drawingControl(R.string.drawing_select)
-        compose.onNodeWithText(app.getString(R.string.drawing_multi_select)).performClick()
+        drawingControl(R.string.drawing_multi_select)
         canvas.performTouchInput { down(Offset(center.x, center.y - 45f)); up() }
         canvas.performTouchInput { down(Offset(center.x, center.y + 45f)); up() }
-        compose.onNodeWithText(app.getString(R.string.drawing_clear_selection, 2)).assertIsDisplayed()
+        compose.onNodeWithContentDescription(app.getString(R.string.drawing_clear_selection, 2)).assertIsDisplayed()
         if (InstrumentationRegistry.getArguments().getString("captureWorldsUi") == "true") {
             compose.waitForIdle(); Thread.sleep(400)
             InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /sdcard/Download/worlds-drawing-multiselect.png").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
@@ -2184,7 +2231,7 @@ class HomeTest {
         val moved = DrawingStore(app).use { it.loadOrCreate(page.id) }
         val original = org.json.JSONObject(before); val nodes = original.getJSONObject("nodes"); val order = original.getJSONArray("nodeOrder")
         repeat(2) { i -> val id = order.getString(i); check(moved.getJSONObject("scene").getJSONObject("nodes").getJSONObject(id).getDouble("x") > nodes.getJSONObject(id).getDouble("x")) }
-        compose.onNodeWithText(app.getString(R.string.drawing_remove_strokes)).performClick()
+        drawingControl(R.string.drawing_remove_strokes)
         compose.waitUntil(20_000) { DrawingStore(app).use { it.loadOrCreate(page.id).getInt("revision") == 4 && it.loadOrCreate(page.id).getJSONObject("scene").getJSONArray("nodeOrder").length() == 0 } }
         compose.onNodeWithContentDescription(app.getString(R.string.drawing_undo)).performClick()
         compose.waitUntil(20_000) { DrawingStore(app).use { it.loadOrCreate(page.id).getInt("revision") == 5 && it.loadOrCreate(page.id).getJSONObject("scene").getJSONArray("nodeOrder").length() == 2 } }
@@ -2206,9 +2253,9 @@ class HomeTest {
             compose.waitForIdle(); Thread.sleep(400)
             InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /sdcard/Download/worlds-drawing-duplicate.png").close()
         }
-        compose.onNodeWithText(app.getString(R.string.drawing_duplicate_selection)).performClick()
+        drawingControl(R.string.drawing_duplicate_selection)
         compose.waitUntil(20_000) { DrawingStore(app).use { it.loadOrCreate(page.id).getJSONObject("scene").getJSONArray("nodeOrder").length() == 2 } }
-        compose.onNodeWithText(app.getString(R.string.drawing_clear_selection, 1)).assertIsDisplayed()
+        compose.onNodeWithContentDescription(app.getString(R.string.drawing_clear_selection, 1)).assertIsDisplayed()
         compose.onNodeWithContentDescription(app.getString(R.string.drawing_undo)).performClick()
         compose.waitUntil(20_000) { DrawingStore(app).use { it.loadOrCreate(page.id).getJSONObject("scene").getJSONArray("nodeOrder").length() == 1 } }
         compose.onNodeWithContentDescription(app.getString(R.string.drawing_redo)).performClick()
@@ -2231,7 +2278,7 @@ class HomeTest {
             compose.waitForIdle(); Thread.sleep(400)
             InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /sdcard/Download/worlds-stroke-selection.png").close()
         }
-        compose.onNodeWithText(app.getString(R.string.drawing_remove_stroke)).performClick()
+        drawingControl(R.string.drawing_remove_stroke)
         compose.waitUntil(20_000) { DrawingStore(app).use { it.loadOrCreate(page.id).getInt("revision") == 3 && it.loadOrCreate(page.id).getJSONObject("scene").getJSONArray("nodeOrder").length() == 0 } }
         compose.onNodeWithContentDescription(app.getString(R.string.drawing_undo)).performClick()
         compose.waitUntil(20_000) { DrawingStore(app).use { it.loadOrCreate(page.id).getInt("revision") == 4 && it.loadOrCreate(page.id).getJSONObject("scene").getJSONArray("nodeOrder").length() == 1 } }
@@ -2369,17 +2416,17 @@ class HomeTest {
         compose.waitUntil(20_000) { DrawingStore(app).use { it.loadOrCreate(page.id).getInt("revision") == 1 } }
         key(android.view.KeyEvent.KEYCODE_M)
         canvas.performTouchInput { down(center); up() }
-        compose.onNodeWithText(app.getString(R.string.drawing_clear_selection, 1)).assertIsDisplayed()
+        compose.onNodeWithContentDescription(app.getString(R.string.drawing_clear_selection, 1)).assertIsDisplayed()
         key(android.view.KeyEvent.KEYCODE_D, android.view.KeyEvent.META_CTRL_ON)
-        compose.onNodeWithText(app.getString(R.string.drawing_clear_selection, 1)).assertDoesNotExist()
+        compose.onNodeWithContentDescription(app.getString(R.string.drawing_clear_selection, 1)).assertDoesNotExist()
         canvas.performTouchInput { down(center); up() }
-        compose.onNodeWithText(app.getString(R.string.drawing_clear_selection, 1)).assertIsDisplayed()
+        compose.onNodeWithContentDescription(app.getString(R.string.drawing_clear_selection, 1)).assertIsDisplayed()
         key(android.view.KeyEvent.KEYCODE_FORWARD_DEL)
         compose.waitUntil(20_000) { DrawingStore(app).use { it.loadOrCreate(page.id).getJSONObject("scene").getJSONArray("nodeOrder").length() == 0 } }
         key(android.view.KeyEvent.KEYCODE_Z, android.view.KeyEvent.META_CTRL_ON)
         compose.waitUntil(20_000) { DrawingStore(app).use { it.loadOrCreate(page.id).getJSONObject("scene").getJSONArray("nodeOrder").length() == 1 } }
         canvas.performTouchInput { down(center); up() }
-        compose.onNodeWithText(app.getString(R.string.drawing_clear_selection, 1)).assertIsDisplayed()
+        compose.onNodeWithContentDescription(app.getString(R.string.drawing_clear_selection, 1)).assertIsDisplayed()
         key(android.view.KeyEvent.KEYCODE_DEL)
         compose.waitUntil(20_000) { DrawingStore(app).use { it.loadOrCreate(page.id).getJSONObject("scene").getJSONArray("nodeOrder").length() == 0 } }
     }

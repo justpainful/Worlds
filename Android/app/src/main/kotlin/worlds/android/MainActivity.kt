@@ -952,9 +952,6 @@ class HomeModel(application: Application, internal val databaseName: String) : A
     override fun onCleared() { close() }
 }
 
-private val Dark = darkColorScheme(primary = Color(0xFFD2A46E), onPrimary = Color(0xFF25180A), background = Color.Black, onBackground = Color(0xFFF5F5F7), surface = Color(0xFF1C1C1E), surfaceVariant = Color(0xFF303033), surfaceContainer = Color(0xFF202023), surfaceContainerHigh = Color(0xFF28282B), surfaceContainerHighest = Color(0xFF303033), outline = Color(0xFF929298), outlineVariant = Color(0xFF48484A), onSurface = Color(0xFFF5F5F7), onSurfaceVariant = Color(0xFFB2B2BA))
-private val Light = lightColorScheme(primary = Color(0xFF765127), onPrimary = Color.White, background = Color(0xFFF8F8F6), onBackground = Color(0xFF1C1C1E), surface = Color.White, surfaceVariant = Color(0xFFEAEAE8), surfaceContainer = Color(0xFFF2F2F0), surfaceContainerHigh = Color(0xFFEAEAE8), surfaceContainerHighest = Color(0xFFE2E2E0), outline = Color(0xFF77777E), outlineVariant = Color(0xFFC8C8CA), onSurface = Color(0xFF1C1C1E), onSurfaceVariant = Color(0xFF59595E))
-
 @Composable internal fun WorldsTheme(store: AppearanceStore? = null, content: @Composable () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val defaultStore = remember(context.applicationContext) { AppearanceStore(context.applicationContext) }
@@ -964,10 +961,7 @@ private val Light = lightColorScheme(primary = Color(0xFF765127), onPrimary = Co
     val dark = when (appearance.theme) { "dark" -> true; "light" -> false; else -> systemDark }
     val accent = appearanceAccents.firstOrNull { it.id == appearance.accent } ?: appearanceAccents.first()
     val primary = if (dark) accent.dark else accent.light
-    val container = androidx.compose.ui.graphics.lerp(primary, if (dark) Color(0xff1c1c1e) else Color.White, 0.88f)
-    val scheme = (if (dark) Dark else Light).copy(primary = primary, onPrimary = if (dark) Color(0xff171719) else Color.White,
-        primaryContainer = container, onPrimaryContainer = primary, secondary = primary, onSecondary = if (dark) Color(0xff171719) else Color.White,
-        secondaryContainer = container, onSecondaryContainer = primary)
+    val scheme = worldsColorScheme(dark, primary)
     val view = androidx.compose.ui.platform.LocalView.current
     androidx.compose.runtime.SideEffect {
         val activity = generateSequence(view.context) { (it as? android.content.ContextWrapper)?.baseContext }
@@ -979,8 +973,8 @@ private val Light = lightColorScheme(primary = Color(0xFF765127), onPrimary = Co
         }
     }
     CompositionLocalProvider(LocalAppearanceStore provides appearanceStore, LocalAppearancePreferences provides appearance) {
-        MaterialTheme(colorScheme = scheme) {
-            CompositionLocalProvider(LocalContentColor provides scheme.onBackground, content = content)
+        MaterialTheme(colorScheme = scheme, typography = WorldsTypography, shapes = WorldsShapes) {
+            CompositionLocalProvider(LocalContentColor provides scheme.onBackground, worlds.android.glass.LocalGlassQuality provides appearance.glassQuality, worlds.android.glass.LocalGlassDark provides dark, content = content)
         }
     }
 }
@@ -988,6 +982,7 @@ private val Light = lightColorScheme(primary = Color(0xFF765127), onPrimary = Co
 @OptIn(ExperimentalLayoutApi::class)
 @Composable internal fun Home(model: HomeModel, account: AccountModel? = null, shareLauncher: ((Intent) -> Unit)? = null) {
     var showLibraryActions by remember { mutableStateOf(false) }
+    var destinationName by rememberSaveable { mutableStateOf(WorldsDestination.Home.name) }
     val state by model.state.collectAsStateWithLifecycle()
     var showAccount by rememberSaveable { mutableStateOf(false) }
     var showAppearance by rememberSaveable { mutableStateOf(false) }
@@ -1207,125 +1202,63 @@ private val Light = lightColorScheme(primary = Color(0xFF765127), onPrimary = Co
             },
             confirmButton = { TextButton(enabled = !state.busy, onClick = model::closeVersions) { Text(stringResource(R.string.close)) } })
     }
-    val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
-    BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
-        val wide = maxWidth >= 840.dp
-        val narrow = maxWidth < 360.dp
-        Row(Modifier.fillMaxSize()) {
-            if (state.selected == null || wide) {
-                Column(Modifier.then(if (wide) Modifier.width(430.dp) else Modifier.fillMaxSize()).fillMaxHeight().padding(horizontal = 24.dp)) {
-                    Spacer(Modifier.height(if (keyboardVisible) 8.dp else if (narrow) 14.dp else 30.dp))
-                    if (!keyboardVisible) {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Image(painterResource(R.drawable.worlds_icon), contentDescription = null, modifier = Modifier.size(32.dp).clip(RoundedCornerShape(9.dp)))
-                                Text("Worlds", color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
-                            }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                val aiChatLabel = stringResource(R.string.ai_chat)
-                                val profileLabel = stringResource(R.string.profile)
-                                IconButton(onClick = { showAiChat = true }, modifier = Modifier.semantics { contentDescription = aiChatLabel }) {
-                                    WorldsGlyph(R.drawable.ic_message_circle, tint = MaterialTheme.colorScheme.primary)
-                                }
-                                IconButton(onClick = { showProfile = true }, modifier = Modifier.semantics { contentDescription = profileLabel }) {
-                                    WorldsGlyph(R.drawable.ic_circle_user)
-                                }
-                                if (account != null) TextButton(onClick = { showAccount = true }) { WorldsActionLabel(R.drawable.ic_circle_user, stringResource(R.string.account_title)) }
-                                val label = stringResource(R.string.appearance_title)
-                                IconButton(onClick = { showAppearance = true }, modifier = Modifier.semantics { contentDescription = label }) { WorldsGlyph(R.drawable.ic_settings_2) }
-                            }
-                        }
-                        Spacer(Modifier.height(if (narrow) 12.dp else 26.dp))
-                    }
-                    Text(stringResource(R.string.home_title), fontSize = if (keyboardVisible || narrow) 22.sp else 30.sp, lineHeight = if (narrow) 30.sp else 38.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
-                    if (!keyboardVisible && !narrow) Text(stringResource(R.string.home_subtitle), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 15.sp, lineHeight = 26.sp)
-                    Spacer(Modifier.height(if (keyboardVisible || narrow) 8.dp else 20.dp))
-                    OutlinedTextField(value = state.query, onValueChange = model::search, label = { Text(stringResource(R.string.search)) }, singleLine = true,
-                        leadingIcon = { WorldsGlyph(R.drawable.ic_search) }, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search), keyboardActions = KeyboardActions(onSearch = { keyboard?.hide() }),
-                        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp))
-                    if (!keyboardVisible) {
-                        Spacer(Modifier.height(if (narrow) 8.dp else 18.dp))
-                        if (narrow) Text(stringResource(if (state.trash) R.string.trash else R.string.local_label), color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium, fontSize = 12.sp, maxLines = 1)
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                            if (!narrow) Text(stringResource(if (state.trash) R.string.trash else R.string.local_label), color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium, fontSize = 12.sp, modifier = Modifier.weight(1f), maxLines = 1)
-                            else Spacer(Modifier.weight(1f))
-                            if (!state.trash) Button(enabled = !state.busy, onClick = { createParent = null; createKind = "page"; showCreate = true }) { WorldsActionLabel(R.drawable.ic_plus, stringResource(R.string.new_page)) }
-                            Box {
-                                val menuLabel = stringResource(R.string.library_more_actions)
-                                IconButton(enabled = !state.busy, onClick = { showLibraryActions = true }, modifier = Modifier.semantics { contentDescription = menuLabel }) { WorldsGlyph(R.drawable.ic_ellipsis_vertical) }
-                                DropdownMenu(expanded = showLibraryActions, onDismissRequest = { showLibraryActions = false }) {
-                                    if (!state.trash) {
-                                        DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_folder) }, text = { Text(stringResource(R.string.project_new)) }, onClick = { showLibraryActions = false; createParent = null; createKind = "project"; showCreate = true })
-                                        DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_image) }, text = { Text(stringResource(R.string.gallery_new)) }, onClick = { showLibraryActions = false; createParent = null; createKind = "gallery"; showCreate = true })
-                                        DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_maximize) }, text = { Text(stringResource(R.string.presentation_new)) }, onClick = { showLibraryActions = false; createParent = null; createKind = "presentation"; showCreate = true })
-                                        DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_file_text) }, text = { Text(stringResource(R.string.new_document)) }, onClick = { showLibraryActions = false; createParent = null; createKind = "document"; showCreate = true })
-                                        DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_table_2) }, text = { Text("New Spreadsheet") }, onClick = { showLibraryActions = false; createParent = null; createKind = "spreadsheet"; showCreate = true })
-                                        DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_pen_line) }, text = { Text(stringResource(R.string.new_drawing)) }, onClick = { showLibraryActions = false; createParent = null; createKind = "drawing"; showCreate = true })
-                                        DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_link) }, text = { Text(stringResource(R.string.stream_add)) }, onClick = { showLibraryActions = false; streamCreateParent = null; showStreamCreate = true })
-                                        HorizontalDivider()
-                                        DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_message_circle) }, text = { Text(stringResource(R.string.ai_chat)) }, onClick = { showLibraryActions = false; showAiChat = true })
-                                        DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_sliders_horizontal) }, text = { Text(stringResource(R.string.automations)) }, onClick = { showLibraryActions = false; showAutomations = true })
-                                        DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_share_2) }, text = { Text(stringResource(R.string.discord)) }, onClick = { showLibraryActions = false; showDiscordComposer = true })
-                                        DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_circle_user) }, text = { Text(stringResource(R.string.profile)) }, onClick = { showLibraryActions = false; showProfile = true })
-                                        HorizontalDivider()
-                                        DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_upload) }, text = { Text(stringResource(R.string.file_import)) }, onClick = { showLibraryActions = false; pickFile() })
-                                        DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_upload) }, text = { Text(stringResource(R.string.drawing_import)) }, onClick = { showLibraryActions = false; runCatching { importPicker.launch(arrayOf("*/*")) }.onFailure { model.importPickerFailed() } })
-                                        DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_file_text) }, text = { Text(stringResource(R.string.markdown_import)) }, onClick = { showLibraryActions = false; showMarkdownImport = true })
-                                        DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_files) }, text = { Text(stringResource(R.string.templates_title)) }, onClick = { showLibraryActions = false; model.showTemplates() })
-                                        HorizontalDivider()
-                                    }
-                                    DropdownMenuItem(leadingIcon = { WorldsGlyph(if (state.trash) R.drawable.ic_files else R.drawable.ic_trash_2) }, text = { Text(stringResource(if (state.trash) R.string.pages else R.string.trash)) }, onClick = { showLibraryActions = false; model.toggleTrash() })
-                                }
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    when {
-                        state.loading -> CircularProgressIndicator(Modifier.padding(16.dp))
-                        state.error -> { Text(stringResource(R.string.error_loading), color = MaterialTheme.colorScheme.error); TextButton(onClick = model::refresh) { Text(stringResource(R.string.retry)) } }
-                        state.pages.isEmpty() -> if (!wide) EmptyPages(state.query.isNotBlank(), state.trash, narrow)
-                        else -> LazyColumn(Modifier.weight(1f)) {
-                            items(state.pages, key = { it.id }) { page -> PageRow(page, page.id == state.selected?.resource?.id) { model.open(page.id) } }
-                        }
-                    }
-                }
+    val destination = WorldsDestination.valueOf(destinationName)
+    fun selectDestination(next: WorldsDestination) {
+        if (destination == WorldsDestination.Search && next != WorldsDestination.Search) model.search("")
+        destinationName = next.name
+    }
+    BackHandler(enabled = state.selected == null && destination != WorldsDestination.Home) { selectDestination(WorldsDestination.Home) }
+    val shellActions = remember(account) { ShellActions(
+        create = { kind -> createParent = null; createKind = kind; title = ""; showCreate = true },
+        open = { id -> if (id.isEmpty()) model.back() else model.open(id) },
+        search = model::search,
+        refresh = model::refresh,
+        settings = { showAppearance = true },
+        account = if (account != null) { { showAccount = true } } else null,
+        automations = { showAutomations = true },
+        templates = model::showTemplates,
+    ) }
+    WorldsShell(state, shellActions, destination, ::selectDestination, showLibraryActions, { showLibraryActions = it },
+        moreItems = {
+            if (account != null) DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_circle_user) }, text = { Text(stringResource(R.string.account_title)) }, onClick = { showLibraryActions = false; showAccount = true })
+            if (!state.trash) {
+                DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_folder) }, text = { Text(stringResource(R.string.project_new)) }, onClick = { showLibraryActions = false; createParent = null; createKind = "project"; showCreate = true })
+                DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_image) }, text = { Text(stringResource(R.string.gallery_new)) }, onClick = { showLibraryActions = false; createParent = null; createKind = "gallery"; showCreate = true })
+                DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_maximize) }, text = { Text(stringResource(R.string.presentation_new)) }, onClick = { showLibraryActions = false; createParent = null; createKind = "presentation"; showCreate = true })
+                DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_file_text) }, text = { Text(stringResource(R.string.new_document)) }, onClick = { showLibraryActions = false; createParent = null; createKind = "document"; showCreate = true })
+                DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_table_2) }, text = { Text(stringResource(R.string.new_spreadsheet)) }, onClick = { showLibraryActions = false; createParent = null; createKind = "spreadsheet"; showCreate = true })
+                DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_pen_line) }, text = { Text(stringResource(R.string.new_drawing)) }, onClick = { showLibraryActions = false; createParent = null; createKind = "drawing"; showCreate = true })
+                DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_link) }, text = { Text(stringResource(R.string.stream_add)) }, onClick = { showLibraryActions = false; streamCreateParent = null; showStreamCreate = true })
+                HorizontalDivider()
+                DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_message_circle) }, text = { Text(stringResource(R.string.ai_chat)) }, onClick = { showLibraryActions = false; destinationName = WorldsDestination.Ai.name })
+                DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_sliders_horizontal) }, text = { Text(stringResource(R.string.automations)) }, onClick = { showLibraryActions = false; showAutomations = true })
+                DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_share_2) }, text = { Text(stringResource(R.string.discord)) }, onClick = { showLibraryActions = false; showDiscordComposer = true })
+                DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_circle_user) }, text = { Text(stringResource(R.string.profile)) }, onClick = { showLibraryActions = false; showProfile = true })
+                HorizontalDivider()
+                DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_upload) }, text = { Text(stringResource(R.string.file_import)) }, onClick = { showLibraryActions = false; pickFile() })
+                DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_upload) }, text = { Text(stringResource(R.string.drawing_import)) }, onClick = { showLibraryActions = false; runCatching { importPicker.launch(arrayOf("*/*")) }.onFailure { model.importPickerFailed() } })
+                DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_file_text) }, text = { Text(stringResource(R.string.markdown_import)) }, onClick = { showLibraryActions = false; showMarkdownImport = true })
+                DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_files) }, text = { Text(stringResource(R.string.templates_title)) }, onClick = { showLibraryActions = false; model.showTemplates() })
+                HorizontalDivider()
             }
-            if (wide && state.selected == null) {
-                VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                    when {
-                        state.loading -> CircularProgressIndicator()
-                        state.error -> Text(stringResource(R.string.error_loading), color = MaterialTheme.colorScheme.error)
-                        else -> Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(32.dp)) {
-                            val empty = state.pages.isEmpty()
-                            val searching = state.query.isNotBlank()
-                            val icon = if (empty && searching) R.drawable.ic_search else if (empty && state.trash) R.drawable.ic_trash_2 else R.drawable.ic_files
-                            val title = if (!empty) R.string.select_page_title else if (searching) R.string.no_results else if (state.trash) R.string.trash_empty else R.string.empty_title
-                            Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(56.dp)) {
-                                Box(contentAlignment = Alignment.Center) { CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant) { WorldsGlyph(icon) } }
-                            }
-                            Text(stringResource(title), color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.titleMedium)
-                            if (!empty || (!searching && !state.trash)) Text(stringResource(if (empty) R.string.empty_body else R.string.select_page_body), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-                        }
-                    }
-                }
-            }
-            if (state.selected != null) {
-                if (wide) VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                if (state.selected!!.resource.kind == "spreadsheet" && state.selected!!.resource.deletedAt == null) SpreadsheetScreen(state.selected!!.resource, onBack = model::back, modifier = Modifier.weight(1f))
-                else if (state.selected!!.resource.kind == "drawing" && state.selected!!.resource.deletedAt == null) DrawingScreen(state.selected!!.resource, model::back, Modifier.weight(1f), model.databaseName)
+            DropdownMenuItem(leadingIcon = { WorldsGlyph(if (state.trash) R.drawable.ic_files else R.drawable.ic_trash_2) }, text = { Text(stringResource(if (state.trash) R.string.pages else R.string.trash)) }, onClick = { showLibraryActions = false; model.toggleTrash(); destinationName = WorldsDestination.Library.name })
+        },
+        ai = { aiModifier -> AiChatScreen(databaseName = model.databaseName, onBack = { selectDestination(WorldsDestination.Home) }, onCreatePage = { title, content -> selectDestination(WorldsDestination.Home); model.createWithContent(title, content) }, modifier = aiModifier, showBack = false) },
+        detail = { detailModifier ->
+                if (state.selected!!.resource.kind == "spreadsheet" && state.selected!!.resource.deletedAt == null) SpreadsheetScreen(state.selected!!.resource, onBack = model::back, modifier = detailModifier, databaseName = model.databaseName)
+                else if (state.selected!!.resource.kind == "drawing" && state.selected!!.resource.deletedAt == null) DrawingScreen(state.selected!!.resource, model::back, detailModifier, model.databaseName)
                 else if (state.selected!!.resource.kind == "project" && state.selected!!.resource.deletedAt == null) ProjectScreen(state.selected!!.resource, state.children, state.projectResources, state.projectActivity, state.busy,
                     onBack = model::back, onOpen = model::open, onRename = { renameTitle = state.selected!!.resource.title; showRename = true }, onTrash = model::trash,
-                    onCreateChild = model::createProjectChild, onUpdate = model::updateProject, onLinkChange = model::changeProjectLink, onImportFile = { pickFile(it) }, onAddStream = { streamCreateParent = it; showStreamCreate = true }, modifier = Modifier.weight(1f))
+                    onCreateChild = model::createProjectChild, onUpdate = model::updateProject, onLinkChange = model::changeProjectLink, onImportFile = { pickFile(it) }, onAddStream = { streamCreateParent = it; showStreamCreate = true }, modifier = detailModifier)
                 else if (state.selected!!.resource.kind == "gallery" && state.selected!!.resource.deletedAt == null) GalleryScreen(state.selected!!, model.databaseName, state.busy, state.imageStatus,
                     onBack = model::back, onAdd = ::pickGalleryMedia, onExport = ::exportImage, onAction = model::galleryAction, onLayout = model::galleryLayout,
-                    onRename = { renameTitle = state.selected!!.resource.title; showRename = true }, onTrash = model::trash, modifier = Modifier.weight(1f))
+                    onRename = { renameTitle = state.selected!!.resource.title; showRename = true }, onTrash = model::trash, modifier = detailModifier)
                 else if (state.selected!!.resource.kind == "presentation" && state.selected!!.resource.deletedAt == null) PresentationScreen(state.selected!!, state.busy, model::back, model::presentationAction, model.databaseName, state.imageStatus, ::pickSlideImage, ::pickSlideBackground, ::pickSlideVideo, model::presentationElement,
-                    onRename = { renameTitle = state.selected!!.resource.title; showRename = true }, onTrash = model::trash, modifier = Modifier.weight(1f))
+                    onRename = { renameTitle = state.selected!!.resource.title; showRename = true }, onTrash = model::trash, modifier = detailModifier)
                 else if (state.selected!!.resource.kind == "file" && state.selected!!.resource.deletedAt == null) FileScreen(state.selected!!.resource, model.databaseName, state.busy, state.fileStatus,
-                    onBack = model::back, onExport = ::exportFile, onRename = { renameTitle = state.selected!!.resource.title; showRename = true }, onTrash = model::trash, modifier = Modifier.weight(1f))
+                    onBack = model::back, onExport = ::exportFile, onRename = { renameTitle = state.selected!!.resource.title; showRename = true }, onTrash = model::trash, modifier = detailModifier)
                 else if (state.selected!!.resource.kind == "stream" && state.selected!!.resource.deletedAt == null) StreamScreen(state.selected!!.resource, state.busy, model::back, model::updateStream,
-                    onRename = { renameTitle = state.selected!!.resource.title; showRename = true }, onTrash = model::trash, modifier = Modifier.weight(1f))
+                    onRename = { renameTitle = state.selected!!.resource.title; showRename = true }, onTrash = model::trash, modifier = detailModifier)
                 else PageDetail(state.selected!!, state.children, model::back, state.busy, state.actionError, canMovePage = !state.selectedTemplateTree, databaseName = model.databaseName, imageStatus = state.imageStatus,
                     allowKeyboardShortcuts = state.editor == null && state.versions == null && !state.moveVisible && !state.templatesVisible && !showCreate && !showRename && !showMarkdown && !showMarkdownImport && templateToTrash == null,
                     onRename = { renameTitle = state.selected!!.resource.title; showRename = true },
@@ -1340,36 +1273,9 @@ private val Light = lightColorScheme(primary = Color(0xFF765127), onPrimary = Co
                     onTrash = model::trash, onRestore = model::restore, onVersions = model::showVersions, onAdd = model::addBlock, onAddCode = model::addCodeBlock, onAddMath = model::addMathBlock, onAddMermaid = model::addMermaidBlock, onEdit = model::editBlock, onMove = model::moveBlock, onRemove = model::removeBlock, onDuplicate = model::duplicateBlock,
                     onAddTable = model::addTable, onEditTable = model::editTableParagraph, onResizeTable = model::resizeTable, onTableAction = model::tableAction, onAddContainer = model::addContainer, onEditContainer = model::editContainerParagraph, onAppendContainer = model::appendContainerParagraph, onAddList = model::addList, onEditItem = model::editListItem, onToggleItem = model::toggleListItem, onAppendItem = model::appendListItem, onItemAction = model::listItemAction, markdownStatus = state.markdownStatus, onMarkdown = { showMarkdown = true }, onSaveTemplate = model::saveTemplate,
                     onDiscord = { showDiscordComposer = true },
-                    modifier = Modifier.weight(1f))
-            }
-        }
-    }
-}
-
-@Composable private fun EmptyPages(searching: Boolean, trash: Boolean, compact: Boolean) {
-    Column(Modifier.fillMaxWidth().padding(vertical = if (compact) 8.dp else 32.dp)) {
-        Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(if (compact) 40.dp else 52.dp)) {
-            Box(contentAlignment = Alignment.Center) { CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant) { WorldsGlyph(if (searching) R.drawable.ic_search else if (trash) R.drawable.ic_trash_2 else R.drawable.ic_file_text, Modifier.size(24.dp)) } }
-        }
-        Spacer(Modifier.height(if (compact) 8.dp else 16.dp))
-        Text(stringResource(if (searching) R.string.no_results else if (trash) R.string.trash_empty else R.string.empty_title), fontSize = if (compact) 16.sp else 20.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onBackground)
-        if (!searching && !trash) Text(stringResource(R.string.empty_body), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp, lineHeight = 24.sp, modifier = Modifier.padding(top = 8.dp))
-    }
-}
-
-@Composable private fun PageRow(page: Resource, selected: Boolean, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).background(if (selected) MaterialTheme.colorScheme.surface else Color.Transparent, RoundedCornerShape(12.dp)).padding(horizontal = 12.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Surface(shape = RoundedCornerShape(11.dp), color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(42.dp)) {
-            Box(contentAlignment = Alignment.Center) { CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant) { WorldsGlyph(when (page.kind) { "drawing" -> R.drawable.ic_pen_line; "spreadsheet" -> R.drawable.ic_table_2; "project" -> R.drawable.ic_folder; "gallery" -> R.drawable.ic_image; "presentation" -> R.drawable.ic_maximize; else -> R.drawable.ic_file_text }) } }
-        }
-        Column(Modifier.weight(1f)) {
-            Text(page.title.ifBlank { stringResource(R.string.untitled) }, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onBackground, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Spacer(Modifier.height(4.dp))
-            Text(DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(page.updatedAt)), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant) { WorldsGlyph(R.drawable.ic_chevron_right) }
-    }
-    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
+                    modifier = detailModifier)
+        },
+    )
 }
 
 @Composable private fun ListBlockView(list: ListEditing.ListBlock, editable: Boolean, reveal: PageMatch?,
@@ -1590,15 +1496,13 @@ private data class PendingTableDelete(val revision: Long, val action: String, va
         } else false
     }.focusRequester(pageFocus).onFocusChanged { pageHasFocus = it.hasFocus }.focusable().testTag("page-keyboard-surface"), contentAlignment = Alignment.TopCenter) {
     Column(Modifier.widthIn(max = 900.dp).fillMaxSize().padding(horizontal = 28.dp, vertical = 24.dp)) {
-        TextButton(onClick = onBack) { WorldsActionLabel(R.drawable.ic_chevron_left, stringResource(R.string.back)) }
+        WorldsBackButton(onBack)
         Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(44.dp)) {
-                Box(contentAlignment = Alignment.Center) { CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant) { WorldsGlyph(R.drawable.ic_file_text) } }
-            }
-            Text(document.resource.title.ifBlank { stringResource(R.string.untitled) }, fontSize = 28.sp, lineHeight = 36.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
+            WorldsTile(worldsTile(document.resource.kind), 48.dp)
+            Text(document.resource.title.ifBlank { stringResource(R.string.untitled) }, style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onBackground)
         }
-        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        FlowRow(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (document.resource.deletedAt == null) {
                 if (editable) {
                     var insertMenu by remember { mutableStateOf(false) }
@@ -1623,7 +1527,7 @@ private data class PendingTableDelete(val revision: Long, val action: String, va
                 }
                 var pageMenu by remember { mutableStateOf(false) }
                 Box {
-                    TextButton(enabled = !busy, onClick = { pageMenu = true }) { WorldsActionLabel(R.drawable.ic_ellipsis_vertical, stringResource(R.string.page_actions)) }
+                    FilledTonalButton(enabled = !busy, colors = ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = MaterialTheme.colorScheme.onSurface), onClick = { pageMenu = true }) { WorldsActionLabel(R.drawable.ic_ellipsis_vertical, stringResource(R.string.page_actions)) }
                     DropdownMenu(expanded = pageMenu, onDismissRequest = { pageMenu = false }) {
                         if (editable) DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_search) }, text = { Text(stringResource(R.string.find_replace)) }, onClick = { pageMenu = false; findTarget = document })
                         if (document.resource.kind == "document") DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_files) }, text = { Text(stringResource(if (paginatedMode) R.string.document_continuous_mode else R.string.document_paginated_mode)) }, onClick = { pageMenu = false; paginatedMode = !paginatedMode })

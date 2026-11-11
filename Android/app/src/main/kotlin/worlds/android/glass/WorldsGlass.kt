@@ -1,339 +1,210 @@
 package worlds.android.glass
 
-import android.app.Activity
-import android.content.Context
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.RenderEffect
+import android.graphics.RuntimeShader
+import android.graphics.Shader
 import android.os.Build
-import android.view.View
-import android.view.Window
-import android.view.WindowManager
 import androidx.annotation.RequiresApi
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.graphics.addOutline
+import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 
 /**
- * WorldsGlass Design System:
- * Glassmorphic, frosted translucent surfaces with specular highlights,
- * hardware blur on API 31+ (Android 12+ and ChromeOS), and high-contrast
- * tint fallbacks on older Android versions.
+ * Worlds glass for Android, matching the material on Windows and Apple.
+ *
+ * Glass is reserved for floating chrome. It reads the live content behind it from a
+ * [GlassBackdrop], blurs it, lifts its colour and bends it at the edge. There is one
+ * light from the upper left and exactly one uneven rim; nested selections have no edge.
+ * Android below 12, or glass quality Disabled, draw the same geometry with a solid fill.
  */
+@Stable
+class GlassBackdrop internal constructor(internal val layer: GraphicsLayer) {
+    internal var origin by mutableStateOf(Offset.Zero)
+}
 
-data class GlassStyle(
-    val backgroundColor: Color,
-    val borderColor: Color,
-    val specularHighlight: Brush,
-    val blurRadiusDp: Dp = 24.dp,
-    val cornerRadius: Dp = 16.dp,
-    val elevation: Dp = 2.dp
-)
+@Composable
+fun rememberGlassBackdrop(): GlassBackdrop {
+    val layer = rememberGraphicsLayer()
+    return remember(layer) { GlassBackdrop(layer) }
+}
 
-object WorldsGlassDefaults {
-    @Composable
-    fun standard(
-        isDark: Boolean = androidx.compose.foundation.isSystemInDarkTheme(),
-        accent: Color = MaterialTheme.colorScheme.primary
-    ): GlassStyle {
-        val bg = if (isDark) Color(0xCC1A1A20) else Color(0xD8F8F9FB)
-        val border = if (isDark) Color(0x33FFFFFF) else Color(0x33000000)
-        val sheen = Brush.verticalGradient(
-            colors = if (isDark) {
-                listOf(Color(0x22FFFFFF), Color(0x05FFFFFF), Color(0x00000000))
-            } else {
-                listOf(Color(0x66FFFFFF), Color(0x1AFFFFFF), Color(0x00FFFFFF))
+val LocalGlassBackdrop = compositionLocalOf<GlassBackdrop?> { null }
+
+/** "specular", "standard" or "disabled", from the Appearance settings. */
+val LocalGlassQuality = compositionLocalOf { "standard" }
+val LocalGlassDark = compositionLocalOf { true }
+
+/** Marks the content that glass above it should see. */
+fun Modifier.glassBackdropSource(backdrop: GlassBackdrop): Modifier = this
+    .onGloballyPositioned { backdrop.origin = it.positionInWindow() }
+    .drawWithContent {
+        backdrop.layer.record { this@drawWithContent.drawContent() }
+        drawLayer(backdrop.layer)
+    }
+
+enum class GlassKind { Bar, Menu }
+
+private const val LENS_SHADER = """
+uniform shader content;
+uniform float2 glassSize;
+uniform float2 glassOrigin;
+uniform float radius;
+uniform float bend;
+uniform float band;
+float box(float2 p, float2 b, float r) {
+    float2 q = abs(p) - b + r;
+    return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
+}
+half4 main(float2 c) {
+    float2 h = glassSize * 0.5;
+    float2 p = c - glassOrigin - h;
+    float d = box(p, h, radius);
+    float t = clamp(1.0 + d / band, 0.0, 1.0);
+    float2 n = float2(box(p + float2(1.0, 0.0), h, radius) - box(p - float2(1.0, 0.0), h, radius),
+                      box(p + float2(0.0, 1.0), h, radius) - box(p - float2(0.0, 1.0), h, radius));
+    float l = max(length(n), 0.0001);
+    return content.eval(c - (n / l) * bend * t * t);
+}
+"""
+
+@RequiresApi(31)
+private fun glassEffect(blurPx: Float, saturation: Float, size: IntSize, pad: Float, radius: Float, bend: Float, band: Float): RenderEffect {
+    val blur = RenderEffect.createBlurEffect(blurPx, blurPx, Shader.TileMode.CLAMP)
+    val vivid = RenderEffect.createColorFilterEffect(ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(saturation) }), blur)
+    if (Build.VERSION.SDK_INT < 33 || bend <= 0f) return vivid
+    return lensEffect(vivid, size, pad, radius, bend, band)
+}
+
+@RequiresApi(33)
+private fun lensEffect(inner: RenderEffect, size: IntSize, pad: Float, radius: Float, bend: Float, band: Float): RenderEffect {
+    val shader = RuntimeShader(LENS_SHADER)
+    shader.setFloatUniform("glassSize", size.width.toFloat(), size.height.toFloat())
+    shader.setFloatUniform("glassOrigin", pad, pad)
+    shader.setFloatUniform("radius", radius)
+    shader.setFloatUniform("bend", bend)
+    shader.setFloatUniform("band", band)
+    return RenderEffect.createChainEffect(RenderEffect.createRuntimeShaderEffect(shader, "content"), inner)
+}
+
+private class GlassPosition { var value by mutableStateOf(Offset.Zero) }
+
+/** Draws a piece of glass behind this element's content. */
+@Composable
+fun Modifier.worldsGlass(shape: Shape, kind: GlassKind = GlassKind.Bar): Modifier {
+    val backdrop = LocalGlassBackdrop.current
+    val quality = LocalGlassQuality.current
+    val dark = LocalGlassDark.current
+    val blurLayer = rememberGraphicsLayer()
+    val position = remember { GlassPosition() }
+    val live = backdrop != null && quality != "disabled" && Build.VERSION.SDK_INT >= 31
+    val specular = quality == "specular"
+    return this
+        .onGloballyPositioned { position.value = it.positionInWindow() }
+        .drawWithCache {
+            val outline = shape.createOutline(size, layoutDirection, this)
+            val path = Path().apply { addOutline(outline) }
+            val radius = (outline as? Outline.Rounded)?.roundRect?.topLeftCornerRadius?.x ?: 0f
+            val pad = 28.dp.toPx()
+            val layerSize = IntSize((size.width + pad * 2).toInt().coerceAtLeast(1), (size.height + pad * 2).toInt().coerceAtLeast(1))
+            if (live && size.width > 0f && size.height > 0f) {
+                val blurPx = (if (kind == GlassKind.Menu) 22.dp else 13.dp).toPx()
+                val bend = (if (specular) 11.dp else 8.dp).toPx()
+                blurLayer.renderEffect = glassEffect(blurPx, if (dark) 1.6f else 1.35f, IntSize(size.width.toInt(), size.height.toInt()), pad, radius, bend, 15.dp.toPx()).asComposeRenderEffect()
             }
-        )
-        return GlassStyle(
-            backgroundColor = bg,
-            borderColor = border,
-            specularHighlight = sheen,
-            blurRadiusDp = 24.dp,
-            cornerRadius = 16.dp,
-            elevation = 3.dp
-        )
-    }
-
-    @Composable
-    fun specular(
-        isDark: Boolean = androidx.compose.foundation.isSystemInDarkTheme()
-    ): GlassStyle {
-        val base = standard(isDark)
-        val sheen = Brush.linearGradient(
-            colors = listOf(
-                Color(0x38FFFFFF),
-                Color(0x0AFFFFFF),
-                Color(0x18FFFFFF)
+            // Milky body: glass brightens what is behind it rather than darkening it.
+            val body = when {
+                !live -> if (dark) Color(0xFF242428) else Color(0xFFFBFBFA)
+                kind == GlassKind.Menu -> if (dark) Color(0xB82A2A2F) else Color(0xCCFBFBFA)
+                dark -> Color(0x5C2C2C32)
+                else -> Color(0x8CFFFFFF)
+            }
+            val sheen = Brush.linearGradient(
+                0f to Color.White.copy(alpha = if (dark) 0.10f else 0.34f),
+                0.45f to Color.White.copy(alpha = if (dark) 0.02f else 0.06f),
+                1f to Color.White.copy(alpha = if (dark) 0.05f else 0.14f),
+                start = Offset.Zero, end = Offset(size.width, size.height),
             )
-        )
-        return base.copy(
-            specularHighlight = sheen,
-            elevation = 6.dp,
-            borderColor = if (isDark) Color(0x4DFFFFFF) else Color(0x40000000)
-        )
-    }
-}
-
-/**
- * Base glass surface container with specular border and layered gradient.
- */
-@Composable
-fun WorldsGlassSurface(
-    modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(16.dp),
-    style: GlassStyle = WorldsGlassDefaults.standard(),
-    content: @Composable BoxScope.() -> Unit
-) {
-    Box(
-        modifier = modifier
-            .clip(shape)
-            .background(style.backgroundColor)
-            .background(style.specularHighlight)
-            .border(BorderStroke(1.dp, style.borderColor), shape)
-    ) {
-        content()
-    }
-}
-
-/**
- * Reusable glass panel for cards, sidebars, and adaptive multi-pane panels.
- */
-@Composable
-fun WorldsGlassPanel(
-    modifier: Modifier = Modifier,
-    title: String? = null,
-    actions: @Composable (RowScope.() -> Unit)? = null,
-    shape: Shape = RoundedCornerShape(18.dp),
-    style: GlassStyle = WorldsGlassDefaults.standard(),
-    content: @Composable ColumnScope.() -> Unit
-) {
-    WorldsGlassSurface(modifier = modifier, shape = shape, style = style) {
-        Column(Modifier.padding(18.dp)) {
-            if (title != null || actions != null) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (title != null) {
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    } else Spacer(Modifier.width(1.dp))
-                    actions?.let { actionsScope ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            actionsScope()
+            // One rim, bright upper left, fading, a soft return at lower right.
+            val rim = Brush.linearGradient(
+                0f to Color.White.copy(alpha = if (dark) 0.42f else 0.95f),
+                0.34f to Color.White.copy(alpha = if (dark) 0.10f else 0.40f),
+                0.68f to Color.White.copy(alpha = if (dark) 0.05f else 0.22f),
+                1f to Color.White.copy(alpha = if (dark) 0.22f else 0.70f),
+                start = Offset.Zero, end = Offset(size.width, size.height),
+            )
+            val rimWidth = 1.dp.toPx()
+            val shadowRadius = 22.dp.toPx()
+            val shadowY = 8.dp.toPx()
+            val shadowColor = Color.Black.copy(alpha = if (dark) 0.46f else 0.16f).toArgb()
+            onDrawWithContent {
+                if (Build.VERSION.SDK_INT >= 28) {
+                    // The shadow stays outside the shape so it never shows through the glass.
+                    clipPath(path, clipOp = ClipOp.Difference) {
+                        drawIntoCanvas { canvas ->
+                            val paint = Paint().apply { color = Color.Black }
+                            paint.asFrameworkPaint().setShadowLayer(shadowRadius, 0f, shadowY, shadowColor)
+                            canvas.drawPath(path, paint)
                         }
                     }
                 }
-            }
-            content()
-        }
-    }
-}
-
-/**
- * Floating glass toolbar with adaptive docked or floating layout.
- */
-@Composable
-fun WorldsGlassToolbar(
-    modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(24.dp),
-    style: GlassStyle = WorldsGlassDefaults.specular(),
-    content: @Composable RowScope.() -> Unit
-) {
-    WorldsGlassSurface(
-        modifier = modifier.heightIn(min = 48.dp),
-        shape = shape,
-        style = style
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            content = content
-        )
-    }
-}
-
-/**
- * Glass navigation wrapper for navigation rail, bottom bar, or drawer.
- */
-@Composable
-fun WorldsGlassNavigation(
-    modifier: Modifier = Modifier,
-    vertical: Boolean = false,
-    content: @Composable () -> Unit
-) {
-    val shape = if (vertical) RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp) else RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-    WorldsGlassSurface(
-        modifier = modifier,
-        shape = shape,
-        style = WorldsGlassDefaults.standard()
-    ) {
-        content()
-    }
-}
-
-/**
- * Touch-optimized glass button with ripple and hover state.
- */
-@Composable
-fun WorldsGlassButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    shape: Shape = RoundedCornerShape(12.dp),
-    content: @Composable RowScope.() -> Unit
-) {
-    val style = WorldsGlassDefaults.standard()
-    Surface(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp),
-        shape = shape,
-        color = style.backgroundColor.copy(alpha = if (enabled) 0.85f else 0.4f),
-        border = BorderStroke(1.dp, style.borderColor),
-        contentColor = MaterialTheme.colorScheme.onSurface
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-            content = content
-        )
-    }
-}
-
-/**
- * Frosted glass modal dialog.
- */
-@Composable
-fun WorldsGlassDialog(
-    onDismissRequest: () -> Unit,
-    properties: DialogProperties = DialogProperties(),
-    content: @Composable () -> Unit
-) {
-    Dialog(onDismissRequest = onDismissRequest, properties = properties) {
-        WorldsGlassSurface(
-            modifier = Modifier
-                .fillMaxWidth(0.92f)
-                .padding(16.dp),
-            shape = RoundedCornerShape(24.dp),
-            style = WorldsGlassDefaults.specular()
-        ) {
-            Box(Modifier.padding(24.dp)) {
-                content()
+                if (live && backdrop != null) {
+                    val shift = position.value - backdrop.origin
+                    blurLayer.record(layerSize) {
+                        translate(pad - shift.x, pad - shift.y) { drawLayer(backdrop.layer) }
+                    }
+                    clipPath(path) { translate(-pad, -pad) { drawLayer(blurLayer) } }
+                }
+                drawPath(path, body)
+                drawPath(path, sheen)
+                drawPath(path, rim, style = Stroke(rimWidth), blendMode = BlendMode.SrcOver)
+                drawContent()
             }
         }
-    }
 }
 
-/**
- * Frosted glass bottom sheet / side sheet container.
- */
+/** The selected item inside a piece of glass: a lighter pool with no edge. */
 @Composable
-fun WorldsGlassSheet(
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    WorldsGlassSurface(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)),
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        style = WorldsGlassDefaults.standard()
-    ) {
-        Column(Modifier.padding(20.dp), content = content)
-    }
-}
-
-/**
- * Universal glass container wrapper.
- */
-@Composable
-fun WorldsGlassContainer(
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
-) {
-    WorldsGlassSurface(modifier = modifier) {
-        content()
-    }
-}
-
-/**
- * Translucent glass overlay.
- */
-@Composable
-fun WorldsGlassOverlay(
-    modifier: Modifier = Modifier,
-    visible: Boolean = true,
-    content: @Composable BoxScope.() -> Unit
-) {
-    if (visible) {
-        Box(
-            modifier = modifier
-                .background(Color(0x40000000))
-                .fillMaxSize(),
-            content = content
+fun Modifier.worldsGlassLens(shape: Shape): Modifier {
+    val dark = LocalGlassDark.current
+    return this.drawWithCache {
+        val path = Path().apply { addOutline(shape.createOutline(size, layoutDirection, this@drawWithCache)) }
+        val fill = Brush.verticalGradient(
+            0f to Color.White.copy(alpha = if (dark) 0.17f else 0.62f),
+            1f to Color.White.copy(alpha = if (dark) 0.09f else 0.40f),
         )
+        onDrawWithContent { drawPath(path, fill); drawContent() }
     }
 }
 
-/**
- * Hardware Window Blur Integration for Android 12+ (API 31+) & ChromeOS.
- */
-object WorldsWindowBlur {
-    /**
-     * Enables hardware background blur on supported Android 12+ devices.
-     */
-    fun enableWindowBlur(activity: Activity, blurRadiusPixels: Int = 40) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val window = activity.window
-            val windowManager = activity.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
-            val isBlurSupported = windowManager?.isCrossWindowBlurEnabled == true
-            if (isBlurSupported) {
-                window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
-                window.attributes.blurBehindRadius = blurRadiusPixels
-                try {
-                    window.setBackgroundBlurRadius(blurRadiusPixels)
-                } catch (_: Throwable) {}
-            }
-        }
-    }
-
-    /**
-     * Disables window blur when leaving glass mode or for low power.
-     */
-    fun disableWindowBlur(activity: Activity) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val window = activity.window
-            window.clearFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
-            try {
-                window.setBackgroundBlurRadius(0)
-            } catch (_: Throwable) {}
-        }
-    }
-}

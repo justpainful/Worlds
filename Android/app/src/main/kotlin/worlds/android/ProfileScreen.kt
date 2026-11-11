@@ -61,9 +61,9 @@ internal fun ProfileScreen(onBack: () -> Unit) {
 
     LaunchedEffect(Unit) {
         val prefs = context.profileDataStore.data.first()
-        displayName = prefs[KEY_DISPLAY_NAME] ?: "Kuroi"
-        handle = prefs[KEY_HANDLE] ?: "@kuroi"
-        bio = prefs[KEY_BIO] ?: "Worlds native explorer"
+        displayName = prefs[KEY_DISPLAY_NAME] ?: ""
+        handle = prefs[KEY_HANDLE] ?: ""
+        bio = prefs[KEY_BIO] ?: ""
         val savedColor = prefs[KEY_AVATAR_COLOR]
         if (savedColor != null) {
             val idx = AVATAR_COLORS.indexOfFirst {
@@ -85,15 +85,13 @@ internal fun ProfileScreen(onBack: () -> Unit) {
             .padding(horizontal = 24.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        TextButton(onClick = onBack) {
-            WorldsActionLabel(R.drawable.ic_chevron_left, stringResource(R.string.back))
-        }
+        WorldsBackButton(onBack)
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            WorldsGlyph(R.drawable.ic_circle_user, tint = MaterialTheme.colorScheme.primary)
+            WorldsTile(R.drawable.pi_profile, 44.dp)
             Text(
                 stringResource(R.string.profile_title),
                 style = MaterialTheme.typography.headlineMedium,

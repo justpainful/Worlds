@@ -1,5 +1,8 @@
 package worlds.android.automations
 
+import worlds.android.WorldsTile
+import worlds.android.WorldsBackButton
+import worlds.android.AlertDialog
 import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -168,9 +171,7 @@ fun AutomationsScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = onBack) {
-                WorldsActionLabel(R.drawable.ic_chevron_left, stringResource(R.string.back))
-            }
+            WorldsBackButton(onBack)
             Button(
                 onClick = {
                     editingAutomation = null
@@ -184,7 +185,7 @@ fun AutomationsScreen(
         Spacer(Modifier.height(16.dp))
 
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            WorldsGlyph(R.drawable.ic_sliders_horizontal, tint = MaterialTheme.colorScheme.primary)
+            WorldsTile(R.drawable.pi_automations, 44.dp)
             Text(
                 "Automations",
                 style = MaterialTheme.typography.headlineMedium,

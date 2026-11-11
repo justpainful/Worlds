@@ -874,6 +874,16 @@ class ContentStore(context: Context, name: String = "worlds-content.db") :
         requireResource(id)
     }
 
+    /** Saves a spreadsheet's workbook into `metadata.sheet`, leaving every other metadata key alone. */
+    fun saveWorkbook(id: String, workbook: String): Resource = writableDatabase.transaction {
+        val page = requireResource(id)
+        check(page.deletedAt == null && page.kind == "spreadsheet")
+        update("resources", ContentValues().apply { put("metadata", SpreadsheetEditing.merge(page.metadata, workbook)) }, "id=?", arrayOf(id))
+        bump(id, page.revision)
+        record(id, "details_changed", JSONObject())
+        requireResource(id)
+    }
+
     /** Edit document running text without replacing unrelated metadata or instructions. */
     fun updateDocumentRunningText(id: String, expectedRevision: Long, header: String, footer: String): Resource = writableDatabase.transaction {
         require(header.length <= 2000 && footer.length <= 2000)

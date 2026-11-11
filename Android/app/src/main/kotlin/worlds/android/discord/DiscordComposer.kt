@@ -1,5 +1,7 @@
 package worlds.android.discord
 
+import worlds.android.WorldsBackButton
+import worlds.android.AlertDialog
 import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -155,9 +157,7 @@ fun DiscordComposer(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = onBack) {
-                WorldsActionLabel(R.drawable.ic_chevron_left, stringResource(R.string.back))
-            }
+            WorldsBackButton(onBack)
             Text("Discord Dispatch", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         }
 

@@ -1,5 +1,16 @@
 package worlds.android
 
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.shape.RoundedCornerShape
+import worlds.android.glass.LocalGlassBackdrop
+import worlds.android.glass.glassBackdropSource
+import worlds.android.glass.rememberGlassBackdrop
+import worlds.android.glass.worldsGlass
+import worlds.android.glass.worldsGlassLens
 import android.app.Application
 import android.content.Context
 import android.net.Uri
@@ -504,12 +515,34 @@ private fun historyAvailable(json: String): Pair<Boolean, Boolean> {
             Key.Delete, Key.Backspace -> if (tool == "select" && model.selectedStrokes.isNotEmpty()) { model.removeSelectedStroke(); true } else false
             else -> false
         } else false
-    }.focusRequester(drawingFocus).onFocusChanged { drawingHasFocus = it.hasFocus }.focusable().padding(16.dp)) {
-        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-            TextButton(enabled = !model.busy && model.pending == null && !model.gesture, onClick = onBack) { WorldsActionLabel(R.drawable.ic_chevron_left, stringResource(R.string.back)) }
-            Text(resource.title, modifier = Modifier.weight(1f).padding(start = 12.dp), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
-            Box {
-                TextButton(enabled = model.document != null && !model.busy && model.pending == null && !model.gesture, onClick = { showExport = true }) { WorldsActionLabel(R.drawable.ic_download, stringResource(R.string.drawing_export)) }
+    }.focusRequester(drawingFocus).onFocusChanged { drawingHasFocus = it.hasFocus }.focusable()) {
+        val backdrop = rememberGlassBackdrop()
+        val current = model.document
+        val canvasDescription = stringResource(R.string.drawing_canvas)
+        val surround = MaterialTheme.colorScheme.surfaceContainerLow.toArgb()
+        val chromeEnabled = !model.gesture && !model.busy
+        val panelsEnabled = chromeEnabled && model.pending == null
+        CompositionLocalProvider(LocalGlassBackdrop provides backdrop) {
+            Box(Modifier.fillMaxSize()) {
+                Box(Modifier.fillMaxSize().glassBackdropSource(backdrop).background(MaterialTheme.colorScheme.surfaceContainerLow), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                    if (current != null) AndroidView(factory = { context -> InkView(context) },
+                        update = { view -> view.document = current; view.selectionMode = tool == "select"; view.multiSelect = multiSelect; view.selectedGroup = model.selectedStrokes; view.selectionGroupChanged = model::selectStrokes; view.moveStrokes = model::moveStrokes; view.scaleStrokes = model::scaleStrokes; view.rotateStrokes = model::rotateStrokes; view.referenceImages = model.referenceImages; view.annotations = model.annotations; view.commentMode = tool == "comment"; view.onAnnotationClick = { viewingAnnotation = it }; view.onCanvasTappedForAnnotation = { x, y -> activeAnnotationDialog = x to y }; view.erase = erase; view.barrelEraser = barrelEraser; view.highlighter = tool == "highlighter"; view.pencil = tool == "pencil"; view.inkColor = if (tool == "highlighter") highlightColor else inkColor; view.penWidth = penWidth.toDouble(); view.pencilWidth = pencilWidth.toDouble(); view.highlightWidth = highlightWidth.toDouble(); view.eraserWidth = eraserWidth.toDouble(); view.canDraw = !model.busy && model.pending == null; view.pending = model.pending; view.complete = model::commit; view.gestureChanged = model::updateGesture; view.viewport = model.viewport; view.viewportChanged = model::updateViewport; view.surroundColor = surround; view.invalidate() },
+                        modifier = Modifier.fillMaxSize().semantics { contentDescription = canvasDescription })
+                    else if (model.busy) CircularProgressIndicator()
+                }
+                Column(Modifier.align(androidx.compose.ui.Alignment.TopCenter).fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        WorldsGlassBackButton(onBack, enabled = !model.busy && model.pending == null && !model.gesture)
+                        Column(Modifier.weight(1f).padding(horizontal = 4.dp)) {
+                            Text(resource.title, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground)
+                            Text(stringResource(R.string.drawing_local_note), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Row(Modifier.height(50.dp).worldsGlass(RoundedCornerShape(25.dp)).padding(horizontal = 4.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            DockButton(R.drawable.ic_files, stringResource(R.string.drawing_layers), panelsEnabled) { showLayers = true }
+                            DockButton(R.drawable.ic_image, stringResource(R.string.drawing_ref_image), panelsEnabled) { showRefImages = true }
+                            DockButton(R.drawable.ic_sliders_horizontal, stringResource(R.string.drawing_settings), panelsEnabled) { showSettings = true }
+                            Box {
+                                DockButton(R.drawable.ic_download, stringResource(R.string.drawing_export), model.document != null && !model.busy && model.pending == null && !model.gesture) { showExport = true }
                 DropdownMenu(expanded = showExport, onDismissRequest = { showExport = false }) {
                     listOf(DrawingExport.IMAGE to R.string.drawing_export_png, DrawingExport.PROJECT to R.string.drawing_export_project).forEach { (format, label) ->
                         DropdownMenuItem(text = { Text(stringResource(label)) }, onClick = {
@@ -521,84 +554,51 @@ private fun historyAvailable(json: String): Pair<Boolean, Boolean> {
                         })
                     }
                 }
-            }
-        }
-        BoxWithConstraints(Modifier.fillMaxWidth()) {
-          if (maxWidth < 560.dp) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                listOf(Triple("pen", R.drawable.ic_pen_line, R.string.drawing_pen), Triple("pencil", R.drawable.ic_pencil, R.string.drawing_pencil), Triple("highlighter", R.drawable.ic_highlighter, R.string.drawing_highlighter), Triple("eraser", R.drawable.ic_eraser, R.string.drawing_eraser), Triple("select", R.drawable.ic_maximize, R.string.drawing_select), Triple("comment", R.drawable.ic_message_circle, R.string.drawing_comment)).forEach { (value, icon, labelId) ->
-                    val label = stringResource(labelId)
-                    val chosen = tool == value
-                    IconButton(enabled = !model.gesture && !model.busy, onClick = { tool = value; model.selectStroke(null) }, modifier = Modifier.semantics { contentDescription = label; selected = chosen }.background(if (chosen) MaterialTheme.colorScheme.primary.copy(alpha = 0.20f) else androidx.compose.ui.graphics.Color.Transparent, CircleShape)) {
-                        WorldsGlyph(icon, tint = MaterialTheme.colorScheme.onSurface)
+                            }
+                        }
+                    }
+                    model.exportStatus?.let { Text(stringResource(it), color = if (it in setOf(R.string.drawing_export_error, R.string.drawing_export_interrupted, R.string.drawing_project_error, R.string.drawing_project_limit)) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground) }
+                    if (model.failed) {
+                        Text(stringResource(if (model.document == null) R.string.drawing_loading_error else if (model.pending != null) R.string.drawing_error else R.string.drawing_operation_error), color = MaterialTheme.colorScheme.error)
+                        if (model.pending != null) {
+                            TextButton(onClick = model::retry) { Text(stringResource(R.string.retry)) }
+                            TextButton(onClick = model::discard) { Text(stringResource(R.string.discard)) }
+                        } else if (model.document == null) TextButton(onClick = model::load) { Text(stringResource(R.string.retry)) }
                     }
                 }
-                Text(stringResource(when (tool) { "pencil" -> R.string.drawing_pencil; "highlighter" -> R.string.drawing_highlighter; "eraser" -> R.string.drawing_eraser; "select" -> R.string.drawing_select; "comment" -> R.string.drawing_comment; else -> R.string.drawing_pen }), modifier = Modifier.weight(1f).padding(start = 8.dp), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onBackground)
-                val settingsLabel = stringResource(R.string.drawing_settings)
-                IconButton(enabled = !model.gesture && !model.busy && model.pending == null, onClick = { showLayers = true }) { WorldsGlyph(R.drawable.ic_files, tint = MaterialTheme.colorScheme.onBackground) }
-                IconButton(enabled = !model.gesture && !model.busy && model.pending == null, onClick = { showRefImages = true }) { WorldsGlyph(R.drawable.ic_image, tint = MaterialTheme.colorScheme.onBackground) }
-                IconButton(enabled = !model.gesture && !model.busy && model.pending == null, onClick = { showSettings = true }, modifier = Modifier.semantics { contentDescription = settingsLabel }) { WorldsGlyph(R.drawable.ic_sliders_horizontal, tint = MaterialTheme.colorScheme.onBackground) }
-            }
-          } else FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            val chipColors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f), selectedLabelColor = MaterialTheme.colorScheme.onSurface)
-            FilterChip(selected = tool == "pen", enabled = !model.gesture && !model.busy, onClick = { tool = "pen" }, colors = chipColors, leadingIcon = { WorldsGlyph(R.drawable.ic_pen_line, tint = if (tool == "pen") MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant) }, label = { Text(stringResource(R.string.drawing_pen)) })
-            FilterChip(selected = tool == "pencil", enabled = !model.gesture && !model.busy, onClick = { tool = "pencil" }, colors = chipColors, leadingIcon = { WorldsGlyph(R.drawable.ic_pencil, tint = if (tool == "pencil") MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant) }, label = { Text(stringResource(R.string.drawing_pencil)) })
-            FilterChip(selected = tool == "highlighter", enabled = !model.gesture && !model.busy, onClick = { tool = "highlighter" }, colors = chipColors, leadingIcon = { WorldsGlyph(R.drawable.ic_highlighter, tint = if (tool == "highlighter") MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant) }, label = { Text(stringResource(R.string.drawing_highlighter)) })
-            FilterChip(selected = erase, enabled = !model.gesture && !model.busy, onClick = { tool = "eraser" }, colors = chipColors, leadingIcon = { WorldsGlyph(R.drawable.ic_eraser, tint = if (erase) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant) }, label = { Text(stringResource(R.string.drawing_eraser)) })
-            FilterChip(selected = tool == "select", enabled = !model.gesture && !model.busy, onClick = { tool = "select"; model.selectStroke(null) }, colors = chipColors, leadingIcon = { WorldsGlyph(R.drawable.ic_maximize) }, label = { Text(stringResource(R.string.drawing_select)) })
-            FilterChip(selected = tool == "comment", enabled = !model.gesture && !model.busy, onClick = { tool = "comment"; model.selectStroke(null) }, colors = chipColors, leadingIcon = { WorldsGlyph(R.drawable.ic_message_circle) }, label = { Text(stringResource(R.string.drawing_comment)) })
-            TextButton(enabled = !model.gesture && !model.busy && model.pending == null, onClick = { showLayers = true }) { WorldsActionLabel(R.drawable.ic_files, stringResource(R.string.drawing_layers)) }
-            TextButton(enabled = !model.gesture && !model.busy && model.pending == null, onClick = { showRefImages = true }) { WorldsActionLabel(R.drawable.ic_image, stringResource(R.string.drawing_ref_image)) }
-            TextButton(enabled = !model.gesture && !model.busy && model.pending == null, onClick = { showSettings = true }) { WorldsActionLabel(R.drawable.ic_sliders_horizontal, stringResource(R.string.drawing_settings)) }
-          }
-        }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            val (canUndo, canRedo) = model.document?.let(::historyAvailable) ?: (false to false)
-            val undoLabel = stringResource(R.string.drawing_undo)
-            val redoLabel = stringResource(R.string.drawing_redo)
-            val zoomOutLabel = stringResource(R.string.drawing_zoom_out)
-            val zoomInLabel = stringResource(R.string.drawing_zoom_in)
-            val fitLabel = stringResource(R.string.drawing_fit)
-            val navigationEnabled = !model.busy && model.pending == null && !model.gesture
-            val undoEnabled = canUndo && navigationEnabled
-            val redoEnabled = canRedo && navigationEnabled
-            val zoomOutEnabled = navigationEnabled && model.viewport.zoom > 0.5
-            val zoomInEnabled = navigationEnabled && model.viewport.zoom < 16.0
-            val ink = MaterialTheme.colorScheme.onBackground
-            IconButton(modifier = Modifier.semantics { contentDescription = undoLabel }, enabled = undoEnabled, onClick = { model.toggle(false) }) { WorldsGlyph(R.drawable.ic_undo_2, tint = ink.copy(alpha = if (undoEnabled) 1f else 0.38f)) }
-            IconButton(modifier = Modifier.semantics { contentDescription = redoLabel }, enabled = redoEnabled, onClick = { model.toggle(true) }) { WorldsGlyph(R.drawable.ic_redo_2, tint = ink.copy(alpha = if (redoEnabled) 1f else 0.38f)) }
-            IconButton(modifier = Modifier.semantics { contentDescription = zoomOutLabel }, enabled = zoomOutEnabled, onClick = { model.zoom(0.8) }) { WorldsGlyph(R.drawable.ic_zoom_out, tint = ink.copy(alpha = if (zoomOutEnabled) 1f else 0.38f)) }
-            Text(stringResource(R.string.drawing_zoom_value, (model.viewport.zoom * 100).roundToInt()), modifier = Modifier.padding(vertical = 12.dp), color = ink)
-            IconButton(modifier = Modifier.semantics { contentDescription = zoomInLabel }, enabled = zoomInEnabled, onClick = { model.zoom(1.25) }) { WorldsGlyph(R.drawable.ic_zoom_in, tint = ink.copy(alpha = if (zoomInEnabled) 1f else 0.38f)) }
-            IconButton(modifier = Modifier.semantics { contentDescription = fitLabel }, enabled = navigationEnabled, onClick = model::fit) { WorldsGlyph(R.drawable.ic_maximize, tint = ink.copy(alpha = if (navigationEnabled) 1f else 0.38f)) }
-            if (tool == "select" && model.selectedStrokes.isNotEmpty()) {
-                TextButton(enabled = navigationEnabled, onClick = model::removeSelectedStroke) { WorldsActionLabel(R.drawable.ic_trash_2, stringResource(if (model.selectedStrokes.size == 1) R.string.drawing_remove_stroke else R.string.drawing_remove_strokes)) }
+                val (canUndo, canRedo) = model.document?.let(::historyAvailable) ?: (false to false)
+                val navigationEnabled = !model.busy && model.pending == null && !model.gesture
+                FlowRow(Modifier.align(androidx.compose.ui.Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, androidx.compose.ui.Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (tool == "select") Row(Modifier.height(50.dp).worldsGlass(RoundedCornerShape(25.dp)).padding(horizontal = 4.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        DockButton(R.drawable.ic_list_plus, stringResource(R.string.drawing_multi_select), chromeEnabled, chosen = multiSelect) { multiSelect = !multiSelect; if (!multiSelect) model.selectStroke(null) }
+                        if (model.selectedStrokes.isNotEmpty()) {
+                            DockButton(R.drawable.ic_files, stringResource(R.string.drawing_duplicate_selection), chromeEnabled) { model.duplicateSelectedStrokes() }
+                            DockButton(R.drawable.ic_x, stringResource(R.string.drawing_clear_selection, model.selectedStrokes.size), chromeEnabled) { model.selectStroke(null) }
+                            DockButton(R.drawable.ic_trash_2, stringResource(if (model.selectedStrokes.size == 1) R.string.drawing_remove_stroke else R.string.drawing_remove_strokes), navigationEnabled) { model.removeSelectedStroke() }
+                        }
+                    }
+                    Row(Modifier.height(50.dp).worldsGlass(RoundedCornerShape(25.dp)).padding(horizontal = 4.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        DockButton(R.drawable.ic_undo_2, stringResource(R.string.drawing_undo), canUndo && navigationEnabled) { model.toggle(false) }
+                        DockButton(R.drawable.ic_redo_2, stringResource(R.string.drawing_redo), canRedo && navigationEnabled) { model.toggle(true) }
+                        DockButton(R.drawable.ic_zoom_out, stringResource(R.string.drawing_zoom_out), navigationEnabled && model.viewport.zoom > 0.5) { model.zoom(0.8) }
+                        Text(stringResource(R.string.drawing_zoom_value, (model.viewport.zoom * 100).roundToInt()), modifier = Modifier.widthIn(min = 44.dp), maxLines = 1, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        DockButton(R.drawable.ic_zoom_in, stringResource(R.string.drawing_zoom_in), navigationEnabled && model.viewport.zoom < 16.0) { model.zoom(1.25) }
+                        DockButton(R.drawable.ic_maximize, stringResource(R.string.drawing_fit), navigationEnabled) { model.fit() }
+                    }
+                    Row(Modifier.height(56.dp).worldsGlass(RoundedCornerShape(28.dp)).padding(horizontal = 6.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                        listOf(Triple("pen", R.drawable.ic_pen_line, R.string.drawing_pen), Triple("pencil", R.drawable.ic_pencil, R.string.drawing_pencil), Triple("highlighter", R.drawable.ic_highlighter, R.string.drawing_highlighter), Triple("eraser", R.drawable.ic_eraser, R.string.drawing_eraser), Triple("select", R.drawable.ic_maximize, R.string.drawing_select), Triple("comment", R.drawable.ic_message_circle, R.string.drawing_comment)).forEach { (value, icon, labelId) ->
+                            DockButton(icon, stringResource(labelId), chromeEnabled, chosen = tool == value) { tool = value; model.selectStroke(null) }
+                        }
+                    }
+                }
             }
         }
-        if (tool == "select") FlowRow(verticalArrangement = Arrangement.Center, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = multiSelect, enabled = !model.gesture && !model.busy, onClick = { multiSelect = !multiSelect; if (!multiSelect) model.selectStroke(null) },
-                leadingIcon = { WorldsGlyph(R.drawable.ic_files) }, label = { Text(stringResource(R.string.drawing_multi_select)) })
-            if (model.selectedStrokes.isNotEmpty()) {
-                TextButton(enabled = !model.gesture && !model.busy, onClick = model::duplicateSelectedStrokes) { WorldsActionLabel(R.drawable.ic_files, stringResource(R.string.drawing_duplicate_selection)) }
-                TextButton(enabled = !model.gesture && !model.busy, onClick = { model.selectStroke(null) }) { Text(stringResource(R.string.drawing_clear_selection, model.selectedStrokes.size)) }
-            }
-        }
-        Text(stringResource(R.string.drawing_local_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        model.exportStatus?.let { Text(stringResource(it), color = if (it in setOf(R.string.drawing_export_error, R.string.drawing_export_interrupted, R.string.drawing_project_error, R.string.drawing_project_limit)) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground) }
-        if (model.failed) {
-            Text(stringResource(if (model.document == null) R.string.drawing_loading_error else if (model.pending != null) R.string.drawing_error else R.string.drawing_operation_error), color = MaterialTheme.colorScheme.error)
-            if (model.pending != null) {
-                TextButton(onClick = model::retry) { Text(stringResource(R.string.retry)) }
-                TextButton(onClick = model::discard) { Text(stringResource(R.string.discard)) }
-            } else if (model.document == null) TextButton(onClick = model::load) { Text(stringResource(R.string.retry)) }
-        }
-        val current = model.document
-        if (current != null) {
-            val canvasDescription = stringResource(R.string.drawing_canvas)
-            AndroidView(factory = { context -> InkView(context) },
-                update = { view -> view.document = current; view.selectionMode = tool == "select"; view.multiSelect = multiSelect; view.selectedGroup = model.selectedStrokes; view.selectionGroupChanged = model::selectStrokes; view.moveStrokes = model::moveStrokes; view.scaleStrokes = model::scaleStrokes; view.rotateStrokes = model::rotateStrokes; view.referenceImages = model.referenceImages; view.annotations = model.annotations; view.commentMode = tool == "comment"; view.onAnnotationClick = { viewingAnnotation = it }; view.onCanvasTappedForAnnotation = { x, y -> activeAnnotationDialog = x to y }; view.erase = erase; view.barrelEraser = barrelEraser; view.highlighter = tool == "highlighter"; view.pencil = tool == "pencil"; view.inkColor = if (tool == "highlighter") highlightColor else inkColor; view.penWidth = penWidth.toDouble(); view.pencilWidth = pencilWidth.toDouble(); view.highlightWidth = highlightWidth.toDouble(); view.eraserWidth = eraserWidth.toDouble(); view.canDraw = !model.busy && model.pending == null; view.pending = model.pending; view.complete = model::commit; view.gestureChanged = model::updateGesture; view.viewport = model.viewport; view.viewportChanged = model::updateViewport; view.invalidate() },
-                modifier = Modifier.fillMaxWidth().weight(1f).semantics { contentDescription = canvasDescription })
-        } else if (model.busy) CircularProgressIndicator()
+    }
+}
+
+@Composable private fun DockButton(icon: Int, label: String, enabled: Boolean = true, chosen: Boolean = false, onClick: () -> Unit) {
+    Box(Modifier.size(42.dp).then(if (chosen) Modifier.worldsGlassLens(CircleShape) else Modifier).clip(CircleShape).clickable(enabled = enabled, role = Role.Button, onClick = onClick).semantics { contentDescription = label; selected = chosen }, contentAlignment = androidx.compose.ui.Alignment.Center) {
+        Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(21.dp), tint = when { !enabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.34f); chosen -> MaterialTheme.colorScheme.primary; else -> MaterialTheme.colorScheme.onSurface })
     }
 }
 
@@ -649,6 +649,7 @@ internal class InkView(context: Context) : View(context) {
     var barrelEraser = false
     var highlighter = false
     var pencil = false
+    var surroundColor = android.graphics.Color.rgb(224, 224, 224)
     var inkColor = "#202023"
     var penWidth = 8.0
     var pencilWidth = 4.0
@@ -753,7 +754,7 @@ internal class InkView(context: Context) : View(context) {
         val (scale, left, top) = transform()
         canvas.save()
         canvas.clipRect(0, 0, width, height)
-        canvas.drawColor(android.graphics.Color.rgb(224, 224, 224))
+        canvas.drawColor(surroundColor)
         canvas.save(); canvas.translate(left.toFloat(), top.toFloat()); canvas.scale(scale.toFloat(), scale.toFloat())
         canvas.clipRect(0f, 0f, 1280f, 720f)
         referenceImages.filter { it.visible }.forEach { img ->
