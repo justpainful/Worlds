@@ -969,4 +969,7 @@
     <string name="plan_colour_red">Red</string>
     <string name="plan_colour_purple">Purple</string>
     <string name="plan_colour_pink">Pink</string>
+    <string name="packs_title">Packs</string>
+    <string name="pack_study_title">Study pack</string>
+    <string name="pack_study_body">Subjects, timetable, assignments, exams and textbooks. Off by default for work and company workspaces; turning it off hides study views without deleting data.</string>
 </resources>

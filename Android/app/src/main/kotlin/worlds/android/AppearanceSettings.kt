@@ -140,12 +140,12 @@ internal val LocalAppearancePreferences = staticCompositionLocalOf { AppearanceP
                 Spacer(Modifier.width(12.dp)); Switch(checked = settings.reduceMotion, onCheckedChange = null)
             }
         }
-        Text("Packs (Opt-In Features)", color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.titleSmall)
+        Text(stringResource(R.string.packs_title), color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.titleSmall)
         Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth()) {
             Row(Modifier.fillMaxWidth().toggleable(value = settings.studyPackEnabled, role = Role.Switch, onValueChange = { value -> scope.launch { failed = runCatching { store.setStudyPack(value) }.isFailure } }).heightIn(min = 68.dp).padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Study & Academic Pack", color = MaterialTheme.colorScheme.onSurface)
-                    Text("Subjects, timetable, assignments, exams & textbooks. Off by default for work & company workspaces; disabling hides study views without deleting data.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.pack_study_title), color = MaterialTheme.colorScheme.onSurface)
+                    Text(stringResource(R.string.pack_study_body), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
                 Spacer(Modifier.width(12.dp)); Switch(checked = settings.studyPackEnabled, onCheckedChange = null)
             }

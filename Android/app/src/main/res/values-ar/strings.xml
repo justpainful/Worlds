@@ -969,4 +969,7 @@
     <string name="plan_colour_red">أحمر</string>
     <string name="plan_colour_purple">بنفسجي</string>
     <string name="plan_colour_pink">وردي</string>
+    <string name="packs_title">الحزم</string>
+    <string name="pack_study_title">حزمة الدراسة</string>
+    <string name="pack_study_body">المواد والجدول الدراسي والواجبات والاختبارات والكتب. معطلة افتراضيًا لمساحات العمل والشركات، وإيقافها يخفي شاشات الدراسة دون حذف البيانات.</string>
 </resources>

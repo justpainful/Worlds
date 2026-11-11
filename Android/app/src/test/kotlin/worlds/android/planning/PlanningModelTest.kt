@@ -258,7 +258,7 @@ class PlanningModelTest {
 
     @Test fun writesNewItemsInTheDesktopShape() {
         val created = JSONObject(newKindMetadata("task", mapOf("due" to "2026-11-11", "time" to null, "priority" to 0, "someday" to false)))
-        assertEquals(setOf("task"), created.keySet())
+        assertEquals(setOf("task"), created.keys().asSequence().toSet())
         val task = created.getJSONObject("task")
         assertEquals("2026-11-11", task.getString("due"))
         assertTrue(task.has("time") && task.isNull("time"))
