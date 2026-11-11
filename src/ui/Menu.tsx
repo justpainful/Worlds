@@ -56,12 +56,20 @@ function MenuPanel({ x, y, items, onClose, origin, minWidth, from: _from, depth 
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const r = el.getBoundingClientRect();
-    let nx = origin === "top right" ? x - r.width : x;
-    let ny = y;
-    if (nx + r.width > window.innerWidth - 8) nx = window.innerWidth - r.width - 8;
-    if (ny + r.height > window.innerHeight - 8) ny = Math.max(8, y - r.height - 4);
-    setPos({ x: Math.max(8, nx), y: ny, ready: true });
+    const place = () => {
+      const r = el.getBoundingClientRect();
+      let nx = origin === "top right" ? x - r.width : x;
+      let ny = y;
+      if (nx + r.width > window.innerWidth - 8) nx = window.innerWidth - r.width - 8;
+      if (ny + r.height > window.innerHeight - 8) ny = Math.max(8, y - r.height - 4);
+      const next = { x: Math.max(8, nx), y: ny };
+      setPos((p) => (p.ready && p.x === next.x && p.y === next.y ? p : { ...next, ready: true }));
+    };
+    place();
+    // Labels can change width after opening (the Arabic interface replaces them).
+    const ro = new ResizeObserver(place);
+    ro.observe(el);
+    return () => ro.disconnect();
   }, [x, y, origin]);
 
   useEffect(() => {
