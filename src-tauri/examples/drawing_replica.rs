@@ -222,26 +222,28 @@ fn command(conn: &Connection, v: &Value) -> Result<Value> {
             )
         }
         "storeOriginal" => {
-            drawing_sync::store_original(
-                conn,
-                page,
-                s(v, "id")?,
-                s(&v["info"], "fileName")?,
-                s(&v["info"], "mime")?,
-                s(&v["info"], "sha256")?,
-                &STANDARD.decode(s(v, "bytes")?)?,
-            )?;
+            let bytes = STANDARD.decode(s(v, "bytes")?)?;
+            let original = drawing_sync::Original {
+                id: s(v, "id")?,
+                name: s(&v["info"], "fileName")?,
+                mime: s(&v["info"], "mime")?,
+                sha: s(&v["info"], "sha256")?,
+                bytes: &bytes,
+            };
+            drawing_sync::store_original(conn, page, original)?;
             Ok(Value::Null)
         }
         "recover" => drawing_sync::recover(
             conn,
             page,
-            v["expectedRevision"].as_i64().ok_or_else(|| anyhow!("Missing revision"))?,
-            s(v, "recoveryId")?,
-            v["document"].clone(),
-            v["record"].clone(),
-            v["state"].clone(),
-            s(v, "title")?,
+            drawing_sync::Recovery {
+                expected_revision: v["expectedRevision"].as_i64().ok_or_else(|| anyhow!("Missing revision"))?,
+                recovery_id: s(v, "recoveryId")?,
+                renderer: v["document"].clone(),
+                record: v["record"].clone(),
+                incoming: v["state"].clone(),
+                title: s(v, "title")?,
+            },
         ),
         "syncLoad" => Ok(json!(sync::load(conn, page, v["channel"].as_i64().unwrap_or(0))?)),
         "syncAppend" => Ok(json!(sync::append(
@@ -268,16 +270,15 @@ fn command(conn: &Connection, v: &Value) -> Result<Value> {
         "syncAckUpto" => Ok(json!(sync::outbox_ack_upto(conn, page, v["channel"].as_i64().unwrap_or(0), v["upto"].as_i64().unwrap_or(0))?)),
         "syncReject" => Ok(json!(sync::outbox_reject(conn, &serde_json::from_value::<Vec<i64>>(v["ids"].clone())?, s(v, "reason")?)?)),
         "syncArchiveRejection" => {
-            sync::archive_rejection(
-                conn,
-                page,
-                v["channel"].as_i64().unwrap_or(1),
-                s(v, "archiveId")?,
-                s(v, "owner")?,
-                &STANDARD.decode(s(v, "data")?)?,
-                &STANDARD.decode(s(v, "empty")?)?,
-                s(v, "reason")?,
-            )?;
+            let (snapshot, empty) = (STANDARD.decode(s(v, "data")?)?, STANDARD.decode(s(v, "empty")?)?);
+            let archive = sync::RejectedArchive {
+                id: s(v, "archiveId")?,
+                owner: s(v, "owner")?,
+                snapshot: &snapshot,
+                empty: &empty,
+                reason: s(v, "reason")?,
+            };
+            sync::archive_rejection(conn, page, v["channel"].as_i64().unwrap_or(1), archive)?;
             Ok(Value::Null)
         }
         "syncRejected" => sync::rejected_list(conn, page, s(v, "owner")?, v["before"]["createdAt"].as_i64(), v["before"]["id"].as_str()),

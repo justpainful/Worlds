@@ -92,6 +92,59 @@ fn ssh_base(_cfg: &BridgeConfig) -> Command {
     c
 }
 
+/// Host, user and key path end up on the `ssh` command line and in the
+/// remote `type` command, so only plain values are accepted: anything that
+/// could be read as an option or as shell syntax is refused.
+pub fn validate(cfg: &BridgeConfig) -> Result<()> {
+    validate_host(&cfg.host)?;
+    validate_user(&cfg.user)?;
+    validate_key_path(&cfg.key_path)
+}
+
+fn validate_host(host: &str) -> Result<()> {
+    if host.parse::<std::net::IpAddr>().is_ok() {
+        return Ok(());
+    }
+    let label_ok = |l: &str| {
+        !l.is_empty()
+            && l.len() <= 63
+            && !l.starts_with('-')
+            && !l.ends_with('-')
+            && l.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+    };
+    let name = host.strip_suffix('.').unwrap_or(host);
+    if name.is_empty() || name.len() > 253 || !name.split('.').all(label_ok) {
+        bail!("invalid-config: the host must be a hostname or an IP address");
+    }
+    Ok(())
+}
+
+fn validate_user(user: &str) -> Result<()> {
+    let ok = !user.is_empty()
+        && user.len() <= 64
+        && !user.starts_with('-')
+        && user.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'));
+    if !ok {
+        bail!("invalid-config: the user may only contain letters, digits, dots, underscores and dashes, and may not start with a dash");
+    }
+    Ok(())
+}
+
+/// The key file lives on the bridge host, so its existence is checked there
+/// (a missing file reports module-missing); here only its shape is checked.
+fn validate_key_path(path: &str) -> Result<()> {
+    if path.trim().is_empty() {
+        bail!("invalid-config: the key file path is empty");
+    }
+    if path.starts_with('-') {
+        bail!("invalid-config: the key file path may not start with a dash");
+    }
+    if path.len() > 260 || path.chars().any(|c| c.is_control() || "\"%!^&|<>`$;".contains(c)) {
+        bail!("invalid-config: the key file path must be a plain file path without quotes or shell characters");
+    }
+    Ok(())
+}
+
 fn port_open(port: u16) -> bool {
     let addr: SocketAddr = ([127, 0, 0, 1], port).into();
     TcpStream::connect_timeout(&addr, Duration::from_millis(300)).is_ok()
@@ -126,6 +179,7 @@ pub fn connect(cfg: &BridgeConfig) -> Result<String> {
     if !cfg.enabled || cfg.host.is_empty() {
         bail!("not-configured");
     }
+    validate(cfg)?;
     let sig = format!("{}@{}:{}>{}", cfg.user, cfg.host, cfg.remote_port, cfg.local_port);
     let mut t = TUNNEL.lock().unwrap_or_else(|e| e.into_inner());
     if t.config_sig != sig {
@@ -223,6 +277,8 @@ pub fn classify(e: &anyhow::Error) -> &'static str {
     let s = format!("{e:#}");
     if s.contains("not-configured") {
         "not-configured"
+    } else if s.contains("invalid-config") {
+        "error"
     } else if s.contains("module-missing") {
         "module-missing"
     } else if s.contains("unauthorized") {
@@ -231,5 +287,64 @@ pub fn classify(e: &anyhow::Error) -> &'static str {
         "host-unreachable"
     } else {
         "error"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn cfg(host: &str, user: &str, key_path: &str) -> BridgeConfig {
+        BridgeConfig { enabled: true, host: host.into(), user: user.into(), key_path: key_path.into(), ..BridgeConfig::default() }
+    }
+
+    #[test]
+    fn accepts_plain_hosts_users_and_paths() {
+        for host in ["bot-host", "bot.example.lan", "bot.example.lan.", "192.168.1.20", "fd00::20", "::1"] {
+            validate(&cfg(host, "worlds", "C:/bridge/key.txt")).unwrap_or_else(|e| panic!("{host}: {e}"));
+        }
+        for user in ["worlds", "bot.user", "bot_user", "bot-user", "Admin2"] {
+            validate(&cfg("bot-host", user, "C:/bridge/key.txt")).unwrap_or_else(|e| panic!("{user}: {e}"));
+        }
+        for path in ["C:/bridge/key.txt", "C:\\Bridge Files\\key.txt", "/home/bot/.bridge-key", "key (1).txt"] {
+            validate(&cfg("bot-host", "worlds", path)).unwrap_or_else(|e| panic!("{path}: {e}"));
+        }
+    }
+
+    #[test]
+    fn rejects_hosts_that_are_not_names_or_addresses() {
+        let long_label = "a".repeat(64);
+        for host in
+            ["-oProxyCommand=calc", "bot host", "user@bot", "bot;calc", "bot..lan", "-bot", "bot-", &long_label, "bot/lan", "bot:22"]
+        {
+            let e = validate(&cfg(host, "worlds", "key.txt")).unwrap_err().to_string();
+            assert!(e.contains("invalid-config") && e.contains("host"), "{host}: {e}");
+        }
+    }
+
+    #[test]
+    fn rejects_unsafe_users() {
+        for user in ["", "-oProxyCommand=calc", "bot user", "bot@evil", "bot;calc", "bot$", "bot\\x"] {
+            let e = validate(&cfg("bot-host", user, "key.txt")).unwrap_err().to_string();
+            assert!(e.contains("invalid-config") && e.contains("user"), "{user}: {e}");
+        }
+        assert!(validate(&cfg("bot-host", &"a".repeat(65), "key.txt")).is_err());
+    }
+
+    #[test]
+    fn rejects_unsafe_key_paths() {
+        for path in
+            ["", "  ", "-key.txt", "key\" & calc & \".txt", "key.txt|calc", "%USERPROFILE%\\key", "key\n.txt", "a>b", "`calc`", "$(calc)"]
+        {
+            let e = validate(&cfg("bot-host", "worlds", path)).unwrap_err().to_string();
+            assert!(e.contains("invalid-config") && e.contains("key file"), "{path:?}: {e}");
+        }
+    }
+
+    #[test]
+    fn connect_refuses_invalid_config_before_running_ssh() {
+        let e = connect(&cfg("-oProxyCommand=calc", "worlds", "key.txt")).unwrap_err();
+        assert!(format!("{e:#}").contains("invalid-config"));
+        assert_eq!(classify(&e), "error");
     }
 }

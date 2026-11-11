@@ -71,6 +71,7 @@ pub async fn sync_outbox_reject(state: State<'_, AppState>, ids: Vec<i64>, reaso
     with(&state, |c| outbox_reject(c, &ids, &reason))
 }
 #[tauri::command]
+#[allow(clippy::too_many_arguments)] // Each parameter is one named IPC argument the frontend sends.
 pub async fn sync_archive_rejection(
     state: State<'_, AppState>,
     page_id: String,
@@ -81,7 +82,15 @@ pub async fn sync_archive_rejection(
     empty: String,
     reason: String,
 ) -> CmdResult<()> {
-    with(&state, |c| archive_rejection(c, &page_id, channel, &archive_id, &owner, &unb64(&data)?, &unb64(&empty)?, &reason))
+    with(&state, |c| {
+        let (snapshot, empty) = (unb64(&data)?, unb64(&empty)?);
+        archive_rejection(
+            c,
+            &page_id,
+            channel,
+            RejectedArchive { id: &archive_id, owner: &owner, snapshot: &snapshot, empty: &empty, reason: &reason },
+        )
+    })
 }
 #[tauri::command]
 pub async fn sync_rejected_list(

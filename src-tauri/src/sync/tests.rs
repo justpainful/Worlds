@@ -43,7 +43,13 @@ fn rejected_snapshots_are_atomic_owned_and_durable_without_reentering_the_send_q
     let archive_id = db::new_id();
     append(&conn, &id, CHANNEL_CONTENT, &[1, 2], "local", true).unwrap();
     append(&conn, &id, CHANNEL_COMMENTS, &[3, 4], "local", true).unwrap();
-    archive_rejection(&conn, &id, CHANNEL_COMMENTS, &archive_id, &owner, &[10, 11, 12], &[0, 0], "Access changed").unwrap();
+    archive_rejection(
+        &conn,
+        &id,
+        CHANNEL_COMMENTS,
+        RejectedArchive { id: &archive_id, owner: &owner, snapshot: &[10, 11, 12], empty: &[0, 0], reason: "Access changed" },
+    )
+    .unwrap();
     assert_eq!(unb64(&rejected_read(&conn, &id, &archive_id, &owner).unwrap()).unwrap(), vec![10, 11, 12]);
     assert_eq!(outbox_list(&conn, Some(&id), 100).unwrap().len(), 1);
     assert_eq!(page_status(&conn, &id).unwrap().rejected, 1);
@@ -51,13 +57,25 @@ fn rejected_snapshots_are_atomic_owned_and_durable_without_reentering_the_send_q
     assert!(load(&conn, &id, CHANNEL_COMMENTS).unwrap().updates.is_empty());
     let first = rejected_list(&conn, &id, &owner, None, None).unwrap();
     assert_eq!(first["items"].as_array().unwrap().len(), 1);
-    archive_rejection(&conn, &id, CHANNEL_COMMENTS, &archive_id, &owner, &[10, 11, 12, 13], &[0, 0], "Access changed").unwrap();
+    archive_rejection(
+        &conn,
+        &id,
+        CHANNEL_COMMENTS,
+        RejectedArchive { id: &archive_id, owner: &owner, snapshot: &[10, 11, 12, 13], empty: &[0, 0], reason: "Access changed" },
+    )
+    .unwrap();
     assert_eq!(rejected_list(&conn, &id, &owner, None, None).unwrap()["items"][0]["createdAt"], first["items"][0]["createdAt"]);
     assert!(rejected_read(&conn, &id, &archive_id, "other-account").is_err());
     let before = load(&conn, &id, CHANNEL_CONTENT).unwrap();
     let failed_id = db::new_id();
     conn.execute_batch("CREATE TRIGGER refuse_clear BEFORE UPDATE ON sync_docs BEGIN SELECT RAISE(ABORT,'cannot reset'); END;").unwrap();
-    assert!(archive_rejection(&conn, &id, CHANNEL_CONTENT, &failed_id, &owner, &[7, 8], &[0, 0], "Refused").is_err());
+    assert!(archive_rejection(
+        &conn,
+        &id,
+        CHANNEL_CONTENT,
+        RejectedArchive { id: &failed_id, owner: &owner, snapshot: &[7, 8], empty: &[0, 0], reason: "Refused" }
+    )
+    .is_err());
     assert_eq!(load(&conn, &id, CHANNEL_CONTENT).unwrap().updates, before.updates);
     assert!(rejected_read(&conn, &id, &failed_id, &owner).is_err());
     assert_eq!(outbox_list(&conn, Some(&id), 100).unwrap().len(), 1);
