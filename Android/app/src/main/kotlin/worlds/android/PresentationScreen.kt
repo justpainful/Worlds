@@ -122,19 +122,19 @@ import worlds.content.ResourceDocument
         Box(modifier.fillMaxHeight(), contentAlignment = Alignment.TopCenter) {
             Column(Modifier.widthIn(max = 1000.dp).fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 run {
-                    TextButton(onClick = onBack) { WorldsActionLabel(R.drawable.ic_chevron_left, stringResource(R.string.back)) }
+                    WorldsBackButton(onBack)
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        WorldsGlyph(R.drawable.ic_maximize, tint = MaterialTheme.colorScheme.primary)
+                        WorldsTile(R.drawable.pi_presentation, 44.dp)
                         Text(deck.title.ifBlank { stringResource(R.string.untitled) }, style = MaterialTheme.typography.headlineMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     }
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilledTonalButton(enabled = !busy, onClick = { run("add") }) { WorldsActionLabel(R.drawable.ic_plus, stringResource(R.string.slide_add)) }
-                        TextButton(enabled = !busy && slide != null, onClick = { editing = slide }) { WorldsActionLabel(R.drawable.ic_pen_line, stringResource(R.string.slide_edit)) }
-                        TextButton(enabled = !busy && slide != null, onClick = { moveMode = !moveMode }) { WorldsActionLabel(R.drawable.ic_maximize, stringResource(if (moveMode) R.string.slide_move_done else R.string.slide_move_mode)) }
-                        TextButton(enabled = !busy && slide != null, onClick = { showBackground = true }) { WorldsActionLabel(R.drawable.ic_image, stringResource(R.string.slide_background)) }
+                        WorldsActionButton(enabled = !busy && slide != null, onClick = { editing = slide }) { WorldsActionLabel(R.drawable.ic_pen_line, stringResource(R.string.slide_edit)) }
+                        WorldsActionButton(enabled = !busy && slide != null, onClick = { moveMode = !moveMode }) { WorldsActionLabel(R.drawable.ic_maximize, stringResource(if (moveMode) R.string.slide_move_done else R.string.slide_move_mode)) }
+                        WorldsActionButton(enabled = !busy && slide != null, onClick = { showBackground = true }) { WorldsActionLabel(R.drawable.ic_image, stringResource(R.string.slide_background)) }
                         var layoutMenu by remember { mutableStateOf(false) }
                         Box {
-                            TextButton(enabled = !busy && slide != null, onClick = { layoutMenu = true }) { WorldsActionLabel(R.drawable.ic_sliders_horizontal, stringResource(R.string.slide_layout)) }
+                            WorldsActionButton(enabled = !busy && slide != null, onClick = { layoutMenu = true }) { WorldsActionLabel(R.drawable.ic_sliders_horizontal, stringResource(R.string.slide_layout)) }
                             DropdownMenu(expanded = layoutMenu, onDismissRequest = { layoutMenu = false }) {
                                 listOf("title" to R.string.slide_layout_title, "title-body" to R.string.slide_layout_title_body,
                                     "section" to R.string.slide_layout_section, "two-columns" to R.string.slide_layout_columns,
@@ -146,9 +146,9 @@ import worlds.content.ResourceDocument
                                 }
                             }
                         }
-                        TextButton(enabled = slide != null, onClick = { presenting = true }) { WorldsActionLabel(R.drawable.ic_maximize, stringResource(R.string.slide_present)) }
+                        WorldsActionButton(enabled = slide != null, onClick = { presenting = true }) { WorldsActionLabel(R.drawable.ic_maximize, stringResource(R.string.slide_present)) }
                         var menu by remember { mutableStateOf(false) }
-                        Box { TextButton(enabled = !busy, onClick = { menu = true }) { WorldsActionLabel(R.drawable.ic_ellipsis_vertical, stringResource(R.string.page_actions)) }
+                        Box { WorldsActionButton(enabled = !busy, onClick = { menu = true }) { WorldsActionLabel(R.drawable.ic_ellipsis_vertical, stringResource(R.string.page_actions)) }
                             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                                 DropdownMenuItem(text = { Text(stringResource(R.string.rename)) }, onClick = { menu = false; onRename() })
                                 DropdownMenuItem(text = { Text(stringResource(R.string.move_to_trash)) }, onClick = { menu = false; confirmTrash = true })
@@ -181,7 +181,7 @@ import worlds.content.ResourceDocument
                     run {
                         var addMenu by remember { mutableStateOf(false) }
                         Box {
-                            TextButton(enabled = !busy, onClick = { addMenu = true }) { WorldsActionLabel(R.drawable.ic_plus, stringResource(R.string.slide_add_element)) }
+                            WorldsActionButton(enabled = !busy, onClick = { addMenu = true }) { WorldsActionLabel(R.drawable.ic_plus, stringResource(R.string.slide_add_element)) }
                             DropdownMenu(expanded = addMenu, onDismissRequest = { addMenu = false }) {
                                 listOf("text" to R.string.slide_add_text, "rect" to R.string.slide_add_rect, "ellipse" to R.string.slide_add_ellipse, "line" to R.string.slide_add_line).forEach { (kind, label) ->
                                     DropdownMenuItem(text = { Text(stringResource(label)) }, onClick = { addMenu = false; run("add-$kind") })
@@ -190,12 +190,12 @@ import worlds.content.ResourceDocument
                                 DropdownMenuItem(text = { Text(stringResource(R.string.slide_add_video)) }, leadingIcon = { WorldsGlyph(android.R.drawable.ic_media_play) }, onClick = { addMenu = false; onAddVideo(slide.id) })
                             }
                         }
-                        TextButton(enabled = !busy, onClick = { managing = true }) { WorldsActionLabel(R.drawable.ic_sliders_horizontal, stringResource(R.string.slide_elements)) }
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            TextButton(enabled = !busy && index > 0, onClick = { run("up") }) { WorldsActionLabel(R.drawable.ic_arrow_up, stringResource(R.string.slide_up)) }
-                            TextButton(enabled = !busy && index < slides.lastIndex, onClick = { run("down") }) { WorldsActionLabel(R.drawable.ic_arrow_down, stringResource(R.string.slide_down)) }
-                            TextButton(enabled = !busy, onClick = { run("duplicate") }) { WorldsActionLabel(R.drawable.ic_files, stringResource(R.string.slide_duplicate)) }
-                            TextButton(enabled = !busy && slides.size > 1, onClick = { confirmRemove = true }) { WorldsActionLabel(R.drawable.ic_trash_2, stringResource(R.string.slide_remove)) }
+                        WorldsActionButton(enabled = !busy, onClick = { managing = true }) { WorldsActionLabel(R.drawable.ic_sliders_horizontal, stringResource(R.string.slide_elements)) }
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            WorldsActionButton(enabled = !busy && index > 0, onClick = { run("up") }) { WorldsActionLabel(R.drawable.ic_arrow_up, stringResource(R.string.slide_up)) }
+                            WorldsActionButton(enabled = !busy && index < slides.lastIndex, onClick = { run("down") }) { WorldsActionLabel(R.drawable.ic_arrow_down, stringResource(R.string.slide_down)) }
+                            WorldsActionButton(enabled = !busy, onClick = { run("duplicate") }) { WorldsActionLabel(R.drawable.ic_files, stringResource(R.string.slide_duplicate)) }
+                            WorldsActionButton(enabled = !busy && slides.size > 1, onClick = { confirmRemove = true }) { WorldsActionLabel(R.drawable.ic_trash_2, stringResource(R.string.slide_remove)) }
                         }
                     }
                 }
@@ -272,8 +272,8 @@ private val slideTextColors = listOf("#f4f2ee", "#16161a", "#d2a46e", "#e5484d",
         text = { Column(Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState())) {
             Text(stringResource(R.string.slide_background_hint), style = MaterialTheme.typography.bodyMedium)
             SlideColorChoices(slideBackgroundColors, chosen, !busy) { chosen = it }
-            TextButton(enabled = !busy, onClick = pick) { WorldsActionLabel(R.drawable.ic_image, stringResource(R.string.slide_background_picture)) }
-            if (hasImage) TextButton(enabled = !busy, onClick = remove) { WorldsActionLabel(R.drawable.ic_trash_2, stringResource(R.string.slide_background_remove_picture)) }
+            WorldsActionButton(enabled = !busy, onClick = pick) { WorldsActionLabel(R.drawable.ic_image, stringResource(R.string.slide_background_picture)) }
+            if (hasImage) WorldsActionButton(enabled = !busy, onClick = remove) { WorldsActionLabel(R.drawable.ic_trash_2, stringResource(R.string.slide_background_remove_picture)) }
         } }, confirmButton = { TextButton(enabled = !busy && chosen in slideBackgroundColors, onClick = { save(chosen) }) { Text(stringResource(R.string.save)) } },
         dismissButton = { TextButton(enabled = !busy, onClick = dismiss) { Text(stringResource(R.string.cancel)) } })
 }
@@ -340,8 +340,8 @@ private val slideTextColors = listOf("#f4f2ee", "#16161a", "#d2a46e", "#e5484d",
             val labels = listOf(R.string.slide_x, R.string.slide_y, R.string.slide_width, R.string.slide_height)
             keys.forEachIndexed { i, key -> OutlinedTextField(value = fields[key].orEmpty(), onValueChange = { if (it.length <= 6) fields[key] = it }, enabled = !busy, singleLine = true,
                 label = { Text(stringResource(labels[i])) }, modifier = Modifier.fillMaxWidth(), keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberSigned)) }
-            if (element.optString("type") == "text") TextButton(enabled = !busy, onClick = format) { WorldsActionLabel(R.drawable.ic_type, stringResource(R.string.slide_text_style)) }
-            TextButton(enabled = !busy, onClick = { confirm = true }) { WorldsActionLabel(R.drawable.ic_trash_2, stringResource(R.string.slide_element_remove)) }
+            if (element.optString("type") == "text") WorldsActionButton(enabled = !busy, onClick = format) { WorldsActionLabel(R.drawable.ic_type, stringResource(R.string.slide_text_style)) }
+            WorldsActionButton(enabled = !busy, onClick = { confirm = true }) { WorldsActionLabel(R.drawable.ic_trash_2, stringResource(R.string.slide_element_remove)) }
         }
     }, confirmButton = { TextButton(enabled = !busy && valid, onClick = { save(parsed.map { it!! }, false) }) { Text(stringResource(R.string.save)) } }, dismissButton = { TextButton(enabled = !busy, onClick = dismiss) { Text(stringResource(R.string.cancel)) } })
 }

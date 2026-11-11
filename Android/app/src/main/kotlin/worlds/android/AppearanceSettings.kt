@@ -81,9 +81,9 @@ internal val LocalAppearancePreferences = staticCompositionLocalOf { AppearanceP
     BackHandler(onBack = onBack)
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        TextButton(onClick = onBack) { WorldsActionLabel(R.drawable.ic_chevron_left, stringResource(R.string.back)) }
+        WorldsBackButton(onBack)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            WorldsGlyph(R.drawable.ic_settings_2, tint = MaterialTheme.colorScheme.primary)
+            WorldsTile(R.drawable.pi_settings, 44.dp)
             Text(stringResource(R.string.appearance_title), color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.headlineMedium)
         }
         Text(stringResource(R.string.appearance_local_note), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)

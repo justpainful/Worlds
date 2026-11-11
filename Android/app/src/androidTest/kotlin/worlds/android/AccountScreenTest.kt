@@ -1,5 +1,6 @@
 package worlds.android
 
+import androidx.compose.ui.test.onNodeWithContentDescription
 import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -37,6 +38,7 @@ class AccountScreenTest {
         ContentStore(app, db).use { it.create("page", "Keep this page") }
         compose.setContent { WorldsTheme { Home(home, account) } }
         compose.waitUntil(20_000) { !home.state.value.loading && account.state.value.stage == AccountStage.SIGN_IN }
+        compose.onNodeWithContentDescription(app.getString(R.string.library_more_actions)).performClick()
         compose.onNodeWithText(app.getString(R.string.account_title)).performClick()
         compose.onNodeWithText(app.getString(R.string.account_server)).performTextInput("http://invalid.test")
         compose.onNodeWithText(app.getString(R.string.account_email)).performTextInput("person@example.test")

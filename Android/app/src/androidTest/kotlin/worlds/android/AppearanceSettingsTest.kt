@@ -50,7 +50,7 @@ class AppearanceSettingsTest {
         try {
             runBlocking { store.setTheme("dark") }
             compose.setContent { WorldsTheme(store) { background = MaterialTheme.colorScheme.background; Home(model) } }
-            compose.waitUntil(20_000) { !model.state.value.loading && background == Color.Black }
+            compose.waitUntil(20_000) { !model.state.value.loading && background == WorldsTokens.canvasDark }
             fun assertIconVisible(label: Int, dark: Boolean) {
                 val image = compose.onNodeWithContentDescription(app.getString(label)).captureToImage().asAndroidBitmap()
                 var contrastingPixels = 0
@@ -64,7 +64,7 @@ class AppearanceSettingsTest {
             assertIconVisible(R.string.appearance_title, true)
             assertIconVisible(R.string.library_more_actions, true)
             runBlocking { store.setTheme("light") }
-            compose.waitUntil(20_000) { background != Color.Black }
+            compose.waitUntil(20_000) { background != WorldsTokens.canvasDark }
             assertIconVisible(R.string.appearance_title, false)
             assertIconVisible(R.string.library_more_actions, false)
         } finally { model.close(); app.deleteDatabase(database); scope.cancel(); file.delete() }

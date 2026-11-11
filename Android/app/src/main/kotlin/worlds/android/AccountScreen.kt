@@ -96,13 +96,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onBackground) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
     Column(Modifier.fillMaxHeight().widthIn(max = 640.dp).fillMaxWidth().windowInsetsPadding(WindowInsets.safeDrawing).imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 28.dp, vertical = 24.dp)) {
-        TextButton(enabled = !state.busy, onClick = onBack) { WorldsActionLabel(R.drawable.ic_chevron_left, stringResource(R.string.back)) }
+        WorldsBackButton(onBack, enabled = !state.busy)
         Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(48.dp)) {
-                Box(contentAlignment = Alignment.Center) { androidx.compose.runtime.CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant) { WorldsGlyph(R.drawable.ic_circle_user) } }
-            }
-            Text(stringResource(R.string.account_title), fontSize = 28.sp, lineHeight = 36.sp, fontWeight = FontWeight.SemiBold)
+            WorldsTile(R.drawable.pi_profile, 46.dp)
+            Text(stringResource(R.string.account_title), style = MaterialTheme.typography.headlineLarge)
         }
         Spacer(Modifier.height(12.dp))
         Text(stringResource(R.string.account_local_note), color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 26.sp)

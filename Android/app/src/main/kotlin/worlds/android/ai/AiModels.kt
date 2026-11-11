@@ -11,21 +11,21 @@ data class AiModelInfo(
 val DEFAULT_AI_MODELS = listOf(
     AiModelInfo(
         id = "claude-3-5-sonnet-20241022",
-        name = "Claude 3.5 Sonnet",
+        name = "Orbit",
         provider = "Anthropic",
         description = "High intelligence, coding and creative generation",
         contextWindow = 200_000
     ),
     AiModelInfo(
         id = "claude-3-5-haiku-20241022",
-        name = "Claude 3.5 Haiku",
+        name = "Spark",
         provider = "Anthropic",
         description = "Lightweight, ultra-fast responses",
         contextWindow = 200_000
     ),
     AiModelInfo(
         id = "claude-3-opus-20240229",
-        name = "Claude 3 Opus",
+        name = "Nova",
         provider = "Anthropic",
         description = "Deep reasoning and extensive writing",
         contextWindow = 200_000

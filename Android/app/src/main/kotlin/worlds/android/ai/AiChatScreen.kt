@@ -1,5 +1,7 @@
 package worlds.android.ai
 
+import worlds.android.WorldsBackButton
+import worlds.android.AlertDialog
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -44,7 +46,8 @@ fun AiChatScreen(
     databaseName: String = "worlds-content.db",
     onBack: () -> Unit,
     onCreatePage: (title: String, content: String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showBack: Boolean = true
 ) {
     val context = LocalContext.current
     val store = remember { ContentStore(context, databaseName) }
@@ -147,9 +150,7 @@ fun AiChatScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = onBack) {
-                    WorldsActionLabel(R.drawable.ic_chevron_left, stringResource(R.string.back))
-                }
+                if (showBack) WorldsBackButton(onBack)
                 Text("AI Assistant", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             }
 

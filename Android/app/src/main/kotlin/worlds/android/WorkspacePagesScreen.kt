@@ -66,7 +66,7 @@ private class DevicePagesGateway(private val identity: String, private val works
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             Column(Modifier.widthIn(max = 900.dp).fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding().padding(horizontal = 24.dp, vertical = if (keyboardVisible) 4.dp else 20.dp)) {
                 if (!keyboardVisible) {
-                    TextButton(onClick = onBack) { WorldsActionLabel(R.drawable.ic_chevron_left, stringResource(R.string.back)) }
+                    WorldsBackButton(onBack)
                     Text(workspace.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
                     Text(stringResource(R.string.pages_title), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(12.dp))

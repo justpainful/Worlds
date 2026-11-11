@@ -73,19 +73,19 @@ private fun projectStatusLabel(status: String): Int = when (status) {
     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
     Box(modifier.fillMaxHeight(), contentAlignment = Alignment.TopCenter) {
         Column(Modifier.widthIn(max = 900.dp).fillMaxSize().padding(horizontal = 28.dp, vertical = 24.dp)) {
-            TextButton(onClick = onBack) { WorldsActionLabel(R.drawable.ic_chevron_left, stringResource(R.string.back)) }
+            WorldsBackButton(onBack)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                WorldsGlyph(R.drawable.ic_folder, tint = MaterialTheme.colorScheme.primary)
+                WorldsTile(R.drawable.pi_briefcase, 44.dp)
                 Text(project.title.ifBlank { stringResource(R.string.untitled) }, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
             }
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilledTonalButton(enabled = !busy, onClick = { createTarget = project }) { WorldsActionLabel(R.drawable.ic_plus, stringResource(R.string.project_add)) }
-                TextButton(enabled = !busy && info != null, onClick = { editTarget = project }) { WorldsActionLabel(R.drawable.ic_pen_line, stringResource(R.string.project_edit)) }
-                TextButton(enabled = !busy, onClick = { onImportFile(project) }) { WorldsActionLabel(R.drawable.ic_upload, stringResource(R.string.file_import)) }
-                TextButton(enabled = !busy, onClick = { onAddStream(project) }) { WorldsActionLabel(R.drawable.ic_link, stringResource(R.string.stream_add)) }
+                WorldsActionButton(enabled = !busy && info != null, onClick = { editTarget = project }) { WorldsActionLabel(R.drawable.ic_pen_line, stringResource(R.string.project_edit)) }
+                WorldsActionButton(enabled = !busy, onClick = { onImportFile(project) }) { WorldsActionLabel(R.drawable.ic_upload, stringResource(R.string.file_import)) }
+                WorldsActionButton(enabled = !busy, onClick = { onAddStream(project) }) { WorldsActionLabel(R.drawable.ic_link, stringResource(R.string.stream_add)) }
                 var menu by remember { mutableStateOf(false) }
                 Box {
-                    TextButton(enabled = !busy, onClick = { menu = true }) { WorldsActionLabel(R.drawable.ic_ellipsis_vertical, stringResource(R.string.page_actions)) }
+                    WorldsActionButton(enabled = !busy, onClick = { menu = true }) { WorldsActionLabel(R.drawable.ic_ellipsis_vertical, stringResource(R.string.page_actions)) }
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                         DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_pen_line) }, text = { Text(stringResource(R.string.rename)) }, onClick = { menu = false; onRename() })
                         DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_trash_2) }, text = { Text(stringResource(R.string.move_to_trash)) }, onClick = { menu = false; trashConfirm = true })
@@ -175,7 +175,7 @@ private fun projectStatusLabel(status: String): Int = when (status) {
     AlertDialog(onDismissRequest = { if (!busy) dismiss() }, title = { WorldsActionLabel(R.drawable.ic_pen_line, stringResource(R.string.project_edit)) },
         text = { Column(Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState())) {
             Text(stringResource(R.string.project_status), style = MaterialTheme.typography.bodySmall)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("planned", "active", "paused", "done").forEach { choice -> FilterChip(selected = status == choice, enabled = !busy, onClick = { status = choice }, label = { Text(stringResource(projectStatusLabel(choice))) }) }
             }
             OutlinedTextField(value = start, onValueChange = { if (it.length <= 10) start = it }, enabled = !busy, label = { Text(stringResource(R.string.project_start)) }, placeholder = { Text("YYYY-MM-DD") }, isError = !ProjectEditing.validDate(start.ifBlank { null }), singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -194,7 +194,7 @@ private fun projectStatusLabel(status: String): Int = when (status) {
     var error by rememberSaveable(target.id, target.revision) { mutableStateOf(false) }
     AlertDialog(onDismissRequest = { if (!busy) dismiss() }, title = { WorldsActionLabel(R.drawable.ic_plus, stringResource(R.string.project_add)) },
         text = { Column {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("page", "document", "drawing", "project", "gallery", "presentation").forEach { choice -> FilterChip(selected = kind == choice, enabled = !busy, onClick = { kind = choice }, label = { Text(stringResource(projectKindLabel(choice))) }) }
             }
             OutlinedTextField(value = title, onValueChange = { if (it.length <= 512) title = it }, enabled = !busy, label = { Text(stringResource(R.string.project_item_title)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
