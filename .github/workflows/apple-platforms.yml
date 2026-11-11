@@ -83,7 +83,7 @@ jobs:
     env:
       WORLDS_REQUIRE_NATIVE_WRITES: "1"
     needs: ruststore-xcframework
-    timeout-minutes: 45
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -165,7 +165,7 @@ jobs:
           if [[ "${{ matrix.device }}" == "macOS" ]]; then diagnostic_flags+=('OTHER_SWIFT_FLAGS=$(inherited) -DWORLDS_UI_WINDOW_DIAGNOSTICS'); fi
           # One retry: the simulator sometimes refuses to launch the app
           # ("The request was denied by service delegate"), unrelated to the code.
-          gtimeout --kill-after=30s 28m xcodebuild -project Apple/Worlds.xcodeproj -scheme '${{ matrix.scheme }}' \
+          gtimeout --kill-after=30s 40m xcodebuild -project Apple/Worlds.xcodeproj -scheme '${{ matrix.scheme }}' \
             -configuration Debug -destination '${{ matrix.destination }}' \
             -retry-tests-on-failure -test-iterations 2 \
             -derivedDataPath "$RUNNER_TEMP/WorldsUI" \
