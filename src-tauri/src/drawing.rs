@@ -115,7 +115,12 @@ pub fn history_import(conn: &Connection, page: &str, document: Value) -> Result<
         bail!("History can only be imported into a new local drawing with no edits");
     }
     history::validate_import(conn, page, &document)?;
-    conn.execute("INSERT INTO drawing_documents(page_id,revision,seed,scene,search_text,updated_at) VALUES (?1,?2,?3,?4,?5,?6) ON CONFLICT(page_id) DO UPDATE SET revision=excluded.revision,seed=excluded.seed,scene=excluded.scene,search_text=excluded.search_text,thumbnail_id=NULL,updated_at=excluded.updated_at",params![page,document["revision"].as_i64(),document["seed"].to_string(),document["scene"].to_string(),search_text(&document["scene"]),db::now()])?;
+    conn.execute("INSERT INTO \
+        drawing_documents(page_id,revision,seed,scene,search_text,updated_at) VALUES \
+        (?1,?2,?3,?4,?5,?6) ON CONFLICT(page_id) DO UPDATE SET \
+        revision=excluded.revision,seed=excluded.seed,scene=excluded.scene,search_text=excluded.search_text,thumbnail_id=NULL,updated_at=excluded.updated_at",
+        params![page,document["revision"].as_i64(),document["seed"].to_string(),
+        document["scene"].to_string(),search_text(&document["scene"]),db::now()])?;
     for operation in document["operations"].as_array().unwrap() {
         conn.execute(
             "INSERT INTO drawing_operations(page_id,id,revision,actor,payload,created_at) VALUES (?1,?2,?3,?4,?5,?6)",
@@ -402,7 +407,22 @@ pub fn materialize_scene_assets(conn: &Connection, target: &str, mut scene: Valu
                     id
                 } else {
                     let id = db::new_id();
-                    conn.execute("INSERT INTO attachments(id, page_id, kind, file_name, mime, size, rel_path, width, height, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)", params![id, target, attachment.kind, attachment.file_name, attachment.mime, attachment.size, attachment.rel_path, attachment.width, attachment.height, db::now()])?;
+                    conn.execute(
+                        "INSERT INTO attachments(id, page_id, kind, file_name, mime, \
+                        size, rel_path, width, height, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                        params![
+                            id,
+                            target,
+                            attachment.kind,
+                            attachment.file_name,
+                            attachment.mime,
+                            attachment.size,
+                            attachment.rel_path,
+                            attachment.width,
+                            attachment.height,
+                            db::now()
+                        ],
+                    )?;
                     id
                 };
                 copied.insert(source_id, attachment_id.clone());
@@ -713,10 +733,16 @@ mod tests {
         let actor = store::profile(&conn).unwrap().id;
         let page =
             store::create_page(&conn, &store::Ctx::user(), store::NewPage { kind: Some("drawing".into()), ..Default::default() }).unwrap();
-        let node = json!({ "id": "stroke", "kind": "stroke", "name": "Highlighter", "layerId": format!("{}-layer", page.id), "frameId": format!("{}-frame", page.id), "groupId": null, "visible": true, "locked": false, "x": 10, "y": 20, "w": 220, "h": 40, "rotation": 0, "opacity": 1, "flipX": false, "flipY": false,
+        let node = json!({ "id": "stroke", "kind": "stroke", "name": "Highlighter",
+            "layerId": format!("{}-layer", page.id), "frameId": format!("{}-frame", page.id),
+            "groupId": null, "visible": true, "locked": false, "x": 10, "y": 20, "w": 220, "h": 40,
+            "rotation": 0, "opacity": 1, "flipX": false, "flipY": false,
             "paint": { "fill": "transparent", "stroke": "#202023", "strokeWidth": 3, "dash": [], "cap": "round", "radius": 16 },
             "textStyle": { "font": "IBM Plex Sans Arabic", "size": 28, "weight": 400, "italic": false, "align": "start", "direction": "auto", "leading": 1.7, "background": "transparent", "color": "#202023", "border": "transparent" },
-            "effects": [], "brush": { "kind": "highlighter", "size": 28, "opacity": 0.35, "flow": 1, "hardness": 1, "spacing": 0.12, "angle": 0, "roundness": 1, "smoothing": 0.15, "stabilizer": 0, "taperStart": 0, "taperEnd": 0, "pressureSize": false, "pressureOpacity": false, "pressureFlow": false, "pressureCurve": 1, "color": "#f5d742" },
+            "effects": [], "brush": { "kind": "highlighter", "size": 28, "opacity": 0.35,
+                "flow": 1, "hardness": 1, "spacing": 0.12, "angle": 0, "roundness": 1, "smoothing": 0.15,
+                "stabilizer": 0, "taperStart": 0, "taperEnd": 0, "pressureSize": false,
+                "pressureOpacity": false, "pressureFlow": false, "pressureCurve": 1, "color": "#f5d742" },
             "samples": [{ "x": 20, "y": 20, "pressure": 1, "tiltX": 0, "tiltY": 0, "time": 0 }, { "x": 200, "y": 20, "pressure": 1, "tiltX": 0, "tiltY": 0, "time": 20 }], "seed": 10 });
         let op = json!({ "id": "stroke-op", "actor": actor, "base": 0, "at": 1, "label": "Highlighter", "type": "edit", "changes": [{ "type": "put", "collection": "nodes", "id": "stroke", "value": node }, { "type": "order", "list": "nodeOrder", "ids": ["stroke"] }] });
         let tx = conn.unchecked_transaction().unwrap();

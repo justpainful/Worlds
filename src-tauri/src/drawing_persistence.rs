@@ -102,7 +102,13 @@ pub fn apply(conn: &Connection, ctx: &store::Ctx, page: &str, op: Value) -> Resu
         }
     }
     let search = search_text(&scene);
-    tx.execute("INSERT INTO drawing_documents(page_id, revision, seed, scene, search_text, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6) ON CONFLICT(page_id) DO UPDATE SET revision = excluded.revision, scene = excluded.scene, search_text = excluded.search_text, updated_at = excluded.updated_at", params![page, revision + 1, doc["seed"].to_string(), scene.to_string(), search, db::now()])?;
+    tx.execute(
+        "INSERT INTO drawing_documents(page_id, revision, seed, scene, search_text, \
+        updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6) ON CONFLICT(page_id) DO UPDATE SET revision = \
+        excluded.revision, scene = excluded.scene, search_text = excluded.search_text, updated_at = \
+        excluded.updated_at",
+        params![page, revision + 1, doc["seed"].to_string(), scene.to_string(), search, db::now()],
+    )?;
     tx.execute(
         "INSERT INTO drawing_operations(page_id, id, revision, actor, payload, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         params![page, text(&op, "id")?, revision + 1, actor, op.to_string(), db::now()],

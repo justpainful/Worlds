@@ -133,7 +133,19 @@ pub fn install(conn: &Connection, page: &str, token: &str, document: Value, expe
         return Ok(result);
     }
     check_stage(conn, page, token)?;
-    if experiments.len()>24||document["operations"].as_array().is_none_or(|ops|ops.len()>500)||serde_json::to_vec(&json!({"document":document,"experiments":experiments.iter().map(|e|json!({"scene":e.scene,"base":e.base})).collect::<Vec<_>>()}))?.len()>64*1024*1024{bail!("The editable package exceeds its import limits");}
+    if experiments.len() > 24
+        || document["operations"].as_array().is_none_or(|ops| ops.len() > 500)
+        || serde_json::to_vec(&json!({"document":document,
+        "experiments":experiments.iter().map(|e|json!({"scene":e.scene,
+        "base":e.base})).collect::<Vec<_>>()}))?
+        .len()
+            > 64 * 1024 * 1024
+    {
+        bail!(
+            "The editable package exceeds \
+        its import limits"
+        );
+    }
     for e in &experiments {
         if e.name.trim().is_empty()
             || e.name.chars().count() > 160

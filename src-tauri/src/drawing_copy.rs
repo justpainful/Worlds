@@ -448,7 +448,13 @@ mod tests {
         assert!(crate::drawing_library::instantiate(&conn, item, 1, None).unwrap_err().to_string().contains("storage refused"));
         assert_eq!(counts(&conn), before);
         crate::drawing_library::read(&conn, item, Some(1)).unwrap();
-        conn.execute_batch("DROP TRIGGER refuse_template_drawing; CREATE TRIGGER refuse_template_metadata BEFORE UPDATE OF metadata ON pages WHEN NEW.kind='template' AND json_extract(NEW.metadata,'$.templateResourceKind')='drawing' BEGIN SELECT RAISE(ABORT,'template metadata refused'); END;").unwrap();
+        conn.execute_batch(
+            "DROP TRIGGER refuse_template_drawing; CREATE TRIGGER \
+            refuse_template_metadata BEFORE UPDATE OF metadata ON pages WHEN NEW.kind='template' AND \
+            json_extract(NEW.metadata,'$.templateResourceKind')='drawing' BEGIN SELECT \
+            RAISE(ABORT,'template metadata refused'); END;",
+        )
+        .unwrap();
         assert!(store::save_as_template(&conn, &store::Ctx::user(), &source)
             .unwrap_err()
             .to_string()

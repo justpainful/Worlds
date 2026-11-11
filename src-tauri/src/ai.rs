@@ -159,7 +159,14 @@ Rules:\n\
 - Anything that leaves Worlds (Discord) goes through discord_send, which queues a preview for the user to approve. Say so.\n\
 - Images, PDFs and text files the user attaches are included in their message; describe or use them directly.\n\
 - You can also manage the user's profile, assistant instructions, templates, Trash and automations. Deleting moves pages to Trash; only delete, or change instructions or the profile, when the user asks.\n\
-- Tool map: workspace_overview and time_now for orientation and dates; pages_query, pages_tree and search_everything to find things; pages_export_markdown and pages_outline to read; tasks_* for checklists; tables_* for tables and CSV; blocks_insert_layout for columns, toggles and collections (boards, tables, galleries); pages_set_properties, pages_bulk and properties_* for status, tags and fields; pages_find_text and pages_replace_text for wording; pages_merge, pages_split_by_headings, pages_sort_children for structure; pages_set_cover, pages_set_style and pages_set_icon for looks (icons may be pi:<name> product icons); profile_blocks_* and profile_set_image for the profile; versions_*, history_undo and activity_summary for history. When the user's message ends with a line naming Worlds tools, prefer those tools.
+- Tool map: workspace_overview and time_now for orientation and dates; pages_query,
+    pages_tree and search_everything to find things; pages_export_markdown and pages_outline to read; tasks_* for checklists; tables_* for tables and CSV; blocks_insert_layout for columns,
+    toggles and collections (boards, tables, galleries); pages_set_properties,
+    pages_bulk and properties_* for status,
+    tags and fields; pages_find_text and pages_replace_text for wording; pages_merge,
+    pages_split_by_headings, pages_sort_children for structure; pages_set_cover,
+    pages_set_style and pages_set_icon for looks (icons may be pi:<name> product icons); profile_blocks_* and profile_set_image for the profile; versions_*,
+    history_undo and activity_summary for history. When the user's message ends with a line naming Worlds tools, prefer those tools.
 \n- This is an ongoing conversation: earlier messages in this chat still apply. Other conversations are reachable with chats_search and chats_read; when the user names or mentions an earlier chat, look it up.\n\
 - Finish with one or two short sentences saying what you changed. No preamble.\n\n{DIALECT}\n",
         if profile.display_name.is_empty() { "the user".into() } else { profile.display_name.clone() }

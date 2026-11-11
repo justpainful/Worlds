@@ -18,7 +18,11 @@ fn rename(actor: &str, revision: i64, id: &str, layer: &str, name: &str) -> Valu
     json!({"id":id,"actor":actor,"base":revision,"at":1,"label":"Rename layer","type":"edit","changes":[{"type":"patch","collection":"layers","id":layer,"fields":{"name":name}}]})
 }
 fn node(id: &str, layer: &str, frame: &str) -> Value {
-    json!({"id":id,"kind":"shape","name":"Rectangle","layerId":layer,"frameId":frame,"groupId":null,"visible":true,"locked":false,"rotation":0,"opacity":1,"flipX":false,"flipY":false,"x":0,"y":0,"w":20,"h":20,"shape":"rect","effects":[],"paint":{"fill":"#2266cc","stroke":"#202023","strokeWidth":0,"dash":[],"cap":"round","radius":0},"textStyle":{"font":"sans-serif","size":16,"leading":1.5}})
+    json!({"id":id,"kind":"shape","name":"Rectangle","layerId":layer,"frameId":frame,
+        "groupId":null,"visible":true,"locked":false,"rotation":0,"opacity":1,"flipX":false,
+        "flipY":false,"x":0,"y":0,"w":20,"h":20,"shape":"rect","effects":[],"paint":{"fill":"#2266cc",
+        "stroke":"#202023","strokeWidth":0,"dash":[],"cap":"round","radius":0},
+        "textStyle":{"font":"sans-serif","size":16,"leading":1.5}})
 }
 
 #[test]
@@ -47,7 +51,16 @@ fn bounded_disk_window_and_author_only_undo_survive_reopen_and_lost_reply() {
     let doc = drawing::load(&conn, &page).unwrap();
     let foreign = node("foreign", &layer, doc["scene"]["defaultFrameId"].as_str().unwrap());
     conn.execute("UPDATE profile SET id='foreign-author'", []).unwrap();
-    drawing::apply(&conn,&store::Ctx::user(),&page,json!({"id":"foreign-edit","actor":"foreign-author","base":205,"at":1,"label":"Foreign shape","type":"edit","changes":[{"type":"put","collection":"nodes","id":"foreign","value":foreign},{"type":"order","list":"nodeOrder","ids":["foreign"]}]})).unwrap();
+    drawing::apply(
+        &conn,
+        &store::Ctx::user(),
+        &page,
+        json!({"id":"foreign-edit",
+        "actor":"foreign-author","base":205,"at":1,"label":"Foreign shape","type":"edit",
+        "changes":[{"type":"put","collection":"nodes","id":"foreign","value":foreign},{"type":"order",
+        "list":"nodeOrder","ids":["foreign"]}]}),
+    )
+    .unwrap();
     conn.execute("UPDATE profile SET id=?1", [&actor]).unwrap();
     let request = db::new_id();
     let undone = drawing::history_toggle(&conn, &page, 206, &request, false, &actor).unwrap();
@@ -312,7 +325,17 @@ fn native_fault_child() {
         let mut image = node("owned-image", &layer, &frame);
         image["kind"] = json!("image");
         image["assetId"] = json!("owned");
-        let document=drawing::apply(&conn,&store::Ctx::user(),&page,json!({"id":"owned-original-edit","actor":actor,"base":0,"at":1,"label":"Owned image","type":"edit","changes":[{"type":"put","collection":"assets","id":"owned","value":{"id":"owned","attachmentId":original.id,"name":"Original","mime":"image/png","width":1,"height":1}},{"type":"put","collection":"nodes","id":"owned-image","value":image},{"type":"order","list":"nodeOrder","ids":["owned-image"]}]})).unwrap();
+        let document = drawing::apply(
+            &conn,
+            &store::Ctx::user(),
+            &page,
+            json!({"id":"owned-original-edit","actor":actor,"base":0,"at":1,"label":"Owned image",
+            "type":"edit","changes":[{"type":"put","collection":"assets","id":"owned","value":{"id":"owned",
+            "attachmentId":original.id,"name":"Original","mime":"image/png","width":1,"height":1}},
+            {"type":"put","collection":"nodes","id":"owned-image","value":image},{"type":"order",
+            "list":"nodeOrder","ids":["owned-image"]}]}),
+        )
+        .unwrap();
         std::fs::write(
             dir.join("fixture.json"),
             json!({"page":page,"actor":actor,"originalRel":original.rel_path,"originalBytes":STANDARD.encode(bytes),"document":document})
@@ -413,7 +436,15 @@ fn native_fault_child() {
             drawing::validate_scene(&doc["scene"]).unwrap();
             opens.push(started.elapsed().as_secs_f64() * 1000.0);
         }
-        let result = json!({"nativeSqliteOnly":true,"nativeWindowOrGpuAcceptance":false,"fixture":{"frame":[3840,2160],"layers":30,"nodes":501,"ownedOriginals":1},"hardware":{"os":std::env::consts::OS,"arch":std::env::consts::ARCH,"logicalCores":std::thread::available_parallelism().map(|n|n.get()).unwrap_or(0),"processor":std::env::var("PROCESSOR_IDENTIFIER").unwrap_or_default()},"saveMilliseconds":saves,"openLoadValidateMilliseconds":opens,"saveTargetMet":saves.iter().all(|v|*v<1000.0),"openTargetMet":opens.iter().all(|v|*v<3000.0),"limitations":["This measures the actual Rust/SQLite path on isolated files; native window paint, GPU preparation and device latency are separate acceptance."]});
+        let result = json!({"nativeSqliteOnly":true,"nativeWindowOrGpuAcceptance":false,
+            "fixture":{"frame":[3840,2160],"layers":30,"nodes":501,"ownedOriginals":1},
+            "hardware":{"os":std::env::consts::OS,"arch":std::env::consts::ARCH,
+            "logicalCores":std::thread::available_parallelism().map(|n|n.get()).unwrap_or(0),
+            "processor":std::env::var("PROCESSOR_IDENTIFIER").unwrap_or_default()},"saveMilliseconds":saves,
+            "openLoadValidateMilliseconds":opens,"saveTargetMet":saves.iter().all(|v|*v<1000.0),
+            "openTargetMet":opens.iter().all(|v|*v<3000.0),"limitations":["This measures the actual \
+            Rust/SQLite path on isolated files; native window paint, GPU preparation and device latency are \
+            separate acceptance."]});
         std::fs::write(dir.join("native-storage-benchmark.json"), result.to_string()).unwrap();
         return;
     }

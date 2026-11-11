@@ -207,7 +207,11 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
             let rows = stmt
                 .query_map([n], |r| {
                     let dest: String = r.get(3)?;
-                    Ok(json!({ "id": r.get::<_, String>(0)?, "pageId": r.get::<_, Option<String>>(1)?, "page": r.get::<_, String>(2)?, "destination": serde_json::from_str::<Value>(&dest).unwrap_or(json!(dest)), "channelId": r.get::<_, Option<String>>(4)?, "messageId": r.get::<_, Option<String>>(5)?, "sentAt": r.get::<_, i64>(6)?, "editedAt": r.get::<_, Option<i64>>(7)? }))
+                    Ok(json!({ "id": r.get::<_, String>(0)?, "pageId": r.get::<_,
+                        Option<String>>(1)?, "page": r.get::<_, String>(2)?,
+                        "destination": serde_json::from_str::<Value>(&dest).unwrap_or(json!(dest)),
+                        "channelId": r.get::<_, Option<String>>(4)?, "messageId": r.get::<_, Option<String>>(5)?,
+                        "sentAt": r.get::<_, i64>(6)?, "editedAt": r.get::<_, Option<i64>>(7)? }))
                 })?
                 .collect::<rusqlite::Result<Vec<_>>>()?;
             json!(rows)

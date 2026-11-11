@@ -39,11 +39,17 @@ pub fn tools() -> Vec<Value> {
         tool("tables_from_csv", "Insert a table built from CSV text (first row becomes the header).", json!({ "pageId": pid, "csv": { "type": "string" }, "afterBlockId": bid }), &["pageId", "csv"]),
         tool("tables_to_csv", "A table block as CSV text.", json!({ "blockId": bid }), &["blockId"]),
         // Blocks
-        tool("blocks_list_by_type", "Blocks of one type on a page (heading, paragraph, bulletList, orderedList, taskList, table, image, video, file, codeBlock, callout, blockquote, columns, toggle, collection, pageLink, embed).", json!({ "pageId": pid, "type": { "type": "string" } }), &["pageId", "type"]),
+        tool("blocks_list_by_type", "Blocks of one type on a page (heading, paragraph, \
+            bulletList, orderedList, taskList, table, image, video, file, codeBlock, callout, blockquote, \
+            columns, toggle, collection, pageLink, embed).", json!({ "pageId": pid,
+            "type": { "type": "string" } }), &["pageId", "type"]),
         tool("blocks_duplicate", "Duplicate a block right after itself.", json!({ "blockId": bid }), &["blockId"]),
         tool("blocks_copy_to_page", "Copy blocks to another page (at the end, or after a block there).", json!({ "blockIds": { "type": "array", "items": { "type": "string" } }, "targetPageId": pid, "afterBlockId": bid }), &["blockIds", "targetPageId"]),
         tool("blocks_move_to_page", "Move blocks to another page (copied there, removed here). Undoable.", json!({ "blockIds": { "type": "array", "items": { "type": "string" } }, "targetPageId": pid, "afterBlockId": bid }), &["blockIds", "targetPageId"]),
-        tool("blocks_convert", "Turn a block into another kind while keeping its text: paragraph, heading1, heading2, heading3, bullet, numbered, todo, quote, callout, code.", json!({ "blockId": bid, "to": { "type": "string", "enum": ["paragraph", "heading1", "heading2", "heading3", "bullet", "numbered", "todo", "quote", "callout", "code"] } }), &["blockId", "to"]),
+        tool("blocks_convert", "Turn a block into another kind while keeping its text: \
+            paragraph, heading1, heading2, heading3, bullet, numbered, todo, quote, callout, code.",
+            json!({ "blockId": bid, "to": { "type": "string", "enum": ["paragraph", "heading1", "heading2",
+            "heading3", "bullet", "numbered", "todo", "quote", "callout", "code"] } }), &["blockId", "to"]),
         tool("blocks_set_direction", "Force a block's text direction: rtl for Arabic, ltr for English, auto to follow the first letter.", json!({ "blockId": bid, "direction": { "type": "string", "enum": ["auto", "rtl", "ltr"] } }), &["blockId", "direction"]),
         // Pages: structure and analysis
         tool("pages_stats", "Numbers for a page: words, characters, reading time, blocks by type, headings, open and done tasks, tables, images, links, attachments, dates.", json!({ "pageId": pid }), &["pageId"]),
@@ -52,16 +58,28 @@ pub fn tools() -> Vec<Value> {
         tool("pages_stale", "Pages not edited for a number of days (default 60), oldest first. Good for clean-up suggestions.", json!({ "days": { "type": "integer" }, "limit": { "type": "integer" } }), &[]),
         tool("pages_reorder_children", "Put a parent's subpages (or top-level pages) in an exact order.", json!({ "parentId": { "type": "string", "description": "Omit for top level" }, "orderedIds": { "type": "array", "items": { "type": "string" } } }), &["orderedIds"]),
         tool("pages_sort_children", "Sort a parent's subpages by title, created, updated, or a property.", json!({ "parentId": { "type": "string" }, "by": { "type": "string", "description": "title, created, updated, or a property name" }, "descending": { "type": "boolean" } }), &["by"]),
-        tool("pages_merge", "Append the content of several pages into one target page (each under its title as a heading), optionally archiving the sources.", json!({ "targetPageId": pid, "sourcePageIds": { "type": "array", "items": { "type": "string" } }, "archiveSources": { "type": "boolean" }, "withHeadings": { "type": "boolean" } }), &["targetPageId", "sourcePageIds"]),
+        tool("pages_merge", "Append the content of several pages into one target page (each \
+            under its title as a heading), optionally archiving the sources.", json!({ "targetPageId": pid,
+            "sourcePageIds": { "type": "array", "items": { "type": "string" } },
+            "archiveSources": { "type": "boolean" }, "withHeadings": { "type": "boolean" } }),
+            &["targetPageId", "sourcePageIds"]),
         tool("pages_split_by_headings", "Split a long page: every heading of a level becomes a subpage holding its section, and a link to it stays in place of the moved content.", json!({ "pageId": pid, "level": { "type": "integer", "description": "1 or 2 (default 2)" } }), &["pageId"]),
         tool("pages_insert_toc", "Insert a table of contents (a nested list of the page's headings) at the top or after a block.", json!({ "pageId": pid, "afterBlockId": bid }), &["pageId"]),
-        tool("pages_rename_many", "Rename several pages at once: find and replace in titles, or add a prefix or suffix.", json!({ "pageIds": { "type": "array", "items": { "type": "string" } }, "parentId": { "type": "string" }, "find": { "type": "string" }, "replace": { "type": "string" }, "prefix": { "type": "string" }, "suffix": { "type": "string" } }), &[]),
+        tool("pages_rename_many", "Rename several pages at once: find and replace in titles, or \
+            add a prefix or suffix.", json!({ "pageIds": { "type": "array", "items": { "type": "string" } },
+            "parentId": { "type": "string" }, "find": { "type": "string" }, "replace": { "type": "string" },
+            "prefix": { "type": "string" }, "suffix": { "type": "string" } }), &[]),
         tool("archive_list", "Archived pages.", json!({}), &[]),
         // Properties and collections
         tool("properties_schema", "The properties used across a set of pages: names, types, options and how many pages fill each.", with_scope(json!({})), &[]),
         tool("properties_rename", "Rename a property across a set of pages.", with_scope(json!({ "from": { "type": "string" }, "to": { "type": "string" } })), &["from", "to"]),
         tool("properties_remove", "Remove a property from a set of pages. Only when the user asked.", with_scope(json!({ "name": { "type": "string" } })), &["name"]),
-        tool("properties_set_options", "Set the options (and colours) of a select, status or tags property across a set of pages.", with_scope(json!({ "name": { "type": "string" }, "options": { "type": "array", "items": { "type": "object", "properties": { "name": { "type": "string" }, "color": { "type": "string", "enum": ["gray", "blue", "green", "yellow", "orange", "red", "purple", "pink"] } } } } })), &["name", "options"]),
+        tool("properties_set_options", "Set the options (and colours) of a select, status or \
+            tags property across a set of pages.", with_scope(json!({ "name": { "type": "string" },
+            "options": { "type": "array", "items": { "type": "object",
+            "properties": { "name": { "type": "string" }, "color": { "type": "string", "enum": ["gray",
+            "blue", "green", "yellow", "orange", "red", "purple", "pink"] } } } } })), &["name",
+            "options"]),
         tool("collections_list", "Collection blocks (live tables, boards, galleries) on a page with their settings.", json!({ "pageId": pid }), &["pageId"]),
         tool("collections_update", "Change a collection block: view, source, tag, groupBy, sortBy, sortDir, filter, title.", json!({ "blockId": bid, "patch": { "type": "object" } }), &["blockId", "patch"]),
         // Versions
