@@ -720,11 +720,6 @@ final class WorldsUITests: XCTestCase {
 
     @MainActor
     func testCompleteVisualShowcaseCaptures() throws {
-        #if os(iOS)
-        if UIDevice.current.userInterfaceIdiom == .pad {
-            XCUIDevice.shared.orientation = .landscapeLeft
-        }
-        #endif
         let app = XCUIApplication()
         app.launchArguments += [
             "-AppleInterfaceStyle", "Dark",
@@ -736,6 +731,13 @@ final class WorldsUITests: XCTestCase {
             "--ui-testing-dark"
         ]
         app.launch()
+        #if os(iOS)
+        // Rotate after launching: the simulator can refuse a launch while it is
+        // still animating a rotation ("The request was denied by service delegate").
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            XCUIDevice.shared.orientation = .landscapeLeft
+        }
+        #endif
         RunLoop.current.run(until: Date().addingTimeInterval(6))
         #if os(macOS)
         app.activate()

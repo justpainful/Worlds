@@ -108,6 +108,15 @@ struct SettingsView: View {
 
                 // Section 4: Model Context Protocol (MCP) & AI
                 Section("Model Context Protocol & Assistant") {
+                    #if WORLDS_MAIN_APP_MODULES
+                    NavigationLink {
+                        AIProviderSettingsView()
+                    } label: {
+                        Label("AI Providers", systemImage: "sparkles")
+                    }
+                    .accessibilityIdentifier("open-ai-provider-settings")
+                    #endif
+
                     #if os(macOS)
                     LabeledContent("MCP Architecture", value: "Dual (Process + Entitlements)")
                     LabeledContent("Claude CLI Discovery", value: "Automatic (.local/bin, PATH)")
