@@ -24,6 +24,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.99.1
         with:
           targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios,aarch64-apple-darwin,x86_64-apple-darwin
+      - name: Test RustStore
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p logs
+          cargo test --manifest-path Apple/RustStore/Cargo.toml 2>&1 | tee logs/ruststore-test.log
       - name: Build and archive RustStore
         shell: bash
         run: |

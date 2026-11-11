@@ -72,3 +72,30 @@
 "That is a Claude subscription sign in token. Worlds cannot use those; create an API key in the Claude Console." = "That is a Claude subscription sign in token. Worlds cannot use those; create an API key in the Claude Console.";
 "That does not look like an API key." = "That does not look like an API key.";
 "The Keychain could not store the key (%lld)." = "The Keychain could not store the key (%lld).";
+
+/* Spreadsheets */
+"Spreadsheet" = "Spreadsheet";
+"Selected cell" = "Selected cell";
+"Enter a value or a formula" = "Enter a value or a formula";
+"Formula bar" = "Formula bar";
+"Cancel edit" = "Cancel edit";
+"Confirm value" = "Confirm value";
+"Cell %@" = "Cell %@";
+"Empty" = "Empty";
+"Sheets" = "Sheets";
+"Add" = "Add";
+"Add row" = "Add row";
+"Add column" = "Add column";
+"Add sheet" = "Add sheet";
+"Edit spreadsheet" = "Edit spreadsheet";
+"Opening spreadsheet" = "Opening spreadsheet";
+"This spreadsheet could not be opened." = "This spreadsheet could not be opened.";
+"Changes are saved to this independent local copy and do not sync to the original." = "Changes are saved to this independent local copy and do not sync to the original.";
+"Close" = "Close";
+"Save" = "Save";
+"Saving" = "Saving";
+"Discard changes?" = "Discard changes?";
+"Discard changes" = "Discard changes";
+"Keep editing" = "Keep editing";
+"This spreadsheet changed elsewhere. Close and reopen it to load the latest version." = "This spreadsheet changed elsewhere. Close and reopen it to load the latest version.";
+"The spreadsheet could not be saved. Your changes are still here." = "The spreadsheet could not be saved. Your changes are still here.";

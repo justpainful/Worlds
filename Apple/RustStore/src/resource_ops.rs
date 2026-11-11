@@ -9,7 +9,7 @@ fn blocks(c: &Connection, page: &str) -> Result<Vec<(String, Value)>> {
 fn snapshot(c: &Connection, id: &str) -> Result<Value> {
     require_personal(c, id)?;
     let (kind, revision, metadata): (String,i64,String) = c.query_row("SELECT kind,updated_at,metadata FROM pages WHERE id=?1", [id], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?)))?;
-    if kind != "project" && kind != "gallery" && kind != "stream" { bail!("unsupported resource kind") }
+    if kind != "project" && kind != "gallery" && kind != "stream" && kind != "spreadsheet" { bail!("unsupported resource kind") }
     let metadata: Value = serde_json::from_str(&metadata)?;
     let current = blocks(c, id)?;
     if kind == "project" { project_links(c, &metadata)?; } else if kind == "gallery" { attachment_ids(c, &current)?; }
@@ -116,6 +116,47 @@ pub fn save_stream(path: &Path, id: &str, base: i64, expected: Value, url: &str)
     let result=snapshot(&tx,id)?;
     tx.commit()?; Ok(result)
 }
+/// Largest workbook a native client may store in one resource's metadata.
+const MAX_SHEET_BYTES: usize = 16 * 1024 * 1024;
+
+/// Checks the workbook shape the desktop reads (`src/spreadsheet/engine.ts`):
+/// a non-empty `sheets` list whose entries are objects with a unique string id
+/// and an object of cells, each cell an object whose optional `v` is a string.
+/// Unknown keys are allowed and kept at every level.
+fn validate_sheet(sheet: &Value) -> Result<()> {
+    if sheet.to_string().len() > MAX_SHEET_BYTES { bail!("invalid spreadsheet: too large") }
+    let sheets = sheet.get("sheets").and_then(Value::as_array).filter(|list| !list.is_empty()).ok_or_else(||anyhow::anyhow!("invalid spreadsheet: no sheets"))?;
+    let mut ids = HashSet::new();
+    for entry in sheets {
+        let object = entry.as_object().ok_or_else(||anyhow::anyhow!("invalid spreadsheet: sheet is not an object"))?;
+        let id = object.get("id").and_then(Value::as_str).filter(|id| !id.is_empty()).ok_or_else(||anyhow::anyhow!("invalid spreadsheet: sheet id"))?;
+        if !ids.insert(id) { bail!("invalid spreadsheet: duplicate sheet id") }
+        let cells = object.get("cells").and_then(Value::as_object).ok_or_else(||anyhow::anyhow!("invalid spreadsheet: cells"))?;
+        for cell in cells.values() {
+            let cell = cell.as_object().ok_or_else(||anyhow::anyhow!("invalid spreadsheet: cell is not an object"))?;
+            if cell.get("v").is_some_and(|value| !value.is_string()) { bail!("invalid spreadsheet: cell value is not text") }
+        }
+    }
+    if let Some(active) = sheet.get("activeSheetId") {
+        if !active.as_str().is_some_and(|id| ids.contains(id)) { bail!("invalid spreadsheet: active sheet") }
+    }
+    Ok(())
+}
+
+/// Replaces only `metadata.sheet` of a personal spreadsheet page. The complete
+/// metadata baseline and revision are compared in the transaction, and every
+/// other metadata key must be unchanged, so desktop fields are never dropped.
+pub fn save_spreadsheet(path: &Path, id: &str, base: i64, expected: Value, metadata: Value) -> Result<Value> {
+    let sheet = metadata_key(&expected,&metadata,"sheet")?.clone();
+    validate_sheet(&sheet)?;
+    let mut connection = open_existing(path)?;
+    let tx = connection.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+    check_metadata(&tx,id,base,&expected,"spreadsheet")?;
+    store::set_page_meta(&tx,&store::Ctx::user(),id,"sheet",sheet)?;
+    let result = snapshot(&tx,id)?;
+    tx.commit()?; Ok(result)
+}
+
 fn attachment_ids(c: &Connection, entries: &[(String,Value)]) -> Result<()> {
     for (_, value) in entries {
         if value.get("type").and_then(Value::as_str) != Some("galleryItem") { continue }
@@ -242,6 +283,57 @@ mod tests {
         let saved=invoke(json!({"operation":"save_stream","path":path,"page":"s","base":read["value"]["revision"],"expected_metadata":read["value"]["metadata"],"url":"https://example.test/video.m3u#part"}));
         assert_eq!(saved["ok"],true,"{saved}");
         assert_eq!(saved["value"]["metadata"]["stream"]["format"],"hls");
+        std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn spreadsheet_save_replaces_only_the_sheet_and_rejects_conflicts() {
+        let path=fixture();
+        let c=Connection::open(&path).unwrap();
+        let original=json!({"other":{"keep":true},"sheet":{"activeSheetId":"a","future":1,"sheets":[{"id":"a","name":"Sheet 1","rows":60,"cols":26,"cells":{"A1":{"v":"=1+1","s":{"bold":true},"x":2}},"merges":[{"r1":0,"c1":0,"r2":1,"c2":1}]}]}});
+        c.execute("INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('x','Budget','spreadsheet',?1,1,100)",[original.to_string()]).unwrap();
+        drop(c);
+        let read=read_resource(&path,"x").unwrap();
+        assert_eq!(read["kind"],"spreadsheet");
+        let mut next=read["metadata"].clone();
+        next["sheet"]["sheets"][0]["cells"]["B2"]=json!({"v":"42"});
+        let saved=save_spreadsheet(&path,"x",100,read["metadata"].clone(),next.clone()).unwrap();
+        assert_eq!(saved["metadata"],next);
+        assert_eq!(saved["metadata"]["other"],json!({"keep":true}));
+        assert_eq!(saved["metadata"]["sheet"]["sheets"][0]["cells"]["A1"]["x"],json!(2));
+        // The old revision is now stale.
+        assert!(save_spreadsheet(&path,"x",100,read["metadata"].clone(),next.clone()).is_err());
+        let revision=saved["revision"].as_i64().unwrap();
+        // Other metadata keys cannot change through this operation.
+        let mut unrelated=next.clone(); unrelated["other"]=json!(1);
+        assert!(save_spreadsheet(&path,"x",revision,next.clone(),unrelated).is_err());
+        // Malformed workbooks are refused.
+        for bad in [json!({"sheets":[]}),json!({"sheets":[{"id":"a","cells":{"A1":{"v":5}}}]}),json!({"sheets":[{"id":"a","cells":{}},{"id":"a","cells":{}}]}),json!({"activeSheetId":"z","sheets":[{"id":"a","cells":{}}]})] {
+            let mut candidate=next.clone(); candidate["sheet"]=bad;
+            assert!(save_spreadsheet(&path,"x",revision,next.clone(),candidate).is_err());
+        }
+        // Only spreadsheets are accepted.
+        let project=read_resource(&path,"p").unwrap();
+        let mut changed=project["metadata"].clone(); changed["sheet"]=json!({"sheets":[{"id":"a","cells":{}}]});
+        assert!(save_spreadsheet(&path,"p",project["revision"].as_i64().unwrap(),project["metadata"].clone(),changed).is_err());
+        // A new spreadsheet without a workbook can be given its first one.
+        let c=Connection::open(&path).unwrap();
+        c.execute("INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('n','New','spreadsheet','{}',1,100)",[]).unwrap();
+        drop(c);
+        let fresh=json!({"sheet":{"sheets":[{"id":"sh_1","name":"Sheet 1","cells":{}}],"activeSheetId":"sh_1"}});
+        let created=save_spreadsheet(&path,"n",100,json!({}),fresh.clone()).unwrap();
+        assert_eq!(created["metadata"],fresh);
+        std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn ffi_spreadsheet_request_name_is_accepted() {
+        let path=fixture(); let c=Connection::open(&path).unwrap();
+        c.execute("INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('x','Budget','spreadsheet','{}',1,100)",[]).unwrap(); drop(c);
+        let request=json!({"operation":"save_spreadsheet","path":path,"page":"x","base":100,"expected_metadata":{},"metadata":{"sheet":{"sheets":[{"id":"a","cells":{"A1":{"v":"1"}}}]}}}).to_string();
+        let pointer=unsafe { crate::worlds_store_call(request.as_ptr(),request.len()) };
+        let saved:Value=serde_json::from_str(unsafe { std::ffi::CStr::from_ptr(pointer) }.to_str().unwrap()).unwrap();
+        unsafe { crate::worlds_store_free(pointer) };
+        assert_eq!(saved["ok"],true,"{saved}");
+        assert_eq!(saved["value"]["metadata"]["sheet"]["sheets"][0]["cells"]["A1"]["v"],"1");
         std::fs::remove_file(path).unwrap();
     }
     #[test]

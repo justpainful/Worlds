@@ -5,6 +5,12 @@ import WorldsGallery
 import WorldsNativeWrites
 
 public enum NativeResourceRepositoryError: Error { case malformedResponse }
+public struct SpreadsheetRecord: Sendable {
+    public let id: String
+    public let revision: Int64
+    /// The complete resource metadata; the workbook is its `sheet` key.
+    public let metadata: JSONValue
+}
 public struct StreamRecord: Sendable {
     public let id: String
     public let revision: Int64
@@ -26,6 +32,18 @@ public actor NativeResourceRepository: ProjectRepository, GalleryRepository {
         let record = try parse(await store.saveStream(id: id, base: baseline.revision, expectedMetadata: baseline.metadata, url: url))
         guard record.kind == "stream", record.id == id else { throw NativeResourceRepositoryError.malformedResponse }
         return StreamRecord(id: record.id, revision: record.revision, metadata: record.metadata)
+    }
+    public func readSpreadsheet(id: String) async throws -> SpreadsheetRecord {
+        let record = try parse(await store.readResource(id: id))
+        guard record.kind == "spreadsheet", record.id == id else { throw NativeResourceRepositoryError.malformedResponse }
+        return SpreadsheetRecord(id: record.id, revision: record.revision, metadata: record.metadata)
+    }
+    /// Saves `metadata`, which must equal the baseline except for its `sheet` key.
+    public func saveSpreadsheet(id: String, baseline: SpreadsheetRecord, metadata: JSONValue) async throws -> SpreadsheetRecord {
+        guard baseline.id == id else { throw NativeResourceRepositoryError.malformedResponse }
+        let record = try parse(await store.saveSpreadsheet(id: id, base: baseline.revision, expectedMetadata: baseline.metadata, metadata: metadata))
+        guard record.kind == "spreadsheet", record.id == id else { throw NativeResourceRepositoryError.malformedResponse }
+        return SpreadsheetRecord(id: record.id, revision: record.revision, metadata: record.metadata)
     }
     public func readProject(id: String) async throws -> ProjectRecord {
         let value = try await store.readResource(id: id)

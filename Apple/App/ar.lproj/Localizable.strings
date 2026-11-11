@@ -72,3 +72,30 @@
 "That is a Claude subscription sign in token. Worlds cannot use those; create an API key in the Claude Console." = "هذا رمز تسجيل دخول لاشتراك Claude، ولا يمكن لـ Worlds استخدامه. أنشئ مفتاح API في Claude Console.";
 "That does not look like an API key." = "لا يبدو هذا مفتاح API.";
 "The Keychain could not store the key (%lld)." = "تعذر على سلسلة المفاتيح حفظ المفتاح (%lld).";
+
+/* Spreadsheets */
+"Spreadsheet" = "جدول";
+"Selected cell" = "الخلية المحددة";
+"Enter a value or a formula" = "أدخل قيمة أو صيغة";
+"Formula bar" = "شريط الصيغة";
+"Cancel edit" = "إلغاء التعديل";
+"Confirm value" = "تأكيد القيمة";
+"Cell %@" = "الخلية %@";
+"Empty" = "فارغة";
+"Sheets" = "الأوراق";
+"Add" = "إضافة";
+"Add row" = "إضافة صف";
+"Add column" = "إضافة عمود";
+"Add sheet" = "إضافة ورقة";
+"Edit spreadsheet" = "تعديل الجدول";
+"Opening spreadsheet" = "جارٍ فتح الجدول";
+"This spreadsheet could not be opened." = "تعذّر فتح هذا الجدول.";
+"Changes are saved to this independent local copy and do not sync to the original." = "تُحفظ التغييرات في هذه النسخة المحلية المستقلة ولا تُزامَن مع الأصل.";
+"Close" = "إغلاق";
+"Save" = "حفظ";
+"Saving" = "جارٍ الحفظ";
+"Discard changes?" = "تجاهل التغييرات؟";
+"Discard changes" = "تجاهل التغييرات";
+"Keep editing" = "متابعة التعديل";
+"This spreadsheet changed elsewhere. Close and reopen it to load the latest version." = "تغيّر هذا الجدول في مكان آخر. أغلقه وافتحه من جديد لتحميل أحدث نسخة.";
+"The spreadsheet could not be saved. Your changes are still here." = "تعذّر حفظ الجدول. تغييراتك ما زالت هنا.";

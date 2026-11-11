@@ -6,6 +6,7 @@ import WorldsMedia
 import WorldsOfficeViews
 import WorldsOfficePreview
 import Worlds3DViews
+import WorldsSpreadsheetViews
 #endif
 
 private struct ResourceMetadata: Decodable {
@@ -70,7 +71,7 @@ struct ResourceContentView: View {
                 case "presentation": presentation
                 case "file": file
                 case "stream": stream
-                case "spreadsheet": WorldsSpreadsheetStudioView(initialTitle: page.title.isEmpty ? "Spreadsheet Workbook" : page.title, metadataJSON: page.metadataJSON)
+                case "spreadsheet": spreadsheet
                 case "task", "event", "goal", "inbox", "subject", "lesson", "assignment", "exam", "requirement":
                     NativePlanningAndStudyItemView(page: page)
                 default: Text("This resource type is not available in the reader.")
@@ -92,6 +93,22 @@ struct ResourceContentView: View {
         #else
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        #endif
+    }
+    @ViewBuilder
+    private var spreadsheet: some View {
+        #if WORLDS_MAIN_APP_MODULES
+        // The workbook from metadata.sheet with formulas computed by the same
+        // engine as desktop and Android. Editing happens in the local copy editor.
+        SpreadsheetPreview(metadataJSON: page.metadataJSON)
+            .frame(height: dynamicTypeSize.isAccessibilitySize ? 560 : 460)
+            .background(.background, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.quaternary))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .id(page.id)
+            .accessibilityIdentifier("spreadsheet-preview")
+        #else
+        WorldsSpreadsheetStudioView(initialTitle: page.title.isEmpty ? "Spreadsheet Workbook" : page.title, metadataJSON: page.metadataJSON)
         #endif
     }
     private var project: some View {
