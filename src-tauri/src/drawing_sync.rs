@@ -211,9 +211,12 @@ pub fn snapshot(conn: &Connection, page: &str) -> Result<Value> {
         original_ids(&scene, &mut originals);
         versions.insert(id, json!({ "label": label, "author": author, "revision": revision, "createdAt": at, "scene": scene }));
     }
-    Ok(
-        json!({ "pageId": page, "document": document, "basis": basis, "remote": remote.map(|s| serde_json::from_str::<Value>(&s)).transpose()?, "pending": pending(conn, page)?, "versions": versions, "attachmentIds": originals, "localActor": store::profile(conn)?.id, "userId": user, "workspaceId": workspace, "serverUrl": server, "level": page_level(conn, page)?.as_str(), "status": status, "error": error, "exportPolicy":crate::drawing_export::initial_policy(conn,page)?.rules }),
-    )
+    Ok(json!({ "pageId": page, "document": document, "basis": basis,
+            "remote": remote.map(|s| serde_json::from_str::<Value>(&s)).transpose()?,
+            "pending": pending(conn, page)?, "versions": versions, "attachmentIds": originals,
+            "localActor": store::profile(conn)?.id, "userId": user, "workspaceId": workspace,
+            "serverUrl": server, "level": page_level(conn, page)?.as_str(), "status": status,
+            "error": error, "exportPolicy":crate::drawing_export::initial_policy(conn,page)?.rules }))
 }
 fn validate_document(doc: &Value) -> Result<()> {
     drawing::validate_scene(&doc["seed"])?;
@@ -483,7 +486,20 @@ fn append_pending(doc: &mut Value, op: &Value, before: &Value) -> Result<Value> 
 fn install(conn: &Connection, page: &str, doc: &Value) -> Result<()> {
     validate_document(doc)?;
     conn.execute("DELETE FROM drawing_operations WHERE page_id = ?1", [page])?;
-    conn.execute("INSERT INTO drawing_documents(page_id,revision,seed,scene,search_text,updated_at) VALUES (?1,?2,?3,?4,?5,?6) ON CONFLICT(page_id) DO UPDATE SET revision=excluded.revision,seed=excluded.seed,scene=excluded.scene,search_text=excluded.search_text,updated_at=excluded.updated_at", params![page,doc["revision"].as_i64(),doc["seed"].to_string(),doc["scene"].to_string(),drawing::search_text(&doc["scene"]),db::now()])?;
+    conn.execute(
+        "INSERT INTO \
+        drawing_documents(page_id,revision,seed,scene,search_text,updated_at) VALUES \
+        (?1,?2,?3,?4,?5,?6) ON CONFLICT(page_id) DO UPDATE SET \
+        revision=excluded.revision,seed=excluded.seed,scene=excluded.scene,search_text=excluded.search_text,updated_at=excluded.updated_at",
+        params![
+            page,
+            doc["revision"].as_i64(),
+            doc["seed"].to_string(),
+            doc["scene"].to_string(),
+            drawing::search_text(&doc["scene"]),
+            db::now()
+        ],
+    )?;
     for op in doc["operations"].as_array().unwrap() {
         conn.execute(
             "INSERT INTO drawing_operations(page_id,id,revision,actor,payload,created_at) VALUES (?1,?2,?3,?4,?5,?6)",
@@ -713,9 +729,32 @@ pub fn recover(conn: &Connection, page: &str, input: Recovery) -> Result<Value> 
     install(conn, &copy.id, &json!({"revision":0,"seed":scene,"scene":scene,"operations":[]}))?;
     {
         let native_scene = drawing::materialize_scene_dependencies(conn, page, &copy.id, current["document"]["scene"].clone())?;
-        conn.execute("INSERT INTO drawing_versions(id,page_id,revision,label,author,scene,created_at) VALUES (?1,?2,?3,'Native state before recovery',?4,?5,?6)", params![db::new_id(),copy.id,current["document"]["revision"].as_i64().unwrap_or(0),store::profile(conn)?.id,native_scene.to_string(),db::now()])?;
+        conn.execute(
+            "INSERT INTO \
+            drawing_versions(id,page_id,revision,label,author,scene,created_at) VALUES (?1,?2,?3,'Native \
+            state before recovery',?4,?5,?6)",
+            params![
+                db::new_id(),
+                copy.id,
+                current["document"]["revision"].as_i64().unwrap_or(0),
+                store::profile(conn)?.id,
+                native_scene.to_string(),
+                db::now()
+            ],
+        )?;
     }
-    conn.execute("INSERT INTO drawing_sync_recoveries(id,page_id,document,pending,reason,created_at) VALUES (?1,?2,?3,?4,'Preserved local copy before adopting shared changes',?5)", params![recovery_id,page,json!({"native":current["document"],"renderer":renderer,"incoming":incoming}).to_string(),json!({"native":current["pending"],"renderer":record}).to_string(),db::now()])?;
+    conn.execute(
+        "INSERT INTO \
+        drawing_sync_recoveries(id,page_id,document,pending,reason,created_at) VALUES \
+        (?1,?2,?3,?4,'Preserved local copy before adopting shared changes',?5)",
+        params![
+            recovery_id,
+            page,
+            json!({"native":current["document"],"renderer":renderer,"incoming":incoming}).to_string(),
+            json!({"native":current["pending"],"renderer":record}).to_string(),
+            db::now()
+        ],
+    )?;
     conn.execute("DELETE FROM drawing_sync_outbox WHERE page_id=?1", [page])?;
     if current["remote"].is_null() {
         let seed = &incoming["document"]["seed"];
@@ -933,7 +972,13 @@ mod tests {
         assert_eq!(doc, current);
     }
     fn shape(scene: &Value, id: &str) -> Value {
-        json!({"id":id,"kind":"shape","shape":"rect","name":id,"layerId":scene["layerOrder"][0],"frameId":scene["defaultFrameId"],"groupId":null,"visible":true,"locked":false,"rotation":0,"opacity":1,"flipX":false,"flipY":false,"x":0,"y":0,"w":100,"h":100,"paint":{"fill":"transparent","stroke":"#202023","strokeWidth":3,"dash":[],"cap":"round","radius":16},"textStyle":{"font":"IBM Plex Sans Arabic","size":28,"weight":400,"italic":false,"align":"start","direction":"auto","leading":1.7,"background":"transparent","color":"#202023","border":"transparent"},"effects":[]})
+        json!({"id":id,"kind":"shape","shape":"rect","name":id,"layerId":scene["layerOrder"][0],
+            "frameId":scene["defaultFrameId"],"groupId":null,"visible":true,"locked":false,"rotation":0,
+            "opacity":1,"flipX":false,"flipY":false,"x":0,"y":0,"w":100,"h":100,
+            "paint":{"fill":"transparent","stroke":"#202023","strokeWidth":3,"dash":[],"cap":"round",
+            "radius":16},"textStyle":{"font":"IBM Plex Sans Arabic","size":28,"weight":400,"italic":false,
+            "align":"start","direction":"auto","leading":1.7,"background":"transparent","color":"#202023",
+            "border":"transparent"},"effects":[]})
     }
     fn op(actor: &str, base: i64, id: &str, changes: Value) -> Value {
         json!({"id":id,"actor":actor,"base":base,"at":1,"label":id,"type":"edit","changes":changes})
@@ -1012,7 +1057,10 @@ mod tests {
             &actor,
             2,
             "renderer-only",
-            json!([{"type":"put","collection":"assets","id":"a","value":{"id":"a","attachmentId":"original","name":"photo.png","mime":"image/png","width":1,"height":1}},{"type":"put","collection":"nodes","id":"unsent-image","value":image},{"type":"order","list":"nodeOrder","ids":["shape","unsent-image"]}]),
+            json!([{"type":"put","collection":"assets","id":"a","value":{"id":"a",
+                "attachmentId":"original","name":"photo.png","mime":"image/png","width":1,"height":1}},
+                {"type":"put","collection":"nodes","id":"unsent-image","value":image},{"type":"order",
+                "list":"nodeOrder","ids":["shape","unsent-image"]}]),
         );
         append(&mut renderer, unsent.clone());
         let record = json!({"acknowledged":acknowledged,"pending":[unsent]});

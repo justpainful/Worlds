@@ -10,7 +10,16 @@ pub(super) struct Window {
     pub info: Value,
 }
 pub(super) fn choose(conn: &Connection, page: &str, actor: &str, redo: bool) -> Result<Window> {
-    let mut stmt=conn.prepare("SELECT e.id,e.revision,length(CAST(e.payload AS BLOB)),COALESCE((SELECT json_extract(t.payload,'$.enabled') FROM drawing_operations t WHERE t.page_id=e.page_id AND t.actor=e.actor AND json_extract(t.payload,'$.type')='toggle' AND json_extract(t.payload,'$.target')=e.id ORDER BY t.revision DESC LIMIT 1),1),COALESCE((SELECT t.revision FROM drawing_operations t WHERE t.page_id=e.page_id AND t.actor=e.actor AND json_extract(t.payload,'$.type')='toggle' AND json_extract(t.payload,'$.target')=e.id ORDER BY t.revision DESC LIMIT 1),0) FROM drawing_operations e WHERE e.page_id=?1 AND e.actor=?2 AND json_extract(e.payload,'$.type')='edit' ORDER BY e.revision DESC LIMIT ?3")?;
+    let mut stmt = conn.prepare(
+        "SELECT e.id,e.revision,length(CAST(e.payload AS \
+        BLOB)),COALESCE((SELECT json_extract(t.payload,'$.enabled') FROM drawing_operations t WHERE \
+        t.page_id=e.page_id AND t.actor=e.actor AND json_extract(t.payload,'$.type')='toggle' AND \
+        json_extract(t.payload,'$.target')=e.id ORDER BY t.revision DESC LIMIT 1),1),COALESCE((SELECT \
+        t.revision FROM drawing_operations t WHERE t.page_id=e.page_id AND t.actor=e.actor AND \
+        json_extract(t.payload,'$.type')='toggle' AND json_extract(t.payload,'$.target')=e.id ORDER BY \
+        t.revision DESC LIMIT 1),0) FROM drawing_operations e WHERE e.page_id=?1 AND e.actor=?2 AND \
+        json_extract(e.payload,'$.type')='edit' ORDER BY e.revision DESC LIMIT ?3",
+    )?;
     let rows = stmt.query_map(params![page, actor, (MAX_EDITS + 1) as i64], |r| {
         Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?, r.get::<_, i64>(2)?, r.get::<_, bool>(3)?, r.get::<_, i64>(4)?))
     })?;

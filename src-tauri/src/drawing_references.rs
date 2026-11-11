@@ -55,9 +55,13 @@ pub fn read(conn: &Connection, source: &str) -> Result<Value> {
         .pointer("/file/attachmentId")
         .and_then(Value::as_str)
         .and_then(|id| page.attachments.iter().find(|a| a.id == id && a.mime.starts_with("image/") && a.mime != "image/svg+xml"));
-    Ok(
-        json!({ "state": "ready", "sourceId": source, "title": page.meta.title.chars().take(300).collect::<String>(), "kind": page.meta.kind, "excerpt": page.meta.preview.chars().take(240).collect::<String>(), "updatedAt": page.meta.updated_at, "checkedAt": db::now(), "tasksDone": done, "tasksTotal": total, "imageAttachmentId": image.map(|a| &a.id), "imageMime": image.map(|a| &a.mime), "imageWidth": image.and_then(|a| a.width), "imageHeight": image.and_then(|a| a.height) }),
-    )
+    Ok(json!({ "state": "ready", "sourceId": source,
+            "title": page.meta.title.chars().take(300).collect::<String>(), "kind": page.meta.kind,
+            "excerpt": page.meta.preview.chars().take(240).collect::<String>(),
+            "updatedAt": page.meta.updated_at, "checkedAt": db::now(), "tasksDone": done,
+            "tasksTotal": total, "imageAttachmentId": image.map(|a| &a.id),
+            "imageMime": image.map(|a| &a.mime), "imageWidth": image.and_then(|a| a.width),
+            "imageHeight": image.and_then(|a| a.height) }))
 }
 
 /// Prepare outside networking; source policies remain independent of the host.
@@ -291,7 +295,12 @@ mod tests {
         let mut scene = drawing::initial_scene(&target.id);
         let layer = scene["layerOrder"][0].clone();
         let frame = scene["defaultFrameId"].clone();
-        scene["nodes"]["ref"] = json!({"id":"ref","kind":"reference","name":"Frozen reference","sourceId":source.id,"sourceMode":"snapshot","referenceSnapshot":{"title":data["title"],"kind":data["kind"],"checkedAt":data["checkedAt"],"updatedAt":data["updatedAt"]},"assetId":"frozen","layerId":layer,"frameId":frame,"x":10,"y":10,"w":320,"h":180,"rotation":0,"opacity":1,"visible":true,"locked":false,"paint":{"fill":"#f6f6f6","stroke":"#202023","strokeWidth":0,"dash":[]},"textStyle":{"font":"Arial","size":16,"leading":1.7},"effects":[]});
+        scene["nodes"]["ref"] = json!({"id":"ref","kind":"reference","name":"Frozen reference",
+            "sourceId":source.id,"sourceMode":"snapshot","referenceSnapshot":{"title":data["title"],
+            "kind":data["kind"],"checkedAt":data["checkedAt"],"updatedAt":data["updatedAt"]},
+            "assetId":"frozen","layerId":layer,"frameId":frame,"x":10,"y":10,"w":320,"h":180,"rotation":0,
+            "opacity":1,"visible":true,"locked":false,"paint":{"fill":"#f6f6f6","stroke":"#202023",
+            "strokeWidth":0,"dash":[]},"textStyle":{"font":"Arial","size":16,"leading":1.7},"effects":[]});
         scene["nodeOrder"] = json!(["ref"]);
         scene["assets"]["frozen"] =
             json!({"id":"frozen","attachmentId":original.id,"name":"Snapshot","mime":"image/png","width":1,"height":1});
@@ -315,13 +324,32 @@ mod tests {
         )
         .unwrap();
         let actor = store::profile(&conn).unwrap().id;
-        drawing::apply(&conn,&store::Ctx::user(),&target.id,json!({"id":"relink","actor":actor,"base":0,"at":1,"label":"Relink source","type":"edit","changes":[{"type":"patch","collection":"nodes","id":"ref","fields":{"sourceId":replacement.id,"sourceMode":"live","referenceSnapshot":null,"assetId":null}}]})).unwrap();
+        drawing::apply(
+            &conn,
+            &store::Ctx::user(),
+            &target.id,
+            json!({"id":"relink","actor":actor,
+            "base":0,"at":1,"label":"Relink source","type":"edit","changes":[{"type":"patch",
+            "collection":"nodes","id":"ref","fields":{"sourceId":replacement.id,"sourceMode":"live",
+            "referenceSnapshot":null,"assetId":null}}]}),
+        )
+        .unwrap();
         let relinked = drawing::load(&conn, &target.id).unwrap();
         assert_eq!(relinked["scene"]["nodes"]["ref"]["sourceId"], replacement.id);
         assert!(relinked["scene"]["nodes"]["ref"]["referenceSnapshot"].is_null());
         let undo = drawing::history_toggle(&conn, &target.id, 1, &db::new_id(), false, &actor).unwrap();
         assert_eq!(undo["document"]["scene"], frozen["scene"]);
-        std::fs::write(dir.join("reference-snapshot-result.json"),json!({"passed":true,"checks":["source image is copied to a distinct destination-owned original","source deletion and purge remove its identity while destination-owned immutable bytes remain exact","frozen content retains capture time and title after source loss","relink clears live-preview data and uses an accessible independent source","author Undo restores the complete frozen snapshot without source access"]}).to_string()).unwrap();
+        std::fs::write(
+            dir.join("reference-snapshot-result.json"),
+            json!({"passed":true,
+            "checks":["source image is copied to a distinct destination-owned original","source deletion \
+            and purge remove its identity while destination-owned immutable bytes remain exact","frozen \
+            content retains capture time and title after source loss","relink clears live-preview data and \
+            uses an accessible independent source","author Undo restores the complete frozen snapshot \
+            without source access"]})
+            .to_string(),
+        )
+        .unwrap();
     }
     #[test]
     fn references_never_disclose_denied_or_deleted_sources_and_tasks_keep_a_return_region() {

@@ -51,7 +51,13 @@ mod tests {
         let doc = load(&conn, &page.id).unwrap();
         let layer = doc["scene"]["layerOrder"][0].clone();
         let frame = doc["scene"]["defaultFrameId"].clone();
-        let label = json!({"id":"label","kind":"text","name":"Label","text":"شرح","layerId":layer,"frameId":frame,"groupId":null,"visible":true,"locked":false,"x":200,"y":100,"w":200,"h":80,"rotation":0,"opacity":1,"flipX":false,"flipY":false,"annotationGroup":"annotation","annotationStatus":"open","paint":{"fill":"transparent","stroke":"#245b93","strokeWidth":2,"dash":[]},"textStyle":{"font":"sans-serif","size":18,"leading":1.7,"weight":400,"italic":false,"align":"start","direction":"auto","background":"transparent","border":"transparent","color":"#245b93"},"effects":[]});
+        let label = json!({"id":"label","kind":"text","name":"Label","text":"شرح",
+            "layerId":layer,"frameId":frame,"groupId":null,"visible":true,"locked":false,"x":200,"y":100,
+            "w":200,"h":80,"rotation":0,"opacity":1,"flipX":false,"flipY":false,
+            "annotationGroup":"annotation","annotationStatus":"open","paint":{"fill":"transparent",
+            "stroke":"#245b93","strokeWidth":2,"dash":[]},"textStyle":{"font":"sans-serif","size":18,
+            "leading":1.7,"weight":400,"italic":false,"align":"start","direction":"auto",
+            "background":"transparent","border":"transparent","color":"#245b93"},"effects":[]});
         let mut arrow = label.clone();
         arrow["id"] = json!("arrow");
         arrow["kind"] = json!("shape");
@@ -59,9 +65,29 @@ mod tests {
         arrow["anchor"] =
             json!({"nodeId":"deleted-source","u":-0.02,"v":1.01,"fallback":{"x":10,"y":20},"sourceKey":"{\"sha256\":null}","review":true});
         arrow["endAnchor"] = json!({"nodeId":"label","u":0,"v":0.5,"fallback":{"x":200,"y":140}});
-        let initial=apply(&conn,&store::Ctx::user(),&page.id,json!({"id":db::new_id(),"actor":actor,"base":0,"at":db::now(),"label":"Create annotation","type":"edit","requiresBase":true,"changes":[{"type":"put","collection":"nodes","id":"arrow","value":arrow},{"type":"put","collection":"nodes","id":"label","value":label},{"type":"order","list":"nodeOrder","ids":["arrow","label"]}]})).unwrap();
+        let initial = apply(
+            &conn,
+            &store::Ctx::user(),
+            &page.id,
+            json!({"id":db::new_id(),
+            "actor":actor,"base":0,"at":db::now(),"label":"Create annotation","type":"edit",
+            "requiresBase":true,"changes":[{"type":"put","collection":"nodes","id":"arrow","value":arrow},
+            {"type":"put","collection":"nodes","id":"label","value":label},{"type":"order",
+            "list":"nodeOrder","ids":["arrow","label"]}]}),
+        )
+        .unwrap();
         validate_scene(&initial["scene"]).unwrap();
-        let changed=apply(&conn,&store::Ctx::user(),&page.id,json!({"id":db::new_id(),"actor":actor,"base":1,"at":db::now(),"label":"Move label and status","type":"edit","requiresBase":true,"changes":[{"type":"patch","collection":"nodes","id":"label","fields":{"x":450,"annotationStatus":"resolved"}},{"type":"patch","collection":"nodes","id":"arrow","fields":{"annotationStatus":"resolved"}}]})).unwrap();
+        let changed = apply(
+            &conn,
+            &store::Ctx::user(),
+            &page.id,
+            json!({"id":db::new_id(),
+            "actor":actor,"base":1,"at":db::now(),"label":"Move label and status","type":"edit",
+            "requiresBase":true,"changes":[{"type":"patch","collection":"nodes","id":"label",
+            "fields":{"x":450,"annotationStatus":"resolved"}},{"type":"patch","collection":"nodes",
+            "id":"arrow","fields":{"annotationStatus":"resolved"}}]}),
+        )
+        .unwrap();
         assert_eq!(changed["scene"]["nodes"]["label"]["x"], 450);
         drop(conn);
         let conn = db::open(&path).unwrap();

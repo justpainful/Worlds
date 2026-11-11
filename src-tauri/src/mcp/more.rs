@@ -36,9 +36,16 @@ pub fn tools() -> Vec<Value> {
         tool("pages_outline", "Headings of a page with their block ids, for navigating long pages.", json!({ "pageId": page_id }), &["pageId"]),
         tool("pages_append_markdown", "Add content at the end of a page.", json!({ "pageId": page_id, "markdown": md }), &["pageId", "markdown"]),
         tool("pages_find_text", "Find blocks containing some text, in one page or across all pages. Returns block ids with excerpts.", json!({ "text": { "type": "string" }, "pageId": { "type": "string", "description": "Limit to one page" }, "limit": { "type": "integer" } }), &["text"]),
-        tool("pages_replace_text", "Find and replace text inside a page, keeping formatting. Returns how many replacements were made. Undoable.", json!({ "pageId": page_id, "find": { "type": "string" }, "replace": { "type": "string" }, "matchCase": { "type": "boolean" } }), &["pageId", "find", "replace"]),
+        tool("pages_replace_text", "Find and replace text inside a page, keeping formatting. \
+            Returns how many replacements were made. Undoable.", json!({ "pageId": page_id,
+            "find": { "type": "string" }, "replace": { "type": "string" },
+            "matchCase": { "type": "boolean" } }), &["pageId", "find", "replace"]),
         tool("pages_backlinks", "Pages that mention or link to this page.", json!({ "pageId": page_id }), &["pageId"]),
-        tool("pages_set_cover", "Set, change or clear a page's cover image: an attachment id, a local file path, or clear.", json!({ "pageId": page_id, "attachmentId": { "type": "string" }, "path": { "type": "string" }, "clear": { "type": "boolean" }, "crop": { "type": "string", "description": "Optional focus and zoom \"x,y,zoom\" (percent, percent, 1-4)" } }), &["pageId"]),
+        tool("pages_set_cover", "Set, change or clear a page's cover image: an attachment id, a \
+            local file path, or clear.", json!({ "pageId": page_id, "attachmentId": { "type": "string" },
+            "path": { "type": "string" }, "clear": { "type": "boolean" }, "crop": { "type": "string",
+            "description": "Optional focus and zoom \"x,y,zoom\" (percent, percent, 1-4)" } }),
+            &["pageId"]),
         tool("pages_set_style", "Page presentation: font (default, serif, mono), small text, full width.", json!({ "pageId": page_id, "font": { "type": "string", "enum": ["default", "serif", "mono"] }, "small": { "type": "boolean" }, "full": { "type": "boolean" } }), &["pageId"]),
         tool("pages_create_many", "Create several pages at once under a parent (for lists of tasks, notes, people). Each item can have an icon, Markdown content and properties.", json!({
             "parentId": { "type": "string" },
@@ -74,7 +81,11 @@ pub fn tools() -> Vec<Value> {
         tool("profile_blocks_update", "Change fields of one Profile Block by id (merged into the block).", json!({ "id": { "type": "string" }, "patch": { "type": "object" } }), &["id", "patch"]),
         tool("profile_blocks_remove", "Remove one Profile Block by id. Only when the user asked.", json!({ "id": { "type": "string" } }), &["id"]),
         tool("profile_blocks_move", "Move a Profile Block to a new position (0 is first; the first three are featured).", json!({ "id": { "type": "string" }, "index": { "type": "integer" } }), &["id", "index"]),
-        tool("profile_set_image", "Set the avatar or banner from an attachment id or a local file path, optionally with a crop \"x,y,zoom\".", json!({ "field": { "type": "string", "enum": ["avatar", "banner"] }, "attachmentId": { "type": "string" }, "path": { "type": "string" }, "crop": { "type": "string" }, "clear": { "type": "boolean" } }), &["field"]),
+        tool("profile_set_image", "Set the avatar or banner from an attachment id or a local \
+            file path, optionally with a crop \"x,y,zoom\".", json!({ "field": { "type": "string",
+            "enum": ["avatar", "banner"] }, "attachmentId": { "type": "string" },
+            "path": { "type": "string" }, "crop": { "type": "string" }, "clear": { "type": "boolean" } }),
+            &["field"]),
         tool("versions_list", "Saved versions of a page (snapshots before big changes), newest first.", json!({ "pageId": page_id }), &["pageId"]),
         tool("versions_restore", "Restore a page to a saved version (the current state is kept as a version too). Only when the user asked.", json!({ "versionId": { "type": "string" } }), &["versionId"]),
         tool("history_undo", "Undo an earlier change by its op id (from history_read). Only when the user asked.", json!({ "opId": { "type": "string" } }), &["opId"]),

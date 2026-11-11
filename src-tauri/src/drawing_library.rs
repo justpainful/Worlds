@@ -189,20 +189,29 @@ pub fn prepare_sync_versions(conn: &Connection, page: &str) -> Result<()> {
             params![page, store::profile(conn)?.id, account],
         )?;
     }
-    let rows: Vec<StoredVersion> = conn.prepare("SELECT v.version,v.snapshot_id,d.scene,p.title,i.kind,i.tags,i.source_id,v.payload,v.created_at,v.author FROM drawing_library_versions v JOIN drawing_versions d ON d.id=v.snapshot_id JOIN drawing_library_items i ON i.page_id=v.page_id JOIN pages p ON p.id=v.page_id WHERE v.page_id=?1")?.query_map([page], |r| {
-        Ok(StoredVersion {
-            version: r.get(0)?,
-            snapshot_id: r.get(1)?,
-            scene: r.get(2)?,
-            name: r.get(3)?,
-            kind: r.get(4)?,
-            tags: r.get(5)?,
-            source: r.get(6)?,
-            payload: r.get(7)?,
-            created_at: r.get(8)?,
-            author: r.get(9)?,
-        })
-    })?.collect::<rusqlite::Result<_>>()?;
+    let rows: Vec<StoredVersion> = conn
+        .prepare(
+            "SELECT \
+        v.version,v.snapshot_id,d.scene,p.title,i.kind,i.tags,i.source_id,v.payload,v.created_at,v.author \
+        FROM drawing_library_versions v JOIN drawing_versions d ON d.id=v.snapshot_id JOIN \
+        drawing_library_items i ON i.page_id=v.page_id JOIN pages p ON p.id=v.page_id WHERE \
+        v.page_id=?1",
+        )?
+        .query_map([page], |r| {
+            Ok(StoredVersion {
+                version: r.get(0)?,
+                snapshot_id: r.get(1)?,
+                scene: r.get(2)?,
+                name: r.get(3)?,
+                kind: r.get(4)?,
+                tags: r.get(5)?,
+                source: r.get(6)?,
+                payload: r.get(7)?,
+                created_at: r.get(8)?,
+                author: r.get(9)?,
+            })
+        })?
+        .collect::<rusqlite::Result<_>>()?;
     for row in rows {
         let StoredVersion { version, snapshot_id: old, scene: raw, name, kind, tags, source, payload, created_at: at, author } = row;
         let mut scene: Value = serde_json::from_str(&raw)?;
@@ -327,7 +336,13 @@ pub fn install_sync_versions(conn: &Connection, page: &str, versions: &Value) ->
 fn row(conn: &Connection, id: &str) -> Result<Value> {
     require(conn, id, Level::View)?;
     let page = store::page_meta_by_id(conn, id)?.filter(|p| p.deleted_at.is_none()).ok_or_else(|| anyhow!("Library item unavailable"))?;
-    let (kind, tags, source, owner, version, workspace): (String, String, Option<String>, String, i64, Option<String>) = conn.query_row("SELECT l.kind, l.tags, l.source_id, l.owner, l.current_version, p.workspace_id FROM drawing_library_items l JOIN pages p ON p.id = l.page_id WHERE l.page_id = ?1", [id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?)))?;
+    let (kind, tags, source, owner, version, workspace): (String, String, Option<String>, String, i64, Option<String>) = conn.query_row(
+        "SELECT l.kind, l.tags, l.source_id, l.owner, \
+        l.current_version, p.workspace_id FROM drawing_library_items l JOIN pages p ON p.id = l.page_id \
+        WHERE l.page_id = ?1",
+        [id],
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?)),
+    )?;
     let history: Vec<Value> = conn
         .prepare("SELECT version, created_at, author FROM drawing_library_versions WHERE page_id = ?1 ORDER BY version DESC")?
         .query_map([id], |r| {
@@ -348,14 +363,24 @@ fn row(conn: &Connection, id: &str) -> Result<Value> {
         None => "missing",
     };
     let status: Option<String> = conn.query_row("SELECT status FROM drawing_sync_state WHERE page_id=?1", [id], |r| r.get(0)).optional()?;
-    Ok(
-        json!({ "page": page, "kind": kind, "tags": serde_json::from_str::<Value>(&tags)?, "sourceId": source, "sourceState":source_state,"syncStatus":status.unwrap_or("local".into()),"owner": owner, "version": version, "scope": if workspace.is_some() { "workspace" } else { "personal" }, "workspaceId": workspace, "canEdit": page_level(conn, id)? >= Level::Edit, "canDelete": page_level(conn, id)? >= Level::Full, "versions": history }),
-    )
+    Ok(json!({ "page": page, "kind": kind, "tags": serde_json::from_str::<Value>(&tags)?,
+            "sourceId": source, "sourceState":source_state,"syncStatus":status.unwrap_or("local".into()),
+            "owner": owner, "version": version,
+            "scope": if workspace.is_some() { "workspace" } else { "personal" }, "workspaceId": workspace,
+            "canEdit": page_level(conn, id)? >= Level::Edit, "canDelete": page_level(conn,
+            id)? >= Level::Full, "versions": history }))
 }
 pub fn list(conn: &Connection, source: &str) -> Result<Value> {
     require(conn, source, Level::View)?;
     let workspace: Option<String> = conn.query_row("SELECT workspace_id FROM pages WHERE id = ?1", [source], |r| r.get(0))?;
-    let ids: Vec<String> = conn.prepare("SELECT l.page_id FROM drawing_library_items l JOIN pages p ON p.id = l.page_id WHERE p.deleted_at IS NULL AND p.archived = 0 AND (p.workspace_id IS NULL OR p.workspace_id = ?1) ORDER BY p.updated_at DESC")?.query_map([workspace], |r| r.get(0))?.collect::<rusqlite::Result<_>>()?;
+    let ids: Vec<String> = conn
+        .prepare(
+            "SELECT l.page_id FROM drawing_library_items l JOIN \
+        pages p ON p.id = l.page_id WHERE p.deleted_at IS NULL AND p.archived = 0 AND (p.workspace_id \
+        IS NULL OR p.workspace_id = ?1) ORDER BY p.updated_at DESC",
+        )?
+        .query_map([workspace], |r| r.get(0))?
+        .collect::<rusqlite::Result<_>>()?;
     let mut out = Vec::new();
     for id in ids {
         if page_level(conn, &id)? >= Level::View {
@@ -728,7 +753,10 @@ mod tests {
         let frame = scene["defaultFrameId"].clone();
         let paint = json!({"fill":"#ffffff","stroke":"#000000","strokeWidth":1,"dash":[],"cap":"round","radius":0});
         let text = json!({"font":"sans-serif","size":24,"weight":400,"italic":false,"align":"start","direction":"auto","leading":1.5,"color":"#000000","background":"transparent","border":"transparent"});
-        scene["nodes"]["style-node"] = json!({"id":"style-node","kind":"shape","shape":"rect","layerId":layer,"frameId":frame,"groupId":null,"name":"Style","visible":true,"locked":false,"rotation":0,"opacity":1,"flipX":false,"flipY":false,"x":0,"y":0,"w":10,"h":10,"paint":paint,"textStyle":text,"effects":[]});
+        scene["nodes"]["style-node"] = json!({"id":"style-node","kind":"shape","shape":"rect",
+            "layerId":layer,"frameId":frame,"groupId":null,"name":"Style","visible":true,"locked":false,
+            "rotation":0,"opacity":1,"flipX":false,"flipY":false,"x":0,"y":0,"w":10,"h":10,"paint":paint,
+            "textStyle":text,"effects":[]});
         scene["nodeOrder"] = json!(["style-node"]);
         drawing::validate_scene(&scene).unwrap();
         let mut value = input("source", scene);

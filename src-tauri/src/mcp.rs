@@ -111,8 +111,15 @@ fn tool_list() -> Vec<Value> {
         tool("blocks_delete", "Delete one block.", json!({ "blockId": { "type": "string" } }), &["blockId"]),
         tool("references_search", "Pages that mention or link to a page (backlinks) and pages it references.", json!({ "pageId": page_id }), &["pageId"]),
         tool("references_resolve", "Find page ids by (partial) title, to build @[Title](page:ID) mentions.", json!({ "title": { "type": "string" } }), &["title"]),
-        tool("attachments_add", "Attach a picture, video, audio file or document from the user's Desktop, Downloads, Documents, Pictures, Videos or Music folders to a page and append it as a block. Other locations and program files are refused.", json!({ "pageId": page_id, "path": { "type": "string", "description": "absolute local path" } }), &["pageId", "path"]),
-        tool("attachments_insert", "Place an existing Worlds attachment (for example a file the user attached in chat) into a page as an image, video or file block.", json!({ "pageId": page_id, "attachmentId": { "type": "string" }, "afterBlockId": { "type": "string" }, "caption": { "type": "string" } }), &["pageId", "attachmentId"]),
+        tool("attachments_add", "Attach a picture, video, audio file or document from the \
+            user's Desktop, Downloads, Documents, Pictures, Videos or Music folders to a page and append it \
+            as a block. Other locations and program files are refused.", json!({ "pageId": page_id,
+            "path": { "type": "string", "description": "absolute local path" } }), &["pageId", "path"]),
+        tool("attachments_insert", "Place an existing Worlds attachment (for example a file the \
+            user attached in chat) into a page as an image, video or file block.",
+            json!({ "pageId": page_id, "attachmentId": { "type": "string" },
+            "afterBlockId": { "type": "string" }, "caption": { "type": "string" } }), &["pageId",
+            "attachmentId"]),
         tool("attachments_read_metadata", "List attachment metadata for a page.", json!({ "pageId": page_id }), &["pageId"]),
         tool("templates_list", "List templates.", json!({}), &[]),
         tool("templates_instantiate", "Create a new page from a template.", json!({ "templateId": { "type": "string" }, "parentId": { "type": "string" }, "title": { "type": "string" } }), &["templateId"]),
@@ -126,7 +133,10 @@ fn tool_list() -> Vec<Value> {
         tool("automations_run", "Request a run of an automation now. The user approves the preview in Worlds before anything is sent.", json!({ "id": { "type": "string" } }), &["id"]),
         tool("discord_inspect", "Known Discord servers, channels, threads and the bridge bot state (from the last refresh in Worlds).", json!({}), &[]),
         tool("discord_preview", "Render a page as a Discord Components V2 message and report limit warnings. Sends nothing.", json!({ "pageId": page_id, "includeTitle": { "type": "boolean" }, "hideCompleted": { "type": "boolean" } }), &["pageId"]),
-        tool("discord_send", "Queue a page to be sent to Discord through the bridge. Nothing is sent until the user approves the preview in Worlds.", json!({ "pageId": page_id, "destination": { "type": "object", "description": "{kind:'channel'|'thread'|'dm', id, label}" }, "includeTitle": { "type": "boolean" } }), &["pageId", "destination"]),
+        tool("discord_send", "Queue a page to be sent to Discord through the bridge. Nothing is \
+            sent until the user approves the preview in Worlds.", json!({ "pageId": page_id,
+            "destination": { "type": "object", "description": "{kind:'channel'|'thread'|'dm', id, label}" },
+            "includeTitle": { "type": "boolean" } }), &["pageId", "destination"]),
         tool("discord_edit", "Queue an edit of a Discord message previously sent by Worlds, re-rendered from the page. Requires user approval.", json!({ "pageId": page_id, "channelId": { "type": "string" }, "messageId": { "type": "string" } }), &["pageId", "channelId", "messageId"]),
         tool("profile_read", "The local profile (owner of all pages).", json!({}), &[]),
         tool("history_read", "Recent history for a page (or everywhere).", json!({ "pageId": page_id, "limit": { "type": "integer" } }), &[]),
@@ -141,7 +151,20 @@ fn tool_list() -> Vec<Value> {
             "links": { "type": "array", "items": { "type": "object", "properties": { "label": { "type": "string" }, "url": { "type": "string" } } }, "description": "replaces all links; urls must start with http" },
             "accent": { "type": "string", "description": "hex colour like #2e92ff" },
             "language": { "type": "string", "enum": ["auto", "en", "ar"] },
-            "blocks": { "type": "array", "items": { "type": "object" }, "description": "Profile Blocks (widgets). Replaces the whole list: read the profile first and send it back with your changes. Each block: { id, type: info|progress|quote|grid|list|media|fields|links|badges|dynamic, size: 12x1|12x2|6x1|6x2|4x1, style: soft|tinted|solid|compact|showcase|minimal, accent?: #hex, url? } plus type fields: info {label,title,subtitle,badge}; progress {icon,title,caption,value,max,display:ratio|percent|none}; quote {label,statement,subtext,align}; grid {title,columns:1-4,items:[{icon,title,subtitle,url}]}; list {title,items}; fields {title,fields:[{key,value}]}; links {title,links:[{icon,title,url}]}; badges {title,badges:[{icon,title}]}; dynamic {source: session|streak|activity|latest-page|bridge, goal}. Icons are 'pi:<name>' (home, claude, pages, templates, automations, integrations, activity, trash, settings, profile, search, discord, presentation, spreadsheet, document, pdf, image, video, audio, code, archive, file, gamedev, design, engineering, creative, music, writing, star, rocket) or an emoji. At most 12 blocks." }
+            "blocks": { "type": "array", "items": { "type": "object" }, "description": "Profile \
+                Blocks (widgets). Replaces the whole list: read the profile first and send it back with your \
+                changes. Each block: { id, type: \
+                info|progress|quote|grid|list|media|fields|links|badges|dynamic, size: 12x1|12x2|6x1|6x2|4x1, \
+                style: soft|tinted|solid|compact|showcase|minimal, accent?: #hex, url? } plus type fields: info \
+                {label,title,subtitle,badge}; progress \
+                {icon,title,caption,value,max,display:ratio|percent|none}; quote \
+                {label,statement,subtext,align}; grid {title,columns:1-4,items:[{icon,title,subtitle,url}]}; \
+                list {title,items}; fields {title,fields:[{key,value}]}; links \
+                {title,links:[{icon,title,url}]}; badges {title,badges:[{icon,title}]}; dynamic {source: \
+                session|streak|activity|latest-page|bridge, goal}. Icons are 'pi:<name>' (home, claude, pages, \
+                templates, automations, integrations, activity, trash, settings, profile, search, discord, \
+                presentation, spreadsheet, document, pdf, image, video, audio, code, archive, file, gamedev, \
+                design, engineering, creative, music, writing, star, rocket) or an emoji. At most 12 blocks." }
         }), &[]),
         tool("pages_set_icon", "Set or clear a page's emoji icon.", json!({ "pageId": page_id, "icon": { "type": "string", "description": "single emoji, or empty to clear" } }), &["pageId"]),
         tool("pages_pin", "Pin or unpin a page (pinned pages sit at the top of the sidebar and Home).", json!({ "pageId": page_id, "pinned": { "type": "boolean" } }), &["pageId", "pinned"]),
@@ -156,7 +179,10 @@ fn tool_list() -> Vec<Value> {
         tool("chats_read", "Read an earlier conversation (by chatId, or by title when the user names it).", json!({ "chatId": { "type": "string" }, "title": { "type": "string" } }), &[]),
         tool("pages_set_properties", "Replace a page's properties (typed fields under the title, used by collection views). Read the page first and send the full list back with your change.", json!({
             "pageId": page_id,
-            "properties": { "type": "array", "items": { "type": "object" }, "description": "Each: { id, name, type: status|select|tags|date|number|checkbox|url|text, value, options?: [{ name, color: gray|blue|green|yellow|orange|red|purple|pink }] }. Status values default to Not started, In progress, Done. Dates are YYYY-MM-DD." }
+            "properties": { "type": "array", "items": { "type": "object" },
+                "description": "Each: { id, name, type: status|select|tags|date|number|checkbox|url|text, \
+                value, options?: [{ name, color: gray|blue|green|yellow|orange|red|purple|pink }] }. Status \
+                values default to Not started, In progress, Done. Dates are YYYY-MM-DD." }
         }), &["pageId", "properties"]),
         tool("automations_delete", "Delete an automation (the source page is untouched). Only when the user asks.", json!({ "id": { "type": "string" } }), &["id"]),
     ]
