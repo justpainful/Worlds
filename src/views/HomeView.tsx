@@ -20,6 +20,7 @@ import { formatTime, occurrences, tasksFor, today } from "../planning/model";
 import { createItem } from "../planning/actions";
 import { ItemRow, QuickAdd } from "../planning/ui";
 import { StudyHomeSection } from "../study/StudyViews";
+import { loadSample } from "../demo/sampleActions";
 
 type View = "grid" | "list";
 
@@ -35,6 +36,11 @@ export function HomeView() {
   const dueTasks = useMemo(() => tasksFor(pages, "today", now).slice(0, 6), [pages, now]);
   const todayEvents = useMemo(() => occurrences(pages, now, now).filter((o) => o.kind === "event").slice(0, 4), [pages, now]);
   const [autos, setAutos] = useState<Automation[]>([]);
+  const [loadingSample, setLoadingSample] = useState(false);
+  const sample = () => {
+    setLoadingSample(true);
+    loadSample().finally(() => setLoadingSample(false));
+  };
 
   useEffect(() => {
     const load = () => api.automations().then(setAutos).catch(() => {});
@@ -81,12 +87,16 @@ export function HomeView() {
         <GlassBackdrop />
         <div className="home-hero">
           <h1 className="home-title">{greeting}</h1>
-          <p className="home-sub">Start with a blank page, or pick a template.</p>
+          <p className="home-sub">Start with a blank page, pick a template, or look around a sample workspace.</p>
           <div className="home-hero-actions">
             <GlassButton icon="add" prominent size="large" onClick={(e) => newResourceMenu(e.currentTarget)} layer={LAYER.floating}>
               New
             </GlassButton>
+            <GlassButton icon="folderOpen" size="large" disabled={loadingSample} onClick={sample} layer={LAYER.floating}>
+              Load sample workspace
+            </GlassButton>
           </div>
+          <p className="home-sample-note">A student's week in Arabic and English: pages, a document, a spreadsheet, a drawing, slides, subjects and tasks. It stays on this device, and you can remove it anytime in Settings.</p>
         </div>
         <TemplateRow templates={templates} />
       </div>
