@@ -1,43 +1,7 @@
 package worlds.android.ai
 
-data class AiModelInfo(
-    val id: String,
-    val name: String,
-    val provider: String,
-    val description: String,
-    val contextWindow: Int
-)
-
-val DEFAULT_AI_MODELS = listOf(
-    AiModelInfo(
-        id = "claude-3-5-sonnet-20241022",
-        name = "Orbit",
-        provider = "Anthropic",
-        description = "High intelligence, coding and creative generation",
-        contextWindow = 200_000
-    ),
-    AiModelInfo(
-        id = "claude-3-5-haiku-20241022",
-        name = "Spark",
-        provider = "Anthropic",
-        description = "Lightweight, ultra-fast responses",
-        contextWindow = 200_000
-    ),
-    AiModelInfo(
-        id = "claude-3-opus-20240229",
-        name = "Nova",
-        provider = "Anthropic",
-        description = "Deep reasoning and extensive writing",
-        contextWindow = 200_000
-    ),
-    AiModelInfo(
-        id = "gpt-4o",
-        name = "GPT-4o",
-        provider = "OpenAI",
-        description = "Multimodal reasoning and versatility",
-        contextWindow = 128_000
-    )
-)
+import org.json.JSONArray
+import org.json.JSONObject
 
 data class ChatAttachment(
     val id: String,
@@ -49,7 +13,7 @@ data class ChatAttachment(
 
 data class ChatMessage(
     val id: String,
-    val role: String, // "user" | "assistant" | "system"
+    val role: String, // "user" | "assistant"
     val content: String,
     val timestamp: Long,
     val attachments: List<ChatAttachment> = emptyList(),
@@ -57,11 +21,81 @@ data class ChatMessage(
     val error: Boolean = false
 )
 
+/** One conversation. The provider and model are saved with it, so each conversation keeps its own. */
 data class ChatThread(
     val id: String,
     val title: String,
+    val providerId: String,
     val modelId: String,
     val messages: List<ChatMessage>,
     val createdAt: Long,
     val updatedAt: Long
 )
+
+/** Folds attached pages into the text a provider receives. */
+fun ChatMessage.toTurn(): AiTurn {
+    if (attachments.isEmpty()) return AiTurn(role, content)
+    val text = StringBuilder()
+    for (att in attachments) {
+        text.append("<document name=\"").append(att.name.replace("\"", "'")).append("\">\n")
+        text.append(att.content).append("\n</document>\n\n")
+    }
+    text.append(content)
+    return AiTurn(role, text.toString())
+}
+
+/** The turns to send: finished user and assistant messages, never error notes or a reply still streaming. */
+fun List<ChatMessage>.toTurns(): List<AiTurn> = filter { !it.error && !it.isStreaming && (it.role == "user" || it.role == "assistant") }.map { it.toTurn() }
+
+internal object ChatThreadJson {
+    fun encode(thread: ChatThread): String {
+        val messages = JSONArray()
+        thread.messages.filter { !it.isStreaming }.forEach { msg ->
+            val atts = JSONArray()
+            msg.attachments.forEach { atts.put(JSONObject().put("id", it.id).put("name", it.name).put("mime", it.mime).put("size", it.size).put("content", it.content)) }
+            messages.put(JSONObject().put("id", msg.id).put("role", msg.role).put("content", msg.content).put("timestamp", msg.timestamp).put("error", msg.error).put("attachments", atts))
+        }
+        return JSONObject()
+            .put("version", 1).put("id", thread.id).put("title", thread.title)
+            .put("provider", thread.providerId).put("model", thread.modelId)
+            .put("createdAt", thread.createdAt).put("updatedAt", thread.updatedAt)
+            .put("messages", messages).toString()
+    }
+
+    fun decode(text: String): ChatThread {
+        val json = JSONObject(text)
+        val messages = json.optJSONArray("messages") ?: JSONArray()
+        return ChatThread(
+            id = json.getString("id"),
+            title = json.optString("title"),
+            providerId = json.optString("provider"),
+            modelId = json.optString("model"),
+            createdAt = json.optLong("createdAt"),
+            updatedAt = json.optLong("updatedAt"),
+            messages = (0 until messages.length()).mapNotNull { i ->
+                val m = messages.optJSONObject(i) ?: return@mapNotNull null
+                val atts = m.optJSONArray("attachments") ?: JSONArray()
+                ChatMessage(
+                    id = m.optString("id"), role = m.optString("role"), content = m.optString("content"),
+                    timestamp = m.optLong("timestamp"), error = m.optBoolean("error"),
+                    attachments = (0 until atts.length()).mapNotNull { j ->
+                        val a = atts.optJSONObject(j) ?: return@mapNotNull null
+                        ChatAttachment(a.optString("id"), a.optString("name"), a.optString("mime"), a.optLong("size"), a.optString("content"))
+                    }
+                )
+            }
+        )
+    }
+}
+
+/** The title older versions saved for a conversation without one. Read as no title, so it shows translated. */
+internal const val LEGACY_NEW_CONVERSATION_TITLE = "New conversation"
+
+/** True while the conversation has no title of its own; screens then show the translated default title. */
+fun ChatThread.hasPlaceholderTitle(): Boolean = title.isBlank() || title == LEGACY_NEW_CONVERSATION_TITLE
+
+/** The first line of the prompt, shortened. Empty when there is nothing to name it by; screens show the default title then. */
+fun chatTitle(prompt: String): String {
+    val line = prompt.lineSequence().map { it.trim() }.firstOrNull { it.isNotEmpty() }.orEmpty()
+    return if (line.length <= 60) line else line.take(57).trimEnd() + "..."
+}

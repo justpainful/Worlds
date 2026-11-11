@@ -17,7 +17,7 @@
 | المنصة | الحالة |
 | :--- | :--- |
 | ويندوز | الأكمل: الصفحات والمستندات والجداول والرسم وأدوات الطالب، والذكاء عبر Claude Code أو Codex أو مفتاح API من Anthropic وOpenAI وغيرهما أو نموذج محلي مثل Ollama، وواجهة عربية كاملة |
-| أندرويد وكروم بوك | تجريبي: الصفحات والرسم والجداول تعمل، والذكاء وشاشات الدراسة ما زالت ناقصة |
+| أندرويد وكروم بوك | تجريبي: الصفحات والرسم والجداول تعمل، والذكاء يرد ردودًا حقيقية بمفتاح API أو نموذج محلي لكنه لا يعدّل الصفحات بعد، وشاشات الدراسة ناقصة |
 | آيفون وآيباد وماك | تجريبي: الواجهات الأساسية تعمل، والذكاء وأجزاء من الرسم ما زالت ناقصة |
 
 التفاصيل الصادقة لكل ميزة في [مصفوفة أبل](docs/apple-native/FEATURE_PARITY_MATRIX.md) و[مصفوفة أندرويد](docs/android-native/FEATURE_PARITY_MATRIX.md).
@@ -58,7 +58,7 @@ A local-first workspace for pages, documents, spreadsheets, drawing and study. Y
 | Platform | Status |
 | :--- | :--- |
 | Windows | Most complete: pages, documents, spreadsheets, drawing, study tools, a full Arabic interface, and AI through Claude Code, Codex, an API key (Anthropic, OpenAI and others) or a local model such as Ollama |
-| Android and ChromeOS | Preview: pages, drawing and spreadsheets work; AI and study screens are incomplete |
+| Android and ChromeOS | Preview: pages, drawing and spreadsheets work; AI gives real replies with an API key or a local model but cannot edit pages yet; study screens are incomplete |
 | iPhone, iPad and Mac | Preview: core views work; AI and parts of drawing are incomplete |
 
 Feature by feature status: [Apple matrix](docs/apple-native/FEATURE_PARITY_MATRIX.md), [Android matrix](docs/android-native/FEATURE_PARITY_MATRIX.md).
