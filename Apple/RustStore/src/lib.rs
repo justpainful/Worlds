@@ -56,6 +56,15 @@ mod db {
     }
 }
 
+/// Every native write is made by the person, but it is recorded with its own
+/// change origin. The desktop's change watcher ignores only "ui" rows (its own
+/// editor), so a "native" row makes an open desktop window merge the edit
+/// instead of meeting it later as a save conflict.
+pub(crate) const NATIVE_ORIGIN: &str = "native";
+pub(crate) fn native_ctx() -> store::Ctx {
+    store::Ctx { actor: "user".into(), op_id: None, origin: NATIVE_ORIGIN.into() }
+}
+
 fn open_existing(path: &Path) -> Result<Connection> {
     if !path.is_absolute() || !path.is_file() { bail!("an existing absolute database path is required") }
     let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX)?;
@@ -66,7 +75,12 @@ fn open_existing(path: &Path) -> Result<Connection> {
     Ok(conn)
 }
 
-fn require_personal(c: &Connection, id: &str) -> Result<()> {
+fn require_personal(c: &Connection, id: &str) -> Result<()> { check_personal(c, id, false) }
+
+/// Same checks as `require_personal`, except that the page must be in Trash.
+fn require_personal_trashed(c: &Connection, id: &str) -> Result<()> { check_personal(c, id, true) }
+
+fn check_personal(c: &Connection, id: &str, trashed: bool) -> Result<()> {
     let row: Option<(Option<String>, String, Option<i64>)> = c.query_row(
         "SELECT workspace_id,metadata,deleted_at FROM pages WHERE id=?1", [id],
         |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?))).optional()?;
@@ -82,7 +96,7 @@ fn require_personal(c: &Connection, id: &str) -> Result<()> {
     if let Some(sync) = value.get("sync") {
         if !sync.is_object() || sync.get("shared").is_some_and(|shared| shared.as_bool() != Some(false)) { bail!("shared or invalid synchronization metadata") }
     }
-    if workspace.is_some() || deleted.is_some() {
+    if workspace.is_some() || deleted.is_some() != trashed {
         bail!("page is shared, deleted, or unavailable")
     }
     Ok(())
@@ -101,7 +115,7 @@ pub fn save_blocks(path: &Path, page: &str, base: i64, blocks: Vec<BlockInput>) 
     if store::page_changed_since(&tx, page, base)? { bail!("conflict: the page changed since it was loaded") }
     store::snapshot_before_user_edit(&tx, page)?;
     let input = blocks.into_iter().map(|block| store::BlockInput { id: block.id, content: block.content }).collect();
-    let result = store::save_blocks(&tx, &store::Ctx::user(), page, input)?;
+    let result = store::save_blocks(&tx, &native_ctx(), page, input)?;
     tx.commit()?;
     Ok(serde_json::to_value(result)?)
 }
@@ -173,7 +187,7 @@ fn save_blocks_checked_with_kind(path: &Path, page: &str, base: i64, expected: V
     let next_values: Vec<(String,Value)>=blocks.iter().map(|block|(block.id.clone(),block.content.clone())).collect();
     let originals=resource_ops::prepare_unchanged_blocks(&tx,page,&before_values,&next_values)?;
     let input = blocks.into_iter().map(|block| store::BlockInput { id: block.id, content: block.content }).collect();
-    let result = store::save_blocks(&tx, &store::Ctx::user(), page, input)?;
+    let result = store::save_blocks(&tx, &native_ctx(), page, input)?;
     if !result.remapped.is_empty() { bail!("conflict: block identifiers were remapped") }
     resource_ops::restore_unchanged_blocks(&tx,page,originals)?;
     let written_refs: HashSet<(String,String,String)> = tx.prepare("SELECT source_block,target_page,kind FROM refs WHERE source_page=?1")?
@@ -190,7 +204,7 @@ pub fn rename_page(path: &Path, page: &str, base: i64, title: String) -> Result<
     let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
     require_personal(&tx, page)?;
     if store::page_changed_since(&tx, page, base)? { bail!("conflict: the page changed since it was loaded") }
-    let result = store::update_page(&tx, &store::Ctx::user(), page, store::PagePatch { title: Some(title), ..Default::default() })?;
+    let result = store::update_page(&tx, &native_ctx(), page, store::PagePatch { title: Some(title), ..Default::default() })?;
     tx.commit()?;
     Ok(serde_json::to_value(result)?)
 }
@@ -211,7 +225,7 @@ pub fn rename_page_checked(path: &Path, page: &str, base: i64, expected_title: S
     }
     let (current_title,current_revision):(String,i64)=tx.query_row("SELECT title,updated_at FROM pages WHERE id=?1",[page],|r|Ok((r.get(0)?,r.get(1)?)))?;
     if current_title!=expected_title || current_revision!=base { bail!("conflict: page title or revision changed") }
-    let result=serde_json::to_value(store::update_page(&tx,&store::Ctx::user(),page,store::PagePatch { title:Some(title.clone()), ..Default::default() })?)?;
+    let result=serde_json::to_value(store::update_page(&tx,&native_ctx(),page,store::PagePatch { title:Some(title.clone()), ..Default::default() })?)?;
     tx.execute("INSERT INTO native_personal_page_renames_v1(operation_id,page_id,base,expected_title,title,result_json) VALUES(?1,?2,?3,?4,?5,?6)",rusqlite::params![operation_id,page,base,expected_title,title,result.to_string()])?;
     tx.commit()?; Ok(result)
 }
@@ -224,7 +238,8 @@ pub fn create_page(path: &Path, title: String, parent: Option<String>) -> Result
     let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
     if let Some(parent_id) = parent.as_deref() { require_personal(&tx, parent_id)?; }
     let input = store::NewPage { title: Some(title), parent_id: parent, kind: Some("page".into()), ..Default::default() };
-    let result = store::create_page(&tx, &store::Ctx::user(), input)?;
+    let result = store::create_page(&tx, &native_ctx(), input)?;
+    require_created_personal(&tx, &result.id)?;
     tx.commit()?;
     Ok(serde_json::to_value(result)?)
 }
@@ -247,8 +262,9 @@ pub fn create_page_idempotent(path: &Path, title: String, parent: Option<String>
         tx.commit()?; return Ok(value)
     }
     let input=store::NewPage { title:Some(title.clone()), parent_id:parent.clone(), kind:Some("page".into()), ..Default::default() };
-    let result=serde_json::to_value(store::create_page(&tx,&store::Ctx::user(),input)?)?;
+    let result=serde_json::to_value(store::create_page(&tx,&native_ctx(),input)?)?;
     let page_id=result.get("id").and_then(Value::as_str).ok_or_else(||anyhow::anyhow!("invalid created page"))?;
+    require_created_personal(&tx,page_id)?;
     tx.execute("INSERT INTO native_personal_page_creations_v1(operation_id,title,parent_id,page_id,result_json) VALUES(?1,?2,?3,?4,?5)",rusqlite::params![operation_id,title,parent,page_id,result.to_string()])?;
     tx.commit()?; Ok(result)
 }
@@ -276,10 +292,20 @@ pub fn create_document_idempotent(path:&Path,title:String,parent:Option<String>,
     }
     let metadata=serde_json::json!({"doc":{"size":"A4","orientation":"portrait","margins":{"top":25,"right":22,"bottom":25,"left":22},"header":"","footer":"","font":"Default","fontSize":12,"lineHeight":1.5}});
     let input=store::NewPage { title:Some(title.clone()),icon:Some("pi:document".into()),parent_id:parent.clone(),kind:Some("document".into()),metadata:Some(metadata),..Default::default() };
-    let result=serde_json::to_value(store::create_page(&tx,&store::Ctx::user(),input)?)?;
+    let result=serde_json::to_value(store::create_page(&tx,&native_ctx(),input)?)?;
     let page_id=result.get("id").and_then(Value::as_str).ok_or_else(||anyhow::anyhow!("invalid created document"))?;
+    require_created_personal(&tx,page_id)?;
     tx.execute("INSERT INTO native_personal_document_creations_v1(operation_id,title,parent_id,parent_revision,page_id,result_json) VALUES(?1,?2,?3,?4,?5,?6)",rusqlite::params![operation_id,title,parent,parent_revision,page_id,result.to_string()])?;
     tx.commit()?; Ok(result)
+}
+
+/// The desktop's `pages_assign_workspace` trigger moves a new top-level page
+/// into the active Team workspace. Native writes are personal only, so refuse
+/// and roll back instead of creating a shared page outside sync.
+fn require_created_personal(c:&Connection,page:&str)->Result<()> {
+    let workspace:Option<String>=c.query_row("SELECT workspace_id FROM pages WHERE id=?1",[page],|r|r.get(0))?;
+    if workspace.is_some() { bail!("team workspace: new pages would join the active team workspace") }
+    require_personal(c,page)
 }
 
 fn reject_creation_collision(conn:&Connection,operation_id:&str,tables:&[&str])->Result<()> {
@@ -314,8 +340,9 @@ pub fn create_project_idempotent(path:&Path,title:String,parent:Option<String>,p
     }
     let metadata=serde_json::json!({"project":{"status":"active","start":null,"due":null,"description":"","links":[]}});
     let input=store::NewPage { title:Some(title.clone()),icon:Some("pi:briefcase".into()),parent_id:parent.clone(),kind:Some("project".into()),metadata:Some(metadata),..Default::default() };
-    let result=serde_json::to_value(store::create_page(&tx,&store::Ctx::user(),input)?)?;
+    let result=serde_json::to_value(store::create_page(&tx,&native_ctx(),input)?)?;
     let page_id=result.get("id").and_then(Value::as_str).ok_or_else(||anyhow::anyhow!("invalid created project"))?;
+    require_created_personal(&tx,page_id)?;
     tx.execute("INSERT INTO native_personal_project_creations_v1(operation_id,title,parent_id,parent_revision,page_id,result_json) VALUES(?1,?2,?3,?4,?5,?6)",rusqlite::params![operation_id,title,parent,parent_revision,page_id,result.to_string()])?;
     tx.commit()?; Ok(result)
 }
@@ -343,8 +370,9 @@ pub fn create_gallery_idempotent(path:&Path,title:String,parent:Option<String>,p
     }
     let metadata=serde_json::json!({"gallery":{"view":"grid"}});
     let input=store::NewPage { title:Some(title.clone()),icon:Some("pi:image".into()),parent_id:parent.clone(),kind:Some("gallery".into()),metadata:Some(metadata),..Default::default() };
-    let result=serde_json::to_value(store::create_page(&tx,&store::Ctx::user(),input)?)?;
+    let result=serde_json::to_value(store::create_page(&tx,&native_ctx(),input)?)?;
     let page_id=result.get("id").and_then(Value::as_str).ok_or_else(||anyhow::anyhow!("invalid created gallery"))?;
+    require_created_personal(&tx,page_id)?;
     tx.execute("INSERT INTO native_personal_gallery_creations_v1(operation_id,title,parent_id,parent_revision,page_id,result_json) VALUES(?1,?2,?3,?4,?5,?6)",rusqlite::params![operation_id,title,parent,parent_revision,page_id,result.to_string()])?;
     tx.commit()?; Ok(result)
 }
@@ -372,8 +400,9 @@ pub fn create_drawing_idempotent(path:&Path,title:String,parent:Option<String>,p
     }
     let metadata=serde_json::json!({});
     let input=store::NewPage { title:Some(title.clone()),icon:Some("pi:paintbrush".into()),parent_id:parent.clone(),kind:Some("drawing".into()),metadata:Some(metadata),..Default::default() };
-    let result=serde_json::to_value(store::create_page(&tx,&store::Ctx::user(),input)?)?;
+    let result=serde_json::to_value(store::create_page(&tx,&native_ctx(),input)?)?;
     let page_id=result.get("id").and_then(Value::as_str).ok_or_else(||anyhow::anyhow!("invalid created drawing"))?;
+    require_created_personal(&tx,page_id)?;
     tx.execute("INSERT INTO native_personal_drawing_creations_v1(operation_id,title,parent_id,parent_revision,page_id,result_json) VALUES(?1,?2,?3,?4,?5,?6)",rusqlite::params![operation_id,title,parent,parent_revision,page_id,result.to_string()])?;
     tx.commit()?; Ok(result)
 }
@@ -407,8 +436,9 @@ pub fn create_stream_idempotent(path:&Path,title:String,url:String,parent:Option
     }
     let metadata=serde_json::json!({"stream":{"url":raw,"format":format}});
     let input=store::NewPage { title:Some(title.clone()),icon:Some("pi:film".into()),parent_id:parent.clone(),kind:Some("stream".into()),metadata:Some(metadata),..Default::default() };
-    let result=serde_json::to_value(store::create_page(&tx,&store::Ctx::user(),input)?)?;
+    let result=serde_json::to_value(store::create_page(&tx,&native_ctx(),input)?)?;
     let page_id=result.get("id").and_then(Value::as_str).ok_or_else(||anyhow::anyhow!("invalid created stream"))?;
+    require_created_personal(&tx,page_id)?;
     tx.execute("INSERT INTO native_personal_stream_creations_v1(operation_id,title,url,parent_id,parent_revision,page_id,result_json) VALUES(?1,?2,?3,?4,?5,?6,?7)",rusqlite::params![operation_id,title,raw,parent,parent_revision,page_id,result.to_string()])?;
     tx.commit()?; Ok(result)
 }
@@ -444,8 +474,9 @@ pub fn create_presentation_idempotent(path:&Path,title:String,parent:Option<Stri
       {"id":subtitle_id,"type":"text","role":"subtitle","x":200,"y":400,"w":880,"h":70,"text":"","style":{"fontSize":30,"fontWeight":400,"color":"rgba(244, 242, 238, 0.66)","align":"center"}}
     ]}});
     let input=store::NewPage { blocks:Some(vec![slide]),title:Some(title.clone()),icon:Some("pi:presentation".into()),parent_id:parent.clone(),kind:Some("presentation".into()),metadata:Some(metadata),..Default::default() };
-    let result=serde_json::to_value(store::create_page(&tx,&store::Ctx::user(),input)?)?;
+    let result=serde_json::to_value(store::create_page(&tx,&native_ctx(),input)?)?;
     let page_id=result.get("id").and_then(Value::as_str).ok_or_else(||anyhow::anyhow!("invalid created presentation"))?;
+    require_created_personal(&tx,page_id)?;
     tx.execute("INSERT INTO native_personal_presentation_creations_v1(operation_id,title,parent_id,parent_revision,page_id,result_json) VALUES(?1,?2,?3,?4,?5,?6)",rusqlite::params![operation_id,title,parent,parent_revision,page_id,result.to_string()])?;
     tx.commit()?; Ok(result)
 }
@@ -466,9 +497,36 @@ pub fn trash_page(path: &Path, page: &str, base: i64) -> Result<()> {
         if parent.as_ref().is_some_and(|id| descendants.contains(id)) { bail!("invalid page hierarchy: cycle") }
         for id in descendants { require_personal(&tx, &id)?; }
     }
-    store::delete_page(&tx, &store::Ctx::user(), page)?;
+    store::delete_page(&tx, &native_ctx(), page)?;
     tx.commit()?;
     Ok(())
+}
+
+/// Restores a personal page from Trash with the original restore operation,
+/// after comparing the revision and the deletion time the caller listed. Every
+/// page that comes back with it (same deletion time) must be personal too.
+pub fn restore_page_checked(path: &Path, page: &str, base: i64, deleted_at: i64) -> Result<Value> {
+    let mut conn = open_existing(path)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+    require_personal_trashed(&tx, page)?;
+    let (revision, deleted): (i64, Option<i64>) = tx.query_row("SELECT updated_at,deleted_at FROM pages WHERE id=?1", [page], |r| Ok((r.get(0)?, r.get(1)?)))?;
+    if revision != base || deleted != Some(deleted_at) { bail!("conflict: the page changed since it was listed in Trash") }
+    {
+        let mut statement = tx.prepare("WITH RECURSIVE subtree(id) AS (SELECT id FROM pages WHERE id=?1 UNION SELECT p.id FROM pages p JOIN subtree s ON p.parent_id=s.id) SELECT id FROM subtree")?;
+        let descendants = statement.query_map([page], |row| row.get::<_, String>(0))?.collect::<rusqlite::Result<Vec<_>>>()?;
+        let parent: Option<String> = tx.query_row("SELECT parent_id FROM pages WHERE id=?1", [page], |r| r.get(0))?;
+        // The original restore walks the subtree with UNION ALL; refuse a cycle first.
+        if parent.as_ref().is_some_and(|id| descendants.contains(id)) { bail!("invalid page hierarchy: cycle") }
+        for id in descendants {
+            let at: Option<i64> = tx.query_row("SELECT deleted_at FROM pages WHERE id=?1", [&id], |r| r.get(0))?;
+            if at == Some(deleted_at) { require_personal_trashed(&tx, &id)?; }
+        }
+    }
+    store::restore_page(&tx, &native_ctx(), page)?;
+    require_personal(&tx, page)?;
+    let (id, title, parent, revision): (String, String, Option<String>, i64) = tx.query_row("SELECT id,title,parent_id,updated_at FROM pages WHERE id=?1", [page], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?;
+    tx.commit()?;
+    Ok(serde_json::json!({"id": id, "title": title, "parentId": parent, "updatedAt": revision}))
 }
 
 /// Reparent a personal subtree after comparing its source location. The source
@@ -513,7 +571,7 @@ pub fn move_page_checked(path:&Path,page:&str,base:i64,expected_parent:Option<St
         if destination.as_ref().is_some_and(|id|descendants.contains(id)) { bail!("invalid page hierarchy: destination is in subtree") }
         for id in descendants { require_personal(&tx,&id)?; }
     }
-    let value=serde_json::to_value(store::move_page(&tx,&store::Ctx::user(),page,destination.as_deref(),None)?)?;
+    let value=serde_json::to_value(store::move_page(&tx,&native_ctx(),page,destination.as_deref(),None)?)?;
     tx.execute("INSERT INTO native_personal_page_moves_v1(operation_id,request_json,page_id,result_json) VALUES(?1,?2,?3,?4)",rusqlite::params![operation_id,request,page,value.to_string()])?;
     tx.commit()?; Ok(value)
 }
@@ -555,6 +613,7 @@ enum Request {
     CreateDrawingIdempotent { path: String, title: String, parent: Option<String>, parent_revision: Option<i64>, operation_id: String },
     CreateStreamIdempotent { path: String, title: String, url: String, parent: Option<String>, parent_revision: Option<i64>, operation_id: String },
     TrashPage { path: String, page: String, base: i64 },
+    RestorePageChecked { path: String, page: String, base: i64, deleted_at: i64 },
 }
 
 pub struct GalleryCancellation(std::sync::atomic::AtomicU8);
@@ -651,6 +710,7 @@ fn dispatch_inner(bytes: &[u8], cancellation: Option<&GalleryCancellation>) -> R
         Request::CreateDrawingIdempotent { path, title, parent, parent_revision, operation_id } => create_drawing_idempotent(Path::new(&path), title, parent, parent_revision, &operation_id),
         Request::CreateStreamIdempotent { path, title, url, parent, parent_revision, operation_id } => create_stream_idempotent(Path::new(&path), title, url, parent, parent_revision, &operation_id),
         Request::TrashPage { path, page, base } => { trash_page(Path::new(&path), &page, base)?; Ok(Value::Null) }
+        Request::RestorePageChecked { path, page, base, deleted_at } => restore_page_checked(Path::new(&path), &page, base, deleted_at),
     }
 }
 
@@ -1503,5 +1563,93 @@ mod tests {
         let c=Connection::open(&path).unwrap();
         assert_eq!(c.query_row("SELECT title FROM pages WHERE id='fixture-page'",[],|r|r.get::<_,String>(0)).unwrap(),"Fixture page");
         drop(c); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn native_writes_record_their_own_change_origin() {
+        let path=fixture();
+        let created=create_page_idempotent(&path,"Origin fixture".into(),None,&uuid::Uuid::new_v4().to_string()).unwrap();
+        let id=created["id"].as_str().unwrap().to_owned();
+        let base=created["updatedAt"].as_i64().unwrap();
+        rename_page(&path,&id,base,"Origin renamed".into()).unwrap();
+        let c=Connection::open(&path).unwrap();
+        // The desktop's change watcher skips only "ui" rows, which are its own.
+        assert_eq!(c.query_row("SELECT count(*) FROM changes WHERE page_id=?1 AND origin='ui'",[&id],|r|r.get::<_,i64>(0)).unwrap(),0);
+        assert!(c.query_row("SELECT count(*) FROM changes WHERE page_id=?1 AND origin=?2",[id.as_str(),NATIVE_ORIGIN],|r|r.get::<_,i64>(0)).unwrap()>=2);
+        drop(c); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn top_level_creation_refuses_the_active_team_workspace_and_rolls_back() {
+        let path=fixture(); let c=Connection::open(&path).unwrap();
+        c.execute_batch("INSERT INTO account_workspaces(id,name,role,synced_at) VALUES('team-ws','Team','owner',1); INSERT OR REPLACE INTO settings(key,value) VALUES('account.activeWorkspace','\"team-ws\"');").unwrap();
+        drop(c);
+        let operation=uuid::Uuid::new_v4().to_string();
+        let error=create_page_idempotent(&path,"Team fixture".into(),None,&operation).unwrap_err();
+        assert!(format!("{error:#}").starts_with("team workspace:"),"{error:#}");
+        assert!(create_document_idempotent(&path,"Team fixture".into(),None,None,&uuid::Uuid::new_v4().to_string()).is_err());
+        assert!(create_page(&path,"Team fixture".into(),None).is_err());
+        let c=Connection::open(&path).unwrap();
+        assert_eq!(c.query_row("SELECT count(*) FROM pages WHERE title='Team fixture'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        assert_eq!(c.query_row("SELECT count(*) FROM history WHERE summary LIKE '%Team fixture%'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        drop(c);
+        // A subpage of a personal page stays personal and is still allowed.
+        let child=create_page_idempotent(&path,"Personal child".into(),Some("fixture-page".into()),&uuid::Uuid::new_v4().to_string()).unwrap();
+        let c=Connection::open(&path).unwrap();
+        let workspace:Option<String>=c.query_row("SELECT workspace_id FROM pages WHERE id=?1",[child["id"].as_str().unwrap()],|r|r.get(0)).unwrap();
+        assert!(workspace.is_none());
+        drop(c); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn restore_from_trash_checks_listing_and_keeps_history() {
+        let path=fixture();
+        let created=create_page(&path,"Trash fixture".into(),Some("fixture-page".into())).unwrap();
+        let id=created["id"].as_str().unwrap().to_owned();
+        let child=create_page(&path,"Trash child".into(),Some(id.clone())).unwrap();
+        let child_id=child["id"].as_str().unwrap().to_owned();
+        let base=created["updatedAt"].as_i64().unwrap();
+        trash_page(&path,&id,base).unwrap();
+        let c=Connection::open(&path).unwrap();
+        let (revision,deleted):(i64,i64)=c.query_row("SELECT updated_at,deleted_at FROM pages WHERE id=?1",[&id],|r|Ok((r.get(0)?,r.get(1)?))).unwrap();
+        drop(c);
+        // A live page is not in Trash, and a stale listing is a conflict.
+        assert!(restore_page_checked(&path,"fixture-page",1700000000001,deleted).is_err());
+        assert!(restore_page_checked(&path,&id,revision,deleted+1).unwrap_err().to_string().starts_with("conflict:"));
+        assert!(restore_page_checked(&path,&id,revision+1,deleted).unwrap_err().to_string().starts_with("conflict:"));
+        let restored=restore_page_checked(&path,&id,revision,deleted).unwrap();
+        assert_eq!(restored["id"],id.as_str());
+        let c=Connection::open(&path).unwrap();
+        for page in [&id,&child_id] {
+            let at:Option<i64>=c.query_row("SELECT deleted_at FROM pages WHERE id=?1",[page],|r|r.get(0)).unwrap();
+            assert!(at.is_none());
+        }
+        assert_eq!(c.query_row("SELECT count(*) FROM history WHERE page_id=?1 AND kind='restored'",[&id],|r|r.get::<_,i64>(0)).unwrap(),1);
+        assert_eq!(c.query_row("SELECT count(*) FROM changes WHERE page_id=?1 AND kind='tree' AND origin=?2",[id.as_str(),NATIVE_ORIGIN],|r|r.get::<_,i64>(0)).unwrap(),2);
+        drop(c);
+        // A page that became shared while in Trash is not restored here.
+        let current=Connection::open(&path).unwrap().query_row("SELECT updated_at FROM pages WHERE id=?1",[&id],|r|r.get::<_,i64>(0)).unwrap();
+        trash_page(&path,&id,current).unwrap();
+        let c=Connection::open(&path).unwrap();
+        c.execute("UPDATE pages SET metadata='{\"sync\":{\"shared\":true}}' WHERE id=?1",[&id]).unwrap();
+        let (revision,deleted):(i64,i64)=c.query_row("SELECT updated_at,deleted_at FROM pages WHERE id=?1",[&id],|r|Ok((r.get(0)?,r.get(1)?))).unwrap();
+        drop(c);
+        assert!(restore_page_checked(&path,&id,revision,deleted).is_err());
+        let c=Connection::open(&path).unwrap();
+        let at:Option<i64>=c.query_row("SELECT deleted_at FROM pages WHERE id=?1",[&id],|r|r.get(0)).unwrap();
+        assert_eq!(at,Some(deleted));
+        drop(c); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn ffi_restore_request_name_is_accepted() {
+        let path=fixture();
+        let created=create_page(&path,"FFI trash".into(),Some("fixture-page".into())).unwrap();
+        let id=created["id"].as_str().unwrap().to_owned();
+        trash_page(&path,&id,created["updatedAt"].as_i64().unwrap()).unwrap();
+        let (revision,deleted):(i64,i64)=Connection::open(&path).unwrap().query_row("SELECT updated_at,deleted_at FROM pages WHERE id=?1",[&id],|r|Ok((r.get(0)?,r.get(1)?))).unwrap();
+        let request=serde_json::json!({"operation":"restore_page_checked","path":path,"page":id,"base":revision,"deleted_at":deleted}).to_string();
+        let response=unsafe { worlds_store_call(request.as_ptr(),request.len()) };
+        let parsed:Value=serde_json::from_str(unsafe { std::ffi::CStr::from_ptr(response) }.to_str().unwrap()).unwrap();
+        unsafe { worlds_store_free(response) };
+        assert_eq!(parsed["ok"],true,"{parsed}");
+        assert_eq!(parsed["value"]["id"],id.as_str());
+        std::fs::remove_file(path).unwrap();
     }
 }

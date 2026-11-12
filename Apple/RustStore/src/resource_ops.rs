@@ -29,6 +29,14 @@ fn check_metadata(c: &Connection, id: &str, base: i64, expected: &Value, kind: &
     if at != base || serde_json::from_str::<Value>(&raw)? != *expected { bail!("conflict: resource metadata changed") }
     Ok(())
 }
+/// The desktop restores metadata from a saved version, so keep the state before
+/// a native metadata edit restorable, at most once per ten-minute editing window.
+fn snapshot_before_metadata_edit(c: &Connection, id: &str) -> Result<()> {
+    const WINDOW: i64 = 10 * 60 * 1000;
+    let last: Option<i64> = c.query_row("SELECT MAX(created_at) FROM versions WHERE page_id=?1", [id], |r| r.get(0))?;
+    if last.map_or(true, |at| db::now() - at > WINDOW) { store::snapshot(c, id, "user", None, None)?; }
+    Ok(())
+}
 fn metadata_key<'a>(expected: &Value, replacement: &'a Value, key: &str) -> Result<&'a Value> {
     let mut old = expected.as_object().cloned().ok_or_else(||anyhow::anyhow!("invalid metadata"))?;
     let mut new = replacement.as_object().cloned().ok_or_else(||anyhow::anyhow!("invalid metadata"))?;
@@ -87,7 +95,8 @@ pub fn save_project(path: &Path, id: &str, base: i64, expected: Value, metadata:
     project_links(&tx,&expected)?; project_links(&tx,&metadata)?;
     validate_new_project(&tx,id,&expected,&metadata)?;
     let project = metadata_key(&expected,&metadata,"project")?.clone();
-    store::set_page_meta(&tx,&store::Ctx::user(),id,"project",project)?;
+    snapshot_before_metadata_edit(&tx,id)?;
+    store::set_page_meta(&tx,&crate::native_ctx(),id,"project",project)?;
     let result = snapshot(&tx,id)?;
     tx.commit()?; Ok(result)
 }
@@ -112,7 +121,8 @@ pub fn save_stream(path: &Path, id: &str, base: i64, expected: Value, url: &str)
     };
     stream.insert("url".into(),Value::String(raw.to_owned()));
     stream.insert("format".into(),Value::String(format.into()));
-    store::set_page_meta(&tx,&store::Ctx::user(),id,"stream",Value::Object(stream))?;
+    snapshot_before_metadata_edit(&tx,id)?;
+    store::set_page_meta(&tx,&crate::native_ctx(),id,"stream",Value::Object(stream))?;
     let result=snapshot(&tx,id)?;
     tx.commit()?; Ok(result)
 }
@@ -152,7 +162,8 @@ pub fn save_spreadsheet(path: &Path, id: &str, base: i64, expected: Value, metad
     let mut connection = open_existing(path)?;
     let tx = connection.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
     check_metadata(&tx,id,base,&expected,"spreadsheet")?;
-    store::set_page_meta(&tx,&store::Ctx::user(),id,"sheet",sheet)?;
+    snapshot_before_metadata_edit(&tx,id)?;
+    store::set_page_meta(&tx,&crate::native_ctx(),id,"sheet",sheet)?;
     let result = snapshot(&tx,id)?;
     tx.commit()?; Ok(result)
 }
@@ -218,11 +229,11 @@ pub(crate) fn save_gallery_transaction(tx: &Connection, id: &str, base: i64, exp
     } else { store::snapshot_before_user_edit(&tx,id)?; }
     let originals=prepare_unchanged_blocks(tx,id,&before,&next_pairs)?;
     let input = next.into_iter().map(|item| store::BlockInput {id:item.id,content:item.content}).collect();
-    let result = store::save_blocks(&tx,&store::Ctx::user(),id,input)?;
+    let result = store::save_blocks(&tx,&crate::native_ctx(),id,input)?;
     if !result.remapped.is_empty() { bail!("conflict: block IDs were remapped") }
     restore_unchanged_blocks(tx,id,originals)?;
     presentation_refs(tx,id,&next_pairs)?;
-    if let Some(value) = gallery { store::set_page_meta(&tx,&store::Ctx::user(),id,"gallery",value)?; }
+    if let Some(value) = gallery { store::set_page_meta(&tx,&crate::native_ctx(),id,"gallery",value)?; }
     snapshot(tx,id)
 }
 
@@ -323,6 +334,30 @@ mod tests {
         let created=save_spreadsheet(&path,"n",100,json!({}),fresh.clone()).unwrap();
         assert_eq!(created["metadata"],fresh);
         std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn spreadsheet_save_keeps_a_restorable_version_and_marks_a_native_change() {
+        let path=fixture();
+        let c=Connection::open(&path).unwrap();
+        let original=json!({"sheet":{"sheets":[{"id":"a","cells":{"A1":{"v":"before"}}}]}});
+        c.execute("INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('x','Budget','spreadsheet',?1,1,100)",[original.to_string()]).unwrap();
+        drop(c);
+        let mut next=original.clone(); next["sheet"]["sheets"][0]["cells"]["A1"]=json!({"v":"after"});
+        let saved=save_spreadsheet(&path,"x",100,original.clone(),next.clone()).unwrap();
+        let c=Connection::open(&path).unwrap();
+        // The state before the edit is a version the desktop can restore.
+        let raw:String=c.query_row("SELECT snapshot FROM versions WHERE page_id='x'",[],|r|r.get(0)).unwrap();
+        let snap:Value=serde_json::from_str(&raw).unwrap();
+        assert_eq!(snap["metadata"],original);
+        assert_eq!(c.query_row("SELECT count(*) FROM changes WHERE page_id='x' AND origin='native'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        assert_eq!(c.query_row("SELECT count(*) FROM changes WHERE page_id='x' AND origin='ui'",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        drop(c);
+        // A second save in the same editing window does not add another version.
+        let mut again=next.clone(); again["sheet"]["sheets"][0]["cells"]["A1"]=json!({"v":"again"});
+        save_spreadsheet(&path,"x",saved["revision"].as_i64().unwrap(),next,again).unwrap();
+        let c=Connection::open(&path).unwrap();
+        assert_eq!(c.query_row("SELECT count(*) FROM versions WHERE page_id='x'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        drop(c); std::fs::remove_file(path).unwrap();
     }
     #[test]
     fn ffi_spreadsheet_request_name_is_accepted() {
@@ -876,7 +911,7 @@ pub fn save_presentation_deleting(path: &Path, id: &str, base: i64, expected_met
     // Match the writer's byte comparison within this transaction, then restore
     // the exact original bytes before commit. No other connection sees them.
     let originals=prepare_unchanged_blocks(&tx,id,&before,&next_pairs)?;
-    let result = store::save_blocks(&tx,&store::Ctx::user(),id,next.into_iter().map(|b|store::BlockInput{id:b.id,content:b.content}).collect())?;
+    let result = store::save_blocks(&tx,&crate::native_ctx(),id,next.into_iter().map(|b|store::BlockInput{id:b.id,content:b.content}).collect())?;
     if !result.remapped.is_empty() { bail!("conflict: block IDs were remapped") }
     restore_unchanged_blocks(&tx,id,originals)?;
     presentation_refs(&tx,id,&next_pairs)?;
@@ -921,7 +956,7 @@ pub fn restore_presentation_slide(path: &Path, page: &str, recovery_id: &str, ba
     presentation_attachments(&tx,&next)?;
     store::snapshot(&tx,page,"user",None,Some("Before slide recovery"))?;
     let originals=prepare_unchanged_blocks(&tx,page,&current,&next)?;
-    let result=store::save_blocks(&tx,&store::Ctx::user(),page,next.iter().map(|(id,content)|store::BlockInput{id:id.clone(),content:content.clone()}).collect())?;
+    let result=store::save_blocks(&tx,&crate::native_ctx(),page,next.iter().map(|(id,content)|store::BlockInput{id:id.clone(),content:content.clone()}).collect())?;
     if !result.remapped.is_empty() { bail!("conflict: block IDs were remapped") }
     restore_unchanged_blocks(&tx,page,originals)?;
     tx.execute("UPDATE blocks SET properties=?2,direction=?3,created_at=?4,updated_at=?5 WHERE id=?1 AND page_id=?6",rusqlite::params![block_id,properties,direction,created,updated,page])?;

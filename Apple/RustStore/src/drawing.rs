@@ -85,7 +85,7 @@ pub fn apply_personal(path: &Path, page: &str, operation: Value) -> Result<Value
     let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
     require_drawing(&tx, page, Level::Edit)?;
     if !operation["versionRestore"].is_null() { bail!("version restore is unavailable") }
-    let doc = drawing_persistence::apply(&tx, &store::Ctx::user(), page, operation)?;
+    let doc = drawing_persistence::apply(&tx, &crate::native_ctx(), page, operation)?;
     // Do not follow asset paths at all while durable identity remains unsolved.
     reject_asset_dependencies(&tx, page, &doc)?;
     tx.commit()?; Ok(doc)
