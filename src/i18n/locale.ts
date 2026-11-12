@@ -86,3 +86,17 @@ export function foldWithMap(text: string): { folded: string; at: number[] } {
   at.push(text.length);
   return { folded, at };
 }
+
+/**
+ * The Hijri months (Umm al-Qura, as used in Saudi Arabia) that a span of days
+ * falls in, for the Arabic calendar header: "جمادى الآخرة 1448 هـ", or two
+ * months joined when the span crosses into the next one.
+ */
+export function hijriSpan(from: Date, to: Date): string {
+  const format = (d: Date, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("ar-SA-u-ca-islamic-umalqura-nu-latn", o).format(d);
+  const first = format(from, { month: "long", year: "numeric" });
+  const last = format(to, { month: "long", year: "numeric" });
+  if (first === last) return first;
+  const sameYear = format(from, { year: "numeric" }) === format(to, { year: "numeric" });
+  return sameYear ? `${format(from, { month: "long" })} و${last}` : `${first} و${last}`;
+}

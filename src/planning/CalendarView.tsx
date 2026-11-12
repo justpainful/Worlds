@@ -11,6 +11,8 @@ import { createItem, toggleTask, updateData } from "./actions";
 import { addDays, formatTime, occurrences, parseISODate, relDay, startOfWeek, today, type Occurrence } from "./model";
 import { colorVar, itemMenu, QuickAdd } from "./ui";
 import { useMenu } from "../ui/Menu";
+import { uiLanguage } from "../i18n/ui";
+import { hijriSpan } from "../i18n/locale";
 
 type Mode = "week" | "agenda";
 
@@ -51,6 +53,12 @@ export function CalendarView() {
         <div>
           <h1 className="pl-title">{title}</h1>
           <p className="pl-sub">{occ.filter((o) => o.date === now && !o.done).length || "Nothing"} today</p>
+          {/* In Arabic the Hijri months of the shown days follow, as Saudi calendars print them. */}
+          {uiLanguage() === "ar" && (
+            <p className="pl-sub pl-hijri" translate="no">
+              {hijriSpan(parseISODate(from), parseISODate(to))}
+            </p>
+          )}
         </div>
         <div className="pl-head-controls">
           <IconButton icon="back" label="Previous" onClick={() => setAnchor(addDays(anchor, -step))} />
