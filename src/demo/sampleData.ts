@@ -13,7 +13,7 @@ import { newSlide, slideToBlock, type Slide, type SlideElement } from "../resour
 import { newSheet, type CellStyle, type WorkbookData } from "../spreadsheet/engine";
 import { newLayer, newNode, type Change, type DrawingScene } from "../drawing/model";
 import { sceneChanges } from "../drawing/operations";
-import { bullets, callout, h, hr, numbered, p, quote, table, tasks } from "./content";
+import { bullets, callout, h, hr, localizeDeep, numbered, p, quote, table, tasks, withSampleLanguage, type SampleLanguage } from "./content";
 
 // ---------------------------------------------------------------------------
 // Plan
@@ -34,7 +34,12 @@ export interface SampleEntry {
 const data = <K extends DataKind>(kind: K, value: DataByKind[K]) => ({ [kind]: value });
 
 /** Every resource of the sample workspace, parents before children. */
-export function samplePlan(today: string): SampleEntry[] {
+/** The sample in one language: the interface's, so no line mixes two scripts. */
+export function samplePlan(today: string, lang: SampleLanguage = "ar"): SampleEntry[] {
+  return withSampleLanguage(lang, () => localizeDeep(bilingualPlan(today, lang), lang));
+}
+
+function bilingualPlan(today: string, lang: SampleLanguage): SampleEntry[] {
   const d = (n: number) => addDays(today, n);
   const termStart = d(-21);
   return [
@@ -50,7 +55,7 @@ export function samplePlan(today: string): SampleEntry[] {
     { key: "report", kind: "document", title: "تقرير: الطاقة المتجددة · Report: Renewable energy", parent: "root", blocks: reportBlocks(), metadata: { doc: DOC_SETTINGS } },
     { key: "grades", kind: "spreadsheet", title: "درجات الفصل · Term grades", parent: "root", metadata: { sheet: gradesWorkbook() } },
     { key: "cell", kind: "drawing", title: "رسم الخلية النباتية · Plant cell sketch", parent: "root" },
-    { key: "deck", kind: "presentation", title: "دورة الماء · The water cycle", parent: "root", blocks: waterCycleSlides(), metadata: { deck: { aspect: "16:9", theme: "dark" } } },
+    { key: "deck", kind: "presentation", title: "دورة الماء · The water cycle", parent: "root", blocks: waterCycleSlides(lang), metadata: { deck: { aspect: "16:9", theme: "dark" } } },
 
     // Study pack: two subjects with their timetable, lessons and work.
     {
@@ -98,7 +103,7 @@ export function samplePlan(today: string): SampleEntry[] {
         assigned: d(-4),
         teacher: "د. نورة السالم · Dr. Noura",
         points: 20,
-        instructions: "اكتب الهدف والأدوات والنتائج مع صورة للكروماتوغرافيا. Include the aim, materials, results and a photo of the chromatography strip.",
+        instructions: "اكتب الهدف والأدوات والنتائج مع صورة للكروماتوغرافيا. · Include the aim, materials, results and a photo of the chromatography strip.",
       }),
     },
     {
@@ -147,7 +152,7 @@ export function samplePlan(today: string): SampleEntry[] {
       title: "الواجب 4 · Homework 4",
      
       parent: "math",
-      metadata: data("assignment", { due: d(1), time: "20:00", assigned: d(-3), teacher: "أ. خالد العمر · Mr. Khalid", points: 10, instructions: "التمارين 1 إلى 12 صفحة 84. Exercises 1 to 12 on page 84." }),
+      metadata: data("assignment", { due: d(1), time: "20:00", assigned: d(-3), teacher: "أ. خالد العمر · Mr. Khalid", points: 10, instructions: "التمارين 1 إلى 12 صفحة 84. · Exercises 1 to 12 on page 84." }),
     },
 
     // Planning: tasks and an event for everyone.
@@ -186,7 +191,7 @@ export function samplePlan(today: string): SampleEntry[] {
       kind: "event",
       title: "مجموعة المذاكرة · Study group",
      
-      metadata: data("event", { date: d(2), start: "16:00", end: "17:30", location: "مكتبة الكلية · College library", notes: "نراجع البناء الضوئي معًا. We go over photosynthesis together." }),
+      metadata: data("event", { date: d(2), start: "16:00", end: "17:30", location: "مكتبة الكلية · College library", notes: "نراجع البناء الضوئي معًا. · We go over photosynthesis together." }),
     },
   ];
 }
@@ -199,9 +204,8 @@ const DOC_SETTINGS = { size: "A4", orientation: "portrait", margins: { top: 25, 
 
 function rootBlocks(): JSONContent[] {
   return [
-    h(1, "أهلًا بك في مساحة العمل التجريبية"),
-    p("هذه مساحة **تجريبية** لطالبة في سنتها الجامعية الأولى. كل ما فيها حُفظ على جهازك فقط، ويمكنك تعديله أو حذفه متى شئت."),
-    p("Welcome to the sample workspace. It shows a first year student's week. Everything is stored on this device only, and you can edit or remove it anytime."),
+    h(1, "أهلًا بك في مساحة العمل التجريبية · Welcome to the sample workspace"),
+    p("هذه مساحة **تجريبية** لطالبة في سنتها الجامعية الأولى. كل ما فيها حُفظ على جهازك فقط، ويمكنك تعديله أو حذفه متى شئت. · It shows a first year student's week. Everything is stored on this device only, and you can edit or remove it anytime."),
     h(2, "ماذا يوجد هنا · What is inside"),
     bullets([
       "**خطة الأسبوع** صفحة بجدول ومهام · **Weekly plan**, a page with a table and checklist",
@@ -212,7 +216,7 @@ function rootBlocks(): JSONContent[] {
       "مادتا **الأحياء** و**الرياضيات** مع الدروس والواجبات والاختبار · **Biology** and **Mathematics** with lessons, assignments and an exam",
       "مهام ومواعيد في التقويم · Tasks and calendar events",
     ]),
-    callout("note", "لحذف البيانات التجريبية: الإعدادات › التخزين › مساحة العمل التجريبية.", "To remove the sample: Settings › Storage › Sample workspace."),
+    callout("note", "لحذف البيانات التجريبية: الإعدادات › التخزين › مساحة العمل التجريبية. · To remove the sample: Settings › Storage › Sample workspace."),
   ];
 }
 
@@ -234,7 +238,7 @@ function weeklyPlanBlocks(): JSONContent[] {
       ["تصوير شريط الكروماتوغرافيا · Photograph the chromatography strip", false],
       ["حجز غرفة المذاكرة · Book the study room", false],
     ]),
-    callout("success", "==نصيحة:== قسّم المذاكرة إلى جلسات من 25 دقيقة. *Tip: study in 25 minute sessions.*"),
+    callout("success", "==نصيحة:== قسّم المذاكرة إلى جلسات من 25 دقيقة. · ==Tip:== study in 25 minute sessions."),
   ];
 }
 
@@ -276,7 +280,7 @@ function plantCellLesson(): JSONContent[] {
       ["الفجوة العصارية · Vacuole", "تخزين الماء والأملاح · Stores water and salts"],
       ["النواة · Nucleus", "تتحكم في أنشطة الخلية · Controls the cell"],
     ]),
-    callout("highlight", "الخلية النباتية فيها جدار خلوي وبلاستيدات، والحيوانية لا. *Plant cells have a wall and chloroplasts; animal cells do not.*"),
+    callout("highlight", "الخلية النباتية فيها جدار خلوي وبلاستيدات، والحيوانية لا. · Plant cells have a wall and chloroplasts; animal cells do not."),
     h(3, "أسئلة للمراجعة · Review questions"),
     numbered(["لماذا تكون الفجوة كبيرة في الخلية النباتية؟ · Why is the vacuole large?", "ما الفرق بين الغشاء والجدار؟ · Membrane versus wall?"]),
   ];
@@ -291,17 +295,17 @@ function photosynthesisLesson(): JSONContent[] {
       "**النواتج:** الجلوكوز والأكسجين · **Products:** glucose and oxygen",
       "**المكان:** البلاستيدات الخضراء · **Where:** chloroplasts",
     ]),
-    callout("note", "سيأتي سؤال عن العوامل المؤثرة في سرعة البناء الضوئي في الاختبار. *Expect a question on limiting factors.*"),
+    callout("note", "سيأتي سؤال عن العوامل المؤثرة في سرعة البناء الضوئي في الاختبار. · Expect a question on limiting factors in the exam."),
   ];
 }
 
 function sequencesLesson(): JSONContent[] {
   return [
     h(2, "التعريف · Definition"),
-    p("المتتالية الحسابية يكون الفرق فيها ثابتًا بين كل حدين متتاليين. *An arithmetic sequence has a constant difference d.*"),
+    p("المتتالية الحسابية يكون الفرق فيها ثابتًا بين كل حدين متتاليين. · An arithmetic sequence has a constant difference d between terms."),
     p("`a(n) = a(1) + (n - 1) d`"),
     h(3, "مثال · Example"),
-    p("3, 7, 11, 15, ... الفرق **d = 4**، والحد العاشر = 3 + 9 * 4 = **39**."),
+    p("3، 7، 11، 15، ... الفرق **d = 4**، والحد العاشر = 3 + 9 * 4 = **39**. · 3, 7, 11, 15, ... the difference is **d = 4**, so the tenth term is 3 + 9 * 4 = **39**."),
     tasks([["حل تمارين الكتاب 1 إلى 12 · Book exercises 1 to 12", false]]),
   ];
 }
@@ -435,10 +439,10 @@ function setText(slide: Slide, role: SlideElement["role"], text: string, index =
   if (el) el.text = text;
 }
 
-function waterCycleSlides(): JSONContent[] {
+function waterCycleSlides(lang: SampleLanguage): JSONContent[] {
   const cover = newSlide("title");
-  setText(cover, "title", "دورة الماء");
-  setText(cover, "subtitle", "The water cycle · عرض لمادة العلوم");
+  setText(cover, "title", "دورة الماء · The water cycle");
+  setText(cover, "subtitle", "عرض لمادة العلوم · A science class presentation");
 
   const stages = newSlide("title-body");
   setText(stages, "title", "المراحل الأربع · Four stages");
@@ -447,10 +451,10 @@ function waterCycleSlides(): JSONContent[] {
   const compare = newSlide("two-columns");
   compare.background = { color: "#0f172a" };
   setText(compare, "title", "لماذا تهمنا؟ · Why it matters");
-  setText(compare, "body", "توزع الماء العذب\nتنظم درجة الحرارة\nتغذي الزراعة", 0);
-  setText(compare, "body", "Spreads fresh water\nRegulates temperature\nFeeds farming", 1);
-  const arabicBody = compare.elements.filter((e) => e.role === "body")[0];
-  if (arabicBody?.style) arabicBody.style = { ...arabicBody.style, align: "right" };
+  setText(compare, "body", "توزع الماء العذب · Spreads fresh water\nتنظم درجة الحرارة · Regulates temperature\nتغذي الزراعة · Feeds farming", 0);
+  setText(compare, "body", "تكوّن الأنهار والبحيرات · Forms rivers and lakes\nتنقل الحرارة حول الأرض · Moves heat around the Earth\nتجدد المياه الجوفية · Refills groundwater", 1);
+  // Both columns are in the interface language; Arabic reads from the right.
+  if (lang === "ar") for (const body of compare.elements.filter((e) => e.role === "body")) if (body.style) body.style = { ...body.style, align: "right" };
 
   const end = newSlide("section");
   setText(end, "title", "أسئلة؟ · Questions?");

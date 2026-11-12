@@ -5,12 +5,12 @@ import type { DrawingDocument } from "../drawing/model";
 import { validateScene } from "../drawing/model";
 import { appendOperation, newDrawing } from "../drawing/operations";
 import { evaluateWorkbook, normalizeWorkbook } from "../spreadsheet/engine";
-import { inline, plainText } from "./content";
+import { inline, pickLanguage, plainText } from "./content";
 import { gradesWorkbook, samplePlan } from "./sampleData";
 import { isSampleLoaded, loadSampleWorkspace, removeSampleWorkspace, SAMPLE_KEY, sampleRecord, type SampleBackend, type SampleHost } from "./sampleWorkspace";
 
 /** An in-memory stand-in for the store commands, with the backend's trash rules. */
-function fakeWorkspace(opts: { failOnKind?: string } = {}) {
+function fakeWorkspace(opts: { failOnKind?: string; language?: "ar" | "en" } = {}) {
   const pages: Record<string, PageMeta> = {};
   const drawings: Record<string, DrawingDocument> = {};
   const settings: Record<string, unknown> = {};
@@ -52,6 +52,7 @@ function fakeWorkspace(opts: { failOnKind?: string } = {}) {
     studyEnabled: () => study,
     setStudyEnabled: (on) => void (study = on),
     actor: () => "me",
+    language: () => opts.language ?? "ar",
   };
   const live = () => Object.values(pages).filter((p) => !p.deletedAt);
   return { backend, host, pages, drawings, settings, live, study: () => study };
@@ -67,17 +68,20 @@ describe("sample workspace", () => {
     w = fakeWorkspace();
   });
 
-  it("creates a bilingual student workspace with every kind the demo shows", async () => {
+  it("creates a student workspace in Arabic with every kind the demo shows", async () => {
     const { created, rootId } = await loadSampleWorkspace(w.backend, w.host, NOW);
     expect(created).toBe(true);
     const kinds = new Set(w.live().map((p) => p.kind));
     for (const k of ["page", "document", "spreadsheet", "drawing", "presentation", "subject", "lesson", "assignment", "exam", "task", "event"]) expect(kinds).toContain(k);
-    // Arabic first, then English, in every title.
-    for (const p of w.live()) expect(p.title).toMatch(/^[؀-ۿ].* · [A-Za-z]/);
+    // One language per title: no line mixes two scripts.
+    for (const p of w.live()) {
+      expect(p.title).toMatch(/^[؀-ۿ]/);
+      expect(p.title).not.toContain(" · ");
+    }
     // Documents hang off the root page; study work sits under its subject.
     expect(w.pages[rootId].parentId).toBeNull();
     for (const k of ["document", "spreadsheet", "drawing", "presentation"]) expect(w.live().find((p) => p.kind === k)!.parentId).toBe(rootId);
-    const bio = w.live().find((p) => p.kind === "subject" && p.title.includes("Biology"))!;
+    const bio = w.live().find((p) => p.kind === "subject" && p.title.includes("الأحياء"))!;
     const underBio = w.live().filter((p) => p.parentId === bio.id).map((p) => p.kind);
     expect(underBio).toEqual(expect.arrayContaining(["lesson", "lesson", "assignment", "exam", "event"]));
     // Dates follow the day it was loaded.
@@ -95,6 +99,35 @@ describe("sample workspace", () => {
     const report = samplePlan("2026-11-11").find((e) => e.kind === "document")!;
     const types = new Set(JSON.stringify(report.blocks).match(/"type":"[a-zA-Z]+"/g));
     for (const t of ["heading", "orderedList", "bulletList", "table", "callout", "blockquote", "bold", "italic", "highlight"]) expect(types).toContain(`"type":"${t}"`);
+  });
+
+  it("writes the whole sample in English when the interface is English", async () => {
+    const en = fakeWorkspace({ language: "en" });
+    await loadSampleWorkspace(en.backend, en.host, NOW);
+    for (const p of en.live()) expect(p.title).not.toMatch(/[؀-ۿ]/);
+    const root = en.live().find((p) => p.parentId === null && p.kind === "page")!;
+    expect(root.title).toBe("Sample student workspace");
+    const drawing = en.live().find((p) => p.kind === "drawing")!;
+    const labels = Object.values(en.drawings[drawing.id].scene.nodes).filter((n) => n.kind === "text").map((n) => n.text);
+    expect(labels).toContain("Nucleus");
+    // Bold or italic text next to the separator must not drag the other language in.
+    const plan = samplePlan("2026-11-11", "en");
+    for (const key of ["root", "plan", "cell"]) {
+      const entry = plan.find((e) => e.key === key);
+      if (entry?.blocks) expect(plainText(entry.blocks)).not.toMatch(/[؀-ۿ]/);
+    }
+    const arabic = samplePlan("2026-11-11", "ar").find((e) => e.key === "root")!;
+    expect(plainText(arabic.blocks!)).not.toMatch(/[A-Za-z]{4}/);
+  });
+
+  it("picks one side of an Arabic and English pair, line by line and inside formulas", () => {
+    expect(pickLanguage("الأحياء · Biology", "ar")).toBe("الأحياء");
+    expect(pickLanguage("الأحياء · Biology", "en")).toBe("Biology");
+    expect(pickLanguage("Spark · Glance", "ar")).toBe("Spark · Glance");
+    expect(pickLanguage("1. التبخر · Evaporation\n2. الهطول · Precipitation", "en")).toBe("1. Evaporation\n2. Precipitation");
+    expect(pickLanguage('=IF(B7>=C7,"نعم · Yes","ليس بعد · Not yet")', "en")).toBe('=IF(B7>=C7,"Yes","Not yet")');
+    // A highlight mark at the start is not a formula.
+    expect(pickLanguage("==نصيحة:== قسّم المذاكرة. · ==Tip:== study in sessions.", "en")).toBe("==Tip:== study in sessions.");
   });
 
   it("parses inline marks the same way the Markdown dialect does", () => {
@@ -135,7 +168,7 @@ describe("sample workspace", () => {
     validateScene(doc.scene);
     const nodes = Object.values(doc.scene.nodes);
     expect(nodes.filter((n) => n.kind === "shape")).toHaveLength(6);
-    expect(nodes.filter((n) => n.kind === "text").map((n) => n.text)).toContain("النواة · Nucleus");
+    expect(nodes.filter((n) => n.kind === "text").map((n) => n.text)).toContain("النواة");
   });
 
   it("does not duplicate on a second click, even a double click", async () => {

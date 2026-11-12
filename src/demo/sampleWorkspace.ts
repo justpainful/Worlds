@@ -19,6 +19,7 @@ import { edit } from "../drawing/operations";
 import { defaultIcon } from "../resources/kinds";
 import { today as todayISO } from "../planning/model";
 import { plantCellChanges, samplePlan, type SampleEntry } from "./sampleData";
+import { localizeDeep, type SampleLanguage } from "./content";
 
 /** Settings key holding what the sample created. */
 export const SAMPLE_KEY = "sample.workspace";
@@ -51,6 +52,8 @@ export interface SampleHost {
   setStudyEnabled(on: boolean): void;
   /** Who drawing edits are attributed to (the profile id). */
   actor(): string;
+  /** The interface language; the sample is written in it. Arabic when not given. */
+  language?(): SampleLanguage;
 }
 
 export function sampleRecord(settings: Record<string, unknown>): SampleRecord | null {
@@ -96,7 +99,8 @@ export function loadSampleWorkspace(backend: SampleBackend, host: SampleHost, no
       const live = liveSampleIds(host.settings(), host.pages());
       return { created: false, rootId: live.includes(existing.rootId) ? existing.rootId : live[0] };
     }
-    const plan = samplePlan(todayISO(now));
+    const lang = host.language?.() ?? "ar";
+    const plan = samplePlan(todayISO(now), lang);
     const ids = new Map<string, string>();
     try {
       for (const entry of plan) {
@@ -105,7 +109,7 @@ export function loadSampleWorkspace(backend: SampleBackend, host: SampleHost, no
         ids.set(entry.key, meta.id);
         if (entry.kind === "drawing") {
           const doc = await backend.drawingLoad(meta.id);
-          await backend.drawingApply(meta.id, edit(host.actor(), doc.revision, "Sample drawing", plantCellChanges(doc.scene)));
+          await backend.drawingApply(meta.id, edit(host.actor(), doc.revision, "Sample drawing", localizeDeep(plantCellChanges(doc.scene), lang)));
         }
       }
     } catch (e) {

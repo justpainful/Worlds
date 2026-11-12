@@ -1,6 +1,7 @@
 /** The sample workspace wired to the app's store and backend (see ./sampleWorkspace.ts). */
 import { api, errorMessage } from "../lib/api";
 import { useStore } from "../state/store";
+import { resolveUiLanguage } from "../i18n/ui";
 import { enabledPacks, PACKS_ASKED_KEY, setPackEnabled } from "../packs/packs";
 import { isSampleLoaded, loadSampleWorkspace, removeSampleWorkspace, type SampleBackend, type SampleHost } from "./sampleWorkspace";
 
@@ -22,6 +23,7 @@ const host: SampleHost = {
     if (on && !useStore.getState().settings[PACKS_ASKED_KEY]) useStore.getState().setSetting(PACKS_ASKED_KEY, true);
   },
   actor: () => useStore.getState().profile?.id || "user",
+  language: () => resolveUiLanguage(useStore.getState().profile?.language),
 };
 
 export function useSampleLoaded(): boolean {
