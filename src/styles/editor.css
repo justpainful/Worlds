@@ -112,6 +112,10 @@
 /* A cell's paragraphs had the browser's 1em margins, so every row stood 72px tall. */
 .prose td > p, .prose th > p { min-height: 1.4em; margin: 0; }
 .prose td > p + p, .prose th > p + p { margin-top: 0.35em; }
+/* The same browser margins sat between list items and inside quotes and callouts. */
+.prose li > p, .prose blockquote > p, .prose .callout-body > div > p { margin: 0; }
+.prose li > p + p, .prose blockquote > p + p, .prose .callout-body > div > p + p { margin-top: 0.42em; }
+.prose li + li { margin-top: 0.2em; }
 .prose .selectedCell::after { content: ""; position: absolute; inset: 0; background: rgba(var(--accent-rgb), 0.16); pointer-events: none; }
 
 /* Callouts */
