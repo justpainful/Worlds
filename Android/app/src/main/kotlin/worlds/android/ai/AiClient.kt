@@ -2,6 +2,7 @@ package worlds.android.ai
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
@@ -74,6 +75,49 @@ class AiClient(private val provider: AiProvider) {
             throw translate(error)
         } finally {
             conn?.disconnect()
+        }
+    }
+
+    /**
+     * The transport the tool loop sends through. Lines stream from the
+     * connection as they arrive; cancelling the caller closes the socket.
+     * The key travels only in the request headers [AiRequests.headers] built.
+     */
+    fun transport(): AiTransport = object : AiTransport {
+        override suspend fun send(request: AiHttpRequest, onLine: suspend (String) -> Boolean): AiHttpFailure? = stream(request, onLine)
+    }
+
+    private suspend fun stream(request: AiHttpRequest, onLine: suspend (String) -> Boolean): AiHttpFailure? {
+        checkReady(null)
+        return withContext(Dispatchers.IO) {
+            coroutineScope {
+                var conn: HttpURLConnection? = null
+                // Blocking reads do not notice cancellation, so a watcher closes the socket.
+                val watcher = launch { try { awaitCancellation() } finally { conn?.disconnect() } }
+                try {
+                    val connection = open(request, 120_000)
+                    conn = connection
+                    val code = connection.responseCode
+                    if (code !in 200..299) {
+                        val body = connection.errorStream?.bufferedReader()?.use { it.readText() }
+                        return@coroutineScope AiHttpFailure(code, body)
+                    }
+                    connection.inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
+                        while (true) {
+                            ensureActive()
+                            val line = reader.readLine() ?: break
+                            if (!onLine(line)) break
+                        }
+                    }
+                    null
+                } catch (error: Throwable) {
+                    ensureActive()
+                    throw translate(error)
+                } finally {
+                    watcher.cancel()
+                    conn?.disconnect()
+                }
+            }
         }
     }
 

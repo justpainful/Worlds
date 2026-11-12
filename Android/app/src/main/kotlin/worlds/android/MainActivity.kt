@@ -829,6 +829,12 @@ class HomeModel(application: Application, internal val databaseName: String) : A
         store.saveBlocks(page.id, page.revision, blocks)
         false
     }
+    /** The assistant changed or put back these pages: refresh the list and reload the open page if it was one of them. */
+    fun assistantChanged(pageIds: Set<String>) {
+        refresh()
+        val shown = mutable.value.selected?.resource?.id
+        if (shown != null && shown in pageIds) open(shown)
+    }
     fun createWithContent(title: String, content: String) {
         viewModelScope.launch {
             val result = runCatching { withContext(Dispatchers.IO) {
@@ -1003,7 +1009,7 @@ class HomeModel(application: Application, internal val databaseName: String) : A
         return
     }
     if (showAiChat) {
-        AiChatScreen(databaseName = model.databaseName, onBack = { showAiChat = false }, onCreatePage = { title, content -> showAiChat = false; model.createWithContent(title, content) })
+        AiChatScreen(databaseName = model.databaseName, onBack = { showAiChat = false }, onCreatePage = { title, content -> showAiChat = false; model.createWithContent(title, content) }, onOpenPage = { id -> showAiChat = false; model.open(id) }, onWorkspaceChanged = model::assistantChanged)
         return
     }
     if (showAutomations) {
@@ -1259,7 +1265,7 @@ class HomeModel(application: Application, internal val databaseName: String) : A
             }
             DropdownMenuItem(leadingIcon = { WorldsGlyph(if (state.trash) R.drawable.ic_files else R.drawable.ic_trash_2) }, text = { Text(stringResource(if (state.trash) R.string.pages else R.string.trash)) }, onClick = { showLibraryActions = false; model.toggleTrash(); destinationName = WorldsDestination.Library.name })
         },
-        ai = { aiModifier -> AiChatScreen(databaseName = model.databaseName, onBack = { selectDestination(WorldsDestination.Home) }, onCreatePage = { title, content -> selectDestination(WorldsDestination.Home); model.createWithContent(title, content) }, modifier = aiModifier, showBack = false) },
+        ai = { aiModifier -> AiChatScreen(databaseName = model.databaseName, onBack = { selectDestination(WorldsDestination.Home) }, onCreatePage = { title, content -> selectDestination(WorldsDestination.Home); model.createWithContent(title, content) }, modifier = aiModifier, showBack = false, onOpenPage = { id -> selectDestination(WorldsDestination.Home); model.open(id) }, onWorkspaceChanged = model::assistantChanged) },
         detail = { detailModifier ->
                 if (state.selected!!.resource.kind == "spreadsheet" && state.selected!!.resource.deletedAt == null) SpreadsheetScreen(state.selected!!.resource, onBack = model::back, modifier = detailModifier, databaseName = model.databaseName)
                 else if (state.selected!!.resource.kind == "drawing" && state.selected!!.resource.deletedAt == null) DrawingScreen(state.selected!!.resource, model::back, detailModifier, model.databaseName)

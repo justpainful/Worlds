@@ -17,7 +17,7 @@
 | المنصة | الحالة |
 | :--- | :--- |
 | ويندوز | الأكمل: الصفحات والمستندات والجداول والرسم وأدوات الطالب، والذكاء عبر Claude Code أو Codex أو مفتاح API من Anthropic وOpenAI وغيرهما أو نموذج محلي مثل Ollama، وواجهة عربية كاملة |
-| أندرويد وكروم بوك | تجريبي: الصفحات والرسم والجداول تعمل، وللمهام والتقويم والدراسة (المواد والواجبات والاختبارات والدروس) شاشات دون الأهداف والوارد وعرض الأسبوع، والذكاء يرد ردودًا حقيقية بمفتاح API أو نموذج محلي لكنه لا يعدّل الصفحات بعد |
+| أندرويد وكروم بوك | تجريبي: الصفحات والرسم والجداول تعمل، وللمهام والتقويم والدراسة (المواد والواجبات والاختبارات والدروس) شاشات دون الأهداف والوارد وعرض الأسبوع، والذكاء يرد بمفتاح API أو نموذج محلي ويقرأ الصفحات وينشئها ويعدّلها ويضيف المهام بأدوات سطح المكتب نفسها، مع تراجع عن كل تغييرات الرد بخطوة واحدة |
 | آيفون وآيباد وماك | تجريبي: الواجهات الأساسية تعمل، والجداول تعرض قيمها المحسوبة بمحرك الصيغ نفسه ولا تُعدَّل إلا في نسخة محلية، والذكاء يرد ردودًا حقيقية بمفتاح API أو نموذج محلي لكنه لا يعدّل الصفحات بعد، وأجزاء من الرسم ناقصة |
 
 التفاصيل الصادقة لكل ميزة في [مصفوفة أبل](docs/apple-native/FEATURE_PARITY_MATRIX.md) و[مصفوفة أندرويد](docs/android-native/FEATURE_PARITY_MATRIX.md).
@@ -58,7 +58,7 @@ A local-first workspace for pages, documents, spreadsheets, drawing and study. Y
 | Platform | Status |
 | :--- | :--- |
 | Windows | Most complete: pages, documents, spreadsheets, drawing, study tools, a full Arabic interface, and AI through Claude Code, Codex, an API key (Anthropic, OpenAI and others) or a local model such as Ollama |
-| Android and ChromeOS | Preview: pages, drawing and spreadsheets work; Tasks, Calendar and Study (subjects, assignments, exams, lessons) have screens, without goals, the inbox or the week grid; AI gives real replies with an API key or a local model but cannot edit pages yet |
+| Android and ChromeOS | Preview: pages, drawing and spreadsheets work; Tasks, Calendar and Study (subjects, assignments, exams, lessons) have screens, without goals, the inbox or the week grid; AI replies with an API key or a local model and reads, creates and edits pages and adds tasks with the desktop's own tools, and each reply's changes undo in one step |
 | iPhone, iPad and Mac | Preview: core views work; spreadsheets show values computed by the same formula engine and can be edited only in a local copy; AI gives real replies with an API key or a local model but cannot edit pages yet; parts of drawing are incomplete |
 
 Feature by feature status: [Apple matrix](docs/apple-native/FEATURE_PARITY_MATRIX.md), [Android matrix](docs/android-native/FEATURE_PARITY_MATRIX.md).
