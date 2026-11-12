@@ -67,6 +67,8 @@ public enum AIProviderError: Error, Equatable, Sendable, LocalizedError {
     case subscriptionToken
     case invalidKey
     case keychain(status: Int32)
+    /// The tool loop reached its limit of model turns or tool calls.
+    case tooManySteps(limit: Int)
 
     public var errorDescription: String? {
         switch self {
@@ -102,6 +104,8 @@ public enum AIProviderError: Error, Equatable, Sendable, LocalizedError {
             return "That does not look like an API key."
         case .keychain(let status):
             return "The Keychain could not store the key (\(status))."
+        case .tooManySteps(let limit):
+            return "The assistant stopped after \(limit) steps. Ask for a smaller change."
         }
     }
 }
