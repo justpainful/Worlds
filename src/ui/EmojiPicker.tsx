@@ -7,6 +7,8 @@ import { ICON_CATALOG } from "../assets/product-icons";
 import { Popover } from "./Menu";
 import { Icon } from "./Icon";
 import { ProductIcon } from "./ProductIcon";
+import { translate, uiLanguage } from "../i18n/ui";
+import { foldArabic } from "../i18n/locale";
 
 const SETS: { label: string; emojis: string }[] = [
   { label: "Objects", emojis: "📄 📝 📌 📎 📁 🗂️ 🗃️ 📚 📖 🔖 🏷️ 💼 🧾 📊 📈 📉 🗓️ 📅 ⏰ ⏱️ 🔔 📣 📢 💬 🗨️ ✉️ 📬 🔑 🔒 🔓 🧭 🗺️ 🧰 🛠️ ⚙️ 🧪 🔬 💡 🕯️ 🔦 🎯 🧩 🎨 🖌️ 🖼️ 🎬 🎧 🎮 🕹️ 💻 🖥️ ⌨️ 🖱️ 📱 📷 🎥 📺" },
@@ -43,9 +45,13 @@ export function EmojiPicker({
   const emojis = useMemo(() => SETS[tab].emojis.split(" ").filter(Boolean), [tab]);
   const cats = useMemo(() => ["All", ...Array.from(new Set(ICON_CATALOG.map((i) => i.category)))], []);
   const icons = useMemo(() => {
-    const s = q.trim().toLowerCase();
+    const s = foldArabic(q.trim().toLowerCase());
+    // In Arabic the Arabic names count too: قلب finds Heart, دلة finds Dallah.
+    const ar = (x: string) => (uiLanguage() === "ar" ? (translate(x) ?? "") : "");
     return ICON_CATALOG.filter(
-      (i) => (cat === "All" || i.category === cat) && (!s || `${i.name} ${i.label} ${i.keywords.join(" ")}`.toLowerCase().includes(s)),
+      (i) =>
+        (cat === "All" || i.category === cat) &&
+        (!s || foldArabic(`${i.name} ${i.label} ${i.keywords.join(" ")} ${ar(i.label)} ${ar(i.category)}`.toLowerCase()).includes(s)),
     );
   }, [q, cat]);
 
