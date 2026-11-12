@@ -21,6 +21,7 @@ import { createItem } from "../planning/actions";
 import { ItemRow, QuickAdd } from "../planning/ui";
 import { StudyHomeSection } from "../study/StudyViews";
 import { loadSample } from "../demo/sampleActions";
+import { resolveUiLanguage } from "../i18n/ui";
 
 type View = "grid" | "list";
 
@@ -110,6 +111,7 @@ export function HomeView() {
             A student's week in your interface language: pages, a document, a spreadsheet, a drawing, slides, subjects and tasks. It
             stays on this device, and you can remove it anytime in Settings.
           </p>
+          <LanguageChoice />
         </div>
         <TemplateRow templates={templates} />
       </div>
@@ -300,6 +302,30 @@ function PackPrompt() {
     </div>
   );
 }
+/**
+ * The first screen of a new install offers both interface languages, so a visitor
+ * can switch without finding Settings. Each name is written in its own language.
+ */
+function LanguageChoice() {
+  const profile = useStore((s) => s.profile);
+  const setProfile = useStore((s) => s.setProfile);
+  if (!profile) return null;
+  return (
+    <div className="home-language" translate="no">
+      <Segmented
+        value={resolveUiLanguage(profile.language)}
+        onChange={async (v) => setProfile(await api.updateProfile({ language: v }))}
+        label="Language"
+        size="standard"
+        options={[
+          { value: "en", label: "English" },
+          { value: "ar", label: "العربية" },
+        ]}
+      />
+    </div>
+  );
+}
+
 function HomeSection({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section className="home-section">
