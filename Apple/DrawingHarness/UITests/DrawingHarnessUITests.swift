@@ -2,7 +2,8 @@ import XCTest
 
 final class DrawingHarnessUITests: XCTestCase {
     func testDrawSaveAndReopen() throws {
-        let app = XCUIApplication(); app.launch()
+        // The straight drag would otherwise be corrected into a line shape.
+        let app = XCUIApplication(); app.launchArguments = ["-WorldsDrawingCorrectShapes", "NO"]; app.launch()
         let status = app.staticTexts["drawing-status"]
         guard status.waitForExistence(timeout: 30) else { attachFailure(app, "drawing-status-missing"); XCTFail("Drawing status did not appear"); return }
         let initial = expectation(for: NSPredicate(format: "label CONTAINS %@", "Saved revision 0"), evaluatedWith: status)
@@ -34,6 +35,26 @@ final class DrawingHarnessUITests: XCTestCase {
         app.buttons["drawing-reopen"].tap()
         wait(for: [expectation(for: predicate, evaluatedWith: status)], timeout: 30)
         attach(app, "synthetic-triangle-after-reopen")
+    }
+    func testStraightStrokeBecomesLineAndUndoRestoresStroke() throws {
+        let app = XCUIApplication(); app.launchArguments = ["-WorldsDrawingCorrectShapes", "YES"]; app.launch()
+        let status = app.staticTexts["drawing-status"]
+        XCTAssertTrue(status.waitForExistence(timeout: 30))
+        wait(for: [expectation(for: NSPredicate(format: "label CONTAINS %@", "Saved revision 0"), evaluatedWith: status)], timeout: 30)
+        let surface = app.otherElements["drawing-surface"]; XCTAssertTrue(surface.waitForExistence(timeout: 10))
+        let start = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.10))
+        let end = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: 0.20))
+        start.press(forDuration: 0.1, thenDragTo: end)
+        let corrected = NSPredicate(format: "label CONTAINS %@", "Saved revision 2, strokes 1, shape line")
+        wait(for: [expectation(for: corrected, evaluatedWith: status)], timeout: 30)
+        attach(app, "line-corrected")
+        let undo = app.buttons["drawing-undo"]
+        wait(for: [expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: undo)], timeout: 30)
+        undo.tap()
+        let restored = NSPredicate(format: "label ENDSWITH %@", "Saved revision 3, strokes 1")
+        wait(for: [expectation(for: restored, evaluatedWith: status)], timeout: 30)
+        XCTAssertTrue(app.staticTexts["drawing-last-brush"].exists, "Undo must bring the original stroke back")
+        attach(app, "line-undone")
     }
     func testColoredHighlighterSavesAndReopens() throws {
         let app = XCUIApplication(); app.launch()

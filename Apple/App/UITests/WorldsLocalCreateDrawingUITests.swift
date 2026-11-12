@@ -4,7 +4,8 @@ import XCTest
 final class WorldsLocalCreateDrawingUITests: XCTestCase {
     @MainActor func testCreateDrawAndReopen() {
         let app = XCUIApplication()
-        app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-rtl", "--ui-testing-large-text"]
+        // The straight drag would otherwise be corrected into a line shape.
+        app.launchArguments += ["--ui-testing-local-copy-fixture", "--ui-testing-rtl", "--ui-testing-large-text", "-WorldsDrawingCorrectShapes", "NO"]
         app.launch()
         let notice = app.descendants(matching: .any)["local-copy-notice"].firstMatch
         _ = notice.waitForExistence(timeout: 30)

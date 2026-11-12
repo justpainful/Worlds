@@ -99,3 +99,10 @@
 "Keep editing" = "متابعة التعديل";
 "This spreadsheet changed elsewhere. Close and reopen it to load the latest version." = "تغيّر هذا الجدول في مكان آخر. أغلقه وافتحه من جديد لتحميل أحدث نسخة.";
 "The spreadsheet could not be saved. Your changes are still here." = "تعذّر حفظ الجدول. تغييراتك ما زالت هنا.";
+
+/* Drawing */
+"Correct hand-drawn shapes" = "تصحيح الأشكال تلقائيًا";
+"Undo" = "تراجع";
+"Redo" = "إعادة";
+"The change could not be undone. Reopen the drawing to check it." = "تعذّر التراجع عن التغيير. أعد فتح الرسم للتحقق منه.";
+"The change could not be redone. Reopen the drawing to check it." = "تعذّرت إعادة التغيير. أعد فتح الرسم للتحقق منه.";
