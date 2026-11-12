@@ -186,7 +186,10 @@ export function Popover({
     if (!el) return;
     const place = () => {
       const r = el.getBoundingClientRect();
-      let x = align === "end" ? anchor.right - r.width : align === "center" ? anchor.left + anchor.width / 2 - r.width / 2 : anchor.left;
+      // Start and end follow the reading direction, as for menus.
+      const rtl = document.documentElement.dir === "rtl";
+      const toRight = align === "end" ? !rtl : align === "start" ? rtl : false;
+      let x = align === "center" ? anchor.left + anchor.width / 2 - r.width / 2 : toRight ? anchor.right - r.width : anchor.left;
       let y = anchor.bottom + 8;
       // Below when it fits, else above when that fits, else wherever it shows the most.
       if (y + r.height > window.innerHeight - 10) {
