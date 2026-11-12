@@ -110,7 +110,7 @@ function SlidesViewer({ slides, ratio, name }: { slides: string[]; ratio: number
         <GlassButton className="fp-nav next" icon="forward" label="Next slide" disabled={i === slides.length - 1} onClick={() => go(i + 1)} />
       </div>
       <div className="fp-bar">
-        <span className="fp-count">{i + 1} / {slides.length}</span>
+        <span className="fp-count"><bdi dir="ltr">{`${i + 1} / ${slides.length}`}</bdi></span>
         <div className="fp-thumbs" ref={strip}>
           {slides.map((s, n) => (
             <button key={s} className={`fp-thumb ${n === i ? "is-on" : ""}`} onClick={() => go(n)} aria-label={`Slide ${n + 1}`}>
@@ -145,7 +145,7 @@ function Presenter({ slides, start, name, onClose }: { slides: string[]; start: 
     <div className="presenter" onClick={(e) => { if (e.target === e.currentTarget) setI((v) => Math.min(slides.length - 1, v + 1)); }}>
       <img src={slides[i]} alt={`${name}, slide ${i + 1}`} draggable={false} onClick={() => setI((v) => Math.min(slides.length - 1, v + 1))} />
       <div className="presenter-bar">
-        <span>{i + 1} / {slides.length}</span>
+        <span><bdi dir="ltr">{`${i + 1} / ${slides.length}`}</bdi></span>
         <button onClick={() => onClose(i)} aria-label="Exit presentation"><Icon name="close" size={16} /></button>
       </div>
     </div>,

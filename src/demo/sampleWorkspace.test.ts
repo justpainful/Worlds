@@ -6,7 +6,8 @@ import { validateScene } from "../drawing/model";
 import { appendOperation, newDrawing } from "../drawing/operations";
 import { evaluateWorkbook, normalizeWorkbook } from "../spreadsheet/engine";
 import { inline, pickLanguage, plainText } from "./content";
-import { gradesWorkbook, samplePlan } from "./sampleData";
+import { gradesWorkbook, mirrorSlide, samplePlan } from "./sampleData";
+import { newSlide, STAGE_W } from "../resources/deck/model";
 import { isSampleLoaded, loadSampleWorkspace, removeSampleWorkspace, SAMPLE_KEY, sampleRecord, type SampleBackend, type SampleHost } from "./sampleWorkspace";
 
 /** An in-memory stand-in for the store commands, with the backend's trash rules. */
@@ -218,5 +219,25 @@ describe("sample workspace", () => {
     expect(broken.live()).toHaveLength(0);
     expect(broken.settings[SAMPLE_KEY]).toBeUndefined();
     expect(broken.study()).toBe(false);
+  });
+});
+
+describe("sample slides", () => {
+  it("mirror for Arabic: elements move across and left alignment becomes right", () => {
+    const slide = newSlide("section");
+    const [title, bar] = slide.elements;
+    const before = { titleX: title.x, barX: bar.x };
+    mirrorSlide(slide);
+    expect(title.style?.align).toBe("right");
+    expect(title.x).toBe(STAGE_W - before.titleX - title.w);
+    // The accent bar sits above the title's start, which is now on the right.
+    expect(bar.x).toBe(STAGE_W - before.barX - bar.w);
+    expect(bar.x).toBeGreaterThan(STAGE_W / 2);
+  });
+
+  it("keeps centred text centred", () => {
+    const slide = newSlide("title");
+    mirrorSlide(slide);
+    expect(slide.elements.every((e) => e.style?.align === "center")).toBe(true);
   });
 });

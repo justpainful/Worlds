@@ -178,7 +178,7 @@ export function LightboxHost() {
         )}
         <span className="lightbox-name bidi">{im.name}</span>
         <span className="lightbox-count">
-          {state.index + 1} / {state.images.length}
+          <bdi dir="ltr">{`${state.index + 1} / ${state.images.length}`}</bdi>
         </span>
         {state.images.length > 1 && (
           <button onClick={() => step(1)} aria-label="Next">

@@ -48,7 +48,7 @@ export function Present({ slides, start, onClose }: { slides: Slide[]; start: nu
   return createPortal(
     <div className="dk-present" ref={root} onClick={() => setI((n) => Math.min(slides.length - 1, n + 1))}>
       {slide && <SlideRender slide={slide} scale={scale} />}
-      <div className="dk-present-count">{i + 1} / {slides.length}</div>
+      <div className="dk-present-count"><bdi dir="ltr">{`${i + 1} / ${slides.length}`}</bdi></div>
       {notes && slide?.notes && <div className="dk-present-notes bidi" dir="auto">{slide.notes}</div>}
     </div>,
     document.body,

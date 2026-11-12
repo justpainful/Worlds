@@ -9,7 +9,7 @@
 import type { JSONContent } from "@tiptap/core";
 import type { DataByKind, DataKind } from "../planning/model";
 import { addDays, weekday } from "../planning/model";
-import { newSlide, slideToBlock, type Slide, type SlideElement } from "../resources/deck/model";
+import { newSlide, slideToBlock, STAGE_W, type Slide, type SlideElement } from "../resources/deck/model";
 import { newSheet, type CellStyle, type WorkbookData } from "../spreadsheet/engine";
 import { newLayer, newNode, type Change, type DrawingScene } from "../drawing/model";
 import { sceneChanges } from "../drawing/operations";
@@ -456,11 +456,20 @@ function waterCycleSlides(lang: SampleLanguage): JSONContent[] {
   setText(compare, "title", "لماذا تهمنا؟ · Why it matters");
   setText(compare, "body", "توزع الماء العذب · Spreads fresh water\nتنظم درجة الحرارة · Regulates temperature\nتغذي الزراعة · Feeds farming", 0);
   setText(compare, "body", "تكوّن الأنهار والبحيرات · Forms rivers and lakes\nتنقل الحرارة حول الأرض · Moves heat around the Earth\nتجدد المياه الجوفية · Refills groundwater", 1);
-  // Both columns are in the interface language; Arabic reads from the right.
-  if (lang === "ar") for (const body of compare.elements.filter((e) => e.role === "body")) if (body.style) body.style = { ...body.style, align: "right" };
-
   const end = newSlide("section");
   setText(end, "title", "أسئلة؟ · Questions?");
 
-  return [cover, stages, compare, end].map((s) => slideToBlock(s).content);
+  const deck = [cover, stages, compare, end];
+  // The layouts are drawn left to right; an Arabic deck reads from the right.
+  if (lang === "ar") deck.forEach(mirrorSlide);
+  return deck.map((s) => slideToBlock(s).content);
+}
+
+/** Flip a slide for right-to-left text: each element moves to the opposite side and left and right alignment swap. */
+export function mirrorSlide(slide: Slide): void {
+  for (const el of slide.elements) {
+    el.x = STAGE_W - el.x - el.w;
+    if (el.style?.align === "left") el.style = { ...el.style, align: "right" };
+    else if (el.style?.align === "right") el.style = { ...el.style, align: "left" };
+  }
 }
