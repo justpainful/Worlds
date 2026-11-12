@@ -1,0 +1,76 @@
+name: Publish release
+
+# Publishes a GitHub release from files already built by the Windows
+# installer, Android and Apple workflows for the same commit, without
+# downloading anything to a developer's machine. Started by hand with the
+# run ids of those three builds.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag, for example v0.3.0
+        required: true
+      windows_run:
+        description: Run id of the Windows installer workflow
+        required: true
+      android_run:
+        description: Run id of Android core checks
+        required: true
+      apple_run:
+        description: Run id of Apple platforms
+        required: true
+      notes:
+        description: Release notes file in the repository
+        required: true
+        default: docs/releases/v0.3.0.md
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect, rename and fingerprint the builds
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          WIN: ${{ inputs.windows_run }}
+          AND: ${{ inputs.android_run }}
+          APPLE: ${{ inputs.apple_run }}
+        run: |
+          set -euo pipefail
+          for id in "$WIN" "$AND" "$APPLE"; do
+            read -r sha conclusion < <(gh run view "$id" --json headSha,conclusion --jq '"\(.headSha) \(.conclusion)"')
+            if [ "$sha" != "$GITHUB_SHA" ]; then echo "Run $id built $sha, not $GITHUB_SHA"; exit 1; fi
+            if [ "$conclusion" != "success" ]; then echo "Run $id did not succeed ($conclusion)"; exit 1; fi
+          done
+          v="${TAG#v}"
+          mkdir -p dl out
+          gh run download "$WIN" -n worlds-windows-installer -D dl/win
+          gh run download "$AND" -n worlds-android-packages -D dl/android
+          gh run download "$APPLE" -n Worlds-iPhone-Unsigned -D dl/iphone
+          gh run download "$APPLE" -n Worlds-iPad-Unsigned -D dl/ipad
+          gh run download "$APPLE" -n Worlds-macOS-Unsigned -D dl/mac
+          cp "$(find dl/win -name '*.exe' | head -n 1)" "out/Worlds-$v-Windows-x64-setup.exe"
+          # The debug build is the installable one (signed with a development key); release APKs are unsigned.
+          cp "$(find dl/android -name 'Worlds-Android-Universal-Debug.apk' | head -n 1)" "out/Worlds-$v-Android-Universal.apk"
+          cp "$(find dl/iphone -name '*.ipa' | head -n 1)" "out/Worlds-$v-iPhone-Unsigned.ipa"
+          cp "$(find dl/ipad -name '*.ipa' | head -n 1)" "out/Worlds-$v-iPad-Unsigned.ipa"
+          cp "$(find dl/mac -name '*.dmg' | head -n 1)" "out/Worlds-$v-macOS-Unsigned.dmg"
+          cp "$(find dl/mac -name '*.zip' | head -n 1)" "out/Worlds-$v-macOS-Unsigned.zip"
+          (cd out && sha256sum -- * > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          ls -la out
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          NOTES: ${{ inputs.notes }}
+        run: |
+          set -euo pipefail
+          v="${TAG#v}"
+          # The notes file is kept as a draft in the repository; the release drops the draft label.
+          sed '0,/(مسودة)/s/ (مسودة)//' "$NOTES" > notes.md
+          gh release create "$TAG" out/* --title "Worlds $v" --notes-file notes.md --target "$GITHUB_SHA"
