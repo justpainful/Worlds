@@ -628,6 +628,9 @@ fn tool_support_refusals_are_recognised() {
     assert!(agent::no_tool_support(422, "Tool use is not enabled for this model"));
     assert!(!agent::no_tool_support(400, "Invalid model name"));
     assert!(!agent::no_tool_support(401, "invalid key"));
+    assert!(!agent::no_tool_support(401, "tools not supported"));
+    assert!(!agent::no_tool_support(403, "function calling is not available on your plan"));
+    assert!(!agent::no_tool_support(429, "tool requests are not available right now"));
     assert!(!agent::no_tool_support(200, "tools not supported"));
     assert!(!agent::no_tool_support(503, "tools not supported"));
 }

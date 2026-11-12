@@ -89,13 +89,25 @@ internal class ShellActions(
     val planning: (PlanningSection) -> Unit,
 )
 
-/** Tasks and Calendar for everyone, Study while the Study pack is on. */
-internal data class PlanningEntry(val section: PlanningSection, val label: Int, val tile: Int)
-internal fun planningEntries(studyPack: Boolean): List<PlanningEntry> = listOfNotNull(
-    PlanningEntry(PlanningSection.Tasks, R.string.plan_tasks, R.drawable.pi_checklist),
+/**
+ * Tasks, Calendar and Inbox for everyone, Study while the Study pack is on,
+ * in the desktop sidebar's order. Tasks shows what is due today and Inbox what
+ * is waiting to be sorted, as the desktop's badges do.
+ */
+internal data class PlanningEntry(val section: PlanningSection, val label: Int, val tile: Int, val badge: Int = 0)
+internal fun planningEntries(studyPack: Boolean, dueToday: Int = 0, inbox: Int = 0): List<PlanningEntry> = listOfNotNull(
+    PlanningEntry(PlanningSection.Tasks, R.string.plan_tasks, R.drawable.pi_checklist, dueToday),
     PlanningEntry(PlanningSection.Calendar, R.string.plan_calendar, R.drawable.pi_calendar),
+    PlanningEntry(PlanningSection.Inbox, R.string.plan_inbox, R.drawable.pi_inbox, inbox),
     if (studyPack) PlanningEntry(PlanningSection.Study, R.string.plan_study, R.drawable.pi_graduation) else null,
 )
+
+/** A count beside a navigation row, quiet like the desktop sidebar's. */
+@Composable private fun NavBadge(count: Int) {
+    if (count <= 0) return
+    Text(count.toString(), modifier = Modifier.clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHighest).padding(horizontal = 7.dp, vertical = 2.dp),
+        style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+}
 
 private val TAB_BAR_HEIGHT = 62.dp
 private val TOOLBAR_HEIGHT = 48.dp
@@ -256,11 +268,11 @@ private val TOOLBAR_HEIGHT = 48.dp
             Spacer(Modifier.height(14.dp))
             SidebarHeading(stringResource(R.string.section_collections))
             libraryFilters.drop(1).forEach { filter -> SidebarRow(null, filter.tile, stringResource(filter.label), destination == WorldsDestination.Library && filterId == filter.id) { onSelect(WorldsDestination.Library, filter.id) } }
-            SidebarRow(null, R.drawable.pi_templates, stringResource(R.string.templates_title), false, actions.templates)
-            SidebarRow(null, R.drawable.pi_automations, stringResource(R.string.automations), false, actions.automations)
+            SidebarRow(null, R.drawable.pi_templates, stringResource(R.string.templates_title), false, onClick = actions.templates)
+            SidebarRow(null, R.drawable.pi_automations, stringResource(R.string.automations), false, onClick = actions.automations)
             Spacer(Modifier.height(14.dp))
             SidebarHeading(stringResource(R.string.section_planning))
-            planningEntries(LocalAppearancePreferences.current.studyPackEnabled).forEach { entry -> SidebarRow(null, entry.tile, stringResource(entry.label), false) { actions.planning(entry.section) } }
+            planningEntries(LocalAppearancePreferences.current.studyPackEnabled, state.dueToday, state.inboxCount).forEach { entry -> SidebarRow(null, entry.tile, stringResource(entry.label), false, entry.badge) { actions.planning(entry.section) } }
             val recents = state.pages.filter { it.deletedAt == null }.take(5)
             if (recents.isNotEmpty() && state.query.isBlank()) {
                 Spacer(Modifier.height(14.dp))
@@ -269,7 +281,7 @@ private val TOOLBAR_HEIGHT = 48.dp
             }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        SidebarRow(R.drawable.ic_settings_2, null, stringResource(R.string.appearance_title), false, actions.settings)
+        SidebarRow(R.drawable.ic_settings_2, null, stringResource(R.string.appearance_title), false, onClick = actions.settings)
     }
 }
 
@@ -277,12 +289,14 @@ private val TOOLBAR_HEIGHT = 48.dp
     Text(text, modifier = Modifier.padding(start = 10.dp, top = 4.dp, bottom = 4.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
-@Composable private fun SidebarRow(icon: Int?, tile: Int?, label: String, active: Boolean, onClick: () -> Unit) {
+@Composable private fun SidebarRow(icon: Int?, tile: Int?, label: String, active: Boolean, badge: Int = 0, onClick: () -> Unit) {
     val shape = RoundedCornerShape(12.dp)
+    val spoken = if (badge > 0) "$label, $badge" else label
     Row(Modifier.fillMaxWidth().heightIn(min = 42.dp).clip(shape).background(if (active) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent).clickable(onClick = onClick).padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
         if (icon != null) Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(20.dp), tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
         if (tile != null) WorldsTile(tile, 22.dp)
-        Text(label, modifier = Modifier.clearAndSetSemantics { contentDescription = label }, style = MaterialTheme.typography.bodyMedium, color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(label, modifier = Modifier.weight(1f).clearAndSetSemantics { contentDescription = spoken }, style = MaterialTheme.typography.bodyMedium, color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Box(Modifier.clearAndSetSemantics { }) { NavBadge(badge) }
     }
 }
 
@@ -433,12 +447,12 @@ private val TOOLBAR_HEIGHT = 48.dp
                 }
             } else item { ResourceGroup(spaces, state.selected?.resource?.id, actions.open); Spacer(Modifier.height(22.dp)) }
             item {
-                val entries = planningEntries(LocalAppearancePreferences.current.studyPackEnabled)
+                val entries = planningEntries(LocalAppearancePreferences.current.studyPackEnabled, state.dueToday, state.inboxCount)
                 Column(Modifier.padding(bottom = 22.dp)) {
                     WorldsSectionTitle(stringResource(R.string.section_planning), Modifier.padding(bottom = 10.dp))
                     WorldsCard(Modifier.fillMaxWidth()) {
                         entries.forEachIndexed { index, entry ->
-                            ToolRow(entry.tile, stringResource(entry.label)) { actions.planning(entry.section) }
+                            ToolRow(entry.tile, stringResource(entry.label), entry.badge) { actions.planning(entry.section) }
                             if (index < entries.lastIndex) HorizontalDivider(Modifier.padding(start = 65.dp), color = MaterialTheme.colorScheme.outlineVariant)
                         }
                     }
@@ -447,20 +461,22 @@ private val TOOLBAR_HEIGHT = 48.dp
             item {
                 WorldsSectionTitle(stringResource(R.string.workspace_tools), Modifier.padding(bottom = 10.dp))
                 WorldsCard(Modifier.fillMaxWidth()) {
-                    if (actions.account != null) { ToolRow(R.drawable.pi_profile, stringResource(R.string.shared_workspaces), actions.account); HorizontalDivider(Modifier.padding(start = 65.dp), color = MaterialTheme.colorScheme.outlineVariant) }
-                    ToolRow(R.drawable.pi_templates, stringResource(R.string.templates_title), actions.templates)
+                    if (actions.account != null) { ToolRow(R.drawable.pi_profile, stringResource(R.string.shared_workspaces), onClick = actions.account); HorizontalDivider(Modifier.padding(start = 65.dp), color = MaterialTheme.colorScheme.outlineVariant) }
+                    ToolRow(R.drawable.pi_templates, stringResource(R.string.templates_title), onClick = actions.templates)
                     HorizontalDivider(Modifier.padding(start = 65.dp), color = MaterialTheme.colorScheme.outlineVariant)
-                    ToolRow(R.drawable.pi_automations, stringResource(R.string.automations), actions.automations)
+                    ToolRow(R.drawable.pi_automations, stringResource(R.string.automations), onClick = actions.automations)
                 }
             }
         }
     }
 }
 
-@Composable private fun ToolRow(tile: Int, label: String, onClick: () -> Unit) {
+@Composable private fun ToolRow(tile: Int, label: String, badge: Int = 0, onClick: () -> Unit) {
+    val spoken = if (badge > 0) "$label, $badge" else label
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
         WorldsTile(tile, 38.dp)
-        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+        Text(label, modifier = Modifier.weight(1f).semantics { contentDescription = spoken }, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+        Box(Modifier.clearAndSetSemantics { }) { NavBadge(badge) }
         Icon(painterResource(R.drawable.ic_chevron_right), contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

@@ -21,12 +21,13 @@ import worlds.android.WorldsActionLabel
 import worlds.android.WorldsGlyph
 import java.time.format.DateTimeFormatter
 
-/** The planning sections the app opens as pushed screens. */
-internal enum class PlanningSection { Tasks, Calendar, Study }
+/** The planning sections the app opens as pushed screens, in the desktop sidebar's order. */
+internal enum class PlanningSection { Tasks, Calendar, Inbox, Study }
 
 /**
- * Tasks, Calendar and Study over one ContentStore connection. Lesson notes are
- * pages, so they open in the page editor through [onOpenPage].
+ * Tasks (with Goals), Calendar, Inbox and Study over one ContentStore
+ * connection. Lesson notes and captures turned into pages are pages, so they
+ * open in the page editor through [onOpenPage].
  */
 @Composable internal fun PlanningScreen(section: PlanningSection, databaseName: String, studyEnabled: Boolean, onBack: () -> Unit, onOpenPage: (String) -> Unit) {
     val context = LocalContext.current
@@ -38,25 +39,38 @@ internal enum class PlanningSection { Tasks, Calendar, Study }
     when (section) {
         PlanningSection.Tasks -> TasksScreen(repo, studyEnabled, onBack)
         PlanningSection.Calendar -> CalendarScreen(repo, studyEnabled, onBack)
+        PlanningSection.Inbox -> InboxScreen(repo, studyEnabled, onBack, onOpenPage)
         PlanningSection.Study -> StudyScreen(repo, studyEnabled, onBack, onOpenPage)
     }
 }
 
 /* ------------------------------------------------------------------ tasks */
 
+/** The lists in Tasks, with Goals after All as on the desktop. */
+private enum class TasksTab(val list: TaskList?) {
+    Today(TaskList.Today), Upcoming(TaskList.Upcoming), All(TaskList.All), Goals(null), Someday(TaskList.Someday), Done(TaskList.Done)
+}
+
 @Composable private fun TasksScreen(repo: PlanningRepository, studyOn: Boolean, onBack: () -> Unit) {
-    var list by rememberSaveable { mutableStateOf(TaskList.Today) }
+    var tab by rememberSaveable { mutableStateOf(TasksTab.Today) }
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
+    var editingGoal by rememberSaveable { mutableStateOf<String?>(null) }
     val now = PlanDates.today()
     val rows = repo.rows
+    val list = tab.list ?: TaskList.Today
     val todayCount = remember(rows, now) { tasksFor(rows, TaskList.Today, now).size }
     val groups = remember(rows, list, now) { taskGroups(rows, list, now) }
+    val goals = remember(rows) { goalsFor(rows) }
     val byId = remember(rows) { rows.associateBy { it.id } }
     PlanScaffold(R.drawable.pi_checklist, stringResource(R.string.plan_tasks),
         if (todayCount > 0) stringResource(R.string.plan_tasks_today_count, todayCount) else stringResource(R.string.plan_tasks_clear), onBack) {
         item(key = "lists") {
-            PlanPills(listOf(TaskList.Today to stringResource(R.string.plan_today), TaskList.Upcoming to stringResource(R.string.plan_upcoming), TaskList.All to stringResource(R.string.plan_all),
-                TaskList.Someday to stringResource(R.string.plan_someday), TaskList.Done to stringResource(R.string.plan_done)), list) { list = it }
+            PlanPills(listOf(TasksTab.Today to stringResource(R.string.plan_today), TasksTab.Upcoming to stringResource(R.string.plan_upcoming), TasksTab.All to stringResource(R.string.plan_all),
+                TasksTab.Goals to stringResource(R.string.plan_goals), TasksTab.Someday to stringResource(R.string.plan_someday), TasksTab.Done to stringResource(R.string.plan_done)), tab) { tab = it }
+        }
+        if (tab == TasksTab.Goals) {
+            goalItems(repo, goals, now) { editingGoal = it }
+            return@PlanScaffold
         }
         if (list != TaskList.Done) item(key = "add-$list") {
             QuickAddField(stringResource(if (list == TaskList.Someday) R.string.plan_add_someday_hint else R.string.plan_add_task_hint), now) { p ->
@@ -97,6 +111,8 @@ internal enum class PlanningSection { Tasks, Calendar, Study }
     }
     val target = editing?.let { id -> repo.rows.firstOrNull { it.id == id } }
     if (target != null) TaskEditor(target, now, repo) { editing = null }
+    val goal = editingGoal?.let { id -> repo.rows.firstOrNull { it.id == id && it.kind == "goal" } }
+    if (goal != null) GoalEditor(goal, rows, now, repo) { editingGoal = null }
 }
 
 @Composable private fun TaskRow(row: PlanRow, byId: Map<String, PlanRow>, now: String, studyOn: Boolean, showParent: Boolean, divider: Boolean, repo: PlanningRepository, onOpen: () -> Unit) {
@@ -117,29 +133,46 @@ internal enum class PlanningSection { Tasks, Calendar, Study }
 /** How far the agenda looks ahead, as on the desktop. */
 private const val AGENDA_DAYS = 35
 
+/** Week grid or agenda, as the desktop's Calendar switch. */
+private enum class CalendarMode { Week, Agenda }
+
 @Composable private fun CalendarScreen(repo: PlanningRepository, studyOn: Boolean, onBack: () -> Unit) {
     val now = PlanDates.today()
+    var mode by rememberSaveable { mutableStateOf(CalendarMode.Agenda) }
     var anchor by rememberSaveable { mutableStateOf(now) }
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
     var creatingOn by rememberSaveable { mutableStateOf<String?>(null) }
+    // "date|HH:MM" when an empty hour on the week grid was tapped.
+    var creatingAt by rememberSaveable { mutableStateOf<String?>(null) }
     val rows = repo.rows
-    val to = PlanDates.addDays(anchor, AGENDA_DAYS - 1)
-    val occ = remember(rows, anchor, studyOn) { occurrences(rows, anchor, to, studyOn, includeDone = true) }
+    val week = mode == CalendarMode.Week
+    val from = if (week) PlanDates.startOfWeek(anchor) else anchor
+    val to = if (week) PlanDates.addDays(from, 6) else PlanDates.addDays(anchor, AGENDA_DAYS - 1)
+    val step = if (week) 7 else AGENDA_DAYS
+    val occ = remember(rows, anchor, studyOn, week) { if (week) emptyList() else occurrences(rows, anchor, to, studyOn, includeDone = true) }
+    val days = remember(rows, from, studyOn, week) { if (week) weekLayout(rows, from, studyOn) else emptyList() }
     val todayOpen = remember(rows, now, studyOn) { occurrences(rows, now, now, studyOn).size }
     val byDay = remember(occ) { occ.groupBy { it.date } }
     PlanScaffold(R.drawable.pi_calendar, stringResource(R.string.plan_calendar),
         if (todayOpen > 0) stringResource(R.string.plan_calendar_today_count, todayOpen) else stringResource(R.string.plan_calendar_nothing_today), onBack,
-        trailing = { Button(onClick = { creatingOn = anchor }) { WorldsActionLabel(R.drawable.ic_plus, stringResource(R.string.plan_event)) } }) {
-        item(key = "range") { RangeBar(anchor, to, onPrevious = { anchor = PlanDates.addDays(anchor, -AGENDA_DAYS) }, onToday = { anchor = now }, onNext = { anchor = PlanDates.addDays(anchor, AGENDA_DAYS) }) }
+        trailing = { Button(onClick = { creatingOn = if (week && (now < from || now > to)) from else if (week) now else anchor }) { WorldsActionLabel(R.drawable.ic_plus, stringResource(R.string.plan_event)) } }) {
+        item(key = "mode") { PlanPills(listOf(CalendarMode.Week to stringResource(R.string.plan_week), CalendarMode.Agenda to stringResource(R.string.plan_agenda)), mode) { mode = it } }
+        item(key = "range") { RangeBar(from, to, onPrevious = { anchor = PlanDates.addDays(anchor, -step) }, onToday = { anchor = now }, onNext = { anchor = PlanDates.addDays(anchor, step) }) }
         item(key = "add-event") {
             QuickAddField(stringResource(R.string.plan_add_event_hint), now) { p ->
-                val date = p.due ?: anchor
+                val date = p.due ?: if (week && (anchor < from || anchor > to)) from else anchor
                 val start = p.time
                 repo.create("event", p.title, null, mapOf("date" to date, "start" to start, "end" to start?.let(::hourAfter), "allDay" to (start == null)))
-                if (date < anchor || date > to) anchor = date
+                if (date < from || date > to) anchor = date
             }
         }
         planStatus(repo)
+        if (week) {
+            if (!repo.loading && !repo.loadFailed) item(key = "week-$from") {
+                WeekGrid(days, now, onOpen = { editing = it }, onCreate = { day, hour -> creatingAt = "$day|${slotTimes(hour).first}" })
+            }
+            return@PlanScaffold
+        }
         if (!repo.loading && !repo.loadFailed && occ.isEmpty()) item(key = "empty") {
             PlanEmpty(R.drawable.pi_calendar, stringResource(R.string.plan_empty_calendar), stringResource(if (studyOn) R.string.plan_empty_calendar_study_body else R.string.plan_empty_calendar_body))
         }
@@ -163,6 +196,11 @@ private const val AGENDA_DAYS = 35
         else -> {}
     }
     creatingOn?.let { day -> EventEditor(null, day, now, repo) { creatingOn = null } }
+    creatingAt?.let { slot ->
+        val day = slot.substringBefore("|")
+        val (start, end) = slotTimes((minutesOf(slot.substringAfter("|")) ?: 540) / 60)
+        EventEditor(null, day, now, repo, initialStart = start, initialEnd = end) { creatingAt = null }
+    }
 }
 
 @Composable private fun RangeBar(from: String, to: String, onPrevious: () -> Unit, onToday: () -> Unit, onNext: () -> Unit) {

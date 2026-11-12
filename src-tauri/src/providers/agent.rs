@@ -118,7 +118,9 @@ pub const CHAT_ONLY_NOTE: &str = "This model cannot use Worlds tools, so it can 
 
 /// The server rejected the request because the model has no tool support.
 pub fn no_tool_support(status: u16, body: &str) -> bool {
-    if !(400..=500).contains(&status) {
+    // Sign-in and rate limit errors are never a model refusing tools: falling back to
+    // chat only would hide a bad key or a limit behind a working-looking reply.
+    if !(400..=500).contains(&status) || matches!(status, 401 | 403 | 429) {
         return false;
     }
     let b = body.to_lowercase();
