@@ -54,8 +54,23 @@ export function loadDictionary(dict: Record<string, string>): void {
 let loading: Promise<void> | null = null;
 let dictionaryReady = false;
 function ensureDictionary(): Promise<void> {
-  loading ??= import("./ar.json").then((m) => loadDictionary(m.default as Record<string, string>));
+  loading ??= import("./ar.json").then((m) => {
+    loadDictionary(m.default as Record<string, string>);
+    dictionaryReady = true;
+  });
   return loading;
+}
+
+/** The language of the last session, so the next start knows it before the workspace loads. */
+const LAST_LANGUAGE = "worlds.uiLanguage";
+
+// When the last session, or on a first start the system, was Arabic, fetch the
+// dictionary while the workspace loads; the first screen is then drawn in
+// Arabic instead of English laid out right to left.
+try {
+  if (typeof window !== "undefined" && (window.localStorage.getItem(LAST_LANGUAGE) ?? resolveUiLanguage(null)) === "ar") void ensureDictionary();
+} catch {
+  // Storage can be blocked; the dictionary then loads when Arabic is applied.
 }
 
 /** Arabic for one piece of interface text, or null when there is none. */
@@ -357,7 +372,6 @@ function start() {
   if (observer || typeof document === "undefined") return;
   if (!dictionaryReady) {
     void ensureDictionary().then(() => {
-      dictionaryReady = true;
       if (current === "ar") start();
     });
     return;
@@ -407,6 +421,11 @@ export function applyUiLanguage(language: UiLanguage): void {
   setArabicDates(language === "ar");
   root.lang = language;
   root.dir = language === "ar" ? "rtl" : "ltr";
+  try {
+    window.localStorage.setItem(LAST_LANGUAGE, language);
+  } catch {
+    // Not remembered; the next start loads the dictionary a moment later.
+  }
   if (language === current) {
     if (language === "ar") start();
     return;
