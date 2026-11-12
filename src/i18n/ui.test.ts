@@ -28,7 +28,7 @@ describe("Arabic interface dictionary", () => {
   it("drops English plural endings and still matches the singular", () => {
     loadDictionary({ "§{0} page{1}": "{0} صفحة{1}" });
     expect(translate("3 pages")).toBe("3 صفحات");
-    expect(translate("1 page")).toBe("1 صفحة");
+    expect(translate("1 page")).toBe("صفحة واحدة");
     expect(translate("pages")).toBeNull();
     // A count pattern must not swallow a whole sentence.
     expect(translate("Plan my week from my pages")).toBeNull();
@@ -49,7 +49,7 @@ describe("Arabic interface dictionary", () => {
 
   it("translates counts and labels added for the exhibition with the real dictionary", () => {
     loadDictionary(dictionary as Record<string, string>);
-    expect(translate("1 step")).toBe("1 خطوة");
+    expect(translate("1 step")).toBe("خطوة واحدة");
     expect(translate("3 steps")).toBe("3 خطوات");
     expect(translate("10 pts")).toBe("10 نقاط");
     expect(translate("Exam Tomorrow")).toBe("الاختبار غدًا");
@@ -62,7 +62,7 @@ describe("Arabic interface dictionary", () => {
   it("keeps plural slots to plural endings or a punctuated aside", () => {
     loadDictionary(dictionary as Record<string, string>);
     expect(translate("3 subpages")).toBe("3 صفحات فرعية");
-    expect(translate("1 subpage")).toBe("1 صفحة فرعية");
+    expect(translate("1 subpage")).toBe("صفحة فرعية واحدة");
     // Before, "{0} subpage{1}" took the rest of this sentence as its plural ending.
     expect(translate("No subpages yet. Pages you create here stay organized under “Weekly plan”.")).toBe(
       "لا توجد صفحات فرعية بعد. الصفحات التي تنشئها هنا تبقى منظمة تحت «Weekly plan».",
@@ -74,14 +74,21 @@ describe("Arabic interface dictionary", () => {
   it("makes the noun after a count agree with it, as Arabic does", () => {
     loadDictionary(dictionary as Record<string, string>);
     expect(translate("3 pages")).toBe("3 صفحات");
-    expect(translate("1 page")).toBe("1 صفحة");
+    expect(translate("1 page")).toBe("صفحة واحدة");
     expect(translate("12 pages")).toBe("12 صفحة");
     expect(translate("3 classes today")).toBe("3 حصص اليوم");
     expect(translate("Replaced 4 matches")).toBe("استُبدلت 4 نتائج");
     expect(translate("4 subpages")).toBe("4 صفحات فرعية");
     expect(translate("10 pts")).toBe("10 نقاط");
-    expect(translate("1 task for today")).toBe("1 مهمة لليوم");
+    expect(translate("1 task for today")).toBe("مهمة واحدة لليوم");
     expect(translate("3 tasks for today")).toBe("3 مهام لليوم");
+    expect(translate("2 tasks for today")).toBe("مهمتان لليوم");
+    expect(translate("2 subpages")).toBe("صفحتان فرعيتان");
+    expect(translate("1 item left today")).toBe("المتبقي اليوم: عنصر واحد");
+    expect(translate("expires in 2 days")).toBe("تنتهي بعد يومين");
+    expect(translate("2 changes will sync when you are back online")).toBe("ستتم مزامنة تغييرين عند عودة الاتصال");
+    expect(translate("Sending 2 changes")).toBe("جارٍ إرسال تغييرين");
+    expect(translate("2 items left today")).toBe("المتبقي اليوم: عنصران");
     expect(countedNoun(4000, "أحرف")).toBe("حرف");
     expect(countedNoun(103, "صفحة")).toBe("صفحات");
     expect(countedNoun(5, "كتاب")).toBe("كتاب");

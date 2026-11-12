@@ -77,9 +77,28 @@ export function translate(text: string, depth = 0): string | null {
       })
       .replace(/\s{2,}/g, " ")
       .trim()
-      .replace(COUNT, (_, n: string, noun: string) => `${n} ${countedNoun(Number(n.replace(/,/g, "")), noun)}`);
+      .replace(COUNT, (_, n: string, noun: string, at: number, whole: string) => counted(Number(n.replace(/,/g, "")), n, noun, whole.slice(0, at)));
   }
   return null;
+}
+
+/** Words after which a count is in the genitive, so a dual ends in ين. */
+const GENITIVE = /(?:^|\s)(?:من|بعد|قبل|في|إلى|على|عن|حتى|خلال|لمدة|آخر|كل|نحو|إرسال|مزامنة)\s*$/;
+
+/**
+ * A count and its noun in Arabic. One of a thing is "صفحة واحدة", two is the dual on its own
+ * ("صفحتان", or "صفحتين" after a preposition); other counts keep the number.
+ */
+function counted(n: number, digits: string, noun: string, before: string): string {
+  const pair = COUNTED.find((p) => p.includes(noun));
+  if (!pair || (n !== 1 && n !== 2)) return `${digits} ${countedNoun(n, noun)}`;
+  // One of a thing is the noun and واحد, which agrees with it.
+  if (n === 1) return `${pair[0]} ${pair[0].split(" ")[0].endsWith("ة") ? "واحدة" : "واحد"}`;
+  const end = GENITIVE.test(before) ? "ين" : "ان";
+  return pair[0]
+    .split(" ")
+    .map((w) => (w.endsWith("ة") ? w.slice(0, -1) + "ت" : w) + end)
+    .join(" ");
 }
 
 /** Nouns that follow a count in the dictionary, as singular and plural. */

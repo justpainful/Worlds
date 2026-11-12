@@ -28,6 +28,8 @@ export function CalendarView() {
   const from = mode === "week" ? startOfWeek(anchor, weekStart) : anchor;
   const to = mode === "week" ? addDays(from, 6) : addDays(anchor, 34);
   const occ = useMemo(() => occurrences(pages, from, to, { includeDone: true }), [pages, from, to]);
+  // Counted on its own so the line stays right while another week is shown.
+  const left = useMemo(() => occurrences(pages, now, now).filter((o) => !o.done).length, [pages, now]);
   const days = useMemo(() => Array.from({ length: mode === "week" ? 7 : 35 }, (_, i) => addDays(from, i)), [from, mode]);
   const byDay = useMemo(() => {
     const m = new Map<string, Occurrence[]>();
@@ -54,7 +56,7 @@ export function CalendarView() {
       <header className="pl-head">
         <div>
           <h1 className="pl-title">{title}</h1>
-          <p className="pl-sub">{occ.filter((o) => o.date === now && !o.done).length || "Nothing"} today</p>
+          <p className="pl-sub">{left ? `${left} item${left === 1 ? "" : "s"} left today` : "Nothing left today"}</p>
           {/* In Arabic the Hijri months of the shown days follow, as Saudi calendars print them. */}
           {uiLanguage() === "ar" && (
             <p className="pl-sub pl-hijri" translate="no">
