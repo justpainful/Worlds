@@ -20,6 +20,7 @@ import { PerfOverlay } from "./perf/PerfOverlay";
 import { startDrawingSyncManager } from "./drawing/syncManager";
 import { openQuickCapture } from "./planning/InboxView";
 import { shortcutKey } from "./lib/keys";
+import { watchSampleLanguage } from "./demo/sampleActions";
 
 export function App() {
   const ready = useStore((s) => s.ready);
@@ -47,7 +48,7 @@ export function App() {
   useEffect(() => {
     if (!ready) return;
     startDrawingSyncManager();
-    const unsubs: Promise<() => void>[] = [];
+    const unsubs: Promise<() => void>[] = [Promise.resolve(watchSampleLanguage())];
     // Writes from the MCP tool server or the automation runner.
     unsubs.push(
       listen<{ pageId: string | null; kind: string; origin: string }[]>("worlds://changed", (e) => {

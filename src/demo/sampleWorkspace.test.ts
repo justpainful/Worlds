@@ -110,6 +110,8 @@ describe("sample workspace", () => {
   it("writes the whole sample in English when the interface is English", async () => {
     const en = fakeWorkspace({ language: "en" });
     await loadSampleWorkspace(en.backend, en.host, NOW);
+    // The record remembers the language, so a later switch can offer to rewrite it.
+    expect(sampleRecord(en.host.settings())?.language).toBe("en");
     for (const p of en.live()) expect(p.title).not.toMatch(/[؀-ۿ]/);
     const root = en.live().find((p) => p.parentId === null && p.kind === "page")!;
     expect(root.title).toBe("Sample student workspace");

@@ -33,6 +33,8 @@ export interface SampleRecord {
   /** The Study pack was off and the sample turned it on. */
   enabledStudy: boolean;
   createdAt: number;
+  /** The language the sample was written in; older records do not say. */
+  language?: SampleLanguage;
 }
 
 /** The store commands the sample needs (a subset of `api`). */
@@ -61,7 +63,7 @@ export interface SampleHost {
 export function sampleRecord(settings: Record<string, unknown>): SampleRecord | null {
   const v = settings[SAMPLE_KEY] as Partial<SampleRecord> | null | undefined;
   if (!v || typeof v !== "object" || typeof v.rootId !== "string" || !Array.isArray(v.ids)) return null;
-  return { version: v.version ?? SAMPLE_VERSION, rootId: v.rootId, ids: v.ids.filter((x): x is string => typeof x === "string"), enabledStudy: !!v.enabledStudy, createdAt: v.createdAt ?? 0 };
+  return { version: v.version ?? SAMPLE_VERSION, rootId: v.rootId, ids: v.ids.filter((x): x is string => typeof x === "string"), enabledStudy: !!v.enabledStudy, createdAt: v.createdAt ?? 0, ...(v.language === "ar" || v.language === "en" ? { language: v.language } : {}) };
 }
 
 /** The sample's resources that still exist outside the Trash. */
@@ -124,7 +126,7 @@ export function loadSampleWorkspace(backend: SampleBackend, host: SampleHost, no
     for (const entry of plan) if (entry.pin && backend.pinPage) await backend.pinPage(ids.get(entry.key)!).catch(() => {});
     const enabledStudy = !host.studyEnabled();
     if (enabledStudy) host.setStudyEnabled(true);
-    const record: SampleRecord = { version: SAMPLE_VERSION, rootId: ids.get("root")!, ids: [...ids.values()], enabledStudy, createdAt: now.getTime() };
+    const record: SampleRecord = { version: SAMPLE_VERSION, rootId: ids.get("root")!, ids: [...ids.values()], enabledStudy, createdAt: now.getTime(), language: lang };
     host.setSetting(SAMPLE_KEY, record);
     return { created: true, rootId: record.rootId };
   })().finally(() => {

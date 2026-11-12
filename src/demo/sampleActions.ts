@@ -4,7 +4,8 @@ import { useStore } from "../state/store";
 import { resolveUiLanguage } from "../i18n/ui";
 import { enabledPacks, PACKS_ASKED_KEY, setPackEnabled } from "../packs/packs";
 import { startTour, TOUR_SEEN_KEY } from "../shell/Tour";
-import { isSampleLoaded, loadSampleWorkspace, removeSampleWorkspace, type SampleBackend, type SampleHost } from "./sampleWorkspace";
+import { isSampleLoaded, loadSampleWorkspace, removeSampleWorkspace, sampleRecord, type SampleBackend, type SampleHost } from "./sampleWorkspace";
+import type { SampleLanguage } from "./content";
 
 const backend: SampleBackend = {
   createPage: api.createPage,
@@ -71,6 +72,47 @@ export function startWebDemo(): void {
   };
   const unsubscribe = useStore.subscribe(go);
   go();
+}
+
+/** The language the loaded sample is written in, when it is not the interface's. */
+export function sampleLanguageMismatch(): SampleLanguage | null {
+  const s = useStore.getState();
+  const rec = sampleRecord(s.settings);
+  if (!rec?.language || !isSampleLoaded(s.settings, s.pages)) return null;
+  return rec.language !== resolveUiLanguage(s.profile?.language) ? rec.language : null;
+}
+
+/** Write the sample again in the interface language; the old copy moves to Trash. */
+export async function rewriteSample(): Promise<void> {
+  const old = new Set(sampleRecord(useStore.getState().settings)?.ids ?? []);
+  try {
+    await useStore.getState().refreshPages();
+    await removeSampleWorkspace(backend, host);
+    await useStore.getState().refreshPages();
+  } catch (e) {
+    useStore.getState().toast({ message: errorMessage(e), tone: "error" });
+    return;
+  }
+  await loadSample();
+  // Tabs still showing the old copy would open pages that are now in Trash.
+  const s = useStore.getState();
+  for (const pane of s.layout.panes)
+    for (const tab of pane.tabs) if (tab.route.kind === "page" && old.has(tab.route.pageId)) useStore.getState().closeTab(pane.id, tab.id);
+}
+
+/**
+ * After the interface language changes, offer to rewrite a sample still in the
+ * other language, so a visitor who switches does not get a half translated screen.
+ */
+export function watchSampleLanguage(): () => void {
+  let last = resolveUiLanguage(useStore.getState().profile?.language);
+  return useStore.subscribe((s) => {
+    const now = resolveUiLanguage(s.profile?.language);
+    if (now === last) return;
+    last = now;
+    if (!sampleLanguageMismatch()) return;
+    s.toast({ message: "The sample workspace is still in the other language", tone: "info", action: { label: "Rewrite it", run: () => void rewriteSample() } });
+  });
 }
 
 /** Move the sample to Trash. */

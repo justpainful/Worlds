@@ -5,6 +5,7 @@ import { useStore } from "../state/store";
 import { glassEngine } from "../glass/engine";
 import { Tonal } from "../ui/tonal/Tonal";
 import { Icon } from "../ui/Icon";
+import { fitWindow } from "./windowFit";
 
 interface SavedWindow {
   x: number;
@@ -36,14 +37,17 @@ async function restoreGeometry() {
   const saved = useStore.getState().settings["window"] as SavedWindow | undefined;
   if (saved && saved.w > 400 && saved.h > 300) {
     const monitors = await availableMonitors();
-    const visible = monitors.some((m) => {
+    const home = monitors.find((m) => {
       const { x, y } = m.position;
       const { width, height } = m.size;
       return saved.x + 80 > x && saved.x < x + width - 80 && saved.y + 40 > y && saved.y < y + height - 40;
     });
-    if (visible) {
-      await win.setSize(new PhysicalSize(saved.w, saved.h));
-      await win.setPosition(new PhysicalPosition(saved.x, saved.y));
+    if (home) {
+      // A window saved on a bigger or less scaled screen still opens inside this one, above the taskbar.
+      const area = home.workArea ?? { position: home.position, size: home.size };
+      const { w, h, x, y } = fitWindow(saved, { x: area.position.x, y: area.position.y, w: area.size.width, h: area.size.height });
+      await win.setSize(new PhysicalSize(w, h));
+      await win.setPosition(new PhysicalPosition(x, y));
     }
     if (saved.maximized) await win.maximize();
   }
