@@ -383,8 +383,8 @@ export function DrawingExportDialog({
       {format === "worldsdraw" && Object.values(scene.nodes).some((n) => n.redaction) && (
         <p role="status">
           {t(
-            "Editable projects retain the original content beneath redactions. Share a flattened PNG, JPEG, WebP, BMP orSVG for a redacted copy.",
-            "يحتفظ المشروع القابل للتعديل بالمحتوى الأصلي تحت التنقيح. شارك PNG أوJPEG أوWebP أوBMP أوSVG مسطحًا للحصول على نسخة منقحة.",
+            "Editable projects retain the original content beneath redactions. Share a flattened PNG, JPEG, WebP, BMP or SVG for a redacted copy.",
+            "يحتفظ المشروع القابل للتعديل بالمحتوى الأصلي تحت التنقيح. شارك PNG أو JPEG أو WebP أو BMP أو SVG مسطحًا للحصول على نسخة منقحة.",
           )}
         </p>
       )}
