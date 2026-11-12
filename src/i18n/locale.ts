@@ -100,3 +100,11 @@ export function hijriSpan(from: Date, to: Date): string {
   const sameYear = format(from, { year: "numeric" }) === format(to, { year: "numeric" });
   return sameYear ? `${format(from, { month: "long" })} و${last}` : `${first} و${last}`;
 }
+
+/** Today's date for the Home header: "Thursday 12 November", and in Arabic the Hijri date after it. */
+export function dateLine(d: Date): string {
+  const gregorian = d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+  if (!arabic) return gregorian;
+  const hijri = new Intl.DateTimeFormat("ar-SA-u-ca-islamic-umalqura-nu-latn", { day: "numeric", month: "long", year: "numeric" }).format(d);
+  return `${gregorian} · ${hijri}`;
+}

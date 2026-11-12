@@ -22,6 +22,7 @@ import { ItemRow, QuickAdd } from "../planning/ui";
 import { StudyHomeSection } from "../study/StudyViews";
 import { loadSample } from "../demo/sampleActions";
 import { resolveUiLanguage } from "../i18n/ui";
+import { dateLine } from "../i18n/locale";
 
 type View = "grid" | "list";
 
@@ -122,7 +123,10 @@ export function HomeView() {
     <div className="home">
       <GlassBackdrop />
       <div className="home-top">
-        <h1 className="home-title">{greeting}</h1>
+        <div className="home-heading">
+          <h1 className="home-title">{greeting}</h1>
+          <p className="home-date" translate="no">{dateLine(new Date())}</p>
+        </div>
         <div className="home-controls" data-tonal-group>
           <Tonal
             as="button"
