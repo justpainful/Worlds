@@ -15,6 +15,9 @@ public enum NativeWriteError: Error, LocalizedError, Sendable {
     case conflict(String)
     case operationFailed(String)
     case galleryCommittedCleanupPending
+    /// A new top-level page would join the active Team workspace, which only
+    /// the desktop app can create and sync. Nothing was written.
+    case teamWorkspace
 
     public var errorDescription: String? {
         switch self {
@@ -22,6 +25,7 @@ public enum NativeWriteError: Error, LocalizedError, Sendable {
         case .responseUnavailable: return "The native store did not return a response."
         case .invalidResponse: return "The native store returned an invalid response."
         case .galleryCommittedCleanupPending: return "The gallery import was saved, but cleanup is pending."
+        case .teamWorkspace: return "New pages would join your active team workspace. Create it in Worlds on your computer, or choose a personal parent page."
         case .conflict(let message), .operationFailed(let message): return message
         }
     }
@@ -50,6 +54,7 @@ private struct Request: Encodable, Sendable {
     var deleting: [String]? = nil
     var recoveryID: String? = nil
     var streamURL: String? = nil
+    var deletedAt: Int64? = nil
     enum CodingKeys: String, CodingKey {
         case operation, path, page, base, title, parent, blocks, expected, metadata, deleting
         case expectedMetadata = "expected_metadata"
@@ -64,6 +69,7 @@ private struct Request: Encodable, Sendable {
         case operationID = "operation_id"
         case recoveryID = "recovery_id"
         case streamURL = "url"
+        case deletedAt = "deleted_at"
     }
 }
 private struct Response: Decodable {
@@ -81,8 +87,9 @@ private final class GalleryCancelToken: @unchecked Sendable {
     deinit { worlds_gallery_cancel_free(pointer) }
 }
 
-/// Experimental bridge. The calling app must not enable editing until its
-/// complete workflow, permissions, file access and platform tests are reviewed.
+/// RustStore bridge for personal pages. The app writes either the person's own
+/// workspace database, after `WorkspaceWritePreflight` accepted its location,
+/// or an independent local copy. Every call is one checked transaction.
 public actor NativePersonalStore {
     private let url: URL
     public init(url: URL) throws {
@@ -188,6 +195,11 @@ public actor NativePersonalStore {
     public func trashPage(id: String, base: Int64) async throws {
         _ = try await call(Request(operation: "trash_page", path: url.path, page: id, base: base))
     }
+    /// Restores a personal page from Trash with the original restore operation.
+    /// `base` and `deletedAt` are the values listed in Trash; a difference is a conflict.
+    public func restorePage(id: String, base: Int64, deletedAt: Int64) async throws -> JSONValue {
+        try await call(Request(operation: "restore_page_checked", path: url.path, page: id, base: base, deletedAt: deletedAt))
+    }
 
     private func call(_ request: Request, scopedSource: URL? = nil, galleryCancellation: GalleryCancelToken? = nil) async throws -> JSONValue {
         let url = self.url
@@ -229,6 +241,7 @@ public actor NativePersonalStore {
                     throw NativeWriteError.operationFailed("The gallery file could not be imported.")
                 }
                 if message.hasPrefix("conflict:") { throw NativeWriteError.conflict(message) }
+                if message.hasPrefix("team workspace:") { throw NativeWriteError.teamWorkspace }
                 throw NativeWriteError.operationFailed(message)
             }
             return response.value ?? .null

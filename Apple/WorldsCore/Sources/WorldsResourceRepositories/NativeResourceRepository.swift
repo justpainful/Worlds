@@ -18,7 +18,8 @@ public struct StreamRecord: Sendable {
 }
 
 /// Experimental adapter. RustStore is the sole persistence authority and
-/// rejects shared pages and unauthorized attachments. Not wired to the app.
+/// rejects shared pages and unauthorized attachments. The app builds one for
+/// its write target: the person's own workspace or an independent local copy.
 public actor NativeResourceRepository: ProjectRepository, GalleryRepository {
     private let store: NativePersonalStore
     public init(store: NativePersonalStore) { self.store = store }

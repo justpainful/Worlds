@@ -138,6 +138,31 @@ final class WorldsDatabaseTests: XCTestCase {
         XCTAssertEqual(Set(includingDeleted.pages.map(\.id)), Set(["personal", "trash"]))
     }
 
+    func testTrashedPagesListsPersonalTrashRootsWithDeletionTime() async throws {
+        let url = try fixture()
+        try execute(url, """
+        ALTER TABLE pages ADD COLUMN workspace_id TEXT;
+        INSERT INTO pages(id,title,deleted_at,created_at,updated_at) VALUES('root','Trashed root',50,1,2);
+        INSERT INTO pages(id,title,parent_id,deleted_at,created_at,updated_at) VALUES('child','Trashed with root','root',50,1,2);
+        INSERT INTO pages(id,title,parent_id,deleted_at,created_at,updated_at) VALUES('earlier','Trashed before root','root',40,1,2);
+        INSERT INTO pages(id,title,deleted_at,workspace_id,created_at,updated_at) VALUES('team','Team trash',60,'team',1,2);
+        INSERT INTO pages(id,title,metadata,deleted_at,created_at,updated_at) VALUES('flagged','Flagged trash','{"sync":{"shared":true}}',70,1,2);
+        PRAGMA user_version=5;
+        """)
+        let before = try Data(contentsOf: url)
+        let database = try WorldsDatabase(url: url)
+        let trashed = try await database.trashedPages()
+        // Newest first; the child trashed with its parent is restored with it.
+        XCTAssertEqual(trashed.map(\.id), ["root", "earlier"])
+        XCTAssertEqual(trashed.map(\.deletedAt), [50, 40])
+        XCTAssertEqual(trashed.first?.page.title, "Trashed root")
+        XCTAssertEqual(trashed.first?.page.updatedAt, 2)
+        // Live pages are unaffected and the file is not written.
+        let visible = try await database.snapshot()
+        XCTAssertEqual(visible.pages.map(\.id), ["fixture-page"])
+        XCTAssertEqual(try Data(contentsOf: url), before)
+    }
+
     func testSnapshotRetainsArchivedState() async throws {
         let url = try fixture()
         try execute(url, "UPDATE pages SET archived=1 WHERE id='fixture-page'")

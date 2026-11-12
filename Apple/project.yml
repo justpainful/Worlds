@@ -73,6 +73,8 @@ targets:
       - package: WorldsCore
         product: WorldsLocalImport
       - package: WorldsCore
+        product: WorldsWorkspaceAccess
+      - package: WorldsCore
         product: WorldsNativeWrites
       - package: WorldsCore
         product: WorldsLocalGalleryImport
@@ -172,6 +174,8 @@ targets:
         product: WorldsMediaViews
       - package: WorldsCore
         product: WorldsLocalImport
+      - package: WorldsCore
+        product: WorldsWorkspaceAccess
       - package: WorldsCore
         product: WorldsNativeWrites
       - package: WorldsCore

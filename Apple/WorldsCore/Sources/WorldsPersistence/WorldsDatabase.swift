@@ -66,6 +66,18 @@ public struct StoredPage: Sendable, Equatable, Identifiable {
     }
 }
 
+/// A personal page in the desktop's Trash and the deletion time a checked
+/// restore compares.
+public struct StoredTrashedPage: Sendable, Equatable, Identifiable {
+    public let page: StoredPage
+    public let deletedAt: Int64
+    public var id: String { page.id }
+    public init(page: StoredPage, deletedAt: Int64) {
+        self.page = page
+        self.deletedAt = deletedAt
+    }
+}
+
 /// Attachment metadata only. The caller must separately authorize and open
 /// the matching attachments directory, and must not treat this as an ACL lease.
 public struct StoredFileAttachment: Sendable, Equatable {
@@ -188,6 +200,52 @@ public actor WorldsDatabase {
             }
             try Self.exec(db, "COMMIT")
             return WorldsSnapshot(schemaVersion: version, pages: pages)
+        } catch {
+            try? Self.exec(db, "ROLLBACK")
+            throw error
+        }
+    }
+
+    /// Personal pages in the desktop's Trash (`deleted_at` set), one entry per
+    /// Trash operation: a page whose parent went to Trash at the same moment
+    /// comes back with that parent and is not listed separately. Blocks are
+    /// not read. A restore must still be checked by the writer.
+    public func trashedPages(limit: Int = 500) throws -> [StoredTrashedPage] {
+        let workspace = version >= 5 ? " AND p.workspace_id IS NULL" : ""
+        let sql = """
+        SELECT p.id, p.title, p.kind, p.parent_id, p.preview, p.updated_at, p.metadata, p.archived, p.sort_key, p.created_at, p.deleted_at
+        FROM pages p
+        WHERE p.deleted_at IS NOT NULL\(workspace) AND (\(Self.personalMetadata))
+          AND NOT EXISTS (SELECT 1 FROM pages pp WHERE pp.id = p.parent_id AND pp.deleted_at = p.deleted_at)
+        ORDER BY p.deleted_at DESC, p.sort_key
+        LIMIT ?1
+        """
+        try Self.exec(db, "BEGIN DEFERRED TRANSACTION")
+        do {
+            let statement = try Self.prepare(db, sql)
+            defer { sqlite3_finalize(statement) }
+            guard sqlite3_bind_int64(statement, 1, Int64(max(0, limit))) == SQLITE_OK else { throw Self.error(db) }
+            var pages: [StoredTrashedPage] = []
+            while true {
+                let status = sqlite3_step(statement)
+                if status == SQLITE_DONE { break }
+                guard status == SQLITE_ROW else { throw Self.error(db) }
+                guard sqlite3_column_type(statement, 10) == SQLITE_INTEGER else { throw WorldsDatabaseError.invalidData("page.deleted_at") }
+                let page = StoredPage(
+                    id: try Self.text(statement, 0, "page.id"), title: try Self.text(statement, 1, "page.title"),
+                    kind: try Self.text(statement, 2, "page.kind"),
+                    parentID: try Self.optionalText(statement, 3, "page.parent_id"),
+                    archived: sqlite3_column_int(statement, 7) != 0,
+                    sortKey: sqlite3_column_double(statement, 8),
+                    createdAt: sqlite3_column_int64(statement, 9),
+                    preview: try Self.text(statement, 4, "page.preview"),
+                    updatedAt: sqlite3_column_int64(statement, 5),
+                    metadataJSON: try Self.text(statement, 6, "page.metadata"),
+                    blocks: [])
+                pages.append(StoredTrashedPage(page: page, deletedAt: sqlite3_column_int64(statement, 10)))
+            }
+            try Self.exec(db, "COMMIT")
+            return pages
         } catch {
             try? Self.exec(db, "ROLLBACK")
             throw error
