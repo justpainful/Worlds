@@ -10,6 +10,8 @@ import {
   nameToCol,
   newSheet,
   shiftFormulaReferences,
+  shiftSheetStructure,
+  shiftSpan,
   type WorkbookData,
 } from "./engine";
 
@@ -125,5 +127,48 @@ describe("conditional formatting", () => {
   it("ignores errors and broken ranges", () => {
     expect(conditionalStyle([rule("notEmpty", "")], 1, 5, { ...txt("#DIV/0!"), error: "#DIV/0!" })).toBeNull();
     expect(conditionalStyle([{ ...rule("gt", "1"), range: "nope" }], 1, 5, num(5))).toBeNull();
+  });
+});
+
+describe("inserting and deleting rows and columns", () => {
+  it("shrinks a range that loses its edge instead of breaking it", () => {
+    expect(shiftSpan(1, 9, 9, -1)).toEqual([1, 8]);
+    expect(shiftSpan(1, 9, 1, -1)).toEqual([1, 8]);
+    expect(shiftSpan(4, 4, 4, -1)).toBeNull();
+    expect(shiftSpan(1, 9, 5, 1)).toEqual([1, 10]);
+    expect(shiftSpan(1, 9, 0, 1)).toEqual([2, 10]);
+  });
+
+  it("keeps formulas, other sheets and quoted text right when a row goes", () => {
+    const sh = newSheet("Grades");
+    sh.cells["B2"] = { v: "10" };
+    sh.cells["B10"] = { v: "5" };
+    sh.cells["C1"] = { v: "=SUM(B2:B10)" };
+    sh.cells["C2"] = { v: "=Other!B10+B10" };
+    sh.cells["C3"] = { v: "=CONCAT(\"B10\", LOG10(B2))" };
+    sh.cells["C4"] = { v: "=Grades!B10" };
+    const out = shiftSheetStructure(sh, "row", 9, -1);
+    expect(out.cells["C1"].v).toBe("=SUM(B2:B9)");
+    expect(out.cells["C2"].v).toBe("=Other!B10+#REF!");
+    expect(out.cells["C3"].v).toBe("=CONCAT(\"B10\", LOG10(B2))");
+    expect(out.cells["C4"].v).toBe("=#REF!");
+    expect(out.cells["B10"]).toBeUndefined();
+  });
+
+  it("moves widths, merges, highlights and frozen panes with the cells", () => {
+    const sh = newSheet("S");
+    sh.colWidths = { 0: 80, 2: 140 };
+    sh.merges = [{ r1: 0, c1: 2, r2: 0, c2: 3 }];
+    sh.conditionalRules = [{ id: "r", range: "C2:D20", op: "gt", value: "5", bg: "#000", color: "#fff" }];
+    sh.frozenCols = 2;
+    const ins = shiftSheetStructure(sh, "col", 1, 1);
+    expect(ins.colWidths).toEqual({ 0: 80, 3: 140 });
+    expect(ins.merges).toEqual([{ r1: 0, c1: 3, r2: 0, c2: 4 }]);
+    expect(ins.conditionalRules[0].range).toBe("D2:E20");
+    expect(ins.frozenCols).toBe(3);
+    const del = shiftSheetStructure(sh, "col", 3, -1);
+    expect(del.merges).toEqual([]);
+    expect(del.conditionalRules[0].range).toBe("C2:C20");
+    expect(del.frozenCols).toBe(2);
   });
 });

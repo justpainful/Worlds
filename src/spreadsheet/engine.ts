@@ -1594,36 +1594,98 @@ export function shiftSheetStructure(
   delta: 1 | -1,
 ): SheetData {
   const nextCells: Record<string, CellData> = {};
+  const span = (a: number, b: number) => shiftSpan(a, b, index, delta);
+  const at = (ref: ParsedCellRef) => (axis === "row" ? ref.r : ref.c);
+  const moved = (ref: ParsedCellRef, pos: number): ParsedCellRef => (axis === "row" ? { ...ref, r: pos } : { ...ref, c: pos });
+
   for (const [key, cell] of Object.entries(sheet.cells)) {
     const ref = parseCellRef(key);
     if (!ref) continue;
-    const pos = axis === "row" ? ref.r : ref.c;
-    if (delta === -1 && pos === index) continue; // deleted
-    const nr = axis === "row" && pos >= index ? ref.r + delta : ref.r;
-    const nc = axis === "col" && pos >= index ? ref.c + delta : ref.c;
-    if (nr < 0 || nc < 0) continue;
+    const s = span(at(ref), at(ref));
+    if (!s) continue; // deleted
+    const next = moved(ref, s[0]);
 
     let v = cell.v;
     if (v.startsWith("=")) {
-      v = v.replace(/(\$?)([A-Za-z]{1,3})(\$?)(\d{1,5})(?!\s*\()/g, (m) => {
-        const p = parseCellRef(m);
-        if (!p) return m;
-        const pPos = axis === "row" ? p.r : p.c;
-        if (delta === -1 && pPos === index) return "#REF!";
-        const sr = axis === "row" && pPos >= index ? p.r + delta : p.r;
-        const sc = axis === "col" && pPos >= index ? p.c + delta : p.c;
-        return formatCellRef({ ...p, r: Math.max(0, sr), c: Math.max(0, sc) });
+      v = v.replace(FORMULA_REF_RE, (m, quoted: string | undefined, prefix: string | undefined, a: string, b: string | undefined) => {
+        if (quoted) return m;
+        // A reference to another sheet does not move with this one.
+        if (prefix && prefix.slice(0, -1).replace(/^'|'$/g, "") !== sheet.name) return m;
+        const p = parseCellRef(a);
+        const q = b ? parseCellRef(b) : p;
+        if (!p || !q) return m;
+        const lo = Math.min(at(p), at(q));
+        const hi = Math.max(at(p), at(q));
+        const t = span(lo, hi);
+        if (!t) return "#REF!";
+        const first = formatCellRef(moved(at(p) <= at(q) ? p : q, t[0]));
+        if (!b) return (prefix ?? "") + first;
+        return `${prefix ?? ""}${first}:${formatCellRef(moved(at(p) <= at(q) ? q : p, t[1]))}`;
       });
     }
-    nextCells[cellKey(nr, nc)] = { ...cell, v };
+    nextCells[cellKey(next.r, next.c)] = { ...cell, v };
   }
+
+  const shiftKeys = <T,>(map: Record<number, T>) => {
+    const out: Record<number, T> = {};
+    for (const [k, v] of Object.entries(map ?? {})) {
+      const s = span(Number(k), Number(k));
+      if (s) out[s[0]] = v;
+    }
+    return out;
+  };
+
+  const merges = (sheet.merges ?? []).flatMap((mg) => {
+    const s = axis === "row" ? span(mg.r1, mg.r2) : span(mg.c1, mg.c2);
+    if (!s) return [];
+    const next = axis === "row" ? { ...mg, r1: s[0], r2: s[1] } : { ...mg, c1: s[0], c2: s[1] };
+    return next.r1 === next.r2 && next.c1 === next.c2 ? [] : [next];
+  });
+
+  const conditionalRules = (sheet.conditionalRules ?? []).flatMap((rule) => {
+    const [a, b = a] = rule.range.split(":");
+    const p = parseCellRef(a);
+    const q = parseCellRef(b);
+    if (!p || !q) return [rule];
+    const s = span(Math.min(at(p), at(q)), Math.max(at(p), at(q)));
+    if (!s) return [];
+    const lo = at(p) <= at(q) ? p : q;
+    const hi = lo === p ? q : p;
+    return [{ ...rule, range: `${formatCellRef(moved(lo, s[0]))}:${formatCellRef(moved(hi, s[1]))}` }];
+  });
+
+  const frozen = (n: number) => (index < n ? Math.max(0, n + delta) : n);
 
   return {
     ...sheet,
     rows: axis === "row" ? Math.max(10, sheet.rows + delta) : sheet.rows,
     cols: axis === "col" ? Math.max(5, sheet.cols + delta) : sheet.cols,
     cells: nextCells,
+    colWidths: axis === "col" ? shiftKeys(sheet.colWidths) : sheet.colWidths,
+    rowHeights: axis === "row" ? shiftKeys(sheet.rowHeights) : sheet.rowHeights,
+    frozenRows: axis === "row" ? frozen(sheet.frozenRows) : sheet.frozenRows,
+    frozenCols: axis === "col" ? frozen(sheet.frozenCols) : sheet.frozenCols,
+    merges,
+    conditionalRules,
+    ...(sheet.filter && axis === "col" ? { filter: { ...sheet.filter, colFilters: shiftKeys(sheet.filter.colFilters) } } : {}),
   };
+}
+
+/**
+ * A quoted string, or a cell reference or range with an optional sheet prefix.
+ * Function names such as LOG10( and names glued to letters are left alone.
+ */
+const FORMULA_REF_RE = /("(?:[^"]|"")*")|((?:'[^']+'|[A-Za-z0-9_؀-ۿ]+)!)?(?<![A-Za-z0-9_$.])(\$?[A-Za-z]{1,3}\$?\d{1,5})(?::(\$?[A-Za-z]{1,3}\$?\d{1,5}))?(?![A-Za-z0-9_(])/g;
+
+/**
+ * Where the span lo..hi lands after inserting (delta 1) or deleting (delta -1)
+ * the line at `index`, or null when every line of it was deleted. A range that
+ * loses its first or last line shrinks, as in Excel.
+ */
+export function shiftSpan(lo: number, hi: number, index: number, delta: 1 | -1): [number, number] | null {
+  if (delta === 1) return [lo >= index ? lo + 1 : lo, hi >= index ? hi + 1 : hi];
+  if (lo === index && hi === index) return null;
+  return [lo > index ? lo - 1 : lo, hi >= index ? hi - 1 : hi];
 }
 
 // ---------------------------------------------------------------------------
