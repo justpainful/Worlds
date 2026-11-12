@@ -60,6 +60,10 @@
       "webviewInstallMode": {
         "type": "offlineInstaller",
         "silent": true
+      },
+      "nsis": {
+        "languages": ["English", "Arabic"],
+        "displayLanguageSelector": false
       }
     }
   }
