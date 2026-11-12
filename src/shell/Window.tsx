@@ -6,6 +6,7 @@ import { glassEngine } from "../glass/engine";
 import { Tonal } from "../ui/tonal/Tonal";
 import { Icon } from "../ui/Icon";
 import { fitWindow } from "./windowFit";
+import { confirmDialog } from "../ui/Modal";
 
 interface SavedWindow {
   x: number;
@@ -137,6 +138,25 @@ export function WindowFrame({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Closing the window leaves Worlds running in the tray (automations keep their
+ * schedule). The first time, say so, and how to quit, instead of vanishing.
+ */
+async function closeWindow() {
+  const s = useStore.getState();
+  const background = (s.settings["app.runInBackground"] as boolean | undefined) ?? true;
+  if (background && !s.settings["app.closeExplained"]) {
+    s.setSetting("app.closeExplained", true);
+    const close = await confirmDialog({
+      title: "Worlds keeps running",
+      message: "Closing the window leaves Worlds in the tray next to the clock, so your automations still run on time. To quit, right-click its icon there and choose Quit. You can turn this off in Settings.",
+      confirm: "Close the window",
+    });
+    if (!close) return;
+  }
+  await getCurrentWindow().close();
+}
+
 export function WindowControls() {
   const maximized = useStore((s) => s.maximized);
   if (!isTauri) return null;
@@ -150,7 +170,7 @@ export function WindowControls() {
         <button className="win-btn" aria-label={maximized ? "Restore" : "Maximize"} onClick={() => win.toggleMaximize()}>
           <Icon name={maximized ? "unmaximize" : "maximize"} size={maximized ? 13 : 12} />
         </button>
-        <button className="win-btn win-close" aria-label="Close" onClick={() => win.close()}>
+        <button className="win-btn win-close" aria-label="Close" onClick={() => closeWindow()}>
           <Icon name="close" size={15} />
         </button>
       </div>
