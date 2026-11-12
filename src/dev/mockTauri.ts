@@ -11,6 +11,7 @@ import {mockHistoryCandidate} from "../drawing/undo";
 import { appendOperation, edit, newDrawing, sceneChanges } from "../drawing/operations";
 import { DEFAULT_BRUSH, newLayer, newNode } from "../drawing/model";
 import { newSlide, slideToBlock } from "../resources/deck/model";
+import { foldArabic } from "../i18n/locale";
 import type { DrawingDocument } from "../drawing/model";
 import type { LibraryPublication } from "../drawing/library";
 import { DEFAULT_EXPORT_RULES, canDrawingExport, type DrawingExportPolicy } from "../drawing/exportPolicy";
@@ -379,7 +380,11 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
       }
       return { added: 0, changed: 0, removed: 0, remapped: [], updatedAt: at };
     }
-    case "search": return Object.values(pages).filter((p: any) => p.title.includes(a.query)).map((p: any) => ({ pageId: p.id, title: p.title, icon: p.icon, kind: p.kind, snippet: p.preview, parentTitle: null, updatedAt: p.updatedAt }));
+    case "search": {
+      // Like the app's search: title and text, with Arabic spellings folded.
+      const q = foldArabic(String(a.query ?? "").toLowerCase().trim());
+      return Object.values(pages).filter((p: any) => !p.deletedAt && q && foldArabic(`${p.title} ${p.preview ?? ""}`.toLowerCase()).includes(q)).map((p: any) => ({ pageId: p.id, title: p.title, icon: p.icon, kind: p.kind, snippet: p.preview, parentTitle: null, updatedAt: p.updatedAt }));
+    }
     case "history_list": return [{ id: 1, pageId: p1, pageTitle: pages[p1].title, opId: null, actor: "user", kind: "edited", summary: "Edited · 3 changed", blockId: null, before: null, after: null, meta: {}, createdAt: now - 600_000 }];
     case "versions_list": return [];
     case "profile_get": return profile;
