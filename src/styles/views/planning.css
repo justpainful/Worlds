@@ -543,6 +543,15 @@
   white-space: nowrap;
 }
 
+/* In a narrow week column a title takes two lines rather than three letters and an ellipsis. */
+.cal-chip:not(.is-wide) .cal-chip-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .cal-agenda {
   display: flex;
   flex-direction: column;
