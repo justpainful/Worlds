@@ -137,7 +137,14 @@ export function Steps({ steps, onChange }: { steps: Step[]; onChange: (s: Step[]
   );
 }
 
-export const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6].map((i) => ({ i, short: new Date(2026, 10, 8 + i).toLocaleDateString(undefined, { weekday: "short" }) }));
+// Read when shown, not when the module loads: the Arabic date locale is set up after start, and a
+// list made at load time kept English names ("Thu, Sat") in an Arabic timetable.
+export const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6].map((i) => ({
+  i,
+  get short() {
+    return new Date(2026, 10, 8 + i).toLocaleDateString(undefined, { weekday: "short" });
+  },
+}));
 
 export function EventView({ id }: { id: string }) {
   const p = useStore((s) => s.pages[id]);

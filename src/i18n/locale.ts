@@ -43,3 +43,8 @@ export function setArabicDates(on: boolean): void {
   arabic = on;
   if (on) install();
 }
+
+/** Joins short items for display, with the Arabic comma while the interface is Arabic. */
+export function joinList(items: string[]): string {
+  return items.join(arabic ? "، " : ", ");
+}

@@ -1,6 +1,8 @@
 import type { Destination, RunStatus, Trigger } from "./types";
+import { joinList } from "../i18n/locale";
 
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+/** A short weekday name in the interface language (Sunday is 0). */
+const dayName = (d: number) => new Date(2026, 10, 8 + d).toLocaleDateString(undefined, { weekday: "short" });
 
 function time12(t: string): string {
   const [h, m] = t.split(":").map(Number);
@@ -19,7 +21,10 @@ export function describeTrigger(t: Trigger | undefined): string {
     case "weekly": {
       const days = [...t.days].sort();
       const label =
-        days.length === 7 ? "Every day" : days.join(",") === "1,2,3,4,5" ? "Weekdays" : days.join(",") === "0,6" ? "Weekends" : days.map((d) => DAYS[d]).join(", ");
+        days.length === 7
+          ? "Every day"
+          : { "1,2,3,4,5": "Weekdays", "0,6": "Weekends", "0,1,2,3,4": "Sunday to Thursday", "5,6": "Friday and Saturday" }[days.join(",")] ?? "";
+      if (!label) return `On ${joinList(days.map(dayName))} at ${time12(t.time)}`;
       return `${label} at ${time12(t.time)}`;
     }
     case "monthly":

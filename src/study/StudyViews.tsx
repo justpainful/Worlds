@@ -12,6 +12,7 @@ import { createItem, trashItem, updateData } from "../planning/actions";
 import { addDays, dataOf, detectLinkProvider, formatTime, inSubject, occurrences, openStudyWork, relDay, subjectOf, subjects, today, weekday, type DataKind, type SubjectBook, type SubjectLink } from "../planning/model";
 import { BlurInput, colorVar, DueLabel, Field, GroupHead, ItemRow, NumberInput, QuickAdd } from "../planning/ui";
 import { FocusTimerBar, WEEKDAYS } from "../planning/ItemViews";
+import { joinList } from "../i18n/locale";
 import { promptText } from "../editor/prompt";
 
 export const SUBJECT_COLORS = Object.keys(PROP_COLORS) as PropColor[];
@@ -185,7 +186,7 @@ export function SubjectView({ id }: { id: string }) {
               const e = dataOf(c, "event");
               return (
                 <button key={c.id} className="study-slot" onClick={() => openPage(c.id)}>
-                  <span className="study-slot-days">{(e.weekly ?? []).map((i) => WEEKDAYS[i].short).join(", ") || (e.date ? relDay(e.date) : "")}</span>
+                  <span className="study-slot-days">{joinList((e.weekly ?? []).map((i) => WEEKDAYS[i].short)) || (e.date ? relDay(e.date) : "")}</span>
                   <span className="study-slot-time">{formatTime(e.start)}{e.end ? ` – ${formatTime(e.end)}` : ""}</span>
                   {e.location && <span className="study-slot-room bidi">{e.location}</span>}
                 </button>
