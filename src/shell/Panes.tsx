@@ -25,8 +25,10 @@ export function Panes() {
     const total = el.getBoundingClientRect().width;
     const startX = e.clientX;
     const start = [...layout.widths];
+    // Panes run right to left in Arabic, so the first pane of a pair is the one on the right.
+    const sign = getComputedStyle(el).direction === "rtl" ? -1 : 1;
     const move = (ev: PointerEvent) => {
-      const dx = (ev.clientX - startX) / total;
+      const dx = (sign * (ev.clientX - startX)) / total;
       const min = 300 / total;
       let a = start[i] + dx;
       let b = start[i + 1] - dx;
@@ -264,9 +266,11 @@ function PaneToolbar({ pane, tab, showWindowControls, count }: { pane: Pane; tab
     e.stopPropagation();
     const items = [...(strip.current?.querySelectorAll<HTMLElement>("[data-tab]") ?? [])];
     let idx = items.length;
+    const rtl = !!strip.current && getComputedStyle(strip.current).direction === "rtl";
     for (let i = 0; i < items.length; i++) {
       const r = items[i].getBoundingClientRect();
-      if (e.clientX < r.left + r.width / 2) {
+      // Tabs read right to left in Arabic, so a tab's first half is its right half.
+      if (rtl ? e.clientX > r.left + r.width / 2 : e.clientX < r.left + r.width / 2) {
         idx = i;
         break;
       }

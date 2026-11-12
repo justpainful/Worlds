@@ -90,7 +90,9 @@ export function Sidebar() {
     e.preventDefault();
     const startX = e.clientX;
     const startW = sidebar.width;
-    const move = (ev: PointerEvent) => useStore.getState().setSidebarWidth(startW + ev.clientX - startX);
+    // In Arabic the sidebar sits on the right, so dragging its edge to the left widens it.
+    const sign = getComputedStyle(e.currentTarget).direction === "rtl" ? -1 : 1;
+    const move = (ev: PointerEvent) => useStore.getState().setSidebarWidth(startW + sign * (ev.clientX - startX));
     const up = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
