@@ -292,6 +292,14 @@ function doSingle(node: Text, prev: { en: string; ar: string; group?: boolean } 
   if (prev && node.data === prev.ar) return;
   if (!node.data.trim()) return;
   const key = node.data.replace(/\s+/g, " ").trim();
+  // A quote mark left on its own beside a title (Share “{title}”) follows the
+  // translated opening one, so Arabic reads «title» rather than «title”.
+  if (/^[“”][.,:;!?]?$/.test(key)) {
+    const out = node.data.replace(/“/g, "«").replace(/”/g, "»");
+    texts.set(node, { en: node.data, ar: out });
+    node.data = out;
+    return;
+  }
   // One word inside a longer sentence ("Find <b>pages</b> I haven't…") is not a label on its own.
   if (!key.includes(" ") && isFragment(node)) return;
   if (userTexts.has(key)) {
