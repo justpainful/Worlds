@@ -41,6 +41,8 @@ export interface SampleBackend {
   drawingLoad(pageId: string): Promise<DrawingDocument>;
   drawingApply(pageId: string, operation: DrawingOperation): Promise<DrawingDocument>;
   deletePage(id: string): Promise<void>;
+  /** Pin a page on Home; optional so older hosts still work. */
+  pinPage?(id: string): Promise<void>;
 }
 
 /** The app state the sample reads and writes. */
@@ -118,6 +120,8 @@ export function loadSampleWorkspace(backend: SampleBackend, host: SampleHost, no
       await trashTopLevel([...ids.values()], backend, (id) => parents.get(id));
       throw e;
     }
+    // Pin a few pages so Home opens on the sample instead of an empty Pinned row.
+    for (const entry of plan) if (entry.pin && backend.pinPage) await backend.pinPage(ids.get(entry.key)!).catch(() => {});
     const enabledStudy = !host.studyEnabled();
     if (enabledStudy) host.setStudyEnabled(true);
     const record: SampleRecord = { version: SAMPLE_VERSION, rootId: ids.get("root")!, ids: [...ids.values()], enabledStudy, createdAt: now.getTime() };

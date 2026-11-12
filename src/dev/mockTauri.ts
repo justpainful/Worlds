@@ -76,6 +76,13 @@ const pages: Record<string, any> = {};
 const blocks: Record<string, any[]> = {};
 const metadata: Record<string, any> = {};
 
+/** A card preview like the backend's: the page's text without its headings, 200 characters at most. */
+function previewOf(nodes: any[]): string {
+  const text = (n: any): string => (typeof n?.text === "string" ? n.text : (n?.content ?? []).map(text).join(n?.type === "paragraph" ? "" : " "));
+  const body = nodes.filter((n) => n?.type !== "heading").map(text).filter((t) => t.trim());
+  return (body.length ? body : nodes.map(text)).join(" · ").replace(/\s+/g, " ").trim().slice(0, 200);
+}
+
 function addPage(title: string, icon: string | null, lines: string[], extra: any = {}) {
   const pid = id();
   pages[pid] = {
@@ -321,6 +328,8 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
       const pid = addPage(a.page.title ?? "", a.page.icon ?? null, [], { kind: a.page.kind ?? "page", parentId: a.page.parentId ?? null });
       if (Array.isArray(a.page.blocks)) blocks[pid] = a.page.blocks.map((b: any) => ({ ...b, attrs: { ...(b.attrs ?? {}), bid: b.attrs?.bid ?? id() } }));
       else if (typeof a.page.markdown === "string") blocks[pid] = md(a.page.markdown.split("\n"));
+      // Like the backend, only pages and documents have a text preview.
+      if (["page", "document", "lesson"].includes(pages[pid].kind)) pages[pid].preview = previewOf(blocks[pid] ?? []);
       metadata[pid] = a.page.metadata ?? {};
       if (metadata[pid][pages[pid].kind] !== undefined) pages[pid].data = metadata[pid][pages[pid].kind];
       return pages[pid];
@@ -359,7 +368,10 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
       if (a.base != null && pages[a.pageId] && pages[a.pageId].updatedAt > a.base) throw "conflict: the page changed since it was loaded";
       const at = Math.max(Date.now(), (pages[a.pageId]?.updatedAt ?? 0) + 1);
       blocks[a.pageId] = a.blocks.map((b: any) => b.content);
-      if (pages[a.pageId]) pages[a.pageId].updatedAt = at;
+      if (pages[a.pageId]) {
+        pages[a.pageId].updatedAt = at;
+        pages[a.pageId].preview = previewOf(blocks[a.pageId]);
+      }
       return { added: 0, changed: 0, removed: 0, remapped: [], updatedAt: at };
     }
     case "search": return Object.values(pages).filter((p: any) => p.title.includes(a.query)).map((p: any) => ({ pageId: p.id, title: p.title, icon: p.icon, kind: p.kind, snippet: p.preview, parentTitle: null, updatedAt: p.updatedAt }));

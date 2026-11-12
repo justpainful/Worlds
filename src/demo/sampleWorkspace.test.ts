@@ -43,6 +43,9 @@ function fakeWorkspace(opts: { failOnKind?: string; language?: "ar" | "en" } = {
       };
       walk(id);
     },
+    async pinPage(id) {
+      pages[id] = { ...pages[id], pinned: true };
+    },
   };
   let study = false;
   const host: SampleHost = {
@@ -89,6 +92,8 @@ describe("sample workspace", () => {
     expect((exam.data as { date: string }).date).toBe("2026-11-20");
     expect(w.study()).toBe(true);
     expect(sampleRecord(w.settings)?.ids).toHaveLength(w.live().length);
+    // Home opens on the sample: the root, the weekly plan and the grades are pinned.
+    expect(w.live().filter((p) => p.pinned).map((p) => p.kind).sort()).toEqual(["page", "page", "spreadsheet"]);
   });
 
   it("writes formatted text and never the characters the repository rejects", () => {
@@ -118,6 +123,10 @@ describe("sample workspace", () => {
     }
     const arabic = samplePlan("2026-11-11", "ar").find((e) => e.key === "root")!;
     expect(plainText(arabic.blocks!)).not.toMatch(/[A-Za-z]{4}/);
+    // No mark is left half open by the split: no "*" or "==" stuck to a word.
+    for (const lang of ["ar", "en"] as const)
+      for (const entry of samplePlan("2026-11-11", lang))
+        if (entry.blocks) expect(plainText(entry.blocks), `${lang} ${entry.key}`).not.toMatch(/[A-Za-z؀-ۿ]\*|\*[A-Za-z؀-ۿ]|==/);
   });
 
   it("picks one side of an Arabic and English pair, line by line and inside formulas", () => {

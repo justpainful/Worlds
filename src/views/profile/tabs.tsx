@@ -8,7 +8,7 @@ import { EmptyState, PageIcon, relTime } from "../../ui/misc";
 import { type ProfileStats } from "../../profile/BlockView";
 import { useThumb } from "../../media/thumbs";
 import { hostOf, useClock, fmt } from "./shared";
-import { isResource } from "../../resources/kinds";
+import { emptyPreview, isResource } from "../../resources/kinds";
 
 // ---------------------------------------------------------------------------
 // Tabs
@@ -35,7 +35,7 @@ export function PagesTab() {
             {p.pinned && <Icon name="pin" size={12} />}
           </div>
           <span className="pf-page-title bidi">{pageTitle(p)}</span>
-          <span className="pf-page-preview bidi">{p.preview || "Empty page"}</span>
+          <span className="pf-page-preview bidi">{p.preview || emptyPreview(p.kind)}</span>
           <span className="pf-page-time">{relTime(p.updatedAt)}</span>
         </button>
       ))}

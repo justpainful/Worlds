@@ -29,6 +29,8 @@ export interface SampleEntry {
   parent?: string;
   blocks?: JSONContent[];
   metadata?: Record<string, unknown>;
+  /** Pinned on Home, so the first screen shows the sample at a glance. */
+  pin?: boolean;
 }
 
 const data = <K extends DataKind>(kind: K, value: DataByKind[K]) => ({ [kind]: value });
@@ -49,11 +51,12 @@ function bilingualPlan(today: string, lang: SampleLanguage): SampleEntry[] {
       kind: "page",
       title: "مساحة طالب تجريبية · Sample student workspace",
       icon: "🎓",
+      pin: true,
       blocks: rootBlocks(),
     },
-    { key: "plan", kind: "page", title: "خطة الأسبوع · Weekly plan", parent: "root", blocks: weeklyPlanBlocks() },
+    { key: "plan", kind: "page", title: "خطة الأسبوع · Weekly plan", parent: "root", blocks: weeklyPlanBlocks(), pin: true },
     { key: "report", kind: "document", title: "تقرير: الطاقة المتجددة · Report: Renewable energy", parent: "root", blocks: reportBlocks(), metadata: { doc: DOC_SETTINGS } },
-    { key: "grades", kind: "spreadsheet", title: "درجات الفصل · Term grades", parent: "root", metadata: { sheet: gradesWorkbook() } },
+    { key: "grades", kind: "spreadsheet", title: "درجات الفصل · Term grades", parent: "root", metadata: { sheet: gradesWorkbook() }, pin: true },
     { key: "cell", kind: "drawing", title: "رسم الخلية النباتية · Plant cell sketch", parent: "root" },
     { key: "deck", kind: "presentation", title: "دورة الماء · The water cycle", parent: "root", blocks: waterCycleSlides(lang), metadata: { deck: { aspect: "16:9", theme: "dark" } } },
 
@@ -245,7 +248,7 @@ function weeklyPlanBlocks(): JSONContent[] {
 function reportBlocks(): JSONContent[] {
   return [
     h(1, "الطاقة المتجددة في المملكة"),
-    p("*تقرير قصير لمادة مهارات الكتابة · A short report for the writing skills course*"),
+    p("*تقرير قصير لمادة مهارات الكتابة* · *A short report for the writing skills course*"),
     h(2, "مقدمة"),
     p("تزداد أهمية **الطاقة المتجددة** مع نمو الطلب على الكهرباء. يتناول هذا التقرير مصدرين رئيسيين هما ==الطاقة الشمسية== و==طاقة الرياح==، ويقارن بينهما من حيث التكلفة والاستمرارية."),
     h(2, "المصادر الرئيسية"),

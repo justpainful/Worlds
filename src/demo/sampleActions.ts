@@ -10,6 +10,9 @@ const backend: SampleBackend = {
   drawingLoad: api.drawingLoad,
   drawingApply: api.drawingApply,
   deletePage: api.deletePage,
+  pinPage: async (id) => {
+    await api.updatePage(id, { pinned: true });
+  },
 };
 
 const host: SampleHost = {

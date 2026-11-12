@@ -13,7 +13,7 @@ import { pageMenu } from "../shell/pageActions";
 import { LAYER } from "../glass/profiles";
 import { Tonal } from "../ui/tonal/Tonal";
 import { GlassBackdrop } from "../profile/GlassBackdrop";
-import { isResource } from "../resources/kinds";
+import { emptyPreview, isResource } from "../resources/kinds";
 import { newResourceMenu } from "../resources/create";
 import { PACKS_ASKED_KEY, setPackEnabled, usePack } from "../packs/packs";
 import { formatTime, occurrences, tasksFor, today } from "../planning/model";
@@ -399,7 +399,7 @@ export function PageCollection({ pages, view }: { pages: PageMeta[]; view: View 
             {p.pinned && <Icon name="pin" size={12} className="page-card-pin" />}
           </div>
           <div className="page-card-title bidi">{pageTitle(p)}</div>
-          <div className={`page-card-preview bidi ${p.preview ? "" : "is-empty"}`}>{p.preview || "Empty page"}</div>
+          <div className={`page-card-preview bidi ${p.preview ? "" : "is-empty"}`}>{p.preview || emptyPreview(p.kind)}</div>
           <div className="page-card-meta">
             {p.parentId && <span className="bidi">{pageTitle(all[p.parentId])}</span>}
             <span>{relTime(p.updatedAt)}</span>
