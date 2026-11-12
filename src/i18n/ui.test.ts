@@ -80,8 +80,8 @@ describe("Arabic interface dictionary", () => {
     expect(translate("Replaced 4 matches")).toBe("استُبدلت 4 نتائج");
     expect(translate("4 subpages")).toBe("4 صفحات فرعية");
     expect(translate("10 pts")).toBe("10 نقاط");
-    expect(translate("1 for today")).toBe("1 مهمة لليوم");
-    expect(translate("3 for today")).toBe("3 مهام لليوم");
+    expect(translate("1 task for today")).toBe("1 مهمة لليوم");
+    expect(translate("3 tasks for today")).toBe("3 مهام لليوم");
     expect(countedNoun(4000, "أحرف")).toBe("حرف");
     expect(countedNoun(103, "صفحة")).toBe("صفحات");
     expect(countedNoun(5, "كتاب")).toBe("كتاب");

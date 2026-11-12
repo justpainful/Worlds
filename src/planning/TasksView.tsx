@@ -48,7 +48,7 @@ export function TasksView({ list = "today" }: { list?: TaskListId }) {
       <header className="pl-head">
         <div>
           <h1 className="pl-title">Tasks & Goals</h1>
-          <p className="pl-sub">{counts.today ? `${counts.today} for today` : "All clear for today"}</p>
+          <p className="pl-sub">{counts.today ? `${counts.today} task${counts.today === 1 ? "" : "s"} for today` : "All clear for today"}</p>
         </div>
         <Segmented value={list} onChange={(v) => open({ kind: "tasks", list: v })} options={LISTS} label="List" size="standard" />
       </header>
