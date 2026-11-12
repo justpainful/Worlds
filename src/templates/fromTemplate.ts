@@ -11,10 +11,15 @@ export function pageFromTemplate(t: PageMeta, parentId: string | null = null): P
   return api.instantiate(t.id, parentId);
 }
 
-/** A template's name as cards and chips show it, without the date placeholder. */
+/** Built-in maps are named in both languages, English then Arabic after a long dash. */
+const BILINGUAL = /^([^\u0600-\u06FF]+?) \u2014 (.*[\u0600-\u06FF].*)$/;
+
+/** A template's name as cards and chips show it: no date placeholder, and one language. */
 export function templateName(t: PageMeta): string {
   const ar = uiLanguage() === "ar" ? arabicTemplate(t) : null;
-  return (ar?.title ?? t.title).replace("{{date}}", "").trim();
+  const name = (ar?.title ?? t.title).replace("{{date}}", "").trim();
+  const pair = BILINGUAL.exec(name);
+  return pair ? (uiLanguage() === "ar" ? pair[2] : pair[1]) : name;
 }
 
 /** A template's one line description, when it is a built-in one shown in Arabic. */

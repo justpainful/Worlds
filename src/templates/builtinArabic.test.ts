@@ -1,12 +1,11 @@
-import fs from "node:fs";
-import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { ARABIC_TEMPLATES, arabicTemplate, fillDate } from "./builtinArabic";
 
 describe("Arabic built-in templates", () => {
   it("covers every general template the backend seeds, by its exact title", () => {
-    const rust = fs.readFileSync(path.resolve(__dirname, "../../src-tauri/src/templates.rs"), "utf8");
-    const seeded = [...rust.matchAll(/title: "([^"—]+)",/g)].map((m) => m[1]);
+    const files = import.meta.glob("../../src-tauri/src/templates.rs", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+    const rust = Object.values(files)[0];
+    const seeded = [...rust.matchAll(/title: "([^"\u2014]+)",/g)].map((m) => m[1]);
     for (const t of ARABIC_TEMPLATES) expect(seeded).toContain(t.en);
   });
 
@@ -21,10 +20,10 @@ describe("Arabic built-in templates", () => {
     expect(fillDate("تحديث أسبوعي {{date}}", new Date(2026, 10, 12))).toBe("تحديث أسبوعي 2026-11-12");
   });
 
-  it("writes Arabic content with the same structure as the English", () => {
+  it("writes Arabic content without long dashes", () => {
     for (const t of ARABIC_TEMPLATES.filter((x) => x.markdown)) {
-      expect(t.markdown).toMatch(/[؀-ۿ]/);
-      expect(t.markdown).not.toMatch(/[–—]/);
+      expect(t.markdown).toMatch(/[\u0600-\u06FF]/);
+      expect(t.markdown).not.toMatch(/[\u2013\u2014]/);
     }
   });
 });
