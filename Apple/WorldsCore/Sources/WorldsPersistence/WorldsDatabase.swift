@@ -348,8 +348,22 @@ public actor WorldsDatabase {
         let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty, limit > 0 else { return [] }
         let data = try snapshot()
-        return Array(data.pages.filter { $0.title.localizedCaseInsensitiveContains(query) }
+        let needle = Self.searchFold(query)
+        return Array(data.pages.filter { Self.searchFold($0.title).contains(needle) }
             .sorted { $0.updatedAt > $1.updatedAt }.prefix(min(limit, 1000)))
+    }
+
+    /// Case, diacritics (Arabic harakat and the hamza on أ إ آ included), taa
+    /// marbuta, alef maqsura and tatweel folded, as the desktop search does,
+    /// so a search for صوره finds صورة.
+    public static func searchFold(_ text: String) -> String {
+        text.folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: nil)
+            .replacingOccurrences(of: "أ", with: "ا")
+            .replacingOccurrences(of: "إ", with: "ا")
+            .replacingOccurrences(of: "آ", with: "ا")
+            .replacingOccurrences(of: "ة", with: "ه")
+            .replacingOccurrences(of: "ى", with: "ي")
+            .replacingOccurrences(of: "\u{0640}", with: "")
     }
     /// Reads the original history table. Shared rows are filtered in SQL.
     public func personalHistory(pageID: String, limit: Int = 100) throws -> [StoredHistoryEntry] {

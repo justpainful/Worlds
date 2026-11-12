@@ -184,6 +184,10 @@ final class WorldsDatabaseTests: XCTestCase {
         let database = try WorldsDatabase(url: url)
         let search = try await database.searchPersonalTitles("fixture")
         XCTAssertEqual(search.map(\.id), ["fixture-page"])
+        // Arabic folds as on the desktop: alef forms, taa marbuta, harakat and tatweel.
+        XCTAssertEqual(WorldsDatabase.searchFold("إدراج صورةُ"), WorldsDatabase.searchFold("ادراج صوره"))
+        XCTAssertEqual(WorldsDatabase.searchFold("مستوى"), WorldsDatabase.searchFold("مستوي"))
+        XCTAssertEqual(WorldsDatabase.searchFold("Fixture"), "fixture")
         let history = try await database.personalHistory(pageID: "fixture-page")
         XCTAssertEqual(history.first?.kind, "renamed")
         let changed = try await database.pageChangedSince(id: "fixture-page", base: 1700000000000)
