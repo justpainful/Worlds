@@ -129,7 +129,7 @@ pub fn search(conn: &Connection, query: &str, limit: i64, include_templates: boo
 /// The spellings of a search term that Arabic readers treat as one word: any
 /// alef form (ا أ إ آ), and a final taa marbuta or alef maqsura typed as haa or
 /// yaa, or the other way round. Capped so a long term cannot blow up the query.
-pub(crate) fn arabic_spellings(term: &str) -> Vec<String> {
+pub fn arabic_spellings(term: &str) -> Vec<String> {
     const ALEFS: [char; 4] = ['ا', 'أ', 'إ', 'آ'];
     const LIMIT: usize = 32;
     let chars: Vec<char> = term.chars().collect();
