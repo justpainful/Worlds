@@ -35,8 +35,10 @@ export const useMenu = create<MenuState>((set) => ({
 /** Open a menu below an anchor element. */
 export function menuAt(el: HTMLElement, items: MenuItem[], align: "start" | "end" = "start", matchWidth = false) {
   const r = el.getBoundingClientRect();
-  // The menu grows out of the control that opened it.
-  useMenu.getState().show(align === "start" ? r.left : r.right, r.bottom + 6, items, align === "end" ? "top right" : "top left", matchWidth ? r.width : undefined, r);
+  // The menu grows out of the control that opened it. Start and end are the
+  // control's own sides: in a right to left layout its start is the right edge.
+  const atRight = (align === "end") !== (getComputedStyle(el).direction === "rtl");
+  useMenu.getState().show(atRight ? r.right : r.left, r.bottom + 6, items, atRight ? "top right" : "top left", matchWidth ? r.width : undefined, r);
 }
 
 export function MenuHost() {
@@ -58,7 +60,9 @@ function MenuPanel({ x, y, items, onClose, origin, minWidth, from: _from, depth 
     if (!el) return;
     const place = () => {
       const r = el.getBoundingClientRect();
-      let nx = origin === "top right" ? x - r.width : x;
+      // A menu at the pointer grows towards the reading side: leftwards in Arabic, as Windows draws it.
+      const fromRight = origin === "top right" || (origin === undefined && document.documentElement.dir === "rtl");
+      let nx = fromRight ? x - r.width : x;
       let ny = y;
       if (nx + r.width > window.innerWidth - 8) nx = window.innerWidth - r.width - 8;
       if (ny + r.height > window.innerHeight - 8) ny = Math.max(8, y - r.height - 4);
@@ -132,7 +136,9 @@ function MenuPanel({ x, y, items, onClose, origin, minWidth, from: _from, depth 
                   setActive(i);
                   if (it.submenu) {
                     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                    setSub({ index: i, x: r.right + 4, y: r.top - 6 });
+                    // A submenu opens on the side its arrow points to: the left in Arabic.
+                    const rtl = getComputedStyle(e.currentTarget as HTMLElement).direction === "rtl";
+                    setSub({ index: i, x: rtl ? r.left - 4 : r.right + 4, y: r.top - 6 });
                   } else setSub(null);
                 }}
                 onClick={() => {
