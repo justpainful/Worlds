@@ -135,7 +135,7 @@ export function GalleryView({ node, updateAttributes, editor, selected }: ReactN
             <Icon name="grid" size={13} />
             Layout
           </button>
-          <span className="gallery-count">{images.length} pictures</span>
+          <span className="gallery-count">{`${images.length} picture${images.length === 1 ? "" : "s"}`}</span>
         </div>
       )}
     </NodeViewWrapper>

@@ -268,7 +268,7 @@ export function Composer({
               {uploading > 0 && (
                 <span className="att-uploading">
                   <Spinner size={12} />
-                  Adding {uploading} file{uploading === 1 ? "" : "s"}
+                  {`Adding ${uploading} file${uploading === 1 ? "" : "s"}`}
                 </span>
               )}
               {page && (

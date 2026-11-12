@@ -91,6 +91,10 @@ describe("Arabic interface dictionary", () => {
     expect(translate("1 min read")).toBe("قراءة دقيقة واحدة");
     expect(translate("2 min read")).toBe("قراءة دقيقتين");
     expect(translate("5 characters")).toBe("5 أحرف");
+    expect(translate("Adding 2 files")).toBe("جارٍ إضافة ملفين");
+    expect(translate("3 changes")).toBe("3 تغييرات");
+    expect(translate("12 pictures")).toBe("12 صورة");
+    expect(translate("4 handed in")).toBe("المُسلَّمة: 4");
     expect(translate("1,204 words · 6 min read")).toBe("1,204 كلمات · قراءة 6 دقائق");
     expect(translate("2 items left today")).toBe("المتبقي اليوم: عنصران");
     expect(countedNoun(4000, "أحرف")).toBe("حرف");

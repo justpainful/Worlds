@@ -110,7 +110,7 @@ export function ProjectView({ id }: { id: string }) {
         <h2 className="proj-group-title">Tasks {openTasks.length > 0 && <span className="pl-count">{openTasks.length}</span>}</h2>
         <QuickAdd placeholder="Add a task in this project" onAdd={(q) => createItem("task", { title: q.title, parentId: id, data: { due: q.due, time: q.time, priority: q.priority } })} />
         {openTasks.length > 0 && <div className="pl-list">{openTasks.map((t) => <ItemRow key={t.id} p={t} showParent={false} />)}</div>}
-        {doneTasks.length > 0 && <details className="pl-done-fold"><summary>{doneTasks.length} completed</summary><div className="pl-list">{doneTasks.map((t) => <ItemRow key={t.id} p={t} showParent={false} />)}</div></details>}
+        {doneTasks.length > 0 && <details className="pl-done-fold"><summary>{`${doneTasks.length} completed`}</summary><div className="pl-list">{doneTasks.map((t) => <ItemRow key={t.id} p={t} showParent={false} />)}</div></details>}
       </section>
 
       {groups.length === 0 && linked.length === 0 ? (

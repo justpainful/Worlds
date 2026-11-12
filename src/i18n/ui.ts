@@ -83,7 +83,7 @@ export function translate(text: string, depth = 0): string | null {
 }
 
 /** Words after which a count is in the genitive, so a dual ends in ين. */
-const GENITIVE = /(?:^|\s)(?:من|بعد|قبل|في|إلى|على|عن|حتى|خلال|لمدة|آخر|كل|نحو|إرسال|مزامنة|قراءة)\s*$/;
+const GENITIVE = /(?:^|\s)(?:من|بعد|قبل|في|إلى|على|عن|حتى|خلال|لمدة|آخر|كل|نحو|إرسال|مزامنة|قراءة|إضافة)\s*$/;
 
 /**
  * A count and its noun in Arabic. One of a thing is "صفحة واحدة", two is the dual on its own
@@ -118,6 +118,7 @@ const COUNTED: [string, string][] = [
   ["شخص", "أشخاص"],
   ["عمود", "أعمدة"],
   ["ملف", "ملفات"],
+  ["صورة", "صور"],
   ["مهمة", "مهام"],
   ["رسالة", "رسائل"],
   ["ساعة", "ساعات"],

@@ -277,7 +277,7 @@ export function MessageView({
         <div className={`ai-result ${m.meta.undone ? "is-undone" : ""}`}>
           <span>
             {m.meta.undone ? "Undone · " : ""}
-            {changes} change{changes === 1 ? "" : "s"}
+            {`${changes} change${changes === 1 ? "" : "s"}`}
             {m.meta.pages?.length ? ` on ${m.meta.pages.map((p) => p.title || "Untitled").join(", ")}` : ""}
           </span>
           <span className="grow" />

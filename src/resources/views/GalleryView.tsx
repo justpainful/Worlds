@@ -149,7 +149,7 @@ export function GalleryView({ id }: { id: string }) {
     <div className="res-view res-gallery" ref={root}>
       <ResourceHeader
         meta={meta}
-        subtitle={<span>{items.length} item{items.length === 1 ? "" : "s"}</span>}
+        subtitle={<span>{`${items.length} item${items.length === 1 ? "" : "s"}`}</span>}
         actions={
           <>
             <Segmented value={view} onChange={setView} label="Layout" options={[{ value: "grid", label: "Grid" }, { value: "list", label: "List" }]} />
@@ -159,7 +159,7 @@ export function GalleryView({ id }: { id: string }) {
       />
       {adding > 0 && (
         <div className="gal-adding">
-          <Spinner size={13} /> Adding {adding} file{adding === 1 ? "" : "s"}
+          <Spinner size={13} /> {`Adding ${adding} file${adding === 1 ? "" : "s"}`}
         </div>
       )}
       {items.length === 0 ? (

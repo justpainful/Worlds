@@ -206,7 +206,7 @@ export function SubjectView({ id }: { id: string }) {
         <div className="pl-list">{openWork.map((a) => <ItemRow key={a.id} p={a} showParent={false} />)}</div>
         {doneWork.length > 0 && (
           <details className="pl-done-fold">
-            <summary>{doneWork.length} handed in</summary>
+            <summary>{`${doneWork.length} handed in`}</summary>
             <div className="pl-list">{doneWork.map((a) => <ItemRow key={a.id} p={a} showParent={false} />)}</div>
           </details>
         )}
