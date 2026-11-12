@@ -283,7 +283,7 @@ export function DrawingExportDialog({
             <option value="svg">{t("SVG (flattened image)", "SVG (صورة مسطّحة)")}</option>
             <option value="frames">{t("Selected frames as PNG archive", "الإطارات المحددة كأرشيف PNG")}</option>
             <option value="pair">{t("Clean and annotated PNG archive", "أرشيف PNG بنسخة نظيفة وأخرى مشروحة")}</option>
-            <option value="worldsdraw">{t("Editable Worlds project", "مشروع وورلدز قابل للتعديل")}</option>
+            <option value="worldsdraw">{t("Editable Worlds project", "مشروع Worlds قابل للتعديل")}</option>
           </select>
         </label>
         {format !== "worldsdraw" && (

@@ -10,7 +10,7 @@ function packageMessage(error: unknown, arabic: boolean, checking = false) {
   const message = errorMessage(error);
   if (message === "This is not a Worlds drawing project")
     return arabic
-      ? "الملف ليس مشروع رسم من وورلدز. اختر ملف worldsdraw صالحًا."
+      ? "الملف ليس مشروع رسم من Worlds. اختر ملف worldsdraw صالحًا."
       : "This is not a Worlds drawing project. Choose a valid worldsdraw file.";
   if (message === "Unsupported drawing package version" || message === "Unsupported portable history version")
     return arabic ? "إصدار ملف المشروع غير مدعوم في هذا التطبيق." : "This project format version is not supported by this app.";

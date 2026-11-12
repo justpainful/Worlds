@@ -3028,7 +3028,7 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
               lease?.finish([op]);
               if (session.snapshot().pending)
                 toast({
-                  message: t("The annotation is waiting to save. Keep Worlds open.", "الرسم بانتظار الحفظ. اترك وورلدز مفتوحًا."),
+                  message: t("The annotation is waiting to save. Keep Worlds open.", "الرسم بانتظار الحفظ. اترك Worlds مفتوحًا."),
                   tone: "error",
                 });
               setSelected([node.id]);
