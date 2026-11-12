@@ -126,6 +126,13 @@ function bilingualPlan(today: string, lang: SampleLanguage): SampleEntry[] {
       metadata: data("requirement", { due: d(2), action: "إحضار · Bring", ready: false }),
     },
     {
+      key: "bio-print",
+      kind: "requirement",
+      title: "ورقة عمل البناء الضوئي · Photosynthesis worksheet",
+      parent: "bio",
+      metadata: data("requirement", { due: d(1), action: "طباعة · Print", print: true, copies: 2, colorMode: "bw", doubleSided: true, ready: false }),
+    },
+    {
       key: "math",
       kind: "subject",
       title: "الرياضيات · Mathematics",
