@@ -403,7 +403,7 @@ function toNumber(v: ScalarValue, strict = false): number {
   if (typeof v === "number") return v;
   if (typeof v === "boolean") return v ? 1 : 0;
   if (v === null || v === "") return 0;
-  const cleaned = String(v).replace(/,/g, "").trim();
+  const cleaned = westernDigits(String(v)).replace(/,/g, "").trim();
   if (cleaned.endsWith("%")) {
     const n = Number(cleaned.slice(0, -1));
     if (!Number.isNaN(n)) return n / 100;
@@ -553,8 +553,14 @@ function tokenizeFormula(expr: string): Token[] {
       i++;
       continue;
     }
-    if (ch === "," || ch === ";") {
+    // The Arabic keyboard's comma and semicolon separate arguments too.
+    if (ch === "," || ch === ";" || ch === "،" || ch === "؛") {
       tokens.push({ type: "comma" });
+      i++;
+      continue;
+    }
+    if (ch === "٪") {
+      tokens.push({ type: "op", value: "%" });
       i++;
       continue;
     }
@@ -569,11 +575,11 @@ function tokenizeFormula(expr: string): Token[] {
       i++;
       continue;
     }
-    if (/\d/.test(ch) || (ch === "." && /\d/.test(expr[i + 1] ?? ""))) {
+    if (/[\d٠-٩۰-۹]/.test(ch) || (/[.٫]/.test(ch) && /[\d٠-٩۰-۹]/.test(expr[i + 1] ?? ""))) {
       let numStr = "";
-      while (i < expr.length && /[\d.eE+-]/.test(expr[i])) {
+      while (i < expr.length && /[\d٠-٩۰-۹.٫eE+-]/.test(expr[i])) {
         if ((expr[i] === "+" || expr[i] === "-") && !/[eE]/.test(numStr[numStr.length - 1] ?? "")) break;
-        numStr += expr[i++];
+        numStr += westernDigits(expr[i++]);
       }
       const n = Number(numStr);
       if (Number.isNaN(n)) throw new FormulaError("#VALUE!");
@@ -588,7 +594,9 @@ function tokenizeFormula(expr: string): Token[] {
         while (i < expr.length && expr[i] !== "'") ident += expr[i++];
         if (i < expr.length) ident += expr[i++];
       }
-      while (i < expr.length && /[A-Za-z0-9_$!.\u0600-\u06FF?]/.test(expr[i])) {
+      // Arabic letters and digits belong to names; the Arabic comma, semicolon,
+      // percent and decimal marks end them, as their Western twins do.
+      while (i < expr.length && /[A-Za-z0-9_$!.?\u0600-\u060B\u060D-\u061A\u061C-\u0669\u066D-\u06FF]/.test(expr[i])) {
         ident += expr[i++];
       }
       tokens.push({ type: "ident", value: ident });
@@ -1453,8 +1461,21 @@ function callFunction(name: string, args: EvalArg[], currentRow: number, current
   }
 }
 
+/**
+ * Arabic and Persian digits as Western ones, with the Arabic decimal point,
+ * thousands separator and percent sign, so "٩٥" and "٣٫٥٪" count as numbers.
+ */
+export function westernDigits(s: string): string {
+  return s
+    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x660))
+    .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x6f0))
+    .replace(/٫/g, ".")
+    .replace(/٬/g, ",")
+    .replace(/٪/g, "%");
+}
+
 export function parseRawScalar(raw: string): ScalarValue {
-  const trimmed = raw.trim();
+  const trimmed = westernDigits(raw.trim());
   if (trimmed === "") return null;
   if (trimmed.toUpperCase() === "TRUE") return true;
   if (trimmed.toUpperCase() === "FALSE") return false;

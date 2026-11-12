@@ -12,6 +12,7 @@ import {
   shiftFormulaReferences,
   shiftSheetStructure,
   shiftSpan,
+  westernDigits,
   type WorkbookData,
 } from "./engine";
 
@@ -170,5 +171,32 @@ describe("inserting and deleting rows and columns", () => {
     expect(del.merges).toEqual([]);
     expect(del.conditionalRules[0].range).toBe("C2:C20");
     expect(del.frozenCols).toBe(2);
+  });
+});
+
+describe("Arabic digits", () => {
+  it("counts cells and formulas typed with an Arabic keyboard as numbers", () => {
+    expect(westernDigits("٣٫٥٪")).toBe("3.5%");
+    const s = newSheet("درجات ٢");
+    s.cells["A1"] = { v: "٩٥" };
+    s.cells["A2"] = { v: "12.5" };
+    s.cells["A3"] = { v: "٣٫٥" };
+    s.cells["A4"] = { v: "=SUM(A1:A3)" };
+    s.cells["A5"] = { v: "=A1*٢" };
+    s.cells["A6"] = { v: "=SUM(A1،A2)" };
+    s.cells["A7"] = { v: "١٬٢٥٠" };
+    s.cells["A8"] = { v: "٥٠٪" };
+    s.cells["A9"] = { v: "=IF(A1>٩٠؛\"ممتاز\"؛\"جيد\")" };
+    const ev = evaluateWorkbook({ sheets: [s], activeSheetId: s.id })[s.id];
+    expect(ev["A1"].numeric).toBe(95);
+    expect(ev["A4"].value).toBe(111);
+    expect(ev["A5"].value).toBe(190);
+    expect(ev["A6"].value).toBe(107.5);
+    expect(ev["A7"].numeric).toBe(1250);
+    expect(ev["A8"].numeric).toBe(0.5);
+    expect(ev["A9"].value).toBe("ممتاز");
+    // Text that only looks Arabic stays text.
+    s.cells["B1"] = { v: "الوحدة ٣" };
+    expect(evaluateWorkbook({ sheets: [s], activeSheetId: s.id })[s.id]["B1"].value).toBe("الوحدة ٣");
   });
 });
