@@ -361,9 +361,11 @@ button:focus-visible, [role="button"]:focus-visible, [role="tab"]:focus-visible,
 .backlink-title, .backlink-excerpt, .ai-chat-row-title, .pal-item-title, .sg-title, .mm-label, .related-chip span,
 .tab-title, .list-row-title, .page-row-title, .tpl-card-title, .tpl-card-desc, .auto-card-name, .menu-text,
 .outline-item, .toc-item, .crumb-btn span, .sub-prop, .pb-item-title, .pb-item-sub {
-  text-align: left;
+  /* The chrome's own start edge: left, or right once the Arabic interface mirrors it. */
+  text-align: var(--chrome-start, left);
   unicode-bidi: plaintext;
 }
+:root[dir="rtl"] { --chrome-start: right; }
 
 .modal-body { overflow-x: hidden; }
 .pf-edit-media { flex-wrap: wrap; }

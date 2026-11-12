@@ -118,7 +118,8 @@ export function BridgeCard({ detailed }: { detailed?: boolean }) {
         <span className="integ-icon is-product"><ProductIcon name="discord" size={40} /></span>
         <div>
           <div className="integ-name">Discord via {BRIDGE.label}</div>
-          <div className="integ-sub"><bdi>{BRIDGE.host}</bdi> over {BRIDGE.network} · Components V2</div>
+          {/* One string so the Arabic interface can translate it as a sentence. */}
+          <div className="integ-sub bidi">{`${BRIDGE.host} over ${BRIDGE.network} · Components V2`}</div>
         </div>
         <span className="grow" />
         {checking ? <Spinner /> : <span className={`status-chip ${state === "connected" ? "status-succeeded" : state === "unknown" ? "" : "status-failed"}`}>{state === "connected" ? "Connected" : state === "module-missing" ? "Disconnected" : explain.title}</span>}
