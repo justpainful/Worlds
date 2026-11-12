@@ -149,6 +149,8 @@
 .panes { display: flex; width: 100%; height: 100%; }
 .pane {
   position: relative;
+  /* Views inside can adapt to the pane, which is narrower than the window when split. */
+  container: pane / inline-size;
   min-width: 0;
   flex-grow: 0;
   flex-shrink: 1;
