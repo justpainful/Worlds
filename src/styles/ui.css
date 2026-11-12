@@ -159,7 +159,7 @@ input[type="time"].field, input[type="datetime-local"].field, input[type="number
 .switch-knob {
   position: absolute;
   top: 2px;
-  left: 2px;
+  inset-inline-start: 2px;
   width: 20px;
   height: 20px;
   border-radius: 50%;

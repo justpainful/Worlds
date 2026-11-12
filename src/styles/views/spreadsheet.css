@@ -154,7 +154,7 @@
 .sheet-fn-popup {
   position: absolute;
   top: 32px;
-  left: 0;
+  inset-inline-start: 0;
   z-index: 40;
   width: 440px;
   max-width: 90vw;
@@ -175,7 +175,7 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   background: transparent;
   color: #f1f5f9;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 
@@ -215,7 +215,7 @@
   z-index: 5;
   height: 26px;
   background: #181c24;
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  border-inline-end: 1px solid rgba(255, 255, 255, 0.1);
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   color: #94a3b8;
   font-weight: 600;
@@ -225,7 +225,7 @@
 }
 
 .sheet-corner {
-  left: 0;
+  inset-inline-start: 0;
   z-index: 7;
   width: 44px;
   min-width: 44px;
@@ -252,13 +252,13 @@
 
 .sheet-row-hdr {
   position: sticky;
-  left: 0;
+  inset-inline-start: 0;
   z-index: 4;
   width: 44px;
   min-width: 44px;
   height: 26px;
   background: #181c24;
-  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  border-inline-end: 1px solid rgba(255, 255, 255, 0.12);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   color: #94a3b8;
   font-size: 11.5px;
@@ -270,7 +270,7 @@
   position: relative;
   height: 26px;
   padding: 0 7px;
-  border-right: 1px solid rgba(255, 255, 255, 0.07);
+  border-inline-end: 1px solid rgba(255, 255, 255, 0.07);
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   overflow: hidden;
   text-overflow: ellipsis;

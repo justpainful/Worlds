@@ -291,7 +291,7 @@ button.pf-link:hover { color: var(--text-1); text-decoration: underline; text-un
 }
 .pf-add-block:hover { background: rgba(255, 255, 255, 0.04); color: var(--text-1); }
 
-.pf-inspector { position: fixed !important; z-index: 2300; right: 24px; top: 84px; bottom: 24px; width: 372px; }
+.pf-inspector { position: fixed !important; z-index: 2300; inset-inline-end: 24px; top: 84px; bottom: 24px; width: 372px; }
 .pf-inspector > .g-content { display: flex; flex-direction: column; height: 100%; }
 .pbi { display: flex; flex-direction: column; height: 100%; min-height: 0; }
 .pbi-head { display: flex; align-items: center; gap: 10px; padding: 14px 12px 8px 18px; }
@@ -370,7 +370,7 @@ button.pf-link:hover { color: var(--text-1); text-decoration: underline; text-un
 .pf-edit-media { display: flex; gap: 8px; }
 
 /* While a block is being edited, the column makes room for the inspector. */
-.pf:has(.pf-inspector) .pf-column { max-width: none; margin: 0; padding-right: 420px; }
+.pf:has(.pf-inspector) .pf-column { max-width: none; margin: 0; padding-inline-end: 420px; }
 .pf.is-customizing .pf-compact { display: none; }
 .pf.is-customizing .pf-blocks-head { position: sticky; top: 66px; z-index: 5; padding: 6px 0; }
 

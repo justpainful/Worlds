@@ -241,7 +241,7 @@ input[type="range"] { height: 4px; }
 /* ---- Switch (macOS proportions) ------------------------------------------- */
 .switch { width: 38px; height: 22px; background: rgba(255, 255, 255, 0.16); box-shadow: inset 0 0.5px 1px rgba(0, 0, 0, 0.25); }
 .switch.is-on { background: var(--accent); }
-.switch-knob { top: 2px; left: 2px; width: 18px; height: 18px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(0, 0, 0, 0.08); }
+.switch-knob { top: 2px; inset-inline-start: 2px; width: 18px; height: 18px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(0, 0, 0, 0.08); }
 .switch.is-on .switch-knob { transform: translateX(16px); }
 .switch:focus-visible { box-shadow: var(--focus-ring); }
 
