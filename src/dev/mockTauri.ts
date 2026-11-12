@@ -331,7 +331,8 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
     }
     case "drawing_embed_insert": { (blocks[a.targetId] ??= []).push({ type: "drawingEmbed", attrs: { bid: id(), pageId: a.pageId, frameId: a.frameId, camera: a.camera, versionId: a.versionId } }); return; }
     case "page_create": {
-      const pid = addPage(a.page.title ?? "", a.page.icon ?? null, [], { kind: a.page.kind ?? "page", parentId: a.page.parentId ?? null });
+      const t = Date.now();
+      const pid = addPage(a.page.title ?? "", a.page.icon ?? null, [], { kind: a.page.kind ?? "page", parentId: a.page.parentId ?? null, createdAt: t, updatedAt: t, openedAt: t });
       if (Array.isArray(a.page.blocks)) blocks[pid] = a.page.blocks.map((b: any) => ({ ...b, attrs: { ...(b.attrs ?? {}), bid: b.attrs?.bid ?? id() } }));
       else if (typeof a.page.markdown === "string") blocks[pid] = md(a.page.markdown.split("\n"));
       // Like the backend, only pages and documents have a text preview.
