@@ -36,6 +36,8 @@ export function CalendarView() {
   }, [occ]);
 
   const step = mode === "week" ? 7 : 35;
+  // The weekend is Friday and Saturday in Saudi Arabia, Saturday and Sunday elsewhere.
+  const weekend = uiLanguage() === "ar" ? [5, 6] : [6, 0];
   const title = (() => {
     const a = parseISODate(from), b = parseISODate(to);
     const sameMonth = a.getMonth() === b.getMonth();
@@ -82,7 +84,7 @@ export function CalendarView() {
       {mode === "week" ? (
         <div className="cal-week">
           {days.map((day) => (
-            <div key={day} className={`cal-day ${day === now ? "is-today" : ""} ${day < now ? "is-past" : ""}`}>
+            <div key={day} className={`cal-day ${day === now ? "is-today" : ""} ${day < now ? "is-past" : ""} ${weekend.includes(parseISODate(day).getDay()) ? "is-weekend" : ""}`}>
               <div className="cal-day-head">
                 <span className="cal-dow">{parseISODate(day).toLocaleDateString(undefined, { weekday: "short" })}</span>
                 <span className="cal-num">{parseISODate(day).getDate()}</span>
