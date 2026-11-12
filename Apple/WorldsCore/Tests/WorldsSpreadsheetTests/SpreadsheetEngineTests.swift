@@ -54,6 +54,17 @@ final class SpreadsheetEngineTests: XCTestCase {
         XCTAssertTrue(mismatches.isEmpty, mismatches.sorted().joined(separator: "\n"))
     }
 
+    func testNumbersTypedWithAnArabicKeyboardCount() {
+        XCTAssertEqual(SpreadsheetEngine.westernDigits("٣٫٥٪"), "3.5%")
+        let cells = evaluate([
+            "A1": "٩٥", "A2": "12.5", "A3": "٣٫٥", "A4": "=SUM(A1:A3)", "A5": "=A1*٢", "A6": "=SUM(A1،A2)",
+            "A7": "١٬٢٥٠", "A8": "٥٠٪", "A9": "=IF(A1>٩٠؛\"ممتاز\"؛\"جيد\")", "B1": "الوحدة ٣",
+        ])
+        // The desktop engine shows exactly these.
+        let expected = ["A1": "95", "A3": "3.5", "A4": "111", "A5": "190", "A6": "107.5", "A7": "1,250", "A8": "0.5", "A9": "ممتاز", "B1": "الوحدة ٣"]
+        for (key, display) in expected { XCTAssertEqual(cells[key]?.display, display, key) }
+    }
+
     // Ported from src/spreadsheet/engine.test.ts.
 
     func testConvertsColumnIndicesAndNames() {

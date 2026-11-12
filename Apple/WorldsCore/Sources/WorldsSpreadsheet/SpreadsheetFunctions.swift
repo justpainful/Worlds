@@ -64,7 +64,7 @@ enum Formula {
         case nil:
             text = "undefined"
         }
-        let cleaned = JSNumbers.trim(withoutCommas(text))
+        let cleaned = JSNumbers.trim(withoutCommas(SpreadsheetEngine.westernDigits(text)))
         if cleaned.utf16.last == 37 {
             let number = JSNumbers.number(String(decoding: cleaned.utf16.dropLast(), as: UTF16.self))
             if !number.isNaN { return number / 100 }
