@@ -486,6 +486,7 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
     }
     case "attachment_get": return null;
     case "drawing_sync_pending_pages": return [];
+    case "tray_language": return null;
     default:
       console.warn("[mock] unhandled", cmd, a);
       return null;

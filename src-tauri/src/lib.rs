@@ -71,6 +71,21 @@ fn tray_in_arabic() -> bool {
     }
 }
 
+/// The tray menu's two items, in Arabic or English.
+fn tray_menu(app: &tauri::AppHandle, arabic: bool) -> tauri::Result<Menu<tauri::Wry>> {
+    let open = MenuItem::with_id(app, "open", if arabic { "فتح Worlds" } else { "Open Worlds" }, true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", if arabic { "إنهاء" } else { "Quit" }, true, None::<&str>)?;
+    Menu::with_items(app, &[&open, &quit])
+}
+
+/// The interface language changed: the tray menu follows without a restart.
+#[tauri::command]
+fn tray_language(app: tauri::AppHandle, arabic: bool) -> Result<(), String> {
+    let Some(tray) = app.tray_by_id("main") else { return Ok(()) };
+    let menu = tray_menu(&app, arabic).map_err(|e| e.to_string())?;
+    tray.set_menu(Some(menu)).map_err(|e| e.to_string())
+}
+
 #[cfg(windows)]
 fn system_is_arabic() -> bool {
     // The primary language id of LANG_ARABIC is 0x01.
@@ -158,10 +173,7 @@ pub fn run() {
 
             // Tray: the process stays alive (and keeps running automations)
             // when the window is closed.
-            let arabic = tray_in_arabic();
-            let open = MenuItem::with_id(app, "open", if arabic { "فتح Worlds" } else { "Open Worlds" }, true, None::<&str>)?;
-            let quit = MenuItem::with_id(app, "quit", if arabic { "إنهاء" } else { "Quit" }, true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&open, &quit])?;
+            let menu = tray_menu(&handle, tray_in_arabic())?;
             TrayIconBuilder::with_id("main")
                 .icon(app.default_window_icon().cloned().unwrap())
                 .tooltip("Worlds")
@@ -207,6 +219,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            tray_language,
             screen_drawing::capture_screen_for_drawing,
             screen_drawing::end_screen_drawing,
             commands::bootstrap,

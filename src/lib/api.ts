@@ -89,6 +89,8 @@ export const api = {
   backupRestore: (file: string) => invoke<void>("backup_restore", { file }),
   backupCancelRestore: () => invoke<void>("backup_cancel_restore"),
   launchInfo: () => invoke<{ hidden: boolean }>("launch_info"),
+  /** Say the tray menu in the interface language. */
+  trayLanguage: (arabic: boolean) => invoke<void>("tray_language", { arabic }),
   pages: () => invoke<PageMeta[]>("pages_list"),
   page: (id: string, touch = false) => invoke<Page | null>("page_get", { id, touch }),
   createPage: (page: NewPage) => invoke<PageMeta>("page_create", { page }),
