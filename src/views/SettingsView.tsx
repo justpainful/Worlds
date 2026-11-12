@@ -18,7 +18,7 @@ import { BridgeCard } from "./IntegrationsView";
 import { Select, DIRECTION_OPTIONS, LANGUAGE_OPTIONS } from "../ui/Select";
 import { AccountSettings } from "../account/AccountSettings";
 import { PACKS, setPackEnabled, usePack } from "../packs/packs";
-import { loadSample, removeSample, useSampleLoaded } from "../demo/sampleActions";
+import { loadSample, removeSample, rewriteSample, sampleLanguageMismatch, useSampleLoaded } from "../demo/sampleActions";
 
 const SECTIONS: { id: string; label: string; ar?: string; tile: string; group: number; keywords: string }[] = [
   { id: "account", label: "Account", tile: "team", group: 0, keywords: "sign in passkey email devices workspaces team members sign out server" },
@@ -516,6 +516,10 @@ function StorageSettings() {
 
 function SampleWorkspaceSettings() {
   const loaded = useSampleLoaded();
+  // Read again whenever the language or the sample record changes.
+  useStore((s) => s.profile?.language);
+  useStore((s) => s.settings);
+  const otherLanguage = loaded && sampleLanguageMismatch() !== null;
   const [busy, setBusy] = useState(false);
   const run = (task: () => Promise<unknown>) => {
     setBusy(true);
@@ -536,7 +540,13 @@ function SampleWorkspaceSettings() {
         <Row label="Sample workspace" hint="Loaded. Remove it when you are done looking around.">
           <Button variant="plain" icon="delete" loading={busy} onClick={() => run(remove)}>Remove</Button>
         </Row>
-      ) : (
+      ) : null}
+      {otherLanguage ? (
+        <Row label="Sample language" hint="The sample is still in the other language. Rewriting it moves the old copy to Trash.">
+          <Button variant="plain" icon="refresh" loading={busy} onClick={() => run(rewriteSample)}>Rewrite</Button>
+        </Row>
+      ) : null}
+      {loaded ? null : (
         <Row label="Sample workspace" hint="Pages, a document, a spreadsheet, a drawing, slides, two subjects with lessons and an exam, tasks and events.">
           <Button variant="plain" icon="folderOpen" loading={busy} onClick={() => run(loadSample)}>Load</Button>
         </Row>
