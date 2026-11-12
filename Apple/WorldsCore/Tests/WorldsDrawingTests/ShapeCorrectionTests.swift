@@ -120,15 +120,18 @@ final class ShapeCorrectionTests: XCTestCase {
         XCTAssertTrue(ShapeCorrection.isEligible(.brush))
         XCTAssertFalse(ShapeCorrection.isEligible(.highlighter))
         XCTAssertFalse(ShapeCorrection.isEligible(.eraser))
-        let square = (0...10).map { ToolPoint(x: 20 + Double($0) * 8, y: 20) } + (1...10).map { ToolPoint(x: 100, y: 20 + Double($0) * 8) }
-            + (1...10).map { ToolPoint(x: 100 - Double($0) * 8, y: 100) } + (1...10).map { ToolPoint(x: 20, y: 100 - Double($0) * 8) }
+        let top: [ToolPoint] = (0...10).map { (i: Int) -> ToolPoint in ToolPoint(x: 20 + Double(i) * 8, y: 20) }
+        let right: [ToolPoint] = (1...10).map { (i: Int) -> ToolPoint in ToolPoint(x: 100, y: 20 + Double(i) * 8) }
+        let bottom: [ToolPoint] = (1...10).map { (i: Int) -> ToolPoint in ToolPoint(x: 100 - Double(i) * 8, y: 100) }
+        let left: [ToolPoint] = (1...10).map { (i: Int) -> ToolPoint in ToolPoint(x: 20, y: 100 - Double(i) * 8) }
+        let square: [ToolPoint] = top + right + bottom + left
         let strokeSamples = samples(square)
         let recognized = try XCTUnwrap(ShapeCorrection.recognize(strokeSamples))
         XCTAssertEqual(recognized.shape, "rect")
         let (_, stroke) = try strokeOperation(strokeSamples, brush: brush())
         let (_, eraser) = try strokeOperation(strokeSamples, brush: brush(), tool: .eraser)
         XCTAssertThrowsError(try ShapeCorrection.patchFields(stroke: eraser, recognized: recognized))
-        var shape = stroke; shape["kind"] = .string("shape")
+        var shape = stroke; shape["kind"] = JSONValue.string("shape")
         XCTAssertThrowsError(try ShapeCorrection.patchFields(stroke: shape, recognized: recognized))
         let arrow = RecognizedDrawingShape(shape: "arrow", x: 0, y: 0, width: 10, height: 10, points: [], confidence: 1)
         XCTAssertThrowsError(try ShapeCorrection.patchFields(stroke: stroke, recognized: arrow))
@@ -215,8 +218,11 @@ final class ShapeCorrectionTests: XCTestCase {
     }
 
     func testCorrectedRectangleIsPaintedOnItsEdge() throws {
-        let square = (0...15).map { ToolPoint(x: 100 + Double($0) * 8, y: 100) } + (1...10).map { ToolPoint(x: 220, y: 100 + Double($0) * 8) }
-            + (1...15).map { ToolPoint(x: 220 - Double($0) * 8, y: 180) } + (1...10).map { ToolPoint(x: 100, y: 180 - Double($0) * 8) }
+        let top: [ToolPoint] = (0...15).map { (i: Int) -> ToolPoint in ToolPoint(x: 100 + Double(i) * 8, y: 100) }
+        let right: [ToolPoint] = (1...10).map { (i: Int) -> ToolPoint in ToolPoint(x: 220, y: 100 + Double(i) * 8) }
+        let bottom: [ToolPoint] = (1...15).map { (i: Int) -> ToolPoint in ToolPoint(x: 220 - Double(i) * 8, y: 180) }
+        let left: [ToolPoint] = (1...10).map { (i: Int) -> ToolPoint in ToolPoint(x: 100, y: 180 - Double(i) * 8) }
+        let square: [ToolPoint] = top + right + bottom + left
         let strokeSamples = samples(square)
         let (strokeData, _) = try strokeOperation(strokeSamples, brush: brush(color: "#ff0000", size: 8))
         let recognized = try XCTUnwrap(ShapeCorrection.recognize(strokeSamples))
