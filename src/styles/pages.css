@@ -322,6 +322,10 @@
   body, .pane, .page-view { background: #fff !important; color: #111 !important; }
   .page-view * { color: #111 !important; }
   .pane-scroll { position: static !important; overflow: visible !important; }
+  /* Paper, not the window: no dark frame around the page, and table lines that show on white. */
+  .frame, .main { background: #fff !important; padding: 0 !important; }
+  .page-view th, .page-view td { border-color: #c8c8cc !important; }
+  .page-view th { background: #f2f2f4 !important; }
 }
 
 /* ==========================================================================

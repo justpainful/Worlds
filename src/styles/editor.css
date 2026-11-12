@@ -109,7 +109,9 @@
 .prose .tableWrapper { overflow-x: auto; }
 .prose th, .prose td { border: 0.5px solid var(--hairline-strong); padding: 8px 10px; vertical-align: top; min-width: 60px; position: relative; }
 .prose th { background: var(--fill-1); font-weight: 600; color: var(--text-1); }
-.prose td > p, .prose th > p { min-height: 1.4em; }
+/* A cell's paragraphs had the browser's 1em margins, so every row stood 72px tall. */
+.prose td > p, .prose th > p { min-height: 1.4em; margin: 0; }
+.prose td > p + p, .prose th > p + p { margin-top: 0.35em; }
 .prose .selectedCell::after { content: ""; position: absolute; inset: 0; background: rgba(var(--accent-rgb), 0.16); pointer-events: none; }
 
 /* Callouts */
