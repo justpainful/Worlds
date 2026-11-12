@@ -98,6 +98,8 @@ describe("Arabic interface dictionary", () => {
     expect(translate("About 1,500 words written")).toBe("كتبت نحو 1,500 كلمة");
     expect(translate("2 instructions")).toBe("تعليمتان");
     expect(translate("14 blocks")).toBe("14 كتلة");
+    expect(translate("2.5 pts")).toBe("2.5 نقطة");
+    expect(translate("18/20 pts")).toBe("18/20 نقطة");
     expect(translate("5 edits in the last 7 days")).toBe("5 تعديلات في آخر 7 أيام");
     expect(translate("Since October 2026")).toBe("منذ October 2026");
     expect(translate("Deleted قبل ساعتين")).toBe("حُذف قبل ساعتين");

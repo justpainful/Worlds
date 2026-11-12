@@ -144,7 +144,8 @@ const COUNTED: [string, string][] = [
   ["يوم", "أيام"],
 ];
 const COUNT = new RegExp(
-  `(\\d[\\d,]*) (${COUNTED.flat()
+  // Only a whole number: in 2.5 نقطة the 5 is not a count of its own.
+  `(?<![\\d.,])(\\d[\\d,]*) (${COUNTED.flat()
     .sort((a, b) => b.length - a.length)
     .join("|")})(?=$|[\\s،.:؛)])`,
   "g",
