@@ -372,6 +372,11 @@ button:focus-visible, [role="button"]:focus-visible, [role="tab"]:focus-visible,
    chevron rotated open still points down. */
 :dir(rtl) .icon-dir { scale: -1 1; }
 
+/* An empty box with dir="auto" has no letters to judge by and falls back to
+   left to right, so in Arabic its placeholder sat on the left. Until the
+   person types, it follows the interface. */
+:root[dir="rtl"] :is(input, textarea)[dir="auto"]:placeholder-shown { direction: rtl; }
+
 .modal-body { overflow-x: hidden; }
 .pf-edit-media { flex-wrap: wrap; }
 

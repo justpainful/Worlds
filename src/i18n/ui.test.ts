@@ -47,6 +47,18 @@ describe("Arabic interface dictionary", () => {
     }
   });
 
+  it("translates counts and labels added for the exhibition with the real dictionary", () => {
+    loadDictionary(dictionary as Record<string, string>);
+    expect(translate("1 step")).toBe("1 خطوة");
+    expect(translate("3 steps")).toBe("3 خطوات");
+    expect(translate("10 pts")).toBe("10 نقطة");
+    expect(translate("Exam Tomorrow")).toBe("الاختبار غدًا");
+    expect(translate("Daily · 2.3 MB")).toBe("نسخة يومية · 2.3 MB");
+    expect(translate("the bot host over SSH · Components V2")).toBe("جهاز البوت عبر SSH · Components V2");
+    // Short count patterns must not swallow ordinary sentences.
+    expect(translate("Next step: review the draft")).toBeNull();
+  });
+
   it("has no dashes the interface rules forbid", () => {
     for (const ar of Object.values(dictionary as Record<string, string>)) expect(ar).not.toMatch(/[–—]/);
   });

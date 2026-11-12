@@ -134,7 +134,7 @@ export function ScheduleView({ node, selected, deleteNode }: ReactNodeViewProps)
         <span className="schedule-meta">
           <span>{describeTrigger(auto.spec.trigger)}</span>
           <span className="isolate">{describeDestination(auto.spec.destination)}</span>
-          {auto.enabled && auto.nextRunAt ? <span>Next {relTime(auto.nextRunAt)}</span> : <span>Paused</span>}
+          {auto.enabled && auto.nextRunAt ? <span>{`Next run ${relTime(auto.nextRunAt)}`}</span> : <span>Paused</span>}
           {auto.lastStatus && <span className={`status-dot status-${auto.lastStatus}`}>{STATUS_LABEL[auto.lastStatus]}</span>}
         </span>
       </span>

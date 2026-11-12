@@ -256,7 +256,7 @@ export function MessageView({
       {m.steps.length > 0 && (
         <button className="ai-steps-toggle" onClick={() => setShowSteps((v) => !v)}>
           <Icon name="settings" size={12} />
-          {m.steps.length} step{m.steps.length === 1 ? "" : "s"}
+          <span>{`${m.steps.length} step${m.steps.length === 1 ? "" : "s"}`}</span>
           <Icon name="chevronDown" size={11} className={showSteps ? "is-flipped" : ""} />
         </button>
       )}
