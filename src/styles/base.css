@@ -78,6 +78,13 @@ textarea:focus-visible,
   text-align: start;
 }
 
+/* An empty field has no text to take a direction from, and plaintext put its
+   caret on the left even under an Arabic placeholder. Until the first letter
+   it follows the interface. */
+.bidi:placeholder-shown {
+  unicode-bidi: isolate;
+}
+
 bdi,
 .isolate {
   unicode-bidi: isolate;
