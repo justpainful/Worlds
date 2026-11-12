@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import worlds.android.R
@@ -24,7 +25,7 @@ fun DestinationPicker(
     var expandedPresets by remember { mutableStateOf(false) }
 
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Destination", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground)
+        Text(stringResource(R.string.discord_destination), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground)
 
         if (destinations.isNotEmpty()) {
             Box {
@@ -69,7 +70,7 @@ fun DestinationPicker(
         OutlinedTextField(
             value = webhookUrl,
             onValueChange = onWebhookUrlChange,
-            label = { Text("Webhook URL") },
+            label = { Text(stringResource(R.string.discord_webhook_url)) },
             placeholder = { Text("https://discord.com/api/webhooks/...") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),

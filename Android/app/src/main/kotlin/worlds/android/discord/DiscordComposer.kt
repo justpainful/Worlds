@@ -113,7 +113,7 @@ fun DiscordComposer(
     if (showPagePicker) {
         AlertDialog(
             onDismissRequest = { showPagePicker = false },
-            title = { WorldsActionLabel(R.drawable.ic_file_text, "Choose source page") },
+            title = { WorldsActionLabel(R.drawable.ic_file_text, stringResource(R.string.discord_choose_source)) },
             text = {
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth().heightIn(max = 380.dp),
@@ -129,7 +129,7 @@ fun DiscordComposer(
                         ) {
                             Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 WorldsGlyph(R.drawable.ic_file_text)
-                                Text(page.title.ifBlank { "Untitled" }, style = MaterialTheme.typography.bodyMedium)
+                                Text(page.title.ifBlank { stringResource(R.string.untitled) }, style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                     }
@@ -159,11 +159,11 @@ fun DiscordComposer(
             verticalAlignment = Alignment.CenterVertically
         ) {
             WorldsBackButton(onBack)
-            Text("Discord Dispatch", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.discord_composer_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         }
 
         // Source page selector
-        Text("Source Page", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground)
+        Text(stringResource(R.string.automation_source_page), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground)
         OutlinedButton(
             onClick = { showPagePicker = true },
             modifier = Modifier.fillMaxWidth(),
@@ -174,7 +174,7 @@ fun DiscordComposer(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(currentDoc?.resource?.title?.ifBlank { "Untitled" } ?: "Select page")
+                Text(currentDoc?.resource?.title?.ifBlank { stringResource(R.string.untitled) } ?: stringResource(R.string.automation_select_page))
                 WorldsGlyph(R.drawable.ic_chevron_right)
             }
         }
@@ -190,7 +190,7 @@ fun DiscordComposer(
         )
 
         // Options
-        Text("Formatting Options", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground)
+        Text(stringResource(R.string.discord_formatting), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground)
         Surface(
             shape = RoundedCornerShape(14.dp),
             color = MaterialTheme.colorScheme.surface,
@@ -202,7 +202,7 @@ fun DiscordComposer(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Wrap in Discord Embed", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.discord_wrap_embed), style = MaterialTheme.typography.bodyMedium)
                     Switch(checked = wrapInEmbed, onCheckedChange = { wrapInEmbed = it })
                 }
                 Row(
@@ -210,12 +210,12 @@ fun DiscordComposer(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Include Page Title", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.discord_include_title), style = MaterialTheme.typography.bodyMedium)
                     Switch(checked = includeTitle, onCheckedChange = { includeTitle = it })
                 }
 
                 if (wrapInEmbed) {
-                    Text("Embed Accent Color", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.discord_embed_color), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         EMBED_COLORS.forEach { (name, colorVal) ->
                             val isSelected = selectedColor == colorVal
@@ -237,7 +237,7 @@ fun DiscordComposer(
         }
 
         // Live Preview
-        Text("Message Preview", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground)
+        Text(stringResource(R.string.discord_preview), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground)
         DiscordPreview(
             content = formattedContent,
             embeds = formattedEmbeds
@@ -263,10 +263,10 @@ fun DiscordComposer(
                             webhookUrl = webhookUrl.trim(),
                             payload = DiscordEmbedFormatter.buildPayloadJson(formattedContent, formattedEmbeds)
                         )
-                        sendStatus = "Message sent successfully to Discord!"
+                        sendStatus = context.getString(R.string.discord_sent)
                         isSuccess = true
                     } catch (e: Exception) {
-                        sendStatus = "Failed: " + (e.message ?: "Unknown error")
+                        sendStatus = context.getString(R.string.discord_send_failed, e.message ?: context.getString(R.string.error_unknown))
                         isSuccess = false
                     } finally {
                         sending = false
@@ -280,7 +280,7 @@ fun DiscordComposer(
             if (sending) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
             } else {
-                WorldsActionLabel(R.drawable.ic_send_horizontal, "Send to Discord")
+                WorldsActionLabel(R.drawable.ic_send_horizontal, stringResource(R.string.discord_send))
             }
         }
     }

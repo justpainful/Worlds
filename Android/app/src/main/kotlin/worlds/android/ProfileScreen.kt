@@ -183,7 +183,7 @@ internal fun ProfileScreen(onBack: () -> Unit) {
                 OutlinedTextField(
                     value = bio,
                     onValueChange = { bio = it.take(240); savedMessage = false },
-                    label = { Text("About") },
+                    label = { Text(stringResource(R.string.profile_about)) },
                     maxLines = 3,
                     modifier = Modifier.fillMaxWidth()
                 )
