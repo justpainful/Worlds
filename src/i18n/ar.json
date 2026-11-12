@@ -165,6 +165,7 @@
  "§Sent by {0}. Only the blocks shown in the preview leave Worlds.": "يرسلها {0}. لا يغادر Worlds إلا الكتل الظاهرة في المعاينة.",
  "§Sent to {0}": "أُرسلت إلى {0}",
  "§Show {0}": "إظهار {0}",
+ "§Showing the first {0} of {1} rows": "يُعرض أول {0} صف من {1}",
  "§Sign out {0}?": "تسجيل خروج {0}؟",
  "§Signs in as {0}": "يسجّل الدخول باسم {0}",
  "§Since {0}": "منذ {0}",

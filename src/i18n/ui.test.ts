@@ -102,6 +102,7 @@ describe("Arabic interface dictionary", () => {
     expect(translate("Since October 2026")).toBe("منذ October 2026");
     expect(translate("Deleted قبل ساعتين")).toBe("حُذف قبل ساعتين");
     expect(translate("Join فريق المختبر")).toBe("الانضمام إلى فريق المختبر");
+    expect(translate("Showing the first 2,000 of 5,000 rows")).toBe("يُعرض أول 2,000 صف من 5,000");
     expect(translate("1,204 words · 6 min read")).toBe("1,204 كلمات · قراءة 6 دقائق");
     expect(translate("2 items left today")).toBe("المتبقي اليوم: عنصران");
     expect(countedNoun(4000, "أحرف")).toBe("حرف");
