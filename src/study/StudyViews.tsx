@@ -239,7 +239,7 @@ export function SubjectView({ id }: { id: string }) {
             size="compact"
             icon="add"
             onClick={async () => {
-              const title = await promptText({ title: "Add Textbook or Solution Book", placeholder: "e.g. Calculus Textbook / كتاب الحلول" });
+              const title = await promptText({ title: "Add Textbook or Solution Book", placeholder: "For example, the calculus textbook" });
               if (!title?.trim()) return;
               const isSol = /حلول|solution/i.test(title);
               const nextBook: SubjectBook = {
@@ -310,7 +310,7 @@ export function SubjectView({ id }: { id: string }) {
 
       <section className="pl-section">
         <div className="pl-section-head">
-          <h2 className="pl-section-title">Resources & Links (YouTube, Telegram, Classroom, مدرستي)</h2>
+          <h2 className="pl-section-title">Resources and links</h2>
           <Button
             variant="quiet"
             size="compact"
@@ -491,8 +491,8 @@ export function StudyItemView({ id }: { id: string }) {
             </Field>
             <Field label="Colour mode">
               <select className="field" value={d.colorMode ?? "bw"} onChange={(e) => set({ colorMode: e.target.value as "bw" | "color" })}>
-                <option value="bw">Black & White (أبيض وأسود)</option>
-                <option value="color">Colour (ملون)</option>
+                <option value="bw">Black and white</option>
+                <option value="color">In colour</option>
               </select>
             </Field>
             <Field label="Double-sided">
