@@ -11,6 +11,8 @@ import { Icon, type IconName } from "../../ui/Icon";
 import { menuAt, Popover } from "../../ui/Menu";
 import { EmptyState, Spinner } from "../../ui/misc";
 import { ResourceHeader, saveMeta, useResource } from "./ResourceHeader";
+import { FindBar } from "../../pages/PageChrome";
+import { shortcutKey } from "../../lib/keys";
 
 export interface DocSettings {
   size: keyof typeof PAPER;
@@ -102,6 +104,23 @@ function LoadedDocument({ page }: { page: Page }) {
     return () => cancelAnimationFrame(raf);
   }, []);
 
+  // Find and replace, as on pages: Ctrl+F and Ctrl+H while this document's pane is active.
+  const root = useRef<HTMLDivElement>(null);
+  const [find, setFind] = useState<"find" | "replace" | null>(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!root.current || !root.current.closest(".pane.is-active, .pane:only-child")) return;
+      if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey) return;
+      const k = shortcutKey(e);
+      if (k === "f" || k === "h") {
+        e.preventDefault();
+        setFind(k === "f" ? "find" : "replace");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const update = (patch: Partial<DocSettings>) => {
     const next = { ...settings, ...patch };
     setSettings(next);
@@ -124,7 +143,7 @@ function LoadedDocument({ page }: { page: Page }) {
   const print = () => printDocument(settings);
 
   return (
-    <div className="res-view res-document" style={style}>
+    <div className="res-view res-document" style={style} ref={root}>
       <ResourceHeader
         meta={meta}
         subtitle={<span>{saving ? "Saving" : `${PAPER[settings.size]?.label ?? settings.size} · ${settings.orientation}`}</span>}
@@ -144,6 +163,7 @@ function LoadedDocument({ page }: { page: Page }) {
         </div>
       </div>
       {setup && <PageSetup anchor={setup} settings={settings} onChange={update} onClose={() => setSetup(null)} />}
+      {find && editor && <FindBar editor={editor} replace={find === "replace"} onClose={() => setFind(null)} />}
     </div>
   );
 }

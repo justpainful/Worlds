@@ -169,6 +169,9 @@
 .doc-setup-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .doc-setup-grid label { display: flex; flex-direction: column; gap: 4px; font: var(--t-caption); color: var(--text-3); }
 
+/* Find in a document sits under its formatting toolbar, over the paper top margin, not over Page setup and Print. */
+.res-document .find-bar { top: 204px; }
+
 /* Printing a document: only the paper, at its own size and margins. */
 @media print {
   :root.is-printing-doc body * { visibility: hidden !important; }
