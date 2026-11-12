@@ -611,6 +611,8 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
         }
         XLSX.utils.book_append_sheet(book, ws, s.name.slice(0, 31));
       }
+      // An Arabic workbook opens right to left in Excel, as it reads here.
+      if (document.documentElement.dir === "rtl") book.Workbook = { ...book.Workbook, Views: [{ RTL: true }] };
       const pageTitle = useStore.getState().pages[pageId]?.title || "Spreadsheet";
       if (format === "csv") {
         const ws = book.Sheets[sheet.name.slice(0, 31)];
