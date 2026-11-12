@@ -103,7 +103,7 @@ export function AboutTab({ profile, memberSince, stats, onEdit }: { profile: Pro
         {stats?.words ? (
           <li>
             <Icon name="text" size={14} />
-            <span>About {fmt(stats.words)} words written</span>
+            <span>{`About ${fmt(stats.words)} words written`}</span>
           </li>
         ) : null}
         <li>
