@@ -32,7 +32,7 @@ export function InboxView() {
       <header className="pl-head">
         <div>
           <h1 className="pl-title">Inbox</h1>
-          <p className="pl-sub">{items.length ? `${items.length} to sort` : "Nothing waiting"} · Ctrl+Alt+N captures from anywhere in Worlds</p>
+          <p className="pl-sub">{items.length ? `${items.length} item${items.length === 1 ? "" : "s"} to sort` : "Nothing waiting"} · Ctrl+Alt+N captures from anywhere in Worlds</p>
         </div>
       </header>
 
