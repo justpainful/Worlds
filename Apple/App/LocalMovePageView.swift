@@ -1,6 +1,7 @@
-#if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_MOVE_PAGE
+#if WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_MOVE_PAGE
 import SwiftUI
 import WorldsLocalImport
+import WorldsWorkspaceAccess
 import WorldsNativeWrites
 import WorldsPersistence
 
@@ -12,7 +13,7 @@ struct LocalMovePageRequest: Identifiable {
     let originalSortKey: Double
     let originalRevision: Int64
     let candidates: [StoredPage]
-    let copy: LocalProjectCopy
+    let copy: WorkspaceWriteTarget
     let databaseIdentity: VideoDatabaseIdentity
     let generation: UUID
 }
@@ -74,7 +75,8 @@ struct LocalMovePageView: View {
         let names = Dictionary(request.candidates.map { ($0.id, $0.title) }, uniquingKeysWith: { first, _ in first })
         return NavigationStack {
             List {
-                Text("Choose a destination in this independent local copy. The page will be placed at the end of the destination.")
+                if request.copy.isLocalCopy { Text("Choose a destination in this independent local copy. The page will be placed at the end of the destination.") }
+                else { Text("Choose a destination in your Worlds workspace. The page will be placed at the end of the destination.") }
                 Text("Available destinations: \(choices.count)").accessibilityIdentifier("move-destination-count")
                 if ProcessInfo.processInfo.arguments.contains("--ui-testing-move-fixture") {
                     let ids = Set(choices.map(\.id))
@@ -131,7 +133,7 @@ struct LocalMovePageView: View {
             let result = try await move(placement, target, UUID())
             guard result.parent == target else {
                 uncertain = true
-                message = "The destination could not be verified. Close and reopen the copy to check."
+                message = request.copy.isLocalCopy ? "The destination could not be verified. Close and reopen the copy to check." : String(localized: "The destination could not be verified. Open the workspace again to check.")
                 return
             }
             placement = result
@@ -139,10 +141,10 @@ struct LocalMovePageView: View {
             message = "Page moved. The previous position cannot be restored here."
         } catch NativeWriteError.conflict {
             uncertain = true
-            message = "The page or destination changed. Close and reopen the copy to review it."
+            message = request.copy.isLocalCopy ? "The page or destination changed. Close and reopen the copy to review it." : String(localized: "The page or destination changed. Open the workspace again to review it.")
         } catch {
             uncertain = true
-            message = "The result could not be confirmed. The page may have moved. Close and reopen the copy to check."
+            message = request.copy.isLocalCopy ? "The result could not be confirmed. The page may have moved. Close and reopen the copy to check." : String(localized: "The result could not be confirmed. The page may have moved. Open the workspace again to check.")
         }
     }
 }

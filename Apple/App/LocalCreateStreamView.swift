@@ -1,13 +1,14 @@
-#if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_CREATE_STREAM
+#if WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_CREATE_STREAM
 import SwiftUI
 import WorldsLocalImport
+import WorldsWorkspaceAccess
 import WorldsNativeWrites
 import WorldsModels
 
 struct LocalCreateStreamRequest: Identifiable {
     let id = UUID()
     let operationID = UUID()
-    let copy: LocalProjectCopy
+    let copy: WorkspaceWriteTarget
     let databaseIdentity: VideoDatabaseIdentity
     let generation: UUID
 }
@@ -42,7 +43,8 @@ struct LocalCreateStreamView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Text("The link stays in this independent local copy. DASH playback is not supported.")
+                if request.copy.isLocalCopy { Text("The link stays in this independent local copy. DASH playback is not supported.") }
+                else { Text("The link is saved in your Worlds workspace. DASH playback is not supported.") }
                 if submitted {
                     Text(nameToSave).textSelection(.enabled)
                     Text(cleanLink).textSelection(.enabled).environment(\.layoutDirection, .leftToRight)
@@ -75,7 +77,7 @@ struct LocalCreateStreamView: View {
     @MainActor private func create() async {
         guard valid else { return }
         guard VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity else {
-            submitted = true; message = "The local copy changed before creation. Close and reopen the copy before trying again."; return
+            submitted = true; message = request.copy.isLocalCopy ? "The local copy changed before creation. Close and reopen the copy before trying again." : String(localized: "The workspace file changed before creation. Open it again before trying again."); return
         }
         let submittedTitle = nameToSave, submittedLink = cleanLink
         busy = true; submitted = true
@@ -85,13 +87,13 @@ struct LocalCreateStreamView: View {
             let result = try await store.createStreamIdempotent(title: submittedTitle, streamURL: submittedLink, operationID: request.operationID)
             guard VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity,
                   case .object(let fields) = result, case .string(let id)? = fields["id"], !id.isEmpty, !id.utf8.contains(0) else {
-                message = "The result could not be verified. The stream may have been created. Close and reopen the copy to check."
+                message = request.copy.isLocalCopy ? "The result could not be verified. The stream may have been created. Close and reopen the copy to check." : String(localized: "The result could not be verified. It may have been created. Open the workspace again to check.")
                 return
             }
             if await onCreated(id, submittedLink) { dismiss() }
-            else { message = "The stream was created, but its display could not be refreshed. Close and reopen the copy to check." }
+            else { message = request.copy.isLocalCopy ? "The stream was created, but its display could not be refreshed. Close and reopen the copy to check." : String(localized: "It was created, but the list could not be refreshed. Open the workspace again to check.") }
         } catch {
-            message = "The result could not be confirmed. The stream may have been created. Close and reopen the copy to check."
+            message = workspaceWriteMessage(error) ?? (request.copy.isLocalCopy ? "The result could not be confirmed. The stream may have been created. Close and reopen the copy to check." : String(localized: "The result could not be confirmed. It may have been created. Open the workspace again to check."))
         }
     }
 }

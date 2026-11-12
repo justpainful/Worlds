@@ -1,13 +1,14 @@
-#if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+#if WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
 import SwiftUI
 import SQLite3
 
-/// Caller supplies the identity captured when opening the independent copy.
+/// Caller supplies the identity captured when opening the workspace or copy.
 /// The renderer rejects unsupported documents before allowing drawing.
 struct LocalDrawingEditor: View {
     let databaseURL: URL
     let pageID: String
     let identity: VideoDatabaseIdentity
+    var editsLocalCopy: Bool = true
     let onClosed: () -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var actorID: String?
@@ -17,7 +18,7 @@ struct LocalDrawingEditor: View {
         NavigationStack {
             Group {
                 if let actorID {
-                    DrawingHarnessView(databaseURL: databaseURL, pageID: pageID, actorID: actorID,
+                    DrawingHarnessView(databaseURL: databaseURL, pageID: pageID, actorID: actorID, editsLocalCopy: editsLocalCopy,
                         validateIdentity: { VideoDatabaseIdentity.read(databaseURL) == identity }, onClose: { onClosed(); dismiss() })
                 } else if let error {
                     VStack(spacing: 12) {
@@ -47,7 +48,7 @@ struct LocalDrawingEditor: View {
             guard VideoDatabaseIdentity.read(databaseURL) == identity else { throw DrawingOpenError.changed }
             actorID = actor
         } catch {
-            self.error = "This drawing cannot be opened safely. Check the local copy and its profile."
+            self.error = editsLocalCopy ? "This drawing cannot be opened safely. Check the local copy and its profile." : String(localized: "This drawing cannot be opened safely. Check that Worlds on your computer has set up your profile.")
         }
     }
     private enum DrawingOpenError: Error { case changed, unavailable, missingProfile }

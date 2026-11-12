@@ -50,11 +50,18 @@ struct ResourceContentView: View {
     let pages: [StoredPage]
     var projectEditingAvailable: Bool = false
     var otherEditingAvailable: Bool = false
+    /// Editing saves to the person's own workspace rather than a local copy.
+    var editsOwnWorkspace: Bool = false
     var openVideo: (() -> Void)? = nil
     var openDocument: (() -> Void)? = nil
     var open3D: (() -> Void)? = nil
     let openPage: (String) -> Void
 
+    private var editingLabel: LocalizedStringKey {
+        if !projectEditingAvailable && !otherEditingAvailable { return "Read only" }
+        if editsOwnWorkspace { return "Editing saves to your Worlds workspace" }
+        return projectEditingAvailable ? "Project editing available in local copy" : "Editing available in local copy"
+    }
     private var metadata: ResourceMetadata? { try? JSONDecoder().decode(ResourceMetadata.self, from: Data(page.metadataJSON.utf8)) }
     private var blocks: [(String, ResourceBlock?)] {
         page.blocks.map { block in (block.id, try? JSONDecoder().decode(ResourceBlock.self, from: Data(block.contentJSON.utf8))) }
@@ -76,7 +83,7 @@ struct ResourceContentView: View {
                     NativePlanningAndStudyItemView(page: page)
                 default: Text("This resource type is not available in the reader.")
                 }
-                Label(projectEditingAvailable ? "Project editing available in local copy" : (otherEditingAvailable ? "Editing available in local copy" : "Read only"), systemImage: (projectEditingAvailable || otherEditingAvailable) ? "pencil" : "eye")
+                Label(editingLabel, systemImage: (projectEditingAvailable || otherEditingAvailable) ? "pencil" : "eye")
                     .font(.body).foregroundStyle(.primary)
             }
             .padding(dynamicTypeSize.isAccessibilitySize ? 16 : 24)

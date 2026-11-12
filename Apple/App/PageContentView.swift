@@ -81,6 +81,8 @@ struct PageContentView: View {
     var openInlineImage: ((String) -> Void)? = nil
     var subpages: [StoredPage] = []
     var openSubpage: ((String) -> Void)? = nil
+    /// Edits made with the toolbar save to the person's own workspace.
+    var editsOwnWorkspace: Bool = false
 
     var body: some View {
         ScrollView {
@@ -89,7 +91,7 @@ struct PageContentView: View {
                     .font(.title.weight(.semibold))
                     .accessibilityAddTraits(.isHeader)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_CREATE_DOCUMENT
+                #if WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_CREATE_DOCUMENT
                 if page.kind == "document" {
                     Text("Paper layout is not yet displayed in this preview.")
                         .font(.caption).foregroundStyle(.secondary)
@@ -127,7 +129,7 @@ struct PageContentView: View {
                     }
                     .accessibilityIdentifier("page-subpages")
                 }
-                Text("Read only")
+                (editsOwnWorkspace ? Text("Editing saves to your Worlds workspace") : Text("Read only"))
                     .font(.body)
                     .foregroundStyle(.primary)
                     .padding(.horizontal, 12)

@@ -98,6 +98,11 @@ struct LibraryDestinationView: View {
     let onEmptyTrash: () -> Void
     var onOpenCreateSheet: (() -> Void)? = nil
     var showCollectionPicker: Bool = true
+    /// The desktop's Trash when the person's own workspace is open.
+    var storeTrash: [StoredTrashedPage]? = nil
+    var permanentDeletionAvailable: Bool = true
+
+    private var trashCount: Int { storeTrash?.count ?? pages.filter(\.archived).count }
 
     private var activePages: [StoredPage] {
         pages.filter { !$0.archived && $0.kind != "template" }
@@ -169,7 +174,9 @@ struct LibraryDestinationView: View {
                     pages: pages,
                     onRestore: onRestorePage,
                     onDeletePermanently: onDeletePermanently,
-                    onEmptyTrash: onEmptyTrash
+                    onEmptyTrash: onEmptyTrash,
+                    storeTrash: storeTrash,
+                    permanentDeletionAvailable: permanentDeletionAvailable
                 )
             case .pages:
                 ScrollView {
@@ -221,7 +228,7 @@ struct LibraryDestinationView: View {
                     Button {
                         selectedCollection = .trash
                     } label: {
-                        Label("Trash (\(pages.filter(\.archived).count))", systemImage: "trash")
+                        Label("Trash (\(trashCount))", systemImage: "trash")
                             .font(.subheadline.weight(.medium))
                             .padding(.horizontal, 14)
                             .padding(.vertical, 10)

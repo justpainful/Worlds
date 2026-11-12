@@ -1,13 +1,14 @@
-#if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_CREATE_PRESENTATION && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
+#if WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_CREATE_PRESENTATION && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
 import SwiftUI
 import WorldsLocalImport
+import WorldsWorkspaceAccess
 import WorldsNativeWrites
 import WorldsModels
 
 struct LocalCreatePresentationRequest: Identifiable {
     let id = UUID()
     let operationID = UUID()
-    let copy: LocalProjectCopy
+    let copy: WorkspaceWriteTarget
     let databaseIdentity: VideoDatabaseIdentity
     let generation: UUID
 }
@@ -31,7 +32,8 @@ struct LocalCreatePresentationView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Text("The presentation is created in the independent local copy and does not sync to the original. Some slide features are not supported by this editor.")
+                if request.copy.isLocalCopy { Text("The presentation is created in the independent local copy and does not sync to the original. Some slide features are not supported by this editor.") }
+                else { Text("The presentation is created in your Worlds workspace. Some slide features are not supported by this editor.") }
                 if submitted {
                     Text(title).textSelection(.enabled)
                         .accessibilityIdentifier("new-personal-presentation-retained-title")
@@ -66,7 +68,7 @@ struct LocalCreatePresentationView: View {
         guard canCreate else { return }
         guard VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity else {
             submitted = true
-            message = "The local copy changed before creation. Close and reopen the copy before trying again."
+            message = request.copy.isLocalCopy ? "The local copy changed before creation. Close and reopen the copy before trying again." : String(localized: "The workspace file changed before creation. Open it again before trying again.")
             return
         }
         busy = true; submitted = true
@@ -77,13 +79,13 @@ struct LocalCreatePresentationView: View {
             guard VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity,
                   case .object(let fields) = result, case .string(let pageID)? = fields["id"],
                   !pageID.isEmpty, !pageID.utf8.contains(0) else {
-                message = "The creation result could not be verified. The presentation may have been created. Close and reopen the copy to check."
+                message = request.copy.isLocalCopy ? "The creation result could not be verified. The presentation may have been created. Close and reopen the copy to check." : String(localized: "The result could not be verified. It may have been created. Open the workspace again to check.")
                 return
             }
             if await onCreated(pageID) { dismiss() }
-            else { message = "The presentation was created, but its display could not be refreshed. Close and reopen the copy to check." }
+            else { message = request.copy.isLocalCopy ? "The presentation was created, but its display could not be refreshed. Close and reopen the copy to check." : String(localized: "It was created, but the list could not be refreshed. Open the workspace again to check.") }
         } catch {
-            message = "The creation result could not be confirmed. The presentation may have been created. Close and reopen the copy to check."
+            message = workspaceWriteMessage(error) ?? (request.copy.isLocalCopy ? "The creation result could not be confirmed. The presentation may have been created. Close and reopen the copy to check." : String(localized: "The result could not be confirmed. It may have been created. Open the workspace again to check."))
         }
     }
 }

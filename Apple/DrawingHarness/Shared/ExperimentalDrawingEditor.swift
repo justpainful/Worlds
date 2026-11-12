@@ -1,4 +1,4 @@
-#if (canImport(UIKit) || canImport(AppKit)) && (WORLDS_DRAWING_HARNESS || (DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_DRAWING_EDITOR))
+#if (canImport(UIKit) || canImport(AppKit)) && (WORLDS_DRAWING_HARNESS || (WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_DRAWING_EDITOR))
 import SwiftUI
 #if canImport(UIKit)
 import UIKit
@@ -42,8 +42,11 @@ import WorldsDrawingPencilInput
     private let pageID: String
     private let actorID: String
     private let validateIdentity: @MainActor () -> Bool
-    init(databaseURL: URL, pageID: String, actorID: String, validateIdentity: @escaping @MainActor () -> Bool) {
+    /// Names the database in status messages: an independent copy or the person's own workspace.
+    private let place: String
+    init(databaseURL: URL, pageID: String, actorID: String, editsLocalCopy: Bool = true, validateIdentity: @escaping @MainActor () -> Bool) {
         self.databaseURL = databaseURL; self.pageID = pageID; self.actorID = actorID; self.validateIdentity = validateIdentity
+        place = editsLocalCopy ? "The local copy" : "The workspace file"
     }
     private func requireIdentity() throws { guard validateIdentity() else { throw Failure.databaseChanged } }
     private var writer: PersonalDrawingWriter?
@@ -109,7 +112,7 @@ import WorldsDrawingPencilInput
     func beginInput() {
         guard !inputBlocked else { return }
         cancellationReason = nil
-        guard validateIdentity() else { recovery = .reload; message = "The local copy changed. Reopen it before editing."; return }
+        guard validateIdentity() else { recovery = .reload; message = "\(place) changed. Reopen it before editing."; return }
         inputActive = true
         activeTool = brush; activeColor = brushColor; activeSize = brushSize; activeShapeCorrection = correctShape
         guard activeTool == "laser" else { return }
@@ -153,7 +156,7 @@ import WorldsDrawingPencilInput
         activeTool = nil
         if tool == "laser" { releaseLaser(); return }
         guard !inputBlocked, let controller else { return }
-        guard validateIdentity() else { recovery = .reload; message = "The local copy changed. Reopen it before editing."; return }
+        guard validateIdentity() else { recovery = .reload; message = "\(place) changed. Reopen it before editing."; return }
         var selected = ToolBrush(); selected.kind = tool; selected.color = color; selected.size = size
         if tool == "highlighter" { selected.pressureSize = false; selected.opacity = 0.35 }
         var recognized: RecognizedDrawingShape?
@@ -174,7 +177,7 @@ import WorldsDrawingPencilInput
             guard validateIdentity() else {
                 recovery = controller.hasUnresolvedInput ? .stroke : .reload
                 retryAvailable = controller.canRetryPending
-                message = "The local copy changed; the stroke result is unconfirmed."
+                message = "\(place) changed; the stroke result is unconfirmed."
                 return
             }
             guard saved != nil else {
@@ -215,9 +218,9 @@ import WorldsDrawingPencilInput
     func retryStroke() async {
         guard recovery == .stroke, retryAvailable, !busy, let controller else { return }
         busy = true; defer { busy = false }
-        guard validateIdentity() else { message = "The local copy changed; retained stroke recovery is still required."; return }
+        guard validateIdentity() else { message = "\(place) changed; retained stroke recovery is still required."; return }
         guard await controller.retry() != nil else { message = controller.error ?? "The stroke remains unconfirmed."; return }
-        guard validateIdentity() else { recovery = .reload; message = "The local copy changed; the stroke result is unconfirmed."; return }
+        guard validateIdentity() else { recovery = .reload; message = "\(place) changed; the stroke result is unconfirmed."; return }
         recovery = .reload; retryAvailable = false
         do { try await reload(); recovery = nil; message = "Stroke saved. Shape correction was not applied." }
         catch { image = nil; message = "The stroke was saved, but the drawing could not be displayed safely." }
@@ -260,11 +263,12 @@ import WorldsDrawingPencilInput
     @State private var confirmDiscard = false
     @State private var confirmClose = false
     let fixtureMode: Bool
+    let editsLocalCopy: Bool
     let onClose: @MainActor () -> Void
-    init(databaseURL: URL, pageID: String, actorID: String, fixtureMode: Bool = false,
+    init(databaseURL: URL, pageID: String, actorID: String, fixtureMode: Bool = false, editsLocalCopy: Bool = true,
          validateIdentity: @escaping @MainActor () -> Bool, onClose: @escaping @MainActor () -> Void = {}) {
-        _model = StateObject(wrappedValue: DrawingHarnessModel(databaseURL: databaseURL, pageID: pageID, actorID: actorID, validateIdentity: validateIdentity))
-        self.fixtureMode = fixtureMode; self.onClose = onClose
+        _model = StateObject(wrappedValue: DrawingHarnessModel(databaseURL: databaseURL, pageID: pageID, actorID: actorID, editsLocalCopy: editsLocalCopy, validateIdentity: validateIdentity))
+        self.fixtureMode = fixtureMode; self.editsLocalCopy = editsLocalCopy; self.onClose = onClose
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -274,7 +278,7 @@ import WorldsDrawingPencilInput
                 .frame(minHeight: 160)
             ScrollView {
               VStack(alignment: .leading, spacing: 12) {
-            Text(fixtureMode ? "Temporary fixture only. Draw strokes inside the marked area. Other shapes and assets are unsupported." : "Independent local copy. Draw inside the marked area. Unsupported content cannot be edited here.").font(.caption)
+            (fixtureMode ? Text("Temporary fixture only. Draw strokes inside the marked area. Other shapes and assets are unsupported.") : (editsLocalCopy ? Text("Independent local copy. Draw inside the marked area. Unsupported content cannot be edited here.") : Text("Your Worlds workspace. Draw inside the marked area. Unsupported content cannot be edited here."))).font(.caption)
             Toggle("Correct right triangles (experimental)", isOn: $model.correctShape).disabled(model.inputBlocked || !["hard", "ink", "pencil"].contains(model.brush))
             Picker("Tool", selection: $model.brush) {
                 ForEach(["hard", "ink", "pencil", "highlighter", "laser"], id: \.self) { Text($0.capitalized).tag($0) }
@@ -327,7 +331,7 @@ import WorldsDrawingPencilInput
             .alert("Close without confirming the stroke?", isPresented: $confirmClose) {
                 Button("Close and discard recovery", role: .destructive, action: onClose)
                 Button("Keep editing", role: .cancel) {}
-            } message: { Text("The retained input will be lost. The stroke may already have been saved in the local copy.") }
+            } message: { editsLocalCopy ? Text("The retained input will be lost. The stroke may already have been saved in the local copy.") : Text("The retained input will be lost. The stroke may already have been saved in your Worlds workspace.") }
     }
     private func platformImage(_ image: DrawingPlatformImage) -> Image {
         #if canImport(UIKit)

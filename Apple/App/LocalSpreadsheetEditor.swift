@@ -1,14 +1,15 @@
-#if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
+#if WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
 import SwiftUI
 import WorldsLocalImport
+import WorldsWorkspaceAccess
 import WorldsModels
 import WorldsNativeWrites
 import WorldsResourceRepositories
 import WorldsSpreadsheet
 import WorldsSpreadsheetViews
 
-/// Loads a spreadsheet from an independent local copy and saves only its
-/// `metadata.sheet`, in the desktop's workbook shape.
+/// Loads a spreadsheet from the person's workspace or an independent local
+/// copy and saves only its `metadata.sheet`, in the desktop's workbook shape.
 @MainActor private final class LocalSpreadsheetState: ObservableObject {
     enum Problem { case open, conflict, save }
     @Published var model: SpreadsheetEditorModel?
@@ -17,10 +18,10 @@ import WorldsSpreadsheetViews
     @Published var problem: Problem?
     private var baseline: SpreadsheetRecord?
     private var repository: NativeResourceRepository?
-    private let copy: LocalProjectCopy
+    let copy: WorkspaceWriteTarget
     private let pageID: String
 
-    init(copy: LocalProjectCopy, pageID: String) { self.copy = copy; self.pageID = pageID }
+    init(copy: WorkspaceWriteTarget, pageID: String) { self.copy = copy; self.pageID = pageID }
 
     func load() async {
         loading = true; problem = nil
@@ -59,7 +60,7 @@ struct LocalSpreadsheetEditor: View {
     private let title: String
     private let onSaved: @MainActor () -> Void
 
-    init(copy: LocalProjectCopy, pageID: String, title: String, onSaved: @escaping @MainActor () -> Void) {
+    init(copy: WorkspaceWriteTarget, pageID: String, title: String, onSaved: @escaping @MainActor () -> Void) {
         _state = StateObject(wrappedValue: LocalSpreadsheetState(copy: copy, pageID: pageID))
         self.title = title
         self.onSaved = onSaved
@@ -109,7 +110,7 @@ private struct LocalSpreadsheetScreen: View {
         SpreadsheetEditorView(model: model)
             .safeAreaInset(edge: .top, spacing: 0) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Changes are saved to this independent local copy and do not sync to the original.")
+                    Text(workspaceSaveNotice(state.copy))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     if let problem = state.problem { problemText(problem) }

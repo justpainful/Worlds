@@ -1,4 +1,4 @@
-#if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_PAGE_EDITOR
+#if WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_PAGE_EDITOR
 import SwiftUI
 import WorldsEditorPersistence
 import WorldsNativeEditor
@@ -6,10 +6,12 @@ import WorldsNativeWrites
 import SQLite3
 import WorldsModels
 
-/// Available only in the isolated integration build; never points at the source database.
+/// Edits a personal page or document in the write target: the person's own
+/// workspace (after the preflight accepted it) or an independent local copy.
 struct LocalPageEditorView: View {
     let databaseURL: URL
     let pageID: String
+    var editsLocalCopy: Bool = true
     let onSaved: () -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var model: NativeEditorModel?
@@ -24,12 +26,12 @@ struct LocalPageEditorView: View {
         NavigationStack {
             Group {
                 if let model {
-                    LocalPageEditorContent(model: model, error: error, saved: saved, reloadRequired: reloadRequired,
+                    LocalPageEditorContent(model: model, editsLocalCopy: editsLocalCopy, error: error, saved: saved, reloadRequired: reloadRequired,
                         onSave: { Task { await save() } }, onReload: { reload = true }, onClose: { if model.hasUnresolvedInput { discard = true } else { dismiss() } })
                 } else if let error { ContentUnavailableView("Page could not be opened", systemImage: "exclamationmark.triangle", description: Text(error)) }
                 else { ProgressView("Opening page") }
             }
-            .navigationTitle("Edit local page")
+            .navigationTitle(editsLocalCopy ? Text("Edit local page") : Text("Edit page"))
             .toolbar {
                 if model == nil { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
             }
@@ -51,7 +53,8 @@ struct LocalPageEditorView: View {
             persistence = store
             model = NativeEditorModel(document: store.initialDocument, baseRevision: store.initialRevision, supportsDocumentFormatting: store.supportsDocumentFormatting)
             reloadRequired = false; saved = false; error = nil
-            if !injectedConflict, ProcessInfo.processInfo.arguments.contains("--ui-testing-local-copy-fixture"),
+            #if DEBUG
+            if editsLocalCopy, !injectedConflict, ProcessInfo.processInfo.arguments.contains("--ui-testing-local-copy-fixture"),
                ProcessInfo.processInfo.arguments.contains("--ui-testing-page-conflict") {
                 var pointer: OpaquePointer?
                 guard sqlite3_open(databaseURL.path, &pointer) == SQLITE_OK, let db = pointer else { throw EditorBridgeError.unavailable }
@@ -60,6 +63,7 @@ struct LocalPageEditorView: View {
                 guard status == SQLITE_OK else { throw EditorBridgeError.unavailable }
                 injectedConflict = true
             }
+            #endif
         } catch { self.error = error.localizedDescription }
     }
     @MainActor private func save() async {
@@ -80,6 +84,7 @@ struct LocalPageEditorView: View {
 }
 private struct LocalPageEditorContent: View {
     @ObservedObject var model: NativeEditorModel
+    let editsLocalCopy: Bool
     let error: String?
     let saved: Bool
     let reloadRequired: Bool
@@ -88,7 +93,7 @@ private struct LocalPageEditorContent: View {
     let onClose: () -> Void
     var body: some View {
         ScrollView { VStack(alignment: .leading, spacing: 12) {
-            Text("Edits apply only to this local copy. Some content and input methods cannot be edited safely.").font(.body)
+            (editsLocalCopy ? Text("Edits apply only to this local copy. Some content and input methods cannot be edited safely.") : Text("Edits are saved to your Worlds workspace. Some content and input methods cannot be edited safely.")).font(.body)
             NativeEditorView(model: model).frame(maxWidth: .infinity, minHeight: 240)
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-document-table-column-insert"),
                case .object(let root) = model.document.source, case .array(let blocks)? = root["content"],

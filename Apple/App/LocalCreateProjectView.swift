@@ -1,13 +1,14 @@
-#if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_CREATE_PROJECT
+#if WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_CREATE_PROJECT
 import SwiftUI
 import WorldsLocalImport
+import WorldsWorkspaceAccess
 import WorldsNativeWrites
 import WorldsModels
 
 struct LocalCreateProjectRequest: Identifiable {
     let id = UUID()
     let operationID = UUID()
-    let copy: LocalProjectCopy
+    let copy: WorkspaceWriteTarget
     let databaseIdentity: VideoDatabaseIdentity
     let generation: UUID
 }
@@ -31,7 +32,8 @@ struct LocalCreateProjectView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Text("The project is created in the independent local copy and does not sync to the original.")
+                if request.copy.isLocalCopy { Text("The project is created in the independent local copy and does not sync to the original.") }
+                else { Text("The project is created in your Worlds workspace.") }
                 if submitted {
                     Text(title).textSelection(.enabled)
                         .accessibilityIdentifier("new-personal-project-retained-title")
@@ -66,7 +68,7 @@ struct LocalCreateProjectView: View {
         guard canCreate else { return }
         guard VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity else {
             submitted = true
-            message = "The local copy changed before creation. Close and reopen the copy before trying again."
+            message = request.copy.isLocalCopy ? "The local copy changed before creation. Close and reopen the copy before trying again." : String(localized: "The workspace file changed before creation. Open it again before trying again.")
             return
         }
         busy = true; submitted = true
@@ -77,13 +79,13 @@ struct LocalCreateProjectView: View {
             guard VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity,
                   case .object(let fields) = result, case .string(let pageID)? = fields["id"],
                   !pageID.isEmpty, !pageID.utf8.contains(0) else {
-                message = "The creation result could not be verified. The project may have been created. Close and reopen the copy to check."
+                message = request.copy.isLocalCopy ? "The creation result could not be verified. The project may have been created. Close and reopen the copy to check." : String(localized: "The result could not be verified. It may have been created. Open the workspace again to check.")
                 return
             }
             if await onCreated(pageID) { dismiss() }
-            else { message = "The project was created, but its display could not be refreshed. Close and reopen the copy to check." }
+            else { message = request.copy.isLocalCopy ? "The project was created, but its display could not be refreshed. Close and reopen the copy to check." : String(localized: "It was created, but the list could not be refreshed. Open the workspace again to check.") }
         } catch {
-            message = "The creation result could not be confirmed. The project may have been created. Close and reopen the copy to check."
+            message = workspaceWriteMessage(error) ?? (request.copy.isLocalCopy ? "The creation result could not be confirmed. The project may have been created. Close and reopen the copy to check." : String(localized: "The result could not be confirmed. It may have been created. Open the workspace again to check."))
         }
     }
 }

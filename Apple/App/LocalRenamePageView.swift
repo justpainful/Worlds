@@ -1,6 +1,7 @@
-#if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_RENAME_PAGE
+#if WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_RENAME_PAGE
 import SwiftUI
 import WorldsLocalImport
+import WorldsWorkspaceAccess
 import WorldsNativeWrites
 
 struct LocalRenamePageRequest: Identifiable {
@@ -8,7 +9,7 @@ struct LocalRenamePageRequest: Identifiable {
     let pageID: String
     let originalTitle: String
     let originalRevision: Int64
-    let copy: LocalProjectCopy
+    let copy: WorkspaceWriteTarget
     let databaseIdentity: VideoDatabaseIdentity
     let generation: UUID
 }
@@ -41,7 +42,8 @@ struct LocalRenamePageView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Text("Changes stay in this independent local copy.")
+                if request.copy.isLocalCopy { Text("Changes stay in this independent local copy.") }
+                else { Text("The new name is saved to your Worlds workspace.") }
                 TextField("Page title", text: $title)
                     .disabled(busy || uncertain)
                     .accessibilityIdentifier("rename-personal-page-title")
@@ -85,7 +87,7 @@ struct LocalRenamePageView: View {
             let result = try await save(old, next, UUID())
             guard result.title.utf8.elementsEqual(next.utf8) else {
                 uncertain = true
-                message = "The saved name could not be verified. Close and reopen the copy to check."
+                message = request.copy.isLocalCopy ? "The saved name could not be verified. Close and reopen the copy to check." : String(localized: "The saved name could not be verified. Open the workspace again to check.")
                 return
             }
             baseline = result
@@ -93,10 +95,10 @@ struct LocalRenamePageView: View {
             previousName = restoring ? nil : old.title
             message = restoring ? "Previous name restored." : "Name saved."
         } catch NativeWriteError.conflict {
-            message = "The page changed. Keep this draft, then close and reopen the copy to review the current name."
+            message = request.copy.isLocalCopy ? "The page changed. Keep this draft, then close and reopen the copy to review the current name." : String(localized: "The page changed. Keep this draft, then open the workspace again to review the current name.")
             uncertain = true
         } catch {
-            message = "The result could not be confirmed. The name may have been saved. Close and reopen the copy to check."
+            message = request.copy.isLocalCopy ? "The result could not be confirmed. The name may have been saved. Close and reopen the copy to check." : String(localized: "The result could not be confirmed. The name may have been saved. Open the workspace again to check.")
             uncertain = true
         }
     }

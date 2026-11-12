@@ -4,6 +4,7 @@ import WorldsLocalImport
 import WorldsNativeWrites
 import WorldsResourceRepositories
 import WorldsProjectEditingViews
+import WorldsWorkspaceAccess
 
 func localCopyErrorMessage(_ error: Error) -> String {
     guard let error = error as? LocalImportError else { return error.localizedDescription }
@@ -16,13 +17,35 @@ func localCopyErrorMessage(_ error: Error) -> String {
     }
 }
 
-struct LocalCopyContext {
-    let copy: LocalProjectCopy
+/// The active write target: the person's own workspace database, written in
+/// place, or an independent local copy. The property keeps its earlier name
+/// `copy` so every editor request reads `request.copy.databaseURL` either way.
+struct LocalCopyContext: Sendable {
+    let copy: WorkspaceWriteTarget
     let repository: NativeResourceRepository
-    init(copy: LocalProjectCopy) throws {
-        self.copy = copy
-        repository = NativeResourceRepository(store: try NativePersonalStore(url: copy.databaseURL))
+    /// Keeps security scoped access to the own workspace while it is active.
+    let lease: WorkspaceAccessLease?
+    init(target: WorkspaceWriteTarget) throws {
+        copy = target
+        lease = target.isLocalCopy ? nil : WorkspaceAccessLease(url: target.databaseURL)
+        repository = NativeResourceRepository(store: try NativePersonalStore(url: target.databaseURL))
     }
+    init(copy: LocalProjectCopy) throws {
+        try self.init(target: .localCopy(copy))
+    }
+}
+
+/// One line that says where an editor saves.
+func workspaceSaveNotice(_ target: WorkspaceWriteTarget) -> LocalizedStringKey {
+    target.isLocalCopy
+        ? "Changes are saved to this independent local copy and do not sync to the original."
+        : "Changes are saved to your Worlds workspace and appear in Worlds on your computer. Its page history keeps earlier versions."
+}
+
+/// Text for a refusal the person can act on, or nil for other errors.
+func workspaceWriteMessage(_ error: Error) -> String? {
+    guard let error = error as? NativeWriteError, case .teamWorkspace = error else { return nil }
+    return String(localized: "New pages would join your active team workspace. Create it in Worlds on your computer, or choose a personal parent page.")
 }
 
 struct LocalCopyNotice: View {
@@ -38,6 +61,36 @@ struct LocalCopyNotice: View {
         .accessibilityElement(children: .combine)
         .accessibilityHint("Shared records may be present, but shared projects cannot be edited here.")
         .accessibilityIdentifier("local-copy-notice")
+    }
+}
+
+/// Says why the opened workspace can be read but not edited here.
+struct WorkspaceReadOnlyNotice: View {
+    let reason: WorkspaceWriteAccess.Reason
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Label("Read only", systemImage: "lock").font(.body.weight(.semibold))
+            Text(message).font(.body).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16).padding(.vertical, 10)
+        .background(.regularMaterial)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("workspace-read-only-notice")
+    }
+    private var message: LocalizedStringKey {
+        switch reason {
+        case .cloudStorage:
+            return "This database is in iCloud Drive or another cloud folder, where saving to it could damage it. Create a local copy to edit."
+        case .networkVolume:
+            return "This database is on a network or unknown drive, where saving to it is not safe. Create a local copy to edit."
+        case .notWritable:
+            return "This database or its folder cannot be written."
+        case .unsupportedSchema:
+            return "This database is from a different version of Worlds. Open it in Worlds on your computer first."
+        case .notLocalFile, .notWorldsDatabase, .unavailable:
+            return "This database cannot be edited here."
+        }
     }
 }
 

@@ -8,12 +8,19 @@ struct TrashView: View {
     let onRestore: (String) -> Void
     let onDeletePermanently: (String) -> Void
     let onEmptyTrash: () -> Void
+    /// The desktop's Trash for the person's own workspace. When nil, the
+    /// earlier archive based list of a local copy is shown.
+    var storeTrash: [StoredTrashedPage]? = nil
+    /// Permanent deletion needs a checked store operation that does not exist
+    /// yet, so it is offered only for an independent local copy.
+    var permanentDeletionAvailable: Bool = true
 
     @State private var confirmEmptyTrash = false
     @State private var itemToDeletePermanently: StoredPage?
 
     private var trashedPages: [StoredPage] {
-        pages.filter { $0.archived }
+        if let storeTrash { return storeTrash.map(\.page) }
+        return pages.filter { $0.archived }
     }
 
     var body: some View {
@@ -35,16 +42,24 @@ struct TrashView: View {
                                     .foregroundStyle(WorldsPalette.ink(for: colorScheme))
                                     .accessibilityAddTraits(.isHeader)
 
-                                Text("\(trashedPages.count) archived item\(trashedPages.count == 1 ? "" : "s")")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                                if storeTrash == nil {
+                                    Text("\(trashedPages.count) archived item\(trashedPages.count == 1 ? "" : "s")")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                } else {
+                                    Text("Restore brings a page back with its subpages. Worlds on your computer can delete pages permanently.")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
                             Spacer()
-                            Button("Empty Trash", role: .destructive) {
-                                confirmEmptyTrash = true
+                            if permanentDeletionAvailable {
+                                Button("Empty Trash", role: .destructive) {
+                                    confirmEmptyTrash = true
+                                }
+                                .buttonStyle(.bordered)
+                                .accessibilityIdentifier("empty-trash-button")
                             }
-                            .buttonStyle(.bordered)
-                            .accessibilityIdentifier("empty-trash-button")
                         }
                         .padding(.vertical, 4)
 
@@ -112,15 +127,17 @@ struct TrashView: View {
             .buttonStyle(.bordered)
             .accessibilityLabel("Restore \(page.title)")
 
-            Button(role: .destructive) {
-                itemToDeletePermanently = page
-            } label: {
-                Image(systemName: "trash")
-                    .font(.subheadline)
-                    .foregroundStyle(.red)
+            if permanentDeletionAvailable {
+                Button(role: .destructive) {
+                    itemToDeletePermanently = page
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.subheadline)
+                        .foregroundStyle(.red)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Permanently delete \(page.title)")
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Permanently delete \(page.title)")
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)

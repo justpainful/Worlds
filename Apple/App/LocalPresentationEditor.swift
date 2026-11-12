@@ -1,4 +1,4 @@
-#if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
+#if WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
 import SwiftUI
 import WorldsPresentations
 import WorldsPresentationPersistence
@@ -232,6 +232,7 @@ import SQLite3
             baseline = session.slides; self.session = try PresentationSession(slides: session.slides); saved = true; error = nil
         }
         catch { reloadRequired = true; self.error = "Save could not be confirmed. Your draft remains here. Copy any text before reloading: \(error.localizedDescription)"; return }
+        #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--ui-testing-presentation-fixture") {
             do {
                 var pointer: OpaquePointer?
@@ -246,6 +247,7 @@ import SQLite3
                 self.error = "Saved, but the fixture attachment check failed: \(error.localizedDescription)"
             }
         }
+        #endif
     }
 }
 struct LocalPresentationEditor: View {
@@ -256,8 +258,10 @@ struct LocalPresentationEditor: View {
     @State private var deleteSlide = false
     @State private var previewExpanded = false
     let onSaved: () -> Void
-    init(databaseURL: URL, pageID: String, onSaved: @escaping () -> Void) {
+    private let editsLocalCopy: Bool
+    init(databaseURL: URL, pageID: String, editsLocalCopy: Bool = true, onSaved: @escaping () -> Void) {
         _state = StateObject(wrappedValue: PresentationEditorState(databaseURL: databaseURL, pageID: pageID)); self.onSaved = onSaved
+        self.editsLocalCopy = editsLocalCopy
     }
     private func swatchColor(_ hex: String) -> Color {
         let rgb = UInt32(hex.dropFirst(), radix: 16) ?? 0
@@ -267,7 +271,8 @@ struct LocalPresentationEditor: View {
         NavigationStack {
             ScrollView {
               VStack(alignment: .leading, spacing: 12) {
-                Text("This edits a local copy. Media and unsupported elements are kept but cannot be edited here.")
+                if editsLocalCopy { Text("This edits a local copy. Media and unsupported elements are kept but cannot be edited here.") }
+                else { Text("This edits your Worlds workspace. Media and unsupported elements are kept but cannot be edited here.") }
                 if let error = state.error { Text(error).accessibilityIdentifier("presentation-edit-error") }
                 if state.saved && !state.dirty { Text("Presentation saved").accessibilityIdentifier("presentation-edit-saved") }
                 if state.fixtureMediaPresent { Text("Fixture attachment record retained").accessibilityIdentifier("presentation-media-record-retained") }

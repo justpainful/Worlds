@@ -1,6 +1,7 @@
-#if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_STREAM_EDITOR
+#if WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_STREAM_EDITOR
 import SwiftUI
 import WorldsLocalImport
+import WorldsWorkspaceAccess
 import WorldsModels
 import WorldsNativeWrites
 import WorldsResourceRepositories
@@ -14,10 +15,10 @@ import WorldsResourceRepositories
     @Published var error: String?
     private var baseline: StreamRecord?
     private var initial = ""
-    private let copy: LocalProjectCopy
+    let copy: WorkspaceWriteTarget
     private let pageID: String
     private var repository: NativeResourceRepository?
-    init(copy: LocalProjectCopy, pageID: String) { self.copy = copy; self.pageID = pageID }
+    init(copy: WorkspaceWriteTarget, pageID: String) { self.copy = copy; self.pageID = pageID }
     var dirty: Bool { url != initial }
     var valid: Bool {
         guard let components = URLComponents(string: url.trimmingCharacters(in: .whitespacesAndNewlines)),
@@ -56,13 +57,13 @@ struct LocalStreamEditor: View {
     @StateObject private var state: StreamEditorState
     @State private var confirmDiscard = false
     let onSaved: @MainActor () -> Void
-    init(copy: LocalProjectCopy, pageID: String, onSaved: @escaping @MainActor () -> Void) {
+    init(copy: WorkspaceWriteTarget, pageID: String, onSaved: @escaping @MainActor () -> Void) {
         _state = StateObject(wrappedValue: StreamEditorState(copy: copy, pageID: pageID)); self.onSaved = onSaved
     }
     var body: some View {
         NavigationStack {
             Form {
-                Text("Changes are saved to this independent local copy and do not sync to the original.")
+                Text(workspaceSaveNotice(state.copy))
                 if state.loading { ProgressView("Opening stream") }
                 else if state.saved { Label("Stream link saved", systemImage: "checkmark.circle") }
                 else {

@@ -10,16 +10,16 @@ import WorldsMCPApprovalViews
 #if WORLDS_EXPERIMENTAL_LOCAL_COPY
 import WorldsLocalImport
 import WorldsProjectEditingViews
-#if DEBUG && WORLDS_EXPERIMENTAL_CREATE_STREAM
+#if WORLDS_EXPERIMENTAL_CREATE_STREAM
 import WorldsModels
 #endif
-#if DEBUG && (WORLDS_EXPERIMENTAL_RENAME_PAGE || WORLDS_EXPERIMENTAL_MOVE_PAGE)
 import WorldsNativeWrites
-#endif
+import WorldsWorkspaceAccess
 #endif
 
 extension Notification.Name {
     static let worldsOpenDatabaseAction = Notification.Name("worldsOpenDatabaseAction")
+    static let worldsOpenOwnWorkspaceAction = Notification.Name("worldsOpenOwnWorkspaceAction")
     static let worldsFocusSearchAction = Notification.Name("worldsFocusSearchAction")
     static let worldsNavigateHomeAction = Notification.Name("worldsNavigateHomeAction")
     static let worldsNavigateSpacesAction = Notification.Name("worldsNavigateSpacesAction")
@@ -208,6 +208,11 @@ struct WorldsApp: App {
                 NotificationCenter.default.post(name: .worldsOpenDatabaseAction, object: nil)
             }
             .keyboardShortcut("o", modifiers: .command)
+
+            Button("Open Desktop Workspace") {
+                NotificationCenter.default.post(name: .worldsOpenOwnWorkspaceAction, object: nil)
+            }
+            .keyboardShortcut("o", modifiers: [.command, .shift])
         }
         CommandGroup(after: .pasteboard) {
             Divider()
@@ -471,7 +476,14 @@ private struct WorldsLibraryView: View {
     private let mcpRunner = DualMCPToolRunner()
     #endif
     #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+    /// The write target: the opened workspace itself when it can be written in
+    /// place, or an independent local copy. Nil means read only.
     @State private var copyContext: LocalCopyContext?
+    /// Why the opened workspace stays read only, shown to the person.
+    @State private var readOnlyReason: WorkspaceWriteAccess.Reason?
+    /// The desktop's Trash for the opened workspace.
+    @State private var storeTrash: [StoredTrashedPage] = []
+    @State private var trashFailure: String?
     @State private var copyCoordinator: LocalProjectImportCoordinator?
     @State private var copyImportSelected = false
     @State private var showCopyExplanation = false
@@ -481,52 +493,52 @@ private struct WorldsLibraryView: View {
     @State private var fixtureGalleryCopyID: UUID?
     @State private var galleryDraftRequest: LocalGalleryDraftRequest?
     #endif
-    #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DRAWING && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+    #if WORLDS_EXPERIMENTAL_CREATE_DRAWING && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
     @State private var creatingDrawing: LocalCreateDrawingRequest?
     #endif
-    #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_STREAM
+    #if WORLDS_EXPERIMENTAL_CREATE_STREAM
     @State private var creatingStream: LocalCreateStreamRequest?
     #endif
-    #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_GALLERY
+    #if WORLDS_EXPERIMENTAL_CREATE_GALLERY
     @State private var creatingGallery: LocalCreateGalleryRequest?
     #endif
-    #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PRESENTATION && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
+    #if WORLDS_EXPERIMENTAL_CREATE_PRESENTATION && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
     @State private var creatingPresentation: LocalCreatePresentationRequest?
     #endif
-    #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PROJECT
+    #if WORLDS_EXPERIMENTAL_CREATE_PROJECT
     @State private var creatingProject: LocalCreateProjectRequest?
     #endif
-    #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DOCUMENT
+    #if WORLDS_EXPERIMENTAL_CREATE_DOCUMENT
     @State private var creatingDocument: LocalCreateDocumentRequest?
     #endif
-    #if DEBUG && WORLDS_EXPERIMENTAL_MOVE_PAGE
+    #if WORLDS_EXPERIMENTAL_MOVE_PAGE
     @State private var movingPage: LocalMovePageRequest?
     #endif
-    #if DEBUG && WORLDS_EXPERIMENTAL_RENAME_PAGE
+    #if WORLDS_EXPERIMENTAL_RENAME_PAGE
     @State private var renamingPage: LocalRenamePageRequest?
     #endif
-    #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PAGE
+    #if WORLDS_EXPERIMENTAL_CREATE_PAGE
     @State private var creatingPage: LocalCreatePageRequest?
     #endif
-    #if DEBUG && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+    #if WORLDS_EXPERIMENTAL_DRAWING_EDITOR
     @State private var editingDrawing: LocalDrawingEditorRequest?
     #endif
     #if DEBUG && WORLDS_EXPERIMENTAL_AUTOMATIONS
     @State private var automationsRequest: LocalAutomationsRequest?
     #endif
-    #if DEBUG && WORLDS_EXPERIMENTAL_STREAM_EDITOR
+    #if WORLDS_EXPERIMENTAL_STREAM_EDITOR
     @State private var editingStream: LocalStreamEditorRequest?
     #endif
-    #if DEBUG && WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
+    #if WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
     @State private var editingSpreadsheet: LocalSpreadsheetEditorRequest?
     #endif
     #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_IMPORT
     @State private var importingGallery: LocalGalleryImportRequest?
     #endif
-    #if DEBUG && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
+    #if WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
     @State private var editingPresentation: LocalPresentationEditorRequest?
     #endif
-    #if DEBUG && WORLDS_EXPERIMENTAL_PAGE_EDITOR
+    #if WORLDS_EXPERIMENTAL_PAGE_EDITOR
     @State private var editingPage: LocalPageEditorRequest?
     #endif
     #endif
@@ -646,7 +658,7 @@ private struct WorldsLibraryView: View {
                     .disabled(databaseActionsDisabled)
                 }
                 #if WORLDS_EXPERIMENTAL_LOCAL_COPY
-                #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PRESENTATION && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
+                #if WORLDS_EXPERIMENTAL_CREATE_PRESENTATION && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
                 if let context = copyContext, let source = openedVideoDatabase,
                    source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
                     ToolbarItem {
@@ -656,7 +668,7 @@ private struct WorldsLibraryView: View {
                     }
                 }
                 #endif
-                #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DRAWING && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+                #if WORLDS_EXPERIMENTAL_CREATE_DRAWING && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
                 if let context = copyContext, let source = openedVideoDatabase,
                    source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
                     ToolbarItem {
@@ -666,7 +678,7 @@ private struct WorldsLibraryView: View {
                     }
                 }
                 #endif
-                #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_STREAM
+                #if WORLDS_EXPERIMENTAL_CREATE_STREAM
                 if let context = copyContext, let source = openedVideoDatabase,
                    source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
                     ToolbarItem {
@@ -676,7 +688,7 @@ private struct WorldsLibraryView: View {
                     }
                 }
                 #endif
-                #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_GALLERY
+                #if WORLDS_EXPERIMENTAL_CREATE_GALLERY
                 if let context = copyContext, let source = openedVideoDatabase,
                    source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
                     ToolbarItem {
@@ -686,7 +698,7 @@ private struct WorldsLibraryView: View {
                     }
                 }
                 #endif
-                #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PROJECT
+                #if WORLDS_EXPERIMENTAL_CREATE_PROJECT
                 if let context = copyContext, let source = openedVideoDatabase,
                    source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
                     ToolbarItem {
@@ -696,7 +708,7 @@ private struct WorldsLibraryView: View {
                     }
                 }
                 #endif
-                #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DOCUMENT
+                #if WORLDS_EXPERIMENTAL_CREATE_DOCUMENT
                 if let context = copyContext, let source = openedVideoDatabase,
                    source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
                     ToolbarItem {
@@ -706,7 +718,7 @@ private struct WorldsLibraryView: View {
                     }
                 }
                 #endif
-                #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PAGE
+                #if WORLDS_EXPERIMENTAL_CREATE_PAGE
                 if let context = copyContext, let source = openedVideoDatabase,
                    source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
                     ToolbarItem {
@@ -717,7 +729,7 @@ private struct WorldsLibraryView: View {
                 }
                 #endif
                 #if DEBUG && WORLDS_EXPERIMENTAL_AUTOMATIONS
-                if let context = copyContext, let source = openedVideoDatabase,
+                if let context = copyContext, context.copy.isLocalCopy, let source = openedVideoDatabase,
                    source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
                     ToolbarItem {
                         Button("Automations", systemImage: "clock.arrow.circlepath") {
@@ -741,7 +753,7 @@ private struct WorldsLibraryView: View {
                     sectionContentView(section)
                 } else if let selectedPageID = selectedID, let page = pages.first(where: { $0.id == selectedPageID }) {
                     if ["project", "gallery", "presentation", "file", "stream", "spreadsheet"].contains(page.kind) {
-                        ResourceContentView(page: page, pages: pages, projectEditingAvailable: projectEditingAvailable(for: page), otherEditingAvailable: otherResourceEditingAvailable(for: page), openVideo: videoAction(for: page), openDocument: documentAction(for: page)) { target in
+                        ResourceContentView(page: page, pages: pages, projectEditingAvailable: projectEditingAvailable(for: page), otherEditingAvailable: otherResourceEditingAvailable(for: page), editsOwnWorkspace: editsOwnWorkspace, openVideo: videoAction(for: page), openDocument: documentAction(for: page)) { target in
                             guard target != page.id else { return }
                             returnStack.append(page.id)
                             selectedID = target
@@ -756,7 +768,8 @@ private struct WorldsLibraryView: View {
                                       pages.contains(where: { $0.id == target && $0.parentID == page.id && !$0.archived && $0.kind != "template" && $0.id != page.id }) else { return }
                                 returnStack.append(page.id)
                                 selectedID = target
-                            }
+                            },
+                            editsOwnWorkspace: editsOwnWorkspace
                         )
                     }
                 } else if loaded {
@@ -788,100 +801,7 @@ private struct WorldsLibraryView: View {
                 }
                 #endif
                 #if WORLDS_EXPERIMENTAL_LOCAL_COPY
-                #if DEBUG && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
-                if let id = selectedID, let context = copyContext, let source = openedVideoDatabase,
-                   source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL,
-                   pages.contains(where: { $0.id == id && $0.kind == "drawing" }) {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button("Edit drawing", systemImage: "pencil.tip") {
-                            editingDrawing = LocalDrawingEditorRequest(id: id, context: context, identity: source.identity, generation: databaseGeneration)
-                        }.accessibilityIdentifier("edit-local-drawing").disabled(databaseActionsDisabled)
-                    }
-                }
-                #endif
-                #if DEBUG && WORLDS_EXPERIMENTAL_STREAM_EDITOR
-                if let id = selectedID, let context = copyContext, pages.contains(where: { $0.id == id && $0.kind == "stream" }) {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button("Edit link", systemImage: "link") { editingStream = LocalStreamEditorRequest(id: id, context: context, generation: databaseGeneration) }
-                            .disabled(loading)
-                    }
-                }
-                #endif
-                #if DEBUG && WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
-                if let id = selectedID, let context = copyContext, let page = pages.first(where: { $0.id == id && $0.kind == "spreadsheet" }) {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button("Edit spreadsheet", systemImage: "tablecells") {
-                            editingSpreadsheet = LocalSpreadsheetEditorRequest(id: id, title: page.title, context: context, generation: databaseGeneration)
-                        }
-                        .accessibilityIdentifier("edit-local-spreadsheet")
-                        .disabled(loading)
-                    }
-                }
-                #endif
-                #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_DRAFT_FIXTURE
-                if selectedID == "gallery-draft-fixture", let context = copyContext,
-                   context.copy.id == fixtureGalleryCopyID, let source = openedVideoDatabase,
-                   source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button("Edit fixture gallery", systemImage: "pencil") {
-                            galleryDraftRequest = LocalGalleryDraftRequest(copy: context.copy, identity: source.identity, generation: databaseGeneration)
-                        }.disabled(databaseActionsDisabled).accessibilityIdentifier("edit-fixture-gallery")
-                    }
-                }
-                #endif
-                #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_IMPORT
-                if let id = selectedID, let context = copyContext, pages.contains(where: { $0.id == id && $0.kind == "gallery" }) {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button("Import file", systemImage: "square.and.arrow.down") { importingGallery = LocalGalleryImportRequest(id: id, context: context, generation: databaseGeneration) }
-                            .disabled(loading)
-                    }
-                }
-                #endif
-                #if DEBUG && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
-                if let id = selectedID, let context = copyContext, pages.contains(where: { $0.id == id && $0.kind == "presentation" }) {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button("Edit presentation", systemImage: "pencil") { editingPresentation = LocalPresentationEditorRequest(id: id, context: context, generation: databaseGeneration) }
-                            .accessibilityIdentifier("edit-local-presentation").disabled(loading)
-                    }
-                }
-                #endif
-                #if DEBUG && WORLDS_EXPERIMENTAL_MOVE_PAGE
-                if let id = selectedID, let page = pages.first(where: { $0.id == id && ($0.kind == "page" || $0.kind == "document") }),
-                   let context = copyContext, let source = openedVideoDatabase,
-                   source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button("Move page", systemImage: "folder") {
-                            movingPage = LocalMovePageRequest(pageID: id, title: page.title, originalParent: page.parentID, originalSortKey: page.sortKey, originalRevision: page.updatedAt, candidates: pages, copy: context.copy, databaseIdentity: source.identity, generation: databaseGeneration)
-                        }.accessibilityIdentifier("move-local-page").disabled(databaseActionsDisabled)
-                    }
-                }
-                #endif
-                #if DEBUG && WORLDS_EXPERIMENTAL_RENAME_PAGE
-                if let id = selectedID, let page = pages.first(where: { $0.id == id && ($0.kind == "page" || $0.kind == "document") }),
-                   let context = copyContext, let source = openedVideoDatabase,
-                   source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button("Rename page", systemImage: "pencil.line") {
-                            renamingPage = LocalRenamePageRequest(pageID: id, originalTitle: page.title, originalRevision: page.updatedAt, copy: context.copy, databaseIdentity: source.identity, generation: databaseGeneration)
-                        }.accessibilityIdentifier("rename-local-page").disabled(databaseActionsDisabled)
-                    }
-                }
-                #endif
-                #if DEBUG && WORLDS_EXPERIMENTAL_PAGE_EDITOR
-                if let id = selectedID, let context = copyContext, pages.contains(where: { $0.id == id && ($0.kind == "page" || $0.kind == "document") }) {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button("Edit page", systemImage: "pencil") { editingPage = LocalPageEditorRequest(id: id, context: context, generation: databaseGeneration) }
-                            .accessibilityIdentifier("edit-local-page").disabled(loading)
-                    }
-                }
-                #endif
-                if let id = selectedID, let context = copyContext, pages.contains(where: { $0.id == id && $0.kind == "project" }) {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button("Edit project", systemImage: "pencil") { editingProject = ProjectEditorRequest(id: id, context: context, generation: databaseGeneration, candidates: projectLinkCandidates()) }
-                            .accessibilityIdentifier("edit-local-project")
-                            .disabled(loading)
-                    }
-                }
+                resourceEditToolbar(for: selectedID)
                 #endif
                 if let previous = returnStack.last, let page = pages.first(where: { $0.id == previous }) {
                     ToolbarItem(placement: .primaryAction) {
@@ -992,7 +912,9 @@ private struct WorldsLibraryView: View {
                             onDeletePermanently: deletePermanently,
                             onEmptyTrash: emptyTrash,
                             onOpenCreateSheet: { showCreateSheet = true },
-                            showCollectionPicker: true
+                            showCollectionPicker: true,
+                            storeTrash: storeTrashListing,
+                            permanentDeletionAvailable: permanentDeletionAvailable
                         )
                     }
                 }
@@ -1047,7 +969,9 @@ private struct WorldsLibraryView: View {
                         onDeletePermanently: deletePermanently,
                         onEmptyTrash: emptyTrash,
                         onOpenCreateSheet: { showCreateSheet = true },
-                        showCollectionPicker: true
+                        showCollectionPicker: true,
+                        storeTrash: storeTrashListing,
+                        permanentDeletionAvailable: permanentDeletionAvailable
                     )
                 }
                 .tabItem { Label("Library", systemImage: "folder") }
@@ -1077,6 +1001,9 @@ private struct WorldsLibraryView: View {
                 .navigationDestination(item: phoneDetailBinding(for: tab)) { pageID in
                     selectedResourceDetail(for: pageID)
                         .overlay { readingRulerOverlay }
+                        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+                        .toolbar { resourceEditToolbar(for: pageID) }
+                        #endif
                 }
                 .toolbar {
                     ToolbarItemGroup(placement: .primaryAction) {
@@ -1139,7 +1066,12 @@ private struct WorldsLibraryView: View {
         } detail: {
             modernDetailCanvas
                 .overlay { readingRulerOverlay }
-                .toolbar { desktopToolbarItems }
+                .toolbar {
+                    desktopToolbarItems
+                    #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+                    resourceEditToolbar(for: selectedID)
+                    #endif
+                }
                 .inspector(isPresented: $showInspector) {
                     WorkspaceInspectorPanel(
                         selectedPage: selectedID.flatMap { id in pages.first(where: { $0.id == id }) },
@@ -1284,7 +1216,9 @@ private struct WorldsLibraryView: View {
                     onDeletePermanently: deletePermanently,
                     onEmptyTrash: emptyTrash,
                     onOpenCreateSheet: { showCreateSheet = true },
-                    showCollectionPicker: true
+                    showCollectionPicker: true,
+                    storeTrash: storeTrashListing,
+                    permanentDeletionAvailable: permanentDeletionAvailable
                 )
             case .ai:
                 AssistantHostView(pages: pages, embeddedInNavigation: true)
@@ -1324,6 +1258,7 @@ private struct WorldsLibraryView: View {
                     pages: pages,
                     projectEditingAvailable: projectEditingAvailable(for: page),
                     otherEditingAvailable: otherResourceEditingAvailable(for: page),
+                    editsOwnWorkspace: editsOwnWorkspace,
                     openVideo: videoAction(for: page),
                     openDocument: documentAction(for: page)
                 ) { target in
@@ -1341,13 +1276,124 @@ private struct WorldsLibraryView: View {
                               pages.contains(where: { $0.id == target && $0.parentID == page.id && !$0.archived && $0.kind != "template" && $0.id != page.id }) else { return }
                         returnStack.append(page.id)
                         selectedID = target
-                    }
+                    },
+                    editsOwnWorkspace: editsOwnWorkspace
                 )
             }
         } else {
             ContentUnavailableView("Resource not found", systemImage: "doc.questionmark")
         }
     }
+
+    #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+    /// Edit actions for the selected resource. They appear only while a write
+    /// target is active: the opened workspace itself or a local copy.
+    @ToolbarContentBuilder
+    private func resourceEditToolbar(for selection: String?) -> some ToolbarContent {
+        #if WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+        if let id = selection, let context = copyContext, let source = openedVideoDatabase,
+           source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL,
+           pages.contains(where: { $0.id == id && $0.kind == "drawing" }) {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Edit drawing", systemImage: "pencil.tip") {
+                    editingDrawing = LocalDrawingEditorRequest(id: id, context: context, identity: source.identity, generation: databaseGeneration)
+                }.accessibilityIdentifier("edit-local-drawing").disabled(databaseActionsDisabled)
+            }
+        }
+        #endif
+        #if WORLDS_EXPERIMENTAL_STREAM_EDITOR
+        if let id = selection, let context = copyContext, pages.contains(where: { $0.id == id && $0.kind == "stream" }) {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Edit link", systemImage: "link") { editingStream = LocalStreamEditorRequest(id: id, context: context, generation: databaseGeneration) }
+                    .disabled(loading)
+            }
+        }
+        #endif
+        #if WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
+        if let id = selection, let context = copyContext, let page = pages.first(where: { $0.id == id && $0.kind == "spreadsheet" }) {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Edit spreadsheet", systemImage: "tablecells") {
+                    editingSpreadsheet = LocalSpreadsheetEditorRequest(id: id, title: page.title, context: context, generation: databaseGeneration)
+                }
+                .accessibilityIdentifier("edit-local-spreadsheet")
+                .disabled(loading)
+            }
+        }
+        #endif
+        #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_DRAFT_FIXTURE
+        if selection == "gallery-draft-fixture", let context = copyContext, let fixtureCopy = context.copy.independentCopy,
+           context.copy.id == fixtureGalleryCopyID, let source = openedVideoDatabase,
+           source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Edit fixture gallery", systemImage: "pencil") {
+                    galleryDraftRequest = LocalGalleryDraftRequest(copy: fixtureCopy, identity: source.identity, generation: databaseGeneration)
+                }.disabled(databaseActionsDisabled).accessibilityIdentifier("edit-fixture-gallery")
+            }
+        }
+        #endif
+        #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_IMPORT
+        if let id = selection, let context = copyContext, context.copy.supportsGalleryFileImport, pages.contains(where: { $0.id == id && $0.kind == "gallery" }) {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Import file", systemImage: "square.and.arrow.down") { importingGallery = LocalGalleryImportRequest(id: id, context: context, generation: databaseGeneration) }
+                    .disabled(loading)
+            }
+        }
+        #endif
+        #if WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
+        if let id = selection, let context = copyContext, pages.contains(where: { $0.id == id && $0.kind == "presentation" }) {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Edit presentation", systemImage: "pencil") { editingPresentation = LocalPresentationEditorRequest(id: id, context: context, generation: databaseGeneration) }
+                    .accessibilityIdentifier("edit-local-presentation").disabled(loading)
+            }
+        }
+        #endif
+        #if WORLDS_EXPERIMENTAL_MOVE_PAGE
+        if let id = selection, let page = pages.first(where: { $0.id == id && ($0.kind == "page" || $0.kind == "document") }),
+           let context = copyContext, let source = openedVideoDatabase,
+           source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Move page", systemImage: "folder") {
+                    movingPage = LocalMovePageRequest(pageID: id, title: page.title, originalParent: page.parentID, originalSortKey: page.sortKey, originalRevision: page.updatedAt, candidates: pages, copy: context.copy, databaseIdentity: source.identity, generation: databaseGeneration)
+                }.accessibilityIdentifier("move-local-page").disabled(databaseActionsDisabled)
+            }
+        }
+        #endif
+        #if WORLDS_EXPERIMENTAL_RENAME_PAGE
+        if let id = selection, let page = pages.first(where: { $0.id == id && ($0.kind == "page" || $0.kind == "document") }),
+           let context = copyContext, let source = openedVideoDatabase,
+           source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Rename page", systemImage: "pencil.line") {
+                    renamingPage = LocalRenamePageRequest(pageID: id, originalTitle: page.title, originalRevision: page.updatedAt, copy: context.copy, databaseIdentity: source.identity, generation: databaseGeneration)
+                }.accessibilityIdentifier("rename-local-page").disabled(databaseActionsDisabled)
+            }
+        }
+        #endif
+        #if WORLDS_EXPERIMENTAL_PAGE_EDITOR
+        if let id = selection, let context = copyContext, pages.contains(where: { $0.id == id && ($0.kind == "page" || $0.kind == "document") }) {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Edit page", systemImage: "pencil") { editingPage = LocalPageEditorRequest(id: id, context: context, generation: databaseGeneration) }
+                    .accessibilityIdentifier("edit-local-page").disabled(loading)
+            }
+        }
+        #endif
+        if let id = selection, let context = copyContext, pages.contains(where: { $0.id == id && $0.kind == "project" }) {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Edit project", systemImage: "pencil") { editingProject = ProjectEditorRequest(id: id, context: context, generation: databaseGeneration, candidates: projectLinkCandidates()) }
+                    .accessibilityIdentifier("edit-local-project")
+                    .disabled(loading)
+            }
+        }
+        if let id = selection, let context = copyContext, context.copy.usesStoreTrash,
+           pages.contains(where: { $0.id == id && $0.kind != "template" }) {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Move to Trash", systemImage: "trash") { moveToTrash(id) }
+                    .accessibilityIdentifier("trash-workspace-page")
+                    .disabled(databaseActionsDisabled)
+            }
+        }
+    }
+    #endif
 
     @ToolbarContentBuilder
     private var desktopToolbarItems: some ToolbarContent {
@@ -1524,7 +1570,32 @@ private struct WorldsLibraryView: View {
         }
     }
 
+    /// The desktop's Trash, when the opened workspace is the write target.
+    private var storeTrashListing: [StoredTrashedPage]? {
+        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+        copyContext?.copy.usesStoreTrash == true ? storeTrash : nil
+        #else
+        nil
+        #endif
+    }
+
+    private var permanentDeletionAvailable: Bool {
+        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+        copyContext?.copy.supportsPermanentDeletion ?? true
+        #else
+        true
+        #endif
+    }
+
     private func moveToTrash(_ id: String) {
+        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+        if let context = copyContext, context.copy.usesStoreTrash {
+            guard let page = pages.first(where: { $0.id == id }) else { return }
+            let generation = databaseGeneration
+            Task { await trashInWorkspace(page: page, context: context, generation: generation) }
+            return
+        }
+        #endif
         guard let index = pages.firstIndex(where: { $0.id == id }) else { return }
         let current = pages[index]
         let now = Int64(Date().timeIntervalSince1970 * 1000)
@@ -1585,8 +1656,12 @@ private struct WorldsLibraryView: View {
         }
         #endif
         .safeAreaInset(edge: .bottom) {
-            if copyContext != nil { LocalCopyNotice() }
+            if copyContext?.copy.isLocalCopy == true { LocalCopyNotice() }
+            else if copyContext == nil, let readOnlyReason { WorkspaceReadOnlyNotice(reason: readOnlyReason) }
         }
+        .alert("Could not change Trash", isPresented: Binding(get: { trashFailure != nil }, set: { if !$0 { trashFailure = nil } })) {
+            Button("OK", role: .cancel) { trashFailure = nil }
+        } message: { Text(trashFailure ?? "") }
         .confirmationDialog("Create an independent local copy?", isPresented: $showCopyExplanation) {
             Button("Choose database") { copyImportSelected = true; showImporter = true }
             Button("Cancel", role: .cancel) {}
@@ -1596,63 +1671,63 @@ private struct WorldsLibraryView: View {
         .sheet(isPresented: $showLocalCopies) {
             if let copyCoordinator { LocalCopyPicker(coordinator: copyCoordinator) { copy in Task { await activateCopy(copy) } } }
         }
-        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PAGE
+        #if WORLDS_EXPERIMENTAL_CREATE_PAGE
         .sheet(item: $creatingPage) { request in
             LocalCreatePageView(request: request) { id in
                 await showCreatedPage(id, request: request)
             }
         }
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_RENAME_PAGE
+        #if WORLDS_EXPERIMENTAL_RENAME_PAGE
         .sheet(item: $renamingPage) { request in
             LocalRenamePageView(request: request) { baseline, title, operationID in
                 try await savePageName(request: request, baseline: baseline, title: title, operationID: operationID)
             }
         }
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_MOVE_PAGE
+        #if WORLDS_EXPERIMENTAL_MOVE_PAGE
         .sheet(item: $movingPage) { request in
             LocalMovePageView(request: request) { baseline, destination, operationID in
                 try await movePersonalPage(request: request, baseline: baseline, destination: destination, operationID: operationID)
             }
         }
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DOCUMENT
+        #if WORLDS_EXPERIMENTAL_CREATE_DOCUMENT
         .sheet(item: $creatingDocument) { request in
             LocalCreateDocumentView(request: request) { id in
                 await showCreatedDocument(id, request: request)
             }
         }
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PROJECT
+        #if WORLDS_EXPERIMENTAL_CREATE_PROJECT
         .sheet(item: $creatingProject) { request in
             LocalCreateProjectView(request: request) { id in
                 await showCreatedProject(id, request: request)
             }
         }
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PRESENTATION && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
+        #if WORLDS_EXPERIMENTAL_CREATE_PRESENTATION && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
         .sheet(item: $creatingPresentation) { request in
             LocalCreatePresentationView(request: request) { id in
                 await showCreatedPresentation(id, request: request)
             }
         }
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_GALLERY
+        #if WORLDS_EXPERIMENTAL_CREATE_GALLERY
         .sheet(item: $creatingGallery) { request in
             LocalCreateGalleryView(request: request) { id in
                 await showCreatedGallery(id, request: request)
             }
         }
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_STREAM
+        #if WORLDS_EXPERIMENTAL_CREATE_STREAM
         .sheet(item: $creatingStream) { request in
             LocalCreateStreamView(request: request) { id, link in
                 await showCreatedStream(id, link: link, request: request)
             }
         }
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DRAWING && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+        #if WORLDS_EXPERIMENTAL_CREATE_DRAWING && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
         .sheet(item: $creatingDrawing) { request in
             LocalCreateDrawingView(request: request) { id in
                 await showCreatedDrawing(id, request: request)
@@ -1671,9 +1746,9 @@ private struct WorldsLibraryView: View {
                 }
             }
         }
-        #if DEBUG && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+        #if WORLDS_EXPERIMENTAL_DRAWING_EDITOR
         .sheet(item: $editingDrawing) { request in
-            LocalDrawingEditor(databaseURL: request.context.copy.databaseURL, pageID: request.id, identity: request.identity) {
+            LocalDrawingEditor(databaseURL: request.context.copy.databaseURL, pageID: request.id, identity: request.identity, editsLocalCopy: request.context.copy.isLocalCopy) {
                 Task { await refreshCopy(id: request.context.copy.id, generation: request.generation) }
             }
         }
@@ -1683,14 +1758,14 @@ private struct WorldsLibraryView: View {
             LocalAutomationsView(databaseURL: request.context.copy.databaseURL, identity: request.identity)
         }
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_STREAM_EDITOR
+        #if WORLDS_EXPERIMENTAL_STREAM_EDITOR
         .sheet(item: $editingStream) { request in
             LocalStreamEditor(copy: request.context.copy, pageID: request.id) {
                 Task { await refreshCopy(id: request.context.copy.id, generation: request.generation) }
             }
         }
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
+        #if WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
         .sheet(item: $editingSpreadsheet) { request in
             LocalSpreadsheetEditor(copy: request.context.copy, pageID: request.id, title: request.title) {
                 Task { await refreshCopy(id: request.context.copy.id, generation: request.generation) }
@@ -1699,21 +1774,23 @@ private struct WorldsLibraryView: View {
         #endif
         #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_IMPORT
         .sheet(item: $importingGallery) { request in
-            LocalGalleryImportView(copy: request.context.copy, pageID: request.id) {
-                Task { await refreshCopy(id: request.context.copy.id, generation: request.generation) }
+            if let copy = request.context.copy.independentCopy {
+                LocalGalleryImportView(copy: copy, pageID: request.id) {
+                    Task { await refreshCopy(id: request.context.copy.id, generation: request.generation) }
+                }
             }
         }
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
+        #if WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
         .sheet(item: $editingPresentation) { request in
-            LocalPresentationEditor(databaseURL: request.context.copy.databaseURL, pageID: request.id) {
+            LocalPresentationEditor(databaseURL: request.context.copy.databaseURL, pageID: request.id, editsLocalCopy: request.context.copy.isLocalCopy) {
                 Task { await refreshCopy(id: request.context.copy.id, generation: request.generation) }
             }
         }
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_PAGE_EDITOR
+        #if WORLDS_EXPERIMENTAL_PAGE_EDITOR
         .sheet(item: $editingPage) { request in
-            LocalPageEditorView(databaseURL: request.context.copy.databaseURL, pageID: request.id) {
+            LocalPageEditorView(databaseURL: request.context.copy.databaseURL, pageID: request.id, editsLocalCopy: request.context.copy.isLocalCopy) {
                 Task { await refreshCopy(id: request.context.copy.id, generation: request.generation) }
             }
         }
@@ -1813,6 +1890,11 @@ private struct WorldsLibraryView: View {
             }
         }
         .tint(WorldsPalette.accent(for: colorScheme))
+        #if os(macOS)
+        .onReceive(NotificationCenter.default.publisher(for: .worldsOpenOwnWorkspaceAction)) { _ in
+            Task { await openDesktopWorkspace() }
+        }
+        #endif
         .onReceive(NotificationCenter.default.publisher(for: .worldsOpenDatabaseAction)) { _ in
             #if WORLDS_EXPERIMENTAL_LOCAL_COPY
             copyImportSelected = false
@@ -2016,7 +2098,7 @@ private struct WorldsLibraryView: View {
         #if WORLDS_EXPERIMENTAL_PERSONAL_VIDEO
         guard page.kind == "file", let source = openedVideoDatabase else { return nil }
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
-        guard copyContext == nil else { return nil }
+        guard copyContext?.copy.isLocalCopy != true else { return nil }
         #endif
         return { videoRequest = PersonalVideoRequest(id: page.id, source: source) }
         #else
@@ -2028,7 +2110,7 @@ private struct WorldsLibraryView: View {
         #if DEBUG && WORLDS_EXPERIMENTAL_PERSONAL_DOCUMENT
         guard page.kind == "file", let source = openedVideoDatabase else { return nil }
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
-        guard copyContext == nil else { return nil }
+        guard copyContext?.copy.isLocalCopy != true else { return nil }
         #endif
         return { documentRequest = PersonalDocumentRequest(id: page.id, source: source) }
         #else
@@ -2040,7 +2122,7 @@ private struct WorldsLibraryView: View {
         #if DEBUG && WORLDS_EXPERIMENTAL_PERSONAL_DOCUMENT && WORLDS_EXPERIMENTAL_INLINE_IMAGE
         guard ["page", "document"].contains(page.kind), let source = openedVideoDatabase else { return nil }
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
-        guard copyContext == nil else { return nil }
+        guard copyContext?.copy.isLocalCopy != true else { return nil }
         #endif
         return { blockID in documentRequest = PersonalDocumentRequest(id: page.id, source: source, blockID: blockID) }
         #else
@@ -2049,7 +2131,7 @@ private struct WorldsLibraryView: View {
     }
 
     private var createPageAction: (() -> Void)? {
-        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PAGE
+        #if WORLDS_EXPERIMENTAL_CREATE_PAGE
         guard let context = copyContext, let source = openedVideoDatabase,
               source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL else { return nil }
         return {
@@ -2061,7 +2143,7 @@ private struct WorldsLibraryView: View {
     }
 
     private var createDocumentAction: (() -> Void)? {
-        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DOCUMENT
+        #if WORLDS_EXPERIMENTAL_CREATE_DOCUMENT
         guard let context = copyContext, let source = openedVideoDatabase,
               source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL else { return nil }
         return {
@@ -2073,7 +2155,7 @@ private struct WorldsLibraryView: View {
     }
 
     private var createDrawingAction: (() -> Void)? {
-        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DRAWING && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+        #if WORLDS_EXPERIMENTAL_CREATE_DRAWING && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
         guard let context = copyContext, let source = openedVideoDatabase,
               source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL else { return nil }
         return {
@@ -2085,7 +2167,7 @@ private struct WorldsLibraryView: View {
     }
 
     private var createProjectAction: (() -> Void)? {
-        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PROJECT
+        #if WORLDS_EXPERIMENTAL_CREATE_PROJECT
         guard let context = copyContext, let source = openedVideoDatabase,
               source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL else { return nil }
         return {
@@ -2097,7 +2179,7 @@ private struct WorldsLibraryView: View {
     }
 
     private var createPresentationAction: (() -> Void)? {
-        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PRESENTATION && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
+        #if WORLDS_EXPERIMENTAL_CREATE_PRESENTATION && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
         guard let context = copyContext, let source = openedVideoDatabase,
               source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL else { return nil }
         return {
@@ -2187,7 +2269,9 @@ private struct WorldsLibraryView: View {
                 pages: pages,
                 onRestore: restorePage,
                 onDeletePermanently: deletePermanently,
-                onEmptyTrash: emptyTrash
+                onEmptyTrash: emptyTrash,
+                storeTrash: storeTrashListing,
+                permanentDeletionAvailable: permanentDeletionAvailable
             )
         }
     }
@@ -2326,7 +2410,8 @@ private struct WorldsLibraryView: View {
 
     private var openAutomationsAction: (() -> Void)? {
         #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_AUTOMATIONS
-        guard let context = copyContext, let source = openedVideoDatabase,
+        // Automation runs stay in a local copy; the desktop runs the real ones.
+        guard let context = copyContext, context.copy.isLocalCopy, let source = openedVideoDatabase,
               source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL else { return nil }
         return {
             automationsRequest = LocalAutomationsRequest(context: context, identity: source.identity)
@@ -2337,7 +2422,7 @@ private struct WorldsLibraryView: View {
     }
 
     private func createPageFromTemplate(_ template: WorkspaceTemplate) {
-        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PAGE
+        #if WORLDS_EXPERIMENTAL_CREATE_PAGE
         if let context = copyContext, let source = openedVideoDatabase,
            source.url.standardizedFileURL == context.copy.databaseURL.standardizedFileURL {
             creatingPage = LocalCreatePageRequest(
@@ -2356,6 +2441,14 @@ private struct WorldsLibraryView: View {
     }
 
     private func restorePage(_ id: String) {
+        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+        if let context = copyContext, context.copy.usesStoreTrash {
+            guard let entry = storeTrash.first(where: { $0.id == id }) else { return }
+            let generation = databaseGeneration
+            Task { await restoreInWorkspace(entry: entry, context: context, generation: generation) }
+            return
+        }
+        #endif
         guard let index = pages.firstIndex(where: { $0.id == id }) else { return }
         let current = pages[index]
         let now = Int64(Date().timeIntervalSince1970 * 1000)
@@ -2381,6 +2474,8 @@ private struct WorldsLibraryView: View {
 
     private func deletePermanently(_ id: String) {
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+        // The own workspace has no checked permanent deletion; never run raw SQL on it.
+        if let context = copyContext, !context.copy.supportsPermanentDeletion { return }
         if let context = copyContext {
             persistTrashMutation(in: context.copy.databaseURL, sql: "DELETE FROM pages WHERE id=?;", id: id)
         }
@@ -2390,6 +2485,7 @@ private struct WorldsLibraryView: View {
 
     private func emptyTrash() {
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+        if let context = copyContext, !context.copy.supportsPermanentDeletion { return }
         if let context = copyContext {
             persistTrashMutation(in: context.copy.databaseURL, sql: "DELETE FROM pages WHERE archived=1;", id: nil)
         }
@@ -2398,6 +2494,11 @@ private struct WorldsLibraryView: View {
     }
 
     private func persistTrashMutation(in databaseURL: URL, sql: String, id: String?) {
+        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+        // Raw SQL bypasses history and indexes, so it is kept to an independent copy.
+        guard let context = copyContext, context.copy.isLocalCopy,
+              context.copy.databaseURL.standardizedFileURL == databaseURL.standardizedFileURL else { return }
+        #endif
         var db: OpaquePointer?
         guard sqlite3_open_v2(databaseURL.path, &db, SQLITE_OPEN_READWRITE, nil) == SQLITE_OK, let connection = db else {
             if let db { sqlite3_close(db) }
@@ -2415,6 +2516,15 @@ private struct WorldsLibraryView: View {
         _ = sqlite3_step(statement)
     }
 
+    /// Edits save to the opened workspace itself rather than a local copy.
+    private var editsOwnWorkspace: Bool {
+        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+        copyContext.map { !$0.copy.isLocalCopy } ?? false
+        #else
+        false
+        #endif
+    }
+
     private func projectEditingAvailable(for page: StoredPage) -> Bool {
         #if WORLDS_EXPERIMENTAL_LOCAL_COPY
         page.kind == "project" && copyContext != nil
@@ -2424,17 +2534,21 @@ private struct WorldsLibraryView: View {
     }
 
     private func otherResourceEditingAvailable(for page: StoredPage) -> Bool {
-        #if DEBUG && WORLDS_EXPERIMENTAL_LOCAL_COPY
-        guard copyContext != nil else { return false }
+        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+        guard let context = copyContext else { return false }
         #if WORLDS_EXPERIMENTAL_STREAM_EDITOR
         if page.kind == "stream" { return true }
         #endif
         #if WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
         if page.kind == "spreadsheet" { return true }
         #endif
-        #if WORLDS_EXPERIMENTAL_GALLERY_IMPORT
-        if page.kind == "gallery" { return true }
+        #if WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
+        if page.kind == "presentation" { return true }
         #endif
+        #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_IMPORT
+        if page.kind == "gallery" && context.copy.supportsGalleryFileImport { return true }
+        #endif
+        _ = context
         #endif
         return false
     }
@@ -2449,52 +2563,52 @@ private struct WorldsLibraryView: View {
         #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_DRAFT_FIXTURE
         disabled = disabled || galleryDraftRequest != nil
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DRAWING && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+        #if WORLDS_EXPERIMENTAL_CREATE_DRAWING && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
         disabled = disabled || creatingDrawing != nil
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_STREAM
+        #if WORLDS_EXPERIMENTAL_CREATE_STREAM
         disabled = disabled || creatingStream != nil
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_GALLERY
+        #if WORLDS_EXPERIMENTAL_CREATE_GALLERY
         disabled = disabled || creatingGallery != nil
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PRESENTATION && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
+        #if WORLDS_EXPERIMENTAL_CREATE_PRESENTATION && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
         disabled = disabled || creatingPresentation != nil
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PROJECT
+        #if WORLDS_EXPERIMENTAL_CREATE_PROJECT
         disabled = disabled || creatingProject != nil
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DOCUMENT
+        #if WORLDS_EXPERIMENTAL_CREATE_DOCUMENT
         disabled = disabled || creatingDocument != nil
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_MOVE_PAGE
+        #if WORLDS_EXPERIMENTAL_MOVE_PAGE
         disabled = disabled || movingPage != nil
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_RENAME_PAGE
+        #if WORLDS_EXPERIMENTAL_RENAME_PAGE
         disabled = disabled || renamingPage != nil
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PAGE
+        #if WORLDS_EXPERIMENTAL_CREATE_PAGE
         disabled = disabled || creatingPage != nil
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+        #if WORLDS_EXPERIMENTAL_DRAWING_EDITOR
         disabled = disabled || editingDrawing != nil
         #endif
         #if DEBUG && WORLDS_EXPERIMENTAL_AUTOMATIONS
         disabled = disabled || automationsRequest != nil
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_STREAM_EDITOR
+        #if WORLDS_EXPERIMENTAL_STREAM_EDITOR
         disabled = disabled || editingStream != nil
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
+        #if WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
         disabled = disabled || editingSpreadsheet != nil
         #endif
         #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_IMPORT
         disabled = disabled || importingGallery != nil
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
+        #if WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
         disabled = disabled || editingPresentation != nil
         #endif
-        #if DEBUG && WORLDS_EXPERIMENTAL_PAGE_EDITOR
+        #if WORLDS_EXPERIMENTAL_PAGE_EDITOR
         disabled = disabled || editingPage != nil
         #endif
         #endif
@@ -2718,6 +2832,21 @@ private struct WorldsLibraryView: View {
         }
     }
 
+    #if os(macOS)
+    /// Opens the database the Worlds desktop app keeps on this Mac
+    /// (~/Library/Application Support/Worlds/worlds.db). Whether it can be
+    /// edited in place is decided by the same preflight as any other database.
+    @MainActor private func openDesktopWorkspace() async {
+        guard let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return }
+        let url = support.appendingPathComponent("Worlds", isDirectory: true).appendingPathComponent("worlds.db")
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            errorMessage = String(localized: "No Worlds desktop workspace was found on this Mac. Open the Worlds desktop app once, or choose Open Database.")
+            return
+        }
+        await open(url)
+    }
+    #endif
+
     @discardableResult
     @MainActor
     private func open(_ url: URL, preserveLocalCopy: Bool = false) async -> Bool {
@@ -2731,6 +2860,19 @@ private struct WorldsLibraryView: View {
             let identityBefore = VideoDatabaseIdentity.read(url)
             let database = try WorldsDatabase(url: url)
             let snapshot = try await database.snapshot()
+            #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+            // The opened workspace is written in place only when its location
+            // and schema pass the preflight. A local copy keeps its own target.
+            var ownTarget: WorkspaceWriteTarget?
+            var readOnly: WorkspaceWriteAccess.Reason?
+            var trash: [StoredTrashedPage] = []
+            if !preserveLocalCopy, !Self.isInsideAppBundle(url) {
+                let access = await Task.detached(priority: .userInitiated) { WorkspaceWritePreflight.evaluate(url) }.value
+                ownTarget = WorkspaceWriteTarget.route(openedDatabase: url, access: access, activeCopy: nil, bundleURL: Bundle.main.bundleURL)
+                if case .readOnly(let reason) = access { readOnly = reason }
+                if ownTarget != nil { trash = (try? await database.trashedPages()) ?? [] }
+            }
+            #endif
             guard openRequest == request else { return false }
             let identityAfter = VideoDatabaseIdentity.read(url)
             let videoSource: VideoDatabaseSource?
@@ -2767,7 +2909,15 @@ private struct WorldsLibraryView: View {
             returnStack.removeAll()
             loaded = true
             #if WORLDS_EXPERIMENTAL_LOCAL_COPY
-            if !preserveLocalCopy { copyContext = nil }
+            readOnlyReason = readOnly
+            storeTrash = trash
+            if !preserveLocalCopy {
+                copyContext = nil
+                if let ownTarget {
+                    do { copyContext = try LocalCopyContext(target: ownTarget) }
+                    catch { readOnlyReason = .unavailable }
+                }
+            }
             #endif
             return true
         } catch {
@@ -2778,6 +2928,12 @@ private struct WorldsLibraryView: View {
     }
 
     #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+    /// Bundled databases are test fixtures and are never written in place.
+    private static func isInsideAppBundle(_ url: URL) -> Bool {
+        let bundle = Bundle.main.bundleURL.standardizedFileURL.path
+        return url.standardizedFileURL.path.hasPrefix(bundle.hasSuffix("/") ? bundle : bundle + "/")
+    }
+
     private var projectLinkEditingEnabled: Bool {
         #if WORLDS_EXPERIMENTAL_PROJECT_LINKS
         true
@@ -2866,7 +3022,7 @@ private struct WorldsLibraryView: View {
         }
     }
     #endif
-    #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PAGE
+    #if WORLDS_EXPERIMENTAL_CREATE_PAGE
     @MainActor private func showCreatedPage(_ id: String, request: LocalCreatePageRequest) async -> Bool {
         guard copyContext?.copy.id == request.copy.id, databaseGeneration == request.generation,
               VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity else { return false }
@@ -2883,7 +3039,7 @@ private struct WorldsLibraryView: View {
         } catch { return false }
     }
     #endif
-    #if DEBUG && WORLDS_EXPERIMENTAL_RENAME_PAGE
+    #if WORLDS_EXPERIMENTAL_RENAME_PAGE
     @MainActor private func savePageName(request: LocalRenamePageRequest, baseline: LocalPageNameRevision, title: String, operationID: UUID) async throws -> LocalPageNameRevision {
         guard copyContext?.copy.id == request.copy.id, databaseGeneration == request.generation,
               VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity else { throw NativeWriteError.invalidResponse }
@@ -2903,7 +3059,7 @@ private struct WorldsLibraryView: View {
         return LocalPageNameRevision(title: page.title, revision: page.updatedAt)
     }
     #endif
-    #if DEBUG && WORLDS_EXPERIMENTAL_MOVE_PAGE
+    #if WORLDS_EXPERIMENTAL_MOVE_PAGE
     @MainActor private func movePersonalPage(request: LocalMovePageRequest, baseline: LocalPagePlacement, destination: String?, operationID: UUID) async throws -> LocalPagePlacement {
         guard copyContext?.copy.id == request.copy.id, databaseGeneration == request.generation,
               VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity else { throw NativeWriteError.invalidResponse }
@@ -2935,7 +3091,7 @@ private struct WorldsLibraryView: View {
         return LocalPagePlacement(parent: page.parentID, sortKey: page.sortKey, revision: page.updatedAt)
     }
     #endif
-    #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DOCUMENT
+    #if WORLDS_EXPERIMENTAL_CREATE_DOCUMENT
     @MainActor private func showCreatedDocument(_ id: String, request: LocalCreateDocumentRequest) async -> Bool {
         guard copyContext?.copy.id == request.copy.id, databaseGeneration == request.generation,
               VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity else { return false }
@@ -2952,7 +3108,7 @@ private struct WorldsLibraryView: View {
         } catch { return false }
     }
     #endif
-    #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PROJECT
+    #if WORLDS_EXPERIMENTAL_CREATE_PROJECT
     @MainActor private func showCreatedProject(_ id: String, request: LocalCreateProjectRequest) async -> Bool {
         guard copyContext?.copy.id == request.copy.id, databaseGeneration == request.generation,
               VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity else { return false }
@@ -2969,7 +3125,7 @@ private struct WorldsLibraryView: View {
         } catch { return false }
     }
     #endif
-    #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_PRESENTATION && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
+    #if WORLDS_EXPERIMENTAL_CREATE_PRESENTATION && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
     @MainActor private func showCreatedPresentation(_ id: String, request: LocalCreatePresentationRequest) async -> Bool {
         guard copyContext?.copy.id == request.copy.id, databaseGeneration == request.generation,
               VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity else { return false }
@@ -2987,7 +3143,7 @@ private struct WorldsLibraryView: View {
         } catch { return false }
     }
     #endif
-    #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_GALLERY
+    #if WORLDS_EXPERIMENTAL_CREATE_GALLERY
     @MainActor private func showCreatedGallery(_ id: String, request: LocalCreateGalleryRequest) async -> Bool {
         guard copyContext?.copy.id == request.copy.id, databaseGeneration == request.generation,
               VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity else { return false }
@@ -3004,7 +3160,7 @@ private struct WorldsLibraryView: View {
         } catch { return false }
     }
     #endif
-    #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_STREAM
+    #if WORLDS_EXPERIMENTAL_CREATE_STREAM
     @MainActor private func showCreatedStream(_ id: String, link: String, request: LocalCreateStreamRequest) async -> Bool {
         guard copyContext?.copy.id == request.copy.id, databaseGeneration == request.generation,
               VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity else { return false }
@@ -3027,7 +3183,7 @@ private struct WorldsLibraryView: View {
         } catch { return false }
     }
     #endif
-    #if DEBUG && WORLDS_EXPERIMENTAL_CREATE_DRAWING && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+    #if WORLDS_EXPERIMENTAL_CREATE_DRAWING && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
     @MainActor private func showCreatedDrawing(_ id: String, request: LocalCreateDrawingRequest) async -> Bool {
         guard copyContext?.copy.id == request.copy.id, databaseGeneration == request.generation,
               VideoDatabaseIdentity.read(request.copy.databaseURL) == request.databaseIdentity else { return false }
@@ -3044,17 +3200,51 @@ private struct WorldsLibraryView: View {
         } catch { return false }
     }
     #endif
+    @MainActor private func trashInWorkspace(page: StoredPage, context: LocalCopyContext, generation: UUID) async {
+        guard copyContext?.copy.id == context.copy.id, databaseGeneration == generation else { return }
+        do {
+            let store = try NativePersonalStore(url: context.copy.databaseURL)
+            try await store.trashPage(id: page.id, base: page.updatedAt)
+            if selectedID == page.id { selectedID = nil }
+            if phoneDetailPageID == page.id { phoneDetailPageID = nil }
+        } catch NativeWriteError.conflict {
+            trashFailure = String(localized: "This page changed elsewhere. Look at the latest version, then try again.")
+        } catch {
+            trashFailure = String(localized: "This page could not be moved to Trash. Pages with shared subpages stay where they are.")
+        }
+        await refreshCopy(id: context.copy.id, generation: generation)
+    }
+
+    @MainActor private func restoreInWorkspace(entry: StoredTrashedPage, context: LocalCopyContext, generation: UUID) async {
+        guard copyContext?.copy.id == context.copy.id, databaseGeneration == generation else { return }
+        do {
+            let store = try NativePersonalStore(url: context.copy.databaseURL)
+            _ = try await store.restorePage(id: entry.id, base: entry.page.updatedAt, deletedAt: entry.deletedAt)
+        } catch NativeWriteError.conflict {
+            trashFailure = String(localized: "This page changed in Trash. The list is now up to date; try again.")
+        } catch {
+            trashFailure = String(localized: "This page could not be restored.")
+        }
+        await refreshCopy(id: context.copy.id, generation: generation)
+    }
+
     @MainActor private func refreshCopy(id: UUID, generation: UUID) async {
         guard let current = copyContext, current.copy.id == id, databaseGeneration == generation else { return }
         do {
             let database = try WorldsDatabase(url: current.copy.databaseURL)
             let snapshot = try await database.snapshot()
+            var trash: [StoredTrashedPage] = []
+            if current.copy.usesStoreTrash { trash = try await database.trashedPages() }
             guard copyContext?.copy.id == id, databaseGeneration == generation else { return }
             pages = snapshot.pages
+            storeTrash = trash
             expandedPageIDs.formIntersection(Set(pages.filter { !$0.archived && $0.kind != "template" }.map(\.id)))
             #if DEBUG && WORLDS_EXPERIMENTAL_PERSONAL_TABS
-            personalTabs.filter(eligibleIDs: Set(pages.map(\.id)))
-            if selectedID != personalTabs.activeID { selectedID = personalTabs.activeID }
+            // Tabs belong to a local copy; the own workspace keeps its selection.
+            if tabCopyID != nil {
+                personalTabs.filter(eligibleIDs: Set(pages.map(\.id)))
+                if selectedID != personalTabs.activeID { selectedID = personalTabs.activeID }
+            }
             #endif
             if let selectedID, !pages.contains(where: { $0.id == selectedID }) { self.selectedID = nil }
             if !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { await search() }
@@ -3091,14 +3281,14 @@ private struct ProjectEditorRequest: Identifiable {
     let generation: UUID
     let candidates: [ProjectLinkCandidate]
 }
-#if DEBUG && WORLDS_EXPERIMENTAL_STREAM_EDITOR
+#if WORLDS_EXPERIMENTAL_STREAM_EDITOR
 private struct LocalStreamEditorRequest: Identifiable {
     let id: String
     let context: LocalCopyContext
     let generation: UUID
 }
 #endif
-#if DEBUG && WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
+#if WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
 private struct LocalSpreadsheetEditorRequest: Identifiable {
     let id: String
     let title: String
@@ -3113,14 +3303,14 @@ private struct LocalGalleryImportRequest: Identifiable {
     let generation: UUID
 }
 #endif
-#if DEBUG && WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
+#if WORLDS_EXPERIMENTAL_PRESENTATION_EDITOR
 private struct LocalPresentationEditorRequest: Identifiable {
     let id: String
     let context: LocalCopyContext
     let generation: UUID
 }
 #endif
-#if DEBUG && WORLDS_EXPERIMENTAL_PAGE_EDITOR
+#if WORLDS_EXPERIMENTAL_PAGE_EDITOR
 private struct LocalPageEditorRequest: Identifiable {
     let id: String
     let context: LocalCopyContext
@@ -3150,7 +3340,7 @@ private struct LocalAutomationsRequest: Identifiable {
 }
 #endif
 
-#if WORLDS_EXPERIMENTAL_LOCAL_COPY && DEBUG && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+#if WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
 private struct LocalDrawingEditorRequest: Identifiable {
     let id: String
     let context: LocalCopyContext
