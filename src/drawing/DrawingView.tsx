@@ -104,6 +104,7 @@ import { FloatingPixelsDialog } from "./FloatingPixelsDialog";
 import type { PixelSampleSource } from "./floatingPixels";
 import { runPixelTask } from "./pixelTasks";
 import "./drawing.css";
+import { shortcutKey } from "../lib/keys";
 
 const TOOLS: { id: Tool; label: string; ar: string; glyph: string; key?: string }[] = [
   { id: "select", label: "Move", ar: "تحريك", glyph: "↖", key: "V" },
@@ -989,10 +990,10 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
       }
       const action = drawingShortcutAction(e, shortcuts, { activePane: isActive, modalOpen });
       if (!action) {
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v" && !e.shiftKey && shortcuts.paste !== "Mod+v") e.preventDefault();
+        if ((e.ctrlKey || e.metaKey) && shortcutKey(e) === "v" && !e.shiftKey && shortcuts.paste !== "Mod+v") e.preventDefault();
         return;
       }
-      if (action === "paste" && !clipboard.current.length && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v" && !e.shiftKey) return;
+      if (action === "paste" && !clipboard.current.length && (e.ctrlKey || e.metaKey) && shortcutKey(e) === "v" && !e.shiftKey) return;
       if ((action === "copy" || action === "cut") && !selection && !selected.length) return;
       e.preventDefault();
       e.stopImmediatePropagation();

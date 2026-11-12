@@ -11,6 +11,7 @@ import type { MaskRaster, MaskRasterTask } from "./maskRaster";
 import type { DrawingGestureLease } from "./gestureLeases";
 import { worldRenderBounds } from "./geometry";
 import "./maskEditor.css";
+import { shortcutKey } from "../lib/keys";
 type Domain = ReturnType<typeof maskDomain>;
 interface Props {
   scene: DrawingScene;
@@ -586,10 +587,10 @@ export function MaskDialog(p: Props) {
                 e.stopPropagation();
                 gesture.current = null;
                 setTrace([]);
-              } else if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key.toLowerCase() === "z" || e.key.toLowerCase() === "y")) {
+              } else if ((e.ctrlKey || e.metaKey) && !e.altKey && (shortcutKey(e) === "z" || shortcutKey(e) === "y")) {
                 e.preventDefault();
                 e.stopPropagation();
-                history(e.key.toLowerCase() === "y" || e.shiftKey ? "redo" : "undo");
+                history(shortcutKey(e) === "y" || e.shiftKey ? "redo" : "undo");
               }
             }}
           >

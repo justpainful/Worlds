@@ -19,6 +19,7 @@ import { markReady, startMonitor } from "./perf/monitor";
 import { PerfOverlay } from "./perf/PerfOverlay";
 import { startDrawingSyncManager } from "./drawing/syncManager";
 import { openQuickCapture } from "./planning/InboxView";
+import { shortcutKey } from "./lib/keys";
 
 export function App() {
   const ready = useStore((s) => s.ready);
@@ -81,32 +82,32 @@ export function App() {
       const mod = e.ctrlKey || e.metaKey;
       const pane = s.layout.panes.find((p) => p.id === s.layout.activePaneId)!;
       const tab = pane.tabs.find((t) => t.id === pane.activeTabId)!;
-      if (mod && e.key.toLowerCase() === "k") {
+      if (mod && shortcutKey(e) === "k") {
         e.preventDefault();
         s.setPalette(!s.paletteOpen, "all");
-      } else if (mod && e.shiftKey && e.key.toLowerCase() === "p") {
+      } else if (mod && e.shiftKey && shortcutKey(e) === "p") {
         e.preventDefault();
         s.setPalette(true, "commands");
-      } else if (mod && e.key.toLowerCase() === "p") {
+      } else if (mod && shortcutKey(e) === "p") {
         e.preventDefault();
         s.setPalette(true, "pages");
-      } else if (mod && e.altKey && e.key.toLowerCase() === "n") {
+      } else if (mod && e.altKey && shortcutKey(e) === "n") {
         e.preventDefault();
         openQuickCapture();
-      } else if (mod && e.key.toLowerCase() === "n") {
+      } else if (mod && shortcutKey(e) === "n") {
         e.preventDefault();
         s.createPage({}, e.shiftKey ? "right" : "current");
-      } else if (mod && e.key.toLowerCase() === "t") {
+      } else if (mod && shortcutKey(e) === "t") {
         e.preventDefault();
         s.open({ kind: "home" }, "tab");
-      } else if (mod && e.key.toLowerCase() === "w") {
+      } else if (mod && shortcutKey(e) === "w") {
         e.preventDefault();
         s.closeTab(pane.id, tab.id);
       } else if (mod && e.key === "\\") {
         e.preventDefault();
         if (e.shiftKey || s.layout.panes.length >= 3) s.collapsePanes();
         else s.open(tab.route, "right");
-      } else if (mod && e.key.toLowerCase() === "j") {
+      } else if (mod && shortcutKey(e) === "j") {
         e.preventDefault();
         window.dispatchEvent(new Event("worlds:toggle-ai"));
       } else if (mod && e.key === ",") {
@@ -131,7 +132,7 @@ export function App() {
     window.addEventListener("keydown", onKey);
     // Ctrl+B / Ctrl+\ sidebar handled here so editors can still use Ctrl+B for bold.
     const onSidebar = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "l") {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && shortcutKey(e) === "l") {
         e.preventDefault();
         useStore.getState().toggleSidebar();
       }

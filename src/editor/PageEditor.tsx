@@ -21,6 +21,7 @@ import { BackgroundColor, Color, FindReplace, Gallery, TextStyle, Toc, WikiLink 
 import { openLightbox } from "./views/Pages3Views";
 import { documentExtensions } from "./extensions/document";
 import { Chart, MathBlock, MathInline, Mermaid, Tab, Tabs } from "./extensions/pages4";
+import { shortcutKey } from "../lib/keys";
 
 /** Apple-like text and background colours. */
 export const TEXT_COLORS: { name: string; value: string | null }[] = [
@@ -226,7 +227,7 @@ export const PageEditor = forwardRef<
         },
         handleKeyDown: (_view, event) => {
           // Ctrl+Click style link opening is handled by click; keep Mod+S as an explicit save.
-          if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+          if ((event.ctrlKey || event.metaKey) && shortcutKey(event) === "s") {
             event.preventDefault();
             flush();
             return true;

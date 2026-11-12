@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { STAGE_H, STAGE_W, type Slide } from "./model";
 import { SlideRender } from "./SlideRender";
+import { shortcutKey } from "../../lib/keys";
 
 /**
  * Full-screen presenting. Arrows, Space, Page Up/Down or a click move between
@@ -26,7 +27,7 @@ export function Present({ slides, start, onClose }: { slides: Slide[]; start: nu
       else if (["ArrowLeft", "ArrowUp", "PageUp", "Backspace"].includes(e.key)) setI((n) => Math.max(0, n - 1));
       else if (e.key === "Home") setI(0);
       else if (e.key === "End") setI(slides.length - 1);
-      else if (e.key.toLowerCase() === "n") setNotes((v) => !v);
+      else if (shortcutKey(e) === "n") setNotes((v) => !v);
       else if (e.key === "Escape") {
         if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
         onClose(at.current);

@@ -29,6 +29,7 @@ import {
   type SheetData,
   type WorkbookData,
 } from "./engine";
+import { shortcutKey } from "../lib/keys";
 
 interface SelectionRange {
   r1: number;
@@ -771,28 +772,28 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
     }
 
     // Shortcuts while navigating grid
-    if (ctrl && e.key.toLowerCase() === "z") {
+    if (ctrl && shortcutKey(e) === "z") {
       e.preventDefault();
       if (e.shiftKey) redo();
       else undo();
       return;
     }
-    if (ctrl && e.key.toLowerCase() === "y") {
+    if (ctrl && shortcutKey(e) === "y") {
       e.preventDefault();
       redo();
       return;
     }
-    if (ctrl && e.key.toLowerCase() === "b") {
+    if (ctrl && shortcutKey(e) === "b") {
       e.preventDefault();
       patchSelectionStyle((s) => ({ ...s, bold: !s.bold }));
       return;
     }
-    if (ctrl && e.key.toLowerCase() === "i") {
+    if (ctrl && shortcutKey(e) === "i") {
       e.preventDefault();
       patchSelectionStyle((s) => ({ ...s, italic: !s.italic }));
       return;
     }
-    if (ctrl && e.key.toLowerCase() === "u") {
+    if (ctrl && shortcutKey(e) === "u") {
       e.preventDefault();
       patchSelectionStyle((s) => ({ ...s, underline: !s.underline }));
       return;
@@ -802,37 +803,37 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
       patchSelectionStyle((s) => ({ ...s, strike: !s.strike }));
       return;
     }
-    if (ctrl && e.key.toLowerCase() === "d") {
+    if (ctrl && shortcutKey(e) === "d") {
       e.preventDefault();
       fillDown();
       return;
     }
-    if (ctrl && e.key.toLowerCase() === "r") {
+    if (ctrl && shortcutKey(e) === "r") {
       e.preventDefault();
       fillRight();
       return;
     }
-    if (ctrl && e.key.toLowerCase() === "c") {
+    if (ctrl && shortcutKey(e) === "c") {
       e.preventDefault();
       copySelection(false);
       return;
     }
-    if (ctrl && e.key.toLowerCase() === "x") {
+    if (ctrl && shortcutKey(e) === "x") {
       e.preventDefault();
       copySelection(true);
       return;
     }
-    if (ctrl && e.key.toLowerCase() === "v") {
+    if (ctrl && shortcutKey(e) === "v") {
       e.preventDefault();
       void pasteSelection(e.shiftKey);
       return;
     }
-    if (ctrl && e.key.toLowerCase() === "f") {
+    if (ctrl && shortcutKey(e) === "f") {
       e.preventDefault();
       setFindOpen((v) => !v);
       return;
     }
-    if (ctrl && e.key.toLowerCase() === "a") {
+    if (ctrl && shortcutKey(e) === "a") {
       e.preventDefault();
       setSel({ r1: 0, c1: 0, r2: sheet.rows - 1, c2: sheet.cols - 1 });
       return;

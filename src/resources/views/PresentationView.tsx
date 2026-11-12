@@ -29,6 +29,7 @@ import {
   type SlideElement,
 } from "../deck/model";
 import { ResourceHeader, useResource } from "./ResourceHeader";
+import { shortcutKey } from "../../lib/keys";
 
 const SWATCHES = ["#f4f2ee", "#16161a", "#d2a46e", "#e5484d", "#f76b15", "#ffc53d", "#46a758", "#0090ff", "#8e4ec6", "#d6409f", "#8b8d98"];
 const SIZES = [14, 18, 20, 24, 28, 32, 40, 48, 56, 64, 76, 96, 120];
@@ -289,22 +290,22 @@ function Deck({ page }: { page: Page }) {
       if (t.closest("input, textarea, [contenteditable='true'], [contenteditable='plaintext-only']")) return;
       if (!t.closest(".res-presentation") && t !== document.body) return;
       const mod = e.ctrlKey || e.metaKey;
-      if (mod && e.key.toLowerCase() === "z") {
+      if (mod && shortcutKey(e) === "z") {
         e.preventDefault();
         if (e.shiftKey) doRedo();
         else doUndo();
-      } else if (mod && e.key.toLowerCase() === "y") {
+      } else if (mod && shortcutKey(e) === "y") {
         e.preventDefault();
         doRedo();
-      } else if (mod && e.key.toLowerCase() === "d") {
+      } else if (mod && shortcutKey(e) === "d") {
         e.preventDefault();
         duplicateSelected();
-      } else if (mod && e.key.toLowerCase() === "a") {
+      } else if (mod && shortcutKey(e) === "a") {
         e.preventDefault();
         setSelected(slide.elements.map((x) => x.id));
-      } else if (mod && e.key.toLowerCase() === "c" && sel.length) {
+      } else if (mod && shortcutKey(e) === "c" && sel.length) {
         clipboard.current = structuredClone(sel);
-      } else if (mod && e.key.toLowerCase() === "v" && clipboard.current.length) {
+      } else if (mod && shortcutKey(e) === "v" && clipboard.current.length) {
         e.preventDefault();
         const copies = clipboard.current.map((x) => ({ ...structuredClone(x), id: newId(), x: x.x + 20, y: x.y + 20 }));
         setSlide({ ...slide, elements: [...slide.elements, ...copies] });
