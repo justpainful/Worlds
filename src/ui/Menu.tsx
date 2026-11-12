@@ -93,7 +93,7 @@ function MenuPanel({ x, y, items, onClose, origin, minWidth, from: _from, depth 
       }
     };
     const onDown = (e: PointerEvent) => {
-      if (!(e.target as HTMLElement).closest(".menu-panel")) onClose();
+      if (!(e.target instanceof Element && e.target.closest(".menu-panel"))) onClose();
     };
     window.addEventListener("keydown", onKey, true);
     window.addEventListener("pointerdown", onDown, true);
@@ -199,7 +199,7 @@ export function Popover({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     const onDown = (e: PointerEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node) && !(e.target as HTMLElement).closest(".menu-panel")) onClose();
+      if (ref.current && !ref.current.contains(e.target as Node) && !(e.target instanceof Element && e.target.closest(".menu-panel"))) onClose();
     };
     window.addEventListener("keydown", onKey);
     window.addEventListener("pointerdown", onDown, true);

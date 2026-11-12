@@ -286,7 +286,8 @@ function Deck({ page }: { page: Page }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (presenting || editing) return;
-      const t = e.target as HTMLElement;
+      // A key sent to the document itself (no element focused) is the body for this purpose.
+      const t = e.target instanceof Element ? e.target : document.body;
       if (t.closest("input, textarea, [contenteditable='true'], [contenteditable='plaintext-only']")) return;
       if (!t.closest(".res-presentation") && t !== document.body) return;
       const mod = e.ctrlKey || e.metaKey;
