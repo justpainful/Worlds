@@ -236,7 +236,7 @@ export function ProfileView() {
             </h1>
             {profile.handle && (
               <div className="pf-handle">
-                <bdi>@{profile.handle}</bdi>
+                <bdi dir="ltr">@{profile.handle}</bdi>
               </div>
             )}
             {profile.status && (
