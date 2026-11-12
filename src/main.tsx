@@ -6,6 +6,8 @@ import "@fontsource/ibm-plex-sans-arabic/300.css";
 import "@fontsource/ibm-plex-sans-arabic/400.css";
 import "@fontsource/ibm-plex-sans-arabic/500.css";
 import "@fontsource/ibm-plex-sans-arabic/600.css";
+// Arabic headings ask for 640 to 750; a real bold face keeps them crisp instead of a faked one.
+import "@fontsource/ibm-plex-sans-arabic/700.css";
 import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import "./styles/tokens.css";
