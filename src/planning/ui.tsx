@@ -46,7 +46,8 @@ export function DueLabel({ due, time, done }: { due: string | null | undefined; 
   return (
     <span className={`pl-due ${tone}`}>
       <Icon name="calendar" size={12} />
-      {relDay(due)}
+      {/* Its own element, so "Today" is a whole label for the Arabic interface rather than part of "Today · 7:00 PM". */}
+      <span>{relDay(due)}</span>
       {time ? ` · ${formatTime(time)}` : ""}
     </span>
   );

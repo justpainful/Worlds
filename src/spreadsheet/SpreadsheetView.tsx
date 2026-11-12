@@ -14,6 +14,7 @@ import {
   cycleRefAbsolute,
   evaluateWorkbook,
   expandRangeCoords,
+  conditionalStyle,
   formatScalar,
   generateAutofillValue,
   newSheet,
@@ -1518,6 +1519,7 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
                       c >= minSelC &&
                       c <= Math.max(maxSelC, fillDrag.c2);
                     const showFillHandle = isActive || (r === maxSelR && c === maxSelC && inSelection);
+                    const cond = conditionalStyle(sheet.conditionalRules, r, c, ev);
 
                     const textAlign =
                       st?.align ?? (ev?.numeric !== null && ev?.numeric !== undefined ? "right" : "left");
@@ -1540,8 +1542,8 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
                           textDecoration: [st?.underline ? "underline" : "", st?.strike ? "line-through" : ""]
                             .filter(Boolean)
                             .join(" "),
-                          color: ev?.error ? "#dc2626" : st?.color,
-                          backgroundColor: st?.bg,
+                          color: ev?.error ? "#dc2626" : (cond?.color ?? st?.color),
+                          backgroundColor: cond?.bg ?? st?.bg,
                           textAlign,
                           whiteSpace: st?.wrap ? "normal" : "nowrap",
                         }}

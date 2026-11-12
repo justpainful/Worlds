@@ -344,8 +344,8 @@ export function gradesWorkbook(): WorkbookData {
     grades.cells[`F${r}`] = { v: `=SUM(B${r}:E${r})`, s: { ...num, bold: true } };
     grades.cells[`G${r}`] = { v: `=IF(F${r}>=90,"A",IF(F${r}>=80,"B",IF(F${r}>=70,"C","D")))`, s: { align: "center", bold: true } };
   });
-  const sum: CellStyle = { bold: true, bg: "#e8eef7", color: "#1d3557", align: "center", format: "number", decimals: 1 };
-  grades.cells["A7"] = { v: "المعدل · Average", s: { bold: true, bg: "#e8eef7", color: "#1d3557" } };
+  const sum: CellStyle = { bold: true, bg: "#3b5b8c", color: "#ffffff", align: "center", format: "number", decimals: 1 };
+  grades.cells["A7"] = { v: "المعدل · Average", s: { bold: true, bg: "#3b5b8c", color: "#ffffff" } };
   for (const c of "BCDEF") grades.cells[`${c}7`] = { v: `=AVERAGE(${c}2:${c}6)`, s: sum };
   grades.cells["A9"] = { v: "أعلى مجموع · Highest total", s: { bold: true } };
   grades.cells["F9"] = { v: "=MAX(F2:F6)", s: { ...num, bold: true } };
@@ -353,7 +353,7 @@ export function gradesWorkbook(): WorkbookData {
   grades.cells["F10"] = { v: '=COUNTIF(F2:F6,">85")', s: { ...num, bold: true } };
   grades.cells["A11"] = { v: "النسبة العامة · Overall percent", s: { bold: true } };
   grades.cells["F11"] = { v: "=ROUND(F7/100,3)", s: { bold: true, align: "center", format: "percent", decimals: 1 } };
-  grades.conditionalRules = [{ id: "cr_top", range: "F2:F6", op: "gt", value: "90", bg: "#dcfce7", color: "#14532d" }];
+  grades.conditionalRules = [{ id: "cr_top", range: "F2:F6", op: "gt", value: "90", bg: "#2f855a", color: "#ffffff" }];
 
   const hours = newSheet("ساعات المذاكرة · Study hours", 30, 8);
   hours.id = "sh_hours";

@@ -72,6 +72,11 @@ const profile: any = {
   updatedAt: now,
 };
 
+// The public web demo in Arabic shows an Arabic profile, so nothing on screen stays in English.
+if (WEB_DEMO && profile.language === "ar") {
+  Object.assign(profile, { displayName: "ريم", handle: "reem", bio: "طالبة ثانوي، أنظم دراستي ومشاريعي في Worlds.", status: "أراجع لاختبار الأحياء", location: "الرياض" });
+}
+
 const pages: Record<string, any> = {};
 const blocks: Record<string, any[]> = {};
 const metadata: Record<string, any> = {};

@@ -4,11 +4,22 @@
   flex-direction: column;
   height: 100%;
   width: 100%;
+  box-sizing: border-box;
+  /* Clear the floating pane toolbar, as the drawing view does; the title row sat under it. */
+  padding-block-start: 64px;
   outline: none;
   background: var(--bg-base, #0f1115);
   color: var(--fg-primary, #f1f5f9);
   user-select: none;
 }
+
+.sheet-shell > .res-head {
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  padding: 6px 20px 12px;
+  gap: 12px;
+}
+.sheet-shell > .res-head .res-title { font-size: 24px; }
 
 .sheet-toolbar {
   display: flex;

@@ -211,6 +211,33 @@ export function parseCellRef(token: string): ParsedCellRef | null {
   return { sheet, r, c, absR, absC };
 }
 
+/** Whether one conditional rule applies to an evaluated cell at (r, c). */
+export function ruleMatches(rule: ConditionalRule, r: number, c: number, ev: EvaluatedCell | undefined): boolean {
+  const [a, b = a] = rule.range.split(":");
+  const p = parseCellRef(a);
+  const q = parseCellRef(b);
+  if (!p || !q) return false;
+  if (r < Math.min(p.r, q.r) || r > Math.max(p.r, q.r) || c < Math.min(p.c, q.c) || c > Math.max(p.c, q.c)) return false;
+  if (!ev || ev.error) return false;
+  const text = ev.value == null ? "" : String(ev.value);
+  if (rule.op === "notEmpty") return text.trim() !== "";
+  if (rule.op === "contains") return rule.value !== "" && text.toLowerCase().includes(rule.value.toLowerCase());
+  const n = ev.numeric;
+  const v = Number(rule.value);
+  if (rule.op === "eq") return n !== null && rule.value.trim() !== "" && !Number.isNaN(v) ? n === v : text === rule.value;
+  if (n === null || Number.isNaN(v)) return false;
+  if (rule.op === "gt") return n > v;
+  if (rule.op === "lt") return n < v;
+  const w = Number(rule.value2);
+  return !Number.isNaN(w) && n >= Math.min(v, w) && n <= Math.max(v, w);
+}
+
+/** The colours the first matching conditional rule gives a cell, if any. */
+export function conditionalStyle(rules: ConditionalRule[] | undefined, r: number, c: number, ev: EvaluatedCell | undefined): { bg: string; color: string } | null {
+  for (const rule of rules ?? []) if (ruleMatches(rule, r, c, ev)) return { bg: rule.bg, color: rule.color };
+  return null;
+}
+
 export function formatCellRef(ref: ParsedCellRef): string {
   const prefix = ref.sheet
     ? /[^A-Za-z0-9_]/.test(ref.sheet)

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   colToName,
+  conditionalStyle,
+  type ConditionalRule,
+  type EvaluatedCell,
   cycleRefAbsolute,
   evaluateWorkbook,
   generateAutofillValue,
@@ -95,5 +98,32 @@ describe("spreadsheet engine", () => {
 
     const formulaFill = generateAutofillValue([{ r: 1, c: 2, cell: { v: "=A2*B2+$D$1" } }], 2, 2, 0);
     expect(formulaFill.v).toBe("=A3*B3+$D$1");
+  });
+});
+
+describe("conditional formatting", () => {
+  const num = (n: number): EvaluatedCell => ({ raw: String(n), value: n, display: String(n), error: null, isFormula: false, numeric: n });
+  const txt = (s: string): EvaluatedCell => ({ raw: s, value: s, display: s, error: null, isFormula: false, numeric: null });
+  const rule = (op: ConditionalRule["op"], value: string, value2?: string): ConditionalRule => ({ id: "r", range: "F2:F6", op, value, value2, bg: "#dcfce7", color: "#14532d" });
+  // F3 is row 2, column 5.
+  it("colours numbers above a value inside the range only", () => {
+    expect(conditionalStyle([rule("gt", "90")], 2, 5, num(94))).toEqual({ bg: "#dcfce7", color: "#14532d" });
+    expect(conditionalStyle([rule("gt", "90")], 2, 5, num(87))).toBeNull();
+    expect(conditionalStyle([rule("gt", "90")], 7, 5, num(99))).toBeNull();
+    expect(conditionalStyle([rule("gt", "90")], 2, 4, num(99))).toBeNull();
+  });
+  it("handles less than, between, equals, contains and not empty", () => {
+    expect(conditionalStyle([rule("lt", "50")], 1, 5, num(20))).not.toBeNull();
+    expect(conditionalStyle([rule("between", "80", "70")], 1, 5, num(75))).not.toBeNull();
+    expect(conditionalStyle([rule("between", "80", "70")], 1, 5, num(85))).toBeNull();
+    expect(conditionalStyle([rule("eq", "A")], 1, 5, txt("A"))).not.toBeNull();
+    expect(conditionalStyle([rule("eq", "10")], 1, 5, num(10))).not.toBeNull();
+    expect(conditionalStyle([rule("contains", "bio")], 1, 5, txt("Biology"))).not.toBeNull();
+    expect(conditionalStyle([rule("notEmpty", "")], 1, 5, txt(" "))).toBeNull();
+    expect(conditionalStyle([rule("gt", "1")], 1, 5, undefined)).toBeNull();
+  });
+  it("ignores errors and broken ranges", () => {
+    expect(conditionalStyle([rule("notEmpty", "")], 1, 5, { ...txt("#DIV/0!"), error: "#DIV/0!" })).toBeNull();
+    expect(conditionalStyle([{ ...rule("gt", "1"), range: "nope" }], 1, 5, num(5))).toBeNull();
   });
 });
