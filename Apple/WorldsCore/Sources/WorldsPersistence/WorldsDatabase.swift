@@ -353,17 +353,22 @@ public actor WorldsDatabase {
             .sorted { $0.updatedAt > $1.updatedAt }.prefix(min(limit, 1000)))
     }
 
-    /// Case, diacritics (Arabic harakat and the hamza on أ إ آ included), taa
-    /// marbuta, alef maqsura and tatweel folded, as the desktop search does,
-    /// so a search for صوره finds صورة.
+    /// Case, Latin accents, Arabic harakat and tatweel, alef forms (أ إ آ),
+    /// taa marbuta and alef maqsura folded, as the desktop search does, so a
+    /// search for صوره finds صورةُ. Works scalar by scalar: Foundation's folding
+    /// keeps harakat, and a haraka joins its letter into one Character.
     public static func searchFold(_ text: String) -> String {
-        text.folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: nil)
-            .replacingOccurrences(of: "أ", with: "ا")
-            .replacingOccurrences(of: "إ", with: "ا")
-            .replacingOccurrences(of: "آ", with: "ا")
-            .replacingOccurrences(of: "ة", with: "ه")
-            .replacingOccurrences(of: "ى", with: "ي")
-            .replacingOccurrences(of: "\u{0640}", with: "")
+        var scalars = String.UnicodeScalarView()
+        for scalar in text.lowercased().unicodeScalars {
+            switch scalar.value {
+            case 0x064B...0x0652, 0x0640: continue
+            case 0x0622, 0x0623, 0x0625: scalars.append(Unicode.Scalar(0x0627)!)
+            case 0x0629: scalars.append(Unicode.Scalar(0x0647)!)
+            case 0x0649: scalars.append(Unicode.Scalar(0x064A)!)
+            default: scalars.append(scalar)
+            }
+        }
+        return String(scalars).folding(options: [.diacriticInsensitive, .widthInsensitive], locale: nil)
     }
     /// Reads the original history table. Shared rows are filtered in SQL.
     public func personalHistory(pageID: String, limit: Int = 100) throws -> [StoredHistoryEntry] {
