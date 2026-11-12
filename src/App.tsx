@@ -21,11 +21,13 @@ import { startDrawingSyncManager } from "./drawing/syncManager";
 import { openQuickCapture } from "./planning/InboxView";
 import { shortcutKey } from "./lib/keys";
 import { watchSampleLanguage } from "./demo/sampleActions";
+import { useWindowTitle } from "./shell/windowTitle";
 
 export function App() {
   const ready = useStore((s) => s.ready);
   const perfOverlay = useStore((s) => !!s.settings["advanced.perfOverlay"]);
   const [error, setError] = useState<string | null>(null);
+  useWindowTitle();
 
   useEffect(() => {
     if (!isTauri) {
