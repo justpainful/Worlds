@@ -529,6 +529,58 @@ pub fn restore_page_checked(path: &Path, page: &str, base: i64, deleted_at: i64)
     Ok(serde_json::json!({"id": id, "title": title, "parentId": parent, "updatedAt": revision}))
 }
 
+/// Keeps the current state of a personal page or document as a named version,
+/// after comparing its revision. Nothing else changes, so the revision stays
+/// the same and the caller can save against it next. The assistant uses this
+/// before its first change to a page in one reply, so the reply can be undone.
+pub fn create_version_checked(path: &Path, page: &str, base: i64, label: String) -> Result<Value> {
+    let label = label.trim().to_owned();
+    if label.is_empty() || label.chars().count() > 200 { bail!("invalid version label") }
+    let mut conn = open_existing(path)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+    require_personal(&tx, page)?;
+    let (kind, revision): (String, i64) = tx.query_row("SELECT kind,updated_at FROM pages WHERE id=?1", [page], |r| Ok((r.get(0)?, r.get(1)?)))?;
+    if kind != "page" && kind != "document" { bail!("only page and document versions are supported") }
+    if revision != base { bail!("conflict: page revision changed") }
+    let id = store::snapshot(&tx, page, "ai", None, Some(label.as_str()))?;
+    tx.commit()?;
+    Ok(serde_json::json!({"id": id, "pageId": page, "updatedAt": revision}))
+}
+
+/// Restores a version of a personal page or document with the original
+/// restore operation, which first keeps the current state as a version, so a
+/// later edit is never lost. The revision is compared first, the version must
+/// belong to the page, and a block with properties the native apps cannot
+/// represent is never discarded. The page must still be personal afterwards.
+pub fn restore_version_checked(path: &Path, page: &str, base: i64, version: &str) -> Result<Value> {
+    use std::collections::HashSet;
+    let mut conn = open_existing(path)?;
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+    require_personal(&tx, page)?;
+    let (kind, revision): (String, i64) = tx.query_row("SELECT kind,updated_at FROM pages WHERE id=?1", [page], |r| Ok((r.get(0)?, r.get(1)?)))?;
+    if kind != "page" && kind != "document" { bail!("only page and document versions are supported") }
+    if revision != base { bail!("conflict: page revision changed") }
+    let owner: Option<String> = tx.query_row("SELECT page_id FROM versions WHERE id=?1", [version], |r| r.get(0)).optional()?;
+    if owner.as_deref() != Some(page) { bail!("version unavailable") }
+    let (_, snapshot) = store::version_snapshot(&tx, version)?;
+    let blocks = snapshot.get("blocks").and_then(Value::as_array).ok_or_else(|| anyhow::anyhow!("invalid version"))?;
+    let kept: HashSet<String> = blocks.iter().filter_map(|b| b.pointer("/attrs/bid").and_then(Value::as_str).map(str::to_owned)).collect();
+    let current: Vec<(String, Option<String>)> = tx.prepare("SELECT id,properties FROM blocks WHERE page_id=?1")?
+        .query_map([page], |r| Ok((r.get(0)?, r.get(1)?)))?.collect::<rusqlite::Result<_>>()?;
+    for (id, raw) in &current {
+        if kept.contains(id) { continue }
+        let properties: Value = raw.as_deref().map(|text| serde_json::from_str(text).unwrap_or(Value::Null)).unwrap_or_else(|| serde_json::json!({}));
+        if !properties.as_object().is_some_and(|object| object.is_empty()) {
+            bail!("unsupported edit: block has properties that cannot be discarded")
+        }
+    }
+    store::restore_version(&tx, &native_ctx(), version)?;
+    require_personal(&tx, page)?;
+    let (title, updated): (String, i64) = tx.query_row("SELECT title,updated_at FROM pages WHERE id=?1", [page], |r| Ok((r.get(0)?, r.get(1)?)))?;
+    tx.commit()?;
+    Ok(serde_json::json!({"id": page, "title": title, "updatedAt": updated}))
+}
+
 /// Reparent a personal subtree after comparing its source location. The source
 /// writer chooses the current end of the destination; it does not restore an
 /// earlier sibling order and this operation is not an undo implementation.
@@ -614,6 +666,8 @@ enum Request {
     CreateStreamIdempotent { path: String, title: String, url: String, parent: Option<String>, parent_revision: Option<i64>, operation_id: String },
     TrashPage { path: String, page: String, base: i64 },
     RestorePageChecked { path: String, page: String, base: i64, deleted_at: i64 },
+    CreateVersionChecked { path: String, page: String, base: i64, label: String },
+    RestoreVersionChecked { path: String, page: String, base: i64, version: String },
 }
 
 pub struct GalleryCancellation(std::sync::atomic::AtomicU8);
@@ -711,6 +765,8 @@ fn dispatch_inner(bytes: &[u8], cancellation: Option<&GalleryCancellation>) -> R
         Request::CreateStreamIdempotent { path, title, url, parent, parent_revision, operation_id } => create_stream_idempotent(Path::new(&path), title, url, parent, parent_revision, &operation_id),
         Request::TrashPage { path, page, base } => { trash_page(Path::new(&path), &page, base)?; Ok(Value::Null) }
         Request::RestorePageChecked { path, page, base, deleted_at } => restore_page_checked(Path::new(&path), &page, base, deleted_at),
+        Request::CreateVersionChecked { path, page, base, label } => create_version_checked(Path::new(&path), &page, base, label),
+        Request::RestoreVersionChecked { path, page, base, version } => restore_version_checked(Path::new(&path), &page, base, &version),
     }
 }
 
@@ -1650,6 +1706,75 @@ mod tests {
         unsafe { worlds_store_free(response) };
         assert_eq!(parsed["ok"],true,"{parsed}");
         assert_eq!(parsed["value"]["id"],id.as_str());
+        std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn assistant_version_restores_page_and_keeps_later_state() {
+        let path=fixture();
+        let base=1700000000001;
+        let version=create_version_checked(&path,"fixture-page",base,"Before assistant changes".into()).unwrap();
+        let version_id=version["id"].as_str().unwrap().to_owned();
+        assert_eq!(version["updatedAt"].as_i64(),Some(base));
+        // A stale revision or an empty label adds nothing.
+        assert!(create_version_checked(&path,"fixture-page",base+1,"Late".into()).unwrap_err().to_string().starts_with("conflict:"));
+        assert!(create_version_checked(&path,"fixture-page",base,"  ".into()).is_err());
+        let expected=current_blocks(&path);
+        let replacement=vec![BlockInput{id:"assistant-block".into(),content:serde_json::json!({"type":"paragraph","attrs":{"bid":"assistant-block"},"content":[{"type":"text","text":"Assistant text"}]})}];
+        let saved=save_blocks_checked_kind(&path,"fixture-page",base,expected,replacement,"page").unwrap();
+        let after=saved["updatedAt"].as_i64().unwrap();
+        assert!(restore_version_checked(&path,"fixture-page",base-1,&version_id).unwrap_err().to_string().starts_with("conflict:"));
+        assert!(restore_version_checked(&path,"fixture-page",after,"missing-version").is_err());
+        let restored=restore_version_checked(&path,"fixture-page",after,&version_id).unwrap();
+        assert_eq!(restored["title"],"Fixture page");
+        assert!(restored["updatedAt"].as_i64().unwrap()>=after);
+        let c=Connection::open(&path).unwrap();
+        let texts:Vec<String>=c.prepare("SELECT text FROM blocks WHERE page_id='fixture-page' ORDER BY sort_key").unwrap()
+            .query_map([],|r|r.get(0)).unwrap().map(|r|r.unwrap()).collect();
+        assert_eq!(texts,vec!["Hello Worlds".to_string()]);
+        // The assistant's version stays, and the state before the restore is kept too.
+        assert_eq!(c.query_row("SELECT count(*) FROM versions WHERE page_id='fixture-page' AND label='Before assistant changes' AND actor='ai'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        let before:String=c.query_row("SELECT snapshot FROM versions WHERE page_id='fixture-page' AND label='Before restore'",[],|r|r.get(0)).unwrap();
+        assert!(before.contains("Assistant text"));
+        assert!(c.query_row("SELECT count(*) FROM changes WHERE page_id='fixture-page' AND origin=?1",[NATIVE_ORIGIN],|r|r.get::<_,i64>(0)).unwrap()>=2);
+        drop(c); std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn assistant_version_restore_refuses_other_pages_properties_and_shared_pages() {
+        let path=fixture();
+        let version=create_version_checked(&path,"fixture-page",1700000000001,"Before assistant changes".into()).unwrap()["id"].as_str().unwrap().to_owned();
+        let other=create_page(&path,"Other".into(),Some("fixture-page".into())).unwrap();
+        let other_id=other["id"].as_str().unwrap().to_owned();
+        let other_revision:i64=Connection::open(&path).unwrap().query_row("SELECT updated_at FROM pages WHERE id=?1",[&other_id],|r|r.get(0)).unwrap();
+        // A version of another page is never restored onto this one.
+        assert!(restore_version_checked(&path,&other_id,other_revision,&version).is_err());
+        let c=Connection::open(&path).unwrap();
+        c.execute("INSERT INTO blocks(id,page_id,type,sort_key,content,text,direction,created_at,updated_at,properties) VALUES('with-properties','fixture-page','paragraph',2,'{\"type\":\"paragraph\",\"attrs\":{\"bid\":\"with-properties\"}}','','ltr',1,1,'{\"status\":\"done\"}')",[]).unwrap();
+        let revision:i64=c.query_row("SELECT updated_at FROM pages WHERE id='fixture-page'",[],|r|r.get(0)).unwrap();
+        drop(c);
+        // A block with properties the native apps cannot show is never discarded.
+        assert!(restore_version_checked(&path,"fixture-page",revision,&version).unwrap_err().to_string().starts_with("unsupported edit:"));
+        let c=Connection::open(&path).unwrap();
+        assert_eq!(c.query_row("SELECT count(*) FROM blocks WHERE id='with-properties'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        c.execute("UPDATE pages SET metadata='{\"sync\":{\"shared\":true}}' WHERE id='fixture-page'",[]).unwrap();
+        drop(c);
+        assert!(create_version_checked(&path,"fixture-page",revision,"Before assistant changes".into()).is_err());
+        std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn ffi_version_request_names_are_accepted() {
+        let path=fixture();
+        let call=|request:String| -> Value {
+            let response=unsafe { worlds_store_call(request.as_ptr(),request.len()) };
+            let parsed:Value=serde_json::from_str(unsafe { std::ffi::CStr::from_ptr(response) }.to_str().unwrap()).unwrap();
+            unsafe { worlds_store_free(response) };
+            parsed
+        };
+        let created=call(serde_json::json!({"operation":"create_version_checked","path":path,"page":"fixture-page","base":1700000000001i64,"label":"Before assistant changes"}).to_string());
+        assert_eq!(created["ok"],true,"{created}");
+        let version=created["value"]["id"].as_str().unwrap().to_owned();
+        let restored=call(serde_json::json!({"operation":"restore_version_checked","path":path,"page":"fixture-page","base":1700000000001i64,"version":version}).to_string());
+        assert_eq!(restored["ok"],true,"{restored}");
+        assert_eq!(restored["value"]["id"],"fixture-page");
         std::fs::remove_file(path).unwrap();
     }
 }

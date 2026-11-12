@@ -55,8 +55,10 @@ private struct Request: Encodable, Sendable {
     var recoveryID: String? = nil
     var streamURL: String? = nil
     var deletedAt: Int64? = nil
+    var label: String? = nil
+    var version: String? = nil
     enum CodingKeys: String, CodingKey {
-        case operation, path, page, base, title, parent, blocks, expected, metadata, deleting
+        case operation, path, page, base, title, parent, blocks, expected, metadata, deleting, label, version
         case expectedMetadata = "expected_metadata"
         case expectedKind = "expected_kind"
         case expectedTitle = "expected_title"
@@ -199,6 +201,17 @@ public actor NativePersonalStore {
     /// `base` and `deletedAt` are the values listed in Trash; a difference is a conflict.
     public func restorePage(id: String, base: Int64, deletedAt: Int64) async throws -> JSONValue {
         try await call(Request(operation: "restore_page_checked", path: url.path, page: id, base: base, deletedAt: deletedAt))
+    }
+
+    /// Keeps the current page or document as a named version after comparing
+    /// its revision. The revision does not change.
+    public func createVersionChecked(pageID: String, base: Int64, label: String) async throws -> JSONValue {
+        try await call(Request(operation: "create_version_checked", path: url.path, page: pageID, base: base, label: label))
+    }
+    /// Restores a version of this page or document after comparing its
+    /// revision; the current state is kept as a version first.
+    public func restoreVersionChecked(pageID: String, base: Int64, versionID: String) async throws -> JSONValue {
+        try await call(Request(operation: "restore_version_checked", path: url.path, page: pageID, base: base, version: versionID))
     }
 
     private func call(_ request: Request, scopedSource: URL? = nil, galleryCancellation: GalleryCancelToken? = nil) async throws -> JSONValue {
