@@ -11,7 +11,7 @@ import { maskEditChanges, maskPropertyChanges } from "./maskEdit";
 import { LayerBrowser } from "./LayerBrowser";
 import { DrawingShortcutsDialog } from "./ShortcutsDialog";
 import { drawingShortcutAction, readDrawingShortcuts } from "./shortcuts";
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ScreenDrawing, type CapturedScreen } from "./ScreenDrawing";
 import { localStore } from "../sync/session";
@@ -319,6 +319,20 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
     clipboard = useRef<DrawingNode[]>([]),
     toolBrushes = useRef<Partial<Record<Tool, Brush>>>(initialPreferences.current.brushes);
   const scene = state.document?.scene;
+  // Open on the whole frame. A fixed starting zoom cut the frame off in narrow windows,
+  // so its far edge sat under the tool rail.
+  const fittedFor = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    if (!scene || fittedFor.current === pageId) return;
+    const stage = root.current?.querySelector(".drawing-stage")?.getBoundingClientRect();
+    const f = scene.frames[frameId] ?? scene.frames[scene.defaultFrameId];
+    if (!stage || stage.width < 80 || stage.height < 80 || !f) return;
+    fittedFor.current = pageId;
+    const w = stage.width,
+      h = stage.height,
+      scale = Math.max(0.025, Math.min(1, w / (f.w + 80), h / (f.h + 80)));
+    setView((v) => ({ ...v, x: f.x - (w / scale - f.w) / 2, y: f.y - (h / scale - f.h) / 2, w: w / scale, h: h / scale, scale }));
+  });
   const selectedVisible = (id: string) =>
     !!scene?.nodes[id] && scene.nodes[id].visible && effectiveLayer(scene, scene.nodes[id].layerId).visible;
   const selected = selectedIds.every(selectedVisible) ? selectedIds : selectedIds.filter(selectedVisible);

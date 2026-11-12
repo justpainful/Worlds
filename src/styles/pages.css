@@ -146,6 +146,8 @@
 /* ---- Outline ----------------------------------------------------------------- */
 .outline { position: fixed; right: 30px; top: 150px; width: 200px; max-height: calc(100vh - 220px); overflow-y: auto; display: flex; flex-direction: column; gap: 1px; padding: 6px 0; z-index: 5; opacity: 0.55; transition: opacity 200ms ease; scrollbar-width: none; }
 .outline:hover { opacity: 1; }
+/* The outline is fixed to the window edge away from the sidebar; in Arabic the sidebar is on the right, so it moves left. */
+:root[dir="rtl"] .outline { right: auto; left: 30px; }
 .outline-title { font: var(--t-caption); font-weight: 600; color: var(--text-3); padding: 0 8px 6px; }
 .outline-item { text-align: start; padding: 4px 8px; border-radius: 7px; font: var(--t-small); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; unicode-bidi: plaintext; border-inline-start: 2px solid transparent; }
 .outline-item.lvl-2 { padding-inline-start: 18px; }
