@@ -321,6 +321,8 @@ function PaneToolbar({ pane, tab, showWindowControls, count }: { pane: Pane; tab
                   data-tab={t.id}
                   className={`tab ${isActive ? "is-active" : ""} ${dropIndex === i ? "drop-before" : ""} ${dropIndex === pane.tabs.length && i === pane.tabs.length - 1 ? "drop-after" : ""}`}
                   role="tab"
+                  // A long title is cut in the tab; the whole name shows on hover.
+                  data-tip={lbl.title}
                   aria-selected={isActive}
                   tabIndex={0}
                   draggable
