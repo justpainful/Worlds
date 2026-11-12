@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from "vitest";
 import dictionary from "./ar.json";
-import { loadDictionary, resolveUiLanguage, translate } from "./ui";
+import { countedNoun, loadDictionary, resolveUiLanguage, translate } from "./ui";
 
 describe("Arabic interface dictionary", () => {
   afterAll(() => loadDictionary(dictionary as Record<string, string>));
@@ -20,14 +20,14 @@ describe("Arabic interface dictionary", () => {
 
   it("fills patterns and translates their parts when it can", () => {
     loadDictionary({ "§{0} pages": "{0} صفحات", "§Moved {0} to {1}": "نُقل {0} إلى {1}", Trash: "سلة المهملات", "§Untitled {0}": "{0} بلا عنوان", drawing: "رسم" });
-    expect(translate("12 pages")).toBe("12 صفحات");
+    expect(translate("12 pages")).toBe("12 صفحة"); // 11 and up take the singular
     expect(translate("Moved Notes to Trash")).toBe("نُقل Notes إلى سلة المهملات");
     expect(translate("Untitled drawing")).toBe("رسم بلا عنوان");
   });
 
   it("drops English plural endings and still matches the singular", () => {
     loadDictionary({ "§{0} page{1}": "{0} صفحة{1}" });
-    expect(translate("3 pages")).toBe("3 صفحة");
+    expect(translate("3 pages")).toBe("3 صفحات");
     expect(translate("1 page")).toBe("1 صفحة");
     expect(translate("pages")).toBeNull();
     // A count pattern must not swallow a whole sentence.
@@ -51,7 +51,7 @@ describe("Arabic interface dictionary", () => {
     loadDictionary(dictionary as Record<string, string>);
     expect(translate("1 step")).toBe("1 خطوة");
     expect(translate("3 steps")).toBe("3 خطوات");
-    expect(translate("10 pts")).toBe("10 نقطة");
+    expect(translate("10 pts")).toBe("10 نقاط");
     expect(translate("Exam Tomorrow")).toBe("الاختبار غدًا");
     expect(translate("Daily · 2.3 MB")).toBe("نسخة يومية · 2.3 MB");
     expect(translate("the bot host over SSH · Components V2")).toBe("جهاز البوت عبر SSH · Components V2");
@@ -61,7 +61,7 @@ describe("Arabic interface dictionary", () => {
 
   it("keeps plural slots to plural endings or a punctuated aside", () => {
     loadDictionary(dictionary as Record<string, string>);
-    expect(translate("3 subpages")).toBe("3 صفحة فرعية");
+    expect(translate("3 subpages")).toBe("3 صفحات فرعية");
     expect(translate("1 subpage")).toBe("1 صفحة فرعية");
     // Before, "{0} subpage{1}" took the rest of this sentence as its plural ending.
     expect(translate("No subpages yet. Pages you create here stay organized under “Weekly plan”.")).toBe(
@@ -69,6 +69,20 @@ describe("Arabic interface dictionary", () => {
     );
     expect(translate("The last check found a problem: disk full. Restore the newest backup below, or keep working and back up now.")).toMatch(/^وجد آخر فحص مشكلة: disk full\./);
     expect(translate("The last check found a problem. Restore the newest backup below, or keep working and back up now.")).toMatch(/^وجد آخر فحص مشكلة\./);
+  });
+
+  it("makes the noun after a count agree with it, as Arabic does", () => {
+    loadDictionary(dictionary as Record<string, string>);
+    expect(translate("3 pages")).toBe("3 صفحات");
+    expect(translate("1 page")).toBe("1 صفحة");
+    expect(translate("12 pages")).toBe("12 صفحة");
+    expect(translate("3 classes today")).toBe("3 حصص اليوم");
+    expect(translate("Replaced 4 matches")).toBe("استُبدلت 4 نتائج");
+    expect(translate("4 subpages")).toBe("4 صفحات فرعية");
+    expect(translate("10 pts")).toBe("10 نقاط");
+    expect(countedNoun(4000, "أحرف")).toBe("حرف");
+    expect(countedNoun(103, "صفحة")).toBe("صفحات");
+    expect(countedNoun(5, "كتاب")).toBe("كتاب");
   });
 
   it("has no dashes the interface rules forbid", () => {

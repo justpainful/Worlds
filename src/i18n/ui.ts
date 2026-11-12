@@ -76,9 +76,53 @@ export function translate(text: string, depth = 0): string | null {
         return translate(part, depth + 1) ?? part;
       })
       .replace(/\s{2,}/g, " ")
-      .trim();
+      .trim()
+      .replace(COUNT, (_, n: string, noun: string) => `${n} ${countedNoun(Number(n.replace(/,/g, "")), noun)}`);
   }
   return null;
+}
+
+/** Nouns that follow a count in the dictionary, as singular and plural. */
+const COUNTED: [string, string][] = [
+  ["صفحة فرعية", "صفحات فرعية"],
+  ["صفحة", "صفحات"],
+  ["شريحة", "شرائح"],
+  ["حصة", "حصص"],
+  ["نتيجة", "نتائج"],
+  ["تغيير", "تغييرات"],
+  ["كتلة", "كتل"],
+  ["عنصر", "عناصر"],
+  ["خطوة", "خطوات"],
+  ["نقطة", "نقاط"],
+  ["كلمة", "كلمات"],
+  ["حرف", "أحرف"],
+  ["شخص", "أشخاص"],
+  ["عمود", "أعمدة"],
+  ["ملف", "ملفات"],
+  ["مهمة", "مهام"],
+  ["رسالة", "رسائل"],
+  ["ساعة", "ساعات"],
+  ["دقيقة", "دقائق"],
+  ["يوم", "أيام"],
+];
+const COUNT = new RegExp(
+  `(\\d[\\d,]*) (${COUNTED.flat()
+    .sort((a, b) => b.length - a.length)
+    .join("|")})(?=$|[\\s،.:؛)])`,
+  "g",
+);
+
+/**
+ * The noun after a number, as Arabic counts it: 3 to 10 take the plural
+ * ("3 صفحات"), and so do 2 and 0 here; 1 and 11 upward take the singular
+ * ("11 صفحة", "100 صفحة").
+ */
+export function countedNoun(n: number, noun: string): string {
+  const pair = COUNTED.find((p) => p.includes(noun));
+  if (!pair) return noun;
+  const r = n % 100;
+  const plural = n === 0 || n === 2 || (r >= 3 && r <= 10);
+  return plural ? pair[1] : pair[0];
 }
 
 /** Keep the white space around the text when replacing it. */
