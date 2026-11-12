@@ -9,6 +9,7 @@ import { confirmDialog } from "../ui/Modal";
 import { Icon } from "../ui/Icon";
 import { VISUAL_MINDMAP_PRESETS, createVisualMindMap, presetText, type VisualCanvasPreset } from "../drawing/mindMapTemplates";
 import { resolveUiLanguage } from "../i18n/ui";
+import { pageFromTemplate, templateDescription, templateName } from "../templates/fromTemplate";
 
 const CATEGORY_ORDER: Record<string, number> = {
   Custom: 0,
@@ -160,13 +161,13 @@ function TemplateCard({ t }: { t: PageMeta }) {
   const openPage = useStore((s) => s.openPage);
   const show = useMenu((s) => s.show);
   const pages = useStore((s) => s.pages);
-  const description = t.preview;
+  const description = templateDescription(t) ?? t.preview;
   const kids = Object.values(pages).filter((p) => p.parentId === t.id && !p.deletedAt).length;
 
   const use = async () => {
     const s = useStore.getState();
     try {
-      const p = await api.instantiate(t.id);
+      const p = await pageFromTemplate(t);
       await s.refreshPages();
       s.openPage(p.id);
     } catch (e) {
@@ -216,7 +217,7 @@ function TemplateCard({ t }: { t: PageMeta }) {
           <Icon name="more" size={15} />
         </button>
       </div>
-      <div className="tpl-card-title bidi">{t.title.replace("{{date}}", "").trim() || "Untitled template"}</div>
+      <div className="tpl-card-title bidi">{templateName(t) || "Untitled template"}</div>
       <div className="tpl-card-desc bidi">{description || "Empty template"}</div>
       <div className="tpl-card-foot">
         {kids > 0 && <span className="tag">{kids} subpage{kids === 1 ? "" : "s"}</span>}

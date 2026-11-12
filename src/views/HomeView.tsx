@@ -23,6 +23,7 @@ import { StudyHomeSection } from "../study/StudyViews";
 import { loadSample } from "../demo/sampleActions";
 import { resolveUiLanguage } from "../i18n/ui";
 import { dateLine } from "../i18n/locale";
+import { pageFromTemplate, templateName } from "../templates/fromTemplate";
 
 type View = "grid" | "list";
 
@@ -368,13 +369,13 @@ function TemplateRow({ templates }: { templates: PageMeta[] }) {
             key={t.id}
             className="tpl-chip"
             onClick={async () => {
-              const p = await api.instantiate(t.id);
+              const p = await pageFromTemplate(t);
               await refresh();
               openPage(p.id);
             }}
           >
             <span className="tpl-chip-icon">{t.icon ?? "📄"}</span>
-            <span className="bidi">{t.title.replace("{{date}}", "").trim()}</span>
+            <span className="bidi">{templateName(t)}</span>
           </button>
         ))}
       </div>

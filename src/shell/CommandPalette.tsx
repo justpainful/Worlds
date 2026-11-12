@@ -19,6 +19,7 @@ import { createSubject } from "../study/StudyViews";
 import { startTour } from "./Tour";
 import { translate } from "../i18n/ui";
 import { foldArabic } from "../i18n/locale";
+import { pageFromTemplate, templateName } from "../templates/fromTemplate";
 
 interface Cmd {
   id: string;
@@ -193,14 +194,14 @@ function Palette({ mode, onClose }: { mode: "all" | "pages" | "commands"; onClos
           out.push({
             key: `p${h.pageId}`,
             kind: isTpl ? "template" : "page",
-            title: h.title || "Untitled",
+            title: (isTpl && s.pages[h.pageId] ? templateName(s.pages[h.pageId]) : h.title) || "Untitled",
             subtitle: isTpl ? "Template" : h.parentTitle ?? undefined,
             snippet: h.snippet,
             emoji: h.icon,
             icon: isTpl ? "template" : "page",
             run: (w) =>
               isTpl
-                ? api.instantiate(h.pageId).then(async (m) => {
+                ? (s.pages[h.pageId] ? pageFromTemplate(s.pages[h.pageId]) : api.instantiate(h.pageId)).then(async (m) => {
                     await s.refreshPages();
                     s.openPage(m.id, w);
                   })
