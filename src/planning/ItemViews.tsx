@@ -309,7 +309,7 @@ export function FocusTimerBar() {
           {mins}:{secs}
         </span>
         <button className={`chip-btn ${running ? "is-accent" : ""}`} onClick={() => setRunning((r) => !r)}>
-          {running ? "Pause" : "Start"}
+          {running ? "Pause" : "Start focus"}
         </button>
         <button className="chip-btn" onClick={() => selectPreset(mode)}>Reset</button>
         <span style={{ flex: 1 }} />
