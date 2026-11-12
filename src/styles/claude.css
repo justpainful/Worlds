@@ -263,23 +263,26 @@
 .intel-note { margin: 0; font: var(--t-small); color: var(--text-3); min-height: 1.4em; }
 .step-slider { display: flex; flex-direction: column; gap: 6px; user-select: none; }
 .ss-track { position: relative; height: 26px; margin: 0 11px; cursor: pointer; touch-action: none; outline: none; }
-.ss-rail, .ss-fill { position: absolute; left: -11px; top: 50%; height: 6px; margin-top: -3px; border-radius: 999px; }
-.ss-rail { right: -11px; background: rgba(255, 255, 255, 0.1); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35); }
+.ss-rail, .ss-fill { position: absolute; inset-inline-start: -11px; top: 50%; height: 6px; margin-top: -3px; border-radius: 999px; }
+.ss-rail { inset-inline-end: -11px; background: rgba(255, 255, 255, 0.1); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35); }
 .ss-fill { width: calc(var(--ss-pct) + 11px); background: linear-gradient(90deg, color-mix(in srgb, var(--ss-hue) 55%, transparent), var(--ss-hue)); transition: width 320ms var(--spring-snappy); }
-.ss-stop { position: absolute; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: rgba(255, 255, 255, 0.35); }
+.ss-stop { position: absolute; top: 50%; width: 4px; height: 4px; margin-block-start: -2px; margin-inline-start: -2px; border-radius: 50%; background: rgba(255, 255, 255, 0.35); }
 .ss-stop.is-on { background: rgba(255, 255, 255, 0.8); }
 .ss-thumb {
   position: absolute;
   top: 50%;
-  left: var(--ss-pct);
+  inset-inline-start: var(--ss-pct);
   width: 22px;
   height: 22px;
-  margin: -11px 0 0 -11px;
+  margin-block-start: -11px;
+  margin-inline-start: -11px;
   border-radius: 50%;
   background: radial-gradient(circle at 50% 30%, #fff, #e9e6f2 60%, #cfcbd9);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(0, 0, 0, 0.2), 0 0 14px color-mix(in srgb, var(--ss-hue) 50%, transparent);
-  transition: left 320ms var(--spring-snappy), transform 160ms ease;
+  transition: inset-inline-start 320ms var(--spring-snappy), transform 160ms ease;
 }
+/* The slider fills from its start edge, the right in Arabic. */
+:dir(rtl) .ss-fill { background: linear-gradient(270deg, color-mix(in srgb, var(--ss-hue) 55%, transparent), var(--ss-hue)); }
 .ss-track:active .ss-thumb { transform: scale(1.12); }
 .ss-track:focus-visible .ss-thumb { outline: 2px solid var(--ss-hue); outline-offset: 2px; }
 .ss-labels { display: flex; justify-content: space-between; }
