@@ -215,7 +215,8 @@ export const PageEditor = forwardRef<
       content: collab.key.startsWith("yjs") ? undefined : docFrom(page),
       editable: collab.editable,
       editorProps: {
-        attributes: { class: "prose", spellcheck: "true" },
+        // Spell checking is inherited from the page root, which follows Settings › Editor.
+        attributes: { class: "prose" },
         handlePaste: (_view, event) => {
           const files = [...(event.clipboardData?.files ?? [])];
           if (files.length && editorRef.current) {

@@ -391,7 +391,6 @@ function LoadedPage({ page, paneId, reload }: { page: Page; paneId: string; relo
             rows={1}
             value={title}
             placeholder="Untitled"
-            spellCheck
             onChange={(e) => {
               setTitle(e.target.value);
               saveTitle(e.target.value);

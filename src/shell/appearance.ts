@@ -55,6 +55,8 @@ export function applyAppearance() {
   if (motion === "reduced") root.dataset.motion = "reduced";
   else delete root.dataset.motion;
   root.dataset.density = (settings["appearance.density"] as string) ?? "comfortable";
+  // Settings › Editor › Spell check: every text area without its own choice inherits this.
+  root.spellcheck = settings["editor.spellcheck"] !== false;
   root.dataset.transparency = (settings["appearance.transparency"] as string) ?? "off";
   const language = resolveUiLanguage(profile?.language);
   applyUiLanguage(language);
