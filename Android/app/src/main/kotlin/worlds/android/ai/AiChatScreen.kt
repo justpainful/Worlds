@@ -49,6 +49,13 @@ import java.util.UUID
 
 private const val SYSTEM_PROMPT = "You are the assistant inside Worlds, a local first workspace for pages, documents, spreadsheets, drawings and study. Answer clearly. Use Markdown when it helps. When the person attaches pages they appear inside <document> tags."
 
+/** Added when the model is offered the Worlds tools. */
+private const val TOOLS_PROMPT = "You can read and change the person's Worlds pages on this Android device with the Worlds tools. " +
+    "Use them when the request is about their pages or tasks; answer directly when it is not. " +
+    "Read a page before you change it, change the smallest set of blocks, and never invent page or block ids. " +
+    "Pages and documents can be edited; other kinds can only be listed, read or renamed. " +
+    "Every change you make in one reply can be undone by the person from the chat, so make the change instead of asking for permission, then say briefly what you changed."
+
 private fun newThread(providerId: String, modelId: String): ChatThread {
     val now = System.currentTimeMillis()
     // A blank title stands for "New conversation" and is translated where it is shown.
@@ -64,7 +71,11 @@ fun AiChatScreen(
     onBack: () -> Unit,
     onCreatePage: (title: String, content: String) -> Unit,
     modifier: Modifier = Modifier,
-    showBack: Boolean = true
+    showBack: Boolean = true,
+    /** Opens a page the assistant changed. */
+    onOpenPage: (pageId: String) -> Unit = {},
+    /** The assistant changed or put back these pages; screens showing them should reload. */
+    onWorkspaceChanged: (pageIds: Set<String>) -> Unit = {}
 ) {
     val context = LocalContext.current
     val resources = LocalResources.current
@@ -126,7 +137,7 @@ fun AiChatScreen(
     }
 
     val messages = thread?.messages.orEmpty()
-    LaunchedEffect(messages.size, messages.lastOrNull()?.content?.length) {
+    LaunchedEffect(messages.size, messages.lastOrNull()?.content?.length, messages.lastOrNull()?.steps?.size) {
         if (messages.isNotEmpty()) listState.scrollToItem(messages.size - 1, Int.MAX_VALUE / 2)
     }
 
@@ -151,31 +162,100 @@ fun AiChatScreen(
         attachments = emptyList()
         persist(thread!!)
 
+        // Tools run over the same local store the rest of the app uses; a chat only conversation is sent without them.
+        val runner = AiToolRunner(ContentStoreWorkspace(store))
+        val offerTools = !current.chatOnly
+        val history = AiRequests.cleanTurns(turns).map { AiMsg.text(it.role, it.content) }
+
+        fun recordChanges() {
+            val changes = runner.changes
+            val before = thread?.messages?.firstOrNull { it.id == replyId }?.changes
+            if (changes == before) return
+            updateMessage(replyId) { it.copy(changes = changes) }
+            // Saved at once, so the reply can still be undone if the app closes before it finishes.
+            thread?.let { persist(it) }
+        }
+
+        fun onEvent(event: AiAgentEvent) {
+            when (event) {
+                is AiAgentEvent.Delta -> updateMessage(replyId) { it.copy(content = it.content + event.text) }
+                is AiAgentEvent.ToolStarted -> updateMessage(replyId) { it.copy(steps = it.steps + AiToolStep(event.name, null)) }
+                is AiAgentEvent.ToolFinished -> updateMessage(replyId) { msg ->
+                    val index = msg.steps.indexOfLast { it.ok == null }
+                    if (index < 0) msg else msg.copy(steps = msg.steps.toMutableList().also { it[index] = AiToolStep(event.name, event.ok) })
+                }
+                AiAgentEvent.ChatOnly -> {
+                    updateMessage(replyId) { it.copy(chatOnly = true) }
+                    thread = thread?.copy(chatOnly = true)
+                }
+            }
+        }
+
+        /** Steps still marked running when the reply stops count as not finished. */
+        fun settle(msg: ChatMessage) = msg.copy(isStreaming = false, steps = msg.steps.map { if (it.ok == null) it.copy(ok = false) else it }, changes = runner.changes)
+
         streamJob = scope.launch {
             try {
                 if (current.providerId.isBlank()) throw AiError.NoProvider()
                 val provider = withContext(Dispatchers.IO) { providers.provider(current.providerId) } ?: throw AiError.NoProvider()
-                AiClient(provider).streamChat(current.modelId, SYSTEM_PROMPT, turns).collect { delta ->
-                    updateMessage(replyId) { it.copy(content = it.content + delta) }
-                }
-                updateMessage(replyId) { it.copy(isStreaming = false, timestamp = System.currentTimeMillis()) }
+                if (current.modelId.isBlank()) throw AiError.NoModel(provider.displayName)
+                val outcome = AiAgent.run(
+                    provider = provider,
+                    model = current.modelId,
+                    system = if (offerTools) SYSTEM_PROMPT + "\n\n" + TOOLS_PROMPT else SYSTEM_PROMPT,
+                    history = history,
+                    tools = if (offerTools) AiTools.ALL else emptyList(),
+                    transport = AiClient(provider).transport(),
+                    host = { name, input ->
+                        val result = withContext(Dispatchers.IO) { runner.call(name, input) }
+                        recordChanges()
+                        result
+                    },
+                    // Lines arrive on the network thread; chat state changes on the main thread.
+                    sink = { event -> withContext(Dispatchers.Main.immediate) { onEvent(event) } },
+                )
+                updateMessage(replyId) { settle(it).copy(content = outcome.text.ifBlank { it.content.trim() }, timestamp = System.currentTimeMillis()) }
             } catch (e: CancellationException) {
-                updateMessage(replyId) { it.copy(isStreaming = false) }
+                updateMessage(replyId) { settle(it) }
                 val partial = thread?.messages?.firstOrNull { it.id == replyId }
-                if (partial != null && partial.content.isBlank()) thread = thread?.let { t -> t.copy(messages = t.messages.filterNot { it.id == replyId }) }
+                if (partial != null && partial.content.isBlank() && partial.steps.isEmpty() && partial.changes.isEmpty()) thread = thread?.let { t -> t.copy(messages = t.messages.filterNot { it.id == replyId }) }
             } catch (e: Exception) {
                 val message = (e as? AiError)?.localized(context) ?: resources.getString(R.string.ai_reply_failed, e.message ?: e.javaClass.simpleName)
+                updateMessage(replyId) { settle(it) }
                 val partial = thread?.messages?.firstOrNull { it.id == replyId }
-                if (partial != null && partial.content.isNotBlank()) {
-                    updateMessage(replyId) { it.copy(isStreaming = false) }
+                if (partial != null && (partial.content.isNotBlank() || partial.steps.isNotEmpty() || partial.changes.isNotEmpty())) {
                     thread = thread?.let { t -> t.copy(messages = t.messages + ChatMessage(UUID.randomUUID().toString(), "assistant", message, System.currentTimeMillis(), error = true)) }
                 } else {
-                    updateMessage(replyId) { it.copy(content = message, isStreaming = false, error = true) }
+                    updateMessage(replyId) { it.copy(content = message, error = true) }
                 }
             } finally {
                 streamJob = null
+                val changed = runner.changes.map { it.pageId }.toSet()
+                if (changed.isNotEmpty()) onWorkspaceChanged(changed)
                 val finished = thread?.copy(updatedAt = System.currentTimeMillis())
                 if (finished != null) withContext(NonCancellable + Dispatchers.IO) { runCatching { conversations.save(finished) } }
+            }
+        }
+    }
+
+    var undoing by remember { mutableStateOf<String?>(null) }
+
+    /** Puts back every page one reply changed, like the desktop chat's Undo. */
+    fun undo(message: ChatMessage) {
+        if (message.changes.isEmpty() || message.undone || isStreaming || undoing != null) return
+        undoing = message.id
+        scope.launch {
+            try {
+                val result = withContext(Dispatchers.IO) { AiUndo.undo(ContentStoreWorkspace(store), message.changes) }
+                if (result.undone.isNotEmpty()) updateMessage(message.id) { it.copy(undone = true) }
+                if (result.failed.isNotEmpty()) {
+                    val names = result.failed.joinToString(resources.getString(R.string.ai_list_separator)) { it.ifBlank { resources.getString(R.string.untitled) } }
+                    thread = thread?.let { t -> t.copy(messages = t.messages + ChatMessage(UUID.randomUUID().toString(), "assistant", resources.getString(R.string.ai_undo_failed, names), System.currentTimeMillis(), error = true)) }
+                }
+                thread?.let { persist(it) }
+                onWorkspaceChanged(message.changes.map { it.pageId }.toSet())
+            } finally {
+                undoing = null
             }
         }
     }
@@ -354,7 +434,10 @@ fun AiChatScreen(
                                 ?: resources.getString(R.string.ai_note_title, DateFormat.getDateInstance(DateFormat.SHORT).format(Date()))
                             onCreatePage(name, msg.content)
                         },
-                        onOpenSettings = { showSettings = true }
+                        onOpenSettings = { showSettings = true },
+                        onUndo = { undo(msg) },
+                        undoEnabled = !isStreaming && undoing == null,
+                        onOpenPage = onOpenPage
                     )
                 }
             }
@@ -375,7 +458,8 @@ fun AiChatScreen(
             selectedProviderId = selectedProvider,
             selectedModelId = selectedModel,
             onChoose = { choice ->
-                thread = thread?.copy(providerId = choice.providerId, modelId = choice.modelId)
+                // Another model may support tools, so the conversation offers them again.
+                thread = thread?.copy(providerId = choice.providerId, modelId = choice.modelId, chatOnly = false)
                 thread?.let { if (it.messages.isNotEmpty()) persist(it) }
                 scope.launch(Dispatchers.IO) {
                     providers.save(choice.providerId, providers.settings(choice.providerId).copy(model = choice.modelId))
@@ -424,10 +508,16 @@ private fun EmptyConversation(configured: Boolean, providerName: String?, model:
 private fun MessageBubble(
     message: ChatMessage,
     onExport: () -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    onUndo: () -> Unit = {},
+    undoEnabled: Boolean = false,
+    onOpenPage: (String) -> Unit = {}
 ) {
     val isUser = message.role == "user"
     val clipboard = LocalClipboardManager.current
+    // A finished reply that only ran tools has no text bubble; its steps and changes say what happened.
+    val showBubble = isUser || message.error || message.content.isNotBlank() || (message.isStreaming && message.steps.isEmpty()) ||
+        (!message.isStreaming && message.steps.isEmpty())
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -438,7 +528,15 @@ private fun MessageBubble(
             horizontalAlignment = if (isUser) Alignment.End else Alignment.Start,
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Surface(
+            if (!isUser && message.steps.isNotEmpty()) ToolSteps(message.steps, live = message.isStreaming)
+            if (!isUser && message.chatOnly) ChatOnlyNote()
+            if (!isUser && message.isStreaming && message.steps.isNotEmpty() && message.content.isBlank()) {
+                Row(Modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+                    Text(stringResource(R.string.ai_working), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            if (showBubble) Surface(
                 shape = RoundedCornerShape(
                     topStart = 16.dp,
                     topEnd = 16.dp,
@@ -486,6 +584,10 @@ private fun MessageBubble(
                 }
             }
 
+            if (!isUser && message.changes.isNotEmpty() && !message.isStreaming) {
+                ChangesRow(message, undoEnabled = undoEnabled, onUndo = onUndo, onOpenPage = onOpenPage)
+            }
+
             if (message.error) {
                 TextButton(onClick = onOpenSettings) { WorldsActionLabel(R.drawable.ic_key_round, stringResource(R.string.ai_providers_and_keys)) }
             } else if (!isUser && !message.isStreaming && message.content.isNotBlank()) {
@@ -497,6 +599,100 @@ private fun MessageBubble(
                         WorldsActionLabel(R.drawable.ic_file_text, stringResource(R.string.ai_create_page))
                     }
                 }
+            }
+        }
+    }
+}
+
+/** The label and glyph for a tool step, matching the desktop chat's wording. Unknown tools show their own name. */
+private fun toolLabel(tool: String): Pair<Int?, Int> = when (tool) {
+    "workspace_overview" -> R.string.ai_tool_workspace_overview to R.drawable.ic_house
+    "pages_list" -> R.string.ai_tool_pages_list to R.drawable.ic_files
+    "pages_search" -> R.string.ai_tool_pages_search to R.drawable.ic_search
+    "pages_read" -> R.string.ai_tool_pages_read to R.drawable.ic_file_text
+    "pages_create" -> R.string.ai_tool_pages_create to R.drawable.ic_plus
+    "pages_append_markdown" -> R.string.ai_tool_pages_append_markdown to R.drawable.ic_list_plus
+    "blocks_update" -> R.string.ai_tool_blocks_update to R.drawable.ic_pencil
+    "pages_rename" -> R.string.ai_tool_pages_rename to R.drawable.ic_pen_line
+    "tasks_add" -> R.string.ai_tool_tasks_add to R.drawable.ic_list_todo
+    "tasks_list" -> R.string.ai_tool_tasks_list to R.drawable.ic_list_todo
+    else -> null to R.drawable.ic_settings_2
+}
+
+/** Tool steps: listed while the reply runs, folded behind a count once it is done, like the desktop chat. */
+@Composable
+private fun ToolSteps(steps: List<AiToolStep>, live: Boolean) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        if (!live) {
+            TextButton(onClick = { expanded = !expanded }, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    WorldsGlyph(R.drawable.ic_settings_2, modifier = Modifier.size(14.dp), tint = muted)
+                    Text(stringResource(R.string.ai_steps, steps.size), style = MaterialTheme.typography.labelMedium, color = muted)
+                    WorldsGlyph(if (expanded) R.drawable.ic_arrow_up else R.drawable.ic_arrow_down, modifier = Modifier.size(12.dp), tint = muted)
+                }
+            }
+        }
+        if (live || expanded) {
+            val running = stringResource(R.string.ai_step_running)
+            val finished = stringResource(R.string.ai_step_finished)
+            val failed = stringResource(R.string.ai_step_failed)
+            steps.forEach { step ->
+                val (labelRes, glyph) = toolLabel(step.tool)
+                val label = labelRes?.let { stringResource(it) } ?: step.tool
+                val tint = if (step.ok == false) MaterialTheme.colorScheme.error else muted
+                val state = when (step.ok) { null -> running; true -> finished; false -> failed }
+                Row(
+                    Modifier.padding(horizontal = 4.dp, vertical = 2.dp).semantics { contentDescription = "$label, $state" },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    WorldsGlyph(glyph, modifier = Modifier.size(14.dp), tint = tint)
+                    Text(label, style = MaterialTheme.typography.bodySmall, color = tint)
+                    when (step.ok) {
+                        null -> CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.5.dp)
+                        true -> WorldsGlyph(R.drawable.ic_check, modifier = Modifier.size(12.dp), tint = muted)
+                        false -> WorldsGlyph(R.drawable.ic_x, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChatOnlyNote() {
+    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            WorldsGlyph(R.drawable.ic_lightbulb, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
+            Text(stringResource(R.string.ai_chat_only_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+        }
+    }
+}
+
+/** What one reply changed, with Open and Undo, like the desktop chat's result row. */
+@Composable
+private fun ChangesRow(message: ChatMessage, undoEnabled: Boolean, onUndo: () -> Unit, onOpenPage: (String) -> Unit) {
+    val untitled = stringResource(R.string.untitled)
+    val separator = stringResource(R.string.ai_list_separator)
+    val names = message.changes.joinToString(separator) { it.title.ifBlank { untitled } }
+    val openable = message.changes.firstOrNull { !(message.undone && it.created) }
+    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+        Row(Modifier.padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(if (message.undone) R.string.ai_changes_undone else R.string.ai_changes_on, names),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            if (openable != null) {
+                TextButton(onClick = { onOpenPage(openable.pageId) }) { WorldsActionLabel(R.drawable.ic_arrow_up_right, stringResource(R.string.ai_open_page)) }
+            }
+            if (!message.undone) {
+                TextButton(onClick = onUndo, enabled = undoEnabled) { WorldsActionLabel(R.drawable.ic_undo_2, stringResource(R.string.ai_undo)) }
             }
         }
     }

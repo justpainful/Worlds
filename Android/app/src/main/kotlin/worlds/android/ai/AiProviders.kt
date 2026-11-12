@@ -129,6 +129,7 @@ sealed class AiError(
         if (detail.isBlank()) listOf(provider) else listOf(provider, detail)
     )
     class Malformed(provider: String) : AiError("$provider sent a reply Worlds could not read.", R.string.ai_error_malformed, listOf(provider))
+    class TooManySteps(limit: Int) : AiError("Stopped after $limit steps without a final answer. Ask again with a smaller request.", R.string.ai_error_too_many_steps, listOf(limit))
 }
 
 /** The error in the interface language. The custom preset's English name is swapped for its translation. */
