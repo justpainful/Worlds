@@ -46,12 +46,12 @@
 .gal-grid .gal-thumb { aspect-ratio: 1; }
 .gal-media { width: 100%; height: 100%; display: grid; place-items: center; color: var(--text-3); }
 .gal-media img, .gal-media video { width: 100%; height: 100%; object-fit: cover; display: block; }
-.gal-play { position: absolute; left: 10px; bottom: 10px; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: rgba(0, 0, 0, 0.55); color: #fff; }
-.gal-badge { position: absolute; left: 10px; top: 10px; padding: 1px 7px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); color: #fff; font: 700 10px/16px var(--font-ui); letter-spacing: 0.04em; }
+.gal-play { position: absolute; inset-inline-start: 10px; bottom: 10px; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: rgba(0, 0, 0, 0.55); color: #fff; }
+.gal-badge { position: absolute; inset-inline-start: 10px; top: 10px; padding: 1px 7px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); color: #fff; font: 700 10px/16px var(--font-ui); letter-spacing: 0.04em; }
 .gal-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 0 4px; }
 .gal-name { font: var(--t-small); color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gal-sub { font: var(--t-caption); color: var(--text-4); }
-.gal-more { position: absolute; top: 6px; right: 6px; opacity: 0; background: rgba(0, 0, 0, 0.5); color: #fff; }
+.gal-more { position: absolute; top: 6px; inset-inline-end: 6px; opacity: 0; background: rgba(0, 0, 0, 0.5); color: #fff; }
 .gal-item:hover .gal-more, .gal-more:focus-visible { opacity: 1; }
 .gal-list .gal-item { flex-direction: row; align-items: center; gap: 14px; padding: 6px; }
 .gal-list .gal-item:hover { background: var(--fill-1); }

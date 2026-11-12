@@ -278,8 +278,8 @@
 .fp-nav { position: absolute !important; top: calc(50% - 19px); width: 38px; height: 38px; }
 .fp-nav { --g-fade: 0; }
 .fp-stage:not(:hover) .fp-nav, .fp-nav[aria-disabled="true"] { box-shadow: none; pointer-events: none; }
-.fp-nav.prev { left: 12px; }
-.fp-nav.next { right: 12px; }
+.fp-nav.prev { inset-inline-start: 12px; }
+.fp-nav.next { inset-inline-end: 12px; }
 .fp-stage:hover .fp-nav:not([aria-disabled="true"]) { --g-fade: 1; }
 .fp-bar { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
 .fp-count { font: var(--t-small); color: var(--text-3); min-width: 54px; font-variant-numeric: tabular-nums; }

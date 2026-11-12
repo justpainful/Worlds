@@ -94,7 +94,7 @@
 
 /* ---- Siri-style panel -------------------------------------------------- */
 .ai-panel {
-  right: 22px;
+  inset-inline-end: 22px;
   bottom: 22px;
   width: 440px;
   height: min(720px, calc(100vh - 92px));

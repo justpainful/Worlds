@@ -1,5 +1,5 @@
 /* ---- Claude panel ------------------------------------------------------ */
-.ai-panel { position: fixed; z-index: 2400; right: 26px; bottom: 26px; width: 430px; max-height: min(640px, calc(100vh - 80px)); }
+.ai-panel { position: fixed; z-index: 2400; inset-inline-end: 26px; bottom: 26px; width: 430px; max-height: min(640px, calc(100vh - 80px)); }
 .ai-panel > .g-layer { animation: ai-in var(--d-panel) var(--spring-snappy); }
 .ai-panel > .g-content { display: flex; flex-direction: column; max-height: inherit; }
 @keyframes ai-in { from { transform: translateY(18px) scale(0.97); } }

@@ -268,7 +268,7 @@ button.pf-link:hover { color: var(--text-1); text-decoration: underline; text-un
 .pf-edit-cell.is-over { transform: scale(0.98); }
 .pf-edit-cell.is-over::after { content: ""; position: absolute; inset: -4px; border-radius: 28px; border: 1.5px dashed rgba(var(--accent-rgb), 0.7); pointer-events: none; }
 .pf-edit-cell.is-hidden > .pblock { opacity: 0.4; }
-.pf-edit-bar { position: absolute; top: 10px; right: 10px; z-index: 3; }
+.pf-edit-bar { position: absolute; top: 10px; inset-inline-end: 10px; z-index: 3; }
 .pf-edit-row { display: flex; align-items: center; gap: 2px; padding: 3px; }
 .pf-edit-grip { display: grid; place-items: center; width: 26px; height: 26px; color: var(--text-3); cursor: grab; }
 .pf-edit-btn { display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; font: var(--t-caption); color: var(--text-2); }
@@ -410,7 +410,7 @@ button.pf-link:hover { color: var(--text-1); text-decoration: underline; text-un
 .pf-media-item { position: relative; }
 .pf-media-wait { display: block; width: 100%; height: 100%; background: linear-gradient(110deg, rgba(255, 255, 255, 0.04) 30%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.04) 70%); background-size: 200% 100%; animation: pf-wait 1.4s linear infinite; }
 @keyframes pf-wait { to { background-position: -200% 0; } }
-.pf-media-badge { position: absolute; left: 8px; bottom: 8px; padding: 2px 7px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); color: #fff; font: var(--t-caption); font-size: 10.5px; font-weight: 600; letter-spacing: 0.02em; }
+.pf-media-badge { position: absolute; inset-inline-start: 8px; bottom: 8px; padding: 2px 7px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); color: #fff; font: var(--t-caption); font-size: 10.5px; font-weight: 600; letter-spacing: 0.02em; }
 /* The ambient copy is tiny, so the blur is cheap; keep it on its own layer. */
 .pf-ambient, .glass-backdrop-light img { will-change: transform; transform: translateZ(0); }
 .verified { display: inline-flex; flex: none; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35)); }
@@ -435,7 +435,7 @@ button.pf-link:hover { color: var(--text-1); text-decoration: underline; text-un
 .pbi-photos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .pbi-photo { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: var(--fill-1); }
 .pbi-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.pbi-photo-actions { position: absolute; top: 4px; right: 4px; display: flex; gap: 3px; opacity: 0; transition: opacity 120ms ease; }
+.pbi-photo-actions { position: absolute; top: 4px; inset-inline-end: 4px; display: flex; gap: 3px; opacity: 0; transition: opacity 120ms ease; }
 .pbi-photo:hover .pbi-photo-actions { opacity: 1; }
 .pbi-photo-actions button { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: rgba(0, 0, 0, 0.6); color: #fff; }
 .pbi-photo-actions button:disabled { opacity: 0.35; }
