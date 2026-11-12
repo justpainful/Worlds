@@ -96,6 +96,8 @@ describe("Arabic interface dictionary", () => {
     expect(translate("12 pictures")).toBe("12 صورة");
     expect(translate("4 handed in")).toBe("المُسلَّمة: 4");
     expect(translate("About 1,500 words written")).toBe("كتبت نحو 1,500 كلمة");
+    expect(translate("2 instructions")).toBe("تعليمتان");
+    expect(translate("14 blocks")).toBe("14 كتلة");
     expect(translate("1,204 words · 6 min read")).toBe("1,204 كلمات · قراءة 6 دقائق");
     expect(translate("2 items left today")).toBe("المتبقي اليوم: عنصران");
     expect(countedNoun(4000, "أحرف")).toBe("حرف");

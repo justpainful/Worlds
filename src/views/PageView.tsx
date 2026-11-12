@@ -412,7 +412,7 @@ function LoadedPage({ page, paneId, reload }: { page: Page; paneId: string; relo
             {page.instructions.length > 0 && (
               <button className="meta-chip" onClick={() => setInspector("instructions")}>
                 <Icon name="instructions" size={13} />
-                {page.instructions.length} instruction{page.instructions.length === 1 ? "" : "s"}
+                {`${page.instructions.length} instruction${page.instructions.length === 1 ? "" : "s"}`}
               </button>
             )}
           </div>
