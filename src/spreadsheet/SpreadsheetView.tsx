@@ -30,6 +30,7 @@ import {
   type WorkbookData,
 } from "./engine";
 import { shortcutKey } from "../lib/keys";
+import { tr } from "../i18n/ui";
 
 interface SelectionRange {
   r1: number;
@@ -1362,7 +1363,8 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
               r.left,
               r.bottom + 4,
               FUNCTION_DOCS.slice(0, 18).map((fn) => ({
-                label: `${fn.name}: ${fn.summary}`,
+                // The name stays as typed in formulas; the description follows the interface language.
+                label: `${fn.name}: ${tr(fn.summary)}`,
                 onSelect: () => {
                   setEditing(true);
                   setDraft((d) => (d.startsWith("=") ? `${d}${fn.name}(` : `=${fn.name}(`));
