@@ -71,7 +71,7 @@
 .side-top { display: flex; align-items: center; gap: 2px; height: 40px; padding: 2px 2px 6px 2px; }
 .side-top-spacer { flex: 1; height: 100%; }
 .side-nav { display: flex; flex-direction: column; gap: 1px; padding-bottom: 6px; }
-.side-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; margin-right: -4px; padding-right: 4px; }
+.side-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; margin-inline-end: -4px; padding-inline-end: 4px; }
 .side-section { margin-top: 14px; }
 .side-section-head {
   display: flex;

@@ -10,7 +10,7 @@
 .ai-feed { flex: 1; min-height: 0; overflow-y: auto; padding: 6px 16px 10px; display: flex; flex-direction: column; gap: 6px; }
 .ai-prompt { align-self: flex-end; max-width: 88%; padding: 9px 13px; border-radius: 16px 16px 6px 16px; background: var(--fill-2); font: var(--t-ui); line-height: 1.45; white-space: pre-wrap; }
 .ai-step { display: flex; align-items: center; gap: 8px; font: var(--t-small); color: var(--text-3); padding: 2px 2px; }
-.ai-step .icon:last-child { margin-left: auto; }
+.ai-step .icon:last-child { margin-inline-start: auto; }
 .ai-step.is-error { color: var(--red); }
 .ai-step.is-thinking { color: var(--text-2); }
 .ai-answer { font: var(--t-ui); font-size: 14px; line-height: 1.55; color: var(--text-1); white-space: pre-wrap; padding: 6px 2px; }

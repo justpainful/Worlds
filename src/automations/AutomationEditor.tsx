@@ -16,7 +16,10 @@ import { EmbedColorPicker, type EmbedColor } from "../discord/EmbedColorPicker";
 import { loadPageColor } from "../discord/DiscordComposer";
 import { isTextKind } from "../resources/kinds";
 
-const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
+/** Weekday names in the interface language, read when shown: S M T W in English, ح ن ث ر in Arabic. Sunday is 0. */
+const dayLetter = (i: number) => new Date(2026, 10, 8 + i).toLocaleDateString(undefined, { weekday: "narrow" });
+const dayName = (i: number) => new Date(2026, 10, 8 + i).toLocaleDateString(undefined, { weekday: "long" });
+const DAYS = [0, 1, 2, 3, 4, 5, 6];
 
 function defaultTrigger(): Trigger {
   return { kind: "daily", time: "19:40" };
@@ -169,13 +172,15 @@ export function AutomationEditor({ pageId, automation, onClose }: { pageId: stri
               )}
               {trigger.kind === "weekly" && (
                 <div className="day-toggles">
-                  {DAY_LABELS.map((d, i) => (
+                  {DAYS.map((i) => (
                     <button
                       key={i}
+                      aria-label={dayName(i)}
+                      aria-pressed={trigger.days.includes(i)}
                       className={`day-toggle ${trigger.days.includes(i) ? "is-on" : ""}`}
                       onClick={() => setTrigger({ ...trigger, days: trigger.days.includes(i) ? trigger.days.filter((x) => x !== i) : [...trigger.days, i].sort() })}
                     >
-                      {d}
+                      {dayLetter(i)}
                     </button>
                   ))}
                 </div>

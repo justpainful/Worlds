@@ -7,7 +7,7 @@
 .composer-preview-bar { display: flex; justify-content: center; margin-bottom: 10px; }
 .composer-stage { flex: 1; overflow: auto; padding: 14px; border-radius: 18px; background: #1e1f22; max-height: 520px; }
 .composer-stats { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 16px; font: var(--t-caption); color: var(--text-3); }
-.composer-note { margin-right: auto; color: var(--text-3); font: var(--t-small); }
+.composer-note { margin-inline-end: auto; color: var(--text-3); font: var(--t-small); }
 .json-view { margin: 0; font: 12px/1.5 var(--font-mono); color: #c9d1d9; white-space: pre; user-select: text; }
 .dest-picker { display: flex; flex-direction: column; gap: 8px; }
 .dest-search { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; border-radius: 11px; background: var(--fill-1); color: var(--text-3); }

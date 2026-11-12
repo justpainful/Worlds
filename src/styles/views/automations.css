@@ -39,4 +39,4 @@
 .ae-source-list { display: flex; flex-direction: column; gap: 1px; margin-top: 6px; max-height: 200px; overflow-y: auto; }
 .ae-preview { display: flex; flex-direction: column; min-width: 0; }
 .ae-preview .composer-stage { flex: 1; max-height: 560px; }
-.footer-check { margin-right: auto; }
+.footer-check { margin-inline-end: auto; }
