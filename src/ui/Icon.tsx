@@ -280,7 +280,12 @@ export interface IconProps {
  * Icons that point along the reading direction. They mirror in a right-to-left
  * interface (see `.icon-dir` in system.css), so "Next" points left in Arabic.
  */
-const DIRECTIONAL: ReadonlySet<string> = new Set(["back", "forward", "arrowLeft", "arrowRight", "splitLeft", "splitRight"]);
+// Glyphs that SF Symbols mirrors for right-to-left languages. Alignment icons keep their physical side.
+const DIRECTIONAL: ReadonlySet<string> = new Set([
+  "back", "forward", "arrowLeft", "arrowRight", "splitLeft", "splitRight",
+  "bulletList", "numberedList", "checklist", "listView", "quote",
+  "undo", "redo", "external", "openExternal", "sidebarClose", "sidebarOpen",
+]);
 
 export function Icon({ name, size = 16, weight, className = "", style, label, filled }: IconProps) {
   const Comp = REGISTRY[name] as IconComp;
