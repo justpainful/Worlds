@@ -24,6 +24,7 @@ import "./styles/editor.css";
 import "./styles/resources.css";
 import "./styles/system.css";
 import "./ui/tonal/tonal.css";
+import "./styles/contrast.css";
 import { installSpringTokens } from "./motion/spring";
 import { App } from "./App";
 import { GlassLab } from "./dev/GlassLab";

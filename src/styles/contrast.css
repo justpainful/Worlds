@@ -1,0 +1,52 @@
+/*
+ * Windows High Contrast (forced colors). The system replaces every colour, so
+ * glass and tinted fills disappear; these rules give surfaces and controls a
+ * visible edge and mark the current item with the system highlight.
+ */
+@media (forced-colors: active) {
+  .glass,
+  .tonal,
+  .field,
+  .btn,
+  .icon-btn,
+  .chip-btn,
+  .switch,
+  .segmented-track,
+  .toast,
+  .tooltip,
+  .menu-panel,
+  .find-bar,
+  .tour-card,
+  .page-card,
+  .doc-paper {
+    border: 1px solid CanvasText;
+  }
+
+  .side-item.is-active,
+  .tree-row.is-active,
+  .tab.is-active,
+  .segmented-item.is-selected,
+  .chip-btn.is-on,
+  .switch.is-on .switch-knob,
+  .find-hit.is-current {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
+
+  .find-hit {
+    forced-color-adjust: none;
+    outline: 1px solid Highlight;
+  }
+
+  :focus-visible {
+    outline: 2px solid Highlight !important;
+    outline-offset: 2px;
+  }
+
+  /* Decorative layers only add noise once colours are forced. */
+  .glass-backdrop,
+  .g-layer {
+    display: none;
+  }
+}
