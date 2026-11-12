@@ -59,6 +59,18 @@ describe("Arabic interface dictionary", () => {
     expect(translate("Next step: review the draft")).toBeNull();
   });
 
+  it("keeps plural slots to plural endings or a punctuated aside", () => {
+    loadDictionary(dictionary as Record<string, string>);
+    expect(translate("3 subpages")).toBe("3 صفحة فرعية");
+    expect(translate("1 subpage")).toBe("1 صفحة فرعية");
+    // Before, "{0} subpage{1}" took the rest of this sentence as its plural ending.
+    expect(translate("No subpages yet. Pages you create here stay organized under “Weekly plan”.")).toBe(
+      "لا توجد صفحات فرعية بعد. الصفحات التي تنشئها هنا تبقى منظمة تحت «Weekly plan».",
+    );
+    expect(translate("The last check found a problem: disk full. Restore the newest backup below, or keep working and back up now.")).toMatch(/^وجد آخر فحص مشكلة: disk full\./);
+    expect(translate("The last check found a problem. Restore the newest backup below, or keep working and back up now.")).toMatch(/^وجد آخر فحص مشكلة\./);
+  });
+
   it("has no dashes the interface rules forbid", () => {
     for (const ar of Object.values(dictionary as Record<string, string>)) expect(ar).not.toMatch(/[–—]/);
   });

@@ -38,14 +38,16 @@ export function loadDictionary(dict: Record<string, string>): void {
       // so it cannot swallow a sentence like "Plan my week from my pages".
       const parts = src.split(/\{\d\}/);
       const short = parts.join("").replace(/[^A-Za-z]/g, "").length < 12;
-      const slot = (lit: string, i: number) => (/[A-Za-z]$/.test(lit) ? "(.*?)" : i === 0 && lit === "" && short ? "(\\S+)" : "(.+?)");
+      // A slot after a letter takes only a plural ending, or an aside that starts with punctuation
+      // ("problem{0}." with ": details"); anything wider swallowed whole sentences ("No subpages yet. ...").
+      const slot = (lit: string, i: number) => (/[A-Za-z]$/.test(lit) ? "((?:e?s)?|[,:;].*?)" : i === 0 && lit === "" && short ? "(\\S+)" : "(.+?)");
       const body = parts.map((lit, i) => escape(lit) + (i < parts.length - 1 ? slot(lit, i) : "")).join("");
       const re = new RegExp("^" + body + "$", "s");
       patterns.push({ re, out: value });
     } else exact.set(key, value);
   }
   // The most specific (longest literal text) patterns win.
-  const literal = (re: RegExp) => re.source.replace(/\((?:\.[*+]\?|\\S\+)\)/g, "").length;
+  const literal = (re: RegExp) => re.source.replace(/\((?:\.[*+]\?|\\S\+|\(\?:e\?s\)\?\|\[,:;\]\.\*\?)\)/g, "").length;
   patterns.sort((a, b) => literal(b.re) - literal(a.re));
 }
 /** The dictionary is only downloaded when the interface is Arabic. */
