@@ -718,3 +718,7 @@
 "Image preview: %@" = "Image preview: %@";
 "Zoom %lld percent" = "Zoom %lld percent";
 "Node: %@" = "Node: %@";
+"Rotation: %@°" = "Rotation: %@°";
+"Position: %@, %@" = "Position: %@, %@";
+"%@ · Last modified %@" = "%@ · Last modified %@";
+"%@ · Due %@" = "%@ · Due %@";
