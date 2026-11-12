@@ -290,7 +290,7 @@
 "Identity service" = "خدمة الهوية";
 "Enter the address of your Worlds identity service. This setting is not a password." = "أدخل عنوان خدمة الهوية الخاصة بـ Worlds. هذا الإعداد ليس كلمة مرور.";
 "Worlds Intelligence" = "ذكاء Worlds";
-"Show Inspector" = "إظهار المفتش";
+"Show Inspector" = "إظهار الخصائص";
 "Recent Resources" = "المصادر الأخيرة";
 "See All in Library" = "عرض الكل في المكتبة";
 "No recent resources available yet." = "لا توجد مصادر حديثة بعد.";
@@ -451,7 +451,7 @@
 "Appearance & Theme" = "المظهر والسمة";
 "Dark (#0C0C0E)" = "داكن (#0C0C0E)";
 "Light (#FDFDFC)" = "فاتح (#FDFDFC)";
-"Materials" = "المواد";
+"Materials" = "الخامات";
 "Liquid Glass · NSVisualEffectView Vibrancy" = "Liquid Glass · حيوية NSVisualEffectView";
 "Liquid Glass" = "Liquid Glass";
 "macOS Experience & Hot Corners" = "تجربة macOS والزوايا النشطة";
@@ -725,3 +725,4 @@
 "1 archived item" = "عنصر مؤرشف واحد";
 "%lld archived items" = "عدد العناصر المؤرشفة: %lld";
 "Return to %@" = "العودة إلى %@";
+"Hide Inspector" = "إخفاء الخصائص";
