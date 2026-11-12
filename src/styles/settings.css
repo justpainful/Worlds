@@ -74,3 +74,4 @@
   .settings { grid-template-columns: 1fr; padding-top: 72px; }
   .settings-nav { position: static; }
 }
+.set-static { font: var(--t-ui); color: var(--text-2); padding-inline: 4px; }

@@ -164,7 +164,8 @@ function Appearance() {
     <>
       <Group title="Appearance">
         <Row label="Theme" hint="A light appearance is planned.">
-          <Segmented value="dark" onChange={() => {}} options={[{ value: "dark", label: "Dark" }]} label="Theme" />
+          {/* One theme for now: a value, not a control that cannot change. */}
+          <span className="set-static">Dark</span>
         </Row>
         <Row label="Accent" hint="Used sparingly: selection, mentions, focus.">
           <div className="swatches">
