@@ -63,13 +63,24 @@ export function foldArabic(text: string): string {
  * text maps back to the exact characters to highlight or replace.
  */
 export function foldWithMap(text: string): { folded: string; at: number[] } {
+  // One pass with no regular expressions: find runs this on every edit while it is open.
   let folded = "";
   const at: number[] = [];
   for (let i = 0; i < text.length; i++) {
-    const one = foldArabic(text[i]);
-    if (one === "") continue; // a diacritic or tatweel
-    const lower = one.toLowerCase();
-    folded += lower.length === 1 ? lower : one;
+    const code = text.charCodeAt(i);
+    let ch = text[i];
+    if (code >= 0x0600 && code <= 0x06ff) {
+      if ((code >= 0x064b && code <= 0x0652) || code === 0x0640) continue; // a diacritic or tatweel
+      if (code === 0x0623 || code === 0x0625 || code === 0x0622) ch = "ا";
+      else if (code === 0x0629) ch = "ه";
+      else if (code === 0x0649) ch = "ي";
+      else if (code >= 0x0660 && code <= 0x0669) ch = String(code - 0x0660);
+      else if (code >= 0x06f0 && code <= 0x06f9) ch = String(code - 0x06f0);
+    } else {
+      const lower = ch.toLowerCase();
+      if (lower.length === 1) ch = lower;
+    }
+    folded += ch;
     at.push(i);
   }
   at.push(text.length);
