@@ -1640,7 +1640,7 @@ export interface WorkbookTemplate {
 export const WORKBOOK_TEMPLATES: WorkbookTemplate[] = [
   {
     key: "budget_financial",
-    title: "Financial Budget & Cashflow (ميزانية مالية وتدفقات)",
+    title: "Budget and cash flow",
     description: "Monthly revenue, operating expenses, net profit margin, and variance analysis.",
     build: () => {
       const sh = newSheet("الميزانية Budget");
@@ -1686,7 +1686,7 @@ export const WORKBOOK_TEMPLATES: WorkbookTemplate[] = [
   },
   {
     key: "kpi_roadmap",
-    title: "KPI & OKR Tracker (لوحة مؤشرات الأداء والأهداف)",
+    title: "KPI and goal tracker",
     description: "Track quarterly objectives, baseline, target, current score, and automated status.",
     build: () => {
       const sh = newSheet("KPIs & OKRs");
@@ -1718,7 +1718,7 @@ export const WORKBOOK_TEMPLATES: WorkbookTemplate[] = [
   },
   {
     key: "gradebook_gpa",
-    title: "Weighted Calculator & Matrix (حاسبة الأوزان والتقييمات)",
+    title: "Weighted scoring matrix",
     description: "Automatic weighted totals, letter grades, rank, and statistical distribution.",
     build: () => {
       const sh = newSheet("التقييمات والاوزان");
