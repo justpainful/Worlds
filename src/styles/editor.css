@@ -51,7 +51,8 @@
 .prose :is(ul, ol)[dir="auto"]:has(> li:first-child > p:first-child:dir(rtl)),
 .prose :is(ul, ol)[dir="auto"]:has(> li:first-child > div > p:first-child:dir(rtl)),
 .prose blockquote[dir="auto"]:has(> :is(p, h1, h2, h3):first-child:dir(rtl)),
-.prose table[dir="auto"]:has(> tbody > tr:first-child > :is(th, td):first-child > p:first-child:dir(rtl)) { direction: rtl; }
+.prose table[dir="auto"]:has(> tbody > tr:first-child > :is(th, td):first-child > p:first-child:dir(rtl)),
+.prose .callout[dir="auto"]:has(> .callout-body > div > :is(p, h1, h2, h3):first-child:dir(rtl)) { direction: rtl; }
 .prose blockquote { padding-inline-start: 16px; border-inline-start: 2px solid var(--hairline-strong); color: var(--text-2); }
 .prose hr { border: 0; height: 0.5px; background: var(--hairline-strong); margin: 1.4em 0; }
 .prose hr.ProseMirror-selectednode { background: var(--accent); height: 2px; }

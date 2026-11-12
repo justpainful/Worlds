@@ -70,9 +70,11 @@
 
 /* ---- Toggle ---------------------------------------------------------------- */
 .ProseMirror .toggle { position: relative; padding-inline-start: 26px; margin: 2px 0; }
-.toggle-chevron { position: absolute; left: 0; top: 4px; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 6px; color: var(--text-3); transition: transform 200ms var(--spring-snappy), background-color 120ms ease; }
+.toggle-chevron { position: absolute; inset-inline-start: 0; top: 4px; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 6px; color: var(--text-3); transition: transform 200ms var(--spring-snappy), background-color 120ms ease; }
 .toggle-chevron:hover { background: rgba(255, 255, 255, 0.07); color: var(--text-1); }
 .toggle.is-open > .toggle-chevron { transform: rotate(90deg); }
+/* The chevron sits at the start edge; in Arabic it points left when closed, so it turns the other way to point down. */
+.toggle.is-open > .toggle-chevron:dir(rtl) { transform: rotate(-90deg); }
 [dir="rtl"] .ProseMirror .toggle, .ProseMirror .toggle:dir(rtl) { padding-inline-start: 26px; }
 .toggle-body > [data-node-view-content-react] > :first-child, .toggle-body > :first-child { margin-top: 0; }
 .toggle:not(.is-open) .toggle-body > div > :not(:first-child),
