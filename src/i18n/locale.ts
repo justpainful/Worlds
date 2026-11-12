@@ -56,3 +56,22 @@ export function foldArabic(text: string): string {
     .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x660))
     .replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x6f0));
 }
+
+/**
+ * `foldArabic` and lower case, keeping for each folded character its index in
+ * the original text (plus the length at the end), so a match in the folded
+ * text maps back to the exact characters to highlight or replace.
+ */
+export function foldWithMap(text: string): { folded: string; at: number[] } {
+  let folded = "";
+  const at: number[] = [];
+  for (let i = 0; i < text.length; i++) {
+    const one = foldArabic(text[i]);
+    if (one === "") continue; // a diacritic or tatweel
+    const lower = one.toLowerCase();
+    folded += lower.length === 1 ? lower : one;
+    at.push(i);
+  }
+  at.push(text.length);
+  return { folded, at };
+}

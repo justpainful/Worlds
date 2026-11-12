@@ -34,6 +34,7 @@ import {
   downloadMarkdown,
   printPage,
 } from "../pages/PageChrome";
+import { shortcutKey } from "../lib/keys";
 
 export function PageView({ pageId, paneId }: { pageId: string; paneId: string }) {
   const meta = useStore((s) => s.pages[pageId]);
@@ -131,7 +132,7 @@ function LoadedPage({ page, paneId, reload }: { page: Page; paneId: string; relo
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!root.current || !root.current.closest(".pane.is-active, .pane:only-child")) return;
-      const k = e.key.toLowerCase();
+      const k = shortcutKey(e);
       if (e.ctrlKey && !e.shiftKey && k === "f") {
         e.preventDefault();
         setFind("find");
