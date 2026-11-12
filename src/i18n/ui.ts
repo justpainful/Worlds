@@ -110,8 +110,33 @@ let observer: MutationObserver | null = null;
 let queued = new Set<Node>();
 let scheduled = false;
 
+/** A block's own interface inside the editor: buttons, tabs, labels and empty states drawn by a node view. */
+const ISLAND = '[contenteditable="false"]';
+const CHROME = 'button, [role="button"], [role="tab"], [role="menuitem"], label, [class*="empty"], [class*="hint"], [class*="-bar"], [class*="toolbar"]';
+/** Inside the editor but holding the person's words: a checklist item's hidden label repeats the item's text. */
+const OWN_WORDS = 'li[data-checked] > label, svg, foreignObject';
+
 function skipped(el: Element | null): boolean {
-  return !!el?.closest(SKIP);
+  if (!el) return false;
+  const skip = el.closest(SKIP);
+  if (!skip) return false;
+  // The editor is the person's text, but a block's controls inside it (a collection's
+  // Table and Board tabs, a diagram's Edit button) are interface. Diagram labels,
+  // code and anything nested editable stay as written.
+  const island = el.closest(ISLAND);
+  if (island && island !== skip && skip.contains(island) && !el.closest(OWN_WORDS)) {
+    const chrome = el.closest(CHROME);
+    if (chrome && island.contains(chrome)) return false;
+  }
+  return true;
+}
+
+/** Translate the block controls inside an editor, which the walk over the page skips. */
+function doIslands(root: Element) {
+  for (const island of root.querySelectorAll(ISLAND)) {
+    if (island.parentElement?.closest(ISLAND)) continue;
+    doTree(island);
+  }
 }
 
 /** Titles people gave their pages and chats: shown as written, never translated. */
@@ -227,13 +252,14 @@ function doTree(root: Node) {
   if (root.nodeType !== Node.ELEMENT_NODE && root.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) return;
   if (root instanceof Element) {
     if (root.tagName === "TEXTAREA") return doAttrs(root);
-    if (root.matches(SKIP)) return;
+    if (root.matches(SKIP)) return doIslands(root);
     doAttrs(root);
   }
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
     acceptNode: (n) => {
       if (!(n instanceof Element) || !n.matches(SKIP)) return NodeFilter.FILTER_ACCEPT;
       if (n.tagName === "TEXTAREA") doAttrs(n);
+      else doIslands(n);
       return NodeFilter.FILTER_REJECT;
     },
   });
