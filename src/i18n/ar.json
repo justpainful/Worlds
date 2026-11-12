@@ -40,7 +40,7 @@
  "§{0} columns": "{0} أعمدة",
  "§{0} copied": "تم نسخ {0}",
  "§{0} did not answer over {1}. Check that it is on and reachable.": "لم يستجب {0} عبر {1}. تحقق من أنه يعمل ويمكن الوصول إليه.",
- "§{0} for today": "{0} لليوم",
+ "§{0} for today": "{0} مهمة لليوم",
  "§{0} is disconnected": "{0} غير متصل",
  "§{0} is in Trash": "{0} في سلة المهملات",
  "§{0} is not set up": "{0} غير معدّ",
