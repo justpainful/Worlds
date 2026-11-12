@@ -11,6 +11,8 @@ import { PageIcon } from "../../ui/misc";
 import { useStore, pageTitle } from "../../state/store";
 import { slashItems, type SlashItem } from "../slashItems";
 import { isResource } from "../../resources/kinds";
+import { translate } from "../../i18n/ui";
+import { foldArabic } from "../../i18n/locale";
 
 // ---------------------------------------------------------------------------
 // Generic list
@@ -178,13 +180,15 @@ export const SlashCommand = Extension.create<{ getContext: () => EditorContext }
           return $from.parent.type.name !== "codeBlock";
         },
         items: ({ query }) => {
-          const q = query.toLowerCase().trim();
+          const q = foldArabic(query.toLowerCase().trim());
           const all = slashItems();
           if (!q) return all;
           // Rank: title starts with the query, a title word does, the title contains it, then keywords.
           const score = (i: SlashItem) => {
-            const t = i.title.toLowerCase();
-            const k = (i.keywords ?? "").toLowerCase();
+            // The Arabic names count too, so /صورة finds Image in the Arabic interface.
+            const ar = (x?: string) => (x ? (translate(x) ?? "") : "");
+            const t = foldArabic(`${i.title} ${ar(i.title)}`.toLowerCase());
+            const k = foldArabic(`${i.keywords ?? ""} ${ar(i.subtitle)} ${ar(i.group)}`.toLowerCase());
             if (t.startsWith(q)) return 0;
             if (t.split(/\s+/).some((w) => w.startsWith(q))) return 1;
             if (t.includes(q)) return 2;

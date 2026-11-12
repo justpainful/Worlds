@@ -48,3 +48,8 @@ export function setArabicDates(on: boolean): void {
 export function joinList(items: string[]): string {
   return items.join(arabic ? "، " : ", ");
 }
+
+/** Arabic letters people type interchangeably (أ إ آ and ا, ة and ه, ى and ي) and diacritics, folded so a search still matches. */
+export function foldArabic(text: string): string {
+  return text.replace(/[\u064B-\u0652\u0640]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي");
+}
