@@ -145,3 +145,9 @@
 "The saved name could not be verified. Open the workspace again to check." = "The saved name could not be verified. Open the workspace again to check.";
 "The workspace file changed before creation. Open it again before trying again." = "The workspace file changed before creation. Open it again before trying again.";
 "This page is created in your Worlds workspace." = "This page is created in your Worlds workspace.";
+/* Drawing */
+"Correct hand-drawn shapes" = "Correct hand-drawn shapes";
+"Undo" = "Undo";
+"Redo" = "Redo";
+"The change could not be undone. Reopen the drawing to check it." = "The change could not be undone. Reopen the drawing to check it.";
+"The change could not be redone. Reopen the drawing to check it." = "The change could not be redone. Reopen the drawing to check it.";

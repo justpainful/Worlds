@@ -145,3 +145,9 @@
 "The saved name could not be verified. Open the workspace again to check." = "تعذّر التحقق من الاسم المحفوظ. افتح مساحة العمل مجددًا للتحقق.";
 "The workspace file changed before creation. Open it again before trying again." = "تغيّر ملف مساحة العمل قبل الإنشاء. افتحه مجددًا قبل المحاولة مرة أخرى.";
 "This page is created in your Worlds workspace." = "تُنشأ هذه الصفحة في مساحة عملك في Worlds.";
+/* Drawing */
+"Correct hand-drawn shapes" = "تصحيح الأشكال تلقائيًا";
+"Undo" = "تراجع";
+"Redo" = "إعادة";
+"The change could not be undone. Reopen the drawing to check it." = "تعذّر التراجع عن التغيير. أعد فتح الرسم للتحقق منه.";
+"The change could not be redone. Reopen the drawing to check it." = "تعذّرت إعادة التغيير. أعد فتح الرسم للتحقق منه.";

@@ -7,8 +7,9 @@ public struct RecognizedDrawingShape: Sendable, Equatable {
     public let confidence: Double
 }
 
-/// Conservative line and triangle recognition adapted from the original thresholds.
-/// Shape correction operations and pixel-for-pixel rendering are not implemented.
+/// Line, rectangle, ellipse, triangle and right triangle recognition with the
+/// thresholds of `src/drawing/recognition.ts`. `ShapeCorrection` turns a result
+/// into the desktop's corrected shape node.
 public enum ShapeRecognition {
     private static func distance(_ a: ToolPoint, _ b: ToolPoint) -> Double { hypot(a.x-b.x,a.y-b.y) }
     private static func bounds(_ p: [ToolPoint]) -> (Double,Double,Double,Double) {

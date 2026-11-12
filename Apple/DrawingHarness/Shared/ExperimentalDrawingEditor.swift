@@ -20,7 +20,12 @@ import WorldsDrawingPencilInput
     @Published var lastBrush: String?
     @Published var busy = true
     @Published var brush = "hard"
-    @Published var correctShape = false
+    /// Desktop "Correct hand-drawn shapes" preference: on by default and remembered.
+    /// UI tests that need a plain stroke launch with `-WorldsDrawingCorrectShapes NO`.
+    @Published var correctShape = true { didSet { UserDefaults.standard.set(correctShape, forKey: DrawingHarnessModel.correctShapeKey) } }
+    static let correctShapeKey = "WorldsDrawingCorrectShapes"
+    @Published var canUndo = false
+    @Published var canRedo = false
     @Published var brushColor = "#202023"
     @Published var brushSize: Double = 12
     @Published var laserLifetime: Double = 1200
@@ -47,11 +52,14 @@ import WorldsDrawingPencilInput
     init(databaseURL: URL, pageID: String, actorID: String, editsLocalCopy: Bool = true, validateIdentity: @escaping @MainActor () -> Bool) {
         self.databaseURL = databaseURL; self.pageID = pageID; self.actorID = actorID; self.validateIdentity = validateIdentity
         place = editsLocalCopy ? "The local copy" : "The workspace file"
+        UserDefaults.standard.register(defaults: [DrawingHarnessModel.correctShapeKey: true])
+        correctShape = UserDefaults.standard.bool(forKey: DrawingHarnessModel.correctShapeKey)
     }
     private func requireIdentity() throws { guard validateIdentity() else { throw Failure.databaseChanged } }
     private var writer: PersonalDrawingWriter?
     private var controller: PencilStrokeController?
     private var layerID = "", frameID = ""
+    private var loadedDocument: DrawingDocument?
     private var frameWidth: Double = 0, frameHeight: Double = 0
     var size: CGSize { CGSize(width: frameWidth, height: frameHeight) }
 
@@ -90,7 +98,7 @@ import WorldsDrawingPencilInput
               let context = CGContext(data: nil, width: Int(w), height: Int(h), bitsPerComponent: 8, bytesPerRow: 0, space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { throw Failure.fixture }
         let drawing = try DrawingScene(json: JSONSerialization.data(withJSONObject: scene))
         context.translateBy(x: 0, y: CGFloat(h)); context.scaleBy(x: 1, y: -1)
-        try ExperimentalStrokeSceneRenderer.render(scene: drawing, frameID: frame, in: context, allowCorrectedRightTriangles: true)
+        try ExperimentalStrokeSceneRenderer.render(scene: drawing, frameID: frame, in: context, allowCorrectedShapes: true)
         guard let cg = context.makeImage() else { throw Failure.fixture }
         #if canImport(UIKit)
         image = UIImage(cgImage: cg)
@@ -99,6 +107,12 @@ import WorldsDrawingPencilInput
         #endif
         frameWidth = w; frameHeight = h
         layerID = layer; frameID = frame; self.revision = revision; nodeCount = order.count
+        // Undo and redo follow the desktop: the author's latest enabled edit, so the
+        // first undo after a corrected shape brings the original stroke back.
+        let history = try? DrawingDocument(json: JSONSerialization.data(withJSONObject: document))
+        loadedDocument = history
+        canUndo = history.flatMap { try? DrawingJournal.toggle(in: $0, actor: actorID, redo: false, id: "probe", at: 0) } != nil
+        canRedo = history.flatMap { try? DrawingJournal.toggle(in: $0, actor: actorID, redo: true, id: "probe", at: 0) } != nil
         let nodes = scene["nodes"] as? [String: [String: Any]] ?? [:]
         let shape = order.last.flatMap { nodes[$0]?["shape"] as? String }
         lastBrush = order.last.flatMap { id in
@@ -162,10 +176,8 @@ import WorldsDrawingPencilInput
         var recognized: RecognizedDrawingShape?
         do {
             let samples = try input.finalized(brush: selected)
-            if correct && ["hard", "ink", "pencil"].contains(tool) {
-                let result = ShapeRecognition.recognize(samples.map { ToolPoint(x: $0.x, y: $0.y) })
-                if result?.shape == "right-triangle" { recognized = result }
-            }
+            // The desktop corrects brush strokes only, never the highlighter or the laser.
+            if correct && ["hard", "ink", "pencil"].contains(tool) { recognized = ShapeCorrection.recognize(samples) }
             // Confine this experiment to the first raster tile and fail closed on unsupported input.
             guard samples.allSatisfy({ $0.x >= 32 && $0.y >= 32 && $0.x <= 220 && $0.y <= 220 }) else { throw Failure.outsideRegion }
         } catch { message = "Stroke not saved: \(error)"; return }
@@ -225,6 +237,24 @@ import WorldsDrawingPencilInput
         do { try await reload(); recovery = nil; message = "Stroke saved. Shape correction was not applied." }
         catch { image = nil; message = "The stroke was saved, but the drawing could not be displayed safely." }
     }
+    /// Undo or redo through the same operation path as every other edit: a toggle
+    /// operation applied by the store, which replays the journal.
+    func toggleHistory(redo: Bool) async {
+        guard !busy, recovery == nil, !inputActive, let writer, let document = loadedDocument else { return }
+        busy = true; defer { busy = false }
+        do {
+            try requireIdentity()
+            guard let toggle = try DrawingJournal.toggle(in: document, actor: actorID, redo: redo,
+                id: UUID().uuidString, at: Int64(Date().timeIntervalSince1970 * 1000)) else { try await reload(); return }
+            _ = try await writer.apply(pageID: pageID, changeJSON: JSONEncoder().encode(toggle))
+            try requireIdentity()
+            try await reload()
+        } catch {
+            do { try await reload() } catch { image = nil; recovery = .reload }
+            message = redo ? String(localized: "The change could not be redone. Reopen the drawing to check it.")
+                : String(localized: "The change could not be undone. Reopen the drawing to check it.")
+        }
+    }
     func discardUnsubmitted() {
         guard recovery == .stroke, !retryAvailable, controller?.discardUnsubmitted() == true else { return }
         recovery = nil; message = "Unsubmitted input discarded."
@@ -279,7 +309,9 @@ import WorldsDrawingPencilInput
             ScrollView {
               VStack(alignment: .leading, spacing: 12) {
             (fixtureMode ? Text("Temporary fixture only. Draw strokes inside the marked area. Other shapes and assets are unsupported.") : (editsLocalCopy ? Text("Independent local copy. Draw inside the marked area. Unsupported content cannot be edited here.") : Text("Your Worlds workspace. Draw inside the marked area. Unsupported content cannot be edited here."))).font(.caption)
-            Toggle("Correct right triangles (experimental)", isOn: $model.correctShape).disabled(model.inputBlocked || !["hard", "ink", "pencil"].contains(model.brush))
+            Toggle("Correct hand-drawn shapes", isOn: $model.correctShape)
+                .disabled(model.inputBlocked || !["hard", "ink", "pencil"].contains(model.brush))
+                .accessibilityIdentifier("drawing-correct-shapes")
             Picker("Tool", selection: $model.brush) {
                 ForEach(["hard", "ink", "pencil", "highlighter", "laser"], id: \.self) { Text($0.capitalized).tag($0) }
             }.pickerStyle(.menu).disabled(model.inputBlocked).accessibilityIdentifier("drawing-tool")
@@ -312,6 +344,14 @@ import WorldsDrawingPencilInput
                 } else {
                     Button("Discard unsubmitted input", role: .destructive) { confirmDiscard = true }.disabled(model.busy)
                 }
+            }
+            HStack(spacing: 12) {
+                Button("Undo") { Task { await model.toggleHistory(redo: false) } }
+                    .disabled(model.busy || model.inputActive || model.recovery != nil || !model.canUndo)
+                    .accessibilityIdentifier("drawing-undo")
+                Button("Redo") { Task { await model.toggleHistory(redo: true) } }
+                    .disabled(model.busy || model.inputActive || model.recovery != nil || !model.canRedo)
+                    .accessibilityIdentifier("drawing-redo")
             }
             Button("Reopen saved drawing") { Task { await model.reopen() } }
                 .disabled(model.busy || model.recovery == .stroke).accessibilityIdentifier("drawing-reopen")
