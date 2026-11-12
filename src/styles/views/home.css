@@ -4,6 +4,7 @@
 .home-title { margin: 0; flex: 1; font: var(--t-title); letter-spacing: var(--t-title-track); }
 .home-heading { flex: 1; min-width: 0; }
 .home-date { margin: 4px 0 0; color: var(--text-3); font: var(--t-ui); }
+.home-date-part { white-space: nowrap; }
 .home-controls { display: flex; align-items: center; gap: 10px; }
 .search-field {
   display: flex;

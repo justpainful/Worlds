@@ -126,7 +126,17 @@ export function HomeView() {
       <div className="home-top">
         <div className="home-heading">
           <h1 className="home-title">{greeting}</h1>
-          <p className="home-date" translate="no">{dateLine(new Date())}</p>
+          <p className="home-date" translate="no">
+            {/* Each date stays whole; a narrow window breaks the line between them. */}
+            {dateLine(new Date())
+              .split(" · ")
+              .map((part, i) => (
+                <span key={i}>
+                  {i > 0 && " · "}
+                  <span className="home-date-part">{part}</span>
+                </span>
+              ))}
+          </p>
         </div>
         <div className="home-controls" data-tonal-group>
           <Tonal
