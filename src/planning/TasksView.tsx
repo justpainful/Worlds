@@ -58,7 +58,7 @@ export function TasksView({ list = "today" }: { list?: TaskListId }) {
       {list === "goals" ? (
         <QuickAdd
           autoFocus
-          placeholder="Add a goal — e.g. “Launch v2.0 next month”"
+          placeholder="Add a goal, like “Launch v2.0 next month”"
           onAdd={(p) =>
             createItem("goal", {
               title: p.title,
@@ -69,7 +69,7 @@ export function TasksView({ list = "today" }: { list?: TaskListId }) {
       ) : list === "print" ? (
         <QuickAdd
           autoFocus
-          placeholder="Add to print queue — e.g. “Print contract 2 copies tomorrow”"
+          placeholder="Add to print queue, like “Print contract 2 copies tomorrow”"
           onAdd={(p) =>
             createItem("requirement", {
               title: p.title,
@@ -80,7 +80,7 @@ export function TasksView({ list = "today" }: { list?: TaskListId }) {
       ) : list !== "done" ? (
         <QuickAdd
           autoFocus
-          placeholder={list === "someday" ? "Add an idea for someday" : "Add a task — try “Send invoice friday 10am !!”"}
+          placeholder={list === "someday" ? "Add an idea for someday" : "Add a task, like “Send invoice friday 10am !!”"}
           onAdd={(p) =>
             createItem("task", {
               title: p.title,

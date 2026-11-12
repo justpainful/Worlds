@@ -107,8 +107,8 @@ export function HomeView() {
             </GlassButton>
           </div>
           <p className="home-sample-note">
-            A student's week in Arabic and English: pages, a document, a spreadsheet, a drawing, slides, subjects and tasks. It stays on
-            this device, and you can remove it anytime in Settings.
+            A student's week in your interface language: pages, a document, a spreadsheet, a drawing, slides, subjects and tasks. It
+            stays on this device, and you can remove it anytime in Settings.
           </p>
         </div>
         <TemplateRow templates={templates} />

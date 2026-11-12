@@ -34,6 +34,15 @@ describe("quick add", () => {
     expect(parseQuickAdd("حل الواجب اليوم", NOW)).toMatchObject({ title: "حل الواجب", due: "2026-11-11" });
   });
 
+  it("understands every example the Arabic hints show", () => {
+    expect(parseQuickAdd("إرسال الفاتورة الجمعة 10 ص !!", NOW)).toMatchObject({ title: "إرسال الفاتورة", due: "2026-11-13", time: "10:00", priority: 2 });
+    expect(parseQuickAdd("إنهاء مشروع التخرج بعد 3 أسابيع", NOW)).toMatchObject({ title: "إنهاء مشروع التخرج", due: "2026-12-02" });
+    expect(parseQuickAdd("طباعة العقد نسختين بكرة", NOW)).toMatchObject({ title: "طباعة العقد نسختين", due: "2026-11-12" });
+    expect(parseQuickAdd("تقرير المختبر الأحد", NOW)).toMatchObject({ title: "تقرير المختبر", due: "2026-11-15" });
+    expect(parseQuickAdd("اختبار منتصف الفصل 24/11 8 ص", NOW)).toMatchObject({ title: "اختبار منتصف الفصل", due: "2026-11-24", time: "08:00" });
+    expect(parseQuickAdd("الآلة الحاسبة غدًا", NOW)).toMatchObject({ title: "الآلة الحاسبة", due: "2026-11-12" });
+  });
+
   it("leaves ordinary words alone", () => {
     expect(parseQuickAdd("Read Monday Morning by Alex", NOW).title).toBe("Read Morning by Alex");
     expect(parseQuickAdd("Buy 3 apples", NOW)).toEqual({ title: "Buy 3 apples", due: null, time: null, priority: 0 });

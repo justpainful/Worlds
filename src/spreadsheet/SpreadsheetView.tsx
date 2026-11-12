@@ -1327,7 +1327,7 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
               }
             }
           }}
-          title="Name Box — type A1 or A1:D10 and press Enter"
+          title="Name Box: type A1 or A1:D10 and press Enter"
         />
         <button
           className="sheet-fx-btn"
@@ -1338,7 +1338,7 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
               r.left,
               r.bottom + 4,
               FUNCTION_DOCS.slice(0, 18).map((fn) => ({
-                label: `${fn.name} — ${fn.summary}`,
+                label: `${fn.name}: ${fn.summary}`,
                 onSelect: () => {
                   setEditing(true);
                   setDraft((d) => (d.startsWith("=") ? `${d}${fn.name}(` : `=${fn.name}(`));
@@ -1727,19 +1727,19 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
       {shortcutsOpen && (
         <Modal onClose={() => setShortcutsOpen(false)} title="Excel Spreadsheet Shortcuts (اختصارات الجداول)" width={560}>
           <div className="sheet-shortcuts-list">
-            <div><kbd>Enter</kbd> / <kbd>F2</kbd> — Edit active cell inline / Commit & move down</div>
-            <div><kbd>Ctrl + Enter</kbd> — Fill all selected cells with current input/formula</div>
-            <div><kbd>Alt + =</kbd> — AutoSum (`=SUM(...)` of adjacent numbers)</div>
-            <div><kbd>F4</kbd> (while editing formula) — Cycle `$A$1` → `A$1` → `$A1` → `A1`</div>
-            <div><kbd>Ctrl + D</kbd> / <kbd>Ctrl + R</kbd> — Fill Down / Fill Right</div>
-            <div><kbd>Ctrl + ;</kbd> / <kbd>Ctrl + Shift + ;</kbd> — Insert current Date / Time</div>
-            <div><kbd>Ctrl + Arrows</kbd> — Jump to edge of data region</div>
-            <div><kbd>Shift + Arrows</kbd> — Extend cell selection</div>
-            <div><kbd>Ctrl + C</kbd> / <kbd>Ctrl + X</kbd> / <kbd>Ctrl + V</kbd> — Copy / Cut / Paste (Excel TSV compatible)</div>
-            <div><kbd>Ctrl + Shift + V</kbd> — Paste Values Only (without formulas)</div>
-            <div><kbd>Ctrl + B</kbd> / <kbd>Ctrl + I</kbd> / <kbd>Ctrl + U</kbd> / <kbd>Ctrl + 5</kbd> — Bold / Italic / Underline / Strikethrough</div>
-            <div><kbd>Ctrl + Z</kbd> / <kbd>Ctrl + Y</kbd> — Undo / Redo</div>
-            <div><kbd>Ctrl + F</kbd> — Find & Replace in sheet</div>
+            <div><kbd>Enter</kbd> / <kbd>F2</kbd>: Edit active cell inline / Commit & move down</div>
+            <div><kbd>Ctrl + Enter</kbd>: Fill all selected cells with current input/formula</div>
+            <div><kbd>Alt + =</kbd>: AutoSum (`=SUM(...)` of adjacent numbers)</div>
+            <div><kbd>F4</kbd> (while editing formula): Cycle `$A$1` → `A$1` → `$A1` → `A1`</div>
+            <div><kbd>Ctrl + D</kbd> / <kbd>Ctrl + R</kbd>: Fill Down / Fill Right</div>
+            <div><kbd>Ctrl + ;</kbd> / <kbd>Ctrl + Shift + ;</kbd>: Insert current Date / Time</div>
+            <div><kbd>Ctrl + Arrows</kbd>: Jump to edge of data region</div>
+            <div><kbd>Shift + Arrows</kbd>: Extend cell selection</div>
+            <div><kbd>Ctrl + C</kbd> / <kbd>Ctrl + X</kbd> / <kbd>Ctrl + V</kbd>: Copy / Cut / Paste (Excel TSV compatible)</div>
+            <div><kbd>Ctrl + Shift + V</kbd>: Paste Values Only (without formulas)</div>
+            <div><kbd>Ctrl + B</kbd> / <kbd>Ctrl + I</kbd> / <kbd>Ctrl + U</kbd> / <kbd>Ctrl + 5</kbd>: Bold / Italic / Underline / Strikethrough</div>
+            <div><kbd>Ctrl + Z</kbd> / <kbd>Ctrl + Y</kbd>: Undo / Redo</div>
+            <div><kbd>Ctrl + F</kbd>: Find & Replace in sheet</div>
           </div>
         </Modal>
       )}

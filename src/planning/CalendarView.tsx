@@ -61,7 +61,7 @@ export function CalendarView() {
       </header>
 
       <QuickAdd
-        placeholder="Add an event — try “Team sync thursday 10am”"
+        placeholder="Add an event, like “Team sync thursday 10am”"
         onAdd={async (p) => {
           const date = p.due ?? (mode === "week" && (anchor < from || anchor > to) ? from : anchor);
           const start = p.time;

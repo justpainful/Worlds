@@ -201,7 +201,7 @@ export function SubjectView({ id }: { id: string }) {
         <div className="pl-section-head">
           <h2 className="pl-section-title">Assignments {openWork.length > 0 && <span className="pl-count">{openWork.length}</span>}</h2>
         </div>
-        <QuickAdd placeholder="Add an assignment — “Lab report sunday”" onAdd={(q) => createItem("assignment", { title: q.title, parentId: id, data: { due: q.due, time: q.time, teacher: d.teacher } })} />
+        <QuickAdd placeholder="Add an assignment, like “Lab report sunday”" onAdd={(q) => createItem("assignment", { title: q.title, parentId: id, data: { due: q.due, time: q.time, teacher: d.teacher } })} />
         <div className="pl-list">{openWork.map((a) => <ItemRow key={a.id} p={a} showParent={false} />)}</div>
         {doneWork.length > 0 && (
           <details className="pl-done-fold">
@@ -213,13 +213,13 @@ export function SubjectView({ id }: { id: string }) {
 
       <section className="pl-section">
         <h2 className="pl-section-title">Exams</h2>
-        <QuickAdd placeholder="Add an exam — “Midterm 24/11 8am”" onAdd={(q) => createItem("exam", { title: q.title, parentId: id, data: { date: q.due, time: q.time } })} />
+        <QuickAdd placeholder="Add an exam, like “Midterm 24/11 8am”" onAdd={(q) => createItem("exam", { title: q.title, parentId: id, data: { date: q.due, time: q.time } })} />
         <div className="pl-list">{exams.map((x) => <ItemRow key={x.id} p={x} showParent={false} />)}</div>
       </section>
 
       <section className="pl-section">
         <h2 className="pl-section-title">To bring or print</h2>
-        <QuickAdd placeholder="Something to bring — “Calculator tomorrow”" onAdd={(q) => createItem("requirement", { title: q.title, parentId: id, data: { due: q.due } })} />
+        <QuickAdd placeholder="Something to bring, like “Calculator tomorrow”" onAdd={(q) => createItem("requirement", { title: q.title, parentId: id, data: { due: q.due } })} />
         <div className="pl-list">{bring.map((x) => <ItemRow key={x.id} p={x} showParent={false} />)}</div>
       </section>
 

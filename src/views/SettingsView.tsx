@@ -530,7 +530,7 @@ function SampleWorkspaceSettings() {
     if (ok) await removeSample();
   };
   return (
-    <Group title="Sample workspace" note="A first year student's week in Arabic and English, made on this device without a connection. Loading it twice does not duplicate it.">
+    <Group title="Sample workspace" note="A first year student's week in your interface language, made on this device without a connection. Loading it twice does not duplicate it.">
       {loaded ? (
         <Row label="Sample workspace" hint="Loaded. Remove it when you are done looking around.">
           <Button variant="plain" icon="delete" loading={busy} onClick={() => run(remove)}>Remove</Button>
