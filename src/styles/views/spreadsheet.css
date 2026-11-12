@@ -408,3 +408,21 @@
 
 .sheet-shortcut { display: flex; align-items: baseline; gap: 14px; }
 .sheet-shortcut-keys { display: inline-flex; flex-wrap: wrap; gap: 4px; flex: none; min-width: 170px; }
+
+/* Highlight cells (ConditionalDialog.tsx) */
+.cf-dialog { display: flex; flex-direction: column; gap: 14px; }
+.cf-lead { margin: 0; color: var(--text-2); font: var(--t-small); }
+.cf-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; }
+.cf-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; font: var(--t-small); color: var(--text-2); }
+.cf-field .field, .cf-field .select-trigger { width: 100%; }
+.cf-paints { display: flex; align-items: center; gap: 8px; }
+.cf-paint { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18); transition: transform 110ms var(--ease-out); }
+.cf-paint:hover { transform: scale(1.08); }
+.cf-paint.is-on { box-shadow: 0 0 0 2px var(--surface-1, #1b1b1f), 0 0 0 4px var(--accent); }
+.cf-rules { display: flex; flex-direction: column; gap: 4px; border-top: 0.5px solid var(--hairline-strong); padding-top: 12px; }
+.cf-rules-title { font: var(--t-small); font-weight: 600; color: var(--text-2); margin-bottom: 4px; }
+.cf-empty { margin: 0; color: var(--text-3); font: var(--t-small); }
+.cf-rule { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 9px; background: var(--fill-1); font: var(--t-ui); }
+.cf-swatch { width: 12px; height: 12px; border-radius: 4px; flex: none; }
+.cf-range { font: 12px var(--font-mono); color: var(--text-2); }
+.cf-desc { color: var(--text-1); min-width: 0; overflow-wrap: anywhere; }

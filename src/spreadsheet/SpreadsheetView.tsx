@@ -3,6 +3,7 @@ import { api, errorMessage } from "../lib/api";
 import { useStore } from "../state/store";
 import { ResourceHeader } from "../resources/views/ResourceHeader";
 import { Icon } from "../ui/Icon";
+import { ConditionalDialog } from "./ConditionalDialog";
 import { useMenu, type MenuItem } from "../ui/Menu";
 import { Modal, confirmDialog } from "../ui/Modal";
 import { promptText } from "../editor/prompt";
@@ -101,6 +102,7 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
   const [draft, setDraft] = useState<string>("");
   const [nameBoxText, setNameBoxText] = useState<string>("A1");
   const [findOpen, setFindOpen] = useState<boolean>(false);
+  const [highlightOpen, setHighlightOpen] = useState(false);
   const [findQuery, setFindQuery] = useState<string>("");
   const [replaceQuery, setReplaceQuery] = useState<string>("");
   const [shortcutsOpen, setShortcutsOpen] = useState<boolean>(false);
@@ -1221,7 +1223,10 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
           }
           title="Toggle AutoFilter"
         >
-          ⏳ Filter
+          <Icon name="sliders" size={14} /> Filter
+        </button>
+        <button className={`sheet-tb-btn ${sheet.conditionalRules?.length ? "is-on" : ""}`} onClick={() => setHighlightOpen(true)} title="Highlight cells">
+          <Icon name="highlight" size={14} /> Highlight
         </button>
         <button
           className={`sheet-tb-btn ${sheet.frozenRows > 0 || sheet.frozenCols > 0 ? "is-on" : ""}`}
@@ -1239,7 +1244,7 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
           }}
           title="Freeze Panes"
         >
-          ❄️ Freeze
+          <Icon name="pin" size={14} /> Freeze
         </button>
         <span className="sheet-tb-sep" />
 
@@ -1261,8 +1266,9 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
           className="sheet-tb-btn"
           onClick={() => setFindOpen((v) => !v)}
           title="Find & Replace (Ctrl+F)"
+          aria-label="Find & Replace (Ctrl+F)"
         >
-          🔍
+          <Icon name="search" size={15} />
         </button>
       </div>
 
@@ -1738,6 +1744,14 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
       </div>
 
       {/* Shortcuts Help Modal */}
+      {highlightOpen && (
+        <ConditionalDialog
+          rules={sheet.conditionalRules ?? []}
+          selection={minSelR === maxSelR && minSelC === maxSelC ? cellKey(minSelR, minSelC) : `${cellKey(minSelR, minSelC)}:${cellKey(maxSelR, maxSelC)}`}
+          onChange={(rules) => updateActiveSheet((s) => ({ ...s, conditionalRules: rules }))}
+          onClose={() => setHighlightOpen(false)}
+        />
+      )}
       {shortcutsOpen && (
         <Modal onClose={() => setShortcutsOpen(false)} title="Spreadsheet shortcuts" width={560}>
           {/* Keys and description apart, so the description is one sentence the Arabic interface can translate. */}
