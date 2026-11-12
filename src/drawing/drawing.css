@@ -10,7 +10,10 @@
 .drawing-view input[type="color"] { width: 32px; height: 30px; border: 1px solid var(--hairline-strong); padding: 2px; border-radius: 5px; background: transparent; cursor: pointer; }
 .drawing-view input[type="range"] { accent-color: var(--accent); }
 .drawing-workspace { display: flex; flex: 1; min-height: 0; overflow: hidden; position: relative; }
-.drawing-tools { display: flex; flex-direction: column; flex-shrink: 0; width: 62px; border-inline-end: 1px solid var(--hairline-strong); padding: 8px 5px; gap: 3px; overflow-y: auto; }
+/* On a short laptop screen the rail scrolls, and a classic Windows scrollbar took 16px of it,
+   so labels broke inside words ("Highlig / hter"). It scrolls with the wheel without one. */
+.drawing-tools { display: flex; flex-direction: column; flex-shrink: 0; width: 66px; border-inline-end: 1px solid var(--hairline-strong); padding: 8px 5px; gap: 3px; overflow-y: auto; scrollbar-width: none; }
+.drawing-tools::-webkit-scrollbar { display: none; }
 .drawing-tools button { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 50px; border-radius: 8px; color: var(--text-2); cursor: pointer; }
 .drawing-tools button > span { font: 24px/1.1 var(--font-ui); }
 .drawing-tools button small { font-size: 10px; line-height: 1.6; }
