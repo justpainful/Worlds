@@ -117,7 +117,7 @@ export function TasksView({ list = "today" }: { list?: TaskListId }) {
                 <div style={{ width: 120, height: 8, background: "rgba(255,255,255,0.1)", borderRadius: 4, overflow: "hidden" }}>
                   <div style={{ width: `${pct}%`, height: "100%", background: "#3b82f6" }} />
                 </div>
-                <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 12, minWidth: 38, textAlign: "right" }}>{pct}%</span>
+                <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 12, minWidth: 38, textAlign: "end" }}>{pct}%</span>
               </button>
             );
           })}
