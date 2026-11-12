@@ -111,6 +111,19 @@ export const PageEditor = forwardRef<
   const instance = useRef(Math.random().toString(36).slice(2));
   const external = useStore((s) => s.externalRevision[pageId] ?? 0);
   const [hovered, setHovered] = useState<{ node: PMNode; pos: number } | null>(null);
+  // The block handle sits at the start of its block: on the right of an Arabic one.
+  const hoveredRtl = useRef(false);
+  const [handlePosition] = useState(() => ({
+    placement: "left-start" as const,
+    strategy: "absolute" as const,
+    middleware: [
+      {
+        name: "blockStart",
+        fn: ({ x, y, rects }: { x: number; y: number; rects: { reference: { x: number; width: number } } }) =>
+          hoveredRtl.current ? { x: rects.reference.x + rects.reference.width, y } : { x, y },
+      },
+    ],
+  }));
   const show = useMenu((s) => s.show);
   // Live collaboration: shared pages edit through Yjs; personal pages are untouched.
   const collab = useCollab(page, { onSaved });
@@ -551,7 +564,13 @@ export const PageEditor = forwardRef<
       {collab.render(editor)}
       <DragHandle
         editor={editor}
-        onNodeChange={({ node, pos }) => setHovered(node ? { node, pos } : null)}
+        onNodeChange={({ node, pos }) => {
+          const dom = node ? editor.view.nodeDOM(pos) : null;
+          const el = dom instanceof HTMLElement ? (dom.matches("[dir]") ? dom : (dom.querySelector("[dir]") ?? dom)) : null;
+          hoveredRtl.current = !!el && getComputedStyle(el).direction === "rtl";
+          setHovered(node ? { node, pos } : null);
+        }}
+        computePositionConfig={handlePosition}
         className="drag-handle-host"
       >
         <div className="block-handle">
