@@ -33,6 +33,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import worlds.android.OutlinedTextField
 import worlds.android.R
@@ -43,7 +44,9 @@ import worlds.android.WorldsTile
 import java.time.DayOfWeek
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.chrono.IsoChronology
 import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeFormatterBuilder
 import java.time.format.FormatStyle
 import java.time.format.TextStyle
 import java.util.Locale
@@ -74,6 +77,25 @@ internal fun shortDate(date: String, withYear: Boolean, locale: Locale): String 
     val parts = time.split(":")
     val t = LocalTime.of((parts.getOrNull(0)?.toIntOrNull() ?: 0).coerceIn(0, 23), (parts.getOrNull(1)?.toIntOrNull() ?: 0).coerceIn(0, 59))
     return DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(currentLocale()).format(t)
+}
+
+/** An hour on the week grid's edge, short: "9 AM" where the clock is 12 hour, "09" where it is 24 hour. */
+@Composable internal fun hourName(hour: Int): String {
+    val locale = currentLocale()
+    val pattern = DateTimeFormatterBuilder.getLocalizedDateTimePattern(null, FormatStyle.SHORT, IsoChronology.INSTANCE, locale)
+    val twelve = pattern.contains('h') || pattern.contains('K')
+    return DateTimeFormatter.ofPattern(if (twelve) "h a" else "HH", locale).format(LocalTime.of(hour.coerceIn(0, 23), 0))
+}
+
+/** A thin progress bar with its percent, for goals. */
+@Composable internal fun GoalProgress(percent: Int, width: Dp = 64.dp) {
+    val label = stringResource(R.string.plan_goal_percent, percent)
+    Row(Modifier.clearAndSetSemantics { contentDescription = label }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(Modifier.width(width).height(6.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHighest)) {
+            Box(Modifier.fillMaxHeight().fillMaxWidth(percent.coerceIn(0, 100) / 100f).clip(CircleShape).background(MaterialTheme.colorScheme.primary))
+        }
+        Text(label, modifier = Modifier.widthIn(min = 36.dp), style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"), color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.End, maxLines = 1)
+    }
 }
 
 @Composable internal fun dueText(due: String, time: String?, now: String): String {
@@ -194,7 +216,7 @@ internal fun LazyListScope.planStatus(repo: PlanningRepository) {
 }
 
 /** One row in a rounded group: a leading control, the title and a quiet meta line. */
-@Composable internal fun PlanRowItem(title: String, done: Boolean, divider: Boolean, onClick: () -> Unit, leading: @Composable () -> Unit, meta: List<Pair<String, Color?>> = emptyList()) {
+@Composable internal fun PlanRowItem(title: String, done: Boolean, divider: Boolean, onClick: () -> Unit, leading: @Composable () -> Unit, meta: List<Pair<String, Color?>> = emptyList(), trailing: (@Composable () -> Unit)? = null) {
     Column {
         Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(start = 4.dp, end = 14.dp, top = 4.dp, bottom = 4.dp).heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             leading()
@@ -206,6 +228,7 @@ internal fun LazyListScope.planStatus(repo: PlanningRepository) {
                     meta.forEach { (text, color) -> Text(text, style = MaterialTheme.typography.bodySmall, color = color ?: MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false)) }
                 }
             }
+            if (trailing != null) trailing()
         }
         if (divider) HorizontalDivider(Modifier.padding(start = 54.dp), color = MaterialTheme.colorScheme.outlineVariant)
     }

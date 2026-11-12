@@ -4,6 +4,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import worlds.content.Resource
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 
 /*
@@ -120,6 +121,7 @@ internal data class PlanRow(
     val requirement by lazy { RequirementData(data) }
     val subject by lazy { SubjectData(data) }
     val lesson by lazy { LessonData(data) }
+    val goal by lazy { GoalData(data) }
 
     companion object {
         fun of(r: Resource): PlanRow = PlanRow(r.id, r.title, r.kind, r.parentId, r.sortKey, r.createdAt, kindData(r.metadata, r.kind))
@@ -404,3 +406,211 @@ internal fun nextExam(rows: List<PlanRow>, subjectId: String, now: String): Stri
 /** Open work under a subject: assignments not handed in and things not ready. */
 internal fun openCount(rows: List<PlanRow>, subjectId: String): Int =
     inSubject(rows, subjectId, "assignment").count { !it.assignment.submitted } + inSubject(rows, subjectId, "requirement").count { !it.requirement.ready }
+
+// ---------------------------------------------------------------- goals
+
+/** A step or milestone, as the desktop stores it in `steps`. */
+internal data class Step(val id: String, val text: String, val done: Boolean)
+
+internal fun stepsOf(d: JSONObject): List<Step> = d.optJSONArray("steps")?.let { a ->
+    (0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let { s -> Step(s.text("id").orEmpty(), s.text("text").orEmpty(), truthy(s.opt("done"))) } }
+}.orEmpty()
+
+internal class GoalData(d: JSONObject) {
+    val detail = d.text("detail")
+    val target = d.text("target")
+    val steps = stepsOf(d)
+    /** Manual progress 0..1, used when there are no steps. */
+    val progress = d.number("progress")
+}
+
+/** The desktop's goalFraction: done steps over all steps, or the manual value when there are none. */
+internal fun goalFraction(d: GoalData): Double {
+    if (d.steps.isNotEmpty()) return d.steps.count { it.done }.toDouble() / d.steps.size
+    val p = d.progress ?: 0.0
+    return if (p.isNaN()) 0.0 else p.coerceIn(0.0, 1.0)
+}
+
+/** Whole percent, rounded like JavaScript's Math.round. */
+internal fun goalPercent(d: GoalData): Int = Math.round(goalFraction(d) * 100).toInt()
+
+/** Goals by target day (none last), then by when they were made, as the desktop's goalsFor. */
+internal fun goalsFor(rows: List<PlanRow>): List<PlanRow> =
+    rows.filter { it.kind == "goal" }.sortedWith(compareBy<PlanRow> { it.goal.target ?: "9999-99-99" }.thenBy { it.createdAt })
+
+/**
+ * Tasks linked to a goal are filed under it, the same parent link the
+ * desktop's All list groups by. Open ones first, in the usual order.
+ */
+internal fun goalTasks(rows: List<PlanRow>, goalId: String): List<PlanRow> =
+    rows.filter { it.kind == "task" && it.parentId == goalId }.sortedWith(compareBy<PlanRow> { it.task.done }.then(taskOrder))
+
+/** Open tasks that could be linked to the goal: not done and not already under it. */
+internal fun linkableTasks(rows: List<PlanRow>, goalId: String): List<PlanRow> =
+    rows.filter { it.kind == "task" && it.parentId != goalId && !it.task.done }.sortedWith(taskOrder)
+
+private const val STEP_ID_CHARS = "0123456789abcdefghijklmnopqrstuvwxyz"
+
+/** "s" and seven base 36 characters, like the desktop's newStepId. */
+internal fun newStepId(random: kotlin.random.Random = kotlin.random.Random.Default): String =
+    "s" + (1..7).map { STEP_ID_CHARS[random.nextInt(STEP_ID_CHARS.length)] }.joinToString("")
+
+private fun copyOf(o: JSONObject) = JSONObject(o.toString())
+
+private fun stepsArray(data: JSONObject): JSONArray = data.optJSONArray("steps") ?: JSONArray()
+
+/** Add a step at the end. Blank text adds nothing. */
+internal fun withStepAdded(data: JSONObject, id: String, text: String): JSONObject {
+    val clean = text.trim()
+    val next = copyOf(data)
+    if (clean.isEmpty()) return next
+    val steps = JSONArray(stepsArray(next).toString()).put(JSONObject().put("id", id).put("text", clean).put("done", false))
+    return next.put("steps", steps)
+}
+
+/** Tick or untick one step, keeping any other field it has. */
+internal fun withStepToggled(data: JSONObject, id: String): JSONObject {
+    val next = copyOf(data)
+    val steps = stepsArray(next)
+    val out = JSONArray()
+    for (i in 0 until steps.length()) {
+        val s = steps.optJSONObject(i)
+        out.put(if (s != null && s.text("id") == id) copyOf(s).put("done", !truthy(s.opt("done"))) else steps.opt(i))
+    }
+    return next.put("steps", out)
+}
+
+internal fun withStepRemoved(data: JSONObject, id: String): JSONObject {
+    val next = copyOf(data)
+    val steps = stepsArray(next)
+    val out = JSONArray()
+    for (i in 0 until steps.length()) {
+        val s = steps.optJSONObject(i)
+        if (s == null || s.text("id") != id) out.put(steps.opt(i))
+    }
+    return next.put("steps", out)
+}
+
+// ---------------------------------------------------------------- inbox
+
+/** Captures, newest first, as the desktop's Inbox lists them. */
+internal fun inboxItems(rows: List<PlanRow>): List<PlanRow> = rows.filter { it.kind == "inbox" }.sortedByDescending { it.createdAt }
+
+/** The desktop sidebar's badges: tasks due today or overdue, then captures waiting in Inbox. */
+internal fun planningBadges(resources: List<Resource>, now: String = PlanDates.today()): Pair<Int, Int> {
+    val rows = resources.filter { it.kind == "task" || it.kind == "inbox" }.map { PlanRow.of(it) }
+    return tasksFor(rows, TaskList.Today, now).size to rows.count { it.kind == "inbox" }
+}
+
+/** What a capture can become. Assignment and Requirement need the Study pack and a subject. */
+internal enum class CaptureTarget { Task, Event, Page, Assignment, Requirement }
+
+/** A new resource to create in place of a capture: its kind, title and metadata. */
+internal data class Conversion(val kind: String, val title: String, val metadata: String)
+
+/**
+ * The desktop's InboxRow actions: a task or an event reads dates and times
+ * out of the words with quick add; a page and study items keep the words as
+ * they are, and study items take the date quick add finds.
+ */
+internal fun convertCapture(title: String, target: CaptureTarget, now: LocalDateTime): Conversion {
+    val q = QuickAdd.parse(title, now)
+    val parsedTitle = q.title.ifEmpty { title }
+    return when (target) {
+        CaptureTarget.Task -> Conversion("task", parsedTitle, newKindMetadata("task", mapOf("due" to q.due, "time" to q.time, "priority" to q.priority)))
+        CaptureTarget.Event -> Conversion("event", parsedTitle,
+            newKindMetadata("event", mapOf("date" to (q.due ?: PlanDates.today(now.toLocalDate())), "start" to q.time, "allDay" to (q.time == null))))
+        CaptureTarget.Page -> Conversion("page", title, "{}")
+        CaptureTarget.Assignment -> Conversion("assignment", title, newKindMetadata("assignment", mapOf("due" to q.due)))
+        CaptureTarget.Requirement -> Conversion("requirement", title, newKindMetadata("requirement", mapOf("due" to q.due)))
+    }
+}
+
+// ---------------------------------------------------------------- week
+
+internal const val DAY_MINUTES = 24 * 60
+
+/** The shortest block the grid draws, so short items stay tappable. Overlaps are worked out at this size too. */
+internal const val MIN_BLOCK_MINUTES = 30
+
+private val HHMM = Regex("(\\d{1,2}):(\\d{2})")
+
+/** Minutes after midnight for "HH:MM", or null when it is not a time of day. */
+internal fun minutesOf(t: String?): Int? {
+    val m = t?.let { HHMM.matchEntire(it.trim()) } ?: return null
+    val h = m.groupValues[1].toInt()
+    val min = m.groupValues[2].toInt()
+    return if (h > 23 || min > 59) null else h * 60 + min
+}
+
+/** How long something with a start and no end lasts on the grid: an hour for events, half an hour for the rest. */
+internal fun defaultLength(kind: String): Int = if (kind == "event") 60 else MIN_BLOCK_MINUTES
+
+/** One timed item in a day column. Items that overlap share the width in `lanes` columns. */
+internal data class WeekBlock(val occurrence: Occurrence, val start: Int, val end: Int, val lane: Int, val lanes: Int)
+
+/** A day of the week grid: all day items for the strip on top, timed ones placed by time. */
+internal data class WeekDay(val date: String, val allDay: List<Occurrence>, val timed: List<WeekBlock>)
+
+/** The seven days of the week holding `anchor`. */
+internal fun weekDates(anchor: String, weekStart: Int = 0): List<String> {
+    val from = PlanDates.startOfWeek(anchor, weekStart)
+    return (0..6).map { PlanDates.addDays(from, it) }
+}
+
+/** Splits one day's items into all day ones and timed blocks with overlap lanes. */
+internal fun layoutDay(date: String, items: List<Occurrence>): WeekDay {
+    val allDay = mutableListOf<Occurrence>()
+    val timed = mutableListOf<Triple<Occurrence, Int, Int>>()
+    for (o in items) {
+        val start = if (o.allDay) null else minutesOf(o.start)
+        if (start == null) { allDay.add(o); continue }
+        val end = minutesOf(o.end)?.takeIf { it > start } ?: minOf(DAY_MINUTES, start + defaultLength(o.kind))
+        timed.add(Triple(o, start, end))
+    }
+    val sorted = timed.sortedWith(compareBy<Triple<Occurrence, Int, Int>> { it.second }.thenByDescending { it.third - it.second }.thenBy { it.first.key })
+    val blocks = mutableListOf<WeekBlock>()
+    val cluster = mutableListOf<WeekBlock>()
+    val laneEnds = mutableListOf<Int>()
+    var clusterEnd = -1
+    fun flush() {
+        cluster.forEach { blocks.add(it.copy(lanes = laneEnds.size)) }
+        cluster.clear()
+        laneEnds.clear()
+    }
+    for ((o, start, end) in sorted) {
+        val reach = maxOf(end, start + MIN_BLOCK_MINUTES)
+        if (cluster.isNotEmpty() && start >= clusterEnd) flush()
+        var lane = laneEnds.indexOfFirst { it <= start }
+        if (lane < 0) { lane = laneEnds.size; laneEnds.add(reach) } else laneEnds[lane] = reach
+        cluster.add(WeekBlock(o, start, end, lane, 0))
+        clusterEnd = maxOf(clusterEnd, reach)
+    }
+    flush()
+    return WeekDay(date, allDay, blocks)
+}
+
+/** The week holding `anchor`, day by day, with everything dated in it including what is done. */
+internal fun weekLayout(rows: List<PlanRow>, anchor: String, studyOn: Boolean, weekStart: Int = 0): List<WeekDay> {
+    val days = weekDates(anchor, weekStart)
+    val byDay = occurrences(rows, days.first(), days.last(), studyOn, includeDone = true).groupBy { it.date }
+    return days.map { layoutDay(it, byDay[it].orEmpty()) }
+}
+
+/**
+ * The hours the grid shows: 07:00 to 22:00, stretched to fit anything earlier
+ * or later, so a quiet week stays compact and nothing is ever cut off.
+ */
+internal fun weekHours(days: List<WeekDay>, first: Int = 7, last: Int = 22): IntRange {
+    val blocks = days.flatMap { it.timed }
+    val from = minOf(first, blocks.minOfOrNull { it.start / 60 } ?: first)
+    val to = maxOf(last, blocks.maxOfOrNull { (maxOf(it.end, it.start + MIN_BLOCK_MINUTES) + 59) / 60 } ?: last).coerceAtMost(24)
+    return from until to
+}
+
+/** Start and end for an event made by tapping an empty hour: that hour, one hour long, ending by midnight. */
+internal fun slotTimes(hour: Int): Pair<String, String> {
+    val h = hour.coerceIn(0, 23)
+    val start = "%02d:00".format(java.util.Locale.ROOT, h)
+    return start to if (h == 23) "23:59" else hourAfter(start)
+}

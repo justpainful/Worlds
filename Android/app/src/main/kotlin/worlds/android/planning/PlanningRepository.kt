@@ -94,6 +94,25 @@ internal class PlanningRepository(context: Context, databaseName: String) {
         write({ val r = fresh(id); this.rename(id, r.revision, clean) })
     }
 
+    /** File an item under another one, or at the top level with null. Used to link a task to a goal. */
+    fun move(id: String, parentId: String?) {
+        rows.firstOrNull { it.id == id }?.let { if (it.parentId == parentId) return; put(it.copy(parentId = parentId)) }
+        write({ val r = fresh(id); this.move(id, r.revision, parentId) })
+    }
+
+    /**
+     * Turn an inbox capture into something else: the new item is made first,
+     * then the capture goes to Trash, so a failed write never loses the words.
+     */
+    fun convert(captureId: String, conversion: Conversion, parentId: String? = null, done: (PlanRow) -> Unit = {}) {
+        rows = rows.filter { it.id != captureId }
+        write({
+            val made = this.create(conversion.kind, conversion.title.trim(), parentId, conversion.metadata)
+            this.trash(captureId)
+            made
+        }) { row -> if (row != null) done(row) }
+    }
+
     /** Moves the item, and anything filed under it, to Trash. */
     fun trash(id: String) {
         val gone = mutableSetOf(id)

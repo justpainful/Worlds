@@ -19,14 +19,22 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import org.json.JSONArray
+import org.json.JSONObject
 import worlds.android.AlertDialog
+import worlds.android.DropdownMenu
 import worlds.android.OutlinedTextField
 import worlds.android.R
+import worlds.android.Slider
 import worlds.android.Switch
 import worlds.android.WorldsActionLabel
+import worlds.android.WorldsGlyph
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.TextStyle
@@ -177,14 +185,14 @@ private fun clockOf(text: String): String? = if (text.isBlank()) null else Quick
 }
 
 /** Create or edit an event: its day, times, place and the weekdays it repeats on. */
-@Composable internal fun EventEditor(row: PlanRow?, initialDate: String, now: String, repo: PlanningRepository, onClose: () -> Unit) {
+@Composable internal fun EventEditor(row: PlanRow?, initialDate: String, now: String, repo: PlanningRepository, initialStart: String = "09:00", initialEnd: String = "10:00", onClose: () -> Unit) {
     val d = row?.event
-    val key = row?.id ?: "new-event"
+    val key = row?.id ?: "new-event-$initialDate-$initialStart"
     var title by rememberSaveable(key) { mutableStateOf(row?.title.orEmpty()) }
     var date by rememberSaveable(key) { mutableStateOf(d?.date?.takeIf { PlanDates.isIso(it) } ?: initialDate) }
     var allDay by rememberSaveable(key) { mutableStateOf(d?.allDay ?: false) }
-    var start by rememberSaveable(key) { mutableStateOf(if (row == null) "09:00" else d?.start.orEmpty()) }
-    var end by rememberSaveable(key) { mutableStateOf(if (row == null) "10:00" else d?.end.orEmpty()) }
+    var start by rememberSaveable(key) { mutableStateOf(if (row == null) initialStart else d?.start.orEmpty()) }
+    var end by rememberSaveable(key) { mutableStateOf(if (row == null) initialEnd else d?.end.orEmpty()) }
     var location by rememberSaveable(key) { mutableStateOf(d?.location.orEmpty()) }
     // Kept as text so it survives rotation in a Bundle.
     var weeklyText by rememberSaveable(key) { mutableStateOf(d?.weekly.orEmpty().joinToString(",")) }
@@ -348,6 +356,147 @@ private fun clockOf(text: String): String? = if (text.isBlank()) null else Quick
         text = { Text(stringResource(R.string.plan_delete_subject_body)) },
         dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.cancel)) } },
         confirmButton = { TextButton(onClick = { confirmDelete = false; repo.trash(row.id); onClose(); onDeleted() }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(stringResource(R.string.move_to_trash)) } })
+}
+
+/**
+ * Edit a goal like the desktop's goal view: title, target date, steps, the
+ * manual progress used while there are no steps, linked tasks and the why.
+ * Everything here is saved together, so Cancel leaves the goal as it was.
+ */
+@Composable internal fun GoalEditor(row: PlanRow, rows: List<PlanRow>, now: String, repo: PlanningRepository, onClose: () -> Unit) {
+    val d = row.goal
+    val manual = Math.round((d.progress?.takeIf { !it.isNaN() } ?: 0.0).coerceIn(0.0, 1.0) * 100).toInt()
+    var title by rememberSaveable(row.id) { mutableStateOf(row.title) }
+    var target by rememberSaveable(row.id) { mutableStateOf(d.target) }
+    var detail by rememberSaveable(row.id) { mutableStateOf(d.detail.orEmpty()) }
+    var percent by rememberSaveable(row.id) { mutableIntStateOf(manual) }
+    // Steps are kept as the stored JSON, so fields the desktop adds survive an edit here.
+    var stepsJson by rememberSaveable(row.id) { mutableStateOf(JSONObject().put("steps", row.data.optJSONArray("steps") ?: JSONArray()).toString()) }
+    var draft by rememberSaveable(row.id) { mutableStateOf("") }
+    // Task ids linked or unlinked in this edit, kept as text so they survive rotation.
+    var addedText by rememberSaveable(row.id) { mutableStateOf("") }
+    var removedText by rememberSaveable(row.id) { mutableStateOf("") }
+    var picking by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
+
+    val steps = stepsOf(JSONObject(stepsJson))
+    val added = addedText.split(",").filter { it.isNotEmpty() }
+    val removed = removedText.split(",").filter { it.isNotEmpty() }
+    val byId = remember(rows) { rows.associateBy { it.id } }
+    val current = remember(rows, row.id) { goalTasks(rows, row.id) }
+    val linked = current.filter { it.id !in removed } + added.mapNotNull { byId[it] }
+    val candidates = linkableTasks(rows, row.id).filter { it.id !in added } + current.filter { it.id in removed && !it.task.done }
+
+    fun addStep() {
+        if (draft.isBlank()) return
+        stepsJson = withStepAdded(JSONObject(stepsJson), newStepId(), draft).toString()
+        draft = ""
+    }
+
+    EditorDialog(stringResource(R.string.plan_edit_goal), onDismiss = onClose,
+        onSave = {
+            addStep()
+            val finalSteps = JSONObject(stepsJson).optJSONArray("steps") ?: JSONArray()
+            val finalTarget = target
+            val finalDetail = detail
+            val finalPercent = percent
+            repo.rename(row.id, title)
+            repo.change(row.id, "goal") { data ->
+                if (finalTarget != d.target) data.put("target", finalTarget ?: JSONObject.NULL)
+                data.put("steps", JSONArray(finalSteps.toString()))
+                if (finalDetail != d.detail.orEmpty()) data.put("detail", finalDetail)
+                if (finalPercent != manual) data.put("progress", finalPercent / 100.0)
+                data
+            }
+            removed.forEach { repo.move(it, null) }
+            added.forEach { repo.move(it, row.id) }
+            onClose()
+        },
+        onDelete = { confirmDelete = true }, deleteLabel = stringResource(R.string.plan_delete_goal)) {
+        PlanTextField(title, { title = it }, stringResource(R.string.plan_field_title))
+        DateField(stringResource(R.string.plan_field_target), target, now, allowNone = true, onChange = { target = it })
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val shown = if (steps.isNotEmpty()) Math.round(steps.count { it.done } * 100.0 / steps.size).toInt() else percent
+            FieldLabel(stringResource(R.string.plan_field_progress), stringResource(R.string.plan_goal_percent, shown))
+            if (steps.isEmpty()) Slider(value = percent.toFloat(), onValueChange = { percent = Math.round(it) }, valueRange = 0f..100f)
+            else Text(stringResource(R.string.plan_goal_progress_steps), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            FieldLabel(stringResource(R.string.plan_steps), if (steps.isNotEmpty()) "${steps.count { it.done }}/${steps.size}" else null)
+            steps.forEach { s ->
+                StepRow(s, onToggle = { stepsJson = withStepToggled(JSONObject(stepsJson), s.id).toString() },
+                    onRemove = { stepsJson = withStepRemoved(JSONObject(stepsJson), s.id).toString() })
+            }
+            OutlinedTextField(value = draft, onValueChange = { draft = it }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp), singleLine = true,
+                placeholder = { Text(stringResource(R.string.plan_add_step), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                leadingIcon = { WorldsGlyph(R.drawable.ic_plus) },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), keyboardActions = KeyboardActions(onDone = { addStep() }))
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            FieldLabel(stringResource(R.string.plan_linked_tasks), if (linked.isNotEmpty()) "${linked.count { it.task.done }}/${linked.size}" else null)
+            Text(stringResource(R.string.plan_linked_tasks_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            linked.forEach { t ->
+                LinkedTaskRow(t, now) {
+                    if (t.id in added) addedText = (added - t.id).joinToString(",") else removedText = (removed + t.id).joinToString(",")
+                }
+            }
+            Box {
+                TextButton(onClick = { picking = true }) { WorldsActionLabel(R.drawable.ic_link, stringResource(R.string.plan_link_task)) }
+                DropdownMenu(expanded = picking, onDismissRequest = { picking = false }) {
+                    if (candidates.isEmpty()) DropdownMenuItem(text = { Text(stringResource(R.string.plan_no_tasks_to_link)) }, onClick = {}, enabled = false)
+                    candidates.forEach { t ->
+                        DropdownMenuItem(text = { Text(t.title.ifBlank { stringResource(R.string.untitled) }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            leadingIcon = { WorldsGlyph(R.drawable.ic_list_todo) },
+                            onClick = {
+                                picking = false
+                                if (t.id in removed) removedText = (removed - t.id).joinToString(",") else addedText = (added + t.id).joinToString(",")
+                            })
+                    }
+                }
+            }
+        }
+        PlanTextField(detail, { detail = it }, stringResource(R.string.plan_field_detail), multiline = true)
+    }
+    if (confirmDelete) AlertDialog(onDismissRequest = { confirmDelete = false },
+        title = { Text(stringResource(R.string.plan_delete_goal)) },
+        text = { Text(stringResource(R.string.plan_delete_goal_body)) },
+        dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.cancel)) } },
+        confirmButton = {
+            TextButton(onClick = {
+                confirmDelete = false
+                // Linked tasks are filed under the goal; keep them in Tasks instead of trashing them with it.
+                current.forEach { repo.move(it.id, null) }
+                repo.trash(row.id)
+                onClose()
+            }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(stringResource(R.string.move_to_trash)) }
+        })
+}
+
+/** A step in the goal editor: tick it, read it, remove it. */
+@Composable private fun StepRow(step: Step, onToggle: () -> Unit, onRemove: () -> Unit) {
+    val remove = stringResource(R.string.plan_remove_step)
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        PlanCheck(step.done, null, onToggle)
+        Text(step.text, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, maxLines = 3, overflow = TextOverflow.Ellipsis,
+            color = if (step.done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+            textDecoration = if (step.done) TextDecoration.LineThrough else null)
+        IconButton(onClick = onRemove, modifier = Modifier.semantics { contentDescription = remove }) { WorldsGlyph(R.drawable.ic_x, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+    }
+}
+
+/** A task linked to the goal, with its date, and a way to unlink it. */
+@Composable private fun LinkedTaskRow(task: PlanRow, now: String, onUnlink: () -> Unit) {
+    val d = task.task
+    Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        WorldsGlyph(if (d.done) R.drawable.ic_circle_check else R.drawable.ic_list_todo, tint = if (d.done) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(Modifier.weight(1f)) {
+            Text(task.title.ifBlank { stringResource(R.string.untitled) }, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                color = if (d.done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                textDecoration = if (d.done) TextDecoration.LineThrough else null)
+            dueMeta(d.due, d.time, d.done, now)?.let { (text, color) -> Text(text, style = MaterialTheme.typography.bodySmall, color = color ?: MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1) }
+        }
+        TextButton(onClick = onUnlink) { Text(stringResource(R.string.plan_unlink_task)) }
+    }
 }
 
 internal fun colourName(id: String): Int = when (id) {

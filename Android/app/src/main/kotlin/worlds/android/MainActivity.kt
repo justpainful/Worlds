@@ -154,6 +154,8 @@ data class HomeState(
     val projectResources: List<Resource> = emptyList(),
     val projectActivity: List<ProjectActivity> = emptyList(),
     val templatesVisible: Boolean = false, val templatesLoading: Boolean = false, val templatesError: Boolean = false, val templates: List<Resource> = emptyList(),
+    /** Badges in the planning navigation: tasks due today or overdue, and captures waiting in Inbox. */
+    val dueToday: Int = 0, val inboxCount: Int = 0,
 )
 data class MoveDestination(val resource: Resource, val path: String)
 data class ProjectActivity(val resource: Resource, val event: ContentEvent)
@@ -197,14 +199,18 @@ class HomeModel(application: Application, internal val databaseName: String) : A
         val trash = mutable.value.trash
         viewModelScope.launch {
             val result = runCatching { withContext(Dispatchers.IO) {
-                if (trash) store.list(includeDeleted = true).filter { it.deletedAt != null && it.title.contains(query.trim(), ignoreCase = true) }
+                if (trash) store.list(includeDeleted = true).filter { it.deletedAt != null && it.title.contains(query.trim(), ignoreCase = true) } to null
                 else {
                     val hidden = store.templateTreeIds()
-                    (if (query.isBlank()) store.list() else store.search(query)).filterNot { it.id in hidden }
+                    val all = store.list().filterNot { it.id in hidden }
+                    (if (query.isBlank()) all else store.search(query).filterNot { it.id in hidden }) to worlds.android.planning.planningBadges(all)
                 }
             } }
             if (request != requestId) return@launch
-            mutable.update { it.copy(pages = result.getOrDefault(emptyList()).filter { page -> trash || (page.kind != "template" && page.kind !in worlds.android.planning.OWN_VIEW_KINDS) }, loading = false, error = result.isFailure) }
+            val pages = result.getOrNull()?.first.orEmpty()
+            val badges = result.getOrNull()?.second
+            mutable.update { it.copy(pages = pages.filter { page -> trash || (page.kind != "template" && page.kind !in worlds.android.planning.OWN_VIEW_KINDS) }, loading = false, error = result.isFailure,
+                dueToday = badges?.first ?: it.dueToday, inboxCount = badges?.second ?: it.inboxCount) }
         }
     }
     fun create(title: String, kind: String = "page") {
@@ -1247,6 +1253,7 @@ class HomeModel(application: Application, internal val databaseName: String) : A
                 DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_sliders_horizontal) }, text = { Text(stringResource(R.string.automations)) }, onClick = { showLibraryActions = false; showAutomations = true })
                 DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_list_todo) }, text = { Text(stringResource(R.string.plan_tasks)) }, onClick = { showLibraryActions = false; planningSection = PlanningSection.Tasks.name })
                 DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_calendar) }, text = { Text(stringResource(R.string.plan_calendar)) }, onClick = { showLibraryActions = false; planningSection = PlanningSection.Calendar.name })
+                DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_inbox) }, text = { Text(stringResource(R.string.plan_inbox)) }, onClick = { showLibraryActions = false; planningSection = PlanningSection.Inbox.name })
                 if (LocalAppearancePreferences.current.studyPackEnabled) DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_graduation_cap) }, text = { Text(stringResource(R.string.plan_study)) }, onClick = { showLibraryActions = false; planningSection = PlanningSection.Study.name })
                 DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_share_2) }, text = { Text(stringResource(R.string.discord)) }, onClick = { showLibraryActions = false; showDiscordComposer = true })
                 DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_circle_user) }, text = { Text(stringResource(R.string.profile)) }, onClick = { showLibraryActions = false; showProfile = true })
