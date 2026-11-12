@@ -196,6 +196,19 @@ function bilingualPlan(today: string, lang: SampleLanguage): SampleEntry[] {
      
       metadata: data("event", { date: d(2), start: "16:00", end: "17:30", location: "مكتبة الكلية · College library", notes: "نراجع البناء الضوئي معًا. · We go over photosynthesis together." }),
     },
+    // Quick captures waiting in the Inbox, to be turned into tasks or pages later.
+    {
+      key: "i-idea",
+      kind: "inbox",
+      title: "فكرة مشروع: سخان ماء شمسي صغير · Project idea: a small solar water heater",
+      metadata: data("inbox", {}),
+    },
+    {
+      key: "i-notebook",
+      kind: "inbox",
+      title: "شراء دفتر رسم بياني · Buy a graph paper notebook",
+      metadata: data("inbox", {}),
+    },
   ];
 }
 
