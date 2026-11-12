@@ -94,6 +94,13 @@ bdi,
   background: rgba(var(--accent-rgb), 0.32);
 }
 
+/* WebView2 on Windows drew a classic 17px scrollbar with arrows in every
+   scrolling panel; all of them are thin now, as in Windows 11. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(128, 128, 128, 0.42) transparent;
+}
+
 /* Scrollbars: thin, quiet, appear on hover. */
 .scroll {
   overflow: auto;
