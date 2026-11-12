@@ -186,6 +186,7 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has("mock") && n
 }
 
 const settings: Record<string, unknown> = WEB_DEMO ? { "account.onboarded": true } : { "advanced.developer": true, "advanced.perfOverlay": new URLSearchParams(location.search).has("perf"), "appearance.glassTone": new URLSearchParams(location.search).get("tone") ?? "auto", ...(new URLSearchParams(location.search).has("demo") && !new URLSearchParams(location.search).has("onboarding") ? { "account.onboarded": true } : {}) };
+try { if (localStorage.getItem("worlds.demo.tourSeen")) settings["tour.seen"] = true; } catch { /* private window */ }
 const callbacks = new Map<number, (v: any) => void>();
 const listeners = new Map<string, number[]>();
 let cbSeq = 1;
@@ -399,7 +400,11 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
       { id: "mock-ref-5", pageId: null, kind: "image", fileName: "ref-5.jpg", mime: "image/jpeg", size: 1, relPath: "", width: 1600, height: 900, createdAt: Date.now() },
       { id: "mock-ref-6", pageId: null, kind: "image", fileName: "ref-6.jpg", mime: "image/jpeg", size: 1, relPath: "", width: 1600, height: 900, createdAt: Date.now() },
     ];
-    case "settings_set": settings[a.key] = a.value; return null;
+    case "settings_set":
+      settings[a.key] = a.value;
+      // A visitor who closed the tour should not see it again on every reload.
+      if (a.key === "tour.seen") try { localStorage.setItem("worlds.demo.tourSeen", "1"); } catch { /* private window */ }
+      return null;
     case "session_save": case "client_log": case "window_set_transparency": return null;
     case "data_dir": return "C:\\mock";
     case "ai_status": return { available: true, version: "2.1.288 (Claude Code)", mcpRegistered: true };
