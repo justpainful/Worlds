@@ -275,11 +275,11 @@ export function BlurInput({ value, onCommit, placeholder, multiline, type = "tex
     className: `field bidi ${className}`,
     dir: "auto" as const,
     defaultValue: value,
-    key: value,
     placeholder,
     onBlur: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => e.target.value !== value && onCommit(e.target.value),
   };
-  return multiline ? <textarea {...props} rows={4} /> : <input {...props} type={type} onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()} />;
+  // Keyed by the value so an outside change shows; React wants the key written out, not spread.
+  return multiline ? <textarea key={value} {...props} rows={4} /> : <input key={value} {...props} type={type} onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()} />;
 }
 
 /** A number box that saves on blur; empty means none. */
