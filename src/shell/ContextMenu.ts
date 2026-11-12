@@ -60,7 +60,8 @@ export function installContextMenu(): () => void {
   const onCtx = (e: MouseEvent) => {
     if (e.defaultPrevented) return; // a component showed its own menu
     e.preventDefault();
-    const t = e.target as HTMLElement;
+    // A right-click on the window scrollbar targets the document, which has no closest().
+    const t = e.target instanceof HTMLElement ? e.target : document.body;
     const show = useMenu.getState().show;
     const items: MenuItem[] = [];
 
