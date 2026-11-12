@@ -76,7 +76,7 @@ describe("sample workspace", () => {
     const { created, rootId } = await loadSampleWorkspace(w.backend, w.host, NOW);
     expect(created).toBe(true);
     const kinds = new Set(w.live().map((p) => p.kind));
-    for (const k of ["page", "document", "spreadsheet", "drawing", "presentation", "subject", "lesson", "assignment", "exam", "task", "event", "inbox"]) expect(kinds).toContain(k);
+    for (const k of ["page", "document", "spreadsheet", "drawing", "presentation", "subject", "lesson", "assignment", "exam", "task", "event", "inbox", "goal"]) expect(kinds).toContain(k);
     // One language per title: no line mixes two scripts.
     for (const p of w.live()) {
       expect(p.title).toMatch(/^[؀-ۿ]/);

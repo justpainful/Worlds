@@ -112,7 +112,7 @@ export function TasksView({ list = "today" }: { list?: TaskListId }) {
                 <span style={{ fontSize: 18 }}>🎯</span>
                 <div style={{ flex: 1 }}>
                   <div className="bidi" style={{ fontWeight: 600 }}>{pageTitle(g)}</div>
-                  {gd.target && <div style={{ fontSize: 12, opacity: 0.7 }}>Target: {relDay(gd.target)}</div>}
+                  {gd.target && <div style={{ fontSize: 12, opacity: 0.7 }}>{`Target: ${relDay(gd.target)}`}</div>}
                 </div>
                 <div style={{ width: 120, height: 8, background: "rgba(255,255,255,0.1)", borderRadius: 4, overflow: "hidden" }}>
                   <div style={{ width: `${pct}%`, height: "100%", background: "#3b82f6" }} />

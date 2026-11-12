@@ -196,6 +196,22 @@ function bilingualPlan(today: string, lang: SampleLanguage): SampleEntry[] {
      
       metadata: data("event", { date: d(2), start: "16:00", end: "17:30", location: "مكتبة الكلية · College library", notes: "نراجع البناء الضوئي معًا. · We go over photosynthesis together." }),
     },
+    // A term goal with steps, so the Goals list shows progress.
+    {
+      key: "g-gpa",
+      kind: "goal",
+      title: "معدل 90 أو أعلى هذا الفصل · A term average of 90 or more",
+      metadata: data("goal", {
+        detail: "خطة أسبوعية ومراجعة قبل كل اختبار. · A weekly plan and a review before every exam.",
+        target: d(45),
+        steps: [
+          { id: "g-plan", text: "جدول مذاكرة أسبوعي · A weekly study timetable", done: true },
+          { id: "g-lab", text: "تسليم كل تقارير المختبر · Hand in every lab report", done: true },
+          { id: "g-mid", text: "اختبار منتصف الفصل فوق 85 · Midterm above 85", done: false },
+          { id: "g-final", text: "مراجعة شاملة قبل النهائي · A full review before the final", done: false },
+        ],
+      }),
+    },
     // Quick captures waiting in the Inbox, to be turned into tasks or pages later.
     {
       key: "i-idea",
