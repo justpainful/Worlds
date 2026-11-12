@@ -12,6 +12,7 @@ describe("native dialog text", () => {
   });
 
   it("leaves a dialog without a title or filters alone", () => {
-    expect(localDialog({ multiple: true })).toEqual({ multiple: true, title: undefined, filters: undefined });
+    const plain: { multiple: boolean; title?: string } = { multiple: true };
+    expect(localDialog(plain)).toEqual({ multiple: true, title: undefined, filters: undefined });
   });
 });
