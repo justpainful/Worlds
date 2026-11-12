@@ -240,14 +240,14 @@
 .sheet-col-resizer {
   position: absolute;
   top: 0;
-  right: 0;
+  inset-inline-end: 0;
   width: 5px;
   height: 100%;
   cursor: col-resize;
 }
 
 .sheet-col-resizer:hover {
-  background: #3b82f6;
+  background: var(--accent);
 }
 
 .sheet-row-hdr {

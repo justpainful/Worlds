@@ -1447,6 +1447,7 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
                         { label: "Auto-fit Column Width", onSelect: () => autoFitColumn(c) },
                         { kind: "separator" },
                         { label: "Insert Column Left", onSelect: () => updateActiveSheet((s) => shiftSheetStructure(s, "col", c, 1)) },
+                        { label: "Insert Column Right", onSelect: () => updateActiveSheet((s) => shiftSheetStructure(s, "col", c + 1, 1)) },
                         { label: "Delete Column", danger: true, onSelect: () => updateActiveSheet((s) => shiftSheetStructure(s, "col", c, -1)) },
                       ]);
                     }}
@@ -1458,8 +1459,10 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
                         e.stopPropagation();
                         const startX = e.clientX;
                         const startW = w;
+                        // The handle sits on the column's end edge, which is the left one in a mirrored Arabic grid.
+                        const sign = getComputedStyle(e.currentTarget).direction === "rtl" ? -1 : 1;
                         const onMove = (me: MouseEvent) => {
-                          const nw = Math.max(52, Math.min(480, startW + (me.clientX - startX)));
+                          const nw = Math.max(52, Math.min(480, startW + sign * (me.clientX - startX)));
                           updateActiveSheet((s) => ({ ...s, colWidths: { ...s.colWidths, [c]: nw } }), false);
                         };
                         const onUp = () => {
@@ -1520,6 +1523,7 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
                       e.preventDefault();
                       showMenu(e.clientX, e.clientY, [
                         { label: "Insert Row Above", onSelect: () => updateActiveSheet((s) => shiftSheetStructure(s, "row", r, 1)) },
+                        { label: "Insert Row Below", onSelect: () => updateActiveSheet((s) => shiftSheetStructure(s, "row", r + 1, 1)) },
                         { label: "Delete Row", danger: true, onSelect: () => updateActiveSheet((s) => shiftSheetStructure(s, "row", r, -1)) },
                       ]);
                     }}
