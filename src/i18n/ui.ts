@@ -201,7 +201,8 @@ function doSingle(node: Text, prev: { en: string; ar: string; group?: boolean } 
 }
 
 function doAttrs(el: Element) {
-  if (!ATTRS.some((a) => el.hasAttribute(a)) || skipped(el)) return;
+  // A text box's content is the person's, but its placeholder and label are interface text.
+  if (!ATTRS.some((a) => el.hasAttribute(a)) || (el.tagName === "TEXTAREA" ? skipped(el.parentElement) : skipped(el))) return;
   if (el instanceof HTMLInputElement && el.type !== "text" && el.type !== "search" && el.type !== "email" && el.type !== "url" && el.type !== "number" && el.type !== "password") {
     if (!el.hasAttribute("title") && !el.hasAttribute("aria-label")) return;
   }
@@ -223,11 +224,16 @@ function doTree(root: Node) {
   if (root.nodeType === Node.TEXT_NODE) return doText(root as Text);
   if (root.nodeType !== Node.ELEMENT_NODE && root.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) return;
   if (root instanceof Element) {
+    if (root.tagName === "TEXTAREA") return doAttrs(root);
     if (root.matches(SKIP)) return;
     doAttrs(root);
   }
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
-    acceptNode: (n) => (n instanceof Element && n.matches(SKIP) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+    acceptNode: (n) => {
+      if (!(n instanceof Element) || !n.matches(SKIP)) return NodeFilter.FILTER_ACCEPT;
+      if (n.tagName === "TEXTAREA") doAttrs(n);
+      return NodeFilter.FILTER_REJECT;
+    },
   });
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
     if (n.nodeType === Node.TEXT_NODE) doText(n as Text);

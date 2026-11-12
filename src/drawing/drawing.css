@@ -4,7 +4,7 @@
 .drawing-view .res-title { font-size: 24px; }
 .drawing-options { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; min-height: 52px; padding: 7px 14px; border-block: 1px solid var(--hairline-strong); background: var(--surface-deep); }
 .drawing-active-tool { min-width: 60px; font-weight: 600; }
-.drawing-options .drawing-field { display: flex; align-items: center; gap: 8px; width: 175px; margin: 0; }
+.drawing-options .drawing-field { display: flex; align-items: center; gap: 8px; width: auto; min-width: 175px; margin: 0; }
 .drawing-options .drawing-field input { width: 85px; min-width: 0; }
 .drawing-options .drawing-field output { font: 12px var(--font-mono); }
 .drawing-view input[type="color"] { width: 32px; height: 30px; border: 1px solid var(--hairline-strong); padding: 2px; border-radius: 5px; background: transparent; cursor: pointer; }
@@ -238,7 +238,7 @@
 .drawing-view :is(.drawing-field,.drawing-options,.drawing-footer,.drawing-step,.drawing-library-row,.drawing-error,.drawing-pixel-progress) { min-inline-size: 0; }
 .drawing-view :is(.drawing-field > span,.drawing-layer > button,.drawing-frame-row,.drawing-library-row,.drawing-error,.drawing-pixel-progress,.drawing-step p,.drawing-step label) { overflow-wrap: anywhere; }
 .drawing-options .drawing-field { max-inline-size: 100%; }
-.drawing-options .drawing-field > span { min-inline-size: 0; }
+.drawing-options .drawing-field > span { flex-shrink: 0; white-space: nowrap; overflow-wrap: normal; }
 .drawing-tools button small { max-inline-size: 100%; overflow-wrap: anywhere; text-align: center; }
 .drawing-footer { flex-wrap: wrap; gap: 4px 14px; }
 .drawing-footer span { overflow-wrap: anywhere; }

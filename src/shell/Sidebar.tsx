@@ -382,8 +382,12 @@ function TreeRow({
       onKeyDown={(e) => {
         if (renaming) return;
         if (e.key === "Enter") openPage(page.id);
-        else if (e.key === "ArrowRight" && hasKids) setExpanded(page.id, true);
-        else if (e.key === "ArrowLeft") setExpanded(page.id, false);
+        else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+          // Arrows follow the reading direction: in Arabic the left arrow opens a branch.
+          const rtl = getComputedStyle(e.currentTarget).direction === "rtl";
+          const opening = (e.key === "ArrowRight") !== rtl;
+          if (opening ? hasKids : open) setExpanded(page.id, opening);
+        }
         else if (e.key === "F2") {
           e.preventDefault();
           import("./pageActions").then((m) => m.requestRename(page.id));
@@ -401,7 +405,8 @@ function TreeRow({
       <button
         className={`tree-twisty ${hasKids ? "" : "is-leaf"} ${open ? "is-open" : ""}`}
         tabIndex={-1}
-        aria-label={open ? "Collapse" : "Expand"}
+        aria-label={hasKids ? (open ? "Collapse" : "Expand") : undefined}
+        aria-hidden={hasKids ? undefined : true}
         onClick={(e) => {
           e.stopPropagation();
           if (hasKids) setExpanded(page.id, !open);
