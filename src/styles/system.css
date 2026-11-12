@@ -367,6 +367,11 @@ button:focus-visible, [role="button"]:focus-visible, [role="tab"]:focus-visible,
 }
 :root[dir="rtl"] { --chrome-start: right; }
 
+/* Arrows and chevrons that point along the reading direction mirror in Arabic.
+   `scale` composes with any `transform` a component sets, so a disclosure
+   chevron rotated open still points down. */
+:dir(rtl) .icon-dir { scale: -1 1; }
+
 .modal-body { overflow-x: hidden; }
 .pf-edit-media { flex-wrap: wrap; }
 

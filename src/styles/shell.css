@@ -115,8 +115,6 @@
 .tree-twisty:hover { background: var(--fill-2); color: var(--text-1); }
 .tree-twisty .icon { transition: transform var(--d-select) var(--spring-snappy); }
 .tree-twisty.is-open .icon { transform: rotate(90deg); }
-:dir(rtl) .tree-twisty .icon { transform: scaleX(-1); }
-:dir(rtl) .tree-twisty.is-open .icon { transform: rotate(90deg); }
 .tree-twisty.is-leaf { pointer-events: none; }
 .tree-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--text-4); }
 .tree-actions { display: none; align-items: center; gap: 0; margin-inline-end: -4px; }

@@ -9,7 +9,6 @@
 .crumb-btn span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .crumb-btn:hover { background: var(--fill-1); color: var(--text-1); }
 .crumb-sep { color: var(--text-4); }
-:dir(rtl) .crumb-sep { transform: scaleX(-1); }
 .page-actions { display: flex; align-items: center; gap: 2px; opacity: 0.55; transition: opacity var(--d-hover); }
 .page-view:hover .page-actions, .page-actions:focus-within { opacity: 1; }
 .save-state { color: var(--text-4); font: var(--t-caption); margin-inline-end: 8px; white-space: nowrap; }

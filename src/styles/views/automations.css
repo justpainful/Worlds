@@ -18,7 +18,6 @@
 .flow-step { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; background: var(--fill-1); font: var(--t-small); color: var(--text-1); }
 .flow-step.is-quiet { color: var(--text-3); background: none; box-shadow: inset 0 0 0 0.5px var(--hairline-strong); }
 .flow-arrow { color: var(--text-4); }
-:dir(rtl) .flow-arrow { transform: scaleX(-1); }
 .runs { width: 100%; border-collapse: collapse; font: var(--t-small); }
 .runs th { text-align: start; color: var(--text-3); font-weight: 500; padding: 6px 8px; border-bottom: 0.5px solid var(--hairline); }
 .runs td { padding: 9px 8px; border-bottom: 0.5px solid var(--hairline); color: var(--text-1); }

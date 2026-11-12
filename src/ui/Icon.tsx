@@ -276,6 +276,12 @@ export interface IconProps {
   filled?: boolean;
 }
 
+/**
+ * Icons that point along the reading direction. They mirror in a right-to-left
+ * interface (see `.icon-dir` in system.css), so "Next" points left in Arabic.
+ */
+const DIRECTIONAL: ReadonlySet<string> = new Set(["back", "forward", "arrowLeft", "arrowRight"]);
+
 export function Icon({ name, size = 16, weight, className = "", style, label, filled }: IconProps) {
   const Comp = REGISTRY[name] as IconComp;
   // Optical weights in the SF Symbols "medium" range: small glyphs get a heavier
@@ -289,7 +295,7 @@ export function Icon({ name, size = 16, weight, className = "", style, label, fi
       size={size}
       strokeWidth={stroke}
       fill={filled ? "currentColor" : "none"}
-      className={`icon ${filled ? "is-filled" : ""} ${className}`}
+      className={`icon ${DIRECTIONAL.has(name) ? "icon-dir" : ""} ${filled ? "is-filled" : ""} ${className}`}
       style={style}
       aria-hidden={label ? undefined : true}
       aria-label={label}
