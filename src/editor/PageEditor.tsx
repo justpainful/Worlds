@@ -49,6 +49,7 @@ import { LAYER } from "../glass/profiles";
 import { Icon, type IconName } from "../ui/Icon";
 import { menuAt, useMenu, type MenuItem } from "../ui/Menu";
 import { useCollab } from "../sync/useCollab";
+import { LayoutShortcuts } from "./extensions/layoutShortcuts";
 
 export interface PageEditorHandle {
   editor: Editor | null;
@@ -116,6 +117,7 @@ export const PageEditor = forwardRef<
   const editor = useEditor(
     {
       extensions: [
+        LayoutShortcuts,
         StarterKit.configure({
           heading: { levels: [1, 2, 3] },
           link: { openOnClick: false, autolink: true, HTMLAttributes: { rel: "noopener", class: "link" } },
