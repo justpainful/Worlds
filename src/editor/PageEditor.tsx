@@ -123,7 +123,13 @@ export const PageEditor = forwardRef<
           ...collab.starterKit,
         }),
         TaskList,
-        TaskItem.configure({ nested: true }),
+        TaskItem.configure({
+          nested: true,
+          // The list's dir="auto" reads this hidden label first. Tiptap's default starts with
+          // English ("Task item checkbox for …"), which turned Arabic to-do lists left to right
+          // with the boxes far from their text; the item's own words keep its direction.
+          a11y: { checkboxLabel: (node) => node.textContent.trim() || "☐" },
+        }),
         TableKit.configure({ table: { resizable: false, HTMLAttributes: { class: "table" } } }),
         Highlight.configure({ multicolor: true }),
         TextStyle,

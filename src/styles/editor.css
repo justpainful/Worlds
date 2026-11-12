@@ -53,6 +53,8 @@
 .prose ul[data-type="taskList"] li { display: flex; align-items: flex-start; gap: 10px; }
 .prose ul[data-type="taskList"] li > label { flex: none; margin-top: 0.36em; user-select: none; }
 .prose ul[data-type="taskList"] li > div { flex: 1; min-width: 0; }
+/* The item's paragraph kept the browser's 1em margins, so every box sat a line above its text. */
+.prose ul[data-type="taskList"] li > div > p { margin-block: 0; min-height: 0; }
 .prose ul[data-type="taskList"] input[type="checkbox"] {
   appearance: none;
   width: 17px;
