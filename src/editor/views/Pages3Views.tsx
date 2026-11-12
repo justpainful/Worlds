@@ -155,7 +155,8 @@ export function LightboxHost() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setState(null);
       else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-        const d = e.key === "ArrowRight" ? 1 : -1;
+        // The next button sits on the left in Arabic, so the left arrow goes forward there.
+        const d = (e.key === "ArrowRight") !== (document.documentElement.dir === "rtl") ? 1 : -1;
         setState((s) => (s ? { ...s, index: (s.index + d + s.images.length) % s.images.length } : s));
       } else return;
       e.preventDefault();
