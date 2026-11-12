@@ -722,3 +722,5 @@
 "Position: %@, %@" = "Position: %@, %@";
 "%@ · Last modified %@" = "%@ · Last modified %@";
 "%@ · Due %@" = "%@ · Due %@";
+"1 archived item" = "1 archived item";
+"%lld archived items" = "%lld archived items";
