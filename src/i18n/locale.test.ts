@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dateLine, foldArabic, foldWithMap, hijriSpan, joinList } from "./locale";
+import { dateLine, foldArabic, foldWithMap, hijriDate, hijriSpan, joinList } from "./locale";
 
 describe("Arabic text helpers", () => {
   it("folds letters people type interchangeably", () => {
@@ -32,6 +32,7 @@ describe("folding with positions", () => {
 describe("Hijri months for the Arabic calendar", () => {
   it("names the Umm al-Qura month a week falls in, or both when it crosses one", () => {
     expect(hijriSpan(new Date(2026, 10, 12), new Date(2026, 10, 18))).toBe("جمادى الآخرة 1448 هـ");
+    expect(hijriDate(new Date(2026, 10, 12))).toBe("2 جمادى الآخرة");
     expect(hijriSpan(new Date(2026, 10, 8), new Date(2026, 10, 14))).toBe("جمادى الأولى وجمادى الآخرة 1448 هـ");
   });
 });

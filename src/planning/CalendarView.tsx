@@ -12,7 +12,7 @@ import { addDays, formatTime, occurrences, parseISODate, relDay, startOfWeek, to
 import { colorVar, itemMenu, QuickAdd } from "./ui";
 import { useMenu } from "../ui/Menu";
 import { uiLanguage } from "../i18n/ui";
-import { hijriDay, hijriSpan, span } from "../i18n/locale";
+import { hijriDate, hijriDay, hijriSpan, span } from "../i18n/locale";
 
 type Mode = "week" | "agenda";
 
@@ -115,7 +115,10 @@ export function CalendarView() {
               <section key={day} className={`cal-agenda-day ${day === now ? "is-today" : ""}`}>
                 <h3 className="pl-group-head">
                   <span>{relDay(day)}</span>
-                  <span className="pl-count">{parseISODate(day).toLocaleDateString(undefined, { day: "numeric", month: "short" })}</span>
+                  <span className="pl-count">
+                    {parseISODate(day).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+                    {uiLanguage() === "ar" && <span translate="no">{` · ${hijriDate(parseISODate(day))}`}</span>}
+                  </span>
                 </h3>
                 <div className="pl-list">
                   {byDay.get(day)!.map((o) => (

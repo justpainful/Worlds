@@ -114,6 +114,11 @@ export function span(from: string, to: string): string {
   return `${from} ${arabic ? "إلى" : "to"} ${to}`;
 }
 
+/** The Umm al-Qura day and month without the year, "2 جمادى الآخرة", for a dated row in the Arabic calendar. */
+export function hijriDate(d: Date): string {
+  return new Intl.DateTimeFormat("ar-SA-u-ca-islamic-umalqura-nu-latn", { day: "numeric", month: "long" }).format(d);
+}
+
 /** The Umm al-Qura day of the month, for the small number beside a date in the Arabic calendar. */
 export function hijriDay(d: Date): string {
   return new Intl.DateTimeFormat("ar-SA-u-ca-islamic-umalqura-nu-latn", { day: "numeric" }).format(d);
