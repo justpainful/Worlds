@@ -12,7 +12,7 @@ import { addDays, formatTime, occurrences, parseISODate, relDay, startOfWeek, to
 import { colorVar, itemMenu, QuickAdd } from "./ui";
 import { useMenu } from "../ui/Menu";
 import { uiLanguage } from "../i18n/ui";
-import { hijriSpan, span } from "../i18n/locale";
+import { hijriDay, hijriSpan, span } from "../i18n/locale";
 
 type Mode = "week" | "agenda";
 
@@ -88,6 +88,11 @@ export function CalendarView() {
               <div className="cal-day-head">
                 <span className="cal-dow">{parseISODate(day).toLocaleDateString(undefined, { weekday: "short" })}</span>
                 <span className="cal-num">{parseISODate(day).getDate()}</span>
+                {uiLanguage() === "ar" && (
+                  <span className="cal-hijri" translate="no" title={hijriSpan(parseISODate(day), parseISODate(day))}>
+                    {hijriDay(parseISODate(day))}
+                  </span>
+                )}
                 <IconButton icon="add" label="Add event" className="cal-add" onClick={() => addOn(day)} />
               </div>
               <div className="cal-day-body">
