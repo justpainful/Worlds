@@ -1,7 +1,11 @@
 package worlds.android
 
+import android.app.LocaleManager
 import android.content.Context
+import android.os.Build
+import android.os.LocaleList
 import androidx.activity.compose.BackHandler
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -16,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -89,6 +94,7 @@ internal val LocalAppearancePreferences = staticCompositionLocalOf { AppearanceP
         }
         Text(stringResource(R.string.appearance_local_note), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         if (failed) Text(stringResource(R.string.appearance_save_error), color = MaterialTheme.colorScheme.error)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) AppLanguage()
         Text(stringResource(R.string.appearance_theme), color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.titleSmall)
         Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth()) {
             Column(Modifier.selectableGroup()) {
@@ -148,6 +154,30 @@ internal val LocalAppearancePreferences = staticCompositionLocalOf { AppearanceP
                     Text(stringResource(R.string.pack_study_body), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
                 Spacer(Modifier.width(12.dp)); Switch(checked = settings.studyPackEnabled, onCheckedChange = null)
+            }
+        }
+    }
+}
+
+/**
+ * The app's own language, as Settings > Apps > Worlds > Language sets it on
+ * Android 13 and later. Each language is named in its own script; Android
+ * restarts the screen in the new language.
+ */
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+@Composable private fun AppLanguage() {
+    val context = LocalContext.current
+    val manager = remember(context) { context.getSystemService(LocaleManager::class.java) }
+    var current by remember(manager) { mutableStateOf(manager?.applicationLocales?.toLanguageTags().orEmpty().substringBefore(',').substringBefore('-')) }
+    if (manager == null) return
+    Text(stringResource(R.string.appearance_language), color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.titleSmall)
+    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth()) {
+        Column(Modifier.selectableGroup()) {
+            listOf("" to stringResource(R.string.appearance_language_system), "en" to "English", "ar" to "العربية").forEach { (tag, label) ->
+                AppearanceChoice(label, current == tag, null) {
+                    current = tag
+                    manager.applicationLocales = LocaleList.forLanguageTags(tag)
+                }
             }
         }
     }

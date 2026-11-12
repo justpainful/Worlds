@@ -7,6 +7,8 @@
     <string name="appearance_title">الإعدادات</string>
     <string name="appearance_local_note">تنطبق هذه الإعدادات على Worlds في هذا الجهاز.</string>
     <string name="appearance_save_error">تعذر حفظ إعداد المظهر. حاول مرة أخرى.</string>
+    <string name="appearance_language">اللغة</string>
+    <string name="appearance_language_system">لغة الهاتف</string>
     <string name="appearance_theme">السمة</string>
     <string name="appearance_system">اتباع النظام</string>
     <string name="appearance_light">فاتح</string>
