@@ -61,8 +61,8 @@ export function LayerMergeDialog(p: Props) {
             "الإطارات المتداخلة تحتاج خلفيات معتمة ومنطقة تداخل خالية من محتوى الإطار السفلي والعالم. انقل المحتوى أو افصل الإطارات.",
           ),
           "merge-memory": t(
-            "This merge exceeds the64-million-pixel or working-memory limit",
-            "يتجاوز الدمج حد64 مليون بكسل أو حد ذاكرة العمل",
+            "This merge exceeds the 64-million-pixel or working-memory limit",
+            "يتجاوز الدمج حد 64 مليون بكسل أو حد ذاكرة العمل",
           ),
           "merge-scene-limit": t(
             "The drawing is too large for an atomic merge. Split it into smaller drawings.",

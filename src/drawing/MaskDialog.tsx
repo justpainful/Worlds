@@ -82,7 +82,7 @@ export function MaskDialog(p: Props) {
     return (
       (
         {
-          "mask-size": t("The mask exceeds16 million working pixels", "تجاوز القناع16 مليون بكسل للعمل"),
+          "mask-size": t("The mask exceeds 16 million working pixels", "تجاوز القناع 16 مليون بكسل للعمل"),
           "mask-stale": t("The source changed. Cancel and reopen the mask.", "تغيّر المصدر. ألغِ المعاينة وافتح القناع مجددًا."),
           "mask-locked": t("The element or parent group is locked", "العنصر أو مجموعته الأم مقفلة"),
           "mask-missing": t("The mask target is no longer available", "العنصر المستهدف بالقناع لم يعد متاحًا"),

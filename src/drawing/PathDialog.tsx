@@ -184,8 +184,8 @@ export function PathDialog(p: {
       <div dir={p.arabic ? "rtl" : "ltr"}>
         <p className="drawing-selection-help">
           {t(
-            "Drag anchors and handles, or use arrow keys. Shift moves10 units. Apply makes one reversible edit.",
-            "اسحب نقاط المسار ومقابضه أو استخدم الأسهم. مع Shift تتحرك النقطة10 وحدات. التطبيق يضيف تعديلًا واحدًا قابلًا للتراجع.",
+            "Drag anchors and handles, or use arrow keys. Shift moves 10 units. Apply makes one reversible edit.",
+            "اسحب نقاط المسار ومقابضه أو استخدم الأسهم. مع Shift تتحرك النقطة 10 وحدات. التطبيق يضيف تعديلًا واحدًا قابلًا للتراجع.",
           )}
         </p>
         <svg

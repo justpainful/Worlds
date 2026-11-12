@@ -418,8 +418,8 @@ export function ImageCropDialog(p: Props) {
         )}
         <p className="drawing-selection-help">
           {t(
-            "Drag the crop area or its edges. Arrow keys move one source pixel; Shift moves10. The original file remains intact.",
-            "اسحب منطقة الاقتصاص أو حدودها. الأسهم تحرّك بكسلًا واحدًا من الأصل، ومع Shift تتحرك10 بكسلات. يبقى الملف الأصلي محفوظًا.",
+            "Drag the crop area or its edges. Arrow keys move one source pixel; Shift moves 10. The original file remains intact.",
+            "اسحب منطقة الاقتصاص أو حدودها. الأسهم تحرّك بكسلًا واحدًا من الأصل، ومع Shift تتحرك 10 بكسلات. يبقى الملف الأصلي محفوظًا.",
           )}
         </p>
         <fieldset disabled={!enabled} className="drawing-crop-fields">

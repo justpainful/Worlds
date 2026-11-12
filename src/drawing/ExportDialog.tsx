@@ -358,13 +358,13 @@ export function DrawingExportDialog({
           </label>
           <label className="drawing-check">
             <input type="checkbox" checked={packageHistory} onChange={(e) => setPackageHistory(e.target.checked)} />
-            {t("Include operation history (up to500 operations)", "تضمين سجل العمليات (حتى500 عملية)")}
+            {t("Include operation history (up to 500 operations)", "تضمين سجل العمليات (حتى 500 عملية)")}
           </label>
           <label className="drawing-check">
             <input type="checkbox" checked={packageExperiments} onChange={(e) => setPackageExperiments(e.target.checked)} />
             {t(
-              "Include editable experiments and original comparison bases (up to24)",
-              "تضمين التجارب القابلة للتحرير وأسس مقارنتها الأصلية (حتى24)",
+              "Include editable experiments and original comparison bases (up to 24)",
+              "تضمين التجارب القابلة للتحرير وأسس مقارنتها الأصلية (حتى 24)",
             )}
           </label>
           <p>
