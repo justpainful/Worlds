@@ -125,9 +125,10 @@ export function parseQuickAdd(input: string, now: Date = new Date()): Parsed {
       if (!(key in DAYS)) continue;
       const next = m[1]?.toLowerCase() === "next" || !!m[3];
       let diff = (DAYS[key] - weekday(base) + 7) % 7;
-      // Today's own weekday means today, unless the time has passed or "next" asks for the week after.
+      // Today's own weekday means next week, unless a time later today is given:
+      // "meeting Thursday 5 pm" typed on Thursday morning is this afternoon.
       const at = time as string | null;
-      if (diff === 0 && (next || (at !== null && at <= nowHM))) diff = 7;
+      if (diff === 0 && (next || at === null || at <= nowHM)) diff = 7;
       due = addDays(base, diff);
       text = text.replace(m[0], " ");
       break;

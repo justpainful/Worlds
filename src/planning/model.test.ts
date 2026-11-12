@@ -110,6 +110,7 @@ describe("quick add on the day itself", () => {
   it("reads today's weekday as today while its time is still ahead", () => {
     expect(parseQuickAdd("اجتماع الفريق الخميس الساعة 5 مساءً", THU)).toMatchObject({ title: "اجتماع الفريق", due: "2026-11-12", time: "17:00" });
     expect(parseQuickAdd("Standup thursday 8am", THU)).toMatchObject({ due: "2026-11-19", time: "08:00" });
+    expect(parseQuickAdd("Gym thursday", THU)).toMatchObject({ title: "Gym", due: "2026-11-19" });
     expect(parseQuickAdd("Review next thursday", THU)).toMatchObject({ title: "Review", due: "2026-11-19" });
     expect(parseQuickAdd("اجتماع يوم الاثنين القادم", THU)).toMatchObject({ title: "اجتماع", due: "2026-11-16" });
     expect(parseQuickAdd("رحلة الخميس الجاي", THU)).toMatchObject({ title: "رحلة", due: "2026-11-19" });
