@@ -117,7 +117,7 @@ function MenuPanel({ x, y, items, onClose, origin, minWidth, from: _from, depth 
         layer={LAYER.menu + depth}
         // Morphing out of the anchor is off until the static material is right (Liquid Glass V2, phase 7).
         className={`menu-panel ${pos.ready ? "is-in" : ""}`}
-        style={{ left: pos.x, top: pos.y, transformOrigin: origin ?? "top left", minWidth }}
+        style={{ left: pos.x, top: pos.y, transformOrigin: origin ?? (document.documentElement.dir === "rtl" ? "top right" : "top left"), minWidth }}
         role="menu"
         radius="var(--r-lg)"
       >
