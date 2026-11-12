@@ -77,11 +77,19 @@ pub fn search(conn: &Connection, query: &str, limit: i64, include_templates: boo
         })
     };
     if q.chars().count() >= 3 {
-        // Each whitespace-separated term must appear (trigram substring match).
+        // Each whitespace-separated term must appear (trigram substring match),
+        // in any of the spellings Arabic readers treat as the same word.
         let fts_q = q
             .split_whitespace()
             .filter(|t| t.chars().count() >= 3)
-            .map(|t| format!("\"{}\"", t.replace('"', "\"\"")))
+            .map(|t| {
+                let spellings: Vec<String> = arabic_spellings(t).iter().map(|s| format!("\"{}\"", s.replace('"', "\"\""))).collect();
+                if spellings.len() == 1 {
+                    spellings.join("")
+                } else {
+                    format!("({})", spellings.join(" OR "))
+                }
+            })
             .collect::<Vec<_>>()
             .join(" AND ");
         if !fts_q.is_empty() {
@@ -116,4 +124,46 @@ pub fn search(conn: &Connection, query: &str, limit: i64, include_templates: boo
     }
     hits.truncate(limit as usize);
     Ok(hits)
+}
+
+/// The spellings of a search term that Arabic readers treat as one word: any
+/// alef form (ا أ إ آ), and a final taa marbuta or alef maqsura typed as haa or
+/// yaa, or the other way round. Capped so a long term cannot blow up the query.
+pub(crate) fn arabic_spellings(term: &str) -> Vec<String> {
+    const ALEFS: [char; 4] = ['ا', 'أ', 'إ', 'آ'];
+    const LIMIT: usize = 32;
+    let chars: Vec<char> = term.chars().collect();
+    let last = chars.len().saturating_sub(1);
+    let mut out = vec![String::new()];
+    for (i, &c) in chars.iter().enumerate() {
+        let options: Vec<char> = if ALEFS.contains(&c) {
+            ALEFS.to_vec()
+        } else if i == last && (c == 'ه' || c == 'ة') {
+            vec![c, if c == 'ه' { 'ة' } else { 'ه' }]
+        } else if i == last && (c == 'ي' || c == 'ى') {
+            vec![c, if c == 'ي' { 'ى' } else { 'ي' }]
+        } else {
+            vec![c]
+        };
+        if out.len() * options.len() > LIMIT {
+            // Too many spellings already: keep the rest as typed.
+            out.iter_mut().for_each(|s| s.push(c));
+            continue;
+        }
+        out = out
+            .iter()
+            .flat_map(|s| {
+                options.iter().map(move |&o| {
+                    let mut next = s.clone();
+                    next.push(o);
+                    next
+                })
+            })
+            .collect();
+    }
+    // The term as typed comes first.
+    if let Some(pos) = out.iter().position(|s| s == term) {
+        out.swap(0, pos);
+    }
+    out
 }
