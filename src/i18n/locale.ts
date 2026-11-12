@@ -108,3 +108,8 @@ export function dateLine(d: Date): string {
   const hijri = new Intl.DateTimeFormat("ar-SA-u-ca-islamic-umalqura-nu-latn", { day: "numeric", month: "long", year: "numeric" }).format(d);
   return `${gregorian} · ${hijri}`;
 }
+
+/** A time or date range in words, "8:00 AM to 9:15 AM" or "8:00 ص إلى 9:15 ص", instead of a dash. */
+export function span(from: string, to: string): string {
+  return `${from} ${arabic ? "إلى" : "to"} ${to}`;
+}

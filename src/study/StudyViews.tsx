@@ -12,7 +12,7 @@ import { createItem, trashItem, updateData } from "../planning/actions";
 import { addDays, dataOf, detectLinkProvider, formatTime, inSubject, occurrences, openStudyWork, relDay, subjectOf, subjects, today, weekday, type DataKind, type SubjectBook, type SubjectLink } from "../planning/model";
 import { BlurInput, colorVar, DueLabel, Field, GroupHead, ItemRow, NumberInput, QuickAdd } from "../planning/ui";
 import { FocusTimerBar, WEEKDAYS } from "../planning/ItemViews";
-import { joinList } from "../i18n/locale";
+import { joinList, span } from "../i18n/locale";
 import { promptText } from "../editor/prompt";
 
 export const SUBJECT_COLORS = Object.keys(PROP_COLORS) as PropColor[];
@@ -67,7 +67,7 @@ export function StudyView() {
               const d = dataOf(o.page, "event");
               return (
                 <button key={o.key} className="study-class" style={{ "--chip": colorVar(o.color) } as React.CSSProperties} onClick={() => subject && openPage(subject.id)}>
-                  <span className="study-class-time">{formatTime(o.start)}{o.end ? ` – ${formatTime(o.end)}` : ""}</span>
+                  <span className="study-class-time">{o.end ? span(formatTime(o.start), formatTime(o.end)) : formatTime(o.start)}</span>
                   <span className="study-class-title bidi">{pageTitle(subject ?? o.page)}</span>
                   {(d.location || (subject && dataOf(subject, "subject").room)) && <span className="study-class-room bidi">{d.location || dataOf(subject!, "subject").room}</span>}
                 </button>
@@ -187,7 +187,7 @@ export function SubjectView({ id }: { id: string }) {
               return (
                 <button key={c.id} className="study-slot" onClick={() => openPage(c.id)}>
                   <span className="study-slot-days">{joinList((e.weekly ?? []).map((i) => WEEKDAYS[i].short)) || (e.date ? relDay(e.date) : "")}</span>
-                  <span className="study-slot-time">{formatTime(e.start)}{e.end ? ` – ${formatTime(e.end)}` : ""}</span>
+                  <span className="study-slot-time">{e.end ? span(formatTime(e.start), formatTime(e.end)) : formatTime(e.start)}</span>
                   {e.location && <span className="study-slot-room bidi">{e.location}</span>}
                 </button>
               );
@@ -503,7 +503,7 @@ export function StudyItemView({ id }: { id: string }) {
             </Field>
           </>
         )}
-        <Field label="What exactly" wide><BlurInput value={d.action ?? ""} placeholder="e.g. Print pages 12–15, double-sided" onCommit={(action) => set({ action })} /></Field>
+        <Field label="What exactly" wide><BlurInput value={d.action ?? ""} placeholder="e.g. Print pages 12 to 15, double-sided" onCommit={(action) => set({ action })} /></Field>
       </section>
       <div className="pl-detail-foot"><Button variant="danger" icon="delete" onClick={() => trashItem(p)}>Delete</Button></div>
     </div>

@@ -12,7 +12,7 @@ import { addDays, formatTime, occurrences, parseISODate, relDay, startOfWeek, to
 import { colorVar, itemMenu, QuickAdd } from "./ui";
 import { useMenu } from "../ui/Menu";
 import { uiLanguage } from "../i18n/ui";
-import { hijriSpan } from "../i18n/locale";
+import { hijriSpan, span } from "../i18n/locale";
 
 type Mode = "week" | "agenda";
 
@@ -42,7 +42,7 @@ export function CalendarView() {
     const a = parseISODate(from), b = parseISODate(to);
     const sameMonth = a.getMonth() === b.getMonth();
     const month = a.toLocaleDateString(undefined, { month: "long", year: "numeric" });
-    return sameMonth ? month : `${a.toLocaleDateString(undefined, { month: "short" })} – ${b.toLocaleDateString(undefined, { month: "short", year: "numeric" })}`;
+    return sameMonth ? month : span(a.toLocaleDateString(undefined, { month: "short" }), b.toLocaleDateString(undefined, { month: "short", year: "numeric" }));
   })();
 
   const addOn = async (day: string) => {
