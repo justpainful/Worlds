@@ -114,8 +114,18 @@ export function TooltipHost() {
   useEffect(() => {
     let timer = 0;
     let current: HTMLElement | null = null;
+    // Names the layout cuts short (a long page in the sidebar, an event in a week column)
+    // show whole on hover, as their own tooltip.
+    const CUT = ".tree-label, .side-label, .cal-chip-title, .res-title, .pl-row-title";
+    const cutText = (target: Element): HTMLElement | null => {
+      const t = target.closest?.(CUT) as HTMLElement | null;
+      if (!t) return null;
+      const cut = t.scrollWidth > t.clientWidth + 1 || t.scrollHeight > t.clientHeight + 1;
+      return cut ? t : null;
+    };
     const over = (e: PointerEvent) => {
-      const el = (e.target as HTMLElement).closest?.("[data-tip]") as HTMLElement | null;
+      if (!(e.target instanceof Element)) return;
+      const el = cutText(e.target) ?? (e.target.closest?.("[data-tip]") as HTMLElement | null);
       if (el === current) return;
       current = el;
       clearTimeout(timer);
@@ -123,7 +133,7 @@ export function TooltipHost() {
       if (!el) return;
       timer = window.setTimeout(() => {
         const r = el.getBoundingClientRect();
-        const text = el.dataset.tip ?? "";
+        const text = el.dataset.tip ?? (el instanceof HTMLInputElement ? el.value : (el.textContent ?? "")).trim();
         if (text) setTip({ text, x: r.left + r.width / 2, y: r.bottom + 8 });
       }, 520);
     };
