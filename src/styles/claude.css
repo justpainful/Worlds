@@ -116,10 +116,10 @@
 .ai-composer { position: relative; }
 .composer-shell { position: relative; min-height: 50px; isolation: isolate; }
 .composer-shell > .composer-glass { position: absolute !important; inset: 0; z-index: 0; pointer-events: none; }
-.composer-shell > .ai-glow { left: 27px; }
+.composer-shell > .ai-glow { inset-inline-start: 27px; }
 .composer-plus {
   position: absolute;
-  left: 0;
+  inset-inline-start: 0;
   bottom: 4px;
   z-index: 2;
   width: 46px;
@@ -132,7 +132,7 @@
 }
 .composer-plus:hover { background: rgba(255, 255, 255, 0.09); }
 .composer-plus:active { transform: scale(0.92); }
-.composer-body { position: relative; z-index: 1; display: flex; flex-direction: column; padding: 12px 10px 8px 60px; min-width: 0; }
+.composer-body { position: relative; z-index: 1; display: flex; flex-direction: column; padding: 12px 10px 8px; padding-inline-start: 60px; min-width: 0; }
 .composer-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; }
 .composer-chips .ai-context { margin: 0; height: 26px; background: rgba(255, 255, 255, 0.09); }
 .composer-chips .att-strip { width: 100%; }
@@ -152,7 +152,7 @@
 }
 .composer-input::placeholder { color: var(--text-3); }
 .composer-bar { display: flex; align-items: center; gap: 8px; height: 34px; margin-top: 6px; }
-.composer-hint { font: var(--t-caption); color: var(--text-4); white-space: nowrap; opacity: 0; transition: opacity var(--d-hover); }
+.composer-hint { font: var(--t-caption); color: var(--text-4); white-space: nowrap; opacity: 0; transition: opacity var(--d-hover); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .ai-composer.is-focused .composer-hint, .ai-composer.is-busy .composer-hint { opacity: 1; }
 .ai-model-btn {
   display: inline-flex;
@@ -187,7 +187,7 @@
 
 /* Larger, page-level composer (full chat view) */
 .ai-composer-page .composer-shell { min-height: 58px; }
-.ai-composer-page .composer-body { padding: 15px 12px 10px 62px; }
+.ai-composer-page .composer-body { padding: 15px 12px 10px; padding-inline-start: 62px; }
 .ai-composer-page .composer-input { font-size: 16px; min-height: 52px; }
 
 /* ---- Quick ask capsule ------------------------------------------------- */

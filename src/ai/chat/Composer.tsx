@@ -81,7 +81,7 @@ export function Composer({
   const [toolRefs, setToolRefs] = useState<ToolRef[]>([]);
   const [pageRefs, setPageRefs] = useState<{ id: string; title: string }[]>([]);
   const [pagePick, setPagePick] = useState<DOMRect | null>(null);
-  const [box, setBox] = useState({ w: 0, h: 0 });
+  const [box, setBox] = useState({ w: 0, h: 0, rtl: false });
   const [focused, setFocused] = useState(false);
   const input = useRef<HTMLTextAreaElement>(null);
   const root = useRef<HTMLDivElement>(null);
@@ -100,7 +100,7 @@ export function Composer({
   useEffect(() => {
     const el = shell.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => setBox({ w: el.offsetWidth, h: el.offsetHeight }));
+    const ro = new ResizeObserver(() => setBox({ w: el.offsetWidth, h: el.offsetHeight, rtl: getComputedStyle(el).direction === "rtl" }));
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -245,8 +245,9 @@ export function Composer({
   const shapes =
     box.w > 0
       ? [
-          { x: P / 2 + 4, y: 0, w: box.w - (P / 2 + 4), h: box.h, r: Math.min(24, box.h / 2) },
-          { x: 0, y: box.h - P - 4, w: P, h: P, r: P / 2 },
+          // The round + sits at the start edge: the left, or the right in Arabic.
+          { x: box.rtl ? 0 : P / 2 + 4, y: 0, w: box.w - (P / 2 + 4), h: box.h, r: Math.min(24, box.h / 2) },
+          { x: box.rtl ? box.w - P : 0, y: box.h - P - 4, w: P, h: P, r: P / 2 },
         ]
       : undefined;
 
