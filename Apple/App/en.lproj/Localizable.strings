@@ -99,3 +99,10 @@
 "Keep editing" = "Keep editing";
 "This spreadsheet changed elsewhere. Close and reopen it to load the latest version." = "This spreadsheet changed elsewhere. Close and reopen it to load the latest version.";
 "The spreadsheet could not be saved. Your changes are still here." = "The spreadsheet could not be saved. Your changes are still here.";
+
+/* Drawing */
+"Correct hand-drawn shapes" = "Correct hand-drawn shapes";
+"Undo" = "Undo";
+"Redo" = "Redo";
+"The change could not be undone. Reopen the drawing to check it." = "The change could not be undone. Reopen the drawing to check it.";
+"The change could not be redone. Reopen the drawing to check it." = "The change could not be redone. Reopen the drawing to check it.";

@@ -10,7 +10,8 @@ final class WorldsLocalDrawingUITests: XCTestCase {
         return true
     }
     @MainActor func testPersonalDrawingSaveAndReopen() {
-        let app = XCUIApplication(); app.launchArguments = ["--ui-testing-local-copy-fixture"]; app.launch()
+        // The straight drag would otherwise be corrected into a line shape.
+        let app = XCUIApplication(); app.launchArguments = ["--ui-testing-local-copy-fixture", "-WorldsDrawingCorrectShapes", "NO"]; app.launch()
         guard openDrawing(app) else { return }
         let status = app.staticTexts["drawing-status"]
         guard status.waitForExistence(timeout: 20) else { failure(app, "drawing-status-missing"); XCTFail("Drawing status did not appear"); return }
