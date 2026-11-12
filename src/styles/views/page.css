@@ -11,7 +11,7 @@
 .crumb-sep { color: var(--text-4); }
 .page-actions { display: flex; align-items: center; gap: 2px; opacity: 0.55; transition: opacity var(--d-hover); }
 .page-view:hover .page-actions, .page-actions:focus-within { opacity: 1; }
-.save-state { color: var(--text-4); font: var(--t-caption); margin-inline-end: 8px; white-space: nowrap; }
+.save-state { color: var(--text-3); font: var(--t-caption); margin-inline-end: 8px; white-space: nowrap; }
 
 .page-icon-btn { display: inline-flex; align-items: center; margin-bottom: 8px; border-radius: 14px; color: var(--text-3); }
 .page-icon-big { font-size: 46px; line-height: 1; padding: 4px; border-radius: 14px; font-family: "Segoe UI Emoji", sans-serif; transition: background-color var(--d-hover); }
