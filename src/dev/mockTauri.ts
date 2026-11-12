@@ -437,7 +437,17 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
       chatMessages[chatId].push({ id: id(), role: "user", content: a.request.prompt, steps: [], opId: null, meta: {}, createdAt: Date.now() });
       if (WEB_DEMO || new URLSearchParams(location.search).has("demo")) {
         // Simulated events only; no service, network, or real workspace writes.
-        const answer = "**ملخص توضيحي**\n\n- حدد الجمهور وهدف الإطلاق.\n- اجمع المواد البصرية والنصوص.\n- راجع التفاصيل مع الفريق قبل النشر.\n\nهذه نتيجة تجريبية للعرض.";
+        // A reply drawn from the demo's own pages, in the language of the question, that says plainly it is the demo.
+        const arabicPrompt = /[\u0600-\u06FF]/.test(String(a.request.prompt ?? ""));
+        const recent = Object.values(pages)
+          .filter((p: any) => !p.deletedAt && p.kind !== "template" && p.title)
+          .sort((x: any, y: any) => y.updatedAt - x.updatedAt)
+          .slice(0, 5)
+          .map((p: any) => `- ${p.title}`)
+          .join("\n");
+        const answer = arabicPrompt
+          ? `**من مساحة عملك**\n\nآخر ما عملت عليه:\n${recent}\n\nهذه نسخة الويب التجريبية. في تطبيق سطح المكتب يقرأ Claude صفحاتك ويكتب فيها فعلًا، ويمكن التراجع عن كل تغيير.`
+          : `**From your workspace**\n\nWhat you worked on most recently:\n${recent}\n\nThis is the web demo. In the desktop app Claude really reads and writes your pages, and every change can be undone.`;
         setTimeout(() => emit("worlds://ai", { runId, kind: "tool", tool: "pages_read" }), 300);
         setTimeout(() => emit("worlds://ai", { runId, kind: "tool_result", error: false }), 800);
         setTimeout(() => emit("worlds://ai", { runId, kind: "text", text: answer }), 1100);
