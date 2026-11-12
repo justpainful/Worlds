@@ -5,10 +5,11 @@
 .res-view { max-width: 1120px; margin: 0 auto; padding: 72px 40px 80px; display: flex; flex-direction: column; gap: 22px; }
 
 /* ---- Shared header ------------------------------------------------------- */
-.res-head { display: flex; align-items: center; gap: 14px; min-width: 0; }
+/* The actions move to a second row before the title is squeezed to a few letters. */
+.res-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; min-width: 0; }
 .res-icon { flex: none; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 14px; transition: background-color var(--d-hover); }
 .res-icon:hover { background: var(--fill-1); }
-.res-titles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.res-titles { flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .res-title { width: 100%; border: 0; outline: 0; background: none; padding: 0; color: var(--text-1); font: var(--t-h2, 700 26px/1.2 var(--font-ui)); font-size: 26px; font-weight: 700; letter-spacing: -0.015em; text-overflow: ellipsis; }
 .res-title::placeholder { color: var(--text-4); }
 .res-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--text-3); font: var(--t-small); }
