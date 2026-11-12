@@ -63,7 +63,7 @@ import worlds.content.ResourceDocument
                         WorldsTile(R.drawable.pi_image, 44.dp)
                         Text(gallery.title.ifBlank { stringResource(R.string.untitled) }, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
                     }
-                    Text(stringResource(R.string.gallery_item_count, galleryItems.size), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(LocalContext.current.resources.getQuantityString(R.plurals.gallery_item_count, galleryItems.size, galleryItems.size), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilledTonalButton(enabled = !busy, onClick = onAdd) { WorldsActionLabel(R.drawable.ic_plus, stringResource(R.string.gallery_add)) }
                         WorldsActionButton(enabled = !busy, onClick = { onLayout(gallery, if (view == "grid") "list" else "grid") { failure = !it } }) { WorldsActionLabel(R.drawable.ic_list, stringResource(if (view == "grid") R.string.gallery_list else R.string.gallery_grid)) }

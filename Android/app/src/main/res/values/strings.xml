@@ -515,7 +515,10 @@
     <string name="project_event_updated">Updated</string>
     <string name="gallery_new">New gallery</string>
     <string name="gallery_kind">Gallery</string>
-    <string name="gallery_item_count">%1$d items</string>
+    <plurals name="gallery_item_count">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
     <string name="gallery_add">Add media</string>
     <string name="gallery_list">List view</string>
     <string name="gallery_grid">Grid view</string>

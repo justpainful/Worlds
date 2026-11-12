@@ -515,7 +515,14 @@
     <string name="project_event_updated">حُدّث</string>
     <string name="gallery_new">معرض جديد</string>
     <string name="gallery_kind">معرض</string>
-    <string name="gallery_item_count">عدد العناصر: %1$d</string>
+    <plurals name="gallery_item_count">
+        <item quantity="zero">لا عناصر</item>
+        <item quantity="one">عنصر واحد</item>
+        <item quantity="two">عنصران</item>
+        <item quantity="few">%1$d عناصر</item>
+        <item quantity="many">%1$d عنصرًا</item>
+        <item quantity="other">%1$d عنصر</item>
+    </plurals>
     <string name="gallery_add">إضافة وسائط</string>
     <string name="gallery_list">عرض القائمة</string>
     <string name="gallery_grid">عرض الشبكة</string>
