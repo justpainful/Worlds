@@ -535,6 +535,7 @@
 .cal-time {
   font: var(--t-caption);
   color: var(--text-3);
+  white-space: nowrap;
 }
 
 .cal-chip-title {
@@ -543,12 +544,27 @@
   white-space: nowrap;
 }
 
-/* In a narrow week column a title takes two lines rather than three letters and an ellipsis. */
+/* In a narrow week column a title takes up to three lines rather than three letters and an ellipsis. */
+/* A task in a week column: the box and time on one line, the title the whole width under them. */
+.cal-chip:not(.is-wide):has(> .pl-check) {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 6px;
+  align-items: center;
+}
+.cal-chip:not(.is-wide):has(> .pl-check) .cal-chip-text {
+  display: contents;
+}
+.cal-chip:not(.is-wide):has(> .pl-check) .cal-chip-title {
+  grid-column: 1 / -1;
+}
+
 .cal-chip:not(.is-wide) .cal-chip-title {
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   white-space: normal;
+  hyphens: auto;
   overflow-wrap: anywhere;
 }
 
