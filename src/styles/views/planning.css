@@ -468,7 +468,7 @@
 /* The Hijri day beside the date, smaller and quieter, as Saudi calendars print it. */
 .cal-hijri {
   font: var(--t-caption);
-  color: var(--text-4);
+  color: var(--text-3);
 }
 
 .cal-day.is-today .cal-num {

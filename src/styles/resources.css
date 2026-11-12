@@ -140,7 +140,7 @@
   /* Ink on paper is always dark, whatever the app theme. */
   --text-1: #1c1c1f;
   --text-2: rgba(28, 28, 31, 0.74);
-  --text-3: rgba(28, 28, 31, 0.5);
+  --text-3: rgba(28, 28, 31, 0.58);
   --text-4: rgba(28, 28, 31, 0.34);
   --fill-1: rgba(0, 0, 0, 0.04);
   --fill-2: rgba(0, 0, 0, 0.07);
