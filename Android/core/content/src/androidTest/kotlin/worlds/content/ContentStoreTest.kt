@@ -784,6 +784,10 @@ class ContentStoreTest {
         store.saveBlocks(page.id, 0, listOf(ContentBlock("slide", slide)))
         assertEquals(page.id, store.search("100%").single().id)
         assertEquals(page.id, store.search("لاحظ").single().id)
+        // Arabic is folded as on the desktop: taa marbuta, alef forms and diacritics do not get in the way.
+        val note = store.create("page", "صورةُ الخليّة")
+        assertEquals(note.id, store.search("صوره").single().id)
+        assertEquals(note.id, store.search("الخلية").single().id)
         assertTrue(store.search("_").isEmpty())
         store.trash(page.id)
         assertTrue(store.search("100%").isEmpty())

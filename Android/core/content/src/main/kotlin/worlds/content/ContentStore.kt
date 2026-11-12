@@ -1030,13 +1030,17 @@ class ContentStore(context: Context, name: String = "worlds-content.db") :
         Unit
     }
 
-    /** Literal substring search over titles and derived text, preserving Arabic text. */
+    /**
+     * Literal substring search over titles and derived text. Arabic letters people
+     * type interchangeably (أ إ آ and ا, ة and ه, ى and ي), diacritics and tatweel
+     * are folded on both sides, as the desktop search does, so صوره finds صورة.
+     */
     fun search(query: String, limit: Int = 50): List<Resource> {
-        val q = query.trim()
+        val q = foldArabic(query.trim())
         require(limit in 1..500)
         if (q.isEmpty()) return emptyList()
         val result = mutableListOf<Resource>()
-        readableDatabase.rawQuery("SELECT $COLS FROM resources r WHERE r.deleted_at IS NULL AND r.kind!='template' AND (instr(lower(r.title),lower(?))>0 OR EXISTS (SELECT 1 FROM blocks b WHERE b.page_id=r.id AND instr(lower(b.text),lower(?))>0)) ORDER BY r.updated_at DESC,r.id LIMIT ?", arrayOf(q, q, limit.toString())).use {
+        readableDatabase.rawQuery("SELECT $COLS FROM resources r WHERE r.deleted_at IS NULL AND r.kind!='template' AND (instr(${foldSql("r.title")},lower(?))>0 OR EXISTS (SELECT 1 FROM blocks b WHERE b.page_id=r.id AND instr(${foldSql("b.text")},lower(?))>0)) ORDER BY r.updated_at DESC,r.id LIMIT ?", arrayOf(q, q, limit.toString())).use {
             while (it.moveToNext()) result.add(it.resource())
         }
         return result
@@ -1207,5 +1211,17 @@ class ContentStore(context: Context, name: String = "worlds-content.db") :
         const val MAX_IMAGE_BYTES = 16 * 1024 * 1024
         const val MAX_GALLERY_MEDIA_BYTES = 512L * 1024 * 1024
         private val KINDS = setOf("page", "document", "presentation", "project", "gallery", "file", "stream", "drawing", "template", "spreadsheet", "task", "event", "inbox", "goal", "subject", "lesson", "assignment", "exam", "requirement")
+
+        /** Arabic letters folded for search: alef forms, taa marbuta, alef maqsura; diacritics and tatweel dropped. */
+        private val ARABIC_FOLDS: List<Pair<String, String>> =
+            listOf("أ" to "ا", "إ" to "ا", "آ" to "ا", "ة" to "ه", "ى" to "ي", "\u0640" to "") +
+                ('\u064B'..'\u0652').map { it.toString() to "" }
+
+        /** The same folding as [foldSql], in Kotlin, for the search text. */
+        fun foldArabic(text: String): String = ARABIC_FOLDS.fold(text) { acc, (from, to) -> acc.replace(from, to) }
+
+        /** A column read through SQLite `replace` calls that fold it like [foldArabic]. */
+        private fun foldSql(column: String): String =
+            ARABIC_FOLDS.fold("lower($column)") { acc, (from, to) -> "replace($acc,'$from','$to')" }
     }
 }
