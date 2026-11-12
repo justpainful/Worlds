@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>%lld Active Items</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>zero</key>
+			<string>لا عناصر نشطة</string>
+			<key>one</key>
+			<string>عنصر نشط واحد</string>
+			<key>two</key>
+			<string>عنصران نشطان</string>
+			<key>few</key>
+			<string>%lld عناصر نشطة</string>
+			<key>many</key>
+			<string>%lld عنصرًا نشطًا</string>
+			<key>other</key>
+			<string>%lld عنصر نشط</string>
+		</dict>
+	</dict>
+	<key>%lld Docs</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>zero</key>
+			<string>لا مستندات</string>
+			<key>one</key>
+			<string>مستند واحد</string>
+			<key>two</key>
+			<string>مستندان</string>
+			<key>few</key>
+			<string>%lld مستندات</string>
+			<key>many</key>
+			<string>%lld مستندًا</string>
+			<key>other</key>
+			<string>%lld مستند</string>
+		</dict>
+	</dict>
+	<key>%lld Sheets</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>zero</key>
+			<string>لا جداول</string>
+			<key>one</key>
+			<string>جدول واحد</string>
+			<key>two</key>
+			<string>جدولان</string>
+			<key>few</key>
+			<string>%lld جداول</string>
+			<key>many</key>
+			<string>%lld جدولًا</string>
+			<key>other</key>
+			<string>%lld جدول</string>
+		</dict>
+	</dict>
+	<key>%lld Spaces</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>zero</key>
+			<string>لا مساحات</string>
+			<key>one</key>
+			<string>مساحة واحدة</string>
+			<key>two</key>
+			<string>مساحتان</string>
+			<key>few</key>
+			<string>%lld مساحات</string>
+			<key>many</key>
+			<string>%lld مساحة</string>
+			<key>other</key>
+			<string>%lld مساحة</string>
+		</dict>
+	</dict>
+	<key>%lld slides</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>zero</key>
+			<string>لا شرائح</string>
+			<key>one</key>
+			<string>شريحة واحدة</string>
+			<key>two</key>
+			<string>شريحتان</string>
+			<key>few</key>
+			<string>%lld شرائح</string>
+			<key>many</key>
+			<string>%lld شريحة</string>
+			<key>other</key>
+			<string>%lld شريحة</string>
+		</dict>
+	</dict>
+	<key>%lld items</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>zero</key>
+			<string>لا عناصر</string>
+			<key>one</key>
+			<string>عنصر واحد</string>
+			<key>two</key>
+			<string>عنصران</string>
+			<key>few</key>
+			<string>%lld عناصر</string>
+			<key>many</key>
+			<string>%lld عنصرًا</string>
+			<key>other</key>
+			<string>%lld عنصر</string>
+		</dict>
+	</dict>
+	<key>%lld sessions</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>zero</key>
+			<string>لا جلسات</string>
+			<key>one</key>
+			<string>جلسة واحدة</string>
+			<key>two</key>
+			<string>جلستان</string>
+			<key>few</key>
+			<string>%lld جلسات</string>
+			<key>many</key>
+			<string>%lld جلسة</string>
+			<key>other</key>
+			<string>%lld جلسة</string>
+		</dict>
+	</dict>
+	<key>%lld vertices</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>zero</key>
+			<string>لا رؤوس</string>
+			<key>one</key>
+			<string>رأس واحد</string>
+			<key>two</key>
+			<string>رأسان</string>
+			<key>few</key>
+			<string>%lld رؤوس</string>
+			<key>many</key>
+			<string>%lld رأسًا</string>
+			<key>other</key>
+			<string>%lld رأس</string>
+		</dict>
+	</dict>
+	<key>• %lld faces</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>zero</key>
+			<string>• لا أوجه</string>
+			<key>one</key>
+			<string>• وجه واحد</string>
+			<key>two</key>
+			<string>• وجهان</string>
+			<key>few</key>
+			<string>• %lld أوجه</string>
+			<key>many</key>
+			<string>• %lld وجهًا</string>
+			<key>other</key>
+			<string>• %lld وجه</string>
+		</dict>
+	</dict>
+	<key>• %lld lines</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>zero</key>
+			<string>• لا خطوط</string>
+			<key>one</key>
+			<string>• خط واحد</string>
+			<key>two</key>
+			<string>• خطان</string>
+			<key>few</key>
+			<string>• %lld خطوط</string>
+			<key>many</key>
+			<string>• %lld خطًا</string>
+			<key>other</key>
+			<string>• %lld خط</string>
+		</dict>
+	</dict>
+	<key>%lld archived items</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>zero</key>
+			<string>لا عناصر مؤرشفة</string>
+			<key>one</key>
+			<string>عنصر مؤرشف واحد</string>
+			<key>two</key>
+			<string>عنصران مؤرشفان</string>
+			<key>few</key>
+			<string>%lld عناصر مؤرشفة</string>
+			<key>many</key>
+			<string>%lld عنصرًا مؤرشفًا</string>
+			<key>other</key>
+			<string>%lld عنصر مؤرشف</string>
+		</dict>
+	</dict>
+</dict>
+</plist>
