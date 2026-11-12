@@ -94,7 +94,6 @@ internal val LocalAppearancePreferences = staticCompositionLocalOf { AppearanceP
         }
         Text(stringResource(R.string.appearance_local_note), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         if (failed) Text(stringResource(R.string.appearance_save_error), color = MaterialTheme.colorScheme.error)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) AppLanguage()
         Text(stringResource(R.string.appearance_theme), color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.titleSmall)
         Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth()) {
             Column(Modifier.selectableGroup()) {
@@ -111,6 +110,8 @@ internal val LocalAppearancePreferences = staticCompositionLocalOf { AppearanceP
                 }
             }
         }
+        // After theme and accent, so the top of the screen reads as before.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) AppLanguage()
         Text(stringResource(R.string.editor_settings_title), color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.titleSmall)
         Text(stringResource(R.string.editor_direction_hint), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth()) {
