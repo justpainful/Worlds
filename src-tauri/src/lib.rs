@@ -91,6 +91,42 @@ pub fn show_main(app: &tauri::AppHandle) {
     }
 }
 
+/// Where a window of `want` fits inside a work area at `origin` of `area`,
+/// keeping `margin` free on every side: `None` when it already fits.
+fn fitted(want: (u32, u32), origin: (i32, i32), area: (u32, u32), margin: u32) -> Option<((u32, u32), (i32, i32))> {
+    let max_w = area.0.saturating_sub(margin * 2);
+    let max_h = area.1.saturating_sub(margin * 2);
+    if want.0 <= max_w && want.1 <= max_h {
+        return None;
+    }
+    let size = (want.0.min(max_w), want.1.min(max_h));
+    let x = origin.0 + i32::try_from((area.0 - size.0) / 2).unwrap_or(0);
+    let y = origin.1 + i32::try_from((area.1 - size.1) / 2).unwrap_or(0);
+    Some((size, (x, y)))
+}
+
+/// A 1080p laptop at 150 % leaves about 1280 by 690 points, so the default
+/// 1380 by 880 window would run under the taskbar. Shrink it to the screen's
+/// work area and centre it there before it is first shown.
+fn fit_to_screen(w: &tauri::WebviewWindow) {
+    let monitor = match w.current_monitor() {
+        Ok(Some(m)) => m,
+        _ => match w.primary_monitor() {
+            Ok(Some(m)) => m,
+            _ => return,
+        },
+    };
+    let Ok(size) = w.outer_size() else { return };
+    let area = monitor.work_area();
+    // Rounded to whole pixels; the factor is a small positive number.
+    let margin = (16.0 * monitor.scale_factor()).round().clamp(0.0, 256.0) as u32;
+    let origin = (area.position.x, area.position.y);
+    if let Some(((width, height), (x, y))) = fitted((size.width, size.height), origin, (area.size.width, area.size.height), margin) {
+        let _ = w.set_size(tauri::PhysicalSize::new(width, height));
+        let _ = w.set_position(tauri::PhysicalPosition::new(x, y));
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let hidden = std::env::args().any(|a| a == "--hidden");
@@ -144,6 +180,7 @@ pub fn run() {
                 .build(app)?;
 
             if let Some(w) = app.get_webview_window("main") {
+                fit_to_screen(&w);
                 let level = window_style::level_from_settings(&app.state::<AppState>().conn());
                 window_style::apply(&w, &level);
                 let h = handle.clone();
@@ -346,4 +383,26 @@ fn spawn_change_watcher(app: tauri::AppHandle) {
             }
         }
     });
+}
+
+#[cfg(test)]
+mod window_fit_tests {
+    use super::fitted;
+
+    #[test]
+    fn a_window_that_fits_is_left_alone() {
+        // 1380 by 880 points at 100 % on a 1920 by 1032 work area.
+        assert_eq!(fitted((1380, 880), (0, 0), (1920, 1032), 16), None);
+    }
+
+    #[test]
+    fn a_tall_window_on_a_scaled_laptop_is_shrunk_and_centred() {
+        // 1380 by 880 points at 150 % is 2070 by 1320 pixels; the work area is 1920 by 1032.
+        assert_eq!(fitted((2070, 1320), (0, 0), (1920, 1032), 24), Some(((1872, 984), (24, 24))));
+    }
+
+    #[test]
+    fn a_second_monitor_keeps_its_own_origin() {
+        assert_eq!(fitted((1600, 1000), (1920, 0), (1280, 680), 16), Some(((1248, 648), (1936, 16))));
+    }
 }
