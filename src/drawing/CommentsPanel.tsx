@@ -124,7 +124,7 @@ export function DrawingCommentsPanel({
       {state.info?.attention && <p role="alert">{state.info.attention}</p>}
       <p role="status">
         {state.info?.unacked
-          ? t(`${state.info.unacked} comment changes waiting to synchronize`, `${state.info.unacked} تعديلات تعليقات بانتظار المزامنة`)
+          ? t(`${state.info.unacked} comment changes waiting to synchronize`, `تعديلات على التعليقات بانتظار المزامنة: ${state.info.unacked}`)
           : state.info?.state === "synced"
             ? t("Comments synchronized", "تمت مزامنة التعليقات")
             : t("Comments saved on this computer", "التعليقات محفوظة على هذا الجهاز")}
@@ -213,7 +213,7 @@ export function DrawingCommentsPanel({
       {!!terms.length && (
         <p role="status">
           {visibleThreads.length
-            ? t(`${visibleThreads.length} matching discussions`, `${visibleThreads.length} مناقشات مطابقة`)
+            ? t(`${visibleThreads.length} matching discussions`, `المناقشات المطابقة: ${visibleThreads.length}`)
             : t("No matching discussions", "لا توجد مناقشات مطابقة")}
         </p>
       )}
