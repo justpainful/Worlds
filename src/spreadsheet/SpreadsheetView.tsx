@@ -1154,6 +1154,7 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
         <button
           className="sheet-tb-btn"
           title="Cell Background Fill"
+          aria-label="Cell Background Fill"
           onClick={(e) => {
             const r = e.currentTarget.getBoundingClientRect();
             showMenu(
@@ -1166,7 +1167,7 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
             );
           }}
         >
-          🎨
+          <Icon name="appearance" size={15} />
         </button>
         <span className="sheet-tb-sep" />
 
@@ -1475,7 +1476,7 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
             </tr>
             {sheet.filter?.enabled && (
               <tr className="sheet-filter-row">
-                <th className="sheet-row-hdr">⏳</th>
+                <th className="sheet-row-hdr" aria-label="Filter"><Icon name="sliders" size={12} /></th>
                 {Array.from({ length: sheet.cols }, (_, c) => (
                   <th key={c} style={{ padding: 2 }}>
                     <input

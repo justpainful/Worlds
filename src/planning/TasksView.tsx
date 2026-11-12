@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import type { PageMeta } from "../lib/types";
 import { pageTitle, useStore, type TaskListId } from "../state/store";
 import { Segmented } from "../ui/Segmented";
-import { EmptyState } from "../ui/misc";
+import { EmptyState, PageIcon } from "../ui/misc";
 import { createItem } from "./actions";
 import { dataOf, goalFraction, goalsFor, printQueueFor, relDay, tasksFor, today } from "./model";
 import { GroupHead, ItemRow, QuickAdd } from "./ui";
@@ -106,10 +106,10 @@ export function TasksView({ list = "today" }: { list?: TaskListId }) {
               <button
                 key={g.id}
                 className="res-card"
-                style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "12px 16px", textAlign: "left", cursor: "pointer", marginBottom: 8 }}
+                style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "12px 16px", textAlign: "start", cursor: "pointer", marginBottom: 8 }}
                 onClick={() => openPage(g.id)}
               >
-                <span style={{ fontSize: 18 }}>🎯</span>
+                <PageIcon icon={g.icon ?? "pi:target"} size={22} />
                 <div style={{ flex: 1 }}>
                   <div className="bidi" style={{ fontWeight: 600 }}>{pageTitle(g)}</div>
                   {gd.target && <div style={{ fontSize: 12, opacity: 0.7 }}>{`Target: ${relDay(gd.target)}`}</div>}

@@ -273,7 +273,7 @@ export function FocusTimerBar() {
       setSecondsLeft((prev) => {
         if (prev <= 1) {
           setRunning(false);
-          useStore.getState().toast({ message: "Focus session complete! 🎉", tone: "success" });
+          useStore.getState().toast({ message: "Focus session complete. Time for a short break.", tone: "success" });
           return 0;
         }
         return prev - 1;
@@ -301,7 +301,10 @@ export function FocusTimerBar() {
   return (
     <>
       <div className="res-card" style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", marginBottom: 14, flexWrap: "wrap" }}>
-        <span style={{ fontWeight: 600, fontSize: 13 }}>⏱️ Focus Timer</span>
+        <span style={{ fontWeight: 600, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <Icon name="clock" size={15} />
+          <span>Focus Timer</span>
+        </span>
         <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 16, fontWeight: 700, minWidth: 58 }}>
           {mins}:{secs}
         </span>
@@ -318,7 +321,7 @@ export function FocusTimerBar() {
           onClick={() => setRulerY((y) => (y === null ? 260 : null))}
           title="Reading Ruler Line Overlay"
         >
-          📏 Reading Ruler
+          <Icon name="text" size={14} /> Reading Ruler
         </button>
       </div>
       {rulerY !== null && (
