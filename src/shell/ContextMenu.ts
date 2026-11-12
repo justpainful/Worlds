@@ -117,7 +117,8 @@ export function installContextMenu(): () => void {
       items.push(
         { kind: "separator" },
         { label: "Ask Claude About This", icon: "assistant", onSelect: () => emit("ai:open", { pageId: null, prompt: `About this:\n"""\n${quoted}\n"""\n` }) },
-        { label: "Search Worlds", icon: "search", onSelect: () => useStore.getState().setPalette(true, "all") },
+        // Search for what was selected: its first line, short enough to be a query.
+        { label: "Search Worlds", icon: "search", onSelect: () => useStore.getState().setPalette(true, "all", quoted.split("\n")[0].slice(0, 120)) },
       );
     }
 

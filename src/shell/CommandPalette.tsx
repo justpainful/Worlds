@@ -134,7 +134,7 @@ export function CommandPalette() {
 
 function Palette({ mode, onClose }: { mode: "all" | "pages" | "commands"; onClose: () => void }) {
   const pages = useStore((s) => s.pages);
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(() => useStore.getState().paletteQuery);
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [searching, setSearching] = useState(false);
   const [sel, setSel] = useState(0);
