@@ -123,7 +123,7 @@ export function TourHost() {
       >
         <div className="tour-card-head">
           <span className="tour-card-icon"><Icon name={s.icon} size={18} /></span>
-          <span className="tour-count"><bdi dir="ltr">{`${step + 1} / ${TOUR_STEPS.length}`}</bdi></span>
+          <span className="tour-count">{`Step ${step + 1} of ${TOUR_STEPS.length}`}</span>
           <button className="tour-close" aria-label="Close the tour" onClick={finish}>
             <Icon name="close" size={14} />
           </button>
