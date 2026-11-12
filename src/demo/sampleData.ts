@@ -264,11 +264,11 @@ function weeklyPlanBlocks(): JSONContent[] {
     h(2, "تركيز الأسبوع · Focus this week"),
     table([
       ["اليوم · Day", "التركيز · Focus", "الوقت · Time"],
-      ["الأحد · Sunday", "محاضرة الأحياء ثم المكتبة · Biology lecture, then library", "2 h"],
-      ["الاثنين · Monday", "الواجب 4 في الرياضيات · Math homework 4", "1.5 h"],
-      ["الثلاثاء · Tuesday", "مجموعة المذاكرة · Study group", "1.5 h"],
-      ["الأربعاء · Wednesday", "تقرير المختبر · Lab report", "2 h"],
-      ["الخميس · Thursday", "مراجعة للاختبار · Exam review", "3 h"],
+      ["الأحد · Sunday", "محاضرة الأحياء ثم المكتبة · Biology lecture, then library", "ساعتان · 2 h"],
+      ["الاثنين · Monday", "الواجب 4 في الرياضيات · Math homework 4", "ساعة ونصف · 1.5 h"],
+      ["الثلاثاء · Tuesday", "مجموعة المذاكرة · Study group", "ساعة ونصف · 1.5 h"],
+      ["الأربعاء · Wednesday", "تقرير المختبر · Lab report", "ساعتان · 2 h"],
+      ["الخميس · Thursday", "مراجعة للاختبار · Exam review", "3 ساعات · 3 h"],
     ]),
     h(2, "قائمة المهام · Checklist"),
     tasks([
