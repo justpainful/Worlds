@@ -93,6 +93,8 @@ targets:
       - package: WorldsCore
         product: WorldsPresentationPersistence
       - package: WorldsCore
+        product: WorldsPresentationSession
+      - package: WorldsCore
         product: WorldsMCPApprovalCoordinator
       - package: WorldsCore
         product: WorldsMCPApprovalViews
@@ -194,6 +196,8 @@ targets:
         product: WorldsPresentations
       - package: WorldsCore
         product: WorldsPresentationPersistence
+      - package: WorldsCore
+        product: WorldsPresentationSession
       - package: WorldsCore
         product: WorldsMCPApprovalCoordinator
       - package: WorldsCore
