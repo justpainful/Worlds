@@ -88,6 +88,10 @@ describe("Arabic interface dictionary", () => {
     expect(translate("expires in 2 days")).toBe("تنتهي بعد يومين");
     expect(translate("2 changes will sync when you are back online")).toBe("ستتم مزامنة تغييرين عند عودة الاتصال");
     expect(translate("Sending 2 changes")).toBe("جارٍ إرسال تغييرين");
+    expect(translate("1 min read")).toBe("قراءة دقيقة واحدة");
+    expect(translate("2 min read")).toBe("قراءة دقيقتين");
+    expect(translate("5 characters")).toBe("5 أحرف");
+    expect(translate("1,204 words · 6 min read")).toBe("1,204 كلمات · قراءة 6 دقائق");
     expect(translate("2 items left today")).toBe("المتبقي اليوم: عنصران");
     expect(countedNoun(4000, "أحرف")).toBe("حرف");
     expect(countedNoun(103, "صفحة")).toBe("صفحات");

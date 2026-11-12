@@ -158,8 +158,8 @@ export function StatusBar({ editor, saving, savedAt, locked }: { editor: Editor 
         </span>
       )}
       <span className="sb-item">{stats.sel ? `${stats.sel} of ${stats.words.toLocaleString()} words` : `${stats.words.toLocaleString()} words`}</span>
-      <span className="sb-item">{stats.chars.toLocaleString()} characters</span>
-      <span className="sb-item">{minutes} min read</span>
+      <span className="sb-item">{`${stats.chars.toLocaleString()} characters`}</span>
+      <span className="sb-item">{`${minutes} min read`}</span>
       <span className="sb-item sb-save">{saving ? "Saving" : savedAt ? `Saved ${relTime(savedAt)}` : ""}</span>
     </Glass>
   );

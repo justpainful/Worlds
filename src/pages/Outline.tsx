@@ -111,7 +111,7 @@ export function Outline({ editor }: { editor: Editor | null }) {
         </button>
       ))}
       <div className="outline-stats">
-        {state.words.toLocaleString()} words · {minutes} min read
+        {`${state.words.toLocaleString()} words · ${minutes} min read`}
       </div>
     </nav>
   );
