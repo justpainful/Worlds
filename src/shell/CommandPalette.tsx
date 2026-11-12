@@ -17,6 +17,8 @@ import { today } from "../planning/model";
 import { openQuickCapture } from "../planning/InboxView";
 import { createSubject } from "../study/StudyViews";
 import { startTour } from "./Tour";
+import { translate } from "../i18n/ui";
+import { foldArabic } from "../i18n/locale";
 
 interface Cmd {
   id: string;
@@ -46,8 +48,8 @@ function activeRoute(): Route | null {
 }
 
 function score(text: string, q: string): number {
-  const t = text.toLowerCase();
-  const query = q.toLowerCase().trim();
+  const t = foldArabic(text.toLowerCase());
+  const query = foldArabic(q.toLowerCase().trim());
   if (!query) return 1;
   if (t.startsWith(query)) return 3;
   if (t.includes(query)) return 2;
@@ -209,7 +211,7 @@ function Palette({ mode, onClose }: { mode: "all" | "pages" | "commands"; onClos
     }
     if (mode !== "pages") {
       const cmds = commands()
-        .map((c) => ({ c, sc: Math.max(score(c.title, query), score(c.keywords ?? "", query)) }))
+        .map((c) => ({ c, sc: Math.max(score(c.title, query), score(translate(c.title) ?? "", query), score(c.keywords ?? "", query)) }))
         .filter((x) => x.sc > 0)
         .sort((a, b) => b.sc - a.sc)
         .slice(0, query ? 8 : 6);
