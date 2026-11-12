@@ -66,7 +66,8 @@ export const NeutralDirection = Extension.create({
         key,
         state: {
           init: (_, state) => build(state.doc),
-          apply: (tr, old) => (tr.docChanged ? build(tr.doc) : old),
+          // A language switch changes the direction of a page with no letters yet.
+          apply: (tr, old) => (tr.docChanged || tr.getMeta("languageChanged") ? build(tr.doc) : old),
         },
         props: {
           decorations: (state) => key.getState(state),

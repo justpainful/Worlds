@@ -429,6 +429,13 @@ export const PageEditor = forwardRef<
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [external, peerRevision, editor]);
 
+  // After a language switch, redraw the empty-line hints and the direction of
+  // empty lines, which are worked out per update, in the new language.
+  const language = useStore((s) => s.profile?.language ?? null);
+  useEffect(() => {
+    if (editor && !editor.isDestroyed) editor.view.dispatch(editor.state.tr.setMeta("languageChanged", true));
+  }, [language, editor]);
+
   // Palette / menu commands targeting this page's editor.
   useEffect(() => {
     return on("editor:command", ({ pageId: target, command, args }) => {
