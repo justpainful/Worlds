@@ -46,6 +46,23 @@ interface ClipboardBuffer {
   cells: Record<string, { dr: number; dc: number; cell: CellData; evaluatedDisplay: string }>;
 }
 
+/** Keyboard shortcuts shown in the Shortcuts dialog (F1). */
+const SHORTCUTS: [string[], string][] = [
+  [["Enter", "F2"], "Edit the active cell, or save it and move down"],
+  [["Ctrl + Enter"], "Fill every selected cell with what you typed"],
+  [["Alt + ="], "Add up the numbers next to the cell"],
+  [["F4"], "While typing a formula, switch between $A$1, A$1, $A1 and A1"],
+  [["Ctrl + D", "Ctrl + R"], "Fill down or right"],
+  [["Ctrl + ;", "Ctrl + Shift + ;"], "Insert today's date or the time"],
+  [["Ctrl + Arrows"], "Jump to the edge of the data"],
+  [["Shift + Arrows"], "Extend the selection"],
+  [["Ctrl + C", "Ctrl + X", "Ctrl + V"], "Copy, cut and paste, compatible with Excel"],
+  [["Ctrl + Shift + V"], "Paste values without formulas"],
+  [["Ctrl + B", "Ctrl + I", "Ctrl + U", "Ctrl + 5"], "Bold, italic, underline and strikethrough"],
+  [["Ctrl + Z", "Ctrl + Y"], "Undo and redo"],
+  [["Ctrl + F"], "Find and replace in the sheet"],
+];
+
 const TEXT_COLORS = [
   "#1e293b",
   "#ffffff",
@@ -1722,21 +1739,19 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
 
       {/* Shortcuts Help Modal */}
       {shortcutsOpen && (
-        <Modal onClose={() => setShortcutsOpen(false)} title="Excel Spreadsheet Shortcuts (اختصارات الجداول)" width={560}>
+        <Modal onClose={() => setShortcutsOpen(false)} title="Spreadsheet shortcuts" width={560}>
+          {/* Keys and description apart, so the description is one sentence the Arabic interface can translate. */}
           <div className="sheet-shortcuts-list">
-            <div><kbd>Enter</kbd> / <kbd>F2</kbd>: Edit active cell inline / Commit & move down</div>
-            <div><kbd>Ctrl + Enter</kbd>: Fill all selected cells with current input/formula</div>
-            <div><kbd>Alt + =</kbd>: AutoSum (`=SUM(...)` of adjacent numbers)</div>
-            <div><kbd>F4</kbd> (while editing formula): Cycle `$A$1` → `A$1` → `$A1` → `A1`</div>
-            <div><kbd>Ctrl + D</kbd> / <kbd>Ctrl + R</kbd>: Fill Down / Fill Right</div>
-            <div><kbd>Ctrl + ;</kbd> / <kbd>Ctrl + Shift + ;</kbd>: Insert current Date / Time</div>
-            <div><kbd>Ctrl + Arrows</kbd>: Jump to edge of data region</div>
-            <div><kbd>Shift + Arrows</kbd>: Extend cell selection</div>
-            <div><kbd>Ctrl + C</kbd> / <kbd>Ctrl + X</kbd> / <kbd>Ctrl + V</kbd>: Copy / Cut / Paste (Excel TSV compatible)</div>
-            <div><kbd>Ctrl + Shift + V</kbd>: Paste Values Only (without formulas)</div>
-            <div><kbd>Ctrl + B</kbd> / <kbd>Ctrl + I</kbd> / <kbd>Ctrl + U</kbd> / <kbd>Ctrl + 5</kbd>: Bold / Italic / Underline / Strikethrough</div>
-            <div><kbd>Ctrl + Z</kbd> / <kbd>Ctrl + Y</kbd>: Undo / Redo</div>
-            <div><kbd>Ctrl + F</kbd>: Find & Replace in sheet</div>
+            {SHORTCUTS.map(([keys, text]) => (
+              <div key={text} className="sheet-shortcut">
+                <span className="sheet-shortcut-keys">
+                  {keys.map((k) => (
+                    <kbd key={k}>{k}</kbd>
+                  ))}
+                </span>
+                <span>{text}</span>
+              </div>
+            ))}
           </div>
         </Modal>
       )}

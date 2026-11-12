@@ -405,3 +405,6 @@
   font-size: 13px;
   line-height: 1.5;
 }
+
+.sheet-shortcut { display: flex; align-items: baseline; gap: 14px; }
+.sheet-shortcut-keys { display: inline-flex; flex-wrap: wrap; gap: 4px; flex: none; min-width: 170px; }
