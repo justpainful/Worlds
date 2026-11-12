@@ -135,7 +135,9 @@ object AiToolWire {
 
     /** The server refused the request because the model has no tool support (the same test as the desktop). */
     fun noToolSupport(code: Int, body: String?): Boolean {
-        if (code !in 400..500) return false
+        // Sign-in and rate limit errors are never a model refusing tools: falling back to
+        // chat only would hide a bad key or a limit behind a working-looking reply.
+        if (code !in 400..500 || code == 401 || code == 403 || code == 429) return false
         val b = body.orEmpty().lowercase()
         return (b.contains("tool") || b.contains("function")) &&
             listOf("not support", "unsupported", "--jinja", "not enabled", "not available", "does not have").any { b.contains(it) }
