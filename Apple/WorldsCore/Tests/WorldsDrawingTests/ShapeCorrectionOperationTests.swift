@@ -24,7 +24,16 @@ final class ShapeCorrectionOperationTests: XCTestCase {
         XCTAssertEqual(fields["kind"] as? String, "shape")
         XCTAssertEqual(fields["shape"] as? String, "right-triangle")
         XCTAssertNil(fields["samples"])
-        XCTAssertEqual(fields["originalSamples"] as? NSArray, strokeNode["samples"] as? NSArray)
+        // As on the desktop, originalSamples are the stroke samples moved into the shape rectangle.
+        let originalSamples = try XCTUnwrap(fields["originalSamples"] as? [[String: Any]])
+        let strokeSamples = try XCTUnwrap(strokeNode["samples"] as? [[String: Any]])
+        XCTAssertEqual(originalSamples.count, strokeSamples.count)
+        let nodeX = try XCTUnwrap(strokeNode["x"] as? Double), nodeY = try XCTUnwrap(strokeNode["y"] as? Double)
+        for (moved, sample) in zip(originalSamples, strokeSamples) {
+            XCTAssertEqual(try XCTUnwrap(moved["x"] as? Double), try XCTUnwrap(sample["x"] as? Double) + nodeX - recognized.x, accuracy: 0.000001)
+            XCTAssertEqual(try XCTUnwrap(moved["y"] as? Double), try XCTUnwrap(sample["y"] as? Double) + nodeY - recognized.y, accuracy: 0.000001)
+            XCTAssertEqual(moved["pressure"] as? Double, sample["pressure"] as? Double)
+        }
         XCTAssertEqual((fields["points"] as? [[String: Double]])?.count, 3)
         XCTAssertEqual((fields["paint"] as? [String: Any])?["strokeWidth"] as? Double, 12)
         XCTAssertThrowsError(try ShapeCorrectionOperationBuilder.make(strokeOperation: stroke, recognized: recognized,

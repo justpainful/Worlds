@@ -34,7 +34,12 @@ public enum ExperimentalStrokeSceneRenderer {
     /// The supplied context must use Canvas coordinates: origin at top left,
     /// positive Y downward. Apply the bitmap height translation and Y flip
     /// before calling when drawing into an unflipped Core Graphics bitmap.
-    public static func render(scene: DrawingScene, frameID: String, in context: CGContext, allowCorrectedRightTriangles: Bool = false) throws {
+    /// `allowCorrectedShapes` accepts the shape nodes that hand-drawn shape
+    /// correction produces (`ShapeCorrection.correctableShapes`, plain stroke
+    /// paint). `allowCorrectedRightTriangles` accepts only right triangles.
+    public static func render(scene: DrawingScene, frameID: String, in context: CGContext,
+                              allowCorrectedRightTriangles: Bool = false, allowCorrectedShapes: Bool = false) throws {
+        let correctedShapes: Set<String> = allowCorrectedShapes ? ShapeCorrection.correctableShapes : (allowCorrectedRightTriangles ? ["right-triangle"] : [])
         let data = try scene.json()
         guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let masks = root["masks"] as? [String: Any], masks.isEmpty,
@@ -57,13 +62,14 @@ public enum ExperimentalStrokeSceneRenderer {
             guard layer.parentId == nil, (layer.blend == "source-over" || layer.blend == "normal"), layer.opacity.isFinite, (0...1).contains(layer.opacity) else { throw ExperimentalStrokeSceneError.unsupportedScene }
         }
         for node in decoded.nodes.values {
-            guard (node.kind == "stroke" || (allowCorrectedRightTriangles && node.kind == "shape" && node.shape == "right-triangle")), decoded.layers[node.layerId] != nil, node.frameId == frameID,
+            guard (node.kind == "stroke" || (node.kind == "shape" && node.shape.map({ correctedShapes.contains($0) }) == true)), decoded.layers[node.layerId] != nil, node.frameId == frameID,
                   node.groupId == nil, !node.erase, !node.alphaLock, node.effects.isEmpty,
                   [node.x, node.y, node.w, node.h, node.rotation, node.opacity].allSatisfy(\.isFinite),
                   node.w > 0, node.h > 0, (0...1).contains(node.opacity) else { throw ExperimentalStrokeSceneError.unsupportedScene }
             if node.kind == "stroke" { _ = try color(node.brush.color) }
             else {
-                guard let points = node.points, points.count == 3, points.allSatisfy({ $0.x.isFinite && $0.y.isFinite }),
+                guard let shape = node.shape, correctedPointCounts(shape).contains(node.points?.count ?? 0),
+                      (node.points ?? []).allSatisfy({ $0.x.isFinite && $0.y.isFinite }),
                       node.paint.fill == "transparent", node.paint.dash.isEmpty, node.paint.cap == "round",
                       node.paint.strokeWidth.isFinite, node.paint.strokeWidth > 0, node.paint.strokeWidth <= 2048 else { throw ExperimentalStrokeSceneError.unsupportedScene }
                 _ = try color(node.paint.stroke)
@@ -87,13 +93,11 @@ public enum ExperimentalStrokeSceneRenderer {
                 do {
                     if node.kind == "stroke" {
                         try StrokeRasterCandidate.draw(samples: node.samples, brush: node.brush, seed: node.seed, color: color(node.brush.color), in: context)
-                    } else if let points = node.points {
+                    } else if let shape = node.shape {
                         context.setStrokeColor(try color(node.paint.stroke)); context.setLineWidth(node.paint.strokeWidth)
-                        context.setLineJoin(.round); context.setLineCap(.round); context.beginPath()
-                        context.move(to: CGPoint(x: points[0].x, y: points[0].y))
-                        context.addLine(to: CGPoint(x: points[1].x, y: points[1].y))
-                        context.addLine(to: CGPoint(x: points[2].x, y: points[2].y))
-                        context.closePath(); context.strokePath()
+                        context.setLineJoin(.round); context.setLineCap(.round)
+                        context.addPath(correctedShapePath(shape, points: node.points ?? [], width: node.w, height: node.h))
+                        context.strokePath()
                     }
                 }
                 catch { context.restoreGState(); context.endTransparencyLayer(); context.restoreGState(); throw error }
@@ -101,6 +105,34 @@ public enum ExperimentalStrokeSceneRenderer {
             }
             context.endTransparencyLayer(); context.restoreGState()
         }
+    }
+    private static func correctedPointCounts(_ shape: String) -> Set<Int> {
+        switch shape {
+        case "line": return [0, 2]
+        case "triangle", "right-triangle": return [0, 3]
+        case "rect": return [0, 4]
+        case "ellipse": return [0]
+        default: return []
+        }
+    }
+    /// The outline `drawShape` in `DrawingRenderer` (and renderer.ts) draws for
+    /// these shapes: the node points when present, otherwise the default outline.
+    private static func correctedShapePath(_ shape: String, points: [Point], width w: Double, height h: Double) -> CGPath {
+        let path = CGMutablePath()
+        if let first = points.first {
+            path.move(to: CGPoint(x: first.x, y: first.y))
+            for point in points.dropFirst() { path.addLine(to: CGPoint(x: point.x, y: point.y)) }
+            if shape != "line" { path.closeSubpath() }
+            return path
+        }
+        switch shape {
+        case "ellipse": path.addEllipse(in: CGRect(x: 0, y: 0, width: w, height: h))
+        case "triangle": path.addLines(between: [CGPoint(x: w / 2, y: 0), CGPoint(x: w, y: h), CGPoint(x: 0, y: h)]); path.closeSubpath()
+        case "right-triangle": path.addLines(between: [.zero, CGPoint(x: 0, y: h), CGPoint(x: w, y: h)]); path.closeSubpath()
+        case "line": path.move(to: .zero); path.addLine(to: CGPoint(x: w, y: h))
+        default: path.addRect(CGRect(x: 0, y: 0, width: w, height: h))
+        }
+        return path
     }
     private static func color(_ value: String) throws -> CGColor {
         if value == "transparent" { return CGColor(red: 0, green: 0, blue: 0, alpha: 0) }
