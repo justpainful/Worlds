@@ -5,6 +5,7 @@ describe("shortcut keys", () => {
   it("reads the physical letter when an Arabic layout is active", () => {
     expect(shortcutKey({ key: "ن", code: "KeyK" })).toBe("k");
     expect(shortcutKey({ key: "ى", code: "KeyN" })).toBe("n");
+    expect(shortcutKey({ key: "و", code: "Comma" })).toBe(",");
   });
 
   it("keeps the letter a Latin layout types", () => {
@@ -14,7 +15,8 @@ describe("shortcut keys", () => {
   });
 
   it("leaves other keys alone", () => {
-    expect(shortcutKey({ key: "Enter", code: "Enter" })).toBe("enter");
+    expect(shortcutKey({ key: "Enter", code: "Enter" })).toBe("Enter");
+    expect(shortcutKey({ key: "\\", code: "Backslash" })).toBe("\\");
     expect(shortcutKey({ key: "/" })).toBe("/");
   });
 });

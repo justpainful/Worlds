@@ -103,14 +103,14 @@ export function App() {
       } else if (mod && shortcutKey(e) === "w") {
         e.preventDefault();
         s.closeTab(pane.id, tab.id);
-      } else if (mod && e.key === "\\") {
+      } else if (mod && shortcutKey(e) === "\\") {
         e.preventDefault();
         if (e.shiftKey || s.layout.panes.length >= 3) s.collapsePanes();
         else s.open(tab.route, "right");
       } else if (mod && shortcutKey(e) === "j") {
         e.preventDefault();
         window.dispatchEvent(new Event("worlds:toggle-ai"));
-      } else if (mod && e.key === ",") {
+      } else if (mod && shortcutKey(e) === ",") {
         e.preventDefault();
         s.open({ kind: "settings" }, "tab");
       } else if (mod && e.key === "Tab") {

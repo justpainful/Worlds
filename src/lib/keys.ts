@@ -1,11 +1,29 @@
+/** US punctuation by physical key, for layouts whose keys type other letters. */
+const PHYSICAL: Record<string, string> = {
+  Comma: ",",
+  Period: ".",
+  Slash: "/",
+  Backslash: "\\",
+  BracketLeft: "[",
+  BracketRight: "]",
+  Semicolon: ";",
+  Quote: "'",
+  Minus: "-",
+  Equal: "=",
+  Backquote: "`",
+};
+
 /**
- * The Latin letter of a keyboard shortcut. With an Arabic (or any non-Latin)
- * layout active, Ctrl+K reports `key` as "ن", so the letter comes from the
- * physical key instead; Latin layouts such as AZERTY keep their own letters.
+ * The Latin letter or symbol of a keyboard shortcut. With an Arabic (or any
+ * non-Latin) layout active, Ctrl+K reports `key` as "ن" and Ctrl+, as "و",
+ * so the character comes from the physical key instead; Latin layouts such as
+ * AZERTY keep the characters they type.
  */
 export function shortcutKey(e: { key: string; code?: string }): string {
-  const key = e.key.toLowerCase();
-  if (/^[a-z]$/.test(key)) return key;
-  const physical = /^Key([A-Z])$/.exec(e.code ?? "");
-  return physical ? physical[1].toLowerCase() : key;
+  const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if (/^[\x20-\x7e]$/.test(key)) return key;
+  const code = e.code ?? "";
+  const letter = /^Key([A-Z])$/.exec(code);
+  if (letter) return letter[1].toLowerCase();
+  return PHYSICAL[code] ?? key;
 }
