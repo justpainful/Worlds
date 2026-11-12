@@ -51,5 +51,8 @@ export function joinList(items: string[]): string {
 
 /** Arabic letters people type interchangeably (أ إ آ and ا, ة and ه, ى and ي) and diacritics, folded so a search still matches. */
 export function foldArabic(text: string): string {
-  return text.replace(/[\u064B-\u0652\u0640]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي");
+  return text.replace(/[\u064B-\u0652\u0640]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي")
+    // "٢٤" finds "24" and the other way round.
+    .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x660))
+    .replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x6f0));
 }

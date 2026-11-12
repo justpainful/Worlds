@@ -8,6 +8,8 @@ describe("Arabic text helpers", () => {
     expect(foldArabic("مستوى")).toBe(foldArabic("مستوي"));
     expect(foldArabic("عُنْوَان")).toBe("عنوان");
     expect(foldArabic("Image")).toBe("Image");
+    // Arabic digits find Western ones.
+    expect(foldArabic("اختبار ٢٤/١١")).toBe(foldArabic("اختبار 24/11"));
   });
 
   it("joins lists with a Latin comma until Arabic dates are on", () => {
