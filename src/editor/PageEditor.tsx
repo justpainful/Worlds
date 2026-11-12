@@ -14,6 +14,7 @@ import { api, errorMessage } from "../lib/api";
 import type { Page } from "../lib/types";
 import { useStore } from "../state/store";
 import { emit, on } from "../lib/bus";
+import { tr } from "../i18n/ui";
 import { BlockIds, newBlockId } from "./extensions/blockIds";
 import { NeutralDirection } from "./extensions/neutralDirection";
 import { Callout, Prompt, PageLink, DrawingEmbed, ImageNode, VideoNode, FileNode, Embed, DiscordMessage, Schedule } from "./extensions/nodes";
@@ -172,15 +173,15 @@ export const PageEditor = forwardRef<
             } catch {
               return "";
             }
-            if (doc.nodeAt(pos) !== node) return $p.depth > 0 ? "" : "Press / for blocks";
+            if (doc.nodeAt(pos) !== node) return $p.depth > 0 ? "" : tr("Press / for blocks");
             if ($p.depth > 0) {
-              if ($p.parent.type.name === "toggle") return $p.index() === 0 ? "Toggle" : "Hidden content";
-              if ($p.parent.type.name === "column" && $p.parent.childCount === 1) return "Column";
+              if ($p.parent.type.name === "toggle") return tr($p.index() === 0 ? "Toggle" : "Hidden content");
+              if ($p.parent.type.name === "column" && $p.parent.childCount === 1) return tr("Column");
               return "";
             }
-            if (node.type.name === "heading") return `Heading ${node.attrs.level}`;
-            if (ed.state.doc.childCount === 1 && node.type.name === "paragraph") return variant === "document" ? "Start writing" : "Start writing, or press / for blocks and @ for pages";
-            return "Press / for blocks";
+            if (node.type.name === "heading") return tr(`Heading ${node.attrs.level}`);
+            if (ed.state.doc.childCount === 1 && node.type.name === "paragraph") return tr(variant === "document" ? "Start writing" : "Start writing, or press / for blocks and @ for pages");
+            return tr("Press / for blocks");
           },
         }),
         BlockIds,
