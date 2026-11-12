@@ -144,7 +144,17 @@ export function TooltipHost() {
   if (!tip) return null;
   return createPortal(
     <div className="tooltip" style={{ left: tip.x, top: tip.y }} role="tooltip">
-      {tip.text}
+      {/* "Label  Ctrl+K": the label on its own (so the Arabic interface translates it) and the keys apart. */}
+      {(() => {
+        const m = /^(.*?)\s{2,}(\S.*)$/.exec(tip.text);
+        if (!m) return tip.text;
+        return (
+          <>
+            <span>{m[1]}</span>
+            <kbd className="tooltip-kbd">{m[2]}</kbd>
+          </>
+        );
+      })()}
     </div>,
     document.body,
   );

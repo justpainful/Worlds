@@ -351,3 +351,4 @@ input[type="time"].field, input[type="datetime-local"].field, input[type="number
 .status-dot::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-inline-end: 6px; vertical-align: middle; }
 
 .boot-error { height: 100%; display: grid; place-items: center; background: #000; color: var(--text-2); font: var(--t-ui); }
+.tooltip-kbd { margin-inline-start: 8px; padding: 0; background: none; border: 0; font: 500 11px var(--font-mono); color: var(--text-3); direction: ltr; unicode-bidi: isolate; }

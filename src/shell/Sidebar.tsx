@@ -105,7 +105,7 @@ export function Sidebar() {
     <aside className={`sidebar ${sidebar.collapsed ? "is-collapsed" : ""}`} style={{ width: sidebar.collapsed ? 0 : sidebar.width }} aria-label="Sidebar">
       <div className="sidebar-inner" style={{ width: sidebar.width }}>
         <div className="side-top" data-drag-zone>
-          <IconButton icon="sidebarClose" label="Hide sidebar" shortcut="Ctrl+\" onClick={toggleSidebar} />
+          <IconButton icon="sidebarClose" label="Hide sidebar" shortcut="Ctrl+Shift+L" onClick={toggleSidebar} />
           <div className="side-top-spacer" data-tauri-drag-region />
           <IconButton icon="search" label="Search" shortcut="Ctrl+K" data-tour="search" onClick={() => setPalette(true, "all")} />
           <IconButton icon="edit" label="New" shortcut="Ctrl+N for a page" data-tour="new" onClick={(e) => newResourceMenu(e.currentTarget)} />
