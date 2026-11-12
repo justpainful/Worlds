@@ -10,6 +10,7 @@ import { menuAt, useMenu, type MenuItem } from "../ui/Menu";
 import { useLens } from "../motion/useLens";
 import { RouteView } from "../views/RouteView";
 import { WindowControls } from "./Window";
+import { ErrorBoundary } from "../ui/ErrorBoundary";
 import { glassEngine } from "../glass/engine";
 
 export function Panes() {
@@ -210,7 +211,9 @@ function PaneView({ pane, index, count, active, width, first, last }: { pane: Pa
       onDrop={onDrop}
     >
       <div className="pane-scroll scroll" ref={scrollRef} data-pane={pane.id}>
-        <RouteView route={tab.route} paneId={pane.id} tabId={tab.id} key={`${tab.id}:${tab.route.kind === "chat" ? "chat" : routeKey}`} />
+        <ErrorBoundary resetKey={`${tab.id}:${routeKey}`} onHome={() => useStore.getState().open({ kind: "home" }, "current", pane.id)}>
+          <RouteView route={tab.route} paneId={pane.id} tabId={tab.id} key={`${tab.id}:${tab.route.kind === "chat" ? "chat" : routeKey}`} />
+        </ErrorBoundary>
       </div>
       <PaneToolbar pane={pane} tab={tab} showWindowControls={last} count={count} />
       {dropSide && <div className={`pane-drop pane-drop-${dropSide}`} />}

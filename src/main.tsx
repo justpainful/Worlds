@@ -1,6 +1,7 @@
 import "./dev/mockTauri";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { ErrorBoundary } from "./ui/ErrorBoundary";
 import "@fontsource-variable/instrument-sans/index.css";
 import "@fontsource/ibm-plex-sans-arabic/300.css";
 import "@fontsource/ibm-plex-sans-arabic/400.css";
@@ -43,6 +44,10 @@ if (import.meta.env.VITE_WEB_DEMO === "1") void import("./demo/sampleActions").t
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    {import.meta.env.DEV && location.search.includes("glasslab2") ? <GlassLabV2 /> : import.meta.env.DEV && location.search.includes("glasslab") ? <GlassLab /> : <App />}
+    {import.meta.env.DEV && location.search.includes("glasslab2") ? <GlassLabV2 /> : import.meta.env.DEV && location.search.includes("glasslab") ? <GlassLab /> : (
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    )}
   </StrictMode>,
 );
