@@ -27,13 +27,23 @@ public struct ConversationView: View {
                 }
                 ForEach(model.messages) { message in
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(message.role == .user ? LocalizedStringKey("You") : LocalizedStringKey("Assistant"))
-                            .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                        Text(message.text).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(message.role == .user ? LocalizedStringKey("You") : LocalizedStringKey("Assistant"))
+                                .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                            if !message.text.isEmpty {
+                                Text(message.text).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("conversation-message")
+                        if message.role == .assistant && !message.steps.isEmpty { finishedSteps(message.steps) }
+                        if message.role == .assistant && message.chatOnly { chatOnlyNote }
+                        if message.role == .assistant, let changes = message.changes, !changes.pages.isEmpty {
+                            changesRow(message.id, changes)
+                        }
                     }
-                    .accessibilityElement(children: .combine)
-                    .accessibilityIdentifier("conversation-message")
                 }
+                if model.running && model.chatOnly { chatOnlyNote }
                 if !model.tools.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
                         ForEach(model.tools) { tool in
@@ -126,6 +136,76 @@ public struct ConversationView: View {
         .frame(maxWidth: .infinity)
         .background(.regularMaterial)
     }
+    /// Steps of a finished reply, folded behind a count, as on the desktop and Android.
+    private func finishedSteps(_ steps: [ConversationTool]) -> some View {
+        DisclosureGroup {
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(steps) { step in
+                    Label(step.name, systemImage: icon(for: step.status))
+                        .font(.caption).foregroundStyle(.secondary)
+                        .accessibilityValue(status(for: step.status))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } label: {
+            Label("Steps: \(steps.count)", systemImage: "list.bullet")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        .accessibilityIdentifier("conversation-steps")
+    }
+
+    private var chatOnlyNote: some View {
+        Label("This model cannot use Worlds tools, so this reply is chat only.", systemImage: "bubble.left")
+            .font(.caption).foregroundStyle(.secondary)
+            .accessibilityIdentifier("conversation-chat-only")
+    }
+
+    /// What one reply changed, with Open and Undo.
+    private func changesRow(_ messageID: String, _ changes: ConversationChanges) -> some View {
+        let names = changes.pages.map { $0.title.isEmpty ? String(localized: "Untitled") : $0.title }
+            .joined(separator: String(localized: ", "))
+        let openable = changes.pages.first { $0.openable }
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: 10) { changesSummary(changes, names); Spacer(minLength: 8); changesButtons(messageID, changes, openable) }
+            VStack(alignment: .leading, spacing: 6) { changesSummary(changes, names); HStack(spacing: 10) { changesButtons(messageID, changes, openable) } }
+        }
+        .padding(10)
+        .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("conversation-changes")
+    }
+
+    private func changesSummary(_ changes: ConversationChanges, _ names: String) -> some View {
+        Label {
+            Group {
+                if changes.undone { Text("Undone: \(names)") } else { Text("Changed: \(names)") }
+            }
+            .font(.callout).fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: changes.undone ? "arrow.uturn.backward.circle" : "pencil.circle")
+        }
+        .foregroundStyle(.secondary)
+    }
+
+    @ViewBuilder
+    private func changesButtons(_ messageID: String, _ changes: ConversationChanges, _ openable: ConversationChangedPage?) -> some View {
+        if model.supportsWorkspaceActions {
+            if let openable {
+                Button { Task { await model.open(pageID: openable.id) } } label: { Label("Open", systemImage: "arrow.up.forward.square") }
+                    .buttonStyle(.borderless)
+                    .accessibilityIdentifier("conversation-open-change")
+            }
+            if !changes.undone {
+                Button { Task { await model.undo(messageID: messageID) } } label: {
+                    if model.undoing == messageID { ProgressView().controlSize(.small) } else { Label("Undo", systemImage: "arrow.uturn.backward") }
+                }
+                .buttonStyle(.borderless)
+                .disabled(model.running || model.undoing != nil)
+                .accessibilityIdentifier("conversation-undo-change")
+            }
+        }
+    }
+
     private func icon(for status: ConversationTool.Status) -> String {
         switch status { case .running: return "ellipsis.circle"; case .succeeded: return "checkmark.circle"; case .failed: return "exclamationmark.circle" }
     }

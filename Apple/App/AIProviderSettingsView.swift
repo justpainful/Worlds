@@ -41,6 +41,8 @@ func aiErrorMessage(_ error: Error) -> String {
     case .keychain(let status):
         let code = Int(status)
         return String(localized: "The Keychain could not store the key (\(code)).")
+    case .tooManySteps(let limit):
+        return String(localized: "The assistant stopped after \(limit) steps. Ask for a smaller change.")
     }
 }
 

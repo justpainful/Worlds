@@ -4,7 +4,10 @@
 "Done" = "تم";
 "AI settings" = "إعدادات الذكاء الاصطناعي";
 "Not set up" = "غير مُعَدّ";
-"Model %@. Reads page titles and previews; it cannot change your workspace yet." = "النموذج %@. يقرأ عناوين الصفحات ومعايناتها، ولا يمكنه تغيير مساحة عملك بعد.";
+"Model %@. Reads and edits your pages; each reply can be undone." = "النموذج %@. يقرأ صفحاتك ويعدّلها، ويمكن التراجع عن كل رد.";
+"Model %@. Reads and edits this local copy; each reply can be undone." = "النموذج %@. يقرأ هذه النسخة المحلية ويعدّلها، ويمكن التراجع عن كل رد.";
+"Model %@. Reads your pages; this workspace is read only here." = "النموذج %@. يقرأ صفحاتك، ومساحة العمل هذه للقراءة فقط هنا.";
+"Model %@. No workspace is open, so it can only chat." = "النموذج %@. لا توجد مساحة عمل مفتوحة، فيكتفي بالمحادثة.";
 "Choose a provider and a model to start chatting." = "اختر مزودًا ونموذجًا لبدء المحادثة.";
 "Set up an AI provider" = "إعداد مزود ذكاء اصطناعي";
 "Worlds talks to the provider you choose, with your own API key or a model running on your computer." = "يتواصل Worlds مع المزود الذي تختاره، بمفتاح API الخاص بك أو بنموذج يعمل على حاسوبك.";
@@ -151,3 +154,24 @@
 "Redo" = "إعادة";
 "The change could not be undone. Reopen the drawing to check it." = "تعذّر التراجع عن التغيير. أعد فتح الرسم للتحقق منه.";
 "The change could not be redone. Reopen the drawing to check it." = "تعذّرت إعادة التغيير. أعد فتح الرسم للتحقق منه.";
+/* Assistant tools */
+"Steps: %lld" = "خطوات: %lld";
+"This model cannot use Worlds tools, so this reply is chat only." = "هذا النموذج لا يستطيع استخدام أدوات Worlds، فهذا الرد محادثة فقط.";
+"Changed: %@" = "عُدّل: %@";
+"Undone: %@" = "تم التراجع: %@";
+"Open" = "فتح";
+"Untitled" = "بلا عنوان";
+", " = "، ";
+"Workspace overview" = "نظرة على مساحة العمل";
+"List pages" = "عرض الصفحات";
+"Search pages" = "البحث في الصفحات";
+"Read page" = "قراءة صفحة";
+"Create page" = "إنشاء صفحة";
+"Add to page" = "إضافة إلى صفحة";
+"Edit block" = "تعديل كتلة";
+"Rename page" = "إعادة تسمية صفحة";
+"Add tasks" = "إضافة مهام";
+"List tasks" = "عرض المهام";
+"The assistant stopped after %lld steps. Ask for a smaller change." = "توقف المساعد بعد %lld خطوة. اطلب تغييرًا أصغر.";
+"Open the workspace these changes were made in to undo them." = "افتح مساحة العمل التي جرت فيها هذه التغييرات للتراجع عنها.";
+"Some pages could not be put back: %@. They changed since, or are in Trash; their earlier versions stay in the page history." = "تعذّرت إعادة بعض الصفحات: %@. فقد تغيّرت بعد ذلك أو نُقلت إلى سلة المهملات، وتبقى نسخها السابقة في سجل الصفحة.";

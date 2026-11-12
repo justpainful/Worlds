@@ -94,6 +94,23 @@ struct WorkspaceReadOnlyNotice: View {
     }
 }
 
+/// The same reason as text, for the assistant: its tools and the model say why
+/// nothing can be changed. A bundled sample or an unknown reason is also read only.
+func workspaceReadOnlyText(_ reason: WorkspaceWriteAccess.Reason?) -> String {
+    switch reason {
+    case .cloudStorage?:
+        return String(localized: "This database is in iCloud Drive or another cloud folder, where saving to it could damage it. Create a local copy to edit.")
+    case .networkVolume?:
+        return String(localized: "This database is on a network or unknown drive, where saving to it is not safe. Create a local copy to edit.")
+    case .notWritable?:
+        return String(localized: "This database or its folder cannot be written.")
+    case .unsupportedSchema?:
+        return String(localized: "This database is from a different version of Worlds. Open it in Worlds on your computer first.")
+    case .notLocalFile?, .notWorldsDatabase?, .unavailable?, nil:
+        return String(localized: "This database cannot be edited here.")
+    }
+}
+
 struct LocalCopyPicker: View {
     @Environment(\.dismiss) private var dismiss
     let coordinator: LocalProjectImportCoordinator

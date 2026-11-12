@@ -4,7 +4,10 @@
 "Done" = "Done";
 "AI settings" = "AI settings";
 "Not set up" = "Not set up";
-"Model %@. Reads page titles and previews; it cannot change your workspace yet." = "Model %@. Reads page titles and previews; it cannot change your workspace yet.";
+"Model %@. Reads and edits your pages; each reply can be undone." = "Model %@. Reads and edits your pages; each reply can be undone.";
+"Model %@. Reads and edits this local copy; each reply can be undone." = "Model %@. Reads and edits this local copy; each reply can be undone.";
+"Model %@. Reads your pages; this workspace is read only here." = "Model %@. Reads your pages; this workspace is read only here.";
+"Model %@. No workspace is open, so it can only chat." = "Model %@. No workspace is open, so it can only chat.";
 "Choose a provider and a model to start chatting." = "Choose a provider and a model to start chatting.";
 "Set up an AI provider" = "Set up an AI provider";
 "Worlds talks to the provider you choose, with your own API key or a model running on your computer." = "Worlds talks to the provider you choose, with your own API key or a model running on your computer.";
@@ -151,3 +154,24 @@
 "Redo" = "Redo";
 "The change could not be undone. Reopen the drawing to check it." = "The change could not be undone. Reopen the drawing to check it.";
 "The change could not be redone. Reopen the drawing to check it." = "The change could not be redone. Reopen the drawing to check it.";
+/* Assistant tools */
+"Steps: %lld" = "Steps: %lld";
+"This model cannot use Worlds tools, so this reply is chat only." = "This model cannot use Worlds tools, so this reply is chat only.";
+"Changed: %@" = "Changed: %@";
+"Undone: %@" = "Undone: %@";
+"Open" = "Open";
+"Untitled" = "Untitled";
+", " = ", ";
+"Workspace overview" = "Workspace overview";
+"List pages" = "List pages";
+"Search pages" = "Search pages";
+"Read page" = "Read page";
+"Create page" = "Create page";
+"Add to page" = "Add to page";
+"Edit block" = "Edit block";
+"Rename page" = "Rename page";
+"Add tasks" = "Add tasks";
+"List tasks" = "List tasks";
+"The assistant stopped after %lld steps. Ask for a smaller change." = "The assistant stopped after %lld steps. Ask for a smaller change.";
+"Open the workspace these changes were made in to undo them." = "Open the workspace these changes were made in to undo them.";
+"Some pages could not be put back: %@. They changed since, or are in Trash; their earlier versions stay in the page history." = "Some pages could not be put back: %@. They changed since, or are in Trash; their earlier versions stay in the page history.";
