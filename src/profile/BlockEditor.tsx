@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { open as openDialog } from "../lib/dialog";
 import { api, errorMessage, fileUrl } from "../lib/api";
 import { useStore } from "../state/store";
 import { Button, IconButton } from "../ui/Button";

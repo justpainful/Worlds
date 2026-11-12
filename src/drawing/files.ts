@@ -1,4 +1,4 @@
-import { save } from "@tauri-apps/plugin-dialog";
+import { save } from "../lib/dialog";
 import { api, isTauri } from "../lib/api";
 import { syncConfig } from "../sync/config";
 import type { DrawingExportContext } from "./exportPolicy";

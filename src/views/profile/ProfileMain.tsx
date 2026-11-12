@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open } from "../../lib/dialog";
 import { openExternal } from "../../lib/links";
 import { api, errorMessage, fileUrl } from "../../lib/api";
 import type { Profile } from "../../lib/types";

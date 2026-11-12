@@ -1,5 +1,5 @@
 import type { Editor } from "@tiptap/core";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open } from "../lib/dialog";
 import { api, errorMessage } from "../lib/api";
 import type { Attachment } from "../lib/types";
 import { useStore } from "../state/store";
@@ -66,7 +66,7 @@ export async function insertBlobs(editor: Editor, pageId: string, files: File[],
 }
 
 export async function pickAndInsert(editor: Editor, pageId: string, kind: "image" | "video" | "file") {
-  const picked = await open({ multiple: true, filters: FILTERS[kind], title: kind === "file" ? "Attach files" : `Insert ${kind}` });
+  const picked = await open({ multiple: true, filters: FILTERS[kind], title: kind === "file" ? "Attach files" : kind === "image" ? "Insert a picture" : "Insert a video" });
   if (!picked) return;
   const paths = Array.isArray(picked) ? picked : [picked];
   await insertPaths(editor, pageId, paths);

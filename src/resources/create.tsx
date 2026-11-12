@@ -4,7 +4,7 @@
  */
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
-import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { open as openDialog } from "../lib/dialog";
 import { api, errorMessage } from "../lib/api";
 import type { PageMeta, ResourceKind } from "../lib/types";
 import { useStore, type OpenWhere } from "../state/store";

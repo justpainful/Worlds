@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { NodeViewWrapper, type ReactNodeViewProps } from "@tiptap/react";
-import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { open as openDialog } from "../../lib/dialog";
 import { api, errorMessage, fileUrl } from "../../lib/api";
 import { useStore } from "../../state/store";
 import { Icon } from "../../ui/Icon";

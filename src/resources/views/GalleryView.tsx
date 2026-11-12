@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { open as openDialog } from "../../lib/dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { api, errorMessage, fileUrl, isTauri } from "../../lib/api";
 import type { Attachment } from "../../lib/types";

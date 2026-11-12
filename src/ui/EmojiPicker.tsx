@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { SearchField } from "./SearchField";
-import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { open as openDialog } from "../lib/dialog";
 import { api, errorMessage } from "../lib/api";
 import { useStore } from "../state/store";
 import { ICON_CATALOG } from "../assets/product-icons";
