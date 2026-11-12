@@ -346,3 +346,23 @@
 }
 .tb-fill { min-width: 24px; }
 .chat-view { padding-top: 72px; }
+
+/* Guided tour (src/shell/Tour.tsx): the lit part is a hole in the dimmed window. */
+.tour-root { position: fixed; inset: 0; z-index: 2700; }
+.tour-hole { position: fixed; z-index: 1; border-radius: 14px; pointer-events: none; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.56), 0 0 0 2px rgba(var(--accent-rgb), 0.85); transition: top 220ms var(--spring-snappy), left 220ms var(--spring-snappy), width 220ms var(--spring-snappy), height 220ms var(--spring-snappy); }
+.tour-dim { position: fixed; inset: 0; z-index: 1; background: rgba(0, 0, 0, 0.56); }
+.tour-catch { position: fixed; inset: 0; z-index: 2; }
+.tour-card { position: fixed; z-index: 3; width: min(340px, calc(100vw - 24px)); transition: top 220ms var(--spring-snappy), left 220ms var(--spring-snappy); }
+.tour-card > .g-content { display: flex; flex-direction: column; gap: 8px; padding: 16px 18px 14px; }
+.tour-card-head { display: flex; align-items: center; gap: 10px; }
+.tour-card-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); flex: none; }
+.tour-count { flex: 1; font: var(--t-small); color: var(--text-3); }
+.tour-close { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; color: var(--text-3); }
+.tour-close:hover { background: var(--fill-2); color: var(--text-1); }
+.tour-title { margin: 2px 0 0; font: var(--t-h3); color: var(--text-1); }
+.tour-body { margin: 0; font: var(--t-ui); font-weight: 450; line-height: 1.5; color: var(--text-2); }
+.tour-dots { display: flex; gap: 5px; margin-top: 4px; }
+.tour-dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--fill-3); transition: background 160ms var(--ease-out), width 160ms var(--ease-out); }
+.tour-dots span.is-on { width: 16px; border-radius: 3px; background: var(--accent); }
+.tour-actions { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+@media (prefers-reduced-motion: reduce) { .tour-hole, .tour-card, .tour-dots span { transition: none; } }

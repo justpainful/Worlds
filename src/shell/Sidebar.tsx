@@ -76,6 +76,7 @@ export function Sidebar() {
   const nav = (icon: IconName, label: string, route: Route, badge?: number, product?: ProductIconName) => (
     <button
       className={`side-item ${isActive(route) ? "is-active" : ""}`}
+      data-tour={product}
       onClick={(e) => open(route, e.ctrlKey ? "tab" : e.altKey ? "right" : "current")}
     >
       {product ? <ProductIcon name={product} size={34} className="side-pi" /> : <Icon name={icon} size={19} />}
@@ -106,8 +107,8 @@ export function Sidebar() {
         <div className="side-top" data-drag-zone>
           <IconButton icon="sidebarClose" label="Hide sidebar" shortcut="Ctrl+\" onClick={toggleSidebar} />
           <div className="side-top-spacer" data-tauri-drag-region />
-          <IconButton icon="search" label="Search" shortcut="Ctrl+K" onClick={() => setPalette(true, "all")} />
-          <IconButton icon="edit" label="New" shortcut="Ctrl+N for a page" onClick={(e) => newResourceMenu(e.currentTarget)} />
+          <IconButton icon="search" label="Search" shortcut="Ctrl+K" data-tour="search" onClick={() => setPalette(true, "all")} />
+          <IconButton icon="edit" label="New" shortcut="Ctrl+N for a page" data-tour="new" onClick={(e) => newResourceMenu(e.currentTarget)} />
         </div>
 
         <WorkspaceSwitcher />

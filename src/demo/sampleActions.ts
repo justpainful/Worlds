@@ -3,6 +3,7 @@ import { api, errorMessage } from "../lib/api";
 import { useStore } from "../state/store";
 import { resolveUiLanguage } from "../i18n/ui";
 import { enabledPacks, PACKS_ASKED_KEY, setPackEnabled } from "../packs/packs";
+import { startTour, TOUR_SEEN_KEY } from "../shell/Tour";
 import { isSampleLoaded, loadSampleWorkspace, removeSampleWorkspace, type SampleBackend, type SampleHost } from "./sampleWorkspace";
 
 const backend: SampleBackend = {
@@ -44,6 +45,8 @@ export async function loadSample(): Promise<boolean> {
     st.setExpanded(rootId, true);
     st.openPage(rootId, "current");
     st.toast({ message: created ? "Sample workspace added" : "The sample workspace is already here", tone: created ? "success" : "info" });
+    // A first look gets the short tour once, after the new pages have settled.
+    if (created && !st.settings[TOUR_SEEN_KEY]) setTimeout(startTour, 900);
     return true;
   } catch (e) {
     useStore.getState().toast({ message: `Could not add the sample workspace: ${errorMessage(e)}`, tone: "error" });

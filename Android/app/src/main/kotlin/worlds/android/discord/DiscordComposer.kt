@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -54,6 +55,7 @@ fun DiscordComposer(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val store = remember { ContentStore(context, databaseName) }
     val scope = rememberCoroutineScope()
 
@@ -263,10 +265,10 @@ fun DiscordComposer(
                             webhookUrl = webhookUrl.trim(),
                             payload = DiscordEmbedFormatter.buildPayloadJson(formattedContent, formattedEmbeds)
                         )
-                        sendStatus = context.getString(R.string.discord_sent)
+                        sendStatus = resources.getString(R.string.discord_sent)
                         isSuccess = true
                     } catch (e: Exception) {
-                        sendStatus = context.getString(R.string.discord_send_failed, e.message ?: context.getString(R.string.error_unknown))
+                        sendStatus = resources.getString(R.string.discord_send_failed, e.message ?: resources.getString(R.string.error_unknown))
                         isSuccess = false
                     } finally {
                         sending = false

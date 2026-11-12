@@ -8,6 +8,7 @@ import { Panes } from "./shell/Panes";
 import { CommandPalette } from "./shell/CommandPalette";
 import { MenuHost } from "./ui/Menu";
 import { Toasts, TooltipHost } from "./ui/misc";
+import { TourHost } from "./shell/Tour";
 import { glassEngine } from "./glass/engine";
 import { applyAppearance } from "./shell/appearance";
 import { AiHost } from "./ai/AiPanel";
@@ -168,6 +169,7 @@ export function App() {
       <MenuHost />
       <Toasts />
       <TooltipHost />
+      <TourHost />
       <AiHost />
       <LightboxHost />
       <AutomationHost />
