@@ -41,9 +41,21 @@ export function samplePlan(today: string, lang: SampleLanguage = "ar"): SampleEn
   return withSampleLanguage(lang, () => localizeDeep(bilingualPlan(today, lang), lang));
 }
 
+/** The weekdays of the next four school days from `today`, today included when it is one. */
+export function schoolDays(today: string, open: number[]): number[] {
+  const out: number[] = [];
+  for (let n = 0; out.length < 4 && n < 14; n++) {
+    const w = weekday(addDays(today, n));
+    if (open.includes(w)) out.push(w);
+  }
+  return out;
+}
+
 function bilingualPlan(today: string, lang: SampleLanguage): SampleEntry[] {
   const d = (n: number) => addDays(today, n);
   const termStart = d(-21);
+  // Classes meet on school days only: Sunday to Thursday in Saudi Arabia, Monday to Friday elsewhere.
+  const school = schoolDays(today, lang === "ar" ? [0, 1, 2, 3, 4] : [1, 2, 3, 4, 5]);
   return [
     // A home for the documents, so they sit together in the sidebar.
     {
@@ -74,7 +86,7 @@ function bilingualPlan(today: string, lang: SampleLanguage): SampleEntry[] {
       title: "محاضرة الأحياء · Biology lecture",
      
       parent: "bio",
-      metadata: data("event", { date: termStart, start: "08:00", end: "09:15", location: "B12", weekly: [weekday(today), weekday(d(2))] }),
+      metadata: data("event", { date: termStart, start: "08:00", end: "09:15", location: "B12", weekly: [school[0], school[2]] }),
     },
     {
       key: "bio-l1",
@@ -145,7 +157,7 @@ function bilingualPlan(today: string, lang: SampleLanguage): SampleEntry[] {
       title: "محاضرة الرياضيات · Math lecture",
      
       parent: "math",
-      metadata: data("event", { date: termStart, start: "10:00", end: "11:15", location: "A3", weekly: [weekday(d(1)), weekday(d(3))] }),
+      metadata: data("event", { date: termStart, start: "10:00", end: "11:15", location: "A3", weekly: [school[1], school[3]] }),
     },
     {
       key: "math-l1",

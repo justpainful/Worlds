@@ -6,7 +6,7 @@ import { validateScene } from "../drawing/model";
 import { appendOperation, newDrawing } from "../drawing/operations";
 import { evaluateWorkbook, normalizeWorkbook } from "../spreadsheet/engine";
 import { inline, pickLanguage, plainText } from "./content";
-import { gradesWorkbook, mirrorSlide, samplePlan } from "./sampleData";
+import { gradesWorkbook, mirrorSlide, samplePlan, schoolDays } from "./sampleData";
 import { newSlide, STAGE_W } from "../resources/deck/model";
 import { isSampleLoaded, loadSampleWorkspace, removeSampleWorkspace, SAMPLE_KEY, sampleRecord, type SampleBackend, type SampleHost } from "./sampleWorkspace";
 
@@ -239,5 +239,21 @@ describe("sample slides", () => {
     const slide = newSlide("title");
     mirrorSlide(slide);
     expect(slide.elements.every((e) => e.style?.align === "center")).toBe(true);
+  });
+});
+
+describe("sample class days", () => {
+  it("meets on Saudi school days in Arabic and skips the weekend", () => {
+    // 2026-11-12 is a Thursday: Friday and Saturday are skipped.
+    expect(schoolDays("2026-11-12", [0, 1, 2, 3, 4])).toEqual([4, 0, 1, 2]);
+    expect(schoolDays("2026-11-14", [1, 2, 3, 4, 5])).toEqual([1, 2, 3, 4]);
+  });
+
+  it("never puts a class on a Friday in the Arabic sample", () => {
+    for (const today of ["2026-11-12", "2026-11-13", "2026-11-14"]) {
+      const days = samplePlan(today, "ar").flatMap((e) => ((e.metadata as { event?: { weekly?: number[] } } | undefined)?.event?.weekly ?? []));
+      expect(days.length).toBeGreaterThan(0);
+      expect(days.some((w) => w === 5 || w === 6)).toBe(false);
+    }
   });
 });
