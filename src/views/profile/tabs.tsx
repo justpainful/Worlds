@@ -98,7 +98,7 @@ export function AboutTab({ profile, memberSince, stats, onEdit }: { profile: Pro
         </li>
         <li>
           <Icon name="calendar" size={14} />
-          <span>Since {memberSince}</span>
+          <span>{`Since ${memberSince}`}</span>
         </li>
         {stats?.words ? (
           <li>
@@ -108,7 +108,7 @@ export function AboutTab({ profile, memberSince, stats, onEdit }: { profile: Pro
         ) : null}
         <li>
           <Icon name="activity" size={14} />
-          <span>{stats?.edits7d ?? 0} edits in the last 7 days</span>
+          <span>{`${stats?.edits7d ?? 0} edit${stats?.edits7d === 1 ? "" : "s"} in the last 7 days`}</span>
         </li>
         {(profile.links ?? []).map((l, i) => (
           <li key={i}>
