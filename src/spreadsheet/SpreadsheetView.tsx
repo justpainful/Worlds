@@ -849,16 +849,13 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
       else moveSelection((e.shiftKey ? sel.r2 : active.r) - 1, e.shiftKey ? sel.c2 : active.c, e.shiftKey);
       return;
     }
-    if (e.key === "ArrowRight") {
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
       e.preventDefault();
-      if (ctrl) jumpDataEdge(0, 1, e.shiftKey);
-      else moveSelection(e.shiftKey ? sel.r2 : active.r, (e.shiftKey ? sel.c2 : active.c) + 1, e.shiftKey);
-      return;
-    }
-    if (e.key === "ArrowLeft") {
-      e.preventDefault();
-      if (ctrl) jumpDataEdge(0, -1, e.shiftKey);
-      else moveSelection(e.shiftKey ? sel.r2 : active.r, (e.shiftKey ? sel.c2 : active.c) - 1, e.shiftKey);
+      // Arrows move the way they point on screen: in Arabic the columns run right to left.
+      const rtl = !!gridRef.current && getComputedStyle(gridRef.current).direction === "rtl";
+      const dc = (e.key === "ArrowRight") !== rtl ? 1 : -1;
+      if (ctrl) jumpDataEdge(0, dc, e.shiftKey);
+      else moveSelection(e.shiftKey ? sel.r2 : active.r, (e.shiftKey ? sel.c2 : active.c) + dc, e.shiftKey);
       return;
     }
     if (e.key === "Tab") {
