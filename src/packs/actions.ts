@@ -8,7 +8,10 @@ import type { OpenWhere, Route } from "../state/store";
 import { useStore } from "../state/store";
 import type { IconName } from "../ui/Icon";
 import { PACK_CREATORS } from "./components";
-import type { KindDef, PackDef, ViewDef } from "./definition";
+import { emit } from "../lib/bus";
+import type { MenuItem } from "../ui/Menu";
+import type { KindDef, PackDef, PromptDef, ViewDef } from "./definition";
+import { inLanguage } from "./samples";
 import { createPackItem } from "./items";
 import { enabledPacks, PACK_DEFS, PACKS_KEY } from "./registry";
 
@@ -70,9 +73,26 @@ export function packCommands(settings: Record<string, unknown>, open: (r: Route,
         keywords: `${pack.keywords ?? ""} ${kind.plural}`.trim(),
         run: () => void packCreator(pack, kind)(),
       })),
+    ...(pack.prompts ?? []).map((p, i) => ({
+      id: `pack-${pack.id}-ask-${i}`,
+      title: p.label,
+      icon: "assistant" as IconName,
+      keywords: `claude ${pack.label} ${pack.keywords ?? ""}`.trim(),
+      run: () => askClaude(p),
+    })),
   ]);
 }
 
 function view0Icon(pack: PackDef): IconName {
   return pack.views.find((v) => v.id === pack.sidebar[0])?.icon ?? "folder";
+}
+
+/** Hand one of the pack's requests to Claude, about the open item when there is one. */
+export function askClaude(prompt: PromptDef, pageId: string | null = null) {
+  emit("ai:open", { pageId, prompt: inLanguage(prompt.prompt) });
+}
+
+/** The Claude menu of a pack. */
+export function promptMenu(pack: PackDef, pageId: string | null = null): MenuItem[] {
+  return (pack.prompts ?? []).map((p) => ({ label: p.label, icon: "assistant" as IconName, onSelect: () => askClaude(p, pageId) }));
 }

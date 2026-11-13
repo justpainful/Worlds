@@ -6,11 +6,13 @@ import { IconButton } from "../../ui/Button";
 import type { KindDef, PackDef } from "../definition";
 import { formatField, listFields } from "../fields";
 import { createPackItem, itemData, updatePackItem } from "../items";
+import { useTitleOf } from "./links";
 
 const DRAG = "application/x-worlds-pack-item";
 
 export function PackBoard({ pack, kind, items, groupBy }: { pack: PackDef; kind: KindDef; items: PageMeta[]; groupBy: string }) {
   const openPage = useStore((s) => s.openPage);
+  const titleOf = useTitleOf();
   const field = kind.fields.find((f) => f.id === groupBy);
   const [over, setOver] = useState<string | null>(null);
   if (!field?.options?.length) return null;
@@ -74,7 +76,7 @@ export function PackBoard({ pack, kind, items, groupBy }: { pack: PackDef; kind:
                   >
                     <span className="pk-card-title bidi">{pageTitle(p)}</span>
                     {shown.map((f) => {
-                      const v = formatField(f, data[f.id]);
+                      const v = formatField(f, data[f.id], undefined, titleOf);
                       return v ? (
                         <span key={f.id} className="pk-card-field">
                           <span className="pk-card-label">{f.label}</span> <span className="bidi">{v}</span>

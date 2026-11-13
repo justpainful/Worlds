@@ -1,4 +1,6 @@
 /** Calendar: a week at a glance, or the agenda for the weeks ahead. */
+import { updatePackItem } from "../packs/items";
+import { kindDefOf } from "../packs/registry";
 import { useMemo, useState } from "react";
 import { useStore } from "../state/store";
 import { Button, IconButton } from "../ui/Button";
@@ -138,11 +140,13 @@ function Chip({ o, wide }: { o: Occurrence; wide?: boolean }) {
   const openPage = useStore((s) => s.openPage);
   const show = useMenu((s) => s.show);
   const color = colorVar(o.color);
-  const tickable = o.kind === "task" || o.kind === "assignment" || o.kind === "requirement";
+  const packDone = o.kind.includes(".") ? kindDefOf(o.kind)?.kind.doneField : undefined;
+  const tickable = o.kind === "task" || o.kind === "assignment" || o.kind === "requirement" || !!packDone;
   const tick = () => {
     if (o.kind === "task") toggleTask(o.page);
     else if (o.kind === "assignment") updateData(o.page, "assignment", { submitted: !o.done, submittedAt: o.done ? null : Date.now() });
     else if (o.kind === "requirement") updateData(o.page, "requirement", { ready: !o.done });
+    else if (packDone) void updatePackItem(o.page, { [packDone]: !o.done });
   };
   return (
     <div

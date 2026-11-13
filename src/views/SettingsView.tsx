@@ -17,6 +17,7 @@ import { ACCENTS, effectiveAccent } from "../shell/appearance";
 import { BridgeCard } from "./IntegrationsView";
 import { Select, DIRECTION_OPTIONS, LANGUAGE_OPTIONS } from "../ui/Select";
 import { AccountSettings } from "../account/AccountSettings";
+import { FAMILIES } from "../packs/definition";
 import { PACKS, setPackEnabled, usePack } from "../packs/packs";
 import { loadSample, removeSample, rewriteSample, sampleLanguageMismatch, useSampleLoaded } from "../demo/sampleActions";
 
@@ -129,30 +130,41 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
 }
 
 function PackSettings() {
+  // Grouped by family, in the order of docs/PACKS.md.
   return (
     <>
-      {PACKS.map((p) => (
-        <PackCard key={p.id} pack={p} />
-      ))}
+      {FAMILIES.map((f) => {
+        const list = PACKS.filter((p) => p.family === f.id);
+        return list.length ? (
+          <Group key={f.id} title={f.label}>
+            {list.map((p) => (
+              <PackRow key={p.id} pack={p} />
+            ))}
+          </Group>
+        ) : null;
+      })}
+      <p className="set-note">Turning a pack off hides its views and items without deleting anything; turning it back on brings them all back.</p>
     </>
   );
 }
 
-function PackCard({ pack }: { pack: (typeof PACKS)[number] }) {
+function PackRow({ pack }: { pack: (typeof PACKS)[number] }) {
   const on = usePack(pack.id);
   return (
-    <Group title={pack.label} note="Turning a pack off hides its views and items without deleting anything; turning it back on brings them all back.">
-      <Row label={`${pack.label} pack`} hint={pack.blurb}>
+    <>
+      <Row label={pack.label} hint={pack.blurb}>
         <Toggle checked={on} onChange={(v) => setPackEnabled(pack.id, v)} label={pack.label} />
       </Row>
-      <div className="set-row">
-        <ul className="pack-adds">
-          {pack.adds.map((a) => (
-            <li key={a}>{a}</li>
-          ))}
-        </ul>
-      </div>
-    </Group>
+      {on && (
+        <div className="set-row">
+          <ul className="pack-adds">
+            {pack.adds.map((a) => (
+              <li key={a}>{a}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </>
   );
 }
 function Appearance() {

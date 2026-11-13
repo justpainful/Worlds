@@ -21,7 +21,8 @@ export type FieldType =
   | "stage" // one of the options, in order; a board groups by it
   | "url"
   | "email"
-  | "phone";
+  | "phone"
+  | "link"; // another item of the same pack, by page id (the kind is in `to`)
 
 export interface FieldOption {
   id: string;
@@ -45,6 +46,8 @@ export interface FieldDef {
   initial?: unknown;
   /** Hidden from lists and boards, shown on the item. */
   detailOnly?: boolean;
+  /** For link: the kind id (in the same pack) it points to. */
+  to?: string;
 }
 
 export interface KindDef {
@@ -71,6 +74,65 @@ export interface KindDef {
   doneField?: string;
 }
 
+/**
+ * A test on one field of an item. All given parts must hold. Dates are compared
+ * with today, so "overdue" and "within" follow the clock.
+ */
+export interface Condition {
+  field: string;
+  /** The value is one of these (choice, stage, or true/false for a checkbox). */
+  in?: unknown[];
+  /** The value is none of these. */
+  notIn?: unknown[];
+  /** The field is empty (true) or filled (false). */
+  empty?: boolean;
+  /** A date before today. */
+  overdue?: boolean;
+  /** A date from today up to this many days ahead. */
+  within?: number;
+  /** A date in the current week or month. */
+  period?: "week" | "month";
+  /** A number at or below this value, or at or below another field of the item. */
+  atMost?: number | string;
+}
+
+/** A figure on Home: how many items match, or the sum of one field across them. */
+export interface StatDef {
+  label: string;
+  kind: string;
+  agg: "count" | "sum" | "average";
+  /** For sum and average: a number or money field. */
+  field?: string;
+  where?: Condition[];
+}
+
+/** Items that need the person, listed on Home and above the pack's views while any match. */
+export interface AlertDef {
+  label: string;
+  kind: string;
+  where: Condition[];
+}
+
+/** A request the person can hand to Claude from the pack. */
+export interface PromptDef {
+  label: string;
+  /** Sent in the person's language; Claude also sees the open item. */
+  prompt: Bilingual;
+}
+
+/** Text written in both languages, for sample data that is content, not interface. */
+export type Bilingual = string | { en: string; ar: string };
+
+/** An item the pack can add to show how it works, in the person's language. */
+export interface SampleDef {
+  /** Lets other samples link to this one. */
+  ref?: string;
+  kind: string;
+  title: Bilingual;
+  /** Field values; text can be bilingual, links name another sample's ref. */
+  data?: Record<string, unknown>;
+}
+
 /** Built from the shared blocks, or a component the pack brings itself. */
 export type ViewType = "table" | "board" | "custom";
 
@@ -87,6 +149,12 @@ export interface ViewDef {
   columns?: string[];
   /** For custom: the name the component is registered under (src/packs/components.tsx). */
   component?: string;
+  /** Only items that match every condition. */
+  filter?: Condition[];
+  /** For a table: number and money fields added up under the last row. */
+  totals?: string[];
+  /** For a table: number fields averaged under the last row. */
+  averages?: string[];
 }
 
 export interface RoleDef {
@@ -99,8 +167,22 @@ export interface RoleDef {
   hiddenFields?: string[];
 }
 
+/** The seven families Settings and the chooser group packs by (docs/PACKS.md). */
+export type FamilyId = "education" | "business" | "field" | "services" | "creative" | "community" | "personal";
+
+export const FAMILIES: { id: FamilyId; label: string; icon: string }[] = [
+  { id: "education", label: "Education and training", icon: "graduation" },
+  { id: "business", label: "Work and business", icon: "briefcase" },
+  { id: "field", label: "Field work", icon: "engineering" },
+  { id: "services", label: "Services and hospitality", icon: "dallah" },
+  { id: "creative", label: "Creative, tech and media", icon: "creative" },
+  { id: "community", label: "Community", icon: "team" },
+  { id: "personal", label: "Individuals", icon: "profile" },
+];
+
 export interface PackDef {
   id: string;
+  family: FamilyId;
   label: string;
   /** One sentence for the Settings row and the chooser. */
   blurb: string;
@@ -120,6 +202,14 @@ export interface PackDef {
   /** Search words for its commands, in both languages. */
   keywords?: string;
   roles: RoleDef[];
+  /** Figures for its Home section. */
+  stats?: StatDef[];
+  /** What needs attention, on Home and in the pack. */
+  alerts?: AlertDef[];
+  /** Requests for Claude, in its views and the command palette. */
+  prompts?: PromptDef[];
+  /** Example items, added on request from an empty view. */
+  samples?: SampleDef[];
 }
 
 /** The stored kind of a pack kind. */

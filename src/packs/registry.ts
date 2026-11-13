@@ -11,7 +11,7 @@
  * store's own selectors can use it. Hooks and actions live in ./packs.ts.
  */
 import type { PageMeta } from "../lib/types";
-import { dataKeyOf, storedKind, type KindDef, type PackDef } from "./definition";
+import { dataKeyOf, storedKind, type FamilyId, type KindDef, type PackDef } from "./definition";
 import { STUDY } from "./definitions/study";
 
 /** Every pack Worlds knows, in the order Settings lists them. */
@@ -21,6 +21,7 @@ export type PackId = string;
 
 export interface PackInfo {
   id: PackId;
+  family: FamilyId;
   label: string;
   /** One sentence for the Settings row and the chooser. */
   blurb: string;
@@ -34,6 +35,7 @@ export interface PackInfo {
 
 export const PACKS: PackInfo[] = PACK_DEFS.map((p) => ({
   id: p.id,
+  family: p.family,
   label: p.label,
   blurb: p.blurb,
   icon: p.icon,

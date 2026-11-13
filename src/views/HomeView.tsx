@@ -15,12 +15,14 @@ import { Tonal } from "../ui/tonal/Tonal";
 import { GlassBackdrop } from "../profile/GlassBackdrop";
 import { emptyPreview, isResource } from "../resources/kinds";
 import { newResourceMenu } from "../resources/create";
-import { PACKS_ASKED_KEY, setPackEnabled } from "../packs/packs";
+import { PACKS_ASKED_KEY } from "../packs/packs";
 import { formatTime, occurrences, tasksFor, today } from "../planning/model";
 import { createItem } from "../planning/actions";
 import { ItemRow, QuickAdd } from "../planning/ui";
 import { PACK_COMPONENTS } from "../packs/components";
 import { packRoute, useEnabledPacks } from "../packs/actions";
+import { PackChooser } from "../packs/views/PackChooser";
+import { PackHome } from "../packs/views/PackHome";
 import { loadSample } from "../demo/sampleActions";
 import { resolveUiLanguage } from "../i18n/ui";
 import { dateLine } from "../i18n/locale";
@@ -206,8 +208,9 @@ export function HomeView() {
         )}
       </HomeSection>
       {packs.map((p) => {
-        const Section = p.home ? PACK_COMPONENTS[p.home] : undefined;
-        return Section ? (
+        // A pack's own Home component, or the section every pack gets from its definition.
+        const Custom = p.home ? PACK_COMPONENTS[p.home] : undefined;
+        return (
           <HomeSection
             key={p.id}
             title={p.label}
@@ -217,9 +220,9 @@ export function HomeView() {
               </button>
             }
           >
-            <Section />
+            {Custom ? <Custom /> : <PackHome pack={p} />}
           </HomeSection>
-        ) : null;
+        );
       })}
       {suggested.length > 0 && (
         <HomeSection title="Suggested">
@@ -292,35 +295,10 @@ export function HomeView() {
   );
 }
 
+/** Asked once: what the person uses Worlds for, and which packs to turn on. */
 function PackPrompt() {
   const setSetting = useStore((s) => s.setSetting);
-  const open = useStore((s) => s.open);
-  const done = (study: boolean) => {
-    setSetting(PACKS_ASKED_KEY, true);
-    if (study) {
-      setPackEnabled("study", true);
-      open({ kind: "study" });
-    }
-  };
-  return (
-    <div className="res-card pack-prompt">
-      <div className="pack-prompt-text">
-        <strong>Do you use Worlds for school or university?</strong>
-        <span>
-          Turn on the Study pack for subjects, a class timetable, assignments and exams. Otherwise it stays out of the way. You can change
-          this anytime in Settings → Packs.
-        </span>
-      </div>
-      <div className="pack-prompt-actions">
-        <button className="btn btn-quiet btn-compact" onClick={() => done(false)}>
-          No, keep it simple
-        </button>
-        <button className="btn btn-tinted btn-compact" onClick={() => done(true)}>
-          Turn on Study
-        </button>
-      </div>
-    </div>
-  );
+  return <PackChooser onDone={() => setSetting(PACKS_ASKED_KEY, true)} />;
 }
 /**
  * The first screen of a new install offers both interface languages, so a visitor

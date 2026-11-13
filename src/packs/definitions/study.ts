@@ -8,6 +8,7 @@ import type { PackDef } from "../definition";
  */
 export const STUDY: PackDef = {
   id: "study",
+  family: "education",
   label: "Study",
   blurb: "Subjects, a class timetable, assignments, exams and lessons, for school or university.",
   icon: "graduation",

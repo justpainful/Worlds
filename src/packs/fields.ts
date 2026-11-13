@@ -39,13 +39,18 @@ export function parseField(field: FieldDef, text: string): unknown {
     case "choice":
     case "stage":
       return field.options?.some((o) => o.id === text) ? text : null;
+    case "link":
+      return text || null;
     default:
       return text;
   }
 }
 
-/** What a field shows in a list, card or table cell. Empty when there is nothing. */
-export function formatField(field: FieldDef, value: unknown, locale?: string): string {
+/**
+ * What a field shows in a list, card or table cell. Empty when there is nothing.
+ * A link shows the linked item's title through `titleOf`.
+ */
+export function formatField(field: FieldDef, value: unknown, locale?: string, titleOf?: (id: string) => string): string {
   if (value === null || value === undefined || value === "") return "";
   switch (field.type) {
     case "money": {
@@ -68,6 +73,8 @@ export function formatField(field: FieldDef, value: unknown, locale?: string): s
     case "choice":
     case "stage":
       return field.options?.find((o) => o.id === value)?.label ?? "";
+    case "link":
+      return typeof value === "string" && titleOf ? titleOf(value) : "";
     default:
       return String(value);
   }

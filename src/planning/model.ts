@@ -9,7 +9,7 @@
  * laptop is.
  */
 import type { PageMeta } from "../lib/types";
-import { isKindHidden } from "../packs/registry";
+import { isKindHidden, kindDefOf } from "../packs/registry";
 import type { PropColor } from "../pages/properties";
 
 // ---------------------------------------------------------------------------
@@ -303,7 +303,8 @@ export interface Occurrence {
   /** Unique per occurrence: page id plus the day for repeating events. */
   key: string;
   page: PageMeta;
-  kind: DataKind;
+  /** A planning kind, or a pack kind with a date field (freelance.invoice). */
+  kind: DataKind | `${string}.${string}`;
   date: string;
   start: string | null;
   end: string | null;
@@ -343,7 +344,7 @@ export function occurrences(pages: Record<string, PageMeta>, from: string, to: s
     const s = subjectOf(pages, p);
     return s ? (dataOf(s, "subject").color ?? null) : null;
   };
-  const push = (p: PageMeta, kind: DataKind, date: string, start: string | null, end: string | null, allDay: boolean, done: boolean) => {
+  const push = (p: PageMeta, kind: Occurrence["kind"], date: string, start: string | null, end: string | null, allDay: boolean, done: boolean) => {
     if (date < from || date > to) return;
     if (done && !opts.includeDone) return;
     out.push({ key: `${p.id}:${date}`, page: p, kind, date, start, end, allDay, done, color: colorOf(p) });
@@ -382,6 +383,17 @@ export function occurrences(pages: Record<string, PageMeta>, from: string, to: s
         const d = dataOf(p, "requirement");
         if (isISODate(d.due)) push(p, "requirement", d.due, null, null, true, !!d.ready);
         break;
+      }
+      default: {
+        // Pack kinds put their date field on the calendar (docs/PACKS.md).
+        const def = p.kind.includes(".") ? kindDefOf(p.kind) : undefined;
+        const field = def?.kind.dateField;
+        if (!def || !field) break;
+        const d = (p.data && typeof p.data === "object" ? p.data : {}) as Record<string, unknown>;
+        const date = d[field];
+        if (typeof date !== "string" || !isISODate(date)) break;
+        const done = def.kind.doneField ? d[def.kind.doneField] === true : false;
+        push(p, p.kind as Occurrence["kind"], date, null, null, true, done);
       }
     }
   }

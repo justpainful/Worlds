@@ -1,21 +1,27 @@
-/** One pack item: its fields to edit, built from the kind's definition. */
+/** One pack item: its fields to edit, built from the kind's definition, and the items that link to it. */
+import { useMemo } from "react";
 import { trashItem } from "../../planning/actions";
 import { Field } from "../../planning/ui";
 import { ResourceHeader } from "../../resources/views/ResourceHeader";
 import { useStore } from "../../state/store";
 import { Button } from "../../ui/Button";
+import { menuAt } from "../../ui/Menu";
 import { EmptyState } from "../../ui/misc";
+import { promptMenu } from "../actions";
+import type { FieldDef, KindDef, PackDef } from "../definition";
 import { formatField } from "../fields";
-import { itemData, updatePackItem } from "../items";
+import { createPackItem, itemData, updatePackItem } from "../items";
 import { kindDefOf } from "../registry";
+import { packItems } from "../rules";
 import { FieldInput } from "./FieldInput";
+import { PackTable } from "./PackTable";
 
 export function PackItemView({ id }: { id: string }) {
   const p = useStore((s) => s.pages[id]);
   const def = p ? kindDefOf(p.kind) : undefined;
   if (!p || p.deletedAt) return <EmptyState icon="warning" title="This item is not here any more" text="It may have been deleted." />;
   if (!def) return <EmptyState icon="warning" title="This item belongs to a pack Worlds does not have" text="It is kept as it is; a newer Worlds may open it." />;
-  const { kind } = def;
+  const { kind, pack } = def;
   const data = itemData(p);
   const set = (fieldId: string, v: unknown) => void updatePackItem(p, { [fieldId]: v });
   const done = kind.doneField ? data[kind.doneField] === true : false;
@@ -29,11 +35,18 @@ export function PackItemView({ id }: { id: string }) {
         meta={p}
         subtitle={stage ? <span>{formatField(stage, data[stage.id])}</span> : done ? <span className="pl-done-badge">Done</span> : undefined}
         actions={
-          kind.doneField ? (
-            <Button variant={done ? "plain" : "tinted"} icon="check" onClick={() => set(kind.doneField!, !done)}>
-              {done ? "Mark not done" : "Mark done"}
-            </Button>
-          ) : undefined
+          <>
+            {pack.prompts?.length ? (
+              <Button variant="plain" icon="assistant" onClick={(e) => menuAt(e.currentTarget, promptMenu(pack, p.id), "end")}>
+                Ask Claude
+              </Button>
+            ) : null}
+            {kind.doneField ? (
+              <Button variant={done ? "plain" : "tinted"} icon="check" onClick={() => set(kind.doneField!, !done)}>
+                {done ? "Mark not done" : "Mark done"}
+              </Button>
+            ) : null}
+          </>
         }
       />
 
@@ -41,7 +54,7 @@ export function PackItemView({ id }: { id: string }) {
         <section className="res-card pl-fields">
           {short.map((f) => (
             <Field key={f.id} label={f.label}>
-              <FieldInput field={f} value={data[f.id]} onChange={(v) => set(f.id, v)} />
+              <FieldInput field={f} value={data[f.id]} pack={pack} onChange={(v) => set(f.id, v)} />
             </Field>
           ))}
         </section>
@@ -54,11 +67,48 @@ export function PackItemView({ id }: { id: string }) {
         </section>
       ))}
 
+      <LinkedHere pack={pack} kind={kind} id={p.id} />
+
       <div className="pl-detail-foot">
         <Button variant="danger" icon="delete" onClick={() => trashItem(p)}>
           {`Delete ${kind.label.toLowerCase()}`}
         </Button>
       </div>
     </div>
+  );
+}
+
+/** Every kind that links to this one gets a list here: a client's quotes and invoices. */
+function LinkedHere({ pack, kind, id }: { pack: PackDef; kind: KindDef; id: string }) {
+  const pages = useStore((s) => s.pages);
+  const groups = useMemo(() => {
+    const out: { kind: KindDef; field: FieldDef; items: ReturnType<typeof packItems> }[] = [];
+    for (const k of pack.kinds) {
+      for (const f of k.fields) {
+        if (f.type !== "link" || f.to !== kind.id) continue;
+        out.push({ kind: k, field: f, items: packItems(pages, pack, k.id).filter((x) => itemData(x)[f.id] === id) });
+      }
+    }
+    return out;
+  }, [pages, pack, kind.id, id]);
+
+  return (
+    <>
+      {groups.map(({ kind: k, field, items }) => (
+        <section key={`${k.id}.${field.id}`} className="pl-section">
+          <div className="pk-section-head">
+            <h2 className="pl-section-title">{k.plural}</h2>
+            <Button variant="plain" icon="add" onClick={() => void createPackItem(pack, k, { data: { [field.id]: id }, open: "current" })}>
+              {`Add ${k.label.toLowerCase()}`}
+            </Button>
+          </div>
+          {items.length ? (
+            <PackTable kind={k} items={items} columns={k.fields.filter((f) => !f.detailOnly && f.id !== field.id).map((f) => f.id)} />
+          ) : (
+            <p className="pk-none">{`No ${k.plural.toLowerCase()} yet`}</p>
+          )}
+        </section>
+      ))}
+    </>
   );
 }

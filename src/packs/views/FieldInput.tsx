@@ -1,10 +1,13 @@
 /** Edits one field of a pack item, with the control its type calls for. */
+import { useMemo } from "react";
 import { BlurInput } from "../../planning/ui";
+import { pageTitle, useStore } from "../../state/store";
 import { Select } from "../../ui/Select";
-import type { FieldDef } from "../definition";
+import type { FieldDef, PackDef } from "../definition";
 import { parseField, parseNumber } from "../fields";
+import { packItems } from "../rules";
 
-export function FieldInput({ field, value, onChange }: { field: FieldDef; value: unknown; onChange: (v: unknown) => void }) {
+export function FieldInput({ field, value, onChange, pack }: { field: FieldDef; value: unknown; onChange: (v: unknown) => void; pack?: PackDef }) {
   const text = value === null || value === undefined ? "" : String(value);
   switch (field.type) {
     case "longText":
@@ -42,6 +45,8 @@ export function FieldInput({ field, value, onChange }: { field: FieldDef; value:
           onChange={(v) => onChange(v || null)}
         />
       );
+    case "link":
+      return pack && field.to ? <LinkInput pack={pack} field={field} value={text} onChange={onChange} /> : null;
     case "url":
     case "email":
     case "phone":
@@ -49,4 +54,19 @@ export function FieldInput({ field, value, onChange }: { field: FieldDef; value:
     default:
       return <BlurInput value={text} placeholder={field.placeholder} onCommit={(v) => onChange(v)} />;
   }
+}
+
+/** Picks another item of the pack, such as the client of an invoice. */
+function LinkInput({ pack, field, value, onChange }: { pack: PackDef; field: FieldDef; value: string; onChange: (v: unknown) => void }) {
+  const pages = useStore((s) => s.pages);
+  const options = useMemo(
+    () =>
+      packItems(pages, pack, field.to!)
+        .map((p) => ({ value: p.id, label: pageTitle(p) }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [pages, pack, field.to],
+  );
+  // A linked item that was deleted still shows, so the field never looks silently empty.
+  const gone = value && !options.some((o) => o.value === value) ? [{ value, label: pages[value] ? pageTitle(pages[value]) : "Deleted item" }] : [];
+  return <Select value={value} label={field.label} options={[{ value: "", label: "None" }, ...gone, ...options]} onChange={(v) => onChange(v || null)} />;
 }
