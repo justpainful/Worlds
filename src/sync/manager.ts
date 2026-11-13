@@ -10,6 +10,9 @@ import { create } from "zustand";
 import { useStore } from "../state/store";
 import "./appConfig";
 import { configureSync, syncConfig } from "./config";
+import { itemData } from "../packs/items";
+import { isPackKind, kindDefOf } from "../packs/registry";
+import { pushFields } from "./fields";
 import { acquireSession, localStore, openSessions, releaseSession } from "./session";
 
 export interface Notice {
@@ -106,6 +109,23 @@ export function startSyncManager() {
       const open = openSessions().find((s) => s.pageId === pageId);
       if (open) void open.reconcile();
       else void withSession(pageId, (s) => s.reconcile());
+    }
+  });
+
+  // A shared pack item's fields changed while it is not open (a board, Claude,
+  // an automation): bring its document's fields map up to date.
+  useStore.subscribe((state, prev) => {
+    if (state.pages === prev.pages) return;
+    for (const [id, p] of Object.entries(state.pages)) {
+      const before = prev.pages[id];
+      if (!before || p.data === before.data || !isPackKind(p.kind) || !kindDefOf(p.kind)) continue;
+      const open = openSessions().find((x) => x.pageId === id);
+      if (open) {
+        if (open.ready && open.canEdit) pushFields(open.content, itemData(p));
+      } else
+        void withSession(id, async (x) => {
+          if (x.canEdit) pushFields(x.content, itemData(useStore.getState().pages[id] ?? p));
+        });
     }
   });
 

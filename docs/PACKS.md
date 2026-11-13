@@ -183,7 +183,7 @@ Built on the branch `feat/pack-engine` (2026-11-13), desktop first:
 
 Not done yet, and why:
 
-- **Fields of a shared item that is not open anywhere** reach the map the next time it is opened, not before; the background sync manager could fold them in as it does for blocks.
+- **Changes others make to a shared item** reach this device when the item is opened here (changes made here while it is closed, from a board, Claude or an automation, are pushed in the background).
 - **Hiding single fields from a role on the server** (Roles, addition 2). Needs pack roles stored per member on the server, changes `services/sync` and `services/identity`, and needs a server deploy, which is the owner's decision.
 - **Links across workspaces** (a teacher's assessment appearing in each student's Study pack). Depends on the same sync work.
 - **Messages sent for the person** (a note to a parent about an absence). The daily summary puts the work in Inbox; sending outside Worlds goes through Discord or later email with the person's approval, as every outgoing message does.
