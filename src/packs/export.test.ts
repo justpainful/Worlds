@@ -74,7 +74,8 @@ describe("pack definitions for the native apps", () => {
       }
       const committed = fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
       // Name the first place that differs, so a failure says what changed.
-      const a: string[] = String(committed).split(String.fromCharCode(10));
+      // A checkout may turn line ends into CRLF; the content is what counts.
+      const a: string[] = String(committed).split(String.fromCharCode(13) + String.fromCharCode(10)).join(String.fromCharCode(10)).split(String.fromCharCode(10));
       const b = text.split(String.fromCharCode(10));
       const at = a.findIndex((line, i) => line !== b[i]);
       const where = at < 0 ? (a.length === b.length ? "" : `length ${a.length} vs ${b.length}`) : `line ${at + 1}: committed ${JSON.stringify(a[at])}, made ${JSON.stringify(b[at])}`;

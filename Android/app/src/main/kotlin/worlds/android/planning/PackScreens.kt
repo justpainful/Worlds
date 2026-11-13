@@ -72,6 +72,7 @@ import worlds.android.WorldsActionLabel
     val kind = view?.let { pack.kind(it.kind) }
     val titleOf = { id: String -> repo.rows.firstOrNull { it.id == id }?.title.orEmpty() }
     val items = kind?.let { k -> repo.rows.filter { it.kind == k.kind } }.orEmpty()
+    val noneLabel = stringResource(R.string.packs_none)
 
     PlanScaffold(packTile(pack.icon), pack.label.text(arabic), view?.label?.text(arabic), onBack, trailing = {
         if (kind != null) TextButton(onClick = { add(kind) }) { WorldsActionLabel(R.drawable.ic_plus, stringResource(R.string.packs_add)) }
@@ -93,7 +94,7 @@ import worlds.android.WorldsActionLabel
         val group = view.groupBy?.let { g -> kind.fields.firstOrNull { it.id == g } }
         if (view.type == "board" && group != null) {
             // A board on a phone: one section per lane, in the stage's order.
-            val lanes = group.options.map { it.id to it.label.text(arabic) } + if (group.type == "choice") listOf("" to stringResource(R.string.packs_none)) else emptyList()
+            val lanes = group.options.map { it.id to it.label.text(arabic) } + if (group.type == "choice") listOf("" to noneLabel) else emptyList()
             for ((lane, label) in lanes) {
                 val inLane = items.filter { (it.data.opt(group.id) as? String ?: if (group.type == "stage") group.options.firstOrNull()?.id else "") == lane }
                 if (inLane.isEmpty()) continue
