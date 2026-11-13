@@ -75,3 +75,17 @@ export async function updatePackItem(p: PageMeta, patch: ItemData): Promise<void
     fail(e);
   }
 }
+
+/** Set an item's fields to exactly these (team sync brings the whole set). */
+export async function replaceItemFields(p: PageMeta, fields: ItemData): Promise<void> {
+  const def = kindDefOf(p.kind);
+  if (!def) return;
+  const s = useStore.getState();
+  s.patchPageLocal({ ...(s.pages[p.id] ?? p), data: fields, updatedAt: Date.now() });
+  try {
+    const meta = await api.setPageMeta(p.id, def.dataKey as Parameters<typeof api.setPageMeta>[1], fields);
+    useStore.getState().patchPageLocal({ ...meta, data: meta.data ?? fields });
+  } catch (e) {
+    fail(e);
+  }
+}

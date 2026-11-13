@@ -11,6 +11,7 @@ import { promptMenu } from "../actions";
 import type { PageMeta } from "../../lib/types";
 import type { FieldDef, KindDef, PackDef } from "../definition";
 import { fieldsFor, useViewAs } from "../roles";
+import { useItemSync } from "../useItemSync";
 import { formatField, inSentence } from "../fields";
 import { createPackItem, itemData, updatePackItem } from "../items";
 import { kindDefOf } from "../registry";
@@ -28,6 +29,8 @@ export function PackItemView({ id }: { id: string }) {
 }
 
 function ItemFields({ p, pack, kind }: { p: PageMeta; pack: PackDef; kind: KindDef }) {
+  // In a team, the fields stay in step with everyone who has this item open.
+  useItemSync(p.id);
   // A role preview from the pack's view applies here too.
   const [viewAs] = useViewAs(pack.id, pack.roles);
   const fields = fieldsFor(kind, viewAs);
