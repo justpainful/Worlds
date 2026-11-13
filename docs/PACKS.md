@@ -188,7 +188,7 @@ Built on the branch `feat/pack-engine` (2026-11-13), desktop first:
 Not done yet, and why:
 
 - **Phase 2**, trials with real people from each sector, needs those people.
-- **Shared pack items on Apple** wait for shared pages on Apple: its team sync core is built and tested but not yet part of the app, so there is no shared page to show the fields on. When there is, the card reads `NativeCRDTDocument.packFields()`.
+- **Shared pack items on Apple** wait for shared pages on Apple, which are a project of their own: the Apple team sync modules (`Apple/WorldsCore/Sources/WorldsCollaboration*`) are experimental, say they must not be connected to product UI yet, and CI does not build their framework. Connecting them needs the owner's decision. When shared pages ship there, the card reads `NativeCRDTDocument.packFields()`, which is built and tested.
 
 ### Design for what is left
 
