@@ -182,7 +182,10 @@ private enum class CalendarMode { Week, Agenda }
             item(key = "day-$day") {
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp).semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(dayName(day, now), modifier = Modifier.weight(1f, fill = false), style = MaterialTheme.typography.titleMedium, color = if (day == now) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground, maxLines = 1)
-                    Text(shortDate(day, false, currentLocale()), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                    val locale = currentLocale()
+                    val date = shortDate(day, false, locale)
+                    // In Arabic the Hijri day follows, as on the desktop agenda.
+                    Text(if (locale.language == "ar") "$date · ${hijriDate(PlanDates.parse(day))}" else date, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                 }
             }
             item(key = "items-$day") {
@@ -214,6 +217,12 @@ internal fun hijriSpan(from: LocalDate, to: LocalDate): String {
     val last = format(to, "MMMM y G")
     if (first == last) return first
     return if (format(from, "y") == format(to, "y")) "${format(from, "MMMM")} و$last" else "$first و$last"
+}
+
+/** The Umm al-Qura day and month without the year, "2 جمادى الآخرة", beside a date in the Arabic agenda. */
+internal fun hijriDate(day: LocalDate): String {
+    val locale = android.icu.util.ULocale("ar_SA@calendar=islamic-umalqura;numbers=latn")
+    return android.icu.text.SimpleDateFormat("d MMMM", locale).format(java.util.Date.from(day.atStartOfDay(ZoneId.systemDefault()).toInstant()))
 }
 
 @Composable private fun RangeBar(from: String, to: String, onPrevious: () -> Unit, onToday: () -> Unit, onNext: () -> Unit) {
