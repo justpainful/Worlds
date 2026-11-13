@@ -370,3 +370,21 @@
 .tour-dots span.is-on { width: 16px; border-radius: 3px; background: var(--accent); }
 .tour-actions { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 @media (prefers-reduced-motion: reduce) { .tour-hole, .tour-card, .tour-dots span { transition: none; } }
+
+/* Packs in the sidebar (Sidebar.tsx PackGroup): one row per pack, its views indented under it. */
+.side-pack-row { gap: 7px; padding-inline-start: 4px; cursor: default; }
+.side-pack-row .side-pack-icon { flex: none; margin: -2px 0; }
+.side-pack-views { display: flex; flex-direction: column; gap: 1px; padding-block: 1px 3px; }
+.side-pack-view { padding-inline-start: 31px; color: var(--text-2); }
+.side-pack-view .icon { color: var(--text-3); flex: none; }
+.side-pack-view.is-active .icon { color: var(--accent); }
+
+/* A short window keeps room for the scrolling list: the fixed rows above it get compact. */
+@media (max-height: 820px) {
+  .side-nav .side-item { height: 40px; }
+  .side-nav .side-pi { width: 28px !important; height: 28px !important; }
+}
+@media (max-height: 620px) {
+  .side-nav .side-item { height: 34px; gap: 10px; font-size: 14px; }
+  .side-nav .side-pi { width: 24px !important; height: 24px !important; }
+}

@@ -908,6 +908,7 @@
  "Choose how to resolve this conflict": "اختر حل التعارض",
  "Choose icon": "اختيار أيقونة",
  "Choose linked resource": "اختيار المصدر المرتبط",
+ "Choose packs": "اختيار الحزم",
  "Choose the minimum drawing permission needed for each export. Changes apply to shared saves and clipboard copies. Restoring artwork leaves these permissions in place.": "حدد أدنى صلاحية مطلوبة لكل نوع من التصدير. تسري التغييرات على حفظ الملفات المشتركة والنسخ إلى الحافظة. تبقى هذه الصلاحيات عند استعادة الرسم.",
  "Choose two selection corners": "اختر زاويتين للتحديد",
  "Chore": "صيانة",

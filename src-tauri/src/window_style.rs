@@ -53,6 +53,28 @@ pub fn apply(window: &WebviewWindow, level: &str) {
         DwmExtendFrameIntoClientArea(hwnd, &margins);
     }
     set(DWMWA_SYSTEMBACKDROP_TYPE, backdrop);
+    hide_system_caption_buttons(hwnd);
+}
+
+/// With the frame extended over the whole window, DWM draws its own minimize,
+/// maximize and close buttons in the top corner of any window that has a
+/// system menu, and through Mica or Acrylic they show next to Worlds' own
+/// buttons. Without the system menu style DWM draws none; minimizing from
+/// the taskbar and Snap keep working because the minimize and maximize
+/// styles stay. Alt+F4 is handled by the page (src/shell/Window.tsx).
+#[cfg(windows)]
+fn hide_system_caption_buttons(hwnd: windows_sys::Win32::Foundation::HWND) {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos, GWL_STYLE, SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, WS_SYSMENU,
+    };
+    unsafe {
+        let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+        if style & WS_SYSMENU as isize == 0 {
+            return;
+        }
+        SetWindowLongPtrW(hwnd, GWL_STYLE, style & !(WS_SYSMENU as isize));
+        SetWindowPos(hwnd, std::ptr::null_mut(), 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+    }
 }
 
 #[cfg(not(windows))]

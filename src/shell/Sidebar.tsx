@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { ProductIcon, type ProductIconName } from "../ui/ProductIcon";
 import { useStore, childrenOf, pageTitle, type Route } from "../state/store";
 import { WorkspaceSwitcher } from "../account/WorkspaceSwitcher";
@@ -14,6 +14,7 @@ import { isResource } from "../resources/kinds";
 import { newResourceMenu } from "../resources/create";
 import { usePack } from "../packs/packs";
 import { sidebarEntries, useEnabledPacks } from "../packs/actions";
+import type { PackDef } from "../packs/definition";
 import { liveOfKind, subjects, tasksFor, today, dataOf } from "../planning/model";
 import { colorVar } from "../planning/ui";
 import { createSubject } from "../study/StudyViews";
@@ -127,14 +128,23 @@ export function Sidebar() {
           {nav("checklist", "Tasks", { kind: "tasks" }, dueCount || undefined, "checklist")}
           {nav("calendar", "Calendar", { kind: "calendar" }, undefined, "calendar")}
           {nav("inbox", "Inbox", { kind: "inbox" }, inboxCount || undefined, "inbox")}
-          {packs.flatMap((p) =>
-            sidebarEntries(p).map((e, i) => <Fragment key={`${p.id}.${e.view.id}`}>{nav(e.view.icon, e.label, e.route, undefined, i === 0 ? (p.icon as ProductIconName) : undefined)}</Fragment>),
-          )}
           {nav("assistant", "Claude", { kind: "chat" }, undefined, "claude")}
           {pendingCount > 0 && nav("inbox", "Needs approval", { kind: "activity" }, pendingCount)}
         </nav>
 
         <div className="side-scroll scroll">
+          {/* Packs scroll with everything else: one row each, opened to its views on demand, so any number of them fits. */}
+          {packs.length > 0 && (
+            <Section
+              title="Packs"
+              action={<IconButton icon="settings" label="Choose packs" className="side-section-action" onClick={() => open({ kind: "settings", section: "packs" }, "current")} />}
+            >
+              {packs.map((p) => (
+                <PackGroup key={p.id} pack={p} isActive={isActive} />
+              ))}
+            </Section>
+          )}
+
           {pinned.length > 0 && (
             <Section title="Pinned">
               {pinned.map((p) => (
@@ -197,6 +207,62 @@ function Section({ title, action, children }: { title: string; action?: React.Re
       </header>
       <div className="side-section-body">{children}</div>
     </section>
+  );
+}
+
+/**
+ * One enabled pack in the sidebar: its name opens its main view, and the
+ * arrow shows its other views underneath. It opens by itself while one of
+ * its views is showing, and otherwise stays as the person left it.
+ */
+function PackGroup({ pack, isActive }: { pack: PackDef; isActive: (r: Route) => boolean }) {
+  const open = useStore((s) => s.open);
+  const key = `pack:${pack.id}`;
+  const stored = useStore((s) => s.sidebar.expanded[key]);
+  const setExpanded = useStore((s) => s.setExpanded);
+  const entries = sidebarEntries(pack);
+  const current = entries.some((e) => isActive(e.route));
+  const expanded = stored ?? current;
+  const go = (route: Route, e: React.MouseEvent) => open(route, e.ctrlKey ? "tab" : e.altKey ? "right" : "current");
+  if (!entries.length) return null;
+  return (
+    <div className="side-pack">
+      <div
+        className={`side-item side-pack-row ${current && !expanded ? "is-active" : ""}`}
+        role="button"
+        tabIndex={0}
+        aria-expanded={entries.length > 1 ? expanded : undefined}
+        onClick={(e) => go(entries[0].route, e)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") open(entries[0].route, "current");
+          if (e.key === "ArrowRight" || e.key === "ArrowLeft") setExpanded(key, e.key === (document.dir === "rtl" ? "ArrowLeft" : "ArrowRight"));
+        }}
+      >
+        <button
+          className={`tree-twisty ${entries.length > 1 ? "" : "is-leaf"} ${expanded ? "is-open" : ""}`}
+          tabIndex={-1}
+          aria-label={expanded ? "Collapse" : "Expand"}
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded(key, !expanded);
+          }}
+        >
+          {entries.length > 1 ? <Icon name="forward" size={12} /> : <span className="tree-dot" />}
+        </button>
+        <ProductIcon name={pack.icon as ProductIconName} size={22} className="side-pack-icon" />
+        <span className="side-label">{pack.label}</span>
+      </div>
+      {expanded && entries.length > 1 && (
+        <div className="side-pack-views">
+          {entries.map((e) => (
+            <button key={e.view.id} className={`side-item side-pack-view ${isActive(e.route) ? "is-active" : ""}`} onClick={(ev) => go(e.route, ev)}>
+              <Icon name={e.view.icon} size={16} />
+              <span className="side-label">{e.view.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
