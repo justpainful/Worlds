@@ -90,7 +90,7 @@ struct LocalMovePageView: View {
                     Button { destination = page.id } label: {
                         HStack {
                             VStack(alignment: .leading) {
-                                Text(page.title.isEmpty ? "Untitled" : page.title)
+                                Text(page.title.isEmpty ? String(localized: "Untitled") : page.title)
                                 if let parent = page.parentID, let parentName = names[parent] {
                                     Text(parentName.isEmpty ? "Untitled" : parentName).font(.caption).foregroundStyle(.secondary)
                                 }

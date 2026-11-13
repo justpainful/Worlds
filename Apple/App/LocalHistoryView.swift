@@ -47,7 +47,7 @@ struct LocalHistoryView: View {
                                 }
                             } header: {
                                 VStack(alignment: .leading) {
-                                    Text(request.title.isEmpty ? "Untitled page" : request.title)
+                                    Text(request.title.isEmpty ? String(localized: "Untitled page") : request.title)
                                     Text("Recent changes")
                                 }
                             } footer: {

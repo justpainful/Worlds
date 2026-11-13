@@ -726,3 +726,5 @@
 "%lld archived items" = "عدد العناصر المؤرشفة: %lld";
 "Return to %@" = "العودة إلى %@";
 "Hide Inspector" = "إخفاء الخصائص";
+"Untitled" = "بلا عنوان";
+"Untitled page" = "صفحة بلا عنوان";
