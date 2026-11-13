@@ -5,13 +5,20 @@
 
 use serde_json::{json, Value};
 use yrs::{Any, Map, Out, ReadTxn, Transact};
+// ReadTxn brings state_vector and encode_state_as_update_v1 into scope.
 
 const MAX_FIELDS_BYTES: usize = 64 * 1024;
 
-fn to_json(out: &Out, txn: &impl ReadTxn) -> Value {
-    let mut text = String::new();
-    out.to_json(txn).to_json(&mut text);
-    serde_json::from_str(&text).unwrap_or(Value::Null)
+/// Field values are plain JSON the desktop sets whole, so they arrive as `Any`.
+fn to_json(out: &Out) -> Value {
+    match out {
+        Out::Any(any) => {
+            let mut text = String::new();
+            any.to_json(&mut text);
+            serde_json::from_str(&text).unwrap_or(Value::Null)
+        }
+        _ => Value::Null,
+    }
 }
 
 /// `{"kind": "shop.order" | null, "fields": {...}}` from a document.
@@ -22,7 +29,7 @@ pub fn read(snapshot: &[u8], _: &[u8]) -> Result<Vec<u8>, String> {
     let txn = doc.transact();
     let mut out = serde_json::Map::new();
     for (key, value) in fields.iter(&txn) {
-        out.insert(key.to_string(), to_json(&value, &txn));
+        out.insert(key.to_string(), to_json(&value));
     }
     let kind = match meta.get(&txn, "kind") {
         Some(Out::Any(Any::String(s))) => Value::String(s.to_string()),
@@ -51,7 +58,8 @@ pub fn write(snapshot: &[u8], request: &[u8]) -> Result<Vec<u8>, String> {
             fields.remove(&mut txn, &key);
         }
     }
-    Ok(doc.transact().encode_state_as_update_v1(&before))
+    let update = doc.transact().encode_state_as_update_v1(&before);
+    Ok(update)
 }
 
 #[cfg(test)]

@@ -654,6 +654,7 @@
     <string name="shared_history_restore_uncertain">The restore may have completed. Check the page and history before trying again.</string>
     <string name="shared_history_restore_sync_error">Earlier edits were not confirmed, so the page was not restored. Reconnect and try again.</string>
     <string name="shared_duplicate_error">Could not duplicate this block. It may have changed or your access may have been removed.</string>
+    <string name="shared_fields_error">Could not save these fields. The item may have changed or your access may have been removed.</string>
     <!-- Subsystems, Drawing, Document & Settings additions -->
     <string name="ai_chat">AI Assistant</string>
     <string name="automations">Automations</string>

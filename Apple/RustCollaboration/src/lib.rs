@@ -21,6 +21,31 @@ impl CollaborationDoc {
         let value = editor::project_plain(&doc).map_err(|_| "unsupported document")?;
         serde_json::to_vec(&value).map_err(|_| "encoding failed")
     }
+    /// A shared pack item's kind and fields (docs/PACKS.md, Design 1) as
+    /// `{"kind": "shop.order" | null, "fields": {...}}`, read from the
+    /// `meta` and `fields` maps the desktop writes next to the blocks.
+    pub fn pack_fields(&self) -> Result<Vec<u8>, &'static str> {
+        use yrs::{Any, Map, Out};
+        let doc = self.0.lock().map_err(|_| "document poisoned")?;
+        let fields = doc.get_or_insert_map("fields");
+        let meta = doc.get_or_insert_map("meta");
+        let txn = doc.transact();
+        let mut out = serde_json::Map::new();
+        for (key, value) in fields.iter(&txn) {
+            // Field values are plain JSON the desktop sets whole, so they arrive as Any.
+            let json = match value {
+                Out::Any(any) => { let mut text = String::new(); any.to_json(&mut text); serde_json::from_str(&text).unwrap_or(serde_json::Value::Null) }
+                _ => serde_json::Value::Null,
+            };
+            out.insert(key.to_string(), json);
+        }
+        let kind = match meta.get(&txn, "kind") {
+            Some(Out::Any(Any::String(s))) => serde_json::Value::String(s.to_string()),
+            _ => serde_json::Value::Null,
+        };
+        drop(txn);
+        serde_json::to_vec(&serde_json::json!({ "kind": kind, "fields": out })).map_err(|_| "encoding failed")
+    }
     pub fn client_id(&self) -> Result<u64, &'static str> {
         let doc = self.0.lock().map_err(|_| "document poisoned")?;
         Ok(doc.client_id().get())
@@ -107,6 +132,17 @@ pub unsafe extern "C" fn worlds_doc_plain_projection(doc: *const CollaborationDo
         if doc.is_null() || out.is_null() { return Err(1); }
         let value = unsafe { &*doc }.plain_projection().map_err(|_| 1)?;
         write_result(out,value)
+    })
+}
+
+/// # Safety
+/// Document and output pointers must remain valid for this call.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn worlds_doc_pack_fields(doc: *const CollaborationDoc, out: *mut WorldsBuffer) -> i32 {
+    boundary(|| {
+        if doc.is_null() || out.is_null() { return Err(1); }
+        let value = unsafe { &*doc }.pack_fields().map_err(|_| 2)?;
+        write_result(out, value)
     })
 }
 

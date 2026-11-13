@@ -658,6 +658,7 @@
     <string name="shared_history_restore_uncertain">ربما اكتملت الاستعادة. تحقق من الصفحة والسجل قبل إعادة المحاولة.</string>
     <string name="shared_history_restore_sync_error">لم يتأكد حفظ التعديلات السابقة، لذلك لم تُستعد الصفحة. أعد الاتصال وحاول مجددًا.</string>
     <string name="shared_duplicate_error">تعذر تكرار العنصر. ربما تغيّر أو لم تعد تملك صلاحية التعديل.</string>
+    <string name="shared_fields_error">تعذر حفظ الحقول. ربما تغيّر العنصر أو لم تعد تملك صلاحية التعديل.</string>
     <!-- Subsystems, Drawing, Document & Settings additions -->
     <string name="ai_chat">مساعد الذكاء الاصطناعي</string>
     <string name="automations">الأتمتة</string>

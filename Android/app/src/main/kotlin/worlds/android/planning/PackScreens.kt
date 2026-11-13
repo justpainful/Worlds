@@ -141,8 +141,22 @@ import worlds.android.WorldsCard
 /** An item's fields, edited as its definition says: text, numbers, dates, choices, ticks and links. */
 @Composable private fun PackItemEditor(row: PlanRow, pack: PackDef, kind: PackKind, repo: PlanningRepository, arabic: Boolean, onClose: () -> Unit) {
     var title by rememberSaveable(row.id) { mutableStateOf(row.title) }
-    val values = remember(row.id) { mutableStateMapOf<String, Any?>().apply { kind.fields.forEach { f -> put(f.id, if (row.data.isNull(f.id)) null else row.data.opt(f.id)) } } }
-    val texts = remember(row.id) { mutableStateMapOf<String, String>().apply { kind.fields.forEach { f -> put(f.id, editText(f, values[f.id])) } } }
+    PackFieldsDialog(row.id, row.data, pack, kind, arabic,
+        linkOptions = { t -> repo.rows.filter { it.kind == t.kind }.map { it.id to it.title.ifBlank { "…" } } },
+        onSave = { patch -> repo.rename(row.id, title); if (patch.isNotEmpty()) repo.update(row.id, row.kind, patch) },
+        onDelete = { repo.trash(row.id) }, onClose = onClose) {
+        PlanTextField(title, { title = it }, stringResource(R.string.plan_field_title))
+    }
+}
+
+/**
+ * A pack item's fields in a dialog built from its definition, for an item on
+ * this phone or one shared from the desktop. `onSave` gets only the fields
+ * that changed, with null for a field that was cleared.
+ */
+@Composable internal fun PackFieldsDialog(id: String, data: JSONObject, pack: PackDef, kind: PackKind, arabic: Boolean, linkOptions: (PackKind) -> List<Pair<String, String>>, onSave: (Map<String, Any?>) -> Unit, onDelete: (() -> Unit)? = null, onClose: () -> Unit, header: @Composable ColumnScope.() -> Unit = {}) {
+    val values = remember(id) { mutableStateMapOf<String, Any?>().apply { kind.fields.forEach { f -> put(f.id, if (data.isNull(f.id)) null else data.opt(f.id)) } } }
+    val texts = remember(id) { mutableStateMapOf<String, String>().apply { kind.fields.forEach { f -> put(f.id, editText(f, values[f.id])) } } }
     val now = PlanDates.today()
     val numbersOk = kind.fields.filter { it.type == "number" || it.type == "money" }.all { numberValid(texts[it.id].orEmpty()) }
     EditorDialog(kind.label.text(arabic), onDismiss = onClose, saveEnabled = numbersOk,
@@ -154,14 +168,13 @@ import worlds.android.WorldsCard
                     "text", "longText", "url", "email", "phone", "time" -> texts[f.id].orEmpty().ifBlank { null }
                     else -> values[f.id]
                 }
-                if (next != (if (row.data.isNull(f.id)) null else row.data.opt(f.id))) patch[f.id] = next
+                if (next != (if (data.isNull(f.id)) null else data.opt(f.id))) patch[f.id] = next
             }
-            repo.rename(row.id, title)
-            if (patch.isNotEmpty()) repo.update(row.id, row.kind, patch)
+            onSave(patch)
             onClose()
         },
-        onDelete = { repo.trash(row.id); onClose() }) {
-        PlanTextField(title, { title = it }, stringResource(R.string.plan_field_title))
+        onDelete = onDelete?.let { remove -> { remove(); onClose() } }) {
+        header()
         for (f in kind.fields) {
             val label = f.label.text(arabic)
             when (f.type) {
@@ -169,8 +182,7 @@ import worlds.android.WorldsCard
                 "date" -> DateField(label, values[f.id] as? String, now, allowNone = true, onChange = { values[f.id] = it })
                 "choice", "stage" -> ChoiceRow(label, f.options.map { it.id to it.label.text(arabic) }, values[f.id] as? String, allowNone = f.type == "choice") { values[f.id] = it }
                 "link" -> {
-                    val target = f.to?.let { pack.kind(it) }
-                    val options = target?.let { t -> repo.rows.filter { it.kind == t.kind }.map { it.id to it.title.ifBlank { "…" } } }.orEmpty()
+                    val options = f.to?.let { pack.kind(it) }?.let(linkOptions).orEmpty()
                     ChoiceRow(label, options, values[f.id] as? String, allowNone = true) { values[f.id] = it }
                 }
                 "number", "money" -> PlanTextField(texts[f.id].orEmpty(), { texts[f.id] = it }, if (f.type == "money") "$label (${f.currency ?: "SAR"})" else label, isError = !numberValid(texts[f.id].orEmpty()), number = true)

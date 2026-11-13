@@ -12,6 +12,17 @@ object OfflineEditor {
         store.append(key, duplicate.update, local = true, draft = DraftCapture(blockId, duplicate.text))
         return merged
     }
+    /** A shared pack item's field changes, queued like any offline edit and sent when the page reconnects. */
+    fun setFields(store: AndroidSyncStore, key: SyncDocumentKey, set: org.json.JSONObject, remove: List<String>): ByteArray {
+        require(key.channel == SyncWire.CONTENT)
+        val replica = store.load(key)
+        var current = replica.snapshot ?: byteArrayOf()
+        for (update in replica.updates) current = YrsNative.merge(current, update.bytes)
+        val update = YrsNative.setFields(current, set, remove)
+        val merged = YrsNative.merge(current, update)
+        store.append(key, update, local = true)
+        return merged
+    }
     fun appendParagraph(store: AndroidSyncStore, key: SyncDocumentKey, blockId: String, text: String): ByteArray {
         return insertTextBlock(store, key, byteArrayOf(), blockId, text, "paragraph", 1, null)
     }

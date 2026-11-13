@@ -105,6 +105,21 @@ class SyncSession(
         }
     }
 
+    /** Sets and removes a shared pack item's fields (docs/PACKS.md); other fields stay as others left them. */
+    fun setFields(set: org.json.JSONObject, remove: List<String>, completion: (Boolean) -> Unit = {}) {
+        val values = org.json.JSONObject(set.toString())
+        val removed = remove.toList()
+        post {
+            val update = try {
+                require(canWrite(SyncWire.CONTENT))
+                YrsNative.setFields(states[SyncWire.CONTENT], values, removed)
+            } catch (_: IllegalArgumentException) { completion(false); return@post }
+            var persisted = false
+            try { applyLocalNow(SyncWire.CONTENT, update, null) { persisted = true; completion(true) } }
+            catch (e: Exception) { if (!persisted) completion(false); throw e }
+        }
+    }
+
     /** Rebases the UI's edit from its captured state onto the current shared document. */
     fun replaceBlockText(baseSnapshot: ByteArray, blockId: String, start: Int, end: Int, text: String, draftText: String? = null, completion: (Boolean) -> Unit = {}) {
         val base = baseSnapshot.copyOf()

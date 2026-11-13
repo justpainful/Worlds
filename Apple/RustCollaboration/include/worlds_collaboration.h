@@ -20,6 +20,8 @@ int32_t worlds_doc_state_vector(const WorldsDoc *doc, WorldsBuffer *out);
 int32_t worlds_doc_diff(const WorldsDoc *doc, const uint8_t *state_vector, size_t len, WorldsBuffer *out);
 /* Conservative paragraph-only JSON projection. Unsupported content returns 1. */
 int32_t worlds_doc_plain_projection(const WorldsDoc *doc, WorldsBuffer *out);
+/* A shared pack item's kind and fields as JSON: {"kind": ..., "fields": {...}}. */
+int32_t worlds_doc_pack_fields(const WorldsDoc *doc, WorldsBuffer *out);
 void worlds_buffer_free(WorldsBuffer buffer);
 typedef struct WorldsStore WorldsStore;
 /* Store status: 0 success, 1 invalid input, 2 failure, 3 denied, 4 unsupported schema.

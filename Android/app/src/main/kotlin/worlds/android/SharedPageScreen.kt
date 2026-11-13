@@ -96,7 +96,7 @@ internal data class SharedPageState(val opening: Boolean = false, val access: St
     val noticesVisible: Boolean = false, val noticesLoading: Boolean = false, val noticesError: Boolean = false, val notices: List<SyncNotice> = emptyList(), val unread: Int = 0,
     val historySaving: Boolean = false, val historyRestoring: Boolean = false, val historyUncertain: Boolean = false, val historySyncFailed: Boolean = false, val draftBackupFailed: Boolean = false,
     val backgroundScheduleFailed: Boolean = false, val backgroundScheduleRetrying: Boolean = false,
-    val markdownExporting: Boolean = false, val markdownStatus: Int? = null, val duplicateError: Boolean = false)
+    val markdownExporting: Boolean = false, val markdownStatus: Int? = null, val duplicateError: Boolean = false, val fieldsError: Boolean = false)
 
 private data class SharedMarkdownSnapshot(val principal: SyncPrincipal, val page: String, val blocks: List<String>)
 
@@ -670,6 +670,50 @@ internal class SharedPageController(private val runtime: AccountSyncRuntime, pri
             }
         }
     }
+    /** Saves a shared pack item's changed fields, live or into the offline queue like any other edit. */
+    fun setFields(patch: Map<String, Any?>): Unit = synchronized(draftLock) {
+        val state = mutable.value
+        val principal = currentPrincipal ?: return
+        if (patch.isEmpty() || closed.get() || state.saving || state.historySaving || state.draft != null || state.disconnected || state.access !in setOf("edit", "full") || state.snapshot == null) return
+        val set = org.json.JSONObject()
+        val remove = mutableListOf<String>()
+        for ((id, value) in patch) if (value == null || value == org.json.JSONObject.NULL) remove += id else set.put(id, value)
+        mutable.update { it.copy(saving = true, fieldsError = false) }
+        pendingLocalSave.set(true)
+        scope.launch {
+            while (isActive && !closed.get()) {
+                val current = mutable.value
+                val active = session
+                if (current.disconnected || (!current.offline && current.access != null && current.access !in setOf("edit", "full"))) {
+                    pendingLocalSave.set(false)
+                    mutable.update { it.copy(saving = false, fieldsError = true) }
+                    break
+                }
+                if (!current.offline && current.access in setOf("edit", "full") && active != null) {
+                    pendingLocalSave.set(false)
+                    active.setFields(set, remove) { saved ->
+                        if (saved && !closed.get()) scheduleOutbox(principal, currentServer, currentPage)
+                        if (!closed.get()) mutable.update { it.copy(saving = false, fieldsError = !saved) }
+                    }
+                    break
+                }
+                if (!current.offline) { delay(50); continue }
+                try {
+                    val updated = runtime.setFieldsOffline(principal, workspace, currentPage, set, remove) { !closed.get() }
+                    acceptSnapshot(updated)
+                    scheduleOutbox(principal, currentServer, currentPage)
+                    pendingLocalSave.set(false)
+                    if (!closed.get()) mutable.update { it.copy(saving = false, fieldsError = false) }
+                    break
+                } catch (_: AccountSyncRuntime.SessionActive) { delay(50) }
+                catch (_: Exception) {
+                    pendingLocalSave.set(false)
+                    if (!closed.get()) mutable.update { it.copy(saving = false, fieldsError = true) }
+                    break
+                }
+            }
+        }
+    }
     fun save() {
         val state = mutable.value; val draft = state.draft ?: return
         if (state.saving || state.snapshot == null || state.access !in setOf("edit", "full")) return
@@ -1108,7 +1152,11 @@ private fun SharedPageTool(icon: Int, label: String, enabled: Boolean, tag: Stri
                 state.markdownStatus?.let { Text(stringResource(it), color = if (it in setOf(R.string.markdown_export_success, R.string.markdown_copy_success)) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error) }
                 Spacer(Modifier.height(12.dp))
                 // A pack item shared from desktop shows its fields above its blocks.
-                state.snapshot?.let { SharedPackFields(it) }
+                state.snapshot?.let { snapshot ->
+                    val canEditFields = state.access in setOf("edit", "full") && !state.disconnected && !state.saving && state.draft == null
+                    SharedPackFields(snapshot, if (canEditFields) controller::setFields else null)
+                }
+                if (state.fieldsError) Text(stringResource(R.string.shared_fields_error), color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("shared_fields_error"))
                 val blockIdCounts = remember(state.blocks) { state.blocks.mapNotNull { it.id }.groupingBy { it }.eachCount() }
                 state.blocks.forEach { block ->
                     val preview = remember(block.raw) { runCatching { previewBlock(block.raw) }.getOrNull() }
