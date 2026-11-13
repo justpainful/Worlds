@@ -73,7 +73,12 @@ describe("pack definitions for the native apps", () => {
         fs.writeFileSync(file, text);
       }
       const committed = fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
-      expect(committed === text, `${rel} is out of date; run with WORLDS_WRITE_PACKS=1`).toBe(true);
+      // Name the first place that differs, so a failure says what changed.
+      const a: string[] = String(committed).split(String.fromCharCode(10));
+      const b = text.split(String.fromCharCode(10));
+      const at = a.findIndex((line, i) => line !== b[i]);
+      const where = at < 0 ? (a.length === b.length ? "" : `length ${a.length} vs ${b.length}`) : `line ${at + 1}: committed ${JSON.stringify(a[at])}, made ${JSON.stringify(b[at])}`;
+      expect(where, `${rel} is out of date; run with WORLDS_WRITE_PACKS=1`).toBe("");
     }
   });
 });
