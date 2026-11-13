@@ -187,8 +187,8 @@ Built on the branch `feat/pack-engine` (2026-11-13), desktop first:
 
 Not done yet, and why:
 
-- **Phase 2**, trials with real people from each sector, needs those people.
-- **Shared pack items on Apple** wait for shared pages on Apple, which are a project of their own: the Apple team sync modules (`Apple/WorldsCore/Sources/WorldsCollaboration*`) are experimental, say they must not be connected to product UI yet, and CI does not build their framework. Connecting them needs the owner's decision. When shared pages ship there, the card reads `NativeCRDTDocument.packFields()`, which is built and tested.
+- **Phase 2**, trials with real people from each sector, needs those people. The kit is ready in [packs/TRIALS.md](packs/TRIALS.md) (in Arabic): for the first four sectors, five tasks each, the five questions for everyone and a table to record each trial; what two of three people repeat goes into the pack.
+- **Shared pack items on Apple** wait for shared pages on Apple, which are a project of their own: the Apple team sync modules (`Apple/WorldsCore/Sources/WorldsCollaboration*`) are experimental, say they must not be connected to product UI yet, and CI does not build their framework. The owner decided (2026-11-13) to connect them in a separate session and branch: build the framework on CI, then a read-only shared page with the pack fields from `NativeCRDTDocument.packFields()`, which is built and tested.
 
 ### Design for what is left
 
