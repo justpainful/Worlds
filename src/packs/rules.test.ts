@@ -5,8 +5,8 @@ vi.mock("../i18n/ui", () => ({ uiLanguage: () => "en" }));
 import type { PageMeta } from "../lib/types";
 import { FREELANCE } from "./definitions/freelance";
 import { SHOP } from "./definitions/shop";
-import { applyComputed } from "./fields";
-import { addDaysIso, alertItems, averageField, matches, statValue, upcoming } from "./rules";
+import { applyComputed, inSentence, nextSequence } from "./fields";
+import { addDaysIso, alertItems, averageField, filterItems, matches, statValue, upcoming } from "./rules";
 import { inLanguage, sampleData } from "./samples";
 
 const TODAY = "2026-11-13"; // a Friday
@@ -70,6 +70,28 @@ describe("pack rules", () => {
     const typed = applyComputed(invoice, { ...made, total: 1200 }, ["total"]);
     expect(typed.total).toBe(1200);
     expect(applyComputed(invoice, { ...typed, subtotal: 2000 }, ["subtotal"])).toMatchObject({ vat: 300, total: 2300 });
+  });
+
+  it("finds double bookings", () => {
+    const items = [
+      item("salon.booking", { staff: "a", date: "2026-11-14", time: "10:00" }),
+      item("salon.booking", { staff: "a", date: "2026-11-14", time: "10:00" }),
+      item("salon.booking", { staff: "a", date: "2026-11-14", time: "11:00" }),
+      item("salon.booking", { staff: "b", date: "2026-11-14", time: "10:00" }),
+      item("salon.booking", { date: "2026-11-14", time: "10:00" }),
+    ];
+    expect(filterItems(items, [{ field: "staff", clashesOn: ["date", "time"] }], TODAY)).toHaveLength(2);
+  });
+
+  it("keeps abbreviations when a label goes inside a sentence", () => {
+    expect(inSentence("Invoice")).toBe("invoice");
+    expect(inSentence("API note")).toBe("API note");
+    expect(inSentence("CV versions")).toBe("CV versions");
+  });
+
+  it("numbers a register from the highest number used", () => {
+    expect(nextSequence("OUT-", ["OUT-0006", "OUT-0002", "IN-0009", null])).toBe("OUT-0007");
+    expect(nextSequence("INV-", [])).toBe("INV-0001");
   });
 
   it("turns samples into data in one language, with links and dates from today", () => {

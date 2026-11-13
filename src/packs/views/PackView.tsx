@@ -7,6 +7,7 @@ import { EmptyState } from "../../ui/misc";
 import { promptMenu } from "../actions";
 import { PACK_COMPONENTS } from "../components";
 import type { PackDef } from "../definition";
+import { inSentence } from "../fields";
 import { createPackItem } from "../items";
 import { setPackEnabled, usePack } from "../packs";
 import { packDef } from "../registry";
@@ -59,7 +60,7 @@ export function PackView({ pack: packId, view: viewId }: { pack: string; view?: 
             </Button>
           ) : null}
           <Button variant="tinted" icon="add" onClick={() => void createPackItem(pack, kind, { open: "current" })}>
-            {`Add ${kind.label.toLowerCase()}`}
+            {`Add ${inSentence(kind.label)}`}
           </Button>
         </div>
       </header>

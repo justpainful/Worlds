@@ -8,7 +8,7 @@ import type { PageMeta } from "../lib/types";
 import { defaultIcon } from "../resources/kinds";
 import { useStore, type OpenWhere } from "../state/store";
 import { dataKeyOf, storedKind, type KindDef, type PackDef } from "./definition";
-import { applyComputed, initialData, type ItemData } from "./fields";
+import { applyComputed, initialData, nextSequence, type ItemData } from "./fields";
 import { kindDefOf } from "./registry";
 
 function fail(e: unknown) {
@@ -33,6 +33,12 @@ export async function createPackItem(
 ): Promise<PageMeta | null> {
   const stored = storedKind(pack, kind);
   const data = applyComputed(kind, { ...initialData(kind), ...opts.data });
+  // Reference numbers continue from the items already made.
+  for (const f of kind.fields) {
+    if (!f.sequence || data[f.id]) continue;
+    const used = itemsOf(useStore.getState().pages, stored).map((p) => itemData(p)[f.id]);
+    data[f.id] = nextSequence(f.sequence, used);
+  }
   try {
     const meta = await api.createPage({
       kind: stored,

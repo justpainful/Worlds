@@ -58,7 +58,7 @@ export const FREELANCE: PackDef = {
       blurb: "What a client owes you, with VAT",
       fields: [
         link("client", "Client", "client"),
-        text("number", "Invoice number"),
+        text("number", "Invoice number", { sequence: "INV-" }),
         money("subtotal", "Subtotal"),
         money("vat", "VAT 15%", { compute: { of: ["subtotal"], factor: 0.15 } }),
         money("total", "Total", { compute: { of: ["subtotal", "vat"] } }),

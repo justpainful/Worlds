@@ -12,14 +12,21 @@
  */
 import type { PageMeta } from "../lib/types";
 import { dataKeyOf, storedKind, type FamilyId, type KindDef, type PackDef } from "./definition";
+import { BUSINESS_PACKS } from "./definitions/business";
+import { COMMUNITY_PACKS } from "./definitions/community";
+import { CREATIVE_PACKS } from "./definitions/creative";
+import { EDUCATION_PACKS } from "./definitions/education";
+import { FIELD_PACKS } from "./definitions/field";
+import { SERVICES_PACKS } from "./definitions/services";
 import { FREELANCE } from "./definitions/freelance";
+import { PERSONAL_PACKS } from "./definitions/personal";
 import { SHOP } from "./definitions/shop";
 import { STUDY } from "./definitions/study";
 import { TEACHER } from "./definitions/teacher";
 import { WRITING } from "./definitions/writing";
 
 /** Every pack Worlds knows, in the order Settings lists them within each family. */
-export const PACK_DEFS: PackDef[] = [STUDY, TEACHER, FREELANCE, SHOP, WRITING];
+export const PACK_DEFS: PackDef[] = [STUDY, TEACHER, ...EDUCATION_PACKS, FREELANCE, SHOP, ...BUSINESS_PACKS, ...FIELD_PACKS, ...SERVICES_PACKS, WRITING, ...CREATIVE_PACKS, ...COMMUNITY_PACKS, ...PERSONAL_PACKS];
 
 export type PackId = string;
 

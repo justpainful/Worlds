@@ -53,6 +53,11 @@ export interface FieldDef {
    * sum, times `factor` (VAT is the subtotal times 0.15). Still editable.
    */
   compute?: { of: string[]; factor?: number };
+  /**
+   * A running reference number for new items: the prefix, then one more than
+   * the highest number already used (OUT-0007 after OUT-0006).
+   */
+  sequence?: string;
 }
 
 export interface KindDef {
@@ -99,6 +104,11 @@ export interface Condition {
   period?: "week" | "month";
   /** A number at or below this value, or at or below another field of the item. */
   atMost?: number | string;
+  /**
+   * Another item has the same value in this field and in each of these, such
+   * as the same staff member at the same date and time: a double booking.
+   */
+  clashesOn?: string[];
 }
 
 /** A figure on Home: how many items match, or the sum of one field across them. */

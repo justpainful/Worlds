@@ -9,7 +9,7 @@ import { menuAt } from "../../ui/Menu";
 import { EmptyState } from "../../ui/misc";
 import { promptMenu } from "../actions";
 import type { FieldDef, KindDef, PackDef } from "../definition";
-import { formatField } from "../fields";
+import { formatField, inSentence } from "../fields";
 import { createPackItem, itemData, updatePackItem } from "../items";
 import { kindDefOf } from "../registry";
 import { packItems } from "../rules";
@@ -71,7 +71,7 @@ export function PackItemView({ id }: { id: string }) {
 
       <div className="pl-detail-foot">
         <Button variant="danger" icon="delete" onClick={() => trashItem(p)}>
-          {`Delete ${kind.label.toLowerCase()}`}
+          {`Delete ${inSentence(kind.label)}`}
         </Button>
       </div>
     </div>
@@ -99,13 +99,13 @@ function LinkedHere({ pack, kind, id }: { pack: PackDef; kind: KindDef; id: stri
           <div className="pk-section-head">
             <h2 className="pl-section-title">{k.plural}</h2>
             <Button variant="plain" icon="add" onClick={() => void createPackItem(pack, k, { data: { [field.id]: id }, open: "current" })}>
-              {`Add ${k.label.toLowerCase()}`}
+              {`Add ${inSentence(k.label)}`}
             </Button>
           </div>
           {items.length ? (
             <PackTable kind={k} items={items} columns={k.fields.filter((f) => !f.detailOnly && f.id !== field.id).map((f) => f.id)} />
           ) : (
-            <p className="pk-none">{`No ${k.plural.toLowerCase()} yet`}</p>
+            <p className="pk-none">{`No ${inSentence(k.plural)} yet`}</p>
           )}
         </section>
       ))}

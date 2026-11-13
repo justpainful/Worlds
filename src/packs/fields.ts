@@ -100,6 +100,25 @@ export function applyComputed(kind: KindDef, data: ItemData, changed?: string[])
   return out;
 }
 
+/**
+ * A label inside a sentence ("Add invoice"): lowercased, except a leading
+ * abbreviation such as API or CV, which stays as it is ("Add API note").
+ */
+export function inSentence(label: string): string {
+  return /^[A-Z0-9]{2,}(?![a-z])/.test(label) ? label : label.charAt(0).toLowerCase() + label.slice(1);
+}
+
+/** The next reference number after those already used, such as INV-0004. */
+export function nextSequence(prefix: string, used: unknown[]): string {
+  let max = 0;
+  for (const v of used) {
+    if (typeof v !== "string" || !v.startsWith(prefix)) continue;
+    const n = Number(v.slice(prefix.length));
+    if (Number.isInteger(n) && n > max) max = n;
+  }
+  return prefix + String(max + 1).padStart(4, "0");
+}
+
 /** The data a new item of this kind starts with. */
 export function initialData(kind: KindDef): ItemData {
   const out: ItemData = {};

@@ -79,7 +79,27 @@ export function packItems(pages: Record<string, PageMeta>, pack: PackDef, kindId
 
 /** Items of a kind that pass every condition. */
 export function filterItems(items: PageMeta[], where: Condition[] | undefined, today: string): PageMeta[] {
-  return where?.length ? items.filter((p) => matchesAll(where, dataOf(p), today)) : items;
+  if (!where?.length) return items;
+  let list = items.filter((p) => matchesAll(where, dataOf(p), today));
+  // Clashes compare items with each other, so they are worked out across the list.
+  for (const c of where) {
+    if (!c.clashesOn) continue;
+    const fields = [c.field, ...c.clashesOn];
+    const keyOf = (p: PageMeta) => {
+      const d = dataOf(p);
+      return fields.some((f) => isEmpty(d[f])) ? null : JSON.stringify(fields.map((f) => d[f]));
+    };
+    const seen = new Map<string, number>();
+    for (const p of items) {
+      const k = keyOf(p);
+      if (k) seen.set(k, (seen.get(k) ?? 0) + 1);
+    }
+    list = list.filter((p) => {
+      const k = keyOf(p);
+      return !!k && (seen.get(k) ?? 0) > 1;
+    });
+  }
+  return list;
 }
 
 /** A field added up across items; non-numbers count as nothing. */

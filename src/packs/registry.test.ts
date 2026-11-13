@@ -47,9 +47,14 @@ describe("pack registry", () => {
     expect(PACK_DEFS).toContain(STUDY);
   });
 
+  it("has the 38 packs of the plan besides Study, in every family", () => {
+    expect(PACK_DEFS.filter((p) => p.id !== "study")).toHaveLength(38);
+    for (const f of FAMILIES) expect(PACK_DEFS.some((p) => p.family === f.id), f.id).toBe(true);
+  });
+
   it("checks links, rules, samples and icons of every definition", () => {
     // Only committed icons: a machine-local one would pass here and be missing everywhere else.
-    const icons = new Set(Object.keys(import.meta.glob("../assets/product-icons/*.{svg,png}")).map((p) => p.split("/").pop()!.replace(/.(svg|png)$/, "")));
+    const icons = new Set(Object.keys(import.meta.glob("../assets/product-icons/*.{svg,png}")).map((p) => p.split("/").pop()!.replace(/\.(svg|png)$/, "")));
     const packIds = PACK_DEFS.map((p) => p.id);
     expect(new Set(packIds).size, "unique pack ids").toBe(packIds.length);
     for (const pack of PACK_DEFS) {
@@ -62,6 +67,7 @@ describe("pack registry", () => {
         for (const c of where ?? []) {
           expect(fieldOf(kindId, c.field), `${pack.id} ${what} field ${c.field}`).toBeTruthy();
           if (typeof c.atMost === "string") expect(fieldOf(kindId, c.atMost), `${pack.id} ${what} atMost`).toBeTruthy();
+          for (const other of c.clashesOn ?? []) expect(fieldOf(kindId, other), `${pack.id} ${what} clashesOn ${other}`).toBeTruthy();
         }
       };
       for (const k of pack.kinds) {

@@ -33,7 +33,8 @@ function packStrings(): string[] {
 describe("packs in Arabic", () => {
   it("has an Arabic translation for every text of every pack", () => {
     const missing = packStrings().filter((s) => !(s in (ar as Record<string, string>)));
-    // The list prints in full on failure, ready to translate.
+    // Printed in full, ready to translate, when anything is missing.
+    if (missing.length) console.log(`PACK_STRINGS_MISSING ${JSON.stringify(missing)}`);
     expect(missing).toEqual([]);
   });
 

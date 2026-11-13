@@ -4,7 +4,7 @@ import type { PageMeta } from "../../lib/types";
 import { pageTitle, useStore } from "../../state/store";
 import { IconButton } from "../../ui/Button";
 import type { KindDef, PackDef } from "../definition";
-import { formatField, listFields } from "../fields";
+import { formatField, listFields, inSentence } from "../fields";
 import { createPackItem, itemData, updatePackItem } from "../items";
 import { useTitleOf } from "./links";
 
@@ -55,7 +55,7 @@ export function PackBoard({ pack, kind, items, groupBy }: { pack: PackDef; kind:
               <span className="pl-count">{cards.length}</span>
               <IconButton
                 icon="add"
-                label={`Add ${kind.label.toLowerCase()}`}
+                label={`Add ${inSentence(kind.label)}`}
                 onClick={() => void createPackItem(pack, kind, { data: lane.id ? { [field.id]: lane.id } : {}, open: "current" })}
               />
             </header>

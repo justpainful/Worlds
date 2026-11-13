@@ -41,7 +41,7 @@ export const SHOP: PackDef = {
       blurb: "What a customer bought and where it is",
       fields: [
         link("customer", "Customer", "customer"),
-        text("number", "Order number"),
+        text("number", "Order number", { sequence: "ORD-" }),
         money("total", "Total"),
         date("date", "Date"),
         stage("status", "Status", options(["new", "New", "blue"], ["preparing", "Preparing", "yellow"], ["shipped", "Shipped", "accent"], ["delivered", "Delivered", "green"], ["cancelled", "Cancelled", "red"])),
