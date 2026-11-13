@@ -48,6 +48,11 @@ export interface FieldDef {
   detailOnly?: boolean;
   /** For link: the kind id (in the same pack) it points to. */
   to?: string;
+  /**
+   * Worked out from other number fields whenever one of them changes: their
+   * sum, times `factor` (VAT is the subtotal times 0.15). Still editable.
+   */
+  compute?: { of: string[]; factor?: number };
 }
 
 export interface KindDef {

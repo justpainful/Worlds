@@ -58,6 +58,14 @@
   padding: 10px 14px;
   border-block-end: 0.5px solid var(--hairline);
   vertical-align: middle;
+  /* Short values stay on one line; the table scrolls sideways when narrow. */
+  white-space: nowrap;
+}
+
+.pk-table td.pk-title,
+.pk-table td.pk-col-text {
+  white-space: normal;
+  min-width: 120px;
 }
 
 .pk-table tbody tr:last-child td {
@@ -475,6 +483,55 @@
 
 .pack-chooser .pack-prompt-actions {
   justify-content: flex-end;
+}
+
+/* ---- Teacher: attendance ------------------------------------------------- */
+
+.pk-att {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-radius: var(--r-sm);
+  background: var(--fill-1);
+  box-shadow: inset 0 0 0 0.5px var(--hairline);
+}
+
+.pk-att-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 8px 14px;
+  border-block-end: 0.5px solid var(--hairline);
+}
+
+.pk-att-row:last-child {
+  border-block-end: 0;
+}
+
+.pk-att-number {
+  width: 24px;
+  color: var(--text-3);
+  font: var(--t-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.pk-att-name {
+  flex: 1 1 9em;
+  min-width: 9em;
+  font: var(--t-body);
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pk-att-row.is-absent .pk-att-name {
+  color: var(--red);
+}
+
+.pk-att-row.is-late .pk-att-name {
+  color: var(--yellow);
 }
 
 @media (prefers-reduced-motion: reduce) {

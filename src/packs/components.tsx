@@ -5,11 +5,13 @@
  */
 import type { ComponentType } from "react";
 import { createSubject, StudyHomeSection, StudyView } from "../study/StudyViews";
+import { TeacherAttendance } from "./views/TeacherAttendance";
 
 /** Custom views and Home sections (ViewDef.component, PackDef.home). */
 export const PACK_COMPONENTS: Record<string, ComponentType> = {
   "study.main": StudyView,
   "study.home": StudyHomeSection,
+  "teacher.attendance": TeacherAttendance,
 };
 
 /**

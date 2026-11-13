@@ -80,6 +80,26 @@ export function formatField(field: FieldDef, value: unknown, locale?: string, ti
   }
 }
 
+/**
+ * Fill in computed fields from the fields they are worked out of, in the
+ * order the kind lists them, so a total can use a VAT computed just before it.
+ * Only fields whose sources changed (or all, for a new item) are recomputed,
+ * so a value typed over a computed one stays until a source changes again.
+ */
+export function applyComputed(kind: KindDef, data: ItemData, changed?: string[]): ItemData {
+  const out = { ...data };
+  const touched = new Set(changed ?? kind.fields.map((f) => f.id));
+  for (const f of kind.fields) {
+    if (!f.compute || !f.compute.of.some((id) => touched.has(id))) continue;
+    const parts = f.compute.of.map((id) => out[id]);
+    if (parts.every((v) => typeof v !== "number")) continue;
+    const sum = parts.reduce<number>((t, v) => t + (typeof v === "number" ? v : 0), 0);
+    out[f.id] = Math.round(sum * (f.compute.factor ?? 1) * 100) / 100;
+    touched.add(f.id);
+  }
+  return out;
+}
+
 /** The data a new item of this kind starts with. */
 export function initialData(kind: KindDef): ItemData {
   const out: ItemData = {};

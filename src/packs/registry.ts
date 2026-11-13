@@ -12,10 +12,14 @@
  */
 import type { PageMeta } from "../lib/types";
 import { dataKeyOf, storedKind, type FamilyId, type KindDef, type PackDef } from "./definition";
+import { FREELANCE } from "./definitions/freelance";
+import { SHOP } from "./definitions/shop";
 import { STUDY } from "./definitions/study";
+import { TEACHER } from "./definitions/teacher";
+import { WRITING } from "./definitions/writing";
 
-/** Every pack Worlds knows, in the order Settings lists them. */
-export const PACK_DEFS: PackDef[] = [STUDY];
+/** Every pack Worlds knows, in the order Settings lists them within each family. */
+export const PACK_DEFS: PackDef[] = [STUDY, TEACHER, FREELANCE, SHOP, WRITING];
 
 export type PackId = string;
 

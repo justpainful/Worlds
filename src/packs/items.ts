@@ -8,7 +8,7 @@ import type { PageMeta } from "../lib/types";
 import { defaultIcon } from "../resources/kinds";
 import { useStore, type OpenWhere } from "../state/store";
 import { dataKeyOf, storedKind, type KindDef, type PackDef } from "./definition";
-import { initialData, type ItemData } from "./fields";
+import { applyComputed, initialData, type ItemData } from "./fields";
 import { kindDefOf } from "./registry";
 
 function fail(e: unknown) {
@@ -32,7 +32,7 @@ export async function createPackItem(
   opts: { title?: string; data?: ItemData; parentId?: string | null; open?: OpenWhere | false } = {},
 ): Promise<PageMeta | null> {
   const stored = storedKind(pack, kind);
-  const data = { ...initialData(kind), ...opts.data };
+  const data = applyComputed(kind, { ...initialData(kind), ...opts.data });
   try {
     const meta = await api.createPage({
       kind: stored,
@@ -55,9 +55,10 @@ export async function createPackItem(
 
 /** Merge a patch into an item's fields. The page map updates at once and rolls back if saving fails. */
 export async function updatePackItem(p: PageMeta, patch: ItemData): Promise<void> {
-  const key = kindDefOf(p.kind)?.dataKey;
-  if (!key) return;
-  const next = { ...itemData(p), ...patch };
+  const def = kindDefOf(p.kind);
+  if (!def) return;
+  const key = def.dataKey;
+  const next = applyComputed(def.kind, { ...itemData(p), ...patch }, Object.keys(patch));
   const s = useStore.getState();
   s.patchPageLocal({ ...(s.pages[p.id] ?? p), data: next, updatedAt: Date.now() });
   try {

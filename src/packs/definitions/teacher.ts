@@ -1,0 +1,174 @@
+import type { PackDef } from "../definition";
+import { check, choice, date, link, notes, number, options, phone, stage, text, time, WEEKDAYS } from "./common";
+
+const ATTENDANCE = options(["present", "In class", "green"], ["absent", "Absent", "red"], ["late", "Late", "yellow"], ["excused", "Excused", "blue"]);
+
+/** For school teachers and university lecturers (docs/PACKS.md, First wave). */
+export const TEACHER: PackDef = {
+  id: "teacher",
+  family: "education",
+  label: "Teacher",
+  blurb: "Classes, students, lesson plans, attendance and a gradebook, for school teachers and lecturers.",
+  icon: "presentation",
+  adds: [
+    "Classes and their students, with a parent to call",
+    "Attendance in one tap per student",
+    "Lesson plans and a weekly timetable",
+    "Assessments, a gradebook with averages and work waiting to be marked",
+    "Claude writes lesson plans, questions and notes to parents",
+  ],
+  keywords: "teacher class students grades attendance معلم فصل طلاب درجات حضور",
+  kinds: [
+    {
+      id: "class",
+      label: "Class",
+      plural: "Classes",
+      icon: "team",
+      blurb: "A group you teach, with its subject and room",
+      fields: [text("subject", "Subject"), text("grade", "Grade or level"), text("room", "Room"), text("year", "School year", { detailOnly: true }), notes()],
+    },
+    {
+      id: "student",
+      label: "Student",
+      plural: "Students",
+      icon: "profile",
+      blurb: "One student, their class and who to contact",
+      fields: [
+        link("class", "Class", "class"),
+        number("number", "Number"),
+        text("guardian", "Parent or guardian"),
+        phone("guardianPhone", "Guardian's phone"),
+        notes(),
+      ],
+    },
+    {
+      id: "period",
+      label: "Period",
+      plural: "Timetable",
+      icon: "clock",
+      blurb: "A weekly period in your timetable",
+      fields: [link("class", "Class", "class"), choice("day", "Day", WEEKDAYS), time("start", "Starts"), time("end", "Ends"), text("room", "Room")],
+    },
+    {
+      id: "plan",
+      label: "Lesson plan",
+      plural: "Lesson plans",
+      icon: "notebook",
+      blurb: "What a lesson covers and how it runs",
+      fields: [
+        link("class", "Class", "class"),
+        date("date", "Date"),
+        text("unit", "Unit"),
+        stage("status", "Status", options(["draft", "Planning"], ["ready", "Ready", "blue"], ["taught", "Taught", "green"])),
+        { id: "objectives", label: "Objectives", type: "longText", detailOnly: true },
+        { id: "activities", label: "Activities", type: "longText", detailOnly: true },
+        { id: "homework", label: "Homework", type: "longText", detailOnly: true },
+      ],
+      dateField: "date",
+      stageField: "status",
+    },
+    {
+      id: "assessment",
+      label: "Assessment",
+      plural: "Assessments",
+      icon: "clipboard",
+      blurb: "A quiz, test, project or homework that gets a mark",
+      fields: [
+        link("class", "Class", "class"),
+        choice("type", "Type", options(["quiz", "Quiz"], ["test", "Test"], ["homework", "Homework"], ["project", "Project"], ["oral", "Oral"])),
+        date("date", "Date"),
+        number("outOf", "Out of", { initial: 10 }),
+        stage("marking", "Marking", options(["waiting", "Waiting", "yellow"], ["marking", "Marking", "blue"], ["marked", "Marked", "green"])),
+        { id: "questions", label: "Questions", type: "longText", detailOnly: true },
+      ],
+      dateField: "date",
+      stageField: "marking",
+    },
+    {
+      id: "grade",
+      label: "Grade",
+      plural: "Gradebook",
+      icon: "medal",
+      blurb: "One student's mark in one assessment",
+      fields: [link("student", "Student", "student"), link("assessment", "Assessment", "assessment"), number("score", "Score"), text("comment", "Comment")],
+    },
+    {
+      id: "attendance",
+      label: "Attendance",
+      plural: "Attendance",
+      icon: "checklist",
+      blurb: "Whether a student was in class on a day",
+      fields: [link("student", "Student", "student"), date("date", "Date"), choice("status", "Status", ATTENDANCE, { initial: "present" }), check("parentTold", "Parent told"), text("note", "Note")],
+    },
+  ],
+  views: [
+    { id: "classes", label: "Classes", icon: "users", type: "table", kind: "class" },
+    { id: "attendance", label: "Attendance", icon: "checklist", type: "custom", component: "teacher.attendance" },
+    { id: "students", label: "Students", icon: "user", type: "table", kind: "student" },
+    { id: "timetable", label: "Timetable", icon: "calendar", type: "table", kind: "period", columns: ["day", "start", "end", "class", "room"] },
+    { id: "plans", label: "Lesson plans", icon: "edit", type: "board", kind: "plan", groupBy: "status" },
+    { id: "marking", label: "Marking", icon: "template", type: "board", kind: "assessment", groupBy: "marking" },
+    { id: "gradebook", label: "Gradebook", icon: "table", type: "table", kind: "grade", averages: ["score"] },
+    { id: "absences", label: "Absences", icon: "warning", type: "table", kind: "attendance", filter: [{ field: "status", in: ["absent", "late"] }] },
+  ],
+  sidebar: ["classes", "attendance", "plans", "gradebook"],
+  newMenu: ["class", "student", "plan", "assessment"],
+  roles: [
+    { id: "teacher", label: "Teacher", sees: "all", canEdit: true },
+    { id: "assistant", label: "Assistant teacher", sees: "all", canEdit: true, hiddenFields: ["guardianPhone"] },
+    { id: "student", label: "Student", sees: "assigned", canEdit: false, hiddenFields: ["guardianPhone", "comment"] },
+    { id: "parent", label: "Parent", sees: "assigned", canEdit: false },
+  ],
+  stats: [
+    { label: "Students", kind: "student", agg: "count" },
+    { label: "Absent today", kind: "attendance", agg: "count", where: [{ field: "status", in: ["absent"] }, { field: "date", within: 0 }] },
+    { label: "Waiting to be marked", kind: "assessment", agg: "count", where: [{ field: "marking", notIn: ["marked"] }, { field: "date", overdue: true }] },
+    { label: "Average grade", kind: "grade", agg: "average", field: "score" },
+  ],
+  alerts: [
+    { label: "Absences to tell parents about", kind: "attendance", where: [{ field: "status", in: ["absent"] }, { field: "parentTold", in: [false] }] },
+    { label: "Assessments to mark", kind: "assessment", where: [{ field: "marking", in: ["waiting"] }, { field: "date", overdue: true }] },
+  ],
+  prompts: [
+    {
+      label: "Write a lesson plan",
+      prompt: {
+        en: "Write a lesson plan for my next lesson: objectives, a warm up, main activities with timings, a short check for understanding and homework.",
+        ar: "اكتب خطة درس لدرسي القادم: الأهداف، وتمهيد، والأنشطة الرئيسية بأوقاتها، وتحقق قصير من الفهم، وواجب منزلي.",
+      },
+    },
+    {
+      label: "Draft questions from a lesson",
+      prompt: {
+        en: "Draft ten questions from this lesson, from easy to hard, with the answers listed at the end.",
+        ar: "اكتب عشرة أسئلة من هذا الدرس، من السهل إلى الصعب، مع الإجابات في النهاية.",
+      },
+    },
+    {
+      label: "Summarise a class's results",
+      prompt: {
+        en: "Summarise my class's results in the gradebook: the average, who needs help, and what to revise.",
+        ar: "لخّص نتائج فصلي في سجل الدرجات: المتوسط، ومن يحتاج مساعدة، وما الذي يحتاج مراجعة.",
+      },
+    },
+    {
+      label: "Write to a parent",
+      prompt: {
+        en: "Write a short, kind message to a parent about their child's absence and how to catch up.",
+        ar: "اكتب رسالة قصيرة ولطيفة لولي أمر عن غياب ابنه وكيف يعوّض ما فاته.",
+      },
+    },
+  ],
+  samples: [
+    { ref: "c1", kind: "class", title: { en: "Grade 8 A", ar: "الثاني متوسط أ" }, data: { subject: { en: "Science", ar: "العلوم" }, grade: { en: "Grade 8", ar: "الثاني المتوسط" }, room: "B12" } },
+    { ref: "s1", kind: "student", title: { en: "Sara Alqahtani", ar: "سارة القحطاني" }, data: { class: "c1", number: 1, guardian: { en: "Mona Alqahtani", ar: "منى القحطاني" } } },
+    { ref: "s2", kind: "student", title: { en: "Lama Alharbi", ar: "لمى الحربي" }, data: { class: "c1", number: 2, guardian: { en: "Khalid Alharbi", ar: "خالد الحربي" } } },
+    { ref: "s3", kind: "student", title: { en: "Reem Alotaibi", ar: "ريم العتيبي" }, data: { class: "c1", number: 3, guardian: { en: "Fahad Alotaibi", ar: "فهد العتيبي" } } },
+    { kind: "period", title: { en: "Science, Grade 8 A", ar: "علوم، الثاني متوسط أ" }, data: { class: "c1", day: "sun", start: "08:00", end: "08:45", room: "B12" } },
+    { kind: "plan", title: { en: "Photosynthesis", ar: "البناء الضوئي" }, data: { class: "c1", date: "+1", unit: { en: "Plants", ar: "النبات" }, status: "ready" } },
+    { ref: "a1", kind: "assessment", title: { en: "Quiz 1: cells", ar: "اختبار قصير 1: الخلية" }, data: { class: "c1", type: "quiz", date: "-2", outOf: 10, marking: "waiting" } },
+    { kind: "grade", title: { en: "Sara, quiz 1", ar: "سارة، الاختبار القصير 1" }, data: { student: "s1", assessment: "a1", score: 9 } },
+    { kind: "grade", title: { en: "Lama, quiz 1", ar: "لمى، الاختبار القصير 1" }, data: { student: "s2", assessment: "a1", score: 7 } },
+    { kind: "attendance", title: { en: "Reem, today", ar: "ريم، اليوم" }, data: { student: "s3", date: "+0", status: "absent", parentTold: false } },
+  ],
+};
