@@ -209,7 +209,7 @@ class HomeModel(application: Application, internal val databaseName: String) : A
             if (request != requestId) return@launch
             val pages = result.getOrNull()?.first.orEmpty()
             val badges = result.getOrNull()?.second
-            mutable.update { it.copy(pages = pages.filter { page -> trash || (page.kind != "template" && page.kind !in worlds.android.planning.OWN_VIEW_KINDS) }, loading = false, error = result.isFailure,
+            mutable.update { it.copy(pages = pages.filter { page -> trash || (page.kind != "template" && !worlds.android.planning.hasOwnView(page.kind)) }, loading = false, error = result.isFailure,
                 dueToday = badges?.first ?: it.dueToday, inboxCount = badges?.second ?: it.inboxCount) }
         }
     }
@@ -1261,6 +1261,7 @@ class HomeModel(application: Application, internal val databaseName: String) : A
                 DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_calendar) }, text = { Text(stringResource(R.string.plan_calendar)) }, onClick = { showLibraryActions = false; planningSection = PlanningSection.Calendar.name })
                 DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_inbox) }, text = { Text(stringResource(R.string.plan_inbox)) }, onClick = { showLibraryActions = false; planningSection = PlanningSection.Inbox.name })
                 if (LocalAppearancePreferences.current.studyPackEnabled) DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_graduation_cap) }, text = { Text(stringResource(R.string.plan_study)) }, onClick = { showLibraryActions = false; planningSection = PlanningSection.Study.name })
+                DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_layers) }, text = { Text(stringResource(R.string.packs_title)) }, onClick = { showLibraryActions = false; planningSection = PlanningSection.Packs.name })
                 DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_share_2) }, text = { Text(stringResource(R.string.discord)) }, onClick = { showLibraryActions = false; showDiscordComposer = true })
                 DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_circle_user) }, text = { Text(stringResource(R.string.profile)) }, onClick = { showLibraryActions = false; showProfile = true })
                 HorizontalDivider()

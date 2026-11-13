@@ -2,7 +2,7 @@ package worlds.android.ai
 
 import org.json.JSONArray
 import org.json.JSONObject
-import worlds.android.planning.OWN_VIEW_KINDS
+import worlds.android.planning.hasOwnView
 import worlds.content.ContentBlock
 import worlds.content.ContentConflict
 import worlds.content.ContentStore
@@ -212,7 +212,7 @@ class AiToolRunner(
 
     private fun visible(): List<Resource> {
         val hidden = workspace.hiddenIds()
-        return workspace.list().filter { it.deletedAt == null && it.id !in hidden && it.kind != "template" && it.kind !in OWN_VIEW_KINDS }
+        return workspace.list().filter { it.deletedAt == null && it.id !in hidden && it.kind != "template" && !hasOwnView(it.kind) }
     }
 
     private fun page(id: String): ResourceDocument {
@@ -271,7 +271,7 @@ class AiToolRunner(
         val all = workspace.list().associateBy { it.id }
         val out = JSONArray()
         for (hit in workspace.search(query, limit)) {
-            if (hit.id in hidden || hit.kind in OWN_VIEW_KINDS) continue
+            if (hit.id in hidden || hasOwnView(hit.kind)) continue
             val doc = workspace.load(hit.id)
             val snippet = doc?.let { snippet(it, query) }.orEmpty()
             out.put(JSONObject().put("pageId", hit.id).put("title", hit.title).put("kind", hit.kind).put("parent", hit.parentId?.let { all[it]?.title } ?: JSONObject.NULL).put("snippet", snippet))

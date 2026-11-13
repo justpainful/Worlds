@@ -24,7 +24,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 /** The planning sections the app opens as pushed screens, in the desktop sidebar's order. */
-internal enum class PlanningSection { Tasks, Calendar, Inbox, Study }
+internal enum class PlanningSection { Tasks, Calendar, Inbox, Study, Packs }
 
 /**
  * Tasks (with Goals), Calendar, Inbox and Study over one ContentStore
@@ -43,6 +43,7 @@ internal enum class PlanningSection { Tasks, Calendar, Inbox, Study }
         PlanningSection.Calendar -> CalendarScreen(repo, studyEnabled, onBack)
         PlanningSection.Inbox -> InboxScreen(repo, studyEnabled, onBack, onOpenPage)
         PlanningSection.Study -> StudyScreen(repo, studyEnabled, onBack, onOpenPage)
+        PlanningSection.Packs -> PacksScreen(repo, onBack)
     }
 }
 

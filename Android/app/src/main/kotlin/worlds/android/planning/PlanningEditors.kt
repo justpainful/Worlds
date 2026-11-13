@@ -41,7 +41,7 @@ import java.time.format.TextStyle
 
 /* Editors for planning items, after the desktop's detail views (src/planning/ItemViews.tsx and src/study). */
 
-@Composable private fun EditorDialog(title: String, onDismiss: () -> Unit, onSave: () -> Unit, saveEnabled: Boolean = true, onDelete: (() -> Unit)? = null, deleteLabel: String? = null, content: @Composable ColumnScope.() -> Unit) {
+@Composable internal fun EditorDialog(title: String, onDismiss: () -> Unit, onSave: () -> Unit, saveEnabled: Boolean = true, onDelete: (() -> Unit)? = null, deleteLabel: String? = null, content: @Composable ColumnScope.() -> Unit) {
     AlertDialog(onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
@@ -56,13 +56,13 @@ import java.time.format.TextStyle
         confirmButton = { TextButton(onClick = onSave, enabled = saveEnabled) { Text(stringResource(R.string.save)) } })
 }
 
-@Composable private fun PlanTextField(value: String, onChange: (String) -> Unit, label: String, isError: Boolean = false, number: Boolean = false, multiline: Boolean = false, placeholder: String? = null) {
+@Composable internal fun PlanTextField(value: String, onChange: (String) -> Unit, label: String, isError: Boolean = false, number: Boolean = false, multiline: Boolean = false, placeholder: String? = null) {
     OutlinedTextField(value = value, onValueChange = onChange, modifier = Modifier.fillMaxWidth(), label = { Text(label) }, singleLine = !multiline, minLines = if (multiline) 3 else 1, isError = isError,
         placeholder = { if (placeholder != null) Text(placeholder, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         keyboardOptions = KeyboardOptions(keyboardType = if (number) KeyboardType.Decimal else KeyboardType.Text))
 }
 
-@Composable private fun FieldLabel(text: String, value: String? = null) {
+@Composable internal fun FieldLabel(text: String, value: String? = null) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
         if (value != null) Text(value, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -70,13 +70,13 @@ import java.time.format.TextStyle
 }
 
 /** A small capsule choice inside an editor. */
-@Composable private fun Choice(label: String, selected: Boolean, onClick: () -> Unit) {
+@Composable internal fun Choice(label: String, selected: Boolean, onClick: () -> Unit) {
     Text(label, modifier = Modifier.clip(CircleShape).background(if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest)
         .toggleable(value = selected, role = Role.RadioButton, onValueChange = { onClick() }).padding(horizontal = 12.dp, vertical = 8.dp),
         style = MaterialTheme.typography.labelLarge, color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface, maxLines = 1)
 }
 
-@Composable private fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+@Composable internal fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth().toggleable(value = checked, role = Role.Switch, onValueChange = onChange).heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
         Switch(checked = checked, onCheckedChange = null)
@@ -104,7 +104,7 @@ import java.time.format.TextStyle
  * tomorrow, next week and, for tasks, someday; or any day from the picker.
  */
 @OptIn(ExperimentalLayoutApi::class)
-@Composable private fun DateField(label: String, value: String?, now: String, allowNone: Boolean, onChange: (String?) -> Unit, someday: Boolean? = null, onSomeday: (() -> Unit)? = null) {
+@Composable internal fun DateField(label: String, value: String?, now: String, allowNone: Boolean, onChange: (String?) -> Unit, someday: Boolean? = null, onSomeday: (() -> Unit)? = null) {
     var picking by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         FieldLabel(label, when {
@@ -125,20 +125,20 @@ import java.time.format.TextStyle
 }
 
 /** Numbers typed into a field: whole numbers are stored as whole numbers. */
-private fun numberOf(text: String): Any? {
+internal fun numberOf(text: String): Any? {
     val v = text.trim().replace(',', '.').toDoubleOrNull() ?: return null
     return if (v == Math.floor(v) && !v.isInfinite() && kotlin.math.abs(v) < 1e15) v.toLong() else v
 }
 
-private fun numberText(v: Double?): String = when {
+internal fun numberText(v: Double?): String = when {
     v == null -> ""
     v == Math.floor(v) && !v.isInfinite() -> v.toLong().toString()
     else -> v.toString()
 }
 
-private fun numberValid(text: String) = text.isBlank() || numberOf(text) != null
-private fun clockValid(text: String) = text.isBlank() || QuickAdd.clock(text) != null
-private fun clockOf(text: String): String? = if (text.isBlank()) null else QuickAdd.clock(text)
+internal fun numberValid(text: String) = text.isBlank() || numberOf(text) != null
+internal fun clockValid(text: String) = text.isBlank() || QuickAdd.clock(text) != null
+internal fun clockOf(text: String): String? = if (text.isBlank()) null else QuickAdd.clock(text)
 
 /** Edit a task's title, date, time and priority, or move it to Trash. */
 @OptIn(ExperimentalLayoutApi::class)

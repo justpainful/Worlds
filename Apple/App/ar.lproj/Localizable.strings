@@ -731,3 +731,5 @@
 "Change" = "تغيير";
 "Unknown actor" = "جهة غير معروفة";
 "Prompt" = "طلب";
+"No details yet" = "لا تفاصيل بعد";
+"This item belongs to a pack this version of Worlds does not have." = "هذا العنصر من حزمة غير موجودة في هذا الإصدار من Worlds.";
