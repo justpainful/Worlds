@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { api, errorMessage, type NewPage } from "../lib/api";
 import type { PageMeta, Profile } from "../lib/types";
-import { isTreeKind, KIND_INFO } from "../resources/kinds";
+import { isTreeKind, kindInfo } from "../resources/kinds";
 import { syncPackSettings } from "../packs/registry";
 
 // ---------------------------------------------------------------------------
@@ -476,6 +476,6 @@ export function pageTitle(p: PageMeta | undefined | null): string {
   if (p.title.trim()) return p.title.trim();
   // Untitled things still say what they are.
   if (p.kind === "page" || p.kind === "template") return "Untitled";
-  const info = KIND_INFO[p.kind as keyof typeof KIND_INFO];
+  const info = kindInfo(p.kind);
   return info ? `Untitled ${info.label.toLowerCase()}` : "Untitled";
 }

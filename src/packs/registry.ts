@@ -5,12 +5,19 @@
  * and anything made with it is kept, hidden, and comes back when it is turned
  * on again. See docs/PACKS.md.
  *
- * This module has no store dependency so the store's own selectors can use it.
- * Hooks and actions live in ./packs.ts.
+ * Every pack is a definition (src/packs/definitions); this module turns the
+ * definitions into what the rest of the app asks: which kinds exist, which
+ * are hidden, which pack owns a kind. It has no store dependency so the
+ * store's own selectors can use it. Hooks and actions live in ./packs.ts.
  */
-import type { PageMeta, ResourceKind } from "../lib/types";
+import type { PageMeta } from "../lib/types";
+import { dataKeyOf, storedKind, type KindDef, type PackDef } from "./definition";
+import { STUDY } from "./definitions/study";
 
-export type PackId = "study";
+/** Every pack Worlds knows, in the order Settings lists them. */
+export const PACK_DEFS: PackDef[] = [STUDY];
+
+export type PackId = string;
 
 export interface PackInfo {
   id: PackId;
@@ -19,28 +26,37 @@ export interface PackInfo {
   blurb: string;
   /** Product icon (src/assets/product-icons). */
   icon: string;
-  /** Kinds that exist only while this pack is on. */
-  kinds: ResourceKind[];
+  /** Stored kinds that exist only while this pack is on. */
+  kinds: string[];
   /** What it adds, in plain words, for Settings. */
   adds: string[];
 }
 
-export const PACKS: PackInfo[] = [
-  {
-    id: "study",
-    label: "Study",
-    blurb: "Subjects, a class timetable, assignments, exams and lessons, for school or university.",
-    icon: "graduation",
-    kinds: ["subject", "lesson", "assignment", "exam", "requirement"],
-    adds: [
-      "Subjects with teachers, rooms and colours",
-      "A weekly class timetable in Calendar",
-      "Assignments, exams and things to bring",
-      "Lesson notes filed under each subject",
-      "A study summary on Home",
-    ],
-  },
-];
+export const PACKS: PackInfo[] = PACK_DEFS.map((p) => ({
+  id: p.id,
+  label: p.label,
+  blurb: p.blurb,
+  icon: p.icon,
+  kinds: p.kinds.map((k) => storedKind(p, k)),
+  adds: p.adds,
+}));
+
+export function packDef(id: string): PackDef | undefined {
+  return PACK_DEFS.find((p) => p.id === id);
+}
+
+/** A kind written pack.kind (freelance.invoice), the shape the backend accepts for pack kinds. */
+export function isPackKind(kind: string): boolean {
+  return /^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$/.test(kind);
+}
+
+/** The pack and kind definition behind a stored kind, if a pack defines it. */
+export function kindDefOf(kind: string): { pack: PackDef; kind: KindDef; dataKey: string } | undefined {
+  for (const pack of PACK_DEFS) {
+    for (const k of pack.kinds) if (storedKind(pack, k) === kind) return { pack, kind: k, dataKey: dataKeyOf(k) };
+  }
+  return undefined;
+}
 
 /** Settings key holding the list of enabled pack ids. */
 export const PACKS_KEY = "packs.enabled";
@@ -60,7 +76,7 @@ export function hiddenKindsFor(settings: Record<string, unknown>): Set<string> {
 
 /** Which pack owns a kind, if any. */
 export function packOfKind(kind: string): PackInfo | undefined {
-  return PACKS.find((p) => (p.kinds as string[]).includes(kind));
+  return PACKS.find((p) => p.kinds.includes(kind));
 }
 
 // Every pack starts off, so pack kinds are hidden until settings say otherwise.
@@ -71,12 +87,16 @@ export function syncPackSettings(settings: Record<string, unknown>) {
   hidden = hiddenKindsFor(settings);
 }
 
-/** True when this kind belongs to a pack that is off. */
+/**
+ * True when this kind belongs to a pack that is off. A pack kind no pack
+ * defines any more (made by a newer Worlds, or a pack that was removed) is
+ * kept but not shown.
+ */
 export function isKindHidden(kind: string): boolean {
-  return hidden.has(kind);
+  return hidden.has(kind) || (isPackKind(kind) && !kindDefOf(kind));
 }
 
 /** True when this resource should not be shown at all right now. */
 export function isHidden(p: Pick<PageMeta, "kind">): boolean {
-  return hidden.has(p.kind);
+  return isKindHidden(p.kind);
 }

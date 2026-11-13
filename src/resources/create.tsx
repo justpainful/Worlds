@@ -11,7 +11,7 @@ import { useStore, type OpenWhere } from "../state/store";
 import { menuAt, type MenuItem } from "../ui/Menu";
 import { Modal } from "../ui/Modal";
 import type { IconName } from "../ui/Icon";
-import { KIND_INFO, NEW_KINDS, defaultIcon, fileIcon } from "./kinds";
+import { NEW_KINDS, defaultIcon, fileIcon, kindInfo } from "./kinds";
 import { isKindHidden } from "../packs/registry";
 import { createItem } from "../planning/actions";
 import { today } from "../planning/model";
@@ -163,7 +163,7 @@ export function addStream(opts: { parentId?: string | null } = {}): Promise<Page
 /** The New menu: every kind, an upload and a stream link. */
 export function newResourceMenu(anchor: HTMLElement, opts: { parentId?: string | null; align?: "start" | "end" } = {}) {
   const items: MenuItem[] = NEW_KINDS.map((k) => ({
-    label: KIND_INFO[k].label,
+    label: kindInfo(k).label,
     icon: LINE_ICON[k],
     shortcut: k === "page" ? "Ctrl+N" : undefined,
     onSelect: () => createResource(k, { parentId: opts.parentId }),

@@ -102,7 +102,9 @@ export type ResourceKind =
   // Planning, for everyone (docs/PACKS.md)
   | "task" | "event" | "inbox" | "goal"
   // Study pack, opt-in
-  | "subject" | "lesson" | "assignment" | "exam" | "requirement";
+  | "subject" | "lesson" | "assignment" | "exam" | "requirement"
+  // Any other pack kind, written pack.kind (freelance.invoice); docs/PACKS.md
+  | `${string}.${string}`;
 
 export interface PageMeta {
   id: string;

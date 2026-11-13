@@ -6,7 +6,7 @@ import { Icon } from "../ui/Icon";
 import { Segmented } from "../ui/Segmented";
 import { EmptyState, PageIcon } from "../ui/misc";
 import { pageTitle } from "../state/store";
-import { KIND_INFO } from "../resources/kinds";
+import { kindInfo } from "../resources/kinds";
 import { createItem, toggleTask, updateData } from "./actions";
 import { addDays, formatTime, occurrences, parseISODate, relDay, startOfWeek, today, type Occurrence } from "./model";
 import { colorVar, itemMenu, QuickAdd } from "./ui";
@@ -156,7 +156,7 @@ function Chip({ o, wide }: { o: Occurrence; wide?: boolean }) {
         e.preventDefault();
         if (o.kind !== "event") show(e.clientX, e.clientY, itemMenu(o.page));
       }}
-      data-tip={KIND_INFO[o.kind].label}
+      data-tip={kindInfo(o.kind).label}
     >
       {tickable ? (
         <button type="button" role="checkbox" aria-checked={o.done} aria-label="Done" className={`pl-check pl-check-sm ${o.done ? "is-done" : ""}`} onClick={(e) => { e.stopPropagation(); tick(); }}>
