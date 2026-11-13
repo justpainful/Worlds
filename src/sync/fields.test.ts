@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { fieldsDiff, pushFields, readFields, watchFields } from "./fields";
+import { fieldsDiff, markKind, pushFields, readFields, watchFields } from "./fields";
 
 /** Two replicas that exchange every update, as the server relays them. */
 function pair() {
@@ -43,6 +43,13 @@ describe("item fields in team sync", () => {
     Y.applyUpdate(b, Y.encodeStateAsUpdate(a));
     expect(readFields(a)).toEqual({ status: "sent", total: 230 });
     expect(readFields(b)).toEqual(readFields(a));
+  });
+
+  it("records the item's kind once for phones", () => {
+    const { a, b } = pair();
+    expect(markKind(a, "shop.order")).toBe(true);
+    expect(markKind(a, "shop.order")).toBe(false);
+    expect(b.getMap("meta").get("kind")).toBe("shop.order");
   });
 
   it("removes a field that was cleared", () => {

@@ -5,6 +5,7 @@ import WorldsWorkspaceAccess
 import WorldsModels
 import WorldsNativeWrites
 import WorldsResourceRepositories
+import WorldsPersistence
 
 /// Edits a pack item's fields (docs/PACKS.md, Design 4) from the person's
 /// workspace or an independent local copy, saving only its `metadata.item`
@@ -88,7 +89,6 @@ import WorldsResourceRepositories
         for f in kind.fields {
             switch f.type {
             case "checkbox": next[f.id] = .bool(ticks[f.id] ?? false)
-            case "link": continue // kept as it is; links are chosen on desktop and Android for now
             default:
                 let t = (texts[f.id] ?? "").trimmingCharacters(in: .whitespaces)
                 if t.isEmpty { next.removeValue(forKey: f.id); continue }
@@ -113,12 +113,22 @@ struct LocalPackItemEditor: View {
     @StateObject private var state: LocalPackItemState
     @Environment(\.dismiss) private var dismiss
     private let title: String
+    private let pages: [StoredPage]
     private let onSaved: @MainActor () -> Void
 
-    init(copy: WorkspaceWriteTarget, pageID: String, title: String, onSaved: @escaping @MainActor () -> Void) {
+    init(copy: WorkspaceWriteTarget, pageID: String, title: String, pages: [StoredPage] = [], onSaved: @escaping @MainActor () -> Void) {
         _state = StateObject(wrappedValue: LocalPackItemState(copy: copy, pageID: pageID))
         self.title = title
+        self.pages = pages
         self.onSaved = onSaved
+    }
+
+    /// Items a link field can point to: the other items of the kind it names, in the same pack.
+    private func linkTargets(_ field: PackField) -> [StoredPage] {
+        guard let to = field.to, let catalog = PackCatalog.shipped,
+              let pack = catalog.packs.first(where: { $0.kinds.contains(where: { $0.fields.contains(field) }) }),
+              let target = pack.kinds.first(where: { $0.id == to }) else { return [] }
+        return pages.filter { $0.kind == target.kind && !$0.archived }.sorted { $0.title.localizedCompare($1.title) == .orderedAscending }
     }
 
     var body: some View {
@@ -126,7 +136,7 @@ struct LocalPackItemEditor: View {
             Group {
                 if let kind = state.kind {
                     Form {
-                        ForEach(kind.fields.filter { $0.type != "link" }, id: \.id) { field in
+                        ForEach(kind.fields, id: \.id) { field in
                             fieldRow(field)
                         }
                         if let problem = state.problem {
@@ -162,6 +172,11 @@ struct LocalPackItemEditor: View {
             Picker(field.label.text, selection: Binding(get: { state.texts[field.id] ?? "" }, set: { state.texts[field.id] = $0 })) {
                 if field.type == "choice" { Text("None").tag("") }
                 ForEach(field.options ?? [], id: \.id) { o in Text(o.label.text).tag(o.id) }
+            }
+        case "link":
+            Picker(field.label.text, selection: Binding(get: { state.texts[field.id] ?? "" }, set: { state.texts[field.id] = $0 })) {
+                Text("None").tag("")
+                ForEach(linkTargets(field), id: \.id) { page in Text(page.title.isEmpty ? String(localized: "Untitled") : page.title).tag(page.id) }
             }
         case "longText":
             VStack(alignment: .leading) {

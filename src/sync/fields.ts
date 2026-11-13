@@ -40,6 +40,17 @@ export function pushFields(doc: Y.Doc, local: Fields, origin: unknown = ORIGIN_F
   return true;
 }
 
+/**
+ * Record the item's kind ("shop.order") in the document's `meta` map, once,
+ * so a phone opening the shared page knows which pack fields it holds.
+ */
+export function markKind(doc: Y.Doc, kind: string): boolean {
+  const meta = doc.getMap<unknown>("meta");
+  if (meta.get("kind") === kind) return false;
+  doc.transact(() => meta.set("kind", kind), ORIGIN_FIELDS);
+  return true;
+}
+
 /** Calls back with the document's fields whenever someone else changes them. */
 export function watchFields(doc: Y.Doc, onRemote: (fields: Fields) => void): () => void {
   const map = fieldsMap(doc);

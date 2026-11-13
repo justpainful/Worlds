@@ -14,7 +14,7 @@
  */
 import { useEffect, useState } from "react";
 import { useStore } from "../state/store";
-import { pushFields, readFields, watchFields } from "../sync/fields";
+import { markKind, pushFields, readFields, watchFields } from "../sync/fields";
 import { MemoryLocalStore } from "../sync/localStore";
 import { startSyncManager, workspaceFor } from "../sync/manager";
 import { acquireSession, localStore, releaseSession, type CollabSession } from "../sync/session";
@@ -79,7 +79,10 @@ export function useItemSync(pageId: string) {
       const page = useStore.getState().pages[pageId];
       if (!page) return;
       const { open, hidden: secret } = splitFields(itemData(page), keys);
-      if (session.canEdit) pushFields(doc, open);
+      if (session.canEdit) {
+        markKind(doc, page.kind);
+        pushFields(doc, open);
+      }
       if (hiddenOpen() && hidden!.canEdit) pushFields(hidden!.content, secret);
     };
 

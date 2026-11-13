@@ -1105,6 +1105,16 @@ private struct WorldsLibraryView: View {
         }
     }
 
+    /// Pack items in this workspace, grouped by their pack, for the sidebar.
+    private var packSidebarGroups: [PackSidebarGroup] {
+        guard let catalog = PackCatalog.shipped else { return [] }
+        return catalog.packs.compactMap { pack in
+            let kinds = Set(pack.kinds.map(\.kind))
+            let items = activeNonTemplatePages.filter { kinds.contains($0.kind) }.sorted { $0.updatedAt > $1.updatedAt }
+            return items.isEmpty ? nil : PackSidebarGroup(id: pack.id, label: pack.label.text, items: items)
+        }
+    }
+
     private var modernSidebarView: some View {
         List(selection: sidebarTagBinding) {
             Section("Workspace") {
@@ -1120,6 +1130,18 @@ private struct WorldsLibraryView: View {
                     Label(col.rawValue, systemImage: col.systemImage)
                         .tag(SidebarSelectionTag.library(col))
                         .accessibilityIdentifier("sidebar-lib-\(col.rawValue)")
+                }
+            }
+
+            // Each pack with items in this workspace (docs/PACKS.md): its items, newest first.
+            ForEach(packSidebarGroups) { group in
+                Section(group.label) {
+                    ForEach(group.items.prefix(8)) { page in
+                        Label(page.title.isEmpty ? "Untitled" : page.title, systemImage: "square.stack")
+                            .lineLimit(1)
+                            .tag(SidebarSelectionTag.page(page.id))
+                            .accessibilityIdentifier("pack-item.\(page.id)")
+                    }
                 }
             }
 
@@ -1783,7 +1805,7 @@ private struct WorldsLibraryView: View {
             }
         }
         .sheet(item: $editingPackItem) { request in
-            LocalPackItemEditor(copy: request.context.copy, pageID: request.id, title: request.title) {
+            LocalPackItemEditor(copy: request.context.copy, pageID: request.id, title: request.title, pages: pages) {
                 Task { await refreshCopy(id: request.context.copy.id, generation: request.generation) }
             }
         }
@@ -3364,3 +3386,10 @@ private struct LocalDrawingEditorRequest: Identifiable {
     let generation: UUID
 }
 #endif
+
+/// One pack's items in the sidebar (docs/PACKS.md).
+struct PackSidebarGroup: Identifiable {
+    let id: String
+    let label: String
+    let items: [StoredPage]
+}

@@ -13,7 +13,7 @@ import { configureSync, syncConfig } from "./config";
 import { hiddenKeys, splitFields } from "../packs/hidden";
 import { itemData } from "../packs/items";
 import { isPackKind, kindDefOf } from "../packs/registry";
-import { pushFields } from "./fields";
+import { markKind, pushFields } from "./fields";
 import { acquireSession, localStore, openSessions, releaseSession } from "./session";
 
 export interface Notice {
@@ -151,10 +151,16 @@ export function startSyncManager() {
       const openFields = () => splitFields(itemData(useStore.getState().pages[id] ?? p), hiddenKeys(def.pack)).open;
       const open = openSessions().find((x) => x.pageId === id);
       if (open) {
-        if (open.ready && open.canEdit) pushFields(open.content, openFields());
+        if (open.ready && open.canEdit) {
+          markKind(open.content, p.kind);
+          pushFields(open.content, openFields());
+        }
       } else
         void withSession(id, async (x) => {
-          if (x.canEdit) pushFields(x.content, openFields());
+          if (x.canEdit) {
+            markKind(x.content, p.kind);
+            pushFields(x.content, openFields());
+          }
         });
     }
   });

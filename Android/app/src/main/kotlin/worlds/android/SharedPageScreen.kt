@@ -1107,6 +1107,8 @@ private fun SharedPageTool(icon: Int, label: String, enabled: Boolean, tag: Stri
                 }
                 state.markdownStatus?.let { Text(stringResource(it), color = if (it in setOf(R.string.markdown_export_success, R.string.markdown_copy_success)) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error) }
                 Spacer(Modifier.height(12.dp))
+                // A pack item shared from desktop shows its fields above its blocks.
+                state.snapshot?.let { SharedPackFields(it) }
                 val blockIdCounts = remember(state.blocks) { state.blocks.mapNotNull { it.id }.groupingBy { it }.eachCount() }
                 state.blocks.forEach { block ->
                     val preview = remember(block.raw) { runCatching { previewBlock(block.raw) }.getOrNull() }

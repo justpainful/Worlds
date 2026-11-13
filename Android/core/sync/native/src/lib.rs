@@ -8,6 +8,7 @@ use yrs::{Doc, ReadTxn, StateVector, Transact, Update, Options, OffsetKind};
 mod editor;
 mod comments;
 mod restore;
+mod fields;
 
 pub fn editor_read(snapshot: &[u8]) -> Result<Vec<u8>, String> { editor::read(snapshot) }
 /// Exposed for cross-runtime conformance fixtures.
@@ -113,6 +114,18 @@ pub extern "system" fn Java_worlds_sync_YrsNative_restoreVersionBytes(env: JNIEn
 #[no_mangle]
 pub extern "system" fn Java_worlds_sync_YrsNative_blockIdentityBytes(env: JNIEnv, _: JClass, snapshot: JByteArray, bid: JByteArray) -> jbyteArray {
     invoke(env, snapshot, Some(bid), editor::block_identity)
+}
+
+/// A shared pack item's fields and kind as JSON (docs/PACKS.md).
+#[no_mangle]
+pub extern "system" fn Java_worlds_sync_YrsNative_fieldsJsonBytes(env: JNIEnv, _: JClass, snapshot: JByteArray) -> jbyteArray {
+    invoke(env, snapshot, None, fields::read)
+}
+
+/// Set or remove pack item fields; returns the update to send.
+#[no_mangle]
+pub extern "system" fn Java_worlds_sync_YrsNative_setFieldsBytes(env: JNIEnv, _: JClass, snapshot: JByteArray, request: JByteArray) -> jbyteArray {
+    invoke(env, snapshot, Some(request), fields::write)
 }
 
 #[cfg(test)]
