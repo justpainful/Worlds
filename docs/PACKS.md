@@ -177,14 +177,23 @@ Built on the branch `feat/pack-engine` (2026-11-13), desktop first:
 - **Claude**: each pack has its own requests in its views and the command palette. Claude is told the kinds and fields of the packs that are on, and can list, create and change pack items (`resources_list`, `resources_create`, `items_update`).
 - **Choosing packs**: Home asks once what Worlds is used for and offers the packs of that family; Settings lists every pack by family.
 - **Packs**: all 38 of the table above, plus Study. Teacher adds a daily attendance screen. Tests check every definition and that every pack text has an Arabic translation.
+- **Automations**: a pack can be switched in Settings to put one Inbox item a day with what needs attention (its alerts), made when Worlds is open, once per pack per day.
 - **Roles**: every pack defines its roles. A pack view can be previewed as any role, hiding the fields that role does not see. What a member can open is already enforced by page permissions on the server, since each item is a page.
 
-Not done yet:
+Not done yet, and why:
 
-- Hiding single fields from a role on the sync server (Roles, addition 2). It changes `services/sync` and needs a server deploy, which is the owner's decision.
-- Automations that act on their own (a message to a parent about an absence, a daily summary). Alerts show on Home today; scheduled messages need the automation engine to support pack items.
-- Links between packs across workspaces (a teacher's assignment appearing in a student's Study pack).
-- Phase 2 trials with real people from each sector, and phase 4, Android and Apple.
+- **Team sync of pack fields.** Team sync today carries a shared page's blocks (a Yjs document) and the page tree for permissions; members find the pages they may open through their access list. A page's fields (`metadata`, where pack items keep theirs) are not synced, so pack items in a team need that first. Design below.
+- **Hiding single fields from a role on the server** (Roles, addition 2). Depends on the item above, changes `services/sync` and `services/identity`, and needs a server deploy, which is the owner's decision.
+- **Links across workspaces** (a teacher's assessment appearing in each student's Study pack). Depends on the same sync work.
+- **Messages sent for the person** (a note to a parent about an absence). The daily summary puts the work in Inbox; sending outside Worlds goes through Discord or later email with the person's approval, as every outgoing message does.
+- **Phase 2**, trials with real people from each sector, needs those people. **Phase 4**, Android and Apple, waits by this plan's own rule until the packs have settled on desktop.
+
+### Design for what is left
+
+1. **Pack fields in team sync.** The content document of a shared pack item gains a `fields` map next to its block fragment. The app mirrors it into `metadata.item` the way blocks are mirrored into rows (`src/sync/mirror.ts`), and folds local and Claude changes back in, so an item edited on two devices merges field by field. The DocRoom validates the map's shape (plain values, bounded size) before accepting an update. New pages in a team workspace are announced in the workspace tree with their kind and title, so members' devices create the row and open the document on demand.
+2. **Hidden fields.** Fields some role must not see live in a second document per item, `<pageId>#private`, never in the shared one. The identity service resolves access to it from the member's pack role (owners and roles without `hiddenFields` covering the field get it). The client shows the union of both documents; a member without access never receives the private one, so the field is not on their device at all. Moving a field between the two is a migration the pack definition triggers.
+3. **Links across workspaces.** A kind can name a target in another pack (`teacher.assessment` publishes to `study.assignment`). Publishing writes a small record to each student's inbox feed (`services/sync/src/inbox.ts` already keeps one per user); the student's Worlds turns it into an item linked by source id and keeps it up to date one way. Grades flow back only through the teacher's own gradebook.
+4. **Mobile.** A script exports the pack definitions as JSON into the Android assets and the Apple bundle, with a test that the export is current, so the native apps read the same kinds, fields and labels. Each gets generic list, board and item screens first, then the custom ones (Teacher attendance).
 
 ## Choosing packs
 
