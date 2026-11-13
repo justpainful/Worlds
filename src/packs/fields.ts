@@ -47,10 +47,18 @@ export function parseField(field: FieldDef, text: string): unknown {
 }
 
 /**
+ * Numbers, money and dates in the interface language: Arabic names (ر.س.,
+ * نوفمبر) with Western digits and the Gregorian calendar, as elsewhere in Worlds.
+ */
+export function interfaceLocale(): string | undefined {
+  return typeof document !== "undefined" && document.documentElement.lang.startsWith("ar") ? "ar-u-nu-latn-ca-gregory" : undefined;
+}
+
+/**
  * What a field shows in a list, card or table cell. Empty when there is nothing.
  * A link shows the linked item's title through `titleOf`.
  */
-export function formatField(field: FieldDef, value: unknown, locale?: string, titleOf?: (id: string) => string): string {
+export function formatField(field: FieldDef, value: unknown, locale: string | undefined = interfaceLocale(), titleOf?: (id: string) => string): string {
   if (value === null || value === undefined || value === "") return "";
   switch (field.type) {
     case "money": {
