@@ -87,7 +87,7 @@ struct PageContentView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text(page.title.isEmpty ? "Untitled" : page.title)
+                Text(page.title.isEmpty ? String(localized: "Untitled") : page.title)
                     .font(.title.weight(.semibold))
                     .accessibilityAddTraits(.isHeader)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -212,7 +212,7 @@ private struct NodeView: View {
             .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
         case "prompt":
             VStack(alignment: .leading, spacing: 8) {
-                Text(node.attrs?.label ?? "Prompt").font(.caption.weight(.semibold))
+                Text(node.attrs?.label ?? String(localized: "Prompt")).font(.caption.weight(.semibold))
                 children
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -522,7 +522,7 @@ private struct TabsNodeView: View {
             } else {
                 Picker("Tab", selection: $selected) {
                     ForEach(tabs.indices, id: \.self) { index in
-                        Text(tabs[index].attrs?.title ?? "Tab").tag(index)
+                        Text(tabs[index].attrs?.title ?? String(localized: "Tab")).tag(index)
                     }
                 }.pickerStyle(.menu)
                 if tabs.indices.contains(selected) { NodeView(node: tabs[selected]) }

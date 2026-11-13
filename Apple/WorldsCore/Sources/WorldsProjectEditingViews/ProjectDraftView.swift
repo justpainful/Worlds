@@ -181,7 +181,7 @@ public struct ProjectDraftView: View {
                     ForEach(Array(model.links.enumerated()), id: \.offset) { _, id in
                         let title = model.candidates.first(where: { $0.id == id })?.title ?? "Unavailable linked page"
                         HStack {
-                            Text(title.isEmpty ? "Untitled" : title)
+                            Text(title.isEmpty ? String(localized: "Untitled") : title)
                             Spacer()
                             Button("Unlink") { Task { await model.changeLink(.unlink(id)) } }
                                 .buttonStyle(.borderless)

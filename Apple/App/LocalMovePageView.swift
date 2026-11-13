@@ -92,7 +92,7 @@ struct LocalMovePageView: View {
                             VStack(alignment: .leading) {
                                 Text(page.title.isEmpty ? String(localized: "Untitled") : page.title)
                                 if let parent = page.parentID, let parentName = names[parent] {
-                                    Text(parentName.isEmpty ? "Untitled" : parentName).font(.caption).foregroundStyle(.secondary)
+                                    Text(parentName.isEmpty ? String(localized: "Untitled") : parentName).font(.caption).foregroundStyle(.secondary)
                                 }
                             }
                             Spacer()

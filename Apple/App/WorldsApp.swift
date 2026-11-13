@@ -2737,7 +2737,7 @@ private struct WorldsLibraryView: View {
                 List(searchHits, selection: sidebarSelection) { hit in
                     NavigationLink(value: hit.pageId) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(hit.title.isEmpty ? "Untitled" : hit.title)
+                            Text(hit.title.isEmpty ? String(localized: "Untitled") : hit.title)
                                 .font(.body.weight(.medium))
                             if hit.kind == "template" {
                                 Text("Template · View only").font(.caption).foregroundStyle(.secondary)
@@ -3261,7 +3261,7 @@ private struct PageListRow: View {
     let parentTitle: String?
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(page.title.isEmpty ? "Untitled" : page.title)
+            Text(page.title.isEmpty ? String(localized: "Untitled") : page.title)
                 .font(.body.weight(.medium))
             if let parentTitle {
                 Text(parentTitle).font(.caption2).foregroundStyle(.secondary).lineLimit(1)

@@ -385,7 +385,7 @@ struct WorkspaceInspectorPanel: View {
                 .textCase(.uppercase)
 
             VStack(alignment: .leading, spacing: 10) {
-                Text(page.title.isEmpty ? "Untitled" : page.title)
+                Text(page.title.isEmpty ? String(localized: "Untitled") : page.title)
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(WorldsPalette.ink(for: colorScheme))
 

@@ -32,8 +32,8 @@ struct LocalHistoryView: View {
                             Section {
                                 ForEach(entries) { entry in
                                     VStack(alignment: .leading, spacing: 4) {
-                                        Text(entry.summary.isEmpty ? "Change" : entry.summary)
-                                        Text(entry.actor.isEmpty ? "Unknown actor" : entry.actor).font(.caption).foregroundStyle(.secondary)
+                                        Text(entry.summary.isEmpty ? String(localized: "Change") : entry.summary)
+                                        Text(entry.actor.isEmpty ? String(localized: "Unknown actor") : entry.actor).font(.caption).foregroundStyle(.secondary)
                                         if let date = historyDate(entry.createdAt) {
                                             Text(date, format: .dateTime.year().month().day().hour().minute())
                                                 .font(.caption).foregroundStyle(.secondary)
