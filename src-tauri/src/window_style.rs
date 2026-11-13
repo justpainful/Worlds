@@ -62,12 +62,31 @@ pub fn apply(window: &WebviewWindow, level: &str) {
 /// buttons. Without the system menu style DWM draws none; minimizing from
 /// the taskbar and Snap keep working because the minimize and maximize
 /// styles stay. Alt+F4 is handled by the page (src/shell/Window.tsx).
+///
+/// The window library sets the style again on many changes (showing the
+/// window, focus, maximize), so the window is subclassed and every style
+/// change has the system menu taken out before it lands. Checked on the
+/// owner's PC on 2026-11-13: with the style kept off, the extra buttons go.
 #[cfg(windows)]
 fn hide_system_caption_buttons(hwnd: windows_sys::Win32::Foundation::HWND) {
+    use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
+    use windows_sys::Win32::UI::Shell::{DefSubclassProc, SetWindowSubclass};
     use windows_sys::Win32::UI::WindowsAndMessaging::{
-        GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos, GWL_STYLE, SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, WS_SYSMENU,
+        GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos, GWL_STYLE, STYLESTRUCT, SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE,
+        SWP_NOSIZE, SWP_NOZORDER, WM_STYLECHANGING, WS_SYSMENU,
     };
+
+    unsafe extern "system" fn keep_off(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM, _id: usize, _data: usize) -> LRESULT {
+        if msg == WM_STYLECHANGING && wparam as i32 == GWL_STYLE && lparam != 0 {
+            let change = unsafe { &mut *(lparam as *mut STYLESTRUCT) };
+            change.styleNew &= !WS_SYSMENU;
+        }
+        unsafe { DefSubclassProc(hwnd, msg, wparam, lparam) }
+    }
+
     unsafe {
+        // Only works from the thread that owns the window (setup); a later call from a command thread just keeps the first.
+        SetWindowSubclass(hwnd, Some(keep_off), 0x5753_4D4E, 0);
         let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
         if style & WS_SYSMENU as isize == 0 {
             return;
