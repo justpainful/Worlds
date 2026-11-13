@@ -83,6 +83,7 @@ export const TEACHER: PackDef = {
       ],
       dateField: "date",
       stageField: "marking",
+      publish: { role: "student", target: "study.assignment", label: "Send to students", fields: { due: "date", points: "outOf", instructions: "questions" } },
     },
     {
       id: "grade",

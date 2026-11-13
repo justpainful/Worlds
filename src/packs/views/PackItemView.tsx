@@ -12,6 +12,7 @@ import type { PageMeta } from "../../lib/types";
 import type { FieldDef, KindDef, PackDef } from "../definition";
 import { fieldsFor, useViewAs } from "../roles";
 import { useItemSync } from "../useItemSync";
+import { sendItem } from "../published";
 import { formatField, inSentence } from "../fields";
 import { createPackItem, itemData, updatePackItem } from "../items";
 import { kindDefOf } from "../registry";
@@ -53,6 +54,11 @@ function ItemFields({ p, pack, kind }: { p: PageMeta; pack: PackDef; kind: KindD
                 Ask Claude
               </Button>
             ) : null}
+            {kind.publish ? (
+              <Button variant="plain" icon="send" onClick={() => void send(p)}>
+                {kind.publish.label}
+              </Button>
+            ) : null}
             {kind.doneField ? (
               <Button variant={done ? "plain" : "tinted"} icon="check" onClick={() => set(kind.doneField!, !done)}>
                 {done ? "Mark not done" : "Mark done"}
@@ -88,6 +94,14 @@ function ItemFields({ p, pack, kind }: { p: PageMeta; pack: PackDef; kind: KindD
       </div>
     </div>
   );
+}
+
+/** Send an item to the members holding its kind's role (a teacher's assessment to the students). */
+async function send(p: PageMeta) {
+  const r = await sendItem(p);
+  const toast = useStore.getState().toast;
+  if ("error" in r) toast({ message: r.error, tone: "error" });
+  else toast({ message: r.sent === 1 ? "Sent to 1 member" : r.sent ? `Sent to ${r.sent} members` : "No one has this role in the pack yet.", tone: r.sent ? "success" : "info" });
 }
 
 /** Every kind that links to this one gets a list here: a client's quotes and invoices. */

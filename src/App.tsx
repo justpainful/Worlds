@@ -23,6 +23,7 @@ import { shortcutKey } from "./lib/keys";
 import { watchSampleLanguage } from "./demo/sampleActions";
 import { useWindowTitle } from "./shell/windowTitle";
 import { useDigests } from "./packs/useDigests";
+import { usePublishedImport } from "./packs/published";
 
 export function App() {
   const ready = useStore((s) => s.ready);
@@ -31,6 +32,8 @@ export function App() {
   useWindowTitle();
   // Packs whose daily summary is on put what needs attention in Inbox.
   useDigests(ready);
+  // Items a teacher or manager sent arrive in this person's own packs.
+  usePublishedImport(ready);
 
   useEffect(() => {
     if (!isTauri) {

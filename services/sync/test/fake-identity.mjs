@@ -5,6 +5,7 @@
 import { WorkerEntrypoint } from "cloudflare:workers";
 
 const grants = new Map();
+const packRoles = new Map(); // "workspace|pack|role" -> user ids
 let failing = false;
 let calls = 0;
 
@@ -14,6 +15,10 @@ export class IdentityRPC extends WorkerEntrypoint {
     if (failing) throw new Error("identity unavailable");
     const level = grants.get(`${userId}|${workspaceId}|${docId}`) ?? grants.get(`${userId}|${workspaceId}|*`) ?? "none";
     return { level };
+  }
+
+  async packMembers({ workspaceId, packId, roleId }) {
+    return { userIds: packRoles.get(`${workspaceId}|${packId}|${roleId}`) ?? [] };
   }
 
   async listDocs() {
@@ -27,6 +32,11 @@ export default {
     if (url.pathname === "/grant") {
       const { userId, workspaceId, docId, level } = await request.json();
       grants.set(`${userId}|${workspaceId}|${docId ?? "*"}`, level);
+      return Response.json({ ok: true });
+    }
+    if (url.pathname === "/pack-role") {
+      const { userIds, workspaceId, packId, roleId } = await request.json();
+      packRoles.set(`${workspaceId}|${packId}|${roleId}`, userIds);
       return Response.json({ ok: true });
     }
     if (url.pathname === "/fail") {

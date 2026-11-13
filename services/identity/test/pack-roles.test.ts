@@ -83,6 +83,15 @@ describe("pack roles", () => {
     expect(mine.json).toEqual([expect.objectContaining({ userId: w.student.userId, packId: "teacher", roleId: "student", restricted: true })]);
   });
 
+  it("lists the members who hold a role in a pack, for publishing to them", async () => {
+    const w = await setup();
+    await api("PUT", `/workspaces/${w.id}/pack-roles`, { token: w.owner.accessToken, body: { userId: w.student.userId, packId: "teacher", roleId: "student", restricted: true } });
+    await api("PUT", `/workspaces/${w.id}/pack-roles`, { token: w.owner.accessToken, body: { userId: w.teacher.userId, packId: "teacher", roleId: "teacher", restricted: false } });
+    expect((await rpc().packMembers({ workspaceId: w.id, packId: "teacher", roleId: "student" })).userIds).toEqual([w.student.userId]);
+    expect((await rpc().packMembers({ workspaceId: w.id, packId: "teacher", roleId: "parent" })).userIds).toEqual([]);
+    expect((await rpc().packMembers({ workspaceId: w.id, packId: "Bad", roleId: "student" })).userIds).toEqual([]);
+  });
+
   it("refuses bad ids and people who are not members", async () => {
     const w = await setup();
     const put = (body: unknown) => api("PUT", `/workspaces/${w.id}/pack-roles`, { token: w.owner.accessToken, body });

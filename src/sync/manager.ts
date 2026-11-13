@@ -18,7 +18,7 @@ import { acquireSession, localStore, openSessions, releaseSession } from "./sess
 
 export interface Notice {
   id: string;
-  kind: "mention" | "reply";
+  kind: "mention" | "reply" | "published";
   workspaceId: string;
   docId: string;
   threadId: string;
@@ -28,6 +28,31 @@ export interface Notice {
   excerpt: string;
   createdAt: number;
   readAt?: number | null;
+  /** For published: the item as sent, for the reader's own pack (docs/PACKS.md, Design 3). */
+  item?: { source: string; target: string; title: string; fields: Record<string, unknown> };
+}
+
+const noticeHandlers = new Set<(items: Notice[]) => void>();
+
+/** Called with the feed each time it is fetched; returns a function that stops it. */
+export function onNotices(fn: (items: Notice[]) => void): () => void {
+  noticeHandlers.add(fn);
+  const items = useNotifications.getState().items;
+  if (items.length) fn(items);
+  return () => noticeHandlers.delete(fn);
+}
+
+/** Send a pack item to every member holding a role in its pack. */
+export async function publishToMembers(workspaceId: string, docId: string, body: Record<string, unknown>): Promise<{ sent: number } | { error: string }> {
+  try {
+    const r = await authed(`/v1/workspaces/${encodeURIComponent(workspaceId)}/docs/${encodeURIComponent(docId)}/publish`, { method: "POST", body: JSON.stringify(body) });
+    if (!r) return { error: "Sign in and connect to a sync server to send items." };
+    if (!r.ok) return { error: r.status === 403 ? "You need edit access to send this item." : `Could not send (${r.status}).` };
+    const b = (await r.json()) as { sent?: number };
+    return { sent: b.sent ?? 0 };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
 }
 
 interface NotificationsState {
@@ -67,6 +92,7 @@ export async function refreshNotifications(): Promise<void> {
     if (!r.ok) throw new Error(`notifications: ${r.status}`);
     const body = (await r.json()) as { items: Notice[]; unread: number };
     useNotifications.getState().set({ items: body.items, unread: body.unread, error: null, loadedAt: Date.now() });
+    for (const fn of noticeHandlers) fn(body.items);
   } catch (e) {
     useNotifications.getState().set({ error: e instanceof Error ? e.message : String(e) });
   }

@@ -82,6 +82,13 @@ export interface KindDef {
   stageField?: string;
   /** A field that marks the item done (a checkbox); lists strike it through. */
   doneField?: string;
+  /**
+   * Items of this kind can be sent to every member holding `role` in the
+   * pack, and arrive in their own Worlds as `target` (`study.assignment`):
+   * a teacher's assessment becomes each student's assignment
+   * (docs/PACKS.md, Design 3). `fields` maps target fields to this kind's.
+   */
+  publish?: { role: string; target: string; label: string; fields: Record<string, string> };
 }
 
 /**

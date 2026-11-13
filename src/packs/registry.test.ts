@@ -74,6 +74,16 @@ describe("pack registry", () => {
         expect(k.id, `${pack.id} kind id shape`).toMatch(/^[a-z][a-z0-9]*$/);
         expect(icons.has(k.icon), `${pack.id}.${k.id} icon ${k.icon}`).toBe(true);
         if (!k.kind) expect(isPackKind(`${pack.id}.${k.id}`)).toBe(true);
+        if (k.publish) {
+          expect(pack.roles.some((r) => r.id === k.publish!.role), `${pack.id}.${k.id} publishes to a role`).toBe(true);
+          const [tp, tk] = k.publish.target.split(".");
+          const target = PACK_DEFS.find((p) => p.id === tp)?.kinds.find((x) => x.id === tk);
+          expect(target, `${pack.id}.${k.id} publishes to ${k.publish.target}`).toBeTruthy();
+          for (const [to, from] of Object.entries(k.publish.fields)) {
+            expect(target?.fields.some((f) => f.id === to), `${k.publish.target}.${to}`).toBe(true);
+            expect(k.fields.some((f) => f.id === from), `${pack.id}.${k.id}.${from}`).toBe(true);
+          }
+        }
         for (const fld of k.fields) {
           if (fld.type === "link") expect(pack.kinds.some((x) => x.id === fld.to), `${pack.id}.${k.id}.${fld.id} links to ${fld.to}`).toBe(true);
           if (fld.type === "choice" || fld.type === "stage") expect(fld.options?.length, `${pack.id}.${k.id}.${fld.id} options`).toBeTruthy();

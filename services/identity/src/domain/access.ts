@@ -155,6 +155,18 @@ export async function hiddenLevel(db: D1Database, subject: Subject, workspaceId:
   return row?.restricted ? "none" : pageLevel;
 }
 
+/** Members who hold one role in one pack: the students of a teacher's workspace. */
+export async function packMembers(db: D1Database, args: { workspaceId: string; packId: string; roleId: string }): Promise<string[]> {
+  if (!PACK_ID.test(args.packId) || !PACK_ID.test(args.roleId)) return [];
+  const { results } = await db
+    .prepare(
+      "SELECT p.user_id FROM pack_roles p JOIN members m ON m.workspace_id = p.workspace_id AND m.user_id = p.user_id WHERE p.workspace_id = ?1 AND p.pack_id = ?2 AND p.role_id = ?3",
+    )
+    .bind(args.workspaceId, args.packId, args.roleId)
+    .all<{ user_id: string }>();
+  return results.map((r) => r.user_id);
+}
+
 /** The Service Binding contract: one page, or one item's hidden fields. */
 export async function checkAccess(db: D1Database, args: { userId: string; workspaceId: string; docId: string }): Promise<{ level: Level }> {
   const subject = await loadSubject(db, args.workspaceId, args.userId);
