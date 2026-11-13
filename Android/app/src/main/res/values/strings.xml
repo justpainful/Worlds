@@ -39,6 +39,7 @@
     <string name="cancel">Cancel</string>
     <string name="back">Back</string>
     <string name="untitled">Untitled</string>
+    <string name="profile_name_fallback">User</string>
     <string name="page_empty">This page has no content yet.</string>
     <string name="read_only">Page editing is not available yet.</string>
     <string name="preview_incomplete">Some content or formatting cannot be displayed yet.</string>

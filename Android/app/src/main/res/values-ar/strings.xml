@@ -39,6 +39,7 @@
     <string name="cancel">إلغاء</string>
     <string name="back">رجوع</string>
     <string name="untitled">بلا عنوان</string>
+    <string name="profile_name_fallback">مستخدم</string>
     <string name="page_empty">هذه الصفحة فارغة حتى الآن.</string>
     <string name="read_only">تحرير الصفحة غير متاح بعد.</string>
     <string name="preview_incomplete">بعض المحتوى أو التنسيق لا يمكن عرضه بعد.</string>

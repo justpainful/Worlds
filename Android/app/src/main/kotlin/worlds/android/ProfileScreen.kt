@@ -129,7 +129,7 @@ internal fun ProfileScreen(onBack: () -> Unit) {
                 }
 
                 Spacer(Modifier.height(12.dp))
-                Text(displayName.ifBlank { "User" }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(displayName.ifBlank { stringResource(R.string.profile_name_fallback) }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(handle.ifBlank { "@user" }, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                 Spacer(Modifier.height(16.dp))
