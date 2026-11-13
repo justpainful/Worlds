@@ -51,6 +51,11 @@ function exportPacks(): string {
         .filter((v) => v.type !== "custom")
         .map((v) => ({ id: v.id, label: both(v.label), type: v.type, kind: v.kind, groupBy: v.groupBy ?? null, columns: v.columns ?? null })),
       sidebar: p.sidebar.filter((id) => p.views.some((v) => v.id === id && v.type !== "custom")),
+      // Screens a native app builds itself, by name (teacher.attendance).
+      screens: p.views.filter((v) => v.type === "custom" && v.component && v.component !== "study.main").map((v) => ({ id: v.id, label: both(v.label), component: v.component })),
+      stats: (p.stats ?? []).map((st) => ({ label: both(st.label), kind: st.kind, agg: st.agg, field: st.field ?? null, where: st.where ?? [] })),
+      alerts: (p.alerts ?? []).map((a) => ({ label: both(a.label), kind: a.kind, where: a.where })),
+      prompts: (p.prompts ?? []).map((pr) => ({ label: both(pr.label), prompt: typeof pr.prompt === "string" ? { en: pr.prompt, ar: pr.prompt } : pr.prompt })),
     })),
   };
   return JSON.stringify(doc, null, 1) + "\n";

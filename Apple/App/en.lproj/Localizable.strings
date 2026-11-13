@@ -733,3 +733,9 @@
 "Prompt" = "Prompt";
 "No details yet" = "No details yet";
 "This item belongs to a pack this version of Worlds does not have." = "This item belongs to a pack this version of Worlds does not have.";
+"Edit item" = "Edit item";
+"None" = "None";
+"This item could not be opened." = "This item could not be opened.";
+"This item changed elsewhere. Close and open it again." = "This item changed elsewhere. Close and open it again.";
+"This item could not be saved." = "This item could not be saved.";
+"Check the numbers and dates." = "Check the numbers and dates.";

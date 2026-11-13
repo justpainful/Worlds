@@ -180,6 +180,11 @@ public actor NativePersonalStore {
     public func saveSpreadsheet(id: String, base: Int64, expectedMetadata: JSONValue, metadata: JSONValue) async throws -> JSONValue {
         try await call(Request(operation: "save_spreadsheet", path: url.path, page: id, base: base, expectedMetadata: expectedMetadata, metadata: metadata))
     }
+    /// Replaces only `metadata.item` of a personal pack item (docs/PACKS.md),
+    /// comparing the complete metadata baseline and revision like a spreadsheet.
+    public func savePackItem(id: String, base: Int64, expectedMetadata: JSONValue, metadata: JSONValue) async throws -> JSONValue {
+        try await call(Request(operation: "save_pack_item", path: url.path, page: id, base: base, expectedMetadata: expectedMetadata, metadata: metadata))
+    }
     public func saveGallery(id: String, base: Int64, expectedMetadata: JSONValue, metadata: JSONValue, expected: [NativeBlockInput], blocks: [NativeBlockInput]) async throws -> JSONValue {
         try await call(Request(operation: "save_gallery", path: url.path, page: id, base: base, blocks: blocks, expected: expected, expectedMetadata: expectedMetadata, metadata: metadata))
     }

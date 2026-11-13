@@ -875,6 +875,7 @@
     <string name="packs_add">Add</string>
     <string name="packs_empty_title">Nothing here yet</string>
     <string name="packs_none">None</string>
+    <string name="packs_ask_claude">Ask Claude</string>
     <string name="plan_today">Today</string>
     <string name="plan_tomorrow">Tomorrow</string>
     <string name="plan_yesterday">Yesterday</string>

@@ -596,6 +596,7 @@ enum Request {
     SaveProject { path: String, page: String, base: i64, expected_metadata: Value, metadata: Value },
     SaveStream { path: String, page: String, base: i64, expected_metadata: Value, url: String },
     SaveSpreadsheet { path: String, page: String, base: i64, expected_metadata: Value, metadata: Value },
+    SavePackItem { path: String, page: String, base: i64, expected_metadata: Value, metadata: Value },
     SaveGallery { path: String, page: String, base: i64, expected_metadata: Value, metadata: Value, expected: Vec<BlockInput>, blocks: Vec<BlockInput> },
     ImportLocalGalleryFile { path: String, source: String, page: String, base: i64, metadata: Value, expected: Vec<BlockInput>, operation_id: String },
     SaveBlocks { path: String, page: String, base: i64, blocks: Vec<BlockInput> },
@@ -675,6 +676,7 @@ fn dispatch_inner(bytes: &[u8], cancellation: Option<&GalleryCancellation>) -> R
         Request::SaveProject { path, page, base, expected_metadata, metadata } => resource_ops::save_project(Path::new(&path), &page, base, expected_metadata, metadata),
         Request::SaveStream { path, page, base, expected_metadata, url } => resource_ops::save_stream(Path::new(&path), &page, base, expected_metadata, &url),
         Request::SaveSpreadsheet { path, page, base, expected_metadata, metadata } => resource_ops::save_spreadsheet(Path::new(&path), &page, base, expected_metadata, metadata),
+        Request::SavePackItem { path, page, base, expected_metadata, metadata } => resource_ops::save_pack_item(Path::new(&path), &page, base, expected_metadata, metadata),
         Request::SaveGallery { path, page, base, expected_metadata, metadata, expected, blocks } => resource_ops::save_gallery(Path::new(&path), &page, base, expected_metadata, metadata, expected, blocks),
         Request::ImportLocalGalleryFile { path, source, page, base, metadata, expected, operation_id } => {
             #[cfg(unix)] {

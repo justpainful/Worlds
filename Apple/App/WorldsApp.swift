@@ -531,6 +531,7 @@ private struct WorldsLibraryView: View {
     #endif
     #if WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
     @State private var editingSpreadsheet: LocalSpreadsheetEditorRequest?
+    @State private var editingPackItem: LocalSpreadsheetEditorRequest?
     #endif
     #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_IMPORT
     @State private var importingGallery: LocalGalleryImportRequest?
@@ -1319,6 +1320,16 @@ private struct WorldsLibraryView: View {
                 .disabled(loading)
             }
         }
+        // A pack item (docs/PACKS.md): its fields, saved like a spreadsheet's.
+        if let id = selection, let context = copyContext, let page = pages.first(where: { $0.id == id && PackCatalog.isPackKind($0.kind) }) {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Edit item", systemImage: "square.and.pencil") {
+                    editingPackItem = LocalSpreadsheetEditorRequest(id: id, title: page.title, context: context, generation: databaseGeneration)
+                }
+                .accessibilityIdentifier("edit-local-pack-item")
+                .disabled(loading)
+            }
+        }
         #endif
         #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_DRAFT_FIXTURE
         if selection == "gallery-draft-fixture", let context = copyContext, let fixtureCopy = context.copy.independentCopy,
@@ -1768,6 +1779,11 @@ private struct WorldsLibraryView: View {
         #if WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
         .sheet(item: $editingSpreadsheet) { request in
             LocalSpreadsheetEditor(copy: request.context.copy, pageID: request.id, title: request.title) {
+                Task { await refreshCopy(id: request.context.copy.id, generation: request.generation) }
+            }
+        }
+        .sheet(item: $editingPackItem) { request in
+            LocalPackItemEditor(copy: request.context.copy, pageID: request.id, title: request.title) {
                 Task { await refreshCopy(id: request.context.copy.id, generation: request.generation) }
             }
         }
@@ -2600,7 +2616,7 @@ private struct WorldsLibraryView: View {
         disabled = disabled || editingStream != nil
         #endif
         #if WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
-        disabled = disabled || editingSpreadsheet != nil
+        disabled = disabled || editingSpreadsheet != nil || editingPackItem != nil
         #endif
         #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_IMPORT
         disabled = disabled || importingGallery != nil

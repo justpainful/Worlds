@@ -35,9 +35,13 @@ internal data class PackKind(
 
 internal data class PackView(val id: String, val label: Both, val type: String, val kind: String, val groupBy: String?, val columns: List<String>?)
 
+internal data class PackScreenDef(val id: String, val label: Both, val component: String)
+
 internal data class PackDef(
     val id: String, val family: String, val label: Both, val blurb: Both, val icon: String,
     val kinds: List<PackKind>, val views: List<PackView>, val sidebar: List<String>,
+    val screens: List<PackScreenDef> = emptyList(), val stats: List<PackStat> = emptyList(),
+    val alerts: List<PackAlert> = emptyList(), val prompts: List<PackPrompt> = emptyList(),
 ) {
     fun kind(id: String): PackKind? = kinds.firstOrNull { it.id == id }
     val sidebarViews: List<PackView> get() = sidebar.mapNotNull { id -> views.firstOrNull { it.id == id } }
@@ -83,6 +87,10 @@ internal data class PackCatalog(val families: List<PackFamily>, val packs: List<
                             cols?.let { a -> (0 until a.length()).map { a.getString(it) } })
                     },
                     sidebar = p.optJSONArray("sidebar")?.let { a -> (0 until a.length()).map { a.getString(it) } }.orEmpty(),
+                    screens = p.optJSONArray("screens").map { PackScreenDef(it.getString("id"), both(it.optJSONObject("label")), it.getString("component")) },
+                    stats = p.optJSONArray("stats").map { PackStat(both(it.optJSONObject("label")), it.getString("kind"), it.getString("agg"), it.str("field"), PackCondition.parseAll(it.optJSONArray("where"))) },
+                    alerts = p.optJSONArray("alerts").map { PackAlert(both(it.optJSONObject("label")), it.getString("kind"), PackCondition.parseAll(it.optJSONArray("where"))) },
+                    prompts = p.optJSONArray("prompts").map { PackPrompt(both(it.optJSONObject("label")), both(it.optJSONObject("prompt"))) },
                 )
             }
             return PackCatalog(families, packs)

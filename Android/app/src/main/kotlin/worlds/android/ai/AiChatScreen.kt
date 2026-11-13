@@ -75,7 +75,9 @@ fun AiChatScreen(
     /** Opens a page the assistant changed. */
     onOpenPage: (pageId: String) -> Unit = {},
     /** The assistant changed or put back these pages; screens showing them should reload. */
-    onWorkspaceChanged: (pageIds: Set<String>) -> Unit = {}
+    onWorkspaceChanged: (pageIds: Set<String>) -> Unit = {},
+    /** A request to start with in the composer, such as a pack request (docs/PACKS.md). */
+    initialPrompt: String = "",
 ) {
     val context = LocalContext.current
     val resources = LocalResources.current
@@ -88,7 +90,7 @@ fun AiChatScreen(
     var pages by remember { mutableStateOf<List<Resource>>(emptyList()) }
     var thread by remember { mutableStateOf<ChatThread?>(null) }
     var savedThreadId by rememberSaveable { mutableStateOf<String?>(null) }
-    var inputQuery by rememberSaveable { mutableStateOf("") }
+    var inputQuery by rememberSaveable { mutableStateOf(initialPrompt) }
     var attachments by remember { mutableStateOf<List<ChatAttachment>>(emptyList()) }
     var streamJob by remember { mutableStateOf<Job?>(null) }
     var showAttachmentPicker by remember { mutableStateOf(false) }

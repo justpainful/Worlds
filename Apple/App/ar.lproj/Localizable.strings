@@ -733,3 +733,9 @@
 "Prompt" = "طلب";
 "No details yet" = "لا تفاصيل بعد";
 "This item belongs to a pack this version of Worlds does not have." = "هذا العنصر من حزمة غير موجودة في هذا الإصدار من Worlds.";
+"Edit item" = "تعديل العنصر";
+"None" = "بلا";
+"This item could not be opened." = "تعذّر فتح هذا العنصر.";
+"This item changed elsewhere. Close and open it again." = "تغيّر هذا العنصر في مكان آخر. أغلقه وافتحه من جديد.";
+"This item could not be saved." = "تعذّر حفظ هذا العنصر.";
+"Check the numbers and dates." = "راجع الأرقام والتواريخ.";

@@ -14,7 +14,9 @@ import androidx.compose.ui.unit.dp
 import org.json.JSONObject
 import worlds.android.R
 import worlds.android.Switch
+import worlds.android.DropdownMenu
 import worlds.android.WorldsActionLabel
+import worlds.android.WorldsCard
 
 /*
  * Packs on Android (docs/PACKS.md, Design 4): a list of packs to turn on, then
@@ -24,7 +26,7 @@ import worlds.android.WorldsActionLabel
  * desktop screens come later.
  */
 
-@Composable internal fun PacksScreen(repo: PlanningRepository, onBack: () -> Unit) {
+@Composable internal fun PacksScreen(repo: PlanningRepository, onBack: () -> Unit, onAsk: (String) -> Unit = {}) {
     val context = LocalContext.current
     val catalog = remember { runCatching { PackCatalog.load(context) }.getOrNull() }
     var enabled by remember { mutableStateOf(PackPrefs.enabled(context)) }
@@ -32,7 +34,7 @@ import worlds.android.WorldsActionLabel
     val arabic = currentLocale().language == "ar"
     val pack = open?.let { catalog?.pack(it) }
     if (pack != null) {
-        PackScreen(pack, catalog!!, repo, arabic, onBack = { open = null })
+        PackScreen(pack, catalog!!, repo, arabic, onBack = { open = null }, onAsk = onAsk)
         return
     }
     PlanScaffold(R.drawable.pi_layers, stringResource(R.string.packs_title), stringResource(R.string.packs_subtitle), onBack) {
@@ -59,8 +61,13 @@ import worlds.android.WorldsActionLabel
     }
 }
 
-@Composable private fun PackScreen(pack: PackDef, catalog: PackCatalog, repo: PlanningRepository, arabic: Boolean, onBack: () -> Unit) {
-    var viewId by rememberSaveable(pack.id) { mutableStateOf(pack.sidebarViews.firstOrNull()?.id) }
+@Composable private fun PackScreen(pack: PackDef, catalog: PackCatalog, repo: PlanningRepository, arabic: Boolean, onBack: () -> Unit, onAsk: (String) -> Unit) {
+    // The pack's own screens (Teacher attendance) come first, then its views.
+    val tabs = pack.screens.map { it.id to it.label.text(arabic) } + pack.sidebarViews.map { it.id to it.label.text(arabic) }
+    var viewId by rememberSaveable(pack.id) { mutableStateOf(tabs.firstOrNull()?.first) }
+    val screen = pack.screens.firstOrNull { it.id == viewId }
+    var asking by remember { mutableStateOf(false) }
+    val today = PlanDates.today()
     var editing by remember { mutableStateOf<PlanRow?>(null) }
     // A new item starts from its definition: stages at their first step, checkboxes off, then opens.
     val add = { k: PackKind ->
@@ -68,18 +75,32 @@ import worlds.android.WorldsActionLabel
         k.fields.forEach { f -> if (f.type == "checkbox") start[f.id] = false else if (f.type == "stage") f.options.firstOrNull()?.let { start[f.id] = it.id } }
         repo.create(k.kind, "", null, start) { made -> editing = made }
     }
-    val view = pack.sidebarViews.firstOrNull { it.id == viewId } ?: pack.sidebarViews.firstOrNull()
+    val view = if (screen != null) null else pack.sidebarViews.firstOrNull { it.id == viewId } ?: pack.sidebarViews.firstOrNull()
     val kind = view?.let { pack.kind(it.kind) }
     val titleOf = { id: String -> repo.rows.firstOrNull { it.id == id }?.title.orEmpty() }
     val items = kind?.let { k -> repo.rows.filter { it.kind == k.kind } }.orEmpty()
     val noneLabel = stringResource(R.string.packs_none)
 
-    PlanScaffold(packTile(pack.icon), pack.label.text(arabic), view?.label?.text(arabic), onBack, trailing = {
-        if (kind != null) TextButton(onClick = { add(kind) }) { WorldsActionLabel(R.drawable.ic_plus, stringResource(R.string.packs_add)) }
+    PlanScaffold(packTile(pack.icon), pack.label.text(arabic), (screen?.label ?: view?.label)?.text(arabic), onBack, trailing = {
+        Row {
+            if (pack.prompts.isNotEmpty()) Box {
+                TextButton(onClick = { asking = true }) { WorldsActionLabel(R.drawable.ic_sparkles, stringResource(R.string.packs_ask_claude)) }
+                DropdownMenu(expanded = asking, onDismissRequest = { asking = false }) {
+                    pack.prompts.forEach { p -> DropdownMenuItem(text = { Text(p.label.text(arabic)) }, onClick = { asking = false; onAsk(p.prompt.text(arabic)) }) }
+                }
+            }
+            if (kind != null) TextButton(onClick = { add(kind) }) { WorldsActionLabel(R.drawable.ic_plus, stringResource(R.string.packs_add)) }
+        }
     }) {
         planStatus(repo)
-        if (pack.sidebarViews.size > 1) item(key = "views") {
-            PlanPills(pack.sidebarViews.map { it.id to it.label.text(arabic) }, view?.id ?: "") { viewId = it }
+        // The pack's figures and what needs attention, worked out as on desktop.
+        if (pack.stats.isNotEmpty() || pack.alerts.isNotEmpty()) item(key = "figures") { PackFigures(pack, repo.rows, arabic, today) }
+        if (tabs.size > 1) item(key = "views") {
+            PlanPills(tabs, viewId ?: "") { viewId = it }
+        }
+        if (screen?.component == "teacher.attendance") {
+            item(key = "attendance") { TeacherAttendance(pack, repo, arabic) }
+            return@PlanScaffold
         }
         if (view == null || kind == null) return@PlanScaffold
         if (items.isEmpty()) {
@@ -174,4 +195,76 @@ private fun editText(field: PackField, v: Any?): String = when {
     v == null || v == JSONObject.NULL -> ""
     field.type == "number" || field.type == "money" -> (v as? Number)?.let { numberText(it.toDouble()) }.orEmpty()
     else -> v.toString()
+}
+
+/** A pack's figures as small cards, then each alert that has items. */
+@Composable private fun PackFigures(pack: PackDef, rows: List<PlanRow>, arabic: Boolean, today: String) {
+    fun ofKind(kindId: String) = pack.kind(kindId)?.let { k -> rows.filter { it.kind == k.kind } }.orEmpty()
+    Column(Modifier.fillMaxWidth().padding(bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (pack.stats.isNotEmpty()) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            pack.stats.forEach { st ->
+                val v = PackRules.stat(ofKind(st.kind), st, today)
+                val field = st.field?.let { f -> pack.kind(st.kind)?.fields?.firstOrNull { it.id == f } }
+                val text = when {
+                    v == null -> "0"
+                    field?.type == "money" -> "${numberText(v)} ${field.currency ?: "SAR"}"
+                    else -> numberText(v)
+                }
+                WorldsCard(Modifier.widthIn(min = 120.dp)) {
+                    Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                        Text(text, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
+                        Text(st.label.text(arabic), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+                    }
+                }
+            }
+        }
+        pack.alerts.forEach { a ->
+            val n = PackRules.filter(ofKind(a.kind), a.where, today).size
+            if (n > 0) Text("${a.label.text(arabic)} ($n)", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+        }
+    }
+}
+
+/** The Teacher pack's daily attendance: one tap per student, as on desktop. */
+@Composable private fun TeacherAttendance(pack: PackDef, repo: PlanningRepository, arabic: Boolean) {
+    val classKind = pack.kind("class") ?: return
+    val studentKind = pack.kind("student") ?: return
+    val attendance = pack.kind("attendance") ?: return
+    val statuses = attendance.fields.firstOrNull { it.id == "status" }?.options.orEmpty()
+    val classes = repo.rows.filter { it.kind == classKind.kind }.sortedBy { it.title.lowercase() }
+    var classId by rememberSaveable { mutableStateOf<String?>(null) }
+    var day by rememberSaveable { mutableStateOf(PlanDates.today()) }
+    val current = classId ?: classes.firstOrNull()?.id
+    if (classes.isEmpty()) {
+        PlanEmpty(packTile(classKind.icon), stringResource(R.string.packs_empty_title), classKind.plural.text(arabic))
+        return
+    }
+    val students = repo.rows.filter { it.kind == studentKind.kind && it.data.optString("class") == current }
+        .sortedWith(compareBy<PlanRow>({ it.data.optDouble("number", 999.0) }, { it.title.lowercase() }))
+    val marks = repo.rows.filter { it.kind == attendance.kind && it.data.optString("date") == day }.associateBy { it.data.optString("student") }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            classes.forEach { c -> Choice(c.title.ifBlank { stringResource(R.string.untitled) }, c.id == current) { classId = c.id } }
+        }
+        DateField(stringResource(R.string.plan_field_date), day, PlanDates.today(), allowNone = false, onChange = { if (it != null) day = it })
+        if (students.isEmpty()) PlanHint(studentKind.plural.text(arabic))
+        else PlanGroup(students) { student, divider ->
+            val mark = marks[student.id]
+            val status = mark?.data?.optString("status").orEmpty()
+            Column {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(student.title, style = MaterialTheme.typography.bodyLarge, color = if (status == "absent") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        statuses.forEach { o ->
+                            Choice(o.label.text(arabic), status == o.id) {
+                                if (mark != null) repo.update(mark.id, attendance.kind, mapOf("status" to o.id))
+                                else repo.create(attendance.kind, "${student.title}, $day", null, mapOf("student" to student.id, "date" to day, "status" to o.id, "parentTold" to false))
+                            }
+                        }
+                    }
+                }
+                if (divider) HorizontalDivider(Modifier.padding(start = 14.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            }
+        }
+    }
 }

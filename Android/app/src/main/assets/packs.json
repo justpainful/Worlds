@@ -486,7 +486,11 @@
      ]
     }
    ],
-   "sidebar": []
+   "sidebar": [],
+   "screens": [],
+   "stats": [],
+   "alerts": [],
+   "prompts": []
   },
   {
    "id": "teacher",
@@ -1349,6 +1353,164 @@
     "classes",
     "plans",
     "gradebook"
+   ],
+   "screens": [
+    {
+     "id": "attendance",
+     "label": {
+      "en": "Attendance",
+      "ar": "الحضور"
+     },
+     "component": "teacher.attendance"
+    }
+   ],
+   "stats": [
+    {
+     "label": {
+      "en": "Students",
+      "ar": "الطلاب"
+     },
+     "kind": "student",
+     "agg": "count",
+     "field": null,
+     "where": []
+    },
+    {
+     "label": {
+      "en": "Absent today",
+      "ar": "غائبون اليوم"
+     },
+     "kind": "attendance",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "absent"
+       ]
+      },
+      {
+       "field": "date",
+       "within": 0
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Waiting to be marked",
+      "ar": "بانتظار التصحيح"
+     },
+     "kind": "assessment",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "marking",
+       "notIn": [
+        "marked"
+       ]
+      },
+      {
+       "field": "date",
+       "overdue": true
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Average grade",
+      "ar": "متوسط الدرجات"
+     },
+     "kind": "grade",
+     "agg": "average",
+     "field": "score",
+     "where": []
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Absences to tell parents about",
+      "ar": "غياب يحتاج إبلاغ ولي الأمر"
+     },
+     "kind": "attendance",
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "absent"
+       ]
+      },
+      {
+       "field": "parentTold",
+       "in": [
+        false
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Assessments to mark",
+      "ar": "تقييمات تحتاج تصحيح"
+     },
+     "kind": "assessment",
+     "where": [
+      {
+       "field": "marking",
+       "in": [
+        "waiting"
+       ]
+      },
+      {
+       "field": "date",
+       "overdue": true
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Write a lesson plan",
+      "ar": "اكتب خطة درس"
+     },
+     "prompt": {
+      "en": "Write a lesson plan for my next lesson: objectives, a warm up, main activities with timings, a short check for understanding and homework.",
+      "ar": "اكتب خطة درس لدرسي القادم: الأهداف، وتمهيد، والأنشطة الرئيسية بأوقاتها، وتحقق قصير من الفهم، وواجب منزلي."
+     }
+    },
+    {
+     "label": {
+      "en": "Draft questions from a lesson",
+      "ar": "اكتب أسئلة من درس"
+     },
+     "prompt": {
+      "en": "Draft ten questions from this lesson, from easy to hard, with the answers listed at the end.",
+      "ar": "اكتب عشرة أسئلة من هذا الدرس، من السهل إلى الصعب، مع الإجابات في النهاية."
+     }
+    },
+    {
+     "label": {
+      "en": "Summarise a class's results",
+      "ar": "لخّص نتائج فصل"
+     },
+     "prompt": {
+      "en": "Summarise my class's results in the gradebook: the average, who needs help, and what to revise.",
+      "ar": "لخّص نتائج فصلي في سجل الدرجات: المتوسط، ومن يحتاج مساعدة، وما الذي يحتاج مراجعة."
+     }
+    },
+    {
+     "label": {
+      "en": "Write to a parent",
+      "ar": "اكتب لولي أمر"
+     },
+     "prompt": {
+      "en": "Write a short, kind message to a parent about their child's absence and how to catch up.",
+      "ar": "اكتب رسالة قصيرة ولطيفة لولي أمر عن غياب ابنه وكيف يعوّض ما فاته."
+     }
+    }
    ]
   },
   {
@@ -1901,6 +2063,87 @@
     "students",
     "recitations",
     "circles"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Students",
+      "ar": "الطلاب"
+     },
+     "kind": "student",
+     "agg": "count",
+     "field": null,
+     "where": []
+    },
+    {
+     "label": {
+      "en": "Recitations this week",
+      "ar": "تسميع هذا الأسبوع"
+     },
+     "kind": "recitation",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "date",
+       "period": "week"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Parts memorised",
+      "ar": "الأجزاء المحفوظة"
+     },
+     "kind": "student",
+     "agg": "sum",
+     "field": "parts",
+     "where": []
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Portions to repeat",
+      "ar": "مقاطع تحتاج إعادة"
+     },
+     "kind": "recitation",
+     "where": [
+      {
+       "field": "grade",
+       "in": [
+        "repeat"
+       ]
+      },
+      {
+       "field": "date",
+       "period": "week"
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Plan a revision schedule",
+      "ar": "ضع جدول مراجعة"
+     },
+     "prompt": {
+      "en": "Plan a weekly revision schedule for a student from what they have memorised, so every part is revised once a month.",
+      "ar": "ضع جدول مراجعة أسبوعيًا لطالب بناءً على ما حفظه، بحيث يُراجَع كل جزء مرة في الشهر."
+     }
+    },
+    {
+     "label": {
+      "en": "Write to a parent about progress",
+      "ar": "اكتب لولي أمر عن التقدم"
+     },
+     "prompt": {
+      "en": "Write a short, encouraging message to a parent about their child's memorisation this month.",
+      "ar": "اكتب رسالة قصيرة مشجعة لولي أمر عن حفظ ابنه هذا الشهر."
+     }
+    }
    ]
   },
   {
@@ -2256,6 +2499,83 @@
     "courses",
     "trainees",
     "sessions"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Running courses",
+      "ar": "دورات جارية"
+     },
+     "kind": "course",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "running"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Trainees",
+      "ar": "المتدربون"
+     },
+     "kind": "trainee",
+     "agg": "count",
+     "field": null,
+     "where": []
+    },
+    {
+     "label": {
+      "en": "Fees received",
+      "ar": "الرسوم المستلمة"
+     },
+     "kind": "trainee",
+     "agg": "sum",
+     "field": "paid",
+     "where": []
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Courses starting this week",
+      "ar": "دورات تبدأ هذا الأسبوع"
+     },
+     "kind": "course",
+     "where": [
+      {
+       "field": "start",
+       "within": 7
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Outline a course",
+      "ar": "ضع مخطط دورة"
+     },
+     "prompt": {
+      "en": "Outline a training course: goals, sessions with topics and timings, an exercise for each, and how to assess trainees.",
+      "ar": "ضع مخططًا لدورة تدريبية: الأهداف، والجلسات بموضوعاتها وأوقاتها، وتمرينًا لكل جلسة، وطريقة تقييم المتدربين."
+     }
+    },
+    {
+     "label": {
+      "en": "Write a course announcement",
+      "ar": "اكتب إعلان دورة"
+     },
+     "prompt": {
+      "en": "Write a short announcement for a course with its dates, fee and who it is for.",
+      "ar": "اكتب إعلانًا قصيرًا لدورة مع مواعيدها ورسومها والفئة المستهدفة."
+     }
+    }
    ]
   },
   {
@@ -2780,6 +3100,99 @@
     "chapters",
     "experiments",
     "meetings"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "References",
+      "ar": "المراجع"
+     },
+     "kind": "reference",
+     "agg": "count",
+     "field": null,
+     "where": []
+    },
+    {
+     "label": {
+      "en": "Still to read",
+      "ar": "لم تُقرأ بعد"
+     },
+     "kind": "reference",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "toRead"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Thesis words",
+      "ar": "كلمات الرسالة"
+     },
+     "kind": "chapter",
+     "agg": "sum",
+     "field": "words",
+     "where": []
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Next steps from meetings",
+      "ar": "خطوات تالية من الاجتماعات"
+     },
+     "kind": "meeting",
+     "where": [
+      {
+       "field": "doneNext",
+       "in": [
+        false
+       ]
+      },
+      {
+       "field": "next",
+       "empty": false
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Format my references",
+      "ar": "نسّق مراجعي"
+     },
+     "prompt": {
+      "en": "Format my references in APA style, sorted by author.",
+      "ar": "نسّق مراجعي بأسلوب APA مرتبة حسب المؤلف."
+     }
+    },
+    {
+     "label": {
+      "en": "Find gaps in my literature",
+      "ar": "ابحث عن الثغرات في الأدبيات"
+     },
+     "prompt": {
+      "en": "From my reading notes, what questions are not answered yet and which sources disagree?",
+      "ar": "من ملاحظات قراءاتي، ما الأسئلة التي لم يُجب عنها بعد وأي المصادر تختلف فيما بينها؟"
+     }
+    },
+    {
+     "label": {
+      "en": "Prepare for my supervisor meeting",
+      "ar": "جهّزني لاجتماع المشرف"
+     },
+     "prompt": {
+      "en": "Prepare an agenda for my next supervisor meeting from my progress and open next steps.",
+      "ar": "جهّز جدول أعمال لاجتماعي القادم مع المشرف من تقدمي والخطوات المفتوحة."
+     }
+    }
    ]
   },
   {
@@ -3099,6 +3512,110 @@
     "applications",
     "deadlines",
     "documents"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Applications",
+      "ar": "طلبات التقديم"
+     },
+     "kind": "program",
+     "agg": "count",
+     "field": null,
+     "where": []
+    },
+    {
+     "label": {
+      "en": "Accepted",
+      "ar": "مقبول"
+     },
+     "kind": "program",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "accepted"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Documents not ready",
+      "ar": "وثائق غير جاهزة"
+     },
+     "kind": "document",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "ready",
+       "in": [
+        false
+       ]
+      }
+     ]
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Deadlines in the next two weeks",
+      "ar": "مواعيد نهائية خلال أسبوعين"
+     },
+     "kind": "program",
+     "where": [
+      {
+       "field": "deadline",
+       "within": 14
+      },
+      {
+       "field": "status",
+       "in": [
+        "researching",
+        "preparing"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Documents about to expire",
+      "ar": "وثائق قاربت على الانتهاء"
+     },
+     "kind": "document",
+     "where": [
+      {
+       "field": "expires",
+       "within": 60
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Draft a personal statement",
+      "ar": "اكتب خطاب الدوافع"
+     },
+     "prompt": {
+      "en": "Help me draft a personal statement for this application: why this program, what I bring, and my goals.",
+      "ar": "ساعدني أكتب خطاب الدوافع لهذا التقديم: لماذا هذا البرنامج، وما الذي أقدمه، وأهدافي."
+     }
+    },
+    {
+     "label": {
+      "en": "Ask for a recommendation letter",
+      "ar": "اطلب خطاب توصية"
+     },
+     "prompt": {
+      "en": "Write a polite email asking a professor for a recommendation letter, with the deadline.",
+      "ar": "اكتب بريدًا مهذبًا أطلب فيه من أستاذ خطاب توصية، مع الموعد النهائي."
+     }
+    }
    ]
   },
   {
@@ -3900,6 +4417,162 @@
     "quotes",
     "invoices",
     "hours"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Owed to you",
+      "ar": "مستحق لك"
+     },
+     "kind": "invoice",
+     "agg": "sum",
+     "field": "total",
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "sent",
+        "late"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Paid this month",
+      "ar": "المدفوع هذا الشهر"
+     },
+     "kind": "payment",
+     "agg": "sum",
+     "field": "amount",
+     "where": [
+      {
+       "field": "date",
+       "period": "month"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Hours this week",
+      "ar": "ساعات هذا الأسبوع"
+     },
+     "kind": "hours",
+     "agg": "sum",
+     "field": "hours",
+     "where": [
+      {
+       "field": "date",
+       "period": "week"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Active clients",
+      "ar": "العملاء النشطون"
+     },
+     "kind": "client",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "active"
+       ]
+      }
+     ]
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Late invoices",
+      "ar": "فواتير متأخرة"
+     },
+     "kind": "invoice",
+     "where": [
+      {
+       "field": "status",
+       "notIn": [
+        "paid",
+        "draft"
+       ]
+      },
+      {
+       "field": "due",
+       "overdue": true
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Quotes about to expire",
+      "ar": "عروض أسعار قاربت على الانتهاء"
+     },
+     "kind": "quote",
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "sent"
+       ]
+      },
+      {
+       "field": "validUntil",
+       "within": 3
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Hours not billed",
+      "ar": "ساعات غير مفوترة"
+     },
+     "kind": "hours",
+     "where": [
+      {
+       "field": "billed",
+       "in": [
+        false
+       ]
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Draft a quote",
+      "ar": "اكتب عرض سعر"
+     },
+     "prompt": {
+      "en": "Draft a quote from a short description of the work: scope, what is not included, timeline, price before VAT, 15% VAT and the total in SAR.",
+      "ar": "اكتب عرض سعر من وصف قصير للعمل: نطاق العمل، وما لا يشمله، والمدة، والسعر قبل الضريبة، وضريبة القيمة المضافة 15%، والإجمالي بالريال."
+     }
+    },
+    {
+     "label": {
+      "en": "Invoice from tracked hours",
+      "ar": "فاتورة من الساعات المسجلة"
+     },
+     "prompt": {
+      "en": "Make an invoice from my hours that are not billed yet for this client: line items by date, subtotal, 15% VAT and total in SAR.",
+      "ar": "أنشئ فاتورة من ساعاتي غير المفوترة لهذا العميل: البنود حسب التاريخ، والمجموع، وضريبة القيمة المضافة 15%، والإجمالي بالريال."
+     }
+    },
+    {
+     "label": {
+      "en": "Remind about a late payment",
+      "ar": "ذكّر بدفعة متأخرة"
+     },
+     "prompt": {
+      "en": "Write a short, kind reminder to a client whose invoice is late, with the amount and the due date.",
+      "ar": "اكتب تذكيرًا قصيرًا ولطيفًا لعميل تأخرت فاتورته، مع المبلغ وتاريخ الاستحقاق."
+     }
+    }
    ]
   },
   {
@@ -4641,6 +5314,141 @@
     "stock",
     "customers",
     "expenses"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Orders today",
+      "ar": "طلبات اليوم"
+     },
+     "kind": "order",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "date",
+       "within": 0
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Takings this month",
+      "ar": "إيرادات هذا الشهر"
+     },
+     "kind": "order",
+     "agg": "sum",
+     "field": "total",
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "delivered",
+        "shipped"
+       ]
+      },
+      {
+       "field": "date",
+       "period": "month"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Expenses this month",
+      "ar": "مصروفات هذا الشهر"
+     },
+     "kind": "expense",
+     "agg": "sum",
+     "field": "amount",
+     "where": [
+      {
+       "field": "date",
+       "period": "month"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Open orders",
+      "ar": "طلبات مفتوحة"
+     },
+     "kind": "order",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "new",
+        "preparing"
+       ]
+      }
+     ]
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Low stock",
+      "ar": "مخزون منخفض"
+     },
+     "kind": "product",
+     "where": [
+      {
+       "field": "stock",
+       "atMost": "reorderAt"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "New orders waiting",
+      "ar": "طلبات جديدة بالانتظار"
+     },
+     "kind": "order",
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "new"
+       ]
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Write a product description",
+      "ar": "اكتب وصف منتج"
+     },
+     "prompt": {
+      "en": "Write a short, warm product description for my shop, with three key points and a line for social media.",
+      "ar": "اكتب وصفًا قصيرًا ودافئًا لمنتج في متجري، مع ثلاث نقاط رئيسية وسطر لوسائل التواصل."
+     }
+    },
+    {
+     "label": {
+      "en": "Explain this month's sales",
+      "ar": "اشرح مبيعات هذا الشهر"
+     },
+     "prompt": {
+      "en": "Explain this month's sales from my orders and expenses: takings, best products, and what to restock.",
+      "ar": "اشرح مبيعات هذا الشهر من الطلبات والمصروفات: الإيرادات، وأكثر المنتجات مبيعًا، وما يحتاج إعادة تخزين."
+     }
+    },
+    {
+     "label": {
+      "en": "Answer a customer",
+      "ar": "رد على عميل"
+     },
+     "prompt": {
+      "en": "Help me answer a customer politely and clearly about their order.",
+      "ar": "ساعدني أرد على عميل بلطف ووضوح بخصوص طلبه."
+     }
+    }
    ]
   },
   {
@@ -5147,6 +5955,127 @@
     "followups",
     "accounts",
     "calls"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Open pipeline",
+      "ar": "الصفقات المفتوحة"
+     },
+     "kind": "deal",
+     "agg": "sum",
+     "field": "value",
+     "where": [
+      {
+       "field": "stage",
+       "notIn": [
+        "won",
+        "lost"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Won this month",
+      "ar": "المحقق هذا الشهر"
+     },
+     "kind": "deal",
+     "agg": "sum",
+     "field": "value",
+     "where": [
+      {
+       "field": "stage",
+       "in": [
+        "won"
+       ]
+      },
+      {
+       "field": "closeBy",
+       "period": "month"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Calls this week",
+      "ar": "مكالمات هذا الأسبوع"
+     },
+     "kind": "activity",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "date",
+       "period": "week"
+      }
+     ]
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Follow ups due",
+      "ar": "متابعات متأخرة"
+     },
+     "kind": "deal",
+     "where": [
+      {
+       "field": "stage",
+       "notIn": [
+        "won",
+        "lost"
+       ]
+      },
+      {
+       "field": "followUp",
+       "overdue": true
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Follow ups today",
+      "ar": "متابعات اليوم"
+     },
+     "kind": "deal",
+     "where": [
+      {
+       "field": "stage",
+       "notIn": [
+        "won",
+        "lost"
+       ]
+      },
+      {
+       "field": "followUp",
+       "within": 0
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Write a follow up message",
+      "ar": "اكتب رسالة متابعة"
+     },
+     "prompt": {
+      "en": "Write a short follow up message for this deal that moves it to the next step.",
+      "ar": "اكتب رسالة متابعة قصيرة لهذه الصفقة تنقلها للخطوة التالية."
+     }
+    },
+    {
+     "label": {
+      "en": "Review my pipeline",
+      "ar": "راجع صفقاتي"
+     },
+     "prompt": {
+      "en": "Review my pipeline: which deals are stuck, which to focus on this week, and why.",
+      "ar": "راجع صفقاتي: أيها متعثر، وأيها أركز عليه هذا الأسبوع، ولماذا."
+     }
+    }
    ]
   },
   {
@@ -5627,6 +6556,100 @@
     "candidates",
     "roles",
     "interviews"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Open roles",
+      "ar": "الوظائف الشاغرة"
+     },
+     "kind": "role",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "open"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Candidates in process",
+      "ar": "مرشحون قيد الإجراء"
+     },
+     "kind": "candidate",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "stage",
+       "notIn": [
+        "hired",
+        "rejected"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Interviews this week",
+      "ar": "مقابلات هذا الأسبوع"
+     },
+     "kind": "interview",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "date",
+       "period": "week"
+      }
+     ]
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Interviews without a scorecard",
+      "ar": "مقابلات بلا بطاقة تقييم"
+     },
+     "kind": "interview",
+     "where": [
+      {
+       "field": "date",
+       "overdue": true
+      },
+      {
+       "field": "decision",
+       "empty": true
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Write a job post",
+      "ar": "اكتب إعلان وظيفة"
+     },
+     "prompt": {
+      "en": "Write a clear job post for this role: what the person will do, what we need, what we offer.",
+      "ar": "اكتب إعلان وظيفة واضحًا لهذا الدور: ماذا سيعمل الشخص، وما نحتاجه، وما نقدمه."
+     }
+    },
+    {
+     "label": {
+      "en": "Prepare interview questions",
+      "ar": "جهّز أسئلة المقابلة"
+     },
+     "prompt": {
+      "en": "Prepare eight interview questions for this role with what a good answer sounds like.",
+      "ar": "جهّز ثمانية أسئلة مقابلة لهذا الدور مع وصف للإجابة الجيدة."
+     }
+    }
    ]
   },
   {
@@ -6187,6 +7210,95 @@
     "clients",
     "viewings",
     "contracts"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Available listings",
+      "ar": "عقارات متاحة"
+     },
+     "kind": "listing",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "available"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Viewings this week",
+      "ar": "معاينات هذا الأسبوع"
+     },
+     "kind": "viewing",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "date",
+       "period": "week"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Commission this month",
+      "ar": "عمولة هذا الشهر"
+     },
+     "kind": "contract",
+     "agg": "sum",
+     "field": "commission",
+     "where": [
+      {
+       "field": "signed",
+       "period": "month"
+      }
+     ]
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Commission not paid",
+      "ar": "عمولة غير مدفوعة"
+     },
+     "kind": "contract",
+     "where": [
+      {
+       "field": "commissionPaid",
+       "in": [
+        false
+       ]
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Write a listing ad",
+      "ar": "اكتب إعلان عقار"
+     },
+     "prompt": {
+      "en": "Write an attractive listing ad for this property with its key features, for a website and for WhatsApp.",
+      "ar": "اكتب إعلانًا جذابًا لهذا العقار بأهم مميزاته، نسخة لموقع ونسخة لواتساب."
+     }
+    },
+    {
+     "label": {
+      "en": "Match clients to listings",
+      "ar": "طابق العملاء مع العقارات"
+     },
+     "prompt": {
+      "en": "Match my clients to available listings by budget, type and district, best matches first.",
+      "ar": "طابق عملائي مع العقارات المتاحة حسب الميزانية والنوع والحي، الأفضل أولًا."
+     }
+    }
    ]
   },
   {
@@ -6744,6 +7856,86 @@
     "menu",
     "ingredients",
     "shifts"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Menu items",
+      "ar": "أصناف المنيو"
+     },
+     "kind": "dish",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "available",
+       "in": [
+        true
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Shifts",
+      "ar": "الورديات"
+     },
+     "kind": "shift",
+     "agg": "count",
+     "field": null,
+     "where": []
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Low ingredients",
+      "ar": "مكونات منخفضة"
+     },
+     "kind": "ingredient",
+     "where": [
+      {
+       "field": "stock",
+       "atMost": "reorderAt"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Expiring in three days",
+      "ar": "تنتهي خلال ثلاثة أيام"
+     },
+     "kind": "ingredient",
+     "where": [
+      {
+       "field": "expires",
+       "within": 3
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Price my menu",
+      "ar": "سعّر المنيو"
+     },
+     "prompt": {
+      "en": "Look at my menu prices and costs: which items earn too little, and what price would give a 70% margin.",
+      "ar": "انظر إلى أسعار المنيو وتكاليفه: أي الأصناف ربحها قليل، وما السعر الذي يعطي هامشًا 70%."
+     }
+    },
+    {
+     "label": {
+      "en": "Write menu descriptions",
+      "ar": "اكتب أوصاف المنيو"
+     },
+     "prompt": {
+      "en": "Write short, tasty descriptions for my menu items in Arabic and English.",
+      "ar": "اكتب أوصافًا قصيرة وشهية لأصناف المنيو بالعربية والإنجليزية."
+     }
+    }
    ]
   },
   {
@@ -7100,6 +8292,99 @@
     "clients",
     "sessions",
     "goals"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Active clients",
+      "ar": "العملاء النشطون"
+     },
+     "kind": "client",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "active"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Sessions this week",
+      "ar": "جلسات هذا الأسبوع"
+     },
+     "kind": "session",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "date",
+       "period": "week"
+      }
+     ]
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Goals that are stuck",
+      "ar": "أهداف متعثرة"
+     },
+     "kind": "goal",
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "stuck"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Clients with one session left",
+      "ar": "عملاء بقيت لهم جلسة واحدة"
+     },
+     "kind": "client",
+     "where": [
+      {
+       "field": "sessionsLeft",
+       "atMost": 1
+      },
+      {
+       "field": "status",
+       "in": [
+        "active"
+       ]
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Summarise a session",
+      "ar": "لخّص جلسة"
+     },
+     "prompt": {
+      "en": "Summarise this session in a few lines: what we discussed, what was decided, and the client's next actions.",
+      "ar": "لخّص هذه الجلسة في أسطر: ما ناقشناه، وما تقرر، والخطوات التالية للعميل."
+     }
+    },
+    {
+     "label": {
+      "en": "Plan the next session",
+      "ar": "خطط للجلسة القادمة"
+     },
+     "prompt": {
+      "en": "Plan the next session from this client's goals and last session notes.",
+      "ar": "خطط للجلسة القادمة من أهداف هذا العميل وملاحظات آخر جلسة."
+     }
+    }
    ]
   },
   {
@@ -7582,6 +8867,86 @@
     "outgoing",
     "minutes",
     "circulars"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Letters to answer",
+      "ar": "خطابات تنتظر الرد"
+     },
+     "kind": "incoming",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "new",
+        "referred"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Sent this month",
+      "ar": "صادر هذا الشهر"
+     },
+     "kind": "outgoing",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "sent",
+       "period": "month"
+      }
+     ]
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Replies overdue",
+      "ar": "ردود متأخرة"
+     },
+     "kind": "incoming",
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "new",
+        "referred"
+       ]
+      },
+      {
+       "field": "replyBy",
+       "overdue": true
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Draft a formal reply",
+      "ar": "اكتب ردًا رسميًا"
+     },
+     "prompt": {
+      "en": "Draft a formal reply to this letter in proper administrative Arabic, with greeting, subject, body and closing.",
+      "ar": "اكتب ردًا رسميًا على هذا الخطاب بلغة إدارية سليمة، مع التحية والموضوع والمتن والختام."
+     }
+    },
+    {
+     "label": {
+      "en": "Write minutes from notes",
+      "ar": "اكتب محضرًا من الملاحظات"
+     },
+     "prompt": {
+      "en": "Turn my meeting notes into formal minutes: attendees, items discussed, decisions and who follows up.",
+      "ar": "حوّل ملاحظات الاجتماع إلى محضر رسمي: الحضور، والبنود، والقرارات، والمسؤول عن المتابعة."
+     }
+    }
    ]
   },
   {
@@ -8294,6 +9659,130 @@
     "sites",
     "reports",
     "equipment"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Open work orders",
+      "ar": "أوامر عمل مفتوحة"
+     },
+     "kind": "order",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "notIn": [
+        "done"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Active sites",
+      "ar": "مواقع نشطة"
+     },
+     "kind": "site",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "active"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Bill of quantities total",
+      "ar": "إجمالي جدول الكميات"
+     },
+     "kind": "boq",
+     "agg": "sum",
+     "field": "amount",
+     "where": []
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Urgent work orders",
+      "ar": "أوامر عمل عاجلة"
+     },
+     "kind": "order",
+     "where": [
+      {
+       "field": "priority",
+       "in": [
+        "urgent"
+       ]
+      },
+      {
+       "field": "status",
+       "notIn": [
+        "done"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Late work orders",
+      "ar": "أوامر عمل متأخرة"
+     },
+     "kind": "order",
+     "where": [
+      {
+       "field": "status",
+       "notIn": [
+        "done"
+       ]
+      },
+      {
+       "field": "due",
+       "overdue": true
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Equipment due for service",
+      "ar": "معدات حان موعد صيانتها"
+     },
+     "kind": "equipment",
+     "where": [
+      {
+       "field": "service",
+       "within": 7
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Write the daily report",
+      "ar": "اكتب التقرير اليومي"
+     },
+     "prompt": {
+      "en": "Write today's site report from my notes: work done, workers, problems and tomorrow's plan.",
+      "ar": "اكتب تقرير الموقع اليومي من ملاحظاتي: الأعمال المنجزة، والعمالة، والمشكلات، وخطة الغد."
+     }
+    },
+    {
+     "label": {
+      "en": "Plan this week's work orders",
+      "ar": "خطط لأوامر عمل الأسبوع"
+     },
+     "prompt": {
+      "en": "Plan this week's work orders across my technicians by trade, priority and site.",
+      "ar": "وزّع أوامر عمل هذا الأسبوع على الفنيين حسب التخصص والأولوية والموقع."
+     }
+    }
    ]
   },
   {
@@ -8718,6 +10207,139 @@
     "trips",
     "vehicles",
     "drivers"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "On the way",
+      "ar": "في الطريق"
+     },
+     "kind": "shipment",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "loaded",
+        "onTheWay"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Kilometres this month",
+      "ar": "كيلومترات هذا الشهر"
+     },
+     "kind": "trip",
+     "agg": "sum",
+     "field": "km",
+     "where": [
+      {
+       "field": "date",
+       "period": "month"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Fuel this month",
+      "ar": "وقود هذا الشهر"
+     },
+     "kind": "trip",
+     "agg": "sum",
+     "field": "fuel",
+     "where": [
+      {
+       "field": "date",
+       "period": "month"
+      }
+     ]
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Late shipments",
+      "ar": "شحنات متأخرة"
+     },
+     "kind": "shipment",
+     "where": [
+      {
+       "field": "status",
+       "notIn": [
+        "delivered"
+       ]
+      },
+      {
+       "field": "due",
+       "overdue": true
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Registrations expiring this month",
+      "ar": "استمارات تنتهي هذا الشهر"
+     },
+     "kind": "vehicle",
+     "where": [
+      {
+       "field": "registration",
+       "within": 30
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Insurance expiring this month",
+      "ar": "تأمين ينتهي هذا الشهر"
+     },
+     "kind": "vehicle",
+     "where": [
+      {
+       "field": "insurance",
+       "within": 30
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Licences expiring this month",
+      "ar": "رخص تنتهي هذا الشهر"
+     },
+     "kind": "driver",
+     "where": [
+      {
+       "field": "licence",
+       "within": 30
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Plan tomorrow's trips",
+      "ar": "خطط لرحلات الغد"
+     },
+     "prompt": {
+      "en": "Plan tomorrow's trips: group my booked shipments by area and assign available drivers and vehicles.",
+      "ar": "خطط لرحلات الغد: جمّع الشحنات المحجوزة حسب المنطقة ووزعها على السائقين والمركبات المتاحة."
+     }
+    },
+    {
+     "label": {
+      "en": "Tell a customer about a delay",
+      "ar": "أبلغ عميلًا بالتأخير"
+     },
+     "prompt": {
+      "en": "Write a short, honest message to a customer about a delayed shipment with a new time.",
+      "ar": "اكتب رسالة قصيرة وصادقة لعميل عن تأخر شحنته مع موعد جديد."
+     }
+    }
    ]
   },
   {
@@ -9225,6 +10847,102 @@
     "livestock",
     "irrigation",
     "health"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Head of livestock",
+      "ar": "رؤوس الماشية"
+     },
+     "kind": "animal",
+     "agg": "sum",
+     "field": "count",
+     "where": []
+    },
+    {
+     "label": {
+      "en": "Planted area, dunam",
+      "ar": "المساحة المزروعة، دونم"
+     },
+     "kind": "field",
+     "agg": "sum",
+     "field": "area",
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "planted",
+        "growing"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Water this month, m³",
+      "ar": "ماء هذا الشهر، م³"
+     },
+     "kind": "irrigation",
+     "agg": "sum",
+     "field": "cubicMetres",
+     "where": [
+      {
+       "field": "date",
+       "period": "month"
+      }
+     ]
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Vaccinations due this week",
+      "ar": "تطعيمات هذا الأسبوع"
+     },
+     "kind": "animal",
+     "where": [
+      {
+       "field": "vaccineDue",
+       "within": 7
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Harvest within two weeks",
+      "ar": "حصاد خلال أسبوعين"
+     },
+     "kind": "field",
+     "where": [
+      {
+       "field": "harvest",
+       "within": 14
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Plan the season",
+      "ar": "خطط للموسم"
+     },
+     "prompt": {
+      "en": "Plan the coming season for my fields: what to plant where, when, and the watering it needs.",
+      "ar": "خطط للموسم القادم في حقولي: ماذا أزرع وأين ومتى، وما يحتاجه من ري."
+     }
+    },
+    {
+     "label": {
+      "en": "Vaccination schedule",
+      "ar": "جدول التطعيمات"
+     },
+     "prompt": {
+      "en": "Make a vaccination schedule for my livestock for the next six months.",
+      "ar": "ضع جدول تطعيمات لمواشيّ للأشهر الستة القادمة."
+     }
+    }
    ]
   },
   {
@@ -9681,6 +11399,115 @@
     "incidents",
     "visits",
     "checklists"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Open actions",
+      "ar": "إجراءات مفتوحة"
+     },
+     "kind": "action",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "done",
+       "in": [
+        false
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Incidents this month",
+      "ar": "حوادث هذا الشهر"
+     },
+     "kind": "incident",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "date",
+       "period": "month"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Average inspection score",
+      "ar": "متوسط نتيجة التفتيش"
+     },
+     "kind": "visit",
+     "agg": "average",
+     "field": "score",
+     "where": []
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Overdue corrective actions",
+      "ar": "إجراءات تصحيحية متأخرة"
+     },
+     "kind": "action",
+     "where": [
+      {
+       "field": "done",
+       "in": [
+        false
+       ]
+      },
+      {
+       "field": "due",
+       "overdue": true
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Serious incidents open",
+      "ar": "حوادث خطيرة مفتوحة"
+     },
+     "kind": "incident",
+     "where": [
+      {
+       "field": "severity",
+       "in": [
+        "serious"
+       ]
+      },
+      {
+       "field": "status",
+       "notIn": [
+        "closed"
+       ]
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Write an incident report",
+      "ar": "اكتب تقرير حادث"
+     },
+     "prompt": {
+      "en": "Write an incident report from my notes: what happened, causes, immediate actions and corrective actions.",
+      "ar": "اكتب تقرير حادث من ملاحظاتي: ماذا حدث، والأسباب، والإجراءات الفورية، والإجراءات التصحيحية."
+     }
+    },
+    {
+     "label": {
+      "en": "Build a checklist",
+      "ar": "أنشئ قائمة تفتيش"
+     },
+     "prompt": {
+      "en": "Build an inspection checklist for this area with clear yes or no checks.",
+      "ar": "أنشئ قائمة تفتيش لهذا المجال ببنود واضحة إجابتها نعم أو لا."
+     }
+    }
    ]
   },
   {
@@ -10221,6 +12048,136 @@
     "arrivals",
     "units",
     "cleaning"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Arriving today",
+      "ar": "يصلون اليوم"
+     },
+     "kind": "booking",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "checkIn",
+       "within": 0
+      },
+      {
+       "field": "status",
+       "in": [
+        "confirmed"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Leaving today",
+      "ar": "يغادرون اليوم"
+     },
+     "kind": "booking",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "checkOut",
+       "within": 0
+      },
+      {
+       "field": "status",
+       "in": [
+        "checkedIn"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Bookings this month",
+      "ar": "حجوزات هذا الشهر"
+     },
+     "kind": "booking",
+     "agg": "sum",
+     "field": "total",
+     "where": [
+      {
+       "field": "checkIn",
+       "period": "month"
+      },
+      {
+       "field": "status",
+       "notIn": [
+        "cancelled"
+       ]
+      }
+     ]
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Double bookings",
+      "ar": "حجوزات مزدوجة"
+     },
+     "kind": "booking",
+     "where": [
+      {
+       "field": "unit",
+       "clashesOn": [
+        "checkIn"
+       ]
+      },
+      {
+       "field": "status",
+       "notIn": [
+        "cancelled"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Units to clean today",
+      "ar": "وحدات للتنظيف اليوم"
+     },
+     "kind": "cleaning",
+     "where": [
+      {
+       "field": "done",
+       "in": [
+        false
+       ]
+      },
+      {
+       "field": "date",
+       "within": 0
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Write check in instructions",
+      "ar": "اكتب تعليمات الوصول"
+     },
+     "prompt": {
+      "en": "Write friendly check in instructions for a guest: how to arrive, the door code placeholder, house rules and check out time.",
+      "ar": "اكتب تعليمات وصول ودية لضيف: كيف يصل، ومكان رمز الباب، وقواعد المكان، ووقت المغادرة."
+     }
+    },
+    {
+     "label": {
+      "en": "Reply to a review",
+      "ar": "رد على تقييم"
+     },
+     "prompt": {
+      "en": "Write a warm, professional reply to a guest's review.",
+      "ar": "اكتب ردًا دافئًا ومهنيًا على تقييم ضيف."
+     }
+    }
    ]
   },
   {
@@ -10732,6 +12689,112 @@
     "appointments",
     "clients",
     "services"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Appointments today",
+      "ar": "مواعيد اليوم"
+     },
+     "kind": "booking",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "date",
+       "within": 0
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Takings today",
+      "ar": "إيرادات اليوم"
+     },
+     "kind": "booking",
+     "agg": "sum",
+     "field": "price",
+     "where": [
+      {
+       "field": "date",
+       "within": 0
+      },
+      {
+       "field": "status",
+       "in": [
+        "done"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Takings this month",
+      "ar": "إيرادات هذا الشهر"
+     },
+     "kind": "booking",
+     "agg": "sum",
+     "field": "price",
+     "where": [
+      {
+       "field": "date",
+       "period": "month"
+      },
+      {
+       "field": "status",
+       "in": [
+        "done"
+       ]
+      }
+     ]
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Double bookings",
+      "ar": "حجوزات مزدوجة"
+     },
+     "kind": "booking",
+     "where": [
+      {
+       "field": "staff",
+       "clashesOn": [
+        "date",
+        "time"
+       ]
+      },
+      {
+       "field": "status",
+       "notIn": [
+        "noShow"
+       ]
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Write a reminder message",
+      "ar": "اكتب رسالة تذكير"
+     },
+     "prompt": {
+      "en": "Write a short appointment reminder message for WhatsApp with the time and a way to reschedule.",
+      "ar": "اكتب رسالة تذكير قصيرة بالموعد لواتساب مع الوقت وطريقة لتغيير الموعد."
+     }
+    },
+    {
+     "label": {
+      "en": "Plan an offer for quiet days",
+      "ar": "خطط لعرض للأيام الهادئة"
+     },
+     "prompt": {
+      "en": "Suggest an offer to fill my quieter days, from my appointments and services.",
+      "ar": "اقترح عرضًا يملأ أيامي الهادئة، بناءً على مواعيدي وخدماتي."
+     }
+    }
    ]
   },
   {
@@ -11335,6 +13398,120 @@
     "units",
     "leases",
     "maintenance"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Vacant units",
+      "ar": "وحدات شاغرة"
+     },
+     "kind": "unit",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "state",
+       "in": [
+        "vacant"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Rent collected this month",
+      "ar": "إيجار محصّل هذا الشهر"
+     },
+     "kind": "rent",
+     "agg": "sum",
+     "field": "amount",
+     "where": [
+      {
+       "field": "paid",
+       "in": [
+        true
+       ]
+      },
+      {
+       "field": "due",
+       "period": "month"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Open requests",
+      "ar": "طلبات مفتوحة"
+     },
+     "kind": "request",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "notIn": [
+        "fixed"
+       ]
+      }
+     ]
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Late rent",
+      "ar": "إيجار متأخر"
+     },
+     "kind": "rent",
+     "where": [
+      {
+       "field": "paid",
+       "in": [
+        false
+       ]
+      },
+      {
+       "field": "due",
+       "overdue": true
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Leases ending within two months",
+      "ar": "عقود تنتهي خلال شهرين"
+     },
+     "kind": "lease",
+     "where": [
+      {
+       "field": "end",
+       "within": 60
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Remind a tenant about rent",
+      "ar": "ذكّر مستأجرًا بالإيجار"
+     },
+     "prompt": {
+      "en": "Write a polite rent reminder to a tenant with the amount and the due date.",
+      "ar": "اكتب تذكيرًا مهذبًا لمستأجر بالإيجار مع المبلغ وتاريخ الاستحقاق."
+     }
+    },
+    {
+     "label": {
+      "en": "Plan lease renewals",
+      "ar": "خطط لتجديد العقود"
+     },
+     "prompt": {
+      "en": "List leases ending soon and suggest what to offer each tenant to renew.",
+      "ar": "اعرض العقود التي تنتهي قريبًا واقترح ما أعرضه على كل مستأجر للتجديد."
+     }
+    }
    ]
   },
   {
@@ -11936,6 +14113,115 @@
     "travellers",
     "housing",
     "programme"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Travellers",
+      "ar": "المسافرون"
+     },
+     "kind": "traveller",
+     "agg": "count",
+     "field": null,
+     "where": []
+    },
+    {
+     "label": {
+      "en": "Visas issued",
+      "ar": "تأشيرات صادرة"
+     },
+     "kind": "traveller",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "visa",
+       "in": [
+        "issued"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Payments received",
+      "ar": "مدفوعات مستلمة"
+     },
+     "kind": "traveller",
+     "agg": "sum",
+     "field": "paid",
+     "where": []
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Passports expiring within six months",
+      "ar": "جوازات تنتهي خلال ستة أشهر"
+     },
+     "kind": "traveller",
+     "where": [
+      {
+       "field": "passportExpires",
+       "within": 180
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Visas not issued",
+      "ar": "تأشيرات لم تصدر"
+     },
+     "kind": "traveller",
+     "where": [
+      {
+       "field": "visa",
+       "in": [
+        "notStarted",
+        "applied",
+        "refused"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Not vaccinated",
+      "ar": "غير مُطعّم"
+     },
+     "kind": "traveller",
+     "where": [
+      {
+       "field": "vaccinated",
+       "in": [
+        false
+       ]
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Write the group programme",
+      "ar": "اكتب برنامج المجموعة"
+     },
+     "prompt": {
+      "en": "Write a clear day by day programme for this group with times, places and what to bring.",
+      "ar": "اكتب برنامجًا يوميًا واضحًا لهذه المجموعة بالأوقات والأماكن وما يلزم إحضاره."
+     }
+    },
+    {
+     "label": {
+      "en": "Message travellers before departure",
+      "ar": "راسل المسافرين قبل السفر"
+     },
+     "prompt": {
+      "en": "Write a message to travellers before departure: documents, luggage, meeting point and the leader's number.",
+      "ar": "اكتب رسالة للمسافرين قبل السفر: الوثائق، والأمتعة، ونقطة التجمع، ورقم المشرف."
+     }
+    }
    ]
   },
   {
@@ -12938,6 +15224,94 @@
     "scenes",
     "timeline",
     "places"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Words this week",
+      "ar": "كلمات هذا الأسبوع"
+     },
+     "kind": "session",
+     "agg": "sum",
+     "field": "words",
+     "where": [
+      {
+       "field": "date",
+       "period": "week"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Words written",
+      "ar": "الكلمات المكتوبة"
+     },
+     "kind": "chapter",
+     "agg": "sum",
+     "field": "words",
+     "where": []
+    },
+    {
+     "label": {
+      "en": "Characters",
+      "ar": "الشخصيات"
+     },
+     "kind": "character",
+     "agg": "count",
+     "field": null,
+     "where": []
+    },
+    {
+     "label": {
+      "en": "Scenes to write",
+      "ar": "مشاهد للكتابة"
+     },
+     "kind": "scene",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "notIn": [
+        "done"
+       ]
+      }
+     ]
+    }
+   ],
+   "alerts": [],
+   "prompts": [
+    {
+     "label": {
+      "en": "Check consistency",
+      "ar": "راجع الاتساق"
+     },
+     "prompt": {
+      "en": "Check my characters, places and timeline for things that do not agree: an age, a name, a date or a place that changes between chapters. List each with where it appears.",
+      "ar": "راجع الشخصيات والأماكن والخط الزمني بحثًا عن تناقضات: عمر أو اسم أو تاريخ أو مكان يتغير بين الفصول. اذكر كل واحد وأين يظهر."
+     }
+    },
+    {
+     "label": {
+      "en": "Summarise a chapter",
+      "ar": "لخّص فصلًا"
+     },
+     "prompt": {
+      "en": "Summarise this chapter in five lines: what happens, who changes, and what it sets up for later.",
+      "ar": "لخّص هذا الفصل في خمسة أسطر: ماذا يحدث، ومن يتغير، وما الذي يمهّد له لاحقًا."
+     }
+    },
+    {
+     "label": {
+      "en": "Suggest names",
+      "ar": "اقترح أسماء"
+     },
+     "prompt": {
+      "en": "Suggest ten names that fit my world's style for a new character, place or group, each with a one line reason.",
+      "ar": "اقترح عشرة أسماء تناسب أسلوب عالمي لشخصية أو مكان أو جماعة جديدة، مع سبب في سطر لكل اسم."
+     }
+    }
    ]
   },
   {
@@ -13597,6 +15971,111 @@
     "bugs",
     "sprints",
     "releases"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Open issues",
+      "ar": "مهام مفتوحة"
+     },
+     "kind": "issue",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "notIn": [
+        "done"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Open bugs",
+      "ar": "أخطاء مفتوحة"
+     },
+     "kind": "issue",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "type",
+       "in": [
+        "bug"
+       ]
+      },
+      {
+       "field": "status",
+       "notIn": [
+        "done"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Points done",
+      "ar": "نقاط منجزة"
+     },
+     "kind": "issue",
+     "agg": "sum",
+     "field": "points",
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "done"
+       ]
+      }
+     ]
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Critical bugs",
+      "ar": "أخطاء حرجة"
+     },
+     "kind": "issue",
+     "where": [
+      {
+       "field": "severity",
+       "in": [
+        "critical"
+       ]
+      },
+      {
+       "field": "status",
+       "notIn": [
+        "done"
+       ]
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Write release notes",
+      "ar": "اكتب ملاحظات الإصدار"
+     },
+     "prompt": {
+      "en": "Write release notes from the issues done in this release, grouped into new, improved and fixed.",
+      "ar": "اكتب ملاحظات الإصدار من المهام المنجزة فيه، مقسمة إلى جديد ومحسّن ومُصلح."
+     }
+    },
+    {
+     "label": {
+      "en": "Turn a bug report into steps",
+      "ar": "حوّل بلاغ خطأ إلى خطوات"
+     },
+     "prompt": {
+      "en": "Turn this bug report into clear steps to reproduce, expected and actual result.",
+      "ar": "حوّل بلاغ الخطأ هذا إلى خطوات واضحة لإعادة إنتاجه، والنتيجة المتوقعة والفعلية."
+     }
+    }
    ]
   },
   {
@@ -13972,6 +16451,107 @@
     "calendar",
     "ideas",
     "results"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Scheduled",
+      "ar": "مجدول"
+     },
+     "kind": "post",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "scheduled"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Published this month",
+      "ar": "منشور هذا الشهر"
+     },
+     "kind": "post",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "published"
+       ]
+      },
+      {
+       "field": "publish",
+       "period": "month"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Reach this month",
+      "ar": "الوصول هذا الشهر"
+     },
+     "kind": "post",
+     "agg": "sum",
+     "field": "reach",
+     "where": [
+      {
+       "field": "publish",
+       "period": "month"
+      }
+     ]
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Posts due this week and not ready",
+      "ar": "منشورات هذا الأسبوع غير الجاهزة"
+     },
+     "kind": "post",
+     "where": [
+      {
+       "field": "publish",
+       "within": 7
+      },
+      {
+       "field": "status",
+       "in": [
+        "idea",
+        "writing",
+        "design"
+       ]
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Write a week of posts",
+      "ar": "اكتب منشورات أسبوع"
+     },
+     "prompt": {
+      "en": "Write a week of posts for my brand, one per day, each fitted to its platform with a hook and a call to action.",
+      "ar": "اكتب منشورات أسبوع لعلامتي، منشورًا لكل يوم، كل واحد مناسب لمنصته مع افتتاحية جاذبة ودعوة لإجراء."
+     }
+    },
+    {
+     "label": {
+      "en": "Explain last month's results",
+      "ar": "اشرح نتائج الشهر الماضي"
+     },
+     "prompt": {
+      "en": "Explain last month's results from my published posts: what worked, what did not, and what to try next.",
+      "ar": "اشرح نتائج الشهر الماضي من منشوراتي: ما الذي نجح، وما الذي لم ينجح، وماذا أجرب بعدها."
+     }
+    }
    ]
   },
   {
@@ -14366,6 +16946,93 @@
     "deliveries",
     "clients",
     "gear"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Shoots this month",
+      "ar": "جلسات هذا الشهر"
+     },
+     "kind": "shoot",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "date",
+       "period": "month"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Booked this month",
+      "ar": "حجوزات هذا الشهر"
+     },
+     "kind": "shoot",
+     "agg": "sum",
+     "field": "price",
+     "where": [
+      {
+       "field": "date",
+       "period": "month"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Gear value",
+      "ar": "قيمة المعدات"
+     },
+     "kind": "gear",
+     "agg": "sum",
+     "field": "value",
+     "where": []
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Late deliveries",
+      "ar": "تسليمات متأخرة"
+     },
+     "kind": "shoot",
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "shot",
+        "editing"
+       ]
+      },
+      {
+       "field": "deliverBy",
+       "overdue": true
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Write a shoot brief",
+      "ar": "اكتب موجز جلسة"
+     },
+     "prompt": {
+      "en": "Write a shoot brief: shot list, timing, gear to bring and what I need from the client.",
+      "ar": "اكتب موجز جلسة تصوير: قائمة اللقطات، والتوقيت، والمعدات المطلوبة، وما أحتاجه من العميل."
+     }
+    },
+    {
+     "label": {
+      "en": "Write a price list",
+      "ar": "اكتب قائمة أسعار"
+     },
+     "prompt": {
+      "en": "Write a clear price list for my services with what each package includes.",
+      "ar": "اكتب قائمة أسعار واضحة لخدماتي مع ما تتضمنه كل باقة."
+     }
+    }
    ]
   },
   {
@@ -14720,6 +17387,101 @@
     "projects",
     "references",
     "feedback"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Active projects",
+      "ar": "مشاريع نشطة"
+     },
+     "kind": "project",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "notIn": [
+        "delivered"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Fees in progress",
+      "ar": "رسوم قيد التنفيذ"
+     },
+     "kind": "project",
+     "agg": "sum",
+     "field": "fee",
+     "where": [
+      {
+       "field": "status",
+       "notIn": [
+        "delivered"
+       ]
+      }
+     ]
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Feedback to act on",
+      "ar": "ملاحظات تحتاج تنفيذًا"
+     },
+     "kind": "feedback",
+     "where": [
+      {
+       "field": "done",
+       "in": [
+        false
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Due this week",
+      "ar": "مستحق هذا الأسبوع"
+     },
+     "kind": "project",
+     "where": [
+      {
+       "field": "due",
+       "within": 7
+      },
+      {
+       "field": "status",
+       "notIn": [
+        "delivered"
+       ]
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Turn a brief into questions",
+      "ar": "حوّل الموجز إلى أسئلة"
+     },
+     "prompt": {
+      "en": "Read this brief and list the questions I should ask the client before I start.",
+      "ar": "اقرأ هذا الموجز واذكر الأسئلة التي يجب أن أطرحها على العميل قبل البدء."
+     }
+    },
+    {
+     "label": {
+      "en": "Present a design",
+      "ar": "اعرض تصميمًا"
+     },
+     "prompt": {
+      "en": "Write a short note presenting my design to the client: the idea, the choices and what to look at.",
+      "ar": "اكتب ملاحظة قصيرة أعرض فيها تصميمي على العميل: الفكرة، والاختيارات، وما ينظر إليه."
+     }
+    }
    ]
   },
   {
@@ -15064,6 +17826,96 @@
     "episodes",
     "schedule",
     "guests"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Published",
+      "ar": "نُشر"
+     },
+     "kind": "episode",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "published"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Total listens",
+      "ar": "إجمالي الاستماعات"
+     },
+     "kind": "episode",
+     "agg": "sum",
+     "field": "listens",
+     "where": []
+    },
+    {
+     "label": {
+      "en": "Guests confirmed",
+      "ar": "ضيوف مؤكدون"
+     },
+     "kind": "guest",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "confirmed"
+       ]
+      }
+     ]
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Publishing this week and not edited",
+      "ar": "تُنشر هذا الأسبوع ولم تُحرر"
+     },
+     "kind": "episode",
+     "where": [
+      {
+       "field": "publish",
+       "within": 7
+      },
+      {
+       "field": "status",
+       "notIn": [
+        "published"
+       ]
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Outline an episode",
+      "ar": "ضع مخطط حلقة"
+     },
+     "prompt": {
+      "en": "Outline an episode with this guest: an opening, five sections with questions, and a closing.",
+      "ar": "ضع مخطط حلقة مع هذا الضيف: افتتاحية، وخمسة محاور بأسئلتها، وخاتمة."
+     }
+    },
+    {
+     "label": {
+      "en": "Write episode notes",
+      "ar": "اكتب ملاحظات الحلقة"
+     },
+     "prompt": {
+      "en": "Write the episode description and show notes with timestamps from my outline.",
+      "ar": "اكتب وصف الحلقة وملاحظاتها مع الأوقات من المخطط."
+     }
+    }
    ]
   },
   {
@@ -15692,6 +18544,105 @@
     "levels",
     "assets",
     "balance"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Levels done",
+      "ar": "مراحل منجزة"
+     },
+     "kind": "level",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "done"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Assets needed",
+      "ar": "أصول مطلوبة"
+     },
+     "kind": "asset",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "needed"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Open bugs",
+      "ar": "أخطاء مفتوحة"
+     },
+     "kind": "bug",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "fixed",
+       "in": [
+        false
+       ]
+      }
+     ]
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Crashes to fix",
+      "ar": "انهيارات تحتاج إصلاحًا"
+     },
+     "kind": "bug",
+     "where": [
+      {
+       "field": "severity",
+       "in": [
+        "crash"
+       ]
+      },
+      {
+       "field": "fixed",
+       "in": [
+        false
+       ]
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Check my balance table",
+      "ar": "راجع جدول التوازن"
+     },
+     "prompt": {
+      "en": "Check my balance table: which units are too strong or too weak for their cost, and what to change.",
+      "ar": "راجع جدول التوازن: أي الوحدات أقوى أو أضعف من تكلفتها، وماذا أغير."
+     }
+    },
+    {
+     "label": {
+      "en": "Design a level",
+      "ar": "صمم مرحلة"
+     },
+     "prompt": {
+      "en": "Design a level from this goal: layout, the new idea it teaches, enemies and a secret.",
+      "ar": "صمم مرحلة من هذا الهدف: المخطط، والفكرة الجديدة التي تعلّمها، والأعداء، وسر مخفي."
+     }
+    }
    ]
   },
   {
@@ -16158,6 +19109,106 @@
     "members",
     "volunteers",
     "donations"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Members",
+      "ar": "الأعضاء"
+     },
+     "kind": "member",
+     "agg": "count",
+     "field": null,
+     "where": []
+    },
+    {
+     "label": {
+      "en": "Volunteer hours",
+      "ar": "ساعات التطوع"
+     },
+     "kind": "volunteer",
+     "agg": "sum",
+     "field": "hours",
+     "where": []
+    },
+    {
+     "label": {
+      "en": "Donations this month",
+      "ar": "تبرعات هذا الشهر"
+     },
+     "kind": "donation",
+     "agg": "sum",
+     "field": "amount",
+     "where": [
+      {
+       "field": "date",
+       "period": "month"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "People helped",
+      "ar": "المستفيدون"
+     },
+     "kind": "activity",
+     "agg": "sum",
+     "field": "beneficiaries",
+     "where": []
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Memberships to renew this month",
+      "ar": "عضويات للتجديد هذا الشهر"
+     },
+     "kind": "member",
+     "where": [
+      {
+       "field": "renews",
+       "within": 30
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Receipts not sent",
+      "ar": "إيصالات لم تُرسل"
+     },
+     "kind": "donation",
+     "where": [
+      {
+       "field": "receipt",
+       "in": [
+        false
+       ]
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Write an activity report",
+      "ar": "اكتب تقرير نشاط"
+     },
+     "prompt": {
+      "en": "Write a short report on this activity for the board and the community: what we did, who helped, and its impact.",
+      "ar": "اكتب تقريرًا قصيرًا عن هذا النشاط للمجلس والمجتمع: ما قمنا به، ومن ساعد، وأثره."
+     }
+    },
+    {
+     "label": {
+      "en": "Thank a donor",
+      "ar": "اشكر متبرعًا"
+     },
+     "prompt": {
+      "en": "Write a warm thank you message to a donor that says what their gift made possible.",
+      "ar": "اكتب رسالة شكر دافئة لمتبرع توضح ما أتاحه عطاؤه."
+     }
+    }
    ]
   },
   {
@@ -16601,6 +19652,85 @@
     "training",
     "matches",
     "fees"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Players",
+      "ar": "اللاعبون"
+     },
+     "kind": "player",
+     "agg": "count",
+     "field": null,
+     "where": []
+    },
+    {
+     "label": {
+      "en": "Wins",
+      "ar": "الانتصارات"
+     },
+     "kind": "match",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "result",
+       "in": [
+        "win"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Goals scored",
+      "ar": "الأهداف المسجلة"
+     },
+     "kind": "match",
+     "agg": "sum",
+     "field": "for",
+     "where": []
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Fees not paid",
+      "ar": "رسوم غير مدفوعة"
+     },
+     "kind": "player",
+     "where": [
+      {
+       "field": "paid",
+       "in": [
+        false
+       ]
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Plan a training session",
+      "ar": "خطط لحصة تدريب"
+     },
+     "prompt": {
+      "en": "Plan a 90 minute training session for this focus: warm up, drills with timings, a game and a cool down.",
+      "ar": "خطط لحصة تدريب 90 دقيقة لهذا الهدف: إحماء، وتمارين بأوقاتها، ومباراة مصغرة، وتهدئة."
+     }
+    },
+    {
+     "label": {
+      "en": "Write a match report",
+      "ar": "اكتب تقرير مباراة"
+     },
+     "prompt": {
+      "en": "Write a short match report for parents and fans from the result and my notes.",
+      "ar": "اكتب تقريرًا قصيرًا عن المباراة لأولياء الأمور والجمهور من النتيجة وملاحظاتي."
+     }
+    }
    ]
   },
   {
@@ -17146,6 +20276,100 @@
     "guests",
     "programme",
     "budget"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Coming",
+      "ar": "سيحضر"
+     },
+     "kind": "guest",
+     "agg": "sum",
+     "field": "party",
+     "where": [
+      {
+       "field": "rsvp",
+       "in": [
+        "coming"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Spent",
+      "ar": "المصروف"
+     },
+     "kind": "cost",
+     "agg": "sum",
+     "field": "actual",
+     "where": []
+    },
+    {
+     "label": {
+      "en": "Planned budget",
+      "ar": "الميزانية المخططة"
+     },
+     "kind": "cost",
+     "agg": "sum",
+     "field": "planned",
+     "where": []
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Guests not invited yet",
+      "ar": "ضيوف لم يُدعوا بعد"
+     },
+     "kind": "guest",
+     "where": [
+      {
+       "field": "rsvp",
+       "in": [
+        "notInvited"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Suppliers not booked",
+      "ar": "موردون لم يُحجزوا"
+     },
+     "kind": "supplier",
+     "where": [
+      {
+       "field": "booked",
+       "in": [
+        false
+       ]
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Write the invitation",
+      "ar": "اكتب الدعوة"
+     },
+     "prompt": {
+      "en": "Write an elegant invitation for this event in Arabic and English, with the date, time and venue.",
+      "ar": "اكتب دعوة أنيقة لهذه المناسبة بالعربية والإنجليزية، مع التاريخ والوقت والمكان."
+     }
+    },
+    {
+     "label": {
+      "en": "Build a programme",
+      "ar": "أنشئ برنامجًا"
+     },
+     "prompt": {
+      "en": "Build an hour by hour programme for this event from arrival to farewell.",
+      "ar": "أنشئ برنامجًا للمناسبة ساعة بساعة من الاستقبال إلى التوديع."
+     }
+    }
    ]
   },
   {
@@ -17575,6 +20799,81 @@
     "budget",
     "subscriptions",
     "goals"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Spent this month",
+      "ar": "المصروف هذا الشهر"
+     },
+     "kind": "expense",
+     "agg": "sum",
+     "field": "amount",
+     "where": [
+      {
+       "field": "date",
+       "period": "month"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Monthly budget",
+      "ar": "الميزانية الشهرية"
+     },
+     "kind": "budget",
+     "agg": "sum",
+     "field": "monthly",
+     "where": []
+    },
+    {
+     "label": {
+      "en": "Saved so far",
+      "ar": "المدخر حتى الآن"
+     },
+     "kind": "goal",
+     "agg": "sum",
+     "field": "saved",
+     "where": []
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Subscriptions renewing this week",
+      "ar": "اشتراكات تتجدد هذا الأسبوع"
+     },
+     "kind": "subscription",
+     "where": [
+      {
+       "field": "renews",
+       "within": 7
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Explain my spending",
+      "ar": "اشرح مصاريفي"
+     },
+     "prompt": {
+      "en": "Explain my spending this month by category against my budget, and suggest two places to save.",
+      "ar": "اشرح مصاريفي هذا الشهر حسب الفئة مقارنة بالميزانية، واقترح مكانين للتوفير."
+     }
+    },
+    {
+     "label": {
+      "en": "Plan a savings goal",
+      "ar": "خطط لهدف ادخار"
+     },
+     "prompt": {
+      "en": "Plan how much to save each month to reach this goal on time.",
+      "ar": "خطط كم أدخر كل شهر لأصل لهذا الهدف في موعده."
+     }
+    }
    ]
   },
   {
@@ -18066,6 +21365,88 @@
     "habits",
     "workouts",
     "reminders"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Habits kept this week",
+      "ar": "عادات التزمت بها هذا الأسبوع"
+     },
+     "kind": "habit",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "kept",
+       "in": [
+        true
+       ]
+      },
+      {
+       "field": "date",
+       "period": "week"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Exercise minutes this week",
+      "ar": "دقائق الرياضة هذا الأسبوع"
+     },
+     "kind": "workout",
+     "agg": "sum",
+     "field": "minutes",
+     "where": [
+      {
+       "field": "date",
+       "period": "week"
+      }
+     ]
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Reminders today",
+      "ar": "تذكيرات اليوم"
+     },
+     "kind": "reminder",
+     "where": [
+      {
+       "field": "done",
+       "in": [
+        false
+       ]
+      },
+      {
+       "field": "date",
+       "within": 0
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Plan a workout week",
+      "ar": "خطط لأسبوع تمارين"
+     },
+     "prompt": {
+      "en": "Plan a gentle week of workouts for a beginner, thirty minutes a day, with rest days.",
+      "ar": "خطط لأسبوع تمارين خفيف لمبتدئ، ثلاثين دقيقة يوميًا، مع أيام راحة."
+     }
+    },
+    {
+     "label": {
+      "en": "Look at my habits",
+      "ar": "انظر إلى عاداتي"
+     },
+     "prompt": {
+      "en": "Look at my habits this month: which ones I keep, which slip, and one small change to try.",
+      "ar": "انظر إلى عاداتي هذا الشهر: أيها ألتزم بها، وأيها تفلت، وتغييرًا صغيرًا أجربه."
+     }
+    }
    ]
   },
   {
@@ -18550,6 +21931,80 @@
     "chores",
     "meals",
     "dates"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "To buy",
+      "ar": "للشراء"
+     },
+     "kind": "shopping",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "bought",
+       "in": [
+        false
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Chores left",
+      "ar": "مهام متبقية"
+     },
+     "kind": "chore",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "done",
+       "in": [
+        false
+       ]
+      }
+     ]
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Coming up this week",
+      "ar": "قادم هذا الأسبوع"
+     },
+     "kind": "date",
+     "where": [
+      {
+       "field": "date",
+       "within": 7
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Plan a week of meals",
+      "ar": "خطط لوجبات أسبوع"
+     },
+     "prompt": {
+      "en": "Plan a week of family lunches and dinners with a shopping list.",
+      "ar": "خطط لغداء وعشاء العائلة لأسبوع مع قائمة مقاضي."
+     }
+    },
+    {
+     "label": {
+      "en": "Share out the chores",
+      "ar": "وزّع المهام المنزلية"
+     },
+     "prompt": {
+      "en": "Share the chores fairly between the family by age and day.",
+      "ar": "وزّع المهام المنزلية بعدل بين أفراد العائلة حسب العمر واليوم."
+     }
+    }
    ]
   },
   {
@@ -18972,6 +22427,88 @@
     "bookings",
     "documents",
     "packing"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Trips booked",
+      "ar": "رحلات محجوزة"
+     },
+     "kind": "trip",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "booked"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Booked so far",
+      "ar": "المحجوز حتى الآن"
+     },
+     "kind": "booking",
+     "agg": "sum",
+     "field": "cost",
+     "where": []
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Documents expiring within six months",
+      "ar": "وثائق تنتهي خلال ستة أشهر"
+     },
+     "kind": "document",
+     "where": [
+      {
+       "field": "expires",
+       "within": 180
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Left to pack",
+      "ar": "متبقٍ للحقيبة"
+     },
+     "kind": "packing",
+     "where": [
+      {
+       "field": "packed",
+       "in": [
+        false
+       ]
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Plan my itinerary",
+      "ar": "خطط لبرنامج رحلتي"
+     },
+     "prompt": {
+      "en": "Plan a day by day itinerary for this trip with a mix of sights, food and rest.",
+      "ar": "خطط لبرنامج يومي لهذه الرحلة يجمع المعالم والأكل والراحة."
+     }
+    },
+    {
+     "label": {
+      "en": "Make a packing list",
+      "ar": "اكتب قائمة أغراض"
+     },
+     "prompt": {
+      "en": "Make a packing list for this trip from the destination, season and length.",
+      "ar": "اكتب قائمة أغراض لهذه الرحلة حسب الوجهة والموسم والمدة."
+     }
+    }
    ]
   },
   {
@@ -19330,6 +22867,95 @@
     "applications",
     "interviews",
     "cvs"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Applications sent",
+      "ar": "طلبات مرسلة"
+     },
+     "kind": "application",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "stage",
+       "notIn": [
+        "saved"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Interviews coming",
+      "ar": "مقابلات قادمة"
+     },
+     "kind": "interview",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "date",
+       "within": 14
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Offers",
+      "ar": "العروض"
+     },
+     "kind": "application",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "stage",
+       "in": [
+        "offer"
+       ]
+      }
+     ]
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Interviews this week",
+      "ar": "مقابلات هذا الأسبوع"
+     },
+     "kind": "interview",
+     "where": [
+      {
+       "field": "date",
+       "within": 7
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "Tailor my CV",
+      "ar": "كيّف سيرتي الذاتية"
+     },
+     "prompt": {
+      "en": "Tailor my CV to this job: what to move up, what to cut and the keywords to add.",
+      "ar": "كيّف سيرتي الذاتية لهذه الوظيفة: ماذا أقدّم، وماذا أحذف، والكلمات المفتاحية التي أضيفها."
+     }
+    },
+    {
+     "label": {
+      "en": "Practise interview answers",
+      "ar": "تدرّب على إجابات المقابلة"
+     },
+     "prompt": {
+      "en": "Ask me the five questions this interview is most likely to have, one at a time, and give feedback on my answers.",
+      "ar": "اسألني الأسئلة الخمسة الأرجح في هذه المقابلة، سؤالًا سؤالًا، وقيّم إجاباتي."
+     }
+    }
    ]
   },
   {
@@ -19581,6 +23207,83 @@
     "shelf",
     "finished",
     "quotes"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Books finished",
+      "ar": "كتب أنهيتها"
+     },
+     "kind": "book",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "finished"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Reading now",
+      "ar": "أقرأ الآن"
+     },
+     "kind": "book",
+     "agg": "count",
+     "field": null,
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "reading"
+       ]
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Pages read",
+      "ar": "صفحات مقروءة"
+     },
+     "kind": "book",
+     "agg": "sum",
+     "field": "pages",
+     "where": [
+      {
+       "field": "status",
+       "in": [
+        "finished"
+       ]
+      }
+     ]
+    }
+   ],
+   "alerts": [],
+   "prompts": [
+    {
+     "label": {
+      "en": "Suggest my next book",
+      "ar": "اقترح كتابي القادم"
+     },
+     "prompt": {
+      "en": "From the books I rated highly, suggest five to read next with a line on each.",
+      "ar": "من الكتب التي قيّمتها عاليًا، اقترح خمسة كتب أقرؤها بعدها مع سطر عن كل منها."
+     }
+    },
+    {
+     "label": {
+      "en": "Summarise my notes on a book",
+      "ar": "لخّص ملاحظاتي عن كتاب"
+     },
+     "prompt": {
+      "en": "Summarise my notes and quotes on this book into its main ideas.",
+      "ar": "لخّص ملاحظاتي واقتباساتي عن هذا الكتاب في أفكاره الرئيسية."
+     }
+    }
    ]
   },
   {
@@ -19960,6 +23663,97 @@
     "renewals",
     "maintenance",
     "costs"
+   ],
+   "screens": [],
+   "stats": [
+    {
+     "label": {
+      "en": "Spent this month",
+      "ar": "المصروف هذا الشهر"
+     },
+     "kind": "cost",
+     "agg": "sum",
+     "field": "amount",
+     "where": [
+      {
+       "field": "date",
+       "period": "month"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Maintenance spent",
+      "ar": "مصروف الصيانة"
+     },
+     "kind": "service",
+     "agg": "sum",
+     "field": "cost",
+     "where": []
+    }
+   ],
+   "alerts": [
+    {
+     "label": {
+      "en": "Renewals within a month",
+      "ar": "تجديدات خلال شهر"
+     },
+     "kind": "renewal",
+     "where": [
+      {
+       "field": "expires",
+       "within": 30
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Expired",
+      "ar": "منتهية"
+     },
+     "kind": "renewal",
+     "where": [
+      {
+       "field": "expires",
+       "overdue": true
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Service due",
+      "ar": "صيانة مستحقة"
+     },
+     "kind": "service",
+     "where": [
+      {
+       "field": "next",
+       "within": 14
+      }
+     ]
+    }
+   ],
+   "prompts": [
+    {
+     "label": {
+      "en": "When is my next service?",
+      "ar": "متى صيانتي القادمة؟"
+     },
+     "prompt": {
+      "en": "From my service history and odometer, what is due next and roughly what will it cost?",
+      "ar": "من سجل الصيانة وعداد المسافة، ما الصيانة القادمة وكم تكلفتها تقريبًا؟"
+     }
+    },
+    {
+     "label": {
+      "en": "Explain my running costs",
+      "ar": "اشرح تكاليف التشغيل"
+     },
+     "prompt": {
+      "en": "Explain what my car cost me this year by type, and how to spend less.",
+      "ar": "اشرح تكلفة سيارتي هذا العام حسب النوع، وكيف أخفضها."
+     }
+    }
    ]
   }
  ]

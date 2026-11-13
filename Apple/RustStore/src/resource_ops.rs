@@ -168,6 +168,22 @@ pub fn save_spreadsheet(path: &Path, id: &str, base: i64, expected: Value, metad
     tx.commit()?; Ok(result)
 }
 
+/// Replaces only `metadata.item` of a personal pack item (docs/PACKS.md), with
+/// the same complete metadata baseline and revision check as a spreadsheet, so
+/// fields the desktop keeps elsewhere in the metadata are never dropped.
+pub fn save_pack_item(path: &Path, id: &str, base: i64, expected: Value, metadata: Value) -> Result<Value> {
+    let item = metadata_key(&expected,&metadata,store::PACK_DATA_KEY)?.clone();
+    let mut connection = open_existing(path)?;
+    let tx = connection.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+    let kind: String = tx.query_row("SELECT kind FROM pages WHERE id=?1", [id], |r| r.get(0))?;
+    if !store::is_pack_kind(&kind) { bail!("invalid resource kind") }
+    check_metadata(&tx,id,base,&expected,&kind)?;
+    snapshot_before_metadata_edit(&tx,id)?;
+    store::set_page_meta(&tx,&crate::native_ctx(),id,store::PACK_DATA_KEY,item)?;
+    let result = snapshot(&tx,id)?;
+    tx.commit()?; Ok(result)
+}
+
 fn attachment_ids(c: &Connection, entries: &[(String,Value)]) -> Result<()> {
     for (_, value) in entries {
         if value.get("type").and_then(Value::as_str) != Some("galleryItem") { continue }
@@ -294,6 +310,29 @@ mod tests {
         let saved=invoke(json!({"operation":"save_stream","path":path,"page":"s","base":read["value"]["revision"],"expected_metadata":read["value"]["metadata"],"url":"https://example.test/video.m3u#part"}));
         assert_eq!(saved["ok"],true,"{saved}");
         assert_eq!(saved["value"]["metadata"]["stream"]["format"],"hls");
+        std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn pack_item_save_replaces_only_its_fields_and_rejects_other_kinds() {
+        let path=fixture();
+        let c=Connection::open(&path).unwrap();
+        let original=json!({"look":{"font":"serif"},"item":{"status":"new","total":170}});
+        c.execute("INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('o','Order 1042','shop.order',?1,1,100)",[original.to_string()]).unwrap();
+        c.execute("INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('s','Budget','spreadsheet','{}',1,100)",[]).unwrap();
+        drop(c);
+        let read=read_resource(&path,"o").unwrap();
+        let mut next=read["metadata"].clone();
+        next["item"]["status"]=json!("shipped");
+        let saved=save_pack_item(&path,"o",100,read["metadata"].clone(),next.clone()).unwrap();
+        assert_eq!(saved["metadata"]["item"]["status"],"shipped");
+        assert_eq!(saved["metadata"]["item"]["total"],170);
+        assert_eq!(saved["metadata"]["look"],json!({"font":"serif"}));
+        // A stale revision, another key changing, or a page that is not a pack item are all refused.
+        assert!(save_pack_item(&path,"o",100,read["metadata"].clone(),next.clone()).is_err());
+        let revision=saved["revision"].as_i64().unwrap();
+        let mut unrelated=saved["metadata"].clone(); unrelated["look"]=json!(1);
+        assert!(save_pack_item(&path,"o",revision,saved["metadata"].clone(),unrelated).is_err());
+        assert!(save_pack_item(&path,"s",100,json!({}),json!({"item":{}})).is_err());
         std::fs::remove_file(path).unwrap();
     }
     #[test]
