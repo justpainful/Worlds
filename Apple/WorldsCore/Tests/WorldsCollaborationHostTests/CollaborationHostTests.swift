@@ -200,3 +200,125 @@ extension CollaborationHostTests {
         catch CollaborationStorageError.denied { }
     }
 }
+
+/// One connection to a fake sync server with edit access: it answers the
+/// client's first sync with the page and acknowledges every update it gets.
+private actor EditablePageSocket: CollaborationSocket {
+    let page: Data
+    let level: String
+    let received: ReceivedUpdates
+    private var queue: [Data] = []
+    private var waiting: CheckedContinuation<Data?, Error>?
+    private var closed = false
+    init(page: Data, level: String, received: ReceivedUpdates) { self.page = page; self.level = level; self.received = received }
+    func send(_ data: Data) async throws {
+        switch try WorldsSyncWire.decode(data) {
+        case let .sync(channel, kind, _) where kind == 0:
+            if channel == 0 { try deliver(WorldsSyncWire.encode(.authState(level: level, userID: "editor"))) }
+            try deliver(WorldsSyncWire.encode(.sync(channel: channel, kind: 0, payload: Data([0]))))
+            try deliver(WorldsSyncWire.encode(.sync(channel: channel, kind: 1, payload: channel == 0 ? page : Data([0, 0]))))
+        case let .update(batchID, channel, update):
+            if channel == 0 { await received.add(update) }
+            try deliver(WorldsSyncWire.encode(.acknowledgement(batchID: batchID, status: 0, reason: "")))
+        default: break
+        }
+    }
+    private func deliver(_ bytes: Data) throws {
+        if let waiting { self.waiting = nil; waiting.resume(returning: bytes) } else { queue.append(bytes) }
+    }
+    func receive() async throws -> Data? {
+        if !queue.isEmpty { return queue.removeFirst() }
+        if closed { throw CancellationError() }
+        return try await withCheckedThrowingContinuation { waiting = $0 }
+    }
+    func close() async {
+        closed = true
+        if let waiting { self.waiting = nil; waiting.resume(throwing: CancellationError()) }
+    }
+    func closeCode() async -> Int { 0 }
+}
+
+private actor ReceivedUpdates {
+    var updates: [Data] = []
+    var connections = 0
+    func add(_ update: Data) { updates.append(update) }
+    func connected() { connections += 1 }
+}
+
+extension CollaborationHostTests {
+    private func waitForReading(_ session: CollaborationSession) async throws -> SharedPageReading {
+        for _ in 0..<150 {
+            if let reading = try? await session.readOnlySnapshot() { return reading }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        throw CollaborationError.notStarted
+    }
+
+    func testLiveSessionSendsPackFieldChangesAndEmptiesItsOutbox() async throws {
+        let trusted = try SyncEndpointProposal(origin: URL(string: "https://example.invalid")!, accountID: "editor", workspaceID: "fixture-workspace").approve()
+        let received = ReceivedUpdates()
+        let page = Self.sharedOrderPage
+        let live = try await CollaborationHost.makeLiveSession(pageID: "fixture-page", workspaceID: "fixture-workspace", expectedUserID: "editor",
+            serverURL: URL(string: "https://example.invalid")!, trustedOrigin: trusted, checkedIdentity: IdentityFixture(.edit),
+            socketFactory: { _, _ in
+                await received.connected()
+                return EditablePageSocket(page: page, level: "edit", received: received)
+            })
+        let run = Task { try await live.session.run() }
+        _ = try await waitForReading(live.session)
+        let request = try JSONSerialization.data(withJSONObject: ["set": ["status": "paid", "total": 1200], "remove": ["missing"]])
+        try await live.session.setPackFields(request: request)
+        // The change shows at once and stays queued until the server acknowledges it.
+        var pending = await live.outbox.pendingCount()
+        for _ in 0..<150 where pending > 0 {
+            try await Task.sleep(for: .milliseconds(20))
+            pending = await live.outbox.pendingCount()
+        }
+        XCTAssertEqual(pending, 0)
+        let reading = try await waitForReading(live.session)
+        let fields = try XCTUnwrap(try JSONSerialization.jsonObject(with: reading.packFields) as? [String: Any])
+        XCTAssertEqual((fields["fields"] as? [String: Any])?["status"] as? String, "paid")
+        XCTAssertEqual(fields["kind"] as? String, "shop.order")
+        // What reached the server carries the change.
+        let server = try NativeCRDTDocument()
+        try server.apply(page)
+        for update in await received.updates { try server.apply(update) }
+        let onServer = try XCTUnwrap(try JSONSerialization.jsonObject(with: server.packFields()) as? [String: Any])
+        XCTAssertEqual((onServer["fields"] as? [String: Any])?["total"] as? Double, 1200)
+        let connections = await received.connections
+        XCTAssertGreaterThanOrEqual(connections, 2, "A local change reconnects so the handshake sends it")
+        await live.session.stop()
+        try await run.value
+    }
+
+    func testLiveSessionRefusesViewersAndBadRequests() async throws {
+        let trusted = try SyncEndpointProposal(origin: URL(string: "https://example.invalid")!, accountID: "editor", workspaceID: "fixture-workspace").approve()
+        do {
+            _ = try await CollaborationHost.makeLiveSession(pageID: "fixture-page", workspaceID: "fixture-workspace", expectedUserID: "editor",
+                serverURL: URL(string: "https://example.invalid")!, trustedOrigin: trusted, checkedIdentity: IdentityFixture(.view))
+            XCTFail("A viewer must not get a session that can write")
+        } catch CollaborationHostError.accessDenied { }
+        do {
+            _ = try await CollaborationHost.makeLiveSession(pageID: "fixture-page", workspaceID: "fixture-workspace", expectedUserID: "editor",
+                serverURL: URL(string: "https://evil.invalid")!, trustedOrigin: trusted, checkedIdentity: IdentityFixture(.edit))
+            XCTFail("Untrusted endpoint was accepted")
+        } catch CollaborationHostError.untrustedEndpoint { }
+        // The service said edit, but the server reports view for this connection.
+        let received = ReceivedUpdates()
+        let page = Self.sharedOrderPage
+        let live = try await CollaborationHost.makeLiveSession(pageID: "fixture-page", workspaceID: "fixture-workspace", expectedUserID: "editor",
+            serverURL: URL(string: "https://example.invalid")!, trustedOrigin: trusted, checkedIdentity: IdentityFixture(.edit),
+            socketFactory: { _, _ in EditablePageSocket(page: page, level: "view", received: received) })
+        let run = Task { try await live.session.run() }
+        _ = try await waitForReading(live.session)
+        let request = try JSONSerialization.data(withJSONObject: ["set": ["status": "paid"]])
+        do { try await live.session.setPackFields(request: request); XCTFail("View access must not write") }
+        catch CollaborationError.accessRevoked { }
+        let pending = await live.outbox.pendingCount()
+        XCTAssertEqual(pending, 0)
+        await live.session.stop()
+        try await run.value
+        // Malformed requests never reach the outbox.
+        XCTAssertThrowsError(try NativeCRDTDocument.preparePackFields(base: Self.sharedOrderPage, request: Data("{}".utf8)))
+    }
+}

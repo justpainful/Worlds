@@ -779,3 +779,10 @@
 "Your access to this page was removed." = "Your access to this page was removed.";
 "The page could not be opened." = "The page could not be opened.";
 "This block is not shown on this device yet." = "This block is not shown on this device yet.";
+"Leave" = "Leave";
+"Stay" = "Stay";
+"Edit" = "Edit";
+"Sending your change" = "Sending your change";
+"Leave without sending your change?" = "Leave without sending your change?";
+"The server has not received it yet. It is sent when the page reconnects." = "The server has not received it yet. It is sent when the page reconnects.";
+"This change could not be saved. Check that the page is connected and you can edit it." = "This change could not be saved. Check that the page is connected and you can edit it.";

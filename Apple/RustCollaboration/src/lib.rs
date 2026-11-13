@@ -153,6 +153,19 @@ pub unsafe extern "C" fn worlds_doc_read_projection(doc: *const CollaborationDoc
 }
 
 /// # Safety
+/// Input ranges and the output pointer must remain valid for this call.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn worlds_prepare_pack_fields(base: *const u8, base_len: usize, request: *const u8, request_len: usize, out: *mut WorldsBuffer) -> i32 {
+    boundary(|| {
+        if out.is_null() { return Err(1); }
+        let base = unsafe { ffi_bytes(base, base_len)? };
+        let request = unsafe { ffi_bytes(request, request_len)? };
+        let update = fields::prepare_pack_fields(base, request).map_err(|_| 1)?;
+        write_result(out, update)
+    })
+}
+
+/// # Safety
 /// Document and output pointers must remain valid for this call.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn worlds_doc_pack_fields(doc: *const CollaborationDoc, out: *mut WorldsBuffer) -> i32 {
@@ -411,6 +424,7 @@ pub unsafe extern "C" fn worlds_store_rejected_list(handle: *const Collaboration
 
 pub mod editor;
 pub mod read_projection;
+pub mod fields;
 pub mod rejected_comments;
 
 /// # Safety

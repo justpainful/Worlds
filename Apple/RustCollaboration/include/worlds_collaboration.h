@@ -24,6 +24,9 @@ int32_t worlds_doc_plain_projection(const WorldsDoc *doc, WorldsBuffer *out);
 int32_t worlds_doc_read_projection(const WorldsDoc *doc, WorldsBuffer *out);
 /* A shared pack item's kind and fields as JSON: {"kind": ..., "fields": {...}}. */
 int32_t worlds_doc_pack_fields(const WorldsDoc *doc, WorldsBuffer *out);
+/* Prepare an update that sets and removes pack fields, from a full-state base and
+   {"set": {...}, "remove": [...]}. The caller checks access and persists it first. */
+int32_t worlds_prepare_pack_fields(const uint8_t *base, size_t base_len, const uint8_t *request, size_t request_len, WorldsBuffer *out);
 void worlds_buffer_free(WorldsBuffer buffer);
 typedef struct WorldsStore WorldsStore;
 /* Store status: 0 success, 1 invalid input, 2 failure, 3 denied, 4 unsupported schema.

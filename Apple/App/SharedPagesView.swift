@@ -135,7 +135,7 @@ struct SharedPagesListView: View {
                     ForEach(pages) { page in
                         if let approval {
                             NavigationLink {
-                                SharedPageView(coordinator: coordinator, accountID: accountID, workspaceID: workspace.id, pageID: page.id, approval: approval)
+                                SharedPageView(coordinator: coordinator, accountID: accountID, workspaceID: workspace.id, pageID: page.id, level: page.level, approval: approval)
                             } label: { pageRow(page) }
                             .accessibilityIdentifier("shared-page-\(page.id)")
                         } else {
@@ -217,14 +217,21 @@ struct SharedPageView: View {
     let accountID: String
     let workspaceID: String
     let pageID: String
+    /// The level the identity service listed; edit or full opens a session that can write.
+    let level: IdentityPageLevel
     let approval: SharedSyncApprovals.Approval
     @StateObject private var model = SharedPageModel()
+    @State private var editing = false
+    @State private var confirmLeave = false
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 statusRow
-                if let card = model.fields { SharedPackFieldsCard(card: card) }
+                if let card = model.fields {
+                    SharedPackFieldsCard(card: card, onEdit: model.canEdit ? { editing = true } : nil)
+                }
                 if model.phase == .reading && model.blocks.isEmpty {
                     Text("This page is empty.").foregroundStyle(.secondary)
                 }
@@ -235,10 +242,31 @@ struct SharedPageView: View {
             .frame(maxWidth: .infinity)
         }
         .navigationTitle(Text("Page ID: \(pageID)"))
-        .task {
-            await model.open(coordinator: coordinator, accountID: accountID, workspaceID: workspaceID, pageID: pageID, approval: approval)
+        // A change the server has not acknowledged lives only in this page's
+        // session: leaving would drop it, so ask first.
+        .navigationBarBackButtonHidden(model.unsent > 0)
+        .toolbar {
+            if model.unsent > 0 {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button { confirmLeave = true } label: { Label("Back", systemImage: "chevron.backward") }
+                }
+            }
         }
-        .onDisappear { model.close() }
+        .confirmationDialog("Leave without sending your change?", isPresented: $confirmLeave, titleVisibility: .visible) {
+            Button("Leave", role: .destructive) { dismiss() }
+            Button("Stay", role: .cancel) {}
+        } message: {
+            Text("The server has not received it yet. It is sent when the page reconnects.")
+        }
+        .sheet(isPresented: $editing) {
+            if let card = model.fields {
+                SharedPackFieldsEditor(card: card) { request in await model.saveFields(request) }
+            }
+        }
+        .task {
+            await model.open(coordinator: coordinator, accountID: accountID, workspaceID: workspaceID, pageID: pageID, level: level, approval: approval)
+        }
+        .onDisappear { if !editing { model.close() } }
         #if os(macOS)
         .frame(minWidth: 520, minHeight: 560)
         #endif
@@ -246,9 +274,16 @@ struct SharedPageView: View {
 
     @ViewBuilder private var statusRow: some View {
         HStack(spacing: 8) {
-            Label("Read only", systemImage: "eye").font(.caption.weight(.semibold))
-                .padding(.horizontal, 10).padding(.vertical, 5)
-                .background(.thinMaterial, in: Capsule())
+            Group {
+                if model.canEdit {
+                    Label("Can edit", systemImage: "pencil")
+                } else {
+                    Label("Read only", systemImage: "eye")
+                }
+            }
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 10).padding(.vertical, 5)
+            .background(.thinMaterial, in: Capsule())
             switch model.phase {
             case .opening:
                 ProgressView().controlSize(.small)
@@ -260,6 +295,9 @@ struct SharedPageView: View {
             case .revoked: Label("Your access to this page was removed.", systemImage: "lock").font(.caption).foregroundStyle(.red)
             case .failed: Label("The page could not be opened.", systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.red)
             }
+            if model.unsent > 0 {
+                Label("Sending your change", systemImage: "arrow.up.circle").font(.caption).foregroundStyle(.secondary)
+            }
         }
         .accessibilityIdentifier("shared-page-status")
     }
@@ -267,19 +305,36 @@ struct SharedPageView: View {
 
 @MainActor final class SharedPageModel: ObservableObject {
     enum Phase: Equatable { case opening, reconnecting, reading, revoked, failed }
+    enum SaveOutcome { case saved, waiting, failed }
     @Published private(set) var phase: Phase = .opening
     @Published private(set) var blocks: [SharedBlock] = []
     @Published private(set) var fields: SharedPackFieldsCard.Content?
+    @Published private(set) var accessLevel: String?
+    @Published private(set) var unsent = 0
     private var session: CollaborationSession?
+    private var outbox: EphemeralSessionStore?
     private var runTask: Task<Void, Never>?
     private var watchTask: Task<Void, Never>?
+    private var outboxTask: Task<Void, Never>?
 
-    func open(coordinator: IdentitySessionCoordinator, accountID: String, workspaceID: String, pageID: String, approval: SharedSyncApprovals.Approval) async {
+    /// Editing needs a session that can write and the server's own word for this connection.
+    var canEdit: Bool { outbox != nil && phase == .reading && (accessLevel == "edit" || accessLevel == "full") }
+
+    func open(coordinator: IdentitySessionCoordinator, accountID: String, workspaceID: String, pageID: String,
+              level: IdentityPageLevel, approval: SharedSyncApprovals.Approval) async {
         guard session == nil else { return }
         phase = .opening
         do {
-            let session = try await CollaborationHost.makeReadOnlySession(pageID: pageID, workspaceID: workspaceID, expectedUserID: accountID,
-                                                                           serverURL: approval.origin, trustedOrigin: approval.trusted, identity: coordinator)
+            let session: CollaborationSession
+            if level == .edit || level == .full {
+                let live = try await CollaborationHost.makeLiveSession(pageID: pageID, workspaceID: workspaceID, expectedUserID: accountID,
+                                                                       serverURL: approval.origin, trustedOrigin: approval.trusted, identity: coordinator)
+                session = live.session
+                outbox = live.outbox
+            } else {
+                session = try await CollaborationHost.makeReadOnlySession(pageID: pageID, workspaceID: workspaceID, expectedUserID: accountID,
+                                                                          serverURL: approval.origin, trustedOrigin: approval.trusted, identity: coordinator)
+            }
             self.session = session
             runTask = Task { [weak self] in
                 do { try await session.run() }
@@ -289,6 +344,15 @@ struct SharedPageView: View {
             watchTask = Task { [weak self] in
                 let changes = await session.editorChanges()
                 for await _ in changes { await self?.refresh() }
+            }
+            if let outbox {
+                outboxTask = Task { [weak self] in
+                    while !Task.isCancelled {
+                        let count = await outbox.pendingCount()
+                        if self?.unsent != count { self?.unsent = count }
+                        try? await Task.sleep(for: .milliseconds(500))
+                    }
+                }
             }
         } catch CollaborationHostError.accessDenied {
             phase = .revoked
@@ -302,6 +366,7 @@ struct SharedPageView: View {
         if let reading = try? await session.readOnlySnapshot() {
             blocks = SharedBlock.flatten(reading.blocks)
             fields = SharedPackFieldsCard.Content(reading.packFields)
+            accessLevel = reading.accessLevel
             phase = .reading
             return
         }
@@ -312,10 +377,23 @@ struct SharedPageView: View {
         }
     }
 
+    /// Writes the changed fields, then waits for the server to acknowledge them.
+    func saveFields(_ request: Data) async -> SaveOutcome {
+        guard let session, let outbox, canEdit else { return .failed }
+        do { try await session.setPackFields(request: request) } catch { return .failed }
+        for _ in 0..<60 {
+            let count = await outbox.pendingCount()
+            unsent = count
+            if count == 0 { return .saved }
+            try? await Task.sleep(for: .milliseconds(250))
+        }
+        return .waiting
+    }
+
     func close() {
-        runTask?.cancel(); watchTask?.cancel()
+        runTask?.cancel(); watchTask?.cancel(); outboxTask?.cancel()
         if let session { Task { await session.stop() } }
-        session = nil
+        session = nil; outbox = nil; unsent = 0
     }
 }
 
@@ -326,13 +404,19 @@ struct SharedPageView: View {
 struct SharedPackFieldsCard: View {
     struct Content: Equatable {
         let title: String
+        let kind: PackKind
         let rows: [Row]
+        /// The fields as the document holds them, for the editor.
+        let values: Data
         struct Row: Equatable, Identifiable { let id: String; let label: String; let value: String }
         init?(_ json: Data) {
             guard let root = try? JSONSerialization.jsonObject(with: json) as? [String: Any],
                   let kind = root["kind"] as? String, let data = root["fields"] as? [String: Any],
-                  let found = PackCatalog.shipped?.kind(of: kind) else { return nil }
+                  let found = PackCatalog.shipped?.kind(of: kind),
+                  let values = try? JSONSerialization.data(withJSONObject: data) else { return nil }
             title = found.kind.label.text + " \u{00B7} " + found.pack.label.text
+            self.kind = found.kind
+            self.values = values
             // Links point at desktop items this device does not list, so they show nothing.
             rows = found.kind.fields.compactMap { field in
                 packFieldValue(field, in: data, titleOf: { _ in nil }).map { Row(id: field.id, label: field.label.text, value: $0) }
@@ -340,10 +424,19 @@ struct SharedPackFieldsCard: View {
         }
     }
     let card: Content
+    var onEdit: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(card.title).font(.subheadline.weight(.semibold)).foregroundStyle(Color.accentColor)
+            HStack {
+                Text(card.title).font(.subheadline.weight(.semibold)).foregroundStyle(Color.accentColor)
+                Spacer()
+                if let onEdit {
+                    Button(action: onEdit) { Label("Edit", systemImage: "square.and.pencil") }
+                        .font(.subheadline)
+                        .accessibilityIdentifier("shared-pack-fields-edit")
+                }
+            }
             if card.rows.isEmpty {
                 Text("No details yet").font(.callout).foregroundStyle(.secondary)
             } else {
@@ -362,6 +455,163 @@ struct SharedPackFieldsCard: View {
             }
         }
         .accessibilityIdentifier("shared-pack-fields")
+    }
+}
+
+/// Edits a shared pack item's fields, built from its definition like the
+/// local item editor. Links are left out: they point at desktop items this
+/// device does not list. Only fields that changed are sent, so they merge
+/// with other people's changes field by field.
+struct SharedPackFieldsEditor: View {
+    let card: SharedPackFieldsCard.Content
+    let save: (Data) async -> SharedPageModel.SaveOutcome
+    @Environment(\.dismiss) private var dismiss
+    @State private var texts: [String: String] = [:]
+    @State private var ticks: [String: Bool] = [:]
+    @State private var originalJSON = Data()
+    @State private var saving = false
+    @State private var problem: LocalizedStringKey?
+    @State private var loaded = false
+
+    private var fields: [PackField] { card.kind.fields.filter { $0.type != "link" } }
+    private var original: [String: Any] { (try? JSONSerialization.jsonObject(with: originalJSON) as? [String: Any]) ?? [:] }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                ForEach(fields, id: \.id) { field in row(field) }
+                if let problem { Text(problem).foregroundStyle(.red) }
+            }
+            .navigationTitle(card.kind.label.text)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.disabled(saving) }
+                ToolbarItem(placement: .confirmationAction) {
+                    if saving {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Button("Save") { Task { await submit() } }
+                            .disabled(!valid)
+                            .accessibilityIdentifier("shared-pack-fields-save")
+                    }
+                }
+            }
+        }
+        .interactiveDismissDisabled(saving)
+        #if os(macOS)
+        .frame(minWidth: 480, idealWidth: 560, minHeight: 420, idealHeight: 620)
+        #endif
+        .task {
+            guard !loaded else { return }
+            loaded = true
+            originalJSON = card.values
+            let values = original
+            for field in fields {
+                if field.type == "checkbox" { ticks[field.id] = (values[field.id] as? Bool) ?? false }
+                else { texts[field.id] = Self.text(values[field.id]) }
+            }
+        }
+    }
+
+    @ViewBuilder private func row(_ field: PackField) -> some View {
+        switch field.type {
+        case "checkbox":
+            Toggle(field.label.text, isOn: Binding(get: { ticks[field.id] ?? false }, set: { ticks[field.id] = $0 }))
+        case "choice", "stage":
+            Picker(field.label.text, selection: Binding(get: { texts[field.id] ?? "" }, set: { texts[field.id] = $0 })) {
+                if field.type == "choice" { Text("None").tag("") }
+                ForEach(field.options ?? [], id: \.id) { o in Text(o.label.text).tag(o.id) }
+            }
+        case "longText":
+            VStack(alignment: .leading) {
+                Text(field.label.text).font(.caption).foregroundStyle(.secondary)
+                TextEditor(text: Binding(get: { texts[field.id] ?? "" }, set: { texts[field.id] = $0 })).frame(minHeight: 80)
+            }
+        default:
+            TextField(placeholder(field), text: Binding(get: { texts[field.id] ?? "" }, set: { texts[field.id] = $0 }))
+                #if os(iOS)
+                .keyboardType(field.type == "number" || field.type == "money" ? .decimalPad : .default)
+                #endif
+        }
+    }
+
+    private func placeholder(_ field: PackField) -> String {
+        switch field.type {
+        case "money": return "\(field.label.text) (\(field.currency ?? "SAR"))"
+        case "date": return "\(field.label.text) (YYYY-MM-DD)"
+        default: return field.label.text
+        }
+    }
+
+    static func text(_ value: Any?) -> String {
+        if let s = value as? String { return s }
+        if let n = value as? NSNumber {
+            if CFGetTypeID(n) == CFBooleanGetTypeID() { return n.boolValue ? "true" : "false" }
+            let d = n.doubleValue
+            return d == d.rounded() && abs(d) < 1e15 ? String(Int64(d)) : String(d)
+        }
+        return ""
+    }
+
+    /// A typed number, with Arabic digits and a decimal comma accepted.
+    static func number(_ text: String) -> Double? {
+        let western = String(text.trimmingCharacters(in: .whitespaces).map { ch -> Character in
+            if let v = ch.wholeNumberValue, !ch.isASCII { return Character(String(v)) }
+            return ch == "\u{066B}" || ch == "," ? "." : ch
+        })
+        return Double(western)
+    }
+
+    private var valid: Bool {
+        fields.allSatisfy { f in
+            let t = (texts[f.id] ?? "").trimmingCharacters(in: .whitespaces)
+            switch f.type {
+            case "number", "money": return t.isEmpty || Self.number(t) != nil
+            case "date": return t.isEmpty || t.range(of: #"^\d{4}-\d{2}-\d{2}$"#, options: .regularExpression) != nil
+            default: return true
+            }
+        }
+    }
+
+    /// `{"set": {...}, "remove": [...]}` with only the fields that changed.
+    private func request() -> Data? {
+        let values = original
+        var set: [String: Any] = [:]
+        var remove: [String] = []
+        for f in fields {
+            if f.type == "checkbox" {
+                let now = ticks[f.id] ?? false
+                if now != ((values[f.id] as? Bool) ?? false) { set[f.id] = now }
+                continue
+            }
+            let t = (texts[f.id] ?? "").trimmingCharacters(in: .whitespaces)
+            if t == Self.text(values[f.id]).trimmingCharacters(in: .whitespaces) { continue }
+            if t.isEmpty {
+                if values[f.id] != nil { remove.append(f.id) }
+                continue
+            }
+            if f.type == "number" || f.type == "money", let n = Self.number(t) {
+                set[f.id] = n == n.rounded() && abs(n) < 1e15 ? NSNumber(value: Int64(n)) : NSNumber(value: n)
+            } else {
+                set[f.id] = t
+            }
+        }
+        if set.isEmpty && remove.isEmpty { return nil }
+        var body: [String: Any] = [:]
+        if !set.isEmpty { body["set"] = set }
+        if !remove.isEmpty { body["remove"] = remove }
+        return try? JSONSerialization.data(withJSONObject: body)
+    }
+
+    private func submit() async {
+        guard valid else { problem = "Check the numbers and dates."; return }
+        guard let request = request() else { dismiss(); return }
+        saving = true; problem = nil
+        let outcome = await save(request)
+        saving = false
+        switch outcome {
+        case .saved, .waiting: dismiss()
+        case .failed: problem = "This change could not be saved. Check that the page is connected and you can edit it."
+        }
     }
 }
 

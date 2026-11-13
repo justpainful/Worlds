@@ -779,3 +779,10 @@
 "Your access to this page was removed." = "أُزيل وصولك إلى هذه الصفحة.";
 "The page could not be opened." = "تعذّر فتح الصفحة.";
 "This block is not shown on this device yet." = "هذه الكتلة لا تظهر على هذا الجهاز بعد.";
+"Leave" = "غادر";
+"Stay" = "ابقَ";
+"Edit" = "تعديل";
+"Sending your change" = "جارٍ إرسال تعديلك";
+"Leave without sending your change?" = "هل تغادر دون إرسال تعديلك؟";
+"The server has not received it yet. It is sent when the page reconnects." = "لم يصل إلى الخادم بعد. يُرسَل عندما تعود الصفحة للاتصال.";
+"This change could not be saved. Check that the page is connected and you can edit it." = "تعذّر حفظ هذا التعديل. تأكّد أن الصفحة متصلة وأن لديك صلاحية التعديل.";

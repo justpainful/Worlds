@@ -128,6 +128,9 @@ public actor CollaborationSession {
     private var generation: UInt64 = 0
     private var retryTask: Task<Void, Error>?
     private var localWriteInFlight = false
+    // Set when this session closes its own socket after a durable local write,
+    // so the reconnect that resends it is immediate instead of backing off.
+    private var reconnectNow = false
     private var remoteWriteInFlight = false
     private var localWriteWaiters: [CheckedContinuation<Void, Never>] = []
     private var verifiedIdentity = false
@@ -170,7 +173,7 @@ public actor CollaborationSession {
         guard stopped, !running, !localWriteInFlight else { throw CollaborationError.notStarted }
         running = true
         defer { running = false; stopped = true; publishEditorChange() }
-        stopped = false; revoked = false; failed = false; generation &+= 1
+        stopped = false; revoked = false; failed = false; reconnectNow = false; generation &+= 1
         publishEditorChange()
         let runID = generation
         do {
@@ -257,6 +260,7 @@ public actor CollaborationSession {
                 if stopped || generation != runID { return }
                 if revoked { throw CollaborationError.accessRevoked }
                 if failed { throw error }
+                if reconnectNow { reconnectNow = false; attempt = 0; continue }
                 attempt = min(attempt + 1, 6)
                 let delay = UInt64(min(30.0, 0.5 * pow(2.0, Double(attempt))))
                 let waiting = Task { try await Task.sleep(for: .seconds(delay)) }
@@ -403,7 +407,22 @@ public actor CollaborationSession {
         try await store.appendLocal(pageID: pageID, channel: channel, update: update)
         do { try doc.apply(update) } catch { failed = true; if let socket { await closeConnection(socket, connection: socketID) }; throw error }
         // Reconnect triggers a full state-vector handshake, covering the persisted edit.
-        if let socket { await closeConnection(socket, connection: socketID) }
+        if let socket { reconnectNow = true; await closeConnection(socket, connection: socketID) }
+    }
+
+    /// Set and remove a shared pack item's fields (docs/PACKS.md, Design 1).
+    /// Request: `{"set": {...}, "remove": [...]}`. Requires an authenticated
+    /// connection with edit access that has finished its initial sync, so the
+    /// change is prepared on the server's current state. The update then takes
+    /// the same path as any local update: validated, persisted to the store's
+    /// outbox, applied, and sent on the immediate reconnect.
+    public func setPackFields(request: Data) async throws {
+        guard !stopped, !failed, verifiedIdentity, synchronizedChannels.contains(0), let level = accessLevel,
+              let access = WorldsSyncWire.AccessLevel(rawValue: level), WorldsSyncWire.canWrite(access, channel: 0),
+              let doc = documents[0] else { throw CollaborationError.accessRevoked }
+        guard !localWriteInFlight, !remoteWriteInFlight else { throw CollaborationError.notStarted }
+        let update = try NativeCRDTDocument.preparePackFields(base: doc.diff(Data([0])), request: request)
+        try await appendLocal(channel: 0, update: update)
     }
 
     /// Experimental plain-text operation. Persist first, then apply to the live CRDT.

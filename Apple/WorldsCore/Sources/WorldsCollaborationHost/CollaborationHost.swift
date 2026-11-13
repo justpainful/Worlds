@@ -90,6 +90,32 @@ public enum CollaborationHost {
         try await makeReadOnlySession(pageID: pageID, workspaceID: workspaceID, expectedUserID: expectedUserID,
                                       serverURL: serverURL, trustedOrigin: trustedOrigin, checkedIdentity: identity)
     }
+    /// A session that can also change the page while it is connected, for an
+    /// account with edit access. It makes the same checks as the read-only
+    /// session, also refuses a page the service no longer lets this account
+    /// edit, and keeps its own changes in a memory-only outbox that only this
+    /// session writes to. The server still decides; the session refuses local
+    /// writes unless the connection reports edit access.
+    public static func makeLiveSession(pageID: String, workspaceID: String, expectedUserID: String,
+                                       serverURL: URL, trustedOrigin: TrustedSyncOrigin,
+                                       identity: IdentitySessionCoordinator) async throws -> (session: CollaborationSession, outbox: EphemeralSessionStore) {
+        try await makeLiveSession(pageID: pageID, workspaceID: workspaceID, expectedUserID: expectedUserID,
+                                  serverURL: serverURL, trustedOrigin: trustedOrigin, checkedIdentity: identity)
+    }
+    static func makeLiveSession(pageID: String, workspaceID: String, expectedUserID: String,
+                                serverURL: URL, trustedOrigin: TrustedSyncOrigin,
+                                checkedIdentity identity: any CollaborationIdentity,
+                                socketFactory: CollaborationSession.SocketFactory? = nil) async throws -> (session: CollaborationSession, outbox: EphemeralSessionStore) {
+        guard trustedOrigin.accepts(serverURL, accountID: expectedUserID, workspaceID: workspaceID) else { throw CollaborationHostError.untrustedEndpoint }
+        let level = try await identity.currentWorkspacePageLevel(workspaceID: workspaceID, pageID: pageID, expectedUserID: expectedUserID)
+        guard level == .edit || level == .full else { throw CollaborationHostError.accessDenied }
+        let outbox = EphemeralSessionStore(pageID: pageID)
+        let session = try CollaborationSession(pageID: pageID, workspaceID: workspaceID, documentID: pageID, expectedUserID: expectedUserID,
+                                               serverURL: serverURL, store: outbox,
+                                               tokenProvider: { force in try await identity.accessToken(expectedUserID: expectedUserID, forceRefresh: force) },
+                                               socketFactory: socketFactory)
+        return (session, outbox)
+    }
     static func makeReadOnlySession(pageID: String, workspaceID: String, expectedUserID: String,
                                     serverURL: URL, trustedOrigin: TrustedSyncOrigin,
                                     checkedIdentity identity: any CollaborationIdentity,
