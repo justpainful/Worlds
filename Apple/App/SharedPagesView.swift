@@ -135,7 +135,7 @@ struct SharedPagesListView: View {
                     ForEach(pages) { page in
                         if let approval {
                             NavigationLink {
-                                SharedPageView(coordinator: coordinator, accountID: accountID, workspaceID: workspace.id, pageID: page.id, level: page.level, approval: approval)
+                                SharedPageView(coordinator: coordinator, accountID: accountID, workspaceID: workspace.id, pageID: page.id, title: page.title, level: page.level, approval: approval)
                             } label: { pageRow(page) }
                             .accessibilityIdentifier("shared-page-\(page.id)")
                         } else {
@@ -168,7 +168,11 @@ struct SharedPagesListView: View {
     private func pageRow(_ page: IdentityWorkspacePage) -> some View {
         Label {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Page ID: \(page.id)").lineLimit(2).environment(\.layoutDirection, .leftToRight)
+                if let title = page.title {
+                    Text(verbatim: title).lineLimit(2)
+                } else {
+                    Text("Page ID: \(page.id)").lineLimit(2).environment(\.layoutDirection, .leftToRight)
+                }
                 Text(accessLabel(page.level)).font(.caption).foregroundStyle(.secondary)
             }
         } icon: { Image(systemName: "doc.text") }
@@ -217,6 +221,7 @@ struct SharedPageView: View {
     let accountID: String
     let workspaceID: String
     let pageID: String
+    let title: String?
     /// The level the identity service listed; edit or full opens a session that can write.
     let level: IdentityPageLevel
     let approval: SharedSyncApprovals.Approval
@@ -241,7 +246,7 @@ struct SharedPageView: View {
             .padding(.horizontal, 20).padding(.vertical, 16)
             .frame(maxWidth: .infinity)
         }
-        .navigationTitle(Text("Page ID: \(pageID)"))
+        .navigationTitle(title.map { Text(verbatim: $0) } ?? Text("Page ID: \(pageID)"))
         // A change the server has not acknowledged lives only in this page's
         // session: leaving would drop it, so ask first.
         .navigationBarBackButtonHidden(model.unsent > 0)

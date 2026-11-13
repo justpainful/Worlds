@@ -267,6 +267,33 @@ pub fn move_page_tree(conn: &Connection, page_id: &str, workspace_id: Option<&st
     Ok(ids)
 }
 
+/// Page titles of one workspace, sent with the tree so phones can name shared
+/// pages. Empty titles are left out; long ones are cut to what the service takes.
+pub fn workspace_titles(conn: &Connection, workspace_id: &str) -> Result<std::collections::HashMap<String, String>> {
+    let mut stmt = conn.prepare("SELECT id, title FROM pages WHERE workspace_id = ?1 AND kind <> 'template'")?;
+    let rows = stmt.query_map([workspace_id], |r| Ok((r.get::<_, String>(0)?, r.get::<_, Option<String>>(1)?)))?;
+    let mut titles = std::collections::HashMap::new();
+    for row in rows {
+        let (id, title) = row?;
+        let clean: String = title.unwrap_or_default().chars().filter(|c| !c.is_control()).collect();
+        // The service counts UTF-16 units, as JavaScript does, and takes at most 300.
+        let mut units = 0;
+        let cut: String = clean
+            .trim()
+            .chars()
+            .take_while(|c| {
+                units += c.len_utf16();
+                units <= 300
+            })
+            .collect();
+        let title = cut.trim();
+        if !title.is_empty() {
+            titles.insert(id, title.to_string());
+        }
+    }
+    Ok(titles)
+}
+
 /// The tree of one workspace as the server mirrors it: (page id, parent id within the workspace).
 pub fn workspace_tree(conn: &Connection, workspace_id: &str) -> Result<Vec<(String, Option<String>)>> {
     let mut stmt = conn.prepare(

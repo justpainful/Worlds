@@ -547,12 +547,13 @@ workspaces.put("/:id/tree", async (c) => {
   const id = c.req.param("id");
   const role = await roleIn(c, id);
   const b = await body(c.req);
-  const nodes = Array.isArray(b.nodes) ? (b.nodes as { id?: unknown; parentId?: unknown }[]) : null;
+  const nodes = Array.isArray(b.nodes) ? (b.nodes as { id?: unknown; parentId?: unknown; title?: unknown }[]) : null;
   if (!nodes || nodes.length > 5000) throw bad("invalid_request", "nodes must be a list of at most 5000 pages");
   const removed = Array.isArray(b.removed) ? (b.removed as unknown[]).filter((x): x is string => typeof x === "string") : [];
   for (const n of nodes) {
     if (typeof n.id !== "string" || !n.id || n.id.length > 64) throw bad("invalid_request", "every node needs an id");
     if (n.parentId !== null && n.parentId !== undefined && (typeof n.parentId !== "string" || n.parentId.length > 64)) throw bad("invalid_request", "parentId must be a page id or null");
+    if (n.title !== null && n.title !== undefined && (typeof n.title !== "string" || n.title.length > MAX_TITLE)) throw bad("invalid_request", `title must be text of at most ${MAX_TITLE} characters`);
   }
   const acl = await loadAcl(c.env.DB, id);
   const subject = await loadSubject(c.env.DB, id, caller.userId);
@@ -564,9 +565,17 @@ workspaces.put("/:id/tree", async (c) => {
   // Work on a copy so cycle checks see earlier nodes in the same request.
   const next: WorkspaceAcl = { tree: new Map(acl.tree), entries: acl.entries };
 
-  for (const n of nodes as { id: string; parentId?: string | null }[]) {
+  // Titles are only read when a node carries one, so older devices cost nothing.
+  const titles = nodes.some((n) => n.title !== undefined) ? await pageTitles(c.env.DB, id) : new Map<string, string | null>();
+  for (const n of nodes as { id: string; parentId?: string | null; title?: string | null }[]) {
     const parentId = n.parentId ?? null;
     const cur = acl.tree.get(n.id);
+    const title = n.title === undefined ? undefined : cleanTitle(n.title);
+    // Renaming a page that is already mirrored takes edit on it. A device
+    // without edit sends the title it last saw: that is not a rename, skip it.
+    if (cur && title !== undefined && title !== (titles.get(n.id) ?? null) && atLeast(level(n.id), "edit")) {
+      stmts.push(c.env.DB.prepare("UPDATE pages SET title = ?1, updated_at = ?2 WHERE workspace_id = ?3 AND id = ?4").bind(title, t, id, n.id));
+    }
     if (cur && cur.parentId === parentId) continue;
     if (parentId === n.id) {
       rejected.push({ id: n.id, reason: "cycle" });
@@ -582,7 +591,7 @@ workspaces.put("/:id/tree", async (c) => {
         rejected.push({ id: n.id, reason: parentId ? "no_edit_on_parent" : "guests_cannot_add_top_level_pages" });
         continue;
       }
-      stmts.push(c.env.DB.prepare("INSERT INTO pages (workspace_id, id, parent_id, created_by, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)").bind(id, n.id, parentId, caller.userId, t));
+      stmts.push(c.env.DB.prepare("INSERT INTO pages (workspace_id, id, parent_id, created_by, updated_at, title) VALUES (?1, ?2, ?3, ?4, ?5, ?6)").bind(id, n.id, parentId, caller.userId, t, title ?? null));
     } else {
       // A device that cannot see the current parent does not have it locally
       // and reports the page at the top level: that is not a move, skip it.
@@ -630,7 +639,8 @@ workspaces.put("/:id/tree", async (c) => {
 /**
  * The caller's level on every mirrored page, "none" included, so the app can
  * cache its rights and enforce them offline (a missing entry would otherwise
- * fall back to the parent's level).
+ * fall back to the parent's level). A page's title, when a device recorded
+ * one, comes only with pages the caller can open.
  */
 workspaces.get("/:id/access", async (c) => {
   const id = c.req.param("id");
@@ -638,9 +648,28 @@ workspaces.get("/:id/access", async (c) => {
   const w = await workspaceView(c.env.DB, id, role);
   const acl = await loadAcl(c.env.DB, id);
   const subject = await loadSubject(c.env.DB, id, c.get("caller").userId);
-  const docs = [...acl.tree.keys()].map((docId) => ({ docId, level: resolve(acl, subject, docId) }));
+  const titles = await pageTitles(c.env.DB, id);
+  const docs = [...acl.tree.keys()].map((docId) => {
+    const level = resolve(acl, subject, docId);
+    const title = level === "none" ? null : titles.get(docId) ?? null;
+    return title === null ? { docId, level } : { docId, level, title };
+  });
   return c.json({ role, defaultLevel: w.defaultLevel, docs });
 });
+
+const MAX_TITLE = 300;
+
+/** Trimmed, control characters removed, null when nothing is left. */
+function cleanTitle(value: string | null): string | null {
+  if (value === null) return null;
+  const text = value.replace(/[\u0000-\u001f\u007f]/g, " ").trim();
+  return text ? text : null;
+}
+
+async function pageTitles(db: D1Database, workspaceId: string): Promise<Map<string, string | null>> {
+  const rows = await db.prepare("SELECT id, title FROM pages WHERE workspace_id = ?1").bind(workspaceId).all<{ id: string; title: string | null }>();
+  return new Map(rows.results.map((r) => [r.id, r.title]));
+}
 
 /** True when making `parentId` the parent of `id` would put `id` above itself. */
 function wouldCycle(acl: WorkspaceAcl, id: string, parentId: string): boolean {

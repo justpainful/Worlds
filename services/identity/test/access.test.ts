@@ -167,6 +167,52 @@ describe("page tree mirror", () => {
   });
 });
 
+describe("page titles", () => {
+  const titleOf = (docs: { docId: string; title?: string }[], id: string) => docs.find((d) => d.docId === id)?.title;
+
+  it("keeps the titles devices send and shows them only on pages the caller can open", async () => {
+    const w = await setup();
+    const named = await api("PUT", `/workspaces/${w.id}/tree`, {
+      token: w.owner.accessToken,
+      body: { nodes: [{ id: "handbook", parentId: null, title: "Handbook" }, { id: "roadmap", parentId: null, title: "Roadmap 2027" }, { id: "notes", parentId: "roadmap", title: "  Team\nnotes  " }] },
+    });
+    expect(named.json).toEqual({ applied: true, rejected: [] });
+    const owner = await api("GET", `/workspaces/${w.id}/access`, { token: w.owner.accessToken });
+    expect(titleOf(owner.json.docs, "handbook")).toBe("Handbook");
+    expect(titleOf(owner.json.docs, "notes")).toBe("Team notes");
+    expect(titleOf(owner.json.docs, "policies")).toBeUndefined();
+    // A guest sees the title of a page shared with them, never of one they cannot open.
+    await api("PUT", `/workspaces/${w.id}/pages/handbook/permissions`, { token: w.owner.accessToken, body: { principalType: "user", principalId: w.guest.userId, level: "view" } });
+    const guest = await api("GET", `/workspaces/${w.id}/access`, { token: w.guest.accessToken });
+    expect(titleOf(guest.json.docs, "handbook")).toBe("Handbook");
+    expect(guest.json.docs.find((d: { docId: string }) => d.docId === "roadmap")).toEqual({ docId: "roadmap", level: "none" });
+  });
+
+  it("renames only with edit access and refuses bad titles", async () => {
+    const w = await setup();
+    await api("PUT", `/workspaces/${w.id}/tree`, { token: w.owner.accessToken, body: { nodes: [{ id: "handbook", parentId: null, title: "Handbook" }] } });
+    await api("PUT", `/workspaces/${w.id}/pages/handbook/permissions`, { token: w.owner.accessToken, body: { principalType: "user", principalId: w.guest.userId, level: "view" } });
+    // A viewer's device sends the title it has: nothing changes and nothing is rejected.
+    const viewer = await api("PUT", `/workspaces/${w.id}/tree`, { token: w.guest.accessToken, body: { nodes: [{ id: "handbook", parentId: null, title: "Mine now" }] } });
+    expect(viewer.json).toEqual({ applied: false, rejected: [] });
+    // An editor renames, and a null title clears it.
+    await api("PUT", `/workspaces/${w.id}/tree`, { token: w.member.accessToken, body: { nodes: [{ id: "handbook", parentId: null, title: "Staff handbook" }] } });
+    let docs = (await api("GET", `/workspaces/${w.id}/access`, { token: w.owner.accessToken })).json.docs;
+    expect(titleOf(docs, "handbook")).toBe("Staff handbook");
+    await api("PUT", `/workspaces/${w.id}/tree`, { token: w.owner.accessToken, body: { nodes: [{ id: "handbook", parentId: null, title: null }] } });
+    docs = (await api("GET", `/workspaces/${w.id}/access`, { token: w.owner.accessToken })).json.docs;
+    expect(titleOf(docs, "handbook")).toBeUndefined();
+    // Devices that send no title leave it alone.
+    await api("PUT", `/workspaces/${w.id}/tree`, { token: w.owner.accessToken, body: { nodes: [{ id: "roadmap", parentId: null, title: "Roadmap" }] } });
+    await api("PUT", `/workspaces/${w.id}/tree`, { token: w.owner.accessToken, body: { nodes: [{ id: "roadmap", parentId: null }] } });
+    docs = (await api("GET", `/workspaces/${w.id}/access`, { token: w.owner.accessToken })).json.docs;
+    expect(titleOf(docs, "roadmap")).toBe("Roadmap");
+    for (const title of [42, "x".repeat(301)]) {
+      expect((await api("PUT", `/workspaces/${w.id}/tree`, { token: w.owner.accessToken, body: { nodes: [{ id: "roadmap", parentId: null, title }] } })).status).toBe(400);
+    }
+  });
+});
+
 describe("sharing pages", () => {
   it("needs full access, accepts users, groups and the workspace, and limits guests", async () => {
     const w = await setup();

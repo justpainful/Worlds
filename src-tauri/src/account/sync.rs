@@ -52,15 +52,17 @@ pub async fn push_tree(
     removed: &[String],
     force: bool,
 ) -> Result<Value, ApiError> {
-    let (nodes, key, last) = {
+    let (nodes, titles, key, last) = {
         let c = lock(db);
         let tree = state::workspace_tree(&c, workspace_id).map_err(|e| ApiError::Offline(e.to_string()))?;
+        let titles = state::workspace_titles(&c, workspace_id).map_err(|e| ApiError::Offline(e.to_string()))?;
         let key = format!("account.treeHash.{workspace_id}");
         let last = crate::db::get_setting(&c, &key).ok().flatten().and_then(|v| v.as_str().map(str::to_string));
-        (tree, key, last)
+        (tree, titles, key, last)
     };
     let body = json!({
-        "nodes": nodes.iter().map(|(id, parent)| json!({ "id": id, "parentId": parent })).collect::<Vec<_>>(),
+        // The service keeps a title only when this account can edit the page.
+        "nodes": nodes.iter().map(|(id, parent)| json!({ "id": id, "parentId": parent, "title": titles.get(id) })).collect::<Vec<_>>(),
         "removed": removed,
     });
     let hash = sha256_hex(&body.to_string());
