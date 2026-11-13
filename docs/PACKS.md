@@ -187,7 +187,7 @@ Built on the branch `feat/pack-engine` (2026-11-13), desktop first:
 
 Not done yet, and why:
 
-- **Phase 2**, trials with real people from each sector, needs those people.
+- **Phase 2**, trials with real people from each sector, needs those people. The kit is ready in [packs/TRIALS.md](packs/TRIALS.md) (in Arabic): for the first four sectors, five tasks each, the five questions for everyone and a table to record each trial; what two of three people repeat goes into the pack.
 - **Editing shared pages on Apple**, pack fields included. Apple opens shared pages read only: a page is fetched from the sync server each time it opens and nothing of it is kept or changed on the device. Writing needs a local store that can prove who queued each change before sending it with the person's sign-in; the existing SQLite store cannot, so `CollaborationHost.makeSession` still refuses it. Apple also lists shared pages by ID and access level, without titles, because that is what the identity service returns (Android does the same), and blocks the reader does not know yet show as a placeholder.
 
 ### Design for what is left
