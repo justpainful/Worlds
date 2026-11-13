@@ -15,7 +15,7 @@ export const QURAN: PackDef = {
   kinds: [
     {
       id: "circle",
-      label: "Circle",
+      label: "Study circle",
       plural: "Circles",
       icon: "mosque",
       blurb: "A group that meets to memorise together",
@@ -27,7 +27,7 @@ export const QURAN: PackDef = {
       plural: "Students",
       icon: "profile",
       blurb: "One student and how far they have memorised",
-      fields: [link("circle", "Circle", "circle"), number("parts", "Parts memorised"), text("current", "Now memorising"), text("guardian", "Parent or guardian"), phone("guardianPhone", "Guardian's phone")],
+      fields: [link("circle", "Study circle", "circle"), number("parts", "Parts memorised"), text("current", "Now memorising"), text("guardian", "Parent or guardian"), phone("guardianPhone", "Guardian's phone")],
     },
     {
       id: "recitation",
@@ -42,7 +42,7 @@ export const QURAN: PackDef = {
         text("surah", "Surah"),
         text("from", "From ayah"),
         text("to", "To ayah"),
-        choice("grade", "Grade", options(["excellent", "Excellent", "green"], ["veryGood", "Very good", "blue"], ["good", "Good", "yellow"], ["repeat", "Repeat", "red"])),
+        choice("grade", "Grade", options(["excellent", "Excellent", "green"], ["veryGood", "Very good", "blue"], ["good", "Good", "yellow"], ["repeat", "Needs repeating", "red"])),
         text("note", "Note"),
       ],
       dateField: "date",
@@ -114,7 +114,7 @@ export const TRAINING: PackDef = {
       plural: "Trainees",
       icon: "profile",
       blurb: "Someone taking a course",
-      fields: [link("course", "Course", "course"), phone(), email(), money("paid", "Paid"), check("certified", "Certificate issued")],
+      fields: [link("course", "Course", "course"), phone(), email(), money("paid", "Amount paid"), check("certified", "Certificate issued")],
     },
     {
       id: "session",

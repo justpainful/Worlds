@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import ar from "../i18n/ar.json";
+import { loadDictionary, translate } from "../i18n/ui";
 import { FAMILIES } from "./definition";
+import { inSentence } from "./fields";
 import { PACK_DEFS } from "./registry";
 
 /** Every text a pack shows, written in English in its definition. */
@@ -43,5 +45,26 @@ describe("packs in Arabic", () => {
       for (const pr of p.prompts ?? []) expect(typeof pr.prompt === "object" && pr.prompt.ar && pr.prompt.en, `${p.id}: ${pr.label}`).toBeTruthy();
       for (const s of p.samples ?? []) expect(typeof s.title === "object", `${p.id} sample title`).toBe(true);
     }
+  });
+
+  it("reads every button sentence as Arabic: add, delete, none yet, view as", () => {
+    const dict = ar as Record<string, string>;
+    loadDictionary(dict);
+    const tr = (t: string) => translate(t) ?? t;
+    const wrong: string[] = [];
+    // A sentence is right when the general pattern gives the word's own translation, or the dictionary has the whole sentence.
+    const check = (en: string, want: string) => {
+      if (en in dict) return;
+      const got = tr(en);
+      if (got !== want) wrong.push(`${en} -> ${got}`);
+    };
+    for (const p of PACK_DEFS) {
+      for (const k of p.kinds) {
+        check(`Add ${inSentence(k.label)}`, `إضافة ${tr(k.label)}`);
+        check(`Delete ${inSentence(k.label)}`, `حذف ${tr(k.label)}`);
+      }
+      for (const r of p.roles) check(`As ${inSentence(r.label)}`, `بصفة ${tr(r.label)}`);
+    }
+    expect(wrong).toEqual([]);
   });
 });

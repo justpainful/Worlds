@@ -33,7 +33,7 @@ export const CONTRACTING: PackDef = {
         link("tech", "Technician", "tech"),
         choice("priority", "Priority", options(["low", "Low"], ["normal", "Normal", "blue"], ["urgent", "Urgent", "red"])),
         date("due", "Due"),
-        stage("status", "Status", options(["open", "Open", "blue"], ["inProgress", "In progress", "yellow"], ["waiting", "Waiting for parts", "red"], ["done", "Done", "green"])),
+        stage("status", "Status", options(["open", "Not started", "blue"], ["inProgress", "In progress", "yellow"], ["waiting", "Waiting for parts", "red"], ["done", "Done", "green"])),
         notes("details", "Details"),
       ],
       dateField: "due",
@@ -292,7 +292,7 @@ export const SAFETY: PackDef = {
       plural: "Inspections",
       icon: "clipboard",
       blurb: "A visit to check a site against a checklist",
-      fields: [text("site", "Site"), date("date", "Date"), text("inspector", "Inspector"), link("checklist", "Checklist", "checklist"), number("score", "Score %"), notes("findings", "Findings")],
+      fields: [text("site", "Site"), date("date", "Date"), text("inspector", "Inspected by"), link("checklist", "Checklist", "checklist"), number("score", "Score %"), notes("findings", "Findings")],
       dateField: "date",
     },
     {
@@ -321,7 +321,7 @@ export const SAFETY: PackDef = {
       plural: "Checklists",
       icon: "checklist",
       blurb: "A list of checks used on every visit",
-      fields: [choice("area", "Area", options(["fire", "Fire"], ["electrical", "Electrical"], ["heights", "Work at height"], ["ppe", "Protective equipment"], ["general", "General"])), notes("items", "Checks")],
+      fields: [choice("area", "Topic", options(["fire", "Fire safety"], ["electrical", "Electrical"], ["heights", "Work at height"], ["ppe", "Protective equipment"], ["general", "General"])), notes("items", "Checks")],
     },
   ],
   views: [

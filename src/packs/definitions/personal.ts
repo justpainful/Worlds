@@ -22,7 +22,7 @@ export const MONEY: PackDef = {
       plural: "Expenses",
       icon: "wallet",
       blurb: "Money you spent",
-      fields: [money("amount", "Amount"), date("date", "Date"), choice("category", "Category", options(["food", "Food"], ["transport", "Transport"], ["home", "Home"], ["bills", "Bills"], ["shopping", "Shopping"], ["health", "Health"], ["fun", "Fun"], ["family", "Family"], ["other", "Other"])), choice("paidWith", "Paid with", options(["card", "Card"], ["cash", "Cash"], ["transfer", "Transfer"]))],
+      fields: [money("amount", "Amount"), date("date", "Date"), choice("category", "Category", options(["food", "Food"], ["transport", "Transport"], ["home", "Household"], ["bills", "Bills"], ["shopping", "Shopping"], ["health", "Health"], ["fun", "Fun"], ["family", "Family"], ["other", "Other"])), choice("paidWith", "Paid with", options(["card", "Card"], ["cash", "Cash"], ["transfer", "Transfer"]))],
       dateField: "date",
     },
     {
@@ -245,7 +245,7 @@ export const TRAVEL: PackDef = {
       plural: "Trips",
       icon: "plane",
       blurb: "Somewhere you are going",
-      fields: [text("destination", "Destination"), date("leave", "Leave"), date("back", "Back"), money("budget", "Budget"), stage("status", "Status", options(["dreaming", "Dreaming"], ["planning", "Planning", "yellow"], ["booked", "Booked", "blue"], ["done", "Done", "green"]))],
+      fields: [text("destination", "Going to"), date("leave", "Departs"), date("back", "Returns"), money("budget", "Budget"), stage("status", "Status", options(["dreaming", "Dreaming"], ["planning", "Planning", "yellow"], ["booked", "Booked", "blue"], ["done", "Done", "green"]))],
       dateField: "leave",
       stageField: "status",
     },
@@ -342,7 +342,7 @@ export const JOBS: PackDef = {
       plural: "Interviews",
       icon: "meeting",
       blurb: "An interview and how to prepare",
-      fields: [link("application", "Application", "application"), date("date", "Date"), time("time", "Time"), choice("format", "Format", options(["phone", "Phone"], ["video", "Video"], ["inPerson", "In person"])), notes("prep", "Preparation")],
+      fields: [link("application", "Application", "application"), date("date", "Date"), time("time", "Time"), choice("format", "Held as", options(["phone", "Phone"], ["video", "Video"], ["inPerson", "In person"])), notes("prep", "Preparation")],
       dateField: "date",
     },
     {

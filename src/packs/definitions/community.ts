@@ -98,7 +98,7 @@ export const SPORTS: PackDef = {
       plural: "Players",
       icon: "profile",
       blurb: "Someone on the team",
-      fields: [number("number", "Shirt number"), choice("position", "Position", options(["gk", "Goalkeeper"], ["def", "Defender"], ["mid", "Midfielder"], ["fwd", "Forward"])), text("team", "Team or age group"), phone("guardianPhone", "Guardian's phone"), money("fee", "Monthly fee"), check("paid", "Paid this month"), number("goals", "Goals")],
+      fields: [number("number", "Shirt number"), choice("position", "Position", options(["gk", "Goalkeeper"], ["def", "Defender"], ["mid", "Midfielder"], ["fwd", "Striker"])), text("team", "Team or age group"), phone("guardianPhone", "Guardian's phone"), money("fee", "Monthly fee"), check("paid", "Paid this month"), number("goals", "Goals")],
     },
     {
       id: "training",
@@ -115,7 +115,7 @@ export const SPORTS: PackDef = {
       plural: "Matches",
       icon: "trophy",
       blurb: "A game, where and the result",
-      fields: [text("opponent", "Opponent"), date("date", "Date"), time("time", "Time"), choice("venue", "Venue", options(["home", "Home"], ["away", "Away"])), number("for", "Our score"), number("against", "Their score"), choice("result", "Result", options(["win", "Win", "green"], ["draw", "Draw", "yellow"], ["loss", "Loss", "red"]))],
+      fields: [text("opponent", "Opponent"), date("date", "Date"), time("time", "Time"), choice("venue", "Venue", options(["home", "Home ground"], ["away", "Away"])), number("for", "Our score"), number("against", "Their score"), choice("result", "Result", options(["win", "Win", "green"], ["draw", "Draw", "yellow"], ["loss", "Loss", "red"]))],
       dateField: "date",
     },
   ],
@@ -161,7 +161,7 @@ export const EVENTS: PackDef = {
   kinds: [
     {
       id: "event",
-      label: "Event",
+      label: "Occasion",
       plural: "Events",
       icon: "cake",
       blurb: "A gathering you organise",
@@ -174,7 +174,7 @@ export const EVENTS: PackDef = {
       plural: "Guests",
       icon: "profile",
       blurb: "Someone invited",
-      fields: [link("event", "Event", "event"), phone(), number("party", "Party size", { initial: 1 }), stage("rsvp", "Reply", options(["notInvited", "Not invited yet"], ["invited", "Invited", "blue"], ["coming", "Coming", "green"], ["notComing", "Not coming", "red"])), choice("side", "Side", options(["family", "Family"], ["friends", "Friends"], ["work", "Work"], ["vip", "VIP"]))],
+      fields: [link("event", "Occasion", "event"), phone(), number("party", "Party size", { initial: 1 }), stage("rsvp", "RSVP", options(["notInvited", "Not invited yet"], ["invited", "Invited", "blue"], ["coming", "Coming", "green"], ["notComing", "Not coming", "red"])), choice("side", "Side", options(["family", "Family"], ["friends", "Friends"], ["work", "Work"], ["vip", "VIP"]))],
       stageField: "rsvp",
     },
     {
@@ -183,7 +183,7 @@ export const EVENTS: PackDef = {
       plural: "Programme",
       icon: "clock",
       blurb: "What happens at a time",
-      fields: [link("event", "Event", "event"), time("time", "Time"), text("who", "Who"), text("where", "Where")],
+      fields: [link("event", "Occasion", "event"), time("time", "Time"), text("who", "Who"), text("where", "Where")],
     },
     {
       id: "cost",
@@ -191,7 +191,7 @@ export const EVENTS: PackDef = {
       plural: "Budget",
       icon: "wallet",
       blurb: "What a part of the event costs",
-      fields: [link("event", "Event", "event"), link("supplier", "Supplier", "supplier"), money("planned", "Planned"), money("actual", "Actual"), check("paid", "Paid")],
+      fields: [link("event", "Occasion", "event"), link("supplier", "Supplier", "supplier"), money("planned", "Planned"), money("actual", "Actual"), check("paid", "Paid")],
     },
     {
       id: "supplier",

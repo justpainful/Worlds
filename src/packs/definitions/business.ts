@@ -105,7 +105,7 @@ export const RECRUITING: PackDef = {
       plural: "Open roles",
       icon: "briefcase",
       blurb: "A job you are hiring for",
-      fields: [text("team", "Team"), number("openings", "Openings", { initial: 1 }), choice("type", "Type", options(["full", "Full time"], ["part", "Part time"], ["contract", "Contract"], ["intern", "Internship"])), stage("status", "Status", options(["open", "Open", "green"], ["paused", "Paused", "yellow"], ["filled", "Filled", "blue"])), notes("description", "Job description")],
+      fields: [text("team", "Team"), number("openings", "Openings", { initial: 1 }), choice("type", "Type", options(["full", "Full time"], ["part", "Part time"], ["contract", "Contract"], ["intern", "Internship"])), stage("status", "Status", options(["open", "Hiring", "green"], ["paused", "Paused", "yellow"], ["filled", "Filled", "blue"])), notes("description", "Job description")],
       stageField: "status",
     },
     {
