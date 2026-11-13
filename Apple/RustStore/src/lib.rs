@@ -269,6 +269,33 @@ pub fn create_page_idempotent(path: &Path, title: String, parent: Option<String>
     tx.commit()?; Ok(result)
 }
 
+/// A pack item (docs/PACKS.md): a root page of a pack kind ("shop.order")
+/// with its first fields under metadata.item, retry-safe like the others.
+pub fn create_pack_item_idempotent(path:&Path,title:String,kind:String,metadata:Value,operation_id:&str)->Result<Value> {
+    if !store::is_pack_kind(&kind) { bail!("invalid resource kind") }
+    let fields=metadata.as_object().filter(|m| m.len()==1).and_then(|m| m.get(store::PACK_DATA_KEY)).filter(|v| v.is_object()).cloned().ok_or_else(||anyhow::anyhow!("invalid pack item"))?;
+    let operation_id=uuid::Uuid::parse_str(operation_id)?.to_string();
+    let mut conn=open_existing(path)?;
+    let tx=conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+    tx.execute_batch("CREATE TABLE IF NOT EXISTS native_personal_pack_item_creations_v1(operation_id TEXT PRIMARY KEY,title TEXT NOT NULL,kind TEXT NOT NULL,metadata_json TEXT NOT NULL,page_id TEXT NOT NULL,result_json TEXT NOT NULL)")?;
+    reject_creation_collision(&tx,&operation_id,&["native_personal_page_creations_v1","native_personal_document_creations_v1","native_personal_project_creations_v1","native_personal_presentation_creations_v1","native_personal_gallery_creations_v1","native_personal_stream_creations_v1","native_personal_drawing_creations_v1"])?;
+    let metadata=serde_json::json!({ (store::PACK_DATA_KEY): fields });
+    let prior:Option<(String,String,String,String,String)>=tx.query_row("SELECT title,kind,metadata_json,page_id,result_json FROM native_personal_pack_item_creations_v1 WHERE operation_id=?1",[&operation_id],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?))).optional()?;
+    if let Some((old_title,old_kind,old_metadata,page_id,result))=prior {
+        if old_title!=title || old_kind!=kind || serde_json::from_str::<Value>(&old_metadata)?!=metadata { bail!("conflict: creation operation input changed") }
+        require_personal(&tx,&page_id)?;
+        let value:Value=serde_json::from_str(&result)?;
+        if value.get("id").and_then(Value::as_str)!=Some(page_id.as_str()) || value.get("kind").and_then(Value::as_str)!=Some(kind.as_str()) { bail!("conflict: invalid pack item creation record") }
+        tx.commit()?; return Ok(value)
+    }
+    let input=store::NewPage { title:Some(title.clone()),kind:Some(kind.clone()),metadata:Some(metadata.clone()),..Default::default() };
+    let result=serde_json::to_value(store::create_page(&tx,&native_ctx(),input)?)?;
+    let page_id=result.get("id").and_then(Value::as_str).ok_or_else(||anyhow::anyhow!("invalid created pack item"))?;
+    require_created_personal(&tx,page_id)?;
+    tx.execute("INSERT INTO native_personal_pack_item_creations_v1(operation_id,title,kind,metadata_json,page_id,result_json) VALUES(?1,?2,?3,?4,?5,?6)",rusqlite::params![operation_id,title,kind,metadata.to_string(),page_id,result.to_string()])?;
+    tx.commit()?; Ok(result)
+}
+
 /// A document uses the source application's document defaults and icon.
 pub fn create_document_idempotent(path:&Path,title:String,parent:Option<String>,parent_revision:Option<i64>,operation_id:&str)->Result<Value> {
     if parent.is_some()!=parent_revision.is_some() { bail!("invalid document parent revision") }
@@ -608,6 +635,7 @@ enum Request {
     CreatePage { path: String, title: String, parent: Option<String> },
     CreatePageIdempotent { path: String, title: String, parent: Option<String>, operation_id: String },
     CreateDocumentIdempotent { path: String, title: String, parent: Option<String>, parent_revision: Option<i64>, operation_id: String },
+    CreatePackItemIdempotent { path: String, title: String, kind: String, metadata: Value, operation_id: String },
     CreateProjectIdempotent { path: String, title: String, parent: Option<String>, parent_revision: Option<i64>, operation_id: String },
     CreatePresentationIdempotent { path: String, title: String, parent: Option<String>, parent_revision: Option<i64>, operation_id: String },
     CreateGalleryIdempotent { path: String, title: String, parent: Option<String>, parent_revision: Option<i64>, operation_id: String },
@@ -706,6 +734,7 @@ fn dispatch_inner(bytes: &[u8], cancellation: Option<&GalleryCancellation>) -> R
         Request::CreatePage { path, title, parent } => create_page(Path::new(&path), title, parent),
         Request::CreatePageIdempotent { path, title, parent, operation_id } => create_page_idempotent(Path::new(&path), title, parent, &operation_id),
         Request::CreateDocumentIdempotent { path, title, parent, parent_revision, operation_id } => create_document_idempotent(Path::new(&path), title, parent, parent_revision, &operation_id),
+        Request::CreatePackItemIdempotent { path, title, kind, metadata, operation_id } => create_pack_item_idempotent(Path::new(&path), title, kind, metadata, &operation_id),
         Request::CreateProjectIdempotent { path, title, parent, parent_revision, operation_id } => create_project_idempotent(Path::new(&path), title, parent, parent_revision, &operation_id),
         Request::CreatePresentationIdempotent { path, title, parent, parent_revision, operation_id } => create_presentation_idempotent(Path::new(&path), title, parent, parent_revision, &operation_id),
         Request::CreateGalleryIdempotent { path, title, parent, parent_revision, operation_id } => create_gallery_idempotent(Path::new(&path), title, parent, parent_revision, &operation_id),
@@ -953,6 +982,25 @@ mod tests {
         assert!(create_document_idempotent(&path,"Fixture page".into(),None,None,&page_op).is_err());
         db.execute("UPDATE pages SET metadata='{\"sync\":{\"shared\":true}}' WHERE id='fixture-page'",[]).unwrap();
         assert!(create_document_idempotent(&path,"Fixture document".into(),Some("fixture-page".into()),Some(revision),&op).is_err());
+        drop(db);std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn pack_item_create_keeps_its_fields_and_retries_without_duplicates() {
+        let path=fixture(); let db=Connection::open(&path).unwrap();
+        let op=uuid::Uuid::new_v4().to_string();
+        let fields=serde_json::json!({"item":{"status":"new","total":170}});
+        let first=create_pack_item_idempotent(&path,"Order 1042".into(),"shop.order".into(),fields.clone(),&op).unwrap();
+        let replay=create_pack_item_idempotent(&path,"Order 1042".into(),"shop.order".into(),fields.clone(),&op).unwrap();
+        assert_eq!(first,replay); assert_eq!(first["kind"],"shop.order");
+        let id=first["id"].as_str().unwrap();
+        let metadata:String=db.query_row("SELECT metadata FROM pages WHERE id=?1",[id],|r|r.get(0)).unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&metadata).unwrap(),fields);
+        assert_eq!(db.query_row("SELECT count(*) FROM pages WHERE kind='shop.order'",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        assert!(create_pack_item_idempotent(&path,"Order 1042".into(),"shop.order".into(),serde_json::json!({"item":{"status":"paid"}}),&op).is_err());
+        let other=uuid::Uuid::new_v4().to_string();
+        assert!(create_pack_item_idempotent(&path,"x".into(),"spreadsheet".into(),fields.clone(),&other).is_err());
+        assert!(create_pack_item_idempotent(&path,"x".into(),"shop.order".into(),serde_json::json!({"item":{},"look":{}}),&other).is_err());
+        assert!(create_pack_item_idempotent(&path,"x".into(),"shop.order".into(),serde_json::json!({"item":[]}),&other).is_err());
         drop(db);std::fs::remove_file(path).unwrap();
     }
     #[test]

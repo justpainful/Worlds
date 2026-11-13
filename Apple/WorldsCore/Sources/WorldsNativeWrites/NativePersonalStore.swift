@@ -55,6 +55,7 @@ private struct Request: Encodable, Sendable {
     var recoveryID: String? = nil
     var streamURL: String? = nil
     var deletedAt: Int64? = nil
+    var kind: String? = nil
     enum CodingKeys: String, CodingKey {
         case operation, path, page, base, title, parent, blocks, expected, metadata, deleting
         case expectedMetadata = "expected_metadata"
@@ -70,6 +71,7 @@ private struct Request: Encodable, Sendable {
         case recoveryID = "recovery_id"
         case streamURL = "url"
         case deletedAt = "deleted_at"
+        case kind
     }
 }
 private struct Response: Decodable {
@@ -108,6 +110,10 @@ public actor NativePersonalStore {
     /// Pass parent and its observed revision together, or nil for a root document.
     public func createDocumentIdempotent(title: String, parent: String? = nil, parentRevision: Int64? = nil, operationID: UUID) async throws -> JSONValue {
         try await call(Request(operation: "create_document_idempotent", path: url.path, title: title, parent: parent, parentRevision: parentRevision, operationID: operationID.uuidString))
+    }
+    /// A pack item (docs/PACKS.md) of a kind such as "shop.order", with `{"item": {...}}` as its first fields.
+    public func createPackItemIdempotent(title: String, kind: String, metadata: JSONValue, operationID: UUID) async throws -> JSONValue {
+        try await call(Request(operation: "create_pack_item_idempotent", path: url.path, title: title, metadata: metadata, operationID: operationID.uuidString, kind: kind))
     }
     /// Pass the parent and its observed revision together, or nil for a root project.
     public func createProjectIdempotent(title: String, parent: String? = nil, parentRevision: Int64? = nil, operationID: UUID) async throws -> JSONValue {

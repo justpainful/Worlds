@@ -739,3 +739,8 @@
 "This item changed elsewhere. Close and open it again." = "تغيّر هذا العنصر في مكان آخر. أغلقه وافتحه من جديد.";
 "This item could not be saved." = "تعذّر حفظ هذا العنصر.";
 "Check the numbers and dates." = "راجع الأرقام والتواريخ.";
+"Packs" = "الحزم";
+"Ask Claude" = "اسأل Claude";
+"Nothing here yet." = "لا يوجد شيء هنا بعد.";
+"Packs are missing from this build" = "الحزم غير موجودة في هذا الإصدار";
+"Date" = "التاريخ";

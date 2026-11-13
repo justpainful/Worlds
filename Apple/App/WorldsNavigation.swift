@@ -39,6 +39,7 @@ enum SpacesSection: String, Hashable, CaseIterable, Identifiable {
     case calendar = "Schedule & Inbox"
     case printQueue = "Print Queue"
     case study = "Study Pack"
+    case packs = "Packs"
 
     var id: String { rawValue }
 
@@ -49,6 +50,7 @@ enum SpacesSection: String, Hashable, CaseIterable, Identifiable {
         case .calendar: return "calendar.badge.clock"
         case .printQueue: return "printer.fill"
         case .study: return "graduationcap.fill"
+        case .packs: return "square.stack.3d.up"
         }
     }
 }

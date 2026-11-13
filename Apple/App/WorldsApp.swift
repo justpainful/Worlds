@@ -471,6 +471,8 @@ private struct WorldsLibraryView: View {
     @StateObject private var focusModel = FocusSessionModel()
     @State private var showSettings = false
     @State private var showAssistant = false
+    /// A pack's Claude request waiting in the assistant's message box.
+    @State private var assistantPrompt = ""
     #if WORLDS_MAIN_APP_MODULES
     @State private var pendingMCPApproval: MCPRenameApproval?
     private let mcpRunner = DualMCPToolRunner()
@@ -898,7 +900,8 @@ private struct WorldsLibraryView: View {
                             selectedSection: $spacesSection,
                             pages: pages,
                             openPage: { openResourceOnPhone($0) },
-                            showSectionPicker: true
+                            showSectionPicker: true,
+                            packs: { AnyView(packsHub(open: { openResourceOnPhone($0) })) }
                         )
                     }
                 }
@@ -955,7 +958,7 @@ private struct WorldsLibraryView: View {
                 .tag(WorkspaceDestination.home)
 
                 phoneTabStack(for: .spaces) {
-                    SpacesDestinationView(selectedSection: $spacesSection, pages: pages, openPage: { openResourceOnPhone($0) }, showSectionPicker: true)
+                    SpacesDestinationView(selectedSection: $spacesSection, pages: pages, openPage: { openResourceOnPhone($0) }, showSectionPicker: true, packs: { AnyView(packsHub(open: { openResourceOnPhone($0) })) })
                 }
                 .tabItem { Label("Spaces", systemImage: "square.stack.3d.up") }
                 .tag(WorkspaceDestination.spaces)
@@ -1105,6 +1108,33 @@ private struct WorldsLibraryView: View {
         }
     }
 
+    /// The sector packs (docs/PACKS.md): writing goes through the opened
+    /// workspace or local copy, and a Claude request opens the assistant with it.
+    private func packsHub(open: @escaping @MainActor (String) -> Void) -> some View {
+        var actions = PackActions(create: nil, setFields: nil, open: open, ask: { text in
+            assistantPrompt = text
+            showAssistant = true
+        })
+        #if WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
+        if let context = copyContext {
+            let generation = databaseGeneration
+            actions.create = { kind, title, fields, edit in
+                guard let id = try? await PackWrites.create(target: context.copy, kind: kind, title: title, fields: fields) else { return }
+                await refreshCopy(id: context.copy.id, generation: generation)
+                if edit { editingPackItem = LocalSpreadsheetEditorRequest(id: id, title: title, context: context, generation: generation) }
+            }
+            actions.setFields = { id, fields in
+                do {
+                    try await PackWrites.setFields(target: context.copy, id: id, fields: fields)
+                    await refreshCopy(id: context.copy.id, generation: generation)
+                    return true
+                } catch { return false }
+            }
+        }
+        #endif
+        return PacksHubView(pages: pages, actions: actions)
+    }
+
     /// Pack items in this workspace, grouped by their pack, for the sidebar.
     private var packSidebarGroups: [PackSidebarGroup] {
         guard let catalog = PackCatalog.shipped else { return [] }
@@ -1227,7 +1257,8 @@ private struct WorldsLibraryView: View {
                     selectedSection: $spacesSection,
                     pages: pages,
                     openPage: { openResourceInModernShell($0) },
-                    showSectionPicker: true
+                    showSectionPicker: true,
+                    packs: { AnyView(packsHub(open: { openResourceInModernShell($0) })) }
                 )
             case .library:
                 LibraryDestinationView(
@@ -1269,7 +1300,7 @@ private struct WorldsLibraryView: View {
             .background(WorldsPalette.groupedCanvas(for: colorScheme))
             .navigationTitle("Concept & Mind Map")
         } else if pageID == "showcase-okr-roadmap" {
-            SpacesDestinationView(selectedSection: $spacesSection, pages: pages, openPage: { openResourceInModernShell($0) }, showSectionPicker: true)
+            SpacesDestinationView(selectedSection: $spacesSection, pages: pages, openPage: { openResourceInModernShell($0) }, showSectionPicker: true, packs: { AnyView(packsHub(open: { openResourceInModernShell($0) })) })
         } else if pageID == "showcase-study-cs301" {
             WorldsStudyPackHubView()
         } else if pageID == "showcase-cad-turbine" || pageID == "showcase-slides-deck" {
@@ -1855,8 +1886,8 @@ private struct WorldsLibraryView: View {
                 .frame(minWidth: 680, idealWidth: 740, minHeight: 580, idealHeight: 660)
                 #endif
         }
-        .sheet(isPresented: $showAssistant) {
-            AssistantHostView(pages: pages)
+        .sheet(isPresented: $showAssistant, onDismiss: { assistantPrompt = "" }) {
+            AssistantHostView(pages: pages, initialPrompt: assistantPrompt)
                 .environment(\.colorScheme, colorScheme)
                 .preferredColorScheme(colorScheme)
                 #if os(macOS)

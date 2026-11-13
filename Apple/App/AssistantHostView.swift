@@ -10,6 +10,8 @@ struct AssistantHostView: View {
     @Environment(\.colorScheme) private var colorScheme
     let pages: [StoredPage]
     let embeddedInNavigation: Bool
+    /// A request to start from, such as a pack's "Write a lesson plan".
+    let initialPrompt: String
     #if WORLDS_MAIN_APP_MODULES
     @State private var service: WorkspaceAssistantConversationService
     @State private var setup = AssistantSetupState.unchecked
@@ -19,9 +21,10 @@ struct AssistantHostView: View {
     @State private var fallbackMessages: [(role: String, text: String)] = []
     #endif
 
-    init(pages: [StoredPage], embeddedInNavigation: Bool = false) {
+    init(pages: [StoredPage], embeddedInNavigation: Bool = false, initialPrompt: String = "") {
         self.pages = pages
         self.embeddedInNavigation = embeddedInNavigation
+        self.initialPrompt = initialPrompt
         #if WORLDS_MAIN_APP_MODULES
         _service = State(initialValue: WorkspaceAssistantConversationService(pages: pages))
         #endif
@@ -79,7 +82,7 @@ struct AssistantHostView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 14)
             }
-            ConversationView(conversationID: "workspace-primary-assistant", service: service)
+            ConversationView(conversationID: "workspace-primary-assistant", service: service, initialDraft: initialPrompt)
                 .padding(.horizontal, 14)
             #else
             ScrollView {

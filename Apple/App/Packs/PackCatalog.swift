@@ -39,6 +39,12 @@ struct PackKind: Decodable, Hashable {
     let plural: PackText
     let icon: String
     let fields: [PackField]
+    let dateField: String?
+    let stageField: String?
+    let doneField: String?
+
+    /// Fields a list shows (the rest are on the item).
+    var listFields: [PackField] { fields.filter { !$0.detailOnly } }
 }
 
 struct PackDefinition: Decodable, Hashable {
@@ -48,10 +54,47 @@ struct PackDefinition: Decodable, Hashable {
     let blurb: PackText
     let icon: String
     let kinds: [PackKind]
+    let views: [PackViewDef]?
+    let sidebar: [String]?
+    let screens: [PackScreenDef]?
+    let stats: [PackStat]?
+    let alerts: [PackAlert]?
+    let prompts: [PackPrompt]?
+
+    func kind(id: String) -> PackKind? { kinds.first { $0.id == id } }
+    /// The views the pack puts first, in its order.
+    var mainViews: [PackViewDef] { (sidebar ?? []).compactMap { id in views?.first { $0.id == id } } }
+}
+
+struct PackFamily: Decodable, Hashable {
+    let id: String
+    let label: PackText
+    let icon: String
+}
+
+struct PackViewDef: Decodable, Hashable {
+    let id: String
+    let label: PackText
+    let type: String
+    let kind: String
+    let groupBy: String?
+    let columns: [String]?
+}
+
+struct PackScreenDef: Decodable, Hashable {
+    let id: String
+    let label: PackText
+    let component: String
+}
+
+struct PackPrompt: Decodable, Hashable {
+    let label: PackText
+    let prompt: PackText
 }
 
 struct PackCatalog: Decodable {
     let packs: [PackDefinition]
+    let families: [PackFamily]?
 
     /// The pack and kind behind a stored kind, if a pack defines it.
     func kind(of stored: String) -> (pack: PackDefinition, kind: PackKind)? {
