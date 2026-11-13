@@ -48,6 +48,15 @@ export interface Member {
   role: Role;
 }
 
+/** A member's role in one pack (docs/PACKS.md, Roles). */
+export interface PackRole {
+  userId: string;
+  packId: string;
+  roleId: string;
+  /** The role does not see some fields; the server keeps them from this member. */
+  restricted: boolean;
+}
+
 export interface Group {
   id: string;
   name: string;
@@ -172,6 +181,9 @@ export const accountApi = {
   leave: (workspaceId: string) => call<AccountView>("leave", { workspaceId }),
   transfer: (workspaceId: string, userId: string) => call<{ members: Member[] }>("transfer", { workspaceId, userId }),
   groups: (workspaceId: string) => call<Group[]>("groups", { workspaceId }),
+  packRoles: (workspaceId: string) => call<PackRole[]>("packRoles", { workspaceId }),
+  setPackRole: (workspaceId: string, userId: string, packId: string, roleId: string | null, restricted: boolean) =>
+    call<PackRole>("setPackRole", { workspaceId, userId, packId, roleId, restricted }),
   createGroup: (workspaceId: string, name: string) => call<Group>("createGroup", { workspaceId, name }),
   deleteGroup: (workspaceId: string, groupId: string) => call<unknown>("deleteGroup", { workspaceId, groupId }),
   setGroupMembers: (workspaceId: string, groupId: string, userIds: string[]) => call<unknown>("setGroupMembers", { workspaceId, groupId, userIds }),

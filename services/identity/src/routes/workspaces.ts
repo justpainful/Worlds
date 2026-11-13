@@ -784,6 +784,55 @@ workspaces.patch("/:id/pages/:pageId", async (c) => {
   return c.json({ ok: true, inherit });
 });
 
+// ---------------------------------------------------------------------------
+// Pack roles (docs/PACKS.md, Roles)
+// ---------------------------------------------------------------------------
+
+const PACK_PART = /^[a-z][a-z0-9]{0,31}$/;
+
+/** Owners and admins see every member's pack roles; anyone else sees their own. */
+workspaces.get("/:id/pack-roles", async (c) => {
+  const id = c.req.param("id");
+  const role = await roleIn(c, id);
+  const all = canManageGroups(role);
+  const stmt = all
+    ? c.env.DB.prepare("SELECT user_id, pack_id, role_id, restricted, updated_at FROM pack_roles WHERE workspace_id = ?1 ORDER BY pack_id, user_id").bind(id)
+    : c.env.DB.prepare("SELECT user_id, pack_id, role_id, restricted, updated_at FROM pack_roles WHERE workspace_id = ?1 AND user_id = ?2 ORDER BY pack_id").bind(id, c.get("caller").userId);
+  const { results } = await stmt.all<{ user_id: string; pack_id: string; role_id: string; restricted: number; updated_at: number }>();
+  return c.json(results.map((r) => ({ userId: r.user_id, packId: r.pack_id, roleId: r.role_id, restricted: !!r.restricted, updatedAt: r.updated_at })));
+});
+
+/** Give a member a role in a pack (roleId null removes it). Restricted roles cannot open items' hidden fields. */
+workspaces.put("/:id/pack-roles", async (c) => {
+  const caller = c.get("caller");
+  const id = c.req.param("id");
+  if (!canManageGroups(await roleIn(c, id))) throw forbidden("forbidden", "Only owners and admins can give pack roles.");
+  const b = await body(c.req);
+  const userId = str(b.userId, "userId", 64);
+  const packId = str(b.packId, "packId", 32);
+  if (!PACK_PART.test(packId)) throw bad("invalid_pack", "packId is a pack's id, such as teacher");
+  const roleId = b.roleId === null ? null : str(b.roleId, "roleId", 32);
+  if (roleId !== null && !PACK_PART.test(roleId)) throw bad("invalid_role", "roleId is a role's id, such as student");
+  if (roleId !== null && typeof b.restricted !== "boolean") throw bad("invalid_request", "restricted must be true or false");
+  const member = await c.env.DB.prepare("SELECT 1 FROM members WHERE workspace_id = ?1 AND user_id = ?2").bind(id, userId).first();
+  if (!member) throw notFound("member_not_found", "Member not found.");
+  const stmt =
+    roleId === null
+      ? c.env.DB.prepare("DELETE FROM pack_roles WHERE workspace_id = ?1 AND user_id = ?2 AND pack_id = ?3").bind(id, userId, packId)
+      : c.env.DB.prepare(
+          "INSERT INTO pack_roles (workspace_id, user_id, pack_id, role_id, restricted, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6) " +
+            "ON CONFLICT (workspace_id, user_id, pack_id) DO UPDATE SET role_id = excluded.role_id, restricted = excluded.restricted, updated_at = excluded.updated_at",
+        ).bind(id, userId, packId, roleId, b.restricted ? 1 : 0, now());
+  await commit(
+    c,
+    [stmt],
+    [auditOf(caller, id, { action: roleId === null ? "pack_role.removed" : "pack_role.set", targetType: "member", targetId: userId, meta: { packId, roleId, restricted: !!b.restricted } })],
+    // Open hidden documents are checked again for this person at once.
+    [{ type: "access.changed", workspaceId: id, docIds: null, userIds: [userId] }],
+  );
+  return c.json({ userId, packId, roleId, restricted: roleId === null ? false : !!b.restricted });
+});
+
 workspaces.get("/:id/audit", async (c) => {
   const id = c.req.param("id");
   if (!canReadAudit(await roleIn(c, id))) throw forbidden("forbidden", "Only owners and admins can read the audit log.");

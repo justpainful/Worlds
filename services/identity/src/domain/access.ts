@@ -126,12 +126,43 @@ export async function loadSubject(db: D1Database, workspaceId: string, userId: s
   };
 }
 
-/** The Service Binding contract: one page. */
+/**
+ * A pack item keeps the fields some role must not see in a second document,
+ * `<pageId>__hidden__<packId>` (docs/PACKS.md, Design 2).
+ */
+export const HIDDEN_SEPARATOR = "__hidden__";
+const PACK_ID = /^[a-z][a-z0-9]{0,31}$/;
+
+export function hiddenDocOf(docId: string): { pageId: string; packId: string } | null {
+  const at = docId.lastIndexOf(HIDDEN_SEPARATOR);
+  if (at <= 0) return null;
+  const pageId = docId.slice(0, at);
+  const packId = docId.slice(at + HIDDEN_SEPARATOR.length);
+  return PACK_ID.test(packId) ? { pageId, packId } : null;
+}
+
+/**
+ * Access to an item's hidden fields: what the page allows, except for a
+ * member whose role in that pack is restricted, who gets none. Owners and
+ * admins always keep the page's level.
+ */
+export async function hiddenLevel(db: D1Database, subject: Subject, workspaceId: string, packId: string, pageLevel: Level): Promise<Level> {
+  if (pageLevel === "none" || subject.role === "owner" || subject.role === "admin") return pageLevel;
+  const row = await db
+    .prepare("SELECT restricted FROM pack_roles WHERE workspace_id = ?1 AND user_id = ?2 AND pack_id = ?3")
+    .bind(workspaceId, subject.userId, packId)
+    .first<{ restricted: number }>();
+  return row?.restricted ? "none" : pageLevel;
+}
+
+/** The Service Binding contract: one page, or one item's hidden fields. */
 export async function checkAccess(db: D1Database, args: { userId: string; workspaceId: string; docId: string }): Promise<{ level: Level }> {
   const subject = await loadSubject(db, args.workspaceId, args.userId);
   if (!subject.role) return { level: "none" };
   const acl = await loadAcl(db, args.workspaceId);
-  return { level: resolve(acl, subject, args.docId) };
+  const hidden = hiddenDocOf(args.docId);
+  if (!hidden) return { level: resolve(acl, subject, args.docId) };
+  return { level: await hiddenLevel(db, subject, args.workspaceId, hidden.packId, resolve(acl, subject, hidden.pageId)) };
 }
 
 /** The Service Binding contract: every mirrored page the user can at least view. */

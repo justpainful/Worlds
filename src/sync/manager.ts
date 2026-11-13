@@ -10,6 +10,7 @@ import { create } from "zustand";
 import { useStore } from "../state/store";
 import "./appConfig";
 import { configureSync, syncConfig } from "./config";
+import { hiddenKeys, splitFields } from "../packs/hidden";
 import { itemData } from "../packs/items";
 import { isPackKind, kindDefOf } from "../packs/registry";
 import { pushFields } from "./fields";
@@ -113,18 +114,21 @@ export function startSyncManager() {
   });
 
   // A shared pack item's fields changed while it is not open (a board, Claude,
-  // an automation): bring its document's fields map up to date.
+  // an automation): bring its document's fields map up to date. Only the
+  // fields every role may see go there; hidden ones follow when it is opened.
   useStore.subscribe((state, prev) => {
     if (state.pages === prev.pages) return;
     for (const [id, p] of Object.entries(state.pages)) {
       const before = prev.pages[id];
-      if (!before || p.data === before.data || !isPackKind(p.kind) || !kindDefOf(p.kind)) continue;
+      const def = before && p.data !== before.data && isPackKind(p.kind) ? kindDefOf(p.kind) : undefined;
+      if (!def) continue;
+      const openFields = () => splitFields(itemData(useStore.getState().pages[id] ?? p), hiddenKeys(def.pack)).open;
       const open = openSessions().find((x) => x.pageId === id);
       if (open) {
-        if (open.ready && open.canEdit) pushFields(open.content, itemData(p));
+        if (open.ready && open.canEdit) pushFields(open.content, openFields());
       } else
         void withSession(id, async (x) => {
-          if (x.canEdit) pushFields(x.content, itemData(useStore.getState().pages[id] ?? p));
+          if (x.canEdit) pushFields(x.content, openFields());
         });
     }
   });

@@ -20,6 +20,7 @@ import { AccountSettings } from "../account/AccountSettings";
 import { FAMILIES } from "../packs/definition";
 import { DIGEST_KEY, digestOn } from "../packs/digest";
 import { packDef } from "../packs/registry";
+import { PackRoles } from "../packs/views/PackRoles";
 import { PACKS, setPackEnabled, usePack } from "../packs/packs";
 import { loadSample, removeSample, rewriteSample, sampleLanguageMismatch, useSampleLoaded } from "../demo/sampleActions";
 
@@ -167,6 +168,7 @@ function PackRow({ pack }: { pack: (typeof PACKS)[number] }) {
       <Row label={pack.label} hint={pack.blurb}>
         <Toggle checked={on} onChange={(v) => setPackEnabled(pack.id, v)} label={pack.label} />
       </Row>
+      {on && def ? <PackRoles pack={def} /> : null}
       {on && def?.alerts?.length ? (
         <Row label="Daily summary in Inbox" hint="Once a day, what needs attention in this pack lands in Inbox.">
           <Toggle checked={digest} onChange={setDigest} label="Daily summary in Inbox" />

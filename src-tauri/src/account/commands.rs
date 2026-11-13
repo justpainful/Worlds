@@ -427,6 +427,15 @@ async fn run(app: &tauri::AppHandle, db: &Mutex<Connection>, secrets: &dyn Secre
             )
             .await?)
         }
+        // Pack roles (docs/PACKS.md, Roles): who has which role in each pack.
+        "packRoles" => Ok(authed(db, secrets, Method::GET, &format!("/workspaces/{}/pack-roles", s(a, "workspaceId")?), None, None).await?),
+        "setPackRole" => {
+            let body = json!({
+                "userId": s(a, "userId")?, "packId": s(a, "packId")?,
+                "roleId": a.get("roleId").cloned().unwrap_or(Value::Null), "restricted": a.get("restricted").cloned().unwrap_or(json!(false)),
+            });
+            Ok(authed(db, secrets, Method::PUT, &format!("/workspaces/{}/pack-roles", s(a, "workspaceId")?), Some(&body), None).await?)
+        }
         "invites" => {
             let query = a.get("pageId").and_then(Value::as_str).map(|p| format!("?pageId={p}")).unwrap_or_default();
             Ok(authed(db, secrets, Method::GET, &format!("/workspaces/{}/invites{query}", s(a, "workspaceId")?), None, None).await?)
