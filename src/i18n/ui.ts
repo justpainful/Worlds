@@ -88,7 +88,8 @@ export function translate(text: string, depth = 0): string | null {
         const part = m[Number(i) + 1] ?? "";
         // English plural endings ("page{1}" with "s") have no place in Arabic.
         if (part === "s" || part === "es") return "";
-        return translate(part, depth + 1) ?? part;
+        // A label lowercased inside a sentence (Untitled subject) is in the dictionary capitalized.
+        return translate(part, depth + 1) ?? (/^[a-z]/.test(part) ? translate(part[0].toUpperCase() + part.slice(1), depth + 1) : null) ?? part;
       })
       .replace(/\s{2,}/g, " ")
       .trim()

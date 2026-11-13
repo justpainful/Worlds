@@ -31,6 +31,7 @@ import {
 } from "./engine";
 import { shortcutKey } from "../lib/keys";
 import { tr } from "../i18n/ui";
+import { defaultSheetName } from "./names";
 
 interface SelectionRange {
   r1: number;
@@ -648,7 +649,7 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
           const ref = ws["!ref"] ? XLSX.utils.decode_range(ws["!ref"]) : { s: { r: 0, c: 0 }, e: { r: 30, c: 12 } };
           const rows = Math.max(60, ref.e.r + 15);
           const cols = Math.max(26, ref.e.c + 6);
-          const sh = newSheet(name || `Sheet ${idx + 1}`, rows, cols);
+          const sh = newSheet(name || defaultSheetName(idx + 1), rows, cols);
           for (let r = ref.s.r; r <= ref.e.r; r++) {
             for (let c = ref.s.c; c <= ref.e.c; c++) {
               const addr = XLSX.utils.encode_cell({ r, c });
@@ -1727,7 +1728,7 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
             title="Add Sheet"
             onClick={() => {
               commitWb((prev) => {
-                const ns = newSheet(`Sheet ${prev.sheets.length + 1}`);
+                const ns = newSheet(defaultSheetName(prev.sheets.length + 1));
                 return {
                   ...prev,
                   sheets: [...prev.sheets, ns],
