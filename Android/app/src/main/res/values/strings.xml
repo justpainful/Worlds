@@ -877,6 +877,14 @@
     <string name="packs_empty_title">Nothing here yet</string>
     <string name="packs_none">None</string>
     <string name="packs_ask_claude">Ask Claude</string>
+    <string name="packs_message_nobody">There is no one to send this to yet. Add a phone number or email first.</string>
+    <string name="packs_message_text">Message</string>
+    <string name="packs_message_note_whatsapp">It opens in WhatsApp, where you send it yourself.</string>
+    <string name="packs_message_note_mail">It opens in your mail app, where you send it yourself.</string>
+    <string name="packs_message_no_app">No app here can open this message.</string>
+    <string name="packs_message_sent">It was sent</string>
+    <string name="packs_message_open_whatsapp">Open in WhatsApp</string>
+    <string name="packs_message_open_mail">Open in Mail</string>
     <string name="plan_today">Today</string>
     <string name="plan_tomorrow">Tomorrow</string>
     <string name="plan_yesterday">Yesterday</string>

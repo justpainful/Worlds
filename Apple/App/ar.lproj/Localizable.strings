@@ -744,3 +744,10 @@
 "Nothing here yet." = "لا يوجد شيء هنا بعد.";
 "Packs are missing from this build" = "الحزم غير موجودة في هذا الإصدار";
 "Date" = "التاريخ";
+"To" = "إلى";
+"It was sent" = "تم الإرسال";
+"Open in Mail" = "فتح في البريد";
+"Open in WhatsApp" = "فتح في واتساب";
+"It opens in your mail app, where you send it yourself." = "تُفتح في تطبيق البريد، وترسلها أنت بنفسك.";
+"It opens in WhatsApp, where you send it yourself." = "تُفتح في واتساب، وترسلها أنت بنفسك.";
+"There is no one to send this to yet. Add a phone number or email first." = "لا يوجد من تُرسل إليه بعد. أضف رقم جوال أو بريدًا إلكترونيًا أولًا.";

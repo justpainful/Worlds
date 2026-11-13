@@ -141,11 +141,22 @@ import worlds.android.WorldsCard
 /** An item's fields, edited as its definition says: text, numbers, dates, choices, ticks and links. */
 @Composable private fun PackItemEditor(row: PlanRow, pack: PackDef, kind: PackKind, repo: PlanningRepository, arabic: Boolean, onClose: () -> Unit) {
     var title by rememberSaveable(row.id) { mutableStateOf(row.title) }
+    // Messages to someone outside Worlds about this item (a note to a parent), when the item calls for one.
+    val offered = kind.messages.filter { PackMessages.offered(it, row.data, PlanDates.today()) }
+    var messaging by remember(row.id) { mutableStateOf<PackMessage?>(null) }
     PackFieldsDialog(row.id, row.data, pack, kind, arabic,
         linkOptions = { t -> repo.rows.filter { it.kind == t.kind }.map { it.id to it.title.ifBlank { "…" } } },
         onSave = { patch -> repo.rename(row.id, title); if (patch.isNotEmpty()) repo.update(row.id, row.kind, patch) },
         onDelete = { repo.trash(row.id) }, onClose = onClose) {
         PlanTextField(title, { title = it }, stringResource(R.string.plan_field_title))
+        offered.forEach { m -> TextButton(onClick = { messaging = m }) { WorldsActionLabel(R.drawable.ic_send_horizontal, m.label.text(arabic)) } }
+    }
+    messaging?.let { m ->
+        val draft = remember(m, row) { PackMessages.draft(m, pack, kind, row.title, row.data, { id -> repo.rows.firstOrNull { it.id == id } }, arabic) }
+        PackMessageDialog(m, draft, row.title, arabic, onSent = { done ->
+            repo.update(row.id, row.kind, done.keys().asSequence().associateWith { k -> done.opt(k) })
+            onClose()
+        }, onClose = { messaging = null })
     }
 }
 

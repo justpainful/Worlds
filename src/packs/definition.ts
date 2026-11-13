@@ -89,6 +89,36 @@ export interface KindDef {
    * (docs/PACKS.md, Design 3). `fields` maps target fields to this kind's.
    */
   publish?: { role: string; target: string; label: string; fields: Record<string, string> };
+  /** Messages the person can send about an item, from their own WhatsApp or email (src/packs/messages.ts). */
+  messages?: MessageDef[];
+}
+
+/**
+ * A message to someone outside Worlds about an item: a note to a parent
+ * about an absence, a payment reminder to a client. Worlds fills it in and
+ * opens it in the person's WhatsApp or email; they read it, change it if
+ * they like and send it themselves, so nothing leaves without them.
+ */
+export interface MessageDef {
+  id: string;
+  /** The button: "Tell the parent". */
+  label: string;
+  /**
+   * Where the number or address is: the first filled field of `fields`, on
+   * this item or, with `via`, on the item that link field points to. A phone
+   * opens WhatsApp, an email opens the mail app. `name` is the field with
+   * the person's name, shown in the dialog.
+   */
+  to: { via?: string; fields: string[]; name?: string };
+  /**
+   * The message. `{title}` is this item's title, `{field}` one of its fields
+   * as shown, `{via}` the linked item's title and `{via.field}` its fields.
+   */
+  text: Bilingual;
+  /** Offer it only for items that pass these conditions (an absence not yet told). */
+  when?: Condition[];
+  /** Fields set once the person says it was sent (`parentTold: true`). */
+  done?: Record<string, unknown>;
 }
 
 /**

@@ -50,6 +50,18 @@ export const SHOP: PackDef = {
       ],
       dateField: "date",
       stageField: "status",
+      messages: [
+        {
+          id: "shipped",
+          label: "Tell the customer",
+          to: { via: "customer", fields: ["phone"] },
+          text: {
+            en: "Hello, {customer}. Your order {number} is on its way. Thank you for shopping with us.",
+            ar: "مرحبًا {customer}، طلبك {number} في الطريق إليك. شكرًا لتسوقك معنا.",
+          },
+          when: [{ field: "status", in: ["shipped"] }],
+        },
+      ],
     },
     {
       id: "customer",

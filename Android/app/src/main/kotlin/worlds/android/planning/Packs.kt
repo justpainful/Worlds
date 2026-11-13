@@ -28,10 +28,17 @@ internal data class PackField(
 internal data class PackKind(
     val id: String, val kind: String, val label: Both, val plural: Both, val icon: String,
     val dateField: String?, val stageField: String?, val doneField: String?, val fields: List<PackField>,
+    val messages: List<PackMessage> = emptyList(),
 ) {
     /** Fields a list shows (the rest are on the item). */
     val listFields: List<PackField> get() = fields.filter { !it.detailOnly }
 }
+
+/** A message to someone outside Worlds about an item, opened in the person's own WhatsApp or mail (PackMessages.kt). */
+internal data class PackMessage(
+    val id: String, val label: Both, val via: String?, val fields: List<String>, val name: String?,
+    val text: Both, val conditions: List<PackCondition>, val done: JSONObject?,
+)
 
 internal data class PackView(val id: String, val label: Both, val type: String, val kind: String, val groupBy: String?, val columns: List<String>?)
 
@@ -77,6 +84,15 @@ internal data class PackCatalog(val families: List<PackFamily>, val packs: List<
                                     id = f.getString("id"), label = both(f.optJSONObject("label")), type = f.optString("type"),
                                     options = f.optJSONArray("options").map { o -> PackOption(o.getString("id"), both(o.optJSONObject("label")), o.str("color")) },
                                     to = f.str("to"), currency = f.str("currency"), detailOnly = f.optBoolean("detailOnly"),
+                                )
+                            },
+                            messages = k.optJSONArray("messages").map { m ->
+                                val ids = m.optJSONArray("fields")
+                                PackMessage(
+                                    id = m.getString("id"), label = both(m.optJSONObject("label")), via = m.str("via"),
+                                    fields = if (ids == null) emptyList() else (0 until ids.length()).map { ids.getString(it) },
+                                    name = m.str("name"), text = both(m.optJSONObject("text")),
+                                    conditions = PackCondition.parseAll(m.optJSONArray("when")), done = m.optJSONObject("done"),
                                 )
                             },
                         )

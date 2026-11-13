@@ -28,6 +28,7 @@ function packStrings(): string[] {
     p.stats?.forEach((s) => add(s.label));
     p.alerts?.forEach((a) => add(a.label));
     p.prompts?.forEach((a) => add(a.label));
+    for (const k of p.kinds) k.messages?.forEach((m) => add(m.label));
   }
   return [...out];
 }
@@ -44,6 +45,7 @@ describe("packs in Arabic", () => {
     for (const p of PACK_DEFS) {
       for (const pr of p.prompts ?? []) expect(typeof pr.prompt === "object" && pr.prompt.ar && pr.prompt.en, `${p.id}: ${pr.label}`).toBeTruthy();
       for (const s of p.samples ?? []) expect(typeof s.title === "object", `${p.id} sample title`).toBe(true);
+      for (const k of p.kinds) for (const m of k.messages ?? []) expect(typeof m.text === "object" && m.text.ar && m.text.en, `${p.id}.${k.id}: ${m.label}`).toBeTruthy();
     }
   });
 

@@ -744,3 +744,10 @@
 "Nothing here yet." = "Nothing here yet.";
 "Packs are missing from this build" = "Packs are missing from this build";
 "Date" = "Date";
+"To" = "To";
+"It was sent" = "It was sent";
+"Open in Mail" = "Open in Mail";
+"Open in WhatsApp" = "Open in WhatsApp";
+"It opens in your mail app, where you send it yourself." = "It opens in your mail app, where you send it yourself.";
+"It opens in WhatsApp, where you send it yourself." = "It opens in WhatsApp, where you send it yourself.";
+"There is no one to send this to yet. Add a phone number or email first." = "There is no one to send this to yet. Add a phone number or email first.";

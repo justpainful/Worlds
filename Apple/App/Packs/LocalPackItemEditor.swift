@@ -114,13 +114,33 @@ struct LocalPackItemEditor: View {
     @Environment(\.dismiss) private var dismiss
     private let title: String
     private let pages: [StoredPage]
+    private let pageID: String
     private let onSaved: @MainActor () -> Void
+    @State private var messaging: PackMessageDef?
 
     init(copy: WorkspaceWriteTarget, pageID: String, title: String, pages: [StoredPage] = [], onSaved: @escaping @MainActor () -> Void) {
         _state = StateObject(wrappedValue: LocalPackItemState(copy: copy, pageID: pageID))
         self.title = title
         self.pages = pages
+        self.pageID = pageID
         self.onSaved = onSaved
+    }
+
+    private func row(_ id: String) -> (pack: PackDefinition, kind: PackKind, row: PackRow)? {
+        guard let page = pages.first(where: { $0.id == id }), let found = PackCatalog.shipped?.kind(of: page.kind),
+              let row = PackRow(page: page, kind: found.kind) else { return nil }
+        return (found.pack, found.kind, row)
+    }
+
+    /// Messages to someone outside Worlds this item calls for now (a note to a parent).
+    private var offeredMessages: [PackMessageDef] {
+        guard let current = row(pageID) else { return [] }
+        return (current.kind.messages ?? []).filter { PackMessages.offered($0, data: current.row.data) }
+    }
+
+    private func draft(_ m: PackMessageDef) -> MessageDraft? {
+        guard let current = row(pageID) else { return nil }
+        return PackMessages.draft(m, pack: current.pack, kind: current.kind, item: current.row) { id in row(id)?.row }
     }
 
     /// Items a link field can point to: the other items of the kind it names, in the same pack.
@@ -138,6 +158,13 @@ struct LocalPackItemEditor: View {
                     Form {
                         ForEach(kind.fields, id: \.id) { field in
                             fieldRow(field)
+                        }
+                        if !offeredMessages.isEmpty {
+                            Section {
+                                ForEach(offeredMessages) { m in
+                                    Button(m.label.text, systemImage: "paperplane") { messaging = m }
+                                }
+                            }
                         }
                         if let problem = state.problem {
                             Text(message(problem)).foregroundStyle(.red)
@@ -162,6 +189,20 @@ struct LocalPackItemEditor: View {
         .frame(minWidth: 480, idealWidth: 560, minHeight: 420, idealHeight: 620)
         #endif
         .task { await state.load() }
+        .sheet(item: $messaging) { m in
+            PackMessageSheet(message: m, draft: draft(m), subject: title) { done in
+                // Record it on the item ("Parent told"), saved like any other change.
+                for (key, value) in done {
+                    switch value {
+                    case .bool(let b): state.ticks[key] = b
+                    case .string(let s): state.texts[key] = s
+                    case .number(let d): state.texts[key] = PackRules.text(d)
+                    case .null: state.texts[key] = ""
+                    }
+                }
+                Task { await state.save { onSaved() } }
+            }
+        }
     }
 
     @ViewBuilder private func fieldRow(_ field: PackField) -> some View {

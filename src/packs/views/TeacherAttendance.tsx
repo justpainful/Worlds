@@ -12,6 +12,10 @@ import { createPackItem, itemData, updatePackItem } from "../items";
 import { packDef } from "../registry";
 import { packItems, todayIso } from "../rules";
 import { formatField } from "../fields";
+import { Button } from "../../ui/Button";
+import type { PageMeta } from "../../lib/types";
+import { messageOffered } from "../messages";
+import { MessageDialog } from "./MessageDialog";
 
 type Status = "present" | "absent" | "late" | "excused";
 const STATUSES: { value: Status; label: string }[] = [
@@ -51,6 +55,9 @@ export function TeacherAttendance() {
     if (existing) void updatePackItem(existing, { status });
     else void createPackItem(pack, kind, { title: `${name}, ${formatField(dateField, day)}`, data: { student: studentId, date: day, status, parentTold: false }, open: false });
   };
+  // An absence the parent has not heard about yet offers the note to them.
+  const tell = kind.messages?.find((m) => m.id === "parent");
+  const [telling, setTelling] = useState<PageMeta | null>(null);
   const counts = STATUSES.map((s) => ({ ...s, n: students.filter((st) => (itemData(marks.get(st.id)).status ?? "") === s.value).length }));
 
   return (
@@ -89,12 +96,18 @@ export function TeacherAttendance() {
                   <span className="pk-att-number">{String(itemData(s).number ?? "")}</span>
                   <span className="pk-att-name bidi">{name}</span>
                   <Segmented value={status} options={STATUSES} onChange={(v) => mark(s.id, name, v)} label={name} />
+                  {tell && marks.get(s.id) && messageOffered(tell, itemData(marks.get(s.id))) ? (
+                    <Button variant="plain" icon="send" onClick={() => setTelling(marks.get(s.id)!)}>
+                      {tell.label}
+                    </Button>
+                  ) : null}
                 </li>
               );
             })}
           </ul>
         </>
       )}
+      {telling && tell ? <MessageDialog p={pages[telling.id] ?? telling} pack={pack} kind={kind} m={tell} onClose={() => setTelling(null)} /> : null}
     </div>
   );
 }

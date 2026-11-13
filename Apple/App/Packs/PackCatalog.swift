@@ -42,6 +42,8 @@ struct PackKind: Decodable, Hashable {
     let dateField: String?
     let stageField: String?
     let doneField: String?
+    /// Messages to people outside Worlds about an item (PackMessages.swift).
+    let messages: [PackMessageDef]?
 
     /// Fields a list shows (the rest are on the item).
     var listFields: [PackField] { fields.filter { !$0.detailOnly } }

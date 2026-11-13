@@ -69,6 +69,18 @@ export const FREELANCE: PackDef = {
       ],
       dateField: "due",
       stageField: "status",
+      messages: [
+        {
+          id: "reminder",
+          label: "Remind the client",
+          to: { via: "client", fields: ["email", "phone"] },
+          text: {
+            en: "Hello, {client}. A friendly reminder that invoice {number} for {total} was due on {due}. Thank you.",
+            ar: "مرحبًا {client}، تذكير لطيف بأن الفاتورة {number} بمبلغ {total} كان موعد سدادها {due}. شكرًا لك.",
+          },
+          when: [{ field: "status", in: ["sent", "late"] }],
+        },
+      ],
     },
     {
       id: "payment",

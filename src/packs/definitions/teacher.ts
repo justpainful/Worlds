@@ -100,6 +100,19 @@ export const TEACHER: PackDef = {
       icon: "checklist",
       blurb: "Whether a student was in class on a day",
       fields: [link("student", "Student", "student"), date("date", "Date"), choice("status", "Status", ATTENDANCE, { initial: "present" }), check("parentTold", "Parent told"), text("note", "Note")],
+      messages: [
+        {
+          id: "parent",
+          label: "Tell the parent",
+          to: { via: "student", fields: ["guardianPhone"], name: "guardian" },
+          text: {
+            en: "Hello, {student.guardian}. {student} was absent from class on {date}. Please let me know if there is anything I should be aware of. Thank you.",
+            ar: "السلام عليكم {student.guardian}، نود إبلاغكم بغياب {student} عن الحصة يوم {date}. نرجو إفادتنا إن كان هناك ما يلزم معرفته. شكرًا لكم.",
+          },
+          when: [{ field: "status", in: ["absent"] }, { field: "parentTold", in: [false] }],
+          done: { parentTold: true },
+        },
+      ],
     },
   ],
   views: [

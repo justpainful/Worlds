@@ -45,6 +45,17 @@ function exportPacks(): string {
           currency: f.type === "money" ? (f.currency ?? "SAR") : null,
           detailOnly: !!f.detailOnly,
         })),
+        // Messages to people outside Worlds, opened in the person's own WhatsApp or mail (src/packs/messages.ts).
+        messages: (k.messages ?? []).map((m) => ({
+          id: m.id,
+          label: both(m.label),
+          via: m.to.via ?? null,
+          fields: m.to.fields,
+          name: m.to.name ?? null,
+          text: typeof m.text === "string" ? { en: m.text, ar: m.text } : m.text,
+          when: m.when ?? [],
+          done: m.done ?? null,
+        })),
       })),
       // Views a native app can draw from data alone; custom ones stay on desktop for now.
       views: p.views

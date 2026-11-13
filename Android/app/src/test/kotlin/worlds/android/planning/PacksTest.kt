@@ -90,4 +90,26 @@ class PacksTest {
         val clash = PackCondition.parse(JSONObject("{\"field\":\"staff\",\"clashesOn\":[\"date\",\"time\"]}"))
         assertEquals(listOf("1", "2"), PackRules.filter(rows, listOf(clash), today).map { it.id })
     }
+
+    @Test fun fillsANoteToAParentFromTheAbsenceAndTheStudent() {
+        assertEquals("966551234567", PackMessages.whatsappNumber("0551234567"))
+        assertEquals("966551234567", PackMessages.whatsappNumber("+966 55 123 4567"))
+        assertEquals("", PackMessages.whatsappNumber("call me"))
+        val teacher = requireNotNull(catalog.pack("teacher"))
+        val attendance = requireNotNull(teacher.kind("attendance"))
+        val m = attendance.messages.single { it.id == "parent" }
+        val student = PlanRow("s1", "Sara Ali", "teacher.student", null, 0.0, 0L, JSONObject().put("guardian", "Mr Ali").put("guardianPhone", "0551234567"))
+        val absence = JSONObject().put("student", "s1").put("date", "2026-11-12").put("status", "absent").put("parentTold", false)
+        assertTrue(PackMessages.offered(m, absence, "2026-11-13"))
+        assertFalse(PackMessages.offered(m, JSONObject(absence.toString()).put("parentTold", true), "2026-11-13"))
+        val draft = requireNotNull(PackMessages.draft(m, teacher, attendance, "Sara Ali, 2026-11-12", absence, { id -> student.takeIf { it.id == id } }, arabic = false))
+        assertEquals("whatsapp", draft.channel)
+        assertEquals("966551234567", draft.to)
+        assertEquals("Mr Ali", draft.name)
+        assertTrue(draft.text, draft.text.startsWith("Hello, Mr Ali. Sara Ali was absent from class on"))
+        assertFalse(draft.text.contains("{"))
+        assertEquals(true, m.done?.getBoolean("parentTold"))
+        // No student linked: no one to send it to.
+        assertEquals(null, PackMessages.draft(m, teacher, attendance, "x", JSONObject().put("status", "absent"), { null }, arabic = false))
+    }
 }

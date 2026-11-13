@@ -41,3 +41,16 @@ export function combineFields(open: ItemData, hidden: ItemData | null, local: It
   for (const [k, v] of Object.entries(fromHidden)) if (keys.has(k)) out[k] = v;
   return out;
 }
+
+/**
+ * What a device that was away should take from the documents for an item it
+ * does not have open: the combined fields when they differ from its own, or
+ * null to keep them. An empty shared document has not been seeded yet, so
+ * it never clears the item; an empty hidden document (or one this device
+ * may not open, `null`) leaves the hidden fields as they are.
+ */
+export function fieldsToAdopt(open: ItemData, hidden: ItemData | null, local: ItemData, keys: Set<string>): ItemData | null {
+  if (!Object.keys(open).length) return null;
+  const next = combineFields(open, hidden && Object.keys(hidden).length ? hidden : null, local, keys);
+  return JSON.stringify(next) === JSON.stringify(local) ? null : next;
+}

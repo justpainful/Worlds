@@ -137,7 +137,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "lesson",
@@ -192,7 +193,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "assignment",
@@ -295,7 +297,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "exam",
@@ -386,7 +389,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "requirement",
@@ -465,7 +469,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -582,7 +587,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "student",
@@ -661,7 +667,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "period",
@@ -797,7 +804,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "plan",
@@ -925,7 +933,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "assessment",
@@ -1082,7 +1091,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "grade",
@@ -1149,7 +1159,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "attendance",
@@ -1260,6 +1271,41 @@
        "to": null,
        "currency": null,
        "detailOnly": false
+      }
+     ],
+     "messages": [
+      {
+       "id": "parent",
+       "label": {
+        "en": "Tell the parent",
+        "ar": "إبلاغ ولي الأمر"
+       },
+       "via": "student",
+       "fields": [
+        "guardianPhone"
+       ],
+       "name": "guardian",
+       "text": {
+        "en": "Hello, {student.guardian}. {student} was absent from class on {date}. Please let me know if there is anything I should be aware of. Thank you.",
+        "ar": "السلام عليكم {student.guardian}، نود إبلاغكم بغياب {student} عن الحصة يوم {date}. نرجو إفادتنا إن كان هناك ما يلزم معرفته. شكرًا لكم."
+       },
+       "when": [
+        {
+         "field": "status",
+         "in": [
+          "absent"
+         ]
+        },
+        {
+         "field": "parentTold",
+         "in": [
+          false
+         ]
+        }
+       ],
+       "done": {
+        "parentTold": true
+       }
       }
      ]
     }
@@ -1648,7 +1694,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "student",
@@ -1727,7 +1774,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "recitation",
@@ -1892,7 +1940,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "attendance",
@@ -1980,7 +2029,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -2281,7 +2331,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "trainee",
@@ -2360,7 +2411,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "session",
@@ -2439,7 +2491,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -2758,7 +2811,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "chapter",
@@ -2858,7 +2912,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "experiment",
@@ -2962,7 +3017,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "meeting",
@@ -3029,7 +3085,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -3350,7 +3407,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "document",
@@ -3466,7 +3524,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -3753,7 +3812,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "quote",
@@ -3877,7 +3937,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "invoice",
@@ -4037,6 +4098,35 @@
        "currency": null,
        "detailOnly": true
       }
+     ],
+     "messages": [
+      {
+       "id": "reminder",
+       "label": {
+        "en": "Remind the client",
+        "ar": "تذكير العميل"
+       },
+       "via": "client",
+       "fields": [
+        "email",
+        "phone"
+       ],
+       "name": null,
+       "text": {
+        "en": "Hello, {client}. A friendly reminder that invoice {number} for {total} was due on {due}. Thank you.",
+        "ar": "مرحبًا {client}، تذكير لطيف بأن الفاتورة {number} بمبلغ {total} كان موعد سدادها {due}. شكرًا لك."
+       },
+       "when": [
+        {
+         "field": "status",
+         "in": [
+          "sent",
+          "late"
+         ]
+        }
+       ],
+       "done": null
+      }
      ]
     },
     {
@@ -4149,7 +4239,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "hours",
@@ -4228,7 +4319,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "contract",
@@ -4319,7 +4411,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -4689,7 +4782,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "order",
@@ -4866,6 +4960,33 @@
        "currency": null,
        "detailOnly": true
       }
+     ],
+     "messages": [
+      {
+       "id": "shipped",
+       "label": {
+        "en": "Tell the customer",
+        "ar": "إبلاغ العميل"
+       },
+       "via": "customer",
+       "fields": [
+        "phone"
+       ],
+       "name": null,
+       "text": {
+        "en": "Hello, {customer}. Your order {number} is on its way. Thank you for shopping with us.",
+        "ar": "مرحبًا {customer}، طلبك {number} في الطريق إليك. شكرًا لتسوقك معنا."
+       },
+       "when": [
+        {
+         "field": "status",
+         "in": [
+          "shipped"
+         ]
+        }
+       ],
+       "done": null
+      }
      ]
     },
     {
@@ -4921,7 +5042,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "supplier",
@@ -4988,7 +5110,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "movement",
@@ -5084,7 +5207,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "expense",
@@ -5200,7 +5324,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -5614,7 +5739,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "account",
@@ -5718,7 +5844,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "activity",
@@ -5818,7 +5945,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "target",
@@ -5885,7 +6013,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -6226,7 +6355,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "candidate",
@@ -6378,7 +6508,8 @@
        "currency": "SAR",
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "interview",
@@ -6514,7 +6645,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -6861,7 +6993,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "client",
@@ -6961,7 +7094,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "viewing",
@@ -7065,7 +7199,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "contract",
@@ -7156,7 +7291,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -7432,7 +7568,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "ingredient",
@@ -7511,7 +7648,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "shift",
@@ -7680,7 +7818,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "supplier",
@@ -7792,7 +7931,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -8053,7 +8193,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "session",
@@ -8144,7 +8285,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "goal",
@@ -8244,7 +8386,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -8534,7 +8677,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "outgoing",
@@ -8642,7 +8786,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "minutes",
@@ -8721,7 +8866,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "circular",
@@ -8800,7 +8946,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -9076,7 +9223,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "order",
@@ -9237,7 +9385,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "tech",
@@ -9321,7 +9470,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "equipment",
@@ -9413,7 +9563,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "report",
@@ -9504,7 +9655,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "boq",
@@ -9583,7 +9735,8 @@
        "currency": "SAR",
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -9928,7 +10081,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "trip",
@@ -10019,7 +10173,8 @@
        "currency": "SAR",
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "vehicle",
@@ -10098,7 +10253,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "driver",
@@ -10153,7 +10309,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -10502,7 +10659,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "irrigation",
@@ -10569,7 +10727,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "animal",
@@ -10689,7 +10848,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "health",
@@ -10793,7 +10953,8 @@
        "currency": "SAR",
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -11047,7 +11208,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "incident",
@@ -11176,7 +11338,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "action",
@@ -11255,7 +11418,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "checklist",
@@ -11339,7 +11503,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -11646,7 +11811,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "booking",
@@ -11843,7 +12009,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "guest",
@@ -11910,7 +12077,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "cleaning",
@@ -11977,7 +12145,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -12327,7 +12496,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "service",
@@ -12423,7 +12593,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "staff",
@@ -12535,7 +12706,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "client",
@@ -12602,7 +12774,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -12933,7 +13106,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "tenant",
@@ -12988,7 +13162,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "lease",
@@ -13124,7 +13299,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "rent",
@@ -13191,7 +13367,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "request",
@@ -13328,7 +13505,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -13637,7 +13815,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "traveller",
@@ -13773,7 +13952,8 @@
        "currency": "SAR",
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "housing",
@@ -13897,7 +14077,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "bus",
@@ -13964,7 +14145,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "day",
@@ -14031,7 +14213,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -14371,7 +14554,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "place",
@@ -14467,7 +14651,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "chapter",
@@ -14575,7 +14760,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "scene",
@@ -14691,7 +14877,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "event",
@@ -14770,7 +14957,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "group",
@@ -14870,7 +15058,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "system",
@@ -14966,7 +15155,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "object",
@@ -15033,7 +15223,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "session",
@@ -15100,7 +15291,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -15539,7 +15731,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "sprint",
@@ -15606,7 +15799,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "release",
@@ -15698,7 +15892,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "decision",
@@ -15790,7 +15985,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "endpoint",
@@ -15890,7 +16086,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -16294,7 +16491,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "campaign",
@@ -16373,7 +16571,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -16766,7 +16965,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "client",
@@ -16821,7 +17021,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "gear",
@@ -16888,7 +17089,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -17166,7 +17368,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "reference",
@@ -17266,7 +17469,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "feedback",
@@ -17345,7 +17549,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -17663,7 +17868,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "guest",
@@ -17763,7 +17969,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -18050,7 +18257,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "level",
@@ -18187,7 +18395,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "asset",
@@ -18320,7 +18529,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "unit",
@@ -18387,7 +18597,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "bug",
@@ -18479,7 +18690,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -18760,7 +18972,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "volunteer",
@@ -18827,7 +19040,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "activity",
@@ -18943,7 +19157,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "donation",
@@ -19055,7 +19270,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -19358,7 +19574,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "training",
@@ -19437,7 +19654,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "match",
@@ -19582,7 +19800,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -19811,7 +20030,8 @@
        "currency": "SAR",
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "guest",
@@ -19956,7 +20176,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "slot",
@@ -20023,7 +20244,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "cost",
@@ -20102,7 +20324,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "supplier",
@@ -20206,7 +20429,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -20548,7 +20772,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "budget",
@@ -20591,7 +20816,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "subscription",
@@ -20675,7 +20901,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "goal",
@@ -20730,7 +20957,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -20991,7 +21219,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "workout",
@@ -21132,7 +21361,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "meal",
@@ -21220,7 +21450,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "reminder",
@@ -21312,7 +21543,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -21572,7 +21804,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "shopping",
@@ -21668,7 +21901,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "meal",
@@ -21797,7 +22031,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "date",
@@ -21873,7 +22108,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -22130,7 +22366,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "booking",
@@ -22242,7 +22479,8 @@
        "currency": "SAR",
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "document",
@@ -22330,7 +22568,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "packing",
@@ -22373,7 +22612,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -22666,7 +22906,8 @@
        "currency": "SAR",
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "interview",
@@ -22770,7 +23011,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "cv",
@@ -22825,7 +23067,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -23105,7 +23348,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "quote",
@@ -23160,7 +23404,8 @@
        "currency": null,
        "detailOnly": true
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [
@@ -23437,7 +23682,8 @@
        "currency": null,
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "cost",
@@ -23533,7 +23779,8 @@
        "currency": "SAR",
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     },
     {
      "id": "renewal",
@@ -23621,7 +23868,8 @@
        "currency": "SAR",
        "detailOnly": false
       }
-     ]
+     ],
+     "messages": []
     }
    ],
    "views": [

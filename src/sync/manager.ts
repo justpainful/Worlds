@@ -10,11 +10,13 @@ import { create } from "zustand";
 import { useStore } from "../state/store";
 import "./appConfig";
 import { configureSync, syncConfig } from "./config";
-import { hiddenKeys, splitFields } from "../packs/hidden";
-import { itemData } from "../packs/items";
+import { fieldsToAdopt, hiddenDocId, hiddenKeys, splitFields } from "../packs/hidden";
+import { itemData, replaceItemFields } from "../packs/items";
+import type { ItemData } from "../packs/fields";
 import { isPackKind, kindDefOf } from "../packs/registry";
-import { markKind, pushFields } from "./fields";
-import { acquireSession, localStore, openSessions, releaseSession } from "./session";
+import { markKind, pushFields, readFields } from "./fields";
+import { MemoryLocalStore } from "./localStore";
+import { acquireSession, localStore, openSessions, releaseSession, type CollabSession } from "./session";
 
 export interface Notice {
   id: string;
@@ -122,6 +124,89 @@ async function withSession(pageId: string, fn: (s: ReturnType<typeof acquireSess
   }
 }
 
+/** Resolves true once a session has caught up with the server, false if it cannot (denied, offline, too slow). */
+function whenSynced(s: CollabSession, ms = 15_000): Promise<boolean> {
+  return new Promise((resolve) => {
+    let stop = () => {};
+    const timer = setTimeout(() => finish(false), ms);
+    function finish(ok: boolean) {
+      clearTimeout(timer);
+      stop();
+      resolve(ok);
+    }
+    const check = () => {
+      if (s.info.state === "synced") finish(true);
+      else if (s.info.state === "error") finish(false);
+    };
+    stop = s.subscribe(check);
+    check();
+  });
+}
+
+/**
+ * A shared item's hidden document (docs/PACKS.md, Design 2), opened in the
+ * background: `fn` gets it once synced, or nothing happens when this device
+ * may not open it. It is kept in memory only, as when the item is open.
+ */
+async function withHidden(pageId: string, packId: string, workspaceId: string, fn: (h: CollabSession) => void): Promise<void> {
+  const h = acquireSession(hiddenDocId(pageId, packId), workspaceId, { store: new MemoryLocalStore() });
+  try {
+    await h.start();
+    if (await whenSynced(h, 10_000)) fn(h);
+  } finally {
+    releaseSession(h);
+  }
+}
+
+let catchingUp = false;
+
+/**
+ * Brings shared pack items that are not open up to date with what others
+ * changed while this device was away, open and hidden fields both. Items are
+ * visited one at a time so the machine and the server stay quiet; an item
+ * whose document was never seeded keeps its fields (see `fieldsToAdopt`).
+ */
+export async function catchUpPackItems(limit = 200): Promise<number> {
+  if (catchingUp) return 0;
+  catchingUp = true;
+  let changed = 0;
+  try {
+    const ids = Object.values(useStore.getState().pages)
+      .filter((p) => isPackKind(p.kind))
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, limit)
+      .map((p) => p.id);
+    for (const id of ids) {
+      if (openSessions().some((s) => s.pageId === id)) continue;
+      const def = kindDefOf(useStore.getState().pages[id]?.kind ?? "");
+      if (!def) continue;
+      await withSession(id, async (s) => {
+        if (!(await whenSynced(s))) return;
+        const keys = hiddenKeys(def.pack);
+        let hidden: ItemData | null = null;
+        if (keys.size) {
+          await withHidden(id, def.pack.id, s.workspaceId, (h) => {
+            hidden = readFields(h.content);
+            // Never seeded (made before hidden fields existed): seed it from this device.
+            const local = splitFields(itemData(useStore.getState().pages[id]), keys).hidden;
+            if (!Object.keys(hidden).length && h.canEdit) pushFields(h.content, local);
+          });
+        }
+        const page = useStore.getState().pages[id];
+        if (!page) return;
+        const next = fieldsToAdopt(readFields(s.content), hidden, itemData(page), keys);
+        if (next) {
+          await replaceItemFields(page, next);
+          changed++;
+        }
+      }).catch(() => undefined);
+    }
+  } finally {
+    catchingUp = false;
+  }
+  return changed;
+}
+
 let started = false;
 
 export function startSyncManager() {
@@ -140,27 +225,32 @@ export function startSyncManager() {
   });
 
   // A shared pack item's fields changed while it is not open (a board, Claude,
-  // an automation): bring its document's fields map up to date. Only the
-  // fields every role may see go there; hidden ones follow when it is opened.
+  // an automation): bring its documents up to date. Fields every role may see
+  // go to the page's document, hidden ones to its hidden document.
   useStore.subscribe((state, prev) => {
     if (state.pages === prev.pages) return;
     for (const [id, p] of Object.entries(state.pages)) {
       const before = prev.pages[id];
       const def = before && p.data !== before.data && isPackKind(p.kind) ? kindDefOf(p.kind) : undefined;
       if (!def) continue;
-      const openFields = () => splitFields(itemData(useStore.getState().pages[id] ?? p), hiddenKeys(def.pack)).open;
+      const keys = hiddenKeys(def.pack);
+      const parts = () => splitFields(itemData(useStore.getState().pages[id] ?? p), keys);
       const open = openSessions().find((x) => x.pageId === id);
       if (open) {
         if (open.ready && open.canEdit) {
           markKind(open.content, p.kind);
-          pushFields(open.content, openFields());
+          pushFields(open.content, parts().open);
         }
       } else
         void withSession(id, async (x) => {
           if (x.canEdit) {
             markKind(x.content, p.kind);
-            pushFields(x.content, openFields());
+            pushFields(x.content, parts().open);
           }
+          if (keys.size)
+            await withHidden(id, def.pack.id, x.workspaceId, (h) => {
+              if (h.canEdit) pushFields(h.content, parts().hidden);
+            });
         });
     }
   });
@@ -185,6 +275,18 @@ export function startSyncManager() {
 
   void refreshNotifications();
   setInterval(() => void refreshNotifications(), 60_000);
+
+  // Shared pack items changed by others while closed here: once after start,
+  // every ten minutes, and when Worlds comes back to the front (at most every two).
+  let lastCatchUp = 0;
+  const catchUp = () => {
+    if (Date.now() - lastCatchUp < 120_000) return;
+    lastCatchUp = Date.now();
+    void catchUpPackItems();
+  };
+  setTimeout(catchUp, 8000);
+  setInterval(catchUp, 600_000);
+  window.addEventListener("focus", catchUp);
 
   // Developer handle for testing two PCs before Team workspaces exist.
   (window as unknown as { worldsSync: unknown }).worldsSync = {

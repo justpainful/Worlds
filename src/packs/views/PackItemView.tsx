@@ -1,5 +1,5 @@
 /** One pack item: its fields to edit, built from the kind's definition, and the items that link to it. */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { trashItem } from "../../planning/actions";
 import { Field } from "../../planning/ui";
 import { ResourceHeader } from "../../resources/views/ResourceHeader";
@@ -9,7 +9,9 @@ import { menuAt } from "../../ui/Menu";
 import { EmptyState } from "../../ui/misc";
 import { promptMenu } from "../actions";
 import type { PageMeta } from "../../lib/types";
-import type { FieldDef, KindDef, PackDef } from "../definition";
+import type { FieldDef, KindDef, MessageDef, PackDef } from "../definition";
+import { messageOffered } from "../messages";
+import { MessageDialog } from "./MessageDialog";
 import { fieldsFor, useViewAs } from "../roles";
 import { useItemSync } from "../useItemSync";
 import { sendItem } from "../published";
@@ -41,6 +43,7 @@ function ItemFields({ p, pack, kind }: { p: PageMeta; pack: PackDef; kind: KindD
   const stage = kind.stageField ? kind.fields.find((f) => f.id === kind.stageField) : undefined;
   const short = fields.filter((f) => f.type !== "longText");
   const long = fields.filter((f) => f.type === "longText");
+  const [message, setMessage] = useState<MessageDef | null>(null);
 
   return (
     <div className="res-view pl-detail">
@@ -54,6 +57,13 @@ function ItemFields({ p, pack, kind }: { p: PageMeta; pack: PackDef; kind: KindD
                 Ask Claude
               </Button>
             ) : null}
+            {(kind.messages ?? [])
+              .filter((m) => messageOffered(m, data))
+              .map((m) => (
+                <Button key={m.id} variant="plain" icon="send" onClick={() => setMessage(m)}>
+                  {m.label}
+                </Button>
+              ))}
             {kind.publish ? (
               <Button variant="plain" icon="send" onClick={() => void send(p)}>
                 {kind.publish.label}
@@ -86,6 +96,8 @@ function ItemFields({ p, pack, kind }: { p: PageMeta; pack: PackDef; kind: KindD
       ))}
 
       <LinkedHere pack={pack} kind={kind} id={p.id} />
+
+      {message ? <MessageDialog p={p} pack={pack} kind={kind} m={message} onClose={() => setMessage(null)} /> : null}
 
       <div className="pl-detail-foot">
         <Button variant="danger" icon="delete" onClick={() => trashItem(p)}>
