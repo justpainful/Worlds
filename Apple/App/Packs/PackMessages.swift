@@ -56,7 +56,7 @@ enum PackMessages {
     }
 
     /// The message filled in for one item, or nil when there is no one to send it to.
-    static func draft(_ m: PackMessageDef, pack: PackDefinition, kind: PackKind, item: PackRow, rowOf: (String) -> PackRow?) -> MessageDraft? {
+    static func draft(_ m: PackMessageDef, pack: PackDefinition, kind: PackKind, item: PackRow, rowOf: @escaping (String) -> PackRow?) -> MessageDraft? {
         let titleOf = { (id: String) in rowOf(id)?.title }
         let viaField = m.via.flatMap { v in kind.fields.first { $0.id == v } }
         let viaRow = viaField.flatMap { item.data[$0.id] as? String }.flatMap(rowOf)
