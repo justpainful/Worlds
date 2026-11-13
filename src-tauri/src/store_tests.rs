@@ -316,3 +316,34 @@ fn arabic_search_finds_the_spellings_people_type_interchangeably() {
     assert!(spellings.contains(&"الطاقة".to_string()));
     assert!(store::arabic_spellings("ااااااااا").len() <= 32);
 }
+
+#[test]
+fn claude_creates_pack_items_and_changes_their_fields() {
+    let (dir, conn) = temp_db("pack-items-mcp");
+    let ctx = Ctx::user();
+    let made = crate::mcp::execute_tool(
+        &conn,
+        &ctx,
+        "resources_create",
+        &json!({ "kind": "freelance.invoice", "title": "Website", "data": { "subtotal": 1000, "status": "draft" } }),
+    )
+    .unwrap();
+    let id = made["id"].as_str().unwrap().to_string();
+    let changed = crate::mcp::execute_tool(
+        &conn,
+        &ctx,
+        "items_update",
+        &json!({ "id": id, "data": { "status": "sent", "subtotal": null, "due": "2026-12-01" } }),
+    )
+    .unwrap();
+    assert_eq!(changed["data"]["status"], "sent");
+    assert_eq!(changed["data"]["due"], "2026-12-01");
+    assert!(changed["data"].get("subtotal").is_none(), "a null clears the field");
+    let listed = crate::mcp::execute_tool(&conn, &ctx, "resources_list", &json!({ "kind": "freelance.invoice" })).unwrap();
+    assert_eq!(listed[0]["data"]["status"], "sent");
+    // A plain page has no fields to change.
+    let page = new_page(&conn, "Notes");
+    assert!(crate::mcp::execute_tool(&conn, &ctx, "items_update", &json!({ "id": page, "data": { "x": 1 } })).is_err());
+    drop(conn);
+    let _ = std::fs::remove_dir_all(&dir);
+}

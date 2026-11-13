@@ -35,6 +35,12 @@ pub fn tools() -> Vec<Value> {
             &["kind", "title"],
         ),
         tool(
+            "items_update",
+            "Change fields of a pack item or planning item (task, event, subject...) by id: data is merged into its fields; a null value clears a field. Returns the item's fields.",
+            json!({ "id": id, "data": { "type": "object" } }),
+            &["id", "data"],
+        ),
+        tool(
             "presentations_read",
             "Read a presentation: every slide with its index, layout, the text of each element, and speaker notes.",
             json!({ "id": id }),
@@ -245,6 +251,30 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value, permit: Option<
                 store::insert_blocks(conn, ctx, &p.id, None, vec![slide])?;
             }
             json!({ "id": p.id, "kind": kind })
+        }
+        "items_update" => {
+            let id = s(a, "id")?;
+            let patch = a.get("data").and_then(Value::as_object).ok_or_else(|| anyhow!("data must be an object of fields"))?;
+            let page = store::get_page(conn, id)?.ok_or_else(|| anyhow!("no item with id {id}"))?;
+            let kind = page.meta.kind.as_str();
+            let key = if store::is_pack_kind(kind) {
+                store::PACK_DATA_KEY
+            } else if store::DATA_KINDS.contains(&kind) {
+                kind
+            } else {
+                bail!("{kind} has no fields; use pages_set_properties for page properties")
+            };
+            let mut fields = page.meta.data.as_object().cloned().unwrap_or_default();
+            for (k, v) in patch {
+                if v.is_null() {
+                    fields.remove(k);
+                } else {
+                    fields.insert(k.clone(), v.clone());
+                }
+            }
+            let key = key.to_string();
+            let m = store::set_page_meta(conn, ctx, id, &key, Value::Object(fields))?;
+            json!({ "id": id, "kind": m.kind, "data": m.data })
         }
         "presentations_read" => {
             let id = s(a, "id")?;

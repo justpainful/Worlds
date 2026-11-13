@@ -3,15 +3,17 @@ import { useMemo, useState } from "react";
 import { useStore } from "../../state/store";
 import { Button } from "../../ui/Button";
 import { menuAt } from "../../ui/Menu";
+import { Select } from "../../ui/Select";
 import { EmptyState } from "../../ui/misc";
 import { promptMenu } from "../actions";
 import { PACK_COMPONENTS } from "../components";
-import type { PackDef } from "../definition";
+import type { PackDef, RoleDef } from "../definition";
 import { inSentence } from "../fields";
 import { createPackItem } from "../items";
 import { setPackEnabled, usePack } from "../packs";
 import { packDef } from "../registry";
 import { alertItems, filterItems, packItems, todayIso } from "../rules";
+import { columnsFor, useViewAs } from "../roles";
 import { addSamples } from "../samples";
 import { PackBoard } from "./PackBoard";
 import { PackTable } from "./PackTable";
@@ -24,6 +26,7 @@ export function PackView({ pack: packId, view: viewId }: { pack: string; view?: 
   const kind = pack && view?.kind ? pack.kinds.find((k) => k.id === view.kind) : undefined;
   const all = useMemo(() => (pack && kind ? packItems(pages, pack, kind.id) : []), [pages, pack, kind]);
   const items = useMemo(() => filterItems(all, view?.filter, todayIso()), [all, view]);
+  const [viewAs, setViewAs] = useViewAs(packId, pack?.roles ?? []);
 
   if (!pack || !view) return <EmptyState icon="warning" title="This pack is not available" text="It may come from a newer version of Worlds." />;
   if (!on) {
@@ -54,6 +57,14 @@ export function PackView({ pack: packId, view: viewId }: { pack: string; view?: 
           <p className="pl-sub">{kind.blurb}</p>
         </div>
         <div className="pl-head-controls">
+          {pack.roles.length > 1 && (
+            <Select
+              value={viewAs?.id ?? ""}
+              label="View as"
+              options={[{ value: "", label: "Full view" }, ...pack.roles.map((r) => ({ value: r.id, label: `As ${inSentence(r.label)}` }))]}
+              onChange={(v) => setViewAs(v || null)}
+            />
+          )}
           {pack.prompts?.length ? (
             <Button variant="plain" icon="assistant" onClick={(e) => menuAt(e.currentTarget, promptMenu(pack), "end")}>
               Ask Claude
@@ -64,15 +75,16 @@ export function PackView({ pack: packId, view: viewId }: { pack: string; view?: 
           </Button>
         </div>
       </header>
+      {viewAs && <RoleNote role={viewAs} onClose={() => setViewAs(null)} />}
       <Alerts pack={pack} kindId={kind.id} />
       {all.length === 0 ? (
         <EmptyState icon="info" title="Nothing here yet" text={kind.blurb} action={pack.samples?.length ? <SampleButton pack={pack} /> : undefined} />
       ) : items.length === 0 ? (
         <EmptyState icon="info" title="Nothing matches this view" text="Items appear here when they reach it." />
       ) : view.type === "board" ? (
-        <PackBoard pack={pack} kind={kind} items={items} groupBy={view.groupBy ?? kind.stageField ?? ""} />
+        <PackBoard pack={pack} kind={kind} items={items} groupBy={view.groupBy ?? kind.stageField ?? ""} role={viewAs} />
       ) : (
-        <PackTable kind={kind} items={items} columns={view.columns} totals={view.totals} averages={view.averages} />
+        <PackTable kind={kind} items={items} columns={columnsFor(kind, viewAs, view.columns)} totals={view.totals} averages={view.averages} />
       )}
     </div>
   );
@@ -120,5 +132,22 @@ function SampleButton({ pack }: { pack: PackDef }) {
     >
       Add examples
     </Button>
+  );
+}
+
+/** Says the view is a preview of one role, and what that role does not see. */
+function RoleNote({ role, onClose }: { role: RoleDef; onClose: () => void }) {
+  return (
+    <div className="pk-role-note" role="status">
+      {/* One span per sentence, so each is translated on its own. */}
+      <span className="pk-role-text">
+        <span>{`Viewing as ${inSentence(role.label)}.`}</span>
+        <span>{role.hiddenFields?.length ? "Fields this role does not see are hidden." : "This role sees every field."}</span>
+        {role.sees === "assigned" && <span>They open only the items shared with them.</span>}
+      </span>
+      <Button variant="plain" onClick={onClose}>
+        Full view
+      </Button>
+    </div>
   );
 }

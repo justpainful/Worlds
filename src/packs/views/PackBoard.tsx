@@ -3,14 +3,14 @@ import { useState } from "react";
 import type { PageMeta } from "../../lib/types";
 import { pageTitle, useStore } from "../../state/store";
 import { IconButton } from "../../ui/Button";
-import type { KindDef, PackDef } from "../definition";
+import type { KindDef, PackDef, RoleDef } from "../definition";
 import { formatField, listFields, inSentence } from "../fields";
 import { createPackItem, itemData, updatePackItem } from "../items";
 import { useTitleOf } from "./links";
 
 const DRAG = "application/x-worlds-pack-item";
 
-export function PackBoard({ pack, kind, items, groupBy }: { pack: PackDef; kind: KindDef; items: PageMeta[]; groupBy: string }) {
+export function PackBoard({ pack, kind, items, groupBy, role }: { pack: PackDef; kind: KindDef; items: PageMeta[]; groupBy: string; role?: RoleDef | null }) {
   const openPage = useStore((s) => s.openPage);
   const titleOf = useTitleOf();
   const field = kind.fields.find((f) => f.id === groupBy);
@@ -18,7 +18,9 @@ export function PackBoard({ pack, kind, items, groupBy }: { pack: PackDef; kind:
   if (!field?.options?.length) return null;
   // A choice can be empty; a stage always has one.
   const lanes = [...field.options, ...(field.type === "choice" ? [{ id: "", label: "None", color: undefined }] : [])];
-  const shown = listFields(kind).filter((f) => f.id !== field.id).slice(0, 2);
+  const shown = listFields(kind)
+    .filter((f) => f.id !== field.id && !role?.hiddenFields?.includes(f.id))
+    .slice(0, 2);
   const laneOf = (p: PageMeta) => {
     const v = itemData(p)[field.id];
     return typeof v === "string" && field.options!.some((o) => o.id === v) ? v : field.type === "stage" ? field.options![0].id : "";

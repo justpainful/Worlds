@@ -8,7 +8,9 @@ import { Button } from "../../ui/Button";
 import { menuAt } from "../../ui/Menu";
 import { EmptyState } from "../../ui/misc";
 import { promptMenu } from "../actions";
+import type { PageMeta } from "../../lib/types";
 import type { FieldDef, KindDef, PackDef } from "../definition";
+import { fieldsFor, useViewAs } from "../roles";
 import { formatField, inSentence } from "../fields";
 import { createPackItem, itemData, updatePackItem } from "../items";
 import { kindDefOf } from "../registry";
@@ -22,12 +24,19 @@ export function PackItemView({ id }: { id: string }) {
   if (!p || p.deletedAt) return <EmptyState icon="warning" title="This item is not here any more" text="It may have been deleted." />;
   if (!def) return <EmptyState icon="warning" title="This item belongs to a pack Worlds does not have" text="It is kept as it is; a newer Worlds may open it." />;
   const { kind, pack } = def;
+  return <ItemFields p={p} pack={pack} kind={kind} />;
+}
+
+function ItemFields({ p, pack, kind }: { p: PageMeta; pack: PackDef; kind: KindDef }) {
+  // A role preview from the pack's view applies here too.
+  const [viewAs] = useViewAs(pack.id, pack.roles);
+  const fields = fieldsFor(kind, viewAs);
   const data = itemData(p);
   const set = (fieldId: string, v: unknown) => void updatePackItem(p, { [fieldId]: v });
   const done = kind.doneField ? data[kind.doneField] === true : false;
   const stage = kind.stageField ? kind.fields.find((f) => f.id === kind.stageField) : undefined;
-  const short = kind.fields.filter((f) => f.type !== "longText");
-  const long = kind.fields.filter((f) => f.type === "longText");
+  const short = fields.filter((f) => f.type !== "longText");
+  const long = fields.filter((f) => f.type === "longText");
 
   return (
     <div className="res-view pl-detail">

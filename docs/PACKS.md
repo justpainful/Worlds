@@ -167,6 +167,25 @@ For novelists, screenwriters and game makers. The name Worlds makes this the nat
 3. **The rest in batches by family.** Each batch is mostly definitions and templates once the blocks exist.
 4. **Android and Apple.** A pack moves to mobile after it has settled on desktop.
 
+## Status
+
+Built on the branch `feat/pack-engine` (2026-11-13), desktop first:
+
+- **Engine**: packs are definitions in `src/packs/definitions`, one file per family. A kind is stored as `<pack>.<kind>` with its fields under `metadata.item`; the backend accepts any kind of that shape, so a new pack needs no backend change. Study moved onto the engine and keeps its own kinds.
+- **Views**: tables with sorting, totals and averages; boards with drag and drop; item pages with linked items listed under them; filters per view. Pack items with a date appear in Calendar.
+- **Blocks**: links between kinds, money in SAR with VAT worked out, stages, running reference numbers, expiring dates and alerts, double booking checks, figures and alerts on Home, example items in both languages.
+- **Claude**: each pack has its own requests in its views and the command palette. Claude is told the kinds and fields of the packs that are on, and can list, create and change pack items (`resources_list`, `resources_create`, `items_update`).
+- **Choosing packs**: Home asks once what Worlds is used for and offers the packs of that family; Settings lists every pack by family.
+- **Packs**: all 38 of the table above, plus Study. Teacher adds a daily attendance screen. Tests check every definition and that every pack text has an Arabic translation.
+- **Roles**: every pack defines its roles. A pack view can be previewed as any role, hiding the fields that role does not see. What a member can open is already enforced by page permissions on the server, since each item is a page.
+
+Not done yet:
+
+- Hiding single fields from a role on the sync server (Roles, addition 2). It changes `services/sync` and needs a server deploy, which is the owner's decision.
+- Automations that act on their own (a message to a parent about an absence, a daily summary). Alerts show on Home today; scheduled messages need the automation engine to support pack items.
+- Links between packs across workspaces (a teacher's assignment appearing in a student's Study pack).
+- Phase 2 trials with real people from each sector, and phase 4, Android and Apple.
+
 ## Choosing packs
 
 - On first run, after the language choice, Worlds asks what the person uses it for and suggests packs. Nothing is forced; Settings lists every pack with what it adds.
