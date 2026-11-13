@@ -265,6 +265,43 @@ fn planning_and_study_kinds_carry_their_data_on_the_row() {
 }
 
 #[test]
+fn pack_kinds_are_accepted_by_shape_and_keep_their_fields_under_item() {
+    let (dir, conn) = temp_db("pack-kinds");
+    // Any pack.kind name is a kind, so a new sector needs no change in the store.
+    for good in ["freelance.invoice", "teacher.class", "smallbiz.product2"] {
+        assert!(store::is_pack_kind(good), "{good}");
+    }
+    for bad in ["Freelance.invoice", "freelance", "a.b.c", ".invoice", "freelance.", "free-lance.invoice", "2x.item"] {
+        assert!(!store::is_pack_kind(bad), "{bad}");
+        assert!(
+            store::create_page(&conn, &Ctx::user(), NewPage { kind: Some(bad.into()), ..Default::default() }).is_err(),
+            "{bad} is refused"
+        );
+    }
+
+    let invoice = store::create_page(
+        &conn,
+        &Ctx::user(),
+        NewPage { title: Some("Invoice 12".into()), kind: Some("freelance.invoice".into()), ..Default::default() },
+    )
+    .unwrap();
+    assert_eq!(invoice.kind, "freelance.invoice");
+    store::set_page_meta(&conn, &Ctx::user(), &invoice.id, "item", json!({ "client": "Noura Studio", "amount": 1500, "status": "sent" }))
+        .unwrap();
+    let row = store::list_pages(&conn, false).unwrap().into_iter().find(|p| p.id == invoice.id).unwrap();
+    assert_eq!(row.data["amount"], 1500);
+    assert_eq!(row.data["status"], "sent");
+
+    // Its text fields are searchable, data must be an object, and pages still carry none.
+    assert!(store::search(&conn, "Noura", 10, false).unwrap().iter().any(|h| h.page_id == invoice.id));
+    assert!(store::set_page_meta(&conn, &Ctx::user(), &invoice.id, "item", json!("nope")).is_err());
+    let page = store::create_page(&conn, &Ctx::user(), NewPage { title: Some("Plain".into()), ..Default::default() }).unwrap();
+    store::set_page_meta(&conn, &Ctx::user(), &page.id, "item", json!({ "x": 1 })).unwrap();
+    assert!(store::page_meta_by_id(&conn, &page.id).unwrap().unwrap().data.is_null());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn arabic_search_finds_the_spellings_people_type_interchangeably() {
     let (_dir, conn) = temp_db("arabic-search");
     let page =

@@ -204,6 +204,10 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value, permit: Option<
                 "page" => bail!("use pages_create for pages"),
                 "file" => bail!("use files_add for files"),
                 k if store::DATA_KINDS.contains(&k) => json!({ k: a.get("data").filter(|v| v.is_object()).cloned().unwrap_or(json!({})) }),
+                // A pack item keeps its fields under `item` (docs/PACKS.md).
+                k if store::is_pack_kind(k) => {
+                    json!({ (store::PACK_DATA_KEY): a.get("data").filter(|v| v.is_object()).cloned().unwrap_or(json!({})) })
+                }
                 other => bail!("unknown kind {other}"),
             };
             let icon = match kind {
