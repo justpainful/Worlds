@@ -50,6 +50,15 @@ public final class NativeCRDTDocument: @unchecked Sendable {
         defer { worlds_buffer_free(buffer) }
         return Data(bytes: bytes, count: buffer.len)
     }
+    /// Every block of the page as Tiptap JSON, for reading only. Unlike
+    /// `plainProjection`, headings, lists and other blocks do not reject the page.
+    public func readProjection() throws -> Data {
+        lock.lock(); defer { lock.unlock() }
+        var buffer = WorldsBuffer(data: nil, len: 0)
+        guard worlds_doc_read_projection(handle, &buffer) == 0, let bytes = buffer.data else { throw CRDTError.invalidUpdate }
+        defer { worlds_buffer_free(buffer) }
+        return Data(bytes: bytes, count: buffer.len)
+    }
     /// A shared pack item's kind and fields as JSON (docs/PACKS.md), written by the desktop next to the blocks.
     public func packFields() throws -> Data {
         lock.lock(); defer { lock.unlock() }

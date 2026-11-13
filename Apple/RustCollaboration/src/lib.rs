@@ -21,6 +21,12 @@ impl CollaborationDoc {
         let value = editor::project_plain(&doc).map_err(|_| "unsupported document")?;
         serde_json::to_vec(&value).map_err(|_| "encoding failed")
     }
+    /// Every block of the page as Tiptap JSON, for reading only.
+    pub fn read_projection(&self) -> Result<Vec<u8>, &'static str> {
+        let doc = self.0.lock().map_err(|_| "document poisoned")?;
+        let value = read_projection::read_projection(&doc)?;
+        serde_json::to_vec(&value).map_err(|_| "encoding failed")
+    }
     /// A shared pack item's kind and fields (docs/PACKS.md, Design 1) as
     /// `{"kind": "shop.order" | null, "fields": {...}}`, read from the
     /// `meta` and `fields` maps the desktop writes next to the blocks.
@@ -132,6 +138,17 @@ pub unsafe extern "C" fn worlds_doc_plain_projection(doc: *const CollaborationDo
         if doc.is_null() || out.is_null() { return Err(1); }
         let value = unsafe { &*doc }.plain_projection().map_err(|_| 1)?;
         write_result(out,value)
+    })
+}
+
+/// # Safety
+/// Document and output pointers must remain valid for this call.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn worlds_doc_read_projection(doc: *const CollaborationDoc, out: *mut WorldsBuffer) -> i32 {
+    boundary(|| {
+        if doc.is_null() || out.is_null() { return Err(1); }
+        let value = unsafe { &*doc }.read_projection().map_err(|_| 1)?;
+        write_result(out, value)
     })
 }
 
@@ -393,6 +410,7 @@ pub unsafe extern "C" fn worlds_store_rejected_list(handle: *const Collaboration
 }
 
 pub mod editor;
+pub mod read_projection;
 pub mod rejected_comments;
 
 /// # Safety

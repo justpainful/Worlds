@@ -30,12 +30,6 @@ jobs:
           set -euo pipefail
           mkdir -p logs
           cargo test --manifest-path Apple/RustStore/Cargo.toml 2>&1 | tee logs/ruststore-test.log
-      - name: Test pack fields in the collaboration core
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p logs
-          cargo test --locked --manifest-path Apple/RustCollaboration/Cargo.toml --test pack_fields 2>&1 | tee logs/collaboration-pack-fields.log
       - name: Build and archive RustStore
         shell: bash
         run: |
@@ -59,12 +53,68 @@ jobs:
           path: logs/
           if-no-files-found: warn
 
+  collaboration-xcframework:
+    name: Build shared collaboration XCFramework
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select pinned Xcode
+        run: sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
+      - uses: dtolnay/rust-toolchain@1.99.1
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios,aarch64-apple-darwin,x86_64-apple-darwin
+      - name: Test the collaboration core
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p logs
+          cargo test --locked --manifest-path Apple/RustCollaboration/Cargo.toml 2>&1 | tee logs/collaboration-test.log
+      - name: Build and archive the collaboration bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p logs collaboration-artifact
+          bash Apple/RustCollaboration/scripts/build-apple.sh 2>&1 | tee logs/collaboration-build.log
+          test -f Apple/WorldsCore/Artifacts/WorldsRustCollaboration.xcframework/Info.plist
+          tar -czf collaboration-artifact/collaboration-xcframework.tar.gz -C Apple/WorldsCore/Artifacts WorldsRustCollaboration.xcframework
+          (cd collaboration-artifact && shasum -a 256 collaboration-xcframework.tar.gz > SHA256SUMS)
+          git rev-parse HEAD > collaboration-artifact/source-revision
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Worlds-shared-collaboration-xcframework
+          path: collaboration-artifact/
+          if-no-files-found: error
+          retention-days: 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Worlds-shared-collaboration-build-logs
+          path: logs/
+          if-no-files-found: warn
+
   core-tests:
     name: Swift core tests
     runs-on: macos-26
-    timeout-minutes: 25
+    needs: collaboration-xcframework
+    env:
+      WORLDS_REQUIRE_COLLABORATION: "1"
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Worlds-shared-collaboration-xcframework
+          path: collaboration-artifact
+      - name: Verify and restore the collaboration bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat collaboration-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd collaboration-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p Apple/WorldsCore/Artifacts
+          tar -xzf collaboration-artifact/collaboration-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
+          test -d Apple/WorldsCore/Artifacts/WorldsRustCollaboration.xcframework
       - name: Select and inspect Xcode
         run: |
           sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
@@ -76,6 +126,10 @@ jobs:
           set -o pipefail
           mkdir -p logs
           swift test --package-path Apple/WorldsCore --skip WorldsDrawingVisualComparisonTests 2>&1 | tee logs/swift-test.log
+          # The shared page path must have run, not been left out of the package.
+          for name in testReadOnlySessionShowsBlocksAndPackFieldsAndRefusesWrites testReadOnlySessionChecksOriginAndAccessBeforeAnyToken testEphemeralStoreRefusesLocalWritesAndOtherPages testWorkspacePagesListOpenablePagesForTheCurrentAccount testHostRejectsUntrustedOriginBeforeIdentityCalls; do
+            grep -Eq "$name.*passed" logs/swift-test.log || { echo "Missing or failing: $name" >&2; exit 1; }
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -88,7 +142,8 @@ jobs:
     runs-on: macos-26
     env:
       WORLDS_REQUIRE_NATIVE_WRITES: "1"
-    needs: ruststore-xcframework
+      WORLDS_REQUIRE_COLLABORATION: "1"
+    needs: [ruststore-xcframework, collaboration-xcframework]
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -121,6 +176,19 @@ jobs:
           mkdir -p Apple/WorldsCore/Artifacts
           tar -xzf ruststore-artifact/ruststore-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
           test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
+      - uses: actions/download-artifact@v4
+        with:
+          name: Worlds-shared-collaboration-xcframework
+          path: collaboration-artifact
+      - name: Verify and restore the collaboration bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat collaboration-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd collaboration-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p Apple/WorldsCore/Artifacts
+          tar -xzf collaboration-artifact/collaboration-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
+          test -d Apple/WorldsCore/Artifacts/WorldsRustCollaboration.xcframework
       - name: Select Xcode
         run: |
           sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
@@ -202,8 +270,9 @@ jobs:
     runs-on: macos-26
     env:
       WORLDS_REQUIRE_NATIVE_WRITES: "1"
+      WORLDS_REQUIRE_COLLABORATION: "1"
     timeout-minutes: 20
-    needs: [ruststore-xcframework, ui-tests]
+    needs: [ruststore-xcframework, collaboration-xcframework, ui-tests]
     strategy:
       fail-fast: false
       matrix:
@@ -227,6 +296,19 @@ jobs:
           mkdir -p Apple/WorldsCore/Artifacts
           tar -xzf ruststore-artifact/ruststore-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
           test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
+      - uses: actions/download-artifact@v4
+        with:
+          name: Worlds-shared-collaboration-xcframework
+          path: collaboration-artifact
+      - name: Verify and restore the collaboration bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat collaboration-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd collaboration-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p Apple/WorldsCore/Artifacts
+          tar -xzf collaboration-artifact/collaboration-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
+          test -d Apple/WorldsCore/Artifacts/WorldsRustCollaboration.xcframework
       - name: Select pinned Xcode and generate project
         run: |
           sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
@@ -270,8 +352,9 @@ jobs:
     runs-on: macos-26
     env:
       WORLDS_REQUIRE_NATIVE_WRITES: "1"
+      WORLDS_REQUIRE_COLLABORATION: "1"
     timeout-minutes: 20
-    needs: [ruststore-xcframework, ui-tests]
+    needs: [ruststore-xcframework, collaboration-xcframework, ui-tests]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -287,6 +370,19 @@ jobs:
           mkdir -p Apple/WorldsCore/Artifacts
           tar -xzf ruststore-artifact/ruststore-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
           test -d Apple/WorldsCore/Artifacts/WorldsRustStore.xcframework
+      - uses: actions/download-artifact@v4
+        with:
+          name: Worlds-shared-collaboration-xcframework
+          path: collaboration-artifact
+      - name: Verify and restore the collaboration bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat collaboration-artifact/source-revision)" = "$GITHUB_SHA"
+          (cd collaboration-artifact && shasum -a 256 -c SHA256SUMS)
+          mkdir -p Apple/WorldsCore/Artifacts
+          tar -xzf collaboration-artifact/collaboration-xcframework.tar.gz -C Apple/WorldsCore/Artifacts
+          test -d Apple/WorldsCore/Artifacts/WorldsRustCollaboration.xcframework
       - name: Select pinned Xcode and generate project
         run: |
           sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer

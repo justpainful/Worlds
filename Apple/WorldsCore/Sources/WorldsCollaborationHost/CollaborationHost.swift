@@ -76,4 +76,30 @@ public enum CollaborationHost {
         // is exposed through the native bridge.
         throw CollaborationHostError.unverifiedDocumentOwnership
     }
+
+    /// A session that only reads one shared page. It keeps every check the
+    /// editing path makes before a token is used: the origin must be the one
+    /// the person approved for this account and workspace, and the identity
+    /// service must currently grant this account access to the page. The
+    /// session then requires the server to report the same account. Its store
+    /// is memory only and refuses local writes, so no queued row is sent and
+    /// nothing outlives the session; the editing path above stays closed.
+    public static func makeReadOnlySession(pageID: String, workspaceID: String, expectedUserID: String,
+                                           serverURL: URL, trustedOrigin: TrustedSyncOrigin,
+                                           identity: IdentitySessionCoordinator) async throws -> CollaborationSession {
+        try await makeReadOnlySession(pageID: pageID, workspaceID: workspaceID, expectedUserID: expectedUserID,
+                                      serverURL: serverURL, trustedOrigin: trustedOrigin, checkedIdentity: identity)
+    }
+    static func makeReadOnlySession(pageID: String, workspaceID: String, expectedUserID: String,
+                                    serverURL: URL, trustedOrigin: TrustedSyncOrigin,
+                                    checkedIdentity identity: any CollaborationIdentity,
+                                    socketFactory: CollaborationSession.SocketFactory? = nil) async throws -> CollaborationSession {
+        guard trustedOrigin.accepts(serverURL, accountID: expectedUserID, workspaceID: workspaceID) else { throw CollaborationHostError.untrustedEndpoint }
+        let level = try await identity.currentWorkspacePageLevel(workspaceID: workspaceID, pageID: pageID, expectedUserID: expectedUserID)
+        guard level != .none else { throw CollaborationHostError.accessDenied }
+        return try CollaborationSession(pageID: pageID, workspaceID: workspaceID, documentID: pageID, expectedUserID: expectedUserID,
+                                        serverURL: serverURL, store: EphemeralReadOnlyStore(pageID: pageID),
+                                        tokenProvider: { force in try await identity.accessToken(expectedUserID: expectedUserID, forceRefresh: force) },
+                                        socketFactory: socketFactory)
+    }
 }

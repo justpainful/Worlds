@@ -87,6 +87,15 @@ public struct PlainEditorProjection: Sendable {
     public let state: Data
 }
 
+/// What a viewer shows of a shared page: every block as Tiptap JSON, the pack
+/// item's kind and fields (`{"kind": ..., "fields": {...}}`) and the access
+/// level the server reported for this connection.
+public struct SharedPageReading: Sendable {
+    public let blocks: Data
+    public let packFields: Data
+    public let accessLevel: String
+}
+
 /// A token provider must serialize refresh and return the current access token.
 public actor CollaborationSession {
     public typealias TokenProvider = @Sendable (_ forceRefresh: Bool) async throws -> String
@@ -452,6 +461,15 @@ public actor CollaborationSession {
         guard !stopped, !failed, verifiedIdentity, synchronizedChannels.contains(0), !localWriteInFlight, !remoteWriteInFlight,
               let doc = documents[0] else { throw CollaborationError.notStarted }
         return try PlainEditorProjection(json: doc.plainProjection(), state: doc.diff(Data([0])))
+    }
+
+    /// The page as the server last sent it, once this connection has
+    /// authenticated as the expected account and finished the initial sync.
+    /// Reading grants nothing: writes keep their own checks above.
+    public func readOnlySnapshot() throws -> SharedPageReading {
+        guard !stopped, !failed, verifiedIdentity, synchronizedChannels.contains(0), !localWriteInFlight, !remoteWriteInFlight,
+              let level = accessLevel, let doc = documents[0] else { throw CollaborationError.notStarted }
+        return try SharedPageReading(blocks: doc.readProjection(), packFields: doc.packFields(), accessLevel: level)
     }
 
     /// Called by the owner before JWT expiry. Expiration scheduling remains external.

@@ -108,6 +108,12 @@ public struct IdentityPasskey: Decodable, Sendable {
 public enum IdentityPageLevel: String, Decodable, Sendable, Equatable {
     case none, view, comment, edit, full
 }
+/// A workspace page the account can open, as the identity service lists it:
+/// an ID and an access level, no title. A point-in-time observation.
+public struct IdentityWorkspacePage: Sendable, Equatable, Identifiable {
+    public let id: String
+    public let level: IdentityPageLevel
+}
 /// The wrapped client is private, preventing accidental bypass by this owner.
 /// The host must create one coordinator per scope and use the same lock directory
 /// for every process that can access the corresponding Keychain item.
@@ -204,14 +210,26 @@ public actor IdentitySessionCoordinator {
     /// Fetches the service's effective access for a mirrored workspace page.
     /// This is a point-in-time observation, not an atomic write permit.
     public func currentWorkspacePageLevel(workspaceID: String, pageID: String, expectedUserID: String) async throws -> IdentityPageLevel {
+        guard Self.safeID(pageID) else { throw IdentityError.invalidPath }
+        let docs = try await workspaceAccess(workspaceID: workspaceID, expectedUserID: expectedUserID)
+        return docs.first(where: { $0.id == pageID })?.level ?? .none
+    }
+    /// The workspace pages this account can open, sorted by ID. Pages the
+    /// service reports with no access are left out. This is display data:
+    /// opening a page checks access again.
+    public func workspacePages(workspaceID: String, expectedUserID: String) async throws -> [IdentityWorkspacePage] {
+        try await workspaceAccess(workspaceID: workspaceID, expectedUserID: expectedUserID)
+            .filter { $0.level != .none }.sorted { $0.id < $1.id }
+    }
+    private static func safeID(_ id: String) -> Bool {
+        !id.isEmpty && id.utf8.count <= 128 && id.utf8.allSatisfy {
+            (65...90).contains($0) || (97...122).contains($0) || (48...57).contains($0) || $0 == 45 || $0 == 95
+        }
+    }
+    private func workspaceAccess(workspaceID: String, expectedUserID: String) async throws -> [IdentityWorkspacePage] {
         struct Entry: Decodable { let docId: String; let level: IdentityPageLevel }
         struct Envelope: Decodable { let docs: [Entry] }
-        func safeID(_ id: String) -> Bool {
-            !id.isEmpty && id.utf8.count <= 128 && id.utf8.allSatisfy {
-                (65...90).contains($0) || (97...122).contains($0) || (48...57).contains($0) || $0 == 45 || $0 == 95
-            }
-        }
-        guard safeID(workspaceID), safeID(pageID), !expectedUserID.isEmpty else { throw IdentityError.invalidPath }
+        guard Self.safeID(workspaceID), !expectedUserID.isEmpty else { throw IdentityError.invalidPath }
         guard !locallySignedOut, !changingSession else { throw IdentityContinuityError.signedOut }
         activeRequests += 1; defer { activeRequests -= 1 }
         guard try await client.currentUserID() == expectedUserID else { throw IdentityContinuityError.accountMismatch }
@@ -219,9 +237,9 @@ public actor IdentitySessionCoordinator {
         guard data.count <= 8 * 1024 * 1024 else { throw IdentityError.invalidResponse }
         let result = try JSONDecoder().decode(Envelope.self, from: data)
         guard result.docs.count <= 100_000, Set(result.docs.map(\.docId)).count == result.docs.count,
-              result.docs.allSatisfy({ safeID($0.docId) }) else { throw IdentityError.invalidResponse }
+              result.docs.allSatisfy({ Self.safeID($0.docId) }) else { throw IdentityError.invalidResponse }
         guard try await client.currentUserID() == expectedUserID else { throw IdentityContinuityError.accountMismatch }
-        return result.docs.first(where: { $0.docId == pageID })?.level ?? .none
+        return result.docs.map { IdentityWorkspacePage(id: $0.docId, level: $0.level) }
     }
     /// Read account passkeys from the authenticated service. This does not
     /// inspect credentials stored by the platform authenticator.

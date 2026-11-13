@@ -32,6 +32,8 @@ deployed Apple ceremony work. Sign-out remains serialized against active account
 requests. Removal must be triggered by the user, and the server response is the
 authority for whether it completed.
 
+`workspacePages(workspaceID:expectedUserID:)` lists the pages of a workspace the account can open, from the same `/workspaces/{id}/access` response as `currentWorkspacePageLevel`: IDs and levels only, no titles, pages with no access left out. The app's read-only shared pages screen uses it as display data; opening a page checks access again.
+
 An email challenge response that arrives after sign-out or after a newer sign-in
 flow begins is discarded locally. The server may already have sent the code.
 This check does not revoke a challenge at the service or prevent a caller from

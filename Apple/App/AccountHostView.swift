@@ -17,6 +17,18 @@ struct AccountHostView: View {
             Group {
                 if let coordinator {
                     WorldsAccountView(coordinator: coordinator, deviceName: deviceName, platform: platform)
+                        #if canImport(WorldsCollaborationHost)
+                        .toolbar {
+                            ToolbarItem(placement: .primaryAction) {
+                                NavigationLink {
+                                    SharedWorkspacesView(coordinator: coordinator)
+                                } label: {
+                                    Label("Shared pages", systemImage: "doc.on.doc")
+                                }
+                                .accessibilityIdentifier("shared-pages-button")
+                            }
+                        }
+                        #endif
                 } else {
                     Form {
                         Section("Identity service") {

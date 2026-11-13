@@ -165,6 +165,17 @@ final class IdentityContinuityTests: XCTestCase {
         do { _ = try await coordinator.currentWorkspacePageLevel(workspaceID: "../escape", pageID: "visible", expectedUserID: "user"); XCTFail("Unsafe workspace path must be rejected") }
         catch IdentityError.invalidPath { } catch { XCTFail("Unexpected error: \(error)") }
     }
+    func testWorkspacePagesListOpenablePagesForTheCurrentAccount() async throws {
+        let json = #"{"role":"member","defaultLevel":"view","docs":[{"docId":"zeta","level":"view"},{"docId":"hidden","level":"none"},{"docId":"alpha","level":"full"}]}"#
+        let coordinator = try IdentitySessionCoordinator(baseURL: URL(string: "https://example.test")!, lockDirectory: directory(), transport: AccountFixtureTransport(profileID: "user", accessJSON: json), secrets: MemorySecrets())
+        _ = try await coordinator.verifyEmail(challengeID: "fixture", code: "123456", deviceName: "Fixture", platform: "macos")
+        let pages = try await coordinator.workspacePages(workspaceID: "space", expectedUserID: "user")
+        XCTAssertEqual(pages, [IdentityWorkspacePage(id: "alpha", level: .full), IdentityWorkspacePage(id: "zeta", level: .view)])
+        do { _ = try await coordinator.workspacePages(workspaceID: "space", expectedUserID: "other"); XCTFail("Different account must be rejected") }
+        catch IdentityContinuityError.accountMismatch { } catch { XCTFail("Unexpected error: \(error)") }
+        do { _ = try await coordinator.workspacePages(workspaceID: "../escape", expectedUserID: "user"); XCTFail("Unsafe workspace path must be rejected") }
+        catch IdentityError.invalidPath { } catch { XCTFail("Unexpected error: \(error)") }
+    }
     func testWorkspaceAccessRejectsDuplicatePageEntries() async throws {
         let json = #"{"docs":[{"docId":"same","level":"view"},{"docId":"same","level":"edit"}]}"#
         let coordinator = try IdentitySessionCoordinator(baseURL: URL(string: "https://example.test")!, lockDirectory: directory(), transport: AccountFixtureTransport(profileID: "user", accessJSON: json), secrets: MemorySecrets())
