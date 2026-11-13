@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { ProductIcon, type ProductIconName } from "../ui/ProductIcon";
 import { useStore, childrenOf, pageTitle, type Route } from "../state/store";
 import { WorkspaceSwitcher } from "../account/WorkspaceSwitcher";
@@ -13,6 +13,7 @@ import { api, errorMessage } from "../lib/api";
 import { isResource } from "../resources/kinds";
 import { newResourceMenu } from "../resources/create";
 import { usePack } from "../packs/packs";
+import { sidebarEntries, useEnabledPacks } from "../packs/actions";
 import { liveOfKind, subjects, tasksFor, today, dataOf } from "../planning/model";
 import { colorVar } from "../planning/ui";
 import { createSubject } from "../study/StudyViews";
@@ -59,6 +60,7 @@ export function Sidebar() {
   const setPalette = useStore((s) => s.setPalette);
   const active = useActiveRoute();
   const study = usePack("study");
+  const packs = useEnabledPacks();
   const dueCount = useMemo(() => tasksFor(pages, "today", today()).length, [pages]);
   const inboxCount = useMemo(() => liveOfKind(pages, "inbox").length, [pages]);
   const studySubjects = useMemo(() => (study ? subjects(pages) : []), [pages, study]);
@@ -72,7 +74,13 @@ export function Sidebar() {
     [pages],
   );
 
-  const isActive = (r: Route) => !!active && (JSON.stringify(active) === JSON.stringify(r) || (r.kind === "chat" && active.kind === "chat") || (r.kind === "tasks" && active.kind === "tasks"));
+  const isActive = (r: Route) =>
+    !!active &&
+    (JSON.stringify(active) === JSON.stringify(r) ||
+      (r.kind === "chat" && active.kind === "chat") ||
+      (r.kind === "tasks" && active.kind === "tasks") ||
+      // Tabs saved before the pack engine opened Study as its own route.
+      (r.kind === "pack" && r.pack === "study" && active.kind === "study"));
   const nav = (icon: IconName, label: string, route: Route, badge?: number, product?: ProductIconName) => (
     <button
       className={`side-item ${isActive(route) ? "is-active" : ""}`}
@@ -119,7 +127,9 @@ export function Sidebar() {
           {nav("checklist", "Tasks", { kind: "tasks" }, dueCount || undefined, "checklist")}
           {nav("calendar", "Calendar", { kind: "calendar" }, undefined, "calendar")}
           {nav("inbox", "Inbox", { kind: "inbox" }, inboxCount || undefined, "inbox")}
-          {study && nav("folder", "Study", { kind: "study" }, undefined, "graduation")}
+          {packs.flatMap((p) =>
+            sidebarEntries(p).map((e, i) => <Fragment key={`${p.id}.${e.view.id}`}>{nav(e.view.icon, e.label, e.route, undefined, i === 0 ? (p.icon as ProductIconName) : undefined)}</Fragment>),
+          )}
           {nav("assistant", "Claude", { kind: "chat" }, undefined, "claude")}
           {pendingCount > 0 && nav("inbox", "Needs approval", { kind: "activity" }, pendingCount)}
         </nav>

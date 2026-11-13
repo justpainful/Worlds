@@ -16,6 +16,7 @@ import { TasksView } from "../planning/TasksView";
 import { CalendarView } from "../planning/CalendarView";
 import { InboxView } from "../planning/InboxView";
 import { StudyView } from "../study/StudyViews";
+import { PackView } from "../packs/views/PackView";
 
 export function RouteView(props: { route: Route; paneId: string; tabId: string }) {
   const key = JSON.stringify(props.route);
@@ -56,5 +57,7 @@ function RouteBody({ route, paneId }: { route: Route; paneId: string; tabId: str
       return <InboxView />;
     case "study":
       return <StudyView />;
+    case "pack":
+      return <PackView pack={route.pack} view={route.view} />;
   }
 }

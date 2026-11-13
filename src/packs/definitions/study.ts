@@ -108,6 +108,7 @@ export const STUDY: PackDef = {
   ],
   sidebar: ["main"],
   home: "study.home",
+  homeLink: "All subjects",
   newMenu: ["subject"],
   roles: [
     { id: "student", label: "Student", sees: "all", canEdit: true },

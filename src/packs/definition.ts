@@ -5,6 +5,7 @@
  * in English and translated by the interface dictionary like the rest of
  * Worlds, so every pack is Arabic and English from the start.
  */
+import type { ResourceKind } from "../lib/types";
 import type { IconName } from "../ui/Icon";
 
 /** A field's type decides how it is shown, edited, sorted and searched. */
@@ -112,6 +113,8 @@ export interface PackDef {
   sidebar: string[];
   /** A component registered for Home, if the pack has a section there. */
   home?: string;
+  /** The link beside the Home section that opens the pack (Open when left out). */
+  homeLink?: string;
   /** Kind ids offered in the New menu. */
   newMenu?: string[];
   /** Search words for its commands, in both languages. */
@@ -120,8 +123,8 @@ export interface PackDef {
 }
 
 /** The stored kind of a pack kind. */
-export function storedKind(pack: PackDef, kind: KindDef): string {
-  return kind.kind ?? `${pack.id}.${kind.id}`;
+export function storedKind(pack: PackDef, kind: KindDef): ResourceKind {
+  return (kind.kind ?? `${pack.id}.${kind.id}`) as ResourceKind;
 }
 
 /** The metadata key a kind's data lives under. */

@@ -339,7 +339,9 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
       // Like the backend, only pages and documents have a text preview.
       if (["page", "document", "lesson"].includes(pages[pid].kind)) pages[pid].preview = previewOf(blocks[pid] ?? []);
       metadata[pid] = a.page.metadata ?? {};
-      if (metadata[pid][pages[pid].kind] !== undefined) pages[pid].data = metadata[pid][pages[pid].kind];
+      // A pack kind (freelance.invoice) keeps its fields under item, like the backend.
+      const dataKey = pages[pid].kind.includes(".") ? "item" : pages[pid].kind;
+      if (metadata[pid][dataKey] !== undefined) pages[pid].data = metadata[pid][dataKey];
       return pages[pid];
     }
     case "page_delete": {const page=pages[a.id];if(page){const t=Date.now();const walk=(pid:string)=>{if(pages[pid]&&!pages[pid].deletedAt){pages[pid].deletedAt=t;}for(const c of Object.values(pages))if(c.parentId===pid)walk(c.id);};walk(a.id);page.updatedAt=t;}return;}
@@ -354,7 +356,7 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
     }
     case "page_meta_set": {
       metadata[a.id] = { ...(metadata[a.id] ?? {}), [a.key]: a.value };
-      if (a.key === pages[a.id].kind) pages[a.id].data = a.value;
+      if (a.key === (pages[a.id].kind.includes(".") ? "item" : pages[a.id].kind)) pages[a.id].data = a.value;
       pages[a.id].updatedAt = Date.now();
       return pages[a.id];
     }

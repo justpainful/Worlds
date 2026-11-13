@@ -1,0 +1,234 @@
+/* ==========================================================================
+   Packs: the table and board every pack kind gets from its definition
+   (docs/PACKS.md). Logical properties, so Arabic mirrors on its own.
+   ========================================================================== */
+
+.pk-view {
+  max-width: 1180px;
+}
+
+/* ---- Table --------------------------------------------------------------- */
+
+.pk-table-wrap {
+  overflow-x: auto;
+  border-radius: var(--r-sm);
+  background: var(--fill-1);
+  box-shadow: inset 0 0 0 0.5px var(--hairline);
+}
+
+.pk-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--t-body);
+  color: var(--text-1);
+}
+
+.pk-table th {
+  padding: 0;
+  text-align: start;
+  font: var(--t-small);
+  font-weight: 600;
+  color: var(--text-3);
+  border-block-end: 0.5px solid var(--hairline);
+  white-space: nowrap;
+}
+
+.pk-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 14px;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: color var(--d-hover);
+}
+
+.pk-sort:hover {
+  color: var(--text-1);
+}
+
+.pk-sort .pk-asc {
+  transform: rotate(180deg);
+}
+
+.pk-table td {
+  padding: 10px 14px;
+  border-block-end: 0.5px solid var(--hairline);
+  vertical-align: middle;
+}
+
+.pk-table tbody tr:last-child td {
+  border-block-end: 0;
+}
+
+.pk-table tbody tr {
+  cursor: pointer;
+  transition: background-color var(--d-hover);
+}
+
+.pk-table tbody tr:hover {
+  background: var(--fill-1);
+}
+
+.pk-table tbody tr:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.pk-table tr.is-done .pk-title {
+  color: var(--text-3);
+  text-decoration: line-through;
+}
+
+.pk-title {
+  font-weight: 500;
+  min-width: 160px;
+}
+
+/* Numbers line up on their own edge. */
+.pk-table .pk-col-number,
+.pk-table .pk-col-money {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.pk-table th.pk-col-number .pk-sort,
+.pk-table th.pk-col-money .pk-sort {
+  justify-content: flex-end;
+}
+
+.pk-table .pk-col-date,
+.pk-table .pk-col-time {
+  white-space: nowrap;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.pk-check {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* ---- Board --------------------------------------------------------------- */
+
+.pk-board {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(240px, 1fr);
+  gap: 12px;
+  overflow-x: auto;
+  padding-block-end: 8px;
+}
+
+.pk-lane {
+  --lane: var(--text-3);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 160px;
+  padding: 10px;
+  border-radius: var(--r-sm);
+  background: var(--fill-1);
+  box-shadow: inset 0 0 0 0.5px var(--hairline);
+  transition: background-color var(--d-hover), box-shadow var(--d-hover);
+}
+
+.pk-lane[data-color="red"] { --lane: var(--red); }
+.pk-lane[data-color="green"] { --lane: var(--green); }
+.pk-lane[data-color="yellow"] { --lane: var(--yellow); }
+.pk-lane[data-color="blue"] { --lane: var(--blue); }
+.pk-lane[data-color="accent"] { --lane: var(--accent); }
+
+.pk-lane.is-over {
+  background: var(--fill-2);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.pk-lane-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-inline-start: 4px;
+}
+
+.pk-lane-head::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--lane);
+  flex: none;
+}
+
+.pk-lane-title {
+  flex: 1;
+  min-width: 0;
+  font: var(--t-small);
+  font-weight: 600;
+  color: var(--text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pk-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pk-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--r-xs);
+  background: var(--fill-2);
+  box-shadow: inset 0 0 0 0.5px var(--hairline);
+  color: var(--text-1);
+  text-align: start;
+  cursor: grab;
+  transition: background-color var(--d-hover);
+}
+
+.pk-card:hover {
+  background: var(--fill-3);
+}
+
+.pk-card:active {
+  cursor: grabbing;
+}
+
+.pk-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.pk-card-title {
+  font: var(--t-body);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.pk-card-field {
+  font: var(--t-caption);
+  color: var(--text-2);
+}
+
+.pk-card-label {
+  color: var(--text-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pk-sort,
+  .pk-table tbody tr,
+  .pk-lane,
+  .pk-card {
+    transition: none;
+  }
+}

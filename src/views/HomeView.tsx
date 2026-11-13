@@ -15,11 +15,12 @@ import { Tonal } from "../ui/tonal/Tonal";
 import { GlassBackdrop } from "../profile/GlassBackdrop";
 import { emptyPreview, isResource } from "../resources/kinds";
 import { newResourceMenu } from "../resources/create";
-import { PACKS_ASKED_KEY, setPackEnabled, usePack } from "../packs/packs";
+import { PACKS_ASKED_KEY, setPackEnabled } from "../packs/packs";
 import { formatTime, occurrences, tasksFor, today } from "../planning/model";
 import { createItem } from "../planning/actions";
 import { ItemRow, QuickAdd } from "../planning/ui";
-import { StudyHomeSection } from "../study/StudyViews";
+import { PACK_COMPONENTS } from "../packs/components";
+import { packRoute, useEnabledPacks } from "../packs/actions";
 import { loadSample } from "../demo/sampleActions";
 import { resolveUiLanguage } from "../i18n/ui";
 import { dateLine } from "../i18n/locale";
@@ -34,7 +35,7 @@ export function HomeView() {
   const settings = useStore((s) => s.settings);
   const setSetting = useStore((s) => s.setSetting);
   const view = (settings["home.view"] as View) ?? "grid";
-  const study = usePack("study");
+  const packs = useEnabledPacks();
   const now = today();
   const dueTasks = useMemo(() => tasksFor(pages, "today", now).slice(0, 6), [pages, now]);
   const todayEvents = useMemo(
@@ -204,18 +205,22 @@ export function HomeView() {
           </div>
         )}
       </HomeSection>
-      {study && (
-        <HomeSection
-          title="Study"
-          action={
-            <button className="link-btn" onClick={() => open({ kind: "study" })}>
-              All subjects
-            </button>
-          }
-        >
-          <StudyHomeSection />
-        </HomeSection>
-      )}
+      {packs.map((p) => {
+        const Section = p.home ? PACK_COMPONENTS[p.home] : undefined;
+        return Section ? (
+          <HomeSection
+            key={p.id}
+            title={p.label}
+            action={
+              <button className="link-btn" onClick={() => open(packRoute(p))}>
+                {p.homeLink ?? "Open"}
+              </button>
+            }
+          >
+            <Section />
+          </HomeSection>
+        ) : null;
+      })}
       {suggested.length > 0 && (
         <HomeSection title="Suggested">
           <PageCollection pages={suggested} view={view} />

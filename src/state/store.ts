@@ -23,7 +23,9 @@ export type Route =
   | { kind: "tasks"; list?: TaskListId }
   | { kind: "calendar" }
   | { kind: "inbox" }
-  | { kind: "study" };
+  | { kind: "study" }
+  /** A pack's view (docs/PACKS.md); without a view, the pack's first sidebar entry. */
+  | { kind: "pack"; pack: string; view?: string };
 
 /** Smart lists in Tasks. */
 export type TaskListId = "today" | "upcoming" | "all" | "someday" | "goals" | "print" | "done";
