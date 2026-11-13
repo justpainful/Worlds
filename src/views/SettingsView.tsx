@@ -18,6 +18,8 @@ import { BridgeCard } from "./IntegrationsView";
 import { Select, DIRECTION_OPTIONS, LANGUAGE_OPTIONS } from "../ui/Select";
 import { AccountSettings } from "../account/AccountSettings";
 import { FAMILIES } from "../packs/definition";
+import { DIGEST_KEY, digestOn } from "../packs/digest";
+import { packDef } from "../packs/registry";
 import { PACKS, setPackEnabled, usePack } from "../packs/packs";
 import { loadSample, removeSample, rewriteSample, sampleLanguageMismatch, useSampleLoaded } from "../demo/sampleActions";
 
@@ -150,11 +152,26 @@ function PackSettings() {
 
 function PackRow({ pack }: { pack: (typeof PACKS)[number] }) {
   const on = usePack(pack.id);
+  const settings = useStore((s) => s.settings);
+  const setSetting = useStore((s) => s.setSetting);
+  const def = packDef(pack.id);
+  const digest = digestOn(settings).has(pack.id);
+  const setDigest = (v: boolean) => {
+    const next = digestOn(settings);
+    if (v) next.add(pack.id);
+    else next.delete(pack.id);
+    setSetting(DIGEST_KEY, [...next]);
+  };
   return (
     <>
       <Row label={pack.label} hint={pack.blurb}>
         <Toggle checked={on} onChange={(v) => setPackEnabled(pack.id, v)} label={pack.label} />
       </Row>
+      {on && def?.alerts?.length ? (
+        <Row label="Daily summary in Inbox" hint="Once a day, what needs attention in this pack lands in Inbox.">
+          <Toggle checked={digest} onChange={setDigest} label="Daily summary in Inbox" />
+        </Row>
+      ) : null}
       {on && (
         <div className="set-row">
           <ul className="pack-adds">
