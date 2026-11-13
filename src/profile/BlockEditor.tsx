@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { open as openDialog } from "../lib/dialog";
 import { api, errorMessage, fileUrl } from "../lib/api";
 import { useStore } from "../state/store";
+import { tr } from "../i18n/ui";
 import { Button, IconButton } from "../ui/Button";
 import { Icon } from "../ui/Icon";
 import { Popover } from "../ui/Menu";
@@ -266,7 +267,7 @@ function ItemsField({ items, onChange, min = 1, max = 6, withUrl }: { items: Ite
         </div>
       ))}
       {items.length < max && (
-        <button className="chip-btn" onClick={() => onChange([...items, { title: "New item" }])}>
+        <button className="chip-btn" onClick={() => onChange([...items, { title: tr("New item") }])}>
           <Icon name="add" size={13} />
           Add item
         </button>
