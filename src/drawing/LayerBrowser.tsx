@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { shownName } from "./names";
 import type { Change, DrawingScene } from "./model";
 import { DrawingRenderer } from "./renderer";
 import { effectiveLayer, isolateLayerScene, layerAncestors, layerTree } from "./layers";
@@ -210,7 +211,7 @@ export function LayerBrowser({
                   label={t(`Preview ${layer.name}`, `معاينة ${layer.name}`)}
                   loadingLabel={t(`Loading preview ${layer.name}`, `تحميل معاينة ${layer.name}`)}
                 />
-                <span>{layer.name}</span>
+                <span>{shownName(layer.name, arabic)}</span>
               </button>
               <button
                 className="drawing-layer-solo"

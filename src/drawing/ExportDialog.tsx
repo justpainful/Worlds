@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { shownName } from "./names";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import { errorMessage } from "../lib/api";
@@ -298,7 +299,7 @@ export function DrawingExportDialog({
                       checked={batchFrames.includes(id)}
                       onChange={(e) => setBatchFrames((value) => (e.target.checked ? [...value, id] : value.filter((v) => v !== id)))}
                     />
-                    {scene.frames[id].name}
+                    {shownName(scene.frames[id].name, arabic)}
                   </label>
                 ))}
                 <p role="status">
@@ -311,7 +312,7 @@ export function DrawingExportDialog({
                 <select value={frame} onChange={(e) => setFrame(e.target.value)}>
                   {scene.frameOrder.map((id) => (
                     <option key={id} value={id}>
-                      {scene.frames[id].name}
+                      {shownName(scene.frames[id].name, arabic)}
                     </option>
                   ))}
                 </select>

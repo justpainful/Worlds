@@ -1,4 +1,5 @@
 import { effectiveLayer, isolateLayerScene } from "./layers";
+import { shownName } from "./names";
 import { makeAnnotationAnchor } from "./annotations";
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { bounds, clamp, frameAt, hitNode, inkCorners, localToWorld, worldToLocal } from "./geometry";
@@ -1177,7 +1178,7 @@ export function DrawingStage(props: StageProps) {
                 height: f.h * view.scale,
               }}
             >
-              <span>{f.name}</span>
+              <span>{shownName(f.name, arabic)}</span>
             </div>
           );
         })}

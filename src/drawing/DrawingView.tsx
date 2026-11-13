@@ -1,4 +1,5 @@
 import { LayerMergeDialog } from "./LayerMergeDialog";
+import { shownName } from "./names";
 import { mergedLayerChanges, mergeSourceKey } from "./layerMerge";
 import { checkDrawingExport } from "./files";
 import { RasterizeImageDialog } from "./RasterizeImageDialog";
@@ -1795,7 +1796,7 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
                         setView({ ...view, x: scene.frames[fid].x - 40, y: scene.frames[fid].y - 65 });
                       }}
                     >
-                      {scene.frames[fid].name}
+                      {shownName(scene.frames[fid].name, arabic)}
                       <small>
                         {scene.frames[fid].w} × {scene.frames[fid].h}
                       </small>
@@ -2184,7 +2185,7 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
                           <option value="">{t("World item outside frames", "عنصر في العالم دون إطار")}</option>
                           {scene.frameOrder.map((id) => (
                             <option key={id} value={id}>
-                              {scene.frames[id].name}
+                              {shownName(scene.frames[id].name, arabic)}
                             </option>
                           ))}
                         </select>
