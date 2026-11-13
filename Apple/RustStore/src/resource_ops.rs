@@ -9,7 +9,8 @@ fn blocks(c: &Connection, page: &str) -> Result<Vec<(String, Value)>> {
 fn snapshot(c: &Connection, id: &str) -> Result<Value> {
     require_personal(c, id)?;
     let (kind, revision, metadata): (String,i64,String) = c.query_row("SELECT kind,updated_at,metadata FROM pages WHERE id=?1", [id], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?)))?;
-    if kind != "project" && kind != "gallery" && kind != "stream" && kind != "spreadsheet" { bail!("unsupported resource kind") }
+    // Pack items ("shop.order") are read like a spreadsheet: their metadata, which holds their fields.
+    if kind != "project" && kind != "gallery" && kind != "stream" && kind != "spreadsheet" && !store::is_pack_kind(&kind) { bail!("unsupported resource kind") }
     let metadata: Value = serde_json::from_str(&metadata)?;
     let current = blocks(c, id)?;
     if kind == "project" { project_links(c, &metadata)?; } else if kind == "gallery" { attachment_ids(c, &current)?; }
