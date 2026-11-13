@@ -127,7 +127,7 @@ jobs:
           mkdir -p logs
           swift test --package-path Apple/WorldsCore --skip WorldsDrawingVisualComparisonTests 2>&1 | tee logs/swift-test.log
           # The shared page path must have run, not been left out of the package.
-          for name in testLiveSessionSendsPackFieldChangesAndEmptiesItsOutbox testLiveSessionRefusesViewersAndBadRequests testReadOnlySessionShowsBlocksAndPackFieldsAndRefusesWrites testReadOnlySessionChecksOriginAndAccessBeforeAnyToken testEphemeralStoreRefusesLocalWritesAndOtherPages testWorkspacePagesListOpenablePagesForTheCurrentAccount testHostRejectsUntrustedOriginBeforeIdentityCalls; do
+          for name in testSavedCopyKeepsAnUnsentChangeAndSendsItNextTime testSavedCopyIsBoundToItsAccountPageAndOrigin testRejectedChangeQuarantinesTheCopy testSavedCopiesOpenOfflineOnlyForTheSignedInAccount testSavedCopyCompactsWithoutChangingThePage testLiveSessionSendsPackFieldChangesAndEmptiesItsOutbox testLiveSessionRefusesViewersAndBadRequests testReadOnlySessionShowsBlocksAndPackFieldsAndRefusesWrites testReadOnlySessionChecksOriginAndAccessBeforeAnyToken testEphemeralStoreRefusesLocalWritesAndOtherPages testWorkspacePagesListOpenablePagesForTheCurrentAccount testHostRejectsUntrustedOriginBeforeIdentityCalls; do
             grep -Eq "$name.*passed" logs/swift-test.log || { echo "Missing or failing: $name" >&2; exit 1; }
           done
       - uses: actions/upload-artifact@v4

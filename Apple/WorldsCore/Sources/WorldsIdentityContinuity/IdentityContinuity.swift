@@ -185,6 +185,15 @@ public actor IdentitySessionCoordinator {
         guard try await client.currentUserID() == expectedUserID else { throw IdentityContinuityError.accountMismatch }
         return token
     }
+    /// The account of the durable session on this device, without network
+    /// access, or nil when signed out. Used to open saved copies offline.
+    public func storedAccountID() async throws -> String? {
+        guard !changingSession else { throw IdentityContinuityError.busy }
+        guard !locallySignedOut else { return nil }
+        activeRequests += 1; defer { activeRequests -= 1 }
+        do { return try await client.currentUserID() }
+        catch IdentityError.signedOut { return nil }
+    }
     /// Reports only whether a usable durable session is present, without network access.
     public func hasStoredSession() async throws -> Bool {
         guard !changingSession else { throw IdentityContinuityError.busy }

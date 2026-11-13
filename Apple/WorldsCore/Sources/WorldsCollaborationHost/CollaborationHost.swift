@@ -46,6 +46,7 @@ public struct SyncEndpointProposal: Sendable {
 protocol CollaborationIdentity: Sendable {
     func currentWorkspacePageLevel(workspaceID: String, pageID: String, expectedUserID: String) async throws -> IdentityPageLevel
     func accessToken(expectedUserID: String, forceRefresh: Bool) async throws -> String
+    func storedAccountID() async throws -> String?
 }
 extension IdentitySessionCoordinator: CollaborationIdentity {}
 
@@ -127,5 +128,48 @@ public enum CollaborationHost {
                                         serverURL: serverURL, store: EphemeralReadOnlyStore(pageID: pageID),
                                         tokenProvider: { force in try await identity.accessToken(expectedUserID: expectedUserID, forceRefresh: force) },
                                         socketFactory: socketFactory)
+    }
+
+    /// The same sessions over a copy saved on this device. Before any token
+    /// is used, the copy must belong to this account, workspace, page and
+    /// approved origin, and the identity service must still grant access; a
+    /// copy that would edit also needs edit access. The caller removes the
+    /// copy when this throws `accessDenied`. Changes are still only made while
+    /// the connection reports edit access; the copy keeps them, and the ones
+    /// not acknowledged yet, across closing the page and the app.
+    public static func makeSession(pageID: String, workspaceID: String, expectedUserID: String,
+                                   serverURL: URL, trustedOrigin: TrustedSyncOrigin, savedCopy: DeviceSharedPageStore,
+                                   identity: IdentitySessionCoordinator) async throws -> CollaborationSession {
+        try await makeSession(pageID: pageID, workspaceID: workspaceID, expectedUserID: expectedUserID,
+                              serverURL: serverURL, trustedOrigin: trustedOrigin, savedCopy: savedCopy, checkedIdentity: identity)
+    }
+    static func makeSession(pageID: String, workspaceID: String, expectedUserID: String,
+                            serverURL: URL, trustedOrigin: TrustedSyncOrigin, savedCopy: DeviceSharedPageStore,
+                            checkedIdentity identity: any CollaborationIdentity,
+                            socketFactory: CollaborationSession.SocketFactory? = nil) async throws -> CollaborationSession {
+        guard trustedOrigin.accepts(serverURL, accountID: expectedUserID, workspaceID: workspaceID) else { throw CollaborationHostError.untrustedEndpoint }
+        guard let origin = SharedPageBinding.origin(of: serverURL),
+              savedCopy.binding == SharedPageBinding(accountID: expectedUserID, workspaceID: workspaceID, pageID: pageID, origin: origin) else {
+            throw CollaborationHostError.identityMismatch
+        }
+        let level = try await identity.currentWorkspacePageLevel(workspaceID: workspaceID, pageID: pageID, expectedUserID: expectedUserID)
+        guard level != .none else { throw CollaborationHostError.accessDenied }
+        if savedCopy.allowsLocalWrites { guard level == .edit || level == .full else { throw CollaborationHostError.accessDenied } }
+        return try CollaborationSession(pageID: pageID, workspaceID: workspaceID, documentID: pageID, expectedUserID: expectedUserID,
+                                        serverURL: serverURL, store: savedCopy,
+                                        tokenProvider: { force in try await identity.accessToken(expectedUserID: expectedUserID, forceRefresh: force) },
+                                        socketFactory: socketFactory)
+    }
+
+    /// A saved copy to read without any network. It opens only for the
+    /// account signed in on this device (read from the Keychain, no request),
+    /// never writes, and is not proof of current access: the next connected
+    /// session checks access again and the caller removes the copy if it is gone.
+    public static func openSavedCopy(binding: SharedPageBinding, directory: URL, identity: IdentitySessionCoordinator) async throws -> DeviceSharedPageStore {
+        try await openSavedCopy(binding: binding, directory: directory, checkedIdentity: identity)
+    }
+    static func openSavedCopy(binding: SharedPageBinding, directory: URL, checkedIdentity identity: any CollaborationIdentity) async throws -> DeviceSharedPageStore {
+        guard let account = try await identity.storedAccountID(), account == binding.accountID else { throw CollaborationHostError.identityMismatch }
+        return try DeviceSharedPageStore(directory: directory, binding: binding, allowsLocalWrites: false)
     }
 }

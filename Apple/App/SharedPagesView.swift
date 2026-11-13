@@ -30,24 +30,50 @@ import WorldsIdentityContinuity
 
 // MARK: - Workspaces
 
+/// Where saved shared pages live: one folder per identity service, inside
+/// the app's Application Support, created owner-only.
+enum SharedPageFiles {
+    static func directory(scope: String) -> URL? {
+        guard let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
+        return support.appendingPathComponent("Worlds/SharedPages/\(scope)", isDirectory: true)
+    }
+}
+
 struct SharedWorkspacesView: View {
     let coordinator: IdentitySessionCoordinator
     @State private var snapshot: IdentityAccountSnapshot?
     @State private var loading = false
     @State private var failed = false
+    @State private var saved: [SharedPageBinding] = []
 
     var body: some View {
         List {
             Section {
-                Text("Open the pages your team shares with you. They are read only on this device for now.")
+                Text("Open the pages your team shares with you. Pages you open are saved on this device so they open offline.")
                     .font(.callout).foregroundStyle(.secondary)
             }
             if loading && snapshot == nil {
                 Section { ProgressView() }
             } else if failed {
                 Section {
-                    Text("Sign in to see your team workspaces.").foregroundStyle(.secondary)
+                    Text("Workspaces could not be loaded. Check your connection, or sign in.").foregroundStyle(.secondary)
                     Button { Task { await load() } } label: { Label("Try again", systemImage: "arrow.clockwise") }
+                }
+                if !saved.isEmpty {
+                    Section {
+                        ForEach(saved, id: \.self) { binding in
+                            NavigationLink {
+                                SavedSharedPageView(coordinator: coordinator, binding: binding)
+                            } label: {
+                                Label {
+                                    Text("Page ID: \(binding.pageID)").lineLimit(2).environment(\.layoutDirection, .leftToRight)
+                                } icon: { Image(systemName: "arrow.down.doc") }
+                            }
+                            .accessibilityIdentifier("saved-page-\(binding.pageID)")
+                        }
+                    } header: { Text("Saved on this device") } footer: {
+                        Text("Read only until you are connected again. Access is checked again when you reconnect.")
+                    }
                 }
             } else if let snapshot {
                 Section("Workspaces") {
@@ -74,8 +100,63 @@ struct SharedWorkspacesView: View {
     private func load() async {
         guard !loading else { return }
         loading = true; defer { loading = false }
-        do { snapshot = try await coordinator.accountSnapshot(); failed = false }
-        catch { snapshot = nil; failed = true }
+        let directory = SharedPageFiles.directory(scope: await coordinator.scope)
+        do {
+            let loaded = try await coordinator.accountSnapshot()
+            snapshot = loaded; failed = false; saved = []
+            // Saved pages belong to the account signed in here; another account's go.
+            if let directory { DeviceSharedPageStore.removeOthers(than: loaded.profile.id, in: directory) }
+        } catch {
+            snapshot = nil; failed = true
+            if let directory, let account = try? await coordinator.storedAccountID() {
+                saved = DeviceSharedPageStore.savedBindings(in: directory, accountID: account).sorted { $0.pageID < $1.pageID }
+            } else {
+                saved = []
+            }
+        }
+    }
+}
+
+/// A saved shared page opened without a connection: read only, as last received.
+struct SavedSharedPageView: View {
+    let coordinator: IdentitySessionCoordinator
+    let binding: SharedPageBinding
+    @State private var blocks: [SharedBlock] = []
+    @State private var fields: SharedPackFieldsCard.Content?
+    @State private var savedAt: Date?
+    @State private var failed = false
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                if let savedAt {
+                    Label { Text("Saved copy from \(savedAt.formatted(date: .abbreviated, time: .shortened))") } icon: { Image(systemName: "arrow.down.doc") }
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 10).padding(.vertical, 5)
+                        .background(.thinMaterial, in: Capsule())
+                }
+                if failed { Label("The page could not be opened.", systemImage: "exclamationmark.triangle").foregroundStyle(.red) }
+                if let fields { SharedPackFieldsCard(card: fields) }
+                ForEach(blocks) { block in SharedBlockRow(block: block) }
+            }
+            .frame(maxWidth: 760, alignment: .leading)
+            .padding(.horizontal, 20).padding(.vertical, 16)
+            .frame(maxWidth: .infinity)
+        }
+        .navigationTitle(Text("Page ID: \(binding.pageID)"))
+        .task {
+            guard let directory = SharedPageFiles.directory(scope: await coordinator.scope) else { failed = true; return }
+            do {
+                let copy = try await CollaborationHost.openSavedCopy(binding: binding, directory: directory, identity: coordinator)
+                guard let reading = try await copy.savedReading() else { failed = true; return }
+                blocks = SharedBlock.flatten(reading.blocks)
+                fields = SharedPackFieldsCard.Content(reading.packFields)
+                savedAt = reading.savedAt
+            } catch { failed = true }
+        }
+        #if os(macOS)
+        .frame(minWidth: 520, minHeight: 560)
+        #endif
     }
 }
 
@@ -227,13 +308,20 @@ struct SharedPageView: View {
     let approval: SharedSyncApprovals.Approval
     @StateObject private var model = SharedPageModel()
     @State private var editing = false
-    @State private var confirmLeave = false
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 statusRow
+                if case .refused(let reason) = model.phase {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("The server refused a change made on this device.", systemImage: "exclamationmark.triangle").foregroundStyle(.red)
+                        if !reason.isEmpty { Text(verbatim: reason).font(.caption).foregroundStyle(.secondary) }
+                        Button(role: .destructive) { Task { await model.discardSavedCopy() } } label: {
+                            Label("Remove the saved copy", systemImage: "trash")
+                        }
+                    }
+                }
                 if let card = model.fields {
                     SharedPackFieldsCard(card: card, onEdit: model.canEdit ? { editing = true } : nil)
                 }
@@ -247,22 +335,6 @@ struct SharedPageView: View {
             .frame(maxWidth: .infinity)
         }
         .navigationTitle(title.map { Text(verbatim: $0) } ?? Text("Page ID: \(pageID)"))
-        // A change the server has not acknowledged lives only in this page's
-        // session: leaving would drop it, so ask first.
-        .navigationBarBackButtonHidden(model.unsent > 0)
-        .toolbar {
-            if model.unsent > 0 {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button { confirmLeave = true } label: { Label("Back", systemImage: "chevron.backward") }
-                }
-            }
-        }
-        .confirmationDialog("Leave without sending your change?", isPresented: $confirmLeave, titleVisibility: .visible) {
-            Button("Leave", role: .destructive) { dismiss() }
-            Button("Stay", role: .cancel) {}
-        } message: {
-            Text("The server has not received it yet. It is sent when the page reconnects.")
-        }
         .sheet(isPresented: $editing) {
             if let card = model.fields {
                 SharedPackFieldsEditor(card: card) { request in await model.saveFields(request) }
@@ -296,12 +368,16 @@ struct SharedPageView: View {
             case .reconnecting:
                 ProgressView().controlSize(.small)
                 Text("Reconnecting").font(.caption).foregroundStyle(.secondary)
-            case .reading: EmptyView()
+            case .saved(let date):
+                Label { Text("Saved copy from \(date.formatted(date: .abbreviated, time: .shortened))") } icon: { Image(systemName: "arrow.down.doc") }
+                    .font(.caption).foregroundStyle(.secondary)
+            case .reading, .refused: EmptyView()
             case .revoked: Label("Your access to this page was removed.", systemImage: "lock").font(.caption).foregroundStyle(.red)
             case .failed: Label("The page could not be opened.", systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.red)
             }
             if model.unsent > 0 {
-                Label("Sending your change", systemImage: "arrow.up.circle").font(.caption).foregroundStyle(.secondary)
+                Label("Your change is saved on this device and is sent when the page is connected.", systemImage: "arrow.up.circle")
+                    .font(.caption).foregroundStyle(.secondary)
             }
         }
         .accessibilityIdentifier("shared-page-status")
@@ -309,7 +385,7 @@ struct SharedPageView: View {
 }
 
 @MainActor final class SharedPageModel: ObservableObject {
-    enum Phase: Equatable { case opening, reconnecting, reading, revoked, failed }
+    enum Phase: Equatable { case opening, reconnecting, reading, saved(Date), refused(String), revoked, failed }
     enum SaveOutcome { case saved, waiting, failed }
     @Published private(set) var phase: Phase = .opening
     @Published private(set) var blocks: [SharedBlock] = []
@@ -317,77 +393,111 @@ struct SharedPageView: View {
     @Published private(set) var accessLevel: String?
     @Published private(set) var unsent = 0
     private var session: CollaborationSession?
-    private var outbox: EphemeralSessionStore?
+    private var copy: DeviceSharedPageStore?
+    private var directory: URL?
+    private var opened: (coordinator: IdentitySessionCoordinator, accountID: String, workspaceID: String, pageID: String,
+                         level: IdentityPageLevel, approval: SharedSyncApprovals.Approval)?
     private var runTask: Task<Void, Never>?
     private var watchTask: Task<Void, Never>?
     private var outboxTask: Task<Void, Never>?
 
-    /// Editing needs a session that can write and the server's own word for this connection.
-    var canEdit: Bool { outbox != nil && phase == .reading && (accessLevel == "edit" || accessLevel == "full") }
+    /// Editing needs a connected session over a copy that may write, and the server's own word for this connection.
+    var canEdit: Bool { copy?.allowsLocalWrites == true && phase == .reading && (accessLevel == "edit" || accessLevel == "full") }
 
     func open(coordinator: IdentitySessionCoordinator, accountID: String, workspaceID: String, pageID: String,
               level: IdentityPageLevel, approval: SharedSyncApprovals.Approval) async {
         guard session == nil else { return }
+        opened = (coordinator, accountID, workspaceID, pageID, level, approval)
         phase = .opening
+        guard let directory = SharedPageFiles.directory(scope: await coordinator.scope),
+              let origin = SharedPageBinding.origin(of: approval.origin) else { phase = .failed; return }
+        self.directory = directory
+        let binding = SharedPageBinding(accountID: accountID, workspaceID: workspaceID, pageID: pageID, origin: origin)
+        let copy: DeviceSharedPageStore
         do {
-            let session: CollaborationSession
-            if level == .edit || level == .full {
-                let live = try await CollaborationHost.makeLiveSession(pageID: pageID, workspaceID: workspaceID, expectedUserID: accountID,
-                                                                       serverURL: approval.origin, trustedOrigin: approval.trusted, identity: coordinator)
-                session = live.session
-                outbox = live.outbox
-            } else {
-                session = try await CollaborationHost.makeReadOnlySession(pageID: pageID, workspaceID: workspaceID, expectedUserID: accountID,
-                                                                          serverURL: approval.origin, trustedOrigin: approval.trusted, identity: coordinator)
-            }
+            copy = try DeviceSharedPageStore(directory: directory, binding: binding, allowsLocalWrites: level == .edit || level == .full)
+        } catch {
+            // An unreadable or mismatched file is never used; start from the server.
+            DeviceSharedPageStore.remove(binding, in: directory)
+            guard let fresh = try? DeviceSharedPageStore(directory: directory, binding: binding, allowsLocalWrites: level == .edit || level == .full) else { phase = .failed; return }
+            copy = fresh
+        }
+        self.copy = copy
+        // Show the saved copy at once while connecting.
+        if let saved = try? await copy.savedReading() { show(blocks: saved.blocks, packFields: saved.packFields) }
+        if let reason = await copy.rejection() { phase = .refused(reason); return }
+        startOutboxWatch(copy)
+        do {
+            let session = try await CollaborationHost.makeSession(pageID: pageID, workspaceID: workspaceID, expectedUserID: accountID,
+                                                                  serverURL: approval.origin, trustedOrigin: approval.trusted,
+                                                                  savedCopy: copy, identity: coordinator)
             self.session = session
             runTask = Task { [weak self] in
                 do { try await session.run() }
-                catch CollaborationError.accessRevoked { self?.phase = .revoked }
+                catch CollaborationError.accessRevoked { self?.accessRemoved() }
+                catch CollaborationError.rejected(let reason) { self?.phase = .refused(reason) }
                 catch { self?.phase = .failed }
             }
             watchTask = Task { [weak self] in
                 let changes = await session.editorChanges()
                 for await _ in changes { await self?.refresh() }
             }
-            if let outbox {
-                outboxTask = Task { [weak self] in
-                    while !Task.isCancelled {
-                        let count = await outbox.pendingCount()
-                        if self?.unsent != count { self?.unsent = count }
-                        try? await Task.sleep(for: .milliseconds(500))
-                    }
-                }
-            }
         } catch CollaborationHostError.accessDenied {
-            phase = .revoked
+            accessRemoved()
         } catch {
-            phase = .failed
+            // Most often no connection: keep showing the saved copy, read only.
+            if let saved = await copy.savedAt() { phase = .saved(saved) } else { phase = .failed }
         }
+    }
+
+    private func show(blocks json: Data, packFields: Data) {
+        blocks = SharedBlock.flatten(json)
+        fields = SharedPackFieldsCard.Content(packFields)
+    }
+
+    private func startOutboxWatch(_ copy: DeviceSharedPageStore) {
+        outboxTask?.cancel()
+        outboxTask = Task { [weak self] in
+            while !Task.isCancelled {
+                let count = await copy.pendingCount()
+                if self?.unsent != count { self?.unsent = count }
+                try? await Task.sleep(for: .milliseconds(500))
+            }
+        }
+    }
+
+    /// The service or the server says this account can no longer open the
+    /// page: the saved copy goes with it, unsent changes included.
+    private func accessRemoved() {
+        if let copy, let directory { DeviceSharedPageStore.remove(copy.binding, in: directory) }
+        blocks = []; fields = nil; unsent = 0
+        phase = .revoked
     }
 
     private func refresh() async {
         guard let session, phase != .revoked, phase != .failed else { return }
+        if case .refused = phase { return }
         if let reading = try? await session.readOnlySnapshot() {
-            blocks = SharedBlock.flatten(reading.blocks)
-            fields = SharedPackFieldsCard.Content(reading.packFields)
+            show(blocks: reading.blocks, packFields: reading.packFields)
             accessLevel = reading.accessLevel
             phase = .reading
             return
         }
         switch await session.connectionStatus() {
-        case .accessRevoked: phase = .revoked
-        case .failed: phase = .failed
+        case .accessRevoked: accessRemoved()
+        case .failed:
+            if let reason = await copy?.rejection() { phase = .refused(reason) } else { phase = .failed }
         default: phase = blocks.isEmpty && fields == nil ? .opening : .reconnecting
         }
     }
 
-    /// Writes the changed fields, then waits for the server to acknowledge them.
+    /// Writes the changed fields, then waits a little for the server to
+    /// acknowledge them. Until it does, the change stays in the saved copy.
     func saveFields(_ request: Data) async -> SaveOutcome {
-        guard let session, let outbox, canEdit else { return .failed }
+        guard let session, let copy, canEdit else { return .failed }
         do { try await session.setPackFields(request: request) } catch { return .failed }
         for _ in 0..<60 {
-            let count = await outbox.pendingCount()
+            let count = await copy.pendingCount()
             unsent = count
             if count == 0 { return .saved }
             try? await Task.sleep(for: .milliseconds(250))
@@ -395,10 +505,20 @@ struct SharedPageView: View {
         return .waiting
     }
 
+    /// After a refused change: drop the copy and open the page again from the server.
+    func discardSavedCopy() async {
+        guard let opened else { return }
+        close()
+        if let copy, let directory { DeviceSharedPageStore.remove(copy.binding, in: directory) }
+        copy = nil; blocks = []; fields = nil
+        await open(coordinator: opened.coordinator, accountID: opened.accountID, workspaceID: opened.workspaceID,
+                   pageID: opened.pageID, level: opened.level, approval: opened.approval)
+    }
+
     func close() {
         runTask?.cancel(); watchTask?.cancel(); outboxTask?.cancel()
         if let session { Task { await session.stop() } }
-        session = nil; outbox = nil; unsent = 0
+        session = nil; unsent = 0
     }
 }
 

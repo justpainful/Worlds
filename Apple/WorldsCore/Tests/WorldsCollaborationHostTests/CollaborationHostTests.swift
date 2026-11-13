@@ -19,6 +19,7 @@ private actor IdentityFixture: CollaborationIdentity {
         guard expectedUserID == "editor" else { throw CollaborationHostError.identityMismatch }
         return "fixture-token"
     }
+    func storedAccountID() async throws -> String? { "editor" }
 }
 
 final class CollaborationHostTests: XCTestCase {
@@ -207,10 +208,13 @@ private actor EditablePageSocket: CollaborationSocket {
     let page: Data
     let level: String
     let received: ReceivedUpdates
+    let acknowledges: Bool
     private var queue: [Data] = []
     private var waiting: CheckedContinuation<Data?, Error>?
     private var closed = false
-    init(page: Data, level: String, received: ReceivedUpdates) { self.page = page; self.level = level; self.received = received }
+    init(page: Data, level: String, received: ReceivedUpdates, acknowledges: Bool = true) {
+        self.page = page; self.level = level; self.received = received; self.acknowledges = acknowledges
+    }
     func send(_ data: Data) async throws {
         switch try WorldsSyncWire.decode(data) {
         case let .sync(channel, kind, _) where kind == 0:
@@ -219,7 +223,7 @@ private actor EditablePageSocket: CollaborationSocket {
             try deliver(WorldsSyncWire.encode(.sync(channel: channel, kind: 1, payload: channel == 0 ? page : Data([0, 0]))))
         case let .update(batchID, channel, update):
             if channel == 0 { await received.add(update) }
-            try deliver(WorldsSyncWire.encode(.acknowledgement(batchID: batchID, status: 0, reason: "")))
+            if acknowledges { try deliver(WorldsSyncWire.encode(.acknowledgement(batchID: batchID, status: 0, reason: ""))) }
         default: break
         }
     }
@@ -320,5 +324,167 @@ extension CollaborationHostTests {
         try await run.value
         // Malformed requests never reach the outbox.
         XCTAssertThrowsError(try NativeCRDTDocument.preparePackFields(base: Self.sharedOrderPage, request: Data("{}".utf8)))
+    }
+}
+
+extension CollaborationHostTests {
+    private func temporaryDirectory() -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("shared-pages-" + UUID().uuidString, isDirectory: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: url) }
+        return url
+    }
+    private var binding: SharedPageBinding {
+        SharedPageBinding(accountID: "editor", workspaceID: "fixture-workspace", pageID: "fixture-page", origin: "example.invalid")
+    }
+    private func trusted() throws -> TrustedSyncOrigin {
+        try SyncEndpointProposal(origin: URL(string: "https://example.invalid")!, accountID: "editor", workspaceID: "fixture-workspace").approve()
+    }
+
+    func testSavedCopyKeepsAnUnsentChangeAndSendsItNextTime() async throws {
+        let directory = temporaryDirectory()
+        let page = Self.sharedOrderPage
+        let first = try DeviceSharedPageStore(directory: directory, binding: binding, allowsLocalWrites: true)
+        let silent = ReceivedUpdates()
+        let offline = try await CollaborationHost.makeSession(pageID: "fixture-page", workspaceID: "fixture-workspace", expectedUserID: "editor",
+            serverURL: URL(string: "https://example.invalid")!, trustedOrigin: try trusted(), savedCopy: first, checkedIdentity: IdentityFixture(.edit),
+            socketFactory: { _, _ in EditablePageSocket(page: page, level: "edit", received: silent, acknowledges: false) })
+        let firstRun = Task { try await offline.run() }
+        _ = try await waitForReading(offline)
+        try await offline.setPackFields(request: try JSONSerialization.data(withJSONObject: ["set": ["status": "paid"]]))
+        await offline.stop()
+        try await firstRun.value
+        let unsent = await first.pendingCount()
+        XCTAssertEqual(unsent, 1, "The server never acknowledged it")
+
+        // The page and the change survive closing the page and the app.
+        let reopened = try DeviceSharedPageStore(directory: directory, binding: binding, allowsLocalWrites: true)
+        let kept = await reopened.pendingCount()
+        XCTAssertEqual(kept, 1)
+        let savedValue = try await reopened.savedReading()
+        let saved = try XCTUnwrap(savedValue)
+        let fields = try XCTUnwrap(try JSONSerialization.jsonObject(with: saved.packFields) as? [String: Any])
+        XCTAssertEqual((fields["fields"] as? [String: Any])?["status"] as? String, "paid")
+        XCTAssertEqual(fields["kind"] as? String, "shop.order")
+
+        // The next connected session sends it and the server acknowledges it.
+        let received = ReceivedUpdates()
+        let online = try await CollaborationHost.makeSession(pageID: "fixture-page", workspaceID: "fixture-workspace", expectedUserID: "editor",
+            serverURL: URL(string: "https://example.invalid")!, trustedOrigin: try trusted(), savedCopy: reopened, checkedIdentity: IdentityFixture(.edit),
+            socketFactory: { _, _ in EditablePageSocket(page: page, level: "edit", received: received) })
+        let secondRun = Task { try await online.run() }
+        var pending = 1
+        for _ in 0..<150 where pending > 0 {
+            try await Task.sleep(for: .milliseconds(20))
+            pending = await reopened.pendingCount()
+        }
+        XCTAssertEqual(pending, 0)
+        let server = try NativeCRDTDocument()
+        try server.apply(page)
+        for update in await received.updates { try server.apply(update) }
+        let onServer = try XCTUnwrap(try JSONSerialization.jsonObject(with: server.packFields()) as? [String: Any])
+        XCTAssertEqual((onServer["fields"] as? [String: Any])?["status"] as? String, "paid")
+        await online.stop()
+        try await secondRun.value
+    }
+
+    func testSavedCopyIsBoundToItsAccountPageAndOrigin() async throws {
+        let directory = temporaryDirectory()
+        let copy = try DeviceSharedPageStore(directory: directory, binding: binding, allowsLocalWrites: true)
+        try await copy.appendRemote(pageID: "fixture-page", channel: 0, update: Self.sharedOrderPage)
+        let url = URL(string: "https://example.invalid")!
+        // Another page or origin never uses this copy.
+        do {
+            _ = try await CollaborationHost.makeSession(pageID: "other-page", workspaceID: "fixture-workspace", expectedUserID: "editor", serverURL: url, trustedOrigin: try trusted(), savedCopy: copy, checkedIdentity: IdentityFixture(.edit))
+            XCTFail("A copy of another page was accepted")
+        } catch CollaborationHostError.identityMismatch { }
+        do {
+            _ = try await CollaborationHost.makeSession(pageID: "fixture-page", workspaceID: "fixture-workspace", expectedUserID: "editor", serverURL: URL(string: "https://evil.invalid")!, trustedOrigin: try trusted(), savedCopy: copy, checkedIdentity: IdentityFixture(.edit))
+            XCTFail("Untrusted endpoint was accepted")
+        } catch CollaborationHostError.untrustedEndpoint { }
+        // A copy that edits needs edit access; one that reads only needs any access.
+        do {
+            _ = try await CollaborationHost.makeSession(pageID: "fixture-page", workspaceID: "fixture-workspace", expectedUserID: "editor", serverURL: url, trustedOrigin: try trusted(), savedCopy: copy, checkedIdentity: IdentityFixture(.view))
+            XCTFail("A viewer got a copy that edits")
+        } catch CollaborationHostError.accessDenied { }
+        do {
+            _ = try await CollaborationHost.makeSession(pageID: "fixture-page", workspaceID: "fixture-workspace", expectedUserID: "editor", serverURL: url, trustedOrigin: try trusted(), savedCopy: copy, checkedIdentity: IdentityFixture(.none))
+            XCTFail("A page without access was opened")
+        } catch CollaborationHostError.accessDenied { }
+        let reader = try DeviceSharedPageStore(directory: directory, binding: binding, allowsLocalWrites: false)
+        _ = try await CollaborationHost.makeSession(pageID: "fixture-page", workspaceID: "fixture-workspace", expectedUserID: "editor", serverURL: url, trustedOrigin: try trusted(), savedCopy: reader, checkedIdentity: IdentityFixture(.view))
+        do { try await reader.appendLocal(pageID: "fixture-page", channel: 0, update: Data([0, 0])); XCTFail("A reading copy wrote") }
+        catch CollaborationError.accessRevoked { }
+        // A file whose recorded owner differs from its name is never read.
+        let mineFile = try XCTUnwrap(try FileManager.default.contentsOfDirectory(atPath: directory.path).first)
+        let other = SharedPageBinding(accountID: "other", workspaceID: "fixture-workspace", pageID: "fixture-page", origin: "example.invalid")
+        let theirs = try DeviceSharedPageStore(directory: directory, binding: other, allowsLocalWrites: false)
+        try await theirs.appendRemote(pageID: "fixture-page", channel: 0, update: Self.sharedOrderPage)
+        let theirFile = try XCTUnwrap(try FileManager.default.contentsOfDirectory(atPath: directory.path).first { $0 != mineFile })
+        try FileManager.default.removeItem(at: directory.appendingPathComponent(theirFile))
+        try FileManager.default.copyItem(at: directory.appendingPathComponent(mineFile), to: directory.appendingPathComponent(theirFile))
+        XCTAssertThrowsError(try DeviceSharedPageStore(directory: directory, binding: other, allowsLocalWrites: false)) { error in
+            XCTAssertEqual(error as? DeviceSharedPageStoreError, .bindingMismatch)
+        }
+    }
+
+    func testRejectedChangeQuarantinesTheCopy() async throws {
+        let directory = temporaryDirectory()
+        let copy = try DeviceSharedPageStore(directory: directory, binding: binding, allowsLocalWrites: true)
+        try await copy.appendRemote(pageID: "fixture-page", channel: 0, update: Self.sharedOrderPage)
+        let change = try NativeCRDTDocument.preparePackFields(base: Self.sharedOrderPage, request: Data(#"{"set":{"status":"paid"}}"#.utf8))
+        try await copy.appendLocal(pageID: "fixture-page", channel: 0, update: change)
+        try await copy.archiveRejection(pageID: "fixture-page", channel: 0, state: change, reason: "view access cannot edit the page")
+        let reopened = try DeviceSharedPageStore(directory: directory, binding: binding, allowsLocalWrites: true)
+        let pending = await reopened.pendingCount()
+        XCTAssertEqual(pending, 0)
+        let reason = await reopened.rejection()
+        XCTAssertEqual(reason, "view access cannot edit the page")
+        let watermark = try await reopened.maximumPendingID(pageID: "fixture-page", channel: 0)
+        XCTAssertNil(watermark)
+        do { try await reopened.appendLocal(pageID: "fixture-page", channel: 0, update: change); XCTFail("A quarantined copy took a change") }
+        catch DeviceSharedPageStoreError.quarantined { }
+    }
+
+    func testSavedCopiesOpenOfflineOnlyForTheSignedInAccount() async throws {
+        let directory = temporaryDirectory()
+        let mine = try DeviceSharedPageStore(directory: directory, binding: binding, allowsLocalWrites: false)
+        try await mine.appendRemote(pageID: "fixture-page", channel: 0, update: Self.sharedOrderPage)
+        let otherBinding = SharedPageBinding(accountID: "other", workspaceID: "fixture-workspace", pageID: "fixture-page", origin: "example.invalid")
+        let theirs = try DeviceSharedPageStore(directory: directory, binding: otherBinding, allowsLocalWrites: false)
+        try await theirs.appendRemote(pageID: "fixture-page", channel: 0, update: Self.sharedOrderPage)
+        XCTAssertEqual(DeviceSharedPageStore.savedBindings(in: directory, accountID: "editor"), [binding])
+        let opened = try await CollaborationHost.openSavedCopy(binding: binding, directory: directory, checkedIdentity: IdentityFixture(.none))
+        let openedValue = try await opened.savedReading()
+        let reading = try XCTUnwrap(openedValue)
+        let tree = try XCTUnwrap(try JSONSerialization.jsonObject(with: reading.blocks) as? [String: Any])
+        XCTAssertEqual((tree["content"] as? [[String: Any]])?.first?["type"] as? String, "heading")
+        do { _ = try await CollaborationHost.openSavedCopy(binding: otherBinding, directory: directory, checkedIdentity: IdentityFixture(.none)); XCTFail("Another account's copy opened") }
+        catch CollaborationHostError.identityMismatch { }
+        DeviceSharedPageStore.removeOthers(than: "editor", in: directory)
+        XCTAssertTrue(DeviceSharedPageStore.savedBindings(in: directory, accountID: "other").isEmpty)
+        DeviceSharedPageStore.remove(binding, in: directory)
+        XCTAssertTrue(DeviceSharedPageStore.savedBindings(in: directory, accountID: "editor").isEmpty)
+    }
+
+    func testSavedCopyCompactsWithoutChangingThePage() async throws {
+        let directory = temporaryDirectory()
+        let copy = try DeviceSharedPageStore(directory: directory, binding: binding, allowsLocalWrites: true)
+        try await copy.appendRemote(pageID: "fixture-page", channel: 0, update: Self.sharedOrderPage)
+        var state = Self.sharedOrderPage
+        for index in 0..<80 {
+            let change = try NativeCRDTDocument.preparePackFields(base: state, request: Data(#"{"set":{"total":\#(index)}}"#.utf8))
+            try await copy.appendRemote(pageID: "fixture-page", channel: 0, update: change)
+            let doc = try NativeCRDTDocument()
+            try doc.apply(state); try doc.apply(change)
+            state = try doc.diff(Data([0]))
+        }
+        let reopened = try DeviceSharedPageStore(directory: directory, binding: binding, allowsLocalWrites: true)
+        let updates = try await reopened.load(pageID: "fixture-page", channel: 0)
+        XCTAssertLessThan(updates.count, 40, "The log was folded into a saved state")
+        let readingValue = try await reopened.savedReading()
+        let reading = try XCTUnwrap(readingValue)
+        let fields = try XCTUnwrap(try JSONSerialization.jsonObject(with: reading.packFields) as? [String: Any])
+        XCTAssertEqual((fields["fields"] as? [String: Any])?["total"] as? Double, 79)
+        XCTAssertEqual((fields["fields"] as? [String: Any])?["status"] as? String, "sent")
     }
 }

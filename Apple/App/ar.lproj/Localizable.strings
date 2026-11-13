@@ -752,8 +752,6 @@
 "It opens in WhatsApp, where you send it yourself." = "تُفتح في واتساب، وترسلها أنت بنفسك.";
 "There is no one to send this to yet. Add a phone number or email first." = "لا يوجد من تُرسل إليه بعد. أضف رقم جوال أو بريدًا إلكترونيًا أولًا.";
 "Shared pages" = "الصفحات المشتركة";
-"Open the pages your team shares with you. They are read only on this device for now." = "افتح الصفحات التي يشاركها فريقك معك. هي للقراءة فقط على هذا الجهاز حاليًا.";
-"Sign in to see your team workspaces." = "سجّل الدخول لترى مساحات عمل فريقك.";
 "Sync server" = "خادم المزامنة";
 "Trusted for this workspace until you close Worlds." = "موثوق لمساحة العمل هذه حتى تغلق Worlds.";
 "Change server" = "تغيير الخادم";
@@ -779,10 +777,13 @@
 "Your access to this page was removed." = "أُزيل وصولك إلى هذه الصفحة.";
 "The page could not be opened." = "تعذّر فتح الصفحة.";
 "This block is not shown on this device yet." = "هذه الكتلة لا تظهر على هذا الجهاز بعد.";
-"Leave" = "غادر";
-"Stay" = "ابقَ";
 "Edit" = "تعديل";
-"Sending your change" = "جارٍ إرسال تعديلك";
-"Leave without sending your change?" = "هل تغادر دون إرسال تعديلك؟";
-"The server has not received it yet. It is sent when the page reconnects." = "لم يصل إلى الخادم بعد. يُرسَل عندما تعود الصفحة للاتصال.";
 "This change could not be saved. Check that the page is connected and you can edit it." = "تعذّر حفظ هذا التعديل. تأكّد أن الصفحة متصلة وأن لديك صلاحية التعديل.";
+"Open the pages your team shares with you. Pages you open are saved on this device so they open offline." = "افتح الصفحات التي يشاركها فريقك معك. الصفحات التي تفتحها تُحفظ على هذا الجهاز لتفتح دون اتصال.";
+"Workspaces could not be loaded. Check your connection, or sign in." = "تعذّر تحميل مساحات العمل. تحقّق من اتصالك أو سجّل الدخول.";
+"Saved on this device" = "محفوظة على هذا الجهاز";
+"Read only until you are connected again. Access is checked again when you reconnect." = "للقراءة فقط حتى تتصل من جديد. يُتحقَّق من وصولك مرة أخرى عند الاتصال.";
+"Saved copy from %@" = "نسخة محفوظة من %@";
+"The server refused a change made on this device." = "رفض الخادم تعديلًا أُجري على هذا الجهاز.";
+"Remove the saved copy" = "إزالة النسخة المحفوظة";
+"Your change is saved on this device and is sent when the page is connected." = "تعديلك محفوظ على هذا الجهاز ويُرسَل عندما تتصل الصفحة.";

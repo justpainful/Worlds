@@ -752,8 +752,6 @@
 "It opens in WhatsApp, where you send it yourself." = "It opens in WhatsApp, where you send it yourself.";
 "There is no one to send this to yet. Add a phone number or email first." = "There is no one to send this to yet. Add a phone number or email first.";
 "Shared pages" = "Shared pages";
-"Open the pages your team shares with you. They are read only on this device for now." = "Open the pages your team shares with you. They are read only on this device for now.";
-"Sign in to see your team workspaces." = "Sign in to see your team workspaces.";
 "Sync server" = "Sync server";
 "Trusted for this workspace until you close Worlds." = "Trusted for this workspace until you close Worlds.";
 "Change server" = "Change server";
@@ -779,10 +777,13 @@
 "Your access to this page was removed." = "Your access to this page was removed.";
 "The page could not be opened." = "The page could not be opened.";
 "This block is not shown on this device yet." = "This block is not shown on this device yet.";
-"Leave" = "Leave";
-"Stay" = "Stay";
 "Edit" = "Edit";
-"Sending your change" = "Sending your change";
-"Leave without sending your change?" = "Leave without sending your change?";
-"The server has not received it yet. It is sent when the page reconnects." = "The server has not received it yet. It is sent when the page reconnects.";
 "This change could not be saved. Check that the page is connected and you can edit it." = "This change could not be saved. Check that the page is connected and you can edit it.";
+"Open the pages your team shares with you. Pages you open are saved on this device so they open offline." = "Open the pages your team shares with you. Pages you open are saved on this device so they open offline.";
+"Workspaces could not be loaded. Check your connection, or sign in." = "Workspaces could not be loaded. Check your connection, or sign in.";
+"Saved on this device" = "Saved on this device";
+"Read only until you are connected again. Access is checked again when you reconnect." = "Read only until you are connected again. Access is checked again when you reconnect.";
+"Saved copy from %@" = "Saved copy from %@";
+"The server refused a change made on this device." = "The server refused a change made on this device.";
+"Remove the saved copy" = "Remove the saved copy";
+"Your change is saved on this device and is sent when the page is connected." = "Your change is saved on this device and is sent when the page is connected.";
