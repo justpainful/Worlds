@@ -30,7 +30,13 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: services/sync/pnpm-lock.yaml
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            services/sync/pnpm-lock.yaml
+      # The service shares code with the app (src/sync, src/drawing), whose types come from the root packages.
+      - name: Install the app packages
+        working-directory: .
+        run: pnpm install --frozen-lockfile
       - run: pnpm install --frozen-lockfile
       - name: Typecheck
         run: pnpm typecheck
