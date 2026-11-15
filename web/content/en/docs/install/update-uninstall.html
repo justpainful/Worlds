@@ -1,0 +1,60 @@
+<!--
+title: Update and uninstall
+description: How to update or remove Worlds on Windows, Mac, iPhone, iPad, Android and the browser, and where your pages stay after you remove it.
+-->
+<h1>Update and uninstall</h1>
+<p class="lead">Worlds does not update itself yet. For each new version you download the file from the <a href="https://github.com/justpainful/Worlds/releases/latest">latest release page</a> and install it over the old one. Before you remove the app, know where your pages are: on Windows and Mac they stay after removal, on Android they go with it.</p>
+
+<h2 id="data-locations">Where your pages live</h2>
+<table>
+<thead><tr><th>Platform</th><th>Where the pages are</th><th>Deleted with the app?</th></tr></thead>
+<tbody>
+<tr><td>Windows</td><td><code>%APPDATA%\Worlds</code>: the file <code>worlds.db</code> and the <code>attachments</code> and <code>backups</code> folders</td><td>No, they stay</td></tr>
+<tr><td>Android</td><td>Inside the app on the device, and not part of Google's backup</td><td>Yes, they are deleted</td></tr>
+<tr><td>iPhone and iPad</td><td>A <code>worlds.db</code> you opened from the Files app stays where it is. Local copies are inside the app</td><td>Local copies are deleted, the original file stays</td></tr>
+<tr><td>Mac</td><td>The <code>worlds.db</code> file wherever you put it. Local copies in <code>~/Library/Application Support/Worlds/LocalCopies</code></td><td>No, they stay</td></tr>
+<tr><td>Browser</td><td>The browser's storage for app.enterworlds.space, and your account if you signed in</td><td>Clearing the site's data deletes the browser copy; the account copy stays</td></tr>
+</tbody>
+</table>
+<p>Pages shared in a workspace on an account stay on the server whatever you remove from the apps.</p>
+
+<h2 id="windows">Windows</h2>
+<h3>Update</h3>
+<ol class="steps">
+<li><h3>Quit Worlds</h3><p>The close button hides Worlds in the notification area; it does not quit it. Right click its icon next to the clock and choose <strong>Quit</strong>.</p></li>
+<li><h3>Run the new setup file</h3><p>Download the <code>setup.exe</code> of the new version and open it. You go through the SmartScreen window again, as in the <a href="/en/docs/install/windows/#install">install steps</a>.</p></li>
+<li><h3>Keep the suggested choice</h3><p>If the wizard says a version of Worlds is installed, keep the suggested choice and click Next to the end. Setup replaces the app files only and does not touch <code>%APPDATA%\Worlds</code>.</p></li>
+</ol>
+<p>If the new version needs to update the database format, Worlds keeps a copy of it in the <code>backups</code> folder before updating it. An older version does not open a database that a newer one has updated, so only go back to an earlier version together with your backup.</p>
+<h3>Uninstall</h3>
+<ol class="steps">
+<li><h3>Turn off Start with Windows and quit Worlds</h3><p>If you turned on <strong>Start with Windows</strong> in Settings, turn it off first. Then quit Worlds from the notification area.</p></li>
+<li><h3>Remove the app</h3><p>On Windows 11: Settings, then Apps, then Installed apps, then the three dots next to Worlds, then <strong>Uninstall</strong>. On Windows 10: Settings, then Apps, then Apps &amp; features, then Worlds, then <strong>Uninstall</strong>.</p>
+<p>If the uninstaller offers to delete the application data, that covers the display component's settings in the <code>app.worlds.desktop</code> folder, not your pages folder.</p></li>
+<li><h3>Your pages are still there</h3><p>The <code>%APPDATA%\Worlds</code> folder stays. If you install Worlds again, it finds your pages as they were. To move them to another PC, copy this whole folder.</p></li>
+</ol>
+<div class="callout warn"><p>To delete everything for good: type <code>%APPDATA%\Worlds</code> in the File Explorer address bar, press <kbd>Enter</kbd>, then delete the folder. This deletes all your pages, their attachments and their backups from this PC, and can only be undone from the Recycle Bin.</p></div>
+
+<h2 id="macos">Mac</h2>
+<h3>Update</h3>
+<p>Quit Worlds (<kbd>Command</kbd> + <kbd>Q</kbd>), download the new dmg, drag the app to Applications and choose <strong>Replace</strong> when Finder asks. macOS may ask you to allow it to open again, as in <a href="/en/docs/install/macos/#open-sequoia">opening it the first time</a>. Your workspace files are not affected.</p>
+<h3>Uninstall</h3>
+<p>Quit Worlds, then drag it from Applications to the Trash. The <code>worlds.db</code> file you were opening stays where it is, and local copies stay in <code>~/Library/Application Support/Worlds</code>. To delete them, open Finder, choose Go to Folder from the Go menu, paste the path, then delete the folder.</p>
+
+<h2 id="iphone-ipad">iPhone and iPad</h2>
+<h3>Update</h3>
+<p>Download the new ipa file in Safari, open SideStore, and in My Apps tap <strong>+</strong> and choose the file, as in the <a href="/en/docs/install/iphone-ipad/#install">install steps</a>. The tool replaces the app rather than deleting it, so its data stays. Refreshing the signature every 7 days is not an update; it is the same version with a new signature.</p>
+<h3>Uninstall</h3>
+<p>Press and hold the Worlds icon, then <strong>Remove App</strong>, then <strong>Delete App</strong>. What is inside it goes too, including local copies. A <code>worlds.db</code> in the Files app stays. You can also remove Worlds from My Apps in SideStore so it no longer counts towards your three apps.</p>
+
+<h2 id="android">Android</h2>
+<h3>Update</h3>
+<p>Download the new APK and open it as in the <a href="/en/docs/install/android/#install">install steps</a>. Android asks if you want to update the app: tap <strong>Update</strong>. Your pages stay.</p>
+<div class="callout warn"><p>If Android says App not installed, or that the package conflicts with an existing package, the new version is signed with a different key from the one installed. It can only be installed after removing the old one, and removing it deletes your pages from the phone. Export what you need first (see Uninstall below), then remove and install.</p></div>
+<h3>Uninstall</h3>
+<p>Press and hold the Worlds icon, then <strong>App info</strong>, then <strong>Uninstall</strong>. Or Settings, then Apps, then Worlds, then <strong>Uninstall</strong>.</p>
+<p>This deletes all your pages, drawings and files from the phone, and Google's backup does not bring them back. Before removing it, export what you need: pages as Markdown, drawings as PNG or a Worlds package, and attached files in their original form. Shared pages on your account stay on the server.</p>
+
+<h2 id="web">Browser</h2>
+<p>There is nothing to update. When you open or reload <a href="https://app.enterworlds.space">app.enterworlds.space</a>, you get the latest version.</p>
+<p>To remove your pages from a browser: open the browser's settings, then site data, find <code>app.enterworlds.space</code> and delete its data. This deletes only this browser's copy. If you were signed in, your account copy stays and comes back when you sign in again.</p>

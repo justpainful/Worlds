@@ -1,0 +1,14 @@
+# Worlds on the web at app.enterworlds.space: the web build of the app with
+# its in-browser backend, real accounts and the workspace kept on the account
+# (pnpm build:demo, see .env.demo).
+# Deploy: pnpm build:demo, then npx wrangler deploy -c web/app.wrangler.toml
+name = "worlds-app"
+compatibility_date = "2026-08-01"
+
+[assets]
+directory = "../dist-demo"
+not_found_handling = "single-page-application"
+
+[[routes]]
+pattern = "app.enterworlds.space"
+custom_domain = true

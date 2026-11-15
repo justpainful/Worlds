@@ -161,41 +161,60 @@ const COPY = {
   en: {
     subject: (code: string) => `${code} is your Worlds sign-in code`,
     heading: "Your sign-in code",
-    lead: "Type this code in Worlds to finish signing in.",
-    expires: "It works for 10 minutes and only once.",
-    ignore: "If you did not ask for it, you can ignore this email. Nobody can sign in to your account without the code.",
-    footer: "Worlds keeps your pages on your own device.",
+    lead: "Enter it in Worlds to finish signing in.",
+    copy: "Double-click the code to copy it, or press and hold it on a phone.",
+    expires: "It works for 10 minutes, and only once.",
+    ignore: "Didn't ask for it? Let it go. Nobody gets into your account without this code.",
+    footer: "Worlds keeps your pages on your own device",
   },
   ar: {
     subject: (code: string) => `رمز دخولك إلى Worlds: ${code}`,
-    heading: "رمز الدخول",
-    lead: "اكتب هذا الرمز في Worlds لإكمال الدخول.",
+    heading: "رمز دخولك",
+    lead: "اكتبه في Worlds لتكمل الدخول.",
+    copy: "اضغط على الرمز مرتين لنسخه، أو اضغط عليه مطولًا في الجوال.",
     expires: "يعمل لمدة 10 دقائق، ومرة واحدة فقط.",
-    ignore: "إذا ما طلبته، تجاهل هذه الرسالة. ما أحد يقدر يدخل حسابك بدون الرمز.",
-    footer: "Worlds يحفظ صفحاتك على جهازك.",
+    ignore: "ما طلبته؟ تجاهله بهدوء. ما أحد يدخل حسابك بدون هذا الرمز.",
+    footer: "Worlds يحفظ صفحاتك على جهازك",
   },
 } as const;
 
 const SITE = "https://enterworlds.space";
+/** Drawings for the email, served by the site (web/site/mail), in the hand-drawn marker style. */
+const ART = `${SITE}/mail`;
+
+/** Cream for most of the page, cocoa for words, ink for outlines; red lives only inside the drawings. */
+const C = {
+  cream: "#FBEFE1",
+  cocoa: "#4A1C10",
+  cocoaSoft: "#7A4A3A",
+  ink: "#2B1D17",
+  label: "#F7DD72",
+};
 
 const escape = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
 /**
- * The sign-in email (docs/web/DESIGN.md): the code as six separate cells in
- * the app's monospace face, readable and copyable in under five seconds, in
- * the person's language and direction. Built from tables and inline styles,
- * which every mail app renders, with a dark version where it is supported.
+ * The sign-in email, written like a short letter on cream paper: the drawn
+ * envelope, the code on a yellow label outlined in ink (one
+ * piece of text, so a double-click or a long press copies all six digits),
+ * and two quiet notes, each beside its own small drawing. Tables and inline
+ * styles, which every mail app renders, and a cocoa page in dark mode.
  */
 export function codeEmail(code: string, lang: EmailLanguage = "en"): { subject: string; text: string; html: string } {
   const t = COPY[lang];
-  const dir = lang === "ar" ? "rtl" : "ltr";
-  const align = lang === "ar" ? "right" : "left";
-  const body = lang === "ar" ? "'IBM Plex Sans Arabic','Segoe UI',Tahoma,sans-serif" : "'Instrument Sans','Segoe UI',Helvetica,Arial,sans-serif";
-  const size = lang === "ar" ? 17 : 15;
-  const lh = lang === "ar" ? 1.8 : 1.5;
-  const cell = (d: string) =>
-    `<td class="cell" style="width:44px;height:56px;border:1px solid #d9d9de;border-radius:10px;background:#f5f5f7;color:#1d1d1f;font:500 30px/56px 'IBM Plex Mono',Menlo,Consolas,monospace;text-align:center;">${escape(d)}</td>`;
-  const cells = [...code].map(cell).join('<td style="width:8px;"></td>');
+  const ar = lang === "ar";
+  const dir = ar ? "rtl" : "ltr";
+  const align = ar ? "right" : "left";
+  const sans = ar ? "'IBM Plex Sans Arabic','Segoe UI',Tahoma,Arial,sans-serif" : "Inter,-apple-system,'Segoe UI',Roboto,Arial,sans-serif";
+  const serif = ar ? "'Noto Naskh Arabic','Amiri','Traditional Arabic','Times New Roman',serif" : "Georgia,'Iowan Old Style','Times New Roman',serif";
+  const size = ar ? 17 : 16;
+  const lh = ar ? 1.85 : 1.6;
+  const note = (art: string, text: string, font: string, cls: string, color: string) =>
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" dir="${dir}"><tr>
+      <td width="76" valign="middle" style="width:76px;padding:6px 0;"><img src="${ART}/${art}.png" width="64" alt="" style="display:block;width:64px;height:auto;border:0;"></td>
+      <td width="14" style="width:14px;"></td>
+      <td class="${cls}" valign="middle" style="text-align:${align};color:${color};font:400 ${size}px/${lh} ${font};">${escape(text)}</td>
+    </tr></table>`;
   const html = `<!doctype html>
 <html lang="${lang}" dir="${dir}">
 <head>
@@ -203,34 +222,48 @@ export function codeEmail(code: string, lang: EmailLanguage = "en"): { subject: 
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="supported-color-schemes" content="light dark">
+<meta name="format-detection" content="telephone=no,date=no,address=no,email=no">
 <title>${escape(t.subject(code))}</title>
 <style>
+  .code { -webkit-user-select: all; user-select: all; }
   @media (prefers-color-scheme: dark) {
-    .page { background:#111113 !important; }
-    .sheet { background:#1c1c1e !important; border-color:#2c2c2e !important; }
-    .ink { color:#f5f5f7 !important; }
-    .quiet { color:#a7a7b0 !important; }
-    .cell { background:#111113 !important; border-color:#2c2c2e !important; color:#f5f5f7 !important; }
-    .link { color:#2e92ff !important; }
+    .page { background:${C.cocoa} !important; }
+    .ink { color:${C.cream} !important; }
+    .soft { color:#E9CDB7 !important; }
+    .rule { border-color:#6E3B29 !important; }
+    .link { color:${C.cream} !important; }
   }
 </style>
 </head>
-<body class="page" style="margin:0;padding:0;background:#f5f5f7;">
+<body class="page" style="margin:0;padding:0;background:${C.cream};">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escape(`${t.heading}: ${code}. ${t.expires}`)}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="page" style="background:#f5f5f7;">
-  <tr><td align="center" style="padding:32px 16px;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="sheet" dir="${dir}" style="max-width:480px;background:#ffffff;border:1px solid #d9d9de;border-radius:16px;">
-      <tr><td class="ink" style="padding:28px 28px 0;text-align:${align};color:#1d1d1f;font:600 15px/1.4 'Instrument Sans','Segoe UI',Helvetica,Arial,sans-serif;">Worlds</td></tr>
-      <tr><td class="ink" style="padding:20px 28px 0;text-align:${align};color:#1d1d1f;font:600 ${size + 7}px/1.3 ${body};">${escape(t.heading)}</td></tr>
-      <tr><td class="quiet" style="padding:8px 28px 0;text-align:${align};color:#5f5f66;font:400 ${size}px/${lh} ${body};">${escape(t.lead)}</td></tr>
-      <tr><td align="center" style="padding:24px 28px 0;">
-        <table role="presentation" cellpadding="0" cellspacing="0" dir="ltr"><tr>${cells}</tr></table>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="page" style="background:${C.cream};">
+  <tr><td align="center" style="padding:32px 20px 40px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" dir="${dir}" style="max-width:460px;">
+      <tr><td align="center" style="padding-bottom:24px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" dir="ltr"><tr>
+          <td valign="middle"><img src="${ART}/worlds.png" width="56" height="56" alt="Worlds" style="display:block;width:56px;height:56px;border:0;border-radius:14px;"></td>
+          <td width="22" style="width:22px;"></td>
+          <td valign="middle" class="soft" style="color:${C.cocoaSoft};font:400 26px/1 Georgia,serif;">&middot;</td>
+          <td width="22" style="width:22px;"></td>
+          <td valign="middle"><img src="${ART}/imbue.png" width="130" alt="imbue" style="display:block;width:130px;height:auto;border:0;"></td>
+        </tr></table>
       </td></tr>
-      <tr><td class="ink" style="padding:20px 28px 0;text-align:${align};color:#1d1d1f;font:400 ${size}px/${lh} ${body};">${escape(t.expires)}</td></tr>
-      <tr><td class="quiet" style="padding:8px 28px 28px;text-align:${align};color:#5f5f66;font:400 ${size - 1}px/${lh} ${body};">${escape(t.ignore)}</td></tr>
-    </table>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" dir="${dir}" style="max-width:480px;">
-      <tr><td class="quiet" style="padding:16px 28px 0;text-align:${align};color:#5f5f66;font:400 ${size - 2}px/${lh} ${body};">${escape(t.footer)} <a href="${SITE}" class="link" style="color:#0a64c8;text-decoration:none;">enterworlds.space</a></td></tr>
+      <tr><td align="center"><img src="${ART}/letter.png" width="250" alt="" style="display:block;width:250px;max-width:100%;height:auto;border:0;"></td></tr>
+      <tr><td align="center" class="ink" style="padding-top:26px;color:${C.cocoa};font:400 ${size + 14}px/1.3 ${serif};">${escape(t.heading)}</td></tr>
+      <tr><td align="center" class="soft" style="padding-top:8px;color:${C.cocoaSoft};font:400 ${size}px/${lh} ${sans};">${escape(t.lead)}</td></tr>
+      <tr><td align="center" style="padding-top:22px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" dir="ltr"><tr>
+          <td class="code" align="center" style="padding:14px 18px 14px 28px;background:${C.label};border:3px solid ${C.ink};border-radius:12px;color:${C.ink};font:700 40px/1.1 ${sans};letter-spacing:10px;font-variant-numeric:tabular-nums;">${escape(code)}</td>
+        </tr></table>
+      </td></tr>
+      <tr><td align="center" class="soft" style="padding-top:12px;color:${C.cocoaSoft};font:400 ${size - 3}px/1.5 ${sans};">${escape(t.copy)}</td></tr>
+      <tr><td style="padding-top:30px;"><div class="rule" style="border-top:1px solid #E3D3BD;font-size:0;line-height:0;">&nbsp;</div></td></tr>
+      <tr><td style="padding-top:18px;">
+        ${note("hourglass", t.expires, sans, "ink", C.cocoa)}
+        ${note("padlock", t.ignore, serif, "soft", C.cocoaSoft)}
+      </td></tr>
+      <tr><td align="center" class="soft" style="padding-top:28px;color:${C.cocoaSoft};font:400 ${size - 3}px/${lh} ${sans};">${escape(t.footer)} · <a href="${SITE}" class="link" style="color:${C.cocoa};text-decoration:underline;">enterworlds.space</a></td></tr>
     </table>
   </td></tr>
 </table>

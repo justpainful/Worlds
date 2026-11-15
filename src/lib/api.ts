@@ -35,6 +35,8 @@ import {
 } from "../drawing/exportPolicy";
 
 export const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+/** Worlds in the browser: the backend is src/dev/mockTauri.ts, so isTauri is true there too. Use this for what the browser must do itself (files, links). */
+export const isWeb = typeof window !== "undefined" && (window as unknown as { __WORLDS_MOCK__?: boolean }).__WORLDS_MOCK__ === true;
 
 /** What the HTML page rules found (docs/HTML_PAGES.md): errors stop the save. */
 export interface HtmlCheck {

@@ -16,6 +16,12 @@ import type { DrawingDocument } from "../drawing/model";
 import type { LibraryPublication } from "../drawing/library";
 import { DEFAULT_EXPORT_RULES, canDrawingExport, type DrawingExportPolicy } from "../drawing/exportPolicy";
 import providersJson from "../ai/providers.json";
+import { askToKeep, loadFiles, loadSnapshot, saveFile, saveSnapshot } from "../web/persist";
+import type { Snapshot } from "../web/merge";
+import { takeFile } from "../web/files";
+import { fromMarkdown, toMarkdown } from "../web/markdown";
+import BUILTIN_TEMPLATES from "../web/builtinTemplates.json";
+export { mergeSnapshots, type Snapshot } from "../web/merge";
 /** The public web demo build (`pnpm build:demo`): the mock is the whole backend there. */
 export const WEB_DEMO = import.meta.env.VITE_WEB_DEMO === "1";
 const exportPolicies:Record<string,DrawingExportPolicy>={};
@@ -73,9 +79,9 @@ const profile: any = {
   updatedAt: now,
 };
 
-// The public web demo in Arabic shows an Arabic profile, so nothing on screen stays in English.
-if (WEB_DEMO && profile.language === "ar") {
-  Object.assign(profile, { displayName: "ريم", handle: "reem", bio: "طالبة ثانوي، أنظم دراستي ومشاريعي في Worlds.", status: "أراجع لاختبار الأحياء", location: "الرياض" });
+// Worlds on the web starts with the person's own empty profile; onboarding fills it in.
+if (WEB_DEMO) {
+  Object.assign(profile, { id: "me", blocks: [], displayName: "", handle: null, avatar: null, banner: null, bio: null, status: null, location: null, links: [], createdAt: Date.now(), updatedAt: Date.now() });
 }
 
 const pages: Record<string, any> = {};
@@ -185,7 +191,7 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has("mock") && n
   metadata[sampleStream] = { stream: { url: "/src/dev/demo-stream.mp4", format: "progressive" } };
 }
 
-const settings: Record<string, unknown> = WEB_DEMO ? { "account.onboarded": true } : { "advanced.developer": true, "advanced.perfOverlay": new URLSearchParams(location.search).has("perf"), "appearance.glassTone": new URLSearchParams(location.search).get("tone") ?? "auto", ...(new URLSearchParams(location.search).has("demo") && !new URLSearchParams(location.search).has("onboarding") ? { "account.onboarded": true } : {}) };
+const settings: Record<string, unknown> = WEB_DEMO ? {} : { "advanced.developer": true, "advanced.perfOverlay": new URLSearchParams(location.search).has("perf"), "appearance.glassTone": new URLSearchParams(location.search).get("tone") ?? "auto", ...(new URLSearchParams(location.search).has("demo") && !new URLSearchParams(location.search).has("onboarding") ? { "account.onboarded": true } : {}) };
 try { if (localStorage.getItem("worlds.demo.tourSeen")) settings["tour.seen"] = true; } catch { /* private window */ }
 const callbacks = new Map<number, (v: any) => void>();
 const listeners = new Map<string, number[]>();
@@ -213,7 +219,207 @@ const ASSET: Record<string, string> = {
   "mock-white": "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="700"><defs><linearGradient id="g" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#eef1f6"/></linearGradient></defs><rect width="1600" height="700" fill="url(#g)"/><circle cx="1200" cy="420" r="160" fill="#dfe6f0"/></svg>'),
 };
 
+/** What is known about each file a person attached (the bytes live in IndexedDB on the web). */
+const fileInfo: Record<string, { name: string; mime: string; size: number; kind: string; pageId: string | null; createdAt: number }> = {};
+
+function guessMime(name: string): string {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  const known: Record<string, string> = {
+    png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", svg: "image/svg+xml",
+    mp4: "video/mp4", webm: "video/webm", mov: "video/quicktime", pdf: "application/pdf", txt: "text/plain", csv: "text/csv",
+  };
+  return known[ext] ?? "application/octet-stream";
+}
+
+// ---- Worlds on the web: the workspace stays in the browser -----------------
+// Everything the backend holds is saved as one snapshot after each change and
+// read back before the first command, so closing the tab loses nothing.
+
+/** Pages deleted for good, so a merge with another device does not bring them back. */
+const purged: Record<string, number> = {};
+
+// ---- Page history, kept like the desktop's (src-tauri/src/store/blocks.rs) --
+// A version of a page is kept before each editing session (ten quiet minutes
+// apart) and before a restore; continuous editing is one history line.
+const WINDOW = 10 * 60 * 1000;
+type PageVersion = { id: string; pageId: string; createdAt: number; actor: string; opId: string | null; label: string | null; snap: { title: string; icon: string | null; cover: string | null; metadata: any; blocks: any[] } };
+const pageVersions: Record<string, PageVersion[]> = {};
+const historyLog: any[] = [];
+
+function keepVersion(pid: string, label: string | null = null, actor = "user", opId: string | null = null): PageVersion | null {
+  const p = pages[pid];
+  if (!p) return null;
+  const v: PageVersion = { id: id(), pageId: pid, createdAt: Date.now(), actor, opId, label, snap: structuredClone({ title: p.title, icon: p.icon ?? null, cover: p.cover ?? null, metadata: metadata[pid] ?? {}, blocks: blocks[pid] ?? [] }) };
+  const list = (pageVersions[pid] ??= []);
+  list.push(v);
+  if (list.length > 30) list.splice(0, list.length - 30);
+  return v;
+}
+
+function keepVersionBeforeEdit(pid: string) {
+  const t = Date.now();
+  const last = pageVersions[pid]?.at(-1)?.createdAt;
+  const lastEdit = [...historyLog].reverse().find((h) => h.pageId === pid && h.kind === "edited")?.meta?.until;
+  if ((last == null || t - last > WINDOW) && (lastEdit == null || t - lastEdit > WINDOW) && (blocks[pid]?.length ?? 0) > 0) keepVersion(pid);
+}
+
+function record(pid: string | null, kind: string, summary: string, meta: any = {}) {
+  historyLog.push({ id: Date.now() * 100 + (historyLog.length % 100), pageId: pid, pageTitle: pid ? pages[pid]?.title ?? null : null, opId: null, actor: "user", kind, summary, blockId: null, before: null, after: null, meta, createdAt: Date.now() });
+  if (historyLog.length > 500) historyLog.splice(0, historyLog.length - 500);
+}
+
+const editSummary = (add: number, chg: number, rem: number) => {
+  const parts = [add && `${add} added`, chg && `${chg} changed`, rem && `${rem} removed`].filter(Boolean);
+  return parts.length ? `Edited \u00b7 ${parts.join(", ")}` : "Edited";
+};
+
+function recordEdit(pid: string, add: number, chg: number, rem: number) {
+  if (!add && !chg && !rem) return;
+  const t = Date.now();
+  const last = [...historyLog].reverse().find((h) => h.pageId === pid);
+  if (last?.meta?.edit && t - last.createdAt < WINDOW) {
+    const m = last.meta;
+    Object.assign(m, { added: m.added + add, changed: m.changed + chg, removed: m.removed + rem, until: t });
+    last.summary = editSummary(m.added, m.changed, m.removed);
+    return;
+  }
+  record(pid, "edited", editSummary(add, chg, rem), { edit: true, added: add, changed: chg, removed: rem, until: t });
+}
+
+function restoreVersion(v: PageVersion) {
+  const pid = v.pageId;
+  keepVersion(pid, "Before restore");
+  const s = structuredClone(v.snap);
+  blocks[pid] = s.blocks;
+  metadata[pid] = s.metadata ?? metadata[pid] ?? {};
+  Object.assign(pages[pid], { title: s.title, icon: s.icon, cover: s.cover, updatedAt: Date.now(), preview: previewOf(s.blocks) });
+  record(pid, "restored_version", "Restored an earlier version", { version: v.id });
+}
+
+const withBid = (node: any) => ({ ...node, attrs: { ...(node.attrs ?? {}), bid: id() } });
+
+/** A copy of a page (and its subpages), as the desktop's duplicate_page does. */
+function duplicatePage(srcId: string, deep: boolean, asKind?: string, newParent?: string | null): string {
+  const src = pages[srcId];
+  if (!src) throw "page not found";
+  const kind = asKind ?? src.kind;
+  const title = asKind === undefined && newParent === undefined ? `${src.title} (copy)` : src.title;
+  const meta = structuredClone(metadata[srcId] ?? {});
+  for (const k of ["sync", "drawingExportPolicyCache", "drawingExportPolicyRequest", "drawingLibrary", "experiment"]) delete meta[k];
+  const t = Date.now(), pid = id();
+  pages[pid] = {
+    ...structuredClone(src), id: pid, title, kind, parentId: newParent === undefined ? src.parentId : newParent,
+    sortKey: (src.sortKey ?? 0) + 0.001, pinned: false, pinOrder: null, favorite: false, archived: false, deletedAt: null,
+    createdAt: t, updatedAt: t, openedAt: t, templateCategory: kind === "template" ? src.templateCategory ?? null : null,
+  };
+  blocks[pid] = (blocks[srcId] ?? []).map((c) => withBid(structuredClone(c)));
+  metadata[pid] = meta;
+  if (drawings[srcId]) drawings[pid] = structuredClone(drawings[srcId]);
+  if (deep) for (const child of Object.values(pages).filter((p: any) => p.parentId === srcId && !p.deletedAt && p.id !== pid)) duplicatePage(child.id, true, undefined, pid);
+  record(pid, "created", `Created "${title}"`);
+  return pid;
+}
+
+const localDate = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+/** The built-in templates, once each, like ensure_builtin_templates on the desktop. */
+function seedTemplates() {
+  const have = new Set(Object.keys(metadata).map((pid) => metadata[pid]?.builtin).filter(Boolean));
+  for (const t of BUILTIN_TEMPLATES as { key: string; title: string; icon: string; category: string; description: string; markdown: string }[]) {
+    if (have.has(t.key)) continue;
+    const pid = addPage(t.title, t.icon, [], { kind: "template", templateCategory: t.category, createdAt: now, updatedAt: now, openedAt: null });
+    blocks[pid] = fromMarkdown(t.markdown).map(withBid);
+    metadata[pid] = { builtin: t.key, description: t.description };
+  }
+}
+
+export function snapshot(): Snapshot {
+  return {
+    v: 1, savedAt: Date.now(), pages, blocks, metadata, drawings, drawingLibrary, drawingVersions, exportPolicies,
+    settings, profile, chats, chatMessages, fileInfo, purged, pageVersions, history: historyLog,
+  };
+}
+
+const replace = <T extends object>(target: T, source: T | undefined) => {
+  for (const k of Object.keys(target)) delete (target as any)[k];
+  if (source) Object.assign(target, source);
+};
+
+/** Puts a saved workspace in place of what is held now (from this browser, or from the account). */
+export function restore(s: Snapshot): void {
+  replace(pages, s.pages); replace(blocks, s.blocks); replace(metadata, s.metadata);
+  replace(drawings, s.drawings); replace(drawingLibrary, s.drawingLibrary); replace(drawingVersions, s.drawingVersions); replace(exportPolicies, s.exportPolicies);
+  replace(settings, s.settings); replace(profile, s.profile); replace(chatMessages, s.chatMessages); replace(fileInfo, s.fileInfo); replace(purged, s.purged ?? {});
+  chats.splice(0, chats.length, ...(s.chats ?? []));
+  replace(pageVersions, s.pageVersions); historyLog.splice(0, historyLog.length, ...(s.history ?? []));
+}
+
+/** Files the workspace lists that this browser does not hold yet. */
+export function missingFiles(): string[] {
+  return Object.keys(fileInfo).filter((fid) => !ASSET[fid]);
+}
+export function fileMeta(fid: string) {
+  return fileInfo[fid];
+}
+/** A file fetched from the account: shown at once and kept in this browser. */
+export function adoptFile(fid: string, blob: Blob): void {
+  ASSET[fid] = URL.createObjectURL(blob);
+  void saveFile(fid, blob);
+}
+export function fileBlobUrl(fid: string): string | undefined {
+  return ASSET[fid];
+}
+
+/** Commands that only read: everything else may change the workspace and is saved after it. */
+const READS = new Set([
+  "bootstrap", "launch_info", "pages_list", "page_get", "drawing_export_policy_cached", "drawing_export_requirements", "drawing_export_check",
+  "drawing_versions", "drawing_version_scene", "drawing_experiments", "drawing_library_list", "drawing_library_read", "drawing_reference_search",
+  "sync_page_mode", "drawing_reference_read", "search", "history_list", "versions_list", "profile_get", "profile_stats", "media_recent", "data_dir",
+  "ai_status", "ai_token_status", "ai_providers", "ai_provider_models", "ai_local_detect", "ai_codex_status", "ai_claude_auth_status", "ai_chats", "ai_chat",
+  "automations_list", "automation_runs", "pending_actions", "discord_destinations", "backups_list", "discord_status", "preview_prepare", "attachment_get",
+  "drawing_sync_pending_pages", "client_log", "session_save", "launch_info", "tray_language", "page_markdown",
+]);
+
+const savedListeners = new Set<(s: Snapshot) => void>();
+/** vault.ts listens here to copy a signed-in person's workspace to their account. */
+export function onWorkspaceSaved(fn: (s: Snapshot) => void): () => void {
+  savedListeners.add(fn);
+  return () => savedListeners.delete(fn);
+}
+
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+function scheduleSave() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    const s = snapshot();
+    void saveSnapshot(s).catch((e) => console.warn("[web] could not save the workspace", e));
+    for (const fn of savedListeners) fn(s);
+  }, 400);
+}
+// Leaving the page saves at once.
+if (WEB_DEMO) addEventListener("pagehide", () => { if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; void saveSnapshot(snapshot()); } });
+
+const ready: Promise<void> = (WEB_DEMO
+  ? (async () => {
+      askToKeep();
+      const saved = await loadSnapshot<Snapshot>();
+      if (saved?.v === 1) restore(saved);
+      for (const [fid, blob] of await loadFiles()) ASSET[fid] = URL.createObjectURL(blob);
+    })()
+  : Promise.resolve()).then(seedTemplates);
+
 async function handle(cmd: string, a: any = {}): Promise<any> {
+  await ready;
+  const result = await handleNow(cmd, a);
+  if (WEB_DEMO && !cmd.startsWith("plugin:") && !READS.has(cmd)) scheduleSave();
+  return result;
+}
+
+async function handleNow(cmd: string, a: any = {}): Promise<any> {
   if (cmd.startsWith("plugin:event|")) {
     if (cmd === "plugin:event|listen") {
       const arr = listeners.get(a.event) ?? [];
@@ -257,7 +463,7 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
     case "drawing_export_policy": {let policy=exportPolicies[a.pageId]??{revision:0,rules:{...DEFAULT_EXPORT_RULES}};if(a.update){if(a.update.expectedRevision!==policy.revision)throw new Error("The export policy changed");policy=exportPolicies[a.pageId]={revision:policy.revision+1,rules:{...a.update.rules}};}return {policy,level:"full",shared:false};}
     case "drawing_export_requirements": return false;
     case "drawing_export_check": if(!canDrawingExport(exportPolicies[a.context.pageId]??{revision:0,rules:{...DEFAULT_EXPORT_RULES}},"full",a.context.kind))throw new Error("Export is unavailable");return null;
-    case "drawing_apply": return drawings[a.pageId] = appendOperation(drawings[a.pageId] ??= newDrawing(), a.operation, profile.id);
+    case "drawing_apply": if (pages[a.pageId]) pages[a.pageId].updatedAt = Date.now(); return drawings[a.pageId] = appendOperation(drawings[a.pageId] ??= newDrawing(), a.operation, profile.id);
     case "drawing_package_stage":{const pid=addPage(a.name,'pi:paintbrush',[],{kind:'drawing'}),token=id();metadata[pid]={sync:{shared:false},packageStage:{token,owner:profile.id}};pages[pid].archived=true;drawings[pid]=newDrawing();return{page:pages[pid],token};}
     case "drawing_package_abort":{if(metadata[a.pageId]?.packageStage?.token!==a.token)return false;const d=drawings[a.pageId];if(d&&(d.revision||Object.keys(d.scene.nodes).length))throw Error('Import stage changed');delete drawings[a.pageId];delete drawingVersions[a.pageId];delete metadata[a.pageId];delete pages[a.pageId];return true;}
     case "drawing_package_install":{if(metadata[a.pageId]?.packageStage?.token!==a.token||(drawings[a.pageId]?.revision??0)!==0)throw Error('Import stage changed');validateDrawingDocument(a.document);const prepared=a.experiments.map((e:any)=>{validateDrawingDocument({revision:0,seed:e.scene,scene:e.scene,operations:[]});return structuredClone(e);});drawings[a.pageId]=structuredClone(a.document);const imported=[];
@@ -335,18 +541,53 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
       const t = Date.now();
       const pid = addPage(a.page.title ?? "", a.page.icon ?? null, [], { kind: a.page.kind ?? "page", parentId: a.page.parentId ?? null, createdAt: t, updatedAt: t, openedAt: t });
       if (Array.isArray(a.page.blocks)) blocks[pid] = a.page.blocks.map((b: any) => ({ ...b, attrs: { ...(b.attrs ?? {}), bid: b.attrs?.bid ?? id() } }));
-      else if (typeof a.page.markdown === "string") blocks[pid] = md(a.page.markdown.split("\n"));
+      else if (typeof a.page.markdown === "string") blocks[pid] = fromMarkdown(a.page.markdown).map(withBid);
       // Like the backend, only pages and documents have a text preview.
       if (["page", "document", "lesson"].includes(pages[pid].kind)) pages[pid].preview = previewOf(blocks[pid] ?? []);
       metadata[pid] = a.page.metadata ?? {};
       // A pack kind (freelance.invoice) keeps its fields under item, like the backend.
       const dataKey = pages[pid].kind.includes(".") ? "item" : pages[pid].kind;
       if (metadata[pid][dataKey] !== undefined) pages[pid].data = metadata[pid][dataKey];
+      record(pid, "created", `Created "${pages[pid].title}"`);
       return pages[pid];
+    }
+    case "page_duplicate": return pages[duplicatePage(a.id, a.deep !== false)];
+    case "template_save": {
+      const src = pages[a.pageId];
+      const tid = duplicatePage(a.pageId, true, "template", null);
+      if (src?.kind === "drawing") { metadata[tid].templateResourceKind = "drawing"; delete metadata[tid].experiment; }
+      pages[tid].templateCategory = "Custom";
+      return pages[tid];
+    }
+    case "template_instantiate": {
+      const tpl = pages[a.templateId];
+      if (!tpl || tpl.kind !== "template") throw "not a template";
+      const pid = duplicatePage(a.templateId, true, metadata[a.templateId]?.templateResourceKind ?? "page", a.parentId ?? null);
+      const today = localDate();
+      blocks[pid] = JSON.parse(JSON.stringify(blocks[pid]).replaceAll("{{date}}", today));
+      Object.assign(pages[pid], { title: a.title ?? tpl.title.replaceAll("{{date}}", today), templateCategory: null, preview: previewOf(blocks[pid]) });
+      metadata[pid] = { ...metadata[pid], fromTemplate: a.templateId };
+      delete metadata[pid].builtin; delete metadata[pid].description;
+      return pages[pid];
+    }
+    case "page_markdown": {
+      const p = pages[a.id];
+      if (!p) throw "page not found";
+      const body = (blocks[a.id] ?? []).map((b) => toMarkdown(b)).filter((m: string) => m.trim());
+      return `# ${p.title}\n\n${body.join("\n\n")}\n`;
+    }
+    case "page_append_markdown": {
+      const nodes = fromMarkdown(a.markdown ?? "").map(withBid);
+      if (!nodes.length) throw "nothing to add";
+      keepVersionBeforeEdit(a.pageId);
+      (blocks[a.pageId] ??= []).push(...nodes);
+      Object.assign(pages[a.pageId], { updatedAt: Date.now(), preview: previewOf(blocks[a.pageId]) });
+      recordEdit(a.pageId, nodes.length, 0, 0);
+      return nodes.length;
     }
     case "page_delete": {const page=pages[a.id];if(page){const t=Date.now();const walk=(pid:string)=>{if(pages[pid]&&!pages[pid].deletedAt){pages[pid].deletedAt=t;}for(const c of Object.values(pages))if(c.parentId===pid)walk(c.id);};walk(a.id);page.updatedAt=t;}return;}
     case "page_restore": {const t=pages[a.id]?.deletedAt;if(t)for(const p of Object.values(pages))if(p.deletedAt===t)p.deletedAt=null;return;}
-    case "page_purge": {delete pages[a.id];delete metadata[a.id];return;}
+    case "page_purge": {delete pages[a.id];delete metadata[a.id];delete blocks[a.id];delete drawings[a.id];purged[a.id]=Date.now();return;}
     case "page_move": {Object.assign(pages[a.id],{parentId:a.parentId??null,updatedAt:Date.now()});return pages[a.id];}
     case "page_update": {
       const { metadata: md, ...rest } = a.patch;
@@ -373,6 +614,9 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
       return pages[a.id];
     }
     case "attachment_import": {
+      // On the web the path comes from the browser's picker (src/web/files.ts): import the real file.
+      const picked = takeFile(String(a.path ?? ""));
+      if (picked) return importBlob(picked, picked.name, a.pageId ?? null);
       const name: string = a.path.split(/[\\/]/).pop();
       const ext = name.split(".").pop()!.toLowerCase();
       const mime = ext === "gif" ? "image/gif" : ["png", "jpg", "jpeg", "webp"].includes(ext) ? "image/png" : ["mp4", "webm"].includes(ext) ? "video/mp4" : ext === "pdf" ? "application/pdf" : "application/octet-stream";
@@ -381,35 +625,51 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
       return { id: aid, pageId: a.pageId, kind: mime.startsWith("image/") ? (ext === "gif" ? "gif" : "image") : mime.startsWith("video/") ? "video" : "file", fileName: name, mime, size: 123456, width: 800, height: 600, createdAt: Date.now() };
     }
     case "attachment_import_raw": {
-      const aid = id(), bytes = new Uint8Array(a.bytes), blob = new Blob([bytes]);
+      // The bytes are kept as a blob URL, and on the web saved with the workspace.
+      const name: string = a.name;
+      const kind = /\.gif$/i.test(name) ? "gif" : /\.(png|jpe?g|webp|svg)$/i.test(name) ? "image" : /\.(mp4|webm|mov)$/i.test(name) ? "video" : "file";
+      const mime = guessMime(name);
+      const aid = id(), bytes = new Uint8Array(a.bytes), blob = new Blob([bytes], { type: mime });
       ASSET[aid] = URL.createObjectURL(blob);
-      return { id: aid, pageId: a.pageId, kind: "image", fileName: a.name, mime: "image/png", size: bytes.byteLength, width: null, height: null, createdAt: Date.now() };
+      fileInfo[aid] = { name, mime, size: bytes.byteLength, kind, pageId: a.pageId, createdAt: Date.now() };
+      if (WEB_DEMO) void saveFile(aid, blob);
+      return { id: aid, pageId: a.pageId, kind, fileName: name, mime, size: bytes.byteLength, width: null, height: null, createdAt: Date.now() };
     }
     case "blocks_save": {
       // Same rule as the real backend: a save based on an older sync is refused.
       if (a.base != null && pages[a.pageId] && pages[a.pageId].updatedAt > a.base) throw "conflict: the page changed since it was loaded";
       const at = Math.max(Date.now(), (pages[a.pageId]?.updatedAt ?? 0) + 1);
-      blocks[a.pageId] = a.blocks.map((b: any) => b.content);
+      keepVersionBeforeEdit(a.pageId);
+      const before = new Map((blocks[a.pageId] ?? []).map((c: any) => [c.attrs?.bid, JSON.stringify(c)]));
+      const next = a.blocks.map((b: any) => b.content);
+      let added = 0, changed = 0;
+      for (const c of next) { const was = before.get(c.attrs?.bid); if (was === undefined) added++; else if (was !== JSON.stringify(c)) changed++; before.delete(c.attrs?.bid); }
+      const removed = before.size;
+      blocks[a.pageId] = next;
+      recordEdit(a.pageId, added, changed, removed);
       if (pages[a.pageId]) {
         pages[a.pageId].updatedAt = at;
         pages[a.pageId].preview = previewOf(blocks[a.pageId]);
       }
-      return { added: 0, changed: 0, removed: 0, remapped: [], updatedAt: at };
+      return { added, changed, removed, remapped: [], updatedAt: at };
     }
     case "search": {
       // Like the app's search: title and text, with Arabic spellings folded.
       const q = foldArabic(String(a.query ?? "").toLowerCase().trim());
       return Object.values(pages).filter((p: any) => !p.deletedAt && q && foldArabic(`${p.title} ${p.preview ?? ""}`.toLowerCase()).includes(q)).map((p: any) => ({ pageId: p.id, title: p.title, icon: p.icon, kind: p.kind, snippet: p.preview, parentTitle: null, updatedAt: p.updatedAt }));
     }
-    case "history_list": return [{ id: 1, pageId: p1, pageTitle: pages[p1].title, opId: null, actor: "user", kind: "edited", summary: "Edited · 3 changed", blockId: null, before: null, after: null, meta: {}, createdAt: now - 600_000 }];
-    case "versions_list": return [];
+    case "history_list": if (WEB_DEMO) return historyLog.filter((h) => (!a.pageId || h.pageId === a.pageId) && (!a.opId || h.opId === a.opId)).slice(-(a.limit ?? 100)).reverse(); return [{ id: 1, pageId: p1, pageTitle: pages[p1].title, opId: null, actor: "user", kind: "edited", summary: "Edited · 3 changed", blockId: null, before: null, after: null, meta: {}, createdAt: now - 600_000 }];
+    case "versions_list": return [...(pageVersions[a.pageId] ?? [])].reverse().map(({ snap, ...v }) => ({ ...v, blockCount: snap.blocks.length }));
+    case "version_get": { const v = Object.values(pageVersions).flat().find((x) => x.id === a.versionId); if (!v) throw "version not found"; return { title: v.snap.title, blocks: structuredClone(v.snap.blocks) }; }
+    case "version_restore": { const v = Object.values(pageVersions).flat().find((x) => x.id === a.versionId); if (!v) throw "version not found"; restoreVersion(v); return pages[v.pageId]; }
+    case "op_undo": { const vs = Object.values(pageVersions).flat().filter((x) => x.opId === a.opId); for (const v of vs) restoreVersion(v); return [...new Set(vs.map((v) => v.pageId))]; }
     case "profile_get": return profile;
     case "profile_update": Object.assign(profile, a.patch); return { ...profile };
-    case "profile_stats": return {
+    case "profile_stats": if (WEB_DEMO) return { pages: Object.values(pages).filter((p: any) => !p.deletedAt).length, chats: chats.length, automations: 0, streak: 0, edits7d: 0, words: 0, activeDays: [] }; return {
       pages: Object.keys(pages).length, chats: chats.length, automations: 2, streak: 6, edits7d: 23, words: 4180,
       activeDays: Array.from({ length: 28 }, (_, i) => ({ date: new Date(Date.now() - (27 - i) * 864e5).toISOString().slice(0, 10), count: [0, 1, 3, 0, 2, 5, 1][i % 7] })),
     };
-    case "media_recent": return [
+    case "media_recent": if (WEB_DEMO) return Object.entries(fileInfo).map(([fid, f]) => ({ id: fid, pageId: f.pageId, kind: f.kind, fileName: f.name, mime: f.mime, size: f.size, relPath: "", width: null, height: null, createdAt: f.createdAt })).filter((f) => f.kind === "image" || f.kind === "gif").reverse(); return [
       { id: "mock-banner", pageId: null, kind: "image", fileName: "banner.webp", mime: "image/webp", size: 1, relPath: "", width: 1600, height: 900, createdAt: Date.now() },
       { id: "mock-ref-5", pageId: null, kind: "image", fileName: "ref-5.jpg", mime: "image/jpeg", size: 1, relPath: "", width: 1600, height: 900, createdAt: Date.now() },
       { id: "mock-ref-6", pageId: null, kind: "image", fileName: "ref-6.jpg", mime: "image/jpeg", size: 1, relPath: "", width: 1600, height: 900, createdAt: Date.now() },
@@ -441,7 +701,7 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
     case "ai_provider_models": return a.id === "ollama" ? [{ id: "llama3.2:3b", name: "llama3.2:3b", tools: true }, { id: "gemma:2b", name: "gemma:2b", tools: false }] : [{ id: "gpt-5", name: "gpt-5", tools: null }];
     case "ai_local_detect": return mockProviders.filter((p) => p.kind === "local").map((p) => ({ id: p.id, name: p.name, baseUrl: p.baseUrl, running: p.id === "ollama", models: p.id === "ollama" ? [{ id: "llama3.2:3b", name: "llama3.2:3b", tools: true }] : [] }));
     case "ai_codex_status": return { installed: true, signedIn: false, version: "codex-cli 0.144.5", method: "" };
-    case "ai_claude_auth_status": return { installed: true, signedIn: true, method: "claude.ai" };
+    case "ai_claude_auth_status": if (WEB_DEMO) return { installed: false, signedIn: false, method: "" }; return { installed: true, signedIn: true, method: "claude.ai" };
     case "ai_codex_login": case "ai_claude_login": return null;
     case "ai_chats": return [...chats].sort((x, y) => y.updatedAt - x.updatedAt);
     case "ai_chat": return { id: a.id, messages: chatMessages[a.id] ?? [] };
@@ -465,14 +725,13 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
           .slice(0, 5)
           .map((p: any) => `- ${p.title}`)
           .join("\n");
+        // Claude runs in the apps, where it can read and change the pages; the web says so plainly.
         const answer = arabicPrompt
-          ? `**من مساحة عملك**\n\nآخر ما عملت عليه:\n${recent}\n\nهذه نسخة الويب التجريبية. في تطبيق سطح المكتب يقرأ Claude صفحاتك ويكتب فيها فعلًا، ويمكن التراجع عن كل تغيير.`
-          : `**From your workspace**\n\nWhat you worked on most recently:\n${recent}\n\nThis is the web demo. In the desktop app Claude really reads and writes your pages, and every change can be undone.`;
-        setTimeout(() => emit("worlds://ai", { runId, kind: "tool", tool: "pages_read" }), 300);
-        setTimeout(() => emit("worlds://ai", { runId, kind: "tool_result", error: false }), 800);
-        setTimeout(() => emit("worlds://ai", { runId, kind: "text", text: answer }), 1100);
+          ? `Claude يشتغل في تطبيق Worlds على كمبيوترك وجوالك: يقرأ صفحاتك ويعدّل فيها، وتقدر تتراجع عن أي تعديل.\n\nحمّل التطبيق من enterworlds.space، وسجّل دخولك بنفس الحساب.${recent ? `\n\nآخر صفحاتك:\n${recent}` : ""}`
+          : `Claude works in the Worlds app on your computer and phone, where it reads your pages and changes them, and every change can be undone.\n\nGet the app from enterworlds.space and sign in with the same account.${recent ? `\n\nYour latest pages:\n${recent}` : ""}`;
+        setTimeout(() => emit("worlds://ai", { runId, kind: "text", text: answer }), 400);
         setTimeout(() => {
-          chatMessages[chatId].push({ id: id(), role: "assistant", content: answer, steps: [{ tool: "pages_read", ok: true }], opId: null, meta: { changeCount: 0 }, createdAt: Date.now() });
+          chatMessages[chatId].push({ id: id(), role: "assistant", content: answer, steps: [], opId: null, meta: { changeCount: 0 }, createdAt: Date.now() });
           emit("worlds://ai", { runId, kind: "done", chatId, text: "ok" });
         }, 1700);
         return { runId, chatId };
@@ -505,10 +764,10 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
     case "automation_run_now": if (new URLSearchParams(location.search).has("demo")) throw new Error("This demonstration automation cannot send messages."); return null;
     case "pending_actions": return [];
     case "discord_destinations": return { guilds: [], users: [] };
-    case "backups_list": return { backups: [{ file: "worlds-1-daily.db", createdAt: now - 3_600_000, reason: "daily", size: 2_400_000 }], pendingRestore: null, note: null, folder: "C:/Worlds/backups" };
+    case "backups_list": if (WEB_DEMO) return { backups: [], pendingRestore: null, note: null, folder: "" }; return { backups: [{ file: "worlds-1-daily.db", createdAt: now - 3_600_000, reason: "daily", size: 2_400_000 }], pendingRestore: null, note: null, folder: "C:/Worlds/backups" };
     case "backup_now": return { file: "worlds-2-manual.db", createdAt: Date.now(), reason: "manual", size: 2_400_000 };
     case "backup_restore": case "backup_cancel_restore": return null;
-    case "discord_status": return { state: "connected", bot: { tag: "Worlds Bot#0001" }, config: {} };
+    case "discord_status": if (WEB_DEMO) return { state: "disconnected", bot: null, config: {} }; return { state: "connected", bot: { tag: "Worlds Bot#0001" }, config: {} };
     case "preview_prepare": return { kind: "none" };
     case "attachment_import_raw": {
       // Keep the bytes as a blob URL so the editor can show what was pasted.
@@ -526,6 +785,24 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
       console.warn("[mock] unhandled", cmd, a);
       return null;
   }
+}
+
+/** Keeps a file as an attachment: shown from a blob URL, saved with the workspace on the web. */
+async function importBlob(blob: Blob, name: string, pageId: string | null) {
+  const mime = blob.type || guessMime(name);
+  const kind = mime === "image/gif" ? "gif" : mime.startsWith("image/") ? "image" : mime.startsWith("video/") ? "video" : "file";
+  let width: number | null = null, height: number | null = null;
+  if (kind === "image" || kind === "gif") {
+    try {
+      const bmp = await createImageBitmap(blob);
+      width = bmp.width; height = bmp.height; bmp.close();
+    } catch { /* an image the browser cannot read is still kept as a file */ }
+  }
+  const aid = id(), stored = blob.type ? blob : new Blob([blob], { type: mime });
+  ASSET[aid] = URL.createObjectURL(stored);
+  fileInfo[aid] = { name, mime, size: blob.size, kind, pageId, createdAt: Date.now() };
+  if (WEB_DEMO) void saveFile(aid, stored);
+  return { id: aid, pageId, kind, fileName: name, mime, size: blob.size, width, height, createdAt: Date.now() };
 }
 
 export function mockFileUrl(attachmentId: string): string {

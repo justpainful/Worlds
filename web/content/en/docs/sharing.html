@@ -1,0 +1,97 @@
+<!--
+title: Sharing and working together
+description: Sharing a page in Worlds: Team workspaces, invite links, roles and permissions enforced by the server, seeing who is here, and offline editing.
+-->
+<h1>Sharing and working together</h1>
+<p class="lead">You share a page by putting it in a Team workspace and inviting people with a link. The server decides who can open each page and who can edit it, so nobody can go beyond their access from their own device.</p>
+
+<h2 id="workspaces">Personal and Team workspaces</h2>
+<ul>
+<li><strong>Personal</strong>: your pages on your device. They are never sent to a server and nobody else sees them.</li>
+<li><strong>Team</strong>: a shared workspace with members. Its pages sync through the Worlds server with the people who have access.</li>
+</ul>
+<p>You need a <a href="/en/docs/account/">Worlds account</a> to create or join a Team workspace. Sharing and teams work in the apps, not in the web version.</p>
+
+<h2 id="share">Sharing a page</h2>
+<ol class="steps">
+<li><h3>Open Share</h3><p>In the page menu choose <strong>Share</strong>. If the page is in your Personal workspace the sheet says: "This page is in your Personal workspace. It stays on this PC and nobody else can see it." If you are not signed in, you see a <strong>Sign In</strong> button.</p>
+<figure class="shot"><img src="/media/book/p33.webp" alt="The Share sheet for a sample page saying the page is in the Personal workspace and stays on this PC, asking to sign in and move it into a Team workspace, with a Sign In button" width="1600" height="1000" loading="lazy"><figcaption>The Share sheet for a Personal page before signing in. The page and the name are sample data.</figcaption></figure></li>
+<li><h3>Move it into a Team workspace</h3><p>Click <strong>New Team Workspace</strong> if you have none, or pick an existing one and click <strong>Move Here</strong>. You can bring it back later with <strong>Move to Personal</strong>.</p></li>
+<li><h3>Choose who can open it</h3><p>Under <strong>Add people or groups</strong>, pick workspace members and set each one's access. Or set the access for "Everyone in" the workspace. To let only the people you name open it, choose <strong>Only people listed here</strong>: it stops access that comes from parent pages, though owners and admins can always open every page.</p></li>
+</ol>
+<p>Only people with full access can change who can open a page. If you are offline, sharing shows and can be changed when you are back online, and you can keep working on the page.</p>
+
+<h2 id="invites">Inviting with a link</h2>
+<p>Invites in Worlds are links that you copy and send yourself. Worlds does not send invites by email. You find <strong>Invite with a Link</strong> in the Share sheet, and all of a workspace's links under <strong>Settings</strong>, <strong>Account</strong>, then the <strong>People</strong> button next to the workspace.</p>
+<ol class="steps">
+<li><h3>Choose the role</h3><p>Under <strong>Role</strong>, pick what the person using the link gets.</p></li>
+<li><h3>Choose how long and for how many</h3><p><strong>Expires after</strong>: 1 day, 7 days or 30 days. <strong>Who can use it</strong>: one person, up to 10 people, or no limit.</p></li>
+<li><h3>Create and copy the link</h3><p>Click <strong>Create Link</strong>, then <strong>Copy</strong>. Links are shown in full only once, when you create them. <strong>Revoke</strong> stops a link at once.</p></li>
+</ol>
+<p>The person who receives it opens <strong>Settings</strong>, <strong>Account</strong>, <strong>Join a workspace</strong> and pastes it. An invite to a single page needs full access on that page, and grants at most edit access.</p>
+
+<h2 id="roles">Roles in a Team workspace</h2>
+<table>
+<thead><tr><th>Role</th><th>What it can do</th></tr></thead>
+<tbody>
+<tr><td>Owner</td><td>Everything, including deleting the workspace. The owner cannot leave without transferring ownership first.</td></tr>
+<tr><td>Admin</td><td>Manages people, groups and every page. Invites, changes and removes members and guests.</td></tr>
+<tr><td>Member</td><td>Works on shared pages and adds new ones. Gets the workspace's default access, which is edit unless changed.</td></tr>
+<tr><td>Guest</td><td>Sees only the pages shared with them, at most with edit access. Cannot add top-level pages.</td></tr>
+</tbody>
+</table>
+<p>Owners and admins always have full access on every page.</p>
+
+<h2 id="access">Page access</h2>
+<table>
+<thead><tr><th>Access</th><th>What it allows</th></tr></thead>
+<tbody>
+<tr><td>Full access</td><td>Edit, comment, change sharing, and delete other people's comment threads</td></tr>
+<tr><td>Can edit</td><td>Edit the page and comment</td></tr>
+<tr><td>Can comment</td><td>Write comments only</td></tr>
+<tr><td>Can view</td><td>Read only</td></tr>
+<tr><td>No access</td><td>Cannot open the page</td></tr>
+</tbody>
+</table>
+<p>Access passes down from a parent page to the pages under it. If a page has an entry for you by name, that entry applies, even if it is lower. Otherwise the highest access from your groups and from "Everyone in" the workspace applies.</p>
+
+<h2 id="server">The server enforces access</h2>
+<ul>
+<li>The server checks your access when you open a page, and again on every change.</li>
+<li>View access cannot write, and comment access can write only comments. Nobody can write as someone else or edit someone else's comments.</li>
+<li>If your access is removed, the page closes for you at once and the app deletes its shared copy from your device: "Your access to this page was removed. Its shared copy on this computer was cleared."</li>
+</ul>
+
+<h2 id="presence">Who is here now (Windows)</h2>
+<p>In the Windows app, at the top of a shared page:</p>
+<ul>
+<li>Up to 4 round badges with the initials of the people here, each in their colour, then <code>+N</code> for the rest. Hover to see the name.</li>
+<li>Other people's cursors and selections in the text, with their names.</li>
+<li>The sync status: <strong>Synced</strong>, <strong>Syncing</strong>, <strong>Offline</strong> or <strong>Needs attention</strong>.</li>
+<li>A menu with <strong>Sync Now</strong>, <strong>Shared History</strong>, <strong>Comments</strong> and <strong>Notifications</strong>. Notifications here are mentions and replies in comments.</li>
+</ul>
+
+<h2 id="offline">Working offline</h2>
+<ul>
+<li><strong>Windows</strong>: you keep working on a shared page offline. Your changes wait on the device and are sent when the connection returns, merged with other people's changes without losing anyone's typing.</li>
+<li><strong>iPhone, iPad and Mac</strong>: pages you open are saved on the device so they open offline. Blocks are shown read only, and you can edit the fields of pack items (such as an assignment's due date) even offline, if your access at the last connection was Can edit or Full access. "Changes you make here are sent when you are connected again. Access is checked again then." If the server refuses a change you see "The server refused a change made on this device."</li>
+<li><strong>Android</strong>: you edit text while connected ("Connected. Tap text to edit it."). Offline, edits are saved on the device until access is confirmed, or the page stays read only, depending on your access.</li>
+</ul>
+
+<h2 id="platforms">On each platform</h2>
+<table>
+<thead><tr><th>Feature</th><th>Windows</th><th>Android</th><th>iPhone, iPad and Mac</th><th>Web</th></tr></thead>
+<tbody>
+<tr><td>Share a page and invite people</td><td>Yes</td><td>Invites</td><td>No</td><td>No</td></tr>
+<tr><td>Open shared pages</td><td>Yes</td><td>Yes</td><td>Yes</td><td>No</td></tr>
+<tr><td>Edit a shared page's text</td><td>Yes</td><td>Yes</td><td>Pack fields only</td><td>No</td></tr>
+<tr><td>See who is here</td><td>Yes</td><td>No</td><td>No</td><td>No</td></tr>
+</tbody>
+</table>
+
+<h2 id="next">Read next</h2>
+<ul class="index">
+<li><a href="/en/docs/account/"><strong>Your Worlds account</strong><span>Creating it and signing in</span></a></li>
+<li><a href="/en/docs/sync/"><strong>Sync</strong><span>What goes to the server and how conflicts are settled</span></a></li>
+<li><a href="/en/docs/history/"><strong>History and versions</strong><span>Restore an earlier version of a page</span></a></li>
+</ul>

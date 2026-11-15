@@ -21,3 +21,4 @@ services/.deploy/
 services/*/wrangler.deploy.toml
 dist-demo/
 .wrangler/
+dist-sample/

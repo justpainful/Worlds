@@ -4,6 +4,7 @@
  * tried without the desktop app or a server. Never active in the app.
  */
 import type { AccountView, Group, Invite, Level, Member, PermissionEntry, Role, PackRole } from "./api";
+import { IDENTITY_URL, webAccount } from "./webAccount";
 
 type Args = Record<string, any>;
 
@@ -251,6 +252,9 @@ async function account(action: string, a: Args): Promise<unknown> {
 const w = window as any;
 if ((import.meta.env.DEV || import.meta.env.VITE_WEB_DEMO === "1") && w.__WORLDS_MOCK__ && w.__TAURI_INTERNALS__) {
   const original = w.__TAURI_INTERNALS__.invoke;
+  // The published web version signs in to the real service (webAccount.ts);
+  // a local preview without VITE_IDENTITY_URL keeps the in-memory account.
+  const handler = IDENTITY_URL ? webAccount : account;
   w.__TAURI_INTERNALS__.invoke = (cmd: string, args: any, opts: unknown) =>
-    cmd === "account" ? account(args.action, args.args ?? {}) : original(cmd, args, opts);
+    cmd === "account" ? handler(args.action, args.args ?? {}) : original(cmd, args, opts);
 }

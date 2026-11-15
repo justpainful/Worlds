@@ -1,0 +1,13 @@
+# The demo at demo.enterworlds.space: Worlds on the web with the sample
+# workspace and no accounts (pnpm build:sample, see .env.sample).
+# Deploy: pnpm build:sample, then npx wrangler deploy -c web/demo.wrangler.toml
+name = "worlds-demo"
+compatibility_date = "2026-08-01"
+
+[assets]
+directory = "../dist-sample"
+not_found_handling = "single-page-application"
+
+[[routes]]
+pattern = "demo.enterworlds.space"
+custom_domain = true

@@ -1,0 +1,126 @@
+<!--
+title: Claude والمزوّدون الآخرون
+description: كيف تربط Claude أو Codex أو مفتاح API أو نموذجًا محليًا بـ Worlds، وما الذي يستطيع المساعد فعله، وكيف تتراجع عن تغييراته، وأين تُحفظ المفاتيح.
+-->
+<h1>Claude والمزوّدون الآخرون</h1>
+<p class="lead">في Worlds مساعد يقرأ صفحاتك ويكتب فيها ويرتبها، وكل تغيير يجريه يمكن التراجع عنه. تستطيع تشغيله بحساب Claude Code أو Codex، أو بمفتاح API من مزوّد تختاره، أو بنموذج يعمل على جهازك.</p>
+
+<h2 id="open">أين تجد المساعد</h2>
+<ul>
+<li><strong>Claude</strong> في الشريط الجانبي: يفتح صفحة المحادثات كاملة، مع قائمة محادثاتك السابقة وبحث فيها.</li>
+<li><strong>اسأل Claude</strong> بالاختصار <kbd>Ctrl</kbd> + <kbd>J</kbd>: يفتح لوحة جانبية فوق الصفحة التي أمامك.</li>
+<li><strong>اسأل Claude عن هذا</strong>: يرسل ما حدّدته في الصفحة إلى المحادثة.</li>
+</ul>
+<figure class="shot"><img src="/media/book/p28.webp" alt="الصفحة الرئيسية في Worlds ولوحة Claude مفتوحة على اليمين بعنوان Ask anything about your pages مع أسئلة مقترحة وحقل Ask Claude" width="1600" height="900" loading="lazy"><figcaption>لوحة Claude فوق الصفحة الرئيسية. لقطة توضيحية ببيانات تجريبية، والواجهة فيها بالإنجليزية.</figcaption></figure>
+<p>تحت حقل الكتابة زر يعرض النموذج ومستوى الجهد، مثل <code>Spark · Glance</code>. منه تختار المزوّد والنموذج لهذه المحادثة.</p>
+
+<h2 id="connect">طرق ربط المساعد</h2>
+<p>كل الطرق في <strong>الإعدادات</strong> ثم <strong>المزوّدون</strong>، وهي أربع مجموعات:</p>
+<table>
+<thead><tr><th>المجموعة</th><th>ما فيها</th><th>هل تحتاج مفتاحًا؟</th></tr></thead>
+<tbody>
+<tr><td>تسجيل الدخول</td><td>Claude Code وCodex</td><td>لا، تسجّل الدخول بحسابك في المتصفح</td></tr>
+<tr><td>مفاتيح API</td><td>Anthropic وOpenAI وGoogle Gemini وGroq وDeepSeek وMistral وxAI وOpenRouter، ومعها LiteLLM وCustom لأي خادم متوافق</td><td>نعم، إلا LiteLLM وCustom فالمفتاح اختياري</td></tr>
+<tr><td>يعمل على هذا الجهاز</td><td>يكتشف Worlds تلقائيًا الخوادم المحلية التي تعمل الآن</td><td>لا</td></tr>
+<tr><td>خوادم النماذج المحلية</td><td>Ollama وLM Studio وllama.cpp</td><td>لا</td></tr>
+</tbody>
+</table>
+
+<h3>Claude Code أو Codex</h3>
+<p>هذه الطريقة لمن لديه اشتراك Claude أو ChatGPT. يجب أن يكون التطبيق نفسه (Claude Code أو Codex) مثبّتًا على الكمبيوتر.</p>
+<ol class="steps">
+<li><h3>افتح الإعدادات، المزوّدون</h3><p>في مجموعة <strong>تسجيل الدخول</strong> تجد صفًا لـ Claude Code وصفًا لـ Codex. إن لم يكن التطبيق مثبّتًا ترى: «Claude Code غير مثبّت على هذا الجهاز.»</p></li>
+<li><h3>سجّل الدخول</h3><p>اضغط <strong>تسجيل الدخول إلى Claude</strong> أو <strong>تسجيل الدخول عبر ChatGPT</strong>. تفتح نافذة أوامر تبدأ تسجيل الدخول الرسمي في متصفحك. Worlds لا يرى بيانات الدخول هذه ولا يحفظها.</p></li>
+<li><h3>تحقّق</h3><p>بعد إكمال الدخول في المتصفح اضغط <strong>تحقّق مرة أخرى</strong>. عندما ترى <strong>جاهز</strong> يمكنك البدء.</p></li>
+</ol>
+<p>في <strong>الإعدادات</strong> ثم <strong>Claude</strong> خيارات إضافية لـ Claude Code:</p>
+<ul>
+<li><strong>البقاء مسجّلًا للدخول</strong>: تسجيل دخول واحد يدوم نحو سنة. يُحفظ الرمز في مدير بيانات الاعتماد في Windows.</li>
+<li><strong>النموذج والجهد</strong>: النماذج Spark وOrbit وNova تقابل Haiku وSonnet وOpus، والجهد Glance وFocus وDeep يقابل منخفضًا ومتوسطًا وعاليًا. الاختيار المبدئي Spark مع Glance، وهو يبقي التعديلات اليومية سريعة وقليلة التكلفة.</li>
+<li><strong>التعليمات العامة</strong>: تعليمات يقرؤها المساعد في كل محادثة.</li>
+<li><strong>استخدام Worlds من جلسات Claude Code</strong>: يضيف أدوات Worlds إلى Claude Code الذي تستخدمه خارج التطبيق. التفاصيل في <a href="/docs/mcp/">خادم MCP</a>.</li>
+</ul>
+<p>عندما يعمل Claude Code داخل Worlds تُعطَّل كل أدواته المدمجة ولا تبقى إلا أدوات Worlds: لا سطر أوامر ولا وصول إلى ملفات جهازك.</p>
+
+<h3>مفتاح API</h3>
+<ol class="steps">
+<li><h3>اختر المزوّد</h3><p>في مجموعة <strong>مفاتيح API</strong> اضغط <strong>إعداد</strong> بجانب المزوّد.</p></li>
+<li><h3>الصق المفتاح</h3><p>الصق المفتاح في الحقل ثم اضغط <strong>حفظ المفتاح</strong>. يظهر <strong>المفتاح محفوظ</strong>، ولا يُعرض المفتاح مرة أخرى بعد ذلك. لاستبداله الصق مفتاحًا جديدًا، ولحذفه اضغط <strong>إزالة</strong>.</p></li>
+<li><h3>اختر النموذج</h3><p>اضغط <strong>تحميل النماذج</strong> لجلب قائمة النماذج من المزوّد، ثم اختر المزوّد والنموذج من زر النموذج تحت حقل الكتابة في المحادثة.</p></li>
+</ol>
+<div class="callout"><p>رموز تسجيل الدخول لاشتراك Claude لا تُقبل هنا. استخدم مفتاح API من Claude Console، أو استخدم Claude Code.</p></div>
+<p>العناوين التي يبدأ بها كل مزوّد (يمكنك تغيير العنوان من <strong>عنوان الخادم</strong> ثم <strong>حفظ العنوان</strong>):</p>
+<table>
+<thead><tr><th>المزوّد</th><th>العنوان المبدئي</th></tr></thead>
+<tbody>
+<tr><td>Anthropic</td><td><code>https://api.anthropic.com</code></td></tr>
+<tr><td>OpenAI</td><td><code>https://api.openai.com/v1</code></td></tr>
+<tr><td>Google Gemini</td><td><code>https://generativelanguage.googleapis.com/v1beta/openai</code></td></tr>
+<tr><td>Groq</td><td><code>https://api.groq.com/openai/v1</code></td></tr>
+<tr><td>DeepSeek</td><td><code>https://api.deepseek.com/v1</code></td></tr>
+<tr><td>Mistral</td><td><code>https://api.mistral.ai/v1</code></td></tr>
+<tr><td>xAI</td><td><code>https://api.x.ai/v1</code></td></tr>
+<tr><td>OpenRouter</td><td><code>https://openrouter.ai/api/v1</code></td></tr>
+<tr><td>LiteLLM</td><td><code>http://localhost:4000/v1</code></td></tr>
+<tr><td>Custom</td><td>أي خادم يتبع واجهة المحادثة المتوافقة مع OpenAI</td></tr>
+</tbody>
+</table>
+
+<h3>نموذج على جهازك</h3>
+<p>Ollama وLM Studio وllama.cpp تشغّل النماذج على جهازك، بلا مفتاح وبلا إنترنت. شغّل أحدها، ثم افتح <strong>الإعدادات</strong>، <strong>المزوّدون</strong>. في مجموعة <strong>يعمل على هذا الجهاز</strong> ترى <strong>يعمل</strong> بجانب ما وجده Worlds، أو <strong>لا يعمل على</strong> مع العنوان. اضغط <strong>ابحث مرة أخرى</strong> بعد تشغيل الخادم.</p>
+<dl class="facts">
+<div><dt>Ollama</dt><dd><code>http://localhost:11434/v1</code></dd></div>
+<div><dt>LM Studio</dt><dd><code>http://localhost:1234/v1</code></dd></div>
+<div><dt>llama.cpp</dt><dd><code>http://localhost:8080/v1</code></dd></div>
+</dl>
+<p>على الجوال تعني <code>localhost</code> الجوال نفسه. لتستخدم نموذجًا يعمل على كمبيوترك اكتب عنوان الكمبيوتر في الشبكة، مثل <code>http://192.168.1.20:11434/v1</code>.</p>
+<p>بعض النماذج تظهر بشارة <strong>محادثة فقط</strong>: تستطيع المحادثة لكنها لا تقرأ صفحاتك ولا تعدّل فيها.</p>
+
+<h2 id="what-it-can-do">ما الذي يستطيع المساعد فعله</h2>
+<p>اكتب <kbd>@</kbd> في حقل المحادثة لترى ما يمكنك إضافته: ملفات (صور وملفات PDF ومستندات)، أو صفحة يعمل عليها Claude، أو محادثة سابقة. وتحتها مجموعات الأدوات:</p>
+<ul>
+<li><strong>الصفحات</strong>: إنشاء الصفحات وإعادة تسميتها ونقلها وأرشفتها وتعديلها.</li>
+<li><strong>بحث</strong>: البحث في النص والوسوم والحالة والخصائص.</li>
+<li><strong>التخطيط</strong>: الأعمدة والكتل القابلة للطي واللوحات والجداول والمعارض.</li>
+<li><strong>الخصائص</strong>، و<strong>بحث واستبدال</strong>، و<strong>الأغلفة والنمط</strong>.</li>
+<li><strong>الملف الشخصي</strong>، و<strong>الأتمتة</strong>، و<strong>القوالب</strong>، و<strong>الوسائط والملفات</strong>.</li>
+<li><strong>Discord</strong>: المعاينة والإرسال إلى Discord بعد موافقتك.</li>
+<li><strong>السجل</strong>: النسخ والتراجع والنشاط الأخير.</li>
+<li><strong>المحادثات</strong>، و<strong>التاريخ والوقت</strong>.</li>
+</ul>
+<p>وفي Windows يصل المساعد أيضًا إلى الجداول والرسومات والعروض التقديمية والمهام وسلة المهملات. اكتب <kbd>#</kbd> لتضيف محادثة سابقة إلى المحادثة الحالية.</p>
+<figure class="shot"><img src="/media/book/p26.webp" alt="قائمة @ في محادثة Claude تعرض Files وWork on a page وA conversation ثم مجموعات الأدوات Pages وFind وLayout وProperties" width="1600" height="900" loading="lazy"><figcaption>قائمة <code>@</code> بمجموعات الأدوات. لقطة توضيحية ببيانات تجريبية.</figcaption></figure>
+<figure class="shot"><img src="/media/book/p27.webp" alt="محادثة أُرفق فيها ملف PDF وطُلب تلخيصه في ثلاث نقاط، والرد ملخص قصير" width="1600" height="900" loading="lazy"><figcaption>إرفاق ملف PDF وطلب ملخص. الملف والرد للعرض فقط، وليسا ردًا حقيقيًا.</figcaption></figure>
+<p>لا يرسل المساعد شيئًا إلى Discord بنفسه: يجهّز الرسالة، وتنتظر موافقتك في <strong>النشاط</strong>. التفاصيل في <a href="/docs/discord/">جسر Discord</a>.</p>
+
+<h2 id="undo">التراجع عن تغييرات المساعد</h2>
+<p>قبل أي تغيير يجريه Claude يحفظ Worlds نسخة من الصفحة. بعد كل رد غيّر شيئًا يظهر سطر مثل <code>3 changes on Launch brief</code> فيه زران: <strong>فتح</strong> لفتح الصفحة، و<strong>تراجع</strong> لإرجاع كل تغييرات هذا الرد مرة واحدة. بعد التراجع يظهر «تم التراجع عن تغييرات Claude».</p>
+<figure class="shot"><img src="/media/book/p25.webp" alt="رد من Claude مع قائمة خطواته مفتوحة: Searching pages وReading a page وEditing a block، وتحته سطر 3 changes مع زري Open وUndo" width="1600" height="900" loading="lazy"><figcaption>خطوات الرد مفتوحة، وتحتها سطر التغييرات وزر التراجع. لقطة توضيحية ببيانات تجريبية.</figcaption></figure>
+<p>يمكنك التراجع لاحقًا أيضًا من لوحة <strong>السجل</strong> في الصفحة: تجد كل مجموعة تغييرات مع <strong>مراجعة التغييرات</strong> و<strong>تراجع</strong>. وفي <strong>النسخ</strong> تُحفظ نسخة قبل كل جلسة تحرير وقبل كل تغيير يجريه Claude. اقرأ المزيد في <a href="/docs/history/">السجل والنسخ</a>.</p>
+
+<h2 id="platforms">ما يعمل على كل منصة</h2>
+<table>
+<thead><tr><th>المنصة</th><th>المساعد</th></tr></thead>
+<tbody>
+<tr><td>Windows</td><td>يقرأ صفحاتك ويعدّلها بكل أدوات Worlds، مع كل المزوّدين بما فيها Claude Code وCodex. التراجع متاح لكل رد.</td></tr>
+<tr><td>Android</td><td>يقرأ ويعدّل بعشر أدوات: نظرة عامة على المساحة، وعرض الصفحات والبحث فيها وقراءتها، وإنشاء صفحة، وإضافة نص إلى صفحة، وتعديل كتلة، وإعادة تسمية صفحة، وإضافة مهام وعرضها. يعمل مع المزوّدين السحابيين ومع Ollama وLM Studio وCustom، دون Claude Code وCodex. زر <strong>تراجع</strong> يعيد النسخة المحفوظة قبل التغيير، والصفحات التي أنشأها المساعد تنتقل إلى سلة المهملات.</td></tr>
+<tr><td>iPhone وiPad وMac</td><td>محادثة فقط حتى الآن: يقرأ عناوين الصفحات ومعايناتها، ولا يستطيع تغيير مساحة عملك بعد.</td></tr>
+<tr><td>الويب</td><td>لا يعمل المساعد في المتصفح. إذا سألته هناك يرد بأن Claude يعمل في تطبيق Worlds على الكمبيوتر والجوال، ويعرض آخر صفحاتك.</td></tr>
+</tbody>
+</table>
+
+<h2 id="keys">أين تُحفظ المفاتيح</h2>
+<ul>
+<li><strong>Windows</strong>: في مدير بيانات الاعتماد في Windows، ولا تظهر مرة أخرى في التطبيق. قاعدة بيانات Worlds تحفظ عناوين الخوادم التي غيّرتها فقط، لا المفاتيح.</li>
+<li><strong>Android</strong>: تُشفَّر المفاتيح عبر Android Keystore وتبقى على هذا الجهاز. النسخ الاحتياطي للتطبيق مغلق، فلا تنتقل المفاتيح مع نسخة احتياطية.</li>
+<li><strong>iPhone وiPad وMac</strong>: في سلسلة مفاتيح هذا الجهاز فقط، ولا تُعرض مرة أخرى.</li>
+</ul>
+<p>المفاتيح لا تُرسل إلى خوادم Worlds ولا تدخل في المزامنة. عندما تستخدم مزوّدًا سحابيًا تذهب المحادثة وما يقرؤه المساعد من صفحاتك إلى ذلك المزوّد مباشرة. مع نموذج محلي يبقى كل شيء على جهازك.</p>
+
+<h2 id="next">اقرأ أيضًا</h2>
+<ul class="index">
+<li><a href="/docs/mcp/"><strong>خادم MCP</strong><span>استخدم أدوات Worlds من Claude Code أو برنامج آخر</span></a></li>
+<li><a href="/docs/automations/"><strong>الأتمتة</strong><span>أرسل صفحة في موعد، وجهّزها مع Claude قبل الإرسال</span></a></li>
+<li><a href="/docs/history/"><strong>السجل والنسخ</strong><span>كل تغيير محفوظ ويمكن الرجوع عنه</span></a></li>
+<li><a href="/docs/settings/"><strong>الإعدادات</strong><span>كل قسم وما فيه</span></a></li>
+</ul>

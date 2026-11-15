@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { api } from "../lib/api";
+import { api, isWeb } from "../lib/api";
+
+const WEB_ONLY_IN_APPS = new Set(["automations", "auto-new", "integrations", "discord", "instructions"]);
 import { emit } from "../lib/bus";
 import type { SearchHit } from "../lib/types";
 import { useStore, pageTitle, type OpenWhere, type Route } from "../state/store";
@@ -119,6 +121,8 @@ function commands(): Cmd[] {
   if (s.settings["advanced.developer"]) {
     list.push({ id: "lab", title: "Material Lab", icon: "layers", keywords: "glass debug playground", run: (w) => s.open({ kind: "playground" }, w) });
   }
+  // Automations, Discord and connected apps run on the computer; Claude too, in the apps.
+  if (isWeb) return list.filter((c) => !WEB_ONLY_IN_APPS.has(c.id));
   return list;
 }
 

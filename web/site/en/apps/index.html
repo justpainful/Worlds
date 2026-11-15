@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Apps and platforms · Worlds</title>
+<meta name="description" content="Worlds for Windows, Mac, iPhone, iPad and Android, and in the browser with nothing to install: the files, the supported systems, and what works on each platform.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://enterworlds.space/en/apps/">
+<link rel="alternate" hreflang="ar" href="https://enterworlds.space/apps/">
+<link rel="alternate" hreflang="en" href="https://enterworlds.space/en/apps/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Worlds">
+<meta property="og:title" content="Apps and platforms">
+<meta property="og:description" content="Worlds for Windows, Mac, iPhone, iPad and Android, and in the browser with nothing to install: the files, the supported systems, and what works on each platform.">
+<meta property="og:image" content="https://enterworlds.space/media/og.png">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-256.png">
+<link rel="preload" href="/fonts/instrument-sans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/site.css">
+<script src="/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="wrap top">
+  <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="46" height="46"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="70" height="26"></a>
+  <nav class="nav" aria-label="Menu"><a href="/en/apps/" aria-current="page">Apps</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/apps/" hreflang="ar" lang="ar">العربية</a></nav>
+  <details class="menu"><summary>Menu</summary><div class="nav"><a href="/en/apps/" aria-current="page">Apps</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/apps/" hreflang="ar" lang="ar">العربية</a></div></details>
+</header>
+<div class="wrap page-solo"><main id="main" class="article">
+<h1>Apps and platforms</h1>
+<p class="lead">Worlds runs on Windows, Mac, iPhone, iPad and Android, and in the browser. The Windows app is the most complete; the Apple and Android apps are built for their own systems and catch up feature by feature. This page lists what really works in version 0.3.0.</p>
+<div class="callout"><p>Every file is on the <a href="https://github.com/justpainful/Worlds/releases/latest">GitHub releases page</a>. Before installing, you can check that a file is intact with its fingerprint in <code>SHA256SUMS.txt</code>; the <a href="/en/docs/install/">install page</a> shows how.</p></div>
+
+<h2 id="windows">Windows</h2>
+<dl class="facts">
+  <div><dt>File</dt><dd><code>Worlds-0.3.0-Windows-x64-setup.exe</code>, 218 MB</dd></div>
+  <div><dt>System</dt><dd>Windows 10 or 11, 64-bit. WebView2 is included, so it installs offline.</dd></div>
+  <div><dt>Install</dt><dd><a href="/en/docs/install/windows/">Step by step, with pictures</a></dd></div>
+</dl>
+<ul>
+  <li>Every kind of resource: pages, documents, tables, drawings, presentations, galleries, files and projects.</li>
+  <li>A complete Arabic interface, right to left, with dates and lists.</li>
+  <li>Claude edits pages with Worlds tools through Claude Code or Codex, an API key from Anthropic, OpenAI, Gemini, Groq, DeepSeek, Mistral, xAI or OpenRouter, or a model on your computer such as Ollama or LM Studio that works offline. Every edit can be undone.</li>
+  <li>Automations, the Discord bridge that waits for your approval before each send, and the MCP server for connecting Claude Code to your workspace.</li>
+</ul>
+
+<h2 id="mac">Mac</h2>
+<dl class="facts">
+  <div><dt>File</dt><dd><code>Worlds-0.3.0-macOS-Unsigned.dmg</code>, 23.4 MB, or the <code>.zip</code>, 19.2 MB</dd></div>
+  <div><dt>System</dt><dd>macOS 14 or later.</dd></div>
+  <div><dt>Install</dt><dd><a href="/en/docs/install/macos/">Step by step, with pictures</a>. The app is not signed by Apple, so you open it the first time with a right click, then Open.</dd></div>
+</dl>
+
+<h2 id="iphone-ipad">iPhone and iPad</h2>
+<dl class="facts">
+  <div><dt>File</dt><dd><code>Worlds-0.3.0-iPhone-Unsigned.ipa</code> and <code>Worlds-0.3.0-iPad-Unsigned.ipa</code>, 10.7 MB each</dd></div>
+  <div><dt>System</dt><dd>iOS and iPadOS 17 or later.</dd></div>
+  <div><dt>Install</dt><dd><a href="/en/docs/install/iphone-ipad/">Step by step, with pictures</a>. The app is not on the App Store, so it needs signing with a tool such as SideStore.</dd></div>
+</dl>
+<p>What works in the three Apple apps (Mac, iPhone and iPad):</p>
+<ul>
+  <li>Editing, creating and moving to Trash pages, documents, tables, drawings and presentations in your own workspace when its database is on a local disk, with a version check before every save. In iCloud or a cloud folder they stay read only, with a note that says why.</li>
+  <li>Drawing: the eraser, masks, effects, nested layers, every kind of brush and shape, and correction of hand-drawn shapes, in sRGB colours that match Windows.</li>
+  <li>Tables with values calculated by the same formula engine as Windows and Android.</li>
+  <li>A real AI conversation with the same providers, with the key kept in the Keychain. It does not edit pages yet.</li>
+</ul>
+
+<h2 id="android">Android</h2>
+<dl class="facts">
+  <div><dt>File</dt><dd><code>Worlds-0.3.0-Android-Universal.apk</code>, 28.4 MB</dd></div>
+  <div><dt>System</dt><dd>Android 8 or later, and Chromebooks.</dd></div>
+  <div><dt>Install</dt><dd><a href="/en/docs/install/android/">Step by step, with pictures</a>. The file is signed with a development key and is not from Google Play.</dd></div>
+</dl>
+<ul>
+  <li>The AI reads, creates and edits pages and adds tasks with the same tools as Windows, and all the changes of one reply can be undone in one step. The key is kept in the Keystore.</li>
+  <li>Study and planning: screens for tasks, goals, the inbox, the calendar (a list and a week view) and subjects with lessons, homework and exams, and a quick add that understands "tomorrow 4pm" and Arabic such as «بكرة».</li>
+  <li>Automations: an AI summary through the provider you chose, and a notification on the device next to Discord.</li>
+</ul>
+
+<h2 id="web">Browser</h2>
+<dl class="facts">
+  <div><dt>Address</dt><dd><a href="https://app.enterworlds.space">app.enterworlds.space</a></dd></div>
+  <div><dt>Demo</dt><dd><a href="https://demo.enterworlds.space">demo.enterworlds.space</a>, with a ready workspace to try things in; it keeps nothing on an account.</dd></div>
+  <div><dt>Guide</dt><dd><a href="/en/docs/install/web/">Worlds in the browser</a></dd></div>
+</dl>
+<ul>
+  <li>Nothing to install. Your pages are kept in your browser and are still there after you close the tab.</li>
+  <li>Create an account and sign in, and your workspace is also kept on your account, so it opens in any browser you sign in to.</li>
+  <li>Claude and the device tools (such as automations and Discord) work in the apps, not in the browser.</li>
+</ul>
+
+<h2 id="more">All the details</h2>
+<ul class="index">
+  <li><a href="/en/docs/install/"><strong>Install</strong><span>Which file for your device, checking the file, and the steps for each platform.</span></a></li>
+  <li><a href="/en/docs/install/update-uninstall/"><strong>Update and uninstall</strong><span>How to update or remove Worlds, and where your data stays.</span></a></li>
+  <li><a href="https://github.com/justpainful/Worlds"><strong>The code on GitHub</strong><span>Feature matrices for each platform, and the notes for every release.</span></a></li>
+</ul>
+
+</main></div>
+<footer class="wrap foot">
+  <div class="row">
+    <div class="credit">
+      <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
+      <p>Natural Intelligence Leads Artificial Intelligence festival 2026, outstanding experiments track.</p>
+    </div>
+    <nav aria-label="Worlds"><a href="/en/apps/">Apps</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="/en/privacy/">Privacy</a><a href="/en/terms/">Terms of use</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+  </div>
+  <p class="fine">Worlds is a creative working name, not a registered mark, and is independent of the imbue identity. The code is published on GitHub.</p>
+</footer>
+</body>
+</html>

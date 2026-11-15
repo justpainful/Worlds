@@ -1,0 +1,174 @@
+<!--
+title: Pages and blocks
+description: How to write in Worlds pages: the "/" menu and every block type, the block handle, moving and nesting, icons and covers, properties, links between pages, pins and favorites.
+-->
+<h1>Pages and blocks</h1>
+<p class="lead">A page in Worlds is made of blocks: a paragraph, a heading, a list, a picture, a table and more. You add blocks with "/", move them by dragging, and link pages together by typing "@".</p>
+
+<figure class="shot"><img src="/media/book/p10.webp" alt="A page titled فكرة المشروع with an icon, Arabic headings and a checklist with two items done; on the right an On this page panel with the page headings; at the bottom a Subpages section and a New subpage button" width="1600" height="1000" loading="lazy"><figcaption>A page with headings and a checklist, next to its outline. Sample data.</figcaption></figure>
+
+<h2 id="create">Creating a page</h2>
+<ul>
+  <li><kbd>Ctrl</kbd> + <kbd>N</kbd> creates a new page, and <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd> creates it in a pane on the right.</li>
+  <li>The <strong>+</strong> button next to the <strong>Pages</strong> section in the sidebar, or <strong>New</strong>, then <strong>Page</strong>.</li>
+  <li>For a page inside a page: <strong>New subpage</strong> in the sidebar or at the bottom of the page, or the <strong>Subpage</strong> block from the "/" menu.</li>
+</ul>
+<p>An empty page offers starters under <strong>Start with</strong>: <strong>Checklist</strong>, <strong>Meeting notes</strong>, <strong>Journal entry</strong>, <strong>Board</strong>, <strong>Table of subpages</strong>, <strong>Two columns</strong>, <strong>Gallery</strong>.</p>
+<p>Saving is automatic a moment after you stop typing, and <kbd>Ctrl</kbd> + <kbd>S</kbd> saves right away. At the bottom of the page you see the word and character count, reading time and save state.</p>
+
+<h2 id="slash-menu">The "/" menu and block types</h2>
+<p>Type <kbd>/</kbd> anywhere (except inside a code block) to open the block menu. Type a word to filter it, pick with the arrows and <kbd>Enter</kbd> or <kbd>Tab</kbd>, or press <kbd>Esc</kbd> to close. You can also press the <strong>+</strong> button next to any block (<strong>Insert block below</strong>), which opens a new line with the menu.</p>
+<p>The groups and their blocks, as the menu shows them:</p>
+<table>
+  <thead><tr><th>Group</th><th>Block</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td rowspan="11">Basic</td><td>Text</td><td>A plain paragraph.</td></tr>
+    <tr><td>Heading 1, Heading 2, Heading 3</td><td>Headings in three sizes.</td></tr>
+    <tr><td>Bulleted List</td><td>A list with bullets.</td></tr>
+    <tr><td>Numbered List</td><td>A list with numbers.</td></tr>
+    <tr><td>Checklist</td><td>Items with check boxes.</td></tr>
+    <tr><td>Quote</td><td>Quoted text.</td></tr>
+    <tr><td>Callout</td><td>A coloured note box.</td></tr>
+    <tr><td>Highlight</td><td>A box for important text.</td></tr>
+    <tr><td>Code</td><td>A code block.</td></tr>
+    <tr><td>Table</td><td>A 3 by 3 table with a header row. For formulas, use a <a href="/en/docs/tables/">spreadsheet</a>.</td></tr>
+    <tr><td>Divider</td><td>A horizontal line.</td></tr>
+    <tr><td rowspan="2">Pages</td><td>Subpage</td><td>A new page inside this one.</td></tr>
+    <tr><td>Page Reference</td><td>Mention another page.</td></tr>
+    <tr><td rowspan="8">Layout</td><td>2 Columns, 3 Columns</td><td>Blocks side by side.</td></tr>
+    <tr><td>Toggle</td><td>Collapsible section.</td></tr>
+    <tr><td>Toggle Heading</td><td>A heading that folds what is under it.</td></tr>
+    <tr><td>Collection</td><td>Subpages as a table with properties.</td></tr>
+    <tr><td>Board</td><td>Subpages grouped by Status.</td></tr>
+    <tr><td>Gallery</td><td>Subpages as cards with covers.</td></tr>
+    <tr><td>Table of Contents</td><td>Live list of this page's headings.</td></tr>
+    <tr><td>Tabs</td><td>Switch between sections in place.</td></tr>
+    <tr><td rowspan="6">Media</td><td>Image Gallery</td><td>Several pictures in a grid.</td></tr>
+    <tr><td>Image</td><td>Pick a picture from your computer.</td></tr>
+    <tr><td>Video</td><td>Pick a video from your computer.</td></tr>
+    <tr><td>File</td><td>Attach any file.</td></tr>
+    <tr><td>Embed Link</td><td>Paste a full link starting with https.</td></tr>
+    <tr><td>YouTube, Spotify or Maps</td><td>Plays inside the page.</td></tr>
+    <tr><td rowspan="3">Insert</td><td>Today's Date</td><td>Types today's date.</td></tr>
+    <tr><td>Current Time</td><td>Types the time now.</td></tr>
+    <tr><td>Date and Time</td><td>Types both.</td></tr>
+    <tr><td rowspan="4">Knowledge</td><td>Equation</td><td>LaTeX on its own line.</td></tr>
+    <tr><td>Inline Equation</td><td>LaTeX inside the text.</td></tr>
+    <tr><td>Diagram</td><td>Mermaid flowcharts, sequences, timelines.</td></tr>
+    <tr><td>Chart</td><td>Pie, bars or lines from a table on this page; adds a table if the page has none.</td></tr>
+    <tr><td rowspan="3">Assistant</td><td>Prompt</td><td>Reusable instruction for Claude.</td></tr>
+    <tr><td>Assistant Instructions</td><td>Private rules for this page.</td></tr>
+    <tr><td>Ask Claude</td><td>Opens Claude. See <a href="/en/docs/claude/">Claude</a>.</td></tr>
+    <tr><td rowspan="2">Discord</td><td>Discord Message</td><td rowspan="2">See <a href="/en/docs/integrations/">Integrations</a>.</td></tr>
+    <tr><td>Schedule</td></tr>
+  </tbody>
+</table>
+<h3>Typing shortcuts</h3>
+<p>Type these at the start of a new line, followed by a space, and the paragraph changes right away:</p>
+<table>
+  <thead><tr><th>Type</th><th>You get</th></tr></thead>
+  <tbody>
+    <tr><td><code>#</code>, <code>##</code>, <code>###</code></td><td>Heading 1, 2, 3</td></tr>
+    <tr><td><code>-</code></td><td>Bulleted list</td></tr>
+    <tr><td><code>1.</code></td><td>Numbered list</td></tr>
+    <tr><td><code>[]</code></td><td>Checklist</td></tr>
+    <tr><td><code>&gt;</code></td><td>Quote</td></tr>
+    <tr><td><code>```</code></td><td>Code block</td></tr>
+    <tr><td><code>---</code></td><td>Divider</td></tr>
+  </tbody>
+</table>
+<p>When you select text, a small bar appears with <strong>Turn into</strong>, <strong>Bold</strong>, <strong>Italic</strong>, <strong>Strikethrough</strong> and colour. The other shortcuts are in the <a href="/en/docs/search-commands/#shortcuts">shortcuts table</a>, and <kbd>Ctrl</kbd> + <kbd>/</kbd> opens the list inside a page.</p>
+
+<h2 id="block-handle">The block handle</h2>
+<p>Hover any block to see two buttons beside it:</p>
+<ul>
+  <li><strong>+</strong> (<strong>Insert block below</strong>): a new line under the block, with the "/" menu.</li>
+  <li><strong>The grip</strong> (<strong>Drag to move, click for options</strong>): drag it to move the block, or click it for the block menu.</li>
+</ul>
+<p>The menu changes with the kind of block. It holds:</p>
+<ul>
+  <li><strong>Turn Into</strong>: text, headings, lists, quote, callout, code.</li>
+  <li><strong>Text Direction</strong>: <strong>Automatic</strong>, <strong>Right to Left</strong>, <strong>Left to Right</strong> (text blocks).</li>
+  <li><strong>Color</strong>: text colour and background colour, with <strong>Default</strong> and <strong>No background</strong>.</li>
+  <li><strong>Copy Code</strong>: on code blocks.</li>
+  <li>On tables: <strong>Add Row Below</strong>, <strong>Add Column Right</strong>, <strong>Toggle Header Row</strong>, <strong>Delete Table</strong>.</li>
+  <li><strong>Duplicate</strong>: copies the block.</li>
+  <li><strong>Move Up</strong> and <strong>Move Down</strong>.</li>
+  <li><strong>Copy Link</strong>: a link that leads to this exact block.</li>
+  <li><strong>Ask Claude About This</strong>.</li>
+  <li><strong>Delete</strong>.</li>
+</ul>
+
+<h2 id="move-nest">Moving and nesting</h2>
+<ul>
+  <li><strong>Within a page</strong>: drag the block by its grip to its new place, or use <strong>Move Up</strong> and <strong>Move Down</strong> in the grip menu.</li>
+  <li><strong>Side by side</strong>: insert <strong>2 Columns</strong> or <strong>3 Columns</strong> and put blocks inside.</li>
+  <li><strong>Inside a section</strong>: <strong>Toggle</strong> and <strong>Tabs</strong> hold blocks inside them.</li>
+  <li><strong>Pages inside pages</strong>: any page can hold subpages, as deep as you like. Drag them in the sidebar or use <strong>Move to</strong> from the page menu. See <a href="/en/docs/getting-started/#sidebar">The sidebar</a>.</li>
+</ul>
+<figure class="shot"><img src="/media/app/pages.webp" alt="Two pages open side by side: the left with a desert cover, a rocket icon, a callout and a checklist; the right with a colourful cover and a table; Arabic callouts explain the cover, the icon and split view" width="1600" height="1200" loading="lazy"><figcaption>Two pages side by side after <kbd>Ctrl</kbd> + <kbd>\</kbd>, each with a cover and an icon. The content is blurred, and the callouts are in Arabic.</figcaption></figure>
+
+<h2 id="icon-cover">Page icon and cover</h2>
+<p>Hover above the title to see <strong>Add icon</strong>, <strong>Add cover</strong> and <strong>Add properties</strong>.</p>
+<h3>Icon</h3>
+<p>The icon picker has two tabs, <strong>Icons</strong> and <strong>Emoji</strong>, and a <strong>Search icons</strong> box. <strong>Upload</strong> uses your own picture (png, jpg, webp, gif, svg or avif), and <strong>Remove</strong> takes the icon away.</p>
+<h3>Cover</h3>
+<p>Pick a picture from your computer (gif, png, jpg, jpeg, webp or avif). Hover the cover to see <strong>Change</strong>, <strong>Adjust</strong> to choose the part that shows, and <strong>Remove</strong>. The same commands are in the <strong>More</strong> menu (⋯) at the top of the page: <strong>Add Cover</strong> or <strong>Change Cover</strong>, and <strong>Remove Cover</strong>.</p>
+<h3>Page look</h3>
+<p>In the <strong>More</strong> menu under <strong>Style</strong>: <strong>Default font</strong>, <strong>Serif</strong> or <strong>Mono</strong>, <strong>Small text</strong>, and <strong>Full width</strong>.</p>
+
+<h2 id="properties">Properties</h2>
+<p>Properties are short fields at the top of a page, such as a status or a date. Press <strong>Add properties</strong> to add a <strong>Status</strong> property first, then <strong>Add a property</strong> to pick another type:</p>
+<table>
+  <thead><tr><th>Type</th><th>For</th></tr></thead>
+  <tbody>
+    <tr><td>Status</td><td>Not started, In progress or Done.</td></tr>
+    <tr><td>Select</td><td>One choice from your list.</td></tr>
+    <tr><td>Tags</td><td>Several choices at once.</td></tr>
+    <tr><td>Date</td><td>A date.</td></tr>
+    <tr><td>Number</td><td>A number.</td></tr>
+    <tr><td>Checkbox</td><td>Yes or no.</td></tr>
+    <tr><td>Link</td><td>A web address.</td></tr>
+    <tr><td>Text</td><td>Short text.</td></tr>
+  </tbody>
+</table>
+<p>Click a property name to <strong>Rename</strong> it or <strong>Delete property</strong>. Choice lists have <strong>New option</strong> and <strong>Clear</strong>. The <strong>Collection</strong>, <strong>Board</strong> and <strong>Gallery</strong> blocks show subpages with their properties; the board, for example, groups them by <strong>Status</strong>.</p>
+
+<h2 id="links-backlinks">Links between pages and backlinks</h2>
+<ul>
+  <li>Type <kbd>@</kbd> or <kbd>[[</kbd>, then part of a page name, and pick it. If it does not exist, you are offered <strong>Create</strong> a new page with that name.</li>
+  <li>Click a mention to open the page, or <kbd>Ctrl</kbd> + click to open it in a new tab.</li>
+  <li>At the bottom of every page that others mention is a <strong>Mentioned in</strong> section listing those pages. It appears only when there are mentions. The <strong>Page Info</strong> panel shows the same list, or <strong>Nowhere yet</strong>.</li>
+  <li>When a page has two or more headings, an <strong>On this page</strong> panel shows them next to the page and takes you to any heading with a click.</li>
+</ul>
+
+<h2 id="favorites-pins">Pins and favorites</h2>
+<ul>
+  <li><strong>Pin</strong>: the pin button at the top of the page (<strong>Pin</strong> or <strong>Unpin</strong>), or the page menu. Pinned pages show in the <strong>Pinned</strong> section of the sidebar and on Home.</li>
+  <li><strong>Favorite</strong>: from the page menu. There is no separate favorites list, but favorite pages come first in <strong>Suggested</strong> on Home.</li>
+</ul>
+
+<h2 id="page-tools">Other page tools</h2>
+<ul>
+  <li><strong>Find and Replace</strong>: <kbd>Ctrl</kbd> + <kbd>F</kbd> to find and <kbd>Ctrl</kbd> + <kbd>H</kbd> to replace.</li>
+  <li><strong>Focus Mode</strong>: <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>F</kbd>, and <kbd>Esc</kbd> to leave.</li>
+  <li><strong>Lock Page</strong>: <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>L</kbd> stops edits; press it again to allow edits.</li>
+  <li><strong>Export</strong> in the <strong>More</strong> menu: <strong>Copy as Markdown</strong>, <strong>Save as Markdown file</strong>, <strong>Print or Save as PDF</strong>.</li>
+  <li><strong>History</strong>: earlier versions of the page. See <a href="/en/docs/history/">History and backups</a>.</li>
+</ul>
+
+<h2 id="platforms">What works where</h2>
+<table>
+  <thead><tr><th>Feature</th><th>Windows</th><th>Apple</th><th>Android</th></tr></thead>
+  <tbody>
+    <tr><td>Writing and editing pages</td><td>Yes</td><td>Partly: edit, rename, move and move to Trash</td><td>Yes: rich text, headings, lists, tables, callouts, quotes, code</td></tr>
+  </tbody>
+</table>
+<p>The Apple and Android apps are still in progress. Details in <a href="/en/docs/install/">Install</a>.</p>
+
+<h2 id="next">Next</h2>
+<ul class="index">
+  <li><a href="/en/docs/documents/"><strong>Documents</strong><span>Paper pages with a size, margins and printing</span></a></li>
+  <li><a href="/en/docs/templates/"><strong>Templates</strong><span>Ready-made pages to start from</span></a></li>
+  <li><a href="/en/docs/html-pages/"><strong>HTML pages</strong><span>Pages you design yourself</span></a></li>
+</ul>

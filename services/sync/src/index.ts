@@ -8,6 +8,7 @@ import { AuthError, safeEqual, type TokenClaims, tokenFrom, verifyToken } from "
 import type { Env } from "./env";
 import { applyEvent, parseEvent, validSignature } from "./events";
 import { cors, json, problem } from "./http";
+import { vault } from "./vault";
 import { type AccessLevel, CH_COMMENTS, CH_CONTENT, PROTOCOL } from "./protocol";
 import type { DrawingWireSeed, DrawingWireWrite } from "../../../src/drawing/wire";
 
@@ -109,6 +110,9 @@ async function route(request: Request, env: Env): Promise<Response> {
   const claims = await authenticate(request, env);
   if (claims instanceof Response) return claims;
   const userId = claims.sub;
+
+  // A signed-in person's workspace from Worlds on the web (vault.ts).
+  if (parts[1] === "vault") return vault(request, env, userId, parts);
 
   // Notifications feed (per user, no document access needed).
   if (parts[1] === "notifications") {

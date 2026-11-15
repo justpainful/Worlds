@@ -1,6 +1,5 @@
-import { revealItemInDir } from "@tauri-apps/plugin-opener";
-import { api, errorMessage, fileUrl } from "../../lib/api";
-import { openAttachment } from "../../lib/links";
+import { api, errorMessage, fileUrl, isWeb } from "../../lib/api";
+import { openAttachment, revealAttachment } from "../../lib/links";
 import { pageTitle, useStore } from "../../state/store";
 import { menuAt } from "../../ui/Menu";
 import { createResource } from "../create";
@@ -59,12 +58,7 @@ export function FileView({ id }: { id: string }) {
   const isImage = !!f && f.mime.startsWith("image/");
   const isVideo = !!f && f.mime.startsWith("video/");
   const reveal = async () => {
-    if (!f) return;
-    try {
-      await revealItemInDir(await api.attachmentPath(f.attachmentId));
-    } catch (e) {
-      useStore.getState().toast({ message: errorMessage(e), tone: "error" });
-    }
+    if (f) await revealAttachment(f.attachmentId);
   };
   return (
     <div className="res-view res-file">
@@ -77,7 +71,7 @@ export function FileView({ id }: { id: string }) {
               {(isImage || isVideo) && (
                 <Button variant="quiet" icon="image" onClick={(e) => addToGallery(e.currentTarget, f)}>Add to Gallery</Button>
               )}
-              <Button variant="quiet" icon="folderOpen" onClick={reveal}>Show in Explorer</Button>
+              <Button variant="quiet" icon={isWeb ? "download" : "folderOpen"} onClick={reveal}>{isWeb ? "Download" : "Show in Explorer"}</Button>
               <Button variant="plain" icon="openExternal" onClick={() => openAttachment(f.attachmentId)}>Open</Button>
             </>
           )

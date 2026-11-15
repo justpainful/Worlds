@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>كيف تعمل المزامنة · Worlds</title>
+<meta name="description" content="شرح بسيط لما يبقى على جهازك وما يذهب إلى خادم Worlds، وكيف تحفظ نسخة الويب مساحة عملك في حسابك، وكيف تُحل التعارضات.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://enterworlds.space/docs/sync/">
+<link rel="alternate" hreflang="ar" href="https://enterworlds.space/docs/sync/">
+<link rel="alternate" hreflang="en" href="https://enterworlds.space/en/docs/sync/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Worlds">
+<meta property="og:title" content="كيف تعمل المزامنة">
+<meta property="og:description" content="شرح بسيط لما يبقى على جهازك وما يذهب إلى خادم Worlds، وكيف تحفظ نسخة الويب مساحة عملك في حسابك، وكيف تُحل التعارضات.">
+<meta property="og:image" content="https://enterworlds.space/media/og.png">
+<meta property="og:locale" content="ar_SA">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-256.png">
+<link rel="preload" href="/fonts/plex-arabic-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/site.css">
+<script src="/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">انتقل إلى المحتوى</a>
+<header class="wrap top">
+  <a class="lockup small" href="/" aria-label="Worlds الصفحة الرئيسية"><img class="logo" src="/icon-256.png" alt="" width="46" height="46"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="70" height="26"></a>
+  <nav class="nav" aria-label="القائمة"><a href="/apps/">التطبيقات</a><a href="/docs/" aria-current="page">الدليل</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/en/docs/sync/" hreflang="en" lang="en">English</a></nav>
+  <details class="menu"><summary>القائمة</summary><div class="nav"><a href="/apps/">التطبيقات</a><a href="/docs/" aria-current="page">الدليل</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/en/docs/sync/" hreflang="en" lang="en">English</a></div></details>
+</header>
+<div class="wrap docs">
+<details class="side" open><summary>صفحات الدليل</summary><div class="side-list"><h2>البداية</h2><ul><li><a href="/docs/">نظرة عامة</a></li><li><a href="/docs/getting-started/">البداية مع Worlds</a></li></ul><h2>التثبيت</h2><ul><li><a href="/docs/install/">تثبيت Worlds</a></li><li class="sub"><a href="/docs/install/windows/">تثبيت Worlds على Windows</a></li><li class="sub"><a href="/docs/install/macos/">تثبيت Worlds على Mac</a></li><li class="sub"><a href="/docs/install/iphone-ipad/">تثبيت Worlds على iPhone و iPad</a></li><li class="sub"><a href="/docs/install/android/">تثبيت Worlds على Android</a></li><li class="sub"><a href="/docs/install/web/">Worlds في المتصفح</a></li><li class="sub"><a href="/docs/install/update-uninstall/">التحديث والإزالة</a></li><li><a href="/docs/troubleshooting/">حل المشكلات</a></li></ul><h2>الكتابة والتنظيم</h2><ul><li><a href="/docs/pages/">الصفحات والكتل</a></li><li><a href="/docs/documents/">المستندات</a></li><li><a href="/docs/tables/">الجداول وجداول البيانات</a></li><li><a href="/docs/projects/">المشاريع والمصادر</a></li><li><a href="/docs/templates/">القوالب</a></li><li><a href="/docs/search-commands/">البحث والأوامر</a></li><li><a href="/docs/history/">السجل والنسخ الاحتياطية</a></li></ul><h2>الرسم والعرض والوسائط</h2><ul><li><a href="/docs/drawing/">الرسم</a></li><li><a href="/docs/presentations/">العروض التقديمية</a></li><li><a href="/docs/media-files/">الوسائط والملفات</a></li></ul><h2>Claude والأتمتة</h2><ul><li><a href="/docs/claude/">Claude والمزوّدون الآخرون</a></li><li><a href="/docs/automations/">الأتمتة</a></li><li><a href="/docs/discord/">جسر Discord</a></li><li><a href="/docs/integrations/">التكاملات</a></li></ul><h2>الحساب والمشاركة</h2><ul><li><a href="/docs/account/">حساب Worlds</a></li><li><a href="/docs/sharing/">المشاركة والعمل معًا</a></li><li><a href="/docs/sync/" aria-current="page">كيف تعمل المزامنة</a></li><li><a href="/docs/packs/">الحزم</a></li><li><a href="/docs/profile/">الملف الشخصي والنشاط</a></li><li><a href="/docs/settings/">الإعدادات</a></li></ul><h2>للمطورين</h2><ul><li><a href="/docs/html-pages/">صفحات HTML</a></li><li><a href="/docs/mcp/">خادم MCP في Worlds</a></li></ul></div></details>
+<main id="main" class="article">
+<p class="crumb"><a href="/docs/">الدليل</a> / الحساب والمشاركة</p>
+<h1>كيف تعمل المزامنة</h1>
+<p class="lead">Worlds يعمل على جهازك أولًا. النسخة التي على جهازك هي الأصل، وتعمل دون إنترنت. لا يذهب شيء إلى الخادم إلا صفحات مساحات الفرق، ومساحة عمل الويب إن سجّلت دخولك هناك.</p>
+
+<h2 id="local-first">جهازك هو الأصل</h2>
+<ul>
+<li>كل جهاز يحتفظ بنسخة كاملة من صفحاته ويعمل دون اتصال.</li>
+<li>التعديل يُحفظ على جهازك أولًا. إن كنت دون اتصال ينتظر التعديل ويُرسل عند عودة الاتصال.</li>
+<li>الخادم يتولى ثلاثة أشياء فقط: الحسابات، والصلاحيات، ونقل التعديلات بين الأجهزة.</li>
+</ul>
+
+<h2 id="what-goes">ما الذي يذهب إلى الخادم</h2>
+<table>
+<thead><tr><th>ما عندك</th><th>هل يذهب إلى الخادم؟</th></tr></thead>
+<tbody>
+<tr><td>صفحات المساحة الشخصية في التطبيقات</td><td>لا. تبقى على الجهاز ولا تُزامَن، حتى بين أجهزتك أنت، إلا إذا نقلت الصفحة إلى مساحة فريق.</td></tr>
+<tr><td>صفحات مساحة الفريق</td><td>نعم: محتوى الصفحة وتعليقاتها ومرفقاتها، وشجرة الصفحات وعناوينها.</td></tr>
+<tr><td>مساحة عمل الويب، وأنت مسجّل الدخول</td><td>نعم: نسخة واحدة من مساحة عملك كلها في حسابك، لا يقرؤها غيرك.</td></tr>
+<tr><td>مساحة عمل الويب، دون تسجيل دخول</td><td>لا. تبقى في هذا المتصفح فقط.</td></tr>
+<tr><td>مفاتيح API</td><td>لا أبدًا. اقرأ <a href="/docs/claude/#keys">أين تُحفظ المفاتيح</a>.</td></tr>
+</tbody>
+</table>
+<p>البيانات مشفّرة أثناء النقل ومشفّرة وهي محفوظة على الخادم. لكنها ليست مشفّرة من طرف إلى طرف: الخادم يستطيع قراءة صفحات مساحات الفرق ومساحة الويب ليتمكن من مزامنتها.</p>
+
+<h2 id="servers">أين يعمل الخادم</h2>
+<p>خوادم Worlds تعمل على Cloudflare، بثلاثة عناوين:</p>
+<dl class="facts">
+<div><dt><code>login.enterworlds.space</code></dt><dd>الحسابات: تسجيل الدخول ومفاتيح المرور ومساحات العمل والدعوات</dd></div>
+<div><dt><code>connect.enterworlds.space</code></dt><dd>المزامنة: الصفحات المشتركة الحية ومرفقاتها ومساحة الويب</dd></div>
+<div><dt><code>go.enterworlds.space</code></dt><dd>Worlds في المتصفح</dd></div>
+</dl>
+
+<h2 id="web">نسخة الويب ومساحة عملها</h2>
+<p>في <a href="https://go.enterworlds.space/">go.enterworlds.space</a> تُحفظ صفحاتك في المتصفح وتعمل دون اتصال. عندما تسجّل الدخول، يحفظ Worlds مساحة عمل الويب كلها في حسابك: الصفحات والكتل والرسومات والإعدادات والملف الشخصي والمحادثات والملفات المرفقة. ثم تفتحها من أي متصفح بالحساب نفسه.</p>
+<ul>
+<li>يُرسل الحفظ بعد ثوانٍ قليلة من آخر تعديل.</li>
+<li>حجم نسخة مساحة العمل حتى 32 MB، وكل ملف مرفق حتى 25 MB.</li>
+<li>مساحة الويب منفصلة عن صفحات المساحة الشخصية في تطبيق Windows أو الجوال.</li>
+</ul>
+
+<h2 id="conflicts">إذا عدّلت الشيء نفسه في مكانين</h2>
+<h3>على الويب</h3>
+<p>عندما تلتقي نسختان من مساحة الويب (مثلًا متصفح في البيت وآخر في العمل):</p>
+<ul>
+<li>كل صفحة تأخذ النسخة التي عُدّلت آخرًا. التعديل الأحدث على الصفحة هو الذي يبقى.</li>
+<li>الصفحة المحذوفة نهائيًا تبقى محذوفة.</li>
+<li>المحادثات والملفات تُجمع من النسختين.</li>
+<li>الإعدادات والملف الشخصي تؤخذ من النسخة المحفوظة آخرًا.</li>
+</ul>
+<p>إن حفظ جهاز آخر في اللحظة نفسها، يجلب Worlds نسخته ويدمج ثم يعيد الحفظ.</p>
+<h3>في الصفحات المشتركة في التطبيقات</h3>
+<p>هنا لا تحتاج أن تختار: إذا كتب شخصان في الصفحة نفسها في الوقت نفسه، يُحفظ ما كتبه كل منهما. وتعديلات Claude والأتمتة تُدمج في الصفحة المشتركة دون أن تمحو ما يكتبه الآخرون.</p>
+<ul>
+<li>إذا رفض الخادم تعديلًا (مثلًا لأن صلاحيتك تغيّرت) يعيد التطبيق بناء الصفحة من نسخة الخادم ويعرض <strong>يحتاج مراجعة</strong>.</li>
+<li>أول مرة تُشارك فيها صفحة على كمبيوتر، إن كان للخادم نسخة منها، تفوز نسخة الخادم، وتبقى نسختك السابقة قابلة للاستعادة باسم «Before live sync».</li>
+<li>تُحفظ نسخ من الصفحة المشتركة بعد التعديلات بفاصل 10 دقائق على الأقل وعندما يغادرها آخر شخص، ويُحتفظ بأحدث 200 نسخة. افتحها من <strong>السجل المشترك</strong>.</li>
+</ul>
+
+<h2 id="backups">النسخ الاحتياطي ليس مزامنة</h2>
+<p>المزامنة لا تغني عن النسخ الاحتياطي لصفحاتك الشخصية. في تطبيق Windows افتح <strong>الإعدادات</strong>، <strong>التخزين</strong>، <strong>النسخ الاحتياطية</strong> واضغط <strong>نسخ احتياطي الآن</strong>. اقرأ <a href="/docs/settings/#storage">قسم التخزين</a>.</p>
+
+<h2 id="next">اقرأ أيضًا</h2>
+<ul class="index">
+<li><a href="/docs/sharing/"><strong>المشاركة والعمل معًا</strong><span>مساحات الفرق والصلاحيات</span></a></li>
+<li><a href="/docs/account/"><strong>حساب Worlds</strong><span>إنشاء الحساب وتسجيل الدخول</span></a></li>
+<li><a href="/privacy/"><strong>الخصوصية</strong><span>ما يُحفظ ولماذا</span></a></li>
+</ul>
+
+<nav class="pager" aria-label="الدليل"><a class="prev" href="/docs/sharing/"><small>السابق</small>المشاركة والعمل معًا</a><a class="next" href="/docs/packs/"><small>التالي</small>الحزم</a></nav>
+</main>
+</div>
+<footer class="wrap foot">
+  <div class="row">
+    <div class="credit">
+      <a class="lockup small" href="/" aria-label="Worlds الصفحة الرئيسية"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
+      <p>مهرجان الذكاء الطبيعي يقود الذكاء الاصطناعي 2026، مسار التجارب المتميزة.</p>
+    </div>
+    <nav aria-label="Worlds"><a href="/apps/">التطبيقات</a><a href="/docs/">الدليل</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="/privacy/">الخصوصية</a><a href="/terms/">شروط الاستخدام</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+  </div>
+  <p class="fine">Worlds اسم عمل إبداعي غير مسجل رسميًا، مستقل عن هوية imbue. الشيفرة منشورة على GitHub.</p>
+</footer>
+</body>
+</html>

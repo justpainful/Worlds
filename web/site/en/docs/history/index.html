@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>History and backups · Worlds</title>
+<meta name="description" content="How Worlds keeps your work: autosave and undo, page history and earlier versions, Trash and restore, and the daily database backup.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://enterworlds.space/en/docs/history/">
+<link rel="alternate" hreflang="ar" href="https://enterworlds.space/docs/history/">
+<link rel="alternate" hreflang="en" href="https://enterworlds.space/en/docs/history/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Worlds">
+<meta property="og:title" content="History and backups">
+<meta property="og:description" content="How Worlds keeps your work: autosave and undo, page history and earlier versions, Trash and restore, and the daily database backup.">
+<meta property="og:image" content="https://enterworlds.space/media/og.png">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-256.png">
+<link rel="preload" href="/fonts/instrument-sans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/site.css">
+<script src="/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="wrap top">
+  <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="46" height="46"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="70" height="26"></a>
+  <nav class="nav" aria-label="Menu"><a href="/en/apps/">Apps</a><a href="/en/docs/" aria-current="page">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/docs/history/" hreflang="ar" lang="ar">العربية</a></nav>
+  <details class="menu"><summary>Menu</summary><div class="nav"><a href="/en/apps/">Apps</a><a href="/en/docs/" aria-current="page">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/docs/history/" hreflang="ar" lang="ar">العربية</a></div></details>
+</header>
+<div class="wrap docs">
+<details class="side" open><summary>Docs pages</summary><div class="side-list"><h2>Start here</h2><ul><li><a href="/en/docs/">Overview</a></li><li><a href="/en/docs/getting-started/">Getting started with Worlds</a></li></ul><h2>Install</h2><ul><li><a href="/en/docs/install/">Install Worlds</a></li><li class="sub"><a href="/en/docs/install/windows/">Install Worlds on Windows</a></li><li class="sub"><a href="/en/docs/install/macos/">Install Worlds on Mac</a></li><li class="sub"><a href="/en/docs/install/iphone-ipad/">Install Worlds on iPhone and iPad</a></li><li class="sub"><a href="/en/docs/install/android/">Install Worlds on Android</a></li><li class="sub"><a href="/en/docs/install/web/">Worlds in the browser</a></li><li class="sub"><a href="/en/docs/install/update-uninstall/">Update and uninstall</a></li><li><a href="/en/docs/troubleshooting/">Troubleshooting</a></li></ul><h2>Write and organise</h2><ul><li><a href="/en/docs/pages/">Pages and blocks</a></li><li><a href="/en/docs/documents/">Documents</a></li><li><a href="/en/docs/tables/">Tables and spreadsheets</a></li><li><a href="/en/docs/projects/">Projects and resources</a></li><li><a href="/en/docs/templates/">Templates</a></li><li><a href="/en/docs/search-commands/">Search and commands</a></li><li><a href="/en/docs/history/" aria-current="page">History and backups</a></li></ul><h2>Draw, present and media</h2><ul><li><a href="/en/docs/drawing/">Drawing</a></li><li><a href="/en/docs/presentations/">Presentations</a></li><li><a href="/en/docs/media-files/">Media and files</a></li></ul><h2>Claude and automations</h2><ul><li><a href="/en/docs/claude/">Claude and other AI providers</a></li><li><a href="/en/docs/automations/">Automations</a></li><li><a href="/en/docs/discord/">Discord bridge</a></li><li><a href="/en/docs/integrations/">Integrations</a></li></ul><h2>Account and sharing</h2><ul><li><a href="/en/docs/account/">Your Worlds account</a></li><li><a href="/en/docs/sharing/">Sharing and working together</a></li><li><a href="/en/docs/sync/">How sync works</a></li><li><a href="/en/docs/packs/">Packs</a></li><li><a href="/en/docs/profile/">Profile and Activity</a></li><li><a href="/en/docs/settings/">Settings</a></li></ul><h2>For developers</h2><ul><li><a href="/en/docs/html-pages/">HTML pages</a></li><li><a href="/en/docs/mcp/">The Worlds MCP server</a></li></ul></div></details>
+<main id="main" class="article">
+<p class="crumb"><a href="/en/docs/">Docs</a> / Write and organise</p>
+<h1>History and backups</h1>
+<p class="lead">Worlds saves your work as you type, keeps earlier versions of every page, puts what you delete in Trash, and backs up your database every day. This page explains how to get back to any of them.</p>
+
+<h2 id="autosave">Saving and undo</h2>
+<ul>
+  <li>A page saves automatically a moment after you stop typing, and <kbd>Ctrl</kbd> + <kbd>S</kbd> saves right away. The save state shows at the top of the page.</li>
+  <li><kbd>Ctrl</kbd> + <kbd>Z</kbd> to undo, and <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> or <kbd>Ctrl</kbd> + <kbd>Y</kbd> to redo, inside the page you are writing in.</li>
+  <li>When you delete a page, a message appears with an <strong>Undo</strong> button that brings it straight back.</li>
+</ul>
+<p>Drawings, spreadsheets and presentations have their own undo inside their editors. Drawings also have named versions: see <a href="/en/docs/drawing/#versions">Saving and versions in drawings</a>.</p>
+
+<h2 id="page-history">Page history</h2>
+<p>Open the history with the <strong>History</strong> button at the top of the page, or the <strong>Page History</strong> command in the command palette. A side panel opens with three tabs: <strong>Info</strong>, <strong>History</strong> and <strong>Assistant</strong>.</p>
+<figure class="shot"><img src="/media/book/p23.webp" alt="The page فكرة المشروع with the History panel beside it: a Changes section with edits, an archive, a restore, an automation save and the page creation, and a Versions section with three versions with their dates and block counts, each with a Preview button" width="1600" height="1000" loading="lazy"><figcaption>Page history: changes at the top, versions below. Sample data.</figcaption></figure>
+<h3>Changes</h3>
+<p>The <strong>Changes</strong> section lists the last 200 changes to the page: who changed it, when, and how many blocks were added or changed. Changes made by Claude or by <a href="/en/docs/automations/">automations</a> have <strong>Review changes</strong> and <strong>Undo</strong> buttons, and the review window has <strong>Undo all</strong>.</p>
+<h3>Versions</h3>
+<p>The <strong>Versions</strong> section lists saved versions with their date and number of blocks. Worlds keeps a version:</p>
+<ul>
+  <li>Before each editing session: when you start typing after 10 minutes or more without edits.</li>
+  <li>Before every change Claude or an automation makes.</li>
+  <li>Before every restore of an earlier version.</li>
+</ul>
+<ol class="steps">
+  <li><h3>Preview</h3><p>Press <strong>Preview</strong> next to a version to see the page as it was.</p></li>
+  <li><h3>Restore</h3><p>Press <strong>Restore this version</strong>. You see "Version restored. The previous state was kept as a version too." So you lose nothing, and you can go back to before the restore.</p></li>
+</ol>
+<p>There is no side-by-side comparison of two page versions yet. The comparison you get is <strong>Review changes</strong>, for changes by Claude and automations.</p>
+
+<h2 id="trash">Trash and restore</h2>
+<p>When you delete a page, it moves to <strong>Trash</strong> together with its subpages. Open Trash from the <strong>Library</strong> in the sidebar, or the <strong>Trash</strong> command. "Deleted pages stay here until you remove them permanently": Trash never empties itself.</p>
+<ul>
+  <li><strong>Restore</strong>: puts the page back.</li>
+  <li><strong>Delete permanently</strong>: asks <strong>Delete permanently?</strong>, then removes the page and its subpages from this computer. This cannot be undone.</li>
+</ul>
+<h3>Archiving</h3>
+<p>Archiving hides a page you do not need right now, without deleting it. Choose <strong>Archive</strong> from the page menu. Archived pages are listed in the <strong>Archived</strong> section of Trash with <strong>Unarchive</strong>, and they still show in search.</p>
+
+<h2 id="backups">Backups</h2>
+<p>Worlds makes a full copy of your database:</p>
+<ul>
+  <li><strong>Daily</strong>: when the app starts, at most once every 24 hours, after checking the database is healthy.</li>
+  <li><strong>Before an update</strong>: before every change to the storage format when the app updates.</li>
+  <li><strong>Manual</strong>: whenever you ask.</li>
+</ul>
+<p>It keeps the last 10 daily copies and 20 of the other kinds, and removes older ones. The copies are in the <code>backups</code> subfolder of the data folder.</p>
+<h3>In Settings</h3>
+<p>Open <strong>Settings</strong>, then <strong>Storage</strong>. In the <strong>Backups</strong> group:</p>
+<ul>
+  <li><strong>Back up now</strong>: an immediate manual copy, with the time of the last backup under it.</li>
+  <li>The 8 newest backups with their date, kind and size, each with <strong>Restore</strong>.</li>
+  <li><strong>Backups folder</strong> and a <strong>Show</strong> button to open it.</li>
+</ul>
+<h3>Restoring a backup</h3>
+<ol class="steps">
+  <li><h3>Choose the backup</h3><p>Press <strong>Restore</strong> next to it, then confirm with <strong>Restore at next launch</strong>.</p></li>
+  <li><h3>Restart Worlds</h3><p><strong>Restore waiting</strong> appears with a <strong>Cancel</strong> button if you change your mind. On the next start the restore is applied, and your current database is first kept as a "before restore" copy.</p></li>
+</ol>
+<div class="callout"><p>If Worlds finds at start that the database is damaged, it replaces it automatically with the newest healthy backup. If the daily check finds a problem, Settings shows "The database needs attention" and suggests restoring or backing up now.</p></div>
+<div class="callout warn"><p>Backups live on the same computer. If the computer fails, they go with it. Copy the data folder to an external drive now and then, or use <a href="/en/docs/sync/">Sync</a>.</p></div>
+
+<h2 id="platforms">What works where</h2>
+<table>
+  <thead><tr><th>Feature</th><th>Windows</th><th>Apple</th><th>Android</th></tr></thead>
+  <tbody>
+    <tr><td>Keeping versions</td><td>Yes</td><td>Yes; the restore screen is in progress</td><td>Partly</td></tr>
+    <tr><td>Trash</td><td>Yes</td><td>Partly: restore, but no permanent delete</td><td>Partly</td></tr>
+    <tr><td>Backups</td><td>Yes</td><td>In progress</td><td>In progress</td></tr>
+  </tbody>
+</table>
+<p>The Apple and Android apps are still in progress. Details in <a href="/en/docs/install/">Install</a>.</p>
+
+<h2 id="next">Next</h2>
+<ul class="index">
+  <li><a href="/en/docs/sync/"><strong>Sync</strong><span>Your work on more than one device</span></a></li>
+  <li><a href="/en/docs/getting-started/#workspace"><strong>Where it is kept</strong><span>Where the data folder is</span></a></li>
+  <li><a href="/en/docs/claude/"><strong>Claude</strong><span>What Claude changes and how to review it</span></a></li>
+</ul>
+
+<nav class="pager" aria-label="Docs"><a class="prev" href="/en/docs/search-commands/"><small>Previous</small>Search and commands</a><a class="next" href="/en/docs/drawing/"><small>Next</small>Drawing</a></nav>
+</main>
+</div>
+<footer class="wrap foot">
+  <div class="row">
+    <div class="credit">
+      <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
+      <p>Natural Intelligence Leads Artificial Intelligence festival 2026, outstanding experiments track.</p>
+    </div>
+    <nav aria-label="Worlds"><a href="/en/apps/">Apps</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="/en/privacy/">Privacy</a><a href="/en/terms/">Terms of use</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+  </div>
+  <p class="fine">Worlds is a creative working name, not a registered mark, and is independent of the imbue identity. The code is published on GitHub.</p>
+</footer>
+</body>
+</html>

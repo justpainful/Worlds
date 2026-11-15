@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>الجداول وجداول البيانات · Worlds</title>
+<meta name="description" content="جداول البيانات في Worlds: مراجع الخلايا مثل A1، والصيغ والدوال الموجودة فعلًا، والاختصارات، والاستيراد والتصدير بصيغة CSV وExcel، والجداول داخل الصفحات.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://enterworlds.space/docs/tables/">
+<link rel="alternate" hreflang="ar" href="https://enterworlds.space/docs/tables/">
+<link rel="alternate" hreflang="en" href="https://enterworlds.space/en/docs/tables/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Worlds">
+<meta property="og:title" content="الجداول وجداول البيانات">
+<meta property="og:description" content="جداول البيانات في Worlds: مراجع الخلايا مثل A1، والصيغ والدوال الموجودة فعلًا، والاختصارات، والاستيراد والتصدير بصيغة CSV وExcel، والجداول داخل الصفحات.">
+<meta property="og:image" content="https://enterworlds.space/media/og.png">
+<meta property="og:locale" content="ar_SA">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-256.png">
+<link rel="preload" href="/fonts/plex-arabic-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/site.css">
+<script src="/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">انتقل إلى المحتوى</a>
+<header class="wrap top">
+  <a class="lockup small" href="/" aria-label="Worlds الصفحة الرئيسية"><img class="logo" src="/icon-256.png" alt="" width="46" height="46"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="70" height="26"></a>
+  <nav class="nav" aria-label="القائمة"><a href="/apps/">التطبيقات</a><a href="/docs/" aria-current="page">الدليل</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/en/docs/tables/" hreflang="en" lang="en">English</a></nav>
+  <details class="menu"><summary>القائمة</summary><div class="nav"><a href="/apps/">التطبيقات</a><a href="/docs/" aria-current="page">الدليل</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/en/docs/tables/" hreflang="en" lang="en">English</a></div></details>
+</header>
+<div class="wrap docs">
+<details class="side" open><summary>صفحات الدليل</summary><div class="side-list"><h2>البداية</h2><ul><li><a href="/docs/">نظرة عامة</a></li><li><a href="/docs/getting-started/">البداية مع Worlds</a></li></ul><h2>التثبيت</h2><ul><li><a href="/docs/install/">تثبيت Worlds</a></li><li class="sub"><a href="/docs/install/windows/">تثبيت Worlds على Windows</a></li><li class="sub"><a href="/docs/install/macos/">تثبيت Worlds على Mac</a></li><li class="sub"><a href="/docs/install/iphone-ipad/">تثبيت Worlds على iPhone و iPad</a></li><li class="sub"><a href="/docs/install/android/">تثبيت Worlds على Android</a></li><li class="sub"><a href="/docs/install/web/">Worlds في المتصفح</a></li><li class="sub"><a href="/docs/install/update-uninstall/">التحديث والإزالة</a></li><li><a href="/docs/troubleshooting/">حل المشكلات</a></li></ul><h2>الكتابة والتنظيم</h2><ul><li><a href="/docs/pages/">الصفحات والكتل</a></li><li><a href="/docs/documents/">المستندات</a></li><li><a href="/docs/tables/" aria-current="page">الجداول وجداول البيانات</a></li><li><a href="/docs/projects/">المشاريع والمصادر</a></li><li><a href="/docs/templates/">القوالب</a></li><li><a href="/docs/search-commands/">البحث والأوامر</a></li><li><a href="/docs/history/">السجل والنسخ الاحتياطية</a></li></ul><h2>الرسم والعرض والوسائط</h2><ul><li><a href="/docs/drawing/">الرسم</a></li><li><a href="/docs/presentations/">العروض التقديمية</a></li><li><a href="/docs/media-files/">الوسائط والملفات</a></li></ul><h2>Claude والأتمتة</h2><ul><li><a href="/docs/claude/">Claude والمزوّدون الآخرون</a></li><li><a href="/docs/automations/">الأتمتة</a></li><li><a href="/docs/discord/">جسر Discord</a></li><li><a href="/docs/integrations/">التكاملات</a></li></ul><h2>الحساب والمشاركة</h2><ul><li><a href="/docs/account/">حساب Worlds</a></li><li><a href="/docs/sharing/">المشاركة والعمل معًا</a></li><li><a href="/docs/sync/">كيف تعمل المزامنة</a></li><li><a href="/docs/packs/">الحزم</a></li><li><a href="/docs/profile/">الملف الشخصي والنشاط</a></li><li><a href="/docs/settings/">الإعدادات</a></li></ul><h2>للمطورين</h2><ul><li><a href="/docs/html-pages/">صفحات HTML</a></li><li><a href="/docs/mcp/">خادم MCP في Worlds</a></li></ul></div></details>
+<main id="main" class="article">
+<p class="crumb"><a href="/docs/">الدليل</a> / الكتابة والتنظيم</p>
+<h1>الجداول وجداول البيانات</h1>
+<p class="lead">في Worlds نوعان من الجداول: <strong>جدول بيانات</strong> كامل بأوراق وصيغ مثل Excel، و<strong>جدول</strong> بسيط داخل الصفحة لترتيب النص. هذه الصفحة تشرح الاثنين، وتسرد كل دالة يفهمها جدول البيانات.</p>
+
+<h2 id="which-table">أي جدول تحتاج؟</h2>
+<table>
+  <thead><tr><th></th><th>جدول داخل صفحة</th><th>جدول بيانات</th></tr></thead>
+  <tbody>
+    <tr><td>الإنشاء</td><td>«/» ثم <strong>جدول</strong></td><td><strong>جديد</strong> ثم <strong>جدول بيانات</strong></td></tr>
+    <tr><td>الصيغ</td><td>لا</td><td>نعم، 92 دالة</td></tr>
+    <tr><td>أوراق متعددة</td><td>لا</td><td>نعم</td></tr>
+    <tr><td>CSV وExcel</td><td>لا</td><td>استيراد وتصدير</td></tr>
+    <tr><td>رسم بياني</td><td>كتلة <strong>رسم بياني</strong> في الصفحة نفسها</td><td>لا</td></tr>
+  </tbody>
+</table>
+
+<h2 id="spreadsheet">جدول البيانات</h2>
+<p>أنشئه من زر <strong>جديد</strong> ثم <strong>جدول بيانات</strong>، أو الأمر <strong>جدول بيانات جديد</strong> من لوحة الأوامر. تبدأ الورقة الجديدة بـ 60 صفًا و26 عمودًا، وتكبر عندما تدرج صفوفًا أو أعمدة.</p>
+<h3>في أعلى الجدول</h3>
+<ul>
+  <li><strong>القوالب</strong>: ثلاثة جداول جاهزة: Financial Budget &amp; Cashflow وKPI &amp; OKR Tracker وWeighted Calculator &amp; Matrix.</li>
+  <li><strong>استيراد ملف xlsx أو csv</strong>.</li>
+  <li><strong>تصدير</strong>: <strong>تصدير Excel (xlsx)</strong> أو <strong>تصدير CSV (csv)</strong>.</li>
+  <li><strong>الاختصارات</strong>: قائمة اختصارات الجدول، وتفتح أيضًا بـ <kbd>F1</kbd>.</li>
+</ul>
+<h3>أدوات الخلايا</h3>
+<ul>
+  <li><strong>تراجع</strong> و<strong>إعادة</strong>.</li>
+  <li><strong>تنسيق الأرقام</strong>: <strong>عام أو تلقائي</strong>، <strong>رقم (1,234.56)</strong>، <strong>عدد صحيح (1,235)</strong>، <strong>عملة (SAR 1,234.56)</strong>، <strong>عملة ($1,234.56)</strong>، <strong>محاسبة ((1,234.56))</strong>، <strong>نسبة مئوية (12.3%)</strong>، <strong>علمي (1.23E+03)</strong>.</li>
+  <li><strong>تقليل المنازل العشرية</strong> و<strong>زيادة المنازل العشرية</strong>.</li>
+  <li><strong>لون النص</strong>، <strong>لون تعبئة الخلية</strong>، <strong>التفاف النص</strong>.</li>
+  <li><strong>جمع تلقائي (Alt+=)</strong>.</li>
+  <li><strong>فرز العمود من A إلى Z</strong> و<strong>فرز العمود من Z إلى A</strong>، و<strong>تشغيل التصفية التلقائية أو إيقافها</strong>.</li>
+  <li><strong>تجميد الأجزاء</strong>: <strong>تجميد الصف العلوي</strong>، <strong>تجميد العمود الأول</strong>، <strong>إلغاء تجميد الأجزاء</strong>.</li>
+  <li><strong>إدراج صف أعلاه</strong>، <strong>إدراج عمود على اليسار</strong>، <strong>حذف الصف</strong>، <strong>حذف العمود</strong>، <strong>احتواء عرض العمود تلقائيًا</strong>. يبقى في الورقة 10 صفوف و5 أعمدة على الأقل.</li>
+  <li><strong>بحث واستبدال (Ctrl+F)</strong>.</li>
+  <li><strong>إدراج دالة</strong>: قائمة بالدوال الشائعة مع شرح كل منها.</li>
+</ul>
+<h3>الأوراق</h3>
+<p>في أسفل الجدول تبويبات الأوراق، مع <strong>إضافة ورقة</strong>، و<strong>إعادة تسمية الورقة</strong> و<strong>نسخ الورقة</strong> و<strong>حذف الورقة</strong>.</p>
+
+<h2 id="references">مراجع الخلايا</h2>
+<table>
+  <thead><tr><th>اكتب</th><th>المعنى</th></tr></thead>
+  <tbody>
+    <tr><td><code>A1</code></td><td>العمود A، الصف 1.</td></tr>
+    <tr><td><code>A1:B5</code></td><td>نطاق من A1 إلى B5.</td></tr>
+    <tr><td><code>$A$1</code> و<code>A$1</code> و<code>$A1</code></td><td>مرجع ثابت لا يتغير عند النسخ، كليًا أو للصف فقط أو للعمود فقط.</td></tr>
+    <tr><td><code>Sheet1!A1</code></td><td>خلية من ورقة أخرى.</td></tr>
+    <tr><td><code>'Sheet 1'!$A$1</code></td><td>ورقة في اسمها مسافة: ضع الاسم بين علامتي اقتباس مفردتين.</td></tr>
+  </tbody>
+</table>
+<p>أسماء الأوراق يمكن أن تكون بالعربية، ولا يهم فيها الحرف الكبير أو الصغير. أثناء كتابة صيغة، اضغط <kbd>F4</kbd> لتنقل المرجع بين <code>$A$1</code> و<code>A$1</code> و<code>$A1</code> و<code>A1</code>. وفي <strong>مربع الاسم</strong> اكتب <code>A1</code> أو <code>A1:D10</code> ثم <kbd>Enter</kbd> لتنتقل إليها. أكبر صف يقبله المرجع هو 100000.</p>
+
+<h2 id="formulas">الصيغ</h2>
+<p>تبدأ الصيغة بـ <code>=</code>، مثل <code>=SUM(B2:B10)</code>. تفصل بين المدخلات فاصلة <code>,</code> أو فاصلة منقوطة <code>;</code>. النص يوضع بين علامتي اقتباس مزدوجتين، و<code>TRUE</code> و<code>FALSE</code> قيمتان منطقيتان.</p>
+<h3>العمليات</h3>
+<table>
+  <thead><tr><th>العملية</th><th>الرموز</th></tr></thead>
+  <tbody>
+    <tr><td>حساب</td><td><code>+</code> <code>-</code> <code>*</code> <code>/</code> <code>^</code></td></tr>
+    <tr><td>نسبة مئوية</td><td><code>%</code> بعد الرقم</td></tr>
+    <tr><td>وصل النصوص</td><td><code>&amp;</code></td></tr>
+    <tr><td>مقارنة</td><td><code>=</code> <code>&lt;&gt;</code> <code>!=</code> <code>&lt;</code> <code>&lt;=</code> <code>&gt;</code> <code>&gt;=</code></td></tr>
+  </tbody>
+</table>
+<h3>الدوال الموجودة</h3>
+<p>هذه كل الدوال التي يحسبها جدول البيانات. أي اسم آخر يعطي الخطأ <code>#NAME?</code>.</p>
+<table>
+  <thead><tr><th>المجموعة</th><th>الدوال</th></tr></thead>
+  <tbody>
+    <tr><td>الإحصاء</td><td><code>SUM</code> <code>AVERAGE</code> <code>AVG</code> <code>MIN</code> <code>MAX</code> <code>COUNT</code> <code>COUNTA</code> <code>COUNTBLANK</code> <code>PRODUCT</code> <code>SUMPRODUCT</code> <code>MEDIAN</code> <code>MODE</code> <code>STDEV</code> <code>STDEVP</code> <code>VAR</code> <code>VARP</code> <code>PERCENTILE</code> <code>LARGE</code> <code>SMALL</code> <code>RANK</code> <code>SUMIF</code> <code>COUNTIF</code> <code>AVERAGEIF</code></td></tr>
+    <tr><td>المنطق</td><td><code>IF</code> <code>IFS</code> <code>IFERROR</code> <code>IFNA</code> <code>SWITCH</code> <code>CHOOSE</code> <code>AND</code> <code>OR</code> <code>XOR</code> <code>NOT</code> <code>ISBLANK</code> <code>ISNUMBER</code> <code>ISTEXT</code></td></tr>
+    <tr><td>الرياضيات</td><td><code>ABS</code> <code>SIGN</code> <code>SQRT</code> <code>POWER</code> <code>EXP</code> <code>LN</code> <code>LOG</code> <code>LOG10</code> <code>MOD</code> <code>INT</code> <code>FLOOR</code> <code>CEILING</code> <code>TRUNC</code> <code>ROUND</code> <code>ROUNDUP</code> <code>ROUNDDOWN</code> <code>PI</code> <code>RAND</code> <code>RANDBETWEEN</code></td></tr>
+    <tr><td>البحث</td><td><code>VLOOKUP</code> <code>HLOOKUP</code> <code>XLOOKUP</code> <code>INDEX</code> <code>MATCH</code> <code>ROW</code> <code>COLUMN</code> <code>ROWS</code> <code>COLUMNS</code></td></tr>
+    <tr><td>المال</td><td><code>PMT</code> <code>FV</code> <code>PV</code> <code>NPV</code></td></tr>
+    <tr><td>النص</td><td><code>LEN</code> <code>TRIM</code> <code>UPPER</code> <code>LOWER</code> <code>PROPER</code> <code>CONCAT</code> <code>CONCATENATE</code> <code>TEXTJOIN</code> <code>LEFT</code> <code>RIGHT</code> <code>MID</code> <code>SUBSTITUTE</code> <code>REPT</code> <code>VALUE</code> <code>TEXT</code> <code>EXACT</code></td></tr>
+    <tr><td>التاريخ</td><td><code>TODAY</code> <code>NOW</code> <code>DATE</code> <code>YEAR</code> <code>MONTH</code> <code>DAY</code> <code>DAYS</code> <code>DATEDIF</code></td></tr>
+  </tbody>
+</table>
+<p>قائمة <strong>إدراج دالة</strong> تشرح أكثر هذه الدوال استخدامًا، والبقية تعمل إذا كتبتها بنفسك.</p>
+<h3>رسائل الخطأ</h3>
+<table>
+  <thead><tr><th>الخطأ</th><th>السبب</th></tr></thead>
+  <tbody>
+    <tr><td><code>#VALUE!</code></td><td>نوع قيمة غير مناسب، مثل نص في عملية حسابية.</td></tr>
+    <tr><td><code>#REF!</code></td><td>مرجع إلى خلية أو ورقة غير موجودة.</td></tr>
+    <tr><td><code>#NAME?</code></td><td>اسم دالة غير معروف.</td></tr>
+    <tr><td><code>#DIV/0!</code></td><td>قسمة على صفر.</td></tr>
+    <tr><td><code>#NUM!</code></td><td>رقم غير صالح للعملية.</td></tr>
+    <tr><td><code>#N/A</code></td><td>قيمة لم يُعثر عليها، مثلًا في VLOOKUP.</td></tr>
+    <tr><td><code>#CYCLE!</code></td><td>مرجع دائري: الصيغة تعتمد على نفسها.</td></tr>
+    <tr><td><code>#ERROR!</code></td><td>خطأ آخر في الصيغة.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="shortcuts">اختصارات جدول البيانات</h2>
+<table>
+  <thead><tr><th>المفاتيح</th><th>ما تفعله</th></tr></thead>
+  <tbody>
+    <tr><td><kbd>Enter</kbd> أو <kbd>F2</kbd></td><td>تحرير الخلية النشطة مباشرة، أو التثبيت والانتقال للأسفل.</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>Enter</kbd></td><td>تعبئة كل الخلايا المحددة بالإدخال أو الصيغة الحالية.</td></tr>
+    <tr><td><kbd>Alt</kbd> + <kbd>=</kbd></td><td>جمع تلقائي للأرقام المجاورة.</td></tr>
+    <tr><td><kbd>F4</kbd> (أثناء تحرير صيغة)</td><td>التبديل بين أنواع المراجع الثابتة.</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>D</kbd> و<kbd>Ctrl</kbd> + <kbd>R</kbd></td><td>تعبئة للأسفل وتعبئة لليمين.</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>;</kbd> و<kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>;</kbd></td><td>إدراج التاريخ أو الوقت الحالي.</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + الأسهم</td><td>الانتقال إلى حافة منطقة البيانات.</td></tr>
+    <tr><td><kbd>Shift</kbd> + الأسهم</td><td>توسيع تحديد الخلايا.</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>C</kbd> و<kbd>X</kbd> و<kbd>V</kbd></td><td>نسخ وقص ولصق، بصيغة تفهمها Excel.</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>V</kbd></td><td>لصق القيم فقط دون الصيغ.</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>B</kbd> و<kbd>I</kbd> و<kbd>U</kbd> و<kbd>5</kbd></td><td>عريض، مائل، تسطير، يتوسطه خط.</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>Z</kbd> و<kbd>Ctrl</kbd> + <kbd>Y</kbd></td><td>تراجع وإعادة.</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>F</kbd></td><td>البحث والاستبدال في الورقة.</td></tr>
+    <tr><td><kbd>F1</kbd></td><td>قائمة الاختصارات.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="csv">الاستيراد والتصدير (CSV وExcel)</h2>
+<h3>الاستيراد</h3>
+<ol class="steps">
+  <li><h3>اضغط «استيراد ملف xlsx أو csv»</h3><p>يقبل الملفات <code>.xlsx</code> و<code>.xls</code> و<code>.csv</code> و<code>.tsv</code>.</p></li>
+  <li><h3>اختر الملف</h3><p>تُقرأ الأوراق كلها، وتبقى الصيغ صيغًا، وتتحول التواريخ إلى الشكل <code>YYYY-MM-DD</code>.</p></li>
+</ol>
+<div class="callout warn"><p>الاستيراد يستبدل جدول البيانات كله بمحتوى الملف، بكل أوراقه. إن أردت الاحتفاظ بالبيانات الحالية، أنشئ جدول بيانات جديدًا واستورد فيه.</p></div>
+<h3>التصدير</h3>
+<ul>
+  <li><strong>تصدير CSV (csv)</strong>: يصدّر <strong>الورقة الحالية فقط</strong>، بالقيم المحسوبة لا بالصيغ، بفاصلة بين الأعمدة، وبترميز UTF-8 الذي يحفظ العربية. اسم الملف هو عنوان الجدول.</li>
+  <li><strong>تصدير Excel (xlsx)</strong>: يصدّر <strong>كل الأوراق</strong> ويحتفظ بالصيغ. أسماء الأوراق تُقص إلى 31 حرفًا، وهو حد Excel.</li>
+</ul>
+
+<h2 id="page-tables">الجداول داخل الصفحات</h2>
+<p>اكتب «/» ثم <strong>جدول</strong> لجدول 3 في 3 بصف عناوين. عند تحديد خلايا يظهر شريط فيه <strong>+ صف</strong> و<strong>+ عمود</strong> و<strong>حذف الصف</strong> و<strong>حذف العمود</strong>. ومن مقبض الكتلة: <strong>إضافة صف أسفل</strong>، <strong>إضافة عمود على اليمين</strong>، <strong>تبديل صف العناوين</strong>، <strong>حذف الجدول</strong>.</p>
+<p>كتلة <strong>رسم بياني</strong> ترسم مخططًا دائريًا أو أعمدة أو خطوطًا من جدول في الصفحة نفسها. وكتل <strong>مجموعة</strong> و<strong>لوحة بطاقات</strong> و<strong>معرض</strong> تعرض الصفحات الفرعية كجدول بخصائصها. انظر <a href="/docs/pages/#properties">الخصائص</a>.</p>
+
+<h2 id="platforms">ما الذي يعمل وأين</h2>
+<table>
+  <thead><tr><th>الميزة</th><th>Windows</th><th>Apple</th><th>Android</th></tr></thead>
+  <tbody>
+    <tr><td>الصيغ والدوال</td><td>نعم</td><td>نعم، بالمحرك نفسه</td><td>نعم، بالمحرك نفسه</td></tr>
+    <tr><td>تحرير الخلايا والأوراق</td><td>نعم</td><td>جزئي: بلا تعبئة تلقائية وتنسيقات وتصفية وتراجع ونسخ نطاقات</td><td>نعم، والخلايا المدمجة والصفوف المجمدة تُحفظ لكنها لا تظهر</td></tr>
+    <tr><td>استيراد وتصدير CSV وExcel</td><td>نعم</td><td>قيد العمل</td><td>قيد العمل</td></tr>
+  </tbody>
+</table>
+<p>تطبيقات Apple وAndroid ما زالت قيد العمل. التفاصيل في <a href="/docs/install/">التثبيت</a>.</p>
+
+<h2 id="next">التالي</h2>
+<ul class="index">
+  <li><a href="/docs/pages/"><strong>الصفحات والكتل</strong><span>الجداول والرسوم البيانية داخل الصفحة</span></a></li>
+  <li><a href="/docs/projects/"><strong>المشاريع والمصادر</strong><span>اجمع جدولك مع مستنداته في مشروع واحد</span></a></li>
+</ul>
+
+<nav class="pager" aria-label="الدليل"><a class="prev" href="/docs/documents/"><small>السابق</small>المستندات</a><a class="next" href="/docs/projects/"><small>التالي</small>المشاريع والمصادر</a></nav>
+</main>
+</div>
+<footer class="wrap foot">
+  <div class="row">
+    <div class="credit">
+      <a class="lockup small" href="/" aria-label="Worlds الصفحة الرئيسية"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
+      <p>مهرجان الذكاء الطبيعي يقود الذكاء الاصطناعي 2026، مسار التجارب المتميزة.</p>
+    </div>
+    <nav aria-label="Worlds"><a href="/apps/">التطبيقات</a><a href="/docs/">الدليل</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="/privacy/">الخصوصية</a><a href="/terms/">شروط الاستخدام</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+  </div>
+  <p class="fine">Worlds اسم عمل إبداعي غير مسجل رسميًا، مستقل عن هوية imbue. الشيفرة منشورة على GitHub.</p>
+</footer>
+</body>
+</html>

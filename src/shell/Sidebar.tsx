@@ -9,7 +9,7 @@ import { IconButton } from "../ui/Button";
 import { Avatar, PageIcon } from "../ui/misc";
 import { useMenu, menuAt } from "../ui/Menu";
 import { pageMenu, renameRequests } from "./pageActions";
-import { api, errorMessage } from "../lib/api";
+import { api, errorMessage, isWeb } from "../lib/api";
 import { isResource } from "../resources/kinds";
 import { newResourceMenu } from "../resources/create";
 import { usePack } from "../packs/packs";
@@ -189,8 +189,8 @@ export function Sidebar() {
           )}
           <Section title="Library">
             {nav("template", "Templates", { kind: "templates" }, undefined, "templates")}
-            {nav("automation", "Automations", { kind: "automations" }, undefined, "automations")}
-            {nav("layers", "Integrations", { kind: "integrations" }, undefined, "integrations")}
+            {!isWeb && nav("automation", "Automations", { kind: "automations" }, undefined, "automations")}
+            {!isWeb && nav("layers", "Integrations", { kind: "integrations" }, undefined, "integrations")}
             {nav("activity", "Activity", { kind: "activity" }, undefined, "activity")}
             {nav("delete", "Trash", { kind: "trash" }, undefined, "trash")}
           </Section>

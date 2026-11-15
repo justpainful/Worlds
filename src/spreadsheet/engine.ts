@@ -1,5 +1,5 @@
 /**
- * Worlds Spreadsheet Engine — Excel-compatible multi-sheet workbook model,
+ * Worlds Spreadsheet Engine: Excel-compatible multi-sheet workbook model,
  * recursive-descent formula parser, dependency-safe evaluator, number/date
  * formatter, relative/absolute reference shifter, and series autofill.
  */
@@ -1520,7 +1520,7 @@ export function formatScalar(value: ScalarValue, style?: CellStyle): string {
         return value < 0
           ? `(${Math.abs(value).toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })})`
           : value === 0
-            ? "—"
+            ? "-"
             : value.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
       case "percent":
         return `${(value * 100).toFixed(decimals)}%`;

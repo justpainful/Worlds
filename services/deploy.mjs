@@ -213,6 +213,12 @@ if (state.domain) {
   // (run once with --domain-verified; it is remembered). Until then Resend
   // keeps its own test sender, so a fallback never uses an address it refuses.
   if (process.argv.includes("--domain-verified")) state.domainVerified = true;
+  // --new-email-keys asks for the Resend and Brevo keys again (a new account).
+  if (process.argv.includes("--new-email-keys")) {
+    if (!process.stdin.isTTY) fail("--new-email-keys asks for the keys, so run it in a terminal.");
+    delete state.resendKey;
+    delete state.brevoKey;
+  }
   if (!EDGE || state.domainVerified || !state.resendKey || !state.emailFrom) state.emailFrom = state.domainFrom;
   // Keys are only asked for in a terminal, and never echoed.
   if (process.stdin.isTTY) {
@@ -295,6 +301,8 @@ const idVars = (base, syncUrl) => ({
   WEBAUTHN_ORIGIN: base ?? "http://localhost:8787",
   PUBLIC_URL: base ?? "http://localhost:8787",
   SYNC_WEBHOOK_URL: syncUrl ? `${syncUrl}/internal/events` : "",
+  // Worlds on the web signs in from the browser (src/account/webAccount.ts).
+  ALLOWED_ORIGINS: state.domain ? `https://app.${state.domain},https://${state.domain}` : "",
 });
 const writeIdentity = () => {
   const path = writeConfig(ID_DIR, idVars(HOSTS ? `https://${HOSTS.identity}` : state.identityUrl, state.syncUrl), extras(HOSTS?.identity, true));

@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Worlds MCP server · Worlds</title>
+<meta name="description" content="Connect Claude Code or any MCP client to the Worlds workspace on your computer: the setup command, the tool groups, a version saved before every write with undo, and Discord sends that wait for your approval.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://enterworlds.space/en/docs/mcp/">
+<link rel="alternate" hreflang="ar" href="https://enterworlds.space/docs/mcp/">
+<link rel="alternate" hreflang="en" href="https://enterworlds.space/en/docs/mcp/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Worlds">
+<meta property="og:title" content="The Worlds MCP server">
+<meta property="og:description" content="Connect Claude Code or any MCP client to the Worlds workspace on your computer: the setup command, the tool groups, a version saved before every write with undo, and Discord sends that wait for your approval.">
+<meta property="og:image" content="https://enterworlds.space/media/og.png">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-256.png">
+<link rel="preload" href="/fonts/instrument-sans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/site.css">
+<script src="/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="wrap top">
+  <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="46" height="46"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="70" height="26"></a>
+  <nav class="nav" aria-label="Menu"><a href="/en/apps/">Apps</a><a href="/en/docs/" aria-current="page">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/docs/mcp/" hreflang="ar" lang="ar">العربية</a></nav>
+  <details class="menu"><summary>Menu</summary><div class="nav"><a href="/en/apps/">Apps</a><a href="/en/docs/" aria-current="page">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/docs/mcp/" hreflang="ar" lang="ar">العربية</a></div></details>
+</header>
+<div class="wrap docs">
+<details class="side" open><summary>Docs pages</summary><div class="side-list"><h2>Start here</h2><ul><li><a href="/en/docs/">Overview</a></li><li><a href="/en/docs/getting-started/">Getting started with Worlds</a></li></ul><h2>Install</h2><ul><li><a href="/en/docs/install/">Install Worlds</a></li><li class="sub"><a href="/en/docs/install/windows/">Install Worlds on Windows</a></li><li class="sub"><a href="/en/docs/install/macos/">Install Worlds on Mac</a></li><li class="sub"><a href="/en/docs/install/iphone-ipad/">Install Worlds on iPhone and iPad</a></li><li class="sub"><a href="/en/docs/install/android/">Install Worlds on Android</a></li><li class="sub"><a href="/en/docs/install/web/">Worlds in the browser</a></li><li class="sub"><a href="/en/docs/install/update-uninstall/">Update and uninstall</a></li><li><a href="/en/docs/troubleshooting/">Troubleshooting</a></li></ul><h2>Write and organise</h2><ul><li><a href="/en/docs/pages/">Pages and blocks</a></li><li><a href="/en/docs/documents/">Documents</a></li><li><a href="/en/docs/tables/">Tables and spreadsheets</a></li><li><a href="/en/docs/projects/">Projects and resources</a></li><li><a href="/en/docs/templates/">Templates</a></li><li><a href="/en/docs/search-commands/">Search and commands</a></li><li><a href="/en/docs/history/">History and backups</a></li></ul><h2>Draw, present and media</h2><ul><li><a href="/en/docs/drawing/">Drawing</a></li><li><a href="/en/docs/presentations/">Presentations</a></li><li><a href="/en/docs/media-files/">Media and files</a></li></ul><h2>Claude and automations</h2><ul><li><a href="/en/docs/claude/">Claude and other AI providers</a></li><li><a href="/en/docs/automations/">Automations</a></li><li><a href="/en/docs/discord/">Discord bridge</a></li><li><a href="/en/docs/integrations/">Integrations</a></li></ul><h2>Account and sharing</h2><ul><li><a href="/en/docs/account/">Your Worlds account</a></li><li><a href="/en/docs/sharing/">Sharing and working together</a></li><li><a href="/en/docs/sync/">How sync works</a></li><li><a href="/en/docs/packs/">Packs</a></li><li><a href="/en/docs/profile/">Profile and Activity</a></li><li><a href="/en/docs/settings/">Settings</a></li></ul><h2>For developers</h2><ul><li><a href="/en/docs/html-pages/">HTML pages</a></li><li><a href="/en/docs/mcp/" aria-current="page">The Worlds MCP server</a></li></ul></div></details>
+<main id="main" class="article">
+<p class="crumb"><a href="/en/docs/">Docs</a> / For developers</p>
+<h1>The Worlds MCP server</h1>
+<p class="lead">Worlds comes with an MCP server that lets Claude Code, or any other program that speaks MCP, read and edit your pages on your computer, with the same safe tools the in-app assistant uses. A version is saved before every write, and every write can be undone.</p>
+
+<h2 id="what">What it is</h2>
+<p>MCP is a standard way for AI programs to connect to tools. The Worlds server is the Worlds app itself running in a special mode: <code>worlds.exe --mcp</code>. It talks to the program over standard input and output on your computer and opens the local Worlds database directly. Nothing goes over the internet or through Worlds servers.</p>
+<p>The server is available in the Windows app.</p>
+
+<h2 id="claude-code">Connecting Claude Code</h2>
+<h3>From inside Worlds (easiest)</h3>
+<ol class="steps">
+<li><h3>Open Settings, Claude</h3><p>In the Claude Code group there is a row, "Use Worlds from Claude Code sessions".</p></li>
+<li><h3>Click Register</h3><p>Worlds adds its tool server to your Claude Code user configuration. You see "Worlds tools registered with Claude Code". The button is off if Worlds cannot find Claude Code on the PC.</p></li>
+<li><h3>Start a new Claude Code session</h3><p>Now "Your Claude Code sessions can read and edit pages through the same safe tools." The <a href="/en/docs/integrations/">Integrations</a> view shows "Also available in your Claude Code sessions".</p></li>
+</ol>
+<p>If you move or reinstall Worlds, click <strong>Register again</strong>.</p>
+
+<h3>With the command</h3>
+<p>This is the command the Register button runs. The path is where Worlds usually installs on Windows. If you installed it somewhere else, use the path to your <code>worlds.exe</code>:</p>
+<pre><code>claude mcp add --scope user worlds -- "%LOCALAPPDATA%\Worlds\worlds.exe" --mcp --actor ai</code></pre>
+<p><code>--scope user</code> makes the tools available in all your projects. <code>--actor ai</code> records changes as made by AI in the Worlds history, so you can tell who changed what.</p>
+
+<h2 id="other-clients">Other MCP clients</h2>
+<p>Any program that runs a local MCP server over standard input and output needs a command and arguments:</p>
+<dl class="facts">
+<div><dt>Command</dt><dd><code>%LOCALAPPDATA%\Worlds\worlds.exe</code> (or your install path)</dd></div>
+<div><dt>Arguments</dt><dd><code>--mcp --actor ai</code></dd></div>
+<div><dt>Type</dt><dd><code>stdio</code></dd></div>
+</dl>
+<p>In the format most programs use:</p>
+<pre><code>{
+  "mcpServers": {
+    "worlds": {
+      "type": "stdio",
+      "command": "C:\\Users\\YOU\\AppData\\Local\\Worlds\\worlds.exe",
+      "args": ["--mcp", "--actor", "ai"]
+    }
+  }
+}</code></pre>
+<p>Codex inside Worlds (from <strong>Settings</strong>, <strong>Providers</strong>) gets the Worlds tools automatically. Worlds has no button that registers the server with the Codex you use outside the app, so add it with the command and arguments above.</p>
+
+<h2 id="data">Which workspace it uses</h2>
+<p>The server opens the Worlds database on your computer: <code>%APPDATA%\Worlds\worlds.db</code>. If the <code>WORLDS_DATA_DIR</code> environment variable is set, it uses that folder instead. The Worlds app sees changes the server makes and refreshes open pages.</p>
+
+<h2 id="tools">Tool groups</h2>
+<table>
+<thead><tr><th>Group</th><th>What it does</th><th>Examples</th></tr></thead>
+<tbody>
+<tr><td>Pages</td><td>Create, read, search, rename, move, archive, restore and export to Markdown</td><td><code>pages_create</code>, <code>pages_read</code>, <code>pages_search</code></td></tr>
+<tr><td>Blocks</td><td>Insert, update, move, convert and delete blocks</td><td><code>blocks_insert</code>, <code>blocks_update</code></td></tr>
+<tr><td>Tables</td><td>Read a table, add a row, update a cell, import and export CSV</td><td><code>tables_read</code>, <code>tables_from_csv</code></td></tr>
+<tr><td>Drawings</td><td>Read a drawing and apply changes to it, its versions, and the drawing library</td><td><code>drawings_read</code>, <code>drawings_apply</code></td></tr>
+<tr><td>Presentations</td><td>Read a deck, add a slide and update it</td><td><code>presentations_add_slide</code></td></tr>
+<tr><td>Tasks, properties and collections</td><td>Tasks, and page properties and their options</td><td><code>tasks_add</code>, <code>properties_schema</code></td></tr>
+<tr><td>Automations</td><td>List, create, update and run, the run history and upcoming runs</td><td><code>automations_create</code>, <code>automations_runs</code></td></tr>
+<tr><td>Discord</td><td>List destinations, preview a message, request a send or edit, see what is pending and what was sent</td><td><code>discord_preview</code>, <code>discord_send</code></td></tr>
+<tr><td>Templates</td><td>List templates, make a page from one or a template from a page</td><td><code>templates_instantiate</code></td></tr>
+<tr><td>History and versions</td><td>Read the history, undo, list, compare and restore versions</td><td><code>history_undo</code>, <code>versions_restore</code></td></tr>
+<tr><td>Profile</td><td>Name, status, links, images and blocks</td><td><code>profile_update</code></td></tr>
+<tr><td>Media and files</td><td>Attach files and add them to pages and galleries</td><td><code>attachments_add</code></td></tr>
+<tr><td>Chats and instructions</td><td>Earlier Claude chats, and the global instructions</td><td><code>chats_search</code>, <code>instructions_read</code></td></tr>
+<tr><td>General</td><td>Workspace overview, search everything, the time, settings, an activity summary, Trash and archive</td><td><code>workspace_overview</code>, <code>search_everything</code></td></tr>
+</tbody>
+</table>
+<p>Two more groups come in a coming release:</p>
+<ul>
+<li><strong>HTML pages</strong>: <code>html_pages_rules</code>, <code>html_pages_read</code> and <code>html_pages_write</code>. See <a href="/en/docs/html-pages/">HTML pages</a>.</li>
+<li><strong>Planning and study</strong>: <code>planning_list</code>, <code>planning_create</code> and <code>planning_update</code> for the items of the <a href="/en/docs/packs/#study">Study pack</a>: subjects, classes, exams, assignments, things to bring, tasks, lessons and goals. <code>planning_create</code> makes up to 200 items in one request, such as a subject with its weekly classes.</li>
+</ul>
+
+<h2 id="safety">Safety and undo</h2>
+<ul>
+<li>Every write is recorded with who made it, and the changes of one session are grouped together.</li>
+<li>Before the first change to a page, Worlds saves a version of it.</li>
+<li><code>history_undo</code> reverts everything changed in one operation, and <code>versions_restore</code> restores a version and keeps the current state as a version too.</li>
+<li>In the app: open the page, then its <strong>History</strong> panel, and click <strong>Undo</strong> next to the group of changes. See <a href="/en/docs/history/">History and versions</a>.</li>
+<li>The tools work on Worlds pages only. They give the program no access to the files on your computer and no shell.</li>
+</ul>
+
+<h2 id="discord">Discord sends wait for your approval</h2>
+<p><code>discord_send</code>, <code>discord_edit</code> and <code>automations_run</code> send nothing. They put the request in <strong>Needs approval</strong> in the Worlds <strong>Activity</strong> view, and the server replies that nothing was sent and the request waits for your approval. An automation that a program creates through MCP is always saved to wait for approval before each send. To approve, the Worlds app must be open. See <a href="/en/docs/discord/#approval">The approval queue</a>.</p>
+
+<h2 id="next">Read next</h2>
+<ul class="index">
+<li><a href="/en/docs/claude/"><strong>Claude and providers</strong><span>The assistant inside the app</span></a></li>
+<li><a href="/en/docs/integrations/"><strong>Integrations</strong><span>Claude Code status and registration</span></a></li>
+<li><a href="/en/tools/"><strong>Tools around Worlds</strong><span>An overview of every tool</span></a></li>
+</ul>
+
+<nav class="pager" aria-label="Docs"><a class="prev" href="/en/docs/html-pages/"><small>Previous</small>HTML pages</a></nav>
+</main>
+</div>
+<footer class="wrap foot">
+  <div class="row">
+    <div class="credit">
+      <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
+      <p>Natural Intelligence Leads Artificial Intelligence festival 2026, outstanding experiments track.</p>
+    </div>
+    <nav aria-label="Worlds"><a href="/en/apps/">Apps</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="/en/privacy/">Privacy</a><a href="/en/terms/">Terms of use</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+  </div>
+  <p class="fine">Worlds is a creative working name, not a registered mark, and is independent of the imbue identity. The code is published on GitHub.</p>
+</footer>
+</body>
+</html>

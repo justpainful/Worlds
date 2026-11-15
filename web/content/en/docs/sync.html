@@ -1,0 +1,70 @@
+<!--
+title: How sync works
+description: A plain explanation of what stays on your device and what goes to the Worlds server, how the web version keeps its workspace on your account, and how conflicts are settled.
+-->
+<h1>How sync works</h1>
+<p class="lead">Worlds runs on your device first. The copy on your device is the original, and it works without internet. Nothing goes to the server except pages in Team workspaces, and your web workspace if you sign in there.</p>
+
+<h2 id="local-first">Your device holds the original</h2>
+<ul>
+<li>Every device keeps a full copy of its pages and works offline.</li>
+<li>A change is saved on your device first. If you are offline it waits and is sent when the connection returns.</li>
+<li>The server does three things only: accounts, permissions, and moving changes between devices.</li>
+</ul>
+
+<h2 id="what-goes">What goes to the server</h2>
+<table>
+<thead><tr><th>What you have</th><th>Does it go to the server?</th></tr></thead>
+<tbody>
+<tr><td>Personal workspace pages in the apps</td><td>No. They stay on the device and are not synced, not even between your own devices, unless you move the page into a Team workspace.</td></tr>
+<tr><td>Team workspace pages</td><td>Yes: the page content, its comments and attachments, and the page tree and titles.</td></tr>
+<tr><td>The web workspace, signed in</td><td>Yes: one copy of your whole workspace on your account, readable only by you.</td></tr>
+<tr><td>The web workspace, signed out</td><td>No. It stays in this browser only.</td></tr>
+<tr><td>API keys</td><td>Never. See <a href="/en/docs/claude/#keys">Where keys are kept</a>.</td></tr>
+</tbody>
+</table>
+<p>Data is encrypted in transit and encrypted at rest on the server. It is not end-to-end encrypted: the server can read Team pages and the web workspace so that it can sync them.</p>
+
+<h2 id="servers">Where the server runs</h2>
+<p>The Worlds servers run on Cloudflare, at three addresses:</p>
+<dl class="facts">
+<div><dt><code>login.enterworlds.space</code></dt><dd>Accounts: sign-in, passkeys, workspaces and invites</dd></div>
+<div><dt><code>connect.enterworlds.space</code></dt><dd>Sync: live shared pages, their attachments and the web workspace</dd></div>
+<div><dt><code>go.enterworlds.space</code></dt><dd>Worlds in the browser</dd></div>
+</dl>
+
+<h2 id="web">The web version and its workspace</h2>
+<p>At <a href="https://go.enterworlds.space/">go.enterworlds.space</a> your pages are kept in the browser and work offline. When you sign in, Worlds keeps the whole web workspace on your account: pages, blocks, drawings, settings, profile, chats and attached files. Then you can open it from any browser with the same account.</p>
+<ul>
+<li>Saving happens a few seconds after your last change.</li>
+<li>The workspace copy can be up to 32 MB, and each attached file up to 25 MB.</li>
+<li>The web workspace is separate from the Personal pages in the Windows or phone app.</li>
+</ul>
+
+<h2 id="conflicts">If you change the same thing in two places</h2>
+<h3>On the web</h3>
+<p>When two copies of the web workspace meet (for example a browser at home and one at work):</p>
+<ul>
+<li>Each page keeps the copy that changed it most recently. The latest change to a page wins.</li>
+<li>A page that was deleted for good stays deleted.</li>
+<li>Chats and files are combined from both copies.</li>
+<li>Settings and profile come from the copy saved most recently.</li>
+</ul>
+<p>If another device saved at the same moment, Worlds fetches its copy, merges and saves again.</p>
+<h3>Shared pages in the apps</h3>
+<p>Here you do not have to choose: if two people type in the same page at the same time, what each of them wrote is kept. Changes from Claude and from automations are merged into the shared page without wiping out what others are typing.</p>
+<ul>
+<li>If the server refuses a change (for example because your access changed), the app rebuilds the page from the server's copy and shows <strong>Needs attention</strong>.</li>
+<li>The first time a page is shared on a computer, if the server already has it, the server's copy wins, and your earlier copy stays restorable as "Before live sync".</li>
+<li>Versions of a shared page are saved after edits at least 10 minutes apart and when the last person leaves, and the newest 200 are kept. Open them from <strong>Shared History</strong>.</li>
+</ul>
+
+<h2 id="backups">Backups are not sync</h2>
+<p>Sync does not replace backups of your Personal pages. In the Windows app open <strong>Settings</strong>, <strong>Storage</strong>, <strong>Backups</strong> and click <strong>Back up now</strong>. See <a href="/en/docs/settings/#storage">the Storage section</a>.</p>
+
+<h2 id="next">Read next</h2>
+<ul class="index">
+<li><a href="/en/docs/sharing/"><strong>Sharing and working together</strong><span>Team workspaces and access</span></a></li>
+<li><a href="/en/docs/account/"><strong>Your Worlds account</strong><span>Creating it and signing in</span></a></li>
+<li><a href="/en/privacy/"><strong>Privacy</strong><span>What is kept and why</span></a></li>
+</ul>

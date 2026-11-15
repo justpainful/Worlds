@@ -6,6 +6,12 @@ import { Icon } from "../ui/Icon";
 import { accountApi, type AccountView } from "./api";
 import { useAccount } from "./store";
 
+/** Worlds on the web signs in with the email code only: the browser has no passkey flow here (webAccount.ts). */
+const WEB = import.meta.env.VITE_WEB_DEMO === "1" && Boolean(import.meta.env.VITE_IDENTITY_URL);
+/** The demo at demo.enterworlds.space has no accounts: they live in Worlds on the web (app.enterworlds.space). */
+const SAMPLE = import.meta.env.VITE_WEB_SAMPLE === "1";
+const APP_URL = "https://app.enterworlds.space";
+
 type Step =
   | { kind: "choose" }
   | { kind: "email"; create: boolean }
@@ -32,6 +38,7 @@ export function SignInFlow({ start = "choose", onDone, onCancel }: { start?: "ch
     if (step.kind === "code") codeRef.current?.focus();
   }, [step.kind]);
 
+  if (SAMPLE) return <DemoHasNoAccounts onClose={onCancel ?? onDone} />;
   if (view && !view.configured) return <ServerNeeded onClose={onCancel ?? onDone} />;
 
   const act = async (fn: () => Promise<void>) => {
@@ -59,18 +66,20 @@ export function SignInFlow({ start = "choose", onDone, onCancel }: { start?: "ch
         </div>
         <h2 className="acct-title">{step.created ? "Your account is ready" : "You are signed in"}</h2>
         <p className="acct-text">
-          {step.created
+          {step.created && WEB
+            ? "The same account works in the Worlds app on your PC and phone: sign in there with this email."
+            : step.created
             ? "Add a passkey so this PC and your others can sign in with Windows Hello, your face, fingerprint or PIN."
             : "Your Team workspaces are in the menu at the top of the sidebar."}
         </p>
         <div className="acct-actions">
-          {step.created && (
+          {step.created && !WEB && (
             <Button variant="tinted" size="large" icon="lock" onClick={() => act(async () => void (await accountApi.passkeyAdd()))} loading={busy}>
               Add a Passkey
             </Button>
           )}
-          <Button variant={step.created ? "quiet" : "tinted"} size="large" onClick={onDone}>
-            {step.created ? "Not Now" : "Done"}
+          <Button variant={step.created && !WEB ? "quiet" : "tinted"} size="large" onClick={onDone}>
+            {step.created && !WEB ? "Not Now" : "Done"}
           </Button>
         </div>
         {error && <p className="acct-error">{error}</p>}
@@ -201,6 +210,7 @@ export function SignInFlow({ start = "choose", onDone, onCancel }: { start?: "ch
       <h2 className="acct-title">Sign in to Worlds</h2>
       <p className="acct-text">An account lets you join Team workspaces and work on pages with other people. Your Personal pages stay on this PC.</p>
       <div className="acct-actions is-stacked">
+        {!WEB && (
         <Button
           variant="tinted"
           size="large"
@@ -216,7 +226,8 @@ export function SignInFlow({ start = "choose", onDone, onCancel }: { start?: "ch
         >
           Sign In with a Passkey
         </Button>
-        <Button variant="plain" size="large" disabled={busy} onClick={() => setStep({ kind: "email", create: false })}>
+        )}
+        <Button variant={WEB ? "tinted" : "plain"} size="large" disabled={busy} onClick={() => setStep({ kind: "email", create: false })}>
           Sign In with an Email Code
         </Button>
         <Button variant="quiet" disabled={busy} onClick={() => setStep({ kind: "email", create: true })}>
@@ -229,6 +240,26 @@ export function SignInFlow({ start = "choose", onDone, onCancel }: { start?: "ch
           Not Now
         </button>
       )}
+    </div>
+  );
+}
+
+function DemoHasNoAccounts({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="acct-flow">
+      <div className="acct-hero-icon">
+        <Icon name="user" size={24} />
+      </div>
+      <h2 className="acct-title">This demo has no accounts</h2>
+      <p className="acct-text">What you change here stays in this browser. To create an account and keep your pages on it, open Worlds at app.enterworlds.space.</p>
+      <div className="acct-actions is-stacked">
+        <Button variant="tinted" size="large" autoFocus onClick={() => window.open(`${APP_URL}/?account=create`, "_blank", "noopener")}>
+          Create an Account in Worlds
+        </Button>
+        <Button variant="plain" size="large" onClick={onClose}>
+          OK
+        </Button>
+      </div>
     </div>
   );
 }

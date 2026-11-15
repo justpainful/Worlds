@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Integrations · Worlds</title>
+<meta name="description" content="The Integrations view in Worlds on Windows: the Claude Code card and the Discord card, and what each one really does.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://enterworlds.space/en/docs/integrations/">
+<link rel="alternate" hreflang="ar" href="https://enterworlds.space/docs/integrations/">
+<link rel="alternate" hreflang="en" href="https://enterworlds.space/en/docs/integrations/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Worlds">
+<meta property="og:title" content="Integrations">
+<meta property="og:description" content="The Integrations view in Worlds on Windows: the Claude Code card and the Discord card, and what each one really does.">
+<meta property="og:image" content="https://enterworlds.space/media/og.png">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-256.png">
+<link rel="preload" href="/fonts/instrument-sans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/site.css">
+<script src="/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="wrap top">
+  <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="46" height="46"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="70" height="26"></a>
+  <nav class="nav" aria-label="Menu"><a href="/en/apps/">Apps</a><a href="/en/docs/" aria-current="page">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/docs/integrations/" hreflang="ar" lang="ar">العربية</a></nav>
+  <details class="menu"><summary>Menu</summary><div class="nav"><a href="/en/apps/">Apps</a><a href="/en/docs/" aria-current="page">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/docs/integrations/" hreflang="ar" lang="ar">العربية</a></div></details>
+</header>
+<div class="wrap docs">
+<details class="side" open><summary>Docs pages</summary><div class="side-list"><h2>Start here</h2><ul><li><a href="/en/docs/">Overview</a></li><li><a href="/en/docs/getting-started/">Getting started with Worlds</a></li></ul><h2>Install</h2><ul><li><a href="/en/docs/install/">Install Worlds</a></li><li class="sub"><a href="/en/docs/install/windows/">Install Worlds on Windows</a></li><li class="sub"><a href="/en/docs/install/macos/">Install Worlds on Mac</a></li><li class="sub"><a href="/en/docs/install/iphone-ipad/">Install Worlds on iPhone and iPad</a></li><li class="sub"><a href="/en/docs/install/android/">Install Worlds on Android</a></li><li class="sub"><a href="/en/docs/install/web/">Worlds in the browser</a></li><li class="sub"><a href="/en/docs/install/update-uninstall/">Update and uninstall</a></li><li><a href="/en/docs/troubleshooting/">Troubleshooting</a></li></ul><h2>Write and organise</h2><ul><li><a href="/en/docs/pages/">Pages and blocks</a></li><li><a href="/en/docs/documents/">Documents</a></li><li><a href="/en/docs/tables/">Tables and spreadsheets</a></li><li><a href="/en/docs/projects/">Projects and resources</a></li><li><a href="/en/docs/templates/">Templates</a></li><li><a href="/en/docs/search-commands/">Search and commands</a></li><li><a href="/en/docs/history/">History and backups</a></li></ul><h2>Draw, present and media</h2><ul><li><a href="/en/docs/drawing/">Drawing</a></li><li><a href="/en/docs/presentations/">Presentations</a></li><li><a href="/en/docs/media-files/">Media and files</a></li></ul><h2>Claude and automations</h2><ul><li><a href="/en/docs/claude/">Claude and other AI providers</a></li><li><a href="/en/docs/automations/">Automations</a></li><li><a href="/en/docs/discord/">Discord bridge</a></li><li><a href="/en/docs/integrations/" aria-current="page">Integrations</a></li></ul><h2>Account and sharing</h2><ul><li><a href="/en/docs/account/">Your Worlds account</a></li><li><a href="/en/docs/sharing/">Sharing and working together</a></li><li><a href="/en/docs/sync/">How sync works</a></li><li><a href="/en/docs/packs/">Packs</a></li><li><a href="/en/docs/profile/">Profile and Activity</a></li><li><a href="/en/docs/settings/">Settings</a></li></ul><h2>For developers</h2><ul><li><a href="/en/docs/html-pages/">HTML pages</a></li><li><a href="/en/docs/mcp/">The Worlds MCP server</a></li></ul></div></details>
+<main id="main" class="article">
+<p class="crumb"><a href="/en/docs/">Docs</a> / Claude and automations</p>
+<h1>Integrations</h1>
+<p class="lead">The Integrations view lists the services Worlds connects to and their status. Its subtitle: "Everything Worlds connects to runs on your own machines." Today it has exactly two cards: Claude Code and Discord.</p>
+
+<h2 id="open">Opening it</h2>
+<p>Open <strong>Integrations</strong> from the Library part of the sidebar, from the command palette, or from <strong>Settings</strong>, <strong>Integrations</strong>. The view is in the Windows app.</p>
+<figure class="shot"><img src="/media/book/p32.webp" alt="The Integrations view with two cards: Claude Code with four lines on how it runs and a Settings button, and Discord via the bridge with a Check connection button" width="1600" height="1000" loading="lazy"><figcaption>The Integrations view. In this capture Claude Code was not yet registered for Claude Code sessions, and the Discord status was still being checked.</figcaption></figure>
+
+<h2 id="claude-code">Claude Code</h2>
+<p>Subtitle: "Local AI bridge · structured Worlds tools". The status is <strong>Ready</strong> when Worlds finds Claude Code on the PC, or <strong>Unavailable</strong>. If it is missing: "Claude Code was not found on this PC. Install it, then reopen Worlds."</p>
+<p>The card says what really happens when Claude runs inside Worlds:</p>
+<ul>
+<li>"Runs with Haiku and low effort unless you choose otherwise": the default, Spark with Glance.</li>
+<li>"Only Worlds tools: no shell, no file system".</li>
+<li>"Every change is recorded and can be undone".</li>
+<li>"Also available in your Claude Code sessions" or "Not yet registered for Claude Code sessions": whether you added the Worlds tools to the Claude Code you use outside the app.</li>
+</ul>
+<p>The <strong>Settings</strong> button opens <strong>Settings</strong>, <strong>Claude</strong>. There, click <strong>Register</strong> next to "Use Worlds from Claude Code sessions" to register the MCP server. See <a href="/en/docs/mcp/">MCP server</a> and <a href="/en/docs/claude/">Claude and other AI providers</a>.</p>
+
+<h2 id="discord">Discord</h2>
+<p>The "Discord via" card, with the bridge's name, shows the connection to your own Discord bot through the bridge:</p>
+<ul>
+<li><strong>Connected</strong>: the bridge works and you can send.</li>
+<li><strong>Disconnected</strong>: the module is not installed next to the bot. A panel, "Install the Worlds bridge module", explains what you need.</li>
+<li>Other states: the machine is unreachable, the key was refused, or the bridge is not set up.</li>
+</ul>
+<p><strong>Check connection</strong> runs the check again. The card also reminds you that the bot token stays on the bot's machine and Worlds holds only a shared key, in memory. Set it up in <strong>Settings</strong>, Discord. See <a href="/en/docs/discord/">Discord bridge</a>.</p>
+
+<h2 id="not-here">What is not on this screen</h2>
+<ul>
+<li>There are no other integrations today, such as GitHub, Slack or Google.</li>
+<li>Codex, API keys and local models are in <strong>Settings</strong>, <strong>Providers</strong>, not here. See <a href="/en/docs/claude/#connect">Ways to connect the assistant</a>.</li>
+<li>Any program that speaks MCP can use the Worlds tools on your computer. See <a href="/en/docs/mcp/">MCP server</a>.</li>
+</ul>
+
+<nav class="pager" aria-label="Docs"><a class="prev" href="/en/docs/discord/"><small>Previous</small>Discord bridge</a><a class="next" href="/en/docs/account/"><small>Next</small>Your Worlds account</a></nav>
+</main>
+</div>
+<footer class="wrap foot">
+  <div class="row">
+    <div class="credit">
+      <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
+      <p>Natural Intelligence Leads Artificial Intelligence festival 2026, outstanding experiments track.</p>
+    </div>
+    <nav aria-label="Worlds"><a href="/en/apps/">Apps</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="/en/privacy/">Privacy</a><a href="/en/terms/">Terms of use</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+  </div>
+  <p class="fine">Worlds is a creative working name, not a registered mark, and is independent of the imbue identity. The code is published on GitHub.</p>
+</footer>
+</body>
+</html>

@@ -4,7 +4,8 @@ import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { enable as enableAutostart, disable as disableAutostart, isEnabled as autostartEnabled } from "@tauri-apps/plugin-autostart";
 import { IntelligenceControls } from "../ai/models";
 import { ProviderSettings, useArabic, useT } from "../ai/providers";
-import { api, errorMessage, type BackupInfo, type BackupState } from "../lib/api";
+import { api, errorMessage, isWeb, type BackupInfo, type BackupState } from "../lib/api";
+import { openExternal } from "../lib/links";
 import { useStore } from "../state/store";
 import { Segmented } from "../ui/Segmented";
 import { Button } from "../ui/Button";
@@ -45,6 +46,10 @@ const SECTIONS: { id: string; label: string; ar?: string; tile: string; group: n
   { id: "advanced", label: "Advanced", tile: "settings", group: 3, keywords: "developer lab reset layout" },
 ];
 
+/** Sections that are about this computer (keys, Discord bot, startup, connected apps) do not apply to Worlds in the browser. */
+const WEB_HIDDEN = new Set(["providers", "automations", "integrations", "discord"]);
+const SECTIONS_HERE = isWeb ? SECTIONS.filter((s) => !WEB_HIDDEN.has(s.id)) : SECTIONS;
+
 export function SettingsView({ section = "appearance" }: { section?: string }) {
   const [active, setActive] = useState(section);
   const [query, setQuery] = useState("");
@@ -54,8 +59,8 @@ export function SettingsView({ section = "appearance" }: { section?: string }) {
   const label = (s: (typeof SECTIONS)[number]) => (arabic && s.ar ? s.ar : s.label);
   useEffect(() => setActive(section), [section]);
   const q = query.trim().toLowerCase();
-  const visible = q ? SECTIONS.filter((s) => `${s.label} ${s.ar ?? ""} ${s.keywords}`.toLowerCase().includes(q)) : SECTIONS;
-  const current = SECTIONS.find((s) => s.id === active) ?? SECTIONS[0];
+  const visible = q ? SECTIONS_HERE.filter((s) => `${s.label} ${s.ar ?? ""} ${s.keywords}`.toLowerCase().includes(q)) : SECTIONS_HERE;
+  const current = SECTIONS_HERE.find((s) => s.id === active) ?? SECTIONS_HERE[0];
   const pick = (id: string) => (id === "integrations" ? open({ kind: "integrations" }) : setActive(id));
   return (
     <div className="settings">
@@ -90,11 +95,11 @@ export function SettingsView({ section = "appearance" }: { section?: string }) {
         {active === "appearance" && <Appearance />}
         {active === "editor" && <EditorSettings />}
         {active === "packs" && <PackSettings />}
-        {active === "ai" && <AiSettings />}
+        {active === "ai" && (isWeb ? <WebClaudeSettings /> : <AiSettings />)}
         {active === "providers" && <ProviderSettings Group={Group} Row={Row} />}
         {active === "automations" && <AutomationSettings />}
         {active === "discord" && <BridgeCard detailed />}
-        {active === "storage" && <StorageSettings />}
+        {active === "storage" && (isWeb ? <WebStorageSettings /> : <StorageSettings />)}
         {active === "advanced" && <Advanced />}
       </div>
     </div>
@@ -463,6 +468,54 @@ const BACKUP_REASON: Record<string, string> = {
 function backupLabel(reason: string) {
   if (reason.startsWith("pre-migration")) return "Before an update";
   return BACKUP_REASON[reason] ?? reason;
+}
+
+/** Worlds in the browser: where the workspace is kept, and how much room it takes. */
+function WebStorageSettings() {
+  const [usage, setUsage] = useState<{ used: number; kept: boolean } | null>(null);
+  useEffect(() => {
+    void (async () => {
+      try {
+        const e = await navigator.storage?.estimate?.();
+        const kept = (await navigator.storage?.persisted?.()) ?? false;
+        if (e) setUsage({ used: e.usage ?? 0, kept });
+      } catch {
+        // the browser does not say
+      }
+    })();
+  }, []);
+  return (
+    <>
+      <Group
+        title="Storage"
+        note="Your pages, drawings and files are kept in this browser and stay after you close the tab. When you are signed in they are also kept on your account, so they open in any browser you sign in to."
+      >
+        <Row
+          label="Used in this browser"
+          hint={usage?.kept ? "The browser keeps it until this site's data is cleared." : "The browser may clear it when the device runs out of space. Sign in to keep a copy on your account."}
+        >
+          <span className="set-row-hint">{usage ? formatBytes(usage.used) : ""}</span>
+        </Row>
+      </Group>
+      <SampleWorkspaceSettings />
+    </>
+  );
+}
+
+/** Claude runs in the apps, with the person's own sign-in or key; the browser version sends nothing to an AI service. */
+function WebClaudeSettings() {
+  return (
+    <Group
+      title="Claude"
+      note="Claude works in the Worlds apps for Windows, Mac, iPhone, iPad and Android, with your own sign-in or API key. Worlds in the browser does not send your pages to any AI service."
+    >
+      <Row label="Get the apps" hint="enterworlds.space/apps">
+        <Button variant="plain" icon="openExternal" onClick={() => void openExternal("https://enterworlds.space/apps/")}>
+          Open
+        </Button>
+      </Row>
+    </Group>
+  );
 }
 
 function StorageSettings() {

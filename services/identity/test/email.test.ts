@@ -6,13 +6,16 @@ import { api, mailbox, uniqueEmail } from "./helpers";
 const msg: EmailMessage = { to: "a@example.com", subject: "s", text: "t", html: "<p>h</p>" };
 
 describe("sign-in email", () => {
-  it("reads right to left in Arabic with the code in six cells", () => {
+  it("reads right to left in Arabic with the code as one piece of text", () => {
     const e = codeEmail("482915", "ar");
     expect(e.subject).toContain("482915");
     expect(e.subject).toContain("رمز");
     expect(e.html).toContain('dir="rtl"');
     expect(e.html).toContain('lang="ar"');
-    expect(e.html.match(/class="cell"/g)).toHaveLength(6);
+    // One element holds all six digits, so a double-click or long press copies the whole code.
+    expect(e.html).toMatch(/class="code"[^>]*>482915</);
+    expect(e.html.match(/class="code"/g)).toHaveLength(1);
+    expect(e.html).toContain("/mail/imbue.png");
     expect(e.text).toContain("482915");
   });
 
@@ -20,7 +23,9 @@ describe("sign-in email", () => {
     const e = codeEmail("000731", "en");
     expect(e.subject).toBe("000731 is your Worlds sign-in code");
     expect(e.html).toContain('dir="ltr"');
-    expect(e.html.match(/class="cell"/g)).toHaveLength(6);
+    expect(e.html).toMatch(/class="code"[^>]*>000731</);
+    expect(e.html).toContain("https://enterworlds.space/mail/letter.png");
+    expect(e.html).not.toContain(String.fromCharCode(0x2014));
     expect(e.html).toContain("https://enterworlds.space");
   });
 

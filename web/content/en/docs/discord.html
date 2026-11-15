@@ -1,0 +1,68 @@
+<!--
+title: Discord bridge
+description: How Worlds sends a page to a Discord channel, thread or DM through your own bot, the preview before sending, and the approval queue.
+-->
+<h1>Discord bridge</h1>
+<p class="lead">Worlds sends a page to Discord as a formatted message: to a channel, a thread or a DM. On Windows it goes through your own Discord bot, and on Android through a webhook URL. Anything Claude or an automation prepares waits for your approval before it leaves.</p>
+
+<h2 id="how-it-works">How the bridge works on Windows</h2>
+<p>Worlds does not hold a Discord bot token. Messages go through a small module that runs next to your bot, on the machine where the bot lives:</p>
+<ol>
+<li>The module listens only on <code>127.0.0.1</code> on the bot's machine, so nobody can reach it from the network.</li>
+<li>Worlds opens an SSH tunnel to that machine, reads a shared key file from it and keeps the key in memory only.</li>
+<li>Every request carries that key. The module answers three requests: list the channels, threads and DMs it can reach, send, and edit an earlier message.</li>
+</ol>
+<p>The bot token stays on the bot's machine, and messages are built with Discord's Components V2. Worlds servers are not involved.</p>
+<div class="callout warn"><p>This bridge is for people who run their own Discord bot. Worlds does not ship a ready module for the bot: <code>docs/DISCORD_BRIDGE.md</code> in the Worlds repository describes what the module must answer. SSH to the bot's machine must work without a password prompt (key-based login).</p></div>
+
+<h2 id="setup">Setting it up</h2>
+<ol class="steps">
+<li><h3>Open Settings, Discord</h3><p>Enter the bot machine's address in Host (SSH), then <strong>SSH user</strong>, <strong>Module port</strong> and <strong>Key file on host</strong>. Entering a host turns the bridge on.</p></li>
+<li><h3>Check the connection</h3><p>In <a href="/en/docs/integrations/">Integrations</a>, click <strong>Check connection</strong> on the Discord card. It shows <strong>Connected</strong> when everything works, <strong>Disconnected</strong> if the module is not installed, or another reason such as the machine being unreachable or the key being refused.</p></li>
+</ol>
+
+<h2 id="send">Sending a page</h2>
+<p>Open the page and click <strong>Send to Discord</strong> in the page toolbar, or choose it from the command palette. A dialog titled "Send "page name" to Discord" opens:</p>
+<ul>
+<li><strong>Destination</strong>: tabs for <strong>Channel</strong>, <strong>Thread</strong> and <strong>DM</strong>, with a search (<strong>Find a channel</strong> or <strong>Find a person</strong>), and <strong>Use an ID</strong> if you know the destination's number.</li>
+<li><strong>Content</strong>: <strong>Page title as heading</strong>, <strong>Leave out completed tasks</strong>, and <strong>Container with accent bar</strong>.</li>
+<li><strong>Embed color</strong>: one of the ready colours, or type a colour code.</li>
+</ul>
+<p>At the bottom: "Only the blocks shown in the preview leave Worlds." Then <strong>Cancel</strong> and <strong>Send</strong>.</p>
+<figure class="shot"><img src="/media/book/p30.webp" alt="The Send to Discord dialog: destination, content and embed colour options on the left, a preview of the message as Discord shows it on the right, and Cancel and Send buttons" width="1600" height="1000" loading="lazy"><figcaption>The send dialog with a preview of a sample page. The destination is still loading because the bridge was not connected, and nothing was sent outside the computer.</figcaption></figure>
+
+<h2 id="preview">Preview and limits</h2>
+<p>The preview on the right shows the message as it will look. Switch it between <strong>Desktop</strong>, <strong>Mobile</strong> and JSON. Under it are two counters:</p>
+<dl class="facts">
+<div><dt>Components</dt><dd>At most 40 per message</dd></div>
+<div><dt>Text</dt><dd>At most 4,000 characters, with a warning at 90%</dd></div>
+<div><dt>Attachments</dt><dd>At most 10 files, each up to 10 MB</dd></div>
+</dl>
+<p>If the preview shows an error, such as a page with nothing that can be sent, the Send button stays off until you fix it.</p>
+
+<h2 id="approval">The approval queue</h2>
+<p>When Claude asks to send (from a chat or the <a href="/en/docs/mcp/">MCP server</a>), or an automation runs without "Send without asking me", nothing is sent. The request joins a queue:</p>
+<ol class="steps">
+<li><h3>Open Activity</h3><p><strong>Needs approval</strong> appears in the sidebar with a count. Open it, or open <strong>Activity</strong>.</p></li>
+<li><h3>Review the request</h3><p>Each card says who wants to send (Claude or the automation's name), which page and where, with a small preview and "Nothing is sent until you approve."</p></li>
+<li><h3>Decide</h3><p><strong>Approve and send</strong> sends it and shows "Sent to Discord". <strong>Decline</strong> cancels it and shows "Request declined".</p></li>
+</ol>
+<p>The message is built when you approve, not when it was requested, so the latest page content is sent. The exception is an automation run that Claude prepared: what Claude prepared is sent, while the preview in Activity shows the page without Claude's edits, so the sent message can differ from the preview.</p>
+
+<h2 id="android">Discord on Android</h2>
+<p>On Android, <strong>Send to Discord</strong> uses a webhook URL that you create in the channel's settings in Discord, with no bot and no bridge. Choose the page, paste the <strong>Webhook URL</strong> under <strong>Destination</strong>, and set the <strong>Formatting</strong>: <strong>Send as a Discord embed</strong>, <strong>Include the page title</strong> and <strong>Embed colour</strong>. Check the <strong>Message preview</strong> and send. It goes at once, because you pressed the button.</p>
+
+<h2 id="privacy">What leaves your computer</h2>
+<ul>
+<li>Only the blocks shown in the preview, and the files attached in them.</li>
+<li>On Windows they go to your bot through the machine it runs on, and from there to Discord.</li>
+<li>On Android they go straight to the Discord webhook URL.</li>
+</ul>
+<p>On Windows every send is recorded in <a href="/en/docs/profile/#activity">Activity</a>.</p>
+
+<h2 id="next">Read next</h2>
+<ul class="index">
+<li><a href="/en/docs/automations/"><strong>Automations</strong><span>Send a page on a fixed schedule</span></a></li>
+<li><a href="/en/docs/integrations/"><strong>Integrations</strong><span>The bridge status and the connection check</span></a></li>
+<li><a href="/en/docs/claude/"><strong>Claude and providers</strong><span>Claude prepares the message, you approve it</span></a></li>
+</ul>

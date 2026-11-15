@@ -40,7 +40,14 @@ if ("__TAURI_INTERNALS__" in window) {
   window.addEventListener("unhandledrejection", (e) => report(`unhandled: ${e.reason instanceof Error ? e.reason.stack ?? e.reason.message : String(e.reason)}`));
 }
 
-if (import.meta.env.VITE_WEB_DEMO === "1") void import("./demo/sampleActions").then((m) => m.startWebDemo());
+// Worlds on the web: a signed-in person's workspace is also kept on their account.
+if (import.meta.env.VITE_WEB_SAMPLE === "1") {
+  // The demo (demo.enterworlds.space): the sample workspace on the first visit, no accounts.
+  void import("./web/sample").then((m) => m.startSampleDemo());
+} else if (import.meta.env.VITE_WEB_DEMO === "1") {
+  void import("./web/vault").then((m) => m.startVault());
+  void import("./web/entry").then((m) => m.openFromLink());
+}
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

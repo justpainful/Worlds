@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SearchField } from "../../ui/SearchField";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open as openDialog } from "../../lib/dialog";
-import { api, errorMessage, isTauri } from "../../lib/api";
+import { api, errorMessage, isTauri, isWeb } from "../../lib/api";
+import { onFilesDropped } from "../../web/drop";
 import type { AiChat, ChatAttachment } from "../../lib/types";
 import { useStore, pageTitle } from "../../state/store";
 import { Icon } from "../../ui/Icon";
@@ -144,8 +145,9 @@ export function Composer({
     }
   };
 
-  // Files dragged from Explorer onto the composer.
+  // Files dragged from Explorer onto the composer (on the web, from the browser's own drop).
   useEffect(() => {
+    if (isWeb) return onFilesDropped(root.current, (files) => addUploads(uploadFiles(files), files.length));
     if (!isTauri) return;
     const un = getCurrentWebview().onDragDropEvent((e) => {
       if (e.payload.type !== "drop" || !root.current) return;

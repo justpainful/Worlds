@@ -1,5 +1,6 @@
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import type { AppEnv, Env } from "./env";
 import { checkAccess, listDocs, packMembers } from "./domain/access";
@@ -13,6 +14,25 @@ import { pages } from "./routes/pages";
 import { invites, workspaces } from "./routes/workspaces";
 
 export const app = new Hono<AppEnv>();
+
+// Worlds on the web calls this service from the browser (src/account/webAccount.ts).
+// Only the origins in ALLOWED_ORIGINS may; the apps call it directly and need no CORS.
+app.use(
+  "*",
+  cors({
+    origin: (origin, c) => (allowedOrigins(c.env.ALLOWED_ORIGINS).includes(origin) ? origin : null),
+    allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+    allowHeaders: ["content-type", "authorization"],
+    maxAge: 600,
+  }),
+);
+
+export function allowedOrigins(list: string | undefined): string[] {
+  return (list ?? "")
+    .split(",")
+    .map((o) => o.trim().replace(/\/+$/, ""))
+    .filter((o) => /^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(o) || /^http:\/\/localhost(:\d+)?$/.test(o));
+}
 
 app.onError((err, c) => {
   if (err instanceof ApiError) {
