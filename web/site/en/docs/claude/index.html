@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Claude and other AI providers · Worlds</title>
+<meta name="description" content="How to connect Claude, Codex, an API key or a local model to Worlds, what the assistant can do, how to undo its changes and where keys are kept.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://enterworlds.space/en/docs/claude/">
+<link rel="alternate" hreflang="ar" href="https://enterworlds.space/docs/claude/">
+<link rel="alternate" hreflang="en" href="https://enterworlds.space/en/docs/claude/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Worlds">
+<meta property="og:title" content="Claude and other AI providers">
+<meta property="og:description" content="How to connect Claude, Codex, an API key or a local model to Worlds, what the assistant can do, how to undo its changes and where keys are kept.">
+<meta property="og:image" content="https://enterworlds.space/media/og.png">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-256.png">
+<link rel="preload" href="/fonts/instrument-sans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/site.css">
+<script src="/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="wrap top">
+  <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="46" height="46"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="70" height="26"></a>
+  <nav class="nav" aria-label="Menu"><a href="/en/apps/">Apps</a><a href="/en/docs/" aria-current="page">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/docs/claude/" hreflang="ar" lang="ar">العربية</a></nav>
+  <details class="menu"><summary>Menu</summary><div class="nav"><a href="/en/apps/">Apps</a><a href="/en/docs/" aria-current="page">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/docs/claude/" hreflang="ar" lang="ar">العربية</a></div></details>
+</header>
+<div class="wrap docs">
+<details class="side" open><summary>Docs pages</summary><div class="side-list"><h2>Start here</h2><ul><li><a href="/en/docs/">Overview</a></li><li><a href="/en/docs/getting-started/">Getting started with Worlds</a></li></ul><h2>Install</h2><ul><li><a href="/en/docs/install/">Install Worlds</a></li><li class="sub"><a href="/en/docs/install/windows/">Install Worlds on Windows</a></li><li class="sub"><a href="/en/docs/install/macos/">Install Worlds on Mac</a></li><li class="sub"><a href="/en/docs/install/iphone-ipad/">Install Worlds on iPhone and iPad</a></li><li class="sub"><a href="/en/docs/install/android/">Install Worlds on Android</a></li><li class="sub"><a href="/en/docs/install/web/">Worlds in the browser</a></li><li class="sub"><a href="/en/docs/install/update-uninstall/">Update and uninstall</a></li><li><a href="/en/docs/troubleshooting/">Troubleshooting</a></li></ul><h2>Write and organise</h2><ul><li><a href="/en/docs/pages/">Pages and blocks</a></li><li><a href="/en/docs/documents/">Documents</a></li><li><a href="/en/docs/tables/">Tables and spreadsheets</a></li><li><a href="/en/docs/projects/">Projects and resources</a></li><li><a href="/en/docs/templates/">Templates</a></li><li><a href="/en/docs/search-commands/">Search and commands</a></li><li><a href="/en/docs/history/">History and backups</a></li></ul><h2>Draw, present and media</h2><ul><li><a href="/en/docs/drawing/">Drawing</a></li><li><a href="/en/docs/presentations/">Presentations</a></li><li><a href="/en/docs/media-files/">Media and files</a></li></ul><h2>Claude and automations</h2><ul><li><a href="/en/docs/claude/" aria-current="page">Claude and other AI providers</a></li><li><a href="/en/docs/automations/">Automations</a></li><li><a href="/en/docs/discord/">Discord bridge</a></li><li><a href="/en/docs/integrations/">Integrations</a></li></ul><h2>Account and sharing</h2><ul><li><a href="/en/docs/account/">Your Worlds account</a></li><li><a href="/en/docs/sharing/">Sharing and working together</a></li><li><a href="/en/docs/sync/">How sync works</a></li><li><a href="/en/docs/packs/">Packs</a></li><li><a href="/en/docs/profile/">Profile and Activity</a></li><li><a href="/en/docs/settings/">Settings</a></li></ul><h2>For developers</h2><ul><li><a href="/en/docs/html-pages/">HTML pages</a></li><li><a href="/en/docs/mcp/">The Worlds MCP server</a></li></ul></div></details>
+<main id="main" class="article">
+<p class="crumb"><a href="/en/docs/">Docs</a> / Claude and automations</p>
+<h1>Claude and other AI providers</h1>
+<p class="lead">Worlds has an assistant that reads your pages, writes in them and reorganises them, and every change it makes can be undone. You can run it with Claude Code or Codex, with an API key from a provider you choose, or with a model running on your own computer.</p>
+
+<h2 id="open">Where to find the assistant</h2>
+<ul>
+<li><strong>Claude</strong> in the sidebar opens the full conversations view, with your earlier chats and a search.</li>
+<li><strong>Ask Claude</strong>, shortcut <kbd>Ctrl</kbd> + <kbd>J</kbd>, opens a side panel over the page you are on.</li>
+<li><strong>Ask Claude About This</strong> sends what you selected on the page into the chat.</li>
+</ul>
+<figure class="shot"><img src="/media/book/p28.webp" alt="The Worlds Home view with the Claude panel open on the right, titled Ask anything about your pages, with suggested questions and an Ask Claude field" width="1600" height="900" loading="lazy"><figcaption>The Claude panel over Home. An illustrative capture with sample data.</figcaption></figure>
+<p>Under the text field is a button showing the model and effort, such as <code>Spark · Glance</code>. Use it to pick the provider and model for this chat.</p>
+
+<h2 id="connect">Ways to connect the assistant</h2>
+<p>Everything is in <strong>Settings</strong>, <strong>Providers</strong>, in four groups:</p>
+<table>
+<thead><tr><th>Group</th><th>What is in it</th><th>Needs a key?</th></tr></thead>
+<tbody>
+<tr><td>Sign in</td><td>Claude Code and Codex</td><td>No, you sign in with your account in the browser</td></tr>
+<tr><td>API keys</td><td>Anthropic, OpenAI, Google Gemini, Groq, DeepSeek, Mistral, xAI and OpenRouter, plus LiteLLM and Custom for any compatible server</td><td>Yes, except LiteLLM and Custom where it is optional</td></tr>
+<tr><td>Running on this PC</td><td>Worlds detects local servers that are running now</td><td>No</td></tr>
+<tr><td>Local model servers</td><td>Ollama, LM Studio and llama.cpp</td><td>No</td></tr>
+</tbody>
+</table>
+
+<h3>Claude Code or Codex</h3>
+<p>This is for people with a Claude or ChatGPT subscription. The app itself (Claude Code or Codex) must be installed on the PC.</p>
+<ol class="steps">
+<li><h3>Open Settings, Providers</h3><p>The <strong>Sign in</strong> group has a row for Claude Code and one for Codex. If the app is missing you see "Claude Code is not installed on this PC."</p></li>
+<li><h3>Sign in</h3><p>Click <strong>Sign in to Claude</strong> or <strong>Sign in with ChatGPT</strong>. A console window starts the official sign-in in your browser. Worlds never sees or keeps those sign-ins.</p></li>
+<li><h3>Check</h3><p>When you have finished in the browser, click <strong>Check again</strong>. When the row says <strong>Ready</strong>, you can start.</p></li>
+</ol>
+<p><strong>Settings</strong>, <strong>Claude</strong> has more options for Claude Code:</p>
+<ul>
+<li><strong>Stay signed in</strong>: one sign-in that lasts about a year. The token is kept in Windows Credential Manager.</li>
+<li><strong>Model and effort</strong>: the models Spark, Orbit and Nova are Haiku, Sonnet and Opus, and the effort levels Glance, Focus and Deep are low, medium and high. The default, Spark with Glance, keeps everyday edits fast and inexpensive.</li>
+<li><strong>Global instructions</strong>: instructions the assistant reads in every chat.</li>
+<li><strong>Use Worlds from Claude Code sessions</strong> adds the Worlds tools to the Claude Code you use outside the app. See <a href="/en/docs/mcp/">MCP server</a>.</li>
+</ul>
+<p>When Claude Code runs inside Worlds, every one of its built-in tools is disabled and only the Worlds tools are on: no shell and no access to the files on your computer.</p>
+
+<h3>An API key</h3>
+<ol class="steps">
+<li><h3>Pick the provider</h3><p>In the <strong>API keys</strong> group, click <strong>Set up</strong> next to the provider.</p></li>
+<li><h3>Paste the key</h3><p>Paste the key and click <strong>Save key</strong>. The row shows <strong>Key saved</strong>, and the key is never shown again. To replace it, paste a new one; to delete it, click <strong>Remove</strong>.</p></li>
+<li><h3>Pick a model</h3><p>Click <strong>Load models</strong> to fetch the provider's model list, then choose the provider and model from the model button under the chat field.</p></li>
+</ol>
+<div class="callout"><p>Claude subscription sign-in tokens are refused here. Use an API key from the Claude Console, or use Claude Code.</p></div>
+<p>The address each provider starts with (change it under <strong>Server address</strong>, then <strong>Save address</strong>):</p>
+<table>
+<thead><tr><th>Provider</th><th>Default address</th></tr></thead>
+<tbody>
+<tr><td>Anthropic</td><td><code>https://api.anthropic.com</code></td></tr>
+<tr><td>OpenAI</td><td><code>https://api.openai.com/v1</code></td></tr>
+<tr><td>Google Gemini</td><td><code>https://generativelanguage.googleapis.com/v1beta/openai</code></td></tr>
+<tr><td>Groq</td><td><code>https://api.groq.com/openai/v1</code></td></tr>
+<tr><td>DeepSeek</td><td><code>https://api.deepseek.com/v1</code></td></tr>
+<tr><td>Mistral</td><td><code>https://api.mistral.ai/v1</code></td></tr>
+<tr><td>xAI</td><td><code>https://api.x.ai/v1</code></td></tr>
+<tr><td>OpenRouter</td><td><code>https://openrouter.ai/api/v1</code></td></tr>
+<tr><td>LiteLLM</td><td><code>http://localhost:4000/v1</code></td></tr>
+<tr><td>Custom</td><td>Any server with an OpenAI compatible chat API</td></tr>
+</tbody>
+</table>
+
+<h3>A model on your computer</h3>
+<p>Ollama, LM Studio and llama.cpp run models on your own PC, with no key and no internet. Start one, then open <strong>Settings</strong>, <strong>Providers</strong>. The <strong>Running on this PC</strong> group shows <strong>Running</strong> next to what Worlds found, or <strong>Not running at</strong> with the address. Click <strong>Detect again</strong> after you start the server.</p>
+<dl class="facts">
+<div><dt>Ollama</dt><dd><code>http://localhost:11434/v1</code></dd></div>
+<div><dt>LM Studio</dt><dd><code>http://localhost:1234/v1</code></dd></div>
+<div><dt>llama.cpp</dt><dd><code>http://localhost:8080/v1</code></dd></div>
+</dl>
+<p>On a phone, <code>localhost</code> means the phone itself. To use a model running on your computer, type the computer's network address, such as <code>http://192.168.1.20:11434/v1</code>.</p>
+<p>Some models carry a <strong>Chat only</strong> badge: they can chat but cannot read or change your pages.</p>
+
+<h2 id="what-it-can-do">What the assistant can do</h2>
+<p>Type <kbd>@</kbd> in the chat field to see what you can add: files (images, PDFs and documents), a page for Claude to work on, or an earlier conversation. Below them are the tool groups:</p>
+<ul>
+<li><strong>Pages</strong>: create, rename, move, archive and edit pages.</li>
+<li><strong>Find</strong>: search text, tags, status and properties.</li>
+<li><strong>Layout</strong>: columns, toggles, boards, tables and galleries.</li>
+<li><strong>Properties</strong>, <strong>Find and replace</strong>, and <strong>Covers and style</strong>.</li>
+<li><strong>Profile</strong>, <strong>Automations</strong>, <strong>Templates</strong>, and <strong>Media and files</strong>.</li>
+<li><strong>Discord</strong>: preview and send to Discord, with your approval.</li>
+<li><strong>History</strong>: versions, undo and recent activity.</li>
+<li><strong>Conversations</strong>, and <strong>Date and time</strong>.</li>
+</ul>
+<p>On Windows the assistant also reaches tables, drawings, presentations, tasks and Trash. Type <kbd>#</kbd> to bring an earlier conversation into this one.</p>
+<figure class="shot"><img src="/media/book/p26.webp" alt="The @ menu in a Claude chat showing Files, Work on a page and A conversation, then the tool groups Pages, Find, Layout and Properties" width="1600" height="900" loading="lazy"><figcaption>The <code>@</code> menu with the tool groups. An illustrative capture with sample data.</figcaption></figure>
+<figure class="shot"><img src="/media/book/p27.webp" alt="A chat with an attached PDF and a request to summarise it in three points, answered with a short summary" width="1600" height="900" loading="lazy"><figcaption>Attaching a PDF and asking for a summary. The file and the reply are for illustration only, not a live reply.</figcaption></figure>
+<p>The assistant never sends anything to Discord on its own: it prepares the message, and it waits for your approval in <strong>Activity</strong>. See <a href="/en/docs/discord/">Discord bridge</a>.</p>
+
+<h2 id="undo">Undoing the assistant's changes</h2>
+<p>Before Claude changes anything, Worlds saves a version of the page. Under every reply that changed something there is a line such as <code>3 changes on Launch brief</code> with two buttons: <strong>Open</strong> opens the page, and <strong>Undo</strong> reverts every change from that reply at once. Afterwards you see "Claude's changes were undone".</p>
+<figure class="shot"><img src="/media/book/p25.webp" alt="A Claude reply with its steps expanded: Searching pages, Reading a page and Editing a block, and below it a 3 changes line with Open and Undo buttons" width="1600" height="900" loading="lazy"><figcaption>The reply's steps expanded, with the changes line and the Undo button. An illustrative capture with sample data.</figcaption></figure>
+<p>You can also undo later from the page's <strong>History</strong> panel: each group of changes has <strong>Review changes</strong> and <strong>Undo</strong>. Under <strong>Versions</strong>, a version is kept before each editing session and before every change Claude makes. More in <a href="/en/docs/history/">History and versions</a>.</p>
+
+<h2 id="platforms">What works on each platform</h2>
+<table>
+<thead><tr><th>Platform</th><th>Assistant</th></tr></thead>
+<tbody>
+<tr><td>Windows</td><td>Reads and edits your pages with every Worlds tool, with every provider including Claude Code and Codex. Undo for every reply.</td></tr>
+<tr><td>Android</td><td>Reads and edits with ten tools: a workspace overview, listing, searching and reading pages, creating a page, adding text to a page, editing a block, renaming a page, and adding and listing tasks. Works with the cloud providers and with Ollama, LM Studio and Custom, without Claude Code or Codex. <strong>Undo</strong> puts back the version saved before the change, and pages the assistant created go to Trash.</td></tr>
+<tr><td>iPhone, iPad and Mac</td><td>Chat only for now: it reads page titles and previews, and cannot change your workspace yet.</td></tr>
+<tr><td>Web</td><td>The assistant does not run in the browser. If you ask it something there, it answers that Claude works in the Worlds app on your computer and phone, and lists your latest pages.</td></tr>
+</tbody>
+</table>
+
+<h2 id="keys">Where keys are kept</h2>
+<ul>
+<li><strong>Windows</strong>: in Windows Credential Manager, never shown again in the app. The Worlds database keeps only server addresses you changed, not keys.</li>
+<li><strong>Android</strong>: keys are encrypted with the Android Keystore and stay on the device. App backup is off, so keys do not travel in a backup.</li>
+<li><strong>iPhone, iPad and Mac</strong>: only in this device's Keychain, never shown again.</li>
+</ul>
+<p>Keys are never sent to Worlds servers and are not synced. When you use a cloud provider, the chat and what the assistant reads from your pages go straight to that provider. With a local model, everything stays on your computer.</p>
+
+<h2 id="next">Read next</h2>
+<ul class="index">
+<li><a href="/en/docs/mcp/"><strong>MCP server</strong><span>Use the Worlds tools from Claude Code or another program</span></a></li>
+<li><a href="/en/docs/automations/"><strong>Automations</strong><span>Send a page on a schedule, prepared with Claude first</span></a></li>
+<li><a href="/en/docs/history/"><strong>History and versions</strong><span>Every change is kept and can be reverted</span></a></li>
+<li><a href="/en/docs/settings/"><strong>Settings</strong><span>Every section and what it holds</span></a></li>
+</ul>
+
+<nav class="pager" aria-label="Docs"><a class="prev" href="/en/docs/media-files/"><small>Previous</small>Media and files</a><a class="next" href="/en/docs/automations/"><small>Next</small>Automations</a></nav>
+</main>
+</div>
+<footer class="wrap foot">
+  <div class="row">
+    <div class="credit">
+      <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
+      <p>Natural Intelligence Leads Artificial Intelligence festival 2026, outstanding experiments track.</p>
+    </div>
+    <nav aria-label="Worlds"><a href="/en/apps/">Apps</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="/en/privacy/">Privacy</a><a href="/en/terms/">Terms of use</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+  </div>
+  <p class="fine">Worlds is a creative working name, not a registered mark, and is independent of the imbue identity. The code is published on GitHub.</p>
+</footer>
+</body>
+</html>

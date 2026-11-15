@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>الأدوات حول Worlds · Worlds</title>
+<meta name="description" content="نظرة على الأدوات حول Worlds: Claude والمزوّدون، وخادم MCP، وصفحات HTML، وجسر Discord، والأتمتة، والحزم، مع رابط لشرح كل واحدة.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://enterworlds.space/tools/">
+<link rel="alternate" hreflang="ar" href="https://enterworlds.space/tools/">
+<link rel="alternate" hreflang="en" href="https://enterworlds.space/en/tools/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Worlds">
+<meta property="og:title" content="الأدوات حول Worlds">
+<meta property="og:description" content="نظرة على الأدوات حول Worlds: Claude والمزوّدون، وخادم MCP، وصفحات HTML، وجسر Discord، والأتمتة، والحزم، مع رابط لشرح كل واحدة.">
+<meta property="og:image" content="https://enterworlds.space/media/og.png">
+<meta property="og:locale" content="ar_SA">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-256.png">
+<link rel="preload" href="/fonts/plex-arabic-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/site.css">
+<script src="/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">انتقل إلى المحتوى</a>
+<header class="wrap top">
+  <a class="lockup small" href="/" aria-label="Worlds الصفحة الرئيسية"><img class="logo" src="/icon-256.png" alt="" width="46" height="46"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="70" height="26"></a>
+  <nav class="nav" aria-label="القائمة"><a href="/apps/">التطبيقات</a><a href="/docs/">الدوكس</a><a href="/tools/" aria-current="page">الأدوات</a><a href="/support/">الدعم</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/en/tools/" hreflang="en" lang="en">English</a></nav>
+  <details class="menu"><summary>القائمة</summary><div class="nav"><a href="/apps/">التطبيقات</a><a href="/docs/">الدوكس</a><a href="/tools/" aria-current="page">الأدوات</a><a href="/support/">الدعم</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/en/tools/" hreflang="en" lang="en">English</a></div></details>
+</header>
+<div class="wrap page-solo"><main id="main" class="article">
+<h1>الأدوات حول Worlds</h1>
+<p class="lead">Worlds مساحة عمل على جهازك: صفحات ومستندات وجداول ورسومات وعروض. وحولها أدوات تجعل Claude يعمل معك داخلها، وتربطها ببرامج أخرى، وترسل صفحاتك في مواعيدها. هذه نظرة سريعة عليها.</p>
+
+<h2 id="claude">Claude داخل Worlds</h2>
+<p>مساعد يقرأ صفحاتك ويكتب فيها ويرتبها، وكل تغيير يجريه يمكن التراجع عنه بضغطة. تشغّله بحساب Claude Code أو Codex، أو بمفتاح API من Anthropic أو OpenAI أو Gemini أو Groq أو DeepSeek أو Mistral أو xAI أو OpenRouter، أو بنموذج على جهازك عبر Ollama أو LM Studio. يعدّل الصفحات في Windows وAndroid، ويحادثك فقط على iPhone وiPad وMac حاليًا.</p>
+<figure class="shot"><img src="/media/app/claude.webp" alt="شاشة محادثات Claude في Worlds مع شرح: فتحه فوق أي صفحة بـ Ctrl J، وخطوات كل رد، والمحادثات المحفوظة، والتراجع عن تغييراته، واختيار النموذج ومستوى التفكير" width="1600" height="1200" loading="lazy"><figcaption>محادثات Claude مع شرح الأجزاء. المحتوى مموّه وتجريبي.</figcaption></figure>
+<p><a href="/docs/claude/">Claude والمزوّدون الآخرون</a></p>
+
+<h2 id="mcp">خادم MCP</h2>
+<p>يتيح لـ Claude Code أو أي برنامج يدعم MCP أن يستخدم أدوات Worlds على جهازك: الصفحات والكتل والجداول والرسومات والعروض والأتمتة والقوالب والسجل. تسجّله بضغطة من الإعدادات أو بأمر واحد، وكل كتابة تُحفظ قبلها نسخة.</p>
+<p><a href="/docs/mcp/">خادم MCP في Worlds</a></p>
+
+<h2 id="html-pages">صفحات HTML</h2>
+<p>صفحة محتواها مستند HTML واحد يعمل في بيئة معزولة بلا إنترنت: حاسبة، أو متابعة، أو تقرير مصمم. تحفظ بياناتها بـ <code>worlds.save</code>، ويكتبها Claude لك. قادمة في إصدار قريب.</p>
+<p><a href="/docs/html-pages/">صفحات HTML</a></p>
+
+<h2 id="discord">جسر Discord</h2>
+<p>أرسل صفحة إلى قناة أو سلسلة أو رسالة خاصة في Discord، مع معاينة قبل الإرسال. في Windows عبر بوتك الخاص، وفي Android عبر رابط ويب هوك. ما يجهّزه Claude أو الأتمتة ينتظر موافقتك.</p>
+<p><a href="/docs/discord/">جسر Discord</a></p>
+
+<h2 id="automations">الأتمتة</h2>
+<p>أرسل صفحة في موعد: مرة واحدة، أو يوميًا، أو أسبوعيًا، أو شهريًا. يمكن أن يجهّزها Claude قبل الإرسال، أو أن تلخّصها بالذكاء الاصطناعي وتعرضها إشعارًا على Android.</p>
+<p><a href="/docs/automations/">الأتمتة</a></p>
+
+<h2 id="packs">الحزم</h2>
+<p>ميزات اختيارية حسب ما تستخدم Worlds له. حزمة الدراسة متاحة الآن: مواد وجدول دراسي وواجبات واختبارات. وحزم أخرى للعمل والمجتمع والأفراد قيد البناء.</p>
+<p><a href="/docs/packs/">الحزم</a></p>
+
+<h2 id="more">المزيد</h2>
+<ul class="index">
+<li><a href="/docs/integrations/"><strong>التكاملات</strong><span>Claude Code وDiscord وحالة كل منهما</span></a></li>
+<li><a href="/docs/account/"><strong>حساب Worlds</strong><span>للعمل مع الآخرين وحفظ مساحة الويب</span></a></li>
+<li><a href="/docs/sharing/"><strong>المشاركة والعمل معًا</strong><span>مساحات الفرق والأدوار والصلاحيات</span></a></li>
+<li><a href="/docs/sync/"><strong>المزامنة</strong><span>ما يبقى على جهازك وما يذهب إلى الخادم</span></a></li>
+<li><a href="/docs/getting-started/"><strong>البداية</strong><span>أول خطواتك في Worlds</span></a></li>
+</ul>
+
+</main></div>
+<footer class="wrap foot">
+  <div class="row">
+    <div class="credit">
+      <a class="lockup small" href="/" aria-label="Worlds الصفحة الرئيسية"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
+      <p>مهرجان الذكاء الطبيعي يقود الذكاء الاصطناعي 2026، مسار التجارب المتميزة.</p>
+    </div>
+    <nav aria-label="Worlds"><a href="/apps/">التطبيقات</a><a href="/docs/">الدوكس</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="/privacy/">الخصوصية</a><a href="/terms/">شروط الاستخدام</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+  </div>
+  <p class="fine">Worlds اسم عمل إبداعي غير مسجل رسميًا، مستقل عن هوية imbue. الشيفرة منشورة على GitHub.</p>
+</footer>
+</body>
+</html>

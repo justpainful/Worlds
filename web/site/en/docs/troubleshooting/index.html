@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Troubleshooting · Worlds</title>
+<meta name="description" content="Common Worlds install and startup problems and their fixes: SmartScreen, WebView2, macOS messages, installing on Android and iPhone, private browsing, and the sign in code.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://enterworlds.space/en/docs/troubleshooting/">
+<link rel="alternate" hreflang="ar" href="https://enterworlds.space/docs/troubleshooting/">
+<link rel="alternate" hreflang="en" href="https://enterworlds.space/en/docs/troubleshooting/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Worlds">
+<meta property="og:title" content="Troubleshooting">
+<meta property="og:description" content="Common Worlds install and startup problems and their fixes: SmartScreen, WebView2, macOS messages, installing on Android and iPhone, private browsing, and the sign in code.">
+<meta property="og:image" content="https://enterworlds.space/media/og.png">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-256.png">
+<link rel="preload" href="/fonts/instrument-sans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/site.css">
+<script src="/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="wrap top">
+  <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="46" height="46"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="70" height="26"></a>
+  <nav class="nav" aria-label="Menu"><a href="/en/apps/">Apps</a><a href="/en/docs/" aria-current="page">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/docs/troubleshooting/" hreflang="ar" lang="ar">العربية</a></nav>
+  <details class="menu"><summary>Menu</summary><div class="nav"><a href="/en/apps/">Apps</a><a href="/en/docs/" aria-current="page">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/docs/troubleshooting/" hreflang="ar" lang="ar">العربية</a></div></details>
+</header>
+<div class="wrap docs">
+<details class="side" open><summary>Docs pages</summary><div class="side-list"><h2>Start here</h2><ul><li><a href="/en/docs/">Overview</a></li><li><a href="/en/docs/getting-started/">Getting started with Worlds</a></li></ul><h2>Install</h2><ul><li><a href="/en/docs/install/">Install Worlds</a></li><li class="sub"><a href="/en/docs/install/windows/">Install Worlds on Windows</a></li><li class="sub"><a href="/en/docs/install/macos/">Install Worlds on Mac</a></li><li class="sub"><a href="/en/docs/install/iphone-ipad/">Install Worlds on iPhone and iPad</a></li><li class="sub"><a href="/en/docs/install/android/">Install Worlds on Android</a></li><li class="sub"><a href="/en/docs/install/web/">Worlds in the browser</a></li><li class="sub"><a href="/en/docs/install/update-uninstall/">Update and uninstall</a></li><li><a href="/en/docs/troubleshooting/" aria-current="page">Troubleshooting</a></li></ul><h2>Write and organise</h2><ul><li><a href="/en/docs/pages/">Pages and blocks</a></li><li><a href="/en/docs/documents/">Documents</a></li><li><a href="/en/docs/tables/">Tables and spreadsheets</a></li><li><a href="/en/docs/projects/">Projects and resources</a></li><li><a href="/en/docs/templates/">Templates</a></li><li><a href="/en/docs/search-commands/">Search and commands</a></li><li><a href="/en/docs/history/">History and backups</a></li></ul><h2>Draw, present and media</h2><ul><li><a href="/en/docs/drawing/">Drawing</a></li><li><a href="/en/docs/presentations/">Presentations</a></li><li><a href="/en/docs/media-files/">Media and files</a></li></ul><h2>Claude and automations</h2><ul><li><a href="/en/docs/claude/">Claude and other AI providers</a></li><li><a href="/en/docs/automations/">Automations</a></li><li><a href="/en/docs/discord/">Discord bridge</a></li><li><a href="/en/docs/integrations/">Integrations</a></li></ul><h2>Account and sharing</h2><ul><li><a href="/en/docs/account/">Your Worlds account</a></li><li><a href="/en/docs/sharing/">Sharing and working together</a></li><li><a href="/en/docs/sync/">How sync works</a></li><li><a href="/en/docs/packs/">Packs</a></li><li><a href="/en/docs/profile/">Profile and Activity</a></li><li><a href="/en/docs/settings/">Settings</a></li></ul><h2>For developers</h2><ul><li><a href="/en/docs/html-pages/">HTML pages</a></li><li><a href="/en/docs/mcp/">The Worlds MCP server</a></li></ul></div></details>
+<main id="main" class="article">
+<p class="crumb"><a href="/en/docs/">Docs</a> / Install</p>
+<h1>Troubleshooting</h1>
+<p class="lead">Each problem here has a title like what you see on screen, then its cause and the fix step by step.</p>
+
+<h2 id="smartscreen">Windows: “Windows protected your PC” with no way to continue</h2>
+<p><strong>Cause:</strong> the setup file is not signed with a certificate, so Microsoft Defender SmartScreen shows a warning before running it.</p>
+<ol>
+<li>Click the <strong>More info</strong> link under the text. The button does not appear before that.</li>
+<li>Make sure the app name is <code>Worlds-0.3.0-Windows-x64-setup.exe</code>, then click <strong>Run anyway</strong>.</li>
+</ol>
+<p>The drawings are in the <a href="/en/docs/install/windows/#install">Windows install steps</a>. If Run anyway never appears, your PC follows a policy that blocks unknown apps, which is common on work and school PCs. Ask whoever manages the PC, or use <a href="/en/docs/install/web/">Worlds in the browser</a>.</p>
+
+<h2 id="download-blocked">Windows: the browser blocked or deleted the file</h2>
+<p><strong>Cause:</strong> Edge and Chrome warn about new programs that few people have downloaded.</p>
+<ul>
+<li><strong>Edge:</strong> open Downloads (<kbd>Ctrl</kbd> + <kbd>J</kbd>), click the three dots next to the file, then Keep, then Show more, then Keep anyway.</li>
+<li><strong>Chrome:</strong> open Downloads (<kbd>Ctrl</kbd> + <kbd>J</kbd>) and choose Keep next to the file.</li>
+</ul>
+<p>Download the file only from the <a href="https://github.com/justpainful/Worlds/releases/latest">releases page on GitHub</a>, and check its fingerprint as shown in the <a href="/en/docs/install/#verify">install overview</a>.</p>
+
+<h2 id="still-running">Windows: I closed Worlds but it is still running, or setup says it is running</h2>
+<p><strong>Cause:</strong> the close button hides Worlds in the notification area, so scheduled automations keep running.</p>
+<ol>
+<li>Look for the Worlds icon next to the clock. If you cannot see it, click the small arrow that shows hidden icons.</li>
+<li>Right click it and choose <strong>Quit</strong>.</li>
+<li>Run the setup file again.</li>
+</ol>
+<p>If you want Worlds to quit when you close the window, turn off <strong>Keep running in the tray</strong> in Settings. Note that automations do not run while it is closed.</p>
+
+<h2 id="webview2">Windows: Worlds does not open, or a message mentions WebView2</h2>
+<p><strong>Cause:</strong> Worlds shows its interface through Microsoft Edge WebView2. If that component is missing or broken, the window does not appear.</p>
+<ol>
+<li>Run the Worlds setup file again. It contains WebView2 and installs it if it is missing.</li>
+<li>Open Settings, then Apps, then Installed apps, and find <strong>Microsoft Edge WebView2 Runtime</strong>. If it is there with a Modify option, choose it to repair it.</li>
+<li>If that does not fix it, install the WebView2 Runtime from <a href="https://developer.microsoft.com/microsoft-edge/webview2/">Microsoft's official page</a> (choose Evergreen), then open Worlds.</li>
+</ol>
+<p>On work PCs, policies may block installing WebView2. Ask whoever manages the PC.</p>
+
+<h2 id="macos-cannot-open">Mac: “Worlds” Not Opened, or “Worlds” cannot be opened</h2>
+<p><strong>Cause:</strong> the app is not signed or notarized by Apple, so Gatekeeper blocks it the first time.</p>
+<ul>
+<li><strong>macOS 15 and later:</strong> click Done, then open System Settings, then Privacy &amp; Security, scroll to Security, click <strong>Open Anyway</strong>, and confirm with your password.</li>
+<li><strong>macOS 14:</strong> right click the app in Applications, choose Open, then Open in the alert.</li>
+</ul>
+<p>If Open Anyway does not appear, try opening the app again, then go back to Privacy &amp; Security within an hour. The drawings are in the <a href="/en/docs/install/macos/#open-sequoia">Mac install steps</a>.</p>
+
+<h2 id="macos-damaged">Mac: “Worlds” is damaged and can’t be opened</h2>
+<p><strong>Cause:</strong> macOS shows this message for some unsigned apps downloaded from the internet, because it puts a quarantine mark on them. The file is not damaged if its fingerprint is right.</p>
+<ol>
+<li>Make sure you downloaded the file from the releases page on GitHub and its fingerprint matches <code>SHA256SUMS.txt</code>.</li>
+<li>Move the app into Applications if it is not there yet.</li>
+<li>Open Terminal and type the following command with a space at the end, without pressing <kbd>Enter</kbd> yet:
+<pre><code>xattr -dr com.apple.quarantine </code></pre></li>
+<li>Drag the app from Applications and drop it on the Terminal window, so its path is written after the command. Then press <kbd>Enter</kbd>.</li>
+<li>Open the app again. If you see the Not Opened message, follow <a href="#macos-cannot-open">the section above</a>.</li>
+</ol>
+
+<h2 id="android-blocked">Android: the phone blocks the install</h2>
+<ul>
+<li><strong>Not allowed to install unknown apps from this source:</strong> tap Settings and turn on Allow from this source for the app you opened the file from (Chrome or Files). The drawings are in the <a href="/en/docs/install/android/#install">Android install steps</a>.</li>
+<li><strong>Play Protect blocked the app:</strong> tap More details, then Install anyway.</li>
+<li><strong>Recent Samsung phones:</strong> the Auto Blocker feature blocks apps from outside the stores. Turn it off for a moment in Settings, then Security and privacy, then Auto Blocker, install, then turn it back on.</li>
+<li><strong>A message that your admin blocked this:</strong> the phone, or its work profile, follows an organization's policy. Use <a href="/en/docs/install/web/">Worlds in the browser</a>, or ask the admin.</li>
+</ul>
+
+<h2 id="android-not-installed">Android: “App not installed”</h2>
+<ul>
+<li><strong>An earlier Worlds is installed with a different signature:</strong> Android does not accept an update signed with another key. The only fix is to remove the old one and then install, and removing it deletes your pages from the phone. Export what you need first, as in <a href="/en/docs/install/update-uninstall/#android">Update and uninstall</a>.</li>
+<li><strong>Android older than 8.0:</strong> a message about a problem parsing the package appears. Worlds needs Android 8.0 or later; use <a href="/en/docs/install/web/">the browser</a> instead.</li>
+<li><strong>Storage is full:</strong> free some space and try again.</li>
+<li><strong>The download did not finish:</strong> download it again and check its fingerprint.</li>
+</ul>
+
+<h2 id="ios-untrusted">iPhone and iPad: “Untrusted Developer” or “Untrusted Enterprise Developer”</h2>
+<p><strong>Cause:</strong> the app is signed with your account, and you have not trusted that account on the device yet.</p>
+<ol>
+<li>Open Settings, then General, then <strong>VPN &amp; Device Management</strong>.</li>
+<li>Under Developer App, tap your Apple ID email.</li>
+<li>Tap the Trust button, then confirm.</li>
+</ol>
+<p>If there is no Developer App section, the app is not installed yet or was installed with another account. The drawings are in the <a href="/en/docs/install/iphone-ipad/#install">iPhone and iPad install steps</a>.</p>
+
+<h2 id="ios-developer-mode">iPhone and iPad: “Developer Mode Required”</h2>
+<ol>
+<li>Open Settings, then Privacy &amp; Security, and scroll to <strong>Developer Mode</strong> under Security.</li>
+<li>Turn it on and tap Restart.</li>
+<li>After the restart, tap Turn On and enter your passcode.</li>
+</ol>
+<p>The Developer Mode row does not appear until the first app signed this way is installed on the device. Install SideStore first by its guide, then come back.</p>
+
+<h2 id="ios-expired">iPhone and iPad: Worlds will not open after 7 days</h2>
+<p><strong>Cause:</strong> with a free Apple ID the signature runs out after 7 days, and iOS refuses to open the app: it closes as soon as it opens, or a message says it is not available.</p>
+<ol>
+<li>Open SideStore, then My Apps.</li>
+<li>Tap the days button next to Worlds to refresh it, or refresh all apps at once. Follow what SideStore asks for to connect while refreshing.</li>
+<li>Open Worlds. Your pages are as they were, because an expired signature deletes nothing.</li>
+</ol>
+<p>If SideStore itself has expired, install it again from the computer by <a href="https://sidestore.io">its guide</a>. If the tool says you reached the maximum number of apps, a free account allows three signed apps at once: remove one you do not need from My Apps. To avoid weekly refreshes altogether, a paid Apple Developer membership makes the signature last a year.</p>
+
+<h2 id="private-browsing">Browser: my pages disappeared</h2>
+<p><strong>Cause:</strong> in the browser, your pages are kept in the browser's storage for app.enterworlds.space, unless you signed in.</p>
+<ul>
+<li><strong>A private or incognito window:</strong> it keeps nothing after you close it, and may refuse to save at all. Use a normal window.</li>
+<li><strong>Another browser or another device:</strong> each browser has its own copy. Go back to the browser you wrote in, or sign in there first so its pages move to your account.</li>
+<li><strong>You cleared browser data, or Safari deleted data of a site you had not opened for some days:</strong> the browser copy is gone. If you were signed in before that, sign in again and your pages come back from your account.</li>
+</ul>
+<p>To avoid this, sign in with an account, or use one of the apps, which keep your pages on your device. Details in <a href="/en/docs/install/web/#storage">where your pages are kept</a>.</p>
+
+<h2 id="sign-in-code">The sign in code did not arrive</h2>
+<p>The code is sent from <code>no-reply@enterworlds.space</code>. It has 6 digits and works for 10 minutes.</p>
+<ol>
+<li>Check your spam or junk folder, and in Gmail the Promotions tab too.</li>
+<li>Search your mail for <code>no-reply@enterworlds.space</code>. If you find the message in spam, mark it as not spam so the next one reaches your inbox.</li>
+<li>Make sure the email you typed is right, with no missing letter or space.</li>
+<li>Wait a minute, then click <strong>Send a New Code</strong>, and use the code in the newest message only.</li>
+<li>Work and school mail may hold automated messages. Try a personal address, or ask the admin to allow the sender.</li>
+</ol>
+
+<h2 id="checksum">The fingerprint does not match SHA256SUMS.txt</h2>
+<p>Do not open the file. Most often the download did not finish. Delete it and download it again from the <a href="https://github.com/justpainful/Worlds/releases/latest">releases page on GitHub</a>, then compare the fingerprint with the line carrying the same file name in the <code>SHA256SUMS.txt</code> of the same version. See the <a href="/en/docs/install/#verify">install overview</a>.</p>
+
+<nav class="pager" aria-label="Docs"><a class="prev" href="/en/docs/install/update-uninstall/"><small>Previous</small>Update and uninstall</a><a class="next" href="/en/docs/pages/"><small>Next</small>Pages and blocks</a></nav>
+</main>
+</div>
+<footer class="wrap foot">
+  <div class="row">
+    <div class="credit">
+      <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
+      <p>Natural Intelligence Leads Artificial Intelligence festival 2026, outstanding experiments track.</p>
+    </div>
+    <nav aria-label="Worlds"><a href="/en/apps/">Apps</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="/en/privacy/">Privacy</a><a href="/en/terms/">Terms of use</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+  </div>
+  <p class="fine">Worlds is a creative working name, not a registered mark, and is independent of the imbue identity. The code is published on GitHub.</p>
+</footer>
+</body>
+</html>

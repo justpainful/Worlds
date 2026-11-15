@@ -1,0 +1,141 @@
+<!--
+title: Getting started with Worlds
+description: The first launch of Worlds, where your workspace is kept, the sample workspace, the sidebar, Home, and language and text direction.
+-->
+<h1>Getting started with Worlds</h1>
+<p class="lead">What you see on first launch, where your pages are kept, and how to look around a ready-made sample workspace before you start your own work.</p>
+
+<div class="callout"><p>If you have not installed Worlds yet, start at <a href="/en/docs/install/">Install</a>. This guide describes the Windows app, which is the full app. The Apple and Android apps are newer and have fewer features; the differences are at the end of the page.</p></div>
+
+<h2 id="first-launch">First launch</h2>
+<ol class="steps">
+  <li>
+    <h3>The welcome window (it may or may not appear)</h3>
+    <p>If the app is connected to an account server, a <strong>Welcome to Worlds</strong> window appears once. It has two buttons:</p>
+    <ul>
+      <li><strong>Start on This PC</strong>: start right away with no account. Your pages stay on your computer and work without a connection.</li>
+      <li><strong>Sign In or Create Account</strong>: only needed if you want to share a workspace with other people. See <a href="/en/docs/account/">Account</a>.</li>
+    </ul>
+    <p>Closing the window counts as starting on this PC, and you can add an account later in Settings. If there is no account server, the window never appears and the app opens straight on Home.</p>
+  </li>
+  <li>
+    <h3>The empty Home</h3>
+    <p>The first time, there are no pages, so Home shows a greeting for the time of day and suggests three ways to begin: a blank page, a template, or a sample workspace. The buttons are:</p>
+    <ul>
+      <li><strong>New</strong>: opens the menu to create a page, document, presentation, drawing and more.</li>
+      <li><strong>Load sample workspace</strong>: adds a ready-made student week to try everything (details below).</li>
+      <li>A row of <strong>Templates</strong>: one click on a template creates a page from it.</li>
+    </ul>
+  </li>
+  <li>
+    <h3>The study question</h3>
+    <p>Once you have pages, Home shows a card that asks <strong>Do you use Worlds for school or university?</strong> Choose <strong>Turn on Study</strong> to get subjects, a timetable, assignments and exams, or <strong>No, keep it simple</strong>. You can change this later under <a href="/en/docs/packs/">Packs</a>.</p>
+  </li>
+  <li>
+    <h3>Pick the interface language</h3>
+    <p>Open <strong>Settings</strong> (<kbd>Ctrl</kbd> + <kbd>,</kbd>), then <strong>Appearance</strong>, then <strong>Language</strong>. Details in <a href="#language-direction">Language and text direction</a>.</p>
+  </li>
+</ol>
+
+<h2 id="workspace">The workspace: where is it kept?</h2>
+<p>Everything you write lives in one folder on your computer: a SQLite database and your attachments. No account and no cloud are needed.</p>
+<dl class="facts">
+  <div><dt>Folder</dt><dd><code>Worlds</code> inside the Windows application data folder, usually <code>%APPDATA%\Worlds</code></dd></div>
+  <div><dt>Database</dt><dd><code>worlds.db</code></dd></div>
+  <div><dt>Attachments</dt><dd>The <code>attachments</code> subfolder</dd></div>
+  <div><dt>Backups</dt><dd>The <code>backups</code> subfolder</dd></div>
+</dl>
+<p>To open the folder: <strong>Settings</strong>, then <strong>Storage</strong>, and on the <strong>Data folder</strong> row press <strong>Show in Explorer</strong>.</p>
+<div class="callout warn"><p>The app has no option to move the folder somewhere else. Do not move or delete the files by hand while Worlds is running. For backups, use the method in <a href="/en/docs/history/#backups">History and backups</a>.</p></div>
+<p>To work with other people or across your devices, see <a href="/en/docs/sharing/">Sharing</a> and <a href="/en/docs/sync/">Sync</a>.</p>
+
+<h2 id="sample-workspace">The sample workspace</h2>
+<p>The sample workspace is a first-year student's week, in Arabic and English together. It is made on your computer without a connection, and it lets you try every kind of content before you start your own work.</p>
+<p>Everything sits under one page called "مساحة طالب تجريبية · Sample student workspace", which holds:</p>
+<ul>
+  <li><strong>خطة الأسبوع · Weekly plan</strong>: a page with a table and a checklist.</li>
+  <li><strong>تقرير: الطاقة المتجددة · Report: Renewable energy</strong>: a document with an Arabic body and an English summary.</li>
+  <li><strong>درجات الفصل · Term grades</strong>: a spreadsheet with formulas on two sheets.</li>
+  <li><strong>رسم الخلية النباتية · Plant cell sketch</strong>: a drawing.</li>
+  <li><strong>دورة الماء · The water cycle</strong>: a presentation.</li>
+  <li>The subjects <strong>الأحياء · Biology</strong> and <strong>الرياضيات · Mathematics</strong>, with classes, lessons, assignments, a midterm exam and something to bring, plus tasks and a calendar event.</li>
+</ul>
+<h3>Loading it</h3>
+<ul>
+  <li>From the empty Home: <strong>Load sample workspace</strong>.</li>
+  <li>Or from <strong>Settings</strong>, then <strong>Storage</strong>: in the <strong>Sample workspace</strong> group press <strong>Load</strong>.</li>
+</ul>
+<p>Loading it turns on the <strong>Study</strong> pack if it was off. Loading it twice does not duplicate it; you see the message "The sample workspace is already here".</p>
+<h3>Removing it</h3>
+<p>In the same place in Settings press <strong>Remove</strong>, then confirm with <strong>Move to Trash</strong>. Its pages, subjects, tasks and events move to Trash, including anything you added inside them. Your other pages stay as they are.</p>
+
+<h2 id="sidebar">The sidebar</h2>
+<figure class="shot"><img src="/media/app/home.webp" alt="The Worlds window: on the left the sidebar with Home, Claude, pinned pages, the page tree with icons and the Library; on the right Home with Suggested, Pinned and Recent sections, with callouts pointing at tabs, search and the New button" width="1600" height="1200" loading="lazy"><figcaption>Home and the sidebar. The content is blurred in this image, and the callouts are in Arabic.</figcaption></figure>
+<h3>Top of the sidebar</h3>
+<ul>
+  <li><strong>Hide sidebar</strong>: hides it. The shortcut that works is <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd>.</li>
+  <li><strong>Search</strong>: opens search and commands (<kbd>Ctrl</kbd> + <kbd>K</kbd>). See <a href="/en/docs/search-commands/">Search and commands</a>.</li>
+  <li><strong>New</strong>: the create menu. See <a href="/en/docs/projects/#create">Creating a resource</a>.</li>
+</ul>
+<h3>Navigation</h3>
+<p><strong>Home</strong>, <strong>Tasks</strong>, <strong>Calendar</strong> and <strong>Inbox</strong>, then <strong>Study</strong> if the Study pack is on, then <strong>Claude</strong>. <strong>Needs approval</strong> appears only when something is waiting for your approval.</p>
+<h3>Sections</h3>
+<ul>
+  <li><strong>Pinned</strong>: appears only once you pin a page.</li>
+  <li><strong>Pages</strong>: your page tree, with a <strong>+</strong> button called <strong>New page</strong>.</li>
+  <li><strong>Subjects</strong>: only with the Study pack.</li>
+  <li><strong>Library</strong>: <strong>Templates</strong>, <strong>Automations</strong>, <strong>Integrations</strong>, <strong>Activity</strong> and <strong>Trash</strong>.</li>
+</ul>
+<h3>The page tree</h3>
+<ul>
+  <li>Hover a page to see the <strong>More</strong> and <strong>New subpage</strong> buttons. The arrow next to a page expands or collapses it.</li>
+  <li><strong>Dragging</strong>: drop a page on the top part of another page to put it before, or on the bottom part to put it after. To put it <strong>inside</strong>, hold it over the middle of the target for a moment (about a third of a second), then drop.</li>
+  <li><strong>Keyboard</strong>: Up and Down arrows to move, Right and Left arrows to expand and collapse, <kbd>Enter</kbd> to open, and <kbd>F2</kbd> to rename (<kbd>Enter</kbd> saves, <kbd>Esc</kbd> cancels).</li>
+  <li><kbd>Ctrl</kbd> + click opens the page in a new tab, and <kbd>Alt</kbd> + click opens it on the right, next to the current page.</li>
+</ul>
+<p>Right-clicking a page opens its menu: <strong>Open</strong>, <strong>Open in New Tab</strong>, <strong>Open Right</strong>, <strong>Open Left</strong>, <strong>New Subpage</strong>, <strong>Pin</strong>, <strong>Favorite</strong>, <strong>Rename</strong>, <strong>Duplicate</strong>, <strong>Move to</strong>, <strong>Share</strong>, <strong>Save as Template</strong>, <strong>Archive</strong>, <strong>Delete</strong>.</p>
+<p><strong>Move to</strong> lists <strong>Top level</strong> and the pages you opened most recently. <strong>Delete</strong> moves the page to Trash and shows a message with an <strong>Undo</strong> button.</p>
+
+<h2 id="home">Home</h2>
+<p>Home is the first thing you see. At the top are the greeting, a <strong>Search</strong> box, a <strong>Layout</strong> switch between cards and a list, and the <strong>New</strong> button. Then come these sections, in order:</p>
+<ul>
+  <li><strong>Today</strong>: today's events and due tasks, an <strong>Add a task for today</strong> field, and an <strong>All tasks</strong> link.</li>
+  <li><strong>Study</strong>: only with the Study pack, with <strong>All subjects</strong>.</li>
+  <li><strong>Suggested</strong>: favorite pages, and pages edited recently that you have not opened yet.</li>
+  <li><strong>Pinned</strong>.</li>
+  <li><strong>Recent</strong>: the last 12 items.</li>
+  <li><strong>Scheduled soon</strong>: upcoming <a href="/en/docs/automations/">automation</a> runs, with <strong>All automations</strong>.</li>
+  <li><strong>Templates</strong>: up to 6 templates, with <strong>All templates</strong>.</li>
+</ul>
+<p>Tabs work like a browser: <kbd>Ctrl</kbd> + <kbd>T</kbd> opens a new tab on Home, and <kbd>Ctrl</kbd> + <kbd>W</kbd> closes the tab.</p>
+
+<h2 id="language-direction">Language and text direction</h2>
+<h3>Interface language</h3>
+<p>In <strong>Settings</strong>, then <strong>Appearance</strong>, then <strong>Language</strong>, choose between:</p>
+<ul>
+  <li><strong>Automatic</strong>: follows the Windows language.</li>
+  <li><strong>English</strong>.</li>
+  <li><strong>العربية</strong> (Arabic).</li>
+</ul>
+<p>Changing the interface language does not change what you wrote. Every page keeps its own text direction. A few words in the Arabic interface still show in English because they are not translated yet.</p>
+<h3>Paragraph direction</h3>
+<p>Each paragraph follows the direction of its text: an Arabic paragraph runs right to left and an English one left to right, even on the same page. To change the direction of one block, click its block handle, then <strong>Text Direction</strong>, and choose <strong>Automatic</strong>, <strong>Right to Left</strong> or <strong>Left to Right</strong>. This option is only on text blocks. See <a href="/en/docs/pages/#block-handle">The block handle</a>.</p>
+<p>In <strong>Settings</strong>, then <strong>Editor</strong>, you also find <strong>Spell check</strong>. The other settings are in <a href="/en/docs/settings/">Settings</a>.</p>
+
+<h2 id="platforms">What works where</h2>
+<table>
+  <thead><tr><th>Feature</th><th>Windows</th><th>Apple (iPhone, iPad, Mac)</th><th>Android</th></tr></thead>
+  <tbody>
+    <tr><td>Home and sidebar as on this page</td><td>Yes</td><td>The app's own layout</td><td>The app's own layout</td></tr>
+    <tr><td>Sample workspace</td><td>Yes</td><td>No</td><td>No</td></tr>
+  </tbody>
+</table>
+<p>The Apple and Android apps are still in progress and have their own feature sets. Their status is in <a href="/en/docs/install/">Install</a>.</p>
+
+<h2 id="next">Next</h2>
+<ul class="index">
+  <li><a href="/en/docs/pages/"><strong>Pages and blocks</strong><span>The "/" menu, every block type and links between pages</span></a></li>
+  <li><a href="/en/docs/projects/"><strong>Projects and resources</strong><span>Kinds of content and how to group them in a project</span></a></li>
+  <li><a href="/en/docs/search-commands/"><strong>Search and commands</strong><span>Ctrl+K, quick capture and keyboard shortcuts</span></a></li>
+  <li><a href="/en/docs/history/"><strong>History and backups</strong><span>Earlier versions, Trash and backups</span></a></li>
+</ul>

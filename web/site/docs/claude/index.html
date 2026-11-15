@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Claude والمزوّدون الآخرون · Worlds</title>
+<meta name="description" content="كيف تربط Claude أو Codex أو مفتاح API أو نموذجًا محليًا بـ Worlds، وما الذي يستطيع المساعد فعله، وكيف تتراجع عن تغييراته، وأين تُحفظ المفاتيح.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://enterworlds.space/docs/claude/">
+<link rel="alternate" hreflang="ar" href="https://enterworlds.space/docs/claude/">
+<link rel="alternate" hreflang="en" href="https://enterworlds.space/en/docs/claude/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Worlds">
+<meta property="og:title" content="Claude والمزوّدون الآخرون">
+<meta property="og:description" content="كيف تربط Claude أو Codex أو مفتاح API أو نموذجًا محليًا بـ Worlds، وما الذي يستطيع المساعد فعله، وكيف تتراجع عن تغييراته، وأين تُحفظ المفاتيح.">
+<meta property="og:image" content="https://enterworlds.space/media/og.png">
+<meta property="og:locale" content="ar_SA">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-256.png">
+<link rel="preload" href="/fonts/plex-arabic-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/site.css">
+<script src="/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">انتقل إلى المحتوى</a>
+<header class="wrap top">
+  <a class="lockup small" href="/" aria-label="Worlds الصفحة الرئيسية"><img class="logo" src="/icon-256.png" alt="" width="46" height="46"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="70" height="26"></a>
+  <nav class="nav" aria-label="القائمة"><a href="/apps/">التطبيقات</a><a href="/docs/" aria-current="page">الدوكس</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/en/docs/claude/" hreflang="en" lang="en">English</a></nav>
+  <details class="menu"><summary>القائمة</summary><div class="nav"><a href="/apps/">التطبيقات</a><a href="/docs/" aria-current="page">الدوكس</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/en/docs/claude/" hreflang="en" lang="en">English</a></div></details>
+</header>
+<div class="wrap docs">
+<details class="side" open><summary>صفحات الدوكس</summary><div class="side-list"><h2>البداية</h2><ul><li><a href="/docs/">نظرة عامة</a></li><li><a href="/docs/getting-started/">البداية مع Worlds</a></li></ul><h2>التثبيت</h2><ul><li><a href="/docs/install/">تثبيت Worlds</a></li><li class="sub"><a href="/docs/install/windows/">تثبيت Worlds على Windows</a></li><li class="sub"><a href="/docs/install/macos/">تثبيت Worlds على Mac</a></li><li class="sub"><a href="/docs/install/iphone-ipad/">تثبيت Worlds على iPhone و iPad</a></li><li class="sub"><a href="/docs/install/android/">تثبيت Worlds على Android</a></li><li class="sub"><a href="/docs/install/web/">Worlds في المتصفح</a></li><li class="sub"><a href="/docs/install/update-uninstall/">التحديث والإزالة</a></li><li><a href="/docs/troubleshooting/">حل المشكلات</a></li></ul><h2>الكتابة والتنظيم</h2><ul><li><a href="/docs/pages/">الصفحات والكتل</a></li><li><a href="/docs/documents/">المستندات</a></li><li><a href="/docs/tables/">الجداول وجداول البيانات</a></li><li><a href="/docs/projects/">المشاريع والمصادر</a></li><li><a href="/docs/templates/">القوالب</a></li><li><a href="/docs/search-commands/">البحث والأوامر</a></li><li><a href="/docs/history/">السجل والنسخ الاحتياطية</a></li></ul><h2>الرسم والعرض والوسائط</h2><ul><li><a href="/docs/drawing/">الرسم</a></li><li><a href="/docs/presentations/">العروض التقديمية</a></li><li><a href="/docs/media-files/">الوسائط والملفات</a></li></ul><h2>Claude والأتمتة</h2><ul><li><a href="/docs/claude/" aria-current="page">Claude والمزوّدون الآخرون</a></li><li><a href="/docs/automations/">الأتمتة</a></li><li><a href="/docs/discord/">جسر Discord</a></li><li><a href="/docs/integrations/">التكاملات</a></li></ul><h2>الحساب والمشاركة</h2><ul><li><a href="/docs/account/">حساب Worlds</a></li><li><a href="/docs/sharing/">المشاركة والعمل معًا</a></li><li><a href="/docs/sync/">كيف تعمل المزامنة</a></li><li><a href="/docs/packs/">الحزم</a></li><li><a href="/docs/profile/">الملف الشخصي والنشاط</a></li><li><a href="/docs/settings/">الإعدادات</a></li></ul><h2>للمطورين</h2><ul><li><a href="/docs/html-pages/">صفحات HTML</a></li><li><a href="/docs/mcp/">خادم MCP في Worlds</a></li></ul></div></details>
+<main id="main" class="article">
+<p class="crumb"><a href="/docs/">الدوكس</a> / Claude والأتمتة</p>
+<h1>Claude والمزوّدون الآخرون</h1>
+<p class="lead">في Worlds مساعد يقرأ صفحاتك ويكتب فيها ويرتبها، وكل تغيير يجريه يمكن التراجع عنه. تستطيع تشغيله بحساب Claude Code أو Codex، أو بمفتاح API من مزوّد تختاره، أو بنموذج يعمل على جهازك.</p>
+
+<h2 id="open">أين تجد المساعد</h2>
+<ul>
+<li><strong>Claude</strong> في الشريط الجانبي: يفتح صفحة المحادثات كاملة، مع قائمة محادثاتك السابقة وبحث فيها.</li>
+<li><strong>اسأل Claude</strong> بالاختصار <kbd>Ctrl</kbd> + <kbd>J</kbd>: يفتح لوحة جانبية فوق الصفحة التي أمامك.</li>
+<li><strong>اسأل Claude عن هذا</strong>: يرسل ما حدّدته في الصفحة إلى المحادثة.</li>
+</ul>
+<figure class="shot"><img src="/media/book/p28.webp" alt="الصفحة الرئيسية في Worlds ولوحة Claude مفتوحة على اليمين بعنوان Ask anything about your pages مع أسئلة مقترحة وحقل Ask Claude" width="1600" height="900" loading="lazy"><figcaption>لوحة Claude فوق الصفحة الرئيسية. لقطة توضيحية ببيانات تجريبية، والواجهة فيها بالإنجليزية.</figcaption></figure>
+<p>تحت حقل الكتابة زر يعرض النموذج ومستوى الجهد، مثل <code>Spark · Glance</code>. منه تختار المزوّد والنموذج لهذه المحادثة.</p>
+
+<h2 id="connect">طرق ربط المساعد</h2>
+<p>كل الطرق في <strong>الإعدادات</strong> ثم <strong>المزوّدون</strong>، وهي أربع مجموعات:</p>
+<table>
+<thead><tr><th>المجموعة</th><th>ما فيها</th><th>هل تحتاج مفتاحًا؟</th></tr></thead>
+<tbody>
+<tr><td>تسجيل الدخول</td><td>Claude Code وCodex</td><td>لا، تسجّل الدخول بحسابك في المتصفح</td></tr>
+<tr><td>مفاتيح API</td><td>Anthropic وOpenAI وGoogle Gemini وGroq وDeepSeek وMistral وxAI وOpenRouter، ومعها LiteLLM وCustom لأي خادم متوافق</td><td>نعم، إلا LiteLLM وCustom فالمفتاح اختياري</td></tr>
+<tr><td>يعمل على هذا الجهاز</td><td>يكتشف Worlds تلقائيًا الخوادم المحلية التي تعمل الآن</td><td>لا</td></tr>
+<tr><td>خوادم النماذج المحلية</td><td>Ollama وLM Studio وllama.cpp</td><td>لا</td></tr>
+</tbody>
+</table>
+
+<h3>Claude Code أو Codex</h3>
+<p>هذه الطريقة لمن لديه اشتراك Claude أو ChatGPT. يجب أن يكون التطبيق نفسه (Claude Code أو Codex) مثبّتًا على الكمبيوتر.</p>
+<ol class="steps">
+<li><h3>افتح الإعدادات، المزوّدون</h3><p>في مجموعة <strong>تسجيل الدخول</strong> تجد صفًا لـ Claude Code وصفًا لـ Codex. إن لم يكن التطبيق مثبّتًا ترى: «Claude Code غير مثبّت على هذا الجهاز.»</p></li>
+<li><h3>سجّل الدخول</h3><p>اضغط <strong>تسجيل الدخول إلى Claude</strong> أو <strong>تسجيل الدخول عبر ChatGPT</strong>. تفتح نافذة أوامر تبدأ تسجيل الدخول الرسمي في متصفحك. Worlds لا يرى بيانات الدخول هذه ولا يحفظها.</p></li>
+<li><h3>تحقّق</h3><p>بعد إكمال الدخول في المتصفح اضغط <strong>تحقّق مرة أخرى</strong>. عندما ترى <strong>جاهز</strong> يمكنك البدء.</p></li>
+</ol>
+<p>في <strong>الإعدادات</strong> ثم <strong>Claude</strong> خيارات إضافية لـ Claude Code:</p>
+<ul>
+<li><strong>البقاء مسجّلًا للدخول</strong>: تسجيل دخول واحد يدوم نحو سنة. يُحفظ الرمز في مدير بيانات الاعتماد في Windows.</li>
+<li><strong>النموذج والجهد</strong>: النماذج Spark وOrbit وNova تقابل Haiku وSonnet وOpus، والجهد Glance وFocus وDeep يقابل منخفضًا ومتوسطًا وعاليًا. الاختيار المبدئي Spark مع Glance، وهو يبقي التعديلات اليومية سريعة وقليلة التكلفة.</li>
+<li><strong>التعليمات العامة</strong>: تعليمات يقرؤها المساعد في كل محادثة.</li>
+<li><strong>استخدام Worlds من جلسات Claude Code</strong>: يضيف أدوات Worlds إلى Claude Code الذي تستخدمه خارج التطبيق. التفاصيل في <a href="/docs/mcp/">خادم MCP</a>.</li>
+</ul>
+<p>عندما يعمل Claude Code داخل Worlds تُعطَّل كل أدواته المدمجة ولا تبقى إلا أدوات Worlds: لا سطر أوامر ولا وصول إلى ملفات جهازك.</p>
+
+<h3>مفتاح API</h3>
+<ol class="steps">
+<li><h3>اختر المزوّد</h3><p>في مجموعة <strong>مفاتيح API</strong> اضغط <strong>إعداد</strong> بجانب المزوّد.</p></li>
+<li><h3>الصق المفتاح</h3><p>الصق المفتاح في الحقل ثم اضغط <strong>حفظ المفتاح</strong>. يظهر <strong>المفتاح محفوظ</strong>، ولا يُعرض المفتاح مرة أخرى بعد ذلك. لاستبداله الصق مفتاحًا جديدًا، ولحذفه اضغط <strong>إزالة</strong>.</p></li>
+<li><h3>اختر النموذج</h3><p>اضغط <strong>تحميل النماذج</strong> لجلب قائمة النماذج من المزوّد، ثم اختر المزوّد والنموذج من زر النموذج تحت حقل الكتابة في المحادثة.</p></li>
+</ol>
+<div class="callout"><p>رموز تسجيل الدخول لاشتراك Claude لا تُقبل هنا. استخدم مفتاح API من Claude Console، أو استخدم Claude Code.</p></div>
+<p>العناوين التي يبدأ بها كل مزوّد (يمكنك تغيير العنوان من <strong>عنوان الخادم</strong> ثم <strong>حفظ العنوان</strong>):</p>
+<table>
+<thead><tr><th>المزوّد</th><th>العنوان المبدئي</th></tr></thead>
+<tbody>
+<tr><td>Anthropic</td><td><code>https://api.anthropic.com</code></td></tr>
+<tr><td>OpenAI</td><td><code>https://api.openai.com/v1</code></td></tr>
+<tr><td>Google Gemini</td><td><code>https://generativelanguage.googleapis.com/v1beta/openai</code></td></tr>
+<tr><td>Groq</td><td><code>https://api.groq.com/openai/v1</code></td></tr>
+<tr><td>DeepSeek</td><td><code>https://api.deepseek.com/v1</code></td></tr>
+<tr><td>Mistral</td><td><code>https://api.mistral.ai/v1</code></td></tr>
+<tr><td>xAI</td><td><code>https://api.x.ai/v1</code></td></tr>
+<tr><td>OpenRouter</td><td><code>https://openrouter.ai/api/v1</code></td></tr>
+<tr><td>LiteLLM</td><td><code>http://localhost:4000/v1</code></td></tr>
+<tr><td>Custom</td><td>أي خادم يتبع واجهة المحادثة المتوافقة مع OpenAI</td></tr>
+</tbody>
+</table>
+
+<h3>نموذج على جهازك</h3>
+<p>Ollama وLM Studio وllama.cpp تشغّل النماذج على جهازك، بلا مفتاح وبلا إنترنت. شغّل أحدها، ثم افتح <strong>الإعدادات</strong>، <strong>المزوّدون</strong>. في مجموعة <strong>يعمل على هذا الجهاز</strong> ترى <strong>يعمل</strong> بجانب ما وجده Worlds، أو <strong>لا يعمل على</strong> مع العنوان. اضغط <strong>ابحث مرة أخرى</strong> بعد تشغيل الخادم.</p>
+<dl class="facts">
+<div><dt>Ollama</dt><dd><code>http://localhost:11434/v1</code></dd></div>
+<div><dt>LM Studio</dt><dd><code>http://localhost:1234/v1</code></dd></div>
+<div><dt>llama.cpp</dt><dd><code>http://localhost:8080/v1</code></dd></div>
+</dl>
+<p>على الجوال تعني <code>localhost</code> الجوال نفسه. لتستخدم نموذجًا يعمل على كمبيوترك اكتب عنوان الكمبيوتر في الشبكة، مثل <code>http://192.168.1.20:11434/v1</code>.</p>
+<p>بعض النماذج تظهر بشارة <strong>محادثة فقط</strong>: تستطيع المحادثة لكنها لا تقرأ صفحاتك ولا تعدّل فيها.</p>
+
+<h2 id="what-it-can-do">ما الذي يستطيع المساعد فعله</h2>
+<p>اكتب <kbd>@</kbd> في حقل المحادثة لترى ما يمكنك إضافته: ملفات (صور وملفات PDF ومستندات)، أو صفحة يعمل عليها Claude، أو محادثة سابقة. وتحتها مجموعات الأدوات:</p>
+<ul>
+<li><strong>الصفحات</strong>: إنشاء الصفحات وإعادة تسميتها ونقلها وأرشفتها وتعديلها.</li>
+<li><strong>بحث</strong>: البحث في النص والوسوم والحالة والخصائص.</li>
+<li><strong>التخطيط</strong>: الأعمدة والكتل القابلة للطي واللوحات والجداول والمعارض.</li>
+<li><strong>الخصائص</strong>، و<strong>بحث واستبدال</strong>، و<strong>الأغلفة والنمط</strong>.</li>
+<li><strong>الملف الشخصي</strong>، و<strong>الأتمتة</strong>، و<strong>القوالب</strong>، و<strong>الوسائط والملفات</strong>.</li>
+<li><strong>Discord</strong>: المعاينة والإرسال إلى Discord بعد موافقتك.</li>
+<li><strong>السجل</strong>: النسخ والتراجع والنشاط الأخير.</li>
+<li><strong>المحادثات</strong>، و<strong>التاريخ والوقت</strong>.</li>
+</ul>
+<p>وفي Windows يصل المساعد أيضًا إلى الجداول والرسومات والعروض التقديمية والمهام وسلة المهملات. اكتب <kbd>#</kbd> لتضيف محادثة سابقة إلى المحادثة الحالية.</p>
+<figure class="shot"><img src="/media/book/p26.webp" alt="قائمة @ في محادثة Claude تعرض Files وWork on a page وA conversation ثم مجموعات الأدوات Pages وFind وLayout وProperties" width="1600" height="900" loading="lazy"><figcaption>قائمة <code>@</code> بمجموعات الأدوات. لقطة توضيحية ببيانات تجريبية.</figcaption></figure>
+<figure class="shot"><img src="/media/book/p27.webp" alt="محادثة أُرفق فيها ملف PDF وطُلب تلخيصه في ثلاث نقاط، والرد ملخص قصير" width="1600" height="900" loading="lazy"><figcaption>إرفاق ملف PDF وطلب ملخص. الملف والرد للعرض فقط، وليسا ردًا حقيقيًا.</figcaption></figure>
+<p>لا يرسل المساعد شيئًا إلى Discord بنفسه: يجهّز الرسالة، وتنتظر موافقتك في <strong>النشاط</strong>. التفاصيل في <a href="/docs/discord/">جسر Discord</a>.</p>
+
+<h2 id="undo">التراجع عن تغييرات المساعد</h2>
+<p>قبل أي تغيير يجريه Claude يحفظ Worlds نسخة من الصفحة. بعد كل رد غيّر شيئًا يظهر سطر مثل <code>3 changes on Launch brief</code> فيه زران: <strong>فتح</strong> لفتح الصفحة، و<strong>تراجع</strong> لإرجاع كل تغييرات هذا الرد مرة واحدة. بعد التراجع يظهر «تم التراجع عن تغييرات Claude».</p>
+<figure class="shot"><img src="/media/book/p25.webp" alt="رد من Claude مع قائمة خطواته مفتوحة: Searching pages وReading a page وEditing a block، وتحته سطر 3 changes مع زري Open وUndo" width="1600" height="900" loading="lazy"><figcaption>خطوات الرد مفتوحة، وتحتها سطر التغييرات وزر التراجع. لقطة توضيحية ببيانات تجريبية.</figcaption></figure>
+<p>يمكنك التراجع لاحقًا أيضًا من لوحة <strong>السجل</strong> في الصفحة: تجد كل مجموعة تغييرات مع <strong>مراجعة التغييرات</strong> و<strong>تراجع</strong>. وفي <strong>النسخ</strong> تُحفظ نسخة قبل كل جلسة تحرير وقبل كل تغيير يجريه Claude. اقرأ المزيد في <a href="/docs/history/">السجل والنسخ</a>.</p>
+
+<h2 id="platforms">ما يعمل على كل منصة</h2>
+<table>
+<thead><tr><th>المنصة</th><th>المساعد</th></tr></thead>
+<tbody>
+<tr><td>Windows</td><td>يقرأ صفحاتك ويعدّلها بكل أدوات Worlds، مع كل المزوّدين بما فيها Claude Code وCodex. التراجع متاح لكل رد.</td></tr>
+<tr><td>Android</td><td>يقرأ ويعدّل بعشر أدوات: نظرة عامة على المساحة، وعرض الصفحات والبحث فيها وقراءتها، وإنشاء صفحة، وإضافة نص إلى صفحة، وتعديل كتلة، وإعادة تسمية صفحة، وإضافة مهام وعرضها. يعمل مع المزوّدين السحابيين ومع Ollama وLM Studio وCustom، دون Claude Code وCodex. زر <strong>تراجع</strong> يعيد النسخة المحفوظة قبل التغيير، والصفحات التي أنشأها المساعد تنتقل إلى سلة المهملات.</td></tr>
+<tr><td>iPhone وiPad وMac</td><td>محادثة فقط حتى الآن: يقرأ عناوين الصفحات ومعايناتها، ولا يستطيع تغيير مساحة عملك بعد.</td></tr>
+<tr><td>الويب</td><td>لا يعمل المساعد في المتصفح. إذا سألته هناك يرد بأن Claude يعمل في تطبيق Worlds على الكمبيوتر والجوال، ويعرض آخر صفحاتك.</td></tr>
+</tbody>
+</table>
+
+<h2 id="keys">أين تُحفظ المفاتيح</h2>
+<ul>
+<li><strong>Windows</strong>: في مدير بيانات الاعتماد في Windows، ولا تظهر مرة أخرى في التطبيق. قاعدة بيانات Worlds تحفظ عناوين الخوادم التي غيّرتها فقط، لا المفاتيح.</li>
+<li><strong>Android</strong>: تُشفَّر المفاتيح عبر Android Keystore وتبقى على هذا الجهاز. النسخ الاحتياطي للتطبيق مغلق، فلا تنتقل المفاتيح مع نسخة احتياطية.</li>
+<li><strong>iPhone وiPad وMac</strong>: في سلسلة مفاتيح هذا الجهاز فقط، ولا تُعرض مرة أخرى.</li>
+</ul>
+<p>المفاتيح لا تُرسل إلى خوادم Worlds ولا تدخل في المزامنة. عندما تستخدم مزوّدًا سحابيًا تذهب المحادثة وما يقرؤه المساعد من صفحاتك إلى ذلك المزوّد مباشرة. مع نموذج محلي يبقى كل شيء على جهازك.</p>
+
+<h2 id="next">اقرأ أيضًا</h2>
+<ul class="index">
+<li><a href="/docs/mcp/"><strong>خادم MCP</strong><span>استخدم أدوات Worlds من Claude Code أو برنامج آخر</span></a></li>
+<li><a href="/docs/automations/"><strong>الأتمتة</strong><span>أرسل صفحة في موعد، وجهّزها مع Claude قبل الإرسال</span></a></li>
+<li><a href="/docs/history/"><strong>السجل والنسخ</strong><span>كل تغيير محفوظ ويمكن الرجوع عنه</span></a></li>
+<li><a href="/docs/settings/"><strong>الإعدادات</strong><span>كل قسم وما فيه</span></a></li>
+</ul>
+
+<nav class="pager" aria-label="الدوكس"><a class="prev" href="/docs/media-files/"><small>السابق</small>الوسائط والملفات</a><a class="next" href="/docs/automations/"><small>التالي</small>الأتمتة</a></nav>
+</main>
+</div>
+<footer class="wrap foot">
+  <div class="row">
+    <div class="credit">
+      <a class="lockup small" href="/" aria-label="Worlds الصفحة الرئيسية"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
+      <p>مهرجان الذكاء الطبيعي يقود الذكاء الاصطناعي 2026، مسار التجارب المتميزة.</p>
+    </div>
+    <nav aria-label="Worlds"><a href="/apps/">التطبيقات</a><a href="/docs/">الدوكس</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="/privacy/">الخصوصية</a><a href="/terms/">شروط الاستخدام</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+  </div>
+  <p class="fine">Worlds اسم عمل إبداعي غير مسجل رسميًا، مستقل عن هوية imbue. الشيفرة منشورة على GitHub.</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>تثبيت Worlds · Worlds</title>
+<meta name="description" content="أي ملف تحمّله لجهازك، وما الذي يعمل على كل منصة اليوم، والمتطلبات، وطريقة التأكد من سلامة الملف.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://enterworlds.space/docs/install/">
+<link rel="alternate" hreflang="ar" href="https://enterworlds.space/docs/install/">
+<link rel="alternate" hreflang="en" href="https://enterworlds.space/en/docs/install/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Worlds">
+<meta property="og:title" content="تثبيت Worlds">
+<meta property="og:description" content="أي ملف تحمّله لجهازك، وما الذي يعمل على كل منصة اليوم، والمتطلبات، وطريقة التأكد من سلامة الملف.">
+<meta property="og:image" content="https://enterworlds.space/media/og.png">
+<meta property="og:locale" content="ar_SA">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-256.png">
+<link rel="preload" href="/fonts/plex-arabic-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/site.css">
+<script src="/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">انتقل إلى المحتوى</a>
+<header class="wrap top">
+  <a class="lockup small" href="/" aria-label="Worlds الصفحة الرئيسية"><img class="logo" src="/icon-256.png" alt="" width="46" height="46"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="70" height="26"></a>
+  <nav class="nav" aria-label="القائمة"><a href="/apps/">التطبيقات</a><a href="/docs/" aria-current="page">الدوكس</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/en/docs/install/" hreflang="en" lang="en">English</a></nav>
+  <details class="menu"><summary>القائمة</summary><div class="nav"><a href="/apps/">التطبيقات</a><a href="/docs/" aria-current="page">الدوكس</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/en/docs/install/" hreflang="en" lang="en">English</a></div></details>
+</header>
+<div class="wrap docs">
+<details class="side" open><summary>صفحات الدوكس</summary><div class="side-list"><h2>البداية</h2><ul><li><a href="/docs/">نظرة عامة</a></li><li><a href="/docs/getting-started/">البداية مع Worlds</a></li></ul><h2>التثبيت</h2><ul><li><a href="/docs/install/" aria-current="page">تثبيت Worlds</a></li><li class="sub"><a href="/docs/install/windows/">تثبيت Worlds على Windows</a></li><li class="sub"><a href="/docs/install/macos/">تثبيت Worlds على Mac</a></li><li class="sub"><a href="/docs/install/iphone-ipad/">تثبيت Worlds على iPhone و iPad</a></li><li class="sub"><a href="/docs/install/android/">تثبيت Worlds على Android</a></li><li class="sub"><a href="/docs/install/web/">Worlds في المتصفح</a></li><li class="sub"><a href="/docs/install/update-uninstall/">التحديث والإزالة</a></li><li><a href="/docs/troubleshooting/">حل المشكلات</a></li></ul><h2>الكتابة والتنظيم</h2><ul><li><a href="/docs/pages/">الصفحات والكتل</a></li><li><a href="/docs/documents/">المستندات</a></li><li><a href="/docs/tables/">الجداول وجداول البيانات</a></li><li><a href="/docs/projects/">المشاريع والمصادر</a></li><li><a href="/docs/templates/">القوالب</a></li><li><a href="/docs/search-commands/">البحث والأوامر</a></li><li><a href="/docs/history/">السجل والنسخ الاحتياطية</a></li></ul><h2>الرسم والعرض والوسائط</h2><ul><li><a href="/docs/drawing/">الرسم</a></li><li><a href="/docs/presentations/">العروض التقديمية</a></li><li><a href="/docs/media-files/">الوسائط والملفات</a></li></ul><h2>Claude والأتمتة</h2><ul><li><a href="/docs/claude/">Claude والمزوّدون الآخرون</a></li><li><a href="/docs/automations/">الأتمتة</a></li><li><a href="/docs/discord/">جسر Discord</a></li><li><a href="/docs/integrations/">التكاملات</a></li></ul><h2>الحساب والمشاركة</h2><ul><li><a href="/docs/account/">حساب Worlds</a></li><li><a href="/docs/sharing/">المشاركة والعمل معًا</a></li><li><a href="/docs/sync/">كيف تعمل المزامنة</a></li><li><a href="/docs/packs/">الحزم</a></li><li><a href="/docs/profile/">الملف الشخصي والنشاط</a></li><li><a href="/docs/settings/">الإعدادات</a></li></ul><h2>للمطورين</h2><ul><li><a href="/docs/html-pages/">صفحات HTML</a></li><li><a href="/docs/mcp/">خادم MCP في Worlds</a></li></ul></div></details>
+<main id="main" class="article">
+<p class="crumb"><a href="/docs/">الدوكس</a> / التثبيت</p>
+<h1>تثبيت Worlds</h1>
+<p class="lead">اختر جهازك، وحمّل ملفًا واحدًا من صفحة الإصدارات، ثم اتبع الخطوات في صفحة جهازك. وإذا أردت أن تبدأ دون تثبيت أي شيء، افتح Worlds في المتصفح.</p>
+
+<h2 id="which-file">أي ملف لجهازك</h2>
+<p>كل الملفات موجودة في <a href="https://github.com/justpainful/Worlds/releases/latest">صفحة آخر إصدار على GitHub</a> تحت قسم Assets. الإصدار الحالي هو 0.3.0.</p>
+<table>
+<thead><tr><th>الجهاز</th><th>الملف</th><th>الحجم</th><th>الشرح</th></tr></thead>
+<tbody>
+<tr><td>كمبيوتر Windows</td><td><code>Worlds-0.3.0-Windows-x64-setup.exe</code></td><td>218 MB</td><td><a href="/docs/install/windows/">التثبيت على Windows</a></td></tr>
+<tr><td>هاتف أو جهاز لوحي Android</td><td><code>Worlds-0.3.0-Android-Universal.apk</code></td><td>28.4 MB</td><td><a href="/docs/install/android/">التثبيت على Android</a></td></tr>
+<tr><td>iPhone</td><td><code>Worlds-0.3.0-iPhone-Unsigned.ipa</code></td><td>10.7 MB</td><td><a href="/docs/install/iphone-ipad/">التثبيت على iPhone و iPad</a></td></tr>
+<tr><td>iPad</td><td><code>Worlds-0.3.0-iPad-Unsigned.ipa</code></td><td>10.7 MB</td><td><a href="/docs/install/iphone-ipad/">التثبيت على iPhone و iPad</a></td></tr>
+<tr><td>Mac</td><td><code>Worlds-0.3.0-macOS-Unsigned.dmg</code><br>أو <code>Worlds-0.3.0-macOS-Unsigned.zip</code></td><td>23.4 MB<br>19.2 MB</td><td><a href="/docs/install/macos/">التثبيت على Mac</a></td></tr>
+<tr><td>أي جهاز فيه متصفح</td><td>لا تحتاج إلى ملف</td><td>لا شيء</td><td><a href="/docs/install/web/">Worlds في المتصفح</a></td></tr>
+</tbody>
+</table>
+<p>ومع هذه الملفات ملف صغير اسمه <code>SHA256SUMS.txt</code> (594 بايت)، فيه بصمة كل ملف لتتأكد أن تحميلك سليم. الشرح <a href="#verify">في آخر هذه الصفحة</a>.</p>
+<div class="callout"><p>ملفا Mac يحملان التطبيق نفسه. حمّل <code>.dmg</code>، واستخدم <code>.zip</code> فقط إذا لم يفتح معك ملف <code>.dmg</code>. ولا تثبّت ملف iPad على iPhone ولا العكس.</p></div>
+
+<h2 id="requirements">المتطلبات</h2>
+<dl class="facts">
+<div><dt>Windows</dt><dd>Windows 10 أو Windows 11 بنظام 64 بت (x64). لا يحتاج الإعداد إلى اتصال بالإنترنت.</dd></div>
+<div><dt>Android</dt><dd>Android 8.0 أو أحدث، على هاتف أو جهاز لوحي.</dd></div>
+<div><dt>iPhone و iPad</dt><dd>iOS أو iPadOS 17 أو أحدث، وحساب Apple ID، وكمبيوتر Windows أو Mac مرة واحدة لإعداد أداة التوقيع.</dd></div>
+<div><dt>Mac</dt><dd>macOS 14 Sonoma أو أحدث.</dd></div>
+<div><dt>المتصفح</dt><dd>نسخة حديثة من Chrome أو Edge أو Firefox أو Safari.</dd></div>
+</dl>
+
+<h2 id="platforms">ماذا يعمل على كل منصة اليوم</h2>
+<p>تطبيق Windows هو الأكمل. تطبيق Android قريب منه. تطبيقات iPhone و iPad و Mac نسخة مبكرة. ونسخة المتصفح هي واجهة Windows نفسها، لكن صفحاتها تُحفظ في المتصفح.</p>
+<table>
+<thead><tr><th>الميزة</th><th>Windows</th><th>Android</th><th>iPhone و iPad و Mac</th><th>المتصفح</th></tr></thead>
+<tbody>
+<tr><td>الصفحات والمستندات والجداول</td><td>نعم</td><td>نعم</td><td>مبكر</td><td>نعم</td></tr>
+<tr><td>الرسم والعروض التقديمية</td><td>نعم</td><td>نعم</td><td>مبكر</td><td>نعم</td></tr>
+<tr><td>الذكاء الاصطناعي</td><td>محادثة ويعدّل الصفحات: Claude Code أو Codex أو مفتاح API أو نموذج على جهازك</td><td>محادثة ويعدّل الصفحات: مفتاح API أو خادم محلي مثل Ollama</td><td>محادثة فقط بمفتاح API، ولا يعدّل الصفحات بعد</td><td>غير متاح، يعمل في التطبيقات</td></tr>
+<tr><td>الحساب والعمل مع الآخرين</td><td>نعم (مفتاح مرور أو رمز بالبريد)</td><td>نعم (رمز بالبريد)</td><td>مبكر</td><td>نعم (رمز بالبريد)</td></tr>
+<tr><td>الواجهة العربية</td><td>كاملة</td><td>كاملة</td><td>جزئية</td><td>كاملة</td></tr>
+<tr><td>ما تراه عند التثبيت</td><td>تحذير SmartScreen لأن الملف غير موقّع</td><td>إذن تثبيت تطبيقات غير معروفة</td><td>توقيع الملف بأداة مثل SideStore، وعلى Mac فتح يدوي أول مرة</td><td>لا تثبيت</td></tr>
+</tbody>
+</table>
+<p>كلمة <strong>مبكر</strong> تعني أن الميزة مبنية ومختبرة آليًا، لكنها لم تُجرَّب بعد على أجهزة حقيقية. وفي تطبيقات Apple يُحفظ التعديل فقط عندما يكون ملف مساحة العمل <code>worlds.db</code> على الجهاز نفسه، أما في iCloud Drive فيبقى للقراءة.</p>
+<p>جهاز Chromebook يشغّل ملف Android، لكن تثبيته يحتاج إلى خطوات للمطورين. الأسهل على Chromebook أن تستخدم <a href="/docs/install/web/">Worlds في المتصفح</a>. والتفاصيل في <a href="/docs/install/android/#chromebook">صفحة Android</a>.</p>
+
+<h2 id="unsigned">لماذا يظهر تحذير عند التثبيت</h2>
+<p>ملفات Worlds ليست موقّعة بشهادة مدفوعة من Microsoft أو Apple، ولا يُوزَّع التطبيق من المتاجر بعد. لذلك:</p>
+<ul>
+<li>يعرض Windows نافذة SmartScreen الزرقاء قبل الإعداد، وفيها زر للمتابعة.</li>
+<li>يمنع macOS فتح التطبيق في المرة الأولى حتى تسمح له بنفسك.</li>
+<li>ملف Android موقّع بمفتاح تطوير، فيطلب Android إذنًا لتثبيت تطبيقات من خارج Google Play.</li>
+<li>ملفات iPhone و iPad غير موقّعة، فتوقّعها أداة مثل SideStore بحساب Apple ID الخاص بك.</li>
+</ul>
+<p>كل صفحة تثبيت تشرح هذه الخطوة برسم للنافذة التي ستراها. وإذا أردت أن تتأكد أن الملف هو نفسه الذي نُشر، اتبع الخطوات التالية.</p>
+
+<h2 id="verify">التأكد من سلامة الملف بـ SHA256SUMS.txt</h2>
+<p>لكل ملف بصمة SHA-256: سلسلة من 64 حرفًا ورقمًا تتغير كلها لو تغيّر بايت واحد في الملف. احسب بصمة الملف الذي حمّلته، ثم قارنها بالسطر الذي يحمل اسمه في <code>SHA256SUMS.txt</code>. إذا تطابقت فالملف سليم.</p>
+<ol class="steps">
+<li><h3>حمّل SHA256SUMS.txt</h3><p>من <a href="https://github.com/justpainful/Worlds/releases/latest">صفحة آخر إصدار</a>، واحفظه في المجلد نفسه الذي فيه ملف التثبيت (عادة مجلد التنزيلات). يمكنك أيضًا فتحه في المتصفح وقراءته مباشرة.</p></li>
+<li><h3>احسب بصمة الملف</h3>
+<p><strong>في Windows:</strong> افتح PowerShell من قائمة ابدأ، والصق هذا الأمر ثم اضغط <kbd>Enter</kbd>:</p>
+<pre><code>Get-FileHash "$env:USERPROFILE\Downloads\Worlds-0.3.0-Windows-x64-setup.exe" -Algorithm SHA256</code></pre>
+<p>تظهر البصمة بأحرف كبيرة، وفي الملف بأحرف صغيرة. لا يهم حجم الأحرف، المهم أن تتطابق.</p>
+<p><strong>في Mac:</strong> افتح Terminal والصق:</p>
+<pre><code>shasum -a 256 ~/Downloads/Worlds-0.3.0-macOS-Unsigned.dmg</code></pre>
+<p><strong>في Linux أو في Linux على Chromebook:</strong> ضع الملفين في مجلد واحد ثم شغّل:</p>
+<pre><code>cd ~/Downloads
+sha256sum -c SHA256SUMS.txt --ignore-missing</code></pre>
+<p>يكتب الأمر <code>OK</code> بجانب كل ملف سليم.</p>
+<p><strong>على الهاتف:</strong> لا يحسب Android ولا iOS البصمة بنفسيهما. حمّل الملف على كمبيوتر وتحقق منه هناك، أو استخدم تطبيقًا تثق به لحساب SHA-256.</p></li>
+<li><h3>قارن البصمتين</h3><p>قارن البصمة الناتجة بالسطر الذي يحمل اسم الملف. هذه بصمات الإصدار 0.3.0 للمقارنة:</p>
+<dl class="facts">
+<div><dt><code>Worlds-0.3.0-Windows-x64-setup.exe</code></dt><dd><code>8c8c89d34bacda97e88933357325b6d57ff8f030aaa0c49d1be4dd0655d6fda9</code></dd></div>
+<div><dt><code>Worlds-0.3.0-Android-Universal.apk</code></dt><dd><code>53cce9a5ee5d83375a677692ee370a83494a3d2faa85058c70cac4f8d56f2840</code></dd></div>
+<div><dt><code>Worlds-0.3.0-iPhone-Unsigned.ipa</code></dt><dd><code>24a34e5aee839ac05dadeadbcfdd2e1a6c1ee58a6409b5792ecebd4f46ea50c2</code></dd></div>
+<div><dt><code>Worlds-0.3.0-iPad-Unsigned.ipa</code></dt><dd><code>3d3ceec3d1e0f04276eeb000ab70b3b4ca8e6e4b3e5b3d832dd1ff6a61951fc7</code></dd></div>
+<div><dt><code>Worlds-0.3.0-macOS-Unsigned.dmg</code></dt><dd><code>1acb35a8be4a42fa2ab3b14f131f8049dc3a5262aab957eb7d2da9cb4fba0098</code></dd></div>
+<div><dt><code>Worlds-0.3.0-macOS-Unsigned.zip</code></dt><dd><code>f519151d2bb5255daacfb7f75eac9940d463bde07c1948952249e75fbf46438c</code></dd></div>
+</dl>
+<p>إذا حمّلت إصدارًا أحدث، فاستخدم ملف <code>SHA256SUMS.txt</code> الموجود معه.</p></li>
+</ol>
+<div class="callout warn"><p>إذا اختلفت البصمة فلا تفتح الملف. احذفه وحمّله من جديد من صفحة الإصدارات على GitHub فقط.</p></div>
+
+<h2 id="next">التالي</h2>
+<ul class="index">
+<li><a href="/docs/install/windows/"><strong>Windows</strong><span>ملف الإعداد، ونافذة SmartScreen، ومعالج التثبيت خطوة بخطوة.</span></a></li>
+<li><a href="/docs/install/macos/"><strong>Mac</strong><span>السحب إلى التطبيقات، والفتح أول مرة من الخصوصية والأمن.</span></a></li>
+<li><a href="/docs/install/iphone-ipad/"><strong>iPhone و iPad</strong><span>توقيع الملف بـ SideStore، والوثوق بالمطور، ووضع المطور.</span></a></li>
+<li><a href="/docs/install/android/"><strong>Android</strong><span>إذن تثبيت التطبيقات غير المعروفة، ثم التثبيت.</span></a></li>
+<li><a href="/docs/install/web/"><strong>المتصفح</strong><span>Worlds دون تثبيت، وأين تُحفظ صفحاتك.</span></a></li>
+<li><a href="/docs/install/update-uninstall/"><strong>التحديث والإزالة</strong><span>كيف تحدّث أو تزيل التطبيق، وهل تبقى بياناتك.</span></a></li>
+<li><a href="/docs/troubleshooting/"><strong>حل المشكلات</strong><span>رسائل المنع، والتطبيق الذي لا يفتح، ورمز الدخول الذي لم يصل.</span></a></li>
+</ul>
+
+<nav class="pager" aria-label="الدوكس"><a class="prev" href="/docs/getting-started/"><small>السابق</small>البداية مع Worlds</a><a class="next" href="/docs/install/windows/"><small>التالي</small>تثبيت Worlds على Windows</a></nav>
+</main>
+</div>
+<footer class="wrap foot">
+  <div class="row">
+    <div class="credit">
+      <a class="lockup small" href="/" aria-label="Worlds الصفحة الرئيسية"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
+      <p>مهرجان الذكاء الطبيعي يقود الذكاء الاصطناعي 2026، مسار التجارب المتميزة.</p>
+    </div>
+    <nav aria-label="Worlds"><a href="/apps/">التطبيقات</a><a href="/docs/">الدوكس</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="/privacy/">الخصوصية</a><a href="/terms/">شروط الاستخدام</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+  </div>
+  <p class="fine">Worlds اسم عمل إبداعي غير مسجل رسميًا، مستقل عن هوية imbue. الشيفرة منشورة على GitHub.</p>
+</footer>
+</body>
+</html>

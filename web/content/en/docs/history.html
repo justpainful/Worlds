@@ -1,0 +1,82 @@
+<!--
+title: History and backups
+description: How Worlds keeps your work: autosave and undo, page history and earlier versions, Trash and restore, and the daily database backup.
+-->
+<h1>History and backups</h1>
+<p class="lead">Worlds saves your work as you type, keeps earlier versions of every page, puts what you delete in Trash, and backs up your database every day. This page explains how to get back to any of them.</p>
+
+<h2 id="autosave">Saving and undo</h2>
+<ul>
+  <li>A page saves automatically a moment after you stop typing, and <kbd>Ctrl</kbd> + <kbd>S</kbd> saves right away. The save state shows at the top of the page.</li>
+  <li><kbd>Ctrl</kbd> + <kbd>Z</kbd> to undo, and <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> or <kbd>Ctrl</kbd> + <kbd>Y</kbd> to redo, inside the page you are writing in.</li>
+  <li>When you delete a page, a message appears with an <strong>Undo</strong> button that brings it straight back.</li>
+</ul>
+<p>Drawings, spreadsheets and presentations have their own undo inside their editors. Drawings also have named versions: see <a href="/en/docs/drawing/#versions">Saving and versions in drawings</a>.</p>
+
+<h2 id="page-history">Page history</h2>
+<p>Open the history with the <strong>History</strong> button at the top of the page, or the <strong>Page History</strong> command in the command palette. A side panel opens with three tabs: <strong>Info</strong>, <strong>History</strong> and <strong>Assistant</strong>.</p>
+<figure class="shot"><img src="/media/book/p23.webp" alt="The page فكرة المشروع with the History panel beside it: a Changes section with edits, an archive, a restore, an automation save and the page creation, and a Versions section with three versions with their dates and block counts, each with a Preview button" width="1600" height="1000" loading="lazy"><figcaption>Page history: changes at the top, versions below. Sample data.</figcaption></figure>
+<h3>Changes</h3>
+<p>The <strong>Changes</strong> section lists the last 200 changes to the page: who changed it, when, and how many blocks were added or changed. Changes made by Claude or by <a href="/en/docs/automations/">automations</a> have <strong>Review changes</strong> and <strong>Undo</strong> buttons, and the review window has <strong>Undo all</strong>.</p>
+<h3>Versions</h3>
+<p>The <strong>Versions</strong> section lists saved versions with their date and number of blocks. Worlds keeps a version:</p>
+<ul>
+  <li>Before each editing session: when you start typing after 10 minutes or more without edits.</li>
+  <li>Before every change Claude or an automation makes.</li>
+  <li>Before every restore of an earlier version.</li>
+</ul>
+<ol class="steps">
+  <li><h3>Preview</h3><p>Press <strong>Preview</strong> next to a version to see the page as it was.</p></li>
+  <li><h3>Restore</h3><p>Press <strong>Restore this version</strong>. You see "Version restored. The previous state was kept as a version too." So you lose nothing, and you can go back to before the restore.</p></li>
+</ol>
+<p>There is no side-by-side comparison of two page versions yet. The comparison you get is <strong>Review changes</strong>, for changes by Claude and automations.</p>
+
+<h2 id="trash">Trash and restore</h2>
+<p>When you delete a page, it moves to <strong>Trash</strong> together with its subpages. Open Trash from the <strong>Library</strong> in the sidebar, or the <strong>Trash</strong> command. "Deleted pages stay here until you remove them permanently": Trash never empties itself.</p>
+<ul>
+  <li><strong>Restore</strong>: puts the page back.</li>
+  <li><strong>Delete permanently</strong>: asks <strong>Delete permanently?</strong>, then removes the page and its subpages from this computer. This cannot be undone.</li>
+</ul>
+<h3>Archiving</h3>
+<p>Archiving hides a page you do not need right now, without deleting it. Choose <strong>Archive</strong> from the page menu. Archived pages are listed in the <strong>Archived</strong> section of Trash with <strong>Unarchive</strong>, and they still show in search.</p>
+
+<h2 id="backups">Backups</h2>
+<p>Worlds makes a full copy of your database:</p>
+<ul>
+  <li><strong>Daily</strong>: when the app starts, at most once every 24 hours, after checking the database is healthy.</li>
+  <li><strong>Before an update</strong>: before every change to the storage format when the app updates.</li>
+  <li><strong>Manual</strong>: whenever you ask.</li>
+</ul>
+<p>It keeps the last 10 daily copies and 20 of the other kinds, and removes older ones. The copies are in the <code>backups</code> subfolder of the data folder.</p>
+<h3>In Settings</h3>
+<p>Open <strong>Settings</strong>, then <strong>Storage</strong>. In the <strong>Backups</strong> group:</p>
+<ul>
+  <li><strong>Back up now</strong>: an immediate manual copy, with the time of the last backup under it.</li>
+  <li>The 8 newest backups with their date, kind and size, each with <strong>Restore</strong>.</li>
+  <li><strong>Backups folder</strong> and a <strong>Show</strong> button to open it.</li>
+</ul>
+<h3>Restoring a backup</h3>
+<ol class="steps">
+  <li><h3>Choose the backup</h3><p>Press <strong>Restore</strong> next to it, then confirm with <strong>Restore at next launch</strong>.</p></li>
+  <li><h3>Restart Worlds</h3><p><strong>Restore waiting</strong> appears with a <strong>Cancel</strong> button if you change your mind. On the next start the restore is applied, and your current database is first kept as a "before restore" copy.</p></li>
+</ol>
+<div class="callout"><p>If Worlds finds at start that the database is damaged, it replaces it automatically with the newest healthy backup. If the daily check finds a problem, Settings shows "The database needs attention" and suggests restoring or backing up now.</p></div>
+<div class="callout warn"><p>Backups live on the same computer. If the computer fails, they go with it. Copy the data folder to an external drive now and then, or use <a href="/en/docs/sync/">Sync</a>.</p></div>
+
+<h2 id="platforms">What works where</h2>
+<table>
+  <thead><tr><th>Feature</th><th>Windows</th><th>Apple</th><th>Android</th></tr></thead>
+  <tbody>
+    <tr><td>Keeping versions</td><td>Yes</td><td>Yes; the restore screen is in progress</td><td>Partly</td></tr>
+    <tr><td>Trash</td><td>Yes</td><td>Partly: restore, but no permanent delete</td><td>Partly</td></tr>
+    <tr><td>Backups</td><td>Yes</td><td>In progress</td><td>In progress</td></tr>
+  </tbody>
+</table>
+<p>The Apple and Android apps are still in progress. Details in <a href="/en/docs/install/">Install</a>.</p>
+
+<h2 id="next">Next</h2>
+<ul class="index">
+  <li><a href="/en/docs/sync/"><strong>Sync</strong><span>Your work on more than one device</span></a></li>
+  <li><a href="/en/docs/getting-started/#workspace"><strong>Where it is kept</strong><span>Where the data folder is</span></a></li>
+  <li><a href="/en/docs/claude/"><strong>Claude</strong><span>What Claude changes and how to review it</span></a></li>
+</ul>

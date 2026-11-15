@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tables and spreadsheets · Worlds</title>
+<meta name="description" content="Spreadsheets in Worlds: cell references like A1, the formulas and functions that really exist, shortcuts, CSV and Excel import and export, and tables inside pages.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://enterworlds.space/en/docs/tables/">
+<link rel="alternate" hreflang="ar" href="https://enterworlds.space/docs/tables/">
+<link rel="alternate" hreflang="en" href="https://enterworlds.space/en/docs/tables/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Worlds">
+<meta property="og:title" content="Tables and spreadsheets">
+<meta property="og:description" content="Spreadsheets in Worlds: cell references like A1, the formulas and functions that really exist, shortcuts, CSV and Excel import and export, and tables inside pages.">
+<meta property="og:image" content="https://enterworlds.space/media/og.png">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-256.png">
+<link rel="preload" href="/fonts/instrument-sans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/site.css">
+<script src="/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="wrap top">
+  <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="46" height="46"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="70" height="26"></a>
+  <nav class="nav" aria-label="Menu"><a href="/en/apps/">Apps</a><a href="/en/docs/" aria-current="page">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/docs/tables/" hreflang="ar" lang="ar">العربية</a></nav>
+  <details class="menu"><summary>Menu</summary><div class="nav"><a href="/en/apps/">Apps</a><a href="/en/docs/" aria-current="page">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/docs/tables/" hreflang="ar" lang="ar">العربية</a></div></details>
+</header>
+<div class="wrap docs">
+<details class="side" open><summary>Docs pages</summary><div class="side-list"><h2>Start here</h2><ul><li><a href="/en/docs/">Overview</a></li><li><a href="/en/docs/getting-started/">Getting started with Worlds</a></li></ul><h2>Install</h2><ul><li><a href="/en/docs/install/">Install Worlds</a></li><li class="sub"><a href="/en/docs/install/windows/">Install Worlds on Windows</a></li><li class="sub"><a href="/en/docs/install/macos/">Install Worlds on Mac</a></li><li class="sub"><a href="/en/docs/install/iphone-ipad/">Install Worlds on iPhone and iPad</a></li><li class="sub"><a href="/en/docs/install/android/">Install Worlds on Android</a></li><li class="sub"><a href="/en/docs/install/web/">Worlds in the browser</a></li><li class="sub"><a href="/en/docs/install/update-uninstall/">Update and uninstall</a></li><li><a href="/en/docs/troubleshooting/">Troubleshooting</a></li></ul><h2>Write and organise</h2><ul><li><a href="/en/docs/pages/">Pages and blocks</a></li><li><a href="/en/docs/documents/">Documents</a></li><li><a href="/en/docs/tables/" aria-current="page">Tables and spreadsheets</a></li><li><a href="/en/docs/projects/">Projects and resources</a></li><li><a href="/en/docs/templates/">Templates</a></li><li><a href="/en/docs/search-commands/">Search and commands</a></li><li><a href="/en/docs/history/">History and backups</a></li></ul><h2>Draw, present and media</h2><ul><li><a href="/en/docs/drawing/">Drawing</a></li><li><a href="/en/docs/presentations/">Presentations</a></li><li><a href="/en/docs/media-files/">Media and files</a></li></ul><h2>Claude and automations</h2><ul><li><a href="/en/docs/claude/">Claude and other AI providers</a></li><li><a href="/en/docs/automations/">Automations</a></li><li><a href="/en/docs/discord/">Discord bridge</a></li><li><a href="/en/docs/integrations/">Integrations</a></li></ul><h2>Account and sharing</h2><ul><li><a href="/en/docs/account/">Your Worlds account</a></li><li><a href="/en/docs/sharing/">Sharing and working together</a></li><li><a href="/en/docs/sync/">How sync works</a></li><li><a href="/en/docs/packs/">Packs</a></li><li><a href="/en/docs/profile/">Profile and Activity</a></li><li><a href="/en/docs/settings/">Settings</a></li></ul><h2>For developers</h2><ul><li><a href="/en/docs/html-pages/">HTML pages</a></li><li><a href="/en/docs/mcp/">The Worlds MCP server</a></li></ul></div></details>
+<main id="main" class="article">
+<p class="crumb"><a href="/en/docs/">Docs</a> / Write and organise</p>
+<h1>Tables and spreadsheets</h1>
+<p class="lead">Worlds has two kinds of table: a full <strong>Spreadsheet</strong> with sheets and formulas, like Excel, and a simple <strong>Table</strong> inside a page for laying out text. This page explains both and lists every function the spreadsheet understands.</p>
+
+<h2 id="which-table">Which table do you need?</h2>
+<table>
+  <thead><tr><th></th><th>Table in a page</th><th>Spreadsheet</th></tr></thead>
+  <tbody>
+    <tr><td>Creating</td><td>"/" then <strong>Table</strong></td><td><strong>New</strong> then <strong>Spreadsheet</strong></td></tr>
+    <tr><td>Formulas</td><td>No</td><td>Yes, 92 functions</td></tr>
+    <tr><td>Several sheets</td><td>No</td><td>Yes</td></tr>
+    <tr><td>CSV and Excel</td><td>No</td><td>Import and export</td></tr>
+    <tr><td>Chart</td><td>A <strong>Chart</strong> block on the same page</td><td>No</td></tr>
+  </tbody>
+</table>
+
+<h2 id="spreadsheet">The spreadsheet</h2>
+<p>Create one with <strong>New</strong>, then <strong>Spreadsheet</strong>, or the <strong>New Spreadsheet</strong> command in the command palette. A new sheet starts with 60 rows and 26 columns and grows when you insert rows or columns.</p>
+<h3>At the top</h3>
+<ul>
+  <li><strong>Templates</strong>: three ready-made spreadsheets: Financial Budget &amp; Cashflow, KPI &amp; OKR Tracker and Weighted Calculator &amp; Matrix.</li>
+  <li><strong>Import .xlsx / .csv</strong>.</li>
+  <li><strong>Export</strong>: <strong>Export Excel (.xlsx)</strong> or <strong>Export CSV (.csv)</strong>.</li>
+  <li><strong>Shortcuts</strong>: the spreadsheet shortcut list, also opened with <kbd>F1</kbd>.</li>
+</ul>
+<h3>Cell tools</h3>
+<ul>
+  <li><strong>Undo</strong> and <strong>Redo</strong>.</li>
+  <li><strong>Number Format</strong>: <strong>General / Auto</strong>, <strong>Number (1,234.56)</strong>, <strong>Integer (1,235)</strong>, <strong>Currency (SAR 1,234.56)</strong>, <strong>Currency ($1,234.56)</strong>, <strong>Accounting ((1,234.56))</strong>, <strong>Percent (12.3%)</strong>, <strong>Scientific (1.23E+03)</strong>.</li>
+  <li><strong>Decrease Decimals</strong> and <strong>Increase Decimals</strong>.</li>
+  <li><strong>Text Color</strong>, <strong>Cell Background Fill</strong>, <strong>Wrap Text</strong>.</li>
+  <li><strong>AutoSum (Alt+=)</strong>.</li>
+  <li><strong>Sort Column A → Z</strong> and <strong>Sort Column Z → A</strong>, and <strong>Toggle AutoFilter</strong>.</li>
+  <li><strong>Freeze Panes</strong>: <strong>Freeze Top Row</strong>, <strong>Freeze First Column</strong>, <strong>Unfreeze Panes</strong>.</li>
+  <li><strong>Insert Row Above</strong>, <strong>Insert Column Left</strong>, <strong>Delete Row</strong>, <strong>Delete Column</strong>, <strong>Auto-fit Column Width</strong>. A sheet always keeps at least 10 rows and 5 columns.</li>
+  <li><strong>Find &amp; Replace (Ctrl+F)</strong>.</li>
+  <li><strong>Insert Function</strong>: a list of common functions with a short explanation of each.</li>
+</ul>
+<h3>Sheets</h3>
+<p>Sheet tabs sit at the bottom, with <strong>Add Sheet</strong>, and <strong>Rename Sheet</strong>, <strong>Duplicate Sheet</strong> and <strong>Delete Sheet</strong>.</p>
+
+<h2 id="references">Cell references</h2>
+<table>
+  <thead><tr><th>Type</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>A1</code></td><td>Column A, row 1.</td></tr>
+    <tr><td><code>A1:B5</code></td><td>A range from A1 to B5.</td></tr>
+    <tr><td><code>$A$1</code>, <code>A$1</code>, <code>$A1</code></td><td>A fixed reference that does not change when copied: fully, row only, or column only.</td></tr>
+    <tr><td><code>Sheet1!A1</code></td><td>A cell on another sheet.</td></tr>
+    <tr><td><code>'Sheet 1'!$A$1</code></td><td>A sheet whose name has a space: put the name in single quotes.</td></tr>
+  </tbody>
+</table>
+<p>Sheet names can be in Arabic, and upper or lower case does not matter. While typing a formula, press <kbd>F4</kbd> to cycle a reference through <code>$A$1</code>, <code>A$1</code>, <code>$A1</code> and <code>A1</code>. In the <strong>Name Box</strong>, type <code>A1</code> or <code>A1:D10</code> and press <kbd>Enter</kbd> to jump there. The largest row a reference accepts is 100000.</p>
+
+<h2 id="formulas">Formulas</h2>
+<p>A formula starts with <code>=</code>, like <code>=SUM(B2:B10)</code>. Separate arguments with a comma <code>,</code> or a semicolon <code>;</code>. Text goes in double quotes, and <code>TRUE</code> and <code>FALSE</code> are logical values.</p>
+<h3>Operators</h3>
+<table>
+  <thead><tr><th>Operation</th><th>Symbols</th></tr></thead>
+  <tbody>
+    <tr><td>Arithmetic</td><td><code>+</code> <code>-</code> <code>*</code> <code>/</code> <code>^</code></td></tr>
+    <tr><td>Percent</td><td><code>%</code> after a number</td></tr>
+    <tr><td>Join text</td><td><code>&amp;</code></td></tr>
+    <tr><td>Compare</td><td><code>=</code> <code>&lt;&gt;</code> <code>!=</code> <code>&lt;</code> <code>&lt;=</code> <code>&gt;</code> <code>&gt;=</code></td></tr>
+  </tbody>
+</table>
+<h3>The functions that exist</h3>
+<p>These are all the functions the spreadsheet calculates. Any other name gives the <code>#NAME?</code> error.</p>
+<table>
+  <thead><tr><th>Group</th><th>Functions</th></tr></thead>
+  <tbody>
+    <tr><td>Statistics</td><td><code>SUM</code> <code>AVERAGE</code> <code>AVG</code> <code>MIN</code> <code>MAX</code> <code>COUNT</code> <code>COUNTA</code> <code>COUNTBLANK</code> <code>PRODUCT</code> <code>SUMPRODUCT</code> <code>MEDIAN</code> <code>MODE</code> <code>STDEV</code> <code>STDEVP</code> <code>VAR</code> <code>VARP</code> <code>PERCENTILE</code> <code>LARGE</code> <code>SMALL</code> <code>RANK</code> <code>SUMIF</code> <code>COUNTIF</code> <code>AVERAGEIF</code></td></tr>
+    <tr><td>Logic</td><td><code>IF</code> <code>IFS</code> <code>IFERROR</code> <code>IFNA</code> <code>SWITCH</code> <code>CHOOSE</code> <code>AND</code> <code>OR</code> <code>XOR</code> <code>NOT</code> <code>ISBLANK</code> <code>ISNUMBER</code> <code>ISTEXT</code></td></tr>
+    <tr><td>Math</td><td><code>ABS</code> <code>SIGN</code> <code>SQRT</code> <code>POWER</code> <code>EXP</code> <code>LN</code> <code>LOG</code> <code>LOG10</code> <code>MOD</code> <code>INT</code> <code>FLOOR</code> <code>CEILING</code> <code>TRUNC</code> <code>ROUND</code> <code>ROUNDUP</code> <code>ROUNDDOWN</code> <code>PI</code> <code>RAND</code> <code>RANDBETWEEN</code></td></tr>
+    <tr><td>Lookup</td><td><code>VLOOKUP</code> <code>HLOOKUP</code> <code>XLOOKUP</code> <code>INDEX</code> <code>MATCH</code> <code>ROW</code> <code>COLUMN</code> <code>ROWS</code> <code>COLUMNS</code></td></tr>
+    <tr><td>Finance</td><td><code>PMT</code> <code>FV</code> <code>PV</code> <code>NPV</code></td></tr>
+    <tr><td>Text</td><td><code>LEN</code> <code>TRIM</code> <code>UPPER</code> <code>LOWER</code> <code>PROPER</code> <code>CONCAT</code> <code>CONCATENATE</code> <code>TEXTJOIN</code> <code>LEFT</code> <code>RIGHT</code> <code>MID</code> <code>SUBSTITUTE</code> <code>REPT</code> <code>VALUE</code> <code>TEXT</code> <code>EXACT</code></td></tr>
+    <tr><td>Date</td><td><code>TODAY</code> <code>NOW</code> <code>DATE</code> <code>YEAR</code> <code>MONTH</code> <code>DAY</code> <code>DAYS</code> <code>DATEDIF</code></td></tr>
+  </tbody>
+</table>
+<p>The <strong>Insert Function</strong> list explains the most used of these; the rest work when you type them yourself.</p>
+<h3>Error messages</h3>
+<table>
+  <thead><tr><th>Error</th><th>Cause</th></tr></thead>
+  <tbody>
+    <tr><td><code>#VALUE!</code></td><td>The wrong kind of value, such as text in a sum.</td></tr>
+    <tr><td><code>#REF!</code></td><td>A reference to a cell or sheet that does not exist.</td></tr>
+    <tr><td><code>#NAME?</code></td><td>An unknown function name.</td></tr>
+    <tr><td><code>#DIV/0!</code></td><td>Division by zero.</td></tr>
+    <tr><td><code>#NUM!</code></td><td>A number that does not work for the operation.</td></tr>
+    <tr><td><code>#N/A</code></td><td>A value that was not found, for example by VLOOKUP.</td></tr>
+    <tr><td><code>#CYCLE!</code></td><td>A circular reference: the formula depends on itself.</td></tr>
+    <tr><td><code>#ERROR!</code></td><td>Any other formula error.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="shortcuts">Spreadsheet shortcuts</h2>
+<table>
+  <thead><tr><th>Keys</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td><kbd>Enter</kbd> or <kbd>F2</kbd></td><td>Edit the active cell in place, or commit and move down.</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>Enter</kbd></td><td>Fill all selected cells with the current input or formula.</td></tr>
+    <tr><td><kbd>Alt</kbd> + <kbd>=</kbd></td><td>AutoSum of the adjacent numbers.</td></tr>
+    <tr><td><kbd>F4</kbd> (while editing a formula)</td><td>Cycle through fixed reference types.</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>D</kbd>, <kbd>Ctrl</kbd> + <kbd>R</kbd></td><td>Fill down, fill right.</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>;</kbd>, <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>;</kbd></td><td>Insert the current date, or time.</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + arrows</td><td>Jump to the edge of the data region.</td></tr>
+    <tr><td><kbd>Shift</kbd> + arrows</td><td>Extend the cell selection.</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>C</kbd>, <kbd>X</kbd>, <kbd>V</kbd></td><td>Copy, cut, paste, in a format Excel understands.</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>V</kbd></td><td>Paste values only, without formulas.</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>B</kbd>, <kbd>I</kbd>, <kbd>U</kbd>, <kbd>5</kbd></td><td>Bold, italic, underline, strikethrough.</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>Z</kbd>, <kbd>Ctrl</kbd> + <kbd>Y</kbd></td><td>Undo, redo.</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>F</kbd></td><td>Find and replace in the sheet.</td></tr>
+    <tr><td><kbd>F1</kbd></td><td>The shortcut list.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="csv">Import and export (CSV and Excel)</h2>
+<h3>Import</h3>
+<ol class="steps">
+  <li><h3>Press "Import .xlsx / .csv"</h3><p>It accepts <code>.xlsx</code>, <code>.xls</code>, <code>.csv</code> and <code>.tsv</code> files.</p></li>
+  <li><h3>Choose the file</h3><p>All sheets are read, formulas stay formulas, and dates become <code>YYYY-MM-DD</code>.</p></li>
+</ol>
+<div class="callout warn"><p>Importing replaces the whole spreadsheet with the file's content, all sheets included. To keep the current data, create a new spreadsheet and import into it.</p></div>
+<h3>Export</h3>
+<ul>
+  <li><strong>Export CSV (.csv)</strong>: exports <strong>the current sheet only</strong>, as calculated values rather than formulas, with commas between columns, in UTF-8 so Arabic is kept. The file is named after the spreadsheet title.</li>
+  <li><strong>Export Excel (.xlsx)</strong>: exports <strong>all sheets</strong> and keeps the formulas. Sheet names are cut to 31 characters, the Excel limit.</li>
+</ul>
+
+<h2 id="page-tables">Tables inside pages</h2>
+<p>Type "/" then <strong>Table</strong> for a 3 by 3 table with a header row. When you select cells, a bar appears with <strong>+ Row</strong>, <strong>+ Column</strong>, <strong>Delete row</strong> and <strong>Delete column</strong>. From the block handle: <strong>Add Row Below</strong>, <strong>Add Column Right</strong>, <strong>Toggle Header Row</strong>, <strong>Delete Table</strong>.</p>
+<p>The <strong>Chart</strong> block draws a pie, bar or line chart from a table on the same page. The <strong>Collection</strong>, <strong>Board</strong> and <strong>Gallery</strong> blocks show subpages as a table with their properties. See <a href="/en/docs/pages/#properties">Properties</a>.</p>
+
+<h2 id="platforms">What works where</h2>
+<table>
+  <thead><tr><th>Feature</th><th>Windows</th><th>Apple</th><th>Android</th></tr></thead>
+  <tbody>
+    <tr><td>Formulas and functions</td><td>Yes</td><td>Yes, same engine</td><td>Yes, same engine</td></tr>
+    <tr><td>Editing cells and sheets</td><td>Yes</td><td>Partly: no autofill, styles, filters, undo or range copy and paste</td><td>Yes; merged cells and frozen rows are kept but not shown</td></tr>
+    <tr><td>CSV and Excel import and export</td><td>Yes</td><td>In progress</td><td>In progress</td></tr>
+  </tbody>
+</table>
+<p>The Apple and Android apps are still in progress. Details in <a href="/en/docs/install/">Install</a>.</p>
+
+<h2 id="next">Next</h2>
+<ul class="index">
+  <li><a href="/en/docs/pages/"><strong>Pages and blocks</strong><span>Tables and charts inside a page</span></a></li>
+  <li><a href="/en/docs/projects/"><strong>Projects and resources</strong><span>Keep a spreadsheet with its documents in one project</span></a></li>
+</ul>
+
+<nav class="pager" aria-label="Docs"><a class="prev" href="/en/docs/documents/"><small>Previous</small>Documents</a><a class="next" href="/en/docs/projects/"><small>Next</small>Projects and resources</a></nav>
+</main>
+</div>
+<footer class="wrap foot">
+  <div class="row">
+    <div class="credit">
+      <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
+      <p>Natural Intelligence Leads Artificial Intelligence festival 2026, outstanding experiments track.</p>
+    </div>
+    <nav aria-label="Worlds"><a href="/en/apps/">Apps</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="/en/privacy/">Privacy</a><a href="/en/terms/">Terms of use</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+  </div>
+  <p class="fine">Worlds is a creative working name, not a registered mark, and is independent of the imbue identity. The code is published on GitHub.</p>
+</footer>
+</body>
+</html>

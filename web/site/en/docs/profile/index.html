@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Profile and Activity · Worlds</title>
+<meta name="description" content="The Worlds profile page: name, avatar, banner, status, blocks and stats, and the Activity view that shows what changed recently and what waits for your approval.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://enterworlds.space/en/docs/profile/">
+<link rel="alternate" hreflang="ar" href="https://enterworlds.space/docs/profile/">
+<link rel="alternate" hreflang="en" href="https://enterworlds.space/en/docs/profile/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Worlds">
+<meta property="og:title" content="Profile and Activity">
+<meta property="og:description" content="The Worlds profile page: name, avatar, banner, status, blocks and stats, and the Activity view that shows what changed recently and what waits for your approval.">
+<meta property="og:image" content="https://enterworlds.space/media/og.png">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-256.png">
+<link rel="preload" href="/fonts/instrument-sans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/site.css">
+<script src="/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="wrap top">
+  <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="46" height="46"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="70" height="26"></a>
+  <nav class="nav" aria-label="Menu"><a href="/en/apps/">Apps</a><a href="/en/docs/" aria-current="page">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/docs/profile/" hreflang="ar" lang="ar">العربية</a></nav>
+  <details class="menu"><summary>Menu</summary><div class="nav"><a href="/en/apps/">Apps</a><a href="/en/docs/" aria-current="page">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/docs/profile/" hreflang="ar" lang="ar">العربية</a></div></details>
+</header>
+<div class="wrap docs">
+<details class="side" open><summary>Docs pages</summary><div class="side-list"><h2>Start here</h2><ul><li><a href="/en/docs/">Overview</a></li><li><a href="/en/docs/getting-started/">Getting started with Worlds</a></li></ul><h2>Install</h2><ul><li><a href="/en/docs/install/">Install Worlds</a></li><li class="sub"><a href="/en/docs/install/windows/">Install Worlds on Windows</a></li><li class="sub"><a href="/en/docs/install/macos/">Install Worlds on Mac</a></li><li class="sub"><a href="/en/docs/install/iphone-ipad/">Install Worlds on iPhone and iPad</a></li><li class="sub"><a href="/en/docs/install/android/">Install Worlds on Android</a></li><li class="sub"><a href="/en/docs/install/web/">Worlds in the browser</a></li><li class="sub"><a href="/en/docs/install/update-uninstall/">Update and uninstall</a></li><li><a href="/en/docs/troubleshooting/">Troubleshooting</a></li></ul><h2>Write and organise</h2><ul><li><a href="/en/docs/pages/">Pages and blocks</a></li><li><a href="/en/docs/documents/">Documents</a></li><li><a href="/en/docs/tables/">Tables and spreadsheets</a></li><li><a href="/en/docs/projects/">Projects and resources</a></li><li><a href="/en/docs/templates/">Templates</a></li><li><a href="/en/docs/search-commands/">Search and commands</a></li><li><a href="/en/docs/history/">History and backups</a></li></ul><h2>Draw, present and media</h2><ul><li><a href="/en/docs/drawing/">Drawing</a></li><li><a href="/en/docs/presentations/">Presentations</a></li><li><a href="/en/docs/media-files/">Media and files</a></li></ul><h2>Claude and automations</h2><ul><li><a href="/en/docs/claude/">Claude and other AI providers</a></li><li><a href="/en/docs/automations/">Automations</a></li><li><a href="/en/docs/discord/">Discord bridge</a></li><li><a href="/en/docs/integrations/">Integrations</a></li></ul><h2>Account and sharing</h2><ul><li><a href="/en/docs/account/">Your Worlds account</a></li><li><a href="/en/docs/sharing/">Sharing and working together</a></li><li><a href="/en/docs/sync/">How sync works</a></li><li><a href="/en/docs/packs/">Packs</a></li><li><a href="/en/docs/profile/" aria-current="page">Profile and Activity</a></li><li><a href="/en/docs/settings/">Settings</a></li></ul><h2>For developers</h2><ul><li><a href="/en/docs/html-pages/">HTML pages</a></li><li><a href="/en/docs/mcp/">The Worlds MCP server</a></li></ul></div></details>
+<main id="main" class="article">
+<p class="crumb"><a href="/en/docs/">Docs</a> / Account and sharing</p>
+<h1>Profile and Activity</h1>
+<p class="lead">Your profile is a page about you: your name, avatar, a banner, a bio and links, and blocks that show what you are working on. Activity is a log of what changed in your workspace, and the place where requests wait for your approval.</p>
+
+<h2 id="profile">Profile</h2>
+<p>Open it from the card at the top of <strong>Settings</strong>: "Profile, banner and blocks".</p>
+<figure class="shot"><img src="/media/book/p34.webp" alt="The profile page of a sample account called Worlds Demo: a WD avatar, an Edit Profile button, Pages, Chats, Automations and Day streak counts, a Make this profile yours card, and Pages, Media and About tabs" width="1600" height="1000" loading="lazy"><figcaption>A profile with sample data, with no banner and no blocks yet.</figcaption></figure>
+<h3>What the page shows</h3>
+<ul>
+<li>The <strong>banner</strong> at the top: an image, and animated GIFs play here.</li>
+<li>The <strong>avatar</strong>, your <strong>name</strong> and your username after <code>@</code>.</li>
+<li>A <strong>status</strong>: a short line with a presence dot.</li>
+<li>Your <strong>bio</strong>, <strong>location</strong> and <strong>links</strong>.</li>
+<li>Numbers from your work: <strong>Pages</strong>, <strong>Chats</strong>, <strong>Automations</strong> and <strong>Day streak</strong>.</li>
+<li><strong>Blocks</strong>, then the <strong>Pages</strong>, <strong>Media</strong> and <strong>About</strong> tabs.</li>
+</ul>
+<figure class="shot"><img src="/media/app/search-profile.webp" alt="Two captures with labels: the command palette for finding pages and running commands, and a profile with a banner, avatar and counts" width="1600" height="1200" loading="lazy"><figcaption>Right: a profile with a banner, avatar and stats (labels in Arabic). Names are blurred and the data is sample data.</figcaption></figure>
+
+<h3>Editing the profile</h3>
+<p>Click <strong>Edit Profile</strong>. The fields:</p>
+<dl class="facts">
+<div><dt>Name</dt><dd>As shown on your profile and when you share pages</dd></div>
+<div><dt>Username</dt><dd>Also your account username</dd></div>
+<div><dt>Status</dt><dd>Up to 80 characters</dd></div>
+<div><dt>Bio</dt><dd>Up to 400 characters</dd></div>
+<div><dt>Location</dt><dd>Your city, or whatever you like</dd></div>
+<div><dt>Links</dt><dd>A label and an address for each</dd></div>
+</dl>
+<p>From the more button (<code>...</code>): <strong>Customize Blocks</strong>, <strong>Add banner</strong> or <strong>Change banner</strong>, <strong>Adjust banner area</strong>, <strong>Change avatar</strong> and <strong>Adjust avatar</strong>, <strong>Liquid Glass background</strong> or <strong>Solid background</strong>, and <strong>Appearance and language</strong>. Accepted images: GIF, PNG, JPG, WEBP and AVIF.</p>
+<p>The share button next to <strong>Edit Profile</strong> copies a <strong>profile card</strong> you can paste anywhere.</p>
+
+<h3>Blocks</h3>
+<p>With no blocks you see "Make this profile yours", with <strong>Customize Blocks</strong> and <strong>Start with suggestions</strong>.</p>
+<ul>
+<li>Up to 12 blocks, and the first 3 are marked <strong>Featured</strong>.</li>
+<li>Types: <strong>Info</strong>, <strong>Progress</strong>, <strong>Statement</strong>, <strong>Grid</strong>, <strong>List</strong>, <strong>Media</strong>, <strong>Frame</strong>, <strong>Fields</strong>, <strong>Links</strong>, <strong>Badges</strong> and <strong>Live</strong>.</li>
+<li>A <strong>Live</strong> block shows live numbers from Worlds: today's session, your streak, the last 4 weeks, your latest page, and the Discord bot's status.</li>
+<li>Each block has a style and a size you choose.</li>
+</ul>
+
+<h3>The About tab</h3>
+<p>It shows your location and local time, when you started, roughly how many words you have written, your edits in the last 7 days, your links, and an activity map titled <strong>Last 4 weeks</strong>.</p>
+<div class="callout"><p>Your profile is kept on your device and is not published. In the web version it is kept with your workspace on your account. Its username is the same as your account username.</p></div>
+<p>Claude can also edit your profile: status, bio, links, images and blocks, and every change can be undone.</p>
+
+<h2 id="activity">Activity</h2>
+<p>Open <strong>Activity</strong> from the sidebar or the command palette. Under the title: "Requests waiting for you, and what changed recently."</p>
+<figure class="shot"><img src="/media/book/p35.webp" alt="The Activity view: a Recent section and under Today a list of changes such as Edited, Renamed, Created, Restored from archive and Archived, with who made them and when" width="1600" height="1000" loading="lazy"><figcaption>The activity log of a sample workspace.</figcaption></figure>
+<h3>Needs approval</h3>
+<p>Requests to send to Discord that Claude or an automation prepared appear here. Each has a preview, <strong>Approve and send</strong> and <strong>Decline</strong>. Nothing is sent until you approve. While requests wait, <strong>Needs approval</strong> appears in the sidebar with a count. See <a href="/en/docs/discord/#approval">The approval queue</a>.</p>
+<h3>Recent</h3>
+<ul>
+<li>The last 150 changes, grouped under <strong>Today</strong>, <strong>Yesterday</strong> or the date.</li>
+<li>Each line names the page and what happened (created, edited, renamed, moved, archived, restored, deleted, sent to Discord, properties or profile changed), then who did it: you, Claude or an automation, and when.</li>
+<li>Click a line to open the page.</li>
+</ul>
+<p>The log is kept on your device in the Worlds database. To undo a particular change, open the page and use its <strong>History</strong> panel. See <a href="/en/docs/history/">History and versions</a>.</p>
+
+<h2 id="next">Read next</h2>
+<ul class="index">
+<li><a href="/en/docs/history/"><strong>History and versions</strong><span>Undo a change and restore a version</span></a></li>
+<li><a href="/en/docs/account/"><strong>Your Worlds account</strong><span>The same username as your account</span></a></li>
+<li><a href="/en/docs/settings/"><strong>Settings</strong><span>Appearance, language and the other sections</span></a></li>
+</ul>
+
+<nav class="pager" aria-label="Docs"><a class="prev" href="/en/docs/packs/"><small>Previous</small>Packs</a><a class="next" href="/en/docs/settings/"><small>Next</small>Settings</a></nav>
+</main>
+</div>
+<footer class="wrap foot">
+  <div class="row">
+    <div class="credit">
+      <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
+      <p>Natural Intelligence Leads Artificial Intelligence festival 2026, outstanding experiments track.</p>
+    </div>
+    <nav aria-label="Worlds"><a href="/en/apps/">Apps</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="/en/privacy/">Privacy</a><a href="/en/terms/">Terms of use</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+  </div>
+  <p class="fine">Worlds is a creative working name, not a registered mark, and is independent of the imbue identity. The code is published on GitHub.</p>
+</footer>
+</body>
+</html>

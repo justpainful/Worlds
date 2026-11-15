@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>حل المشكلات · Worlds</title>
+<meta name="description" content="مشكلات التثبيت والتشغيل الشائعة في Worlds وحلولها: SmartScreen، و WebView2، ورسائل macOS، والتثبيت على Android و iPhone، والتصفح الخاص، ورمز الدخول.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://enterworlds.space/docs/troubleshooting/">
+<link rel="alternate" hreflang="ar" href="https://enterworlds.space/docs/troubleshooting/">
+<link rel="alternate" hreflang="en" href="https://enterworlds.space/en/docs/troubleshooting/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Worlds">
+<meta property="og:title" content="حل المشكلات">
+<meta property="og:description" content="مشكلات التثبيت والتشغيل الشائعة في Worlds وحلولها: SmartScreen، و WebView2، ورسائل macOS، والتثبيت على Android و iPhone، والتصفح الخاص، ورمز الدخول.">
+<meta property="og:image" content="https://enterworlds.space/media/og.png">
+<meta property="og:locale" content="ar_SA">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-256.png">
+<link rel="preload" href="/fonts/plex-arabic-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/site.css">
+<script src="/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">انتقل إلى المحتوى</a>
+<header class="wrap top">
+  <a class="lockup small" href="/" aria-label="Worlds الصفحة الرئيسية"><img class="logo" src="/icon-256.png" alt="" width="46" height="46"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="70" height="26"></a>
+  <nav class="nav" aria-label="القائمة"><a href="/apps/">التطبيقات</a><a href="/docs/" aria-current="page">الدوكس</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/en/docs/troubleshooting/" hreflang="en" lang="en">English</a></nav>
+  <details class="menu"><summary>القائمة</summary><div class="nav"><a href="/apps/">التطبيقات</a><a href="/docs/" aria-current="page">الدوكس</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/en/docs/troubleshooting/" hreflang="en" lang="en">English</a></div></details>
+</header>
+<div class="wrap docs">
+<details class="side" open><summary>صفحات الدوكس</summary><div class="side-list"><h2>البداية</h2><ul><li><a href="/docs/">نظرة عامة</a></li><li><a href="/docs/getting-started/">البداية مع Worlds</a></li></ul><h2>التثبيت</h2><ul><li><a href="/docs/install/">تثبيت Worlds</a></li><li class="sub"><a href="/docs/install/windows/">تثبيت Worlds على Windows</a></li><li class="sub"><a href="/docs/install/macos/">تثبيت Worlds على Mac</a></li><li class="sub"><a href="/docs/install/iphone-ipad/">تثبيت Worlds على iPhone و iPad</a></li><li class="sub"><a href="/docs/install/android/">تثبيت Worlds على Android</a></li><li class="sub"><a href="/docs/install/web/">Worlds في المتصفح</a></li><li class="sub"><a href="/docs/install/update-uninstall/">التحديث والإزالة</a></li><li><a href="/docs/troubleshooting/" aria-current="page">حل المشكلات</a></li></ul><h2>الكتابة والتنظيم</h2><ul><li><a href="/docs/pages/">الصفحات والكتل</a></li><li><a href="/docs/documents/">المستندات</a></li><li><a href="/docs/tables/">الجداول وجداول البيانات</a></li><li><a href="/docs/projects/">المشاريع والمصادر</a></li><li><a href="/docs/templates/">القوالب</a></li><li><a href="/docs/search-commands/">البحث والأوامر</a></li><li><a href="/docs/history/">السجل والنسخ الاحتياطية</a></li></ul><h2>الرسم والعرض والوسائط</h2><ul><li><a href="/docs/drawing/">الرسم</a></li><li><a href="/docs/presentations/">العروض التقديمية</a></li><li><a href="/docs/media-files/">الوسائط والملفات</a></li></ul><h2>Claude والأتمتة</h2><ul><li><a href="/docs/claude/">Claude والمزوّدون الآخرون</a></li><li><a href="/docs/automations/">الأتمتة</a></li><li><a href="/docs/discord/">جسر Discord</a></li><li><a href="/docs/integrations/">التكاملات</a></li></ul><h2>الحساب والمشاركة</h2><ul><li><a href="/docs/account/">حساب Worlds</a></li><li><a href="/docs/sharing/">المشاركة والعمل معًا</a></li><li><a href="/docs/sync/">كيف تعمل المزامنة</a></li><li><a href="/docs/packs/">الحزم</a></li><li><a href="/docs/profile/">الملف الشخصي والنشاط</a></li><li><a href="/docs/settings/">الإعدادات</a></li></ul><h2>للمطورين</h2><ul><li><a href="/docs/html-pages/">صفحات HTML</a></li><li><a href="/docs/mcp/">خادم MCP في Worlds</a></li></ul></div></details>
+<main id="main" class="article">
+<p class="crumb"><a href="/docs/">الدوكس</a> / التثبيت</p>
+<h1>حل المشكلات</h1>
+<p class="lead">كل مشكلة هنا بعنوان يشبه ما تراه على الشاشة، ثم سببها وحلها خطوة بخطوة.</p>
+
+<h2 id="smartscreen">Windows: «قام Windows بحماية الكمبيوتر» ولا يوجد زر للمتابعة</h2>
+<p><strong>السبب:</strong> ملف الإعداد غير موقّع بشهادة، فيعرض Microsoft Defender SmartScreen تحذيرًا قبل تشغيله.</p>
+<ol>
+<li>اضغط الرابط <strong>مزيد من المعلومات</strong> (More info) تحت النص. الزر لا يظهر قبل ذلك.</li>
+<li>تأكد أن اسم التطبيق <code>Worlds-0.3.0-Windows-x64-setup.exe</code>، ثم اضغط <strong>تشغيل على أي حال</strong> (Run anyway).</li>
+</ol>
+<p>الرسوم في <a href="/docs/install/windows/#install">خطوات التثبيت على Windows</a>. إذا لم يظهر زر تشغيل على أي حال أبدًا، فجهازك يتبع سياسة تمنع التطبيقات غير المعروفة، وهذا شائع في أجهزة العمل والمدارس. اطلب من مسؤول الجهاز، أو استخدم <a href="/docs/install/web/">Worlds في المتصفح</a>.</p>
+
+<h2 id="download-blocked">Windows: المتصفح منع الملف أو حذفه</h2>
+<p><strong>السبب:</strong> يحذّر Edge و Chrome من الملفات التنفيذية الجديدة التي لم ينزّلها كثيرون.</p>
+<ul>
+<li><strong>Edge:</strong> افتح التنزيلات (<kbd>Ctrl</kbd> + <kbd>J</kbd>)، واضغط النقاط الثلاث بجانب الملف، ثم الاحتفاظ (Keep)، ثم إظهار المزيد (Show more)، ثم الاحتفاظ على أي حال (Keep anyway).</li>
+<li><strong>Chrome:</strong> افتح التنزيلات (<kbd>Ctrl</kbd> + <kbd>J</kbd>) واختر الاحتفاظ (Keep) بجانب الملف.</li>
+</ul>
+<p>حمّل الملف من <a href="https://github.com/justpainful/Worlds/releases/latest">صفحة الإصدارات على GitHub</a> فقط، وتأكد من بصمته كما في <a href="/docs/install/#verify">صفحة التثبيت</a>.</p>
+
+<h2 id="still-running">Windows: أغلقت Worlds لكنه ما زال يعمل، أو الإعداد يقول إنه يعمل</h2>
+<p><strong>السبب:</strong> زر الإغلاق يخفي Worlds في علبة النظام، لتستمر الأتمتة المجدولة.</p>
+<ol>
+<li>ابحث عن أيقونة Worlds بجانب الساعة. إذا لم تجدها، فاضغط السهم الصغير الذي يعرض الأيقونات المخفية.</li>
+<li>انقرها بالزر الأيمن واختر <strong>إنهاء</strong> (Quit).</li>
+<li>شغّل ملف الإعداد من جديد.</li>
+</ol>
+<p>إذا أردت أن ينتهي Worlds عند إغلاق النافذة، فأوقف <strong>متابعة التشغيل في علبة النظام</strong> في الإعدادات. لاحظ أن الأتمتة لا تعمل وهو مغلق.</p>
+
+<h2 id="webview2">Windows: Worlds لا يفتح، أو تظهر رسالة عن WebView2</h2>
+<p><strong>السبب:</strong> يعرض Worlds واجهته عبر Microsoft Edge WebView2. إذا كان هذا المكوّن مفقودًا أو تالفًا، لا تظهر النافذة.</p>
+<ol>
+<li>شغّل ملف إعداد Worlds مرة أخرى. فيه WebView2، ويثبّته إذا لم يجده.</li>
+<li>افتح الإعدادات، ثم التطبيقات، ثم التطبيقات المثبتة، وابحث عن <strong>Microsoft Edge WebView2 Runtime</strong>. إذا وجدته ومعه خيار تعديل (Modify)، فاختره لإصلاحه.</li>
+<li>إذا لم يُصلح ذلك المشكلة، فثبّت WebView2 Runtime من <a href="https://developer.microsoft.com/microsoft-edge/webview2/">صفحة Microsoft الرسمية</a> (اختر Evergreen)، ثم افتح Worlds.</li>
+</ol>
+<p>في أجهزة العمل قد تمنع السياسات تثبيت WebView2. اطلب ذلك من مسؤول الجهاز.</p>
+
+<h2 id="macos-cannot-open">Mac: «لم يتم فتح Worlds» أو «لا يمكن فتح Worlds»</h2>
+<p><strong>السبب:</strong> التطبيق غير موقّع ولا موثّق من Apple، فيمنعه Gatekeeper في المرة الأولى.</p>
+<ul>
+<li><strong>macOS 15 وما بعده:</strong> اضغط تم، ثم افتح إعدادات النظام، ثم الخصوصية والأمن، وانزل إلى الأمن، واضغط <strong>فتح على أي حال</strong> (Open Anyway)، ثم أكّد بكلمة السر.</li>
+<li><strong>macOS 14:</strong> انقر التطبيق في مجلد التطبيقات بالزر الأيمن، واختر فتح، ثم فتح في التنبيه.</li>
+</ul>
+<p>إذا لم يظهر زر فتح على أي حال، فحاول فتح التطبيق مرة أخرى ثم ارجع إلى الخصوصية والأمن خلال ساعة. الرسوم في <a href="/docs/install/macos/#open-sequoia">خطوات التثبيت على Mac</a>.</p>
+
+<h2 id="macos-damaged">Mac: «التطبيق تالف ولا يمكن فتحه»</h2>
+<p><strong>السبب:</strong> يعرض macOS هذه الرسالة لبعض التطبيقات غير الموقّعة التي نُزّلت من الإنترنت، لأنه يضع عليها علامة حجر. الملف ليس تالفًا إذا كانت بصمته صحيحة.</p>
+<ol>
+<li>تأكد أنك حمّلت الملف من صفحة الإصدارات على GitHub، وأن بصمته تطابق <code>SHA256SUMS.txt</code>.</li>
+<li>انقل التطبيق إلى مجلد التطبيقات إن لم يكن هناك.</li>
+<li>افتح Terminal، واكتب الأمر التالي مع مسافة في آخره، ولا تضغط <kbd>Enter</kbd> بعد:
+<pre><code>xattr -dr com.apple.quarantine </code></pre></li>
+<li>اسحب التطبيق من مجلد التطبيقات وأفلته في نافذة Terminal، فيُكتب مساره بعد الأمر. ثم اضغط <kbd>Enter</kbd>.</li>
+<li>افتح التطبيق من جديد. إذا ظهرت رسالة لم يتم فتحه، فاتبع خطوات <a href="#macos-cannot-open">الفقرة السابقة</a>.</li>
+</ol>
+
+<h2 id="android-blocked">Android: الهاتف يمنع التثبيت</h2>
+<ul>
+<li><strong>لا يُسمح بتثبيت تطبيقات غير معروفة من هذا المصدر:</strong> اضغط الإعدادات وفعّل السماح من هذا المصدر للتطبيق الذي فتحت منه الملف (Chrome أو الملفات). الرسوم في <a href="/docs/install/android/#install">خطوات التثبيت على Android</a>.</li>
+<li><strong>Play Protect حظر التطبيق:</strong> اضغط مزيد من التفاصيل (More details) ثم التثبيت على أي حال (Install anyway).</li>
+<li><strong>هواتف Samsung الحديثة:</strong> ميزة Auto Blocker (المانع التلقائي) تمنع التطبيقات من خارج المتاجر. أوقفها مؤقتًا من الإعدادات، ثم الأمان والخصوصية، ثم Auto Blocker، وثبّت، ثم أعد تفعيلها.</li>
+<li><strong>رسالة بأن المسؤول منع ذلك:</strong> الهاتف أو ملف العمل فيه يتبع سياسة جهة عمل. استخدم <a href="/docs/install/web/">Worlds في المتصفح</a>، أو اطلب من المسؤول.</li>
+</ul>
+
+<h2 id="android-not-installed">Android: «لم يتم تثبيت التطبيق»</h2>
+<ul>
+<li><strong>نسخة سابقة من Worlds مثبتة بتوقيع مختلف:</strong> لا يقبل Android تحديثًا موقّعًا بمفتاح آخر. الحل الوحيد إزالة القديم ثم التثبيت، والإزالة تحذف صفحاتك من الهاتف. صدّر ما تحتاجه أولًا كما في <a href="/docs/install/update-uninstall/#android">التحديث والإزالة</a>.</li>
+<li><strong>إصدار Android أقدم من 8.0:</strong> تظهر رسالة عن مشكلة في تحليل الحزمة. Worlds يحتاج Android 8.0 أو أحدث، فاستخدم <a href="/docs/install/web/">المتصفح</a> بدلًا منه.</li>
+<li><strong>مساحة التخزين ممتلئة:</strong> أفرغ بعض المساحة ثم أعد المحاولة.</li>
+<li><strong>ملف لم يكتمل تنزيله:</strong> حمّله من جديد وتأكد من بصمته.</li>
+</ul>
+
+<h2 id="ios-untrusted">iPhone و iPad: «مطور مؤسسي غير موثوق» أو «مطور غير موثوق»</h2>
+<p><strong>السبب:</strong> التطبيق موقّع بحسابك، ولم تثق بهذا الحساب على الجهاز بعد.</p>
+<ol>
+<li>افتح الإعدادات، ثم عام، ثم <strong>VPN وإدارة الأجهزة</strong>.</li>
+<li>تحت تطبيق المطور اضغط بريد Apple ID الخاص بك.</li>
+<li>اضغط زر الوثوق، ثم أكّد.</li>
+</ol>
+<p>إذا لم تجد قسم تطبيق المطور، فالتطبيق لم يُثبَّت بعد أو ثُبّت بحساب آخر. الرسوم في <a href="/docs/install/iphone-ipad/#install">خطوات التثبيت على iPhone و iPad</a>.</p>
+
+<h2 id="ios-developer-mode">iPhone و iPad: «وضع المطور مطلوب»</h2>
+<ol>
+<li>افتح الإعدادات، ثم الخصوصية والأمن، وانزل إلى <strong>وضع المطور</strong> تحت الأمن.</li>
+<li>فعّله واضغط إعادة التشغيل.</li>
+<li>بعد إعادة التشغيل اضغط تشغيل وأدخل رمز الجهاز.</li>
+</ol>
+<p>لا يظهر صف وضع المطور حتى يُثبَّت على الجهاز أول تطبيق موقّع بهذه الطريقة. ثبّت SideStore أولًا كما في دليلها، ثم ارجع.</p>
+
+<h2 id="ios-expired">iPhone و iPad: Worlds لا يفتح بعد 7 أيام</h2>
+<p><strong>السبب:</strong> مع حساب Apple ID مجاني ينتهي التوقيع بعد 7 أيام، فيرفض iOS فتح التطبيق: يُغلق فور فتحه أو تظهر رسالة بأنه غير متاح.</p>
+<ol>
+<li>افتح SideStore، ثم My Apps.</li>
+<li>اضغط زر الأيام بجانب Worlds لتجديده، أو جدّد كل التطبيقات معًا. اتبع ما تطلبه SideStore للاتصال أثناء التجديد.</li>
+<li>افتح Worlds. صفحاتك كما هي، لأن انتهاء التوقيع لا يحذف شيئًا.</li>
+</ol>
+<p>إذا انتهى توقيع SideStore نفسها، فأعد تثبيتها من الكمبيوتر حسب <a href="https://sidestore.io">دليلها</a>. وإذا قالت الأداة إنك وصلت إلى الحد الأقصى من التطبيقات، فالحساب المجاني يسمح بثلاثة تطبيقات موقّعة معًا: أزل تطبيقًا لا تحتاجه من My Apps. لتتجنب التجديد الأسبوعي تمامًا، يمدّ اشتراك Apple Developer المدفوع التوقيع إلى سنة.</p>
+
+<h2 id="private-browsing">المتصفح: اختفت صفحاتي</h2>
+<p><strong>السبب:</strong> في المتصفح تُحفظ صفحاتك في تخزين المتصفح لموقع app.enterworlds.space، إلا إذا سجّلت الدخول.</p>
+<ul>
+<li><strong>نافذة خاصة أو متخفية:</strong> لا تحتفظ بشيء بعد إغلاقها، وقد ترفض الحفظ أصلًا. استخدم نافذة عادية.</li>
+<li><strong>متصفح آخر أو جهاز آخر:</strong> لكل متصفح نسخته. ارجع إلى المتصفح الذي كتبت فيه، أو سجّل الدخول فيه أولًا لتنتقل صفحاته إلى حسابك.</li>
+<li><strong>مسحت بيانات المتصفح، أو حذف Safari بيانات موقع لم تفتحه منذ أيام:</strong> نسخة المتصفح ذهبت. إذا كنت مسجّل الدخول قبل ذلك، فسجّل الدخول من جديد لتعود صفحاتك من حسابك.</li>
+</ul>
+<p>لتجنب ذلك، سجّل الدخول بحسابك، أو استخدم أحد التطبيقات التي تحفظ صفحاتك على جهازك. التفاصيل في <a href="/docs/install/web/#storage">أين تُحفظ صفحاتك</a>.</p>
+
+<h2 id="sign-in-code">رمز تسجيل الدخول لم يصل</h2>
+<p>يُرسل الرمز من <code>no-reply@enterworlds.space</code>، وهو من 6 أرقام وصالح لمدة 10 دقائق.</p>
+<ol>
+<li>افحص مجلد الرسائل غير المرغوب فيها (Spam أو Junk)، وفي Gmail افحص تبويب العروض الترويجية أيضًا.</li>
+<li>ابحث في بريدك عن <code>no-reply@enterworlds.space</code>. إذا وجدت الرسالة في البريد غير المرغوب فيه، فعلّمها بأنها ليست غير مرغوب فيها لتصل التالية إلى الوارد.</li>
+<li>تأكد أن البريد الذي كتبته صحيح، دون حرف ناقص أو مسافة.</li>
+<li>انتظر دقيقة، ثم اضغط <strong>إرسال رمز جديد</strong>، واستخدم الرمز في أحدث رسالة فقط.</li>
+<li>بريد جهات العمل والمدارس قد يحجز الرسائل الآلية. جرّب بريدًا شخصيًا، أو اطلب من المسؤول السماح بالمرسل.</li>
+</ol>
+
+<h2 id="checksum">البصمة لا تطابق SHA256SUMS.txt</h2>
+<p>لا تفتح الملف. غالبًا لم يكتمل التنزيل. احذفه وحمّله من جديد من <a href="https://github.com/justpainful/Worlds/releases/latest">صفحة الإصدارات على GitHub</a>، وقارن البصمة بالسطر الذي يحمل اسم الملف نفسه في ملف <code>SHA256SUMS.txt</code> للإصدار نفسه. الطريقة في <a href="/docs/install/#verify">صفحة التثبيت</a>.</p>
+
+<nav class="pager" aria-label="الدوكس"><a class="prev" href="/docs/install/update-uninstall/"><small>السابق</small>التحديث والإزالة</a><a class="next" href="/docs/pages/"><small>التالي</small>الصفحات والكتل</a></nav>
+</main>
+</div>
+<footer class="wrap foot">
+  <div class="row">
+    <div class="credit">
+      <a class="lockup small" href="/" aria-label="Worlds الصفحة الرئيسية"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
+      <p>مهرجان الذكاء الطبيعي يقود الذكاء الاصطناعي 2026، مسار التجارب المتميزة.</p>
+    </div>
+    <nav aria-label="Worlds"><a href="/apps/">التطبيقات</a><a href="/docs/">الدوكس</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="/privacy/">الخصوصية</a><a href="/terms/">شروط الاستخدام</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+  </div>
+  <p class="fine">Worlds اسم عمل إبداعي غير مسجل رسميًا، مستقل عن هوية imbue. الشيفرة منشورة على GitHub.</p>
+</footer>
+</body>
+</html>

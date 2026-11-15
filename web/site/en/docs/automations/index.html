@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Automations · Worlds</title>
+<meta name="description" content="Send a page to Discord at a set time or summarise it with AI: creating an automation, schedules, the run history, approval and notifications.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://enterworlds.space/en/docs/automations/">
+<link rel="alternate" hreflang="ar" href="https://enterworlds.space/docs/automations/">
+<link rel="alternate" hreflang="en" href="https://enterworlds.space/en/docs/automations/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Worlds">
+<meta property="og:title" content="Automations">
+<meta property="og:description" content="Send a page to Discord at a set time or summarise it with AI: creating an automation, schedules, the run history, approval and notifications.">
+<meta property="og:image" content="https://enterworlds.space/media/og.png">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-256.png">
+<link rel="preload" href="/fonts/instrument-sans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/site.css">
+<script src="/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="wrap top">
+  <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="46" height="46"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="70" height="26"></a>
+  <nav class="nav" aria-label="Menu"><a href="/en/apps/">Apps</a><a href="/en/docs/" aria-current="page">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/docs/automations/" hreflang="ar" lang="ar">العربية</a></nav>
+  <details class="menu"><summary>Menu</summary><div class="nav"><a href="/en/apps/">Apps</a><a href="/en/docs/" aria-current="page">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/docs/automations/" hreflang="ar" lang="ar">العربية</a></div></details>
+</header>
+<div class="wrap docs">
+<details class="side" open><summary>Docs pages</summary><div class="side-list"><h2>Start here</h2><ul><li><a href="/en/docs/">Overview</a></li><li><a href="/en/docs/getting-started/">Getting started with Worlds</a></li></ul><h2>Install</h2><ul><li><a href="/en/docs/install/">Install Worlds</a></li><li class="sub"><a href="/en/docs/install/windows/">Install Worlds on Windows</a></li><li class="sub"><a href="/en/docs/install/macos/">Install Worlds on Mac</a></li><li class="sub"><a href="/en/docs/install/iphone-ipad/">Install Worlds on iPhone and iPad</a></li><li class="sub"><a href="/en/docs/install/android/">Install Worlds on Android</a></li><li class="sub"><a href="/en/docs/install/web/">Worlds in the browser</a></li><li class="sub"><a href="/en/docs/install/update-uninstall/">Update and uninstall</a></li><li><a href="/en/docs/troubleshooting/">Troubleshooting</a></li></ul><h2>Write and organise</h2><ul><li><a href="/en/docs/pages/">Pages and blocks</a></li><li><a href="/en/docs/documents/">Documents</a></li><li><a href="/en/docs/tables/">Tables and spreadsheets</a></li><li><a href="/en/docs/projects/">Projects and resources</a></li><li><a href="/en/docs/templates/">Templates</a></li><li><a href="/en/docs/search-commands/">Search and commands</a></li><li><a href="/en/docs/history/">History and backups</a></li></ul><h2>Draw, present and media</h2><ul><li><a href="/en/docs/drawing/">Drawing</a></li><li><a href="/en/docs/presentations/">Presentations</a></li><li><a href="/en/docs/media-files/">Media and files</a></li></ul><h2>Claude and automations</h2><ul><li><a href="/en/docs/claude/">Claude and other AI providers</a></li><li><a href="/en/docs/automations/" aria-current="page">Automations</a></li><li><a href="/en/docs/discord/">Discord bridge</a></li><li><a href="/en/docs/integrations/">Integrations</a></li></ul><h2>Account and sharing</h2><ul><li><a href="/en/docs/account/">Your Worlds account</a></li><li><a href="/en/docs/sharing/">Sharing and working together</a></li><li><a href="/en/docs/sync/">How sync works</a></li><li><a href="/en/docs/packs/">Packs</a></li><li><a href="/en/docs/profile/">Profile and Activity</a></li><li><a href="/en/docs/settings/">Settings</a></li></ul><h2>For developers</h2><ul><li><a href="/en/docs/html-pages/">HTML pages</a></li><li><a href="/en/docs/mcp/">The Worlds MCP server</a></li></ul></div></details>
+<main id="main" class="article">
+<p class="crumb"><a href="/en/docs/">Docs</a> / Claude and automations</p>
+<h1>Automations</h1>
+<p class="lead">An automation sends a page at a time you choose: once, every day, every week, every month, or when you press a button. On Windows it sends the page to a Discord channel, and Claude can prepare it first. On Android it can summarise the page with AI and send it to Discord or show it as a notification.</p>
+
+<h2 id="windows">Automations on Windows</h2>
+<p>Open <strong>Automations</strong> from the sidebar. Under the title: "Pages delivered to Discord on a schedule. Runs happen on this PC, even with the window closed."</p>
+<figure class="shot"><img src="/media/app/automations.webp" alt="The Automations view: a list of automations on the left with their next run, and the selected automation's details on the right with Pause, Edit and Run now buttons and a Runs section" width="1600" height="1200" loading="lazy"><figcaption>The Automations view with its parts labelled (labels in Arabic). Names are blurred and the content is sample data.</figcaption></figure>
+
+<h3 id="create">Creating an automation</h3>
+<p>Click <strong>New Automation</strong>. You can also start from the command palette with <strong>Create Automation</strong>, or inside a page by typing <kbd>/</kbd> and choosing <strong>Schedule</strong> ("Send this page on a schedule"), which preselects that page.</p>
+<ol class="steps">
+<li><h3>Name</h3><p>A name for the list, such as "Meeting reminder".</p></li>
+<li><h3>Trigger</h3><p>Choose when it runs: <strong>Once</strong>, <strong>Daily</strong>, <strong>Weekly</strong>, <strong>Monthly</strong> or <strong>Manual</strong>. Details in the table below.</p></li>
+<li><h3>Source page</h3><p>Search for the page under <strong>Find a page</strong>. You can switch it later with <strong>Change</strong>.</p></li>
+<li><h3>Prepare with Claude (optional)</h3><p>Turn on "Before sending, let Claude adjust a snapshot of the page" and tell it what to do, for example update the date to today and remove completed tasks. Claude works on a copy taken at run time. Your page is not changed.</p></li>
+<li><h3>Send to Discord</h3><p>Under <strong>Message mode</strong> choose <strong>New message each time</strong>, or <strong>Update the last message</strong> to edit the last message this automation sent instead of posting a new one. Then pick the destination (a channel, a thread or a DM) and the <strong>Embed color</strong>. This step needs a connected <a href="/en/docs/discord/">Discord bridge</a>.</p></li>
+<li><h3>Approval</h3><p>With "Send without asking me" off, each run prepares the message and waits in <strong>Activity</strong> for your approval. With it on, runs send automatically, even when Worlds is in the tray.</p></li>
+</ol>
+<p>On the right is the <strong>Preview of the current page</strong> as it will look in Discord. If Claude prepares the page, the final message may differ. At the bottom are the <strong>Enabled</strong> checkbox and <strong>Save</strong> or <strong>Create</strong>. After saving, a message shows the next run time.</p>
+<figure class="shot"><img src="/media/book/p31.webp" alt="The Edit automation dialog with its six steps: Name, Trigger set to Manual, Source page, Prepare with Claude, Send to Discord with an empty channel list, and Approval, with the message preview on the right" width="1600" height="1000" loading="lazy"><figcaption>Editing an automation with a sample page. The channel list is empty because the bridge was not connected when this was captured, and no timed run was tested here.</figcaption></figure>
+
+<h3 id="schedules">Schedules</h3>
+<table>
+<thead><tr><th>Trigger</th><th>When it runs</th></tr></thead>
+<tbody>
+<tr><td>Once</td><td>At a date and time you pick, then the automation switches itself off.</td></tr>
+<tr><td>Daily</td><td>Every day at the time you set.</td></tr>
+<tr><td>Weekly</td><td>On the days of the week you pick, at the same time.</td></tr>
+<tr><td>Monthly</td><td>On a day from 1 to 31 each month. In a shorter month it runs on the last day.</td></tr>
+<tr><td>Manual</td><td>Only when you click <strong>Run now</strong>.</td></tr>
+</tbody>
+</table>
+
+<h3 id="runs">Runs and their history</h3>
+<p>Select an automation to see its details: a line that sums up the flow (the trigger, the page, "Claude prepares" if it is on, the destination, then "Sends automatically" or "Waits for approval"), and the buttons:</p>
+<ul>
+<li><strong>Pause</strong> and <strong>Resume</strong>.</li>
+<li><strong>Edit</strong>.</li>
+<li><strong>Run now</strong> asks "Run now?". Clicking <strong>Run and send</strong> counts as approval for that one run, so it sends at once.</li>
+<li><strong>Delete</strong> removes the automation and its run history. The source page is untouched.</li>
+</ul>
+<p>Under <strong>Runs</strong> is a table with <strong>Status</strong>, <strong>When</strong>, the trigger (<strong>Manual</strong> or <strong>Schedule</strong>) and <strong>Result</strong>: "Delivered", "Waiting in Activity", or the error text. Before each run Worlds saves a version of the source page.</p>
+<p>If you decline the request in Activity, the run is recorded as cancelled. If a run was missed while Worlds was not running, it is recorded as skipped.</p>
+
+<h3 id="when">When runs really happen</h3>
+<p>Automations run inside Worlds on this PC, not on a server. Worlds checks the schedule every 15 seconds.</p>
+<ul>
+<li>Closing the window does not stop Worlds: it stays in the tray and schedules keep running.</li>
+<li>If the PC was off or Worlds was not running and it comes back within 30 minutes of the scheduled time, the missed run still happens. After that it is recorded as skipped.</li>
+<li>In <strong>Settings</strong>, <strong>Automations</strong>, <strong>Background</strong>: "Keep running in the tray", and "Start with Windows", which starts Worlds hidden in the tray after a restart.</li>
+</ul>
+
+<h3 id="notifications">Notices on Windows</h3>
+<p>Worlds on Windows does not show system notifications. When a request waits for you, you see three things inside the app:</p>
+<ul>
+<li>A short message with the page name saying it is ready to send and needs your approval.</li>
+<li>A <strong>Needs approval</strong> item in the sidebar with a count, shown only while requests are waiting.</li>
+<li>The <strong>Needs approval</strong> section in <a href="/en/docs/profile/#activity">Activity</a>, with <strong>Approve and send</strong> and <strong>Decline</strong>.</li>
+</ul>
+
+<h3 id="claude">Automations and Claude</h3>
+<p>The "Prepare with Claude" step uses the provider and model chosen in Worlds, and Claude has no tools during it: it only rewrites the text of the copy. In a chat or through the <a href="/en/docs/mcp/">MCP server</a>, Claude can create, edit or run automations, but anything Claude creates always waits for your approval before sending.</p>
+
+<h2 id="android">Automations on Android</h2>
+<p>On Android the <strong>Automations</strong> screen says: "Scheduled triggers, AI summaries, Discord webhooks and notifications." Tap <strong>New automation</strong> and fill in:</p>
+<ol class="steps">
+<li><h3>Automation name and trigger</h3><p><strong>Daily</strong>, <strong>Weekly</strong> or <strong>Manual</strong>, with <strong>Time (HH:MM)</strong>.</p></li>
+<li><h3>Source page</h3><p>Tap <strong>Choose a page</strong>.</p></li>
+<li><h3>Transform</h3><p><strong>Page as it is</strong>, or <strong>AI summary</strong> with <strong>Instructions for the AI</strong> (default: "Summarize this page in a few short points."). It uses the provider and model chosen in AI settings. If this step takes longer than 3 minutes it stops and nothing is sent.</p></li>
+<li><h3>Action</h3><p><strong>Discord webhook</strong> with a <strong>Discord webhook URL</strong> (an https address you create in the channel's settings in Discord), or <strong>Notification on this device</strong>. For a notification, Worlds must be allowed to show notifications; otherwise the automation fails and an <strong>Open notification settings</strong> button appears.</p></li>
+</ol>
+<p>Android checks the schedule about every 15 minutes, so a run can start a few minutes after its time. Results are in <strong>Run history</strong>: <strong>Succeeded</strong>, <strong>Failed</strong> or <strong>Skipped</strong>, with what happened, such as "AI summary by" and the provider name. If the AI step fails, nothing is sent.</p>
+<div class="callout"><p>An automation made on Windows that sends through the bridge does not run on Android, which only sends through a webhook. Add a webhook URL to it if you want it to run from the phone.</p></div>
+
+<h2 id="other-platforms">Other platforms</h2>
+<p>Automations do not run yet on iPhone, iPad and Mac, or in the web version.</p>
+
+<h2 id="next">Read next</h2>
+<ul class="index">
+<li><a href="/en/docs/discord/"><strong>Discord bridge</strong><span>How messages arrive, the preview and the approval queue</span></a></li>
+<li><a href="/en/docs/claude/"><strong>Claude and providers</strong><span>The provider that prepares or summarises the page</span></a></li>
+<li><a href="/en/docs/history/"><strong>History and versions</strong><span>The version saved before each run</span></a></li>
+</ul>
+
+<nav class="pager" aria-label="Docs"><a class="prev" href="/en/docs/claude/"><small>Previous</small>Claude and other AI providers</a><a class="next" href="/en/docs/discord/"><small>Next</small>Discord bridge</a></nav>
+</main>
+</div>
+<footer class="wrap foot">
+  <div class="row">
+    <div class="credit">
+      <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
+      <p>Natural Intelligence Leads Artificial Intelligence festival 2026, outstanding experiments track.</p>
+    </div>
+    <nav aria-label="Worlds"><a href="/en/apps/">Apps</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="/en/privacy/">Privacy</a><a href="/en/terms/">Terms of use</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+  </div>
+  <p class="fine">Worlds is a creative working name, not a registered mark, and is independent of the imbue identity. The code is published on GitHub.</p>
+</footer>
+</body>
+</html>

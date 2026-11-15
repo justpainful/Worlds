@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>البحث والأوامر · Worlds</title>
+<meta name="description" content="البحث في كل صفحاتك، ولوحة الأوامر Ctrl+K، والتدوين السريع والإضافة السريعة التي تفهم «بكرة الساعة 4» و«tomorrow 4pm»، وجدول اختصارات لوحة المفاتيح.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://enterworlds.space/docs/search-commands/">
+<link rel="alternate" hreflang="ar" href="https://enterworlds.space/docs/search-commands/">
+<link rel="alternate" hreflang="en" href="https://enterworlds.space/en/docs/search-commands/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Worlds">
+<meta property="og:title" content="البحث والأوامر">
+<meta property="og:description" content="البحث في كل صفحاتك، ولوحة الأوامر Ctrl+K، والتدوين السريع والإضافة السريعة التي تفهم «بكرة الساعة 4» و«tomorrow 4pm»، وجدول اختصارات لوحة المفاتيح.">
+<meta property="og:image" content="https://enterworlds.space/media/og.png">
+<meta property="og:locale" content="ar_SA">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-256.png">
+<link rel="preload" href="/fonts/plex-arabic-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/site.css">
+<script src="/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">انتقل إلى المحتوى</a>
+<header class="wrap top">
+  <a class="lockup small" href="/" aria-label="Worlds الصفحة الرئيسية"><img class="logo" src="/icon-256.png" alt="" width="46" height="46"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="70" height="26"></a>
+  <nav class="nav" aria-label="القائمة"><a href="/apps/">التطبيقات</a><a href="/docs/" aria-current="page">الدوكس</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/en/docs/search-commands/" hreflang="en" lang="en">English</a></nav>
+  <details class="menu"><summary>القائمة</summary><div class="nav"><a href="/apps/">التطبيقات</a><a href="/docs/" aria-current="page">الدوكس</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/en/docs/search-commands/" hreflang="en" lang="en">English</a></div></details>
+</header>
+<div class="wrap docs">
+<details class="side" open><summary>صفحات الدوكس</summary><div class="side-list"><h2>البداية</h2><ul><li><a href="/docs/">نظرة عامة</a></li><li><a href="/docs/getting-started/">البداية مع Worlds</a></li></ul><h2>التثبيت</h2><ul><li><a href="/docs/install/">تثبيت Worlds</a></li><li class="sub"><a href="/docs/install/windows/">تثبيت Worlds على Windows</a></li><li class="sub"><a href="/docs/install/macos/">تثبيت Worlds على Mac</a></li><li class="sub"><a href="/docs/install/iphone-ipad/">تثبيت Worlds على iPhone و iPad</a></li><li class="sub"><a href="/docs/install/android/">تثبيت Worlds على Android</a></li><li class="sub"><a href="/docs/install/web/">Worlds في المتصفح</a></li><li class="sub"><a href="/docs/install/update-uninstall/">التحديث والإزالة</a></li><li><a href="/docs/troubleshooting/">حل المشكلات</a></li></ul><h2>الكتابة والتنظيم</h2><ul><li><a href="/docs/pages/">الصفحات والكتل</a></li><li><a href="/docs/documents/">المستندات</a></li><li><a href="/docs/tables/">الجداول وجداول البيانات</a></li><li><a href="/docs/projects/">المشاريع والمصادر</a></li><li><a href="/docs/templates/">القوالب</a></li><li><a href="/docs/search-commands/" aria-current="page">البحث والأوامر</a></li><li><a href="/docs/history/">السجل والنسخ الاحتياطية</a></li></ul><h2>الرسم والعرض والوسائط</h2><ul><li><a href="/docs/drawing/">الرسم</a></li><li><a href="/docs/presentations/">العروض التقديمية</a></li><li><a href="/docs/media-files/">الوسائط والملفات</a></li></ul><h2>Claude والأتمتة</h2><ul><li><a href="/docs/claude/">Claude والمزوّدون الآخرون</a></li><li><a href="/docs/automations/">الأتمتة</a></li><li><a href="/docs/discord/">جسر Discord</a></li><li><a href="/docs/integrations/">التكاملات</a></li></ul><h2>الحساب والمشاركة</h2><ul><li><a href="/docs/account/">حساب Worlds</a></li><li><a href="/docs/sharing/">المشاركة والعمل معًا</a></li><li><a href="/docs/sync/">كيف تعمل المزامنة</a></li><li><a href="/docs/packs/">الحزم</a></li><li><a href="/docs/profile/">الملف الشخصي والنشاط</a></li><li><a href="/docs/settings/">الإعدادات</a></li></ul><h2>للمطورين</h2><ul><li><a href="/docs/html-pages/">صفحات HTML</a></li><li><a href="/docs/mcp/">خادم MCP في Worlds</a></li></ul></div></details>
+<main id="main" class="article">
+<p class="crumb"><a href="/docs/">الدوكس</a> / الكتابة والتنظيم</p>
+<h1>البحث والأوامر</h1>
+<p class="lead">اضغط <kbd>Ctrl</kbd> + <kbd>K</kbd> لتبحث في كل صفحاتك أو تنفذ أي أمر دون أن ترفع يدك عن لوحة المفاتيح. واكتب مهامك بلغتك العادية، مثل «اجتماع الفريق الخميس الساعة 5 مساء»، فيفهم Worlds التاريخ والوقت.</p>
+
+<figure class="shot"><img src="/media/book/p21.webp" alt="لوحة البحث والأوامر مفتوحة فوق الرئيسية: مربع Search pages or run a command، وتحته قسم Recent بستة مصادر عربية الأسماء، ثم قسم Commands فيه Create Page مع Ctrl+N وGo Home وNew Document وNew Presentation وNew Drawing وNew Project، وفي الأسفل Open وNew tab وOpen right" width="1600" height="1000" loading="lazy"><figcaption>لوحة البحث والأوامر قبل الكتابة: آخر ما فتحته، ثم الأوامر. الواجهة بالإنجليزية في هذه اللقطة، والمحتوى بيانات تجريبية.</figcaption></figure>
+
+<h2 id="palette">لوحة الأوامر</h2>
+<table>
+  <thead><tr><th>المفاتيح</th><th>تفتح</th></tr></thead>
+  <tbody>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>K</kbd></td><td>الصفحات والأوامر معًا. اضغطها مرة أخرى للإغلاق.</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>P</kbd></td><td>الصفحات فقط: <strong>الانتقال إلى صفحة</strong>.</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd></td><td>الأوامر فقط: <strong>تشغيل أمر</strong>.</td></tr>
+  </tbody>
+</table>
+<p>تفتحها أيضًا من زر <strong>بحث</strong> في الشريط الجانبي أو الرئيسية، أو بالنقر بالزر الأيمن في مكان فارغ ثم <strong>البحث والأوامر</strong>. وإذا حددت نصًا ونقرت بالزر الأيمن، تجد <strong>البحث في Worlds</strong> للبحث عنه.</p>
+<h3>داخل اللوحة</h3>
+<ul>
+  <li>قبل الكتابة: <strong>الأحدث</strong> (آخر 6 مصادر فتحتها) ثم الأوامر.</li>
+  <li>اكتب لتبحث، والسهمان للأعلى والأسفل للتنقل.</li>
+  <li><kbd>Enter</kbd>: <strong>فتح</strong>. <kbd>Ctrl</kbd> + <kbd>Enter</kbd>: <strong>تبويب جديد</strong>. <kbd>Alt</kbd> + <kbd>Enter</kbd>: <strong>فتح على اليمين</strong>. <kbd>Esc</kbd>: إغلاق.</li>
+  <li>إن لم يوجد ما تبحث عنه، يظهر خيار <strong>إنشاء</strong> صفحة بالاسم الذي كتبته.</li>
+</ul>
+<h3>الأوامر</h3>
+<p>الأوامر تُطابَق أيضًا بكلمات عربية، مثل «مهام» و«تقويم» و«رسم» و«جدول».</p>
+<table>
+  <thead><tr><th>الأمر</th><th>الاختصار</th></tr></thead>
+  <tbody>
+    <tr><td>إنشاء صفحة</td><td><kbd>Ctrl</kbd> + <kbd>N</kbd></td></tr>
+    <tr><td>الانتقال إلى الرئيسية</td><td></td></tr>
+    <tr><td>المهام، مهمة جديدة</td><td></td></tr>
+    <tr><td>التقويم، موعد جديد</td><td></td></tr>
+    <tr><td>الوارد</td><td></td></tr>
+    <tr><td>تدوين سريع</td><td><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>N</kbd></td></tr>
+    <tr><td>مستند جديد، جدول بيانات جديد، عرض تقديمي جديد، رسم جديد، مشروع جديد، معرض جديد</td><td></td></tr>
+    <tr><td>رفع ملفات، إضافة رابط بث</td><td></td></tr>
+    <tr><td>القوالب</td><td></td></tr>
+    <tr><td>الأتمتة، إنشاء أتمتة</td><td></td></tr>
+    <tr><td>اسأل Claude</td><td><kbd>Ctrl</kbd> + <kbd>J</kbd></td></tr>
+    <tr><td>محادثات Claude</td><td></td></tr>
+    <tr><td>تقسيم لليمين</td><td><kbd>Ctrl</kbd> + <kbd>\</kbd></td></tr>
+    <tr><td>تقسيم لليسار، العودة إلى جزء واحد</td><td></td></tr>
+    <tr><td>إظهار الشريط الجانبي أو إخفاؤه</td><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd></td></tr>
+    <tr><td>التكاملات، النشاط، الملف الشخصي</td><td></td></tr>
+    <tr><td>الإعدادات</td><td><kbd>Ctrl</kbd> + <kbd>,</kbd></td></tr>
+    <tr><td>الإعدادات: المظهر، الإعدادات: الحزم</td><td></td></tr>
+    <tr><td>سلة المهملات</td><td></td></tr>
+  </tbody>
+</table>
+<p>وعندما تكون صفحة مفتوحة تظهر أيضًا: <strong>صفحة فرعية جديدة</strong>، <strong>تثبيت الصفحة</strong> أو <strong>إلغاء تثبيت الصفحة</strong>، <strong>إدراج صورة</strong>، <strong>إدراج ملف</strong>، <strong>إرسال إلى Discord</strong>، <strong>تعليمات المساعد</strong>، <strong>سجل الصفحة</strong>، <strong>نسخ الصفحة</strong>، <strong>حفظ الصفحة كقالب</strong>، <strong>أرشفة الصفحة</strong> أو <strong>إلغاء أرشفة الصفحة</strong>. ومع حزمة الدراسة: <strong>الدراسة</strong> و<strong>مادة جديدة</strong>.</p>
+
+<h2 id="search">البحث</h2>
+<p>البحث في لوحة الأوامر يبحث في:</p>
+<ul>
+  <li>عناوين الصفحات ونص كل كتلة فيها.</li>
+  <li>أسماء الملفات المرفقة، لا محتواها.</li>
+  <li>نصوص الرسوم ووسوم مكتبة الرسم.</li>
+  <li>حقول أخرى: وصف المشروع، رأس المستند وتذييله، ملاحظات المهام، مكان الموعد، معلم المادة وقاعتها، تعليمات الواجب، وأسماء أوراق جداول البيانات وقيم خلاياها.</li>
+</ul>
+<p>البحث يجد الكلمة حتى لو كانت جزءًا من كلمة أطول، وهذا يناسب العربية. إذا كتبت أكثر من كلمة، تظهر النتائج التي فيها كل الكلمات، والمطابقة في العنوان تأتي أولًا. الصفحات في سلة المهملات لا تظهر، أما المؤرشفة فتظهر. والقوالب تظهر أيضًا: اختيار قالب ينشئ منه صفحة جديدة.</p>
+<h3>البحث داخل الصفحة</h3>
+<p><kbd>Ctrl</kbd> + <kbd>F</kbd> يفتح <strong>البحث في الصفحة</strong>، و<kbd>Ctrl</kbd> + <kbd>H</kbd> يضيف <strong>الاستبدال بـ</strong>. زر <strong>Aa</strong> لمطابقة حالة الأحرف، ثم <strong>استبدال</strong> أو <strong>الكل</strong>. <kbd>Enter</kbd> للنتيجة التالية، و<kbd>Shift</kbd> + <kbd>Enter</kbd> للسابقة، و<kbd>Esc</kbd> للإغلاق.</p>
+
+<h2 id="quick-add">التدوين السريع والإضافة السريعة</h2>
+<h3>التدوين السريع</h3>
+<p><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>N</kbd> من أي مكان في Worlds يفتح نافذة <strong>تدوين سريع</strong>. اكتب أي شيء ثم <kbd>Enter</kbd> (أو <strong>حفظ</strong>)، و<kbd>Shift</kbd> + <kbd>Enter</kbd> لسطر جديد.</p>
+<ul>
+  <li>عادةً يُحفظ النص كما هو في <strong>الوارد</strong>، لترتّبه لاحقًا.</li>
+  <li>مع خانة <strong>حفظ كمهمة</strong> يُقرأ التاريخ والوقت والأولوية من النص، وتُنشأ <strong>مهمة</strong>.</li>
+</ul>
+<p>في <strong>الوارد</strong> بجانب كل عنصر أزرار <strong>مهمة</strong> و<strong>موعد</strong> و<strong>صفحة</strong> لتحويله، وزرّا المهمة والموعد يقرآن التاريخ من النص.</p>
+<h3>حقول الإضافة السريعة</h3>
+<p>هذه الحقول تفهم التاريخ والوقت وتعرض ما فهمته قبل الحفظ: في <strong>المهام</strong>، و<strong>التقويم</strong> (موعد مدته ساعة إن كتبت وقتًا، وإلا فيوم كامل)، و<strong>إضافة مهمة لليوم</strong> في الرئيسية، ومهام المشروع، والأهداف، وواجبات المادة واختباراتها وما تحضره.</p>
+<h3>ما الذي يفهمه</h3>
+<table>
+  <thead><tr><th>تكتب</th><th>يفهم</th></tr></thead>
+  <tbody>
+    <tr><td><code>اليوم</code>، <code>today</code></td><td>اليوم</td></tr>
+    <tr><td><code>الليلة</code>، <code>tonight</code></td><td>اليوم، الساعة 8 مساءً إن لم تكتب وقتًا</td></tr>
+    <tr><td><code>بكرة</code>، <code>بكره</code>، <code>غدا</code>، <code>غدًا</code>، <code>tomorrow</code>، <code>tmr</code></td><td>غدًا</td></tr>
+    <tr><td><code>بعد بكرة</code>، <code>بعد غد</code>، <code>after tomorrow</code></td><td>بعد يومين</td></tr>
+    <tr><td><code>الأسبوع الجاي</code>، <code>الأسبوع القادم</code>، <code>next week</code></td><td>بعد 7 أيام</td></tr>
+    <tr><td><code>بعد 3 أيام</code>، <code>بعد 2 أسابيع</code>، <code>in 3 days</code>، <code>in 2 weeks</code></td><td>بعد هذه المدة. اكتب العدد بالأرقام</td></tr>
+    <tr><td>أيام الأسبوع: <code>الأحد</code> إلى <code>السبت</code> (مع «ال» أو دونها، وقبلها «يوم» إن شئت)، <code>sunday</code> أو <code>sun</code>، <code>next mon</code></td><td>أقرب يوم قادم بهذا الاسم، وليس اليوم أبدًا</td></tr>
+    <tr><td><code>2026-12-05</code></td><td>هذا التاريخ</td></tr>
+    <tr><td><code>5/12</code></td><td>اليوم أولًا ثم الشهر: 5 ديسمبر. إن كان قد مضى فالعام القادم</td></tr>
+    <tr><td><code>الساعة 5 مساء</code>، <code>9 صباحا</code>، <code>4pm</code>، <code>5:30</code>، <code>17:00</code>، <code>at 9:30</code></td><td>الوقت. «الساعة 5» وحدها تعني 05:00</td></tr>
+    <tr><td><code>!</code> و<code>!!</code> و<code>!!!</code>، أو <code>!1</code> و<code>!2</code> و<code>!3</code></td><td>الأولوية</td></tr>
+  </tbody>
+</table>
+<p>الكلمات التي يفهمها تُحذف من العنوان. إن كتبت وقتًا دون تاريخ، فهو اليوم، أو غدًا إن كان الوقت قد مضى. ولا يفهم حاليًا أسماء الشهور، ولا «الشهر القادم»، ولا الوسوم.</p>
+<h3>أمثلة</h3>
+<p>لو كان اليوم الأربعاء 11 نوفمبر 2026 والساعة 10 صباحًا:</p>
+<table>
+  <thead><tr><th>تكتب</th><th>العنوان</th><th>الموعد</th><th>الأولوية</th></tr></thead>
+  <tbody>
+    <tr><td>اجتماع الفريق الخميس الساعة 5 مساء</td><td>اجتماع الفريق</td><td>12 نوفمبر، 17:00</td><td></td></tr>
+    <tr><td>أراجع العرض بكرة</td><td>أراجع العرض</td><td>12 نوفمبر</td><td></td></tr>
+    <tr><td>Call the bank tomorrow 4pm !!</td><td>Call the bank</td><td>12 نوفمبر، 16:00</td><td>2</td></tr>
+    <tr><td>Standup at 9:30</td><td>Standup</td><td>12 نوفمبر، 09:30 (لأن 9:30 مضت اليوم)</td><td></td></tr>
+    <tr><td>Renew passport in 3 days !1</td><td>Renew passport</td><td>14 نوفمبر</td><td>1</td></tr>
+    <tr><td>Invoice 5/12</td><td>Invoice</td><td>5 ديسمبر</td><td></td></tr>
+  </tbody>
+</table>
+<div class="callout"><p>اسم يوم في العنوان يُفهم كتاريخ دائمًا. «Read Monday Morning» مثلًا يصبح «Read Morning» بموعد يوم الاثنين. إن لم تقصد ذلك، عدّل العنوان أو الموعد بعد الحفظ.</p></div>
+
+<h2 id="shortcuts">اختصارات لوحة المفاتيح</h2>
+<p>في Windows استخدم <kbd>Ctrl</kbd>. داخل أي صفحة، <kbd>Ctrl</kbd> + <kbd>/</kbd> يعرض قائمة مختصرة.</p>
+<h3>في كل مكان</h3>
+<table>
+  <thead><tr><th>المفاتيح</th><th>ما تفعله</th></tr></thead>
+  <tbody>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>K</kbd></td><td>البحث والأوامر</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>P</kbd></td><td>الانتقال إلى صفحة</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd></td><td>تشغيل أمر</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>N</kbd></td><td>تدوين سريع</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>N</kbd></td><td>صفحة جديدة</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd></td><td>صفحة جديدة في جزء على اليمين</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>T</kbd></td><td>تبويب جديد</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>W</kbd></td><td>إغلاق التبويب</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>Tab</kbd> و<kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Tab</kbd></td><td>التبويب التالي والسابق</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>\</kbd></td><td>تقسيم لليمين</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>\</kbd></td><td>العودة إلى جزء واحد</td></tr>
+    <tr><td><kbd>Alt</kbd> + السهم الأيسر أو الأيمن</td><td>رجوع وتقدم</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd></td><td>إظهار الشريط الجانبي أو إخفاؤه</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>J</kbd></td><td>اسأل Claude</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>,</kbd></td><td>الإعدادات</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + نقرة، <kbd>Alt</kbd> + نقرة</td><td>فتح في تبويب جديد، فتح على اليمين</td></tr>
+  </tbody>
+</table>
+<h3>في الصفحة</h3>
+<table>
+  <thead><tr><th>المفاتيح</th><th>ما تفعله</th></tr></thead>
+  <tbody>
+    <tr><td><kbd>/</kbd></td><td>قائمة الكتل</td></tr>
+    <tr><td><kbd>@</kbd> أو <kbd>[[</kbd></td><td>الإشارة إلى صفحة</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>B</kbd> و<kbd>I</kbd> و<kbd>U</kbd></td><td>عريض، مائل، تسطير</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd></td><td>يتوسطه خط</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>E</kbd></td><td>كود داخل السطر</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>H</kbd></td><td>تمييز</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>7</kbd> و<kbd>8</kbd> و<kbd>9</kbd></td><td>قائمة مرقمة، نقطية، قائمة تحقق</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>Z</kbd></td><td>تراجع</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> أو <kbd>Ctrl</kbd> + <kbd>Y</kbd></td><td>إعادة</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>S</kbd></td><td>حفظ الآن</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>F</kbd> و<kbd>Ctrl</kbd> + <kbd>H</kbd></td><td>بحث، واستبدال</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>F</kbd></td><td>وضع التركيز</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>L</kbd></td><td>قفل الصفحة أو فتحها</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>/</kbd></td><td>اختصارات لوحة المفاتيح</td></tr>
+  </tbody>
+</table>
+<h3>في الشريط الجانبي</h3>
+<p>الأسهم للتنقل والتوسيع والطي، و<kbd>Enter</kbd> للفتح، و<kbd>F2</kbd> لإعادة التسمية.</p>
+<p>للرسم وجداول البيانات والعروض اختصاراتها الخاصة: <a href="/docs/drawing/#tools">الرسم</a>، <a href="/docs/tables/#shortcuts">جداول البيانات</a>، <a href="/docs/presentations/#present">العروض</a>.</p>
+
+<h2 id="platforms">ما الذي يعمل وأين</h2>
+<table>
+  <thead><tr><th>الميزة</th><th>Windows</th><th>Apple</th><th>Android</th></tr></thead>
+  <tbody>
+    <tr><td>البحث</td><td>نعم</td><td>جزئي</td><td>جزئي، مع البحث والاستبدال في الصفحة</td></tr>
+    <tr><td>لوحة الأوامر</td><td>نعم</td><td>قيد العمل</td><td>قيد العمل</td></tr>
+    <tr><td>فهم التاريخ بالعربية والإنجليزية</td><td>نعم</td><td>قيد العمل</td><td>نعم</td></tr>
+    <tr><td>التدوين السريع من أي مكان</td><td>نعم</td><td>قيد العمل</td><td>قيد العمل</td></tr>
+  </tbody>
+</table>
+<p>في Mac تعمل بعض اختصارات القائمة، مثل <kbd>Cmd</kbd> + <kbd>N</kbd> و<kbd>Cmd</kbd> + <kbd>F</kbd> و<kbd>Cmd</kbd> + <kbd>,</kbd>. تطبيقات Apple وAndroid ما زالت قيد العمل. التفاصيل في <a href="/docs/install/">التثبيت</a>.</p>
+
+<h2 id="next">التالي</h2>
+<ul class="index">
+  <li><a href="/docs/claude/"><strong>Claude</strong><span>اسأل Claude بـ Ctrl+J</span></a></li>
+  <li><a href="/docs/automations/"><strong>الأتمتة</strong><span>مهام تعمل وحدها في موعدها</span></a></li>
+  <li><a href="/docs/templates/"><strong>القوالب</strong><span>صفحات جاهزة من البحث مباشرة</span></a></li>
+</ul>
+
+<nav class="pager" aria-label="الدوكس"><a class="prev" href="/docs/templates/"><small>السابق</small>القوالب</a><a class="next" href="/docs/history/"><small>التالي</small>السجل والنسخ الاحتياطية</a></nav>
+</main>
+</div>
+<footer class="wrap foot">
+  <div class="row">
+    <div class="credit">
+      <a class="lockup small" href="/" aria-label="Worlds الصفحة الرئيسية"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
+      <p>مهرجان الذكاء الطبيعي يقود الذكاء الاصطناعي 2026، مسار التجارب المتميزة.</p>
+    </div>
+    <nav aria-label="Worlds"><a href="/apps/">التطبيقات</a><a href="/docs/">الدوكس</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="/privacy/">الخصوصية</a><a href="/terms/">شروط الاستخدام</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+  </div>
+  <p class="fine">Worlds اسم عمل إبداعي غير مسجل رسميًا، مستقل عن هوية imbue. الشيفرة منشورة على GitHub.</p>
+</footer>
+</body>
+</html>

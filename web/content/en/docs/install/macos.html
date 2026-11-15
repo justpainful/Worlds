@@ -1,0 +1,70 @@
+<!--
+title: Install Worlds on Mac
+description: Steps to install Worlds on macOS 14 and later: dragging it to Applications, and opening it the first time from Privacy & Security or with a right click.
+-->
+<h1>Install Worlds on Mac</h1>
+<p class="lead">You drag the app into Applications, then allow it to open once, because it is not signed by Apple. After that it opens like any other app.</p>
+
+<h2 id="before">Before you start</h2>
+<dl class="facts">
+<div><dt>File</dt><dd><code>Worlds-0.3.0-macOS-Unsigned.dmg</code> (23.4 MB), or <code>Worlds-0.3.0-macOS-Unsigned.zip</code> (19.2 MB) with the same app inside</dd></div>
+<div><dt>System</dt><dd>macOS 14 Sonoma or later</dd></div>
+<div><dt>Signing</dt><dd>Not signed or notarized by Apple, so macOS blocks it the first time</dd></div>
+<div><dt>App name</dt><dd>Finder may show it as <code>Worlds-macOS-Unsigned</code>; it is Worlds</dd></div>
+</dl>
+<div class="callout"><p>The Mac app is an early version. It opens a Worlds workspace file (<code>worlds.db</code>), shows pages, documents, tables, drawings and presentations, and edits them when the file is on the Mac's own disk. See <a href="/en/docs/install/#platforms">what works on each platform</a>.</p></div>
+
+<h2 id="install">Install step by step</h2>
+<ol class="steps">
+<li><h3>Download the dmg file</h3>
+<p>Open the <a href="https://github.com/justpainful/Worlds/releases/latest">latest release page on GitHub</a> and under Assets click <code>Worlds-0.3.0-macOS-Unsigned.dmg</code>. It goes to Downloads. You can check its fingerprint as shown in the <a href="/en/docs/install/#verify">install overview</a>.</p></li>
+<li><h3>Open the dmg file</h3>
+<p>Double click it. A disk called Worlds appears in the Finder sidebar, and its window opens with the app icon.</p></li>
+<li><h3>Drag the app to Applications</h3>
+<p>Drag the app icon out of the disk window and drop it on <strong>Applications</strong> in the sidebar. The window has no Applications shortcut of its own, so use the sidebar.</p>
+<figure class="sketch"><svg viewBox="0 0 640 360" role="img" aria-label="The Worlds disk window in Finder: the app icon marked 1 is dragged onto Applications in the sidebar, marked 2" font-family="inherit" direction="ltr"><rect x="40" y="20" width="560" height="320" rx="12" class="k-win"/><rect x="41" y="21" width="558" height="38" class="k-bar"/><circle cx="62" cy="40" r="6" class="k-btn"/><circle cx="82" cy="40" r="6" class="k-btn"/><circle cx="102" cy="40" r="6" class="k-btn"/><text x="320" y="45" class="k-text" font-size="14" text-anchor="middle" font-weight="600">Worlds</text><rect x="41" y="59" width="150" height="280" class="k-bar"/><text x="56" y="86" class="k-muted" font-size="12">Favorites</text><text x="64" y="114" class="k-text" font-size="14">Recents</text><text x="64" y="142" class="k-text" font-size="14">Applications</text><text x="64" y="170" class="k-text" font-size="14">Desktop</text><text x="64" y="198" class="k-text" font-size="14">Downloads</text><rect x="52" y="122" width="130" height="30" rx="7" class="k-ring"/><circle cx="200" cy="137" r="11" class="k-num"/><text x="200" y="141.5" class="k-numtext" font-size="13" text-anchor="middle">2</text><rect x="360" y="120" width="72" height="72" rx="16" class="k-field"/><text x="396" y="218" class="k-text" font-size="12" text-anchor="middle">Worlds-macOS-Unsigned</text><rect x="326" y="108" width="140" height="124" rx="12" class="k-ring"/><circle cx="482" cy="120" r="11" class="k-num"/><text x="482" y="124.5" class="k-numtext" font-size="13" text-anchor="middle">1</text><line x1="326" y1="156" x2="186" y2="138" class="k-line" stroke-dasharray="6 6"/></svg><figcaption>Drag the icon (1) to Applications in the sidebar (2).</figcaption></figure>
+<p>When it has copied, eject the disk: right click Worlds in the sidebar and choose Eject. You can delete the dmg file afterwards.</p>
+<p><strong>If you downloaded the zip file:</strong> double click it in Downloads, the app appears next to it, then drag it to Applications as above.</p></li>
+<li><h3>Open the app the first time</h3>
+<p>Open Applications and double click the app. macOS blocks it because it is unsigned. What you do next depends on your macOS version: see <strong>About This Mac</strong> in the Apple menu.</p></li>
+</ol>
+
+<h2 id="open-sequoia">Opening it the first time on macOS 15 Sequoia and later</h2>
+<ol class="steps">
+<li><h3>Click Done in the alert</h3>
+<p>An alert says Worlds was not opened because Apple could not check it. Click <strong>Done</strong>. Do not click Move to Trash.</p>
+<figure class="sketch"><svg viewBox="0 0 640 360" role="img" aria-label="macOS 15 alert “Worlds” Not Opened, with the Done button marked 1" font-family="inherit" direction="ltr"><rect x="190" y="20" width="260" height="320" rx="14" class="k-win"/><rect x="290" y="44" width="60" height="60" rx="14" class="k-field"/><text x="320" y="134" class="k-text" font-size="16" text-anchor="middle" font-weight="600">“Worlds” Not Opened</text><text x="320" y="164" class="k-muted" font-size="12" text-anchor="middle">Apple could not verify “Worlds” is free</text><text x="320" y="182" class="k-muted" font-size="12" text-anchor="middle">of malware that may harm your Mac or</text><text x="320" y="200" class="k-muted" font-size="12" text-anchor="middle">compromise your privacy.</text><rect x="204" y="262" width="114" height="32" rx="8" class="k-btn"/><text x="261" y="283" class="k-text" font-size="12" text-anchor="middle">Move to Trash</text><rect x="324" y="262" width="112" height="32" rx="8" class="k-primary"/><text x="380" y="283" class="k-on" font-size="14" text-anchor="middle">Done</text><rect x="318" y="256" width="124" height="44" rx="10" class="k-ring"/><circle cx="380" cy="318" r="11" class="k-num"/><text x="380" y="322.5" class="k-numtext" font-size="13" text-anchor="middle">1</text></svg><figcaption>The macOS 15 alert. Click Done (1).</figcaption></figure></li>
+<li><h3>Open Privacy &amp; Security</h3>
+<p>Open the Apple menu, then <strong>System Settings</strong>, then <strong>Privacy &amp; Security</strong> in the sidebar. Scroll down to the <strong>Security</strong> section.</p></li>
+<li><h3>Click Open Anyway</h3>
+<p>You find a line saying Worlds was blocked to protect your Mac, with an <strong>Open Anyway</strong> button next to it. Click it. The line stays for about an hour after you tried to open the app; if it is not there, try opening the app again and come back.</p>
+<figure class="sketch"><svg viewBox="0 0 640 360" role="img" aria-label="System Settings, Privacy &amp; Security, Security section: “Worlds” was blocked, with the Open Anyway button marked 2" font-family="inherit" direction="ltr"><rect x="30" y="20" width="580" height="320" rx="12" class="k-win"/><rect x="31" y="21" width="170" height="318" class="k-bar"/><circle cx="52" cy="42" r="5" class="k-btn"/><circle cx="70" cy="42" r="5" class="k-btn"/><circle cx="88" cy="42" r="5" class="k-btn"/><text x="50" y="100" class="k-text" font-size="13">General</text><text x="50" y="128" class="k-text" font-size="13">Appearance</text><rect x="40" y="140" width="152" height="26" rx="7" class="k-field"/><text x="50" y="158" class="k-text" font-size="13" font-weight="600">Privacy &amp; Security</text><text x="50" y="188" class="k-text" font-size="13">Desktop &amp; Dock</text><text x="224" y="54" class="k-text" font-size="16" font-weight="600">Privacy &amp; Security</text><rect x="224" y="72" width="364" height="76" rx="10" class="k-field"/><text x="240" y="100" class="k-text" font-size="13">Location Services</text><line x1="224" y1="112" x2="588" y2="112" class="k-line"/><text x="240" y="136" class="k-text" font-size="13">Contacts</text><text x="224" y="176" class="k-text" font-size="14" font-weight="600">Security</text><rect x="224" y="188" width="364" height="112" rx="10" class="k-field"/><text x="240" y="214" class="k-text" font-size="13">Allow applications from</text><text x="240" y="232" class="k-muted" font-size="12">App Store &amp; Known Developers</text><line x1="224" y1="246" x2="588" y2="246" class="k-line"/><text x="240" y="268" class="k-text" font-size="13">“Worlds” was blocked to protect</text><text x="240" y="286" class="k-text" font-size="13">your Mac.</text><rect x="468" y="258" width="108" height="30" rx="7" class="k-btn"/><text x="522" y="278" class="k-text" font-size="12" text-anchor="middle">Open Anyway</text><rect x="462" y="252" width="120" height="42" rx="9" class="k-ring"/><circle cx="522" cy="318" r="11" class="k-num"/><text x="522" y="322.5" class="k-numtext" font-size="13" text-anchor="middle">2</text></svg><figcaption>Privacy &amp; Security, Security section. The Open Anyway button is marked 2.</figcaption></figure></li>
+<li><h3>Confirm with your Mac password</h3>
+<p>macOS asks one last time. Click <strong>Open Anyway</strong> again and enter your Mac account password or use Touch ID. Worlds opens, and macOS will not ask again.</p></li>
+</ol>
+
+<h2 id="open-sonoma">Opening it the first time on macOS 14 Sonoma</h2>
+<ol class="steps">
+<li><h3>Right click the app and choose Open</h3>
+<p>In Applications, right click the app (or click it while holding <kbd>Control</kbd>) and choose <strong>Open</strong> from the menu.</p></li>
+<li><h3>Click Open in the alert</h3>
+<p>macOS asks if you are sure, because it does not know the developer. Click <strong>Open</strong>. From then on Worlds opens straight away.</p>
+<figure class="sketch"><svg viewBox="0 0 640 360" role="img" aria-label="macOS 14: the shortcut menu of the app with Open marked 1, then the alert with its Open button marked 2" font-family="inherit" direction="ltr"><rect x="50" y="84" width="72" height="72" rx="16" class="k-field"/><text x="86" y="178" class="k-muted" font-size="12" text-anchor="middle">Worlds-macOS-</text><text x="86" y="194" class="k-muted" font-size="12" text-anchor="middle">Unsigned</text><rect x="150" y="104" width="180" height="136" rx="8" class="k-win"/><rect x="156" y="112" width="168" height="26" rx="5" class="k-field"/><text x="168" y="130" class="k-text" font-size="14" font-weight="600">Open</text><text x="168" y="162" class="k-text" font-size="13">Open With</text><text x="168" y="190" class="k-text" font-size="13">Show Package Contents</text><text x="168" y="218" class="k-text" font-size="13">Move to Trash</text><rect x="152" y="108" width="176" height="34" rx="7" class="k-ring"/><circle cx="166" cy="260" r="11" class="k-num"/><text x="166" y="264.5" class="k-numtext" font-size="13" text-anchor="middle">1</text><rect x="360" y="50" width="250" height="260" rx="14" class="k-win"/><rect x="460" y="70" width="50" height="50" rx="12" class="k-field"/><text x="485" y="150" class="k-text" font-size="13" text-anchor="middle" font-weight="600">macOS cannot verify the</text><text x="485" y="170" class="k-text" font-size="13" text-anchor="middle" font-weight="600">developer of “Worlds”. Are you</text><text x="485" y="190" class="k-text" font-size="13" text-anchor="middle" font-weight="600">sure you want to open it?</text><rect x="376" y="256" width="104" height="32" rx="8" class="k-btn"/><text x="428" y="277" class="k-text" font-size="14" text-anchor="middle">Cancel</text><rect x="490" y="256" width="104" height="32" rx="8" class="k-btn"/><text x="542" y="277" class="k-text" font-size="14" text-anchor="middle">Open</text><rect x="484" y="250" width="116" height="44" rx="10" class="k-ring"/><circle cx="542" cy="330" r="11" class="k-num"/><text x="542" y="334.5" class="k-numtext" font-size="13" text-anchor="middle">2</text></svg><figcaption>Open in the menu (1), then Open in the alert (2).</figcaption></figure>
+<p>If the alert has no Open button, use the <a href="#open-sequoia">Privacy &amp; Security</a> way instead; it works on macOS 14 too.</p></li>
+</ol>
+<div class="callout warn"><p>If macOS says the app <strong>is damaged</strong> and should be moved to the Trash, the file is not damaged. macOS shows this message for some unsigned apps. The fix is in <a href="/en/docs/troubleshooting/#macos-damaged">Troubleshooting</a>.</p></div>
+
+<h2 id="first-launch">What you see the first time</h2>
+<p>Worlds opens in a window with a sidebar for moving around. The Mac app is built to open an existing Worlds workspace:</p>
+<ul>
+<li>From the File menu choose <strong>Open Database…</strong>, or press <kbd>Command</kbd> + <kbd>O</kbd>, and pick the file <code>worlds.db</code>. The <code>attachments</code> folder should sit next to it.</li>
+<li>To bring your workspace from a Windows PC: quit Worlds there from the notification area, then copy the whole <code>%APPDATA%\Worlds</code> folder to the Mac, into a folder on the disk, not in iCloud Drive.</li>
+<li>Edits are saved into the file itself when it is on a local disk. In iCloud Drive or another cloud folder it opens read only, with a note that says why, and you can make an independent local copy of it.</li>
+<li>The assistant chats with a provider you choose and an API key you enter in its settings; the key is kept in the Mac's Keychain. It does not edit pages yet.</li>
+</ul>
+
+<h2 id="problems">If something goes wrong</h2>
+<ul class="index">
+<li><a href="/en/docs/troubleshooting/#macos-cannot-open"><strong>Worlds cannot be opened</strong><span>The Open Anyway button does not appear.</span></a></li>
+<li><a href="/en/docs/troubleshooting/#macos-damaged"><strong>The app is damaged and cannot be opened</strong><span>Removing the quarantine mark with one Terminal command.</span></a></li>
+</ul>

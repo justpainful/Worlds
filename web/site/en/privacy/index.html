@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Privacy policy · Worlds</title>
+<meta name="description" content="What stays on your device, what the Worlds account and sync services keep, who sends the sign-in code, and how to delete your data.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://enterworlds.space/en/privacy/">
+<link rel="alternate" hreflang="ar" href="https://enterworlds.space/privacy/">
+<link rel="alternate" hreflang="en" href="https://enterworlds.space/en/privacy/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Worlds">
+<meta property="og:title" content="Privacy policy">
+<meta property="og:description" content="What stays on your device, what the Worlds account and sync services keep, who sends the sign-in code, and how to delete your data.">
+<meta property="og:image" content="https://enterworlds.space/media/og.png">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-256.png">
+<link rel="preload" href="/fonts/instrument-sans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/site.css">
+<script src="/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="wrap top">
+  <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="46" height="46"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="70" height="26"></a>
+  <nav class="nav" aria-label="Menu"><a href="/en/apps/">Apps</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/privacy/" hreflang="ar" lang="ar">العربية</a></nav>
+  <details class="menu"><summary>Menu</summary><div class="nav"><a href="/en/apps/">Apps</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/privacy/" hreflang="ar" lang="ar">العربية</a></div></details>
+</header>
+<div class="wrap page-solo"><main id="main" class="article">
+<h1>Privacy policy</h1>
+<p class="lead">This page explains exactly what Worlds does with your data: what stays only on your device, what our services keep when you create an account or share a page, and who else handles any of it.</p>
+<p>Last updated: 15 November 2026</p>
+
+<ul>
+  <li><a href="#summary">In short</a></li>
+  <li><a href="#on-your-device">What stays on your device</a></li>
+  <li><a href="#web-version">Worlds in the browser</a></li>
+  <li><a href="#account">What your account keeps</a></li>
+  <li><a href="#sign-in-codes">Sign-in codes and email</a></li>
+  <li><a href="#rate-limits">Abuse protection and IP addresses</a></li>
+  <li><a href="#sync">Shared pages and sync</a></li>
+  <li><a href="#hosting">Hosting and logs</a></li>
+  <li><a href="#ai">AI</a></li>
+  <li><a href="#discord">Discord</a></li>
+  <li><a href="#other-services">Other services you may pass through</a></li>
+  <li><a href="#cookies">Cookies</a></li>
+  <li><a href="#analytics">Analytics and tracking</a></li>
+  <li><a href="#security">How we protect data</a></li>
+  <li><a href="#children">Children</a></li>
+  <li><a href="#delete">Deleting your data</a></li>
+  <li><a href="#changes">Changes to this policy</a></li>
+  <li><a href="#contact">Contact</a></li>
+</ul>
+
+<h2 id="summary">In short</h2>
+<ul>
+  <li>Your pages are saved on your device, and Worlds works without an account and without the internet.</li>
+  <li>An account is optional. If you create one, we keep your email, name, username, passkeys and signed-in devices. The account database holds none of your page content.</li>
+  <li>What you share with other people, and the browser version's copy on your account, is kept on the sync service so it can reach your devices and theirs.</li>
+  <li>AI requests go from your device straight to the provider you chose, with your own key or sign-in. They do not pass through us.</li>
+  <li>There are no ads, no analytics or tracking tools, and no cookies from Worlds.</li>
+</ul>
+<p>"We" on this page means the developer of Worlds, who runs its services on enterworlds.space.</p>
+
+<h2 id="on-your-device">What stays on your device</h2>
+<p>In the Windows, Mac, iPhone, iPad and Android apps, your whole workspace is on your device: pages, documents, tables, drawings, presentations, AI chats, automations and attached files. The app sends none of it to our services unless you share a page in a shared workspace.</p>
+<ul>
+  <li>On Windows the workspace is one file, <code>worlds.db</code>, in the folder <code>%APPDATA%\Worlds</code>, with an <code>attachments</code> folder for attached files and a <code>backups</code> folder for the backups the app makes.</li>
+  <li>AI provider keys, the sign-in refresh token and the device key are kept in your system's secret store: Credential Manager on Windows, and the Keychain on Mac, iPhone and iPad. On Android they are encrypted with a key held in the Android Keystore. They are never written to the workspace file and never sent to us.</li>
+</ul>
+
+<h2 id="web-version">Worlds in the browser</h2>
+<p>The web version at <code>app.enterworlds.space</code> keeps your workspace inside your browser (the demo at <code>demo.enterworlds.space</code> does the same, but it has no accounts, so it sends nothing to our services):</p>
+<ul>
+  <li><strong>IndexedDB</strong>: a database named <code>worlds-web</code> with a copy of the workspace and every file you attached.</li>
+  <li><strong>localStorage</strong>: your sign-in session if you signed in (so you stay signed in on this browser until you sign out), small markers that tell the web version what it already sent to your account, and preferences such as a closed welcome tour and drawing settings.</li>
+</ul>
+<p>If you are not signed in, the workspace stays in the browser only. If you sign in, a copy is kept on your account on the sync service so you can open it from any browser you sign in to (see <a href="#sync">Shared pages and sync</a>). Clearing the site's data in your browser settings deletes the browser copy.</p>
+
+<h2 id="account">What your account keeps</h2>
+<p>The account service at <code>login.enterworlds.space</code> keeps what sign-in and sharing need, in a Cloudflare D1 database. This is everything it holds about you:</p>
+<table>
+  <thead>
+    <tr><th>Record</th><th>What is kept</th><th>For how long</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Account</td><td>Your email address, display name, username, a link to your picture if you set one, when your email was verified, and when the account was created and last changed.</td><td>As long as the account exists.</td></tr>
+    <tr><td>Passkeys</td><td>The passkey's ID and public key, its use counter, the name you give it, its type and whether it syncs between your devices, and when it was added and last used. The private key and your fingerprint or face never leave your device.</td><td>Until you remove it in account settings, or the account is deleted.</td></tr>
+    <tr><td>Devices</td><td>The device name and its system, its public key if it has one, when it first signed in and was last seen, and when it was signed out.</td><td>As long as the account exists.</td></tr>
+    <tr><td>Sessions</td><td>A SHA-256 hash of the refresh token (never the token itself), and when the session started, was refreshed and expires. The access token lives 15 minutes; the refresh token lives 60 days and renews each time it is used.</td><td>Deleted 30 days after it expires or the device signs out.</td></tr>
+    <tr><td>Security log</td><td>What happened (a sign-in, a code sent, a passkey added, a change in a workspace), when, from which account and device, with short details such as the device name and sign-in method. It does not store IP addresses.</td><td>Not deleted automatically today.</td></tr>
+    <tr><td>Shared workspaces</td><td>The workspace name, its members and their roles, groups, invites (only a hash of the invite link), the page tree with page IDs and titles when your device sends them, permissions, and pack roles. No page content is kept here.</td><td>Until the owner deletes the workspace.</td></tr>
+  </tbody>
+</table>
+<p>Members of a shared workspace see each member's name, username, email and picture.</p>
+<p>There are also short-lived records to finish a sign-in: a passkey challenge (5 minutes), the code that hands a sign-in from the browser to the app (5 minutes), and a link to add a passkey from the browser (10 minutes). They are deleted an hour after they expire.</p>
+
+<h2 id="sign-in-codes">Sign-in codes and email</h2>
+<p>When you sign in on a new device or create an account, we email you a 6-digit code:</p>
+<ul>
+  <li>It works for 10 minutes, only once, and stops after 5 wrong tries.</li>
+  <li>We keep your email and a hash of the code, never the code itself, and delete both a day after the code expires.</li>
+  <li>Up to 5 codes can be requested per hour for each email address.</li>
+  <li>The service picks the message language from what the app sends, or from your browser's language.</li>
+</ul>
+<p>The message is sent from <code>no-reply@enterworlds.space</code> through Cloudflare Email Service, or through <a href="https://resend.com/legal/privacy-policy">Resend</a> when that is not available. Both receive your email address and the message text in order to deliver it. This address only sends; it does not receive replies.</p>
+
+<h2 id="rate-limits">Abuse protection and IP addresses</h2>
+<p>To keep sign-in from being abused, the account service counts requests per IP address in fixed time windows, and per email address for codes:</p>
+<table>
+  <thead>
+    <tr><th>Request</th><th>Limit</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Asking for a sign-in code</td><td>30 an hour per IP address, and 5 an hour per email address</td></tr>
+    <tr><td>Entering the code</td><td>30 every 10 minutes per IP address</td></tr>
+    <tr><td>Passkeys, and handing a sign-in to the app</td><td>60 every 10 minutes per IP address</td></tr>
+    <tr><td>Opening an invite link</td><td>60 every 10 minutes per IP address</td></tr>
+    <tr><td>Checking whether a username is free</td><td>120 every 10 minutes per IP address</td></tr>
+  </tbody>
+</table>
+<p>For each counter we keep one row with the kind of request, the IP address (or email address), the start of the window and the count. The row is deleted about a day after its last window started. Our services do not store IP addresses anywhere else. The part that receives requests on the domain (see <a href="#hosting">Hosting</a>) passes your address to the services for this purpose only.</p>
+
+<h2 id="sync">Shared pages and sync</h2>
+<p>The sync service at <code>connect.enterworlds.space</code> keeps:</p>
+<ul>
+  <li><strong>Shared pages</strong>: the content of each page in a shared workspace, its edits, up to 200 saved versions with who wrote them, and comments with their author, text and mentions. Typing cursors and who is on the page right now are passed along live and not stored.</li>
+  <li><strong>Attached files</strong> in shared pages, in Cloudflare R2. Upload and download links are signed and expire after an hour.</li>
+  <li><strong>Notifications</strong>: mentions, replies and items another member sends you, with a short excerpt. We keep the latest 1,000 for each person.</li>
+  <li><strong>The web copy on your account</strong>: if you sign in to the browser version, we keep one copy of your workspace (up to 32 MB) and its attached files (up to 25 MB each) in R2. Only your account can read or write it.</li>
+</ul>
+<p>The device apps do not send your personal workspace to the service. What they send is the pages you put in a shared workspace.</p>
+<p>This data stays while the workspace or account exists. Deleting a shared workspace ends everyone's access at once, but the service does not yet erase its stored copies automatically, and there is no button today that erases the web copy from your account. To have them erased, ask as described in <a href="#delete">Deleting your data</a>.</p>
+<p>The service checks your permission on every connection and every edit, so a page's content never reaches someone without access to it.</p>
+
+<h2 id="hosting">Hosting and logs</h2>
+<p>All Worlds services run on Cloudflare:</p>
+<table>
+  <thead>
+    <tr><th>Part</th><th>What it uses</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>This site and the web version</td><td>Cloudflare Workers (static files)</td></tr>
+    <tr><td>Accounts</td><td>Cloudflare Workers and a D1 database</td></tr>
+    <tr><td>Sync</td><td>Cloudflare Workers, Durable Objects (one for each shared page, for each person's notifications, and for tracking file uploads) and R2 (files and the web copy)</td></tr>
+    <tr><td>The <code>login</code> and <code>connect</code> addresses</td><td>A small Worker that passes requests to the two services and sends the sign-in emails</td></tr>
+  </tbody>
+</table>
+<p>Cloudflare processes the technical data of each request, such as the IP address and browser type, to deliver it and protect its network, under the <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare privacy policy</a>. It also shows site owners aggregate traffic numbers that do not identify anyone. Our services themselves do not keep a log of your requests. Error messages are printed when they happen, for the developer to see live. Data may be processed in a country other than yours, because Cloudflare's network runs worldwide.</p>
+
+<h2 id="ai">AI</h2>
+<p>In the apps you choose what runs the AI:</p>
+<ul>
+  <li>Claude Code or Codex, with your own sign-in to them on your device.</li>
+  <li>Your own API key for a provider such as Anthropic, OpenAI, Google Gemini, Groq, DeepSeek, Mistral, xAI or OpenRouter, or an address you set.</li>
+  <li>A local model on your device, such as Ollama, LM Studio or llama.cpp. Then nothing leaves your device.</li>
+</ul>
+<p>The request goes from your device straight to the provider you chose. Worlds does not receive it or keep it on our servers. The request carries your message, the conversation, and what the AI reads from your workspace to do the task. What the provider does with the request, how long it keeps it, and whether it trains its models on it is set by that provider's own terms and policy, so check them with the provider. Chats are saved in your workspace on your device.</p>
+<p>In shared workspaces the AI works with your permissions, and its edits show as made by it.</p>
+<p>The assistant in the browser version is a demo today: it answers from the sample workspace's pages and does not contact any provider.</p>
+
+<h2 id="discord">Discord</h2>
+<p>The Discord connection is off until you turn it on in Settings. Worlds connects to your own bot on the machine where it runs, over SSH, and does not keep the bot's token. A page goes to Discord only when you send it, or when you approve a send that the AI or an automation prepared. Once sent, the content is under the <a href="https://discord.com/privacy">Discord privacy policy</a>. Our services are not on this path.</p>
+
+<h2 id="other-services">Other services you may pass through</h2>
+<ul>
+  <li><strong>GitHub</strong>: downloading the apps from the releases page on GitHub, and reports filed there, are under the <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub privacy statement</a>. Reports there are public.</li>
+  <li><strong>Embedded content</strong>: if you add a video, map or file from YouTube, Vimeo, Spotify, Google Maps, Loom, Figma or SoundCloud to a page, it loads from that site when the page is shown, and that site may set its own cookies. YouTube videos are shown from youtube-nocookie.com.</li>
+</ul>
+
+<h2 id="cookies">Cookies</h2>
+<p>This site, the web version, and the account and sync services set no cookies. The web version uses IndexedDB and localStorage as described in <a href="#web-version">Worlds in the browser</a>, and they stay in your browser. The only exception is content embedded from other sites.</p>
+
+<h2 id="analytics">Analytics and tracking</h2>
+<p>The site, the web version and the apps have no analytics, tracking, ads, or crash reports sent to us. This site's security policy stops its pages from connecting to any server. Its only script shows the date and a greeting and marks the open section; it sends nothing.</p>
+
+<h2 id="security">How we protect data</h2>
+<ul>
+  <li>Every connection to our services is encrypted with HTTPS.</li>
+  <li>Sign-in codes, refresh tokens and invite links are stored only as hashes, never as text.</li>
+  <li>The refresh token changes each time it is used. If an old one is used again, the session is ended to be safe. On devices that have a device key, every refresh must be signed by the device.</li>
+  <li>Shared content and the web copy are not end-to-end encrypted. This means whoever runs the service can technically access them. We do not open your content unless you ask us to, to solve a problem, or the law requires it.</li>
+</ul>
+
+<h2 id="children">Children</h2>
+<p>The account service does not ask for age. The apps work without an account, so a child does not have to give us any information to use them. If a child wants an account, it should be with a parent's or guardian's permission and supervision. If you learn that a child created an account without that permission, ask for it to be deleted as described in <a href="#delete">Deleting your data</a> and we will delete it.</p>
+
+<h2 id="delete">Deleting your data</h2>
+<ul>
+  <li><strong>On your device</strong>: remove the app and its data. On Windows, delete the folder <code>%APPDATA%\Worlds</code>. Clear your AI keys in the app's AI settings first.</li>
+  <li><strong>In the browser</strong>: clear the site data for <code>app.enterworlds.space</code> and <code>demo.enterworlds.space</code> in your browser settings.</li>
+  <li><strong>In your account, yourself</strong>: today you can sign out any device, remove passkeys, change your name, username and picture, leave workspaces, and delete workspaces you own.</li>
+  <li><strong>Deleting the whole account</strong>: there is no button for this yet. Open a report on <a href="https://github.com/justpainful/Worlds/issues">GitHub Issues</a> titled "Account deletion request", and do not write your email or any personal details in it, because reports are public. We will answer there and tell you how to show the account is yours. Once confirmed, we delete your account, passkeys, devices, sessions and memberships, the web copy and its files, and your notifications. If you own a shared workspace with other members, transfer it or delete it first. You can ask the same way to erase only the web copy, or the content of a shared workspace you deleted.</li>
+</ul>
+
+<h2 id="changes">Changes to this policy</h2>
+<p>If what Worlds does with data changes, we update this page and the date at its top. If the change is significant, we also mention it in the release notes on GitHub.</p>
+
+<h2 id="contact">Contact</h2>
+<p>For any privacy question, open a report on <a href="https://github.com/justpainful/Worlds/issues">GitHub Issues</a> and leave out personal details. For security problems, use a <a href="https://github.com/justpainful/Worlds/security/advisories/new">private security advisory</a>. For more, see the <a href="/en/support/">support page</a>.</p>
+
+</main></div>
+<footer class="wrap foot">
+  <div class="row">
+    <div class="credit">
+      <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
+      <p>Natural Intelligence Leads Artificial Intelligence festival 2026, outstanding experiments track.</p>
+    </div>
+    <nav aria-label="Worlds"><a href="/en/apps/">Apps</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="/en/privacy/">Privacy</a><a href="/en/terms/">Terms of use</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+  </div>
+  <p class="fine">Worlds is a creative working name, not a registered mark, and is independent of the imbue identity. The code is published on GitHub.</p>
+</footer>
+</body>
+</html>

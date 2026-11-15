@@ -1,0 +1,64 @@
+<!--
+title: Your Worlds account
+description: Why you might want a Worlds account, how to create one, signing in with an emailed 6-digit code, passkeys and signing out.
+-->
+<h1>Your Worlds account</h1>
+<p class="lead">You do not need an account to use Worlds: without one the app works fully on your computer. An account is for two things: working with other people in Team workspaces, and keeping your web workspace on your account so you can open it from any browser.</p>
+
+<h2 id="why">What the account is for</h2>
+<ul>
+<li><strong>In the apps</strong>: "An account lets you join Team workspaces and work on pages with other people. Your Personal pages stay on this PC."</li>
+<li><strong>On the web</strong>: your pages stay in the browser and work without a connection. Sign in to keep them on your account and open them anywhere.</li>
+</ul>
+<p>The same account works in the Worlds app on your computer and phone and on the web. How data moves is explained in <a href="/en/docs/sync/">Sync</a>.</p>
+
+<h2 id="create">Creating an account</h2>
+<p>There is no separate sign-up step: the account is created the first time you enter a correct email code.</p>
+<ol class="steps">
+<li><h3>Start</h3><p>On Windows: on the first screen click <strong>Sign In or Create Account</strong>, or open <strong>Settings</strong>, <strong>Account</strong>. On the web: open <a href="https://go.enterworlds.space/?account=create">go.enterworlds.space</a>.</p></li>
+<li><h3>Enter your name and email</h3><p>Under <strong>Create your account</strong>: "Your name is what people see when you share pages. Your email is for sign-in codes and recovery." The name can be up to 80 characters. A username is picked for you, and you can change it later in your <a href="/en/docs/profile/">profile</a>.</p></li>
+<li><h3>Enter the code</h3><p>A 6-digit code arrives. Type it under <strong>Enter the code</strong> and click <strong>Continue</strong>. You see "Your account is ready".</p></li>
+<li><h3>A passkey (Windows)</h3><p>In the Windows app, Worlds then offers <strong>Add a Passkey</strong>, or <strong>Not Now</strong>.</p></li>
+</ol>
+
+<h2 id="email-code">Signing in with an email code</h2>
+<p>Every email sign-in works the same way: type your email, click <strong>Send Code</strong>, then type the code you receive.</p>
+<dl class="facts">
+<div><dt>Sender</dt><dd>Worlds, from <code>no-reply@enterworlds.space</code></dd></div>
+<div><dt>Subject</dt><dd>The code followed by "is your Worlds sign-in code", or in Arabic if the app is in Arabic</dd></div>
+<div><dt>Code</dt><dd>6 digits, works for 10 minutes and only once</dd></div>
+<div><dt>Wrong tries</dt><dd>After 5 wrong tries the code stops working; ask for a new one</dd></div>
+<div><dt>Codes</dt><dd>At most 5 codes per email address per hour</dd></div>
+</dl>
+<p>If the code does not arrive, look in your spam folder, then click <strong>Send a New Code</strong>. If you go over a limit you see "Too many attempts", so wait a while and try again.</p>
+<p>On Android, iPhone, iPad and Mac the account screen has the same steps: <strong>Send code</strong> or <strong>Send verification code</strong>, then <strong>Verify</strong>.</p>
+
+<h2 id="passkeys">Passkeys</h2>
+<p>A passkey signs you in without an email code. In the Windows app: "A passkey signs you in with Windows Hello (face, fingerprint or PIN) or your phone. Without one, sign in with an emailed code."</p>
+<ul>
+<li>Add one in <strong>Settings</strong>, <strong>Account</strong>, <strong>Passkeys</strong>.</li>
+<li>To sign in, click <strong>Sign In with a Passkey</strong>. Your browser opens to confirm it is you, then brings you back to Worlds. To use the code instead, click <strong>Use an Email Code Instead</strong>.</li>
+</ul>
+<div class="callout"><p>Passkeys work in the Windows app. On the web, sign in with the email code. On Android, iPhone, iPad and Mac, sign-in uses the email code for now.</p></div>
+
+<h2 id="devices">Devices</h2>
+<p><strong>Settings</strong>, <strong>Account</strong>, <strong>Devices</strong> lists every computer signed in to your account. Removing one signs it out at once, including any open shared pages.</p>
+
+<h2 id="sign-out">Signing out</h2>
+<p>Signing out does not delete your pages from the device:</p>
+<ul>
+<li><strong>Windows</strong>: in <strong>Settings</strong>, <strong>Account</strong>, choose <strong>Sign out of Worlds on this PC</strong>. Every page stays on the PC, and Team pages are hidden until you sign in again.</li>
+<li><strong>Android</strong>: the app asks to sign the device out from the server, and local pages stay on the device.</li>
+<li><strong>iPhone, iPad and Mac</strong>: <strong>Sign out</strong>. Saved copies of shared pages that belong to another account are removed the next time the shared pages list loads.</li>
+<li><strong>Web</strong>: ends the account session in this browser.</li>
+</ul>
+
+<h2 id="where">Where accounts live</h2>
+<p>The account service is at <code>login.enterworlds.space</code> and runs on Cloudflare. It sends the codes and keeps passkeys, workspaces, invites and permissions. See <a href="/en/privacy/">Privacy</a> for what is kept.</p>
+
+<h2 id="next">Read next</h2>
+<ul class="index">
+<li><a href="/en/docs/sharing/"><strong>Sharing and working together</strong><span>Team workspaces, invites and roles</span></a></li>
+<li><a href="/en/docs/sync/"><strong>Sync</strong><span>What stays on your device and what goes to the server</span></a></li>
+<li><a href="/en/docs/settings/"><strong>Settings</strong><span>The Account section and what is in it</span></a></li>
+</ul>

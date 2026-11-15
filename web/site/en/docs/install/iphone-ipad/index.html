@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Install Worlds on iPhone and iPad · Worlds</title>
+<meta name="description" content="Steps to install the unsigned ipa file with SideStore, turn on Developer Mode, trust the developer, and refresh every 7 days with a free Apple ID.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://enterworlds.space/en/docs/install/iphone-ipad/">
+<link rel="alternate" hreflang="ar" href="https://enterworlds.space/docs/install/iphone-ipad/">
+<link rel="alternate" hreflang="en" href="https://enterworlds.space/en/docs/install/iphone-ipad/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Worlds">
+<meta property="og:title" content="Install Worlds on iPhone and iPad">
+<meta property="og:description" content="Steps to install the unsigned ipa file with SideStore, turn on Developer Mode, trust the developer, and refresh every 7 days with a free Apple ID.">
+<meta property="og:image" content="https://enterworlds.space/media/og.png">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-256.png">
+<link rel="preload" href="/fonts/instrument-sans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/site.css">
+<script src="/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="wrap top">
+  <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="46" height="46"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="70" height="26"></a>
+  <nav class="nav" aria-label="Menu"><a href="/en/apps/">Apps</a><a href="/en/docs/" aria-current="page">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/docs/install/iphone-ipad/" hreflang="ar" lang="ar">العربية</a></nav>
+  <details class="menu"><summary>Menu</summary><div class="nav"><a href="/en/apps/">Apps</a><a href="/en/docs/" aria-current="page">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/docs/install/iphone-ipad/" hreflang="ar" lang="ar">العربية</a></div></details>
+</header>
+<div class="wrap docs">
+<details class="side" open><summary>Docs pages</summary><div class="side-list"><h2>Start here</h2><ul><li><a href="/en/docs/">Overview</a></li><li><a href="/en/docs/getting-started/">Getting started with Worlds</a></li></ul><h2>Install</h2><ul><li><a href="/en/docs/install/">Install Worlds</a></li><li class="sub"><a href="/en/docs/install/windows/">Install Worlds on Windows</a></li><li class="sub"><a href="/en/docs/install/macos/">Install Worlds on Mac</a></li><li class="sub"><a href="/en/docs/install/iphone-ipad/" aria-current="page">Install Worlds on iPhone and iPad</a></li><li class="sub"><a href="/en/docs/install/android/">Install Worlds on Android</a></li><li class="sub"><a href="/en/docs/install/web/">Worlds in the browser</a></li><li class="sub"><a href="/en/docs/install/update-uninstall/">Update and uninstall</a></li><li><a href="/en/docs/troubleshooting/">Troubleshooting</a></li></ul><h2>Write and organise</h2><ul><li><a href="/en/docs/pages/">Pages and blocks</a></li><li><a href="/en/docs/documents/">Documents</a></li><li><a href="/en/docs/tables/">Tables and spreadsheets</a></li><li><a href="/en/docs/projects/">Projects and resources</a></li><li><a href="/en/docs/templates/">Templates</a></li><li><a href="/en/docs/search-commands/">Search and commands</a></li><li><a href="/en/docs/history/">History and backups</a></li></ul><h2>Draw, present and media</h2><ul><li><a href="/en/docs/drawing/">Drawing</a></li><li><a href="/en/docs/presentations/">Presentations</a></li><li><a href="/en/docs/media-files/">Media and files</a></li></ul><h2>Claude and automations</h2><ul><li><a href="/en/docs/claude/">Claude and other AI providers</a></li><li><a href="/en/docs/automations/">Automations</a></li><li><a href="/en/docs/discord/">Discord bridge</a></li><li><a href="/en/docs/integrations/">Integrations</a></li></ul><h2>Account and sharing</h2><ul><li><a href="/en/docs/account/">Your Worlds account</a></li><li><a href="/en/docs/sharing/">Sharing and working together</a></li><li><a href="/en/docs/sync/">How sync works</a></li><li><a href="/en/docs/packs/">Packs</a></li><li><a href="/en/docs/profile/">Profile and Activity</a></li><li><a href="/en/docs/settings/">Settings</a></li></ul><h2>For developers</h2><ul><li><a href="/en/docs/html-pages/">HTML pages</a></li><li><a href="/en/docs/mcp/">The Worlds MCP server</a></li></ul></div></details>
+<main id="main" class="article">
+<p class="crumb"><a href="/en/docs/">Docs</a> / Install</p>
+<h1>Install Worlds on iPhone and iPad</h1>
+<p class="lead">Worlds is not in the App Store yet, and its file is unsigned. So a tool such as SideStore signs it with your own Apple ID and installs it. You need a computer only once, to set up the tool.</p>
+
+<h2 id="before">Before you start</h2>
+<dl class="facts">
+<div><dt>iPhone file</dt><dd><code>Worlds-0.3.0-iPhone-Unsigned.ipa</code> (10.7 MB)</dd></div>
+<div><dt>iPad file</dt><dd><code>Worlds-0.3.0-iPad-Unsigned.ipa</code> (10.7 MB)</dd></div>
+<div><dt>System</dt><dd>iOS 17 or iPadOS 17 or later</dd></div>
+<div><dt>You also need</dt><dd>An Apple ID (a free one is enough), a signing tool such as <a href="https://sidestore.io">SideStore</a> or <a href="https://altstore.io">AltStore</a>, and a Windows PC or a Mac to set it up the first time</dd></div>
+<div><dt>Signature lasts</dt><dd>7 days with a free Apple ID, then you refresh it from the tool. A full year with a paid Apple Developer membership.</dd></div>
+</dl>
+<div class="callout"><p>Download the iPhone file for an iPhone and the iPad file for an iPad. The iPad file does not install on an iPhone. The iPhone and iPad app is an early version: see <a href="/en/docs/install/#platforms">what works on each platform</a>.</p></div>
+
+<h2 id="why">Why a signing tool</h2>
+<p>An iPhone or iPad runs only signed apps. Apple signs App Store apps. Outside the store, anyone with an Apple ID can sign an app for their own devices only. That is what SideStore does: it signs the file with your account, installs it on your device, and renews the signature before it runs out. The Worlds file is not sent anywhere else.</p>
+<p>The steps here are written for SideStore. In AltStore they are nearly the same: the My Apps tab, then the + button.</p>
+
+<h2 id="install">Install step by step</h2>
+<ol class="steps">
+<li><h3>Install SideStore once</h3>
+<p>Follow the <a href="https://sidestore.io">official SideStore guide</a>. It asks for a computer once, your Apple ID, and a cable to connect the device. Only type your Apple ID password into a tool you installed yourself from its official site. If SideStore or AltStore is already on your device, go to the next step.</p></li>
+<li><h3>Turn on Developer Mode</h3>
+<p>iOS needs Developer Mode to run apps signed this way. Open <strong>Settings</strong>, then <strong>Privacy &amp; Security</strong>, and scroll to <strong>Developer Mode</strong> under Security.</p>
+<figure class="sketch"><svg viewBox="0 0 640 360" role="img" aria-label="iPhone settings, Privacy &amp; Security: the Developer Mode row under Security, marked 1" font-family="inherit" direction="ltr"><rect x="170" y="24" width="300" height="312" rx="20" class="k-win"/><text x="190" y="62" class="k-text" font-size="16" font-weight="600">Privacy &amp; Security</text><rect x="182" y="82" width="276" height="92" rx="10" class="k-field"/><text x="198" y="112" class="k-text" font-size="14">Location Services</text><line x1="182" y1="128" x2="458" y2="128" class="k-line"/><text x="198" y="158" class="k-text" font-size="14">Tracking</text><text x="190" y="212" class="k-muted" font-size="12">SECURITY</text><rect x="182" y="222" width="276" height="48" rx="10" class="k-field"/><text x="198" y="252" class="k-text" font-size="15">Developer Mode</text><text x="440" y="252" class="k-muted" font-size="13" text-anchor="end">Off</text><rect x="178" y="218" width="284" height="56" rx="12" class="k-ring"/><circle cx="320" cy="298" r="11" class="k-num"/><text x="320" y="302.5" class="k-numtext" font-size="13" text-anchor="middle">1</text></svg><figcaption>The Developer Mode row at the bottom of Privacy &amp; Security (1).</figcaption></figure>
+<p>Turn the switch on and tap <strong>Restart</strong>. When the device is back, it asks whether to turn on Developer Mode: tap <strong>Turn On</strong> and enter your passcode. The Developer Mode row appears only after the first app installed this way, such as SideStore itself.</p></li>
+<li><h3>Trust the developer</h3>
+<p>The first time you open an app signed with your account, iOS may say the developer is not trusted. Open <strong>Settings</strong>, then <strong>General</strong>, then <strong>VPN &amp; Device Management</strong>. Under <strong>Developer App</strong>, tap your Apple ID email, tap the Trust button, then confirm.</p>
+<figure class="sketch"><svg viewBox="0 0 640 360" role="img" aria-label="iPhone settings, VPN &amp; Device Management: your Apple ID under Developer App marked 1, then the Trust button marked 2" font-family="inherit" direction="ltr"><rect x="30" y="24" width="280" height="312" rx="20" class="k-win"/><text x="50" y="62" class="k-text" font-size="15" font-weight="600">VPN &amp; Device Management</text><text x="50" y="110" class="k-muted" font-size="12">DEVELOPER APP</text><rect x="42" y="120" width="256" height="44" rx="10" class="k-field"/><text x="56" y="147" class="k-text" font-size="14">you@example.com</text><rect x="38" y="116" width="264" height="52" rx="12" class="k-ring"/><circle cx="170" cy="190" r="11" class="k-num"/><text x="170" y="194.5" class="k-numtext" font-size="13" text-anchor="middle">1</text><rect x="330" y="24" width="280" height="312" rx="20" class="k-win"/><text x="350" y="62" class="k-text" font-size="15" font-weight="600">you@example.com</text><text x="350" y="102" class="k-muted" font-size="12">Apps from developer “Apple Development:</text><text x="350" y="120" class="k-muted" font-size="12">you@example.com” are not trusted on this</text><text x="350" y="138" class="k-muted" font-size="12">iPhone and will not run until trusted.</text><rect x="342" y="166" width="256" height="44" rx="10" class="k-field"/><text x="356" y="193" class="k-text" font-size="13" font-weight="600">Trust “Apple Development: …”</text><rect x="338" y="162" width="264" height="52" rx="12" class="k-ring"/><circle cx="470" cy="236" r="11" class="k-num"/><text x="470" y="240.5" class="k-numtext" font-size="13" text-anchor="middle">2</text></svg><figcaption>Tap your account under Developer App (1), then the Trust button (2).</figcaption></figure>
+<p>You do this once per account, and it covers every app you sign with it.</p></li>
+<li><h3>Download the ipa file on the device itself</h3>
+<p>Open the <a href="https://github.com/justpainful/Worlds/releases/latest">latest release page</a> in Safari on the iPhone or iPad. Under Assets, tap the file for your device, then <strong>Download</strong>. It is saved in the <strong>Files</strong> app, in <strong>Downloads</strong>.</p></li>
+<li><h3>Add the file in SideStore</h3>
+<p>Open SideStore, go to the <strong>My Apps</strong> tab and tap the <strong>+</strong> button at the top. The Files picker opens: choose the <code>.ipa</code> file in Downloads. SideStore signs and installs it, and may ask you to sign in with your Apple ID the first time. Wait until Worlds appears in the list and its icon is on the Home Screen.</p>
+<figure class="sketch"><svg viewBox="0 0 640 360" role="img" aria-label="SideStore, My Apps tab: the + button marked 1 adds an .ipa file, and the 7 DAYS button marked 2 refreshes the app" font-family="inherit" direction="ltr"><rect x="200" y="10" width="240" height="340" rx="32" class="k-win"/><circle cx="232" cy="44" r="13" class="k-btn"/><text x="232" y="50" class="k-text" font-size="18" text-anchor="middle" font-weight="600">+</text><rect x="214" y="26" width="36" height="36" rx="18" class="k-ring"/><circle cx="268" cy="44" r="11" class="k-num"/><text x="268" y="48.5" class="k-numtext" font-size="13" text-anchor="middle">1</text><text x="222" y="92" class="k-text" font-size="18" font-weight="600">My Apps</text><text x="222" y="122" class="k-muted" font-size="12">ACTIVE</text><rect x="214" y="132" width="212" height="54" rx="12" class="k-field"/><rect x="224" y="142" width="34" height="34" rx="8" class="k-btn"/><text x="268" y="164" class="k-text" font-size="14">SideStore</text><rect x="356" y="148" width="60" height="22" rx="11" class="k-btn"/><text x="386" y="163" class="k-muted" font-size="12" text-anchor="middle">7 DAYS</text><rect x="214" y="194" width="212" height="54" rx="12" class="k-field"/><rect x="224" y="204" width="34" height="34" rx="8" class="k-btn"/><text x="268" y="226" class="k-text" font-size="14">Worlds</text><rect x="356" y="210" width="60" height="22" rx="11" class="k-btn"/><text x="386" y="225" class="k-muted" font-size="12" text-anchor="middle">7 DAYS</text><rect x="350" y="204" width="72" height="34" rx="14" class="k-ring"/><circle cx="380" cy="266" r="11" class="k-num"/><text x="380" y="270.5" class="k-numtext" font-size="13" text-anchor="middle">2</text></svg><figcaption>The My Apps tab in SideStore. The + button adds the file (1), and the days button renews the signature (2).</figcaption></figure></li>
+<li><h3>Open Worlds</h3>
+<p>Tap the Worlds icon. If an untrusted developer message appears, go back to step 3.</p></li>
+</ol>
+
+<h2 id="refresh">Refreshing every 7 days</h2>
+<p>With a free Apple ID the signature runs out after 7 days, and the app does not open until you refresh it. The button next to Worlds in My Apps shows the days left: tap it to refresh Worlds, or refresh all apps at once from SideStore. Your pages are not deleted when you refresh, or when the signature runs out, as long as you do not delete the app.</p>
+<p>A free account also has a limit: 3 signed apps at a time, and SideStore itself is one of them. Details in <a href="/en/docs/troubleshooting/#ios-expired">Troubleshooting</a>.</p>
+
+<h2 id="first-launch">What you see the first time</h2>
+<p>On iPhone there are tabs at the bottom: Home, Spaces, Library, AI and Search. On iPad there is a sidebar instead. Parts of the interface are still in English only.</p>
+<ul>
+<li>To open a Worlds workspace: from the <strong>More</strong> menu choose <strong>Open Database…</strong>, then pick the file <code>worlds.db</code> in the Files app, with its <code>attachments</code> folder.</li>
+<li>A file in iCloud Drive or another cloud folder opens read only, with a note that says why. To edit, make a local copy of it (Create local copy). The local copy is independent, lives inside the app, and does not sync back to the original.</li>
+<li>The assistant (AI) chats with a provider you choose and an API key you enter in its settings; the key is kept in the device's Keychain. It does not edit pages yet.</li>
+</ul>
+
+<h2 id="problems">If something goes wrong</h2>
+<ul class="index">
+<li><a href="/en/docs/troubleshooting/#ios-untrusted"><strong>Untrusted Developer</strong><span>Trusting your account in VPN &amp; Device Management.</span></a></li>
+<li><a href="/en/docs/troubleshooting/#ios-developer-mode"><strong>Developer Mode required</strong><span>Where the switch is and why it may be missing.</span></a></li>
+<li><a href="/en/docs/troubleshooting/#ios-expired"><strong>Worlds will not open after a week</strong><span>The signature ran out; refresh it in SideStore.</span></a></li>
+</ul>
+
+<nav class="pager" aria-label="Docs"><a class="prev" href="/en/docs/install/macos/"><small>Previous</small>Install Worlds on Mac</a><a class="next" href="/en/docs/install/android/"><small>Next</small>Install Worlds on Android</a></nav>
+</main>
+</div>
+<footer class="wrap foot">
+  <div class="row">
+    <div class="credit">
+      <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
+      <p>Natural Intelligence Leads Artificial Intelligence festival 2026, outstanding experiments track.</p>
+    </div>
+    <nav aria-label="Worlds"><a href="/en/apps/">Apps</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="/en/privacy/">Privacy</a><a href="/en/terms/">Terms of use</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+  </div>
+  <p class="fine">Worlds is a creative working name, not a registered mark, and is independent of the imbue identity. The code is published on GitHub.</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>السجل والنسخ الاحتياطية · Worlds</title>
+<meta name="description" content="كيف يحفظ Worlds عملك: الحفظ التلقائي والتراجع، وسجل الصفحة ونسخها السابقة، وسلة المهملات والاستعادة، والنسخ الاحتياطي اليومي لقاعدة البيانات.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://enterworlds.space/docs/history/">
+<link rel="alternate" hreflang="ar" href="https://enterworlds.space/docs/history/">
+<link rel="alternate" hreflang="en" href="https://enterworlds.space/en/docs/history/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Worlds">
+<meta property="og:title" content="السجل والنسخ الاحتياطية">
+<meta property="og:description" content="كيف يحفظ Worlds عملك: الحفظ التلقائي والتراجع، وسجل الصفحة ونسخها السابقة، وسلة المهملات والاستعادة، والنسخ الاحتياطي اليومي لقاعدة البيانات.">
+<meta property="og:image" content="https://enterworlds.space/media/og.png">
+<meta property="og:locale" content="ar_SA">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-256.png">
+<link rel="preload" href="/fonts/plex-arabic-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/site.css">
+<script src="/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">انتقل إلى المحتوى</a>
+<header class="wrap top">
+  <a class="lockup small" href="/" aria-label="Worlds الصفحة الرئيسية"><img class="logo" src="/icon-256.png" alt="" width="46" height="46"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="70" height="26"></a>
+  <nav class="nav" aria-label="القائمة"><a href="/apps/">التطبيقات</a><a href="/docs/" aria-current="page">الدوكس</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/en/docs/history/" hreflang="en" lang="en">English</a></nav>
+  <details class="menu"><summary>القائمة</summary><div class="nav"><a href="/apps/">التطبيقات</a><a href="/docs/" aria-current="page">الدوكس</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/en/docs/history/" hreflang="en" lang="en">English</a></div></details>
+</header>
+<div class="wrap docs">
+<details class="side" open><summary>صفحات الدوكس</summary><div class="side-list"><h2>البداية</h2><ul><li><a href="/docs/">نظرة عامة</a></li><li><a href="/docs/getting-started/">البداية مع Worlds</a></li></ul><h2>التثبيت</h2><ul><li><a href="/docs/install/">تثبيت Worlds</a></li><li class="sub"><a href="/docs/install/windows/">تثبيت Worlds على Windows</a></li><li class="sub"><a href="/docs/install/macos/">تثبيت Worlds على Mac</a></li><li class="sub"><a href="/docs/install/iphone-ipad/">تثبيت Worlds على iPhone و iPad</a></li><li class="sub"><a href="/docs/install/android/">تثبيت Worlds على Android</a></li><li class="sub"><a href="/docs/install/web/">Worlds في المتصفح</a></li><li class="sub"><a href="/docs/install/update-uninstall/">التحديث والإزالة</a></li><li><a href="/docs/troubleshooting/">حل المشكلات</a></li></ul><h2>الكتابة والتنظيم</h2><ul><li><a href="/docs/pages/">الصفحات والكتل</a></li><li><a href="/docs/documents/">المستندات</a></li><li><a href="/docs/tables/">الجداول وجداول البيانات</a></li><li><a href="/docs/projects/">المشاريع والمصادر</a></li><li><a href="/docs/templates/">القوالب</a></li><li><a href="/docs/search-commands/">البحث والأوامر</a></li><li><a href="/docs/history/" aria-current="page">السجل والنسخ الاحتياطية</a></li></ul><h2>الرسم والعرض والوسائط</h2><ul><li><a href="/docs/drawing/">الرسم</a></li><li><a href="/docs/presentations/">العروض التقديمية</a></li><li><a href="/docs/media-files/">الوسائط والملفات</a></li></ul><h2>Claude والأتمتة</h2><ul><li><a href="/docs/claude/">Claude والمزوّدون الآخرون</a></li><li><a href="/docs/automations/">الأتمتة</a></li><li><a href="/docs/discord/">جسر Discord</a></li><li><a href="/docs/integrations/">التكاملات</a></li></ul><h2>الحساب والمشاركة</h2><ul><li><a href="/docs/account/">حساب Worlds</a></li><li><a href="/docs/sharing/">المشاركة والعمل معًا</a></li><li><a href="/docs/sync/">كيف تعمل المزامنة</a></li><li><a href="/docs/packs/">الحزم</a></li><li><a href="/docs/profile/">الملف الشخصي والنشاط</a></li><li><a href="/docs/settings/">الإعدادات</a></li></ul><h2>للمطورين</h2><ul><li><a href="/docs/html-pages/">صفحات HTML</a></li><li><a href="/docs/mcp/">خادم MCP في Worlds</a></li></ul></div></details>
+<main id="main" class="article">
+<p class="crumb"><a href="/docs/">الدوكس</a> / الكتابة والتنظيم</p>
+<h1>السجل والنسخ الاحتياطية</h1>
+<p class="lead">Worlds يحفظ عملك وأنت تكتب، ويحتفظ بنسخ سابقة من كل صفحة، ويضع ما تحذفه في سلة المهملات، ويأخذ نسخة احتياطية من قاعدة بياناتك كل يوم. هذه الصفحة تشرح كيف تعود إلى أي منها.</p>
+
+<h2 id="autosave">الحفظ والتراجع</h2>
+<ul>
+  <li>الصفحة تُحفظ تلقائيًا بعد توقفك عن الكتابة بلحظة، و<kbd>Ctrl</kbd> + <kbd>S</kbd> يحفظ فورًا. حالة الحفظ تظهر أعلى الصفحة.</li>
+  <li><kbd>Ctrl</kbd> + <kbd>Z</kbd> للتراجع، و<kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> أو <kbd>Ctrl</kbd> + <kbd>Y</kbd> للإعادة، داخل الصفحة التي تكتب فيها.</li>
+  <li>عند حذف صفحة تظهر رسالة فيها زر <strong>تراجع</strong> يعيدها فورًا.</li>
+</ul>
+<p>للرسم وجداول البيانات والعروض تراجعها الخاص داخل محرراتها. والرسم له إصداراته المسماة أيضًا: انظر <a href="/docs/drawing/#versions">الحفظ والإصدارات في الرسم</a>.</p>
+
+<h2 id="page-history">سجل الصفحة</h2>
+<p>افتح السجل بزر <strong>السجل</strong> أعلى الصفحة، أو الأمر <strong>سجل الصفحة</strong> من لوحة الأوامر. تفتح لوحة جانبية فيها ثلاثة تبويبات: <strong>معلومات</strong> و<strong>السجل</strong> و<strong>المساعد</strong>.</p>
+<figure class="shot"><img src="/media/book/p23.webp" alt="صفحة «فكرة المشروع» وبجانبها لوحة History: قسم Changes فيه تعديلات وأرشفة واستعادة وحفظ من أتمتة وإنشاء، وقسم Versions فيه ثلاث نسخ بتواريخها وعدد كتلها، ولكل نسخة زر Preview" width="1600" height="1000" loading="lazy"><figcaption>سجل الصفحة: التغييرات في الأعلى والنسخ تحتها. الواجهة بالإنجليزية في هذه اللقطة، والمحتوى بيانات تجريبية.</figcaption></figure>
+<h3>التغييرات</h3>
+<p>قسم <strong>التغييرات</strong> يعرض آخر 200 تغيير على الصفحة: من غيّر، ومتى، وكم كتلة أُضيفت أو تغيّرت. التغييرات التي أجراها Claude أو <a href="/docs/automations/">الأتمتة</a> لها زرّا <strong>مراجعة التغييرات</strong> و<strong>تراجع</strong>، وفي نافذة المراجعة <strong>التراجع عن الكل</strong>.</p>
+<h3>النسخ</h3>
+<p>قسم <strong>النسخ</strong> يعرض النسخ المحفوظة بتاريخها وعدد كتلها. يحفظ Worlds نسخة:</p>
+<ul>
+  <li>قبل كل جلسة تحرير: عندما تبدأ الكتابة بعد 10 دقائق أو أكثر دون تعديل.</li>
+  <li>قبل كل تغيير يجريه Claude أو الأتمتة.</li>
+  <li>قبل كل استعادة لنسخة سابقة.</li>
+</ul>
+<ol class="steps">
+  <li><h3>عاين</h3><p>اضغط <strong>معاينة</strong> بجانب النسخة لترى الصفحة كما كانت.</p></li>
+  <li><h3>استعد</h3><p>اضغط <strong>استعادة هذه النسخة</strong>. تظهر رسالة: «استُعيدت النسخة. وحُفظت الحالة السابقة كنسخة أيضًا.» فلا تخسر شيئًا، ويمكنك الرجوع إلى ما قبل الاستعادة.</p></li>
+</ol>
+<p>لا توجد حاليًا مقارنة جنبًا إلى جنب بين نسختين من صفحة. المقارنة المتاحة هي <strong>مراجعة التغييرات</strong> لتغييرات Claude والأتمتة.</p>
+
+<h2 id="trash">سلة المهملات والاستعادة</h2>
+<p>عند حذف صفحة تنتقل مع صفحاتها الفرعية إلى <strong>سلة المهملات</strong>. افتحها من <strong>المكتبة</strong> في الشريط الجانبي، أو الأمر <strong>سلة المهملات</strong>. «تبقى الصفحات المحذوفة هنا حتى تزيلها نهائيًا»: لا تُفرَّغ السلة وحدها.</p>
+<ul>
+  <li><strong>استعادة</strong>: تعيد الصفحة إلى مكانها.</li>
+  <li><strong>حذف نهائي</strong>: يسأل <strong>حذف نهائي؟</strong> ثم يزيل الصفحة وصفحاتها الفرعية من هذا الجهاز. لا يمكن التراجع عن ذلك.</li>
+</ul>
+<h3>الأرشفة</h3>
+<p>الأرشفة تخفي صفحة لا تحتاجها الآن دون حذفها. اختر <strong>أرشفة</strong> من قائمة الصفحة. الصفحات المؤرشفة تظهر في قسم <strong>مؤرشفة</strong> في سلة المهملات، ومعها <strong>إلغاء الأرشفة</strong>، وتبقى تظهر في البحث.</p>
+
+<h2 id="backups">النسخ الاحتياطية</h2>
+<p>يأخذ Worlds نسخة كاملة من قاعدة بياناتك:</p>
+<ul>
+  <li><strong>يوميًا</strong>: عند تشغيل التطبيق، مرة واحدة كل 24 ساعة على الأكثر، بعد التحقق من سلامة القاعدة.</li>
+  <li><strong>قبل تحديث</strong>: قبل كل تغيير في صيغة التخزين عند تحديث التطبيق.</li>
+  <li><strong>يدوي</strong>: متى طلبت.</li>
+</ul>
+<p>يحتفظ بآخر 10 نسخ يومية و20 من الأنواع الأخرى، ويحذف الأقدم. النسخ في المجلد الفرعي <code>backups</code> داخل مجلد البيانات.</p>
+<h3>في الإعدادات</h3>
+<p>افتح <strong>الإعدادات</strong> ثم <strong>التخزين</strong>، وفي مجموعة <strong>النسخ الاحتياطية</strong>:</p>
+<ul>
+  <li><strong>نسخ احتياطي الآن</strong>: نسخة يدوية فورية، وتحته وقت آخر نسخة.</li>
+  <li>أحدث 8 نسخ بتاريخها ونوعها وحجمها، ولكل منها <strong>استعادة</strong>.</li>
+  <li><strong>مجلد النسخ الاحتياطية</strong> وزر <strong>إظهار</strong> لفتحه.</li>
+</ul>
+<h3>استعادة نسخة احتياطية</h3>
+<ol class="steps">
+  <li><h3>اختر النسخة</h3><p>اضغط <strong>استعادة</strong> بجانبها، ثم أكّد بـ <strong>الاستعادة عند التشغيل التالي</strong>.</p></li>
+  <li><h3>أعد تشغيل Worlds</h3><p>تظهر <strong>استعادة بالانتظار</strong> مع زر <strong>إلغاء</strong> إن غيّرت رأيك. عند التشغيل التالي تُطبَّق الاستعادة، وتُحفظ قاعدتك الحالية أولًا كنسخة «قبل الاستعادة».</p></li>
+</ol>
+<div class="callout"><p>إذا وجد Worlds عند التشغيل أن قاعدة البيانات تالفة، يستبدلها تلقائيًا بأحدث نسخة احتياطية سليمة. وإن وجد مشكلة في الفحص اليومي، تظهر في الإعدادات رسالة «قاعدة البيانات تحتاج إلى مراجعة» مع اقتراح الاستعادة أو أخذ نسخة الآن.</p></div>
+<div class="callout warn"><p>النسخ الاحتياطية على الجهاز نفسه. إن تعطل الجهاز تضيع معه. انسخ مجلد البيانات إلى قرص خارجي من حين لآخر، أو استخدم <a href="/docs/sync/">المزامنة</a>.</p></div>
+
+<h2 id="platforms">ما الذي يعمل وأين</h2>
+<table>
+  <thead><tr><th>الميزة</th><th>Windows</th><th>Apple</th><th>Android</th></tr></thead>
+  <tbody>
+    <tr><td>حفظ النسخ</td><td>نعم</td><td>نعم، وواجهة الاستعادة قيد العمل</td><td>جزئي</td></tr>
+    <tr><td>سلة المهملات</td><td>نعم</td><td>جزئي: الاستعادة دون الحذف النهائي</td><td>جزئي</td></tr>
+    <tr><td>النسخ الاحتياطية</td><td>نعم</td><td>قيد العمل</td><td>قيد العمل</td></tr>
+  </tbody>
+</table>
+<p>تطبيقات Apple وAndroid ما زالت قيد العمل. التفاصيل في <a href="/docs/install/">التثبيت</a>.</p>
+
+<h2 id="next">التالي</h2>
+<ul class="index">
+  <li><a href="/docs/sync/"><strong>المزامنة</strong><span>عملك على أكثر من جهاز</span></a></li>
+  <li><a href="/docs/getting-started/#workspace"><strong>مكان الحفظ</strong><span>أين يوجد مجلد البيانات</span></a></li>
+  <li><a href="/docs/claude/"><strong>Claude</strong><span>ما الذي يغيّره Claude وكيف تراجعه</span></a></li>
+</ul>
+
+<nav class="pager" aria-label="الدوكس"><a class="prev" href="/docs/search-commands/"><small>السابق</small>البحث والأوامر</a><a class="next" href="/docs/drawing/"><small>التالي</small>الرسم</a></nav>
+</main>
+</div>
+<footer class="wrap foot">
+  <div class="row">
+    <div class="credit">
+      <a class="lockup small" href="/" aria-label="Worlds الصفحة الرئيسية"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
+      <p>مهرجان الذكاء الطبيعي يقود الذكاء الاصطناعي 2026، مسار التجارب المتميزة.</p>
+    </div>
+    <nav aria-label="Worlds"><a href="/apps/">التطبيقات</a><a href="/docs/">الدوكس</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="/privacy/">الخصوصية</a><a href="/terms/">شروط الاستخدام</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+  </div>
+  <p class="fine">Worlds اسم عمل إبداعي غير مسجل رسميًا، مستقل عن هوية imbue. الشيفرة منشورة على GitHub.</p>
+</footer>
+</body>
+</html>

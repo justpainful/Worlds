@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Drawing · Worlds</title>
+<meta name="description" content="The Worlds drawing editor: tools and their shortcuts, brushes, shapes and shape correction, layers, masks, adjustments, the eraser, versions, experiments, export, and linking a drawing to a resource.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://enterworlds.space/en/docs/drawing/">
+<link rel="alternate" hreflang="ar" href="https://enterworlds.space/docs/drawing/">
+<link rel="alternate" hreflang="en" href="https://enterworlds.space/en/docs/drawing/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Worlds">
+<meta property="og:title" content="Drawing">
+<meta property="og:description" content="The Worlds drawing editor: tools and their shortcuts, brushes, shapes and shape correction, layers, masks, adjustments, the eraser, versions, experiments, export, and linking a drawing to a resource.">
+<meta property="og:image" content="https://enterworlds.space/media/og.png">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-256.png">
+<link rel="preload" href="/fonts/instrument-sans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/site.css">
+<script src="/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="wrap top">
+  <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="46" height="46"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="70" height="26"></a>
+  <nav class="nav" aria-label="Menu"><a href="/en/apps/">Apps</a><a href="/en/docs/" aria-current="page">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/docs/drawing/" hreflang="ar" lang="ar">العربية</a></nav>
+  <details class="menu"><summary>Menu</summary><div class="nav"><a href="/en/apps/">Apps</a><a href="/en/docs/" aria-current="page">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/docs/drawing/" hreflang="ar" lang="ar">العربية</a></div></details>
+</header>
+<div class="wrap docs">
+<details class="side" open><summary>Docs pages</summary><div class="side-list"><h2>Start here</h2><ul><li><a href="/en/docs/">Overview</a></li><li><a href="/en/docs/getting-started/">Getting started with Worlds</a></li></ul><h2>Install</h2><ul><li><a href="/en/docs/install/">Install Worlds</a></li><li class="sub"><a href="/en/docs/install/windows/">Install Worlds on Windows</a></li><li class="sub"><a href="/en/docs/install/macos/">Install Worlds on Mac</a></li><li class="sub"><a href="/en/docs/install/iphone-ipad/">Install Worlds on iPhone and iPad</a></li><li class="sub"><a href="/en/docs/install/android/">Install Worlds on Android</a></li><li class="sub"><a href="/en/docs/install/web/">Worlds in the browser</a></li><li class="sub"><a href="/en/docs/install/update-uninstall/">Update and uninstall</a></li><li><a href="/en/docs/troubleshooting/">Troubleshooting</a></li></ul><h2>Write and organise</h2><ul><li><a href="/en/docs/pages/">Pages and blocks</a></li><li><a href="/en/docs/documents/">Documents</a></li><li><a href="/en/docs/tables/">Tables and spreadsheets</a></li><li><a href="/en/docs/projects/">Projects and resources</a></li><li><a href="/en/docs/templates/">Templates</a></li><li><a href="/en/docs/search-commands/">Search and commands</a></li><li><a href="/en/docs/history/">History and backups</a></li></ul><h2>Draw, present and media</h2><ul><li><a href="/en/docs/drawing/" aria-current="page">Drawing</a></li><li><a href="/en/docs/presentations/">Presentations</a></li><li><a href="/en/docs/media-files/">Media and files</a></li></ul><h2>Claude and automations</h2><ul><li><a href="/en/docs/claude/">Claude and other AI providers</a></li><li><a href="/en/docs/automations/">Automations</a></li><li><a href="/en/docs/discord/">Discord bridge</a></li><li><a href="/en/docs/integrations/">Integrations</a></li></ul><h2>Account and sharing</h2><ul><li><a href="/en/docs/account/">Your Worlds account</a></li><li><a href="/en/docs/sharing/">Sharing and working together</a></li><li><a href="/en/docs/sync/">How sync works</a></li><li><a href="/en/docs/packs/">Packs</a></li><li><a href="/en/docs/profile/">Profile and Activity</a></li><li><a href="/en/docs/settings/">Settings</a></li></ul><h2>For developers</h2><ul><li><a href="/en/docs/html-pages/">HTML pages</a></li><li><a href="/en/docs/mcp/">The Worlds MCP server</a></li></ul></div></details>
+<main id="main" class="article">
+<p class="crumb"><a href="/en/docs/">Docs</a> / Draw, present and media</p>
+<h1>Drawing</h1>
+<p class="lead">The Worlds drawing editor is for freehand drawing, editing pictures and explaining things visually: brushes, shapes it straightens for you, layers and masks, versions you can go back to, and export in several formats.</p>
+
+<h2 id="create">Creating a drawing</h2>
+<p>From <strong>New</strong>, choose <strong>Drawing</strong>, or run the <strong>New Drawing</strong> command from the command palette. A new drawing starts with one layer and one frame of 1280 by 720 pixels on a white background. The frame is the area that gets exported, and a drawing can hold several frames.</p>
+<figure class="shot"><img src="/media/book/p16.webp" alt="The drawing editor: a white frame with three coloured boxes labelled الفكرة, المحتوى and المراجعة; the vertical tool bar on the left; the options bar with size and opacity at the top; the Layers tab with layer settings on the right" width="1600" height="1000" loading="lazy"><figcaption>The drawing editor with the Layers tab open. Sample drawing.</figcaption></figure>
+<h3>Parts of the editor</h3>
+<ul>
+  <li><strong>Top</strong>: <strong>Shortcuts</strong>, <strong>Undo</strong>, <strong>Redo</strong> and <strong>Export</strong>, and the save state such as <strong>Saved locally</strong>.</li>
+  <li><strong>Options bar</strong>: the current tool name, the brush style (for brush and eraser), colours, <strong>Size</strong> from 1 to 2048, <strong>Opacity</strong>, <strong>Import image</strong>, <strong>Minimap</strong>, <strong>Paste image</strong>, <strong>Focus mode</strong>, and <strong>Inspector</strong> to show or hide the side panel.</li>
+  <li><strong>Drawing tools</strong>: the vertical bar on the left.</li>
+  <li><strong>Side panel</strong> tabs: <strong>Layers</strong>, <strong>Frames</strong>, <strong>Properties</strong>, <strong>History</strong>, <strong>Steps</strong>, <strong>Experiments</strong>, <strong>Library</strong>, <strong>Links</strong>, <strong>Comments</strong>.</li>
+  <li><strong>Bottom</strong>: <strong>Fit frame</strong>, the zoom level (click it to go back to 100%), the frame size and the number of layers. Hold Space and drag to pan, and use the mouse wheel to zoom.</li>
+</ul>
+
+<h2 id="tools">Tools and their shortcuts</h2>
+<table>
+  <thead><tr><th>Key</th><th>Tool</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td><kbd>V</kbd></td><td>Move</td><td>Select, move and resize elements.</td></tr>
+    <tr><td><kbd>B</kbd></td><td>Brush</td><td>Freehand drawing.</td></tr>
+    <tr><td><kbd>E</kbd></td><td>Eraser</td><td>Erasing.</td></tr>
+    <tr><td><kbd>H</kbd></td><td>Highlighter</td><td>A see-through marker.</td></tr>
+    <tr><td><kbd>K</kbd></td><td>Laser</td><td>A temporary line that fades after a moment, for explaining while you present.</td></tr>
+    <tr><td><kbd>R</kbd></td><td>Opaque redaction</td><td>Covers part of the picture with a solid colour to hide it.</td></tr>
+    <tr><td><kbd>U</kbd></td><td>Shape</td><td>Rectangles, circles, arrows and more.</td></tr>
+    <tr><td><kbd>T</kbd></td><td>Text</td><td>Write text on the drawing.</td></tr>
+    <tr><td><kbd>I</kbd></td><td>Eyedropper</td><td>Pick a colour from the drawing.</td></tr>
+    <tr><td><kbd>G</kbd></td><td>Fill</td><td>Colour an area.</td></tr>
+    <tr><td><kbd>M</kbd></td><td>Select area</td><td>Select an area of pixels.</td></tr>
+    <tr><td><kbd>L</kbd></td><td>Freehand selection</td><td>Select an area by drawing its outline by hand.</td></tr>
+  </tbody>
+</table>
+<h3>Commands</h3>
+<table>
+  <thead><tr><th>Keys</th><th>Command</th></tr></thead>
+  <tbody>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>Z</kbd></td><td>Undo</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> or <kbd>Ctrl</kbd> + <kbd>Y</kbd></td><td>Redo</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>A</kbd></td><td>Select all</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>I</kbd></td><td>Invert selection</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>D</kbd></td><td>Clear selection</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>C</kbd>, <kbd>X</kbd>, <kbd>V</kbd></td><td>Copy, cut, paste</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>S</kbd></td><td>Save</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>0</kbd></td><td>Fit frame</td></tr>
+    <tr><td><kbd>Ctrl</kbd> + <kbd>1</kbd></td><td>Actual size</td></tr>
+    <tr><td><kbd>[</kbd> and <kbd>]</kbd></td><td>Smaller brush, larger brush</td></tr>
+    <tr><td><kbd>X</kbd></td><td>Swap colors</td></tr>
+    <tr><td><kbd>Delete</kbd> or <kbd>Backspace</kbd></td><td>Delete selection</td></tr>
+    <tr><td>Space and drag</td><td>Pan the canvas</td></tr>
+    <tr><td><kbd>Esc</kbd></td><td>Cancel the current action</td></tr>
+  </tbody>
+</table>
+<p>The <strong>Shortcuts</strong> button opens <strong>Drawing shortcuts</strong>. There you change any key or <strong>Disable</strong> it, then <strong>Save shortcuts</strong>, or <strong>Restore defaults</strong>. Shortcuts follow the key's position on the keyboard, so they work the same on an Arabic keyboard.</p>
+
+<h2 id="brushes">Brushes</h2>
+<p>From the <strong>Brush style</strong> menu in the options bar, pick a ready-made brush: <strong>Brush</strong>, <strong>Calligraphy brush</strong>, <strong>Handwriting pen</strong>, <strong>Airbrush</strong>, <strong>Oil brush</strong>, <strong>Crayon</strong>, <strong>Highlighter</strong>, <strong>Natural pencil</strong>, <strong>Watercolor brush</strong>. If you change its settings, it shows as <strong>Custom brush</strong>.</p>
+<p>The <strong>Properties</strong> tab holds <strong>Brush settings</strong>:</p>
+<ul>
+  <li><strong>Brush type</strong>: Hard brush, Soft brush, Pencil, Ink, Round marker, Chisel highlighter, Airbrush, Calligraphy, Oil, Crayon, Natural pencil, Watercolor, or Image tip from a picture you import.</li>
+  <li><strong>Size in pixels</strong> (1 to 2048), <strong>Opacity</strong>, <strong>Flow</strong>, <strong>Hardness</strong>.</li>
+  <li><strong>Tip spacing relative to size</strong>, <strong>Tip angle</strong>, <strong>Tip roundness</strong>.</li>
+  <li><strong>Smoothing</strong> (0 to 95%, default 15%) and <strong>Stabilizer distance in pixels</strong> (0 to 100) for calmer lines.</li>
+  <li><strong>Start taper</strong> and <strong>End taper</strong>.</li>
+  <li><strong>Pressure controls size</strong>, <strong>Pressure controls opacity</strong>, <strong>Pressure controls flow</strong>, and <strong>Pressure curve</strong>. These work with a pen; a mouse uses full pressure.</li>
+  <li>Buttons to import and remove an image tip, save the brush to the library, and <strong>Reset settings</strong>.</li>
+</ul>
+<p>The <strong>Laser</strong> has one setting: <strong>Fade duration (seconds)</strong>, from 0.2 to 4, default 1.2.</p>
+
+<h2 id="shapes">Shapes and shape correction</h2>
+<p>The <strong>Shape</strong> tool (<kbd>U</kbd>) draws: curve, polyline, highlight, rect, roundrect, ellipse, triangle, right-triangle, line, arrow, double-arrow, star, polygon, callout, number. Pick the shape in <strong>Properties</strong>. To edit the points of a selected shape, use <strong>Edit path</strong>.</p>
+<h3>Correcting hand-drawn shapes</h3>
+<p>With the <strong>Brush</strong>, draw a rough shape and lift the pen: if it is close enough to a known shape, it becomes a clean one. It recognises a <strong>line</strong>, a <strong>triangle</strong>, a <strong>right triangle</strong>, a <strong>rectangle</strong> (even a tilted one), and a <strong>circle or ellipse</strong>. An unclear stroke stays as you drew it.</p>
+<ul>
+  <li>The option is <strong>Correct hand-drawn shapes</strong> in <strong>Properties</strong> when the brush is selected. It is on to start with.</li>
+  <li>The correction is a separate step: one <strong>Undo</strong> brings back your stroke as drawn.</li>
+</ul>
+
+<h2 id="layers">Layers</h2>
+<p>In the <strong>Layers</strong> tab:</p>
+<ul>
+  <li><strong>Add layer</strong>, and a <strong>Find layers or content</strong> search box.</li>
+  <li>Next to each layer: show or hide, lock, and <strong>Solo</strong> to show it alone.</li>
+  <li>For the selected layer: <strong>Layer name</strong>, <strong>Parent group</strong>, <strong>Lock position including child layers</strong>, <strong>Layer opacity</strong>, <strong>Blend</strong>, and <strong>Lock transparency for new paint</strong>.</li>
+  <li><strong>Up</strong> and <strong>Down</strong> to reorder, <strong>Duplicate layer and children</strong>, <strong>Delete layer and children</strong>.</li>
+  <li><strong>Merge all visible layers</strong>.</li>
+</ul>
+<p><strong>Blend</strong> modes are shown by their technical names: source-over (normal), multiply, screen, overlay, darken, lighten.</p>
+<p><strong>Groups</strong>: there is no separate button to make a group. Select a layer, then in <strong>Parent group</strong> pick another layer so the first goes inside it. Groups can nest, and you fold and unfold them in the list.</p>
+<p><strong>Merging</strong>: the <strong>Merge visible layers into pixels</strong> window shows a before and after preview, then <strong>Apply raster merge</strong>. The result is one picture per frame; the original elements are hidden, not deleted, and come back with one <strong>Undo</strong>. The limit is 64 million pixels.</p>
+
+<h2 id="masks">Masks</h2>
+<p>A mask hides part of an element without erasing it. White shows and black hides.</p>
+<ul>
+  <li><strong>Element mask</strong>: in <strong>Properties</strong>, press <strong>Add element mask</strong>. Then you find <strong>Edit element mask</strong>, <strong>Remove element mask</strong>, the <strong>Mask</strong> checkbox and <strong>Invert mask</strong>.</li>
+  <li><strong>Effect mask</strong>: one per adjustment, so the adjustment only touches part of the element. Its window is called <strong>Edit adjustment mask</strong>.</li>
+  <li><strong>Erase selected with mask</strong>: a button that appears with the eraser. It opens the mask editor ready to erase with black, at your brush size.</li>
+</ul>
+<p>In the mask window: <strong>Tool</strong> (<strong>Grayscale brush</strong>, <strong>Fill region</strong> or <strong>Linear gradient</strong>, with a linear or radial gradient), paint colour white or black, <strong>Reveal all</strong>, <strong>Hide all</strong> and invert, undo and redo inside the mask, compare with the original, then <strong>Apply mask</strong>. The limit is 16 million pixels.</p>
+
+<h2 id="effects">Adjustments (effects)</h2>
+<p>In <strong>Properties</strong>, press <strong>Add adjustment</strong>, then <strong>Choose adjustment</strong>. In the English interface they show in lower case:</p>
+<table>
+  <thead><tr><th>On pictures</th><th>On other elements</th></tr></thead>
+  <tbody>
+    <tr><td>brightness, contrast, saturation, temperature, grayscale, invert, blur, sharpen, pixelate</td><td>brightness, contrast, saturation, grayscale, invert, blur</td></tr>
+  </tbody>
+</table>
+<p>Each adjustment has an on/off checkbox, <strong>Amount</strong>, move up and down, its mask, and <strong>Remove</strong>. Pictures also have <strong>Reset adjustments</strong>, <strong>Restore original</strong>, <strong>Crop and compare</strong> and <strong>Rasterize adjustments</strong>. Adjustments do not change the original picture until you rasterize them.</p>
+
+<h2 id="eraser">The eraser</h2>
+<p>The eraser (<kbd>E</kbd>) uses the same brushes and settings. Erasing does not destroy what is underneath: it is an erase stroke you can undo. You cannot erase on a layer whose transparency is locked; a message tells you so. Other ways to erase: the <strong>Erase selected with mask</strong> button, or deleting the pixels of an area selected with <strong>Select area</strong>.</p>
+
+<h2 id="images">Pictures</h2>
+<p><strong>Import image</strong> accepts PNG, JPEG, WebP, BMP and SVG, and <strong>Paste image</strong> places a picture from the clipboard. An SVG file comes in as a static picture. The largest picture you can import is 256 MB, and the largest SVG file 32 MB.</p>
+
+<h2 id="versions">Saving and versions</h2>
+<p>Every edit is saved on your computer straight away, and the save state shows at the top: <strong>Saved locally</strong>, <strong>Saving</strong>, <strong>Waiting to save</strong> or <strong>Save needs attention</strong>. <strong>Undo</strong> works on your own last 200 edits.</p>
+<p>In the <strong>History</strong> tab:</p>
+<ol class="steps">
+  <li><h3>Save a named version</h3><p><strong>Save named version</strong> keeps the current drawing under a name you choose.</p></li>
+  <li><h3>Preview before restoring</h3><p>Each version has a <strong>Preview restore</strong> button. The window shows the current drawing and the old version side by side, and you can choose which frame to view.</p></li>
+  <li><h3>Restore without losing anything</h3><p><strong>Keep current version and restore</strong> first saves the current drawing as a named version, then brings back the old one as a single edit you can undo.</p></li>
+</ol>
+<figure class="shot"><img src="/media/book/p19.webp" alt="The Preview version restore window: Current drawing to keep on the left and the saved version on the right, both with the three boxes; Cancel and Keep current version and restore buttons at the bottom; the History tab with two saved versions on the right" width="1600" height="1000" loading="lazy"><figcaption>Previewing a version before restoring it. Sample drawing.</figcaption></figure>
+
+<h2 id="experiments">Experiments</h2>
+<p>An experiment is a separate copy of the drawing where you try changes without touching the original, then compare and choose what to adopt.</p>
+<ol class="steps">
+  <li><h3>Create an experiment</h3><p>In the <strong>Experiments</strong> tab press <strong>New experiment</strong>, type a name and a description, then create it and edit.</p></li>
+  <li><h3>Compare</h3><p><strong>Compare</strong> shows the two drawings <strong>Side by side</strong>, with a <strong>Before / after slider</strong>, or with <strong>Highlight changed elements</strong>. <strong>Link zoom and pan</strong> keeps both sides together.</p></li>
+  <li><h3>Adopt what you want</h3><p>Choose the scope (<strong>Entire experiment</strong> or part of it). When there is a conflict you choose <strong>Keep current</strong>, <strong>Use experiment</strong> or <strong>Keep both as separate elements</strong>. Then <strong>Adopt selected changes</strong>.</p></li>
+</ol>
+<p>Each experiment has a status: <strong>Draft</strong>, <strong>Review</strong> or <strong>Approved</strong>.</p>
+<figure class="shot"><img src="/media/book/p18.webp" alt="The Compare experiment window: the current drawing on the left and the experiment on the right, with Side by side, Link zoom and pan and Entire experiment options, and Close and Adopt selected changes buttons; on the right the Experiments tab with a New experiment button and a Draft status" width="1600" height="1000" loading="lazy"><figcaption>Comparing an experiment with the current drawing side by side. There are no changes between the two in this sample.</figcaption></figure>
+
+<h2 id="export">Export</h2>
+<p>Press <strong>Export</strong> at the top to open <strong>Export drawing</strong>:</p>
+<table>
+  <thead><tr><th>Format</th><th>When</th></tr></thead>
+  <tbody>
+    <tr><td>PNG</td><td>A full-quality picture. It also has a <strong>Copy PNG</strong> button for the clipboard.</td></tr>
+    <tr><td>JPEG, WebP</td><td>Smaller pictures, with a <strong>Quality</strong> setting.</td></tr>
+    <tr><td>BMP</td><td>An uncompressed picture.</td></tr>
+    <tr><td>SVG (flattened image)</td><td>An SVG file that holds the drawing as a picture, not as editable shapes.</td></tr>
+    <tr><td>Selected frames as PNG archive</td><td>A zip with one picture per frame you choose.</td></tr>
+    <tr><td>Clean and annotated PNG archive</td><td>Each frame twice: without and with annotations.</td></tr>
+    <tr><td>Editable Worlds project (<code>.worldsdraw</code>)</td><td>The whole drawing, to open and edit in Worlds later.</td></tr>
+  </tbody>
+</table>
+<p>Options: <strong>Frame</strong> (or <strong>Choose frames</strong> for an archive), <strong>Scale</strong> from 0.1 to 8, <strong>Include annotations</strong>, and <strong>Transparency background</strong> for JPEG and BMP. For an editable project you choose whether to include a preview, the operation history (up to 500 operations) and experiments (up to 24).</p>
+<p>Below the options you see an exact preview of the picture that will be saved, with its size in pixels and kilobytes. Then <strong>Save file</strong>. Export works on a frame or frames, not on a selection or a single layer.</p>
+<figure class="shot"><img src="/media/book/p17.webp" alt="The Export drawing window: format PNG, Frame 1, scale 1 and an Include annotations checkbox; a note that the source uses the IBM Plex Sans Arabic font; then a preview of the picture at 1280 x 720 and 33.2 KB; Cancel, Copy PNG and Save file buttons" width="1600" height="1000" loading="lazy"><figcaption>The export window and the picture preview before saving.</figcaption></figure>
+<div class="callout"><p>If the drawing has text, the window lists the fonts it uses. The picture is drawn with the fonts on your computer and a fallback font may be used. The app does not check font licences, so check them before you publish.</p></div>
+<p>The <strong>Export permissions</strong> button is for shared drawings: it sets who may export pictures and presentations, and editable projects, by permission level. Changing it needs full access. See <a href="/en/docs/sharing/">Sharing</a>.</p>
+
+<h2 id="link-resource">Linking a drawing to a resource</h2>
+<p>In the <strong>Links</strong> tab:</p>
+<ul>
+  <li><strong>Link resource</strong>: opens <strong>Choose linked resource</strong>, with a search box and your pages, documents and presentations. The linked resource shows as a <strong>Live link</strong> card that follows it.</li>
+  <li>For each link: <strong>Freeze snapshot</strong> to keep it as it is now, <strong>Follow live source</strong> to go back to live, <strong>Relink</strong>, and <strong>Open source</strong>.</li>
+  <li><strong>Region to task</strong>: select an area of the drawing and create a task linked to it.</li>
+  <li><strong>Embed in page</strong>: puts the drawing inside a page, with an option to pin this exact revision.</li>
+  <li><strong>Annotations</strong>: labels you attach to a selected element that move with it.</li>
+</ul>
+<figure class="shot"><img src="/media/book/p20.webp" alt="The Choose linked resource window over the drawing, with a search box and Arabic resource names such as فكرة المشروع, ملخص التجربة and عرض الفكرة; on the right the Links tab with Link resource, Region to task and Embed in page buttons" width="1600" height="1000" loading="lazy"><figcaption>Choosing a resource to link to the drawing. The resources are sample data.</figcaption></figure>
+
+<h2 id="limits">Limits</h2>
+<dl class="facts">
+  <div><dt>Frame</dt><dd>Up to 16384 pixels per side and 64 million pixels</dd></div>
+  <div><dt>Imported picture</dt><dd>Up to 256 MB</dd></div>
+  <div><dt>SVG file</dt><dd>Up to 32 MB</dd></div>
+  <div><dt>Image brush tip</dt><dd>Up to 16 MB and 2048 pixels per side</dd></div>
+  <div><dt>Project file</dt><dd>Up to 512 MB</dd></div>
+  <div><dt>Export file</dt><dd>Up to 256 MB</dd></div>
+</dl>
+
+<h2 id="platforms">What works where</h2>
+<table>
+  <thead><tr><th>Feature</th><th>Windows</th><th>Apple</th><th>Android</th></tr></thead>
+  <tbody>
+    <tr><td>Layers, brushes, eraser</td><td>Yes</td><td>Partly: layers, blend modes, masks, eraser, all shapes and brushes, but no image brush tips</td><td>Yes: pen, pencil, highlighter, eraser, layers with four blend modes</td></tr>
+    <tr><td>Shape correction</td><td>Yes</td><td>Yes</td><td>In progress</td></tr>
+    <tr><td>Pictures and reference elements</td><td>Yes</td><td>In progress</td><td>Reference pictures yes</td></tr>
+    <tr><td>Export</td><td>All formats above</td><td><code>.worldsdraw</code> project</td><td>PNG and drawing project</td></tr>
+  </tbody>
+</table>
+<p>The Apple and Android apps are still in progress. Details in <a href="/en/docs/install/">Install</a>.</p>
+
+<h2 id="next">Next</h2>
+<ul class="index">
+  <li><a href="/en/docs/presentations/"><strong>Presentations</strong><span>Slides, backgrounds and presenting full screen</span></a></li>
+  <li><a href="/en/docs/templates/#canvases"><strong>Ready-made canvases</strong><span>Mind maps and concept maps to start a drawing from</span></a></li>
+  <li><a href="/en/docs/projects/"><strong>Projects and resources</strong><span>Keep a drawing with what belongs to it</span></a></li>
+</ul>
+
+<nav class="pager" aria-label="Docs"><a class="prev" href="/en/docs/history/"><small>Previous</small>History and backups</a><a class="next" href="/en/docs/presentations/"><small>Next</small>Presentations</a></nav>
+</main>
+</div>
+<footer class="wrap foot">
+  <div class="row">
+    <div class="credit">
+      <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
+      <p>Natural Intelligence Leads Artificial Intelligence festival 2026, outstanding experiments track.</p>
+    </div>
+    <nav aria-label="Worlds"><a href="/en/apps/">Apps</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="/en/privacy/">Privacy</a><a href="/en/terms/">Terms of use</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+  </div>
+  <p class="fine">Worlds is a creative working name, not a registered mark, and is independent of the imbue identity. The code is published on GitHub.</p>
+</footer>
+</body>
+</html>

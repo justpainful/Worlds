@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>خادم MCP في Worlds · Worlds</title>
+<meta name="description" content="اربط Claude Code أو أي برنامج يدعم MCP بمساحة عمل Worlds على جهازك: أمر الإعداد، ومجموعات الأدوات، وحفظ نسخة قبل كل كتابة مع التراجع، وانتظار موافقتك قبل الإرسال إلى Discord.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://enterworlds.space/docs/mcp/">
+<link rel="alternate" hreflang="ar" href="https://enterworlds.space/docs/mcp/">
+<link rel="alternate" hreflang="en" href="https://enterworlds.space/en/docs/mcp/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Worlds">
+<meta property="og:title" content="خادم MCP في Worlds">
+<meta property="og:description" content="اربط Claude Code أو أي برنامج يدعم MCP بمساحة عمل Worlds على جهازك: أمر الإعداد، ومجموعات الأدوات، وحفظ نسخة قبل كل كتابة مع التراجع، وانتظار موافقتك قبل الإرسال إلى Discord.">
+<meta property="og:image" content="https://enterworlds.space/media/og.png">
+<meta property="og:locale" content="ar_SA">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-256.png">
+<link rel="preload" href="/fonts/plex-arabic-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/site.css">
+<script src="/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">انتقل إلى المحتوى</a>
+<header class="wrap top">
+  <a class="lockup small" href="/" aria-label="Worlds الصفحة الرئيسية"><img class="logo" src="/icon-256.png" alt="" width="46" height="46"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="70" height="26"></a>
+  <nav class="nav" aria-label="القائمة"><a href="/apps/">التطبيقات</a><a href="/docs/" aria-current="page">الدوكس</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/en/docs/mcp/" hreflang="en" lang="en">English</a></nav>
+  <details class="menu"><summary>القائمة</summary><div class="nav"><a href="/apps/">التطبيقات</a><a href="/docs/" aria-current="page">الدوكس</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/en/docs/mcp/" hreflang="en" lang="en">English</a></div></details>
+</header>
+<div class="wrap docs">
+<details class="side" open><summary>صفحات الدوكس</summary><div class="side-list"><h2>البداية</h2><ul><li><a href="/docs/">نظرة عامة</a></li><li><a href="/docs/getting-started/">البداية مع Worlds</a></li></ul><h2>التثبيت</h2><ul><li><a href="/docs/install/">تثبيت Worlds</a></li><li class="sub"><a href="/docs/install/windows/">تثبيت Worlds على Windows</a></li><li class="sub"><a href="/docs/install/macos/">تثبيت Worlds على Mac</a></li><li class="sub"><a href="/docs/install/iphone-ipad/">تثبيت Worlds على iPhone و iPad</a></li><li class="sub"><a href="/docs/install/android/">تثبيت Worlds على Android</a></li><li class="sub"><a href="/docs/install/web/">Worlds في المتصفح</a></li><li class="sub"><a href="/docs/install/update-uninstall/">التحديث والإزالة</a></li><li><a href="/docs/troubleshooting/">حل المشكلات</a></li></ul><h2>الكتابة والتنظيم</h2><ul><li><a href="/docs/pages/">الصفحات والكتل</a></li><li><a href="/docs/documents/">المستندات</a></li><li><a href="/docs/tables/">الجداول وجداول البيانات</a></li><li><a href="/docs/projects/">المشاريع والمصادر</a></li><li><a href="/docs/templates/">القوالب</a></li><li><a href="/docs/search-commands/">البحث والأوامر</a></li><li><a href="/docs/history/">السجل والنسخ الاحتياطية</a></li></ul><h2>الرسم والعرض والوسائط</h2><ul><li><a href="/docs/drawing/">الرسم</a></li><li><a href="/docs/presentations/">العروض التقديمية</a></li><li><a href="/docs/media-files/">الوسائط والملفات</a></li></ul><h2>Claude والأتمتة</h2><ul><li><a href="/docs/claude/">Claude والمزوّدون الآخرون</a></li><li><a href="/docs/automations/">الأتمتة</a></li><li><a href="/docs/discord/">جسر Discord</a></li><li><a href="/docs/integrations/">التكاملات</a></li></ul><h2>الحساب والمشاركة</h2><ul><li><a href="/docs/account/">حساب Worlds</a></li><li><a href="/docs/sharing/">المشاركة والعمل معًا</a></li><li><a href="/docs/sync/">كيف تعمل المزامنة</a></li><li><a href="/docs/packs/">الحزم</a></li><li><a href="/docs/profile/">الملف الشخصي والنشاط</a></li><li><a href="/docs/settings/">الإعدادات</a></li></ul><h2>للمطورين</h2><ul><li><a href="/docs/html-pages/">صفحات HTML</a></li><li><a href="/docs/mcp/" aria-current="page">خادم MCP في Worlds</a></li></ul></div></details>
+<main id="main" class="article">
+<p class="crumb"><a href="/docs/">الدوكس</a> / للمطورين</p>
+<h1>خادم MCP في Worlds</h1>
+<p class="lead">Worlds يأتي بخادم MCP يتيح لـ Claude Code أو أي برنامج آخر يدعم MCP أن يقرأ صفحاتك ويعدّلها على جهازك، بالأدوات الآمنة نفسها التي يستخدمها المساعد داخل التطبيق. كل كتابة تُحفظ قبلها نسخة ويمكن التراجع عنها.</p>
+
+<h2 id="what">ما هو</h2>
+<p>MCP طريقة معيارية تتصل بها برامج الذكاء الاصطناعي بالأدوات. خادم Worlds هو تطبيق Worlds نفسه يعمل بوضع خاص: <code>worlds.exe --mcp</code>. يتحدث مع البرنامج عبر الإدخال والإخراج القياسيين على جهازك، ويفتح قاعدة بيانات Worlds المحلية مباشرة. لا يمر شيء عبر الإنترنت ولا عبر خوادم Worlds.</p>
+<p>الخادم متاح في تطبيق Windows.</p>
+
+<h2 id="claude-code">الربط مع Claude Code</h2>
+<h3>من داخل Worlds (الأسهل)</h3>
+<ol class="steps">
+<li><h3>افتح الإعدادات، Claude</h3><p>في مجموعة Claude Code تجد صف «استخدام Worlds من جلسات Claude Code».</p></li>
+<li><h3>اضغط تسجيل</h3><p>يضيف Worlds خادم أدواته إلى إعدادات مستخدم Claude Code. ترى «أدوات Worlds مسجّلة في Claude Code». يكون الزر معطلًا إن لم يجد Worlds تطبيق Claude Code على الجهاز.</p></li>
+<li><h3>ابدأ جلسة Claude Code جديدة</h3><p>الآن «يمكن لجلسات Claude Code قراءة الصفحات وتعديلها عبر الأدوات الآمنة نفسها». وفي شاشة <a href="/docs/integrations/">التكاملات</a> يظهر «متاح أيضًا في جلسات Claude Code».</p></li>
+</ol>
+<p>إن نقلت Worlds إلى مكان آخر أو أعدت تثبيته، اضغط <strong>إعادة التسجيل</strong>.</p>
+
+<h3>بالأمر يدويًا</h3>
+<p>هذا هو الأمر الذي ينفذه زر التسجيل. المسار هو مكان التثبيت المعتاد لـ Worlds على Windows. إن ثبّته في مكان آخر فضع مسار <code>worlds.exe</code> عندك:</p>
+<pre><code>claude mcp add --scope user worlds -- "%LOCALAPPDATA%\Worlds\worlds.exe" --mcp --actor ai</code></pre>
+<p><code>--scope user</code> يجعل الأدوات متاحة في كل مشاريعك. و<code>--actor ai</code> يسجّل التغييرات باسم الذكاء الاصطناعي في سجل Worlds، فتعرف من غيّر ماذا.</p>
+
+<h2 id="other-clients">برامج MCP أخرى</h2>
+<p>أي برنامج يشغّل خادم MCP محليًا عبر الإدخال والإخراج القياسيين يحتاج إلى أمر ووسائط:</p>
+<dl class="facts">
+<div><dt>الأمر</dt><dd><code>%LOCALAPPDATA%\Worlds\worlds.exe</code> (أو مسار التثبيت عندك)</dd></div>
+<div><dt>الوسائط</dt><dd><code>--mcp --actor ai</code></dd></div>
+<div><dt>النوع</dt><dd><code>stdio</code></dd></div>
+</dl>
+<p>بالصيغة التي تستخدمها أغلب البرامج:</p>
+<pre><code>{
+  "mcpServers": {
+    "worlds": {
+      "type": "stdio",
+      "command": "C:\\Users\\YOU\\AppData\\Local\\Worlds\\worlds.exe",
+      "args": ["--mcp", "--actor", "ai"]
+    }
+  }
+}</code></pre>
+<p>Codex داخل Worlds (من <strong>الإعدادات</strong>، <strong>المزوّدون</strong>) يحصل على أدوات Worlds تلقائيًا. لا يوجد في Worlds زر يسجّل الخادم في Codex الذي تستخدمه خارج التطبيق، فأضفه بالأمر والوسائط أعلاه.</p>
+
+<h2 id="data">أي مساحة عمل يستخدم</h2>
+<p>يفتح الخادم قاعدة بيانات Worlds على جهازك: <code>%APPDATA%\Worlds\worlds.db</code>. وإن كان متغير البيئة <code>WORLDS_DATA_DIR</code> مضبوطًا فيستخدم المجلد الذي فيه. تطبيق Worlds يرى التغييرات التي يجريها الخادم ويحدّث الصفحات المفتوحة.</p>
+
+<h2 id="tools">مجموعات الأدوات</h2>
+<table>
+<thead><tr><th>المجموعة</th><th>ما تفعله</th><th>أمثلة</th></tr></thead>
+<tbody>
+<tr><td>الصفحات</td><td>إنشاء وقراءة وبحث وإعادة تسمية ونقل وأرشفة واستعادة وتصدير Markdown</td><td><code>pages_create</code>، <code>pages_read</code>، <code>pages_search</code></td></tr>
+<tr><td>الكتل</td><td>إدراج الكتل وتعديلها ونقلها وتحويلها وحذفها</td><td><code>blocks_insert</code>، <code>blocks_update</code></td></tr>
+<tr><td>الجداول</td><td>قراءة جدول، وإضافة صف، وتعديل خلية، والاستيراد والتصدير بصيغة CSV</td><td><code>tables_read</code>، <code>tables_from_csv</code></td></tr>
+<tr><td>الرسومات</td><td>قراءة رسم وتطبيق تغييرات عليه، ونسخه السابقة، ومكتبة الرسم</td><td><code>drawings_read</code>، <code>drawings_apply</code></td></tr>
+<tr><td>العروض التقديمية</td><td>قراءة عرض، وإضافة شريحة، وتعديلها</td><td><code>presentations_add_slide</code></td></tr>
+<tr><td>المهام والخصائص والمجموعات</td><td>المهام، وخصائص الصفحات وخياراتها</td><td><code>tasks_add</code>، <code>properties_schema</code></td></tr>
+<tr><td>الأتمتة</td><td>عرض وإنشاء وتعديل وتشغيل، وسجل التشغيل والمواعيد القادمة</td><td><code>automations_create</code>، <code>automations_runs</code></td></tr>
+<tr><td>Discord</td><td>عرض الوجهات، ومعاينة رسالة، وطلب إرسال أو تعديل، وما ينتظر وما أُرسل</td><td><code>discord_preview</code>، <code>discord_send</code></td></tr>
+<tr><td>القوالب</td><td>عرض القوالب وإنشاء صفحة منها أو قالب من صفحة</td><td><code>templates_instantiate</code></td></tr>
+<tr><td>السجل والنسخ</td><td>قراءة السجل، والتراجع، وعرض النسخ ومقارنتها واستعادتها</td><td><code>history_undo</code>، <code>versions_restore</code></td></tr>
+<tr><td>الملف الشخصي</td><td>الاسم والحالة والروابط والصور والكتل</td><td><code>profile_update</code></td></tr>
+<tr><td>الوسائط والملفات</td><td>إرفاق الملفات وإضافتها إلى الصفحات والمعارض</td><td><code>attachments_add</code></td></tr>
+<tr><td>المحادثات والتعليمات</td><td>محادثات Claude السابقة، والتعليمات العامة</td><td><code>chats_search</code>، <code>instructions_read</code></td></tr>
+<tr><td>أدوات عامة</td><td>نظرة على المساحة، وبحث في كل شيء، والوقت، والإعدادات، وملخص النشاط، والسلة والأرشيف</td><td><code>workspace_overview</code>، <code>search_everything</code></td></tr>
+</tbody>
+</table>
+<p>وفي إصدار قادم مجموعتان أخريان:</p>
+<ul>
+<li><strong>صفحات HTML</strong>: <code>html_pages_rules</code> و<code>html_pages_read</code> و<code>html_pages_write</code>. اقرأ <a href="/docs/html-pages/">صفحات HTML</a>.</li>
+<li><strong>التخطيط والدراسة</strong>: <code>planning_list</code> و<code>planning_create</code> و<code>planning_update</code> لعناصر <a href="/docs/packs/#study">حزمة الدراسة</a>: المواد والحصص والاختبارات والواجبات وما يُحضر والمهام والدروس والأهداف. <code>planning_create</code> ينشئ حتى 200 عنصر في طلب واحد، مثل مادة مع حصصها الأسبوعية.</li>
+</ul>
+
+<h2 id="safety">الأمان والتراجع</h2>
+<ul>
+<li>كل كتابة تُسجَّل مع من أجراها، وتُجمع تغييرات الجلسة الواحدة معًا.</li>
+<li>قبل أول تغيير في صفحة يحفظ Worlds نسخة منها.</li>
+<li><code>history_undo</code> يعيد كل ما تغيّر في عملية واحدة، و<code>versions_restore</code> يستعيد نسخة ويحفظ الحالة الحالية نسخةً أيضًا.</li>
+<li>من التطبيق: افتح الصفحة، ثم لوحة <strong>السجل</strong>، واضغط <strong>تراجع</strong> بجانب مجموعة التغييرات. اقرأ <a href="/docs/history/">السجل والنسخ</a>.</li>
+<li>الأدوات تعمل على صفحات Worlds فقط. لا تعطي البرنامج وصولًا إلى ملفات جهازك ولا سطر أوامر.</li>
+</ul>
+
+<h2 id="discord">الإرسال إلى Discord ينتظر موافقتك</h2>
+<p><code>discord_send</code> و<code>discord_edit</code> و<code>automations_run</code> لا ترسل شيئًا. تضع الطلب في قائمة <strong>بانتظار الموافقة</strong> في شاشة <strong>النشاط</strong> في Worlds، ويرد الخادم بأن لا شيء أُرسل وأن الطلب ينتظر موافقتك. والأتمتة التي ينشئها برنامج عبر MCP تُحفظ دائمًا مع انتظار الموافقة قبل كل إرسال. لتوافق يجب أن يكون تطبيق Worlds مفتوحًا. اقرأ <a href="/docs/discord/#approval">قائمة الموافقة</a>.</p>
+
+<h2 id="next">اقرأ أيضًا</h2>
+<ul class="index">
+<li><a href="/docs/claude/"><strong>Claude والمزوّدون</strong><span>المساعد داخل التطبيق</span></a></li>
+<li><a href="/docs/integrations/"><strong>التكاملات</strong><span>حالة Claude Code وتسجيله</span></a></li>
+<li><a href="/tools/"><strong>الأدوات حول Worlds</strong><span>نظرة على كل الأدوات</span></a></li>
+</ul>
+
+<nav class="pager" aria-label="الدوكس"><a class="prev" href="/docs/html-pages/"><small>السابق</small>صفحات HTML</a></nav>
+</main>
+</div>
+<footer class="wrap foot">
+  <div class="row">
+    <div class="credit">
+      <a class="lockup small" href="/" aria-label="Worlds الصفحة الرئيسية"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
+      <p>مهرجان الذكاء الطبيعي يقود الذكاء الاصطناعي 2026، مسار التجارب المتميزة.</p>
+    </div>
+    <nav aria-label="Worlds"><a href="/apps/">التطبيقات</a><a href="/docs/">الدوكس</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="/privacy/">الخصوصية</a><a href="/terms/">شروط الاستخدام</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+  </div>
+  <p class="fine">Worlds اسم عمل إبداعي غير مسجل رسميًا، مستقل عن هوية imbue. الشيفرة منشورة على GitHub.</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>How sync works · Worlds</title>
+<meta name="description" content="A plain explanation of what stays on your device and what goes to the Worlds server, how the web version keeps its workspace on your account, and how conflicts are settled.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://enterworlds.space/en/docs/sync/">
+<link rel="alternate" hreflang="ar" href="https://enterworlds.space/docs/sync/">
+<link rel="alternate" hreflang="en" href="https://enterworlds.space/en/docs/sync/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Worlds">
+<meta property="og:title" content="How sync works">
+<meta property="og:description" content="A plain explanation of what stays on your device and what goes to the Worlds server, how the web version keeps its workspace on your account, and how conflicts are settled.">
+<meta property="og:image" content="https://enterworlds.space/media/og.png">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-256.png">
+<link rel="preload" href="/fonts/instrument-sans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/site.css">
+<script src="/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="wrap top">
+  <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="46" height="46"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="70" height="26"></a>
+  <nav class="nav" aria-label="Menu"><a href="/en/apps/">Apps</a><a href="/en/docs/" aria-current="page">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/docs/sync/" hreflang="ar" lang="ar">العربية</a></nav>
+  <details class="menu"><summary>Menu</summary><div class="nav"><a href="/en/apps/">Apps</a><a href="/en/docs/" aria-current="page">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/docs/sync/" hreflang="ar" lang="ar">العربية</a></div></details>
+</header>
+<div class="wrap docs">
+<details class="side" open><summary>Docs pages</summary><div class="side-list"><h2>Start here</h2><ul><li><a href="/en/docs/">Overview</a></li><li><a href="/en/docs/getting-started/">Getting started with Worlds</a></li></ul><h2>Install</h2><ul><li><a href="/en/docs/install/">Install Worlds</a></li><li class="sub"><a href="/en/docs/install/windows/">Install Worlds on Windows</a></li><li class="sub"><a href="/en/docs/install/macos/">Install Worlds on Mac</a></li><li class="sub"><a href="/en/docs/install/iphone-ipad/">Install Worlds on iPhone and iPad</a></li><li class="sub"><a href="/en/docs/install/android/">Install Worlds on Android</a></li><li class="sub"><a href="/en/docs/install/web/">Worlds in the browser</a></li><li class="sub"><a href="/en/docs/install/update-uninstall/">Update and uninstall</a></li><li><a href="/en/docs/troubleshooting/">Troubleshooting</a></li></ul><h2>Write and organise</h2><ul><li><a href="/en/docs/pages/">Pages and blocks</a></li><li><a href="/en/docs/documents/">Documents</a></li><li><a href="/en/docs/tables/">Tables and spreadsheets</a></li><li><a href="/en/docs/projects/">Projects and resources</a></li><li><a href="/en/docs/templates/">Templates</a></li><li><a href="/en/docs/search-commands/">Search and commands</a></li><li><a href="/en/docs/history/">History and backups</a></li></ul><h2>Draw, present and media</h2><ul><li><a href="/en/docs/drawing/">Drawing</a></li><li><a href="/en/docs/presentations/">Presentations</a></li><li><a href="/en/docs/media-files/">Media and files</a></li></ul><h2>Claude and automations</h2><ul><li><a href="/en/docs/claude/">Claude and other AI providers</a></li><li><a href="/en/docs/automations/">Automations</a></li><li><a href="/en/docs/discord/">Discord bridge</a></li><li><a href="/en/docs/integrations/">Integrations</a></li></ul><h2>Account and sharing</h2><ul><li><a href="/en/docs/account/">Your Worlds account</a></li><li><a href="/en/docs/sharing/">Sharing and working together</a></li><li><a href="/en/docs/sync/" aria-current="page">How sync works</a></li><li><a href="/en/docs/packs/">Packs</a></li><li><a href="/en/docs/profile/">Profile and Activity</a></li><li><a href="/en/docs/settings/">Settings</a></li></ul><h2>For developers</h2><ul><li><a href="/en/docs/html-pages/">HTML pages</a></li><li><a href="/en/docs/mcp/">The Worlds MCP server</a></li></ul></div></details>
+<main id="main" class="article">
+<p class="crumb"><a href="/en/docs/">Docs</a> / Account and sharing</p>
+<h1>How sync works</h1>
+<p class="lead">Worlds runs on your device first. The copy on your device is the original, and it works without internet. Nothing goes to the server except pages in Team workspaces, and your web workspace if you sign in there.</p>
+
+<h2 id="local-first">Your device holds the original</h2>
+<ul>
+<li>Every device keeps a full copy of its pages and works offline.</li>
+<li>A change is saved on your device first. If you are offline it waits and is sent when the connection returns.</li>
+<li>The server does three things only: accounts, permissions, and moving changes between devices.</li>
+</ul>
+
+<h2 id="what-goes">What goes to the server</h2>
+<table>
+<thead><tr><th>What you have</th><th>Does it go to the server?</th></tr></thead>
+<tbody>
+<tr><td>Personal workspace pages in the apps</td><td>No. They stay on the device and are not synced, not even between your own devices, unless you move the page into a Team workspace.</td></tr>
+<tr><td>Team workspace pages</td><td>Yes: the page content, its comments and attachments, and the page tree and titles.</td></tr>
+<tr><td>The web workspace, signed in</td><td>Yes: one copy of your whole workspace on your account, readable only by you.</td></tr>
+<tr><td>The web workspace, signed out</td><td>No. It stays in this browser only.</td></tr>
+<tr><td>API keys</td><td>Never. See <a href="/en/docs/claude/#keys">Where keys are kept</a>.</td></tr>
+</tbody>
+</table>
+<p>Data is encrypted in transit and encrypted at rest on the server. It is not end-to-end encrypted: the server can read Team pages and the web workspace so that it can sync them.</p>
+
+<h2 id="servers">Where the server runs</h2>
+<p>The Worlds servers run on Cloudflare, at three addresses:</p>
+<dl class="facts">
+<div><dt><code>login.enterworlds.space</code></dt><dd>Accounts: sign-in, passkeys, workspaces and invites</dd></div>
+<div><dt><code>connect.enterworlds.space</code></dt><dd>Sync: live shared pages, their attachments and the web workspace</dd></div>
+<div><dt><code>go.enterworlds.space</code></dt><dd>Worlds in the browser</dd></div>
+</dl>
+
+<h2 id="web">The web version and its workspace</h2>
+<p>At <a href="https://go.enterworlds.space/">go.enterworlds.space</a> your pages are kept in the browser and work offline. When you sign in, Worlds keeps the whole web workspace on your account: pages, blocks, drawings, settings, profile, chats and attached files. Then you can open it from any browser with the same account.</p>
+<ul>
+<li>Saving happens a few seconds after your last change.</li>
+<li>The workspace copy can be up to 32 MB, and each attached file up to 25 MB.</li>
+<li>The web workspace is separate from the Personal pages in the Windows or phone app.</li>
+</ul>
+
+<h2 id="conflicts">If you change the same thing in two places</h2>
+<h3>On the web</h3>
+<p>When two copies of the web workspace meet (for example a browser at home and one at work):</p>
+<ul>
+<li>Each page keeps the copy that changed it most recently. The latest change to a page wins.</li>
+<li>A page that was deleted for good stays deleted.</li>
+<li>Chats and files are combined from both copies.</li>
+<li>Settings and profile come from the copy saved most recently.</li>
+</ul>
+<p>If another device saved at the same moment, Worlds fetches its copy, merges and saves again.</p>
+<h3>Shared pages in the apps</h3>
+<p>Here you do not have to choose: if two people type in the same page at the same time, what each of them wrote is kept. Changes from Claude and from automations are merged into the shared page without wiping out what others are typing.</p>
+<ul>
+<li>If the server refuses a change (for example because your access changed), the app rebuilds the page from the server's copy and shows <strong>Needs attention</strong>.</li>
+<li>The first time a page is shared on a computer, if the server already has it, the server's copy wins, and your earlier copy stays restorable as "Before live sync".</li>
+<li>Versions of a shared page are saved after edits at least 10 minutes apart and when the last person leaves, and the newest 200 are kept. Open them from <strong>Shared History</strong>.</li>
+</ul>
+
+<h2 id="backups">Backups are not sync</h2>
+<p>Sync does not replace backups of your Personal pages. In the Windows app open <strong>Settings</strong>, <strong>Storage</strong>, <strong>Backups</strong> and click <strong>Back up now</strong>. See <a href="/en/docs/settings/#storage">the Storage section</a>.</p>
+
+<h2 id="next">Read next</h2>
+<ul class="index">
+<li><a href="/en/docs/sharing/"><strong>Sharing and working together</strong><span>Team workspaces and access</span></a></li>
+<li><a href="/en/docs/account/"><strong>Your Worlds account</strong><span>Creating it and signing in</span></a></li>
+<li><a href="/en/privacy/"><strong>Privacy</strong><span>What is kept and why</span></a></li>
+</ul>
+
+<nav class="pager" aria-label="Docs"><a class="prev" href="/en/docs/sharing/"><small>Previous</small>Sharing and working together</a><a class="next" href="/en/docs/packs/"><small>Next</small>Packs</a></nav>
+</main>
+</div>
+<footer class="wrap foot">
+  <div class="row">
+    <div class="credit">
+      <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
+      <p>Natural Intelligence Leads Artificial Intelligence festival 2026, outstanding experiments track.</p>
+    </div>
+    <nav aria-label="Worlds"><a href="/en/apps/">Apps</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="/en/privacy/">Privacy</a><a href="/en/terms/">Terms of use</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+  </div>
+  <p class="fine">Worlds is a creative working name, not a registered mark, and is independent of the imbue identity. The code is published on GitHub.</p>
+</footer>
+</body>
+</html>
