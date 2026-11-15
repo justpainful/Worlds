@@ -188,7 +188,8 @@ const READ_TOOLS: &[&str] = &[
 const FULL_TOOLS: &[&str] = &["pages_delete"];
 
 /// Tools that may create a top-level page in the active workspace.
-const CREATES_TOP_LEVEL: &[&str] = &["pages_create", "pages_create_many", "planning_create", "templates_instantiate", "pages_split_by_headings"];
+const CREATES_TOP_LEVEL: &[&str] =
+    &["pages_create", "pages_create_many", "planning_create", "templates_instantiate", "pages_split_by_headings"];
 
 fn push_str(out: &mut Vec<String>, v: Option<&Value>) {
     match v {

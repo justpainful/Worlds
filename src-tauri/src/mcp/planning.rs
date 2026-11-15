@@ -69,7 +69,14 @@ fn item_view(p: &store::PageMeta) -> Value {
     json!({ "id": p.id, "kind": p.kind, "title": p.title, "parentId": p.parent_id, "archived": p.archived, "data": p.data })
 }
 
-fn create_one(conn: &Connection, ctx: &Ctx, kind: &str, title: &str, parent: Option<String>, data: Option<&Value>) -> Result<store::PageMeta> {
+fn create_one(
+    conn: &Connection,
+    ctx: &Ctx,
+    kind: &str,
+    title: &str,
+    parent: Option<String>,
+    data: Option<&Value>,
+) -> Result<store::PageMeta> {
     let icon = icon_for(kind).ok_or_else(|| anyhow!("unknown planning kind {kind}"))?;
     let data = data.cloned().unwrap_or_else(|| json!({}));
     if !data.is_object() {
@@ -118,7 +125,9 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
                 for (i, it) in list.iter().enumerate() {
                     let kind = s(it, "kind").map_err(|_| anyhow!("item {i}: missing kind"))?;
                     let parent = match it.get("parentRef").and_then(Value::as_u64) {
-                        Some(r) => Some(made.get(r as usize).ok_or_else(|| anyhow!("item {i}: parentRef {r} is not an earlier item"))?.id.clone()),
+                        Some(r) => {
+                            Some(made.get(r as usize).ok_or_else(|| anyhow!("item {i}: parentRef {r} is not an earlier item"))?.id.clone())
+                        }
                         None => os(it, "parentId").map(str::to_string),
                     };
                     let title = it.get("title").and_then(Value::as_str).unwrap_or("");
@@ -126,7 +135,14 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
                 }
                 json!({ "created": made.iter().map(|p| json!({ "id": p.id, "kind": p.kind, "title": p.title })).collect::<Vec<_>>() })
             } else {
-                let p = create_one(conn, ctx, s(a, "kind")?, a.get("title").and_then(Value::as_str).unwrap_or(""), os(a, "parentId").map(str::to_string), a.get("data"))?;
+                let p = create_one(
+                    conn,
+                    ctx,
+                    s(a, "kind")?,
+                    a.get("title").and_then(Value::as_str).unwrap_or(""),
+                    os(a, "parentId").map(str::to_string),
+                    a.get("data"),
+                )?;
                 json!({ "id": p.id, "kind": p.kind, "title": p.title })
             }
         }
