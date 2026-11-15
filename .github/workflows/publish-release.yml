@@ -55,8 +55,11 @@ jobs:
           gh run download "$APPLE" -n Worlds-iPad-Unsigned -D dl/ipad
           gh run download "$APPLE" -n Worlds-macOS-Unsigned -D dl/mac
           cp "$(find dl/win -name '*.exe' | head -n 1)" "out/Worlds-$v-Windows-x64-setup.exe"
-          # The debug build is the installable one (signed with a development key); release APKs are unsigned.
-          cp "$(find dl/android -name 'Worlds-Android-Universal-Debug.apk' | head -n 1)" "out/Worlds-$v-Android-Universal.apk"
+          # The release build signed with the Worlds release key, so each version installs over the last.
+          # Before that key is in the secrets, the debug build (signed with the runner's own key) as before.
+          apk="$(find dl/android -name 'Worlds-Android-Universal.apk' | head -n 1)"
+          [ -n "$apk" ] || apk="$(find dl/android -name 'Worlds-Android-Universal-Debug.apk' | head -n 1)"
+          cp "$apk" "out/Worlds-$v-Android-Universal.apk"
           cp "$(find dl/iphone -name '*.ipa' | head -n 1)" "out/Worlds-$v-iPhone-Unsigned.ipa"
           cp "$(find dl/ipad -name '*.ipa' | head -n 1)" "out/Worlds-$v-iPad-Unsigned.ipa"
           cp "$(find dl/mac -name '*.dmg' | head -n 1)" "out/Worlds-$v-macOS-Unsigned.dmg"

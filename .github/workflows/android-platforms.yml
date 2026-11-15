@@ -118,6 +118,11 @@ jobs:
   packages:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    # The Worlds release key, when the owner has added it (docs/android-native/RELEASE_SIGNING.md).
+    env:
+      WORLDS_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.WORLDS_ANDROID_KEYSTORE_PASSWORD }}
+      WORLDS_RELEASE_KEY_ALIAS: ${{ secrets.WORLDS_ANDROID_KEY_ALIAS }}
+      WORLDS_RELEASE_KEY_PASSWORD: ${{ secrets.WORLDS_ANDROID_KEY_PASSWORD }}
     defaults:
       run:
         working-directory: Android
@@ -132,6 +137,17 @@ jobs:
         run: |
           rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'ndk;28.2.13676358'
+      - name: Prepare the release key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.WORLDS_ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/worlds-release.jks"
+            echo "WORLDS_RELEASE_KEYSTORE=$RUNNER_TEMP/worlds-release.jks" >> "$GITHUB_ENV"
+            echo "Release builds are signed with the Worlds release key."
+          else
+            echo "No release key in the secrets: release builds stay unsigned."
+          fi
       - name: Build APKs and app bundle
         run: |
           chmod +x gradlew
