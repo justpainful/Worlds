@@ -11,9 +11,20 @@ import { translate, uiLanguage } from "../i18n/ui";
 import { foldArabic } from "../i18n/locale";
 
 const SETS: { label: string; emojis: string }[] = [
-  { label: "Objects", emojis: "📄 📝 📌 📎 📁 🗂️ 🗃️ 📚 📖 🔖 🏷️ 💼 🧾 📊 📈 📉 🗓️ 📅 ⏰ ⏱️ 🔔 📣 📢 💬 🗨️ ✉️ 📬 🔑 🔒 🔓 🧭 🗺️ 🧰 🛠️ ⚙️ 🧪 🔬 💡 🕯️ 🔦 🎯 🧩 🎨 🖌️ 🖼️ 🎬 🎧 🎮 🕹️ 💻 🖥️ ⌨️ 🖱️ 📱 📷 🎥 📺" },
-  { label: "Symbols", emojis: "✅ ☑️ ✔️ ❌ ⭕ ❗ ❓ ⚠️ ⛔ 🚫 ♻️ ⭐ 🌟 ✨ 🔥 💥 💯 🔴 🟠 🟡 🟢 🔵 🟣 ⚫ ⚪ 🟤 🔺 🔻 🔷 🔶 ➡️ ⬅️ ⬆️ ⬇️ 🔁 🔀 ➕ ➖ 💲 #️⃣ 🆕 🆗 🆒 🔝" },
-  { label: "Places", emojis: "🏠 🏢 🏛️ 🏪 🏫 🏥 🏦 🏭 🏗️ 🌍 🌎 🌏 🌐 🏝️ 🏔️ 🌋 🏕️ 🌃 🌆 🌉 🚀 ✈️ 🚗 🚕 🚌 🚲 ⛵ 🚢 🛰️ 🪐 🌙 ☀️ ⛅ 🌧️ ❄️ 🌈 🌊" },
+  {
+    label: "Objects",
+    emojis:
+      "📄 📝 📌 📎 📁 🗂️ 🗃️ 📚 📖 🔖 🏷️ 💼 🧾 📊 📈 📉 🗓️ 📅 ⏰ ⏱️ 🔔 📣 📢 💬 🗨️ ✉️ 📬 🔑 🔒 🔓 🧭 🗺️ 🧰 🛠️ ⚙️ 🧪 🔬 💡 🕯️ 🔦 🎯 🧩 🎨 🖌️ 🖼️ 🎬 🎧 🎮 🕹️ 💻 🖥️ ⌨️ 🖱️ 📱 📷 🎥 📺",
+  },
+  {
+    label: "Symbols",
+    emojis:
+      "✅ ☑️ ✔️ ❌ ⭕ ❗ ❓ ⚠️ ⛔ 🚫 ♻️ ⭐ 🌟 ✨ 🔥 💥 💯 🔴 🟠 🟡 🟢 🔵 🟣 ⚫ ⚪ 🟤 🔺 🔻 🔷 🔶 ➡️ ⬅️ ⬆️ ⬇️ 🔁 🔀 ➕ ➖ 💲 #️⃣ 🆕 🆗 🆒 🔝",
+  },
+  {
+    label: "Places",
+    emojis: "🏠 🏢 🏛️ 🏪 🏫 🏥 🏦 🏭 🏗️ 🌍 🌎 🌏 🌐 🏝️ 🏔️ 🌋 🏕️ 🌃 🌆 🌉 🚀 ✈️ 🚗 🚕 🚌 🚲 ⛵ 🚢 🛰️ 🪐 🌙 ☀️ ⛅ 🌧️ ❄️ 🌈 🌊",
+  },
   { label: "Nature", emojis: "🌱 🌿 🍀 🌵 🌴 🌳 🌲 🍁 🍂 🌸 🌼 🌻 🌹 🍄 🐚 🪨 🐾 🐱 🐶 🦊 🐻 🐼 🦁 🐯 🐺 🦅 🦉 🐝 🦋 🐢 🐬 🐳" },
   { label: "Food", emojis: "☕ 🍵 🧃 🍕 🍔 🍟 🌮 🥗 🍣 🍜 🥐 🍞 🧁 🍰 🍫 🍪 🍎 🍊 🍋 🍉 🍇 🍓 🥑 🌶️" },
   { label: "People", emojis: "🙂 😊 😎 🤔 🤝 👋 👍 👏 🙌 💪 🧠 👀 👤 👥 🧑‍💻 🧑‍🎨 🧑‍🏫 🧑‍🔧 🎓 👑 🏆 🥇 🎉 🎁" },
@@ -56,7 +67,11 @@ export function EmojiPicker({
   }, [q, cat]);
 
   const upload = async () => {
-    const path = await openDialog({ multiple: false, title: "Choose an icon image", filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp", "gif", "svg", "avif"] }] });
+    const path = await openDialog({
+      multiple: false,
+      title: "Choose an icon image",
+      filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp", "gif", "svg", "avif"] }],
+    });
     if (!path || Array.isArray(path)) return;
     try {
       const a = await api.importFile(pageId, path);
@@ -70,8 +85,12 @@ export function EmojiPicker({
     <Popover anchor={anchor} onClose={onClose} width={372} className="emoji-pop">
       <div className="ip-head">
         <div className="ip-modes" role="tablist">
-          <button role="tab" aria-selected={mode === "icons"} className={mode === "icons" ? "is-on" : ""} onClick={() => setMode("icons")}>Icons</button>
-          <button role="tab" aria-selected={mode === "emoji"} className={mode === "emoji" ? "is-on" : ""} onClick={() => setMode("emoji")}>Emoji</button>
+          <button role="tab" aria-selected={mode === "icons"} className={mode === "icons" ? "is-on" : ""} onClick={() => setMode("icons")}>
+            Icons
+          </button>
+          <button role="tab" aria-selected={mode === "emoji"} className={mode === "emoji" ? "is-on" : ""} onClick={() => setMode("emoji")}>
+            Emoji
+          </button>
         </div>
         <span className="grow" />
         <button className="chip-btn" onClick={upload}>

@@ -282,9 +282,23 @@ export interface IconProps {
  */
 // Glyphs that SF Symbols mirrors for right-to-left languages. Alignment icons keep their physical side.
 const DIRECTIONAL: ReadonlySet<string> = new Set([
-  "back", "forward", "arrowLeft", "arrowRight", "splitLeft", "splitRight",
-  "bulletList", "numberedList", "checklist", "listView", "quote",
-  "undo", "redo", "external", "openExternal", "sidebarClose", "sidebarOpen",
+  "back",
+  "forward",
+  "arrowLeft",
+  "arrowRight",
+  "splitLeft",
+  "splitRight",
+  "bulletList",
+  "numberedList",
+  "checklist",
+  "listView",
+  "quote",
+  "undo",
+  "redo",
+  "external",
+  "openExternal",
+  "sidebarClose",
+  "sidebarOpen",
 ]);
 
 export function Icon({ name, size = 16, weight, className = "", style, label, filled }: IconProps) {
