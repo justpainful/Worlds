@@ -22,12 +22,18 @@ import { openQuickCapture } from "./planning/InboxView";
 import { shortcutKey } from "./lib/keys";
 import { watchSampleLanguage } from "./demo/sampleActions";
 import { useWindowTitle } from "./shell/windowTitle";
+import { useDigests } from "./packs/useDigests";
+import { usePublishedImport } from "./packs/published";
 
 export function App() {
   const ready = useStore((s) => s.ready);
   const perfOverlay = useStore((s) => !!s.settings["advanced.perfOverlay"]);
   const [error, setError] = useState<string | null>(null);
   useWindowTitle();
+  // Packs whose daily summary is on put what needs attention in Inbox.
+  useDigests(ready);
+  // Items a teacher or manager sent arrive in this person's own packs.
+  usePublishedImport(ready);
 
   useEffect(() => {
     if (!isTauri) {

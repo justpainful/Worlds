@@ -9,7 +9,8 @@ fn blocks(c: &Connection, page: &str) -> Result<Vec<(String, Value)>> {
 fn snapshot(c: &Connection, id: &str) -> Result<Value> {
     require_personal(c, id)?;
     let (kind, revision, metadata): (String,i64,String) = c.query_row("SELECT kind,updated_at,metadata FROM pages WHERE id=?1", [id], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?)))?;
-    if kind != "project" && kind != "gallery" && kind != "stream" && kind != "spreadsheet" { bail!("unsupported resource kind") }
+    // Pack items ("shop.order") are read like a spreadsheet: their metadata, which holds their fields.
+    if kind != "project" && kind != "gallery" && kind != "stream" && kind != "spreadsheet" && kind != "html" && !store::is_pack_kind(&kind) { bail!("unsupported resource kind") }
     let metadata: Value = serde_json::from_str(&metadata)?;
     let current = blocks(c, id)?;
     if kind == "project" { project_links(c, &metadata)?; } else if kind == "gallery" { attachment_ids(c, &current)?; }
@@ -168,6 +169,45 @@ pub fn save_spreadsheet(path: &Path, id: &str, base: i64, expected: Value, metad
     tx.commit()?; Ok(result)
 }
 
+/// Replaces only `metadata.item` of a personal pack item (docs/PACKS.md), with
+/// the same complete metadata baseline and revision check as a spreadsheet, so
+/// fields the desktop keeps elsewhere in the metadata are never dropped.
+pub fn save_pack_item(path: &Path, id: &str, base: i64, expected: Value, metadata: Value) -> Result<Value> {
+    let item = metadata_key(&expected,&metadata,store::PACK_DATA_KEY)?.clone();
+    let mut connection = open_existing(path)?;
+    let tx = connection.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+    let kind: String = tx.query_row("SELECT kind FROM pages WHERE id=?1", [id], |r| r.get(0))?;
+    if !store::is_pack_kind(&kind) { bail!("invalid resource kind") }
+    check_metadata(&tx,id,base,&expected,&kind)?;
+    snapshot_before_metadata_edit(&tx,id)?;
+    store::set_page_meta(&tx,&crate::native_ctx(),id,store::PACK_DATA_KEY,item)?;
+    let result = snapshot(&tx,id)?;
+    tx.commit()?; Ok(result)
+}
+
+/// Largest state an HTML page may keep with `worlds.save()` (docs/HTML_PAGES.md).
+const MAX_HTML_STATE_BYTES: usize = 256 * 1024;
+
+/// Keeps what an HTML page saved in `metadata.html.state`. The complete
+/// metadata baseline and revision are compared like a spreadsheet, every other
+/// metadata key must be unchanged, and so must the page's source: a viewer on
+/// this device runs the page, it does not rewrite it.
+pub fn save_html_state(path: &Path, id: &str, base: i64, expected: Value, metadata: Value) -> Result<Value> {
+    let html = metadata_key(&expected,&metadata,"html")?.clone();
+    let before = expected.get("html").and_then(Value::as_object).cloned().unwrap_or_default();
+    let mut after = html.as_object().cloned().unwrap_or_default();
+    let state = after.remove("state").unwrap_or(Value::Null);
+    let mut kept = before.clone(); kept.remove("state");
+    if after != kept { bail!("invalid metadata: only the HTML page's state may change") }
+    if state.to_string().len() > MAX_HTML_STATE_BYTES { bail!("the page's state is larger than 256 KB") }
+    let mut connection = open_existing(path)?;
+    let tx = connection.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+    check_metadata(&tx,id,base,&expected,"html")?;
+    store::set_page_meta(&tx,&crate::native_ctx(),id,"html",html)?;
+    let result = snapshot(&tx,id)?;
+    tx.commit()?; Ok(result)
+}
+
 fn attachment_ids(c: &Connection, entries: &[(String,Value)]) -> Result<()> {
     for (_, value) in entries {
         if value.get("type").and_then(Value::as_str) != Some("galleryItem") { continue }
@@ -294,6 +334,59 @@ mod tests {
         let saved=invoke(json!({"operation":"save_stream","path":path,"page":"s","base":read["value"]["revision"],"expected_metadata":read["value"]["metadata"],"url":"https://example.test/video.m3u#part"}));
         assert_eq!(saved["ok"],true,"{saved}");
         assert_eq!(saved["value"]["metadata"]["stream"]["format"],"hls");
+        std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn pack_item_save_replaces_only_its_fields_and_rejects_other_kinds() {
+        let path=fixture();
+        let c=Connection::open(&path).unwrap();
+        let original=json!({"look":{"font":"serif"},"item":{"status":"new","total":170}});
+        c.execute("INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('o','Order 1042','shop.order',?1,1,100)",[original.to_string()]).unwrap();
+        c.execute("INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('s','Budget','spreadsheet','{}',1,100)",[]).unwrap();
+        drop(c);
+        let read=read_resource(&path,"o").unwrap();
+        let mut next=read["metadata"].clone();
+        next["item"]["status"]=json!("shipped");
+        let saved=save_pack_item(&path,"o",100,read["metadata"].clone(),next.clone()).unwrap();
+        assert_eq!(saved["metadata"]["item"]["status"],"shipped");
+        assert_eq!(saved["metadata"]["item"]["total"],170);
+        assert_eq!(saved["metadata"]["look"],json!({"font":"serif"}));
+        // A stale revision, another key changing, or a page that is not a pack item are all refused.
+        assert!(save_pack_item(&path,"o",100,read["metadata"].clone(),next.clone()).is_err());
+        let revision=saved["revision"].as_i64().unwrap();
+        let mut unrelated=saved["metadata"].clone(); unrelated["look"]=json!(1);
+        assert!(save_pack_item(&path,"o",revision,saved["metadata"].clone(),unrelated).is_err());
+        assert!(save_pack_item(&path,"s",100,json!({}),json!({"item":{}})).is_err());
+        std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn html_state_save_keeps_the_source_and_rejects_everything_else() {
+        let path=fixture();
+        let c=Connection::open(&path).unwrap();
+        let original=json!({"look":{"font":"serif"},"html":{"source":"<p>x</p>","state":null}});
+        c.execute("INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('h','Week','html',?1,1,100)",[original.to_string()]).unwrap();
+        c.execute("INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('s','Budget','spreadsheet','{\"html\":{}}',1,100)",[]).unwrap();
+        drop(c);
+        let read=read_resource(&path,"h").unwrap();
+        assert_eq!(read["kind"],"html");
+        let mut next=read["metadata"].clone();
+        next["html"]["state"]=json!({"done":[0,2]});
+        let saved=save_html_state(&path,"h",100,read["metadata"].clone(),next.clone()).unwrap();
+        assert_eq!(saved["metadata"]["html"]["state"],json!({"done":[0,2]}));
+        assert_eq!(saved["metadata"]["html"]["source"],"<p>x</p>");
+        assert_eq!(saved["metadata"]["look"],json!({"font":"serif"}));
+        // A stale revision, a changed source, another key, a huge state or another kind are all refused.
+        assert!(save_html_state(&path,"h",100,read["metadata"].clone(),next.clone()).is_err());
+        let revision=saved["revision"].as_i64().unwrap();
+        let mut source=saved["metadata"].clone(); source["html"]["source"]=json!("<script>1</script>");
+        assert!(save_html_state(&path,"h",revision,saved["metadata"].clone(),source).is_err());
+        let mut unrelated=saved["metadata"].clone(); unrelated["look"]=json!(1);
+        assert!(save_html_state(&path,"h",revision,saved["metadata"].clone(),unrelated).is_err());
+        let mut huge=saved["metadata"].clone(); huge["html"]["state"]=json!("x".repeat(300*1024));
+        assert!(save_html_state(&path,"h",revision,saved["metadata"].clone(),huge).is_err());
+        assert!(save_html_state(&path,"s",100,json!({"html":{}}),json!({"html":{"state":1}})).is_err());
+        let mut again=saved["metadata"].clone(); again["html"]["state"]=json!(null);
+        assert_eq!(save_html_state(&path,"h",revision,saved["metadata"].clone(),again).unwrap()["metadata"]["html"]["state"],json!(null));
         std::fs::remove_file(path).unwrap();
     }
     #[test]

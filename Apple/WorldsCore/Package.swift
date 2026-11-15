@@ -180,7 +180,7 @@ if rustStoreAvailable {
 
 
 // CI sets WORLDS_REQUIRE_COLLABORATION=1 so missing binaries fail package resolution.
-// The application does not depend on this experimental module.
+// The application uses WorldsCollaborationHost only to read shared pages.
 if collaborationAvailable {
     package.products.append(.library(name: "WorldsRejectedArchives", targets: ["WorldsRejectedArchives"]))
     package.targets.append(.target(name: "WorldsRejectedArchives", dependencies: ["WorldsCollaboration"], exclude: ["DESIGN.md", "README.md"]))
@@ -194,7 +194,7 @@ if collaborationAvailable {
     package.targets.append(.testTarget(name: "WorldsCollaborationTests", dependencies: ["WorldsCollaboration", "WorldsSyncWire"], resources: [.copy("worlds-collab-v11.db"), .copy("worlds-collab-editor-v11.db"), .copy("worlds-collab-viewer-v11.db")], linkerSettings: [.linkedLibrary("sqlite3")]))
     package.products.append(.library(name: "WorldsCollaborationHost", targets: ["WorldsCollaborationHost"]))
     package.targets.append(.target(name: "WorldsCollaborationHost", dependencies: ["WorldsCollaboration", "WorldsIdentityContinuity"]))
-    package.targets.append(.testTarget(name: "WorldsCollaborationHostTests", dependencies: ["WorldsCollaborationHost", "WorldsCollaboration", "WorldsIdentityContinuity"], resources: [.copy("worlds-collab-editor-v11.db")]))
+    package.targets.append(.testTarget(name: "WorldsCollaborationHostTests", dependencies: ["WorldsCollaborationHost", "WorldsCollaboration", "WorldsIdentityContinuity", "WorldsSyncWire"], resources: [.copy("worlds-collab-editor-v11.db")]))
 }
 
 

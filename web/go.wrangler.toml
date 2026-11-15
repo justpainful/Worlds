@@ -1,0 +1,13 @@
+# Worlds in the browser at go.enterworlds.space: the web build of the app
+# with its in-browser backend and the sample workspace (pnpm build:demo).
+# Deploy: pnpm build:demo, then npx wrangler deploy -c web/go.wrangler.toml
+name = "worlds-go"
+compatibility_date = "2026-08-01"
+
+[assets]
+directory = "../dist-demo"
+not_found_handling = "single-page-application"
+
+[[routes]]
+pattern = "go.enterworlds.space"
+custom_domain = true

@@ -11,13 +11,14 @@ import { useStore, type OpenWhere } from "../state/store";
 import { menuAt, type MenuItem } from "../ui/Menu";
 import { Modal } from "../ui/Modal";
 import type { IconName } from "../ui/Icon";
-import { KIND_INFO, NEW_KINDS, defaultIcon, fileIcon } from "./kinds";
-import { isKindHidden } from "../packs/registry";
+import { NEW_KINDS, defaultIcon, fileIcon, kindInfo } from "./kinds";
 import { createItem } from "../planning/actions";
 import { today } from "../planning/model";
 import { openQuickCapture } from "../planning/InboxView";
-import { createSubject } from "../study/StudyViews";
+import { packNewItems } from "../packs/actions";
 import { defaultSheetName } from "../spreadsheet/names";
+import { starterHtml } from "../htmlpage/compose";
+import { uiLanguage } from "../i18n/ui";
 
 const LINE_ICON: Record<ResourceKind, IconName> = {
   page: "page",
@@ -25,6 +26,7 @@ const LINE_ICON: Record<ResourceKind, IconName> = {
   presentation: "monitor",
   drawing: "edit",
   spreadsheet: "table",
+  html: "code",
   project: "folder",
   gallery: "image",
   file: "upload",
@@ -51,6 +53,8 @@ function initialMetadata(kind: ResourceKind): Record<string, unknown> {
       return { project: { status: "active", start: null, due: null, description: "", links: [] } };
     case "gallery":
       return { gallery: { view: "grid" } };
+    case "html":
+      return { html: { source: starterHtml(uiLanguage()), state: null } };
     case "spreadsheet":
       return { sheet: { sheets: [{ id: "sh_1", name: defaultSheetName(1), rows: 60, cols: 26, cells: {}, colWidths: {}, rowHeights: {}, frozenRows: 0, frozenCols: 0, merges: [], conditionalRules: [] }], activeSheetId: "sh_1" } };
     default:
@@ -163,7 +167,7 @@ export function addStream(opts: { parentId?: string | null } = {}): Promise<Page
 /** The New menu: every kind, an upload and a stream link. */
 export function newResourceMenu(anchor: HTMLElement, opts: { parentId?: string | null; align?: "start" | "end" } = {}) {
   const items: MenuItem[] = NEW_KINDS.map((k) => ({
-    label: KIND_INFO[k].label,
+    label: kindInfo(k).label,
     icon: LINE_ICON[k],
     shortcut: k === "page" ? "Ctrl+N" : undefined,
     onSelect: () => createResource(k, { parentId: opts.parentId }),
@@ -173,7 +177,8 @@ export function newResourceMenu(anchor: HTMLElement, opts: { parentId?: string |
     { label: "Task", icon: "checklist", onSelect: () => createItem("task", { parentId: opts.parentId, data: { due: today() }, open: "current" }) },
     { label: "Event", icon: "calendar", onSelect: () => createItem("event", { parentId: opts.parentId, data: { date: today(), start: "09:00", end: "10:00" }, open: "current" }) },
     { label: "Quick Capture", icon: "inbox", shortcut: "Ctrl+Alt+N", onSelect: () => openQuickCapture() },
-    ...(!isKindHidden("subject") ? [{ label: "Subject", icon: "folder" as const, onSelect: () => createSubject() }] : []),
+    // Kinds the enabled packs offer in New.
+    ...packNewItems(useStore.getState().settings),
     { kind: "separator" },
     { label: "Upload Files", icon: "upload", onSelect: () => uploadFiles({ parentId: opts.parentId }) },
     { label: "Add Stream Link", icon: "link", onSelect: () => addStream({ parentId: opts.parentId }) },

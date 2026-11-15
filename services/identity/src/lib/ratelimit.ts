@@ -21,6 +21,23 @@ export async function rateLimit(db: D1Database, key: string, limit: number, wind
   if ((row?.count ?? 0) > limit) throw tooMany(Math.ceil((start + windowMs - t) / 1000));
 }
 
-export function clientIp(req: Request): string {
+/**
+ * The caller's IP. Behind the enterworlds.space edge (services/edge) every
+ * request arrives from the edge's own address, so the edge sends the
+ * visitor's IP in x-worlds-client-ip with EDGE_SECRET in x-worlds-edge. The
+ * header is used only with the right secret; anyone else's is ignored.
+ */
+export function clientIp(req: Request, edgeSecret?: string): string {
+  if (edgeSecret && sameSecret(req.headers.get("x-worlds-edge"), edgeSecret)) {
+    const forwarded = req.headers.get("x-worlds-client-ip");
+    if (forwarded) return forwarded;
+  }
   return req.headers.get("cf-connecting-ip") ?? "local";
+}
+
+function sameSecret(a: string | null, b: string): boolean {
+  if (a === null || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
 }

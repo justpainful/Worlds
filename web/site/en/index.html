@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Worlds: your pages, sheets and drawings, on your own device</title>
+<meta name="description" content="Worlds is a workspace for pages, documents, spreadsheets, drawings and slides. It keeps everything in one file on your device, works offline, reads Arabic natively, and lets Claude edit the pages themselves.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111113" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://enterworlds.space/en/">
+<link rel="alternate" hreflang="ar" href="https://enterworlds.space/">
+<link rel="alternate" hreflang="en" href="https://enterworlds.space/en/">
+<meta property="og:title" content="Worlds">
+<meta property="og:description" content="Your pages, sheets, drawings and slides, in one file on your device.">
+<meta property="og:image" content="https://enterworlds.space/icon-256.png">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-256.png">
+<link rel="preload" href="/fonts/instrument-sans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/site.css">
+<script src="/site.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#home">Skip to the page</a>
+<div class="shell">
+  <nav class="tree" aria-label="Site pages">
+    <a class="ws" href="/en/"><img src="/icon-32.png" alt="" width="22" height="22"><span>Worlds</span></a>
+    <p class="tree-label">Pages</p>
+    <ol>
+      <li><a href="#home" aria-current="true"><span class="caret" aria-hidden="true">▾</span><span class="ic" aria-hidden="true">🏠</span>Home</a></li>
+      <li class="child"><a href="#blocks"><span class="ic" aria-hidden="true">🧱</span>Pages of blocks</a></li>
+      <li class="child"><a href="#device"><span class="ic" aria-hidden="true">💾</span>On your device</a></li>
+      <li class="child"><a href="#arabic"><span class="ic" aria-hidden="true">🔤</span>Arabic first</a></li>
+      <li class="child"><a href="#claude"><span class="ic" aria-hidden="true">💬</span>Claude on the page</a></li>
+      <li class="child"><a href="#together"><span class="ic" aria-hidden="true">👥</span>With your team</a></li>
+      <li class="child"><a href="#get"><span class="ic" aria-hidden="true">📦</span>Download</a></li>
+    </ol>
+    <a class="lang-mobile" href="/" hreflang="ar" lang="ar">العربية</a>
+    <div class="tree-foot">
+      <a href="/" hreflang="ar" lang="ar">العربية</a>
+      <a href="https://github.com/justpainful/Worlds">Source on GitHub</a>
+    </div>
+  </nav>
+
+  <main class="page" id="main">
+    <div class="column">
+
+      <section class="block" id="home" aria-labelledby="home-title">
+        <span class="grip" aria-hidden="true">⋮⋮</span>
+        <p class="date"><span data-greet>Hello</span> · <time data-date></time></p>
+        <h1 id="home-title">Your pages, sheets, drawings and slides, in one file on your device.</h1>
+        <p class="lead">Worlds is a workspace for planning the week, writing the report, working out the grades, sketching and presenting. Everything stays with you, with or without a connection.</p>
+
+        <div class="today" aria-labelledby="today-title">
+          <h3 id="today-title">Today</h3>
+          <ul class="tasks">
+            <li><input type="checkbox" id="t1"><label for="t1"><span class="subject green" aria-hidden="true"></span>Review chapter 3</label><span class="due">Biology</span></li>
+            <li><input type="checkbox" id="t2"><label for="t2"><span class="subject blue" aria-hidden="true"></span>Homework 4</label><span class="due">4:00 PM</span></li>
+            <li><input type="checkbox" id="t3" checked><label for="t3">Return the library book</label><span class="due">Done</span></li>
+          </ul>
+        </div>
+
+        <div class="enter">
+          <a class="go" href="https://go.enterworlds.space/">Enter Worlds <span class="arrow" aria-hidden="true">→</span></a>
+          <small>Opens a sample student workspace in your browser, no account needed. Or <a href="#get">download it</a>.</small>
+        </div>
+      </section>
+
+      <section class="block" id="blocks" aria-labelledby="blocks-title">
+        <span class="grip" aria-hidden="true">⋮⋮</span>
+        <h2 id="blocks-title">Everything on a page is a block</h2>
+        <p>Type <kbd>/</kbd> on any line and pick what you need. Hold any block by its handle <span aria-hidden="true">⋮⋮</span> and move it anywhere, even to another page.</p>
+        <div class="figure">
+          <div class="slash" role="img" aria-label="The block menu after typing a slash">
+            <div class="typed">/</div>
+            <ul>
+              <li><span class="ic" aria-hidden="true">🔢</span>Spreadsheet<small>A1 and formulas</small></li>
+              <li><span class="ic" aria-hidden="true">☑️</span>Checklist</li>
+              <li><span class="ic" aria-hidden="true">✏️</span>Drawing</li>
+              <li><span class="ic" aria-hidden="true">🖼️</span>Slides</li>
+              <li><span class="ic" aria-hidden="true">📄</span>Document</li>
+            </ul>
+          </div>
+          <div class="sheet">
+            <div class="formula"><span class="mono ref">F2</span><code>=SUM(B2:E2)</code></div>
+            <table aria-label="Term grades">
+              <thead><tr><th scope="col">Subject</th><th scope="col">Quiz 1</th><th scope="col">Quiz 2</th><th scope="col">Midterm</th><th scope="col">Final</th><th scope="col">Total</th></tr></thead>
+              <tbody>
+                <tr><td>Biology</td><td>9</td><td>8</td><td>26</td><td>44</td><td class="picked">87</td></tr>
+                <tr><td>Mathematics</td><td>10</td><td>9</td><td>28</td><td>47</td><td>94</td></tr>
+                <tr><td>Arabic</td><td>10</td><td>10</td><td>29</td><td>48</td><td>97</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <p class="lead">Term grades, from the sample workspace. Formulas stay right when you add a row or a column, and the sheet opens in Excel as it looks here.</p>
+      </section>
+
+      <section class="block" id="device" aria-labelledby="device-title">
+        <span class="grip" aria-hidden="true">⋮⋮</span>
+        <h2 id="device-title">Kept on your device, not ours</h2>
+        <p>Everything you write in Worlds is saved in one file on your device:</p>
+        <p><code class="path">%APPDATA%\Worlds\worlds.db</code></p>
+        <p>It opens and works offline. An account is optional: you only need one to share a page with someone or sync it between your devices.</p>
+      </section>
+
+      <section class="block" id="arabic" aria-labelledby="arabic-title">
+        <span class="grip" aria-hidden="true">⋮⋮</span>
+        <h2 id="arabic-title">Arabic first, English just as well</h2>
+        <p>The whole interface runs right to left in Arabic on Windows, Android and Apple devices. It was built that way, not mirrored after the fact.</p>
+        <ul class="facts">
+          <li><b>Search</b><span>Finds a word however its alef or taa marbuta was typed, and reads Arabic digits.</span></li>
+          <li><b>Dates</b><span>The Hijri date sits beside every day in the calendar and on Home, with the Friday and Saturday weekend shaded.</span></li>
+          <li><b>Quick add</b><span>Type “Call the bank tomorrow 4pm !!” and it becomes a task due tomorrow at four, marked important.</span></li>
+          <li><b>Shortcuts</b><span>Every shortcut works on an Arabic keyboard, and digits typed on it count in spreadsheets.</span></li>
+        </ul>
+      </section>
+
+      <section class="block" id="claude" aria-labelledby="claude-title">
+        <span class="grip" aria-hidden="true">⋮⋮</span>
+        <h2 id="claude-title">Claude edits the page itself</h2>
+        <p>Open the Claude panel in Worlds, or connect Claude on your computer through MCP, and ask: “sort this week’s tasks by due date” or “turn these notes into a table”. It reads your pages and changes their blocks directly, instead of handing you text to paste.</p>
+        <div class="undo" role="img" aria-label="A line in the page history with an Undo button">
+          <div class="what">Claude edited “Weekly plan”<span>Moved 3 tasks and added a study table</span></div>
+          <span class="btn">Undo</span>
+        </div>
+        <p class="lead">Every edit goes into the page history, and one click takes it back.</p>
+      </section>
+
+      <section class="block" id="together" aria-labelledby="together-title">
+        <span class="grip" aria-hidden="true">⋮⋮</span>
+        <h2 id="together-title">One page, everyone in their place</h2>
+        <p>Make a workspace for your team or class and invite people by email. Each page has its level: full access, edit, comment or view, and the server enforces it.</p>
+        <p>Sign in with a six-digit code by email or with a passkey on your device, and see your colleagues’ cursors as they write on the same page.</p>
+      </section>
+
+      <section class="block" id="get" aria-labelledby="get-title">
+        <span class="grip" aria-hidden="true">⋮⋮</span>
+        <h2 id="get-title">Download Worlds</h2>
+        <p>Every build is in the <a href="https://github.com/justpainful/Worlds/releases/latest">latest release on GitHub</a>.</p>
+        <table class="downloads">
+          <tbody>
+            <tr><th scope="row">Windows</th><td><a href="https://github.com/justpainful/Worlds/releases/latest">.exe installer</a>. Installs offline. Not signed yet: choose “More info”, then “Run anyway”.</td></tr>
+            <tr><th scope="row">Android and Chromebook</th><td><a href="https://github.com/justpainful/Worlds/releases/latest">One .apk</a> for every device.</td></tr>
+            <tr><th scope="row">iPhone and iPad</th><td><a href="https://github.com/justpainful/Worlds/releases/latest">.ipa file</a> to sign with a tool such as SideStore.</td></tr>
+            <tr><th scope="row">Mac</th><td><a href="https://github.com/justpainful/Worlds/releases/latest">.dmg</a>. The first time, right-click it and choose Open.</td></tr>
+            <tr><th scope="row">Browser</th><td><a href="https://go.enterworlds.space/">go.enterworlds.space</a>, nothing to install, with the sample student workspace.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <footer>
+        <p>Worlds © 2026 justpainful. The source is published to read, not open source: see the <a href="https://github.com/justpainful/Worlds/blob/main/LICENSE">license</a>.</p>
+        <p><a href="/" hreflang="ar" lang="ar">العربية</a></p>
+      </footer>
+    </div>
+  </main>
+</div>
+</body>
+</html>

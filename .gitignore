@@ -20,3 +20,4 @@ private/
 services/.deploy/
 services/*/wrangler.deploy.toml
 dist-demo/
+.wrangler/

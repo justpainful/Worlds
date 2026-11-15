@@ -4,7 +4,7 @@ import { parseDevice, refresh, revokeDevice, signIn } from "../domain/sessions";
 import { audit, auditStmt } from "../lib/audit";
 import { callerFromToken, emit, requireAuth } from "../lib/auth";
 import { newId, now, randomDigits, randomToken, sha256B64url, sha256Hex, timingSafeEqual } from "../lib/crypto";
-import { codeEmail, emailSender } from "../lib/email";
+import { codeEmail, emailLanguage, emailSender } from "../lib/email";
 import { ApiError, bad, body, normalizeEmail, optStr, str, unauthorized } from "../lib/http";
 import { clientIp, rateLimit } from "../lib/ratelimit";
 import { normalizeUsername, suggestUsername, usernameMessage, usernameProblem, usernameTaken } from "../lib/usernames";
@@ -58,7 +58,7 @@ export async function userById(db: D1Database, id: string): Promise<UserRow | nu
 
 /** Is a username free? Public, so the app can check while someone types. */
 auth.get("/username/:name", async (c) => {
-  await rateLimit(c.env.DB, `username-check:ip:${clientIp(c.req.raw)}`, 120, 10 * 60 * 1000);
+  await rateLimit(c.env.DB, `username-check:ip:${clientIp(c.req.raw, c.env.EDGE_SECRET)}`, 120, 10 * 60 * 1000);
   const name = normalizeUsername(c.req.param("name"));
   const problem = usernameProblem(name);
   if (problem) return c.json({ username: name, valid: false, available: false, reason: problem, message: usernameMessage(problem) });
@@ -73,7 +73,7 @@ auth.get("/username/:name", async (c) => {
 auth.post("/email/start", async (c) => {
   const b = await body(c.req);
   const email = normalizeEmail(b.email);
-  await rateLimit(c.env.DB, `email-start:ip:${clientIp(c.req.raw)}`, 30, HOUR);
+  await rateLimit(c.env.DB, `email-start:ip:${clientIp(c.req.raw, c.env.EDGE_SECRET)}`, 30, HOUR);
   await rateLimit(c.env.DB, `email-start:email:${email}`, 5, HOUR);
   const id = newId();
   const code = randomDigits(6);
@@ -81,7 +81,7 @@ auth.post("/email/start", async (c) => {
   await c.env.DB.prepare("INSERT INTO email_codes (id, email, code_hash, created_at, expires_at) VALUES (?1, ?2, ?3, ?4, ?5)")
     .bind(id, email, await sha256Hex(`${id}:${code}`), t, t + CODE_TTL_MS)
     .run();
-  await emailSender(c.env).send({ to: email, ...codeEmail(code) });
+  await emailSender(c.env).send({ to: email, ...codeEmail(code, emailLanguage(b.lang, c.req.header("accept-language"))) });
   const existing = await c.env.DB.prepare("SELECT id FROM users WHERE email = ?1").bind(email).first<{ id: string }>();
   await audit(c.env.DB, { action: "auth.email_code_sent", actorUserId: existing?.id ?? null, actorKind: "user", targetType: "email_code", targetId: id });
   // The same answer whether or not an account exists.
@@ -92,7 +92,7 @@ auth.post("/email/verify", async (c) => {
   const b = await body(c.req);
   const challengeId = str(b.challengeId, "challengeId", 64);
   const code = str(b.code, "code", 12).replace(/\s+/g, "");
-  await rateLimit(c.env.DB, `email-verify:ip:${clientIp(c.req.raw)}`, 30, 10 * 60 * 1000);
+  await rateLimit(c.env.DB, `email-verify:ip:${clientIp(c.req.raw, c.env.EDGE_SECRET)}`, 30, 10 * 60 * 1000);
   const row = await c.env.DB.prepare("SELECT id, email, code_hash, attempts, expires_at, consumed_at FROM email_codes WHERE id = ?1")
     .bind(challengeId)
     .first<{ id: string; email: string; code_hash: string; attempts: number; expires_at: number; consumed_at: number | null }>();
@@ -194,7 +194,7 @@ auth.post("/passkey/ticket", requireAuth, async (c) => {
 
 auth.post("/passkey/register/options", async (c) => {
   const b = await body(c.req);
-  await rateLimit(c.env.DB, `passkey:ip:${clientIp(c.req.raw)}`, 60, 10 * 60 * 1000);
+  await rateLimit(c.env.DB, `passkey:ip:${clientIp(c.req.raw, c.env.EDGE_SECRET)}`, 60, 10 * 60 * 1000);
   const who = await registrant(c, b.ticket, false);
   const user = await userById(c.env.DB, who.userId);
   if (!user) throw unauthorized();
@@ -233,7 +233,7 @@ auth.post("/passkey/register/verify", async (c) => {
 });
 
 auth.post("/passkey/login/options", async (c) => {
-  await rateLimit(c.env.DB, `passkey:ip:${clientIp(c.req.raw)}`, 60, 10 * 60 * 1000);
+  await rateLimit(c.env.DB, `passkey:ip:${clientIp(c.req.raw, c.env.EDGE_SECRET)}`, 60, 10 * 60 * 1000);
   const options = await authenticationOptions(c.env);
   const challengeId = await newChallenge(c.env.DB, "authenticate", options.challenge, null);
   return c.json({ challengeId, options });
@@ -284,7 +284,7 @@ auth.post("/token", async (c) => {
   const b = await body(c.req);
   const code = str(b.code, "code", 128);
   const verifier = str(b.codeVerifier, "codeVerifier", 128);
-  await rateLimit(c.env.DB, `token:ip:${clientIp(c.req.raw)}`, 60, 10 * 60 * 1000);
+  await rateLimit(c.env.DB, `token:ip:${clientIp(c.req.raw, c.env.EDGE_SECRET)}`, 60, 10 * 60 * 1000);
   const row = await c.env.DB.prepare(
     "UPDATE handoffs SET consumed_at = ?2 WHERE secret_hash = ?1 AND kind = 'signin' AND consumed_at IS NULL AND expires_at > ?2 RETURNING user_id, code_challenge",
   )

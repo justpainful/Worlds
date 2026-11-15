@@ -3,7 +3,7 @@
  * `account` command with an in-memory account so the account UI can be
  * tried without the desktop app or a server. Never active in the app.
  */
-import type { AccountView, Group, Invite, Level, Member, PermissionEntry, Role } from "./api";
+import type { AccountView, Group, Invite, Level, Member, PermissionEntry, Role, PackRole } from "./api";
 
 type Args = Record<string, any>;
 
@@ -25,6 +25,7 @@ const members: Member[] = [
   { userId: "u-alan", displayName: "Alan Turing", email: "alan@example.com", role: "guest" },
 ];
 const groups: Group[] = [{ id: "g-design", name: "Design", memberIds: ["u-grace"] }];
+const packRoles: PackRole[] = [];
 const invites: Invite[] = [];
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -146,6 +147,14 @@ async function account(action: string, a: Args): Promise<unknown> {
       const g = groups.find((x) => x.id === a.groupId);
       if (g) g.memberIds = a.userIds;
       return { ok: true };
+    }
+    case "packRoles":
+      return packRoles;
+    case "setPackRole": {
+      const i = packRoles.findIndex((r) => r.userId === a.userId && r.packId === a.packId);
+      if (i >= 0) packRoles.splice(i, 1);
+      if (a.roleId) packRoles.push({ userId: a.userId, packId: a.packId, roleId: a.roleId, restricted: !!a.restricted });
+      return { userId: a.userId, packId: a.packId, roleId: a.roleId, restricted: !!a.restricted };
     }
     case "invites":
       return invites.filter((i) => (a.pageId ? i.pageId === a.pageId : true));

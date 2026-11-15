@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { uiLanguage } from "../i18n/ui";
 
 /** Access levels on a page, strongest first. */
 export type Level = "full" | "edit" | "comment" | "view" | "none";
@@ -46,6 +47,15 @@ export interface Member {
   displayName: string;
   email: string | null;
   role: Role;
+}
+
+/** A member's role in one pack (docs/PACKS.md, Roles). */
+export interface PackRole {
+  userId: string;
+  packId: string;
+  roleId: string;
+  /** The role does not see some fields; the server keeps them from this member. */
+  restricted: boolean;
 }
 
 export interface Group {
@@ -145,7 +155,8 @@ export const accountApi = {
   setActiveWorkspace: (workspaceId: string | null) => call<AccountView>("setActiveWorkspace", { workspaceId }),
   setServer: (url: string) => call<AccountView>("setServer", { url }),
 
-  emailStart: (email: string) => call<{ challengeId: string; expiresAt: number }>("emailStart", { email }),
+  // The code email is written in the app's language.
+  emailStart: (email: string) => call<{ challengeId: string; expiresAt: number }>("emailStart", { email, lang: uiLanguage() }),
   emailVerify: (challengeId: string, code: string, displayName?: string) => call<AccountView>("emailVerify", { challengeId, code, displayName }),
   passkeySignIn: () => call<AccountView>("passkeySignIn"),
   passkeyAdd: () => call<{ opened: boolean }>("passkeyAdd"),
@@ -172,6 +183,9 @@ export const accountApi = {
   leave: (workspaceId: string) => call<AccountView>("leave", { workspaceId }),
   transfer: (workspaceId: string, userId: string) => call<{ members: Member[] }>("transfer", { workspaceId, userId }),
   groups: (workspaceId: string) => call<Group[]>("groups", { workspaceId }),
+  packRoles: (workspaceId: string) => call<PackRole[]>("packRoles", { workspaceId }),
+  setPackRole: (workspaceId: string, userId: string, packId: string, roleId: string | null, restricted: boolean) =>
+    call<PackRole>("setPackRole", { workspaceId, userId, packId, roleId, restricted }),
   createGroup: (workspaceId: string, name: string) => call<Group>("createGroup", { workspaceId, name }),
   deleteGroup: (workspaceId: string, groupId: string) => call<unknown>("deleteGroup", { workspaceId, groupId }),
   setGroupMembers: (workspaceId: string, groupId: string, userIds: string[]) => call<unknown>("setGroupMembers", { workspaceId, groupId, userIds }),

@@ -153,6 +153,7 @@ struct TrashView: View {
         case "gallery": return "photo.on.rectangle"
         case "presentation": return "rectangle.on.rectangle"
         case "stream": return "video"
+        case "html": return "chevron.left.forwardslash.chevron.right"
         default: return "doc.text"
         }
     }

@@ -72,6 +72,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.withLock
 import worlds.content.ContentStore
 import worlds.content.ContentVersion
 import worlds.content.ContentEvent
@@ -209,7 +210,7 @@ class HomeModel(application: Application, internal val databaseName: String) : A
             if (request != requestId) return@launch
             val pages = result.getOrNull()?.first.orEmpty()
             val badges = result.getOrNull()?.second
-            mutable.update { it.copy(pages = pages.filter { page -> trash || (page.kind != "template" && page.kind !in worlds.android.planning.OWN_VIEW_KINDS) }, loading = false, error = result.isFailure,
+            mutable.update { it.copy(pages = pages.filter { page -> trash || (page.kind != "template" && !worlds.android.planning.hasOwnView(page.kind)) }, loading = false, error = result.isFailure,
                 dueToday = badges?.first ?: it.dueToday, inboxCount = badges?.second ?: it.inboxCount) }
         }
     }
@@ -233,6 +234,22 @@ class HomeModel(application: Application, internal val databaseName: String) : A
         }
     }
     internal fun updateStream(stream: Resource, url: String, done: (Boolean) -> Unit) = projectAction(stream, done) { store.updateStream(stream.id, stream.revision, url) }
+    private val htmlStateSaves = kotlinx.coroutines.sync.Mutex()
+    /** An HTML page's `worlds.save()`; saves run in order, and the open page takes the new revision without reloading. */
+    internal fun saveHtmlState(id: String, state: String) {
+        viewModelScope.launch {
+            val saved = htmlStateSaves.withLock { runCatching { withContext(Dispatchers.IO) { store.saveHtmlState(id, state) } }.getOrNull() } ?: return@launch
+            mutable.update { current -> val selected = current.selected
+                if (selected?.resource?.id == id && selected.resource.revision < saved.revision) current.copy(selected = selected.copy(resource = saved)) else current }
+        }
+    }
+    /** `worlds://page/ID` from an HTML page opens that page when it exists and is not in Trash. */
+    internal fun openLinkedPage(id: String) {
+        viewModelScope.launch {
+            val exists = runCatching { withContext(Dispatchers.IO) { store.load(id)?.resource?.let { it.deletedAt == null } == true } }.getOrDefault(false)
+            if (exists) open(id)
+        }
+    }
     internal fun beginFileImport(parent: Resource? = null): Boolean {
         val state = mutable.value
         if (state.busy || (parent != null && (state.selected?.resource?.id != parent.id || parent.kind != "project" || parent.deletedAt != null))) return false
@@ -1002,6 +1019,8 @@ class HomeModel(application: Application, internal val databaseName: String) : A
     var showAccount by rememberSaveable { mutableStateOf(false) }
     var showAppearance by rememberSaveable { mutableStateOf(false) }
     var showAiChat by rememberSaveable { mutableStateOf(false) }
+    // A request a pack hands to Claude, ready in the composer.
+    var aiPrompt by rememberSaveable { mutableStateOf("") }
     var showAutomations by rememberSaveable { mutableStateOf(false) }
     var showDiscordComposer by rememberSaveable { mutableStateOf(false) }
     var showProfile by rememberSaveable { mutableStateOf(false) }
@@ -1015,7 +1034,7 @@ class HomeModel(application: Application, internal val databaseName: String) : A
         return
     }
     if (showAiChat) {
-        AiChatScreen(databaseName = model.databaseName, onBack = { showAiChat = false }, onCreatePage = { title, content -> showAiChat = false; model.createWithContent(title, content) }, onOpenPage = { id -> showAiChat = false; model.open(id) }, onWorkspaceChanged = model::assistantChanged)
+        AiChatScreen(databaseName = model.databaseName, onBack = { showAiChat = false; aiPrompt = "" }, onCreatePage = { title, content -> showAiChat = false; model.createWithContent(title, content) }, onOpenPage = { id -> showAiChat = false; model.open(id) }, onWorkspaceChanged = model::assistantChanged, initialPrompt = aiPrompt)
         return
     }
     if (showAutomations) {
@@ -1027,7 +1046,8 @@ class HomeModel(application: Application, internal val databaseName: String) : A
         // Lesson notes are pages, so they open in the page editor.
         PlanningScreen(openSection, model.databaseName, LocalAppearancePreferences.current.studyPackEnabled,
             onBack = { planningSection = null; model.refresh() },
-            onOpenPage = { id -> planningSection = null; model.refresh(); model.open(id) })
+            onOpenPage = { id -> planningSection = null; model.refresh(); model.open(id) },
+            onAsk = { prompt -> aiPrompt = prompt; showAiChat = true })
         return
     }
     if (showDiscordComposer) {
@@ -1261,6 +1281,7 @@ class HomeModel(application: Application, internal val databaseName: String) : A
                 DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_calendar) }, text = { Text(stringResource(R.string.plan_calendar)) }, onClick = { showLibraryActions = false; planningSection = PlanningSection.Calendar.name })
                 DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_inbox) }, text = { Text(stringResource(R.string.plan_inbox)) }, onClick = { showLibraryActions = false; planningSection = PlanningSection.Inbox.name })
                 if (LocalAppearancePreferences.current.studyPackEnabled) DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_graduation_cap) }, text = { Text(stringResource(R.string.plan_study)) }, onClick = { showLibraryActions = false; planningSection = PlanningSection.Study.name })
+                DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_layers) }, text = { Text(stringResource(R.string.packs_title)) }, onClick = { showLibraryActions = false; planningSection = PlanningSection.Packs.name })
                 DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_share_2) }, text = { Text(stringResource(R.string.discord)) }, onClick = { showLibraryActions = false; showDiscordComposer = true })
                 DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_circle_user) }, text = { Text(stringResource(R.string.profile)) }, onClick = { showLibraryActions = false; showProfile = true })
                 HorizontalDivider()
@@ -1286,6 +1307,8 @@ class HomeModel(application: Application, internal val databaseName: String) : A
                     onRename = { renameTitle = state.selected!!.resource.title; showRename = true }, onTrash = model::trash, modifier = detailModifier)
                 else if (state.selected!!.resource.kind == "file" && state.selected!!.resource.deletedAt == null) FileScreen(state.selected!!.resource, model.databaseName, state.busy, state.fileStatus,
                     onBack = model::back, onExport = ::exportFile, onRename = { renameTitle = state.selected!!.resource.title; showRename = true }, onTrash = model::trash, modifier = detailModifier)
+                else if (state.selected!!.resource.kind == HtmlPageDocument.KIND && state.selected!!.resource.deletedAt == null) HtmlPageScreen(state.selected!!.resource, state.busy, model::back, model::saveHtmlState, model::openLinkedPage,
+                    onRename = { renameTitle = state.selected!!.resource.title; showRename = true }, onTrash = model::trash, modifier = detailModifier)
                 else if (state.selected!!.resource.kind == "stream" && state.selected!!.resource.deletedAt == null) StreamScreen(state.selected!!.resource, state.busy, model::back, model::updateStream,
                     onRename = { renameTitle = state.selected!!.resource.title; showRename = true }, onTrash = model::trash, modifier = detailModifier)
                 else PageDetail(state.selected!!, state.children, model::back, state.busy, state.actionError, canMovePage = !state.selectedTemplateTree, databaseName = model.databaseName, imageStatus = state.imageStatus,

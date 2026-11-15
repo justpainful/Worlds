@@ -1,7 +1,7 @@
 /** Pieces shared by Tasks, Calendar, Inbox and the Study pack. */
 import { useState, type ReactNode } from "react";
 import type { PageMeta } from "../lib/types";
-import { KIND_INFO } from "../resources/kinds";
+import { kindInfo } from "../resources/kinds";
 import { isKindHidden } from "../packs/registry";
 import { pageTitle, useStore } from "../state/store";
 import { Icon } from "../ui/Icon";
@@ -106,7 +106,7 @@ export function ItemRow({ p, showParent = true, extra }: { p: PageMeta; showPare
     meta = d.score != null ? <span className="pl-meta">{d.score}{d.maxScore != null ? `/${d.maxScore}` : ""}</span> : d.scope ? <span className="pl-meta bidi">{d.scope}</span> : null;
   }
 
-  const kindLabel = p.kind !== "task" ? <span className="pl-kind">{KIND_INFO[p.kind as keyof typeof KIND_INFO]?.label}</span> : null;
+  const kindLabel = p.kind !== "task" ? <span className="pl-kind">{kindInfo(p.kind).label}</span> : null;
 
   return (
     <div

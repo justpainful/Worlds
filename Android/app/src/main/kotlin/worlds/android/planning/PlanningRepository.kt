@@ -77,7 +77,8 @@ internal class PlanningRepository(context: Context, databaseName: String) {
     /** Merge a patch into an item's fields. The list updates right away. */
     fun update(id: String, kind: String, patch: Map<String, Any?>) {
         rows.firstOrNull { it.id == id }?.let { current ->
-            put(current.copy(data = JSONObject(mergeKindData(JSONObject().put(kind, current.data).toString(), kind, patch)).getJSONObject(kind)))
+            val key = dataKeyOf(kind)
+            put(current.copy(data = JSONObject(mergeKindData(JSONObject().put(key, current.data).toString(), kind, patch)).getJSONObject(key)))
         }
         write({ val r = fresh(id); updateDetails(id, r.revision, mergeKindData(r.metadata, kind, patch), r.instructions) })
     }

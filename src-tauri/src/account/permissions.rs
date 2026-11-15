@@ -179,6 +179,8 @@ const READ_TOOLS: &[&str] = &[
     "blocks_list_by_type",
     "resources_list",
     "presentations_read",
+    "html_pages_read",
+    "html_pages_rules",
     "drawings_read",
     "drawings_versions",
 ];

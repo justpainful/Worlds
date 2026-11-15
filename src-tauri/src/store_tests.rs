@@ -265,6 +265,43 @@ fn planning_and_study_kinds_carry_their_data_on_the_row() {
 }
 
 #[test]
+fn pack_kinds_are_accepted_by_shape_and_keep_their_fields_under_item() {
+    let (dir, conn) = temp_db("pack-kinds");
+    // Any pack.kind name is a kind, so a new sector needs no change in the store.
+    for good in ["freelance.invoice", "teacher.class", "smallbiz.product2"] {
+        assert!(store::is_pack_kind(good), "{good}");
+    }
+    for bad in ["Freelance.invoice", "freelance", "a.b.c", ".invoice", "freelance.", "free-lance.invoice", "2x.item"] {
+        assert!(!store::is_pack_kind(bad), "{bad}");
+        assert!(
+            store::create_page(&conn, &Ctx::user(), NewPage { kind: Some(bad.into()), ..Default::default() }).is_err(),
+            "{bad} is refused"
+        );
+    }
+
+    let invoice = store::create_page(
+        &conn,
+        &Ctx::user(),
+        NewPage { title: Some("Invoice 12".into()), kind: Some("freelance.invoice".into()), ..Default::default() },
+    )
+    .unwrap();
+    assert_eq!(invoice.kind, "freelance.invoice");
+    store::set_page_meta(&conn, &Ctx::user(), &invoice.id, "item", json!({ "client": "Noura Studio", "amount": 1500, "status": "sent" }))
+        .unwrap();
+    let row = store::list_pages(&conn, false).unwrap().into_iter().find(|p| p.id == invoice.id).unwrap();
+    assert_eq!(row.data["amount"], 1500);
+    assert_eq!(row.data["status"], "sent");
+
+    // Its text fields are searchable, data must be an object, and pages still carry none.
+    assert!(store::search(&conn, "Noura", 10, false).unwrap().iter().any(|h| h.page_id == invoice.id));
+    assert!(store::set_page_meta(&conn, &Ctx::user(), &invoice.id, "item", json!("nope")).is_err());
+    let page = store::create_page(&conn, &Ctx::user(), NewPage { title: Some("Plain".into()), ..Default::default() }).unwrap();
+    store::set_page_meta(&conn, &Ctx::user(), &page.id, "item", json!({ "x": 1 })).unwrap();
+    assert!(store::page_meta_by_id(&conn, &page.id).unwrap().unwrap().data.is_null());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn arabic_search_finds_the_spellings_people_type_interchangeably() {
     let (_dir, conn) = temp_db("arabic-search");
     let page =
@@ -278,4 +315,91 @@ fn arabic_search_finds_the_spellings_people_type_interchangeably() {
     assert_eq!(spellings[0], "الطاقه");
     assert!(spellings.contains(&"الطاقة".to_string()));
     assert!(store::arabic_spellings("ااااااااا").len() <= 32);
+}
+
+#[test]
+fn claude_creates_pack_items_and_changes_their_fields() {
+    let (dir, conn) = temp_db("pack-items-mcp");
+    let ctx = Ctx::user();
+    let made = crate::mcp::execute_tool(
+        &conn,
+        &ctx,
+        "resources_create",
+        &json!({ "kind": "freelance.invoice", "title": "Website", "data": { "subtotal": 1000, "status": "draft" } }),
+    )
+    .unwrap();
+    let id = made["id"].as_str().unwrap().to_string();
+    let changed = crate::mcp::execute_tool(
+        &conn,
+        &ctx,
+        "items_update",
+        &json!({ "id": id, "data": { "status": "sent", "subtotal": null, "due": "2026-12-01" } }),
+    )
+    .unwrap();
+    assert_eq!(changed["data"]["status"], "sent");
+    assert_eq!(changed["data"]["due"], "2026-12-01");
+    assert!(changed["data"].get("subtotal").is_none(), "a null clears the field");
+    let listed = crate::mcp::execute_tool(&conn, &ctx, "resources_list", &json!({ "kind": "freelance.invoice" })).unwrap();
+    assert_eq!(listed[0]["data"]["status"], "sent");
+    // A plain page has no fields to change.
+    let page = new_page(&conn, "Notes");
+    assert!(crate::mcp::execute_tool(&conn, &ctx, "items_update", &json!({ "id": page, "data": { "x": 1 } })).is_err());
+    drop(conn);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn claude_creates_and_rewrites_html_pages_within_the_rules() {
+    let (dir, conn) = temp_db("html-pages");
+    let ctx = Ctx { actor: "ai".into(), op_id: Some("op-html-1".into()), origin: "mcp".into() };
+    let rules = crate::mcp::execute_tool(&conn, &ctx, "html_pages_rules", &json!({})).unwrap();
+    assert!(rules["rules"].as_str().unwrap().contains("worlds.save"));
+
+    // A page that loads a script from the network is refused before it exists.
+    let refused = crate::mcp::execute_tool(
+        &conn,
+        &ctx,
+        "resources_create",
+        &json!({ "kind": "html", "title": "Bad", "html": "<script src=\"https://cdn.example/x.js\"></script>" }),
+    );
+    assert!(refused.is_err());
+
+    let made = crate::mcp::execute_tool(
+        &conn,
+        &ctx,
+        "resources_create",
+        &json!({ "kind": "html", "title": "Grades", "html": "<h1>Term grades</h1><div class=\"w-stat\"><b>87</b><span>Biology</span></div>" }),
+    )
+    .unwrap();
+    let id = made["id"].as_str().unwrap().to_string();
+    assert_eq!(made["kind"], "html");
+    // Its visible text is searchable; its markup is not.
+    assert!(store::search(&conn, "Biology", 10, false).unwrap().iter().any(|h| h.page_id == id));
+    assert!(!store::search(&conn, "w-stat", 10, false).unwrap().iter().any(|h| h.page_id == id));
+
+    // A rewrite that breaks a hard rule is not saved and says why.
+    let bad =
+        crate::mcp::execute_tool(&conn, &ctx, "html_pages_write", &json!({ "id": id, "html": "<iframe src=\"https://x\"></iframe>" }))
+            .unwrap();
+    assert_eq!(bad["saved"], false);
+    assert!(bad["errors"][0].as_str().unwrap().contains("iframe"));
+    let read = crate::mcp::execute_tool(&conn, &ctx, "html_pages_read", &json!({ "id": id })).unwrap();
+    assert!(read["html"].as_str().unwrap().contains("Term grades"));
+
+    // A good rewrite is saved, keeps the page's state, and can be undone from a version.
+    crate::html_page::save_state(&conn, &Ctx::user(), &id, "{\"done\":[1,2]}").unwrap();
+    let ok =
+        crate::mcp::execute_tool(&conn, &ctx, "html_pages_write", &json!({ "id": id, "html": "<h1>Term grades, final</h1>" })).unwrap();
+    assert_eq!(ok["saved"], true);
+    let after = crate::mcp::execute_tool(&conn, &ctx, "html_pages_read", &json!({ "id": id })).unwrap();
+    assert_eq!(after["html"], "<h1>Term grades, final</h1>");
+    assert_eq!(after["state"]["done"], json!([1, 2]));
+    let versions = store::list_versions(&conn, &id).unwrap();
+    assert!(!versions.is_empty(), "Claude's rewrite keeps the page before it as a version");
+
+    // Only HTML pages take HTML.
+    let page = new_page(&conn, "Notes");
+    assert!(crate::mcp::execute_tool(&conn, &ctx, "html_pages_write", &json!({ "id": page, "html": "<p>x</p>" })).is_err());
+    drop(conn);
+    let _ = std::fs::remove_dir_all(&dir);
 }

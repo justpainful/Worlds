@@ -40,6 +40,13 @@ export function NotificationsPopover({ anchor, onClose }: { anchor: HTMLElement;
 
   const openNotice = (n: Notice) => {
     void markNotificationsRead([n.id]);
+    if (n.kind === "published") {
+      // A sent item opens as this person's own copy of it.
+      const mine = Object.values(useStore.getState().pages).find((p) => !p.deletedAt && (p.data as Record<string, unknown> | undefined)?.publishedFrom === n.id);
+      if (mine) useStore.getState().openPage(mine.id, "current");
+      onClose();
+      return;
+    }
     if (useStore.getState().pages[n.docId]?.kind === "drawing") openDrawingComment(n.docId, n.threadId);
     else { useStore.getState().openPage(n.docId, "current"); useCommentsUi.getState().openThread(n.docId, n.threadId); }
     onClose();
@@ -65,13 +72,14 @@ export function NotificationsPopover({ anchor, onClose }: { anchor: HTMLElement;
           </div>
         )}
         {items.map((n) => {
-          const page = pages[n.docId];
+          // A sent item's page is in the sender's workspace, not here.
+          const page = n.kind === "published" ? undefined : pages[n.docId];
           return (
             <button key={n.id} type="button" className={`np-item ${n.readAt ? "" : "is-unread"}`} onClick={() => openNotice(n)}>
               <span className="np-mark" aria-hidden />
               <span className="np-text">
                 <span className="np-line bidi">
-                  <strong>{n.fromName || t("Someone", "عضو")}</strong> {n.kind === "mention" ? t("mentioned you", "أشار إليك") : t("replied", "ردّ")}
+                  <strong>{n.fromName || t("Someone", "عضو")}</strong> {n.kind === "mention" ? t("mentioned you", "أشار إليك") : n.kind === "published" ? t("sent you", "أرسل إليك") : t("replied", "ردّ")}
                   {page ? (
                     <>
                       {t(" in ", " في ")}

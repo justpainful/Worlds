@@ -4,6 +4,7 @@ import * as Y from "yjs";
 import { FakeSyncServer } from "./fakeServer";
 import { MemoryLocalStore } from "./localStore";
 import { fragmentOf } from "./mirror";
+import { pushFields, readFields } from "./fields";
 import { CollabSession } from "./session";
 
 const p = (bid: string, text: string): JSONContent => ({ type: "paragraph", attrs: { bid }, content: [{ type: "text", text }] });
@@ -106,5 +107,26 @@ describe("CollabSession (two computers, one shared page)", () => {
     await until(() => texts(a.store.blocks.get("page1"))[0] === "one (ben offline)", "ann receives after reconnect", 6000);
     await until(() => b.s.info.state === "synced", "ben synced");
     expect(await b.store.outbox(null)).toEqual([]);
+  });
+});
+
+describe("pack item fields (two computers, one shared invoice)", () => {
+  it("carries each person's field changes to the other through the server", async () => {
+    const server = new FakeSyncServer();
+    server.levels.set("ann", "edit");
+    server.levels.set("ben", "edit");
+    const a = pc(server, "ann");
+    const b = pc(server, "ben");
+    await a.s.start();
+    await b.s.start();
+    await until(() => a.s.info.state === "synced" && b.s.info.state === "synced", "both synced");
+    pushFields(a.s.content, { status: "draft", total: 100 });
+    await until(() => readFields(b.s.content).total === 100, "ben sees the invoice");
+    // Each changes a different field; both changes stay.
+    pushFields(a.s.content, { status: "sent", total: 100 });
+    pushFields(b.s.content, { status: "draft", total: 230 });
+    await until(() => readFields(a.s.content).total === 230 && readFields(b.s.content).status === "sent", "both changes on both");
+    expect(readFields(a.s.content)).toEqual({ status: "sent", total: 230 });
+    expect(readFields(server.docs[0])).toEqual({ status: "sent", total: 230 });
   });
 });

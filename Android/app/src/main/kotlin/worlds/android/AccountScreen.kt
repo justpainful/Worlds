@@ -112,14 +112,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
                 Text(stringResource(R.string.account_connect), style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(value = server, onValueChange = { server = it }, enabled = !state.busy,
-                    label = { Text(stringResource(R.string.account_server)) }, leadingIcon = { WorldsGlyph(R.drawable.ic_server) }, singleLine = true,
+                    label = { Text(stringResource(R.string.account_server)) }, placeholder = { Text(OFFICIAL_SERVER) }, leadingIcon = { WorldsGlyph(R.drawable.ic_server) }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next, autoCorrectEnabled = false), textStyle = LocalTextStyle.current.copy(textDirection = TextDirection.Ltr), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(value = email, onValueChange = { email = it }, enabled = !state.busy,
                     label = { Text(stringResource(R.string.account_email)) }, leadingIcon = { WorldsGlyph(R.drawable.ic_mail) }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Done, autoCorrectEnabled = false), textStyle = LocalTextStyle.current.copy(textDirection = TextDirection.Ltr), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(16.dp))
-                Button(enabled = !state.busy, onClick = { keyboard?.hide(); model.sendCode(server, email) }) { WorldsActionLabel(R.drawable.ic_send_horizontal, stringResource(R.string.account_send_code)) }
+                Button(enabled = !state.busy, onClick = { keyboard?.hide(); model.sendCode(server.ifBlank { OFFICIAL_SERVER }, email) }) { WorldsActionLabel(R.drawable.ic_send_horizontal, stringResource(R.string.account_send_code)) }
                 }
             }
             AccountStage.CODE -> {

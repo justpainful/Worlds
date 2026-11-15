@@ -15,7 +15,7 @@ import { isKindHidden } from "../packs/registry";
 import { createItem } from "../planning/actions";
 import { today } from "../planning/model";
 import { openQuickCapture } from "../planning/InboxView";
-import { createSubject } from "../study/StudyViews";
+import { packCommands } from "../packs/actions";
 import { startTour } from "./Tour";
 import { translate } from "../i18n/ui";
 import { foldArabic } from "../i18n/locale";
@@ -79,6 +79,7 @@ function commands(): Cmd[] {
     { id: "new-spreadsheet", title: "New Spreadsheet", icon: "table", keywords: "excel sheet table formula csv xlsx جدول اكسل حسابات", run: (where) => { void createResource("spreadsheet", { where }); } },
     { id: "new-presentation", title: "New Presentation", icon: "monitor", keywords: "slides deck powerpoint keynote", run: () => createResource("presentation") },
     { id: "new-drawing", title: "New Drawing", icon: "edit", keywords: "paint canvas brush draw رسم رسمة لوحة فرشاة", run: (where) => { void createResource("drawing", { where }); } },
+    { id: "new-html", title: "New HTML page", icon: "code", keywords: "html web page tool tracker calculator report صفحة ويب أداة تقرير", run: (where) => { void createResource("html", { where }); } },
     { id: "new-project", title: "New Project", icon: "folder", keywords: "folder organize", run: () => createResource("project") },
     { id: "new-gallery", title: "New Gallery", icon: "image", keywords: "photos album pictures videos", run: () => createResource("gallery") },
     { id: "upload", title: "Upload Files", icon: "upload", keywords: "import add file pdf video image", run: () => uploadFiles() },
@@ -113,12 +114,8 @@ function commands(): Cmd[] {
       { id: "archive", title: page.archived ? "Unarchive Page" : "Archive Page", icon: "archive", run: () => pageOps.archive(page) },
     );
   }
-  if (!isKindHidden("subject")) {
-    list.push(
-      { id: "study", title: "Study", icon: "folder", keywords: "subjects timetable homework exams دراسة مواد", run: (w) => s.open({ kind: "study" }, w) },
-      { id: "new-subject", title: "New Subject", icon: "folder", keywords: "course class teacher مادة", run: () => { void createSubject(); } },
-    );
-  }
+  // Each enabled pack: open its views and create its kinds.
+  list.push(...packCommands(s.settings, s.open));
   if (s.settings["advanced.developer"]) {
     list.push({ id: "lab", title: "Material Lab", icon: "layers", keywords: "glass debug playground", run: (w) => s.open({ kind: "playground" }, w) });
   }

@@ -178,6 +178,17 @@ Rules:\n\
             s.push_str(&format!("- {g}\n"));
         }
     }
+    // The packs the user turned on, their kinds and fields, as the app wrote them (docs/PACKS.md).
+    let packs = setting_str(conn, "packs.ai", "");
+    if !packs.is_empty() {
+        s.push_str(
+            "\nPacks turned on. Their items are resources: find them with resources_list (by kind), make them with \
+resources_create (kind, title, and data keyed by the field ids below), and change fields with items_update. \
+Dates are YYYY-MM-DD, times HH:MM, money a plain number, a choice or stage one of its ids, a link the id of another item.\n",
+        );
+        s.push_str(&packs);
+        s.push('\n');
+    }
     if let Some(pid) = page_id {
         if let Some(p) = store::get_page(conn, pid)? {
             s.push_str(&format!("\nThe user is looking at the page “{}” (id {}).\n", p.meta.title, pid));

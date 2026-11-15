@@ -218,7 +218,13 @@ async fn run(app: &tauri::AppHandle, db: &Mutex<Connection>, secrets: &dyn Secre
         "emailStart" => {
             let base = base_url(db)?;
             let email = s(a, "email")?.trim().to_lowercase();
-            Ok(client::send(&base, Method::POST, "/auth/email/start", Some(&json!({ "email": email })), None, None).await?)
+            // The code email is written in the app's language ("ar" or "en").
+            let lang = a.get("lang").and_then(Value::as_str).filter(|l| matches!(*l, "ar" | "en"));
+            let body = match lang {
+                Some(l) => json!({ "email": email, "lang": l }),
+                None => json!({ "email": email }),
+            };
+            Ok(client::send(&base, Method::POST, "/auth/email/start", Some(&body), None, None).await?)
         }
         "emailVerify" => {
             let base = base_url(db)?;
@@ -426,6 +432,15 @@ async fn run(app: &tauri::AppHandle, db: &Mutex<Connection>, secrets: &dyn Secre
                 None,
             )
             .await?)
+        }
+        // Pack roles (docs/PACKS.md, Roles): who has which role in each pack.
+        "packRoles" => Ok(authed(db, secrets, Method::GET, &format!("/workspaces/{}/pack-roles", s(a, "workspaceId")?), None, None).await?),
+        "setPackRole" => {
+            let body = json!({
+                "userId": s(a, "userId")?, "packId": s(a, "packId")?,
+                "roleId": a.get("roleId").cloned().unwrap_or(Value::Null), "restricted": a.get("restricted").cloned().unwrap_or(json!(false)),
+            });
+            Ok(authed(db, secrets, Method::PUT, &format!("/workspaces/{}/pack-roles", s(a, "workspaceId")?), Some(&body), None).await?)
         }
         "invites" => {
             let query = a.get("pageId").and_then(Value::as_str).map(|p| format!("?pageId={p}")).unwrap_or_default();

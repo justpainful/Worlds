@@ -43,6 +43,14 @@ targets:
         buildPhase: resources
       - path: ProjectEditorHarness/Fixtures/worlds-v11.db
         buildPhase: resources
+      # HTML pages run the desktop's base styles, runtime and fonts unchanged.
+      - path: ../src/htmlpage/base.css
+        buildPhase: resources
+      - path: ../src/htmlpage/runtime.js
+        buildPhase: resources
+      - path: ../src-tauri/assets/htmlpage-fonts
+        type: folder
+        buildPhase: resources
     dependencies:
       - package: WorldsCore
         product: WorldsModels
@@ -66,6 +74,10 @@ targets:
         product: WorldsAccountViews
       - package: WorldsCore
         product: WorldsIdentityContinuity
+      - package: WorldsCore
+        product: WorldsCollaboration
+      - package: WorldsCore
+        product: WorldsCollaborationHost
       - package: WorldsCore
         product: WorldsMedia
       - package: WorldsCore
@@ -147,6 +159,14 @@ targets:
         buildPhase: resources
       - path: ProjectEditorHarness/Fixtures/worlds-v11.db
         buildPhase: resources
+      # HTML pages run the desktop's base styles, runtime and fonts unchanged.
+      - path: ../src/htmlpage/base.css
+        buildPhase: resources
+      - path: ../src/htmlpage/runtime.js
+        buildPhase: resources
+      - path: ../src-tauri/assets/htmlpage-fonts
+        type: folder
+        buildPhase: resources
     dependencies:
       - package: WorldsCore
         product: WorldsModels
@@ -170,6 +190,10 @@ targets:
         product: WorldsAccountViews
       - package: WorldsCore
         product: WorldsIdentityContinuity
+      - package: WorldsCore
+        product: WorldsCollaboration
+      - package: WorldsCore
+        product: WorldsCollaborationHost
       - package: WorldsCore
         product: WorldsMedia
       - package: WorldsCore

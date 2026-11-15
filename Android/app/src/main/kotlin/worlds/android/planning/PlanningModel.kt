@@ -20,6 +20,15 @@ internal val STUDY_KINDS = setOf("subject", "lesson", "assignment", "exam", "req
 /** Every kind whose fields live in `metadata.<kind>` (desktop DATA_KINDS). */
 internal val DATA_KINDS = setOf("task", "event", "inbox", "goal", "subject", "lesson", "assignment", "exam", "requirement")
 
+/** A pack kind ("teacher.class") keeps its fields under `metadata.item` (docs/PACKS.md). */
+internal fun isPackKind(kind: String): Boolean = worlds.content.ContentStore.isPackKind(kind)
+
+/** Where a kind's fields live in its metadata. */
+internal fun dataKeyOf(kind: String): String = if (isPackKind(kind)) "item" else kind
+
+/** Kinds that open in their own screens, not in Home and the Library: planning kinds and pack items. */
+internal fun hasOwnView(kind: String): Boolean = kind in OWN_VIEW_KINDS || isPackKind(kind)
+
 /**
  * Things you plan and tick off, plus subjects, live in Tasks, Calendar and
  * Study rather than in Home and the Library (desktop ITEM_KINDS in
@@ -130,8 +139,8 @@ internal data class PlanRow(
 
 /** The kind's own object inside a resource's metadata, or an empty one. */
 internal fun kindData(metadata: String, kind: String): JSONObject {
-    if (kind !in DATA_KINDS) return JSONObject()
-    return runCatching { JSONObject(metadata).optJSONObject(kind) }.getOrNull() ?: JSONObject()
+    if (kind !in DATA_KINDS && !isPackKind(kind)) return JSONObject()
+    return runCatching { JSONObject(metadata).optJSONObject(dataKeyOf(kind)) }.getOrNull() ?: JSONObject()
 }
 
 internal class TaskData(d: JSONObject) {
@@ -206,7 +215,7 @@ private fun toJson(v: Any?): Any = when (v) {
 }
 
 /** Metadata for a new resource of a planning kind: `{ "<kind>": { ... } }`. */
-internal fun newKindMetadata(kind: String, fields: Map<String, Any?>): String = JSONObject().put(kind, jsonOf(fields)).toString()
+internal fun newKindMetadata(kind: String, fields: Map<String, Any?>): String = JSONObject().put(dataKeyOf(kind), jsonOf(fields)).toString()
 
 /**
  * Merge a patch into `metadata.<kind>` and leave every other key alone, as the
@@ -216,10 +225,11 @@ internal fun mergeKindData(metadata: String, kind: String, patch: Map<String, An
     replaceKindData(metadata, kind) { current -> current.also { o -> patch.forEach { (k, v) -> o.put(k, toJson(v)) } } }
 
 internal fun replaceKindData(metadata: String, kind: String, change: (JSONObject) -> JSONObject): String {
-    require(kind in DATA_KINDS)
+    require(kind in DATA_KINDS || isPackKind(kind))
+    val key = dataKeyOf(kind)
     val root = runCatching { JSONObject(metadata) }.getOrElse { JSONObject() }
-    val current = root.optJSONObject(kind)?.let { JSONObject(it.toString()) } ?: JSONObject()
-    return root.put(kind, change(current)).toString()
+    val current = root.optJSONObject(key)?.let { JSONObject(it.toString()) } ?: JSONObject()
+    return root.put(key, change(current)).toString()
 }
 
 /**

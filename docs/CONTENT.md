@@ -22,6 +22,7 @@ So every kind gets all of that, with persistence, from the first day. Existing d
 | `presentation` | blocks of type `slide` | each slide: layout, background, notes, positioned elements |
 | `gallery` | blocks of type `galleryItem` | attachment + caption; manual order = block order; `metadata.gallery.view` grid/list |
 | `file` | `metadata.file` | the attachment id; preview by type; no blocks |
+| `html` | `metadata.html` | one HTML document (`source`) and the JSON it saved (`state`); shown in a sandbox under the Worlds base styles, checked against [HTML_PAGES.md](HTML_PAGES.md) before it is saved |
 | `stream` | `metadata.stream` | external URL + format (HLS, DASH, progressive); never treated as a local file |
 | `project` | `metadata.project` | status, dates, description; children by tree; `metadata.project.links` for linked resources that live elsewhere |
 | `template` | blocks | unchanged (not a resource the user browses) |

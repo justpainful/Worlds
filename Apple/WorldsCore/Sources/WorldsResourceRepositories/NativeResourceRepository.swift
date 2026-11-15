@@ -11,6 +11,19 @@ public struct SpreadsheetRecord: Sendable {
     /// The complete resource metadata; the workbook is its `sheet` key.
     public let metadata: JSONValue
 }
+/// A pack item (docs/PACKS.md): its kind ("shop.order") and complete metadata; its fields are the `item` key.
+public struct PackItemRecord: Sendable {
+    public let id: String
+    public let kind: String
+    public let revision: Int64
+    public let metadata: JSONValue
+}
+/// An HTML page (docs/HTML_PAGES.md): its complete metadata, with the page at `html.source` and its saved state at `html.state`.
+public struct HTMLPageRecord: Sendable {
+    public let id: String
+    public let revision: Int64
+    public let metadata: JSONValue
+}
 public struct StreamRecord: Sendable {
     public let id: String
     public let revision: Int64
@@ -34,6 +47,22 @@ public actor NativeResourceRepository: ProjectRepository, GalleryRepository {
         guard record.kind == "stream", record.id == id else { throw NativeResourceRepositoryError.malformedResponse }
         return StreamRecord(id: record.id, revision: record.revision, metadata: record.metadata)
     }
+    public func readHTMLPage(id: String) async throws -> HTMLPageRecord {
+        let record = try parse(await store.readResource(id: id))
+        guard record.kind == "html", record.id == id else { throw NativeResourceRepositoryError.malformedResponse }
+        return HTMLPageRecord(id: record.id, revision: record.revision, metadata: record.metadata)
+    }
+    /// Keeps `state` (JSON) as the page's saved state, leaving its source and other metadata as in `baseline`.
+    public func saveHTMLState(id: String, baseline: HTMLPageRecord, state: JSONValue) async throws -> HTMLPageRecord {
+        guard baseline.id == id, case .object(var metadata) = baseline.metadata else { throw NativeResourceRepositoryError.malformedResponse }
+        var html: [String: JSONValue] = [:]
+        if case .object(let current)? = metadata["html"] { html = current }
+        html["state"] = state
+        metadata["html"] = .object(html)
+        let record = try parse(await store.saveHTMLState(id: id, base: baseline.revision, expectedMetadata: baseline.metadata, metadata: .object(metadata)))
+        guard record.kind == "html", record.id == id else { throw NativeResourceRepositoryError.malformedResponse }
+        return HTMLPageRecord(id: record.id, revision: record.revision, metadata: record.metadata)
+    }
     public func readSpreadsheet(id: String) async throws -> SpreadsheetRecord {
         let record = try parse(await store.readResource(id: id))
         guard record.kind == "spreadsheet", record.id == id else { throw NativeResourceRepositoryError.malformedResponse }
@@ -45,6 +74,18 @@ public actor NativeResourceRepository: ProjectRepository, GalleryRepository {
         let record = try parse(await store.saveSpreadsheet(id: id, base: baseline.revision, expectedMetadata: baseline.metadata, metadata: metadata))
         guard record.kind == "spreadsheet", record.id == id else { throw NativeResourceRepositoryError.malformedResponse }
         return SpreadsheetRecord(id: record.id, revision: record.revision, metadata: record.metadata)
+    }
+    public func readPackItem(id: String) async throws -> PackItemRecord {
+        let record = try parse(await store.readResource(id: id))
+        guard record.kind.contains("."), record.id == id else { throw NativeResourceRepositoryError.malformedResponse }
+        return PackItemRecord(id: record.id, kind: record.kind, revision: record.revision, metadata: record.metadata)
+    }
+    /// Saves `metadata`, which must equal the baseline except for its `item` key.
+    public func savePackItem(id: String, baseline: PackItemRecord, metadata: JSONValue) async throws -> PackItemRecord {
+        guard baseline.id == id else { throw NativeResourceRepositoryError.malformedResponse }
+        let record = try parse(await store.savePackItem(id: id, base: baseline.revision, expectedMetadata: baseline.metadata, metadata: metadata))
+        guard record.kind == baseline.kind, record.id == id else { throw NativeResourceRepositoryError.malformedResponse }
+        return PackItemRecord(id: record.id, kind: record.kind, revision: record.revision, metadata: record.metadata)
     }
     public func readProject(id: String) async throws -> ProjectRecord {
         let value = try await store.readResource(id: id)

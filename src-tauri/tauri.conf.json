@@ -37,7 +37,7 @@
         "media-src": "'self' data: blob: http://wfile.localhost wfile: https: http:",
         "font-src": "'self' data:",
         "connect-src": "'self' ipc: http://ipc.localhost http://wfile.localhost wfile: https: http:",
-        "frame-src": "http://wfile.localhost wfile: blob: https:",
+        "frame-src": "http://wfile.localhost wfile: http://whtml.localhost whtml: blob: https:",
         "object-src": "'none'",
         "base-uri": "'self'",
         "form-action": "'none'"

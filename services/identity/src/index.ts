@@ -2,7 +2,7 @@ import { WorkerEntrypoint } from "cloudflare:workers";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { AppEnv, Env } from "./env";
-import { checkAccess, listDocs } from "./domain/access";
+import { checkAccess, listDocs, packMembers } from "./domain/access";
 import type { Level } from "./domain/roles";
 import { retryOutbox } from "./lib/events";
 import { ApiError } from "./lib/http";
@@ -70,6 +70,12 @@ export class IdentityRPC extends WorkerEntrypoint<Env> {
   async checkAccess(args: { userId: string; workspaceId: string; docId: string }): Promise<{ level: AccessLevel }> {
     if (!args || typeof args.userId !== "string" || typeof args.workspaceId !== "string" || typeof args.docId !== "string") return { level: "none" };
     return checkAccess(this.env.DB, args);
+  }
+
+  /** Members holding a role in a pack, for publishing to them (docs/PACKS.md, Design 3). */
+  async packMembers(args: { workspaceId: string; packId: string; roleId: string }): Promise<{ userIds: string[] }> {
+    if (!args || typeof args.workspaceId !== "string" || typeof args.packId !== "string" || typeof args.roleId !== "string") return { userIds: [] };
+    return { userIds: await packMembers(this.env.DB, args) };
   }
 
   async listDocs(args: { userId: string; workspaceId: string }): Promise<{ docId: string; level: AccessLevel }[]> {

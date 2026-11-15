@@ -50,6 +50,38 @@ public final class NativeCRDTDocument: @unchecked Sendable {
         defer { worlds_buffer_free(buffer) }
         return Data(bytes: bytes, count: buffer.len)
     }
+    /// Every block of the page as Tiptap JSON, for reading only. Unlike
+    /// `plainProjection`, headings, lists and other blocks do not reject the page.
+    public func readProjection() throws -> Data {
+        lock.lock(); defer { lock.unlock() }
+        var buffer = WorldsBuffer(data: nil, len: 0)
+        guard worlds_doc_read_projection(handle, &buffer) == 0, let bytes = buffer.data else { throw CRDTError.invalidUpdate }
+        defer { worlds_buffer_free(buffer) }
+        return Data(bytes: bytes, count: buffer.len)
+    }
+    /// A shared pack item's kind and fields as JSON (docs/PACKS.md), written by the desktop next to the blocks.
+    public func packFields() throws -> Data {
+        lock.lock(); defer { lock.unlock() }
+        var buffer = WorldsBuffer(data: nil, len: 0)
+        guard worlds_doc_pack_fields(handle, &buffer) == 0, let bytes = buffer.data else { throw CRDTError.poisoned }
+        defer { worlds_buffer_free(buffer) }
+        return Data(bytes: bytes, count: buffer.len)
+    }
+    /// The update that sets and removes a shared pack item's fields, prepared
+    /// on a private replica of `base` (a full state). Request:
+    /// `{"set": {...}, "remove": [...]}`. Callers check access and persist first.
+    public static func preparePackFields(base: Data, request: Data) throws -> Data {
+        var buffer = WorldsBuffer(data: nil, len: 0)
+        let code = base.withUnsafeBytes { baseBytes in
+            request.withUnsafeBytes { requestBytes in
+                worlds_prepare_pack_fields(baseBytes.bindMemory(to: UInt8.self).baseAddress, baseBytes.count,
+                                           requestBytes.bindMemory(to: UInt8.self).baseAddress, requestBytes.count, &buffer)
+            }
+        }
+        guard code == 0, let bytes = buffer.data else { throw CRDTError.invalidUpdate }
+        defer { worlds_buffer_free(buffer) }
+        return Data(bytes: bytes, count: buffer.len)
+    }
     public func apply(_ update: Data) throws {
         lock.lock(); defer { lock.unlock() }
         let code = update.withUnsafeBytes { bytes in

@@ -482,7 +482,7 @@ const INVITE_MESSAGES: Record<string, string> = {
 
 /** Preview an invite (no account needed). */
 invites.get("/:token", async (c) => {
-  await rateLimit(c.env.DB, `invite-view:ip:${clientIp(c.req.raw)}`, 60, 10 * 60 * 1000);
+  await rateLimit(c.env.DB, `invite-view:ip:${clientIp(c.req.raw, c.env.EDGE_SECRET)}`, 60, 10 * 60 * 1000);
   const i = await inviteByToken(c.env.DB, c.req.param("token"));
   const problem = inviteProblem(i);
   if (!i || problem) return c.json({ valid: false, reason: problem, message: INVITE_MESSAGES[problem!] });
@@ -547,12 +547,13 @@ workspaces.put("/:id/tree", async (c) => {
   const id = c.req.param("id");
   const role = await roleIn(c, id);
   const b = await body(c.req);
-  const nodes = Array.isArray(b.nodes) ? (b.nodes as { id?: unknown; parentId?: unknown }[]) : null;
+  const nodes = Array.isArray(b.nodes) ? (b.nodes as { id?: unknown; parentId?: unknown; title?: unknown }[]) : null;
   if (!nodes || nodes.length > 5000) throw bad("invalid_request", "nodes must be a list of at most 5000 pages");
   const removed = Array.isArray(b.removed) ? (b.removed as unknown[]).filter((x): x is string => typeof x === "string") : [];
   for (const n of nodes) {
     if (typeof n.id !== "string" || !n.id || n.id.length > 64) throw bad("invalid_request", "every node needs an id");
     if (n.parentId !== null && n.parentId !== undefined && (typeof n.parentId !== "string" || n.parentId.length > 64)) throw bad("invalid_request", "parentId must be a page id or null");
+    if (n.title !== null && n.title !== undefined && (typeof n.title !== "string" || n.title.length > MAX_TITLE)) throw bad("invalid_request", `title must be text of at most ${MAX_TITLE} characters`);
   }
   const acl = await loadAcl(c.env.DB, id);
   const subject = await loadSubject(c.env.DB, id, caller.userId);
@@ -564,9 +565,17 @@ workspaces.put("/:id/tree", async (c) => {
   // Work on a copy so cycle checks see earlier nodes in the same request.
   const next: WorkspaceAcl = { tree: new Map(acl.tree), entries: acl.entries };
 
-  for (const n of nodes as { id: string; parentId?: string | null }[]) {
+  // Titles are only read when a node carries one, so older devices cost nothing.
+  const titles = nodes.some((n) => n.title !== undefined) ? await pageTitles(c.env.DB, id) : new Map<string, string | null>();
+  for (const n of nodes as { id: string; parentId?: string | null; title?: string | null }[]) {
     const parentId = n.parentId ?? null;
     const cur = acl.tree.get(n.id);
+    const title = n.title === undefined ? undefined : cleanTitle(n.title);
+    // Renaming a page that is already mirrored takes edit on it. A device
+    // without edit sends the title it last saw: that is not a rename, skip it.
+    if (cur && title !== undefined && title !== (titles.get(n.id) ?? null) && atLeast(level(n.id), "edit")) {
+      stmts.push(c.env.DB.prepare("UPDATE pages SET title = ?1, updated_at = ?2 WHERE workspace_id = ?3 AND id = ?4").bind(title, t, id, n.id));
+    }
     if (cur && cur.parentId === parentId) continue;
     if (parentId === n.id) {
       rejected.push({ id: n.id, reason: "cycle" });
@@ -582,7 +591,7 @@ workspaces.put("/:id/tree", async (c) => {
         rejected.push({ id: n.id, reason: parentId ? "no_edit_on_parent" : "guests_cannot_add_top_level_pages" });
         continue;
       }
-      stmts.push(c.env.DB.prepare("INSERT INTO pages (workspace_id, id, parent_id, created_by, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)").bind(id, n.id, parentId, caller.userId, t));
+      stmts.push(c.env.DB.prepare("INSERT INTO pages (workspace_id, id, parent_id, created_by, updated_at, title) VALUES (?1, ?2, ?3, ?4, ?5, ?6)").bind(id, n.id, parentId, caller.userId, t, title ?? null));
     } else {
       // A device that cannot see the current parent does not have it locally
       // and reports the page at the top level: that is not a move, skip it.
@@ -630,7 +639,8 @@ workspaces.put("/:id/tree", async (c) => {
 /**
  * The caller's level on every mirrored page, "none" included, so the app can
  * cache its rights and enforce them offline (a missing entry would otherwise
- * fall back to the parent's level).
+ * fall back to the parent's level). A page's title, when a device recorded
+ * one, comes only with pages the caller can open.
  */
 workspaces.get("/:id/access", async (c) => {
   const id = c.req.param("id");
@@ -638,9 +648,28 @@ workspaces.get("/:id/access", async (c) => {
   const w = await workspaceView(c.env.DB, id, role);
   const acl = await loadAcl(c.env.DB, id);
   const subject = await loadSubject(c.env.DB, id, c.get("caller").userId);
-  const docs = [...acl.tree.keys()].map((docId) => ({ docId, level: resolve(acl, subject, docId) }));
+  const titles = await pageTitles(c.env.DB, id);
+  const docs = [...acl.tree.keys()].map((docId) => {
+    const level = resolve(acl, subject, docId);
+    const title = level === "none" ? null : titles.get(docId) ?? null;
+    return title === null ? { docId, level } : { docId, level, title };
+  });
   return c.json({ role, defaultLevel: w.defaultLevel, docs });
 });
+
+const MAX_TITLE = 300;
+
+/** Trimmed, control characters removed, null when nothing is left. */
+function cleanTitle(value: string | null): string | null {
+  if (value === null) return null;
+  const text = value.replace(/[\u0000-\u001f\u007f]/g, " ").trim();
+  return text ? text : null;
+}
+
+async function pageTitles(db: D1Database, workspaceId: string): Promise<Map<string, string | null>> {
+  const rows = await db.prepare("SELECT id, title FROM pages WHERE workspace_id = ?1").bind(workspaceId).all<{ id: string; title: string | null }>();
+  return new Map(rows.results.map((r) => [r.id, r.title]));
+}
 
 /** True when making `parentId` the parent of `id` would put `id` above itself. */
 function wouldCycle(acl: WorkspaceAcl, id: string, parentId: string): boolean {
@@ -782,6 +811,55 @@ workspaces.patch("/:id/pages/:pageId", async (c) => {
     [{ type: "access.changed", workspaceId: id, docIds: [pageId, ...descendants(acl, pageId)], userIds: null }],
   );
   return c.json({ ok: true, inherit });
+});
+
+// ---------------------------------------------------------------------------
+// Pack roles (docs/PACKS.md, Roles)
+// ---------------------------------------------------------------------------
+
+const PACK_PART = /^[a-z][a-z0-9]{0,31}$/;
+
+/** Owners and admins see every member's pack roles; anyone else sees their own. */
+workspaces.get("/:id/pack-roles", async (c) => {
+  const id = c.req.param("id");
+  const role = await roleIn(c, id);
+  const all = canManageGroups(role);
+  const stmt = all
+    ? c.env.DB.prepare("SELECT user_id, pack_id, role_id, restricted, updated_at FROM pack_roles WHERE workspace_id = ?1 ORDER BY pack_id, user_id").bind(id)
+    : c.env.DB.prepare("SELECT user_id, pack_id, role_id, restricted, updated_at FROM pack_roles WHERE workspace_id = ?1 AND user_id = ?2 ORDER BY pack_id").bind(id, c.get("caller").userId);
+  const { results } = await stmt.all<{ user_id: string; pack_id: string; role_id: string; restricted: number; updated_at: number }>();
+  return c.json(results.map((r) => ({ userId: r.user_id, packId: r.pack_id, roleId: r.role_id, restricted: !!r.restricted, updatedAt: r.updated_at })));
+});
+
+/** Give a member a role in a pack (roleId null removes it). Restricted roles cannot open items' hidden fields. */
+workspaces.put("/:id/pack-roles", async (c) => {
+  const caller = c.get("caller");
+  const id = c.req.param("id");
+  if (!canManageGroups(await roleIn(c, id))) throw forbidden("forbidden", "Only owners and admins can give pack roles.");
+  const b = await body(c.req);
+  const userId = str(b.userId, "userId", 64);
+  const packId = str(b.packId, "packId", 32);
+  if (!PACK_PART.test(packId)) throw bad("invalid_pack", "packId is a pack's id, such as teacher");
+  const roleId = b.roleId === null ? null : str(b.roleId, "roleId", 32);
+  if (roleId !== null && !PACK_PART.test(roleId)) throw bad("invalid_role", "roleId is a role's id, such as student");
+  if (roleId !== null && typeof b.restricted !== "boolean") throw bad("invalid_request", "restricted must be true or false");
+  const member = await c.env.DB.prepare("SELECT 1 FROM members WHERE workspace_id = ?1 AND user_id = ?2").bind(id, userId).first();
+  if (!member) throw notFound("member_not_found", "Member not found.");
+  const stmt =
+    roleId === null
+      ? c.env.DB.prepare("DELETE FROM pack_roles WHERE workspace_id = ?1 AND user_id = ?2 AND pack_id = ?3").bind(id, userId, packId)
+      : c.env.DB.prepare(
+          "INSERT INTO pack_roles (workspace_id, user_id, pack_id, role_id, restricted, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6) " +
+            "ON CONFLICT (workspace_id, user_id, pack_id) DO UPDATE SET role_id = excluded.role_id, restricted = excluded.restricted, updated_at = excluded.updated_at",
+        ).bind(id, userId, packId, roleId, b.restricted ? 1 : 0, now());
+  await commit(
+    c,
+    [stmt],
+    [auditOf(caller, id, { action: roleId === null ? "pack_role.removed" : "pack_role.set", targetType: "member", targetId: userId, meta: { packId, roleId, restricted: !!b.restricted } })],
+    // Open hidden documents are checked again for this person at once.
+    [{ type: "access.changed", workspaceId: id, docIds: null, userIds: [userId] }],
+  );
+  return c.json({ userId, packId, roleId, restricted: roleId === null ? false : !!b.restricted });
 });
 
 workspaces.get("/:id/audit", async (c) => {

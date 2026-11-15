@@ -12,6 +12,13 @@ object YrsNative {
     @JvmStatic private external fun commentsJsonBytes(snapshot: ByteArray): ByteArray
     @JvmStatic private external fun replyCommentBytes(snapshot: ByteArray, request: ByteArray): ByteArray
     fun commentsJson(snapshot: ByteArray): String = commentsJsonBytes(snapshot).toString(Charsets.UTF_8)
+    @JvmStatic private external fun fieldsJsonBytes(snapshot: ByteArray): ByteArray
+    @JvmStatic private external fun setFieldsBytes(snapshot: ByteArray, request: ByteArray): ByteArray
+    /** A shared pack item's kind and fields: {"kind": ..., "fields": {...}} (docs/PACKS.md). */
+    fun fieldsJson(snapshot: ByteArray): String = fieldsJsonBytes(snapshot).toString(Charsets.UTF_8)
+    /** The update that sets and removes pack item fields, merged field by field with other devices. */
+    fun setFields(snapshot: ByteArray, set: org.json.JSONObject, remove: List<String>): ByteArray =
+        setFieldsBytes(snapshot, org.json.JSONObject().put("set", set).put("remove", org.json.JSONArray(remove)).toString().toByteArray(Charsets.UTF_8))
     fun changeComment(snapshot: ByteArray, action: String, thread: String, author: String, body: String? = null, resolved: Boolean? = null, comment: String? = null, expectedBody: String? = null): ByteArray {
         val request = JSONObject().put("action", action).put("thread", thread).put("id", java.util.UUID.randomUUID().toString()).put("author", author).put("createdAt", System.currentTimeMillis())
         if (body != null) request.put("body", body)

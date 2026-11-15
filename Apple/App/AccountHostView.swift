@@ -17,6 +17,18 @@ struct AccountHostView: View {
             Group {
                 if let coordinator {
                     WorldsAccountView(coordinator: coordinator, deviceName: deviceName, platform: platform)
+                        #if canImport(WorldsCollaborationHost)
+                        .toolbar {
+                            ToolbarItem(placement: .primaryAction) {
+                                NavigationLink {
+                                    SharedWorkspacesView(coordinator: coordinator)
+                                } label: {
+                                    Label("Shared pages", systemImage: "doc.on.doc")
+                                }
+                                .accessibilityIdentifier("shared-pages-button")
+                            }
+                        }
+                        #endif
                 } else {
                     Form {
                         Section("Identity service") {
@@ -45,7 +57,8 @@ struct AccountHostView: View {
     }
 
     private var buildDefault: String {
-        (Bundle.main.object(forInfoDictionaryKey: "WorldsIdentityURL") as? String) ?? ""
+        // A build may name its own service; otherwise the official one.
+        (Bundle.main.object(forInfoDictionaryKey: "WorldsIdentityURL") as? String) ?? "https://login.enterworlds.space"
     }
     private var platform: String {
         #if os(macOS)

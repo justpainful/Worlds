@@ -14,8 +14,11 @@ public struct ConversationView: View {
     @State private var fixtureReferenceDraft = ""
     #endif
 
-    public init(conversationID: String, service: any ConversationService) {
-        _model = StateObject(wrappedValue: ConversationViewModel(conversationID: conversationID, service: service))
+    /// `initialDraft` fills the message box, for a request the person chose elsewhere; it is not sent until they send it.
+    public init(conversationID: String, service: any ConversationService, initialDraft: String = "") {
+        let model = ConversationViewModel(conversationID: conversationID, service: service)
+        model.draft = initialDraft
+        _model = StateObject(wrappedValue: model)
     }
     public var body: some View {
         ScrollView {

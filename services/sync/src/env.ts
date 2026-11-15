@@ -15,6 +15,8 @@ export interface AccessQuery {
  */
 export interface IdentityRpc {
   checkAccess(q: AccessQuery): Promise<{ level: AccessLevel }>;
+  /** Members holding a role in a pack, for publishing to them (docs/PACKS.md, Design 3). */
+  packMembers(q: { workspaceId: string; packId: string; roleId: string }): Promise<{ userIds: string[] }>;
 }
 
 export interface Env {
@@ -36,6 +38,8 @@ export interface Env {
   SIGNING_SECRET: string;
   /** Allowed CORS origins, comma separated, or "*". */
   ALLOWED_ORIGINS?: string;
+  /** The public address, e.g. https://connect.enterworlds.space, for links this service hands out. Defaults to the request's own origin. */
+  PUBLIC_URL?: string;
 
   /** Tuning (strings because they come from [vars]). */
   COMPACT_EVERY?: string;

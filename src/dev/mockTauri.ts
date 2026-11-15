@@ -339,7 +339,9 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
       // Like the backend, only pages and documents have a text preview.
       if (["page", "document", "lesson"].includes(pages[pid].kind)) pages[pid].preview = previewOf(blocks[pid] ?? []);
       metadata[pid] = a.page.metadata ?? {};
-      if (metadata[pid][pages[pid].kind] !== undefined) pages[pid].data = metadata[pid][pages[pid].kind];
+      // A pack kind (freelance.invoice) keeps its fields under item, like the backend.
+      const dataKey = pages[pid].kind.includes(".") ? "item" : pages[pid].kind;
+      if (metadata[pid][dataKey] !== undefined) pages[pid].data = metadata[pid][dataKey];
       return pages[pid];
     }
     case "page_delete": {const page=pages[a.id];if(page){const t=Date.now();const walk=(pid:string)=>{if(pages[pid]&&!pages[pid].deletedAt){pages[pid].deletedAt=t;}for(const c of Object.values(pages))if(c.parentId===pid)walk(c.id);};walk(a.id);page.updatedAt=t;}return;}
@@ -352,9 +354,21 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
       Object.assign(pages[a.id], rest, { updatedAt: Date.now() });
       return pages[a.id];
     }
+    case "html_page_write": {
+      // The desktop checks the rules in Rust; the web version saves as typed.
+      const prev = (metadata[a.id]?.html ?? {}) as Record<string, unknown>;
+      metadata[a.id] = { ...(metadata[a.id] ?? {}), html: { ...prev, source: a.source } };
+      pages[a.id].updatedAt = Date.now();
+      return { errors: [], warnings: [] };
+    }
+    case "html_page_save_state": {
+      const prev = (metadata[a.id]?.html ?? {}) as Record<string, unknown>;
+      metadata[a.id] = { ...(metadata[a.id] ?? {}), html: { ...prev, state: JSON.parse(a.value) } };
+      return null;
+    }
     case "page_meta_set": {
       metadata[a.id] = { ...(metadata[a.id] ?? {}), [a.key]: a.value };
-      if (a.key === pages[a.id].kind) pages[a.id].data = a.value;
+      if (a.key === (pages[a.id].kind.includes(".") ? "item" : pages[a.id].kind)) pages[a.id].data = a.value;
       pages[a.id].updatedAt = Date.now();
       return pages[a.id];
     }

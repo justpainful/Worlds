@@ -1,0 +1,15 @@
+# The landing page at enterworlds.space: static files only, no Worker code.
+# Deploy: npx wrangler deploy -c web/wrangler.toml
+name = "worlds-site"
+compatibility_date = "2026-08-01"
+
+[assets]
+directory = "./site"
+html_handling = "auto-trailing-slash"
+
+# A route, not a custom domain: the apex already has proxied DNS records from
+# the registrar, and a route serves the site over them. With those records
+# deleted, `custom_domain = true` on "enterworlds.space" works too.
+[[routes]]
+pattern = "enterworlds.space/*"
+zone_name = "enterworlds.space"

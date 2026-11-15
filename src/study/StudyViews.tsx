@@ -50,7 +50,8 @@ export function StudyView() {
         <div>
           <h1 className="pl-title">Study</h1>
           <p className="pl-sub">
-            {classes.length ? `${classes.length} class${classes.length === 1 ? "" : "es"} today` : "No classes today"} · {work.length ? `${work.length} open` : "Nothing due soon"}
+            {/* Separate spans, so each half is translated on its own. */}
+            <span>{classes.length ? `${classes.length} class${classes.length === 1 ? "" : "es"} today` : "No classes today"}</span> · <span>{work.length ? `${work.length} open` : "Nothing due soon"}</span>
           </p>
         </div>
         <Button variant="tinted" icon="add" onClick={() => createSubject()}>Subject</Button>

@@ -20,8 +20,25 @@ export interface Env {
   EMAIL_WEBHOOK_SECRET?: string;
   /** Resend (resend.com) API key: the simplest hosted sender. */
   RESEND_API_KEY?: string;
+  /** Brevo (brevo.com) API key: a second free sender after Resend. */
+  BREVO_API_KEY?: string;
   /** From address for sign-in emails, e.g. "Worlds <login@example.com>". */
   EMAIL_FROM?: string;
+  /** Cloudflare Email Service binding (`send_email` in wrangler.toml); tried before Resend. */
+  EMAIL?: SendEmailBinding;
+  /** Shared with services/edge: a request carrying it came through the edge, so its x-worlds-client-ip is the visitor's. */
+  EDGE_SECRET?: string;
+}
+
+/** The part of Cloudflare's `send_email` binding this service uses. */
+export interface SendEmailBinding {
+  send(message: {
+    to: string;
+    from: { email: string; name?: string };
+    subject: string;
+    text: string;
+    html?: string;
+  }): Promise<unknown>;
 }
 
 export type ActorKind = "user" | "ai-on-behalf-of-user" | "automation" | "system";

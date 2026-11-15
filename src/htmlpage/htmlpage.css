@@ -1,0 +1,82 @@
+/* HTML pages (docs/HTML_PAGES.md): the page as it runs, and its source beside it. */
+.htmlpage-body {
+  display: grid;
+  gap: 16px;
+  padding: 0 clamp(16px, 4vw, 48px) 32px;
+}
+.htmlpage.is-page .htmlpage-body {
+  max-width: 920px;
+  margin-inline: auto;
+  width: 100%;
+}
+.htmlpage.is-source .htmlpage-body {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .htmlpage.is-source .htmlpage-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.htmlpage-frame {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: var(--surface-deep);
+  border-radius: var(--r-sm);
+}
+.htmlpage-source {
+  display: grid;
+  gap: 10px;
+  position: sticky;
+  top: 12px;
+}
+.htmlpage-editor {
+  width: 100%;
+  min-height: 60vh;
+  resize: vertical;
+  padding: 14px 16px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface-sidebar);
+  color: var(--text-1);
+  font: 500 13px/1.6 var(--font-mono);
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+}
+.htmlpage-editor:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.htmlpage-check {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  font: var(--t-small);
+  color: var(--text-2);
+}
+.htmlpage-check li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.htmlpage-check li.is-bad {
+  color: #e5534b;
+}
+.htmlpage-check li > svg {
+  flex: none;
+  margin-top: 2px;
+}
+.htmlpage-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: var(--t-small);
+  color: var(--text-2);
+}
+.htmlpage-status.is-bad {
+  color: #e5534b;
+}

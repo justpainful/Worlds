@@ -100,6 +100,7 @@ internal fun planningEntries(studyPack: Boolean, dueToday: Int = 0, inbox: Int =
     PlanningEntry(PlanningSection.Calendar, R.string.plan_calendar, R.drawable.pi_calendar),
     PlanningEntry(PlanningSection.Inbox, R.string.plan_inbox, R.drawable.pi_inbox, inbox),
     if (studyPack) PlanningEntry(PlanningSection.Study, R.string.plan_study, R.drawable.pi_graduation) else null,
+    PlanningEntry(PlanningSection.Packs, R.string.packs_title, R.drawable.pi_layers),
 )
 
 /** A count beside a navigation row, quiet like the desktop sidebar's. */
@@ -318,6 +319,7 @@ private val TOOLBAR_HEIGHT = 48.dp
     "gallery" -> R.string.kind_gallery
     "file" -> R.string.kind_file
     "stream" -> R.string.kind_stream
+    "html" -> R.string.kind_html
     else -> R.string.kind_page
 })
 

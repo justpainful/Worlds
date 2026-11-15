@@ -113,6 +113,10 @@ final class WorldsDatabaseTests: XCTestCase {
         var db: OpaquePointer?
         guard sqlite3_open(url.path, &db) == SQLITE_OK, let db else { throw NSError(domain: "fixture", code: 1) }
         defer { sqlite3_close(db) }
+        // Fixtures insert orphaned and cyclic pages on purpose. The bundled
+        // SQLite linked with the Rust collaboration core enables foreign keys
+        // by default, the system one does not; make both behave the same.
+        guard sqlite3_exec(db, "PRAGMA foreign_keys = OFF;", nil, nil, nil) == SQLITE_OK else { throw NSError(domain: "fixture", code: 3) }
         guard sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK else { throw NSError(domain: "fixture", code: 2, userInfo: [NSLocalizedDescriptionKey: String(cString: sqlite3_errmsg(db))]) }
     }
 
