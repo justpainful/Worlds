@@ -1,0 +1,66 @@
+Worlds Source-Available License
+
+Copyright (c) 2026 justpainful. All rights reserved.
+
+Worlds is source-available, not open source. The source code is published so
+that people can read it and contribute to this project. No other rights are
+granted.
+
+1. What you may do
+
+   a. Read the source code in the official repository
+      (https://github.com/justpainful/Worlds).
+   b. Download, install and use the official builds of Worlds that the
+      copyright holder publishes, for their intended purpose.
+   c. Contribute to this project by opening issues and pull requests in the
+      official repository. To open a pull request you may use GitHub's fork
+      feature, but only to prepare that pull request.
+
+2. What you may not do without written permission from the copyright holder
+
+   a. Copy, reproduce or redistribute the source code or any part of it.
+   b. Modify the source code, or create, run or distribute works based on it,
+      other than a pull request under section 1c.
+   c. Sell, sublicense, host or offer Worlds or any part of it as a product or
+      service.
+   d. Reverse engineer, decompile or disassemble the official builds, except
+      to the extent the applicable law allows despite this limitation.
+   e. Use the source code, documentation, text, designs, icons or other
+      assets of Worlds, in whole or in part, to train, fine-tune, evaluate or
+      ground any artificial intelligence or machine learning system, or
+      include them in any dataset, or share them with such a system for those
+      purposes.
+   f. Remove or change this license or any copyright notice.
+
+3. Contributions
+
+   By submitting a contribution (code, text, designs or anything else) to the
+   official repository, you confirm that you have the right to submit it, and
+   you grant the copyright holder a perpetual, worldwide, irrevocable,
+   royalty-free license to use, modify, distribute and relicense it as part of
+   Worlds or otherwise. Your contribution does not give you any further
+   rights in Worlds.
+
+4. Third-party components
+
+   Parts of Worlds come from third parties and keep their own licenses, which
+   apply to those parts. This license does not change them.
+
+5. Names and marks
+
+   This license does not grant any right to use the name Worlds, its logo or
+   its icons.
+
+6. Ending this license
+
+   If you break any of these terms, your permission under section 1 ends at
+   once.
+
+7. No warranty
+
+   Worlds is provided "as is", without warranty of any kind, express or
+   implied. In no event shall the copyright holder be liable for any claim,
+   damages or other liability arising from Worlds or its use.
+
+For any permission not given here, contact the copyright holder through the
+official repository.

@@ -1,6 +1,7 @@
 {
   "name": "worlds-identity",
   "private": true,
+  "license": "SEE LICENSE IN ../../LICENSE",
   "version": "0.1.0",
   "type": "module",
   "description": "Worlds identity service: accounts, passkeys, devices, sessions, workspaces and page permissions.",

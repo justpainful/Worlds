@@ -2,6 +2,7 @@
 name = "worlds-mcp-authorization"
 version = "0.1.0"
 edition = "2021"
+license-file = "../../LICENSE"
 publish = false
 
 [dependencies]
