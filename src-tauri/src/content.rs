@@ -398,7 +398,7 @@ pub fn from_markdown(src: &str) -> Vec<Value> {
             let mut items: Vec<Value> = Vec::new();
             while i < lines.len() {
                 // Trimmed on both sides, like `t` above: a marker followed only by a tab or a
-                // no-break space ("-	") must match here too, or the first line is never taken
+                // no-break space ("-\t") must match here too, or the first line is never taken
                 // and the outer loop sees it again forever.
                 let l = lines[i].trim();
                 if list_kind(l) != Some(kind) {
