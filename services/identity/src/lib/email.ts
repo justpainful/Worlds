@@ -244,7 +244,13 @@ export function codeEmail(code: string, lang: EmailLanguage = "en"): { subject: 
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="page" style="background:${C.cream};">
   <tr><td align="center" style="padding:32px 20px 40px;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" dir="${dir}" style="max-width:460px;">
-      <tr><td align="center" class="ink" style="color:${C.cocoa};font:400 21px/1.2 ${serif};padding-bottom:22px;">Worlds</td></tr>
+      <tr><td align="center" style="padding-bottom:24px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" dir="ltr"><tr>
+          <td valign="middle"><img src="${ART}/worlds.png" width="40" height="40" alt="Worlds" style="display:block;width:40px;height:40px;border:0;border-radius:10px;"></td>
+          <td width="10" style="width:10px;"></td>
+          <td valign="middle" class="ink" style="color:${C.cocoa};font:400 22px/1 Georgia,'Iowan Old Style','Times New Roman',serif;">Worlds</td>
+        </tr></table>
+      </td></tr>
       <tr><td align="center"><img src="${ART}/letter.png" width="250" alt="" style="display:block;width:250px;max-width:100%;height:auto;border:0;"></td></tr>
       <tr><td align="center" class="caption" style="padding-top:4px;color:${C.terracotta};font:${ar ? "normal" : "italic"} 400 14px/1.5 ${serif};">${escape(t.caption)}</td></tr>
       <tr><td align="center" class="ink" style="padding-top:26px;color:${C.cocoa};font:400 ${size + 14}px/1.3 ${serif};">${escape(t.heading)}</td></tr>
