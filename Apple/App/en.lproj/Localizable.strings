@@ -782,7 +782,7 @@
 "Open the pages your team shares with you. Pages you open are saved on this device so they open offline." = "Open the pages your team shares with you. Pages you open are saved on this device so they open offline.";
 "Workspaces could not be loaded. Check your connection, or sign in." = "Workspaces could not be loaded. Check your connection, or sign in.";
 "Saved on this device" = "Saved on this device";
-"Read only until you are connected again. Access is checked again when you reconnect." = "Read only until you are connected again. Access is checked again when you reconnect.";
+"Changes you make here are sent when you are connected again. Access is checked again then." = "Changes you make here are sent when you are connected again. Access is checked again then.";
 "Saved copy from %@" = "Saved copy from %@";
 "The server refused a change made on this device." = "The server refused a change made on this device.";
 "Remove the saved copy" = "Remove the saved copy";

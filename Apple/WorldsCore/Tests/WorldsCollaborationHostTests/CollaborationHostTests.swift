@@ -387,6 +387,75 @@ extension CollaborationHostTests {
         try await secondRun.value
     }
 
+    func testFieldsChangedOfflineAreSentOnTheNextConnection() async throws {
+        let directory = temporaryDirectory()
+        let page = Self.sharedOrderPage
+        let copy = try DeviceSharedPageStore(directory: directory, binding: binding, allowsLocalWrites: true)
+        try await copy.appendRemote(pageID: "fixture-page", channel: 0, update: page)
+        // Never connected with edit access yet: no offline change.
+        var allowed = await copy.canEditOffline()
+        XCTAssertFalse(allowed)
+        try await copy.recordAccess(level: "edit")
+
+        // Offline, opened as a saved copy that a session does not write to.
+        let offline = try DeviceSharedPageStore(directory: directory, binding: binding, allowsLocalWrites: false)
+        allowed = await offline.canEditOffline()
+        XCTAssertTrue(allowed)
+        try await offline.setPackFieldsOffline(request: try JSONSerialization.data(withJSONObject: ["set": ["status": "paid"]]))
+        let unsent = await offline.pendingCount()
+        XCTAssertEqual(unsent, 1)
+        let savedValue = try await offline.savedReading()
+        let saved = try XCTUnwrap(savedValue)
+        let fields = try XCTUnwrap(try JSONSerialization.jsonObject(with: saved.packFields) as? [String: Any])
+        XCTAssertEqual((fields["fields"] as? [String: Any])?["status"] as? String, "paid")
+
+        // Connected again: the change reaches the server and the outbox empties.
+        let received = ReceivedUpdates()
+        let online = try await CollaborationHost.makeSession(pageID: "fixture-page", workspaceID: "fixture-workspace", expectedUserID: "editor",
+            serverURL: URL(string: "https://example.invalid")!, trustedOrigin: try trusted(), savedCopy: offline, checkedIdentity: IdentityFixture(.edit),
+            socketFactory: { _, _ in EditablePageSocket(page: page, level: "edit", received: received) })
+        let run = Task { try await online.run() }
+        var pending = 1
+        for _ in 0..<150 where pending > 0 {
+            try await Task.sleep(for: .milliseconds(20))
+            pending = await offline.pendingCount()
+        }
+        XCTAssertEqual(pending, 0)
+        let server = try NativeCRDTDocument()
+        try server.apply(page)
+        for update in await received.updates { try server.apply(update) }
+        let onServer = try XCTUnwrap(try JSONSerialization.jsonObject(with: server.packFields()) as? [String: Any])
+        XCTAssertEqual((onServer["fields"] as? [String: Any])?["status"] as? String, "paid")
+        await online.stop()
+        try await run.value
+    }
+
+    func testOfflineFieldChangesNeedEditAccessAndAnUnrefusedCopy() async throws {
+        let directory = temporaryDirectory()
+        let copy = try DeviceSharedPageStore(directory: directory, binding: binding, allowsLocalWrites: false)
+        let request = try JSONSerialization.data(withJSONObject: ["set": ["status": "paid"]])
+        // Not received yet.
+        try await copy.recordAccess(level: "edit")
+        do { try await copy.setPackFieldsOffline(request: request); XCTFail("No saved page yet") } catch CollaborationError.accessRevoked { }
+        try await copy.appendRemote(pageID: "fixture-page", channel: 0, update: Self.sharedOrderPage)
+        // A viewer cannot change it offline either.
+        try await copy.recordAccess(level: "view")
+        do { try await copy.setPackFieldsOffline(request: request); XCTFail("Viewers do not edit") } catch CollaborationError.accessRevoked { }
+        // Nor after the server refused a change from this copy.
+        try await copy.recordAccess(level: "full")
+        try await copy.archiveRejection(pageID: "fixture-page", channel: 0, state: Self.sharedOrderPage, reason: "no")
+        do { try await copy.setPackFieldsOffline(request: request); XCTFail("Refused copies do not edit") } catch CollaborationError.accessRevoked { }
+        let unsent = await copy.pendingCount()
+        XCTAssertEqual(unsent, 0)
+        // A bad request never reaches the log.
+        let clean = try DeviceSharedPageStore(directory: temporaryDirectory(), binding: binding, allowsLocalWrites: false)
+        try await clean.appendRemote(pageID: "fixture-page", channel: 0, update: Self.sharedOrderPage)
+        try await clean.recordAccess(level: "edit")
+        do { try await clean.setPackFieldsOffline(request: Data("{}".utf8)); XCTFail("Empty request") } catch { }
+        let none = await clean.pendingCount()
+        XCTAssertEqual(none, 0)
+    }
+
     func testSavedCopyIsBoundToItsAccountPageAndOrigin() async throws {
         let directory = temporaryDirectory()
         let copy = try DeviceSharedPageStore(directory: directory, binding: binding, allowsLocalWrites: true)

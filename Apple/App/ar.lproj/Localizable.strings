@@ -782,7 +782,7 @@
 "Open the pages your team shares with you. Pages you open are saved on this device so they open offline." = "افتح الصفحات التي يشاركها فريقك معك. الصفحات التي تفتحها تُحفظ على هذا الجهاز لتفتح دون اتصال.";
 "Workspaces could not be loaded. Check your connection, or sign in." = "تعذّر تحميل مساحات العمل. تحقّق من اتصالك أو سجّل الدخول.";
 "Saved on this device" = "محفوظة على هذا الجهاز";
-"Read only until you are connected again. Access is checked again when you reconnect." = "للقراءة فقط حتى تتصل من جديد. يُتحقَّق من وصولك مرة أخرى عند الاتصال.";
+"Changes you make here are sent when you are connected again. Access is checked again then." = "تُرسَل تعديلاتك هنا عندما تتصل من جديد، ويُتحقَّق من وصولك حينها.";
 "Saved copy from %@" = "نسخة محفوظة من %@";
 "The server refused a change made on this device." = "رفض الخادم تعديلًا أُجري على هذا الجهاز.";
 "Remove the saved copy" = "إزالة النسخة المحفوظة";

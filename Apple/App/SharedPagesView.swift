@@ -4,15 +4,16 @@ import WorldsCollaboration
 import WorldsCollaborationHost
 import WorldsIdentityContinuity
 
-// Shared pages on iPhone, iPad and Mac, read only for now.
+// Shared pages on iPhone, iPad and Mac.
 //
 // A person signed in to a team workspace picks the workspace, confirms the
 // workspace's sync server once (it receives their sign-in, so it is never
 // taken from a page or a setting a document can change), then opens a page.
-// The page comes from the sync server through a memory-only session
-// (CollaborationHost.makeReadOnlySession) and shows its blocks with the pack
-// item's fields above them, like Android's SharedPackFields.kt. Nothing is
-// edited or stored on the device.
+// The page comes from the sync server into a copy saved on the device
+// (DeviceSharedPageStore) and shows its blocks with the pack item's fields
+// above them, like Android's SharedPackFields.kt. Someone who can edit the
+// page changes the fields while connected or offline; offline changes wait
+// in the copy and are sent on the next connection, as on Android.
 
 /// Sync servers the person approved, per account and workspace, kept in
 /// memory until Worlds closes. Approval is consent, not proof of identity.
@@ -72,7 +73,7 @@ struct SharedWorkspacesView: View {
                             .accessibilityIdentifier("saved-page-\(binding.pageID)")
                         }
                     } header: { Text("Saved on this device") } footer: {
-                        Text("Read only until you are connected again. Access is checked again when you reconnect.")
+                        Text("Changes you make here are sent when you are connected again. Access is checked again then.")
                     }
                 }
             } else if let snapshot {
@@ -117,7 +118,9 @@ struct SharedWorkspacesView: View {
     }
 }
 
-/// A saved shared page opened without a connection: read only, as last received.
+/// A saved shared page opened without a connection, as last received plus
+/// this device's unsent changes. Someone who could edit it when last
+/// connected changes the pack item's fields here; they are sent next time.
 struct SavedSharedPageView: View {
     let coordinator: IdentitySessionCoordinator
     let binding: SharedPageBinding
@@ -125,6 +128,10 @@ struct SavedSharedPageView: View {
     @State private var fields: SharedPackFieldsCard.Content?
     @State private var savedAt: Date?
     @State private var failed = false
+    @State private var copy: DeviceSharedPageStore?
+    @State private var editable = false
+    @State private var editing = false
+    @State private var unsent = 0
 
     var body: some View {
         ScrollView {
@@ -135,8 +142,12 @@ struct SavedSharedPageView: View {
                         .padding(.horizontal, 10).padding(.vertical, 5)
                         .background(.thinMaterial, in: Capsule())
                 }
+                if unsent > 0 {
+                    Label("Your change is saved on this device and is sent when the page is connected.", systemImage: "arrow.up.circle")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 if failed { Label("The page could not be opened.", systemImage: "exclamationmark.triangle").foregroundStyle(.red) }
-                if let fields { SharedPackFieldsCard(card: fields) }
+                if let fields { SharedPackFieldsCard(card: fields, onEdit: editable ? { editing = true } : nil) }
                 ForEach(blocks) { block in SharedBlockRow(block: block) }
             }
             .frame(maxWidth: 760, alignment: .leading)
@@ -144,19 +155,41 @@ struct SavedSharedPageView: View {
             .frame(maxWidth: .infinity)
         }
         .navigationTitle(Text("Page ID: \(binding.pageID)"))
+        .sheet(isPresented: $editing) {
+            if let fields {
+                SharedPackFieldsEditor(card: fields) { request in await saveOffline(request) }
+            }
+        }
         .task {
             guard let directory = SharedPageFiles.directory(scope: await coordinator.scope) else { failed = true; return }
             do {
                 let copy = try await CollaborationHost.openSavedCopy(binding: binding, directory: directory, identity: coordinator)
-                guard let reading = try await copy.savedReading() else { failed = true; return }
-                blocks = SharedBlock.flatten(reading.blocks)
-                fields = SharedPackFieldsCard.Content(reading.packFields)
-                savedAt = reading.savedAt
+                self.copy = copy
+                guard try await reload(copy) else { failed = true; return }
             } catch { failed = true }
         }
         #if os(macOS)
         .frame(minWidth: 520, minHeight: 560)
         #endif
+    }
+
+    private func reload(_ copy: DeviceSharedPageStore) async throws -> Bool {
+        guard let reading = try await copy.savedReading() else { return false }
+        blocks = SharedBlock.flatten(reading.blocks)
+        fields = SharedPackFieldsCard.Content(reading.packFields)
+        savedAt = reading.savedAt
+        editable = await copy.canEditOffline()
+        unsent = await copy.pendingCount()
+        return true
+    }
+
+    private func saveOffline(_ request: Data) async -> SharedPageModel.SaveOutcome {
+        guard let copy else { return .failed }
+        do {
+            try await copy.setPackFieldsOffline(request: request)
+            _ = try await reload(copy)
+            return .waiting
+        } catch { return .failed }
     }
 }
 
@@ -392,6 +425,8 @@ struct SharedPageView: View {
     @Published private(set) var fields: SharedPackFieldsCard.Content?
     @Published private(set) var accessLevel: String?
     @Published private(set) var unsent = 0
+    /// The copy may take field changes without a connection (see DeviceSharedPageStore.canEditOffline).
+    @Published private(set) var offlineEditable = false
     private var session: CollaborationSession?
     private var copy: DeviceSharedPageStore?
     private var directory: URL?
@@ -401,8 +436,16 @@ struct SharedPageView: View {
     private var watchTask: Task<Void, Never>?
     private var outboxTask: Task<Void, Never>?
 
-    /// Editing needs a connected session over a copy that may write, and the server's own word for this connection.
-    var canEdit: Bool { copy?.allowsLocalWrites == true && phase == .reading && (accessLevel == "edit" || accessLevel == "full") }
+    /// Connected: a session over a copy that may write, and the server's own word for this connection.
+    private var onlineEditable: Bool { copy?.allowsLocalWrites == true && phase == .reading && (accessLevel == "edit" || accessLevel == "full") }
+    /// Connected and allowed, or not connected and allowed when last connected.
+    var canEdit: Bool {
+        if onlineEditable { return true }
+        switch phase {
+        case .opening, .reconnecting, .saved: return offlineEditable && fields != nil
+        case .reading, .refused, .revoked, .failed: return false
+        }
+    }
 
     func open(coordinator: IdentitySessionCoordinator, accountID: String, workspaceID: String, pageID: String,
               level: IdentityPageLevel, approval: SharedSyncApprovals.Approval) async {
@@ -427,17 +470,19 @@ struct SharedPageView: View {
         if let saved = try? await copy.savedReading() { show(blocks: saved.blocks, packFields: saved.packFields) }
         if let reason = await copy.rejection() { phase = .refused(reason); return }
         startOutboxWatch(copy)
+        await connect()
+    }
+
+    /// Opens a session over the copy. Without a connection the saved copy
+    /// stays on screen, and its fields can still change if they could before.
+    private func connect() async {
+        guard let copy, let opened else { return }
         do {
-            let session = try await CollaborationHost.makeSession(pageID: pageID, workspaceID: workspaceID, expectedUserID: accountID,
-                                                                  serverURL: approval.origin, trustedOrigin: approval.trusted,
-                                                                  savedCopy: copy, identity: coordinator)
+            let session = try await CollaborationHost.makeSession(pageID: opened.pageID, workspaceID: opened.workspaceID, expectedUserID: opened.accountID,
+                                                                  serverURL: opened.approval.origin, trustedOrigin: opened.approval.trusted,
+                                                                  savedCopy: copy, identity: opened.coordinator)
             self.session = session
-            runTask = Task { [weak self] in
-                do { try await session.run() }
-                catch CollaborationError.accessRevoked { self?.accessRemoved() }
-                catch CollaborationError.rejected(let reason) { self?.phase = .refused(reason) }
-                catch { self?.phase = .failed }
-            }
+            startRun(session)
             watchTask = Task { [weak self] in
                 let changes = await session.editorChanges()
                 for await _ in changes { await self?.refresh() }
@@ -445,8 +490,18 @@ struct SharedPageView: View {
         } catch CollaborationHostError.accessDenied {
             accessRemoved()
         } catch {
-            // Most often no connection: keep showing the saved copy, read only.
+            // Most often no connection: keep showing the saved copy.
             if let saved = await copy.savedAt() { phase = .saved(saved) } else { phase = .failed }
+        }
+        offlineEditable = await copy.canEditOffline()
+    }
+
+    private func startRun(_ session: CollaborationSession) {
+        runTask = Task { [weak self] in
+            do { try await session.run() }
+            catch CollaborationError.accessRevoked { self?.accessRemoved() }
+            catch CollaborationError.rejected(let reason) { self?.phase = .refused(reason) }
+            catch { self?.phase = .failed }
         }
     }
 
@@ -481,6 +536,9 @@ struct SharedPageView: View {
             show(blocks: reading.blocks, packFields: reading.packFields)
             accessLevel = reading.accessLevel
             phase = .reading
+            // Remembered for editing offline; the server checks again on the next connection.
+            try? await copy?.recordAccess(level: reading.accessLevel)
+            offlineEditable = await copy?.canEditOffline() ?? false
             return
         }
         switch await session.connectionStatus() {
@@ -494,7 +552,8 @@ struct SharedPageView: View {
     /// Writes the changed fields, then waits a little for the server to
     /// acknowledge them. Until it does, the change stays in the saved copy.
     func saveFields(_ request: Data) async -> SaveOutcome {
-        guard let session, let copy, canEdit else { return .failed }
+        guard let copy, canEdit else { return .failed }
+        guard onlineEditable, let session else { return await saveOffline(request, in: copy) }
         do { try await session.setPackFields(request: request) } catch { return .failed }
         for _ in 0..<60 {
             let count = await copy.pendingCount()
@@ -502,6 +561,23 @@ struct SharedPageView: View {
             if count == 0 { return .saved }
             try? await Task.sleep(for: .milliseconds(250))
         }
+        return .waiting
+    }
+
+    /// Without a connection: the change goes into the copy's outbox. A session
+    /// still trying to connect is paused while the copy is written, since its
+    /// page in memory would not have the change, then resumes from the copy
+    /// and sends the change once it connects.
+    private func saveOffline(_ request: Data, in copy: DeviceSharedPageStore) async -> SaveOutcome {
+        let paused = session
+        if let paused {
+            await paused.stop()
+            await runTask?.value
+        }
+        defer { if let paused, session === paused, phase != .revoked { startRun(paused) } }
+        do { try await copy.setPackFieldsOffline(request: request) } catch { return .failed }
+        if let saved = try? await copy.savedReading() { show(blocks: saved.blocks, packFields: saved.packFields) }
+        unsent = await copy.pendingCount()
         return .waiting
     }
 

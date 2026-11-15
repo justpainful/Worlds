@@ -33,8 +33,15 @@ public enum DeviceSharedPageStoreError: Error, Equatable { case invalidDirectory
 /// every outbox row was appended by a `CollaborationSession` that the server
 /// had authenticated as `binding.accountID` with edit access. That is what
 /// the legacy SQLite outbox cannot show, so `CollaborationHost.makeSession`
-/// still refuses that store. New changes are still never made offline: the
-/// session refuses a local write unless its connection reports edit access.
+/// still refuses that store. A session refuses a local write unless its
+/// connection reports edit access.
+///
+/// Without a connection, the pack item's fields can still be changed
+/// (`setPackFieldsOffline`) when the last connection to this page reported
+/// edit access: the change goes into the outbox and is sent the next time the
+/// page connects, merged field by field with other people's changes. The
+/// server checks access again then; a change it refuses quarantines the copy
+/// as below, so nothing it does not allow reaches the page.
 ///
 /// When the server rejects a change, the full state is kept, the outbox is
 /// emptied and the copy is quarantined: it refuses new changes until it is
@@ -54,6 +61,9 @@ public actor DeviceSharedPageStore: CollaborationStore {
         var nextID: Int64 = 0
         var rejection: String?
         var rejectedState: Data?
+        /// The access level the server last reported for this account on this
+        /// page ("view", "comment", "edit" or "full"). Older files have none.
+        var accessLevel: String?
     }
     public nonisolated let binding: SharedPageBinding
     public nonisolated let allowsLocalWrites: Bool
@@ -154,6 +164,47 @@ public actor DeviceSharedPageStore: CollaborationStore {
     public func savedAt() -> Date? { file.savedAt }
     /// The server's reason, when it refused a change from this copy.
     public func rejection() -> String? { file.rejection }
+
+    /// Remembers the access level an authenticated connection reported, so
+    /// the page can be edited offline only by someone who could edit it.
+    public func recordAccess(level: String) throws {
+        guard ["view", "comment", "edit", "full"].contains(level), file.accessLevel != level else { return }
+        let previous = file
+        file.accessLevel = level
+        do { try save() } catch { file = previous; throw error }
+    }
+    /// The level the server last reported, or nil before any connection.
+    public func lastAccessLevel() -> String? { file.accessLevel }
+
+    /// Whether the pack item's fields may be changed without a connection:
+    /// the page was received at least once, the server last reported edit
+    /// access, and no change from this copy has been refused.
+    public func canEditOffline() -> Bool {
+        file.savedAt != nil && file.rejection == nil && (file.accessLevel == "edit" || file.accessLevel == "full")
+    }
+
+    /// Sets and removes the pack item's fields without a connection, with the
+    /// same request a connected session takes (`{"set": {...}, "remove": [...]}`),
+    /// prepared on the copy's current state. The update is checked, then kept
+    /// in the log and the outbox together, so it shows at once and is sent on
+    /// the next connection. No session may be running over this copy: its
+    /// in-memory page would not have the change.
+    public func setPackFieldsOffline(request: Data) throws {
+        guard canEditOffline() else { throw CollaborationError.accessRevoked }
+        guard request.count <= 1024 * 1024 else { throw CollaborationError.invalidFrame }
+        let doc = try NativeCRDTDocument()
+        for update in updates(0) { try doc.apply(update) }
+        let update = try NativeCRDTDocument.preparePackFields(base: doc.diff(Data([0])), request: request)
+        // Refuse a malformed update before it reaches the durable log.
+        try doc.apply(update)
+        var next = file
+        next.nextID += 1
+        next.log.append(Entry(channel: 0, update: update))
+        next.outbox.append(Row(id: next.nextID, channel: 0, update: update))
+        let previous = file
+        file = next
+        do { try save() } catch { file = previous; throw error }
+    }
 
     /// The saved page without any network: every block and the pack item's
     /// fields, as last received plus this app's unacknowledged changes.
