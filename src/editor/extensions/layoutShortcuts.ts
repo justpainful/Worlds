@@ -5,7 +5,9 @@ import { Plugin } from "@tiptap/pm/state";
  * Editor shortcuts on keys that type more than one character. On the Arabic
  * layout the B key types "لا", so Ctrl+B reaches the editor as Ctrl+لا, which
  * neither the shortcut table nor ProseMirror's single character fallback
- * understands. Such a press is replayed once as its physical Latin letter.
+ * understands. Such a press is replayed once as its physical Latin letter,
+ * and so is a single Arabic character (Ctrl+ش for Ctrl+A), for handlers that
+ * read the key itself rather than its key code.
  */
 export const LayoutShortcuts = Extension.create({
   name: "layoutShortcuts",
@@ -17,7 +19,7 @@ export const LayoutShortcuts = Extension.create({
         props: {
           handleKeyDown(view, event) {
             if (replaying || !(event.ctrlKey || event.metaKey)) return false;
-            if (event.key.length < 2 || /^[\x20-\x7e]+$/.test(event.key)) return false;
+            if (/^[\x20-\x7e]*$/.test(event.key)) return false;
             const physical = /^Key([A-Z])$/.exec(event.code);
             if (!physical) return false;
             const letter = physical[1];

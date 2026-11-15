@@ -141,6 +141,8 @@ export function parseQuickAdd(input: string, now: Date = new Date()): Parsed {
       let year = y ?? now.getFullYear();
       let iso = `${year}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
       if (!y && iso < base) iso = `${++year}-${iso.slice(5)}`;
+      // "31 February" is not a date: never let it roll over into March.
+      if (d > new Date(Date.UTC(year, mo, 0)).getUTCDate()) return false;
       due = iso;
     };
     const month = "([A-Za-z]{3,9}|[؀-ۿ]{3,7})";

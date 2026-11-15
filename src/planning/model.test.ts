@@ -131,6 +131,10 @@ describe("quick add on the day itself", () => {
     expect(parseQuickAdd("رحلة 15 نوفمبر", THU)).toMatchObject({ title: "رحلة", due: "2026-11-15" });
     expect(parseQuickAdd("طباعة نسختين 2 ورق 3 مارس", THU)).toMatchObject({ title: "طباعة نسختين 2 ورق", due: "2027-03-03" });
     expect(parseQuickAdd("Trip Nov 20", THU)).toMatchObject({ title: "Trip", due: "2026-11-20" });
+    // A day the month does not have is not a date.
+    expect(parseQuickAdd("Essay 31 February", THU).due).toBeNull();
+    expect(parseQuickAdd("Essay 30 Feb 2028", THU).due).toBeNull();
+    expect(parseQuickAdd("Leap 29 Feb 2028", THU)).toMatchObject({ due: "2028-02-29" });
     expect(parseQuickAdd("Exam 2 Jan 2027", THU)).toMatchObject({ title: "Exam", due: "2027-01-02" });
   });
 
