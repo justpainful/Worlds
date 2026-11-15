@@ -1,0 +1,10 @@
+# go.enterworlds.space now redirects to app.enterworlds.space (see index.js).
+# It replaces the old worlds-go Worker that served the app there.
+# Deploy: npx wrangler deploy -c web/go/wrangler.toml
+name = "worlds-go"
+main = "index.js"
+compatibility_date = "2026-08-01"
+
+[[routes]]
+pattern = "go.enterworlds.space"
+custom_domain = true

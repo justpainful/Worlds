@@ -8,6 +8,9 @@ import { useAccount } from "./store";
 
 /** Worlds on the web signs in with the email code only: the browser has no passkey flow here (webAccount.ts). */
 const WEB = import.meta.env.VITE_WEB_DEMO === "1" && Boolean(import.meta.env.VITE_IDENTITY_URL);
+/** The demo at demo.enterworlds.space has no accounts: they live in Worlds on the web (app.enterworlds.space). */
+const SAMPLE = import.meta.env.VITE_WEB_SAMPLE === "1";
+const APP_URL = "https://app.enterworlds.space";
 
 type Step =
   | { kind: "choose" }
@@ -35,6 +38,7 @@ export function SignInFlow({ start = "choose", onDone, onCancel }: { start?: "ch
     if (step.kind === "code") codeRef.current?.focus();
   }, [step.kind]);
 
+  if (SAMPLE) return <DemoHasNoAccounts onClose={onCancel ?? onDone} />;
   if (view && !view.configured) return <ServerNeeded onClose={onCancel ?? onDone} />;
 
   const act = async (fn: () => Promise<void>) => {
@@ -236,6 +240,26 @@ export function SignInFlow({ start = "choose", onDone, onCancel }: { start?: "ch
           Not Now
         </button>
       )}
+    </div>
+  );
+}
+
+function DemoHasNoAccounts({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="acct-flow">
+      <div className="acct-hero-icon">
+        <Icon name="user" size={24} />
+      </div>
+      <h2 className="acct-title">This demo has no accounts</h2>
+      <p className="acct-text">What you change here stays in this browser. To create an account and keep your pages on it, open Worlds at app.enterworlds.space.</p>
+      <div className="acct-actions is-stacked">
+        <Button variant="tinted" size="large" autoFocus onClick={() => window.open(`${APP_URL}/?account=create`, "_blank", "noopener")}>
+          Create an Account in Worlds
+        </Button>
+        <Button variant="plain" size="large" onClick={onClose}>
+          OK
+        </Button>
+      </div>
     </div>
   );
 }

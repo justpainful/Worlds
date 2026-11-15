@@ -1,5 +1,5 @@
 /**
- * Accounts in Worlds on the web (go.enterworlds.space): the real identity
+ * Accounts in Worlds on the web (app.enterworlds.space): the real identity
  * service over HTTPS, so a person can create an account, get the code by
  * email and sign in from a browser. The pages themselves stay in the tab
  * (the web version has no local database), so sharing and sync stay in the

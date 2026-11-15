@@ -28,7 +28,7 @@ export interface Env {
   EMAIL?: SendEmailBinding;
   /** Shared with services/edge: a request carrying it came through the edge, so its x-worlds-client-ip is the visitor's. */
   EDGE_SECRET?: string;
-  /** Web origins allowed to call this service from a browser, comma separated (https://go.enterworlds.space). */
+  /** Web origins allowed to call this service from a browser, comma separated (https://app.enterworlds.space). */
   ALLOWED_ORIGINS?: string;
 }
 

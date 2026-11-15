@@ -302,7 +302,7 @@ const idVars = (base, syncUrl) => ({
   PUBLIC_URL: base ?? "http://localhost:8787",
   SYNC_WEBHOOK_URL: syncUrl ? `${syncUrl}/internal/events` : "",
   // Worlds on the web signs in from the browser (src/account/webAccount.ts).
-  ALLOWED_ORIGINS: state.domain ? `https://go.${state.domain},https://${state.domain}` : "",
+  ALLOWED_ORIGINS: state.domain ? `https://app.${state.domain},https://${state.domain}` : "",
 });
 const writeIdentity = () => {
   const path = writeConfig(ID_DIR, idVars(HOSTS ? `https://${HOSTS.identity}` : state.identityUrl, state.syncUrl), extras(HOSTS?.identity, true));
