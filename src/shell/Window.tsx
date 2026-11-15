@@ -159,7 +159,8 @@ async function closeWindow() {
 
 export function WindowControls() {
   const maximized = useStore((s) => s.maximized);
-  if (!isTauri) return null;
+  // The web demo stands in for the app in a browser tab, which has no window of its own to control.
+  if (!isTauri || import.meta.env.VITE_WEB_DEMO === "1") return null;
   const win = getCurrentWindow();
   return (
     <Tonal className="win-controls" radius="var(--r-capsule)">

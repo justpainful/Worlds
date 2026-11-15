@@ -370,3 +370,12 @@
 .tour-dots span.is-on { width: 16px; border-radius: 3px; background: var(--accent); }
 .tour-actions { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 @media (prefers-reduced-motion: reduce) { .tour-hole, .tour-card, .tour-dots span { transition: none; } }
+
+/* Narrow screens (a phone opening the web demo): the sidebar lies over the page instead of squeezing it,
+   and closes once something is opened from it (Sidebar.tsx). */
+@media (max-width: 720px) {
+  .sidebar { position: absolute; inset-block: 0; inset-inline-start: 0; z-index: 60; max-width: 86vw; background: var(--surface-deep); box-shadow: 0 0 40px rgba(0, 0, 0, 0.45); }
+  .sidebar.is-collapsed { box-shadow: none; }
+  .sidebar + .main { padding-inline-start: 8px; }
+  .side-resize { display: none; }
+}

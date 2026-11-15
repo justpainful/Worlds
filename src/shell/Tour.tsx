@@ -61,6 +61,10 @@ export function TourHost() {
   // Follow the lit part while the window or the layout settles.
   useLayoutEffect(() => {
     if (step === null) return;
+    // A step that points into a closed sidebar (a phone, or a person who hid it) opens it first.
+    const target = TOUR_STEPS[step].target;
+    const st = useStore.getState();
+    if (target && st.sidebar.collapsed && document.querySelector(target)?.closest(".sidebar")) st.toggleSidebar();
     let frame = 0;
     let until = performance.now() + 600;
     const update = () => {

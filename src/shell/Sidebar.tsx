@@ -40,6 +40,9 @@ function flatten(pages: Record<string, PageMeta>, expanded: Record<string, boole
   return rows;
 }
 
+/** Screens this narrow get the sidebar as a layer over the page (styles/shell.css). */
+const NARROW = "(max-width: 720px)";
+
 function useActiveRoute(): Route | null {
   return useStore((s) => {
     const pane = s.layout.panes.find((p) => p.id === s.layout.activePaneId);
@@ -58,6 +61,14 @@ export function Sidebar() {
   const toggleSidebar = useStore((s) => s.toggleSidebar);
   const setPalette = useStore((s) => s.setPalette);
   const active = useActiveRoute();
+  // On a narrow screen (a phone opening the web demo) the sidebar lies over the
+  // page, so choosing something in it closes it; arrows and section buttons do not.
+  const closeIfNarrow = (e: React.MouseEvent) => {
+    if (!window.matchMedia(NARROW).matches) return;
+    const t = e.target as HTMLElement;
+    if (t.closest(".tree-twisty, .tree-actions, .side-section-action, .side-top")) return;
+    if (t.closest(".side-item, .tree-row, .side-profile")) toggleSidebar();
+  };
   const study = usePack("study");
   const dueCount = useMemo(() => tasksFor(pages, "today", today()).length, [pages]);
   const inboxCount = useMemo(() => liveOfKind(pages, "inbox").length, [pages]);
@@ -104,7 +115,7 @@ export function Sidebar() {
   };
 
   return (
-    <aside className={`sidebar ${sidebar.collapsed ? "is-collapsed" : ""}`} style={{ width: sidebar.collapsed ? 0 : sidebar.width }} aria-label="Sidebar">
+    <aside className={`sidebar ${sidebar.collapsed ? "is-collapsed" : ""}`} style={{ width: sidebar.collapsed ? 0 : sidebar.width }} aria-label="Sidebar" onClick={closeIfNarrow}>
       <div className="sidebar-inner" style={{ width: sidebar.width }}>
         <div className="side-top" data-drag-zone>
           <IconButton icon="sidebarClose" label="Hide sidebar" shortcut="Ctrl+Shift+L" onClick={toggleSidebar} />
