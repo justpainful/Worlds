@@ -213,6 +213,12 @@ if (state.domain) {
   // (run once with --domain-verified; it is remembered). Until then Resend
   // keeps its own test sender, so a fallback never uses an address it refuses.
   if (process.argv.includes("--domain-verified")) state.domainVerified = true;
+  // --new-email-keys asks for the Resend and Brevo keys again (a new account).
+  if (process.argv.includes("--new-email-keys")) {
+    if (!process.stdin.isTTY) fail("--new-email-keys asks for the keys, so run it in a terminal.");
+    delete state.resendKey;
+    delete state.brevoKey;
+  }
   if (!EDGE || state.domainVerified || !state.resendKey || !state.emailFrom) state.emailFrom = state.domainFrom;
   // Keys are only asked for in a terminal, and never echoed.
   if (process.stdin.isTTY) {
