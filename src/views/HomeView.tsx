@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api } from "../lib/api";
+import { api, isWeb } from "../lib/api";
 import type { Automation, PageMeta } from "../lib/types";
 import { useStore, pageTitle } from "../state/store";
 import { emit } from "../lib/bus";
@@ -247,48 +247,51 @@ export function HomeView() {
         {recent.length ? <PageCollection pages={recent} view={view} /> : <EmptyState compact icon="clock" title="No recent pages" />}
       </HomeSection>
 
-      <HomeSection
-        title="Scheduled soon"
-        action={
-          <button className="link-btn" onClick={() => open({ kind: "automations" })}>
-            All automations
-          </button>
-        }
-      >
-        {soon.length === 0 ? (
-          <EmptyState
-            compact
-            icon="schedule"
-            title="No scheduled runs"
-            text="Nothing is due this week."
-            action={
-              <button className="chip-btn" onClick={() => emit("automation:new", { pageId: null })}>
-                Create automation
-              </button>
-            }
-          />
-        ) : (
-          <div className="soon-list">
-            {soon.map((a) => (
-              <button key={a.id} className="soon-row" onClick={() => open({ kind: "automations", automationId: a.id })}>
-                <span className="soon-time">
-                  <span className="soon-day">{new Date(a.nextRunAt!).toLocaleDateString(undefined, { weekday: "short" })}</span>
-                  <span className="soon-hour">
-                    {new Date(a.nextRunAt!).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+      {/* Automations run on the computer, so the web version has none to show. */}
+      {!isWeb && (
+        <HomeSection
+          title="Scheduled soon"
+          action={
+            <button className="link-btn" onClick={() => open({ kind: "automations" })}>
+              All automations
+            </button>
+          }
+        >
+          {soon.length === 0 ? (
+            <EmptyState
+              compact
+              icon="schedule"
+              title="No scheduled runs"
+              text="Nothing is due this week."
+              action={
+                <button className="chip-btn" onClick={() => emit("automation:new", { pageId: null })}>
+                  Create automation
+                </button>
+              }
+            />
+          ) : (
+            <div className="soon-list">
+              {soon.map((a) => (
+                <button key={a.id} className="soon-row" onClick={() => open({ kind: "automations", automationId: a.id })}>
+                  <span className="soon-time">
+                    <span className="soon-day">{new Date(a.nextRunAt!).toLocaleDateString(undefined, { weekday: "short" })}</span>
+                    <span className="soon-hour">
+                      {new Date(a.nextRunAt!).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+                    </span>
                   </span>
-                </span>
-                <span className="soon-main">
-                  <span className="bidi">{a.name}</span>
-                  <span className="soon-sub">
-                    {describeTrigger(a.spec.trigger)} · <bdi>{describeDestination(a.spec.destination)}</bdi>
+                  <span className="soon-main">
+                    <span className="bidi">{a.name}</span>
+                    <span className="soon-sub">
+                      {describeTrigger(a.spec.trigger)} · <bdi>{describeDestination(a.spec.destination)}</bdi>
+                    </span>
                   </span>
-                </span>
-                <span className="soon-rel">{relTime(a.nextRunAt)}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </HomeSection>
+                  <span className="soon-rel">{relTime(a.nextRunAt)}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </HomeSection>
+      )}
 
       <TemplateRow templates={templates} />
     </div>
