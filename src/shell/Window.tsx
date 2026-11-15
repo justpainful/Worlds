@@ -122,7 +122,19 @@ function useDragZones() {
       else win.startDragging();
     };
     window.addEventListener("mousedown", onDown);
-    return () => window.removeEventListener("mousedown", onDown);
+    // The window has no system menu (window_style.rs hides the system's own
+    // caption buttons that way), so Alt+F4 is handled here.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.altKey && e.key === "F4" && !e.ctrlKey && !e.shiftKey) {
+        e.preventDefault();
+        void win.close();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
   }, []);
 }
 
