@@ -23,9 +23,9 @@ const T = {
   ar: {
     dir: "rtl", other: "en", otherName: "English", locale: "ar_SA",
     skip: "انتقل إلى المحتوى", menu: "القائمة", home: "Worlds الصفحة الرئيسية",
-    nav: [["apps", "التطبيقات"], ["docs", "الدوكس"], ["tools", "الأدوات"], ["support", "الدعم"]],
-    github: "GitHub", docsMenu: "صفحات الدوكس", docs: "الدوكس", prev: "السابق", next: "التالي",
-    foot: [["apps", "التطبيقات"], ["docs", "الدوكس"], ["tools", "الأدوات"], ["support", "الدعم"], ["privacy", "الخصوصية"], ["terms", "شروط الاستخدام"]],
+    nav: [["apps", "التطبيقات"], ["docs", "الدليل"], ["tools", "الأدوات"], ["support", "الدعم"]],
+    github: "GitHub", docsMenu: "صفحات الدليل", docs: "الدليل", prev: "السابق", next: "التالي",
+    foot: [["apps", "التطبيقات"], ["docs", "الدليل"], ["tools", "الأدوات"], ["support", "الدعم"], ["privacy", "الخصوصية"], ["terms", "شروط الاستخدام"]],
     festival: "مهرجان الذكاء الطبيعي يقود الذكاء الاصطناعي 2026، مسار التجارب المتميزة.",
     fine: "Worlds اسم عمل إبداعي غير مسجل رسميًا، مستقل عن هوية imbue. الشيفرة منشورة على GitHub.",
     siteName: "Worlds",
