@@ -160,7 +160,6 @@ export function emailLanguage(requested: unknown, acceptLanguage: string | null 
 const COPY = {
   en: {
     subject: (code: string) => `${code} is your Worlds sign-in code`,
-    caption: "a letter that knows its address",
     heading: "Your sign-in code",
     lead: "Enter it in Worlds to finish signing in.",
     copy: "Double-click the code to copy it, or press and hold it on a phone.",
@@ -170,7 +169,6 @@ const COPY = {
   },
   ar: {
     subject: (code: string) => `رمز دخولك إلى Worlds: ${code}`,
-    caption: "رسالة تعرف عنوانها",
     heading: "رمز دخولك",
     lead: "اكتبه في Worlds لتكمل الدخول.",
     copy: "اضغط على الرمز مرتين لنسخه، أو اضغط عليه مطولًا في الجوال.",
@@ -190,7 +188,6 @@ const C = {
   cocoa: "#4A1C10",
   cocoaSoft: "#7A4A3A",
   ink: "#2B1D17",
-  terracotta: "#A9472A",
   label: "#F7DD72",
 };
 
@@ -198,7 +195,7 @@ const escape = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<":
 
 /**
  * The sign-in email, written like a short letter on cream paper: the drawn
- * envelope with its caption, the code on a yellow label outlined in ink (one
+ * envelope, the code on a yellow label outlined in ink (one
  * piece of text, so a double-click or a long press copies all six digits),
  * and two quiet notes, each beside its own small drawing. Tables and inline
  * styles, which every mail app renders, and a cocoa page in dark mode.
@@ -233,7 +230,6 @@ export function codeEmail(code: string, lang: EmailLanguage = "en"): { subject: 
     .page { background:${C.cocoa} !important; }
     .ink { color:${C.cream} !important; }
     .soft { color:#E9CDB7 !important; }
-    .caption { color:#F0A98C !important; }
     .rule { border-color:#6E3B29 !important; }
     .link { color:${C.cream} !important; }
   }
@@ -246,20 +242,22 @@ export function codeEmail(code: string, lang: EmailLanguage = "en"): { subject: 
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" dir="${dir}" style="max-width:460px;">
       <tr><td align="center" style="padding-bottom:24px;">
         <table role="presentation" cellpadding="0" cellspacing="0" dir="ltr"><tr>
-          <td valign="middle"><img src="${ART}/worlds.png" width="40" height="40" alt="Worlds" style="display:block;width:40px;height:40px;border:0;border-radius:10px;"></td>
-          <td width="10" style="width:10px;"></td>
-          <td valign="middle" class="ink" style="color:${C.cocoa};font:400 22px/1 Georgia,'Iowan Old Style','Times New Roman',serif;">Worlds</td>
+          <td valign="middle"><img src="${ART}/worlds.png" width="56" height="56" alt="Worlds" style="display:block;width:56px;height:56px;border:0;border-radius:14px;"></td>
+          <td width="12" style="width:12px;"></td>
+          <td valign="middle" class="ink" style="color:${C.cocoa};font:400 30px/1 Georgia,'Iowan Old Style','Times New Roman',serif;">Worlds</td>
+          <td width="22" style="width:22px;"></td>
+          <td valign="middle" class="soft" style="color:${C.cocoaSoft};font:400 26px/1 Georgia,serif;">&middot;</td>
+          <td width="22" style="width:22px;"></td>
+          <td valign="middle"><img src="${ART}/imbue.png" width="130" alt="imbue" style="display:block;width:130px;height:auto;border:0;"></td>
         </tr></table>
       </td></tr>
       <tr><td align="center"><img src="${ART}/letter.png" width="250" alt="" style="display:block;width:250px;max-width:100%;height:auto;border:0;"></td></tr>
-      <tr><td align="center" class="caption" style="padding-top:4px;color:${C.terracotta};font:${ar ? "normal" : "italic"} 400 14px/1.5 ${serif};">${escape(t.caption)}</td></tr>
       <tr><td align="center" class="ink" style="padding-top:26px;color:${C.cocoa};font:400 ${size + 14}px/1.3 ${serif};">${escape(t.heading)}</td></tr>
       <tr><td align="center" class="soft" style="padding-top:8px;color:${C.cocoaSoft};font:400 ${size}px/${lh} ${sans};">${escape(t.lead)}</td></tr>
       <tr><td align="center" style="padding-top:22px;">
         <table role="presentation" cellpadding="0" cellspacing="0" dir="ltr"><tr>
           <td class="code" align="center" style="padding:14px 18px 14px 28px;background:${C.label};border:3px solid ${C.ink};border-radius:12px;color:${C.ink};font:700 40px/1.1 ${sans};letter-spacing:10px;font-variant-numeric:tabular-nums;">${escape(code)}</td>
         </tr></table>
-        <div style="width:200px;height:8px;margin:8px auto 0;border-radius:50%;background:#878787;opacity:0.3;font-size:0;line-height:0;">&nbsp;</div>
       </td></tr>
       <tr><td align="center" class="soft" style="padding-top:12px;color:${C.cocoaSoft};font:400 ${size - 3}px/1.5 ${sans};">${escape(t.copy)}</td></tr>
       <tr><td style="padding-top:30px;"><div class="rule" style="border-top:1px solid #E3D3BD;font-size:0;line-height:0;">&nbsp;</div></td></tr>
@@ -268,7 +266,6 @@ export function codeEmail(code: string, lang: EmailLanguage = "en"): { subject: 
         ${note("padlock", t.ignore, serif, "soft", C.cocoaSoft)}
       </td></tr>
       <tr><td align="center" class="soft" style="padding-top:28px;color:${C.cocoaSoft};font:400 ${size - 3}px/${lh} ${sans};">${escape(t.footer)} · <a href="${SITE}" class="link" style="color:${C.cocoa};text-decoration:underline;">enterworlds.space</a></td></tr>
-      <tr><td align="center" style="padding-top:22px;"><img src="${ART}/imbue.png" width="96" alt="imbue" style="display:block;width:96px;height:auto;border:0;"></td></tr>
     </table>
   </td></tr>
 </table>

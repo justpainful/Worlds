@@ -15,7 +15,7 @@ describe("sign-in email", () => {
     // One element holds all six digits, so a double-click or long press copies the whole code.
     expect(e.html).toMatch(/class="code"[^>]*>482915</);
     expect(e.html.match(/class="code"/g)).toHaveLength(1);
-    expect(e.html).toContain("رسالة تعرف عنوانها");
+    expect(e.html).toContain("/mail/imbue.png");
     expect(e.text).toContain("482915");
   });
 
