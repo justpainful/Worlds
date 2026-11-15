@@ -721,6 +721,10 @@
     <string name="kind_gallery">Gallery</string>
     <string name="kind_file">File</string>
     <string name="kind_stream">Stream</string>
+    <string name="kind_html">HTML page</string>
+    <string name="html_page_source_on_desktop">Runs here without the internet. Edit its source in Worlds on the desktop.</string>
+    <string name="html_page_empty">This HTML page is empty. Write it in Worlds on the desktop, or ask Claude to build it.</string>
+    <string name="html_page_trash_confirm">Move this HTML page to Trash?</string>
     <string name="new_spreadsheet">New spreadsheet</string>
     <string name="spaces_empty_title">No spaces yet</string>
     <string name="spaces_empty_body">Projects and galleries gather related work in one place.</string>

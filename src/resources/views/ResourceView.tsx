@@ -16,6 +16,7 @@ import { isPackKind } from "../../packs/registry";
 // Drawings and spreadsheets are large and opened less often, so their views load on first use.
 const DrawingView = lazy(() => import("../../drawing/DrawingView").then((m) => ({ default: m.DrawingView })));
 const SpreadsheetView = lazy(() => import("../../spreadsheet/SpreadsheetView").then((m) => ({ default: m.SpreadsheetView })));
+const HtmlPageView = lazy(() => import("../../htmlpage/HtmlPageView").then((m) => ({ default: m.HtmlPageView })));
 
 /** Opens a resource with the view made for its kind. */
 export function ResourceView({ pageId, paneId }: { pageId: string; paneId: string }) {
@@ -31,6 +32,12 @@ export function ResourceView({ pageId, paneId }: { pageId: string; paneId: strin
       return (
         <Suspense fallback={null}>
           <SpreadsheetView key={pageId} pageId={pageId} />
+        </Suspense>
+      );
+    case "html":
+      return (
+        <Suspense fallback={null}>
+          <HtmlPageView key={pageId} id={pageId} />
         </Suspense>
       );
     case "document":

@@ -319,6 +319,7 @@ private val TOOLBAR_HEIGHT = 48.dp
     "gallery" -> R.string.kind_gallery
     "file" -> R.string.kind_file
     "stream" -> R.string.kind_stream
+    "html" -> R.string.kind_html
     else -> R.string.kind_page
 })
 

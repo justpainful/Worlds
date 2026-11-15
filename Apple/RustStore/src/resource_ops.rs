@@ -10,7 +10,7 @@ fn snapshot(c: &Connection, id: &str) -> Result<Value> {
     require_personal(c, id)?;
     let (kind, revision, metadata): (String,i64,String) = c.query_row("SELECT kind,updated_at,metadata FROM pages WHERE id=?1", [id], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?)))?;
     // Pack items ("shop.order") are read like a spreadsheet: their metadata, which holds their fields.
-    if kind != "project" && kind != "gallery" && kind != "stream" && kind != "spreadsheet" && !store::is_pack_kind(&kind) { bail!("unsupported resource kind") }
+    if kind != "project" && kind != "gallery" && kind != "stream" && kind != "spreadsheet" && kind != "html" && !store::is_pack_kind(&kind) { bail!("unsupported resource kind") }
     let metadata: Value = serde_json::from_str(&metadata)?;
     let current = blocks(c, id)?;
     if kind == "project" { project_links(c, &metadata)?; } else if kind == "gallery" { attachment_ids(c, &current)?; }
@@ -185,6 +185,29 @@ pub fn save_pack_item(path: &Path, id: &str, base: i64, expected: Value, metadat
     tx.commit()?; Ok(result)
 }
 
+/// Largest state an HTML page may keep with `worlds.save()` (docs/HTML_PAGES.md).
+const MAX_HTML_STATE_BYTES: usize = 256 * 1024;
+
+/// Keeps what an HTML page saved in `metadata.html.state`. The complete
+/// metadata baseline and revision are compared like a spreadsheet, every other
+/// metadata key must be unchanged, and so must the page's source: a viewer on
+/// this device runs the page, it does not rewrite it.
+pub fn save_html_state(path: &Path, id: &str, base: i64, expected: Value, metadata: Value) -> Result<Value> {
+    let html = metadata_key(&expected,&metadata,"html")?.clone();
+    let before = expected.get("html").and_then(Value::as_object).cloned().unwrap_or_default();
+    let mut after = html.as_object().cloned().unwrap_or_default();
+    let state = after.remove("state").unwrap_or(Value::Null);
+    let mut kept = before.clone(); kept.remove("state");
+    if after != kept { bail!("invalid metadata: only the HTML page's state may change") }
+    if state.to_string().len() > MAX_HTML_STATE_BYTES { bail!("the page's state is larger than 256 KB") }
+    let mut connection = open_existing(path)?;
+    let tx = connection.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+    check_metadata(&tx,id,base,&expected,"html")?;
+    store::set_page_meta(&tx,&crate::native_ctx(),id,"html",html)?;
+    let result = snapshot(&tx,id)?;
+    tx.commit()?; Ok(result)
+}
+
 fn attachment_ids(c: &Connection, entries: &[(String,Value)]) -> Result<()> {
     for (_, value) in entries {
         if value.get("type").and_then(Value::as_str) != Some("galleryItem") { continue }
@@ -334,6 +357,36 @@ mod tests {
         let mut unrelated=saved["metadata"].clone(); unrelated["look"]=json!(1);
         assert!(save_pack_item(&path,"o",revision,saved["metadata"].clone(),unrelated).is_err());
         assert!(save_pack_item(&path,"s",100,json!({}),json!({"item":{}})).is_err());
+        std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn html_state_save_keeps_the_source_and_rejects_everything_else() {
+        let path=fixture();
+        let c=Connection::open(&path).unwrap();
+        let original=json!({"look":{"font":"serif"},"html":{"source":"<p>x</p>","state":null}});
+        c.execute("INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('h','Week','html',?1,1,100)",[original.to_string()]).unwrap();
+        c.execute("INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('s','Budget','spreadsheet','{\"html\":{}}',1,100)",[]).unwrap();
+        drop(c);
+        let read=read_resource(&path,"h").unwrap();
+        assert_eq!(read["kind"],"html");
+        let mut next=read["metadata"].clone();
+        next["html"]["state"]=json!({"done":[0,2]});
+        let saved=save_html_state(&path,"h",100,read["metadata"].clone(),next.clone()).unwrap();
+        assert_eq!(saved["metadata"]["html"]["state"],json!({"done":[0,2]}));
+        assert_eq!(saved["metadata"]["html"]["source"],"<p>x</p>");
+        assert_eq!(saved["metadata"]["look"],json!({"font":"serif"}));
+        // A stale revision, a changed source, another key, a huge state or another kind are all refused.
+        assert!(save_html_state(&path,"h",100,read["metadata"].clone(),next.clone()).is_err());
+        let revision=saved["revision"].as_i64().unwrap();
+        let mut source=saved["metadata"].clone(); source["html"]["source"]=json!("<script>1</script>");
+        assert!(save_html_state(&path,"h",revision,saved["metadata"].clone(),source).is_err());
+        let mut unrelated=saved["metadata"].clone(); unrelated["look"]=json!(1);
+        assert!(save_html_state(&path,"h",revision,saved["metadata"].clone(),unrelated).is_err());
+        let mut huge=saved["metadata"].clone(); huge["html"]["state"]=json!("x".repeat(300*1024));
+        assert!(save_html_state(&path,"h",revision,saved["metadata"].clone(),huge).is_err());
+        assert!(save_html_state(&path,"s",100,json!({"html":{}}),json!({"html":{"state":1}})).is_err());
+        let mut again=saved["metadata"].clone(); again["html"]["state"]=json!(null);
+        assert_eq!(save_html_state(&path,"h",revision,saved["metadata"].clone(),again).unwrap()["metadata"]["html"]["state"],json!(null));
         std::fs::remove_file(path).unwrap();
     }
     #[test]

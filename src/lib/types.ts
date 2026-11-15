@@ -99,6 +99,8 @@ export interface AiRunnerStatus {
 /** What a resource is. A Page is one kind among several (docs/CONTENT.md). */
 export type ResourceKind =
   | "page" | "document" | "presentation" | "project" | "gallery" | "file" | "stream" | "drawing" | "spreadsheet"
+  // One HTML document, shown in a sandbox (docs/HTML_PAGES.md)
+  | "html"
   // Planning, for everyone (docs/PACKS.md)
   | "task" | "event" | "inbox" | "goal"
   // Study pack, opt-in

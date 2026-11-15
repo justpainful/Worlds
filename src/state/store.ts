@@ -486,5 +486,8 @@ export function pageTitle(p: PageMeta | undefined | null): string {
   // Untitled things still say what they are.
   if (p.kind === "page" || p.kind === "template") return "Untitled";
   const info = kindInfo(p.kind);
-  return info ? `Untitled ${info.label.toLowerCase()}` : "Untitled";
+  if (!info) return "Untitled";
+  // "HTML page" keeps its capitals; "Spreadsheet" reads "Untitled spreadsheet".
+  const label = /^[A-Z]{2}/.test(info.label) ? info.label : info.label.toLowerCase();
+  return `Untitled ${label}`;
 }

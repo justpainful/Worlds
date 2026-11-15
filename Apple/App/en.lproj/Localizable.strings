@@ -787,3 +787,8 @@
 "The server refused a change made on this device." = "The server refused a change made on this device.";
 "Remove the saved copy" = "Remove the saved copy";
 "Your change is saved on this device and is sent when the page is connected." = "Your change is saved on this device and is sent when the page is connected.";
+"HTML page" = "HTML page";
+"This HTML page is empty" = "This HTML page is empty";
+"Write it in Worlds on the desktop, or ask Claude to build it." = "Write it in Worlds on the desktop, or ask Claude to build it.";
+"Runs here without the internet. Edit its source in Worlds on the desktop." = "Runs here without the internet. Edit its source in Worlds on the desktop.";
+"Read only. Runs here without the internet; its own changes are not kept on this device." = "Read only. Runs here without the internet; its own changes are not kept on this device.";

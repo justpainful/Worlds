@@ -38,6 +38,12 @@ export const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in
 /** Worlds in the browser: the backend is src/dev/mockTauri.ts, so isTauri is true there too. Use this for what the browser must do itself (files, links). */
 export const isWeb = typeof window !== "undefined" && (window as unknown as { __WORLDS_MOCK__?: boolean }).__WORLDS_MOCK__ === true;
 
+/** What the HTML page rules found (docs/HTML_PAGES.md): errors stop the save. */
+export interface HtmlCheck {
+  errors: string[];
+  warnings: string[];
+}
+
 export interface Bootstrap {
   profile: Profile;
   pages: PageMeta[];
@@ -230,6 +236,10 @@ export const api = {
       | import("../planning/model").DataKind,
     value: unknown,
   ) => invoke<PageMeta>("page_meta_set", { id, key, value }),
+  /** Save an HTML page's source; it is checked first (docs/HTML_PAGES.md) and not saved when it breaks a rule. */
+  htmlPageWrite: (id: string, source: string) => invoke<HtmlCheck>("html_page_write", { id, source }),
+  /** Keep the JSON an HTML page saved with worlds.save(). */
+  htmlPageSaveState: (id: string, value: string) => invoke<void>("html_page_save_state", { id, value }),
   movePage: (id: string, parentId: string | null, beforeId: string | null) => invoke<PageMeta>("page_move", { id, parentId, beforeId }),
   deletePage: (id: string) => invoke<void>("page_delete", { id }),
   restorePage: (id: string) => invoke<void>("page_restore", { id }),

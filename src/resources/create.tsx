@@ -17,6 +17,8 @@ import { today } from "../planning/model";
 import { openQuickCapture } from "../planning/InboxView";
 import { packNewItems } from "../packs/actions";
 import { defaultSheetName } from "../spreadsheet/names";
+import { starterHtml } from "../htmlpage/compose";
+import { uiLanguage } from "../i18n/ui";
 
 const LINE_ICON: Record<ResourceKind, IconName> = {
   page: "page",
@@ -24,6 +26,7 @@ const LINE_ICON: Record<ResourceKind, IconName> = {
   presentation: "monitor",
   drawing: "edit",
   spreadsheet: "table",
+  html: "code",
   project: "folder",
   gallery: "image",
   file: "upload",
@@ -50,6 +53,8 @@ function initialMetadata(kind: ResourceKind): Record<string, unknown> {
       return { project: { status: "active", start: null, due: null, description: "", links: [] } };
     case "gallery":
       return { gallery: { view: "grid" } };
+    case "html":
+      return { html: { source: starterHtml(uiLanguage()), state: null } };
     case "spreadsheet":
       return { sheet: { sheets: [{ id: "sh_1", name: defaultSheetName(1), rows: 60, cols: 26, cells: {}, colWidths: {}, rowHeights: {}, frozenRows: 0, frozenCols: 0, merges: [], conditionalRules: [] }], activeSheetId: "sh_1" } };
     default:

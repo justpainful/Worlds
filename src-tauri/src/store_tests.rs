@@ -347,3 +347,59 @@ fn claude_creates_pack_items_and_changes_their_fields() {
     drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn claude_creates_and_rewrites_html_pages_within_the_rules() {
+    let (dir, conn) = temp_db("html-pages");
+    let ctx = Ctx { actor: "ai".into(), op_id: Some("op-html-1".into()), origin: "mcp".into() };
+    let rules = crate::mcp::execute_tool(&conn, &ctx, "html_pages_rules", &json!({})).unwrap();
+    assert!(rules["rules"].as_str().unwrap().contains("worlds.save"));
+
+    // A page that loads a script from the network is refused before it exists.
+    let refused = crate::mcp::execute_tool(
+        &conn,
+        &ctx,
+        "resources_create",
+        &json!({ "kind": "html", "title": "Bad", "html": "<script src=\"https://cdn.example/x.js\"></script>" }),
+    );
+    assert!(refused.is_err());
+
+    let made = crate::mcp::execute_tool(
+        &conn,
+        &ctx,
+        "resources_create",
+        &json!({ "kind": "html", "title": "Grades", "html": "<h1>Term grades</h1><div class=\"w-stat\"><b>87</b><span>Biology</span></div>" }),
+    )
+    .unwrap();
+    let id = made["id"].as_str().unwrap().to_string();
+    assert_eq!(made["kind"], "html");
+    // Its visible text is searchable; its markup is not.
+    assert!(store::search(&conn, "Biology", 10, false).unwrap().iter().any(|h| h.page_id == id));
+    assert!(!store::search(&conn, "w-stat", 10, false).unwrap().iter().any(|h| h.page_id == id));
+
+    // A rewrite that breaks a hard rule is not saved and says why.
+    let bad =
+        crate::mcp::execute_tool(&conn, &ctx, "html_pages_write", &json!({ "id": id, "html": "<iframe src=\"https://x\"></iframe>" }))
+            .unwrap();
+    assert_eq!(bad["saved"], false);
+    assert!(bad["errors"][0].as_str().unwrap().contains("iframe"));
+    let read = crate::mcp::execute_tool(&conn, &ctx, "html_pages_read", &json!({ "id": id })).unwrap();
+    assert!(read["html"].as_str().unwrap().contains("Term grades"));
+
+    // A good rewrite is saved, keeps the page's state, and can be undone from a version.
+    crate::html_page::save_state(&conn, &Ctx::user(), &id, "{\"done\":[1,2]}").unwrap();
+    let ok =
+        crate::mcp::execute_tool(&conn, &ctx, "html_pages_write", &json!({ "id": id, "html": "<h1>Term grades, final</h1>" })).unwrap();
+    assert_eq!(ok["saved"], true);
+    let after = crate::mcp::execute_tool(&conn, &ctx, "html_pages_read", &json!({ "id": id })).unwrap();
+    assert_eq!(after["html"], "<h1>Term grades, final</h1>");
+    assert_eq!(after["state"]["done"], json!([1, 2]));
+    let versions = store::list_versions(&conn, &id).unwrap();
+    assert!(!versions.is_empty(), "Claude's rewrite keeps the page before it as a version");
+
+    // Only HTML pages take HTML.
+    let page = new_page(&conn, "Notes");
+    assert!(crate::mcp::execute_tool(&conn, &ctx, "html_pages_write", &json!({ "id": page, "html": "<p>x</p>" })).is_err());
+    drop(conn);
+    let _ = std::fs::remove_dir_all(&dir);
+}

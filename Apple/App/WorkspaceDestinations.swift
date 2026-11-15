@@ -353,6 +353,7 @@ struct LibraryDestinationView: View {
         case "file": return "cube.transparent.fill"
         case "project": return "folder.fill"
         case "document": return "doc.richtext"
+        case "html": return "chevron.left.forwardslash.chevron.right"
         default: return "doc.text"
         }
     }

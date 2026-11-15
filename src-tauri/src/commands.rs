@@ -123,6 +123,19 @@ pub async fn page_meta_set(state: State<'_, AppState>, id: String, key: String, 
     with_conn!(state, |c| store::set_page_meta(&c, &Ctx::user(), &id, &key, value))
 }
 
+/// Saves an HTML page's source after checking it (docs/HTML_PAGES.md). A
+/// source that breaks a hard rule is not saved; the check says why.
+#[tauri::command]
+pub async fn html_page_write(state: State<'_, AppState>, id: String, source: String) -> CmdResult<crate::html_page::Check> {
+    with_conn!(state, |c| crate::html_page::write(&c, &Ctx::user(), &id, &source))
+}
+
+/// Keeps the JSON an HTML page saved with `worlds.save()`.
+#[tauri::command]
+pub async fn html_page_save_state(state: State<'_, AppState>, id: String, value: String) -> CmdResult<()> {
+    with_conn!(state, |c| crate::html_page::save_state(&c, &Ctx::user(), &id, &value))
+}
+
 #[tauri::command]
 pub async fn page_update(state: State<'_, AppState>, id: String, patch: store::PagePatch) -> CmdResult<store::PageMeta> {
     with_conn!(state, |c| store::update_page(&c, &Ctx::user(), &id, patch))

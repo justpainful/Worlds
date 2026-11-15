@@ -189,6 +189,7 @@ internal fun worldsTile(kind: String): Int = when (kind) {
     "gallery" -> R.drawable.pi_image
     "file" -> R.drawable.pi_file
     "stream" -> R.drawable.pi_film
+    "html" -> R.drawable.pi_layers
     "template" -> R.drawable.pi_templates
     else -> R.drawable.pi_pages
 }

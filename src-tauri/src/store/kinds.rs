@@ -14,6 +14,7 @@ pub const KINDS: &[&str] = &[
     "presentation",
     "drawing",
     "spreadsheet",
+    "html",
     "project",
     "gallery",
     "file",
@@ -100,6 +101,7 @@ pub const TEXT_POINTERS: &[&str] = &[
 
 /// Searchable text kept in metadata for kinds that have no blocks.
 pub fn metadata_text(metadata: &Value) -> String {
+    let html_text: String;
     let mut out: Vec<&str> = Vec::new();
     for ptr in TEXT_POINTERS {
         if let Some(s) = metadata.pointer(ptr).and_then(Value::as_str) {
@@ -127,6 +129,11 @@ pub fn metadata_text(metadata: &Value) -> String {
             }
         }
     }
+    // An HTML page's visible text (docs/HTML_PAGES.md).
+    if let Some(source) = metadata.pointer("/html/source").and_then(Value::as_str) {
+        html_text = crate::html_page::plain_text(source);
+        out.push(&html_text);
+    }
     // A pack item's text fields are searchable whatever the pack calls them.
     if let Some(item) = metadata.get(PACK_DATA_KEY).and_then(Value::as_object) {
         for v in item.values() {
@@ -142,5 +149,5 @@ pub fn metadata_text(metadata: &Value) -> String {
 
 /// Whether writing `key` into metadata changes what search sees.
 pub fn key_is_indexed(key: &str) -> bool {
-    key == "sheet" || key == PACK_DATA_KEY || TEXT_POINTERS.iter().any(|p| p[1..].split('/').next() == Some(key))
+    key == "sheet" || key == "html" || key == PACK_DATA_KEY || TEXT_POINTERS.iter().any(|p| p[1..].split('/').next() == Some(key))
 }

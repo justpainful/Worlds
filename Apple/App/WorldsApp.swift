@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 import SQLite3
 import WorldsPersistence
 import WorldsSearch
+import WorldsModels
 #if WORLDS_MAIN_APP_MODULES
 import WorldsMCPApprovalCoordinator
 import WorldsMCPApprovalViews
@@ -755,7 +756,9 @@ private struct WorldsLibraryView: View {
                 if let section = selectedSidebarSection, selectedID == nil {
                     sectionContentView(section)
                 } else if let selectedPageID = selectedID, let page = pages.first(where: { $0.id == selectedPageID }) {
-                    if ["project", "gallery", "presentation", "file", "stream", "spreadsheet"].contains(page.kind) {
+                    if page.kind == HTMLPageDocument.kind {
+                        HTMLPageView(page: page, saveState: htmlStateSaver(for: page), openPage: { target in openLinkedPage(target, from: page) })
+                    } else if ["project", "gallery", "presentation", "file", "stream", "spreadsheet"].contains(page.kind) {
                         ResourceContentView(page: page, pages: pages, projectEditingAvailable: projectEditingAvailable(for: page), otherEditingAvailable: otherResourceEditingAvailable(for: page), editsOwnWorkspace: editsOwnWorkspace, openVideo: videoAction(for: page), openDocument: documentAction(for: page)) { target in
                             guard target != page.id else { return }
                             returnStack.append(page.id)
@@ -1306,7 +1309,9 @@ private struct WorldsLibraryView: View {
         } else if pageID == "showcase-cad-turbine" || pageID == "showcase-slides-deck" {
             WorldsCreativeStudioView()
         } else if let page = pages.first(where: { $0.id == pageID }) {
-            if ["project", "gallery", "presentation", "file", "stream", "spreadsheet"].contains(page.kind) {
+            if page.kind == HTMLPageDocument.kind {
+                HTMLPageView(page: page, saveState: htmlStateSaver(for: page), openPage: { target in openLinkedPage(target, from: page) })
+            } else if ["project", "gallery", "presentation", "file", "stream", "spreadsheet"].contains(page.kind) {
                 ResourceContentView(
                     page: page,
                     pages: pages,
@@ -1707,6 +1712,7 @@ private struct WorldsLibraryView: View {
         case "file": return "cube.transparent.fill"
         case "project": return "folder.fill"
         case "document": return "doc.richtext"
+        case "html": return "chevron.left.forwardslash.chevron.right"
         default: return "doc.text"
         }
     }
@@ -2591,6 +2597,34 @@ private struct WorldsLibraryView: View {
         copyContext.map { !$0.copy.isLocalCopy } ?? false
         #else
         false
+        #endif
+    }
+
+    /// `worlds://page/ID` from an HTML page opens that page, with Back returning to the HTML page.
+    private func openLinkedPage(_ target: String, from page: StoredPage) {
+        guard target != page.id, pages.contains(where: { $0.id == target && !$0.archived && $0.kind != "template" }) else { return }
+        returnStack.append(page.id)
+        selectedID = target
+    }
+
+    /// Keeps an HTML page's `worlds.save()` in the open workspace or local copy; without one the page still runs, but nothing is kept.
+    private func htmlStateSaver(for page: StoredPage) -> (@MainActor (String) async -> Void)? {
+        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+        guard let context = copyContext, page.kind == HTMLPageDocument.kind, !page.archived else { return nil }
+        let generation = databaseGeneration
+        let pageID = page.id
+        return { text in
+            guard let state = try? JSONDecoder().decode(JSONValue.self, from: Data(text.utf8)) else { return }
+            do {
+                let baseline = try await context.repository.readHTMLPage(id: pageID)
+                _ = try await context.repository.saveHTMLState(id: pageID, baseline: baseline, state: state)
+                await refreshCopy(id: context.copy.id, generation: generation)
+            } catch {
+                // The page keeps running with its state in memory; a later save tries again from the stored page.
+            }
+        }
+        #else
+        return nil
         #endif
     }
 
