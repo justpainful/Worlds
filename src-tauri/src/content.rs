@@ -397,7 +397,10 @@ pub fn from_markdown(src: &str) -> Vec<Value> {
             flush_para(&mut para, &mut blocks);
             let mut items: Vec<Value> = Vec::new();
             while i < lines.len() {
-                let l = lines[i].trim_start();
+                // Trimmed on both sides, like `t` above: a marker followed only by a tab or a
+                // no-break space ("-	") must match here too, or the first line is never taken
+                // and the outer loop sees it again forever.
+                let l = lines[i].trim();
                 if list_kind(l) != Some(kind) {
                     break;
                 }
@@ -608,6 +611,16 @@ mod tests {
         assert_eq!(refs, vec![("abc".to_string(), "mention")]);
         assert_eq!(to_markdown(&blocks[2]), "- [ ] one\n- [x] two");
         assert_eq!(node_type(&blocks[4]), "callout");
+    }
+
+    #[test]
+    fn list_marker_with_only_trailing_whitespace_ends() {
+        // These used to loop forever: the list loop did not trim the end of the line.
+        for md in ["-\t", "- [ ]\u{a0}", "1.\t", "*\u{a0}\nafter"] {
+            let blocks = from_markdown(md);
+            assert!(!blocks.is_empty(), "{md:?}");
+            assert!(node_type(&blocks[0]).ends_with("List"), "{md:?}");
+        }
     }
 
     #[test]
