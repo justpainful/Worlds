@@ -135,14 +135,22 @@ xcodebuild -project Apple/Worlds.xcodeproj \
 
 app_path="build/Worlds-macOS/Build/Products/Release/Worlds.app"
 
-# 2. Copy standalone .app bundle
-ditto "$app_path" deliverables/Worlds-macOS-Unsigned.app
+# 2. Copy the .app bundle, keeping the name Finder shows: Worlds.app
+mkdir -p deliverables/mac
+ditto "$app_path" deliverables/mac/Worlds.app
 
-# 3. Create compressed .zip archive preserving permissions and symlinks
-ditto -c -k --sequesterRsrc --keepParent deliverables/Worlds-macOS-Unsigned.app deliverables/Worlds-macOS-Unsigned.zip
+# 3. Sign it ad hoc (no developer account), so macOS 15 offers Open Anyway instead of "damaged"
+codesign --force --deep --sign - deliverables/mac/Worlds.app
+codesign --verify --deep --strict --verbose=2 deliverables/mac/Worlds.app
 
-# 4. Create Apple Disk Image (.dmg) with UDZO compression
-hdiutil create -volname Worlds -srcfolder deliverables/Worlds-macOS-Unsigned.app -ov -format UDZO deliverables/Worlds-macOS-Unsigned.dmg
+# 4. Create compressed .zip archive preserving permissions and symlinks
+ditto -c -k --sequesterRsrc --keepParent deliverables/mac/Worlds.app deliverables/Worlds-macOS-Unsigned.zip
+
+# 5. Create the disk image with the app and an Applications shortcut (UDZO compression)
+mkdir -p build/dmg
+ditto deliverables/mac/Worlds.app build/dmg/Worlds.app
+ln -s /Applications build/dmg/Applications
+hdiutil create -volname Worlds -srcfolder build/dmg -ov -format UDZO deliverables/Worlds-macOS-Unsigned.dmg
 
 # Verify deliverables
 ls -lh deliverables/Worlds-macOS-Unsigned.*
@@ -158,9 +166,9 @@ After completing the build steps above, the `deliverables/` directory contains a
 | --- | --- | --- |
 | `Worlds-iPhone-Unsigned.ipa` | iOS (iPhone) | Unsigned application archive ready for sideloading or enterprise signing. |
 | `Worlds-iPad-Unsigned.ipa` | iPadOS (iPad) | Multi-column tablet archive with Apple Pencil and Stage Manager support. |
-| `Worlds-macOS-Unsigned.app` | macOS (Universal) | Standalone macOS application bundle with ad-hoc code signature. |
+| `mac/Worlds.app` | macOS (Universal) | Standalone macOS application bundle with an ad hoc code signature. |
 | `Worlds-macOS-Unsigned.zip` | macOS (Universal) | Compressed archive preserving bundle directory structure and permissions. |
-| `Worlds-macOS-Unsigned.dmg` | macOS (Universal) | Drag-and-drop installer disk image format. |
+| `Worlds-macOS-Unsigned.dmg` | macOS (Universal) | Disk image with `Worlds.app` and an Applications shortcut to drag it onto. |
 
 ---
 

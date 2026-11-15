@@ -298,9 +298,24 @@ jobs:
             2>&1 | tee logs/macos-package.log
           app="$RUNNER_TEMP/WorldsPackage/Build/Products/Release/Worlds.app"
           test -d "$app"
-          ditto "$app" deliverables/Worlds-macOS-Unsigned.app
-          ditto -c -k --sequesterRsrc --keepParent deliverables/Worlds-macOS-Unsigned.app deliverables/Worlds-macOS-Unsigned.zip
-          hdiutil create -volname Worlds -srcfolder deliverables/Worlds-macOS-Unsigned.app -ov -format UDZO deliverables/Worlds-macOS-Unsigned.dmg
+          # The bundle keeps the name people see in Finder and the Dock: Worlds.app.
+          mkdir -p deliverables/mac
+          ditto "$app" deliverables/mac/Worlds.app
+          # An ad hoc signature (no Apple developer account): without any signature,
+          # macOS 15 calls a downloaded app damaged and offers no Open Anyway.
+          codesign --force --deep --sign - deliverables/mac/Worlds.app
+          codesign --verify --deep --strict --verbose=2 deliverables/mac/Worlds.app
+          ditto -c -k --sequesterRsrc --keepParent deliverables/mac/Worlds.app deliverables/Worlds-macOS-Unsigned.zip
+          # The disk image opens on the app and an Applications shortcut to drag it onto.
+          mkdir -p "$RUNNER_TEMP/dmg"
+          ditto deliverables/mac/Worlds.app "$RUNNER_TEMP/dmg/Worlds.app"
+          ln -s /Applications "$RUNNER_TEMP/dmg/Applications"
+          hdiutil create -volname Worlds -srcfolder "$RUNNER_TEMP/dmg" -ov -format UDZO deliverables/Worlds-macOS-Unsigned.dmg
+          # Check what people will download: the app inside the image is signed, next to the shortcut.
+          mount="$(hdiutil attach -nobrowse -readonly deliverables/Worlds-macOS-Unsigned.dmg | tail -1 | awk -F'\t' '{print $NF}')"
+          test -L "$mount/Applications"
+          codesign --verify --deep --strict "$mount/Worlds.app"
+          hdiutil detach "$mount"
       - uses: actions/upload-artifact@v4
         with:
           name: Worlds-macOS-Unsigned
@@ -311,7 +326,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: Worlds-macOS-Unsigned-app
-          path: deliverables/Worlds-macOS-Unsigned.app/
+          path: deliverables/mac/Worlds.app/
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: always()
