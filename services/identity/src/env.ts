@@ -28,6 +28,8 @@ export interface Env {
   EMAIL?: SendEmailBinding;
   /** Shared with services/edge: a request carrying it came through the edge, so its x-worlds-client-ip is the visitor's. */
   EDGE_SECRET?: string;
+  /** Web origins allowed to call this service from a browser, comma separated (https://go.enterworlds.space). */
+  ALLOWED_ORIGINS?: string;
 }
 
 /** The part of Cloudflare's `send_email` binding this service uses. */

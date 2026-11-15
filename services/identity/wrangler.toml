@@ -13,6 +13,8 @@ WEBAUTHN_RP_NAME = "Worlds"
 WEBAUTHN_ORIGIN = "http://localhost:8787"
 # Public base URL of this service (used in invite links).
 PUBLIC_URL = "http://localhost:8787"
+# Web origins that may call this service from a browser (Worlds on the web).
+ALLOWED_ORIGINS = ""
 ACCESS_TOKEN_TTL_SECONDS = "900"
 REFRESH_TOKEN_TTL_DAYS = "60"
 # Where access change events are POSTed when no queue is bound (optional).

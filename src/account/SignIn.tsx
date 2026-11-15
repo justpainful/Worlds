@@ -6,6 +6,9 @@ import { Icon } from "../ui/Icon";
 import { accountApi, type AccountView } from "./api";
 import { useAccount } from "./store";
 
+/** Worlds on the web signs in with the email code only: the browser has no passkey flow here (webAccount.ts). */
+const WEB = import.meta.env.VITE_WEB_DEMO === "1" && Boolean(import.meta.env.VITE_IDENTITY_URL);
+
 type Step =
   | { kind: "choose" }
   | { kind: "email"; create: boolean }
@@ -59,18 +62,20 @@ export function SignInFlow({ start = "choose", onDone, onCancel }: { start?: "ch
         </div>
         <h2 className="acct-title">{step.created ? "Your account is ready" : "You are signed in"}</h2>
         <p className="acct-text">
-          {step.created
+          {step.created && WEB
+            ? "The same account works in the Worlds app on your PC and phone: sign in there with this email."
+            : step.created
             ? "Add a passkey so this PC and your others can sign in with Windows Hello, your face, fingerprint or PIN."
             : "Your Team workspaces are in the menu at the top of the sidebar."}
         </p>
         <div className="acct-actions">
-          {step.created && (
+          {step.created && !WEB && (
             <Button variant="tinted" size="large" icon="lock" onClick={() => act(async () => void (await accountApi.passkeyAdd()))} loading={busy}>
               Add a Passkey
             </Button>
           )}
-          <Button variant={step.created ? "quiet" : "tinted"} size="large" onClick={onDone}>
-            {step.created ? "Not Now" : "Done"}
+          <Button variant={step.created && !WEB ? "quiet" : "tinted"} size="large" onClick={onDone}>
+            {step.created && !WEB ? "Not Now" : "Done"}
           </Button>
         </div>
         {error && <p className="acct-error">{error}</p>}
@@ -201,6 +206,7 @@ export function SignInFlow({ start = "choose", onDone, onCancel }: { start?: "ch
       <h2 className="acct-title">Sign in to Worlds</h2>
       <p className="acct-text">An account lets you join Team workspaces and work on pages with other people. Your Personal pages stay on this PC.</p>
       <div className="acct-actions is-stacked">
+        {!WEB && (
         <Button
           variant="tinted"
           size="large"
@@ -216,7 +222,8 @@ export function SignInFlow({ start = "choose", onDone, onCancel }: { start?: "ch
         >
           Sign In with a Passkey
         </Button>
-        <Button variant="plain" size="large" disabled={busy} onClick={() => setStep({ kind: "email", create: false })}>
+        )}
+        <Button variant={WEB ? "tinted" : "plain"} size="large" disabled={busy} onClick={() => setStep({ kind: "email", create: false })}>
           Sign In with an Email Code
         </Button>
         <Button variant="quiet" disabled={busy} onClick={() => setStep({ kind: "email", create: true })}>
