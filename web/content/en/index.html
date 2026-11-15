@@ -1,69 +1,48 @@
 <!--
-title: Worlds: projects, content and tools in one workspace
-description: Worlds is a workspace written in Arabic from the start: pages, documents, tables, drawings and presentations kept on your device, with Claude. For Windows, Mac, iPhone, iPad, Android and the browser.
+title: Worlds: one page to write, calculate, draw and present
+description: Worlds is a workspace written in Arabic from the start: pages, documents, tables, drawings and presentations kept on your device, with Claude. Try a real Worlds page on this site.
 -->
-<section class="wrap hero" aria-label="Worlds">
-  <div class="code">
-    <p class="puts" aria-hidden="true"><span class="word">puts</span><span class="caret" hidden></span></p>
-    <!-- hello -->
-    <button class="run" type="button" aria-label="Write it again">run &#9656;</button>
+<section class="wrap stage" aria-labelledby="stage-title">
+  <div class="stage-intro">
+    <h1 id="stage-title">Worlds</h1>
+    <p class="sub">One page to write, calculate, draw and present.</p>
+    <p class="desc">The page in front of you runs on Worlds' own code: the formula engine, the date reading, the brush and the shape straightening. Type <kbd>/</kbd> and add what you like.</p>
+    <p class="open stage-links"><a href="{{app}}">Open Worlds in the browser</a><a href="{{demo}}">Try the full demo</a><a href="/en/apps/">Download the app</a></p>
   </div>
-  <div class="cover">
-    <div class="cover-text">
-      <h1>Worlds</h1>
-      <p class="sub">Projects, content and tools<br>in one workspace</p>
-      <p class="desc">An idea that began with study notes and grew into a space for many kinds of work: pages, documents, tables, drawings and presentations, kept on your device and working offline, with Claude editing the same pages.</p>
-      <div class="actions">
-        <a class="btn primary" href="{{app}}">Open Worlds in the browser</a>
-        <a class="btn" href="{{demo}}">Try the demo</a>
-        <a class="textlink" href="/en/apps/">Download the app</a>
+
+  <div class="live" data-live>
+    <div class="live-page">
+      <p class="live-crumb" aria-hidden="true"><span>Worlds</span><span class="live-sep">/</span><span>Pages</span></p>
+      <div class="live-title">My first page</div>
+      <div class="live-blocks">
+        <div class="lb lb-hello">
+          <div class="code">
+            <p class="puts" aria-hidden="true"><span class="word">puts</span><span class="caret" hidden></span></p>
+            <!-- hello -->
+            <button class="run" type="button" aria-label="Write it again">run &#9656;</button>
+          </div>
+        </div>
+      </div>
+      <div class="live-add">
+        <p class="live-nojs">This page runs in the browser. Turn on JavaScript to try it, or open <a href="{{demo}}">the demo</a>.</p>
       </div>
     </div>
-    <div class="rule" aria-hidden="true"></div>
+    <div class="live-foot"></div>
   </div>
+
 </section>
 
-<section class="wrap chapter" id="story" aria-labelledby="story-title">
-  <p class="kicker">The story</p>
-  <h2 id="story-title">It started with too many tools</h2>
-  <p class="intro">The project's owner kept moving between tools to organise their notes, so they built Campus for studying: notes taken on the phone, then synced to the computer locally. That version stayed limited to study and lacked things they needed outside it, so they rebuilt it from the ground up as Worlds.</p>
-  <ol class="path">
-    <li><b>01</b><strong>Notes on the phone</strong><span>Campus began with a clear need: studying, and moving notes locally.</span></li>
-    <li><b>02</b><strong>Needs that grew</strong><span>The work came to need files, drawing, slides and connected projects.</span></li>
-    <li><b>03</b><strong>A full rebuild</strong><span>The structure and interface changed, and the idea widened until it became Worlds.</span></li>
-  </ol>
-  <figure class="shot art">
-    <img src="/media/book/p02.webp" alt="An illustration of the Worlds story: study notes in Campus, then a new structure and design, then Worlds growing step by step" width="1600" height="819" loading="lazy">
-    <figcaption>From study notes in Campus to a complete workspace.</figcaption>
-  </figure>
-</section>
-
-<section class="wrap chapter" id="resources" aria-labelledby="resources-title">
-  <p class="kicker">Worlds resources</p>
-  <h2 id="resources-title">Many kinds of content, each edited and shown in the way that suits it</h2>
-  <div class="split">
-    <ul class="kinds">
-      <li><a href="/en/docs/pages/"><b>01</b><strong>Writing</strong><em>Page · Document</em><span>Text, tasks and formatted content, made of blocks you drag and arrange.</span></a></li>
-      <li><a href="/en/docs/drawing/"><b>02</b><strong>Design and presenting</strong><em>Drawing · Presentation</em><span>Canvases, layers and brushes, and slides you present full screen.</span></a></li>
-      <li><a href="/en/docs/media-files/"><b>03</b><strong>Media and files</strong><em>Gallery · File · Stream</em><span>Images, files and visual sources shown inside the workspace.</span></a></li>
-      <li><a href="/en/docs/projects/"><b>04</b><strong>Context</strong><em>Project</em><span>Brings related resources together in one place.</span></a></li>
-    </ul>
-    <figure class="shot">
-      <img src="/media/book/p05.webp" alt="A project in Worlds with its resources listed under it: a document, a drawing, a presentation, a gallery and a file" width="1600" height="1000" loading="lazy">
-      <figcaption>Related resources inside one project.</figcaption>
-    </figure>
-  </div>
-</section>
-
-<section class="wrap chapter" id="claude" aria-labelledby="claude-title">
-  <p class="kicker">Claude inside Worlds</p>
-  <h2 id="claude-title">It reads and edits your pages with Worlds tools, and every edit can be undone</h2>
-  <p class="intro">On Windows you choose Claude Code or Codex, an API key from a provider you pick, or a model running offline on your own computer such as Ollama. On Android it edits pages and adds tasks, with one-step undo, and on iPhone, iPad and Mac it is a real conversation with the same providers. Requests go straight from your device to the provider you chose.</p>
-  <figure class="shot">
-    <img src="/media/book/p25.webp" alt="The Claude panel next to a page in Worlds, listing the tool steps it took in its reply" width="1600" height="900" loading="lazy">
-    <figcaption>An illustration with sample data: Claude's tool steps inside a page.</figcaption>
-  </figure>
-  <p class="open"><a href="/en/docs/claude/">Connecting Claude and other AI providers</a><a href="/en/docs/mcp/">Connecting Claude Code to your workspace with MCP</a></p>
+<section class="wrap chapter" id="more" aria-labelledby="more-title">
+  <p class="kicker">In the app</p>
+  <h2 id="more-title">And the full Worlds does more than one page</h2>
+  <ul class="more">
+    <li><a href="/en/docs/claude/"><strong>Claude edits your pages</strong><span>With Worlds' own tools, and every edit undoes in one step.</span></a></li>
+    <li><a href="/en/docs/drawing/"><strong>Drawing with layers and brushes</strong><span>Masks and effects, and exports at the quality you choose.</span></a></li>
+    <li><a href="/en/docs/sharing/"><strong>Shared pages</strong><span>With your team, with permissions the server enforces.</span></a></li>
+    <li><a href="/en/docs/packs/"><strong>Packs for every sector</strong><span>Subjects, lessons and exams for study, and tools for work.</span></a></li>
+    <li><a href="/en/docs/automations/"><strong>Automations</strong><span>Schedules that run on their own, and Discord messages after you approve.</span></a></li>
+    <li><a href="/en/docs/html-pages/"><strong>HTML pages</strong><span>A tool or a designed report, under rules that keep you safe.</span></a></li>
+  </ul>
 </section>
 
 <section class="wrap chapter" id="apps" aria-labelledby="apps-title">
@@ -80,34 +59,10 @@ description: Worlds is a workspace written in Arabic from the start: pages, docu
       <tr><th scope="row">Browser</th><td class="file"><a href="{{app}}">app.enterworlds.space</a></td><td class="size txt">No install</td><td class="note">Your pages stay in the browser, and on your account when you sign in.</td><td class="how"><a href="/en/docs/install/web/">Guide</a></td></tr>
     </tbody>
   </table>
-  <div class="actions">
-    <a class="btn primary" href="{{releases}}">Download from GitHub</a>
-    <a class="btn" href="/en/apps/">What works on each platform</a>
-  </div>
-</section>
-
-<section class="wrap chapter" id="built" aria-labelledby="built-title">
-  <p class="kicker">The owner's role</p>
-  <h2 id="built-title">How was Worlds built?</h2>
-  <p class="intro">This is the story of using AI tools to build the app, and it is separate from the AI features inside it. The result of each review comes back as direction for the next step.</p>
-  <ol class="roles">
-    <li><small>The owner</small><strong>Defines the problem</strong><span>Scattered tools, and the limits of the Campus study version.</span></li>
-    <li><small>The owner</small><strong>Chooses the direction</strong><span>Rebuild the project, its structure and its design instead of keeping it limited to study.</span></li>
-    <li class="ai"><small>Claude and Codex</small><strong>Development tools they direct</strong><span>Help write and change the code and try solutions in the chosen direction.</span></li>
-    <li><small>The owner</small><strong>Reviews and decides</strong><span>Follows the result and decides what needs changing or finishing.</span></li>
-  </ol>
-</section>
-
-<section class="wrap chapter" id="open" aria-labelledby="open-title">
-  <p class="kicker">Source</p>
-  <h2 id="open-title">The code is published on GitHub, and the docs explain every detail</h2>
-  <p class="intro">Every release is built from the published code. If something goes wrong or you have an idea, open an issue on GitHub.</p>
   <p class="open">
-    <a href="{{github}}">The code on GitHub</a>
+    <a href="{{releases}}">Download from GitHub</a>
     <a href="/en/docs/">Docs</a>
-    <a href="/en/docs/install/">Install step by step</a>
-    <a href="/en/tools/">Tools</a>
-    <a href="/en/support/">Support and questions</a>
-    <a href="{{issues}}">Report a problem</a>
+    <a href="{{github}}">The code on GitHub</a>
+    <a href="/en/support/">Support</a>
   </p>
 </section>
