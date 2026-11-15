@@ -106,6 +106,32 @@ describe("sending with a fallback", () => {
     expect(urls).toEqual(["https://login.enterworlds.space/_edge/mail", "https://api.resend.com/emails"]);
   });
 
+  it("sends through Brevo when Resend has reached its daily limit", async () => {
+    const realFetch = globalThis.fetch;
+    const calls: { url: string; headers: Headers; body: any }[] = [];
+    globalThis.fetch = (async (url: string, init: RequestInit) => {
+      calls.push({ url, headers: new Headers(init.headers), body: JSON.parse(String(init.body)) });
+      return new Response("{}", { status: url.includes("resend") ? 429 : 201 });
+    }) as typeof fetch;
+    setEmailSender(null);
+    try {
+      const env = { EMAIL_FROM: "Worlds <no-reply@enterworlds.space>", RESEND_API_KEY: "re_test", BREVO_API_KEY: "xkeysib-test", ENVIRONMENT: "production" } as unknown as Env;
+      await emailSender(env).send(msg);
+    } finally {
+      globalThis.fetch = realFetch;
+      setEmailSender({ send: async (m) => void mailbox.push(m) });
+    }
+    expect(calls.map((c) => c.url)).toEqual(["https://api.resend.com/emails", "https://api.brevo.com/v3/smtp/email"]);
+    expect(calls[1].headers.get("api-key")).toBe("xkeysib-test");
+    expect(calls[1].body).toEqual({
+      sender: { name: "Worlds", email: "no-reply@enterworlds.space" },
+      to: [{ email: msg.to }],
+      subject: "s",
+      textContent: "t",
+      htmlContent: "<p>h</p>",
+    });
+  });
+
   it("refuses to run in production with no provider", () => {
     setEmailSender(null);
     try {

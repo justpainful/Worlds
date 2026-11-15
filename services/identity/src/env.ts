@@ -20,6 +20,8 @@ export interface Env {
   EMAIL_WEBHOOK_SECRET?: string;
   /** Resend (resend.com) API key: the simplest hosted sender. */
   RESEND_API_KEY?: string;
+  /** Brevo (brevo.com) API key: a second free sender after Resend. */
+  BREVO_API_KEY?: string;
   /** From address for sign-in emails, e.g. "Worlds <login@example.com>". */
   EMAIL_FROM?: string;
   /** Cloudflare Email Service binding (`send_email` in wrangler.toml); tried before Resend. */

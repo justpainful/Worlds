@@ -72,6 +72,25 @@ const save = () => {
 };
 const secret = () => randomBytes(32).toString("base64url");
 
+/** Asks in the terminal without echoing what is pasted. */
+async function hiddenQuestion(prompt) {
+  let muted = false;
+  const output = new Writable({
+    write(chunk, _enc, cb) {
+      if (!muted) process.stdout.write(chunk);
+      cb();
+    },
+  });
+  const rl = createInterface({ input: process.stdin, output, terminal: true });
+  process.stdout.write(prompt);
+  muted = true;
+  const answer = (await rl.question("")).trim();
+  muted = false;
+  process.stdout.write("\n");
+  rl.close();
+  return answer;
+}
+
 // --domain example.com (or --domain=example.com) moves the services onto it.
 const domainArg = (() => {
   const i = process.argv.findIndex((a) => a === "--domain" || a.startsWith("--domain="));
@@ -190,17 +209,23 @@ if (state.domain) {
     if (!state.resendKey) say("   Until then, the Resend key below sends the codes.");
   }
   state.domainFrom = `Worlds <no-reply@${state.domain}>`;
-  // Resend keeps its own sender until the domain is verified there too
-  // (set resendDomainVerified in services/.deploy/state.json), so the
-  // fallback never sends from an address Resend would refuse.
-  if (!EDGE || state.resendDomainVerified || !state.resendKey || !state.emailFrom) state.emailFrom = state.domainFrom;
-  if (state.resendKey === undefined) {
-    const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
-    say("   Resend is the fallback when Cloudflare's daily limit is reached or it is down.");
-    say(`   Add ${state.domain} in Resend (Domains) so it can send from it too.`);
-    state.resendKey = (await rl.question("   Resend API key (press Enter to skip): ")).trim();
-    rl.close();
-    if (state.resendKey && !state.resendKey.startsWith("re_")) fail("That does not look like a Resend key (they start with re_).");
+  // Resend and Brevo send from the domain once it is verified with both
+  // (run once with --domain-verified; it is remembered). Until then Resend
+  // keeps its own test sender, so a fallback never uses an address it refuses.
+  if (process.argv.includes("--domain-verified")) state.domainVerified = true;
+  if (!EDGE || state.domainVerified || !state.resendKey || !state.emailFrom) state.emailFrom = state.domainFrom;
+  // Keys are only asked for in a terminal, and never echoed.
+  if (process.stdin.isTTY) {
+    if (state.resendKey === undefined) {
+      say(`   Resend sends the codes for free (100 a day). Add ${state.domain} in Resend, Domains.`);
+      state.resendKey = await hiddenQuestion("   Resend API key (press Enter to skip): ");
+      if (state.resendKey && !state.resendKey.startsWith("re_")) fail("That does not look like a Resend key (they start with re_).");
+    }
+    if (state.brevoKey === undefined) {
+      say(`   Brevo takes over when Resend's daily limit is reached (free, 300 a day). Add ${state.domain} in Brevo, Senders, Domains.`);
+      state.brevoKey = await hiddenQuestion("   Brevo API key (press Enter to skip): ");
+      if (state.brevoKey && !state.brevoKey.startsWith("xkeysib-")) fail("That does not look like a Brevo API key (they start with xkeysib-).");
+    }
   }
   save();
 } else if (!state.resendKey) {
@@ -229,7 +254,7 @@ if (state.domain) {
 }
 ok(
   state.domain
-    ? `codes are sent from ${state.domainFrom} through Cloudflare${state.resendKey ? `, then Resend from ${state.emailFrom}` : ""}`
+    ? `codes are sent from ${state.domainFrom} through Cloudflare${state.resendKey ? `, then Resend from ${state.emailFrom}` : ""}${state.brevoKey && state.emailFrom === state.domainFrom ? ", then Brevo" : ""}`
     : `codes are sent from ${state.emailFrom}`,
 );
 if (state.emailFrom.includes("resend.dev"))
@@ -293,6 +318,7 @@ writeFileSync(
     JWT_PRIVATE_JWK: state.jwk,
     SYNC_WEBHOOK_SECRET: state.webhookSecret,
     ...(state.resendKey ? { RESEND_API_KEY: state.resendKey } : {}),
+    ...(state.brevoKey ? { BREVO_API_KEY: state.brevoKey } : {}),
     ...(EDGE ? { EDGE_SECRET: state.edgeSecret, EMAIL_WEBHOOK_SECRET: state.mailSecret } : {}),
   }),
 );

@@ -77,6 +77,30 @@ export class ResendEmailSender implements EmailSender {
   }
 }
 
+/** Sends through Brevo's HTTP API (free up to 300 emails a day). The from
+ * address must be on a domain authenticated in Brevo. */
+export class BrevoEmailSender implements EmailSender {
+  constructor(
+    private apiKey: string,
+    private from: string,
+  ) {}
+  async send(msg: EmailMessage): Promise<void> {
+    const sender = parseFrom(this.from);
+    const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json", "api-key": this.apiKey },
+      body: JSON.stringify({
+        sender: sender.name ? { name: sender.name, email: sender.email } : { email: sender.email },
+        to: [{ email: msg.to }],
+        subject: msg.subject,
+        textContent: msg.text,
+        ...(msg.html ? { htmlContent: msg.html } : {}),
+      }),
+    });
+    if (!res.ok) throw new Error(`brevo answered ${res.status}`);
+  }
+}
+
 /**
  * Tries each sender in turn, so one provider's limit or outage never stops
  * sign-in: the first that accepts the message wins. Fails only when all fail.
@@ -107,7 +131,9 @@ export function setEmailSender(s: EmailSender | null): void {
 /**
  * Every configured sender, best first: Cloudflare's binding, then the webhook
  * (which, on enterworlds.space, is Cloudflare Email Service through
- * services/edge on the domain's account), then Resend as the fallback.
+ * services/edge on the domain's account), then Resend, then Brevo. Resend
+ * (100 a day) and Brevo (300 a day) are both free, so together they carry
+ * about 400 codes a day without a paid plan.
  */
 export function emailSender(env: Env): EmailSender {
   if (override) return override;
@@ -116,6 +142,7 @@ export function emailSender(env: Env): EmailSender {
   if (env.EMAIL && env.EMAIL_FROM) chain.push(new CloudflareEmailSender(env.EMAIL, env.EMAIL_FROM));
   if (env.EMAIL_WEBHOOK_URL) chain.push(new WebhookEmailSender(env.EMAIL_WEBHOOK_URL, env.EMAIL_WEBHOOK_SECRET));
   if (env.RESEND_API_KEY) chain.push(new ResendEmailSender(env.RESEND_API_KEY, from));
+  if (env.BREVO_API_KEY && env.EMAIL_FROM) chain.push(new BrevoEmailSender(env.BREVO_API_KEY, env.EMAIL_FROM));
   if (chain.length === 1) return chain[0];
   if (chain.length > 1) return new FallbackEmailSender(chain);
   if (env.ENVIRONMENT === "development" || env.ENVIRONMENT === "test") return new DevEmailSender();

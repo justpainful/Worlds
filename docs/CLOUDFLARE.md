@@ -57,8 +57,11 @@ You can run it again at any time. It reuses what already exists and keeps the sa
 Sign-in codes go out through the first provider that accepts them:
 
 1. **Cloudflare Email Service** through the Worker's `send_email` binding, from `no-reply@<domain>`. No API key; the domain gets its SPF and DKIM records when Email Sending is turned on.
-2. **Resend**, when `RESEND_API_KEY` is set. Add the same domain in Resend so it can send from it too.
-3. **Any HTTP endpoint**, when `EMAIL_WEBHOOK_URL` is set.
+2. **Any HTTP endpoint**, when `EMAIL_WEBHOOK_URL` is set (on enterworlds.space, Cloudflare Email Service through `services/edge`, which needs the Workers Paid plan on the domain's account).
+3. **Resend**, when `RESEND_API_KEY` is set (free, 100 a day).
+4. **Brevo**, when `BREVO_API_KEY` is set (free, 300 a day).
+
+Without a paid plan, Resend and Brevo together carry about 400 codes a day. Verify the domain with both (Resend: Domains; Brevo: Senders, Domains), then run the script once with `--domain-verified` so both send from `no-reply@<domain>`; until then Resend uses its test sender. The script asks for both keys, hidden, when run in a terminal.
 
 So one provider's daily limit or outage never stops sign-in. The email is written in the language the app asks for (`lang: "ar"` or `"en"`), else the device's language.
 
