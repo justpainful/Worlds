@@ -24,15 +24,33 @@ pub fn tools() -> Vec<Value> {
         tool("drawing_region_task", "Create a real task page with a drawing region preview and return link. Requires edit on the drawing.", json!({ "id": id, "frameId": id, "camera": { "type": "object" }, "title": { "type": "string" } }), &["id", "frameId", "camera", "title"]),
         tool(
             "resources_list",
-            "List resources of any kind (page, document, presentation, project, gallery, file, stream) with id, title, kind and parent. Optional filters: kind, parentId.",
+            "List resources of any kind (page, document, presentation, spreadsheet, html, project, gallery, file, stream) with id, title, kind and parent. Optional filters: kind, parentId.",
             json!({ "kind": { "type": "string" }, "parentId": { "type": "string" }, "limit": { "type": "number" } }),
             &[],
         ),
         tool(
             "resources_create",
-            "Create a resource: kind is document, presentation, project, gallery or stream (pages use pages_create; files use files_add). For a stream give url. Returns the new id.",
-            json!({ "kind": { "type": "string" }, "title": { "type": "string" }, "parentId": id, "url": { "type": "string", "description": "stream only: http(s) link, m3u8 for HLS" }, "data": { "type": "object" } }),
+            "Create a resource: kind is document, presentation, spreadsheet, html, project, gallery or stream (pages use pages_create; files use files_add). For a stream give url. For an html page give html, following html_pages_rules. Returns the new id.",
+            json!({ "kind": { "type": "string" }, "title": { "type": "string" }, "parentId": id, "url": { "type": "string", "description": "stream only: http(s) link, m3u8 for HLS" }, "html": { "type": "string", "description": "html only: the page's HTML document" }, "data": { "type": "object" } }),
             &["kind", "title"],
+        ),
+        tool(
+            "html_pages_rules",
+            "The rules for HTML pages: what is refused, the Worlds base styles and building blocks (w-grid, w-card, w-stat, w-badge, w-callout, w-bar), the design tokens, Arabic, and worlds.save() for state. Read before writing an HTML page.",
+            json!({}),
+            &[],
+        ),
+        tool(
+            "html_pages_read",
+            "Read an HTML page: its HTML source, the state it saved with worlds.save(), and how it measures against the rules.",
+            json!({ "id": id }),
+            &["id"],
+        ),
+        tool(
+            "html_pages_write",
+            "Replace an HTML page's HTML. Checked first: a source that breaks a hard rule (network, iframe, form action, over 1 MB) is not saved and the errors say why; design warnings come back too. Keeps the saved state. Read first.",
+            json!({ "id": id, "html": { "type": "string" } }),
+            &["id", "html"],
         ),
         tool(
             "items_update",
@@ -190,6 +208,14 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value, permit: Option<
                 "presentation" => json!({ "deck": { "aspect": "16:9" } }),
                 "drawing" => json!({}),
                 "spreadsheet" => json!({ "sheet": a.get("data").filter(|v| v.is_object()).cloned().unwrap_or(json!({})) }),
+                "html" => {
+                    let source = os(a, "html").unwrap_or("");
+                    let report = crate::html_page::check(source);
+                    if !report.ok() {
+                        bail!("the HTML breaks the rules: {}", report.errors.join(" "));
+                    }
+                    json!({ "html": { "source": source, "state": null } })
+                }
                 "project" => json!({ "project": { "status": "active", "description": "", "links": [] } }),
                 "gallery" => json!({ "gallery": { "view": "grid" } }),
                 "stream" => {
@@ -221,6 +247,7 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value, permit: Option<
                 "presentation" => "pi:presentation",
                 "drawing" => "pi:paintbrush",
                 "spreadsheet" => "pi:spreadsheet",
+                "html" => "pi:code",
                 "project" => "pi:briefcase",
                 "gallery" => "pi:image",
                 "task" => "pi:checklist",
@@ -251,6 +278,20 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value, permit: Option<
                 store::insert_blocks(conn, ctx, &p.id, None, vec![slide])?;
             }
             json!({ "id": p.id, "kind": kind })
+        }
+        "html_pages_rules" => json!({ "rules": crate::html_page::RULES }),
+        "html_pages_read" => {
+            let id = s(a, "id")?;
+            let p = require_kind(conn, id, crate::html_page::KIND)?;
+            let (source, state) = crate::html_page::read(conn, id)?;
+            let check = crate::html_page::check(&source);
+            json!({ "id": id, "title": p.title, "html": source, "state": state, "errors": check.errors, "warnings": check.warnings })
+        }
+        "html_pages_write" => {
+            let id = s(a, "id")?;
+            require_kind(conn, id, crate::html_page::KIND)?;
+            let report = crate::html_page::write(conn, ctx, id, s(a, "html")?)?;
+            json!({ "id": id, "saved": report.ok(), "errors": report.errors, "warnings": report.warnings })
         }
         "items_update" => {
             let id = s(a, "id")?;

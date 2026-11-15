@@ -19,6 +19,7 @@ export const KIND_INFO: Record<ResourceKind, KindInfo> = {
   presentation: { label: "Presentation", plural: "Presentations", icon: "presentation", blurb: "Slides to present" },
   drawing: { label: "Drawing", plural: "Drawings", icon: "paintbrush", blurb: "Draw, edit images and explain visually" },
   spreadsheet: { label: "Spreadsheet", plural: "Spreadsheets", icon: "spreadsheet", blurb: "Tables, formulas, sheets and financial or data models" },
+  html: { label: "HTML page", plural: "HTML pages", icon: "code", blurb: "A designed page in HTML: a tool, a tracker or a report" },
   project: { label: "Project", plural: "Projects", icon: "briefcase", blurb: "Gather documents, files and pages in one place" },
   gallery: { label: "Gallery", plural: "Galleries", icon: "image", blurb: "Photos, videos and GIFs together" },
   file: { label: "File", plural: "Files", icon: "file", blurb: "A picture, video, PDF or document from your PC" },
@@ -76,7 +77,7 @@ export function isItemKind(kind: string): boolean {
 }
 
 /** Creatable from New, in menu order. */
-export const NEW_KINDS: ResourceKind[] = ["page", "document", "spreadsheet", "presentation", "drawing", "project", "gallery"];
+export const NEW_KINDS: ResourceKind[] = ["page", "document", "spreadsheet", "presentation", "drawing", "html", "project", "gallery"];
 
 /** Anything the user browses and works with (templates are blueprints; items live in their own views). */
 export function isResource(p: Pick<PageMeta, "kind">): boolean {

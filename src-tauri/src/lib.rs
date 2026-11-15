@@ -13,6 +13,7 @@ pub mod drawing_library;
 pub mod drawing_package;
 pub mod drawing_references;
 pub mod drawing_sync;
+pub mod html_page;
 pub mod jobs;
 pub mod mcp;
 pub mod preview;
@@ -160,6 +161,9 @@ pub fn run() {
         .register_asynchronous_uri_scheme_protocol("wfile", |_ctx, request, responder| {
             std::thread::spawn(move || responder.respond(protocol::serve(&request)));
         })
+        .register_asynchronous_uri_scheme_protocol("whtml", |_ctx, request, responder| {
+            std::thread::spawn(move || responder.respond(html_page::serve(&request)));
+        })
         .setup(|app| {
             let handle = app.handle().clone();
 
@@ -286,6 +290,8 @@ pub fn run() {
             commands::profile_update,
             commands::profile_stats,
             commands::page_meta_set,
+            commands::html_page_write,
+            commands::html_page_save_state,
             commands::page_markdown,
             commands::media_recent,
             commands::attachment_import,

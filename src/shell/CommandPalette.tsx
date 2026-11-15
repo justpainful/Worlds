@@ -79,6 +79,7 @@ function commands(): Cmd[] {
     { id: "new-spreadsheet", title: "New Spreadsheet", icon: "table", keywords: "excel sheet table formula csv xlsx جدول اكسل حسابات", run: (where) => { void createResource("spreadsheet", { where }); } },
     { id: "new-presentation", title: "New Presentation", icon: "monitor", keywords: "slides deck powerpoint keynote", run: () => createResource("presentation") },
     { id: "new-drawing", title: "New Drawing", icon: "edit", keywords: "paint canvas brush draw رسم رسمة لوحة فرشاة", run: (where) => { void createResource("drawing", { where }); } },
+    { id: "new-html", title: "New HTML page", icon: "code", keywords: "html web page tool tracker calculator report صفحة ويب أداة تقرير", run: (where) => { void createResource("html", { where }); } },
     { id: "new-project", title: "New Project", icon: "folder", keywords: "folder organize", run: () => createResource("project") },
     { id: "new-gallery", title: "New Gallery", icon: "image", keywords: "photos album pictures videos", run: () => createResource("gallery") },
     { id: "upload", title: "Upload Files", icon: "upload", keywords: "import add file pdf video image", run: () => uploadFiles() },
