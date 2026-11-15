@@ -15,7 +15,7 @@ export function cors(request: Request, allowed: string | undefined, res: Respons
   if (res.status === 101) return res;
   const out = new Response(res.body, res);
   out.headers.set("access-control-allow-origin", list.includes("*") ? "*" : origin);
-  out.headers.set("access-control-allow-headers", "authorization, content-type, range");
+  out.headers.set("access-control-allow-headers", "authorization, content-type, range, if-match");
   out.headers.set("access-control-allow-methods", "GET, HEAD, POST, PUT, OPTIONS");
   out.headers.set("access-control-expose-headers", "content-range, content-length, etag");
   out.headers.set("access-control-max-age", "600");

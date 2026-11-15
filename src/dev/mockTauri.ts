@@ -17,6 +17,8 @@ import type { LibraryPublication } from "../drawing/library";
 import { DEFAULT_EXPORT_RULES, canDrawingExport, type DrawingExportPolicy } from "../drawing/exportPolicy";
 import providersJson from "../ai/providers.json";
 import { askToKeep, loadFiles, loadSnapshot, saveFile, saveSnapshot } from "../web/persist";
+import type { Snapshot } from "../web/merge";
+export { mergeSnapshots, type Snapshot } from "../web/merge";
 /** The public web demo build (`pnpm build:demo`): the mock is the whole backend there. */
 export const WEB_DEMO = import.meta.env.VITE_WEB_DEMO === "1";
 const exportPolicies:Record<string,DrawingExportPolicy>={};
@@ -230,18 +232,13 @@ function guessMime(name: string): string {
 // Everything the backend holds is saved as one snapshot after each change and
 // read back before the first command, so closing the tab loses nothing.
 
-interface Snapshot {
-  v: 1;
-  savedAt: number;
-  pages: typeof pages; blocks: typeof blocks; metadata: typeof metadata;
-  drawings: typeof drawings; drawingLibrary: typeof drawingLibrary; drawingVersions: typeof drawingVersions; exportPolicies: typeof exportPolicies;
-  settings: typeof settings; profile: any; chats: any[]; chatMessages: typeof chatMessages; fileInfo: typeof fileInfo;
-}
+/** Pages deleted for good, so a merge with another device does not bring them back. */
+const purged: Record<string, number> = {};
 
 export function snapshot(): Snapshot {
   return {
     v: 1, savedAt: Date.now(), pages, blocks, metadata, drawings, drawingLibrary, drawingVersions, exportPolicies,
-    settings, profile, chats, chatMessages, fileInfo,
+    settings, profile, chats, chatMessages, fileInfo, purged,
   };
 }
 
@@ -254,8 +251,24 @@ const replace = <T extends object>(target: T, source: T | undefined) => {
 export function restore(s: Snapshot): void {
   replace(pages, s.pages); replace(blocks, s.blocks); replace(metadata, s.metadata);
   replace(drawings, s.drawings); replace(drawingLibrary, s.drawingLibrary); replace(drawingVersions, s.drawingVersions); replace(exportPolicies, s.exportPolicies);
-  replace(settings, s.settings); replace(profile, s.profile); replace(chatMessages, s.chatMessages); replace(fileInfo, s.fileInfo);
+  replace(settings, s.settings); replace(profile, s.profile); replace(chatMessages, s.chatMessages); replace(fileInfo, s.fileInfo); replace(purged, s.purged ?? {});
   chats.splice(0, chats.length, ...(s.chats ?? []));
+}
+
+/** Files the workspace lists that this browser does not hold yet. */
+export function missingFiles(): string[] {
+  return Object.keys(fileInfo).filter((fid) => !ASSET[fid]);
+}
+export function fileMeta(fid: string) {
+  return fileInfo[fid];
+}
+/** A file fetched from the account: shown at once and kept in this browser. */
+export function adoptFile(fid: string, blob: Blob): void {
+  ASSET[fid] = URL.createObjectURL(blob);
+  void saveFile(fid, blob);
+}
+export function fileBlobUrl(fid: string): string | undefined {
+  return ASSET[fid];
 }
 
 /** Commands that only read: everything else may change the workspace and is saved after it. */
@@ -348,7 +361,7 @@ async function handleNow(cmd: string, a: any = {}): Promise<any> {
     case "drawing_export_policy": {let policy=exportPolicies[a.pageId]??{revision:0,rules:{...DEFAULT_EXPORT_RULES}};if(a.update){if(a.update.expectedRevision!==policy.revision)throw new Error("The export policy changed");policy=exportPolicies[a.pageId]={revision:policy.revision+1,rules:{...a.update.rules}};}return {policy,level:"full",shared:false};}
     case "drawing_export_requirements": return false;
     case "drawing_export_check": if(!canDrawingExport(exportPolicies[a.context.pageId]??{revision:0,rules:{...DEFAULT_EXPORT_RULES}},"full",a.context.kind))throw new Error("Export is unavailable");return null;
-    case "drawing_apply": return drawings[a.pageId] = appendOperation(drawings[a.pageId] ??= newDrawing(), a.operation, profile.id);
+    case "drawing_apply": if (pages[a.pageId]) pages[a.pageId].updatedAt = Date.now(); return drawings[a.pageId] = appendOperation(drawings[a.pageId] ??= newDrawing(), a.operation, profile.id);
     case "drawing_package_stage":{const pid=addPage(a.name,'pi:paintbrush',[],{kind:'drawing'}),token=id();metadata[pid]={sync:{shared:false},packageStage:{token,owner:profile.id}};pages[pid].archived=true;drawings[pid]=newDrawing();return{page:pages[pid],token};}
     case "drawing_package_abort":{if(metadata[a.pageId]?.packageStage?.token!==a.token)return false;const d=drawings[a.pageId];if(d&&(d.revision||Object.keys(d.scene.nodes).length))throw Error('Import stage changed');delete drawings[a.pageId];delete drawingVersions[a.pageId];delete metadata[a.pageId];delete pages[a.pageId];return true;}
     case "drawing_package_install":{if(metadata[a.pageId]?.packageStage?.token!==a.token||(drawings[a.pageId]?.revision??0)!==0)throw Error('Import stage changed');validateDrawingDocument(a.document);const prepared=a.experiments.map((e:any)=>{validateDrawingDocument({revision:0,seed:e.scene,scene:e.scene,operations:[]});return structuredClone(e);});drawings[a.pageId]=structuredClone(a.document);const imported=[];
@@ -437,7 +450,7 @@ async function handleNow(cmd: string, a: any = {}): Promise<any> {
     }
     case "page_delete": {const page=pages[a.id];if(page){const t=Date.now();const walk=(pid:string)=>{if(pages[pid]&&!pages[pid].deletedAt){pages[pid].deletedAt=t;}for(const c of Object.values(pages))if(c.parentId===pid)walk(c.id);};walk(a.id);page.updatedAt=t;}return;}
     case "page_restore": {const t=pages[a.id]?.deletedAt;if(t)for(const p of Object.values(pages))if(p.deletedAt===t)p.deletedAt=null;return;}
-    case "page_purge": {delete pages[a.id];delete metadata[a.id];return;}
+    case "page_purge": {delete pages[a.id];delete metadata[a.id];delete blocks[a.id];delete drawings[a.id];purged[a.id]=Date.now();return;}
     case "page_move": {Object.assign(pages[a.id],{parentId:a.parentId??null,updatedAt:Date.now()});return pages[a.id];}
     case "page_update": {
       const { metadata: md, ...rest } = a.patch;

@@ -5,9 +5,11 @@
  * (the web version has no local database), so sharing and sync stay in the
  * apps; those actions say so instead of pretending.
  *
- * The session lives in sessionStorage: it ends when the tab closes, like the
- * rest of the web version. The browser has no device key, so the service
- * treats it as a device without one.
+ * The session lives in localStorage, so the person stays signed in on this
+ * browser until they sign out, like the workspace itself stays (persist.ts).
+ * The browser has no device key, so the service treats it as a device
+ * without one. src/web/vault.ts uses the session to keep the workspace on
+ * the account.
  */
 import type { Account, AccountView, Device, Workspace } from "./api";
 import { tr } from "../i18n/ui";
@@ -41,7 +43,7 @@ let activeWorkspaceId: string | null = null;
 
 function load(): Session | null {
   try {
-    const raw = sessionStorage.getItem(KEY);
+    const raw = localStorage.getItem(KEY);
     return raw ? (JSON.parse(raw) as Session) : null;
   } catch {
     return null;
@@ -49,13 +51,32 @@ function load(): Session | null {
 }
 function store(s: Session | null) {
   try {
-    if (s) sessionStorage.setItem(KEY, JSON.stringify(s));
-    else sessionStorage.removeItem(KEY);
+    if (s) localStorage.setItem(KEY, JSON.stringify(s));
+    else localStorage.removeItem(KEY);
   } catch {
     // Private windows can refuse storage; the session then lasts until reload.
   }
 }
 let session: Session | null = load();
+
+const sessionListeners = new Set<(userId: string | null) => void>();
+/** Called with the user id on sign-in and with null on sign-out. */
+export function onSessionChange(fn: (userId: string | null) => void): () => void {
+  sessionListeners.add(fn);
+  return () => sessionListeners.delete(fn);
+}
+const announce = () => {
+  for (const fn of sessionListeners) fn(session?.userId ?? null);
+};
+/** The signed-in person, if any. */
+export function signedInUser(): string | null {
+  return session?.userId ?? null;
+}
+/** A current access token for the other services (sync), refreshed when close to expiry. */
+export async function accessToken(): Promise<string | null> {
+  await fresh();
+  return session?.accessToken ?? null;
+}
 
 /** The service's error as a sentence the person can act on. */
 async function failure(res: Response): Promise<never> {
@@ -110,11 +131,13 @@ async function fresh() {
 }
 
 function signOutLocally() {
+  const was = session;
   session = null;
   me = null;
   workspaces = [];
   activeWorkspaceId = null;
   store(null);
+  if (was) announce();
 }
 
 function account(): Account | null {
@@ -192,6 +215,7 @@ export async function webAccount(action: string, a: Args): Promise<unknown> {
       store(session);
       me = t.user;
       await refreshAll().catch(() => undefined);
+      announce();
       return view({ created: t.created });
     }
     case "signOut":

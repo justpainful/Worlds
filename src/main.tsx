@@ -40,6 +40,9 @@ if ("__TAURI_INTERNALS__" in window) {
   window.addEventListener("unhandledrejection", (e) => report(`unhandled: ${e.reason instanceof Error ? e.reason.stack ?? e.reason.message : String(e.reason)}`));
 }
 
+// Worlds on the web: a signed-in person's workspace is also kept on their account.
+if (import.meta.env.VITE_WEB_DEMO === "1") void import("./web/vault").then((m) => m.startVault());
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     {import.meta.env.DEV && location.search.includes("glasslab2") ? <GlassLabV2 /> : import.meta.env.DEV && location.search.includes("glasslab") ? <GlassLab /> : (
