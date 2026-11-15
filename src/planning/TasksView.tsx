@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import type { PageMeta } from "../lib/types";
 import { pageTitle, useStore, type TaskListId } from "../state/store";
 import { Segmented } from "../ui/Segmented";
-import { EmptyState } from "../ui/misc";
+import { EmptyState, PageIcon } from "../ui/misc";
 import { createItem } from "./actions";
 import { dataOf, goalFraction, goalsFor, printQueueFor, relDay, tasksFor, today } from "./model";
 import { GroupHead, ItemRow, QuickAdd } from "./ui";
@@ -48,7 +48,7 @@ export function TasksView({ list = "today" }: { list?: TaskListId }) {
       <header className="pl-head">
         <div>
           <h1 className="pl-title">Tasks & Goals</h1>
-          <p className="pl-sub">{counts.today ? `${counts.today} for today` : "All clear for today"}</p>
+          <p className="pl-sub">{counts.today ? `${counts.today} task${counts.today === 1 ? "" : "s"} for today` : "All clear for today"}</p>
         </div>
         <Segmented value={list} onChange={(v) => open({ kind: "tasks", list: v })} options={LISTS} label="List" size="standard" />
       </header>
@@ -58,7 +58,7 @@ export function TasksView({ list = "today" }: { list?: TaskListId }) {
       {list === "goals" ? (
         <QuickAdd
           autoFocus
-          placeholder="Add a goal — e.g. “Launch v2.0 next month”"
+          placeholder="Add a goal, like “Launch v2.0 next month”"
           onAdd={(p) =>
             createItem("goal", {
               title: p.title,
@@ -69,7 +69,7 @@ export function TasksView({ list = "today" }: { list?: TaskListId }) {
       ) : list === "print" ? (
         <QuickAdd
           autoFocus
-          placeholder="Add to print queue — e.g. “Print contract 2 copies tomorrow”"
+          placeholder="Add to print queue, like “Print contract 2 copies tomorrow”"
           onAdd={(p) =>
             createItem("requirement", {
               title: p.title,
@@ -80,7 +80,7 @@ export function TasksView({ list = "today" }: { list?: TaskListId }) {
       ) : list !== "done" ? (
         <QuickAdd
           autoFocus
-          placeholder={list === "someday" ? "Add an idea for someday" : "Add a task — try “Send invoice friday 10am !!”"}
+          placeholder={list === "someday" ? "Add an idea for someday" : "Add a task, like “Send invoice friday 10am !!”"}
           onAdd={(p) =>
             createItem("task", {
               title: p.title,
@@ -106,18 +106,18 @@ export function TasksView({ list = "today" }: { list?: TaskListId }) {
               <button
                 key={g.id}
                 className="res-card"
-                style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "12px 16px", textAlign: "left", cursor: "pointer", marginBottom: 8 }}
+                style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "12px 16px", textAlign: "start", cursor: "pointer", marginBottom: 8 }}
                 onClick={() => openPage(g.id)}
               >
-                <span style={{ fontSize: 18 }}>🎯</span>
+                <PageIcon icon={g.icon ?? "pi:target"} size={22} />
                 <div style={{ flex: 1 }}>
                   <div className="bidi" style={{ fontWeight: 600 }}>{pageTitle(g)}</div>
-                  {gd.target && <div style={{ fontSize: 12, opacity: 0.7 }}>Target: {relDay(gd.target)}</div>}
+                  {gd.target && <div style={{ fontSize: 12, opacity: 0.7 }}>{`Target: ${relDay(gd.target)}`}</div>}
                 </div>
                 <div style={{ width: 120, height: 8, background: "rgba(255,255,255,0.1)", borderRadius: 4, overflow: "hidden" }}>
                   <div style={{ width: `${pct}%`, height: "100%", background: "#3b82f6" }} />
                 </div>
-                <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 12, minWidth: 38, textAlign: "right" }}>{pct}%</span>
+                <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 12, minWidth: 38, textAlign: "end" }}>{pct}%</span>
               </button>
             );
           })}

@@ -957,6 +957,7 @@ pub async fn ai_token_status() -> CmdResult<Value> {
 #[tauri::command]
 pub async fn ai_token_open_setup(state: State<'_, AppState>) -> CmdResult<()> {
     let path = claude_path(&state.conn()).ok_or("Claude Code not found")?;
+    // Each platform's block is the function's value, so no code is unreachable on either.
     #[cfg(windows)]
     {
         let mut c = std::process::Command::new("cmd");
@@ -968,13 +969,13 @@ pub async fn ai_token_open_setup(state: State<'_, AppState>) -> CmdResult<()> {
             }
         }
         c.spawn().map_err(|e| format!("Could not open the sign-in window: {e}"))?;
+        Ok(())
     }
     #[cfg(not(windows))]
     {
         let _ = path;
-        return Err("Run `claude setup-token` in a terminal, then paste the token here.".into());
+        Err("Run `claude setup-token` in a terminal, then paste the token here.".into())
     }
-    Ok(())
 }
 
 /// Saves the token after checking that Claude Code accepts it.

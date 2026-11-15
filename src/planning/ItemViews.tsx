@@ -137,7 +137,14 @@ export function Steps({ steps, onChange }: { steps: Step[]; onChange: (s: Step[]
   );
 }
 
-export const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6].map((i) => ({ i, short: new Date(2026, 10, 8 + i).toLocaleDateString(undefined, { weekday: "short" }) }));
+// Read when shown, not when the module loads: the Arabic date locale is set up after start, and a
+// list made at load time kept English names ("Thu, Sat") in an Arabic timetable.
+export const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6].map((i) => ({
+  i,
+  get short() {
+    return new Date(2026, 10, 8 + i).toLocaleDateString(undefined, { weekday: "short" });
+  },
+}));
 
 export function EventView({ id }: { id: string }) {
   const p = useStore((s) => s.pages[id]);
@@ -266,7 +273,7 @@ export function FocusTimerBar() {
       setSecondsLeft((prev) => {
         if (prev <= 1) {
           setRunning(false);
-          useStore.getState().toast({ message: "Focus session complete! 🎉", tone: "success" });
+          useStore.getState().toast({ message: "Focus session complete. Time for a short break.", tone: "success" });
           return 0;
         }
         return prev - 1;
@@ -294,12 +301,15 @@ export function FocusTimerBar() {
   return (
     <>
       <div className="res-card" style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", marginBottom: 14, flexWrap: "wrap" }}>
-        <span style={{ fontWeight: 600, fontSize: 13 }}>⏱️ Focus Timer</span>
+        <span style={{ fontWeight: 600, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <Icon name="clock" size={15} />
+          <span>Focus Timer</span>
+        </span>
         <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 16, fontWeight: 700, minWidth: 58 }}>
           {mins}:{secs}
         </span>
         <button className={`chip-btn ${running ? "is-accent" : ""}`} onClick={() => setRunning((r) => !r)}>
-          {running ? "Pause" : "Start"}
+          {running ? "Pause" : "Start focus"}
         </button>
         <button className="chip-btn" onClick={() => selectPreset(mode)}>Reset</button>
         <span style={{ flex: 1 }} />
@@ -311,7 +321,7 @@ export function FocusTimerBar() {
           onClick={() => setRulerY((y) => (y === null ? 260 : null))}
           title="Reading Ruler Line Overlay"
         >
-          📏 Reading Ruler
+          <Icon name="text" size={14} /> Reading Ruler
         </button>
       </div>
       {rulerY !== null && (

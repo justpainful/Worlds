@@ -43,7 +43,8 @@ struct TrashView: View {
                                     .accessibilityAddTraits(.isHeader)
 
                                 if storeTrash == nil {
-                                    Text("\(trashedPages.count) archived item\(trashedPages.count == 1 ? "" : "s")")
+                                    // Whole sentences, so each language can say the count its own way.
+                                    (trashedPages.count == 1 ? Text("1 archived item") : Text("\(trashedPages.count) archived items"))
                                         .font(.subheadline)
                                         .foregroundStyle(.secondary)
                                 } else {
@@ -106,7 +107,7 @@ struct TrashView: View {
                 .background(Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(page.title.isEmpty ? "Untitled" : page.title)
+                Text(page.title.isEmpty ? String(localized: "Untitled") : page.title)
                     .font(.body.weight(.medium))
                     .foregroundStyle(WorldsPalette.ink(for: colorScheme))
                     .lineLimit(1)

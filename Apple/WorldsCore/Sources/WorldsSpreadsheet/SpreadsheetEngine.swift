@@ -50,8 +50,26 @@ public enum SpreadsheetEngine {
 
     /// Typed input to a value: `TRUE`, `FALSE`, `12`, `1,200.5` and `50%` become
     /// booleans and numbers; anything else stays text exactly as typed.
+    /// Arabic and Persian digits as Western ones, with the Arabic decimal point,
+    /// thousands separator and percent sign, so "٩٥" and "٣٫٥٪" count as numbers.
+    public static func westernDigits(_ text: String) -> String {
+        var units: [UInt16] = []
+        units.reserveCapacity(text.utf16.count)
+        for unit in text.utf16 {
+            switch unit {
+            case 0x0660...0x0669: units.append(unit - 0x0660 + 48)
+            case 0x06F0...0x06F9: units.append(unit - 0x06F0 + 48)
+            case 0x066B: units.append(46)
+            case 0x066C: units.append(44)
+            case 0x066A: units.append(37)
+            default: units.append(unit)
+            }
+        }
+        return String(decoding: units, as: UTF16.self)
+    }
+
     public static func parseRawScalar(_ raw: String) -> SpreadsheetValue {
-        let trimmed = JSNumbers.trim(raw)
+        let trimmed = JSNumbers.trim(westernDigits(raw))
         if trimmed.isEmpty { return .empty }
         let upper = trimmed.uppercased()
         if upper == "TRUE" { return .bool(true) }
@@ -317,12 +335,16 @@ final class FormulaParser {
     // MARK: Tokens
 
     private static func isDigit(_ unit: UInt16) -> Bool { unit >= 48 && unit <= 57 }
+    /// Arabic and Persian digits count as digits in numbers.
+    private static func isAnyDigit(_ unit: UInt16) -> Bool { isDigit(unit) || (0x0660...0x0669).contains(unit) || (0x06F0...0x06F9).contains(unit) }
     private static func isLetter(_ unit: UInt16) -> Bool { (unit >= 65 && unit <= 90) || (unit >= 97 && unit <= 122) }
     private static func isArabic(_ unit: UInt16) -> Bool { unit >= 0x0600 && unit <= 0x06FF }
     private static func isIdentifierStart(_ unit: UInt16) -> Bool { isLetter(unit) || unit == 95 || unit == 36 || unit == 35 || isArabic(unit) }
-    /// `[A-Za-z0-9_$!.?]` and Arabic letters.
+    /// `[A-Za-z0-9_$!.?]` and Arabic letters and digits. The Arabic comma,
+    /// semicolon, percent and decimal marks end a name, as their Western twins do.
     private static func isIdentifierPart(_ unit: UInt16) -> Bool {
-        isLetter(unit) || isDigit(unit) || unit == 95 || unit == 36 || unit == 33 || unit == 46 || unit == 63 || isArabic(unit)
+        isLetter(unit) || isDigit(unit) || unit == 95 || unit == 36 || unit == 33 || unit == 46 || unit == 63
+            || (isArabic(unit) && unit != 0x060C && unit != 0x061B && !(0x066A...0x066C).contains(unit))
     }
 
     static func tokenize(_ expression: String) throws -> [FormulaToken] {
@@ -345,7 +367,9 @@ final class FormulaParser {
             }
             if unit == 40 { tokens.append(.open); i += 1; continue }
             if unit == 41 { tokens.append(.close); i += 1; continue }
-            if unit == 44 || unit == 59 { tokens.append(.comma); i += 1; continue }
+            // The Arabic keyboard's comma and semicolon separate arguments too.
+            if unit == 44 || unit == 59 || unit == 0x060C || unit == 0x061B { tokens.append(.comma); i += 1; continue }
+            if unit == 0x066A { tokens.append(.op("%")); i += 1; continue }
             if i + 1 < units.count {
                 let next = units[i + 1]
                 if (unit == 60 && (next == 61 || next == 62)) || (unit == 62 && next == 61) || (unit == 33 && next == 61) {
@@ -360,16 +384,16 @@ final class FormulaParser {
                 i += 1
                 continue
             }
-            if isDigit(unit) || (unit == 46 && i + 1 < units.count && isDigit(units[i + 1])) {
+            if isAnyDigit(unit) || ((unit == 46 || unit == 0x066B) && i + 1 < units.count && isAnyDigit(units[i + 1])) {
                 var literal: [UInt16] = []
-                while i < units.count && (isDigit(units[i]) || [46, 101, 69, 43, 45].contains(units[i])) {
+                while i < units.count && (isAnyDigit(units[i]) || [46, 0x066B, 101, 69, 43, 45].contains(units[i])) {
                     if units[i] == 43 || units[i] == 45 {
                         guard let last = literal.last, last == 101 || last == 69 else { break }
                     }
                     literal.append(units[i])
                     i += 1
                 }
-                let number = JSNumbers.number(String(decoding: literal, as: UTF16.self))
+                let number = JSNumbers.number(SpreadsheetEngine.westernDigits(String(decoding: literal, as: UTF16.self)))
                 if number.isNaN { throw FormulaError(code: "#VALUE!") }
                 tokens.append(.number(number))
                 continue

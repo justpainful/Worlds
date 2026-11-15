@@ -67,8 +67,12 @@ export function StepSlider({
     if (e.currentTarget.hasPointerCapture(e.pointerId)) pick(e.clientX);
   };
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "ArrowRight" || e.key === "ArrowUp") onChange(Math.min(last, value + 1));
-    else if (e.key === "ArrowLeft" || e.key === "ArrowDown") onChange(Math.max(0, value - 1));
+    // Left and right follow the screen: in Arabic the slider runs from the right.
+    const rtl = getComputedStyle(e.currentTarget).direction === "rtl";
+    const up = e.key === "ArrowUp" || e.key === (rtl ? "ArrowLeft" : "ArrowRight");
+    const down = e.key === "ArrowDown" || e.key === (rtl ? "ArrowRight" : "ArrowLeft");
+    if (up) onChange(Math.min(last, value + 1));
+    else if (down) onChange(Math.max(0, value - 1));
     else if (e.key === "Home") onChange(0);
     else if (e.key === "End") onChange(last);
     else return;
@@ -94,11 +98,12 @@ export function StepSlider({
         <span className="ss-rail" />
         <span className="ss-fill" />
         {stops.map((_, i) => (
-          <span key={i} className={`ss-stop ${i <= value ? "is-on" : ""}`} style={{ left: `${last ? (i / last) * 100 : 0}%` }} />
+          <span key={i} className={`ss-stop ${i <= value ? "is-on" : ""}`} style={{ insetInlineStart: `${last ? (i / last) * 100 : 0}%` }} />
         ))}
         <span className="ss-thumb" />
       </div>
-      <div className="ss-labels">
+      {/* The stops are Worlds' own names (Spark, Orbit, Nova; Glance, Focus, Deep), kept in every language. */}
+      <div className="ss-labels" translate="no">
         {stops.map((s, i) => (
           <button key={s.name} type="button" className={`ss-label ${i === value ? "is-on" : ""}`} onClick={() => onChange(i)} tabIndex={-1}>
             {s.name}

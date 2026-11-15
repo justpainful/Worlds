@@ -2,6 +2,7 @@
 name = "worlds_sync_native"
 version = "0.1.0"
 edition = "2021"
+license-file = "../../../../LICENSE"
 publish = false
 
 [lib]

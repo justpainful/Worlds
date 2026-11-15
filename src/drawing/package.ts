@@ -371,7 +371,7 @@ export async function createDrawingPackage(
     if (!pageId) throw Error("Export experiments from their source drawing");
     const entries = await api.drawingExperiments(pageId);
     checkCancelled();
-    if (entries.length > 24) throw Error("This package exceeds24 experiments");
+    if (entries.length > 24) throw Error("This package exceeds 24 experiments");
     for (const [index, entry] of entries.entries()) {
       checkCancelled();
       const document = await api.drawingLoad(entry.page.id);

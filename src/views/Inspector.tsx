@@ -264,7 +264,7 @@ function HistoryPanel({ page, onRestored }: { page: Page; onRestored: () => void
                   <div className="version-title">{v.label || formatDateTime(v.createdAt)}</div>
                   <div className="version-sub">
                     {v.label ? `${formatDateTime(v.createdAt)} · ` : ""}
-                    {v.blockCount} block{v.blockCount === 1 ? "" : "s"}
+                    {`${v.blockCount} block${v.blockCount === 1 ? "" : "s"}`}
                   </div>
                 </div>
                 <button className="chip-btn" onClick={() => setPreview(v)}>Preview</button>

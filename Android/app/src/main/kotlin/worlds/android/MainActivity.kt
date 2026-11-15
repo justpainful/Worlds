@@ -1541,8 +1541,8 @@ private data class PendingTableDelete(val revision: Long, val action: String, va
                             DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_square_code) }, text = { Text(stringResource(R.string.add_code)) }, onClick = { insertMenu = false; onAddCode(null) })
                             DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_image) }, text = { Text(stringResource(R.string.image_insert)) }, onClick = { insertMenu = false; onAddImage(null) })
                             DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_table_2) }, text = { Text(stringResource(R.string.add_table)) }, onClick = { insertMenu = false; onAddTable() })
-                            DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_code_2) }, text = { Text("Math / LaTeX") }, onClick = { insertMenu = false; onAddMath(null) })
-                            DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_files) }, text = { Text("Mermaid Diagram") }, onClick = { insertMenu = false; onAddMermaid(null) })
+                            DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_code_2) }, text = { Text(stringResource(R.string.insert_math)) }, onClick = { insertMenu = false; onAddMath(null) })
+                            DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_files) }, text = { Text(stringResource(R.string.insert_mermaid)) }, onClick = { insertMenu = false; onAddMermaid(null) })
                             listOf(Triple("blockquote", R.string.quote, R.drawable.ic_text_quote), Triple("callout", R.string.callout, R.drawable.ic_lightbulb), Triple("prompt", R.string.prompt, R.drawable.ic_square_terminal)).forEach { (type, label, icon) ->
                                 DropdownMenuItem(leadingIcon = { WorldsGlyph(icon) }, text = { Text(stringResource(label)) }, onClick = { insertMenu = false; onAddContainer(type, null) })
                             }
@@ -1617,7 +1617,7 @@ private data class PendingTableDelete(val revision: Long, val action: String, va
                             // Repeated running footer on each page
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                 Text(footer.ifBlank { "Worlds" }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text("Page ${pageIndex + 1} of $totalPages", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(stringResource(R.string.document_page_of, pageIndex + 1, totalPages), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -1758,8 +1758,8 @@ private fun RenderSingleBlock(
                     DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_type) }, text = { Text(stringResource(R.string.insert_paragraph_after)) }, onClick = { menu = false; onAdd(false, block.id) })
                     DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_heading_1) }, text = { Text(stringResource(R.string.insert_heading_after)) }, onClick = { menu = false; onAdd(true, block.id) })
                     DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_square_code) }, text = { Text(stringResource(R.string.insert_code_after)) }, onClick = { menu = false; onAddCode(block.id) })
-                    DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_code_2) }, text = { Text("Insert Math after") }, onClick = { menu = false; onAddMath(block.id) })
-                    DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_files) }, text = { Text("Insert Diagram after") }, onClick = { menu = false; onAddMermaid(block.id) })
+                    DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_code_2) }, text = { Text(stringResource(R.string.insert_math_after)) }, onClick = { menu = false; onAddMath(block.id) })
+                    DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_files) }, text = { Text(stringResource(R.string.insert_diagram_after)) }, onClick = { menu = false; onAddMermaid(block.id) })
                     DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_image) }, text = { Text(stringResource(R.string.image_insert_after)) }, onClick = { menu = false; onAddImage(block.id) })
                     val index = document.blocks.indexOfFirst { it.id == block.id }
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

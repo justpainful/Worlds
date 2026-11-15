@@ -263,3 +263,19 @@ fn planning_and_study_kinds_carry_their_data_on_the_row() {
     assert!(store::page_meta_by_id(&conn, &hw.id).unwrap().unwrap().deleted_at.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn arabic_search_finds_the_spellings_people_type_interchangeably() {
+    let (_dir, conn) = temp_db("arabic-search");
+    let page =
+        store::create_page(&conn, &Ctx::user(), NewPage { title: Some("الطاقة المتجددة في الأحياء".into()), ..Default::default() }).unwrap();
+    let found = |q: &str| store::search(&conn, q, 10, false).unwrap().iter().any(|h| h.page_id == page.id);
+    assert!(found("الطاقة"));
+    assert!(found("الطاقه"), "a final haa finds a taa marbuta");
+    assert!(found("الاحياء"), "a bare alef finds a hamza alef");
+    assert!(!found("الطاقم"));
+    let spellings = store::arabic_spellings("الطاقه");
+    assert_eq!(spellings[0], "الطاقه");
+    assert!(spellings.contains(&"الطاقة".to_string()));
+    assert!(store::arabic_spellings("ااااااااا").len() <= 32);
+}

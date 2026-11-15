@@ -5,17 +5,20 @@
 .res-view { max-width: 1120px; margin: 0 auto; padding: 72px 40px 80px; display: flex; flex-direction: column; gap: 22px; }
 
 /* ---- Shared header ------------------------------------------------------- */
-.res-head { display: flex; align-items: center; gap: 14px; min-width: 0; }
+/* The actions move to a second row before the title is squeezed to a few letters. */
+.res-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; min-width: 0; }
 .res-icon { flex: none; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 14px; transition: background-color var(--d-hover); }
 .res-icon:hover { background: var(--fill-1); }
-.res-titles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.res-titles { flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .res-title { width: 100%; border: 0; outline: 0; background: none; padding: 0; color: var(--text-1); font: var(--t-h2, 700 26px/1.2 var(--font-ui)); font-size: 26px; font-weight: 700; letter-spacing: -0.015em; text-overflow: ellipsis; }
 .res-title::placeholder { color: var(--text-4); }
 .res-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--text-3); font: var(--t-small); }
 .res-sub > * + *::before { content: "·"; margin-inline-end: 8px; color: var(--text-4); }
 .res-kind { color: var(--text-2); font-weight: 600; }
+/* The parent link (‹ الأحياء) stays one line; it wrapped into three and pushed the row to 47px. */
+.res-sub .link-btn { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
 .res-badge { color: var(--text-2); }
-.res-actions { display: flex; align-items: center; gap: 6px; flex: none; }
+.res-actions { display: flex; align-items: center; gap: 6px; flex: none; flex-wrap: wrap; max-width: 100%; }
 .res-card { padding: 16px 18px; border-radius: var(--r-md, 16px); background: rgba(255, 255, 255, 0.04); box-shadow: inset 0 0 0 0.5px var(--hairline); }
 
 /* ---- File ------------------------------------------------------------------ */
@@ -46,12 +49,12 @@
 .gal-grid .gal-thumb { aspect-ratio: 1; }
 .gal-media { width: 100%; height: 100%; display: grid; place-items: center; color: var(--text-3); }
 .gal-media img, .gal-media video { width: 100%; height: 100%; object-fit: cover; display: block; }
-.gal-play { position: absolute; left: 10px; bottom: 10px; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: rgba(0, 0, 0, 0.55); color: #fff; }
-.gal-badge { position: absolute; left: 10px; top: 10px; padding: 1px 7px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); color: #fff; font: 700 10px/16px var(--font-ui); letter-spacing: 0.04em; }
+.gal-play { position: absolute; inset-inline-start: 10px; bottom: 10px; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: rgba(0, 0, 0, 0.55); color: #fff; }
+.gal-badge { position: absolute; inset-inline-start: 10px; top: 10px; padding: 1px 7px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); color: #fff; font: 700 10px/16px var(--font-ui); letter-spacing: 0.04em; }
 .gal-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 0 4px; }
 .gal-name { font: var(--t-small); color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gal-sub { font: var(--t-caption); color: var(--text-4); }
-.gal-more { position: absolute; top: 6px; right: 6px; opacity: 0; background: rgba(0, 0, 0, 0.5); color: #fff; }
+.gal-more { position: absolute; top: 6px; inset-inline-end: 6px; opacity: 0; background: rgba(0, 0, 0, 0.5); color: #fff; }
 .gal-item:hover .gal-more, .gal-more:focus-visible { opacity: 1; }
 .gal-list .gal-item { flex-direction: row; align-items: center; gap: 14px; padding: 6px; }
 .gal-list .gal-item:hover { background: var(--fill-1); }
@@ -140,7 +143,7 @@
   /* Ink on paper is always dark, whatever the app theme. */
   --text-1: #1c1c1f;
   --text-2: rgba(28, 28, 31, 0.74);
-  --text-3: rgba(28, 28, 31, 0.5);
+  --text-3: rgba(28, 28, 31, 0.58);
   --text-4: rgba(28, 28, 31, 0.34);
   --fill-1: rgba(0, 0, 0, 0.04);
   --fill-2: rgba(0, 0, 0, 0.07);
@@ -168,6 +171,9 @@
 .doc-setup-row .chip-btn.is-on { background: rgba(var(--accent-rgb), 0.24); color: var(--text-1); }
 .doc-setup-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .doc-setup-grid label { display: flex; flex-direction: column; gap: 4px; font: var(--t-caption); color: var(--text-3); }
+
+/* Find in a document sits under its formatting toolbar, over the paper top margin, not over Page setup and Print. */
+.res-document .find-bar { top: 204px; }
 
 /* Printing a document: only the paper, at its own size and margins. */
 @media print {

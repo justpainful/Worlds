@@ -8,6 +8,7 @@ import { Panes } from "./shell/Panes";
 import { CommandPalette } from "./shell/CommandPalette";
 import { MenuHost } from "./ui/Menu";
 import { Toasts, TooltipHost } from "./ui/misc";
+import { TourHost } from "./shell/Tour";
 import { glassEngine } from "./glass/engine";
 import { applyAppearance } from "./shell/appearance";
 import { AiHost } from "./ai/AiPanel";
@@ -18,11 +19,15 @@ import { markReady, startMonitor } from "./perf/monitor";
 import { PerfOverlay } from "./perf/PerfOverlay";
 import { startDrawingSyncManager } from "./drawing/syncManager";
 import { openQuickCapture } from "./planning/InboxView";
+import { shortcutKey } from "./lib/keys";
+import { watchSampleLanguage } from "./demo/sampleActions";
+import { useWindowTitle } from "./shell/windowTitle";
 
 export function App() {
   const ready = useStore((s) => s.ready);
   const perfOverlay = useStore((s) => !!s.settings["advanced.perfOverlay"]);
   const [error, setError] = useState<string | null>(null);
+  useWindowTitle();
 
   useEffect(() => {
     if (!isTauri) {
@@ -45,7 +50,7 @@ export function App() {
   useEffect(() => {
     if (!ready) return;
     startDrawingSyncManager();
-    const unsubs: Promise<() => void>[] = [];
+    const unsubs: Promise<() => void>[] = [Promise.resolve(watchSampleLanguage())];
     // Writes from the MCP tool server or the automation runner.
     unsubs.push(
       listen<{ pageId: string | null; kind: string; origin: string }[]>("worlds://changed", (e) => {
@@ -80,35 +85,35 @@ export function App() {
       const mod = e.ctrlKey || e.metaKey;
       const pane = s.layout.panes.find((p) => p.id === s.layout.activePaneId)!;
       const tab = pane.tabs.find((t) => t.id === pane.activeTabId)!;
-      if (mod && e.key.toLowerCase() === "k") {
+      if (mod && shortcutKey(e) === "k") {
         e.preventDefault();
         s.setPalette(!s.paletteOpen, "all");
-      } else if (mod && e.shiftKey && e.key.toLowerCase() === "p") {
+      } else if (mod && e.shiftKey && shortcutKey(e) === "p") {
         e.preventDefault();
         s.setPalette(true, "commands");
-      } else if (mod && e.key.toLowerCase() === "p") {
+      } else if (mod && shortcutKey(e) === "p") {
         e.preventDefault();
         s.setPalette(true, "pages");
-      } else if (mod && e.altKey && e.key.toLowerCase() === "n") {
+      } else if (mod && e.altKey && shortcutKey(e) === "n") {
         e.preventDefault();
         openQuickCapture();
-      } else if (mod && e.key.toLowerCase() === "n") {
+      } else if (mod && shortcutKey(e) === "n") {
         e.preventDefault();
         s.createPage({}, e.shiftKey ? "right" : "current");
-      } else if (mod && e.key.toLowerCase() === "t") {
+      } else if (mod && shortcutKey(e) === "t") {
         e.preventDefault();
         s.open({ kind: "home" }, "tab");
-      } else if (mod && e.key.toLowerCase() === "w") {
+      } else if (mod && shortcutKey(e) === "w") {
         e.preventDefault();
         s.closeTab(pane.id, tab.id);
-      } else if (mod && e.key === "\\") {
+      } else if (mod && shortcutKey(e) === "\\") {
         e.preventDefault();
         if (e.shiftKey || s.layout.panes.length >= 3) s.collapsePanes();
         else s.open(tab.route, "right");
-      } else if (mod && e.key.toLowerCase() === "j") {
+      } else if (mod && shortcutKey(e) === "j") {
         e.preventDefault();
         window.dispatchEvent(new Event("worlds:toggle-ai"));
-      } else if (mod && e.key === ",") {
+      } else if (mod && shortcutKey(e) === ",") {
         e.preventDefault();
         s.open({ kind: "settings" }, "tab");
       } else if (mod && e.key === "Tab") {
@@ -130,7 +135,7 @@ export function App() {
     window.addEventListener("keydown", onKey);
     // Ctrl+B / Ctrl+\ sidebar handled here so editors can still use Ctrl+B for bold.
     const onSidebar = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "l") {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && shortcutKey(e) === "l") {
         e.preventDefault();
         useStore.getState().toggleSidebar();
       }
@@ -168,6 +173,7 @@ export function App() {
       <MenuHost />
       <Toasts />
       <TooltipHost />
+      <TourHost />
       <AiHost />
       <LightboxHost />
       <AutomationHost />

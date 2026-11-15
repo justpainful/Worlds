@@ -34,6 +34,7 @@ import {
   downloadMarkdown,
   printPage,
 } from "../pages/PageChrome";
+import { shortcutKey } from "../lib/keys";
 
 export function PageView({ pageId, paneId }: { pageId: string; paneId: string }) {
   const meta = useStore((s) => s.pages[pageId]);
@@ -131,7 +132,7 @@ function LoadedPage({ page, paneId, reload }: { page: Page; paneId: string; relo
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!root.current || !root.current.closest(".pane.is-active, .pane:only-child")) return;
-      const k = e.key.toLowerCase();
+      const k = shortcutKey(e);
       if (e.ctrlKey && !e.shiftKey && k === "f") {
         e.preventDefault();
         setFind("find");
@@ -390,7 +391,6 @@ function LoadedPage({ page, paneId, reload }: { page: Page; paneId: string; relo
             rows={1}
             value={title}
             placeholder="Untitled"
-            spellCheck
             onChange={(e) => {
               setTitle(e.target.value);
               saveTitle(e.target.value);
@@ -411,7 +411,7 @@ function LoadedPage({ page, paneId, reload }: { page: Page; paneId: string; relo
             {page.instructions.length > 0 && (
               <button className="meta-chip" onClick={() => setInspector("instructions")}>
                 <Icon name="instructions" size={13} />
-                {page.instructions.length} instruction{page.instructions.length === 1 ? "" : "s"}
+                {`${page.instructions.length} instruction${page.instructions.length === 1 ? "" : "s"}`}
               </button>
             )}
           </div>

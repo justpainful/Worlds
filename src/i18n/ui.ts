@@ -38,22 +38,39 @@ export function loadDictionary(dict: Record<string, string>): void {
       // so it cannot swallow a sentence like "Plan my week from my pages".
       const parts = src.split(/\{\d\}/);
       const short = parts.join("").replace(/[^A-Za-z]/g, "").length < 12;
-      const slot = (lit: string, i: number) => (/[A-Za-z]$/.test(lit) ? "(.*?)" : i === 0 && lit === "" && short ? "(\\S+)" : "(.+?)");
+      // A slot after a letter takes only a plural ending, or an aside that starts with punctuation
+      // ("problem{0}." with ": details"); anything wider swallowed whole sentences ("No subpages yet. ...").
+      const slot = (lit: string, i: number) => (/[A-Za-z]$/.test(lit) ? "((?:e?s)?|[,:;].*?)" : i === 0 && lit === "" && short ? "(\\S+)" : "(.+?)");
       const body = parts.map((lit, i) => escape(lit) + (i < parts.length - 1 ? slot(lit, i) : "")).join("");
       const re = new RegExp("^" + body + "$", "s");
       patterns.push({ re, out: value });
     } else exact.set(key, value);
   }
   // The most specific (longest literal text) patterns win.
-  const literal = (re: RegExp) => re.source.replace(/\((?:\.[*+]\?|\\S\+)\)/g, "").length;
+  const literal = (re: RegExp) => re.source.replace(/\((?:\.[*+]\?|\\S\+|\(\?:e\?s\)\?\|\[,:;\]\.\*\?)\)/g, "").length;
   patterns.sort((a, b) => literal(b.re) - literal(a.re));
 }
 /** The dictionary is only downloaded when the interface is Arabic. */
 let loading: Promise<void> | null = null;
 let dictionaryReady = false;
 function ensureDictionary(): Promise<void> {
-  loading ??= import("./ar.json").then((m) => loadDictionary(m.default as Record<string, string>));
+  loading ??= import("./ar.json").then((m) => {
+    loadDictionary(m.default as Record<string, string>);
+    dictionaryReady = true;
+  });
   return loading;
+}
+
+/** The language of the last session, so the next start knows it before the workspace loads. */
+const LAST_LANGUAGE = "worlds.uiLanguage";
+
+// When the last session, or on a first start the system, was Arabic, fetch the
+// dictionary while the workspace loads; the first screen is then drawn in
+// Arabic instead of English laid out right to left.
+try {
+  if (typeof window !== "undefined" && (window.localStorage.getItem(LAST_LANGUAGE) ?? resolveUiLanguage(null)) === "ar") void ensureDictionary();
+} catch {
+  // Storage can be blocked; the dictionary then loads when Arabic is applied.
 }
 
 /** Arabic for one piece of interface text, or null when there is none. */
@@ -71,12 +88,81 @@ export function translate(text: string, depth = 0): string | null {
         const part = m[Number(i) + 1] ?? "";
         // English plural endings ("page{1}" with "s") have no place in Arabic.
         if (part === "s" || part === "es") return "";
-        return translate(part, depth + 1) ?? part;
+        // A label lowercased inside a sentence (Untitled subject) is in the dictionary capitalized.
+        return translate(part, depth + 1) ?? (/^[a-z]/.test(part) ? translate(part[0].toUpperCase() + part.slice(1), depth + 1) : null) ?? part;
       })
       .replace(/\s{2,}/g, " ")
-      .trim();
+      .trim()
+      .replace(COUNT, (_, n: string, noun: string, at: number, whole: string) => counted(Number(n.replace(/,/g, "")), n, noun, whole.slice(0, at)));
   }
   return null;
+}
+
+/** Words after which a count is in the genitive, so a dual ends in ين. */
+const GENITIVE = /(?:^|\s)(?:من|بعد|قبل|في|إلى|على|عن|حتى|خلال|لمدة|آخر|كل|نحو|إرسال|مزامنة|قراءة|إضافة)\s*$/;
+
+/**
+ * A count and its noun in Arabic. One of a thing is "صفحة واحدة", two is the dual on its own
+ * ("صفحتان", or "صفحتين" after a preposition); other counts keep the number.
+ */
+function counted(n: number, digits: string, noun: string, before: string): string {
+  const pair = COUNTED.find((p) => p.includes(noun));
+  if (!pair || (n !== 1 && n !== 2)) return `${digits} ${countedNoun(n, noun)}`;
+  // One of a thing is the noun and واحد, which agrees with it.
+  if (n === 1) return `${pair[0]} ${pair[0].split(" ")[0].endsWith("ة") ? "واحدة" : "واحد"}`;
+  const end = GENITIVE.test(before) ? "ين" : "ان";
+  return pair[0]
+    .split(" ")
+    .map((w) => (w.endsWith("ة") ? w.slice(0, -1) + "ت" : w) + end)
+    .join(" ");
+}
+
+/** Nouns that follow a count in the dictionary, as singular and plural. */
+const COUNTED: [string, string][] = [
+  ["صفحة فرعية", "صفحات فرعية"],
+  ["صفحة", "صفحات"],
+  ["شريحة", "شرائح"],
+  ["حصة", "حصص"],
+  ["نتيجة", "نتائج"],
+  ["تغيير", "تغييرات"],
+  ["كتلة", "كتل"],
+  ["عنصر", "عناصر"],
+  ["خطوة", "خطوات"],
+  ["نقطة", "نقاط"],
+  ["كلمة", "كلمات"],
+  ["حرف", "أحرف"],
+  ["شخص", "أشخاص"],
+  ["عمود", "أعمدة"],
+  ["ملف", "ملفات"],
+  ["صورة", "صور"],
+  ["تعليمة", "تعليمات"],
+  ["تعديل", "تعديلات"],
+  ["صف", "صفوف"],
+  ["مهمة", "مهام"],
+  ["رسالة", "رسائل"],
+  ["ساعة", "ساعات"],
+  ["دقيقة", "دقائق"],
+  ["يوم", "أيام"],
+];
+const COUNT = new RegExp(
+  // Only a whole number: in 2.5 نقطة the 5 is not a count of its own.
+  `(?<![\\d.,])(\\d[\\d,]*) (${COUNTED.flat()
+    .sort((a, b) => b.length - a.length)
+    .join("|")})(?=$|[\\s،.:؛)])`,
+  "g",
+);
+
+/**
+ * The noun after a number, as Arabic counts it: 3 to 10 take the plural
+ * ("3 صفحات"), and so do 2 and 0 here; 1 and 11 upward take the singular
+ * ("11 صفحة", "100 صفحة").
+ */
+export function countedNoun(n: number, noun: string): string {
+  const pair = COUNTED.find((p) => p.includes(noun));
+  if (!pair) return noun;
+  const r = n % 100;
+  const plural = n === 0 || n === 2 || (r >= 3 && r <= 10);
+  return plural ? pair[1] : pair[0];
 }
 
 /** Keep the white space around the text when replacing it. */
@@ -108,8 +194,33 @@ let observer: MutationObserver | null = null;
 let queued = new Set<Node>();
 let scheduled = false;
 
+/** A block's own interface inside the editor: buttons, tabs, labels and empty states drawn by a node view. */
+const ISLAND = '[contenteditable="false"]';
+const CHROME = 'button, [role="button"], [role="tab"], [role="menuitem"], label, [class*="empty"], [class*="hint"], [class*="-bar"], [class*="toolbar"]';
+/** Inside the editor but holding the person's words: a checklist item's hidden label repeats the item's text. */
+const OWN_WORDS = 'li[data-checked] > label, svg, foreignObject';
+
 function skipped(el: Element | null): boolean {
-  return !!el?.closest(SKIP);
+  if (!el) return false;
+  const skip = el.closest(SKIP);
+  if (!skip) return false;
+  // The editor is the person's text, but a block's controls inside it (a collection's
+  // Table and Board tabs, a diagram's Edit button) are interface. Diagram labels,
+  // code and anything nested editable stay as written.
+  const island = el.closest(ISLAND);
+  if (island && island !== skip && skip.contains(island) && !el.closest(OWN_WORDS)) {
+    const chrome = el.closest(CHROME);
+    if (chrome && island.contains(chrome)) return false;
+  }
+  return true;
+}
+
+/** Translate the block controls inside an editor, which the walk over the page skips. */
+function doIslands(root: Element) {
+  for (const island of root.querySelectorAll(ISLAND)) {
+    if (island.parentElement?.closest(ISLAND)) continue;
+    doTree(island);
+  }
 }
 
 /** Titles people gave their pages and chats: shown as written, never translated. */
@@ -183,6 +294,14 @@ function doSingle(node: Text, prev: { en: string; ar: string; group?: boolean } 
   if (prev && node.data === prev.ar) return;
   if (!node.data.trim()) return;
   const key = node.data.replace(/\s+/g, " ").trim();
+  // A quote mark left on its own beside a title (Share “{title}”) follows the
+  // translated opening one, so Arabic reads «title» rather than «title”.
+  if (/^[“”][.,:;!?]?$/.test(key)) {
+    const out = node.data.replace(/“/g, "«").replace(/”/g, "»");
+    texts.set(node, { en: node.data, ar: out });
+    node.data = out;
+    return;
+  }
   // One word inside a longer sentence ("Find <b>pages</b> I haven't…") is not a label on its own.
   if (!key.includes(" ") && isFragment(node)) return;
   if (userTexts.has(key)) {
@@ -201,7 +320,8 @@ function doSingle(node: Text, prev: { en: string; ar: string; group?: boolean } 
 }
 
 function doAttrs(el: Element) {
-  if (!ATTRS.some((a) => el.hasAttribute(a)) || skipped(el)) return;
+  // A text box's content is the person's, but its placeholder and label are interface text.
+  if (!ATTRS.some((a) => el.hasAttribute(a)) || (el.tagName === "TEXTAREA" ? skipped(el.parentElement) : skipped(el))) return;
   if (el instanceof HTMLInputElement && el.type !== "text" && el.type !== "search" && el.type !== "email" && el.type !== "url" && el.type !== "number" && el.type !== "password") {
     if (!el.hasAttribute("title") && !el.hasAttribute("aria-label")) return;
   }
@@ -223,11 +343,17 @@ function doTree(root: Node) {
   if (root.nodeType === Node.TEXT_NODE) return doText(root as Text);
   if (root.nodeType !== Node.ELEMENT_NODE && root.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) return;
   if (root instanceof Element) {
-    if (root.matches(SKIP)) return;
+    if (root.tagName === "TEXTAREA") return doAttrs(root);
+    if (root.matches(SKIP)) return doIslands(root);
     doAttrs(root);
   }
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
-    acceptNode: (n) => (n instanceof Element && n.matches(SKIP) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+    acceptNode: (n) => {
+      if (!(n instanceof Element) || !n.matches(SKIP)) return NodeFilter.FILTER_ACCEPT;
+      if (n.tagName === "TEXTAREA") doAttrs(n);
+      else doIslands(n);
+      return NodeFilter.FILTER_REJECT;
+    },
   });
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
     if (n.nodeType === Node.TEXT_NODE) doText(n as Text);
@@ -256,7 +382,6 @@ function start() {
   if (observer || typeof document === "undefined") return;
   if (!dictionaryReady) {
     void ensureDictionary().then(() => {
-      dictionaryReady = true;
       if (current === "ar") start();
     });
     return;
@@ -306,6 +431,11 @@ export function applyUiLanguage(language: UiLanguage): void {
   setArabicDates(language === "ar");
   root.lang = language;
   root.dir = language === "ar" ? "rtl" : "ltr";
+  try {
+    window.localStorage.setItem(LAST_LANGUAGE, language);
+  } catch {
+    // Not remembered; the next start loads the dictionary a moment later.
+  }
   if (language === current) {
     if (language === "ar") start();
     return;

@@ -14,13 +14,16 @@ import { api, errorMessage } from "../lib/api";
 import type { Page } from "../lib/types";
 import { useStore } from "../state/store";
 import { emit, on } from "../lib/bus";
+import { tr } from "../i18n/ui";
 import { BlockIds, newBlockId } from "./extensions/blockIds";
+import { NeutralDirection } from "./extensions/neutralDirection";
 import { Callout, Prompt, PageLink, DrawingEmbed, ImageNode, VideoNode, FileNode, Embed, DiscordMessage, Schedule } from "./extensions/nodes";
 import { Collection, Column, Columns, Toggle } from "./extensions/pages2";
 import { BackgroundColor, Color, FindReplace, Gallery, TextStyle, Toc, WikiLink } from "./extensions/pages3";
 import { openLightbox } from "./views/Pages3Views";
 import { documentExtensions } from "./extensions/document";
 import { Chart, MathBlock, MathInline, Mermaid, Tab, Tabs } from "./extensions/pages4";
+import { shortcutKey } from "../lib/keys";
 
 /** Apple-like text and background colours. */
 export const TEXT_COLORS: { name: string; value: string | null }[] = [
@@ -48,6 +51,7 @@ import { LAYER } from "../glass/profiles";
 import { Icon, type IconName } from "../ui/Icon";
 import { menuAt, useMenu, type MenuItem } from "../ui/Menu";
 import { useCollab } from "../sync/useCollab";
+import { LayoutShortcuts } from "./extensions/layoutShortcuts";
 
 export interface PageEditorHandle {
   editor: Editor | null;
@@ -108,6 +112,19 @@ export const PageEditor = forwardRef<
   const instance = useRef(Math.random().toString(36).slice(2));
   const external = useStore((s) => s.externalRevision[pageId] ?? 0);
   const [hovered, setHovered] = useState<{ node: PMNode; pos: number } | null>(null);
+  // The block handle sits at the start of its block: on the right of an Arabic one.
+  const hoveredRtl = useRef(false);
+  const [handlePosition] = useState(() => ({
+    placement: "left-start" as const,
+    strategy: "absolute" as const,
+    middleware: [
+      {
+        name: "blockStart",
+        fn: ({ x, y, rects }: { x: number; y: number; rects: { reference: { x: number; width: number } } }) =>
+          hoveredRtl.current ? { x: rects.reference.x + rects.reference.width, y } : { x, y },
+      },
+    ],
+  }));
   const show = useMenu((s) => s.show);
   // Live collaboration: shared pages edit through Yjs; personal pages are untouched.
   const collab = useCollab(page, { onSaved });
@@ -115,6 +132,7 @@ export const PageEditor = forwardRef<
   const editor = useEditor(
     {
       extensions: [
+        LayoutShortcuts,
         StarterKit.configure({
           heading: { levels: [1, 2, 3] },
           link: { openOnClick: false, autolink: true, HTMLAttributes: { rel: "noopener", class: "link" } },
@@ -123,7 +141,13 @@ export const PageEditor = forwardRef<
           ...collab.starterKit,
         }),
         TaskList,
-        TaskItem.configure({ nested: true }),
+        TaskItem.configure({
+          nested: true,
+          // The list's dir="auto" reads this hidden label first. Tiptap's default starts with
+          // English ("Task item checkbox for …"), which turned Arabic to-do lists left to right
+          // with the boxes far from their text; the item's own words keep its direction.
+          a11y: { checkboxLabel: (node) => node.textContent.trim() || "☐" },
+        }),
         TableKit.configure({ table: { resizable: false, HTMLAttributes: { class: "table" } } }),
         Highlight.configure({ multicolor: true }),
         TextStyle,
@@ -149,18 +173,19 @@ export const PageEditor = forwardRef<
             } catch {
               return "";
             }
-            if (doc.nodeAt(pos) !== node) return $p.depth > 0 ? "" : "Press / for blocks";
+            if (doc.nodeAt(pos) !== node) return $p.depth > 0 ? "" : tr("Press / for blocks");
             if ($p.depth > 0) {
-              if ($p.parent.type.name === "toggle") return $p.index() === 0 ? "Toggle" : "Hidden content";
-              if ($p.parent.type.name === "column" && $p.parent.childCount === 1) return "Column";
+              if ($p.parent.type.name === "toggle") return tr($p.index() === 0 ? "Toggle" : "Hidden content");
+              if ($p.parent.type.name === "column" && $p.parent.childCount === 1) return tr("Column");
               return "";
             }
-            if (node.type.name === "heading") return `Heading ${node.attrs.level}`;
-            if (ed.state.doc.childCount === 1 && node.type.name === "paragraph") return variant === "document" ? "Start writing" : "Start writing, or press / for blocks and @ for pages";
-            return "Press / for blocks";
+            if (node.type.name === "heading") return tr(`Heading ${node.attrs.level}`);
+            if (ed.state.doc.childCount === 1 && node.type.name === "paragraph") return tr(variant === "document" ? "Start writing" : "Start writing, or press / for blocks and @ for pages");
+            return tr("Press / for blocks");
           },
         }),
         BlockIds,
+        NeutralDirection,
         Callout,
         Prompt,
         PageLink,
@@ -190,7 +215,8 @@ export const PageEditor = forwardRef<
       content: collab.key.startsWith("yjs") ? undefined : docFrom(page),
       editable: collab.editable,
       editorProps: {
-        attributes: { class: "prose", spellcheck: "true" },
+        // Spell checking is inherited from the page root, which follows Settings › Editor.
+        attributes: { class: "prose" },
         handlePaste: (_view, event) => {
           const files = [...(event.clipboardData?.files ?? [])];
           if (files.length && editorRef.current) {
@@ -220,7 +246,7 @@ export const PageEditor = forwardRef<
         },
         handleKeyDown: (_view, event) => {
           // Ctrl+Click style link opening is handled by click; keep Mod+S as an explicit save.
-          if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+          if ((event.ctrlKey || event.metaKey) && shortcutKey(event) === "s") {
             event.preventDefault();
             flush();
             return true;
@@ -404,6 +430,13 @@ export const PageEditor = forwardRef<
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [external, peerRevision, editor]);
 
+  // After a language switch, redraw the empty-line hints and the direction of
+  // empty lines, which are worked out per update, in the new language.
+  const language = useStore((s) => s.profile?.language ?? null);
+  useEffect(() => {
+    if (editor && !editor.isDestroyed) editor.view.dispatch(editor.state.tr.setMeta("languageChanged", true));
+  }, [language, editor]);
+
   // Palette / menu commands targeting this page's editor.
   useEffect(() => {
     return on("editor:command", ({ pageId: target, command, args }) => {
@@ -540,7 +573,13 @@ export const PageEditor = forwardRef<
       {collab.render(editor)}
       <DragHandle
         editor={editor}
-        onNodeChange={({ node, pos }) => setHovered(node ? { node, pos } : null)}
+        onNodeChange={({ node, pos }) => {
+          const dom = node ? editor.view.nodeDOM(pos) : null;
+          const el = dom instanceof HTMLElement ? (dom.matches("[dir]") ? dom : (dom.querySelector("[dir]") ?? dom)) : null;
+          hoveredRtl.current = !!el && getComputedStyle(el).direction === "rtl";
+          setHovered(node ? { node, pos } : null);
+        }}
+        computePositionConfig={handlePosition}
         className="drag-handle-host"
       >
         <div className="block-handle">

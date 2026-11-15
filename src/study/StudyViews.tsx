@@ -12,6 +12,7 @@ import { createItem, trashItem, updateData } from "../planning/actions";
 import { addDays, dataOf, detectLinkProvider, formatTime, inSubject, occurrences, openStudyWork, relDay, subjectOf, subjects, today, weekday, type DataKind, type SubjectBook, type SubjectLink } from "../planning/model";
 import { BlurInput, colorVar, DueLabel, Field, GroupHead, ItemRow, NumberInput, QuickAdd } from "../planning/ui";
 import { FocusTimerBar, WEEKDAYS } from "../planning/ItemViews";
+import { joinList, span } from "../i18n/locale";
 import { promptText } from "../editor/prompt";
 
 export const SUBJECT_COLORS = Object.keys(PROP_COLORS) as PropColor[];
@@ -66,7 +67,7 @@ export function StudyView() {
               const d = dataOf(o.page, "event");
               return (
                 <button key={o.key} className="study-class" style={{ "--chip": colorVar(o.color) } as React.CSSProperties} onClick={() => subject && openPage(subject.id)}>
-                  <span className="study-class-time">{formatTime(o.start)}{o.end ? ` – ${formatTime(o.end)}` : ""}</span>
+                  <span className="study-class-time">{o.end ? span(formatTime(o.start), formatTime(o.end)) : formatTime(o.start)}</span>
                   <span className="study-class-title bidi">{pageTitle(subject ?? o.page)}</span>
                   {(d.location || (subject && dataOf(subject, "subject").room)) && <span className="study-class-room bidi">{d.location || dataOf(subject!, "subject").room}</span>}
                 </button>
@@ -185,8 +186,8 @@ export function SubjectView({ id }: { id: string }) {
               const e = dataOf(c, "event");
               return (
                 <button key={c.id} className="study-slot" onClick={() => openPage(c.id)}>
-                  <span className="study-slot-days">{(e.weekly ?? []).map((i) => WEEKDAYS[i].short).join(", ") || (e.date ? relDay(e.date) : "")}</span>
-                  <span className="study-slot-time">{formatTime(e.start)}{e.end ? ` – ${formatTime(e.end)}` : ""}</span>
+                  <span className="study-slot-days">{joinList((e.weekly ?? []).map((i) => WEEKDAYS[i].short)) || (e.date ? relDay(e.date) : "")}</span>
+                  <span className="study-slot-time">{e.end ? span(formatTime(e.start), formatTime(e.end)) : formatTime(e.start)}</span>
                   {e.location && <span className="study-slot-room bidi">{e.location}</span>}
                 </button>
               );
@@ -201,11 +202,11 @@ export function SubjectView({ id }: { id: string }) {
         <div className="pl-section-head">
           <h2 className="pl-section-title">Assignments {openWork.length > 0 && <span className="pl-count">{openWork.length}</span>}</h2>
         </div>
-        <QuickAdd placeholder="Add an assignment — “Lab report sunday”" onAdd={(q) => createItem("assignment", { title: q.title, parentId: id, data: { due: q.due, time: q.time, teacher: d.teacher } })} />
+        <QuickAdd placeholder="Add an assignment, like “Lab report sunday”" onAdd={(q) => createItem("assignment", { title: q.title, parentId: id, data: { due: q.due, time: q.time, teacher: d.teacher } })} />
         <div className="pl-list">{openWork.map((a) => <ItemRow key={a.id} p={a} showParent={false} />)}</div>
         {doneWork.length > 0 && (
           <details className="pl-done-fold">
-            <summary>{doneWork.length} handed in</summary>
+            <summary>{`${doneWork.length} handed in`}</summary>
             <div className="pl-list">{doneWork.map((a) => <ItemRow key={a.id} p={a} showParent={false} />)}</div>
           </details>
         )}
@@ -213,13 +214,13 @@ export function SubjectView({ id }: { id: string }) {
 
       <section className="pl-section">
         <h2 className="pl-section-title">Exams</h2>
-        <QuickAdd placeholder="Add an exam — “Midterm 24/11 8am”" onAdd={(q) => createItem("exam", { title: q.title, parentId: id, data: { date: q.due, time: q.time } })} />
+        <QuickAdd placeholder="Add an exam, like “Midterm 24/11 8am”" onAdd={(q) => createItem("exam", { title: q.title, parentId: id, data: { date: q.due, time: q.time } })} />
         <div className="pl-list">{exams.map((x) => <ItemRow key={x.id} p={x} showParent={false} />)}</div>
       </section>
 
       <section className="pl-section">
         <h2 className="pl-section-title">To bring or print</h2>
-        <QuickAdd placeholder="Something to bring — “Calculator tomorrow”" onAdd={(q) => createItem("requirement", { title: q.title, parentId: id, data: { due: q.due } })} />
+        <QuickAdd placeholder="Something to bring, like “Calculator tomorrow”" onAdd={(q) => createItem("requirement", { title: q.title, parentId: id, data: { due: q.due } })} />
         <div className="pl-list">{bring.map((x) => <ItemRow key={x.id} p={x} showParent={false} />)}</div>
       </section>
 
@@ -238,7 +239,7 @@ export function SubjectView({ id }: { id: string }) {
             size="compact"
             icon="add"
             onClick={async () => {
-              const title = await promptText({ title: "Add Textbook or Solution Book", placeholder: "e.g. Calculus Textbook / كتاب الحلول" });
+              const title = await promptText({ title: "Add Textbook or Solution Book", placeholder: "For example, the calculus textbook" });
               if (!title?.trim()) return;
               const isSol = /حلول|solution/i.test(title);
               const nextBook: SubjectBook = {
@@ -309,7 +310,7 @@ export function SubjectView({ id }: { id: string }) {
 
       <section className="pl-section">
         <div className="pl-section-head">
-          <h2 className="pl-section-title">Resources & Links (YouTube, Telegram, Classroom, مدرستي)</h2>
+          <h2 className="pl-section-title">Resources and links</h2>
           <Button
             variant="quiet"
             size="compact"
@@ -490,8 +491,8 @@ export function StudyItemView({ id }: { id: string }) {
             </Field>
             <Field label="Colour mode">
               <select className="field" value={d.colorMode ?? "bw"} onChange={(e) => set({ colorMode: e.target.value as "bw" | "color" })}>
-                <option value="bw">Black & White (أبيض وأسود)</option>
-                <option value="color">Colour (ملون)</option>
+                <option value="bw">Black and white</option>
+                <option value="color">In colour</option>
               </select>
             </Field>
             <Field label="Double-sided">
@@ -502,7 +503,7 @@ export function StudyItemView({ id }: { id: string }) {
             </Field>
           </>
         )}
-        <Field label="What exactly" wide><BlurInput value={d.action ?? ""} placeholder="e.g. Print pages 12–15, double-sided" onCommit={(action) => set({ action })} /></Field>
+        <Field label="What exactly" wide><BlurInput value={d.action ?? ""} placeholder="e.g. Print pages 12 to 15, double-sided" onCommit={(action) => set({ action })} /></Field>
       </section>
       <div className="pl-detail-foot"><Button variant="danger" icon="delete" onClick={() => trashItem(p)}>Delete</Button></div>
     </div>

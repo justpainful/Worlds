@@ -3,6 +3,7 @@ import { api, errorMessage } from "../lib/api";
 import { useStore } from "../state/store";
 import { ResourceHeader } from "../resources/views/ResourceHeader";
 import { Icon } from "../ui/Icon";
+import { ConditionalDialog } from "./ConditionalDialog";
 import { useMenu, type MenuItem } from "../ui/Menu";
 import { Modal, confirmDialog } from "../ui/Modal";
 import { promptText } from "../editor/prompt";
@@ -14,6 +15,7 @@ import {
   cycleRefAbsolute,
   evaluateWorkbook,
   expandRangeCoords,
+  conditionalStyle,
   formatScalar,
   generateAutofillValue,
   newSheet,
@@ -27,6 +29,9 @@ import {
   type SheetData,
   type WorkbookData,
 } from "./engine";
+import { shortcutKey } from "../lib/keys";
+import { tr } from "../i18n/ui";
+import { defaultSheetName } from "./names";
 
 interface SelectionRange {
   r1: number;
@@ -44,6 +49,23 @@ interface ClipboardBuffer {
   cut: boolean;
   cells: Record<string, { dr: number; dc: number; cell: CellData; evaluatedDisplay: string }>;
 }
+
+/** Keyboard shortcuts shown in the Shortcuts dialog (F1). */
+const SHORTCUTS: [string[], string][] = [
+  [["Enter", "F2"], "Edit the active cell, or save it and move down"],
+  [["Ctrl + Enter"], "Fill every selected cell with what you typed"],
+  [["Alt + ="], "Add up the numbers next to the cell"],
+  [["F4"], "While typing a formula, switch between $A$1, A$1, $A1 and A1"],
+  [["Ctrl + D", "Ctrl + R"], "Fill down or right"],
+  [["Ctrl + ;", "Ctrl + Shift + ;"], "Insert today's date or the time"],
+  [["Ctrl + Arrows"], "Jump to the edge of the data"],
+  [["Shift + Arrows"], "Extend the selection"],
+  [["Ctrl + C", "Ctrl + X", "Ctrl + V"], "Copy, cut and paste, compatible with Excel"],
+  [["Ctrl + Shift + V"], "Paste values without formulas"],
+  [["Ctrl + B", "Ctrl + I", "Ctrl + U", "Ctrl + 5"], "Bold, italic, underline and strikethrough"],
+  [["Ctrl + Z", "Ctrl + Y"], "Undo and redo"],
+  [["Ctrl + F"], "Find and replace in the sheet"],
+];
 
 const TEXT_COLORS = [
   "#1e293b",
@@ -83,6 +105,7 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
   const [draft, setDraft] = useState<string>("");
   const [nameBoxText, setNameBoxText] = useState<string>("A1");
   const [findOpen, setFindOpen] = useState<boolean>(false);
+  const [highlightOpen, setHighlightOpen] = useState(false);
   const [findQuery, setFindQuery] = useState<string>("");
   const [replaceQuery, setReplaceQuery] = useState<string>("");
   const [shortcutsOpen, setShortcutsOpen] = useState<boolean>(false);
@@ -590,6 +613,8 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
         }
         XLSX.utils.book_append_sheet(book, ws, s.name.slice(0, 31));
       }
+      // An Arabic workbook opens right to left in Excel, as it reads here.
+      if (document.documentElement.dir === "rtl") book.Workbook = { ...book.Workbook, Views: [{ RTL: true }] };
       const pageTitle = useStore.getState().pages[pageId]?.title || "Spreadsheet";
       if (format === "csv") {
         const ws = book.Sheets[sheet.name.slice(0, 31)];
@@ -624,7 +649,7 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
           const ref = ws["!ref"] ? XLSX.utils.decode_range(ws["!ref"]) : { s: { r: 0, c: 0 }, e: { r: 30, c: 12 } };
           const rows = Math.max(60, ref.e.r + 15);
           const cols = Math.max(26, ref.e.c + 6);
-          const sh = newSheet(name || `Sheet ${idx + 1}`, rows, cols);
+          const sh = newSheet(name || defaultSheetName(idx + 1), rows, cols);
           for (let r = ref.s.r; r <= ref.e.r; r++) {
             for (let c = ref.s.c; c <= ref.e.c; c++) {
               const addr = XLSX.utils.encode_cell({ r, c });
@@ -751,28 +776,28 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
     }
 
     // Shortcuts while navigating grid
-    if (ctrl && e.key.toLowerCase() === "z") {
+    if (ctrl && shortcutKey(e) === "z") {
       e.preventDefault();
       if (e.shiftKey) redo();
       else undo();
       return;
     }
-    if (ctrl && e.key.toLowerCase() === "y") {
+    if (ctrl && shortcutKey(e) === "y") {
       e.preventDefault();
       redo();
       return;
     }
-    if (ctrl && e.key.toLowerCase() === "b") {
+    if (ctrl && shortcutKey(e) === "b") {
       e.preventDefault();
       patchSelectionStyle((s) => ({ ...s, bold: !s.bold }));
       return;
     }
-    if (ctrl && e.key.toLowerCase() === "i") {
+    if (ctrl && shortcutKey(e) === "i") {
       e.preventDefault();
       patchSelectionStyle((s) => ({ ...s, italic: !s.italic }));
       return;
     }
-    if (ctrl && e.key.toLowerCase() === "u") {
+    if (ctrl && shortcutKey(e) === "u") {
       e.preventDefault();
       patchSelectionStyle((s) => ({ ...s, underline: !s.underline }));
       return;
@@ -782,37 +807,37 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
       patchSelectionStyle((s) => ({ ...s, strike: !s.strike }));
       return;
     }
-    if (ctrl && e.key.toLowerCase() === "d") {
+    if (ctrl && shortcutKey(e) === "d") {
       e.preventDefault();
       fillDown();
       return;
     }
-    if (ctrl && e.key.toLowerCase() === "r") {
+    if (ctrl && shortcutKey(e) === "r") {
       e.preventDefault();
       fillRight();
       return;
     }
-    if (ctrl && e.key.toLowerCase() === "c") {
+    if (ctrl && shortcutKey(e) === "c") {
       e.preventDefault();
       copySelection(false);
       return;
     }
-    if (ctrl && e.key.toLowerCase() === "x") {
+    if (ctrl && shortcutKey(e) === "x") {
       e.preventDefault();
       copySelection(true);
       return;
     }
-    if (ctrl && e.key.toLowerCase() === "v") {
+    if (ctrl && shortcutKey(e) === "v") {
       e.preventDefault();
       void pasteSelection(e.shiftKey);
       return;
     }
-    if (ctrl && e.key.toLowerCase() === "f") {
+    if (ctrl && shortcutKey(e) === "f") {
       e.preventDefault();
       setFindOpen((v) => !v);
       return;
     }
-    if (ctrl && e.key.toLowerCase() === "a") {
+    if (ctrl && shortcutKey(e) === "a") {
       e.preventDefault();
       setSel({ r1: 0, c1: 0, r2: sheet.rows - 1, c2: sheet.cols - 1 });
       return;
@@ -848,16 +873,13 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
       else moveSelection((e.shiftKey ? sel.r2 : active.r) - 1, e.shiftKey ? sel.c2 : active.c, e.shiftKey);
       return;
     }
-    if (e.key === "ArrowRight") {
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
       e.preventDefault();
-      if (ctrl) jumpDataEdge(0, 1, e.shiftKey);
-      else moveSelection(e.shiftKey ? sel.r2 : active.r, (e.shiftKey ? sel.c2 : active.c) + 1, e.shiftKey);
-      return;
-    }
-    if (e.key === "ArrowLeft") {
-      e.preventDefault();
-      if (ctrl) jumpDataEdge(0, -1, e.shiftKey);
-      else moveSelection(e.shiftKey ? sel.r2 : active.r, (e.shiftKey ? sel.c2 : active.c) - 1, e.shiftKey);
+      // Arrows move the way they point on screen: in Arabic the columns run right to left.
+      const rtl = !!gridRef.current && getComputedStyle(gridRef.current).direction === "rtl";
+      const dc = (e.key === "ArrowRight") !== rtl ? 1 : -1;
+      if (ctrl) jumpDataEdge(0, dc, e.shiftKey);
+      else moveSelection(e.shiftKey ? sel.r2 : active.r, (e.shiftKey ? sel.c2 : active.c) + dc, e.shiftKey);
       return;
     }
     if (e.key === "Tab") {
@@ -1137,6 +1159,7 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
         <button
           className="sheet-tb-btn"
           title="Cell Background Fill"
+          aria-label="Cell Background Fill"
           onClick={(e) => {
             const r = e.currentTarget.getBoundingClientRect();
             showMenu(
@@ -1149,7 +1172,7 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
             );
           }}
         >
-          🎨
+          <Icon name="appearance" size={15} />
         </button>
         <span className="sheet-tb-sep" />
 
@@ -1206,7 +1229,10 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
           }
           title="Toggle AutoFilter"
         >
-          ⏳ Filter
+          <Icon name="sliders" size={14} /> Filter
+        </button>
+        <button className={`sheet-tb-btn ${sheet.conditionalRules?.length ? "is-on" : ""}`} onClick={() => setHighlightOpen(true)} title="Highlight cells">
+          <Icon name="highlight" size={14} /> Highlight
         </button>
         <button
           className={`sheet-tb-btn ${sheet.frozenRows > 0 || sheet.frozenCols > 0 ? "is-on" : ""}`}
@@ -1224,7 +1250,7 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
           }}
           title="Freeze Panes"
         >
-          ❄️ Freeze
+          <Icon name="pin" size={14} /> Freeze
         </button>
         <span className="sheet-tb-sep" />
 
@@ -1246,8 +1272,9 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
           className="sheet-tb-btn"
           onClick={() => setFindOpen((v) => !v)}
           title="Find & Replace (Ctrl+F)"
+          aria-label="Find & Replace (Ctrl+F)"
         >
-          🔍
+          <Icon name="search" size={15} />
         </button>
       </div>
 
@@ -1326,7 +1353,7 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
               }
             }
           }}
-          title="Name Box — type A1 or A1:D10 and press Enter"
+          title="Name Box: type A1 or A1:D10 and press Enter"
         />
         <button
           className="sheet-fx-btn"
@@ -1337,7 +1364,8 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
               r.left,
               r.bottom + 4,
               FUNCTION_DOCS.slice(0, 18).map((fn) => ({
-                label: `${fn.name} — ${fn.summary}`,
+                // The name stays as typed in formulas; the description follows the interface language.
+                label: `${fn.name}: ${tr(fn.summary)}`,
                 onSelect: () => {
                   setEditing(true);
                   setDraft((d) => (d.startsWith("=") ? `${d}${fn.name}(` : `=${fn.name}(`));
@@ -1425,6 +1453,7 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
                         { label: "Auto-fit Column Width", onSelect: () => autoFitColumn(c) },
                         { kind: "separator" },
                         { label: "Insert Column Left", onSelect: () => updateActiveSheet((s) => shiftSheetStructure(s, "col", c, 1)) },
+                        { label: "Insert Column Right", onSelect: () => updateActiveSheet((s) => shiftSheetStructure(s, "col", c + 1, 1)) },
                         { label: "Delete Column", danger: true, onSelect: () => updateActiveSheet((s) => shiftSheetStructure(s, "col", c, -1)) },
                       ]);
                     }}
@@ -1436,8 +1465,10 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
                         e.stopPropagation();
                         const startX = e.clientX;
                         const startW = w;
+                        // The handle sits on the column's end edge, which is the left one in a mirrored Arabic grid.
+                        const sign = getComputedStyle(e.currentTarget).direction === "rtl" ? -1 : 1;
                         const onMove = (me: MouseEvent) => {
-                          const nw = Math.max(52, Math.min(480, startW + (me.clientX - startX)));
+                          const nw = Math.max(52, Math.min(480, startW + sign * (me.clientX - startX)));
                           updateActiveSheet((s) => ({ ...s, colWidths: { ...s.colWidths, [c]: nw } }), false);
                         };
                         const onUp = () => {
@@ -1454,7 +1485,7 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
             </tr>
             {sheet.filter?.enabled && (
               <tr className="sheet-filter-row">
-                <th className="sheet-row-hdr">⏳</th>
+                <th className="sheet-row-hdr" aria-label="Filter"><Icon name="sliders" size={12} /></th>
                 {Array.from({ length: sheet.cols }, (_, c) => (
                   <th key={c} style={{ padding: 2 }}>
                     <input
@@ -1498,6 +1529,7 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
                       e.preventDefault();
                       showMenu(e.clientX, e.clientY, [
                         { label: "Insert Row Above", onSelect: () => updateActiveSheet((s) => shiftSheetStructure(s, "row", r, 1)) },
+                        { label: "Insert Row Below", onSelect: () => updateActiveSheet((s) => shiftSheetStructure(s, "row", r + 1, 1)) },
                         { label: "Delete Row", danger: true, onSelect: () => updateActiveSheet((s) => shiftSheetStructure(s, "row", r, -1)) },
                       ]);
                     }}
@@ -1518,6 +1550,7 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
                       c >= minSelC &&
                       c <= Math.max(maxSelC, fillDrag.c2);
                     const showFillHandle = isActive || (r === maxSelR && c === maxSelC && inSelection);
+                    const cond = conditionalStyle(sheet.conditionalRules, r, c, ev);
 
                     const textAlign =
                       st?.align ?? (ev?.numeric !== null && ev?.numeric !== undefined ? "right" : "left");
@@ -1540,8 +1573,8 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
                           textDecoration: [st?.underline ? "underline" : "", st?.strike ? "line-through" : ""]
                             .filter(Boolean)
                             .join(" "),
-                          color: ev?.error ? "#dc2626" : st?.color,
-                          backgroundColor: st?.bg,
+                          color: ev?.error ? "#dc2626" : (cond?.color ?? st?.color),
+                          backgroundColor: cond?.bg ?? st?.bg,
                           textAlign,
                           whiteSpace: st?.wrap ? "normal" : "nowrap",
                         }}
@@ -1695,7 +1728,7 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
             title="Add Sheet"
             onClick={() => {
               commitWb((prev) => {
-                const ns = newSheet(`Sheet ${prev.sheets.length + 1}`);
+                const ns = newSheet(defaultSheetName(prev.sheets.length + 1));
                 return {
                   ...prev,
                   sheets: [...prev.sheets, ns],
@@ -1722,22 +1755,28 @@ export function SpreadsheetView({ pageId }: { pageId: string }) {
       </div>
 
       {/* Shortcuts Help Modal */}
+      {highlightOpen && (
+        <ConditionalDialog
+          rules={sheet.conditionalRules ?? []}
+          selection={minSelR === maxSelR && minSelC === maxSelC ? cellKey(minSelR, minSelC) : `${cellKey(minSelR, minSelC)}:${cellKey(maxSelR, maxSelC)}`}
+          onChange={(rules) => updateActiveSheet((s) => ({ ...s, conditionalRules: rules }))}
+          onClose={() => setHighlightOpen(false)}
+        />
+      )}
       {shortcutsOpen && (
-        <Modal onClose={() => setShortcutsOpen(false)} title="Excel Spreadsheet Shortcuts (اختصارات الجداول)" width={560}>
+        <Modal onClose={() => setShortcutsOpen(false)} title="Spreadsheet shortcuts" width={560}>
+          {/* Keys and description apart, so the description is one sentence the Arabic interface can translate. */}
           <div className="sheet-shortcuts-list">
-            <div><kbd>Enter</kbd> / <kbd>F2</kbd> — Edit active cell inline / Commit & move down</div>
-            <div><kbd>Ctrl + Enter</kbd> — Fill all selected cells with current input/formula</div>
-            <div><kbd>Alt + =</kbd> — AutoSum (`=SUM(...)` of adjacent numbers)</div>
-            <div><kbd>F4</kbd> (while editing formula) — Cycle `$A$1` → `A$1` → `$A1` → `A1`</div>
-            <div><kbd>Ctrl + D</kbd> / <kbd>Ctrl + R</kbd> — Fill Down / Fill Right</div>
-            <div><kbd>Ctrl + ;</kbd> / <kbd>Ctrl + Shift + ;</kbd> — Insert current Date / Time</div>
-            <div><kbd>Ctrl + Arrows</kbd> — Jump to edge of data region</div>
-            <div><kbd>Shift + Arrows</kbd> — Extend cell selection</div>
-            <div><kbd>Ctrl + C</kbd> / <kbd>Ctrl + X</kbd> / <kbd>Ctrl + V</kbd> — Copy / Cut / Paste (Excel TSV compatible)</div>
-            <div><kbd>Ctrl + Shift + V</kbd> — Paste Values Only (without formulas)</div>
-            <div><kbd>Ctrl + B</kbd> / <kbd>Ctrl + I</kbd> / <kbd>Ctrl + U</kbd> / <kbd>Ctrl + 5</kbd> — Bold / Italic / Underline / Strikethrough</div>
-            <div><kbd>Ctrl + Z</kbd> / <kbd>Ctrl + Y</kbd> — Undo / Redo</div>
-            <div><kbd>Ctrl + F</kbd> — Find & Replace in sheet</div>
+            {SHORTCUTS.map(([keys, text]) => (
+              <div key={text} className="sheet-shortcut">
+                <span className="sheet-shortcut-keys">
+                  {keys.map((k) => (
+                    <kbd key={k}>{k}</kbd>
+                  ))}
+                </span>
+                <span>{text}</span>
+              </div>
+            ))}
           </div>
         </Modal>
       )}

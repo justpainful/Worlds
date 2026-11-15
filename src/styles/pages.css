@@ -7,7 +7,7 @@
 .page-cover { position: relative; overflow: hidden; -webkit-mask-image: linear-gradient(#000 calc(100% - 60px), transparent); mask-image: linear-gradient(#000 calc(100% - 60px), transparent); transition: height 380ms var(--spring-snappy); }
 .page-cover-img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .page-cover-wrap { position: relative; }
-.page-cover-actions { position: absolute; z-index: 6; top: 68px; right: 22px; }
+.page-cover-actions { position: absolute; z-index: 6; top: 68px; inset-inline-end: 22px; }
 .page-cover-actions-row { display: flex; gap: 2px; padding: 3px; }
 .page-cover-actions { --g-fade: 0; }
 /* Shown while the pointer is anywhere over the cover or on the buttons themselves. */
@@ -70,9 +70,11 @@
 
 /* ---- Toggle ---------------------------------------------------------------- */
 .ProseMirror .toggle { position: relative; padding-inline-start: 26px; margin: 2px 0; }
-.toggle-chevron { position: absolute; left: 0; top: 4px; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 6px; color: var(--text-3); transition: transform 200ms var(--spring-snappy), background-color 120ms ease; }
+.toggle-chevron { position: absolute; inset-inline-start: 0; top: 4px; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 6px; color: var(--text-3); transition: transform 200ms var(--spring-snappy), background-color 120ms ease; }
 .toggle-chevron:hover { background: rgba(255, 255, 255, 0.07); color: var(--text-1); }
 .toggle.is-open > .toggle-chevron { transform: rotate(90deg); }
+/* The chevron sits at the start edge; in Arabic it points left when closed, so it turns the other way to point down. */
+.toggle.is-open > .toggle-chevron:dir(rtl) { transform: rotate(-90deg); }
 [dir="rtl"] .ProseMirror .toggle, .ProseMirror .toggle:dir(rtl) { padding-inline-start: 26px; }
 .toggle-body > [data-node-view-content-react] > :first-child, .toggle-body > :first-child { margin-top: 0; }
 .toggle:not(.is-open) .toggle-body > div > :not(:first-child),
@@ -146,6 +148,8 @@
 /* ---- Outline ----------------------------------------------------------------- */
 .outline { position: fixed; right: 30px; top: 150px; width: 200px; max-height: calc(100vh - 220px); overflow-y: auto; display: flex; flex-direction: column; gap: 1px; padding: 6px 0; z-index: 5; opacity: 0.55; transition: opacity 200ms ease; scrollbar-width: none; }
 .outline:hover { opacity: 1; }
+/* The outline is fixed to the window edge away from the sidebar; in Arabic the sidebar is on the right, so it moves left. */
+:root[dir="rtl"] .outline { right: auto; left: 30px; }
 .outline-title { font: var(--t-caption); font-weight: 600; color: var(--text-3); padding: 0 8px 6px; }
 .outline-item { text-align: start; padding: 4px 8px; border-radius: 7px; font: var(--t-small); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; unicode-bidi: plaintext; border-inline-start: 2px solid transparent; }
 .outline-item.lvl-2 { padding-inline-start: 18px; }
@@ -196,7 +200,7 @@
 .find-bar {
   position: fixed;
   top: 72px;
-  right: 34px;
+  inset-inline-end: 34px;
   z-index: 40;
   width: 380px;
 }
@@ -285,7 +289,7 @@
 .gallery-cell img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 400ms var(--spring-snappy); }
 .gallery-grid.aspect-natural .gallery-cell img { height: auto; }
 .gallery-cell:hover img { transform: scale(1.03); }
-.gallery-x { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: rgba(0, 0, 0, 0.6); color: #fff; opacity: 0; transition: opacity 120ms ease; }
+.gallery-x { position: absolute; top: 6px; inset-inline-end: 6px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: rgba(0, 0, 0, 0.6); color: #fff; opacity: 0; transition: opacity 120ms ease; }
 .gallery-cell:hover .gallery-x { opacity: 1; }
 .gallery-bar { display: flex; align-items: center; gap: 6px; margin-top: 8px; opacity: 0; transition: opacity 140ms ease; }
 .gallery-block:hover .gallery-bar { opacity: 1; }
@@ -318,6 +322,10 @@
   body, .pane, .page-view { background: #fff !important; color: #111 !important; }
   .page-view * { color: #111 !important; }
   .pane-scroll { position: static !important; overflow: visible !important; }
+  /* Paper, not the window: no dark frame around the page, and table lines that show on white. */
+  .frame, .main { background: #fff !important; padding: 0 !important; }
+  .page-view th, .page-view td { border-color: #c8c8cc !important; }
+  .page-view th { background: #f2f2f4 !important; }
 }
 
 /* ==========================================================================

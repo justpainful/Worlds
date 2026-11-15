@@ -197,14 +197,16 @@ class SpreadsheetEvaluator(private val workbook: JSONObject) {
                     tokens.add(Str(text.toString()))
                 }
                 ch == '(' || ch == ')' -> { tokens.add(Paren(ch)); i++ }
-                ch == ',' || ch == ';' -> { tokens.add(Comma); i++ }
+                // The Arabic keyboard's comma and semicolon separate arguments too.
+                ch == ',' || ch == ';' || ch == '،' || ch == '؛' -> { tokens.add(Comma); i++ }
+                ch == '٪' -> { tokens.add(Op("%")); i++ }
                 expr.startsWith("<=", i) || expr.startsWith(">=", i) || expr.startsWith("<>", i) || expr.startsWith("!=", i) -> { tokens.add(Op(expr.substring(i, i + 2))); i += 2 }
                 ch in "+-*/^&=<>:%" -> { tokens.add(Op(ch.toString())); i++ }
-                ch.isAsciiDigit() || (ch == '.' && expr.getOrNull(i + 1)?.isAsciiDigit() == true) -> {
+                ch.isAnyDigit() || ((ch == '.' || ch == '٫') && expr.getOrNull(i + 1)?.isAnyDigit() == true) -> {
                     val number = StringBuilder()
-                    while (i < expr.length && (expr[i].isAsciiDigit() || expr[i] in ".eE+-")) {
+                    while (i < expr.length && (expr[i].isAnyDigit() || expr[i] in ".٫eE+-")) {
                         if ((expr[i] == '+' || expr[i] == '-') && number.lastOrNull()?.let { it == 'e' || it == 'E' } != true) break
-                        number.append(expr[i++])
+                        number.append(westernDigits(expr[i++].toString()))
                     }
                     tokens.add(Num(number.toString().toDoubleOrNull() ?: throw FormulaError("#VALUE!")))
                 }
@@ -383,7 +385,7 @@ class SpreadsheetEvaluator(private val workbook: JSONObject) {
     }
     private fun number(value: Any?, strict: Boolean = false): Double {
         when (value) { is Double -> return value; is Boolean -> return if (value) 1.0 else 0.0; null, "" -> return 0.0 }
-        val cleaned = value.toString().replace(",", "").trim()
+        val cleaned = westernDigits(value.toString()).replace(",", "").trim()
         if (cleaned.endsWith("%")) { val n = jsNumber(cleaned.dropLast(1)); if (!n.isNaN()) return n / 100 }
         val n = jsNumber(cleaned)
         if (n.isNaN()) { if (strict) throw FormulaError("#VALUE!"); return 0.0 }
@@ -571,10 +573,32 @@ class SpreadsheetEvaluator(private val workbook: JSONObject) {
         private fun Char.isAsciiDigit() = this in '0'..'9'
         private fun Char.isArabic() = this in '؀'..'ۿ'
         private fun Char.isIdentStart() = this in 'A'..'Z' || this in 'a'..'z' || this == '_' || this == '$' || this == '#' || isArabic()
-        private fun Char.isIdentPart() = this in 'A'..'Z' || this in 'a'..'z' || isAsciiDigit() || this in "_$!.?" || isArabic()
+        /** Arabic and Persian digits count as digits in numbers. */
+        private fun Char.isAnyDigit() = isAsciiDigit() || this in '٠'..'٩' || this in '۰'..'۹'
+        // Arabic letters and digits belong to names; the Arabic comma, semicolon,
+        // percent and decimal marks end them, as their Western twins do.
+        private fun Char.isIdentPart() = this in 'A'..'Z' || this in 'a'..'z' || isAsciiDigit() || this in "_$!.?" ||
+            (isArabic() && this != '،' && this != '؛' && this !in '٪'..'٬')
+
+        /**
+         * Arabic and Persian digits as Western ones, with the Arabic decimal point,
+         * thousands separator and percent sign, so "٩٥" and "٣٫٥٪" count as numbers.
+         */
+        fun westernDigits(s: String): String = buildString(s.length) {
+            for (c in s) append(
+                when (c) {
+                    in '٠'..'٩' -> '0' + (c - '٠')
+                    in '۰'..'۹' -> '0' + (c - '۰')
+                    '٫' -> '.'
+                    '٬' -> ','
+                    '٪' -> '%'
+                    else -> c
+                },
+            )
+        }
 
         fun parseRawScalar(raw: String): Any? {
-            val trimmed = raw.trim()
+            val trimmed = westernDigits(raw.trim())
             if (trimmed.isEmpty()) return null
             if (trimmed.equals("TRUE", ignoreCase = true)) return true
             if (trimmed.equals("FALSE", ignoreCase = true)) return false

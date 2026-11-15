@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { NodeViewWrapper, type ReactNodeViewProps } from "@tiptap/react";
-import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { open as openDialog } from "../../lib/dialog";
 import { api, errorMessage, fileUrl } from "../../lib/api";
 import { useStore } from "../../state/store";
 import { Icon } from "../../ui/Icon";
@@ -135,7 +135,7 @@ export function GalleryView({ node, updateAttributes, editor, selected }: ReactN
             <Icon name="grid" size={13} />
             Layout
           </button>
-          <span className="gallery-count">{images.length} pictures</span>
+          <span className="gallery-count">{`${images.length} picture${images.length === 1 ? "" : "s"}`}</span>
         </div>
       )}
     </NodeViewWrapper>
@@ -155,7 +155,8 @@ export function LightboxHost() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setState(null);
       else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-        const d = e.key === "ArrowRight" ? 1 : -1;
+        // The next button sits on the left in Arabic, so the left arrow goes forward there.
+        const d = (e.key === "ArrowRight") !== (document.documentElement.dir === "rtl") ? 1 : -1;
         setState((s) => (s ? { ...s, index: (s.index + d + s.images.length) % s.images.length } : s));
       } else return;
       e.preventDefault();
@@ -178,7 +179,7 @@ export function LightboxHost() {
         )}
         <span className="lightbox-name bidi">{im.name}</span>
         <span className="lightbox-count">
-          {state.index + 1} / {state.images.length}
+          <bdi dir="ltr">{`${state.index + 1} / ${state.images.length}`}</bdi>
         </span>
         {state.images.length > 1 && (
           <button onClick={() => step(1)} aria-label="Next">

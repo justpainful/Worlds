@@ -19,6 +19,7 @@ import { edit } from "../drawing/operations";
 import { defaultIcon } from "../resources/kinds";
 import { today as todayISO } from "../planning/model";
 import { plantCellChanges, samplePlan, type SampleEntry } from "./sampleData";
+import { localizeDeep, type SampleLanguage } from "./content";
 
 /** Settings key holding what the sample created. */
 export const SAMPLE_KEY = "sample.workspace";
@@ -32,6 +33,8 @@ export interface SampleRecord {
   /** The Study pack was off and the sample turned it on. */
   enabledStudy: boolean;
   createdAt: number;
+  /** The language the sample was written in; older records do not say. */
+  language?: SampleLanguage;
 }
 
 /** The store commands the sample needs (a subset of `api`). */
@@ -40,6 +43,8 @@ export interface SampleBackend {
   drawingLoad(pageId: string): Promise<DrawingDocument>;
   drawingApply(pageId: string, operation: DrawingOperation): Promise<DrawingDocument>;
   deletePage(id: string): Promise<void>;
+  /** Pin a page on Home; optional so older hosts still work. */
+  pinPage?(id: string): Promise<void>;
 }
 
 /** The app state the sample reads and writes. */
@@ -51,12 +56,14 @@ export interface SampleHost {
   setStudyEnabled(on: boolean): void;
   /** Who drawing edits are attributed to (the profile id). */
   actor(): string;
+  /** The interface language; the sample is written in it. Arabic when not given. */
+  language?(): SampleLanguage;
 }
 
 export function sampleRecord(settings: Record<string, unknown>): SampleRecord | null {
   const v = settings[SAMPLE_KEY] as Partial<SampleRecord> | null | undefined;
   if (!v || typeof v !== "object" || typeof v.rootId !== "string" || !Array.isArray(v.ids)) return null;
-  return { version: v.version ?? SAMPLE_VERSION, rootId: v.rootId, ids: v.ids.filter((x): x is string => typeof x === "string"), enabledStudy: !!v.enabledStudy, createdAt: v.createdAt ?? 0 };
+  return { version: v.version ?? SAMPLE_VERSION, rootId: v.rootId, ids: v.ids.filter((x): x is string => typeof x === "string"), enabledStudy: !!v.enabledStudy, createdAt: v.createdAt ?? 0, ...(v.language === "ar" || v.language === "en" ? { language: v.language } : {}) };
 }
 
 /** The sample's resources that still exist outside the Trash. */
@@ -96,7 +103,8 @@ export function loadSampleWorkspace(backend: SampleBackend, host: SampleHost, no
       const live = liveSampleIds(host.settings(), host.pages());
       return { created: false, rootId: live.includes(existing.rootId) ? existing.rootId : live[0] };
     }
-    const plan = samplePlan(todayISO(now));
+    const lang = host.language?.() ?? "ar";
+    const plan = samplePlan(todayISO(now), lang);
     const ids = new Map<string, string>();
     try {
       for (const entry of plan) {
@@ -105,7 +113,7 @@ export function loadSampleWorkspace(backend: SampleBackend, host: SampleHost, no
         ids.set(entry.key, meta.id);
         if (entry.kind === "drawing") {
           const doc = await backend.drawingLoad(meta.id);
-          await backend.drawingApply(meta.id, edit(host.actor(), doc.revision, "Sample drawing", plantCellChanges(doc.scene)));
+          await backend.drawingApply(meta.id, edit(host.actor(), doc.revision, "Sample drawing", localizeDeep(plantCellChanges(doc.scene), lang)));
         }
       }
     } catch (e) {
@@ -114,9 +122,11 @@ export function loadSampleWorkspace(backend: SampleBackend, host: SampleHost, no
       await trashTopLevel([...ids.values()], backend, (id) => parents.get(id));
       throw e;
     }
+    // Pin a few pages so Home opens on the sample instead of an empty Pinned row.
+    for (const entry of plan) if (entry.pin && backend.pinPage) await backend.pinPage(ids.get(entry.key)!).catch(() => {});
     const enabledStudy = !host.studyEnabled();
     if (enabledStudy) host.setStudyEnabled(true);
-    const record: SampleRecord = { version: SAMPLE_VERSION, rootId: ids.get("root")!, ids: [...ids.values()], enabledStudy, createdAt: now.getTime() };
+    const record: SampleRecord = { version: SAMPLE_VERSION, rootId: ids.get("root")!, ids: [...ids.values()], enabledStudy, createdAt: now.getTime(), language: lang };
     host.setSetting(SAMPLE_KEY, record);
     return { created: true, rootId: record.rootId };
   })().finally(() => {

@@ -11,6 +11,8 @@ import { createItem, toggleTask, updateData } from "./actions";
 import { addDays, formatTime, occurrences, parseISODate, relDay, startOfWeek, today, type Occurrence } from "./model";
 import { colorVar, itemMenu, QuickAdd } from "./ui";
 import { useMenu } from "../ui/Menu";
+import { uiLanguage } from "../i18n/ui";
+import { hijriDate, hijriDay, hijriSpan, span } from "../i18n/locale";
 
 type Mode = "week" | "agenda";
 
@@ -26,6 +28,8 @@ export function CalendarView() {
   const from = mode === "week" ? startOfWeek(anchor, weekStart) : anchor;
   const to = mode === "week" ? addDays(from, 6) : addDays(anchor, 34);
   const occ = useMemo(() => occurrences(pages, from, to, { includeDone: true }), [pages, from, to]);
+  // Counted on its own so the line stays right while another week is shown.
+  const left = useMemo(() => occurrences(pages, now, now).filter((o) => !o.done).length, [pages, now]);
   const days = useMemo(() => Array.from({ length: mode === "week" ? 7 : 35 }, (_, i) => addDays(from, i)), [from, mode]);
   const byDay = useMemo(() => {
     const m = new Map<string, Occurrence[]>();
@@ -34,11 +38,13 @@ export function CalendarView() {
   }, [occ]);
 
   const step = mode === "week" ? 7 : 35;
+  // The weekend is Friday and Saturday in Saudi Arabia, Saturday and Sunday elsewhere.
+  const weekend = uiLanguage() === "ar" ? [5, 6] : [6, 0];
   const title = (() => {
     const a = parseISODate(from), b = parseISODate(to);
     const sameMonth = a.getMonth() === b.getMonth();
     const month = a.toLocaleDateString(undefined, { month: "long", year: "numeric" });
-    return sameMonth ? month : `${a.toLocaleDateString(undefined, { month: "short" })} – ${b.toLocaleDateString(undefined, { month: "short", year: "numeric" })}`;
+    return sameMonth ? month : span(a.toLocaleDateString(undefined, { month: "short" }), b.toLocaleDateString(undefined, { month: "short", year: "numeric" }));
   })();
 
   const addOn = async (day: string) => {
@@ -50,7 +56,13 @@ export function CalendarView() {
       <header className="pl-head">
         <div>
           <h1 className="pl-title">{title}</h1>
-          <p className="pl-sub">{occ.filter((o) => o.date === now && !o.done).length || "Nothing"} today</p>
+          <p className="pl-sub">{left ? `${left} item${left === 1 ? "" : "s"} left today` : "Nothing left today"}</p>
+          {/* In Arabic the Hijri months of the shown days follow, as Saudi calendars print them. */}
+          {uiLanguage() === "ar" && (
+            <p className="pl-sub pl-hijri" translate="no">
+              {hijriSpan(parseISODate(from), parseISODate(to))}
+            </p>
+          )}
         </div>
         <div className="pl-head-controls">
           <IconButton icon="back" label="Previous" onClick={() => setAnchor(addDays(anchor, -step))} />
@@ -61,7 +73,7 @@ export function CalendarView() {
       </header>
 
       <QuickAdd
-        placeholder="Add an event — try “Team sync thursday 10am”"
+        placeholder="Add an event, like “Team sync thursday 10am”"
         onAdd={async (p) => {
           const date = p.due ?? (mode === "week" && (anchor < from || anchor > to) ? from : anchor);
           const start = p.time;
@@ -74,10 +86,15 @@ export function CalendarView() {
       {mode === "week" ? (
         <div className="cal-week">
           {days.map((day) => (
-            <div key={day} className={`cal-day ${day === now ? "is-today" : ""} ${day < now ? "is-past" : ""}`}>
+            <div key={day} className={`cal-day ${day === now ? "is-today" : ""} ${day < now ? "is-past" : ""} ${weekend.includes(parseISODate(day).getDay()) ? "is-weekend" : ""}`}>
               <div className="cal-day-head">
                 <span className="cal-dow">{parseISODate(day).toLocaleDateString(undefined, { weekday: "short" })}</span>
                 <span className="cal-num">{parseISODate(day).getDate()}</span>
+                {uiLanguage() === "ar" && (
+                  <span className="cal-hijri" translate="no" title={hijriSpan(parseISODate(day), parseISODate(day))}>
+                    {hijriDay(parseISODate(day))}
+                  </span>
+                )}
                 <IconButton icon="add" label="Add event" className="cal-add" onClick={() => addOn(day)} />
               </div>
               <div className="cal-day-body">
@@ -98,7 +115,10 @@ export function CalendarView() {
               <section key={day} className={`cal-agenda-day ${day === now ? "is-today" : ""}`}>
                 <h3 className="pl-group-head">
                   <span>{relDay(day)}</span>
-                  <span className="pl-count">{parseISODate(day).toLocaleDateString(undefined, { day: "numeric", month: "short" })}</span>
+                  <span className="pl-count">
+                    {parseISODate(day).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+                    {uiLanguage() === "ar" && <span translate="no">{` · ${hijriDate(parseISODate(day))}`}</span>}
+                  </span>
                 </h3>
                 <div className="pl-list">
                   {byDay.get(day)!.map((o) => (

@@ -241,7 +241,7 @@ input[type="range"] { height: 4px; }
 /* ---- Switch (macOS proportions) ------------------------------------------- */
 .switch { width: 38px; height: 22px; background: rgba(255, 255, 255, 0.16); box-shadow: inset 0 0.5px 1px rgba(0, 0, 0, 0.25); }
 .switch.is-on { background: var(--accent); }
-.switch-knob { top: 2px; left: 2px; width: 18px; height: 18px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(0, 0, 0, 0.08); }
+.switch-knob { top: 2px; inset-inline-start: 2px; width: 18px; height: 18px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(0, 0, 0, 0.08); }
 .switch.is-on .switch-knob { transform: translateX(16px); }
 .switch:focus-visible { box-shadow: var(--focus-ring); }
 
@@ -361,9 +361,21 @@ button:focus-visible, [role="button"]:focus-visible, [role="tab"]:focus-visible,
 .backlink-title, .backlink-excerpt, .ai-chat-row-title, .pal-item-title, .sg-title, .mm-label, .related-chip span,
 .tab-title, .list-row-title, .page-row-title, .tpl-card-title, .tpl-card-desc, .auto-card-name, .menu-text,
 .outline-item, .toc-item, .crumb-btn span, .sub-prop, .pb-item-title, .pb-item-sub {
-  text-align: left;
+  /* The chrome's own start edge: left, or right once the Arabic interface mirrors it. */
+  text-align: var(--chrome-start, left);
   unicode-bidi: plaintext;
 }
+:root[dir="rtl"] { --chrome-start: right; }
+
+/* Arrows and chevrons that point along the reading direction mirror in Arabic.
+   `scale` composes with any `transform` a component sets, so a disclosure
+   chevron rotated open still points down. */
+:dir(rtl) .icon-dir { scale: -1 1; }
+
+/* An empty box with dir="auto" has no letters to judge by and falls back to
+   left to right, so in Arabic its placeholder sat on the left. Until the
+   person types, it follows the interface. */
+:root[dir="rtl"] :is(input, textarea)[dir="auto"]:placeholder-shown { direction: rtl; }
 
 .modal-body { overflow-x: hidden; }
 .pf-edit-media { flex-wrap: wrap; }

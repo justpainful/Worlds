@@ -486,7 +486,7 @@ pub fn publish_authorized(conn: &Connection, input: Publish, permit: Option<&cra
     let current: i64 = conn.query_row("SELECT current_version FROM drawing_library_items WHERE page_id = ?1", [&item_id], |r| r.get(0))?;
     let version = current + 1;
     if version > 500 {
-        bail!("The library publication history exceeds500 versions");
+        bail!("The library publication history exceeds 500 versions");
     }
     let at = db::now();
     scene["libraryPublication"] = Descriptor {

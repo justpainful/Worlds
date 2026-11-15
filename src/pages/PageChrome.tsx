@@ -158,8 +158,8 @@ export function StatusBar({ editor, saving, savedAt, locked }: { editor: Editor 
         </span>
       )}
       <span className="sb-item">{stats.sel ? `${stats.sel} of ${stats.words.toLocaleString()} words` : `${stats.words.toLocaleString()} words`}</span>
-      <span className="sb-item">{stats.chars.toLocaleString()} characters</span>
-      <span className="sb-item">{minutes} min read</span>
+      <span className="sb-item">{`${stats.chars.toLocaleString()} characters`}</span>
+      <span className="sb-item">{`${minutes} min read`}</span>
       <span className="sb-item sb-save">{saving ? "Saving" : savedAt ? `Saved ${relTime(savedAt)}` : ""}</span>
     </Glass>
   );
@@ -254,8 +254,8 @@ export function Starters({ editor, pageId }: { editor: Editor | null; pageId: st
 // ---------------------------------------------------------------------------
 
 const SHORTCUTS: [string, [string, string][]][] = [
-  ["Writing", [["Bold", "Ctrl+B"], ["Italic", "Ctrl+I"], ["Strikethrough", "Ctrl+Shift+S"], ["Inline code", "Ctrl+E"], ["Link", "Ctrl+K in a selection"], ["Highlight", "Ctrl+Shift+H"]]],
-  ["Blocks", [["Block menu", "/"], ["Mention a page", "@ or [["], ["Heading 1 to 3", "# ## ###"], ["List", "- or 1."], ["Checklist", "[]"], ["Quote", ">"], ["Code", "```"], ["Divider", "---"], ["Duplicate block", "Ctrl+D"]]],
+  ["Formatting", [["Bold", "Ctrl+B"], ["Italic", "Ctrl+I"], ["Strikethrough", "Ctrl+Shift+S"], ["Inline code", "Ctrl+E"], ["Link", "Ctrl+K in a selection"], ["Highlight", "Ctrl+Shift+H"]]],
+  ["Blocks", [["Block menu", "/"], ["Mention a page", "@ or [["], ["Heading 1 to 3", "# ## ###"], ["List", "- or 1."], ["Checklist", "[]"], ["Quote", ">"], ["Code block", "```"], ["Divider", "---"], ["Duplicate block", "Ctrl+D"]]],
   ["Page", [["Find", "Ctrl+F"], ["Replace", "Ctrl+H"], ["Focus mode", "Ctrl+Shift+F"], ["Lock page", "Ctrl+Alt+L"], ["Toggle sidebar", "Ctrl+Shift+L"], ["Shortcuts", "Ctrl+/"]]],
   ["Worlds", [["Command palette", "Ctrl+K"], ["New page", "Ctrl+N"], ["Ask Claude", "Ctrl+J"], ["New tab", "Ctrl+T"], ["Split right", "Ctrl+\\"], ["Settings", "Ctrl+,"]]],
 ];

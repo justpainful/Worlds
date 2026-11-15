@@ -92,6 +92,8 @@ interface State {
   sidebar: { collapsed: boolean; width: number; expanded: Record<string, boolean> };
   paletteOpen: boolean;
   paletteMode: "all" | "pages" | "commands";
+  /** What the search starts with when it opens, such as text selected on a page. */
+  paletteQuery: string;
   toasts: Toast[];
   /** Bumped when another process changed a page, so open editors reload. */
   externalRevision: Record<string, number>;
@@ -124,7 +126,7 @@ interface State {
   setSidebarWidth: (w: number) => void;
   setExpanded: (id: string, open: boolean) => void;
 
-  setPalette: (open: boolean, mode?: "all" | "pages" | "commands") => void;
+  setPalette: (open: boolean, mode?: "all" | "pages" | "commands", query?: string) => void;
   toast: (t: Omit<Toast, "id">) => void;
   dismissToast: (id: string) => void;
   bumpExternal: (pageId: string) => void;
@@ -142,6 +144,7 @@ export const useStore = create<State>((set, get) => ({
   sidebar: { collapsed: false, width: 268, expanded: {} },
   paletteOpen: false,
   paletteMode: "all",
+  paletteQuery: "",
   toasts: [],
   externalRevision: {},
   pendingCount: 0,
@@ -387,7 +390,7 @@ export const useStore = create<State>((set, get) => ({
   setExpanded: (id, open) =>
     set({ sidebar: { ...get().sidebar, expanded: { ...get().sidebar.expanded, [id]: open } } }),
 
-  setPalette: (open, mode = "all") => set({ paletteOpen: open, paletteMode: mode }),
+  setPalette: (open, mode = "all", query = "") => set({ paletteOpen: open, paletteMode: mode, paletteQuery: query }),
 
   toast: (t) => {
     const id = uid("toast");

@@ -58,7 +58,7 @@ export function AutomationsView({ automationId }: { automationId?: string }) {
                 </div>
                 <div className="auto-card-sub">{describeTrigger(a.spec.trigger)}</div>
                 <div className="auto-card-sub isolate">{describeDestination(a.spec.destination)}</div>
-                <div className="auto-card-next">{a.enabled ? (a.nextRunAt ? `Next ${relTime(a.nextRunAt)}` : "No upcoming run") : "Paused"}</div>
+                <div className="auto-card-next">{a.enabled ? (a.nextRunAt ? `Next run ${relTime(a.nextRunAt)}` : "No upcoming run") : "Paused"}</div>
               </button>
             ))}
           </div>

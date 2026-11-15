@@ -16,6 +16,10 @@ import { createItem } from "../planning/actions";
 import { today } from "../planning/model";
 import { openQuickCapture } from "../planning/InboxView";
 import { createSubject } from "../study/StudyViews";
+import { startTour } from "./Tour";
+import { translate } from "../i18n/ui";
+import { foldArabic } from "../i18n/locale";
+import { pageFromTemplate, templateName } from "../templates/fromTemplate";
 
 interface Cmd {
   id: string;
@@ -45,8 +49,8 @@ function activeRoute(): Route | null {
 }
 
 function score(text: string, q: string): number {
-  const t = text.toLowerCase();
-  const query = q.toLowerCase().trim();
+  const t = foldArabic(text.toLowerCase());
+  const query = foldArabic(q.toLowerCase().trim());
   if (!query) return 1;
   if (t.startsWith(query)) return 3;
   if (t.includes(query)) return 2;
@@ -63,6 +67,7 @@ function commands(): Cmd[] {
   const list: Cmd[] = [
     { id: "new", title: "Create Page", icon: "add", hint: "Ctrl+N", keywords: "new page", run: (w) => s.createPage({}, w) },
     { id: "home", title: "Go Home", icon: "home", run: (w) => s.open({ kind: "home" }, w) },
+    { id: "tour", title: "Take the Tour", icon: "info", keywords: "tour help guide start جولة شرح مساعدة", run: () => startTour() },
     { id: "tasks", title: "Tasks", icon: "checklist", keywords: "todo due today upcoming مهام", run: (w) => s.open({ kind: "tasks" }, w) },
     { id: "new-task", title: "New Task", icon: "checklist", keywords: "todo add task مهمة", run: (w) => { void createItem("task", { data: { due: today() }, open: w }); } },
     { id: "calendar", title: "Calendar", icon: "calendar", keywords: "week agenda schedule events تقويم جدول", run: (w) => s.open({ kind: "calendar" }, w) },
@@ -130,7 +135,7 @@ export function CommandPalette() {
 
 function Palette({ mode, onClose }: { mode: "all" | "pages" | "commands"; onClose: () => void }) {
   const pages = useStore((s) => s.pages);
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(() => useStore.getState().paletteQuery);
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [searching, setSearching] = useState(false);
   const [sel, setSel] = useState(0);
@@ -189,14 +194,14 @@ function Palette({ mode, onClose }: { mode: "all" | "pages" | "commands"; onClos
           out.push({
             key: `p${h.pageId}`,
             kind: isTpl ? "template" : "page",
-            title: h.title || "Untitled",
+            title: (isTpl && s.pages[h.pageId] ? templateName(s.pages[h.pageId]) : h.title) || "Untitled",
             subtitle: isTpl ? "Template" : h.parentTitle ?? undefined,
             snippet: h.snippet,
             emoji: h.icon,
             icon: isTpl ? "template" : "page",
             run: (w) =>
               isTpl
-                ? api.instantiate(h.pageId).then(async (m) => {
+                ? (s.pages[h.pageId] ? pageFromTemplate(s.pages[h.pageId]) : api.instantiate(h.pageId)).then(async (m) => {
                     await s.refreshPages();
                     s.openPage(m.id, w);
                   })
@@ -207,7 +212,7 @@ function Palette({ mode, onClose }: { mode: "all" | "pages" | "commands"; onClos
     }
     if (mode !== "pages") {
       const cmds = commands()
-        .map((c) => ({ c, sc: Math.max(score(c.title, query), score(c.keywords ?? "", query)) }))
+        .map((c) => ({ c, sc: Math.max(score(c.title, query), score(translate(c.title) ?? "", query), score(c.keywords ?? "", query)) }))
         .filter((x) => x.sc > 0)
         .sort((a, b) => b.sc - a.sc)
         .slice(0, query ? 8 : 6);

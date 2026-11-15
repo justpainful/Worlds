@@ -40,6 +40,9 @@ function flatten(pages: Record<string, PageMeta>, expanded: Record<string, boole
   return rows;
 }
 
+/** Screens this narrow get the sidebar as a layer over the page (styles/shell.css). */
+const NARROW = "(max-width: 720px)";
+
 function useActiveRoute(): Route | null {
   return useStore((s) => {
     const pane = s.layout.panes.find((p) => p.id === s.layout.activePaneId);
@@ -58,6 +61,14 @@ export function Sidebar() {
   const toggleSidebar = useStore((s) => s.toggleSidebar);
   const setPalette = useStore((s) => s.setPalette);
   const active = useActiveRoute();
+  // On a narrow screen (a phone opening the web demo) the sidebar lies over the
+  // page, so choosing something in it closes it; arrows and section buttons do not.
+  const closeIfNarrow = (e: React.MouseEvent) => {
+    if (!window.matchMedia(NARROW).matches) return;
+    const t = e.target as HTMLElement;
+    if (t.closest(".tree-twisty, .tree-actions, .side-section-action, .side-top")) return;
+    if (t.closest(".side-item, .tree-row, .side-profile")) toggleSidebar();
+  };
   const study = usePack("study");
   const dueCount = useMemo(() => tasksFor(pages, "today", today()).length, [pages]);
   const inboxCount = useMemo(() => liveOfKind(pages, "inbox").length, [pages]);
@@ -76,6 +87,7 @@ export function Sidebar() {
   const nav = (icon: IconName, label: string, route: Route, badge?: number, product?: ProductIconName) => (
     <button
       className={`side-item ${isActive(route) ? "is-active" : ""}`}
+      data-tour={product}
       onClick={(e) => open(route, e.ctrlKey ? "tab" : e.altKey ? "right" : "current")}
     >
       {product ? <ProductIcon name={product} size={34} className="side-pi" /> : <Icon name={icon} size={19} />}
@@ -89,7 +101,9 @@ export function Sidebar() {
     e.preventDefault();
     const startX = e.clientX;
     const startW = sidebar.width;
-    const move = (ev: PointerEvent) => useStore.getState().setSidebarWidth(startW + ev.clientX - startX);
+    // In Arabic the sidebar sits on the right, so dragging its edge to the left widens it.
+    const sign = getComputedStyle(e.currentTarget).direction === "rtl" ? -1 : 1;
+    const move = (ev: PointerEvent) => useStore.getState().setSidebarWidth(startW + sign * (ev.clientX - startX));
     const up = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
@@ -101,13 +115,13 @@ export function Sidebar() {
   };
 
   return (
-    <aside className={`sidebar ${sidebar.collapsed ? "is-collapsed" : ""}`} style={{ width: sidebar.collapsed ? 0 : sidebar.width }} aria-label="Sidebar">
+    <aside className={`sidebar ${sidebar.collapsed ? "is-collapsed" : ""}`} style={{ width: sidebar.collapsed ? 0 : sidebar.width }} aria-label="Sidebar" onClick={closeIfNarrow}>
       <div className="sidebar-inner" style={{ width: sidebar.width }}>
         <div className="side-top" data-drag-zone>
-          <IconButton icon="sidebarClose" label="Hide sidebar" shortcut="Ctrl+\" onClick={toggleSidebar} />
+          <IconButton icon="sidebarClose" label="Hide sidebar" shortcut="Ctrl+Shift+L" onClick={toggleSidebar} />
           <div className="side-top-spacer" data-tauri-drag-region />
-          <IconButton icon="search" label="Search" shortcut="Ctrl+K" onClick={() => setPalette(true, "all")} />
-          <IconButton icon="edit" label="New" shortcut="Ctrl+N for a page" onClick={(e) => newResourceMenu(e.currentTarget)} />
+          <IconButton icon="search" label="Search" shortcut="Ctrl+K" data-tour="search" onClick={() => setPalette(true, "all")} />
+          <IconButton icon="edit" label="New" shortcut="Ctrl+N for a page" data-tour="new" onClick={(e) => newResourceMenu(e.currentTarget)} />
         </div>
 
         <WorkspaceSwitcher />
@@ -382,8 +396,12 @@ function TreeRow({
       onKeyDown={(e) => {
         if (renaming) return;
         if (e.key === "Enter") openPage(page.id);
-        else if (e.key === "ArrowRight" && hasKids) setExpanded(page.id, true);
-        else if (e.key === "ArrowLeft") setExpanded(page.id, false);
+        else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+          // Arrows follow the reading direction: in Arabic the left arrow opens a branch.
+          const rtl = getComputedStyle(e.currentTarget).direction === "rtl";
+          const opening = (e.key === "ArrowRight") !== rtl;
+          if (opening ? hasKids : open) setExpanded(page.id, opening);
+        }
         else if (e.key === "F2") {
           e.preventDefault();
           import("./pageActions").then((m) => m.requestRename(page.id));
@@ -401,7 +419,8 @@ function TreeRow({
       <button
         className={`tree-twisty ${hasKids ? "" : "is-leaf"} ${open ? "is-open" : ""}`}
         tabIndex={-1}
-        aria-label={open ? "Collapse" : "Expand"}
+        aria-label={hasKids ? (open ? "Collapse" : "Expand") : undefined}
+        aria-hidden={hasKids ? undefined : true}
         onClick={(e) => {
           e.stopPropagation();
           if (hasKids) setExpanded(page.id, !open);

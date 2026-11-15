@@ -60,7 +60,7 @@ internal class DocumentPrintAdapter(
         val totalChars = blocks.sumOf { previewBlock(it.content).text.length }
         totalPages = max(1, (totalChars / 1800) + 1)
 
-        val info = PrintDocumentInfo.Builder(documentTitle.ifBlank { "Worlds Document" })
+        val info = PrintDocumentInfo.Builder(documentTitle.ifBlank { context.getString(R.string.kind_document) })
             .setContentType(PrintDocumentInfo.CONTENT_TYPE_DOCUMENT)
             .setPageCount(totalPages)
             .build()
@@ -122,14 +122,14 @@ internal class DocumentPrintAdapter(
                 val canvas = page.canvas
 
                 // Running header
-                canvas.drawText(documentTitle.ifBlank { "Worlds Document" }, marginH, 40f, headerPaint)
+                canvas.drawText(documentTitle.ifBlank { context.getString(R.string.kind_document) }, marginH, 40f, headerPaint)
                 canvas.drawText(dateStr, pageWidth - marginH - headerPaint.measureText(dateStr), 40f, headerPaint)
                 canvas.drawLine(marginH, 48f, pageWidth - marginH, 48f, linePaint)
 
                 // Page title on page 0
                 var currentY = 70f
                 if (p == 0) {
-                    canvas.drawText(documentTitle.ifBlank { "Untitled" }, marginH, currentY + 16f, titlePaint)
+                    canvas.drawText(documentTitle.ifBlank { context.getString(R.string.untitled) }, marginH, currentY + 16f, titlePaint)
                     currentY += 40f
                 }
 
@@ -186,7 +186,7 @@ internal class DocumentPrintAdapter(
 /** Print utility invoked from activity. */
 internal fun printWorldsDocument(activity: Activity, title: String, blocks: List<ContentBlock>) {
     val printManager = activity.getSystemService(Context.PRINT_SERVICE) as? PrintManager ?: return
-    val jobName = "Worlds - ${title.ifBlank { "Document" }}"
+    val jobName = "Worlds · ${title.ifBlank { activity.getString(R.string.kind_document) }}"
     val adapter = DocumentPrintAdapter(activity, title, blocks)
     printManager.print(
         jobName,

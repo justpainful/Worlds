@@ -111,7 +111,7 @@ fun AutomationsScreen(
     if (historyAutomationId != null) {
         AlertDialog(
             onDismissRequest = { historyAutomationId = null },
-            title = { WorldsActionLabel(R.drawable.ic_history, "Execution history") },
+            title = { WorldsActionLabel(R.drawable.ic_history, stringResource(R.string.automation_history_title)) },
             text = {
                 Column(
                     modifier = Modifier
@@ -121,7 +121,7 @@ fun AutomationsScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     if (historyRuns.isEmpty()) {
-                        Text("No runs recorded yet for this automation.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.automation_history_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
                         historyRuns.forEach { run ->
                             Surface(
@@ -179,7 +179,7 @@ fun AutomationsScreen(
                     showEditor = true
                 }
             ) {
-                WorldsActionLabel(R.drawable.ic_plus, "New automation")
+                WorldsActionLabel(R.drawable.ic_plus, stringResource(R.string.automation_new))
             }
         }
 
@@ -188,7 +188,7 @@ fun AutomationsScreen(
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             WorldsTile(R.drawable.pi_automations, 44.dp)
             Text(
-                "Automations",
+                stringResource(R.string.automations),
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onBackground,
                 fontWeight = FontWeight.SemiBold
@@ -208,17 +208,17 @@ fun AutomationsScreen(
                 CircularProgressIndicator()
             }
             error -> Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                Text("Failed to load automations", color = MaterialTheme.colorScheme.error)
+                Text(stringResource(R.string.automation_load_failed), color = MaterialTheme.colorScheme.error)
                 Spacer(Modifier.height(8.dp))
-                Button(onClick = ::refresh) { Text("Retry") }
+                Button(onClick = ::refresh) { Text(stringResource(R.string.retry)) }
             }
             automations.isEmpty() -> Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(56.dp)) {
                         Box(contentAlignment = Alignment.Center) { WorldsGlyph(R.drawable.ic_sliders_horizontal) }
                     }
-                    Text("No automations configured", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
-                    Text("Create an automation to schedule periodic updates or actions.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.automation_empty_title), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
+                    Text(stringResource(R.string.automation_empty_body), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             else -> LazyColumn(
@@ -301,11 +301,11 @@ private fun AutomationCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     val triggerDesc = when (val t = automation.spec.trigger) {
-                        is Trigger.Once -> "Once at ${DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(t.at))}"
-                        is Trigger.Daily -> "Daily at ${t.time}"
-                        is Trigger.Weekly -> "Weekly at ${t.time}"
-                        is Trigger.Monthly -> "Monthly on day ${t.day} at ${t.time}"
-                        is Trigger.Manual -> "Manual execution"
+                        is Trigger.Once -> stringResource(R.string.automation_trigger_once, DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(t.at)))
+                        is Trigger.Daily -> stringResource(R.string.automation_trigger_daily, t.time)
+                        is Trigger.Weekly -> stringResource(R.string.automation_trigger_weekly, t.time)
+                        is Trigger.Monthly -> stringResource(R.string.automation_trigger_monthly, t.day, t.time)
+                        is Trigger.Manual -> stringResource(R.string.automation_trigger_manual)
                     }
                     Text(triggerDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -324,7 +324,7 @@ private fun AutomationCard(
                 val nextRunAt = automation.nextRunAt
                 if (nextRunAt != null && automation.enabled) {
                     Text(
-                        "Next: ${DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(nextRunAt))}",
+                        stringResource(R.string.automation_next, DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(nextRunAt))),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -345,10 +345,10 @@ private fun AutomationCard(
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     TextButton(onClick = onRunNow) {
-                        WorldsActionLabel(R.drawable.ic_send_horizontal, "Run now")
+                        WorldsActionLabel(R.drawable.ic_send_horizontal, stringResource(R.string.automation_run_now))
                     }
                     TextButton(onClick = onHistory) {
-                        WorldsActionLabel(R.drawable.ic_history, "History")
+                        WorldsActionLabel(R.drawable.ic_history, stringResource(R.string.automation_history))
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -367,10 +367,10 @@ private fun AutomationCard(
 @Composable
 private fun RunStatusChip(status: String) {
     val (bgColor, textColor, label) = when (status) {
-        "success" -> Triple(Color(0xFF2E7D32).copy(alpha = 0.15f), Color(0xFF2E7D32), "Success")
-        "failed" -> Triple(MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.error, "Failed")
-        "skipped" -> Triple(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant, "Skipped")
-        else -> Triple(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.primary, "Pending")
+        "success" -> Triple(Color(0xFF2E7D32).copy(alpha = 0.15f), Color(0xFF2E7D32), stringResource(R.string.run_status_success))
+        "failed" -> Triple(MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.error, stringResource(R.string.run_status_failed))
+        "skipped" -> Triple(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant, stringResource(R.string.run_status_skipped))
+        else -> Triple(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.primary, stringResource(R.string.run_status_pending))
     }
     Surface(shape = RoundedCornerShape(6.dp), color = bgColor) {
         Text(

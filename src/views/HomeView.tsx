@@ -13,7 +13,7 @@ import { pageMenu } from "../shell/pageActions";
 import { LAYER } from "../glass/profiles";
 import { Tonal } from "../ui/tonal/Tonal";
 import { GlassBackdrop } from "../profile/GlassBackdrop";
-import { isResource } from "../resources/kinds";
+import { emptyPreview, isResource } from "../resources/kinds";
 import { newResourceMenu } from "../resources/create";
 import { PACKS_ASKED_KEY, setPackEnabled, usePack } from "../packs/packs";
 import { formatTime, occurrences, tasksFor, today } from "../planning/model";
@@ -21,6 +21,9 @@ import { createItem } from "../planning/actions";
 import { ItemRow, QuickAdd } from "../planning/ui";
 import { StudyHomeSection } from "../study/StudyViews";
 import { loadSample } from "../demo/sampleActions";
+import { resolveUiLanguage } from "../i18n/ui";
+import { dateLine } from "../i18n/locale";
+import { pageFromTemplate, templateName } from "../templates/fromTemplate";
 
 type View = "grid" | "list";
 
@@ -107,9 +110,10 @@ export function HomeView() {
             </GlassButton>
           </div>
           <p className="home-sample-note">
-            A student's week in Arabic and English: pages, a document, a spreadsheet, a drawing, slides, subjects and tasks. It stays on
-            this device, and you can remove it anytime in Settings.
+            A student's week in your interface language: pages, a document, a spreadsheet, a drawing, slides, subjects and tasks. It
+            stays on this device, and you can remove it anytime in Settings.
           </p>
+          <LanguageChoice />
         </div>
         <TemplateRow templates={templates} />
       </div>
@@ -120,7 +124,20 @@ export function HomeView() {
     <div className="home">
       <GlassBackdrop />
       <div className="home-top">
-        <h1 className="home-title">{greeting}</h1>
+        <div className="home-heading">
+          <h1 className="home-title">{greeting}</h1>
+          <p className="home-date" translate="no">
+            {/* Each date stays whole; a narrow window breaks the line between them. */}
+            {dateLine(new Date())
+              .split(" · ")
+              .map((part, i) => (
+                <span key={i}>
+                  {i > 0 && " · "}
+                  <span className="home-date-part">{part}</span>
+                </span>
+              ))}
+          </p>
+        </div>
         <div className="home-controls" data-tonal-group>
           <Tonal
             as="button"
@@ -300,6 +317,30 @@ function PackPrompt() {
     </div>
   );
 }
+/**
+ * The first screen of a new install offers both interface languages, so a visitor
+ * can switch without finding Settings. Each name is written in its own language.
+ */
+function LanguageChoice() {
+  const profile = useStore((s) => s.profile);
+  const setProfile = useStore((s) => s.setProfile);
+  if (!profile) return null;
+  return (
+    <div className="home-language" translate="no">
+      <Segmented
+        value={resolveUiLanguage(profile.language)}
+        onChange={async (v) => setProfile(await api.updateProfile({ language: v }))}
+        label="Language"
+        size="standard"
+        options={[
+          { value: "en", label: "English" },
+          { value: "ar", label: "العربية" },
+        ]}
+      />
+    </div>
+  );
+}
+
 function HomeSection({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section className="home-section">
@@ -338,13 +379,13 @@ function TemplateRow({ templates }: { templates: PageMeta[] }) {
             key={t.id}
             className="tpl-chip"
             onClick={async () => {
-              const p = await api.instantiate(t.id);
+              const p = await pageFromTemplate(t);
               await refresh();
               openPage(p.id);
             }}
           >
             <span className="tpl-chip-icon">{t.icon ?? "📄"}</span>
-            <span className="bidi">{t.title.replace("{{date}}", "").trim()}</span>
+            <span className="bidi">{templateName(t)}</span>
           </button>
         ))}
       </div>
@@ -399,7 +440,7 @@ export function PageCollection({ pages, view }: { pages: PageMeta[]; view: View 
             {p.pinned && <Icon name="pin" size={12} className="page-card-pin" />}
           </div>
           <div className="page-card-title bidi">{pageTitle(p)}</div>
-          <div className={`page-card-preview bidi ${p.preview ? "" : "is-empty"}`}>{p.preview || "Empty page"}</div>
+          <div className={`page-card-preview bidi ${p.preview ? "" : "is-empty"}`}>{p.preview || emptyPreview(p.kind)}</div>
           <div className="page-card-meta">
             {p.parentId && <span className="bidi">{pageTitle(all[p.parentId])}</span>}
             <span>{relTime(p.updatedAt)}</span>

@@ -11,6 +11,7 @@ import {mockHistoryCandidate} from "../drawing/undo";
 import { appendOperation, edit, newDrawing, sceneChanges } from "../drawing/operations";
 import { DEFAULT_BRUSH, newLayer, newNode } from "../drawing/model";
 import { newSlide, slideToBlock } from "../resources/deck/model";
+import { foldArabic } from "../i18n/locale";
 import type { DrawingDocument } from "../drawing/model";
 import type { LibraryPublication } from "../drawing/library";
 import { DEFAULT_EXPORT_RULES, canDrawingExport, type DrawingExportPolicy } from "../drawing/exportPolicy";
@@ -72,9 +73,21 @@ const profile: any = {
   updatedAt: now,
 };
 
+// The public web demo in Arabic shows an Arabic profile, so nothing on screen stays in English.
+if (WEB_DEMO && profile.language === "ar") {
+  Object.assign(profile, { displayName: "ريم", handle: "reem", bio: "طالبة ثانوي، أنظم دراستي ومشاريعي في Worlds.", status: "أراجع لاختبار الأحياء", location: "الرياض" });
+}
+
 const pages: Record<string, any> = {};
 const blocks: Record<string, any[]> = {};
 const metadata: Record<string, any> = {};
+
+/** A card preview like the backend's: the page's text without its headings, 200 characters at most. */
+function previewOf(nodes: any[]): string {
+  const text = (n: any): string => (typeof n?.text === "string" ? n.text : (n?.content ?? []).map(text).join(n?.type === "paragraph" ? "" : " "));
+  const body = nodes.filter((n) => n?.type !== "heading").map(text).filter((t) => t.trim());
+  return (body.length ? body : nodes.map(text)).join(" · ").replace(/\s+/g, " ").trim().slice(0, 200);
+}
 
 function addPage(title: string, icon: string | null, lines: string[], extra: any = {}) {
   const pid = id();
@@ -173,6 +186,7 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has("mock") && n
 }
 
 const settings: Record<string, unknown> = WEB_DEMO ? { "account.onboarded": true } : { "advanced.developer": true, "advanced.perfOverlay": new URLSearchParams(location.search).has("perf"), "appearance.glassTone": new URLSearchParams(location.search).get("tone") ?? "auto", ...(new URLSearchParams(location.search).has("demo") && !new URLSearchParams(location.search).has("onboarding") ? { "account.onboarded": true } : {}) };
+try { if (localStorage.getItem("worlds.demo.tourSeen")) settings["tour.seen"] = true; } catch { /* private window */ }
 const callbacks = new Map<number, (v: any) => void>();
 const listeners = new Map<string, number[]>();
 let cbSeq = 1;
@@ -318,9 +332,12 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
     }
     case "drawing_embed_insert": { (blocks[a.targetId] ??= []).push({ type: "drawingEmbed", attrs: { bid: id(), pageId: a.pageId, frameId: a.frameId, camera: a.camera, versionId: a.versionId } }); return; }
     case "page_create": {
-      const pid = addPage(a.page.title ?? "", a.page.icon ?? null, [], { kind: a.page.kind ?? "page", parentId: a.page.parentId ?? null });
+      const t = Date.now();
+      const pid = addPage(a.page.title ?? "", a.page.icon ?? null, [], { kind: a.page.kind ?? "page", parentId: a.page.parentId ?? null, createdAt: t, updatedAt: t, openedAt: t });
       if (Array.isArray(a.page.blocks)) blocks[pid] = a.page.blocks.map((b: any) => ({ ...b, attrs: { ...(b.attrs ?? {}), bid: b.attrs?.bid ?? id() } }));
       else if (typeof a.page.markdown === "string") blocks[pid] = md(a.page.markdown.split("\n"));
+      // Like the backend, only pages and documents have a text preview.
+      if (["page", "document", "lesson"].includes(pages[pid].kind)) pages[pid].preview = previewOf(blocks[pid] ?? []);
       metadata[pid] = a.page.metadata ?? {};
       if (metadata[pid][pages[pid].kind] !== undefined) pages[pid].data = metadata[pid][pages[pid].kind];
       return pages[pid];
@@ -359,10 +376,17 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
       if (a.base != null && pages[a.pageId] && pages[a.pageId].updatedAt > a.base) throw "conflict: the page changed since it was loaded";
       const at = Math.max(Date.now(), (pages[a.pageId]?.updatedAt ?? 0) + 1);
       blocks[a.pageId] = a.blocks.map((b: any) => b.content);
-      if (pages[a.pageId]) pages[a.pageId].updatedAt = at;
+      if (pages[a.pageId]) {
+        pages[a.pageId].updatedAt = at;
+        pages[a.pageId].preview = previewOf(blocks[a.pageId]);
+      }
       return { added: 0, changed: 0, removed: 0, remapped: [], updatedAt: at };
     }
-    case "search": return Object.values(pages).filter((p: any) => p.title.includes(a.query)).map((p: any) => ({ pageId: p.id, title: p.title, icon: p.icon, kind: p.kind, snippet: p.preview, parentTitle: null, updatedAt: p.updatedAt }));
+    case "search": {
+      // Like the app's search: title and text, with Arabic spellings folded.
+      const q = foldArabic(String(a.query ?? "").toLowerCase().trim());
+      return Object.values(pages).filter((p: any) => !p.deletedAt && q && foldArabic(`${p.title} ${p.preview ?? ""}`.toLowerCase()).includes(q)).map((p: any) => ({ pageId: p.id, title: p.title, icon: p.icon, kind: p.kind, snippet: p.preview, parentTitle: null, updatedAt: p.updatedAt }));
+    }
     case "history_list": return [{ id: 1, pageId: p1, pageTitle: pages[p1].title, opId: null, actor: "user", kind: "edited", summary: "Edited · 3 changed", blockId: null, before: null, after: null, meta: {}, createdAt: now - 600_000 }];
     case "versions_list": return [];
     case "profile_get": return profile;
@@ -376,7 +400,11 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
       { id: "mock-ref-5", pageId: null, kind: "image", fileName: "ref-5.jpg", mime: "image/jpeg", size: 1, relPath: "", width: 1600, height: 900, createdAt: Date.now() },
       { id: "mock-ref-6", pageId: null, kind: "image", fileName: "ref-6.jpg", mime: "image/jpeg", size: 1, relPath: "", width: 1600, height: 900, createdAt: Date.now() },
     ];
-    case "settings_set": settings[a.key] = a.value; return null;
+    case "settings_set":
+      settings[a.key] = a.value;
+      // A visitor who closed the tour should not see it again on every reload.
+      if (a.key === "tour.seen") try { localStorage.setItem("worlds.demo.tourSeen", "1"); } catch { /* private window */ }
+      return null;
     case "session_save": case "client_log": case "window_set_transparency": return null;
     case "data_dir": return "C:\\mock";
     case "ai_status": return { available: true, version: "2.1.288 (Claude Code)", mcpRegistered: true };
@@ -415,7 +443,17 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
       chatMessages[chatId].push({ id: id(), role: "user", content: a.request.prompt, steps: [], opId: null, meta: {}, createdAt: Date.now() });
       if (WEB_DEMO || new URLSearchParams(location.search).has("demo")) {
         // Simulated events only; no service, network, or real workspace writes.
-        const answer = "**ملخص توضيحي**\n\n- حدد الجمهور وهدف الإطلاق.\n- اجمع المواد البصرية والنصوص.\n- راجع التفاصيل مع الفريق قبل النشر.\n\nهذه نتيجة تجريبية للعرض.";
+        // A reply drawn from the demo's own pages, in the language of the question, that says plainly it is the demo.
+        const arabicPrompt = /[\u0600-\u06FF]/.test(String(a.request.prompt ?? ""));
+        const recent = Object.values(pages)
+          .filter((p: any) => !p.deletedAt && p.kind !== "template" && p.title)
+          .sort((x: any, y: any) => y.updatedAt - x.updatedAt)
+          .slice(0, 5)
+          .map((p: any) => `- ${p.title}`)
+          .join("\n");
+        const answer = arabicPrompt
+          ? `**من مساحة عملك**\n\nآخر ما عملت عليه:\n${recent}\n\nهذه نسخة الويب التجريبية. في تطبيق سطح المكتب يقرأ Claude صفحاتك ويكتب فيها فعلًا، ويمكن التراجع عن كل تغيير.`
+          : `**From your workspace**\n\nWhat you worked on most recently:\n${recent}\n\nThis is the web demo. In the desktop app Claude really reads and writes your pages, and every change can be undone.`;
         setTimeout(() => emit("worlds://ai", { runId, kind: "tool", tool: "pages_read" }), 300);
         setTimeout(() => emit("worlds://ai", { runId, kind: "tool_result", error: false }), 800);
         setTimeout(() => emit("worlds://ai", { runId, kind: "text", text: answer }), 1100);
@@ -469,6 +507,7 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
     }
     case "attachment_get": return null;
     case "drawing_sync_pending_pages": return [];
+    case "tray_language": return null;
     default:
       console.warn("[mock] unhandled", cmd, a);
       return null;

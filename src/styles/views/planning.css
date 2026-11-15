@@ -433,6 +433,14 @@
   min-width: 0;
 }
 
+.cal-day.is-weekend {
+  background: rgba(255, 255, 255, 0.012);
+}
+
+.cal-day.is-weekend .cal-dow {
+  color: var(--text-4);
+}
+
 .cal-day.is-today {
   background: rgba(var(--accent-rgb), 0.07);
   box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.35);
@@ -455,6 +463,12 @@
 .cal-num {
   font: var(--t-ui-strong);
   color: var(--text-1);
+}
+
+/* The Hijri day beside the date, smaller and quieter, as Saudi calendars print it. */
+.cal-hijri {
+  font: var(--t-caption);
+  color: var(--text-3);
 }
 
 .cal-day.is-today .cal-num {
@@ -521,12 +535,37 @@
 .cal-time {
   font: var(--t-caption);
   color: var(--text-3);
+  white-space: nowrap;
 }
 
 .cal-chip-title {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* In a narrow week column a title takes up to three lines rather than three letters and an ellipsis. */
+/* A task in a week column: the box and time on one line, the title the whole width under them. */
+.cal-chip:not(.is-wide):has(> .pl-check) {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 6px;
+  align-items: center;
+}
+.cal-chip:not(.is-wide):has(> .pl-check) .cal-chip-text {
+  display: contents;
+}
+.cal-chip:not(.is-wide):has(> .pl-check) .cal-chip-title {
+  grid-column: 1 / -1;
+}
+
+.cal-chip:not(.is-wide) .cal-chip-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  white-space: normal;
+  hyphens: auto;
+  overflow-wrap: anywhere;
 }
 
 .cal-agenda {

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { shownName } from "./names";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import { errorMessage } from "../lib/api";
@@ -283,7 +284,7 @@ export function DrawingExportDialog({
             <option value="svg">{t("SVG (flattened image)", "SVG (صورة مسطّحة)")}</option>
             <option value="frames">{t("Selected frames as PNG archive", "الإطارات المحددة كأرشيف PNG")}</option>
             <option value="pair">{t("Clean and annotated PNG archive", "أرشيف PNG بنسخة نظيفة وأخرى مشروحة")}</option>
-            <option value="worldsdraw">{t("Editable Worlds project", "مشروع وورلدز قابل للتعديل")}</option>
+            <option value="worldsdraw">{t("Editable Worlds project", "مشروع Worlds قابل للتعديل")}</option>
           </select>
         </label>
         {format !== "worldsdraw" && (
@@ -298,7 +299,7 @@ export function DrawingExportDialog({
                       checked={batchFrames.includes(id)}
                       onChange={(e) => setBatchFrames((value) => (e.target.checked ? [...value, id] : value.filter((v) => v !== id)))}
                     />
-                    {scene.frames[id].name}
+                    {shownName(scene.frames[id].name, arabic)}
                   </label>
                 ))}
                 <p role="status">
@@ -311,7 +312,7 @@ export function DrawingExportDialog({
                 <select value={frame} onChange={(e) => setFrame(e.target.value)}>
                   {scene.frameOrder.map((id) => (
                     <option key={id} value={id}>
-                      {scene.frames[id].name}
+                      {shownName(scene.frames[id].name, arabic)}
                     </option>
                   ))}
                 </select>
@@ -358,13 +359,13 @@ export function DrawingExportDialog({
           </label>
           <label className="drawing-check">
             <input type="checkbox" checked={packageHistory} onChange={(e) => setPackageHistory(e.target.checked)} />
-            {t("Include operation history (up to500 operations)", "تضمين سجل العمليات (حتى500 عملية)")}
+            {t("Include operation history (up to 500 operations)", "تضمين سجل العمليات (حتى 500 عملية)")}
           </label>
           <label className="drawing-check">
             <input type="checkbox" checked={packageExperiments} onChange={(e) => setPackageExperiments(e.target.checked)} />
             {t(
-              "Include editable experiments and original comparison bases (up to24)",
-              "تضمين التجارب القابلة للتحرير وأسس مقارنتها الأصلية (حتى24)",
+              "Include editable experiments and original comparison bases (up to 24)",
+              "تضمين التجارب القابلة للتحرير وأسس مقارنتها الأصلية (حتى 24)",
             )}
           </label>
           <p>
@@ -383,8 +384,8 @@ export function DrawingExportDialog({
       {format === "worldsdraw" && Object.values(scene.nodes).some((n) => n.redaction) && (
         <p role="status">
           {t(
-            "Editable projects retain the original content beneath redactions. Share a flattened PNG, JPEG, WebP, BMP orSVG for a redacted copy.",
-            "يحتفظ المشروع القابل للتعديل بالمحتوى الأصلي تحت التنقيح. شارك PNG أوJPEG أوWebP أوBMP أوSVG مسطحًا للحصول على نسخة منقحة.",
+            "Editable projects retain the original content beneath redactions. Share a flattened PNG, JPEG, WebP, BMP or SVG for a redacted copy.",
+            "يحتفظ المشروع القابل للتعديل بالمحتوى الأصلي تحت التنقيح. شارك PNG أو JPEG أو WebP أو BMP أو SVG مسطحًا للحصول على نسخة منقحة.",
           )}
         </p>
       )}

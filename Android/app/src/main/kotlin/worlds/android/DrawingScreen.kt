@@ -400,15 +400,15 @@ private fun historyAvailable(json: String): Pair<Boolean, Boolean> {
                         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)), modifier = Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(10.dp)) {
                                 Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                                    Text("Ref Image", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                                    Text(stringResource(R.string.drawing_ref_image), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
                                     Switch(checked = ref.visible, onCheckedChange = { model.updateReferenceImage(ref.copy(visible = it)) })
                                     IconButton(onClick = { model.removeReferenceImage(ref.id) }) {
                                         WorldsGlyph(R.drawable.ic_trash_2, tint = MaterialTheme.colorScheme.error)
                                     }
                                 }
-                                Text("Opacity: ${(ref.opacity * 100).roundToInt()}%", style = MaterialTheme.typography.bodySmall)
+                                Text(stringResource(R.string.drawing_ref_opacity, (ref.opacity * 100).roundToInt()), style = MaterialTheme.typography.bodySmall)
                                 Slider(value = ref.opacity, onValueChange = { model.updateReferenceImage(ref.copy(opacity = it)) }, valueRange = 0.1f..1.0f)
-                                Text("Scale: ${((ref.scale * 100).roundToInt()) / 100f}x", style = MaterialTheme.typography.bodySmall)
+                                Text(stringResource(R.string.drawing_ref_scale, (((ref.scale * 100).roundToInt()) / 100f).toString()), style = MaterialTheme.typography.bodySmall)
                                 Slider(value = ref.scale, onValueChange = { model.updateReferenceImage(ref.copy(scale = it)) }, valueRange = 0.2f..3.0f)
                             }
                         }

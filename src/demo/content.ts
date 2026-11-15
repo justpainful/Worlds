@@ -6,9 +6,71 @@
  */
 import type { JSONContent } from "@tiptap/core";
 
-const INLINE = /(\*\*[^*]+\*\*|==[^=]+==|`[^`]+`|\*[^*\s][^*]*\*)/g;
+export type SampleLanguage = "ar" | "en";
 
-export function inline(src: string): JSONContent[] {
+const ARABIC = /[؀-ۿ]/;
+
+/**
+ * The sample is written as "عربي · English" pairs. This keeps the half in the
+ * interface language, line by line, so nothing shows two scripts tangled in one
+ * sentence. Text that is not such a pair is returned as it is.
+ */
+export function pickLanguage(text: string, lang: SampleLanguage): string {
+  // A formula starts with one "="; "==" opens a highlight mark instead.
+  if (/^=(?!=)/.test(text)) {
+    // A spreadsheet formula: only its quoted text values are pairs.
+    return text.replace(/"([^"]*)"/g, (_, inner: string) => `"${pickLanguage(inner, lang)}"`);
+  }
+  return text
+    .split("\n")
+    .map((line) => {
+      const parts = line.split(" · ");
+      if (parts.length !== 2) return line;
+      const [a, b] = parts;
+      if (ARABIC.test(a) === ARABIC.test(b)) return line;
+      // A list number or bullet written once before the pair belongs to both halves.
+      const lead = /^\s*(?:\d+[.)]|[-*])\s+/.exec(a)?.[0] ?? "";
+      const first = a.slice(lead.length);
+      const arabic = ARABIC.test(first) ? first : b;
+      const english = ARABIC.test(first) ? b : first;
+      return lead.trimStart() + (lang === "ar" ? arabic : english).trim();
+    })
+    .join("\n");
+}
+
+let current: SampleLanguage | null = null;
+
+/**
+ * Build content in one language: while fn runs, the builders below pick the
+ * language before parsing marks, so a pair whose bold or italic text sits on
+ * one side of the separator is still split correctly.
+ */
+export function withSampleLanguage<T>(lang: SampleLanguage, fn: () => T): T {
+  const previous = current;
+  current = lang;
+  try {
+    return fn();
+  } finally {
+    current = previous;
+  }
+}
+
+/** Apply pickLanguage to every string inside a value (titles, workbooks, scene changes). */
+export function localizeDeep<T>(value: T, lang: SampleLanguage): T {
+  if (typeof value === "string") return pickLanguage(value, lang) as T;
+  if (Array.isArray(value)) return value.map((v) => localizeDeep(v, lang)) as T;
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) out[k] = localizeDeep(v, lang);
+    return out as T;
+  }
+  return value;
+}
+
+const INLINE =/(\*\*[^*]+\*\*|==[^=]+==|`[^`]+`|\*[^*\s][^*]*\*)/g;
+
+export function inline(source: string): JSONContent[] {
+  const src = current ? pickLanguage(source, current) : source;
   const out: JSONContent[] = [];
   let last = 0;
   for (const m of src.matchAll(INLINE)) {

@@ -79,4 +79,4 @@ Get the latest build from the [releases page](https://github.com/justpainful/Wor
 
 ## License
 
-To be decided.
+Worlds is source-available, not open source. You may read the code, use the official builds and contribute through pull requests here. Copying, modifying, redistributing, reverse engineering and using any part of it to train or feed AI systems are not allowed without written permission. See [LICENSE](LICENSE). Third-party components keep their own licenses.

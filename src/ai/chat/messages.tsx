@@ -256,7 +256,7 @@ export function MessageView({
       {m.steps.length > 0 && (
         <button className="ai-steps-toggle" onClick={() => setShowSteps((v) => !v)}>
           <Icon name="settings" size={12} />
-          {m.steps.length} step{m.steps.length === 1 ? "" : "s"}
+          <span>{`${m.steps.length} step${m.steps.length === 1 ? "" : "s"}`}</span>
           <Icon name="chevronDown" size={11} className={showSteps ? "is-flipped" : ""} />
         </button>
       )}
@@ -277,7 +277,7 @@ export function MessageView({
         <div className={`ai-result ${m.meta.undone ? "is-undone" : ""}`}>
           <span>
             {m.meta.undone ? "Undone · " : ""}
-            {changes} change{changes === 1 ? "" : "s"}
+            {`${changes} change${changes === 1 ? "" : "s"}`}
             {m.meta.pages?.length ? ` on ${m.meta.pages.map((p) => p.title || "Untitled").join(", ")}` : ""}
           </span>
           <span className="grow" />

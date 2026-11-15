@@ -10,6 +10,7 @@ import { menuAt, useMenu, type MenuItem } from "../ui/Menu";
 import { useLens } from "../motion/useLens";
 import { RouteView } from "../views/RouteView";
 import { WindowControls } from "./Window";
+import { ErrorBoundary } from "../ui/ErrorBoundary";
 import { glassEngine } from "../glass/engine";
 
 export function Panes() {
@@ -25,8 +26,10 @@ export function Panes() {
     const total = el.getBoundingClientRect().width;
     const startX = e.clientX;
     const start = [...layout.widths];
+    // Panes run right to left in Arabic, so the first pane of a pair is the one on the right.
+    const sign = getComputedStyle(el).direction === "rtl" ? -1 : 1;
     const move = (ev: PointerEvent) => {
-      const dx = (ev.clientX - startX) / total;
+      const dx = (sign * (ev.clientX - startX)) / total;
       const min = 300 / total;
       let a = start[i] + dx;
       let b = start[i + 1] - dx;
@@ -208,7 +211,9 @@ function PaneView({ pane, index, count, active, width, first, last }: { pane: Pa
       onDrop={onDrop}
     >
       <div className="pane-scroll scroll" ref={scrollRef} data-pane={pane.id}>
-        <RouteView route={tab.route} paneId={pane.id} tabId={tab.id} key={`${tab.id}:${tab.route.kind === "chat" ? "chat" : routeKey}`} />
+        <ErrorBoundary resetKey={`${tab.id}:${routeKey}`} onHome={() => useStore.getState().open({ kind: "home" }, "current", pane.id)}>
+          <RouteView route={tab.route} paneId={pane.id} tabId={tab.id} key={`${tab.id}:${tab.route.kind === "chat" ? "chat" : routeKey}`} />
+        </ErrorBoundary>
       </div>
       <PaneToolbar pane={pane} tab={tab} showWindowControls={last} count={count} />
       {dropSide && <div className={`pane-drop pane-drop-${dropSide}`} />}
@@ -264,9 +269,11 @@ function PaneToolbar({ pane, tab, showWindowControls, count }: { pane: Pane; tab
     e.stopPropagation();
     const items = [...(strip.current?.querySelectorAll<HTMLElement>("[data-tab]") ?? [])];
     let idx = items.length;
+    const rtl = !!strip.current && getComputedStyle(strip.current).direction === "rtl";
     for (let i = 0; i < items.length; i++) {
       const r = items[i].getBoundingClientRect();
-      if (e.clientX < r.left + r.width / 2) {
+      // Tabs read right to left in Arabic, so a tab's first half is its right half.
+      if (rtl ? e.clientX > r.left + r.width / 2 : e.clientX < r.left + r.width / 2) {
         idx = i;
         break;
       }
@@ -317,6 +324,8 @@ function PaneToolbar({ pane, tab, showWindowControls, count }: { pane: Pane; tab
                   data-tab={t.id}
                   className={`tab ${isActive ? "is-active" : ""} ${dropIndex === i ? "drop-before" : ""} ${dropIndex === pane.tabs.length && i === pane.tabs.length - 1 ? "drop-after" : ""}`}
                   role="tab"
+                  // A long title is cut in the tab; the whole name shows on hover.
+                  data-tip={lbl.title}
                   aria-selected={isActive}
                   tabIndex={0}
                   draggable

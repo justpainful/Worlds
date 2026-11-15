@@ -23,6 +23,8 @@
   unicode-bidi: plaintext;
   text-align: start;
 }
+/* A line with no letters follows the line before it (neutralDirection.ts); plaintext would make it left to right. */
+.prose .bidi-neutral { unicode-bidi: isolate; }
 .prose p { min-height: 1.68em; }
 .prose h1 { font: var(--t-h1); letter-spacing: var(--t-h1-track); margin-top: 1.25em; }
 .prose h2 { font: var(--t-h2); letter-spacing: var(--t-h2-track); margin-top: 1.15em; }
@@ -44,6 +46,15 @@
 .prose li + li { margin-top: 0.18em; }
 .prose li > p { min-height: 0; }
 .prose li::marker { color: var(--text-3); }
+/* A list, quote or table marked dir="auto" cannot see its text, because every
+   paragraph inside carries its own dir, so it fell back to left to right:
+   Arabic bullets, numbers and quote bars sat on the far side and an Arabic
+   table started on the left. It now takes the direction of its first line. */
+.prose :is(ul, ol)[dir="auto"]:has(> li:first-child > p:first-child:dir(rtl)),
+.prose :is(ul, ol)[dir="auto"]:has(> li:first-child > div > p:first-child:dir(rtl)),
+.prose blockquote[dir="auto"]:has(> :is(p, h1, h2, h3):first-child:dir(rtl)),
+.prose table[dir="auto"]:has(> tbody > tr:first-child > :is(th, td):first-child > p:first-child:dir(rtl)),
+.prose .callout[dir="auto"]:has(> .callout-body > div > :is(p, h1, h2, h3):first-child:dir(rtl)) { direction: rtl; }
 .prose blockquote { padding-inline-start: 16px; border-inline-start: 2px solid var(--hairline-strong); color: var(--text-2); }
 .prose hr { border: 0; height: 0.5px; background: var(--hairline-strong); margin: 1.4em 0; }
 .prose hr.ProseMirror-selectednode { background: var(--accent); height: 2px; }
@@ -53,6 +64,8 @@
 .prose ul[data-type="taskList"] li { display: flex; align-items: flex-start; gap: 10px; }
 .prose ul[data-type="taskList"] li > label { flex: none; margin-top: 0.36em; user-select: none; }
 .prose ul[data-type="taskList"] li > div { flex: 1; min-width: 0; }
+/* The item's paragraph kept the browser's 1em margins, so every box sat a line above its text. */
+.prose ul[data-type="taskList"] li > div > p { margin-block: 0; min-height: 0; }
 .prose ul[data-type="taskList"] input[type="checkbox"] {
   appearance: none;
   width: 17px;
@@ -98,11 +111,17 @@
 .prose .tableWrapper { overflow-x: auto; }
 .prose th, .prose td { border: 0.5px solid var(--hairline-strong); padding: 8px 10px; vertical-align: top; min-width: 60px; position: relative; }
 .prose th { background: var(--fill-1); font-weight: 600; color: var(--text-1); }
-.prose td > p, .prose th > p { min-height: 1.4em; }
+/* A cell's paragraphs had the browser's 1em margins, so every row stood 72px tall. */
+.prose td > p, .prose th > p { min-height: 1.4em; margin: 0; }
+.prose td > p + p, .prose th > p + p { margin-top: 0.35em; }
+/* The same browser margins sat between list items and inside quotes and callouts. */
+.prose li > p, .prose blockquote > p, .prose .callout-body > div > p { margin: 0; }
+.prose li > p + p, .prose blockquote > p + p, .prose .callout-body > div > p + p { margin-top: 0.42em; }
+.prose li + li { margin-top: 0.2em; }
 .prose .selectedCell::after { content: ""; position: absolute; inset: 0; background: rgba(var(--accent-rgb), 0.16); pointer-events: none; }
 
 /* Callouts */
-.callout { display: flex; gap: 12px; padding: 12px 16px 12px 12px; border-radius: 14px; background: var(--fill-1); box-shadow: inset 0 0 0 0.5px var(--hairline); }
+.callout { display: flex; gap: 12px; padding-block: 12px; padding-inline: 12px 16px; border-radius: 14px; background: var(--fill-1); box-shadow: inset 0 0 0 0.5px var(--hairline); }
 .callout-icon { flex: none; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 8px; color: var(--text-2); margin-top: 1px; }
 .callout-icon:hover { background: var(--fill-2); }
 .callout-body { flex: 1; min-width: 0; }
@@ -267,8 +286,8 @@
 .fp-nav { position: absolute !important; top: calc(50% - 19px); width: 38px; height: 38px; }
 .fp-nav { --g-fade: 0; }
 .fp-stage:not(:hover) .fp-nav, .fp-nav[aria-disabled="true"] { box-shadow: none; pointer-events: none; }
-.fp-nav.prev { left: 12px; }
-.fp-nav.next { right: 12px; }
+.fp-nav.prev { inset-inline-start: 12px; }
+.fp-nav.next { inset-inline-end: 12px; }
 .fp-stage:hover .fp-nav:not([aria-disabled="true"]) { --g-fade: 1; }
 .fp-bar { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
 .fp-count { font: var(--t-small); color: var(--text-3); min-width: 54px; font-variant-numeric: tabular-nums; }

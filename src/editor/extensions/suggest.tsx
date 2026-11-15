@@ -11,6 +11,8 @@ import { PageIcon } from "../../ui/misc";
 import { useStore, pageTitle } from "../../state/store";
 import { slashItems, type SlashItem } from "../slashItems";
 import { isResource } from "../../resources/kinds";
+import { translate } from "../../i18n/ui";
+import { foldArabic } from "../../i18n/locale";
 
 // ---------------------------------------------------------------------------
 // Generic list
@@ -107,7 +109,13 @@ function popupRenderer<T>(toEntries: (items: T[]) => ListEntry[], empty: string)
       if (!rect || !host) return;
       const h = host.firstElementChild?.getBoundingClientRect().height ?? 320;
       const below = rect.bottom + 6 + h < window.innerHeight - 8;
-      host.style.left = `${Math.min(rect.left, window.innerWidth - 340)}px`;
+      // In a right to left line the list hangs from the caret towards the left, over the page.
+      const at = props.editor.view.domAtPos(props.range.from).node;
+      const line = at instanceof HTMLElement ? at : at.parentElement;
+      const rtl = !!line && getComputedStyle(line).direction === "rtl";
+      const w = host.firstElementChild?.getBoundingClientRect().width ?? 332;
+      const x = rtl ? rect.right - w : rect.left;
+      host.style.left = `${Math.max(8, Math.min(x, window.innerWidth - w - 8))}px`;
       host.style.top = below ? `${rect.bottom + 6}px` : `${Math.max(8, rect.top - h - 6)}px`;
     };
     const propsFor = (p: SuggestionProps<T>): ListProps => ({
@@ -178,13 +186,15 @@ export const SlashCommand = Extension.create<{ getContext: () => EditorContext }
           return $from.parent.type.name !== "codeBlock";
         },
         items: ({ query }) => {
-          const q = query.toLowerCase().trim();
+          const q = foldArabic(query.toLowerCase().trim());
           const all = slashItems();
           if (!q) return all;
           // Rank: title starts with the query, a title word does, the title contains it, then keywords.
           const score = (i: SlashItem) => {
-            const t = i.title.toLowerCase();
-            const k = (i.keywords ?? "").toLowerCase();
+            // The Arabic names count too, so /صورة finds Image in the Arabic interface.
+            const ar = (x?: string) => (x ? (translate(x) ?? "") : "");
+            const t = foldArabic(`${i.title} ${ar(i.title)}`.toLowerCase());
+            const k = foldArabic(`${i.keywords ?? ""} ${ar(i.subtitle)} ${ar(i.group)}`.toLowerCase());
             if (t.startsWith(q)) return 0;
             if (t.split(/\s+/).some((w) => w.startsWith(q))) return 1;
             if (t.includes(q)) return 2;

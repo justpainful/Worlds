@@ -7,7 +7,9 @@ import { EmptyState } from "../ui/misc";
 import { useMenu, type MenuItem } from "../ui/Menu";
 import { confirmDialog } from "../ui/Modal";
 import { Icon } from "../ui/Icon";
-import { VISUAL_MINDMAP_PRESETS, createVisualMindMap, type VisualCanvasPreset } from "../drawing/mindMapTemplates";
+import { VISUAL_MINDMAP_PRESETS, createVisualMindMap, presetText, type VisualCanvasPreset } from "../drawing/mindMapTemplates";
+import { resolveUiLanguage } from "../i18n/ui";
+import { pageFromTemplate, templateDescription, templateName } from "../templates/fromTemplate";
 
 const CATEGORY_ORDER: Record<string, number> = {
   Custom: 0,
@@ -87,7 +89,7 @@ export function TemplatesView() {
 
       {showVisualCanvases && (
         <section className="tpl-section">
-          <h2 className="section-label">Visual Mind Maps & Concept Canvases (لوحات بصرية تفاعلية)</h2>
+          <h2 className="section-label">Visual mind maps and concept canvases</h2>
           <div className="tpl-grid">
             {VISUAL_MINDMAP_PRESETS.map((preset) => (
               <VisualPresetCard key={preset.key} preset={preset} />
@@ -121,12 +123,13 @@ export function TemplatesView() {
 
 function VisualPresetCard({ preset }: { preset: VisualCanvasPreset }) {
   const [busy, setBusy] = useState(false);
+  const lang = useStore((s) => resolveUiLanguage(s.profile?.language));
   const create = async () => {
     if (busy) return;
     setBusy(true);
     const s = useStore.getState();
     try {
-      const id = await createVisualMindMap(preset);
+      const id = await createVisualMindMap(preset, lang);
       await s.refreshPages();
       s.openPage(id);
     } catch (e) {
@@ -142,8 +145,8 @@ function VisualPresetCard({ preset }: { preset: VisualCanvasPreset }) {
         <span className="tpl-card-icon">{preset.icon}</span>
         <span className="tag">{preset.badge}</span>
       </div>
-      <div className="tpl-card-title bidi">{preset.title}</div>
-      <div className="tpl-card-desc bidi">{preset.description}</div>
+      <div className="tpl-card-title bidi">{presetText(preset, "title", lang)}</div>
+      <div className="tpl-card-desc bidi">{presetText(preset, "description", lang)}</div>
       <div className="tpl-card-foot">
         <span className="grow" />
         <button className="chip-btn is-accent" disabled={busy} onClick={create}>
@@ -158,13 +161,13 @@ function TemplateCard({ t }: { t: PageMeta }) {
   const openPage = useStore((s) => s.openPage);
   const show = useMenu((s) => s.show);
   const pages = useStore((s) => s.pages);
-  const description = t.preview;
+  const description = templateDescription(t) ?? t.preview;
   const kids = Object.values(pages).filter((p) => p.parentId === t.id && !p.deletedAt).length;
 
   const use = async () => {
     const s = useStore.getState();
     try {
-      const p = await api.instantiate(t.id);
+      const p = await pageFromTemplate(t);
       await s.refreshPages();
       s.openPage(p.id);
     } catch (e) {
@@ -214,7 +217,7 @@ function TemplateCard({ t }: { t: PageMeta }) {
           <Icon name="more" size={15} />
         </button>
       </div>
-      <div className="tpl-card-title bidi">{t.title.replace("{{date}}", "").trim() || "Untitled template"}</div>
+      <div className="tpl-card-title bidi">{templateName(t) || "Untitled template"}</div>
       <div className="tpl-card-desc bidi">{description || "Empty template"}</div>
       <div className="tpl-card-foot">
         {kids > 0 && <span className="tag">{kids} subpage{kids === 1 ? "" : "s"}</span>}

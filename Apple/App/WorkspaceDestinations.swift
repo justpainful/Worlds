@@ -313,7 +313,7 @@ struct LibraryDestinationView: View {
                                     .frame(width: 30, height: 30)
                                     .background(WorldsPalette.accent(for: colorScheme).opacity(0.14), in: RoundedRectangle(cornerRadius: 8))
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(item.title.isEmpty ? "Untitled" : item.title)
+                                    Text(item.title.isEmpty ? String(localized: "Untitled") : item.title)
                                         .font(.subheadline.weight(.semibold))
                                         .foregroundStyle(WorldsPalette.ink(for: colorScheme))
                                         .lineLimit(1)
@@ -408,7 +408,7 @@ struct SearchDestinationView: View {
                             openPage(page.id)
                         } label: {
                             VStack(alignment: .leading, spacing: 3) {
-                                Text(page.title.isEmpty ? "Untitled" : page.title)
+                                Text(page.title.isEmpty ? String(localized: "Untitled") : page.title)
                                     .font(.body.weight(.medium))
                                 if !page.preview.isEmpty {
                                     Text(page.preview)

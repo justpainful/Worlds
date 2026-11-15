@@ -4,6 +4,10 @@ import type { QualityTier } from "../glass/profiles";
 import { setAdaptiveQuality } from "../perf/monitor";
 import { setTonalLook } from "../ui/tonal/scene";
 import { applyUiLanguage, resolveUiLanguage, setUserTexts } from "../i18n/ui";
+import { api, isTauri } from "../lib/api";
+
+/** The language the tray menu was last told, so it is rebuilt only on a change. */
+let trayLanguage: string | null = null;
 
 export const ACCENTS: { name: string; hex: string }[] = [
   { name: "Blue", hex: "#2e92ff" },
@@ -51,8 +55,13 @@ export function applyAppearance() {
   if (motion === "reduced") root.dataset.motion = "reduced";
   else delete root.dataset.motion;
   root.dataset.density = (settings["appearance.density"] as string) ?? "comfortable";
+  // Settings › Editor › Spell check: every text area without its own choice inherits this.
+  root.spellcheck = settings["editor.spellcheck"] !== false;
   root.dataset.transparency = (settings["appearance.transparency"] as string) ?? "off";
-  applyUiLanguage(resolveUiLanguage(profile?.language));
+  const language = resolveUiLanguage(profile?.language);
+  applyUiLanguage(language);
+  if (isTauri && trayLanguage !== null && trayLanguage !== language) api.trayLanguage(language === "ar").catch(() => {});
+  trayLanguage = language;
 }
 
 useStore.subscribe((s, prev) => {

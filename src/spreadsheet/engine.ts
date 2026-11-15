@@ -211,6 +211,33 @@ export function parseCellRef(token: string): ParsedCellRef | null {
   return { sheet, r, c, absR, absC };
 }
 
+/** Whether one conditional rule applies to an evaluated cell at (r, c). */
+export function ruleMatches(rule: ConditionalRule, r: number, c: number, ev: EvaluatedCell | undefined): boolean {
+  const [a, b = a] = rule.range.split(":");
+  const p = parseCellRef(a);
+  const q = parseCellRef(b);
+  if (!p || !q) return false;
+  if (r < Math.min(p.r, q.r) || r > Math.max(p.r, q.r) || c < Math.min(p.c, q.c) || c > Math.max(p.c, q.c)) return false;
+  if (!ev || ev.error) return false;
+  const text = ev.value == null ? "" : String(ev.value);
+  if (rule.op === "notEmpty") return text.trim() !== "";
+  if (rule.op === "contains") return rule.value !== "" && text.toLowerCase().includes(rule.value.toLowerCase());
+  const n = ev.numeric;
+  const v = Number(rule.value);
+  if (rule.op === "eq") return n !== null && rule.value.trim() !== "" && !Number.isNaN(v) ? n === v : text === rule.value;
+  if (n === null || Number.isNaN(v)) return false;
+  if (rule.op === "gt") return n > v;
+  if (rule.op === "lt") return n < v;
+  const w = Number(rule.value2);
+  return !Number.isNaN(w) && n >= Math.min(v, w) && n <= Math.max(v, w);
+}
+
+/** The colours the first matching conditional rule gives a cell, if any. */
+export function conditionalStyle(rules: ConditionalRule[] | undefined, r: number, c: number, ev: EvaluatedCell | undefined): { bg: string; color: string } | null {
+  for (const rule of rules ?? []) if (ruleMatches(rule, r, c, ev)) return { bg: rule.bg, color: rule.color };
+  return null;
+}
+
 export function formatCellRef(ref: ParsedCellRef): string {
   const prefix = ref.sheet
     ? /[^A-Za-z0-9_]/.test(ref.sheet)
@@ -376,7 +403,7 @@ function toNumber(v: ScalarValue, strict = false): number {
   if (typeof v === "number") return v;
   if (typeof v === "boolean") return v ? 1 : 0;
   if (v === null || v === "") return 0;
-  const cleaned = String(v).replace(/,/g, "").trim();
+  const cleaned = westernDigits(String(v)).replace(/,/g, "").trim();
   if (cleaned.endsWith("%")) {
     const n = Number(cleaned.slice(0, -1));
     if (!Number.isNaN(n)) return n / 100;
@@ -526,8 +553,14 @@ function tokenizeFormula(expr: string): Token[] {
       i++;
       continue;
     }
-    if (ch === "," || ch === ";") {
+    // The Arabic keyboard's comma and semicolon separate arguments too.
+    if (ch === "," || ch === ";" || ch === "،" || ch === "؛") {
       tokens.push({ type: "comma" });
+      i++;
+      continue;
+    }
+    if (ch === "٪") {
+      tokens.push({ type: "op", value: "%" });
       i++;
       continue;
     }
@@ -542,11 +575,11 @@ function tokenizeFormula(expr: string): Token[] {
       i++;
       continue;
     }
-    if (/\d/.test(ch) || (ch === "." && /\d/.test(expr[i + 1] ?? ""))) {
+    if (/[\d٠-٩۰-۹]/.test(ch) || (/[.٫]/.test(ch) && /[\d٠-٩۰-۹]/.test(expr[i + 1] ?? ""))) {
       let numStr = "";
-      while (i < expr.length && /[\d.eE+-]/.test(expr[i])) {
+      while (i < expr.length && /[\d٠-٩۰-۹.٫eE+-]/.test(expr[i])) {
         if ((expr[i] === "+" || expr[i] === "-") && !/[eE]/.test(numStr[numStr.length - 1] ?? "")) break;
-        numStr += expr[i++];
+        numStr += westernDigits(expr[i++]);
       }
       const n = Number(numStr);
       if (Number.isNaN(n)) throw new FormulaError("#VALUE!");
@@ -561,7 +594,9 @@ function tokenizeFormula(expr: string): Token[] {
         while (i < expr.length && expr[i] !== "'") ident += expr[i++];
         if (i < expr.length) ident += expr[i++];
       }
-      while (i < expr.length && /[A-Za-z0-9_$!.\u0600-\u06FF?]/.test(expr[i])) {
+      // Arabic letters and digits belong to names; the Arabic comma, semicolon,
+      // percent and decimal marks end them, as their Western twins do.
+      while (i < expr.length && /[A-Za-z0-9_$!.?\u0600-\u060B\u060D-\u061A\u061C-\u0669\u066D-\u06FF]/.test(expr[i])) {
         ident += expr[i++];
       }
       tokens.push({ type: "ident", value: ident });
@@ -1426,8 +1461,21 @@ function callFunction(name: string, args: EvalArg[], currentRow: number, current
   }
 }
 
+/**
+ * Arabic and Persian digits as Western ones, with the Arabic decimal point,
+ * thousands separator and percent sign, so "٩٥" and "٣٫٥٪" count as numbers.
+ */
+export function westernDigits(s: string): string {
+  return s
+    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x660))
+    .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x6f0))
+    .replace(/٫/g, ".")
+    .replace(/٬/g, ",")
+    .replace(/٪/g, "%");
+}
+
 export function parseRawScalar(raw: string): ScalarValue {
-  const trimmed = raw.trim();
+  const trimmed = westernDigits(raw.trim());
   if (trimmed === "") return null;
   if (trimmed.toUpperCase() === "TRUE") return true;
   if (trimmed.toUpperCase() === "FALSE") return false;
@@ -1567,36 +1615,98 @@ export function shiftSheetStructure(
   delta: 1 | -1,
 ): SheetData {
   const nextCells: Record<string, CellData> = {};
+  const span = (a: number, b: number) => shiftSpan(a, b, index, delta);
+  const at = (ref: ParsedCellRef) => (axis === "row" ? ref.r : ref.c);
+  const moved = (ref: ParsedCellRef, pos: number): ParsedCellRef => (axis === "row" ? { ...ref, r: pos } : { ...ref, c: pos });
+
   for (const [key, cell] of Object.entries(sheet.cells)) {
     const ref = parseCellRef(key);
     if (!ref) continue;
-    const pos = axis === "row" ? ref.r : ref.c;
-    if (delta === -1 && pos === index) continue; // deleted
-    const nr = axis === "row" && pos >= index ? ref.r + delta : ref.r;
-    const nc = axis === "col" && pos >= index ? ref.c + delta : ref.c;
-    if (nr < 0 || nc < 0) continue;
+    const s = span(at(ref), at(ref));
+    if (!s) continue; // deleted
+    const next = moved(ref, s[0]);
 
     let v = cell.v;
     if (v.startsWith("=")) {
-      v = v.replace(/(\$?)([A-Za-z]{1,3})(\$?)(\d{1,5})(?!\s*\()/g, (m) => {
-        const p = parseCellRef(m);
-        if (!p) return m;
-        const pPos = axis === "row" ? p.r : p.c;
-        if (delta === -1 && pPos === index) return "#REF!";
-        const sr = axis === "row" && pPos >= index ? p.r + delta : p.r;
-        const sc = axis === "col" && pPos >= index ? p.c + delta : p.c;
-        return formatCellRef({ ...p, r: Math.max(0, sr), c: Math.max(0, sc) });
+      v = v.replace(FORMULA_REF_RE, (m, quoted: string | undefined, prefix: string | undefined, a: string, b: string | undefined) => {
+        if (quoted) return m;
+        // A reference to another sheet does not move with this one.
+        if (prefix && prefix.slice(0, -1).replace(/^'|'$/g, "") !== sheet.name) return m;
+        const p = parseCellRef(a);
+        const q = b ? parseCellRef(b) : p;
+        if (!p || !q) return m;
+        const lo = Math.min(at(p), at(q));
+        const hi = Math.max(at(p), at(q));
+        const t = span(lo, hi);
+        if (!t) return "#REF!";
+        const first = formatCellRef(moved(at(p) <= at(q) ? p : q, t[0]));
+        if (!b) return (prefix ?? "") + first;
+        return `${prefix ?? ""}${first}:${formatCellRef(moved(at(p) <= at(q) ? q : p, t[1]))}`;
       });
     }
-    nextCells[cellKey(nr, nc)] = { ...cell, v };
+    nextCells[cellKey(next.r, next.c)] = { ...cell, v };
   }
+
+  const shiftKeys = <T,>(map: Record<number, T>) => {
+    const out: Record<number, T> = {};
+    for (const [k, v] of Object.entries(map ?? {})) {
+      const s = span(Number(k), Number(k));
+      if (s) out[s[0]] = v;
+    }
+    return out;
+  };
+
+  const merges = (sheet.merges ?? []).flatMap((mg) => {
+    const s = axis === "row" ? span(mg.r1, mg.r2) : span(mg.c1, mg.c2);
+    if (!s) return [];
+    const next = axis === "row" ? { ...mg, r1: s[0], r2: s[1] } : { ...mg, c1: s[0], c2: s[1] };
+    return next.r1 === next.r2 && next.c1 === next.c2 ? [] : [next];
+  });
+
+  const conditionalRules = (sheet.conditionalRules ?? []).flatMap((rule) => {
+    const [a, b = a] = rule.range.split(":");
+    const p = parseCellRef(a);
+    const q = parseCellRef(b);
+    if (!p || !q) return [rule];
+    const s = span(Math.min(at(p), at(q)), Math.max(at(p), at(q)));
+    if (!s) return [];
+    const lo = at(p) <= at(q) ? p : q;
+    const hi = lo === p ? q : p;
+    return [{ ...rule, range: `${formatCellRef(moved(lo, s[0]))}:${formatCellRef(moved(hi, s[1]))}` }];
+  });
+
+  const frozen = (n: number) => (index < n ? Math.max(0, n + delta) : n);
 
   return {
     ...sheet,
     rows: axis === "row" ? Math.max(10, sheet.rows + delta) : sheet.rows,
     cols: axis === "col" ? Math.max(5, sheet.cols + delta) : sheet.cols,
     cells: nextCells,
+    colWidths: axis === "col" ? shiftKeys(sheet.colWidths) : sheet.colWidths,
+    rowHeights: axis === "row" ? shiftKeys(sheet.rowHeights) : sheet.rowHeights,
+    frozenRows: axis === "row" ? frozen(sheet.frozenRows) : sheet.frozenRows,
+    frozenCols: axis === "col" ? frozen(sheet.frozenCols) : sheet.frozenCols,
+    merges,
+    conditionalRules,
+    ...(sheet.filter && axis === "col" ? { filter: { ...sheet.filter, colFilters: shiftKeys(sheet.filter.colFilters) } } : {}),
   };
+}
+
+/**
+ * A quoted string, or a cell reference or range with an optional sheet prefix.
+ * Function names such as LOG10( and names glued to letters are left alone.
+ */
+const FORMULA_REF_RE = /("(?:[^"]|"")*")|((?:'[^']+'|[A-Za-z0-9_؀-ۿ]+)!)?(?<![A-Za-z0-9_$.])(\$?[A-Za-z]{1,3}\$?\d{1,5})(?::(\$?[A-Za-z]{1,3}\$?\d{1,5}))?(?![A-Za-z0-9_(])/g;
+
+/**
+ * Where the span lo..hi lands after inserting (delta 1) or deleting (delta -1)
+ * the line at `index`, or null when every line of it was deleted. A range that
+ * loses its first or last line shrinks, as in Excel.
+ */
+export function shiftSpan(lo: number, hi: number, index: number, delta: 1 | -1): [number, number] | null {
+  if (delta === 1) return [lo >= index ? lo + 1 : lo, hi >= index ? hi + 1 : hi];
+  if (lo === index && hi === index) return null;
+  return [lo > index ? lo - 1 : lo, hi >= index ? hi - 1 : hi];
 }
 
 // ---------------------------------------------------------------------------
@@ -1613,7 +1723,7 @@ export interface WorkbookTemplate {
 export const WORKBOOK_TEMPLATES: WorkbookTemplate[] = [
   {
     key: "budget_financial",
-    title: "Financial Budget & Cashflow (ميزانية مالية وتدفقات)",
+    title: "Budget and cash flow",
     description: "Monthly revenue, operating expenses, net profit margin, and variance analysis.",
     build: () => {
       const sh = newSheet("الميزانية Budget");
@@ -1659,7 +1769,7 @@ export const WORKBOOK_TEMPLATES: WorkbookTemplate[] = [
   },
   {
     key: "kpi_roadmap",
-    title: "KPI & OKR Tracker (لوحة مؤشرات الأداء والأهداف)",
+    title: "KPI and goal tracker",
     description: "Track quarterly objectives, baseline, target, current score, and automated status.",
     build: () => {
       const sh = newSheet("KPIs & OKRs");
@@ -1691,7 +1801,7 @@ export const WORKBOOK_TEMPLATES: WorkbookTemplate[] = [
   },
   {
     key: "gradebook_gpa",
-    title: "Weighted Calculator & Matrix (حاسبة الأوزان والتقييمات)",
+    title: "Weighted scoring matrix",
     description: "Automatic weighted totals, letter grades, rank, and statistical distribution.",
     build: () => {
       const sh = newSheet("التقييمات والاوزان");

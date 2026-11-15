@@ -17,9 +17,22 @@ import { type Env, num } from "./env";
 import { decideDrawingLease, validLeaseInput, type DrawingLease, type LeaseResult } from "./drawing-leases";
 import { DrawingAuthority, validateDrawingDependencies } from "./drawing-authority";
 import { readDrawingPresence } from "../../../src/drawing/collaborationTypes";
-import { DEFAULT_EXPORT_RULES, validExportRules, canDrawingExport, type DrawingExportKind, type DrawingExportPolicyUpdate } from "../../../src/drawing/exportPolicy";
+import {
+  DEFAULT_EXPORT_RULES,
+  validExportRules,
+  canDrawingExport,
+  type DrawingExportKind,
+  type DrawingExportPolicyUpdate,
+} from "../../../src/drawing/exportPolicy";
 import { blobKey } from "./attachments";
-import { DrawingWireError, drawingWireStatus, drawingJson, type DrawingDependencies, type DrawingWireSeed, type DrawingWireWrite } from "../../../src/drawing/wire";
+import {
+  DrawingWireError,
+  drawingWireStatus,
+  drawingJson,
+  type DrawingDependencies,
+  type DrawingWireSeed,
+  type DrawingWireWrite,
+} from "../../../src/drawing/wire";
 import {
   ACK_DENIED,
   ACK_INVALID,
@@ -82,7 +95,11 @@ export interface WriteResult {
 type Row = Record<string, SqlStorageValue>;
 
 const bytes = (v: SqlStorageValue): Uint8Array =>
-  v instanceof ArrayBuffer ? new Uint8Array(v) : ArrayBuffer.isView(v) ? new Uint8Array(v.buffer, v.byteOffset, v.byteLength) : new Uint8Array(0);
+  v instanceof ArrayBuffer
+    ? new Uint8Array(v)
+    : ArrayBuffer.isView(v)
+      ? new Uint8Array(v.buffer, v.byteOffset, v.byteLength)
+      : new Uint8Array(0);
 
 /** Send without throwing on a socket that is closing. */
 function send(ws: WebSocket, frame: Uint8Array): boolean {
@@ -199,71 +216,190 @@ export class DocRoom extends DurableObject<Env> {
     this.identify(workspaceId, docId);
     await this.env.HUBS.getByName(workspaceId).register(workspaceId, docId);
     await this.env.INBOXES.getByName(userId).noteLive(workspaceId, docId);
-    if (await this.env.INBOXES.getByName(userId).tokenRevoked(deviceId, issuedAt)) throw new DrawingWireError("denied", "Device or session revoked");
+    if (await this.env.INBOXES.getByName(userId).tokenRevoked(deviceId, issuedAt))
+      throw new DrawingWireError("denied", "Device or session revoked");
     const epoch = this.meta("drawingAccessEpoch");
     let level: AccessLevel;
-    try { level = (await accessFor(this.env).checkAccess({ userId, workspaceId, docId })).level; }
-    catch { throw new DrawingWireError("unavailable", "Access check unavailable"); }
-    if (epoch !== this.meta("drawingAccessEpoch") || level === "none" || editing && level !== "edit" && level !== "full") throw new DrawingWireError("denied", "Drawing access is insufficient or changed during validation");
+    try {
+      level = (await accessFor(this.env).checkAccess({ userId, workspaceId, docId })).level;
+    } catch {
+      throw new DrawingWireError("unavailable", "Access check unavailable");
+    }
+    if (epoch !== this.meta("drawingAccessEpoch") || level === "none" || (editing && level !== "edit" && level !== "full"))
+      throw new DrawingWireError("denied", "Drawing access is insufficient or changed during validation");
     return level;
   }
   private async drawingOriginals(workspaceId: string, dependencies: DrawingDependencies) {
     validateDrawingDependencies(dependencies);
     const unique = new Map(Object.values(dependencies.attachments).map((info) => [info.sha256, info.size]));
-    for (const [hash, size] of unique) { const head = await this.env.BLOBS.head(blobKey(workspaceId, hash)); if (!head || head.size !== size) throw new DrawingWireError("invalid", "Upload the checked original before its drawing reference"); }
+    for (const [hash, size] of unique) {
+      const head = await this.env.BLOBS.head(blobKey(workspaceId, hash));
+      if (!head || head.size !== size) throw new DrawingWireError("invalid", "Upload the checked original before its drawing reference");
+    }
   }
-  private drawingFailure(error: unknown) { return { ok: false as const, capabilities:{pixelSourceGuards:2,libraryPublications:1,strictDrawingBase:1}, status: error instanceof DrawingWireError ? drawingWireStatus(error.code) : 400, code: error instanceof DrawingWireError ? error.code : "invalid", error: error instanceof Error ? error.message : "Invalid drawing request" }; }
-  async drawingRead(workspaceId: string, docId: string, userId: string, deviceId: string, issuedAt: number, generation?: string, after?: number) {
-    try { const level = await this.drawingAccess(workspaceId, docId, userId, deviceId, issuedAt, false); return { ok: true as const, capabilities:{pixelSourceGuards:2,libraryPublications:1,strictDrawingBase:1}, level, state: this.drawing.state(generation, after) }; } catch (e) { return this.drawingFailure(e); }
+  private drawingFailure(error: unknown) {
+    return {
+      ok: false as const,
+      capabilities: { pixelSourceGuards: 2, libraryPublications: 1, strictDrawingBase: 1 },
+      status: error instanceof DrawingWireError ? drawingWireStatus(error.code) : 400,
+      code: error instanceof DrawingWireError ? error.code : "invalid",
+      error: error instanceof Error ? error.message : "Invalid drawing request",
+    };
+  }
+  async drawingRead(
+    workspaceId: string,
+    docId: string,
+    userId: string,
+    deviceId: string,
+    issuedAt: number,
+    generation?: string,
+    after?: number,
+  ) {
+    try {
+      const level = await this.drawingAccess(workspaceId, docId, userId, deviceId, issuedAt, false);
+      return {
+        ok: true as const,
+        capabilities: { pixelSourceGuards: 2, libraryPublications: 1, strictDrawingBase: 1 },
+        level,
+        state: this.drawing.state(generation, after),
+      };
+    } catch (e) {
+      return this.drawingFailure(e);
+    }
   }
   async drawingInitialize(workspaceId: string, docId: string, userId: string, deviceId: string, issuedAt: number, input: DrawingWireSeed) {
     try {
       await this.drawingOriginals(workspaceId, input);
       const level = await this.drawingAccess(workspaceId, docId, userId, deviceId, issuedAt, true);
-      if(input.exportPolicy!==undefined && (!validExportRules(input.exportPolicy) || !this.drawing.hasExportPolicy() && level!=="full" && drawingJson(input.exportPolicy)!==drawingJson(DEFAULT_EXPORT_RULES))) throw new DrawingWireError("denied","Full access is required to publish a custom export policy");
-      return { ok: true as const, level, capabilities:{pixelSourceGuards:2,libraryPublications:1,strictDrawingBase:1}, state: this.drawing.initialize(input, userId) };
-    } catch (e) { return this.drawingFailure(e); }
+      if (
+        input.exportPolicy !== undefined &&
+        (!validExportRules(input.exportPolicy) ||
+          (!this.drawing.hasExportPolicy() && level !== "full" && drawingJson(input.exportPolicy) !== drawingJson(DEFAULT_EXPORT_RULES)))
+      )
+        throw new DrawingWireError("denied", "Full access is required to publish a custom export policy");
+      return {
+        ok: true as const,
+        level,
+        capabilities: { pixelSourceGuards: 2, libraryPublications: 1, strictDrawingBase: 1 },
+        state: this.drawing.initialize(input, userId),
+      };
+    } catch (e) {
+      return this.drawingFailure(e);
+    }
   }
   async drawingApply(workspaceId: string, docId: string, userId: string, deviceId: string, issuedAt: number, input: DrawingWireWrite) {
     try {
       await this.drawingOriginals(workspaceId, input);
-      const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(drawingJson({ operation: input.operation ?? null, preconditions: input.preconditions ?? null }))));
+      const hash = new Uint8Array(
+        await crypto.subtle.digest(
+          "SHA-256",
+          new TextEncoder().encode(drawingJson({ operation: input.operation ?? null, preconditions: input.preconditions ?? null })),
+        ),
+      );
       const requestHash = [...hash].map((n) => n.toString(16).padStart(2, "0")).join("");
       const level = await this.drawingAccess(workspaceId, docId, userId, deviceId, issuedAt, true);
       return { ok: true as const, level, state: this.drawing.apply(input, userId, deviceId, requestHash) };
-    } catch (e) { return this.drawingFailure(e); }
+    } catch (e) {
+      return this.drawingFailure(e);
+    }
   }
-  async drawingExportPolicy(workspaceId:string,docId:string,userId:string,deviceId:string,issuedAt:number,input?:DrawingExportPolicyUpdate){
-    try{const level=await this.drawingAccess(workspaceId,docId,userId,deviceId,issuedAt,false);if(input&&level!=="full")throw new DrawingWireError("denied","Full access is required to change the export policy");return {ok:true as const,userId,level,policy:input?this.drawing.setExportPolicy(input,userId):this.drawing.exportPolicy()};}catch(e){return this.drawingFailure(e);}
+  async drawingExportPolicy(
+    workspaceId: string,
+    docId: string,
+    userId: string,
+    deviceId: string,
+    issuedAt: number,
+    input?: DrawingExportPolicyUpdate,
+  ) {
+    try {
+      const level = await this.drawingAccess(workspaceId, docId, userId, deviceId, issuedAt, false);
+      if (input && level !== "full") throw new DrawingWireError("denied", "Full access is required to change the export policy");
+      return {
+        ok: true as const,
+        userId,
+        level,
+        policy: input ? this.drawing.setExportPolicy(input, userId) : this.drawing.exportPolicy(),
+      };
+    } catch (e) {
+      return this.drawingFailure(e);
+    }
   }
-  async drawingExportAuthorize(workspaceId:string,docId:string,userId:string,deviceId:string,issuedAt:number,input:unknown){
-    try{
-      const body=input as {kind:DrawingExportKind|"source";sources:{workspaceId:string;docId:string}[];initialRules?:unknown;generation?:unknown};
-      if(!body||!["images","projects","comments","source"].includes(body.kind)||!Array.isArray(body.sources)||body.sources.length>4096||body.sources.some((s)=>!s||typeof s.workspaceId!=="string"||!s.workspaceId||s.workspaceId.length>160||typeof s.docId!=="string"||!s.docId||s.docId.length>160))throw new DrawingWireError("invalid","Invalid drawing export authorization");
-      await this.drawingAccess(workspaceId,docId,userId,deviceId,issuedAt,false);
-      for(let at=0;at<body.sources.length;at+=32)await Promise.all(body.sources.slice(at,at+32).map(async(source)=>{const access=await accessFor(this.env).checkAccess({userId,workspaceId:source.workspaceId,docId:source.docId});if(access.level==="none")throw new DrawingWireError("denied","An export source is no longer available");}));
-      const level=await this.drawingAccess(workspaceId,docId,userId,deviceId,issuedAt,false);
-      if(body.kind!=="source"&&body.generation!=null&&body.generation!==this.drawing.generation())throw new DrawingWireError("conflict","The shared drawing generation changed. Review recovery before exporting.");
-      if(body.kind!=="source"&&!this.drawing.hasExportPolicy()&&body.initialRules!=null){if(!validExportRules(body.initialRules))throw new DrawingWireError("invalid","Invalid initial export policy");if(level!=="full"&&drawingJson(body.initialRules)!==drawingJson(DEFAULT_EXPORT_RULES))throw new DrawingWireError("denied","Full access is required to publish the drawing's initial export policy");this.drawing.initializeExportPolicy(body.initialRules);}
-      const policy=this.drawing.exportPolicy();
-      if(body.kind!=="source"&&!canDrawingExport(policy,level,body.kind))throw new DrawingWireError("denied","The current export policy does not allow this export");
-      return {ok:true as const,userId,level,policy};
-    }catch(e){return this.drawingFailure(e);}
+  async drawingExportAuthorize(workspaceId: string, docId: string, userId: string, deviceId: string, issuedAt: number, input: unknown) {
+    try {
+      const body = input as {
+        kind: DrawingExportKind | "source";
+        sources: { workspaceId: string; docId: string }[];
+        initialRules?: unknown;
+        generation?: unknown;
+      };
+      if (
+        !body ||
+        !["images", "projects", "comments", "source"].includes(body.kind) ||
+        !Array.isArray(body.sources) ||
+        body.sources.length > 4096 ||
+        body.sources.some(
+          (s) =>
+            !s ||
+            typeof s.workspaceId !== "string" ||
+            !s.workspaceId ||
+            s.workspaceId.length > 160 ||
+            typeof s.docId !== "string" ||
+            !s.docId ||
+            s.docId.length > 160,
+        )
+      )
+        throw new DrawingWireError("invalid", "Invalid drawing export authorization");
+      await this.drawingAccess(workspaceId, docId, userId, deviceId, issuedAt, false);
+      for (let at = 0; at < body.sources.length; at += 32)
+        await Promise.all(
+          body.sources.slice(at, at + 32).map(async (source) => {
+            const access = await accessFor(this.env).checkAccess({ userId, workspaceId: source.workspaceId, docId: source.docId });
+            if (access.level === "none") throw new DrawingWireError("denied", "An export source is no longer available");
+          }),
+        );
+      const level = await this.drawingAccess(workspaceId, docId, userId, deviceId, issuedAt, false);
+      if (body.kind !== "source" && body.generation != null && body.generation !== this.drawing.generation())
+        throw new DrawingWireError("conflict", "The shared drawing generation changed. Review recovery before exporting.");
+      if (body.kind !== "source" && !this.drawing.hasExportPolicy() && body.initialRules != null) {
+        if (!validExportRules(body.initialRules)) throw new DrawingWireError("invalid", "Invalid initial export policy");
+        if (level !== "full" && drawingJson(body.initialRules) !== drawingJson(DEFAULT_EXPORT_RULES))
+          throw new DrawingWireError("denied", "Full access is required to publish the drawing's initial export policy");
+        this.drawing.initializeExportPolicy(body.initialRules);
+      }
+      const policy = this.drawing.exportPolicy();
+      if (body.kind !== "source" && !canDrawingExport(policy, level, body.kind))
+        throw new DrawingWireError("denied", "The current export policy does not allow this export");
+      return { ok: true as const, userId, level, policy };
+    } catch (e) {
+      return this.drawingFailure(e);
+    }
   }
 
-  async drawingLease(workspaceId: string, docId: string, userId: string, deviceId: string, issuedAt: number, input: unknown): Promise<LeaseResult> {
+  async drawingLease(
+    workspaceId: string,
+    docId: string,
+    userId: string,
+    deviceId: string,
+    issuedAt: number,
+    input: unknown,
+  ): Promise<LeaseResult> {
     this.identify(workspaceId, docId);
     if (!validLeaseInput(input)) return { ok: false, status: 400, error: "Invalid drawing lease request" };
     // Register before checking access so an in-flight revocation can reach a
     // room which currently has HTTP leases but no open WebSocket.
     await this.env.HUBS.getByName(workspaceId).register(workspaceId, docId);
     await this.env.INBOXES.getByName(userId).noteLive(workspaceId, docId);
-    if (await this.env.INBOXES.getByName(userId).tokenRevoked(deviceId, issuedAt)) return { ok: false, status: 403, error: "Device or session revoked" };
+    if (await this.env.INBOXES.getByName(userId).tokenRevoked(deviceId, issuedAt))
+      return { ok: false, status: 403, error: "Device or session revoked" };
     const accessEpoch = this.meta("drawingAccessEpoch");
     let level: AccessLevel;
-    try { level = (await accessFor(this.env).checkAccess({ userId, workspaceId, docId })).level; }
-    catch { return { ok: false, status: 503, error: "Access check unavailable" }; }
-    if (accessEpoch !== this.meta("drawingAccessEpoch")) return { ok: false, status: 403, error: "Access changed during lease acquisition" };
+    try {
+      level = (await accessFor(this.env).checkAccess({ userId, workspaceId, docId })).level;
+    } catch {
+      return { ok: false, status: 503, error: "Access check unavailable" };
+    }
+    if (accessEpoch !== this.meta("drawingAccessEpoch"))
+      return { ok: false, status: 403, error: "Access changed during lease acquisition" };
     if (level !== "edit" && level !== "full") return { ok: false, status: 403, error: "Edit access required" };
     if (!validLeaseInput(input)) return { ok: false, status: 400, error: "Invalid drawing lease request" };
     const result: LeaseResult = this.ctx.storage.transactionSync(() => {
@@ -272,19 +408,30 @@ export class DocRoom extends DurableObject<Env> {
       this.sql.exec("DELETE FROM drawing_leases WHERE json_extract(data, '$.expiresAt') <= ?", now);
       const row = [...this.sql.exec("SELECT data FROM drawing_leases WHERE target = ?", input.target)][0];
       const old: DrawingLease | null = row ? JSON.parse(String(row.data)) : null;
-      if (input.action === "acquire") for (const entry of this.sql.exec("SELECT data FROM drawing_leases")) {
-        const held = JSON.parse(String(entry.data)) as DrawingLease;
-        if (held.target !== input.target && this.drawing.leaseOverlaps(held.target, input.target) && !(held.userId === userId && held.deviceId === deviceId && held.requestId === input.requestId)) return { ok: false as const, status: 409 as const, error: "An overlapping drawing region is being edited elsewhere" };
-      }
+      if (input.action === "acquire")
+        for (const entry of this.sql.exec("SELECT data FROM drawing_leases")) {
+          const held = JSON.parse(String(entry.data)) as DrawingLease;
+          if (
+            held.target !== input.target &&
+            this.drawing.leaseOverlaps(held.target, input.target) &&
+            !(held.userId === userId && held.deviceId === deviceId && held.requestId === input.requestId)
+          )
+            return { ok: false as const, status: 409 as const, error: "An overlapping drawing region is being edited elsewhere" };
+        }
       const count = Number(this.sql.exec("SELECT COUNT(*) AS n FROM drawing_leases").one().n);
-      if (!old && input.action === "acquire" && count >= 256) return { ok: false as const, status: 409 as const, error: "Too many active drawing leases" };
+      if (!old && input.action === "acquire" && count >= 256)
+        return { ok: false as const, status: 409 as const, error: "Too many active drawing leases" };
       const fence = Number(this.meta("drawingFence") ?? 0) + 1;
       if (!Number.isSafeInteger(fence)) return { ok: false as const, status: 409 as const, error: "Drawing fence limit reached" };
       const result = decideDrawingLease(old, input, userId, deviceId, fence, now);
       if (result.ok) {
         if (result.lease) {
           if (result.lease.fence === fence) this.setMeta("drawingFence", String(fence));
-          this.sql.exec("INSERT INTO drawing_leases(target, data) VALUES (?, ?) ON CONFLICT(target) DO UPDATE SET data = excluded.data", input.target, JSON.stringify(result.lease));
+          this.sql.exec(
+            "INSERT INTO drawing_leases(target, data) VALUES (?, ?) ON CONFLICT(target) DO UPDATE SET data = excluded.data",
+            input.target,
+            JSON.stringify(result.lease),
+          );
         } else this.sql.exec("DELETE FROM drawing_leases WHERE target = ?", input.target);
       }
       return result;
@@ -293,17 +440,36 @@ export class DocRoom extends DurableObject<Env> {
     return result;
   }
 
-  async drawingLeases(workspaceId: string, docId: string, userId: string): Promise<{ ok: true; leases: Omit<DrawingLease, "token" | "requestId">[] } | { ok: false; status: 403 | 503; error: string }> {
+  async drawingLeases(
+    workspaceId: string,
+    docId: string,
+    userId: string,
+  ): Promise<{ ok: true; leases: Omit<DrawingLease, "token" | "requestId">[] } | { ok: false; status: 403 | 503; error: string }> {
     this.identify(workspaceId, docId);
-    try { if ((await accessFor(this.env).checkAccess({ userId, workspaceId, docId })).level === "none") return { ok: false, status: 403, error: "View access required" }; }
-    catch { return { ok: false, status: 503, error: "Access check unavailable" }; }
-    const leases = [...this.sql.exec("SELECT data FROM drawing_leases")].map((row) => JSON.parse(String(row.data)) as DrawingLease).filter((lease) => lease.expiresAt > Date.now()).map(({ token: _token, requestId: _requestId, ...lease }) => lease);
+    try {
+      if ((await accessFor(this.env).checkAccess({ userId, workspaceId, docId })).level === "none")
+        return { ok: false, status: 403, error: "View access required" };
+    } catch {
+      return { ok: false, status: 503, error: "Access check unavailable" };
+    }
+    const leases = [...this.sql.exec("SELECT data FROM drawing_leases")]
+      .map((row) => JSON.parse(String(row.data)) as DrawingLease)
+      .filter((lease) => lease.expiresAt > Date.now())
+      .map(({ token: _token, requestId: _requestId, ...lease }) => lease);
     return { ok: true, leases };
   }
 
   private removeDrawingLeases(userId?: string, deviceId?: string) {
-    if (!userId) { this.sql.exec("DELETE FROM drawing_leases"); return; }
-    this.sql.exec("DELETE FROM drawing_leases WHERE json_extract(data, '$.userId') = ? AND (? IS NULL OR json_extract(data, '$.deviceId') = ?)", userId, deviceId ?? null, deviceId ?? null);
+    if (!userId) {
+      this.sql.exec("DELETE FROM drawing_leases");
+      return;
+    }
+    this.sql.exec(
+      "DELETE FROM drawing_leases WHERE json_extract(data, '$.userId') = ? AND (? IS NULL OR json_extract(data, '$.deviceId') = ?)",
+      userId,
+      deviceId ?? null,
+      deviceId ?? null,
+    );
   }
 
   private append(channel: number, update: Uint8Array, userId: string) {
@@ -323,7 +489,14 @@ export class DocRoom extends DurableObject<Env> {
     this.ctx.storage.transactionSync(() => {
       this.sql.exec("DELETE FROM snapshots WHERE channel = ?", channel);
       split(state).forEach((part, i) => {
-        this.sql.exec("INSERT INTO snapshots (channel, chunk, upto, data, created_at) VALUES (?, ?, ?, ?, ?)", channel, i, upto, part, Date.now());
+        this.sql.exec(
+          "INSERT INTO snapshots (channel, chunk, upto, data, created_at) VALUES (?, ?, ?, ?, ?)",
+          channel,
+          i,
+          upto,
+          part,
+          Date.now(),
+        );
       });
       this.sql.exec("DELETE FROM updates WHERE channel = ? AND seq <= ?", channel, upto);
     });
@@ -357,8 +530,17 @@ export class DocRoom extends DurableObject<Env> {
     const state = Y.encodeStateAsUpdate(this.docs[CH_CONTENT]);
     const v: VersionInfo = { id: crypto.randomUUID(), createdAt: Date.now(), label, authors, size: state.byteLength };
     this.ctx.storage.transactionSync(() => {
-      this.sql.exec("INSERT INTO versions (id, created_at, label, authors, size) VALUES (?, ?, ?, ?, ?)", v.id, v.createdAt, label, JSON.stringify(authors), v.size);
-      split(state).forEach((part, i) => this.sql.exec("INSERT INTO version_chunks (version_id, chunk, data) VALUES (?, ?, ?)", v.id, i, part));
+      this.sql.exec(
+        "INSERT INTO versions (id, created_at, label, authors, size) VALUES (?, ?, ?, ?, ?)",
+        v.id,
+        v.createdAt,
+        label,
+        JSON.stringify(authors),
+        v.size,
+      );
+      split(state).forEach((part, i) =>
+        this.sql.exec("INSERT INTO version_chunks (version_id, chunk, data) VALUES (?, ?, ?)", v.id, i, part),
+      );
       this.setMeta("authors", "[]");
       this.setMeta("lastVersionAt", String(v.createdAt));
       const old = this.sql.exec("SELECT id FROM versions ORDER BY created_at DESC LIMIT -1 OFFSET ?", MAX_VERSIONS).toArray();
@@ -456,7 +638,7 @@ export class DocRoom extends DurableObject<Env> {
       return;
     }
     try {
-      if (type !== MSG_AUTH_REFRESH && !await this.ensureAccess(ws)) return;
+      if (type !== MSG_AUTH_REFRESH && !(await this.ensureAccess(ws))) return;
       switch (type) {
         case MSG_SYNC: {
           const channel = decoding.readVarUint(d);
@@ -526,7 +708,9 @@ export class DocRoom extends DurableObject<Env> {
       // Everyone left: close the editing session's version and leave the hub.
       this.cutVersion(null, false);
       const ws_ = this.workspaceId;
-      const hasLease = [...this.sql.exec("SELECT data FROM drawing_leases")].some((row) => (JSON.parse(String(row.data)) as DrawingLease).expiresAt > Date.now());
+      const hasLease = [...this.sql.exec("SELECT data FROM drawing_leases")].some(
+        (row) => (JSON.parse(String(row.data)) as DrawingLease).expiresAt > Date.now(),
+      );
       if (ws_ && !hasLease) this.ctx.waitUntil(this.env.HUBS.getByName(ws_).unregister(ws_, this.docId));
     }
   }
@@ -602,10 +786,18 @@ export class DocRoom extends DurableObject<Env> {
     this.setMeta("drawingAccessEpoch", String(Number(this.meta("drawingAccessEpoch") ?? 0) + 1));
     let n = 0;
     const access = accessFor(this.env);
-    const owners = new Set([...this.sql.exec("SELECT data FROM drawing_leases")].map((row) => (JSON.parse(String(row.data)) as DrawingLease).userId));
-    for (const userId of owners) if (!input.userIds || input.userIds.includes(userId)) {
-      try { const { level } = await access.checkAccess({ userId, workspaceId: this.workspaceId, docId: this.docId }); if (level !== "edit" && level !== "full") this.removeDrawingLeases(userId); } catch { /* Every lease mutation revalidates access independently. */ }
-    }
+    const owners = new Set(
+      [...this.sql.exec("SELECT data FROM drawing_leases")].map((row) => (JSON.parse(String(row.data)) as DrawingLease).userId),
+    );
+    for (const userId of owners)
+      if (!input.userIds || input.userIds.includes(userId)) {
+        try {
+          const { level } = await access.checkAccess({ userId, workspaceId: this.workspaceId, docId: this.docId });
+          if (level !== "edit" && level !== "full") this.removeDrawingLeases(userId);
+        } catch {
+          /* Every lease mutation revalidates access independently. */
+        }
+      }
     for (const ws of this.ctx.getWebSockets()) {
       const s = ws.deserializeAttachment() as Session | null;
       if (!s || ws.readyState !== WebSocket.OPEN || (input.userIds && !input.userIds.includes(s.userId))) continue;
@@ -647,7 +839,10 @@ export class DocRoom extends DurableObject<Env> {
       // Read-only clients still answer the server's sync step with an empty
       // diff; only refuse writes that would change something.
       if (!wouldChange(this.docs[channel], update)) return { status: ACK_OK, reason: "" };
-      return { status: ACK_DENIED, reason: channel === CH_CONTENT ? `${session.level} access cannot edit the page` : `${session.level} access cannot comment` };
+      return {
+        status: ACK_DENIED,
+        reason: channel === CH_CONTENT ? `${session.level} access cannot edit the page` : `${session.level} access cannot comment`,
+      };
     }
     const doc = this.docs[channel];
     let before: ReturnType<typeof commentsJSON> | null = null;
@@ -733,10 +928,12 @@ export class DocRoom extends DurableObject<Env> {
     let clients = session.clients;
     for (const en of entries) {
       const cur = this.awareness.get(en.clientID);
-      const owner = this.ctx.getWebSockets().find((other) => other !== ws && (other.deserializeAttachment() as Session).clients?.includes(en.clientID));
+      const owner = this.ctx
+        .getWebSockets()
+        .find((other) => other !== ws && (other.deserializeAttachment() as Session).clients?.includes(en.clientID));
       if (owner) {
         const old = owner.deserializeAttachment() as Session;
-        if (old.userId !== session.userId || old.deviceId !== session.deviceId || cur && en.clock < cur.clock) continue;
+        if (old.userId !== session.userId || old.deviceId !== session.deviceId || (cur && en.clock < cur.clock)) continue;
         // A reconnect on the same authenticated device may arrive before the
         // old socket's close event. Its eventual close must not remove the new
         // connection's presence.
@@ -750,8 +947,16 @@ export class DocRoom extends DurableObject<Env> {
         try {
           const parsed = JSON.parse(state) as Record<string, unknown> | null;
           if (parsed && typeof parsed === "object") {
-            if (state.length > 32768 || parsed.drawing !== undefined && !readDrawingPresence(parsed.drawing)) continue;
-            if (parsed.drawing) { const drawing = readDrawingPresence(parsed.drawing)!; if (drawing.draft && (session.level !== "edit" && session.level !== "full" || !this.drawing.previewAllowed(drawing.draft, session.userId, session.deviceId))) (parsed.drawing as { draft?: unknown }).draft = null; }
+            if (state.length > 32768 || (parsed.drawing !== undefined && !readDrawingPresence(parsed.drawing))) continue;
+            if (parsed.drawing) {
+              const drawing = readDrawingPresence(parsed.drawing)!;
+              if (
+                drawing.draft &&
+                ((session.level !== "edit" && session.level !== "full") ||
+                  !this.drawing.previewAllowed(drawing.draft, session.userId, session.deviceId))
+              )
+                (parsed.drawing as { draft?: unknown }).draft = null;
+            }
             const user = (parsed.user && typeof parsed.user === "object" ? parsed.user : {}) as Record<string, unknown>;
             parsed.user = { ...user, id: session.userId };
             state = JSON.stringify(parsed);

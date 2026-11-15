@@ -10,7 +10,7 @@ export function validatePortableHistory(document: DrawingDocument) {
     document.operations.length > MAX_PORTABLE_HISTORY_OPERATIONS ||
     new TextEncoder().encode(JSON.stringify(document)).length > MAX_PORTABLE_HISTORY_BYTES
   )
-    throw new Error("Portable history exceeds 500 operations or64 MiB");
+    throw new Error("Portable history exceeds 500 operations or 64 MiB");
   validateDrawingDocument(document);
 }
 function visitAttachments(doc: DrawingDocument, visit: (id: string) => string) {

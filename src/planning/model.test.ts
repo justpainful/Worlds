@@ -34,6 +34,15 @@ describe("quick add", () => {
     expect(parseQuickAdd("حل الواجب اليوم", NOW)).toMatchObject({ title: "حل الواجب", due: "2026-11-11" });
   });
 
+  it("understands every example the Arabic hints show", () => {
+    expect(parseQuickAdd("إرسال الفاتورة الجمعة 10 ص !!", NOW)).toMatchObject({ title: "إرسال الفاتورة", due: "2026-11-13", time: "10:00", priority: 2 });
+    expect(parseQuickAdd("إنهاء مشروع التخرج بعد 3 أسابيع", NOW)).toMatchObject({ title: "إنهاء مشروع التخرج", due: "2026-12-02" });
+    expect(parseQuickAdd("طباعة العقد نسختين بكرة", NOW)).toMatchObject({ title: "طباعة العقد نسختين", due: "2026-11-12" });
+    expect(parseQuickAdd("تقرير المختبر الأحد", NOW)).toMatchObject({ title: "تقرير المختبر", due: "2026-11-15" });
+    expect(parseQuickAdd("اختبار منتصف الفصل 24/11 8 ص", NOW)).toMatchObject({ title: "اختبار منتصف الفصل", due: "2026-11-24", time: "08:00" });
+    expect(parseQuickAdd("الآلة الحاسبة غدًا", NOW)).toMatchObject({ title: "الآلة الحاسبة", due: "2026-11-12" });
+  });
+
   it("leaves ordinary words alone", () => {
     expect(parseQuickAdd("Read Monday Morning by Alex", NOW).title).toBe("Read Morning by Alex");
     expect(parseQuickAdd("Buy 3 apples", NOW)).toEqual({ title: "Buy 3 apples", due: null, time: null, priority: 0 });
@@ -91,5 +100,46 @@ describe("lists and calendar", () => {
     expect(occ.map((o) => o.kind).sort()).toEqual(["event", "exam", "task"]);
     expect(occ.find((o) => o.kind === "event")?.color).toBe("green");
     syncPackSettings({});
+  });
+});
+
+describe("quick add on the day itself", () => {
+  // Thursday 12 November 2026, 09:00 local.
+  const THU = new Date(2026, 10, 12, 9, 0);
+
+  it("reads today's weekday as today while its time is still ahead", () => {
+    expect(parseQuickAdd("اجتماع الفريق الخميس الساعة 5 مساءً", THU)).toMatchObject({ title: "اجتماع الفريق", due: "2026-11-12", time: "17:00" });
+    expect(parseQuickAdd("Standup thursday 8am", THU)).toMatchObject({ due: "2026-11-19", time: "08:00" });
+    expect(parseQuickAdd("Gym thursday", THU)).toMatchObject({ title: "Gym", due: "2026-11-19" });
+    expect(parseQuickAdd("Review next thursday", THU)).toMatchObject({ title: "Review", due: "2026-11-19" });
+    expect(parseQuickAdd("اجتماع يوم الاثنين القادم", THU)).toMatchObject({ title: "اجتماع", due: "2026-11-16" });
+    expect(parseQuickAdd("رحلة الخميس الجاي", THU)).toMatchObject({ title: "رحلة", due: "2026-11-19" });
+  });
+
+  it("understands Arabic digits, tanween and spoken day counts", () => {
+    expect(parseQuickAdd("مذاكرة بكرة 8 صباحاً", THU)).toMatchObject({ title: "مذاكرة", due: "2026-11-13", time: "08:00" });
+    expect(parseQuickAdd("اتصال بأحمد غداً ٥ م", THU)).toMatchObject({ title: "اتصال بأحمد", due: "2026-11-13", time: "17:00" });
+    expect(parseQuickAdd("اتصال غدا الساعة ٥:٣٠ مساء", THU)).toMatchObject({ title: "اتصال", time: "17:30" });
+    expect(parseQuickAdd("اختبار الرياضيات بعد يومين الساعة 10", THU)).toMatchObject({ title: "اختبار الرياضيات", due: "2026-11-14", time: "10:00" });
+    expect(parseQuickAdd("مشروع بعد أسبوعين", THU)).toMatchObject({ title: "مشروع", due: "2026-11-26" });
+    expect(parseQuickAdd("مراجعة بعد بكرة", THU)).toMatchObject({ title: "مراجعة", due: "2026-11-14" });
+    expect(parseQuickAdd("غداء 1 ظهرا", THU)).toMatchObject({ title: "غداء", time: "13:00" });
+    expect(parseQuickAdd("مذاكرة الليلة 9", THU)).toMatchObject({ title: "مذاكرة", due: "2026-11-12", time: "21:00" });
+  });
+
+  it("reads month names in both languages", () => {
+    expect(parseQuickAdd("رحلة 15 نوفمبر", THU)).toMatchObject({ title: "رحلة", due: "2026-11-15" });
+    expect(parseQuickAdd("طباعة نسختين 2 ورق 3 مارس", THU)).toMatchObject({ title: "طباعة نسختين 2 ورق", due: "2027-03-03" });
+    expect(parseQuickAdd("Trip Nov 20", THU)).toMatchObject({ title: "Trip", due: "2026-11-20" });
+    // A day the month does not have is not a date.
+    expect(parseQuickAdd("Essay 31 February", THU).due).toBeNull();
+    expect(parseQuickAdd("Essay 30 Feb 2028", THU).due).toBeNull();
+    expect(parseQuickAdd("Leap 29 Feb 2028", THU)).toMatchObject({ due: "2028-02-29" });
+    expect(parseQuickAdd("Exam 2 Jan 2027", THU)).toMatchObject({ title: "Exam", due: "2027-01-02" });
+  });
+
+  it("keeps ordinary numbers and phrases in the title", () => {
+    expect(parseQuickAdd("Buy 3 apples", THU)).toEqual({ title: "Buy 3 apples", due: null, time: null, priority: 0 });
+    expect(parseQuickAdd("الواجب ٣", THU)).toEqual({ title: "الواجب ٣", due: null, time: null, priority: 0 });
   });
 });

@@ -4,7 +4,7 @@
  */
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
-import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { open as openDialog } from "../lib/dialog";
 import { api, errorMessage } from "../lib/api";
 import type { PageMeta, ResourceKind } from "../lib/types";
 import { useStore, type OpenWhere } from "../state/store";
@@ -17,6 +17,7 @@ import { createItem } from "../planning/actions";
 import { today } from "../planning/model";
 import { openQuickCapture } from "../planning/InboxView";
 import { createSubject } from "../study/StudyViews";
+import { defaultSheetName } from "../spreadsheet/names";
 
 const LINE_ICON: Record<ResourceKind, IconName> = {
   page: "page",
@@ -51,7 +52,7 @@ function initialMetadata(kind: ResourceKind): Record<string, unknown> {
     case "gallery":
       return { gallery: { view: "grid" } };
     case "spreadsheet":
-      return { sheet: { sheets: [{ id: "sh_1", name: "Sheet 1", rows: 60, cols: 26, cells: {}, colWidths: {}, rowHeights: {}, frozenRows: 0, frozenCols: 0, merges: [], conditionalRules: [] }], activeSheetId: "sh_1" } };
+      return { sheet: { sheets: [{ id: "sh_1", name: defaultSheetName(1), rows: 60, cols: 26, cells: {}, colWidths: {}, rowHeights: {}, frozenRows: 0, frozenCols: 0, merges: [], conditionalRules: [] }], activeSheetId: "sh_1" } };
     default:
       return {};
   }

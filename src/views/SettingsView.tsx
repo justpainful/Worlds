@@ -18,7 +18,7 @@ import { BridgeCard } from "./IntegrationsView";
 import { Select, DIRECTION_OPTIONS, LANGUAGE_OPTIONS } from "../ui/Select";
 import { AccountSettings } from "../account/AccountSettings";
 import { PACKS, setPackEnabled, usePack } from "../packs/packs";
-import { loadSample, removeSample, useSampleLoaded } from "../demo/sampleActions";
+import { loadSample, removeSample, rewriteSample, sampleLanguageMismatch, useSampleLoaded } from "../demo/sampleActions";
 
 const SECTIONS: { id: string; label: string; ar?: string; tile: string; group: number; keywords: string }[] = [
   { id: "account", label: "Account", tile: "team", group: 0, keywords: "sign in passkey email devices workspaces team members sign out server" },
@@ -164,7 +164,8 @@ function Appearance() {
     <>
       <Group title="Appearance">
         <Row label="Theme" hint="A light appearance is planned.">
-          <Segmented value="dark" onChange={() => {}} options={[{ value: "dark", label: "Dark" }]} label="Theme" />
+          {/* One theme for now: a value, not a control that cannot change. */}
+          <span className="set-static">Dark</span>
         </Row>
         <Row label="Accent" hint="Used sparingly: selection, mentions, focus.">
           <div className="swatches">
@@ -515,6 +516,10 @@ function StorageSettings() {
 
 function SampleWorkspaceSettings() {
   const loaded = useSampleLoaded();
+  // Read again whenever the language or the sample record changes.
+  useStore((s) => s.profile?.language);
+  useStore((s) => s.settings);
+  const otherLanguage = loaded && sampleLanguageMismatch() !== null;
   const [busy, setBusy] = useState(false);
   const run = (task: () => Promise<unknown>) => {
     setBusy(true);
@@ -530,12 +535,18 @@ function SampleWorkspaceSettings() {
     if (ok) await removeSample();
   };
   return (
-    <Group title="Sample workspace" note="A first year student's week in Arabic and English, made on this device without a connection. Loading it twice does not duplicate it.">
+    <Group title="Sample workspace" note="A first year student's week in your interface language, made on this device without a connection. Loading it twice does not duplicate it.">
       {loaded ? (
         <Row label="Sample workspace" hint="Loaded. Remove it when you are done looking around.">
           <Button variant="plain" icon="delete" loading={busy} onClick={() => run(remove)}>Remove</Button>
         </Row>
-      ) : (
+      ) : null}
+      {otherLanguage ? (
+        <Row label="Sample language" hint="The sample is still in the other language. Rewriting it moves the old copy to Trash.">
+          <Button variant="plain" icon="refresh" loading={busy} onClick={() => run(rewriteSample)}>Rewrite</Button>
+        </Row>
+      ) : null}
+      {loaded ? null : (
         <Row label="Sample workspace" hint="Pages, a document, a spreadsheet, a drawing, slides, two subjects with lessons and an exam, tasks and events.">
           <Button variant="plain" icon="folderOpen" loading={busy} onClick={() => run(loadSample)}>Load</Button>
         </Row>

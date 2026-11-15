@@ -188,7 +188,8 @@ class AppearanceSettingsTest {
                 InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /sdcard/Download/worlds-appearance-light.png").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
             }
             check(runBlocking { store.values.first() } == AppearancePreferences("light", "sky"))
-            compose.onNodeWithText(app.getString(R.string.back)).performClick()
+            // The back button scrolls with the page; bring it into view before tapping it.
+            compose.onNodeWithText(app.getString(R.string.back)).performScrollTo().performClick()
             compose.onNodeWithContentDescription(app.getString(R.string.appearance_title)).performClick()
             compose.onNodeWithText(app.getString(R.string.appearance_light)).assertIsSelected()
             compose.onNodeWithText(app.getString(R.string.appearance_sky)).performScrollTo().assertIsSelected()

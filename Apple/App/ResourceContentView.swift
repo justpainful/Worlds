@@ -69,7 +69,7 @@ struct ResourceContentView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                Text(page.title.isEmpty ? "Untitled" : page.title)
+                Text(page.title.isEmpty ? String(localized: "Untitled") : page.title)
                     .font(.title.weight(.semibold)).accessibilityAddTraits(.isHeader)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 switch page.kind {

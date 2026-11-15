@@ -2,6 +2,9 @@
 .home { max-width: 1120px; margin: 0 auto; padding: 88px 48px 100px; }
 .home-top { display: flex; align-items: center; gap: 16px; margin-bottom: 30px; }
 .home-title { margin: 0; flex: 1; font: var(--t-title); letter-spacing: var(--t-title-track); }
+.home-heading { flex: 1; min-width: 0; }
+.home-date { margin: 4px 0 0; color: var(--text-3); font: var(--t-ui); }
+.home-date-part { white-space: nowrap; }
 .home-controls { display: flex; align-items: center; gap: 10px; }
 .search-field {
   display: flex;
@@ -76,3 +79,4 @@
 .home-sample-note { color: var(--text-3); font: var(--t-ui); font-size: 13px; max-width: 460px; margin: 16px auto 0; padding: 0 16px; line-height: 1.5; }
 .home-empty .home-section { max-width: 760px; margin-left: auto; margin-right: auto; }
 .home-empty .tpl-strip { justify-content: center; }
+.home-language { display: flex; justify-content: center; margin-top: 18px; }

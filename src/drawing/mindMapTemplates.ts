@@ -15,11 +15,19 @@ import { edit, sceneChanges } from "./operations";
 
 export interface VisualCanvasPreset {
   key: string;
+  /** Arabic title; the canvas content itself is written in Arabic. */
   title: string;
+  titleEn: string;
   icon: string;
   badge: string;
   description: string;
+  descriptionEn: string;
   build: () => DrawingScene;
+}
+
+/** A preset's title or description in the interface language. */
+export function presetText(preset: VisualCanvasPreset, field: "title" | "description", lang: "ar" | "en"): string {
+  return lang === "ar" ? preset[field] : field === "title" ? preset.titleEn : preset.descriptionEn;
 }
 
 function baseScene(title: string, w = 1600, h = 1000, bg = "#fbfaf7"): {
@@ -179,10 +187,12 @@ function connectNodes(
 export const VISUAL_MINDMAP_PRESETS: VisualCanvasPreset[] = [
   {
     key: "canvas_radial_mindmap",
-    title: "لوحة خريطة ذهنية متفرعة (Radial Mind Map Canvas)",
+    title: "لوحة خريطة ذهنية متفرعة",
+    titleEn: "Radial mind map",
     icon: "🧠",
     badge: "Visual Canvas",
     description: "خريطة ذهنية بصرية تفاعلية متعددة الألوان مع عقد مرتبطة بأسهم ذكية قابلة للسحب والتعديل.",
+    descriptionEn: "A colourful mind map with linked nodes and smart arrows you can drag and edit.",
     build: () => {
       const ctx = baseScene("Radial Mind Map");
       const center = addCard(ctx, {
@@ -308,10 +318,12 @@ export const VISUAL_MINDMAP_PRESETS: VisualCanvasPreset[] = [
   },
   {
     key: "canvas_concept_network",
-    title: "لوحة خريطة مفاهيمية (Concept Proposition Network)",
+    title: "لوحة خريطة مفاهيمية",
+    titleEn: "Concept map",
     icon: "🕸️",
     badge: "Visual Canvas",
     description: "شبكة مفاهيم هرمية مرتبطة بعبارات علاقة صريحة (يؤدي إلى، يتكون من، يعتمد على).",
+    descriptionEn: "A hierarchy of concepts joined by explicit relations such as leads to, consists of and depends on.",
     build: () => {
       const ctx = baseScene("Concept Map Network");
       const root = addCard(ctx, {
@@ -392,10 +404,12 @@ export const VISUAL_MINDMAP_PRESETS: VisualCanvasPreset[] = [
   },
   {
     key: "canvas_fishbone",
-    title: "لوحة إيشيكاوا للأسباب الجذرية (Fishbone Canvas)",
+    title: "لوحة إيشيكاوا للأسباب الجذرية",
+    titleEn: "Fishbone root causes",
     icon: "🐟",
     badge: "Visual Canvas",
     description: "مخطط عظمة السمكة لتحليل المشكلات عبر 6 فئات مسببة وصولاً إلى الأثر الرئيسي.",
+    descriptionEn: "An Ishikawa diagram that traces a problem through six groups of causes to its main effect.",
     build: () => {
       const ctx = baseScene("Fishbone Root Cause Analysis");
       const effect = addCard(ctx, {
@@ -458,10 +472,12 @@ export const VISUAL_MINDMAP_PRESETS: VisualCanvasPreset[] = [
   },
   {
     key: "canvas_swot_2x2",
-    title: "لوحة مصفوفة SWOT الرباعية (2×2 Strategic Canvas)",
+    title: "لوحة مصفوفة SWOT الرباعية",
+    titleEn: "SWOT matrix",
     icon: "♟️",
     badge: "Visual Canvas",
     description: "لوحة تخطيط رباعية لنقاط القوة والضعف والفرص والتهديدات مع محور القرارات.",
+    descriptionEn: "Strengths, weaknesses, opportunities and threats in four quadrants, with a decision axis.",
     build: () => {
       const ctx = baseScene("SWOT Strategic Canvas");
       addCard(ctx, {
@@ -523,9 +539,9 @@ export const VISUAL_MINDMAP_PRESETS: VisualCanvasPreset[] = [
   },
 ];
 
-export async function createVisualMindMap(preset: VisualCanvasPreset): Promise<string> {
+export async function createVisualMindMap(preset: VisualCanvasPreset, lang: "ar" | "en" = "ar"): Promise<string> {
   const page = await api.createPage({
-    title: preset.title,
+    title: presetText(preset, "title", lang),
     kind: "drawing",
     icon: preset.icon,
   });

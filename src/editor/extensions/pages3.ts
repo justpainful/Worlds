@@ -6,6 +6,7 @@ import type { Node as PMNode } from "@tiptap/pm/model";
 import Suggestion from "@tiptap/suggestion";
 import { PageMention } from "./suggest";
 import { GalleryView, TocView } from "../views/Pages3Views";
+import { foldWithMap } from "../../i18n/locale";
 
 export { TextStyle, Color, BackgroundColor } from "@tiptap/extension-text-style";
 
@@ -113,14 +114,28 @@ export const findKey = new PluginKey<FindState>("worlds-find");
 function scan(doc: PMNode, query: string, matchCase: boolean) {
   const out: { from: number; to: number }[] = [];
   if (!query) return out;
-  const q = matchCase ? query : query.toLowerCase();
+  if (matchCase) {
+    doc.descendants((node, pos) => {
+      if (!node.isText || !node.text) return;
+      let i = node.text.indexOf(query);
+      while (i !== -1) {
+        out.push({ from: pos + i, to: pos + i + query.length });
+        i = node.text.indexOf(query, i + query.length);
+      }
+    });
+    return out;
+  }
+  // Without "match case", Arabic is folded too: صوره finds صورة, and diacritics do not get in the way.
+  const q = foldWithMap(query).folded;
+  if (!q) return out;
   doc.descendants((node, pos) => {
     if (!node.isText || !node.text) return;
-    const text = matchCase ? node.text : node.text.toLowerCase();
-    let i = text.indexOf(q);
+    const { folded, at } = foldWithMap(node.text);
+    let i = folded.indexOf(q);
     while (i !== -1) {
-      out.push({ from: pos + i, to: pos + i + q.length });
-      i = text.indexOf(q, i + q.length);
+      // Up to the next kept character, so marks on the last letter are found and replaced with it.
+      out.push({ from: pos + at[i], to: pos + at[i + q.length] });
+      i = folded.indexOf(q, i + q.length);
     }
   });
   return out;

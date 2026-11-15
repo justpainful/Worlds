@@ -1,17 +1,30 @@
 import { useMemo, useState } from "react";
 import { SearchField } from "./SearchField";
-import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { open as openDialog } from "../lib/dialog";
 import { api, errorMessage } from "../lib/api";
 import { useStore } from "../state/store";
 import { ICON_CATALOG } from "../assets/product-icons";
 import { Popover } from "./Menu";
 import { Icon } from "./Icon";
 import { ProductIcon } from "./ProductIcon";
+import { translate, uiLanguage } from "../i18n/ui";
+import { foldArabic } from "../i18n/locale";
 
 const SETS: { label: string; emojis: string }[] = [
-  { label: "Objects", emojis: "📄 📝 📌 📎 📁 🗂️ 🗃️ 📚 📖 🔖 🏷️ 💼 🧾 📊 📈 📉 🗓️ 📅 ⏰ ⏱️ 🔔 📣 📢 💬 🗨️ ✉️ 📬 🔑 🔒 🔓 🧭 🗺️ 🧰 🛠️ ⚙️ 🧪 🔬 💡 🕯️ 🔦 🎯 🧩 🎨 🖌️ 🖼️ 🎬 🎧 🎮 🕹️ 💻 🖥️ ⌨️ 🖱️ 📱 📷 🎥 📺" },
-  { label: "Symbols", emojis: "✅ ☑️ ✔️ ❌ ⭕ ❗ ❓ ⚠️ ⛔ 🚫 ♻️ ⭐ 🌟 ✨ 🔥 💥 💯 🔴 🟠 🟡 🟢 🔵 🟣 ⚫ ⚪ 🟤 🔺 🔻 🔷 🔶 ➡️ ⬅️ ⬆️ ⬇️ 🔁 🔀 ➕ ➖ 💲 #️⃣ 🆕 🆗 🆒 🔝" },
-  { label: "Places", emojis: "🏠 🏢 🏛️ 🏪 🏫 🏥 🏦 🏭 🏗️ 🌍 🌎 🌏 🌐 🏝️ 🏔️ 🌋 🏕️ 🌃 🌆 🌉 🚀 ✈️ 🚗 🚕 🚌 🚲 ⛵ 🚢 🛰️ 🪐 🌙 ☀️ ⛅ 🌧️ ❄️ 🌈 🌊" },
+  {
+    label: "Objects",
+    emojis:
+      "📄 📝 📌 📎 📁 🗂️ 🗃️ 📚 📖 🔖 🏷️ 💼 🧾 📊 📈 📉 🗓️ 📅 ⏰ ⏱️ 🔔 📣 📢 💬 🗨️ ✉️ 📬 🔑 🔒 🔓 🧭 🗺️ 🧰 🛠️ ⚙️ 🧪 🔬 💡 🕯️ 🔦 🎯 🧩 🎨 🖌️ 🖼️ 🎬 🎧 🎮 🕹️ 💻 🖥️ ⌨️ 🖱️ 📱 📷 🎥 📺",
+  },
+  {
+    label: "Symbols",
+    emojis:
+      "✅ ☑️ ✔️ ❌ ⭕ ❗ ❓ ⚠️ ⛔ 🚫 ♻️ ⭐ 🌟 ✨ 🔥 💥 💯 🔴 🟠 🟡 🟢 🔵 🟣 ⚫ ⚪ 🟤 🔺 🔻 🔷 🔶 ➡️ ⬅️ ⬆️ ⬇️ 🔁 🔀 ➕ ➖ 💲 #️⃣ 🆕 🆗 🆒 🔝",
+  },
+  {
+    label: "Places",
+    emojis: "🏠 🏢 🏛️ 🏪 🏫 🏥 🏦 🏭 🏗️ 🌍 🌎 🌏 🌐 🏝️ 🏔️ 🌋 🏕️ 🌃 🌆 🌉 🚀 ✈️ 🚗 🚕 🚌 🚲 ⛵ 🚢 🛰️ 🪐 🌙 ☀️ ⛅ 🌧️ ❄️ 🌈 🌊",
+  },
   { label: "Nature", emojis: "🌱 🌿 🍀 🌵 🌴 🌳 🌲 🍁 🍂 🌸 🌼 🌻 🌹 🍄 🐚 🪨 🐾 🐱 🐶 🦊 🐻 🐼 🦁 🐯 🐺 🦅 🦉 🐝 🦋 🐢 🐬 🐳" },
   { label: "Food", emojis: "☕ 🍵 🧃 🍕 🍔 🍟 🌮 🥗 🍣 🍜 🥐 🍞 🧁 🍰 🍫 🍪 🍎 🍊 🍋 🍉 🍇 🍓 🥑 🌶️" },
   { label: "People", emojis: "🙂 😊 😎 🤔 🤝 👋 👍 👏 🙌 💪 🧠 👀 👤 👥 🧑‍💻 🧑‍🎨 🧑‍🏫 🧑‍🔧 🎓 👑 🏆 🥇 🎉 🎁" },
@@ -43,14 +56,22 @@ export function EmojiPicker({
   const emojis = useMemo(() => SETS[tab].emojis.split(" ").filter(Boolean), [tab]);
   const cats = useMemo(() => ["All", ...Array.from(new Set(ICON_CATALOG.map((i) => i.category)))], []);
   const icons = useMemo(() => {
-    const s = q.trim().toLowerCase();
+    const s = foldArabic(q.trim().toLowerCase());
+    // In Arabic the Arabic names count too: قلب finds Heart, دلة finds Dallah.
+    const ar = (x: string) => (uiLanguage() === "ar" ? (translate(x) ?? "") : "");
     return ICON_CATALOG.filter(
-      (i) => (cat === "All" || i.category === cat) && (!s || `${i.name} ${i.label} ${i.keywords.join(" ")}`.toLowerCase().includes(s)),
+      (i) =>
+        (cat === "All" || i.category === cat) &&
+        (!s || foldArabic(`${i.name} ${i.label} ${i.keywords.join(" ")} ${ar(i.label)} ${ar(i.category)}`.toLowerCase()).includes(s)),
     );
   }, [q, cat]);
 
   const upload = async () => {
-    const path = await openDialog({ multiple: false, title: "Choose an icon image", filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp", "gif", "svg", "avif"] }] });
+    const path = await openDialog({
+      multiple: false,
+      title: "Choose an icon image",
+      filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp", "gif", "svg", "avif"] }],
+    });
     if (!path || Array.isArray(path)) return;
     try {
       const a = await api.importFile(pageId, path);
@@ -64,8 +85,12 @@ export function EmojiPicker({
     <Popover anchor={anchor} onClose={onClose} width={372} className="emoji-pop">
       <div className="ip-head">
         <div className="ip-modes" role="tablist">
-          <button role="tab" aria-selected={mode === "icons"} className={mode === "icons" ? "is-on" : ""} onClick={() => setMode("icons")}>Icons</button>
-          <button role="tab" aria-selected={mode === "emoji"} className={mode === "emoji" ? "is-on" : ""} onClick={() => setMode("emoji")}>Emoji</button>
+          <button role="tab" aria-selected={mode === "icons"} className={mode === "icons" ? "is-on" : ""} onClick={() => setMode("icons")}>
+            Icons
+          </button>
+          <button role="tab" aria-selected={mode === "emoji"} className={mode === "emoji" ? "is-on" : ""} onClick={() => setMode("emoji")}>
+            Emoji
+          </button>
         </div>
         <span className="grow" />
         <button className="chip-btn" onClick={upload}>

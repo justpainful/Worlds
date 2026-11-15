@@ -1,4 +1,5 @@
 import { LayerMergeDialog } from "./LayerMergeDialog";
+import { shownName } from "./names";
 import { mergedLayerChanges, mergeSourceKey } from "./layerMerge";
 import { checkDrawingExport } from "./files";
 import { RasterizeImageDialog } from "./RasterizeImageDialog";
@@ -11,7 +12,7 @@ import { maskEditChanges, maskPropertyChanges } from "./maskEdit";
 import { LayerBrowser } from "./LayerBrowser";
 import { DrawingShortcutsDialog } from "./ShortcutsDialog";
 import { drawingShortcutAction, readDrawingShortcuts } from "./shortcuts";
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ScreenDrawing, type CapturedScreen } from "./ScreenDrawing";
 import { localStore } from "../sync/session";
@@ -104,6 +105,7 @@ import { FloatingPixelsDialog } from "./FloatingPixelsDialog";
 import type { PixelSampleSource } from "./floatingPixels";
 import { runPixelTask } from "./pixelTasks";
 import "./drawing.css";
+import { shortcutKey } from "../lib/keys";
 
 const TOOLS: { id: Tool; label: string; ar: string; glyph: string; key?: string }[] = [
   { id: "select", label: "Move", ar: "تحريك", glyph: "↖", key: "V" },
@@ -319,6 +321,20 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
     clipboard = useRef<DrawingNode[]>([]),
     toolBrushes = useRef<Partial<Record<Tool, Brush>>>(initialPreferences.current.brushes);
   const scene = state.document?.scene;
+  // Open on the whole frame. A fixed starting zoom cut the frame off in narrow windows,
+  // so its far edge sat under the tool rail.
+  const fittedFor = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    if (!scene || fittedFor.current === pageId) return;
+    const stage = root.current?.querySelector(".drawing-stage")?.getBoundingClientRect();
+    const f = scene.frames[frameId] ?? scene.frames[scene.defaultFrameId];
+    if (!stage || stage.width < 80 || stage.height < 80 || !f) return;
+    fittedFor.current = pageId;
+    const w = stage.width,
+      h = stage.height,
+      scale = Math.max(0.025, Math.min(1, w / (f.w + 80), h / (f.h + 80)));
+    setView((v) => ({ ...v, x: f.x - (w / scale - f.w) / 2, y: f.y - (h / scale - f.h) / 2, w: w / scale, h: h / scale, scale }));
+  });
   const selectedVisible = (id: string) =>
     !!scene?.nodes[id] && scene.nodes[id].visible && effectiveLayer(scene, scene.nodes[id].layerId).visible;
   const selected = selectedIds.every(selectedVisible) ? selectedIds : selectedIds.filter(selectedVisible);
@@ -975,10 +991,10 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
       }
       const action = drawingShortcutAction(e, shortcuts, { activePane: isActive, modalOpen });
       if (!action) {
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v" && !e.shiftKey && shortcuts.paste !== "Mod+v") e.preventDefault();
+        if ((e.ctrlKey || e.metaKey) && shortcutKey(e) === "v" && !e.shiftKey && shortcuts.paste !== "Mod+v") e.preventDefault();
         return;
       }
-      if (action === "paste" && !clipboard.current.length && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v" && !e.shiftKey) return;
+      if (action === "paste" && !clipboard.current.length && (e.ctrlKey || e.metaKey) && shortcutKey(e) === "v" && !e.shiftKey) return;
       if ((action === "copy" || action === "cut") && !selection && !selected.length) return;
       e.preventDefault();
       e.stopImmediatePropagation();
@@ -1780,7 +1796,7 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
                         setView({ ...view, x: scene.frames[fid].x - 40, y: scene.frames[fid].y - 65 });
                       }}
                     >
-                      {scene.frames[fid].name}
+                      {shownName(scene.frames[fid].name, arabic)}
                       <small>
                         {scene.frames[fid].w} × {scene.frames[fid].h}
                       </small>
@@ -2169,7 +2185,7 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
                           <option value="">{t("World item outside frames", "عنصر في العالم دون إطار")}</option>
                           {scene.frameOrder.map((id) => (
                             <option key={id} value={id}>
-                              {scene.frames[id].name}
+                              {shownName(scene.frames[id].name, arabic)}
                             </option>
                           ))}
                         </select>
@@ -3013,7 +3029,7 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
               lease?.finish([op]);
               if (session.snapshot().pending)
                 toast({
-                  message: t("The annotation is waiting to save. Keep Worlds open.", "الرسم بانتظار الحفظ. اترك وورلدز مفتوحًا."),
+                  message: t("The annotation is waiting to save. Keep Worlds open.", "الرسم بانتظار الحفظ. اترك Worlds مفتوحًا."),
                   tone: "error",
                 });
               setSelected([node.id]);

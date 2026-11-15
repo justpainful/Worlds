@@ -106,7 +106,7 @@ fun AutomationEditor(
         title = {
             WorldsActionLabel(
                 R.drawable.ic_sliders_horizontal,
-                if (automation == null) "New automation" else "Edit automation"
+                if (automation == null) stringResource(R.string.automation_new) else stringResource(R.string.automation_edit)
             )
         },
         text = {
@@ -120,15 +120,15 @@ fun AutomationEditor(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Automation name") },
+                    label = { Text(stringResource(R.string.automation_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
 
-                Text("Trigger", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground)
+                Text(stringResource(R.string.automation_trigger), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("daily" to "Daily", "weekly" to "Weekly", "manual" to "Manual").forEach { (kind, label) ->
+                    listOf("daily" to stringResource(R.string.automation_daily), "weekly" to stringResource(R.string.automation_weekly), "manual" to stringResource(R.string.automation_manual)).forEach { (kind, label) ->
                         FilterChip(
                             selected = triggerKind == kind,
                             onClick = { triggerKind = kind },
@@ -141,14 +141,14 @@ fun AutomationEditor(
                     OutlinedTextField(
                         value = timeStr,
                         onValueChange = { timeStr = it },
-                        label = { Text("Execution time (HH:MM)") },
+                        label = { Text(stringResource(R.string.automation_time)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     )
                 }
 
-                Text("Source page", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground)
+                Text(stringResource(R.string.automation_source_page), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground)
                 Box {
                     val selectedPage = pages.firstOrNull { it.id == selectedPageId }
                     OutlinedButton(
@@ -157,14 +157,14 @@ fun AutomationEditor(
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Text(selectedPage?.title?.ifBlank { "Untitled" } ?: "Select page", maxLines = 1)
+                            Text(selectedPage?.title?.ifBlank { stringResource(R.string.untitled) } ?: stringResource(R.string.automation_select_page), maxLines = 1)
                             WorldsGlyph(R.drawable.ic_chevron_right)
                         }
                     }
                     DropdownMenu(expanded = expandedPages, onDismissRequest = { expandedPages = false }) {
                         pages.forEach { p ->
                             DropdownMenuItem(
-                                text = { Text(p.title.ifBlank { "Untitled" }) },
+                                text = { Text(p.title.ifBlank { stringResource(R.string.untitled) }) },
                                 onClick = {
                                     selectedPageId = p.id
                                     expandedPages = false
@@ -254,8 +254,8 @@ fun AutomationEditor(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text("Unattended execution", style = MaterialTheme.typography.bodyMedium)
-                        Text("Run automatically without manual approval", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.automation_unattended), style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(R.string.automation_unattended_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Switch(checked = unattended, onCheckedChange = { unattended = it })
                 }

@@ -119,7 +119,7 @@ export function DrawingShortcutsDialog({
                           `يتعارض مع الاختصار البديل لأمر ${label(issue.other!)}. غيّر اختصار ذلك الأمر الافتراضي أولًا.`,
                         )
                       : issue.kind === "reserved"
-                        ? t("Reserved by the system or Worlds", "محجوز للنظام أو وورلدز")
+                        ? t("Reserved by the system or Worlds", "محجوز للنظام أو Worlds")
                         : t("Unsupported key combination", "مجموعة مفاتيح غير مدعومة")}
                 </p>
               )}

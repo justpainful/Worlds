@@ -34,6 +34,22 @@ class SpreadsheetEngineTest {
         assertEquals(mismatches.joinToString("\n"), 0, mismatches.size)
     }
 
+    @Test fun numbersTypedWithAnArabicKeyboardCount() {
+        assertEquals("3.5%", SpreadsheetEvaluator.westernDigits("٣٫٥٪"))
+        val inputs = mapOf(
+            "A1" to "٩٥", "A2" to "12.5", "A3" to "٣٫٥", "A4" to "=SUM(A1:A3)", "A5" to "=A1*٢", "A6" to "=SUM(A1،A2)",
+            "A7" to "١٬٢٥٠", "A8" to "٥٠٪", "A9" to "=IF(A1>٩٠؛\"ممتاز\"؛\"جيد\")", "B1" to "الوحدة ٣",
+        )
+        val cells = JSONObject()
+        inputs.forEach { (key, value) -> cells.put(key, JSONObject().put("v", value)) }
+        val sheet = JSONObject().put("id", "s1").put("name", "Sheet 1").put("cells", cells)
+        val workbook = SpreadsheetEditing.workbook(JSONObject().put("sheet", JSONObject().put("sheets", org.json.JSONArray().put(sheet))).toString())
+        val actual = SpreadsheetEvaluator(workbook).evaluate()["s1"]
+        // The desktop engine shows exactly these.
+        val expected = mapOf("A1" to "95", "A3" to "3.5", "A4" to "111", "A5" to "190", "A6" to "107.5", "A7" to "1,250", "A8" to "0.5", "A9" to "ممتاز", "B1" to "الوحدة ٣")
+        expected.forEach { (key, display) -> assertEquals(key, display, actual?.get(key)?.display) }
+    }
+
     @Test fun editingKeepsDesktopOnlyFields() {
         val fixture = fixture()
         val metadata = JSONObject().put("other", "kept").put("sheet", fixture.getJSONObject("workbook")).toString()

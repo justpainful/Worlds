@@ -8,7 +8,7 @@ import { EmptyState, PageIcon, relTime } from "../../ui/misc";
 import { type ProfileStats } from "../../profile/BlockView";
 import { useThumb } from "../../media/thumbs";
 import { hostOf, useClock, fmt } from "./shared";
-import { isResource } from "../../resources/kinds";
+import { emptyPreview, isResource } from "../../resources/kinds";
 
 // ---------------------------------------------------------------------------
 // Tabs
@@ -35,7 +35,7 @@ export function PagesTab() {
             {p.pinned && <Icon name="pin" size={12} />}
           </div>
           <span className="pf-page-title bidi">{pageTitle(p)}</span>
-          <span className="pf-page-preview bidi">{p.preview || "Empty page"}</span>
+          <span className="pf-page-preview bidi">{p.preview || emptyPreview(p.kind)}</span>
           <span className="pf-page-time">{relTime(p.updatedAt)}</span>
         </button>
       ))}
@@ -98,17 +98,17 @@ export function AboutTab({ profile, memberSince, stats, onEdit }: { profile: Pro
         </li>
         <li>
           <Icon name="calendar" size={14} />
-          <span>Since {memberSince}</span>
+          <span>{`Since ${memberSince}`}</span>
         </li>
         {stats?.words ? (
           <li>
             <Icon name="text" size={14} />
-            <span>About {fmt(stats.words)} words written</span>
+            <span>{`About ${fmt(stats.words)} words written`}</span>
           </li>
         ) : null}
         <li>
           <Icon name="activity" size={14} />
-          <span>{stats?.edits7d ?? 0} edits in the last 7 days</span>
+          <span>{`${stats?.edits7d ?? 0} edit${stats?.edits7d === 1 ? "" : "s"} in the last 7 days`}</span>
         </li>
         {(profile.links ?? []).map((l, i) => (
           <li key={i}>

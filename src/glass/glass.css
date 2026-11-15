@@ -217,6 +217,9 @@
 /* ---- Quality tiers and accessibility ------------------------------------- */
 :root[data-glass="solid"] .glass > .g-optics { background: var(--surface-raised); }
 :root[data-glass="solid"] .glass:is([data-material="sheet"], [data-material="menu"]) > .g-optics { background: var(--surface-deep); }
+/* With window transparency (Mica, Acrylic) the installed app does not always frost what is behind a
+   menu or sheet, so text under it read through. Menus and sheets keep a nearly solid body there. */
+:root:is([data-transparency="mica"], [data-transparency="acrylic"]) .glass:is([data-material="sheet"], [data-material="menu"]) > .g-optics { background-color: rgba(30, 30, 33, 0.86) !important; }
 
 @media (prefers-contrast: more) {
   .glass { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35), 0 4px 14px rgba(0, 0, 0, 0.3); }

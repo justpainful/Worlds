@@ -5,6 +5,8 @@ import { useStore } from "../state/store";
 import { glassEngine } from "../glass/engine";
 import { Tonal } from "../ui/tonal/Tonal";
 import { Icon } from "../ui/Icon";
+import { fitWindow } from "./windowFit";
+import { confirmDialog } from "../ui/Modal";
 
 interface SavedWindow {
   x: number;
@@ -36,14 +38,17 @@ async function restoreGeometry() {
   const saved = useStore.getState().settings["window"] as SavedWindow | undefined;
   if (saved && saved.w > 400 && saved.h > 300) {
     const monitors = await availableMonitors();
-    const visible = monitors.some((m) => {
+    const home = monitors.find((m) => {
       const { x, y } = m.position;
       const { width, height } = m.size;
       return saved.x + 80 > x && saved.x < x + width - 80 && saved.y + 40 > y && saved.y < y + height - 40;
     });
-    if (visible) {
-      await win.setSize(new PhysicalSize(saved.w, saved.h));
-      await win.setPosition(new PhysicalPosition(saved.x, saved.y));
+    if (home) {
+      // A window saved on a bigger or less scaled screen still opens inside this one, above the taskbar.
+      const area = home.workArea ?? { position: home.position, size: home.size };
+      const { w, h, x, y } = fitWindow(saved, { x: area.position.x, y: area.position.y, w: area.size.width, h: area.size.height });
+      await win.setSize(new PhysicalSize(w, h));
+      await win.setPosition(new PhysicalPosition(x, y));
     }
     if (saved.maximized) await win.maximize();
   }
@@ -117,7 +122,19 @@ function useDragZones() {
       else win.startDragging();
     };
     window.addEventListener("mousedown", onDown);
-    return () => window.removeEventListener("mousedown", onDown);
+    // The window has no system menu (window_style.rs hides the system's own
+    // caption buttons that way), so Alt+F4 is handled here.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.altKey && e.key === "F4" && !e.ctrlKey && !e.shiftKey) {
+        e.preventDefault();
+        void win.close();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
   }, []);
 }
 
@@ -133,9 +150,29 @@ export function WindowFrame({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Closing the window leaves Worlds running in the tray (automations keep their
+ * schedule). The first time, say so, and how to quit, instead of vanishing.
+ */
+async function closeWindow() {
+  const s = useStore.getState();
+  const background = (s.settings["app.runInBackground"] as boolean | undefined) ?? true;
+  if (background && !s.settings["app.closeExplained"]) {
+    s.setSetting("app.closeExplained", true);
+    const close = await confirmDialog({
+      title: "Worlds keeps running",
+      message: "Closing the window leaves Worlds in the tray next to the clock, so your automations still run on time. To quit, right-click its icon there and choose Quit. You can turn this off in Settings.",
+      confirm: "Close the window",
+    });
+    if (!close) return;
+  }
+  await getCurrentWindow().close();
+}
+
 export function WindowControls() {
   const maximized = useStore((s) => s.maximized);
-  if (!isTauri) return null;
+  // The web demo stands in for the app in a browser tab, which has no window of its own to control.
+  if (!isTauri || import.meta.env.VITE_WEB_DEMO === "1") return null;
   const win = getCurrentWindow();
   return (
     <Tonal className="win-controls" radius="var(--r-capsule)">
@@ -146,7 +183,7 @@ export function WindowControls() {
         <button className="win-btn" aria-label={maximized ? "Restore" : "Maximize"} onClick={() => win.toggleMaximize()}>
           <Icon name={maximized ? "unmaximize" : "maximize"} size={maximized ? 13 : 12} />
         </button>
-        <button className="win-btn win-close" aria-label="Close" onClick={() => win.close()}>
+        <button className="win-btn win-close" aria-label="Close" onClick={() => closeWindow()}>
           <Icon name="close" size={15} />
         </button>
       </div>

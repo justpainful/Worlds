@@ -65,6 +65,31 @@ class PlanningModelTest {
         parse("درس 9 صباحا").let { assertEquals("درس", it.title); assertEquals("09:00", it.time); assertEquals("2026-11-12", it.due) }
     }
 
+    @Test fun quickAddOnThursdayMorningReadsArabicTheWayItIsTyped() {
+        val thu = LocalDateTime.of(2026, 11, 12, 9, 0)
+        fun p(text: String) = QuickAdd.parse(text, thu)
+        // The hint's own example, typed on a Thursday morning, is this afternoon.
+        assertEquals(QuickAddResult("اجتماع الفريق", "2026-11-12", "17:00", 0), p("اجتماع الفريق الخميس الساعة 5 مساءً"))
+        assertEquals("2026-11-19", p("Gym thursday").due)
+        assertEquals("2026-11-19", p("Standup thursday 8am").due)
+        assertEquals(QuickAddResult("اجتماع", "2026-11-16", null, 0), p("اجتماع يوم الاثنين القادم"))
+        assertEquals(QuickAddResult("رحلة", "2026-11-19", null, 0), p("رحلة الخميس الجاي"))
+        assertEquals(QuickAddResult("مذاكرة", "2026-11-13", "08:00", 0), p("مذاكرة بكرة 8 صباحاً"))
+        assertEquals(QuickAddResult("اتصال بأحمد", "2026-11-13", "17:00", 0), p("اتصال بأحمد غداً ٥ م"))
+        assertEquals("17:30", p("اتصال غدا الساعة ٥:٣٠ مساء").time)
+        assertEquals(QuickAddResult("اختبار الرياضيات", "2026-11-14", "10:00", 0), p("اختبار الرياضيات بعد يومين الساعة 10"))
+        assertEquals(QuickAddResult("مشروع", "2026-11-26", null, 0), p("مشروع بعد أسبوعين"))
+        assertEquals(QuickAddResult("مراجعة", "2026-11-14", null, 0), p("مراجعة بعد بكرة"))
+        assertEquals("13:00", p("غداء 1 ظهرا").time)
+        assertEquals(QuickAddResult("مذاكرة", "2026-11-12", "21:00", 0), p("مذاكرة الليلة 9"))
+        assertEquals(QuickAddResult("رحلة", "2026-11-15", null, 0), p("رحلة 15 نوفمبر"))
+        assertEquals(QuickAddResult("طباعة نسختين 2 ورق", "2027-03-03", null, 0), p("طباعة نسختين 2 ورق 3 مارس"))
+        assertEquals(QuickAddResult("Trip", "2026-11-20", null, 0), p("Trip Nov 20"))
+        assertEquals(QuickAddResult("Exam", "2027-01-02", null, 0), p("Exam 2 Jan 2027"))
+        assertEquals(QuickAddResult("الواجب ٣", null, null, 0), p("الواجب ٣"))
+        assertEquals("17:00", QuickAdd.clock("٥ م"))
+    }
+
     @Test fun clockFieldsAcceptTypedTimes() {
         assertEquals("09:00", QuickAdd.clock("9"))
         assertEquals("09:30", QuickAdd.clock("9:30"))

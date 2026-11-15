@@ -37,6 +37,17 @@ export const KIND_INFO: Record<ResourceKind, KindInfo> = {
 };
 
 /**
+ * What a card shows when a resource has no text preview. Spreadsheets,
+ * drawings and slides keep their content outside blocks, so "Empty page"
+ * would be wrong for them: they show what they are instead.
+ */
+export function emptyPreview(kind: string): string {
+  if (kind === "page" || kind === "template") return "Empty page";
+  if (kind === "document") return "Empty document";
+  return KIND_INFO[kind as ResourceKind]?.label ?? "Empty page";
+}
+
+/**
  * Item kinds are things you plan and tick off rather than documents you open
  * and write in. They live in their own views (Tasks, Calendar, Inbox, a
  * subject's page) instead of the sidebar tree, Home's Recent and pickers.

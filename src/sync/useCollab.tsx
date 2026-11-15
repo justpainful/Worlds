@@ -19,6 +19,7 @@ import { CollabChrome, startComment } from "./ui/CollabChrome";
 import { useSessionInfo, useSessionReady } from "./ui/hooks";
 import { SyncSettings } from "./ui/SyncSettings";
 import "./ui/sync.css";
+import { shortcutKey } from "../lib/keys";
 
 export interface Collab {
   /** The page edits through Yjs. */
@@ -174,10 +175,10 @@ function CollabRoot({ pageId, session, editor, level }: { pageId: string; sessio
     const onKey = (e: KeyboardEvent) => {
       if (!wrap.contains(document.activeElement)) return;
       const mod = e.ctrlKey || e.metaKey;
-      if (mod && e.altKey && e.shiftKey && e.key.toLowerCase() === "s") {
+      if (mod && e.altKey && e.shiftKey && shortcutKey(e) === "s") {
         e.preventDefault();
         setSettings(true);
-      } else if (mod && e.altKey && !e.shiftKey && e.key.toLowerCase() === "m" && editor && session) {
+      } else if (mod && e.altKey && !e.shiftKey && shortcutKey(e) === "m" && editor && session) {
         e.preventDefault();
         startComment(editor, session);
       }

@@ -19,6 +19,8 @@ import worlds.android.R
 import worlds.android.WorldsActionButton
 import worlds.android.WorldsActionLabel
 import worlds.android.WorldsGlyph
+import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 /** The planning sections the app opens as pushed screens, in the desktop sidebar's order. */
@@ -180,7 +182,10 @@ private enum class CalendarMode { Week, Agenda }
             item(key = "day-$day") {
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp).semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(dayName(day, now), modifier = Modifier.weight(1f, fill = false), style = MaterialTheme.typography.titleMedium, color = if (day == now) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground, maxLines = 1)
-                    Text(shortDate(day, false, currentLocale()), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                    val locale = currentLocale()
+                    val date = shortDate(day, false, locale)
+                    // In Arabic the Hijri day follows, as on the desktop agenda.
+                    Text(if (locale.language == "ar") "$date · ${hijriDate(PlanDates.parse(day))}" else date, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                 }
             }
             item(key = "items-$day") {
@@ -203,6 +208,23 @@ private enum class CalendarMode { Week, Agenda }
     }
 }
 
+/** The Umm al-Qura Hijri months a span of days falls in: "جمادى الآخرة 1448 هـ", or two months joined. */
+internal fun hijriSpan(from: LocalDate, to: LocalDate): String {
+    val locale = android.icu.util.ULocale("ar_SA@calendar=islamic-umalqura;numbers=latn")
+    fun format(day: LocalDate, pattern: String): String =
+        android.icu.text.SimpleDateFormat(pattern, locale).format(java.util.Date.from(day.atStartOfDay(ZoneId.systemDefault()).toInstant()))
+    val first = format(from, "MMMM y G")
+    val last = format(to, "MMMM y G")
+    if (first == last) return first
+    return if (format(from, "y") == format(to, "y")) "${format(from, "MMMM")} و$last" else "$first و$last"
+}
+
+/** The Umm al-Qura day and month without the year, "2 جمادى الآخرة", beside a date in the Arabic agenda. */
+internal fun hijriDate(day: LocalDate): String {
+    val locale = android.icu.util.ULocale("ar_SA@calendar=islamic-umalqura;numbers=latn")
+    return android.icu.text.SimpleDateFormat("d MMMM", locale).format(java.util.Date.from(day.atStartOfDay(ZoneId.systemDefault()).toInstant()))
+}
+
 @Composable private fun RangeBar(from: String, to: String, onPrevious: () -> Unit, onToday: () -> Unit, onNext: () -> Unit) {
     val locale = currentLocale()
     val a = PlanDates.parse(from)
@@ -212,7 +234,11 @@ private enum class CalendarMode { Week, Agenda }
     val previous = stringResource(R.string.plan_previous)
     val next = stringResource(R.string.plan_next)
     Row(Modifier.fillMaxWidth().padding(bottom = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
+            // In Arabic the Hijri months of the shown days follow, as Saudi calendars print them.
+            if (locale.language == "ar") Text(hijriSpan(a, b), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         WorldsActionButton(onClick = onPrevious) { Icon(painterResource(R.drawable.ic_chevron_left), contentDescription = previous, modifier = Modifier.size(18.dp)) }
         WorldsActionButton(onClick = onToday) { Text(stringResource(R.string.plan_today)) }
         WorldsActionButton(onClick = onNext) { Icon(painterResource(R.drawable.ic_chevron_right), contentDescription = next, modifier = Modifier.size(18.dp)) }

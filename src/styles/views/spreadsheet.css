@@ -4,11 +4,22 @@
   flex-direction: column;
   height: 100%;
   width: 100%;
+  box-sizing: border-box;
+  /* Clear the floating pane toolbar, as the drawing view does; the title row sat under it. */
+  padding-block-start: 64px;
   outline: none;
   background: var(--bg-base, #0f1115);
   color: var(--fg-primary, #f1f5f9);
   user-select: none;
 }
+
+.sheet-shell > .res-head {
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  padding: 6px 20px 12px;
+  gap: 12px;
+}
+.sheet-shell > .res-head .res-title { font-size: 24px; }
 
 .sheet-toolbar {
   display: flex;
@@ -143,7 +154,7 @@
 .sheet-fn-popup {
   position: absolute;
   top: 32px;
-  left: 0;
+  inset-inline-start: 0;
   z-index: 40;
   width: 440px;
   max-width: 90vw;
@@ -164,7 +175,7 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   background: transparent;
   color: #f1f5f9;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 
@@ -204,7 +215,7 @@
   z-index: 5;
   height: 26px;
   background: #181c24;
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  border-inline-end: 1px solid rgba(255, 255, 255, 0.1);
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   color: #94a3b8;
   font-weight: 600;
@@ -214,7 +225,7 @@
 }
 
 .sheet-corner {
-  left: 0;
+  inset-inline-start: 0;
   z-index: 7;
   width: 44px;
   min-width: 44px;
@@ -229,25 +240,25 @@
 .sheet-col-resizer {
   position: absolute;
   top: 0;
-  right: 0;
+  inset-inline-end: 0;
   width: 5px;
   height: 100%;
   cursor: col-resize;
 }
 
 .sheet-col-resizer:hover {
-  background: #3b82f6;
+  background: var(--accent);
 }
 
 .sheet-row-hdr {
   position: sticky;
-  left: 0;
+  inset-inline-start: 0;
   z-index: 4;
   width: 44px;
   min-width: 44px;
   height: 26px;
   background: #181c24;
-  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  border-inline-end: 1px solid rgba(255, 255, 255, 0.12);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   color: #94a3b8;
   font-size: 11.5px;
@@ -259,7 +270,7 @@
   position: relative;
   height: 26px;
   padding: 0 7px;
-  border-right: 1px solid rgba(255, 255, 255, 0.07);
+  border-inline-end: 1px solid rgba(255, 255, 255, 0.07);
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -394,3 +405,24 @@
   font-size: 13px;
   line-height: 1.5;
 }
+
+.sheet-shortcut { display: flex; align-items: baseline; gap: 14px; }
+.sheet-shortcut-keys { display: inline-flex; flex-wrap: wrap; gap: 4px; flex: none; min-width: 170px; }
+
+/* Highlight cells (ConditionalDialog.tsx) */
+.cf-dialog { display: flex; flex-direction: column; gap: 14px; }
+.cf-lead { margin: 0; color: var(--text-2); font: var(--t-small); }
+.cf-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; }
+.cf-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; font: var(--t-small); color: var(--text-2); }
+.cf-field .field, .cf-field .select-trigger { width: 100%; }
+.cf-paints { display: flex; align-items: center; gap: 8px; }
+.cf-paint { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18); transition: transform 110ms var(--ease-out); }
+.cf-paint:hover { transform: scale(1.08); }
+.cf-paint.is-on { box-shadow: 0 0 0 2px var(--surface-1, #1b1b1f), 0 0 0 4px var(--accent); }
+.cf-rules { display: flex; flex-direction: column; gap: 4px; border-top: 0.5px solid var(--hairline-strong); padding-top: 12px; }
+.cf-rules-title { font: var(--t-small); font-weight: 600; color: var(--text-2); margin-bottom: 4px; }
+.cf-empty { margin: 0; color: var(--text-3); font: var(--t-small); }
+.cf-rule { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 9px; background: var(--fill-1); font: var(--t-ui); }
+.cf-swatch { width: 12px; height: 12px; border-radius: 4px; flex: none; }
+.cf-range { font: 12px var(--font-mono); color: var(--text-2); }
+.cf-desc { color: var(--text-1); min-width: 0; overflow-wrap: anywhere; }
