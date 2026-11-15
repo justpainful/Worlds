@@ -297,7 +297,7 @@ function ReviewModal({ group, onClose, onUndo }: { group: Group; onClose: () => 
       <div className="review-list">
         {changes.map((c) => (
           <div key={c.id} className={`review-item review-${c.kind}`}>
-            <div className="review-kind">{c.kind === "block_added" ? "Added" : c.kind === "block_removed" ? "Removed" : "Changed"}</div>
+            <div className="review-kind">{c.kind === "block_added" ? "New block" : c.kind === "block_removed" ? "Removed" : "Changed"}</div>
             <div className="review-cols">
               {c.before && (
                 <div className="review-col is-before">

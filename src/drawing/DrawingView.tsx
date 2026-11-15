@@ -137,6 +137,10 @@ const SHAPES: Shape[] = [
   "callout",
   "number",
 ];
+/** English names for shape, effect and blend ids, which are otherwise shown as written in the code. */
+const EN_NAMES: Record<string, string> = { rect: "Rectangle", roundrect: "Rounded rectangle", polyline: "Polyline", "source-over": "Normal" };
+const enName = (id: string) => EN_NAMES[id] ?? id.replace(/-/g, " ").replace(/^./, (c) => c.toUpperCase());
+const AR_BLEND: Record<string, string> = { "source-over": "عادي", multiply: "ضرب", screen: "شاشة", overlay: "تراكب", darken: "تغميق", lighten: "تفتيح" };
 const AR_EFFECTS: Record<string, string> = {
   brightness: "السطوع",
   contrast: "التباين",
@@ -1705,7 +1709,7 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
                         }
                       >
                         {["source-over", "multiply", "screen", "overlay", "darken", "lighten"].map((v) => (
-                          <option key={v}>{v}</option>
+                          <option key={v} value={v}>{arabic ? AR_BLEND[v] : enName(v)}</option>
                         ))}
                       </select>
                     </Field>
@@ -2144,7 +2148,7 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
                       <select value={shape} onChange={(e) => setShape(e.target.value as Shape)}>
                         {SHAPES.map((s) => (
                           <option value={s} key={s}>
-                            {arabic ? AR_SHAPES[s] : s}
+                            {arabic ? AR_SHAPES[s] : enName(s)}
                           </option>
                         ))}
                       </select>
@@ -2301,7 +2305,7 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
                                 "pixelate",
                               ].map((v) => (
                                 <option value={v} key={v}>
-                                  {arabic ? AR_EFFECTS[v] : v}
+                                  {arabic ? AR_EFFECTS[v] : enName(v)}
                                 </option>
                               ))}
                             </select>
@@ -2445,7 +2449,7 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
                               <option value="">{t("Choose adjustment", "اختر تعديلًا")}</option>
                               {["brightness", "contrast", "saturation", "grayscale", "invert", "blur"].map((v) => (
                                 <option value={v} key={v}>
-                                  {arabic ? AR_EFFECTS[v] : v}
+                                  {arabic ? AR_EFFECTS[v] : enName(v)}
                                 </option>
                               ))}
                             </select>
