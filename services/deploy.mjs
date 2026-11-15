@@ -5,11 +5,19 @@
  *
  *   pnpm cloud:deploy
  *   pnpm cloud:deploy --domain enterworlds.space
+ *   pnpm cloud:deploy --domain enterworlds.space --edge-account <account id>
  *
  * With a domain on the same Cloudflare account, the services answer at
  * login.<domain> (accounts) and connect.<domain> (sync), and sign-in codes
  * are sent from no-reply@<domain> through Cloudflare Email Service, with
  * Resend as the fallback when a key is given. The domain is remembered.
+ *
+ * When the domain is on another Cloudflare account than the services (a
+ * custom domain can only point at a Worker on its own account), add
+ * --edge-account with that account's id: the services stay where they are,
+ * and services/edge goes on the domain's account to forward login.<domain>
+ * and connect.<domain> to them and send the codes from the domain. The
+ * Cloudflare user signed in to Wrangler must be a member of both accounts.
  *
  * Safe to run again: it reuses what already exists and keeps the same keys,
  * so nobody is signed out. Everything it creates for you (ids, keys) stays in
@@ -42,10 +50,11 @@ const fail = (s) => {
   process.exit(1);
 };
 
-function run(cmd, args, { cwd = here, input, quiet = false, interactive = false } = {}) {
+function run(cmd, args, { cwd = here, input, quiet = false, interactive = false, env } = {}) {
   const r = spawnSync(cmd, args, {
     cwd,
     input,
+    env: env ? { ...process.env, ...env } : process.env,
     shell: isWin,
     encoding: "utf8",
     stdio: interactive ? "inherit" : ["pipe", "pipe", "pipe"],
@@ -74,11 +83,26 @@ if (domainArg !== undefined) {
   if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(domainArg)) fail(`"${domainArg}" is not a domain name.`);
   state.domain = domainArg;
 }
+const edgeArg = (() => {
+  const i = process.argv.findIndex((a) => a === "--edge-account" || a.startsWith("--edge-account="));
+  if (i < 0) return undefined;
+  return (process.argv[i].includes("=") ? process.argv[i].split("=")[1] : process.argv[i + 1])?.trim().toLowerCase();
+})();
+if (edgeArg !== undefined) {
+  if (!/^[0-9a-f]{32}$/.test(edgeArg)) fail(`"${edgeArg}" is not a Cloudflare account id (32 letters and digits, shown in the dashboard's address).`);
+  state.edgeAccount = edgeArg;
+}
 const HOSTS = state.domain ? { identity: `login.${state.domain}`, sync: `connect.${state.domain}` } : null;
+// The domain on its own account: the services stay on workers.dev behind services/edge.
+const EDGE = HOSTS && state.edgeAccount ? { account: state.edgeAccount, mailUrl: `https://${HOSTS.identity}/_edge/mail` } : null;
+const EDGE_DIR = join(here, "edge");
+const onEdgeAccount = EDGE ? { CLOUDFLARE_ACCOUNT_ID: EDGE.account } : undefined;
+const publicIdentity = () => (HOSTS ? `https://${HOSTS.identity}` : state.identityUrl);
+const publicSync = () => (HOSTS ? `https://${HOSTS.sync}` : state.syncUrl);
 
-/** A custom domain for the Worker, plus the Email Service binding for the account service. */
+/** A custom domain for the Worker, plus the Email Service binding for the account service (same account only). */
 const extras = (host, withEmail) =>
-  [
+  EDGE ? "" : [
     host ? `\n[[routes]]\npattern = ${JSON.stringify(host)}\ncustom_domain = true\n` : "",
     withEmail && state.domain
       ? `\n[[send_email]]\nname = "EMAIL"\nallowed_sender_addresses = [${JSON.stringify(`no-reply@${state.domain}`)}]\n`
@@ -98,15 +122,15 @@ function writeConfig(dir, edits, extra = "") {
   return path;
 }
 
-function deploy(dir, label, host) {
-  let r = wrangler(dir, ["deploy", "-c", "wrangler.deploy.toml"], { quiet: true });
+function deploy(dir, label, host, config = "wrangler.deploy.toml", env) {
+  let r = wrangler(dir, ["deploy", "-c", config], { quiet: true, env });
   if (!r.ok && /workers\.dev subdomain/i.test(r.out)) {
     // A new Cloudflare account has no workers.dev name yet: let Wrangler ask for one.
     say("   Your Cloudflare account needs a workers.dev name (one time).");
     say("   Answer Y, then type any short name, for example worlds-yourname.");
-    if (!wrangler(dir, ["deploy", "-c", "wrangler.deploy.toml"], { interactive: true }).ok)
+    if (!wrangler(dir, ["deploy", "-c", config], { interactive: true, env }).ok)
       fail("No workers.dev name was set. Run this again, or pick one in dash.cloudflare.com under Workers & Pages.");
-    r = wrangler(dir, ["deploy", "-c", "wrangler.deploy.toml"], { quiet: true });
+    r = wrangler(dir, ["deploy", "-c", config], { quiet: true, env });
   }
   if (!r.ok) {
     say(r.out);
@@ -135,16 +159,31 @@ for (const dir of [ID_DIR, SYNC_DIR]) {
 ok("ready");
 
 step(2, "Cloudflare sign-in");
-if (!wrangler(ID_DIR, ["whoami"], { quiet: true }).out.match(/associated with the email|You are logged in/i)) {
+let who = wrangler(ID_DIR, ["whoami"], { quiet: true });
+if (!who.out.match(/associated with the email|You are logged in/i)) {
   say("   Your browser will open. Sign in to Cloudflare and press Allow.");
   if (!wrangler(ID_DIR, ["login"], { interactive: true }).ok) fail("Cloudflare sign-in did not finish.");
+  who = wrangler(ID_DIR, ["whoami"], { quiet: true });
 }
+// The services' account is remembered, so a sign-in that sees more than one
+// account (the domain's too) still deploys them where they already are.
+const accounts = [...who.out.matchAll(/│\s*([^│\n]+?)\s*│\s*([0-9a-f]{32})\s*│/g)].map((m) => ({ name: m[1], id: m[2] }));
+if (!state.servicesAccount) {
+  const candidates = accounts.filter((a) => a.id !== state.edgeAccount);
+  if (candidates.length === 1) state.servicesAccount = candidates[0].id;
+  else if (candidates.length > 1)
+    fail(`This sign-in sees several Cloudflare accounts. Set servicesAccount in services/.deploy/state.json to one of: ${candidates.map((a) => `${a.name} (${a.id})`).join(", ")}.`);
+  save();
+}
+if (state.servicesAccount) process.env.CLOUDFLARE_ACCOUNT_ID = state.servicesAccount;
+if (EDGE && accounts.length && !accounts.some((a) => a.id === EDGE.account))
+  fail(`This Cloudflare sign-in cannot reach the domain's account ${EDGE.account}. Add this user to that account (Manage Account, Members) and run this again.`);
 ok("signed in");
 
 step(3, "Email for sign-in codes");
 if (state.domain) {
   // Cloudflare Email Service sends from the domain itself; this adds its SPF and DKIM records.
-  const en = wrangler(ID_DIR, ["email", "sending", "enable", state.domain], { quiet: true });
+  const en = wrangler(ID_DIR, ["email", "sending", "enable", state.domain], { quiet: true, env: onEdgeAccount });
   if (!en.ok && !/already/i.test(en.out)) {
     say(en.out);
     say(`   Could not turn on Email Sending for ${state.domain}. In dash.cloudflare.com: Email, Email Sending, Onboard domain.`);
@@ -193,6 +232,10 @@ if (!state.jwk) state.jwk = JSON.stringify(generateKeyPairSync("ed25519").privat
 state.webhookSecret ??= secret();
 state.internalSecret ??= secret();
 state.signingSecret ??= secret();
+if (EDGE) {
+  state.edgeSecret ??= secret();
+  state.mailSecret ??= secret();
+}
 save();
 ok("kept in services/.deploy (never uploaded to GitHub)");
 
@@ -223,7 +266,8 @@ const idVars = (base, syncUrl) => ({
 const writeIdentity = () => {
   const path = writeConfig(ID_DIR, idVars(HOSTS ? `https://${HOSTS.identity}` : state.identityUrl, state.syncUrl), extras(HOSTS?.identity, true));
   // EMAIL_FROM is not secret; it goes in [vars].
-  const toml = readFileSync(path, "utf8").replace(/^\[vars\]$/m, `[vars]\nEMAIL_FROM = ${JSON.stringify(state.emailFrom)}`);
+  const extraVars = [`EMAIL_FROM = ${JSON.stringify(state.emailFrom)}`, ...(EDGE ? [`EMAIL_WEBHOOK_URL = ${JSON.stringify(EDGE.mailUrl)}`] : [])];
+  const toml = readFileSync(path, "utf8").replace(/^\[vars\]$/m, `[vars]\n${extraVars.join("\n")}`);
   writeFileSync(path, toml);
 };
 writeIdentity();
@@ -232,12 +276,17 @@ if (!wrangler(ID_DIR, ["d1", "migrations", "apply", "worlds-identity", "--remote
 ok("worlds-identity is ready");
 
 step(6, "Account service");
-state.identityUrl = deploy(ID_DIR, "The account service", HOSTS?.identity);
+state.identityUrl = deploy(ID_DIR, "The account service", EDGE ? undefined : HOSTS?.identity);
 save();
 const idSecrets = join(STATE_DIR, "identity.secrets.json");
 writeFileSync(
   idSecrets,
-  JSON.stringify({ JWT_PRIVATE_JWK: state.jwk, SYNC_WEBHOOK_SECRET: state.webhookSecret, ...(state.resendKey ? { RESEND_API_KEY: state.resendKey } : {}) }),
+  JSON.stringify({
+    JWT_PRIVATE_JWK: state.jwk,
+    SYNC_WEBHOOK_SECRET: state.webhookSecret,
+    ...(state.resendKey ? { RESEND_API_KEY: state.resendKey } : {}),
+    ...(EDGE ? { EDGE_SECRET: state.edgeSecret, EMAIL_WEBHOOK_SECRET: state.mailSecret } : {}),
+  }),
 );
 if (!wrangler(ID_DIR, ["secret", "bulk", "../.deploy/identity.secrets.json", "-c", "wrangler.deploy.toml"], { quiet: true }).ok) fail("Could not store the account service keys.");
 ok(state.identityUrl);
@@ -253,8 +302,8 @@ if (!r2.ok && !/already exists|already own/i.test(r2.out)) {
 ok("worlds-attachments");
 
 step(8, "Sync service");
-writeConfig(SYNC_DIR, { JWKS_URL: `${state.identityUrl}/.well-known/jwks.json` }, extras(HOSTS?.sync, false));
-state.syncUrl = deploy(SYNC_DIR, "The sync service", HOSTS?.sync);
+writeConfig(SYNC_DIR, { JWKS_URL: `${state.identityUrl}/.well-known/jwks.json`, PUBLIC_URL: HOSTS ? `https://${HOSTS.sync}` : "" }, extras(HOSTS?.sync, false));
+state.syncUrl = deploy(SYNC_DIR, "The sync service", EDGE ? undefined : HOSTS?.sync);
 save();
 const syncSecrets = join(STATE_DIR, "sync.secrets.json");
 writeFileSync(syncSecrets, JSON.stringify({ INTERNAL_SECRET: state.internalSecret, SIGNING_SECRET: state.signingSecret, SYNC_WEBHOOK_SECRET: state.webhookSecret }));
@@ -263,8 +312,32 @@ ok(state.syncUrl);
 
 step(9, "Connect the two services");
 writeIdentity();
-deploy(ID_DIR, "The account service", HOSTS?.identity);
+deploy(ID_DIR, "The account service", EDGE ? undefined : HOSTS?.identity);
 ok("removing someone from a workspace now closes their live session at once");
+
+if (EDGE) {
+  step("9b", `The ${state.domain} edge`);
+  let toml = readFileSync(join(EDGE_DIR, "wrangler.toml"), "utf8");
+  const vars = {
+    IDENTITY_ORIGIN: state.identityUrl,
+    SYNC_ORIGIN: state.syncUrl,
+    LOGIN_HOST: HOSTS.identity,
+    CONNECT_HOST: HOSTS.sync,
+    MAIL_FROM: state.emailFrom,
+  };
+  for (const [key, value] of Object.entries(vars)) toml = toml.replace(new RegExp(`^${key} = ".*"$`, "m"), `${key} = ${JSON.stringify(value)}`);
+  toml = toml.replace(/^name = .*$/m, (line) => `${line}\naccount_id = ${JSON.stringify(EDGE.account)}`);
+  toml +=
+    `\n[[routes]]\npattern = ${JSON.stringify(HOSTS.identity)}\ncustom_domain = true\n` +
+    `\n[[routes]]\npattern = ${JSON.stringify(HOSTS.sync)}\ncustom_domain = true\n` +
+    `\n[[send_email]]\nname = "EMAIL"\nallowed_sender_addresses = [${JSON.stringify(`no-reply@${state.domain}`)}]\n`;
+  writeFileSync(join(EDGE_DIR, "wrangler.deploy.toml"), toml);
+  deploy(ID_DIR, "The edge", HOSTS.identity, "../edge/wrangler.deploy.toml", onEdgeAccount);
+  writeFileSync(join(STATE_DIR, "edge.secrets.json"), JSON.stringify({ EDGE_SECRET: state.edgeSecret, MAIL_SECRET: state.mailSecret }));
+  if (!wrangler(ID_DIR, ["secret", "bulk", "../.deploy/edge.secrets.json", "-c", "../edge/wrangler.deploy.toml"], { quiet: true, env: onEdgeAccount }).ok)
+    fail("Could not store the edge keys.");
+  ok(`${HOSTS.identity} and ${HOSTS.sync} forward to the services; codes are sent from no-reply@${state.domain}`);
+}
 
 step(10, "Point Worlds on this PC at them");
 const dbPath = join(process.env.APPDATA ?? "", "Worlds", "worlds.db");
@@ -273,21 +346,21 @@ if (isWin && existsSync(dbPath)) {
     const { DatabaseSync } = await import("node:sqlite");
     const conn = new DatabaseSync(dbPath);
     const put = conn.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value");
-    put.run("account.serverUrl", JSON.stringify(state.identityUrl));
-    put.run("sync.serverUrl", JSON.stringify(state.syncUrl));
+    put.run("account.serverUrl", JSON.stringify(publicIdentity()));
+    put.run("sync.serverUrl", JSON.stringify(publicSync()));
     conn.close();
     ok("saved. Close Worlds and open it again.");
   } catch (e) {
     say(`   Could not write the settings (${e.message}).`);
-    say(`   In Worlds: Settings, Account, Server: ${state.identityUrl}`);
+    say(`   In Worlds: Settings, Account, Server: ${publicIdentity()}`);
   }
 } else {
-  say(`   In Worlds: Settings, Account, Server: ${state.identityUrl}`);
+  say(`   In Worlds: Settings, Account, Server: ${publicIdentity()}`);
 }
 
 say("\n\x1b[1mAll set.\x1b[0m");
-say(`   Accounts: ${state.identityUrl}`);
-say(`   Sync:     ${state.syncUrl}`);
+say(`   Accounts: ${publicIdentity()}`);
+say(`   Sync:     ${publicSync()}`);
 say("   In Worlds, open the workspace menu at the top of the sidebar and choose Sign In.");
 if (state.domain)
   say("   Passkeys made on the old workers.dev address do not work on the new one. People sign in with the email code once and add a passkey again.");

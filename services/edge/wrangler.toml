@@ -1,0 +1,18 @@
+# The enterworlds.space edge (src/index.ts). It runs on the Cloudflare account
+# that holds the domain and forwards to the services on their own account.
+# services/deploy.mjs --domain <domain> --edge-account <id> writes a filled
+# copy (wrangler.deploy.toml, git-ignored) and deploys it.
+name = "worlds-edge"
+main = "src/index.ts"
+compatibility_date = "2026-08-01"
+
+[vars]
+IDENTITY_ORIGIN = "https://worlds-identity.example.workers.dev"
+SYNC_ORIGIN = "https://worlds-sync.example.workers.dev"
+LOGIN_HOST = "login.example.com"
+CONNECT_HOST = "connect.example.com"
+MAIL_FROM = "Worlds <no-reply@example.com>"
+
+# Secrets (wrangler secret put NAME):
+#   EDGE_SECRET  shared with both services: marks a request forwarded by this edge
+#   MAIL_SECRET  shared with the identity service (its EMAIL_WEBHOOK_SECRET)

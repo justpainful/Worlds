@@ -24,6 +24,8 @@ export interface Env {
   EMAIL_FROM?: string;
   /** Cloudflare Email Service binding (`send_email` in wrangler.toml); tried before Resend. */
   EMAIL?: SendEmailBinding;
+  /** Shared with services/edge: a request carrying it came through the edge, so its x-worlds-client-ip is the visitor's. */
+  EDGE_SECRET?: string;
 }
 
 /** The part of Cloudflare's `send_email` binding this service uses. */

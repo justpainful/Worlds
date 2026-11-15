@@ -32,6 +32,8 @@ entrypoint = "IdentityRPC"
 [vars]
 JWKS_URL = "https://identity.example.invalid/.well-known/jwks.json"
 ALLOWED_ORIGINS = "*"
+# Public address for signed attachment links (behind services/edge); empty uses the request's own.
+PUBLIC_URL = ""
 COMPACT_EVERY = "500"
 VERSION_INTERVAL_MS = "600000"
 ACCESS_TTL_MS = "30000"

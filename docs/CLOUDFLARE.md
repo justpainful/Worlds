@@ -21,6 +21,16 @@ pnpm cloud:deploy --domain enterworlds.space
 
 The domain is remembered in `services/.deploy/state.json`, so later runs need no flag.
 
+### Domain on another Cloudflare account
+
+A custom domain can only point at a Worker on its own account. When the domain sits on a different account than the services (as enterworlds.space does), keep them apart:
+
+```
+pnpm cloud:deploy --domain enterworlds.space --edge-account <the domain account's id>
+```
+
+The services stay on their account and their `workers.dev` addresses. `services/edge` goes on the domain's account: it forwards `login.<domain>` and `connect.<domain>` to them unchanged (WebSockets included), and sends the sign-in codes from `no-reply@<domain>` through Cloudflare Email Service, which the account service reaches as its `EMAIL_WEBHOOK_URL`. The edge passes the visitor's IP with a shared secret (`EDGE_SECRET`), so sign-in rate limits still count per person. The Cloudflare user signed in to Wrangler must be a member of both accounts (Manage Account, Members); the services' account is remembered as `servicesAccount`.
+
 The script:
 
 1. installs the service tools if needed

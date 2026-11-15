@@ -482,7 +482,7 @@ const INVITE_MESSAGES: Record<string, string> = {
 
 /** Preview an invite (no account needed). */
 invites.get("/:token", async (c) => {
-  await rateLimit(c.env.DB, `invite-view:ip:${clientIp(c.req.raw)}`, 60, 10 * 60 * 1000);
+  await rateLimit(c.env.DB, `invite-view:ip:${clientIp(c.req.raw, c.env.EDGE_SECRET)}`, 60, 10 * 60 * 1000);
   const i = await inviteByToken(c.env.DB, c.req.param("token"));
   const problem = inviteProblem(i);
   if (!i || problem) return c.json({ valid: false, reason: problem, message: INVITE_MESSAGES[problem!] });

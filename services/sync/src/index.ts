@@ -252,7 +252,8 @@ async function route(request: Request, env: Env): Promise<Response> {
   }
 
   if (rest[0] === "attachments") {
-    const c = { env, origin: url.origin, workspaceId, userId };
+    // Behind the edge the request arrives on workers.dev; signed links use the public address.
+    const c = { env, origin: env.PUBLIC_URL ? env.PUBLIC_URL.replace(/\/+$/, "") : url.origin, workspaceId, userId };
     if (rest[1] === "uploads") {
       if (!atLeast(level, "edit")) return problem(403, "edit access required");
       if (rest.length === 2 && method === "POST") return planUpload(c, await readJson(request));

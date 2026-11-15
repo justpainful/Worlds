@@ -83,6 +83,29 @@ describe("sending with a fallback", () => {
     expect(posted[0].body).toMatchObject({ from: "Worlds <no-reply@enterworlds.space>", to: [msg.to], html: "<p>h</p>" });
   });
 
+  it("tries the edge webhook before Resend", async () => {
+    const realFetch = globalThis.fetch;
+    const urls: string[] = [];
+    globalThis.fetch = (async (url: string) => {
+      urls.push(url);
+      return new Response("{}", { status: url.includes("/_edge/mail") ? 502 : 200 });
+    }) as typeof fetch;
+    setEmailSender(null);
+    try {
+      const env = {
+        EMAIL_WEBHOOK_URL: "https://login.enterworlds.space/_edge/mail",
+        EMAIL_WEBHOOK_SECRET: "s",
+        RESEND_API_KEY: "re_test",
+        ENVIRONMENT: "production",
+      } as unknown as Env;
+      await emailSender(env).send(msg);
+    } finally {
+      globalThis.fetch = realFetch;
+      setEmailSender({ send: async (m) => void mailbox.push(m) });
+    }
+    expect(urls).toEqual(["https://login.enterworlds.space/_edge/mail", "https://api.resend.com/emails"]);
+  });
+
   it("refuses to run in production with no provider", () => {
     setEmailSender(null);
     try {

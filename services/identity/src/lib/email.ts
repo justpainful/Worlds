@@ -104,14 +104,18 @@ export function setEmailSender(s: EmailSender | null): void {
   override = s;
 }
 
-/** Every configured sender, best first: Cloudflare, then Resend, then a webhook. */
+/**
+ * Every configured sender, best first: Cloudflare's binding, then the webhook
+ * (which, on enterworlds.space, is Cloudflare Email Service through
+ * services/edge on the domain's account), then Resend as the fallback.
+ */
 export function emailSender(env: Env): EmailSender {
   if (override) return override;
   const from = env.EMAIL_FROM || "Worlds <onboarding@resend.dev>";
   const chain: EmailSender[] = [];
   if (env.EMAIL && env.EMAIL_FROM) chain.push(new CloudflareEmailSender(env.EMAIL, env.EMAIL_FROM));
-  if (env.RESEND_API_KEY) chain.push(new ResendEmailSender(env.RESEND_API_KEY, from));
   if (env.EMAIL_WEBHOOK_URL) chain.push(new WebhookEmailSender(env.EMAIL_WEBHOOK_URL, env.EMAIL_WEBHOOK_SECRET));
+  if (env.RESEND_API_KEY) chain.push(new ResendEmailSender(env.RESEND_API_KEY, from));
   if (chain.length === 1) return chain[0];
   if (chain.length > 1) return new FallbackEmailSender(chain);
   if (env.ENVIRONMENT === "development" || env.ENVIRONMENT === "test") return new DevEmailSender();
