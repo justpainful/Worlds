@@ -18,6 +18,12 @@ public struct PackItemRecord: Sendable {
     public let revision: Int64
     public let metadata: JSONValue
 }
+/// An HTML page (docs/HTML_PAGES.md): its complete metadata, with the page at `html.source` and its saved state at `html.state`.
+public struct HTMLPageRecord: Sendable {
+    public let id: String
+    public let revision: Int64
+    public let metadata: JSONValue
+}
 public struct StreamRecord: Sendable {
     public let id: String
     public let revision: Int64
@@ -40,6 +46,22 @@ public actor NativeResourceRepository: ProjectRepository, GalleryRepository {
         let record = try parse(await store.saveStream(id: id, base: baseline.revision, expectedMetadata: baseline.metadata, url: url))
         guard record.kind == "stream", record.id == id else { throw NativeResourceRepositoryError.malformedResponse }
         return StreamRecord(id: record.id, revision: record.revision, metadata: record.metadata)
+    }
+    public func readHTMLPage(id: String) async throws -> HTMLPageRecord {
+        let record = try parse(await store.readResource(id: id))
+        guard record.kind == "html", record.id == id else { throw NativeResourceRepositoryError.malformedResponse }
+        return HTMLPageRecord(id: record.id, revision: record.revision, metadata: record.metadata)
+    }
+    /// Keeps `state` (JSON) as the page's saved state, leaving its source and other metadata as in `baseline`.
+    public func saveHTMLState(id: String, baseline: HTMLPageRecord, state: JSONValue) async throws -> HTMLPageRecord {
+        guard baseline.id == id, case .object(var metadata) = baseline.metadata else { throw NativeResourceRepositoryError.malformedResponse }
+        var html: [String: JSONValue] = [:]
+        if case .object(let current)? = metadata["html"] { html = current }
+        html["state"] = state
+        metadata["html"] = .object(html)
+        let record = try parse(await store.saveHTMLState(id: id, base: baseline.revision, expectedMetadata: baseline.metadata, metadata: .object(metadata)))
+        guard record.kind == "html", record.id == id else { throw NativeResourceRepositoryError.malformedResponse }
+        return HTMLPageRecord(id: record.id, revision: record.revision, metadata: record.metadata)
     }
     public func readSpreadsheet(id: String) async throws -> SpreadsheetRecord {
         let record = try parse(await store.readResource(id: id))

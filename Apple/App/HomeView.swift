@@ -369,6 +369,7 @@ struct HomeView: View {
         case "file": return "cube.transparent.fill"
         case "stream": return "play.rectangle.fill"
         case "spreadsheet": return "tablecells.fill"
+        case "html": return "chevron.left.forwardslash.chevron.right"
         default: return "doc.text"
         }
     }
@@ -382,6 +383,7 @@ struct HomeView: View {
         case "document": return .indigo
         case "spreadsheet": return .green
         case "file": return .cyan
+        case "html": return .mint
         default: return .blue
         }
     }
@@ -394,6 +396,7 @@ struct HomeView: View {
         case "file": return "3D / CAD File"
         case "project": return "Project Space"
         case "document": return "Document"
+        case "html": return String(localized: "HTML page")
         default: return "Page"
         }
     }

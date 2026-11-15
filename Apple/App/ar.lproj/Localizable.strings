@@ -787,3 +787,8 @@
 "The server refused a change made on this device." = "رفض الخادم تعديلًا أُجري على هذا الجهاز.";
 "Remove the saved copy" = "إزالة النسخة المحفوظة";
 "Your change is saved on this device and is sent when the page is connected." = "تعديلك محفوظ على هذا الجهاز ويُرسَل عندما تتصل الصفحة.";
+"HTML page" = "صفحة HTML";
+"This HTML page is empty" = "صفحة HTML هذه فارغة";
+"Write it in Worlds on the desktop, or ask Claude to build it." = "اكتبها من Worlds على الحاسوب، أو اطلب من Claude أن يبنيها.";
+"Runs here without the internet. Edit its source in Worlds on the desktop." = "تعمل هنا بلا إنترنت. عدّل مصدرها من Worlds على الحاسوب.";
+"Read only. Runs here without the internet; its own changes are not kept on this device." = "للقراءة فقط. تعمل هنا بلا إنترنت، ولا تُحفظ تغييراتها على هذا الجهاز.";

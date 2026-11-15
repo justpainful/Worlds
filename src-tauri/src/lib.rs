@@ -14,6 +14,7 @@ pub mod drawing_package;
 pub mod drawing_references;
 pub mod drawing_sync;
 pub mod html_page;
+pub mod html_text;
 pub mod jobs;
 pub mod mcp;
 pub mod preview;

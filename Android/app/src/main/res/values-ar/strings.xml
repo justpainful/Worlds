@@ -725,6 +725,10 @@
     <string name="kind_gallery">معرض</string>
     <string name="kind_file">ملف</string>
     <string name="kind_stream">بث</string>
+    <string name="kind_html">صفحة HTML</string>
+    <string name="html_page_source_on_desktop">تعمل هنا بلا إنترنت. عدّل مصدرها من Worlds على الحاسوب.</string>
+    <string name="html_page_empty">صفحة HTML هذه فارغة. اكتبها من Worlds على الحاسوب، أو اطلب من Claude أن يبنيها.</string>
+    <string name="html_page_trash_confirm">نقل صفحة HTML هذه إلى المهملات؟</string>
     <string name="new_spreadsheet">جدول جديد</string>
     <string name="spaces_empty_title">لا توجد مساحات بعد</string>
     <string name="spaces_empty_body">المشاريع والمعارض تجمع الأعمال المرتبطة في مكان واحد.</string>

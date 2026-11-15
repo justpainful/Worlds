@@ -475,6 +475,25 @@ class ContentStore(context: Context, name: String = "worlds-content.db") :
         bump(id, revision); record(id, "details_changed", JSONObject()); requireResource(id)
     }
 
+    /**
+     * Keeps what an HTML page saved with `worlds.save()` (docs/HTML_PAGES.md) in
+     * `metadata.html.state`, beside its unchanged source. The page's own state
+     * follows the last save, so no revision is compared; templates keep none.
+     */
+    fun saveHtmlState(id: String, stateJson: String): Resource = writableDatabase.transaction {
+        require(stateJson.toByteArray(Charsets.UTF_8).size <= 256 * 1024) { "State exceeds size limit" }
+        val tokens = org.json.JSONTokener(stateJson)
+        val state = tokens.nextValue()
+        require(tokens.nextClean() == 0.toChar()) { "Invalid state" }
+        val page = requireResource(id)
+        require(page.kind == "html" && page.deletedAt == null && !insideTemplateTree(id))
+        val metadata = JSONObject(page.metadata)
+        val html = metadata.optJSONObject("html") ?: JSONObject().put("source", "")
+        metadata.put("html", html.put("state", state))
+        update("resources", ContentValues().apply { put("metadata", metadata.toString()) }, "id=?", arrayOf(id))
+        bump(id, page.revision); requireResource(id)
+    }
+
     /** Create a child only if its visible parent has not changed since the dialog opened. */
     fun createSubpage(parentId: String, expectedRevision: Long, title: String): Resource = writableDatabase.transaction {
         val parent = requireResource(parentId)
@@ -1213,7 +1232,7 @@ class ContentStore(context: Context, name: String = "worlds-content.db") :
         /** A pack kind is "pack.kind" (teacher.class), the shape the desktop accepts for every pack (docs/PACKS.md). */
         fun isPackKind(kind: String): Boolean = kind.length <= 64 && PACK_KIND.matches(kind)
         private val PACK_KIND = Regex("^[a-z][a-z0-9]*[.][a-z][a-z0-9]*$")
-        private val KINDS = setOf("page", "document", "presentation", "project", "gallery", "file", "stream", "drawing", "template", "spreadsheet", "task", "event", "inbox", "goal", "subject", "lesson", "assignment", "exam", "requirement")
+        private val KINDS = setOf("page", "document", "presentation", "project", "gallery", "file", "stream", "drawing", "template", "spreadsheet", "html", "task", "event", "inbox", "goal", "subject", "lesson", "assignment", "exam", "requirement")
 
         /** Arabic letters folded for search: alef forms, taa marbuta, alef maqsura; diacritics and tatweel dropped. */
         private val ARABIC_FOLDS: List<Pair<String, String>> =

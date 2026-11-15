@@ -72,6 +72,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.withLock
 import worlds.content.ContentStore
 import worlds.content.ContentVersion
 import worlds.content.ContentEvent
@@ -233,6 +234,22 @@ class HomeModel(application: Application, internal val databaseName: String) : A
         }
     }
     internal fun updateStream(stream: Resource, url: String, done: (Boolean) -> Unit) = projectAction(stream, done) { store.updateStream(stream.id, stream.revision, url) }
+    private val htmlStateSaves = kotlinx.coroutines.sync.Mutex()
+    /** An HTML page's `worlds.save()`; saves run in order, and the open page takes the new revision without reloading. */
+    internal fun saveHtmlState(id: String, state: String) {
+        viewModelScope.launch {
+            val saved = htmlStateSaves.withLock { runCatching { withContext(Dispatchers.IO) { store.saveHtmlState(id, state) } }.getOrNull() } ?: return@launch
+            mutable.update { current -> val selected = current.selected
+                if (selected?.resource?.id == id && selected.resource.revision < saved.revision) current.copy(selected = selected.copy(resource = saved)) else current }
+        }
+    }
+    /** `worlds://page/ID` from an HTML page opens that page when it exists and is not in Trash. */
+    internal fun openLinkedPage(id: String) {
+        viewModelScope.launch {
+            val exists = runCatching { withContext(Dispatchers.IO) { store.load(id)?.resource?.let { it.deletedAt == null } == true } }.getOrDefault(false)
+            if (exists) open(id)
+        }
+    }
     internal fun beginFileImport(parent: Resource? = null): Boolean {
         val state = mutable.value
         if (state.busy || (parent != null && (state.selected?.resource?.id != parent.id || parent.kind != "project" || parent.deletedAt != null))) return false
@@ -1290,6 +1307,8 @@ class HomeModel(application: Application, internal val databaseName: String) : A
                     onRename = { renameTitle = state.selected!!.resource.title; showRename = true }, onTrash = model::trash, modifier = detailModifier)
                 else if (state.selected!!.resource.kind == "file" && state.selected!!.resource.deletedAt == null) FileScreen(state.selected!!.resource, model.databaseName, state.busy, state.fileStatus,
                     onBack = model::back, onExport = ::exportFile, onRename = { renameTitle = state.selected!!.resource.title; showRename = true }, onTrash = model::trash, modifier = detailModifier)
+                else if (state.selected!!.resource.kind == HtmlPageDocument.KIND && state.selected!!.resource.deletedAt == null) HtmlPageScreen(state.selected!!.resource, state.busy, model::back, model::saveHtmlState, model::openLinkedPage,
+                    onRename = { renameTitle = state.selected!!.resource.title; showRename = true }, onTrash = model::trash, modifier = detailModifier)
                 else if (state.selected!!.resource.kind == "stream" && state.selected!!.resource.deletedAt == null) StreamScreen(state.selected!!.resource, state.busy, model::back, model::updateStream,
                     onRename = { renameTitle = state.selected!!.resource.title; showRename = true }, onTrash = model::trash, modifier = detailModifier)
                 else PageDetail(state.selected!!, state.children, model::back, state.busy, state.actionError, canMovePage = !state.selectedTemplateTree, databaseName = model.databaseName, imageStatus = state.imageStatus,

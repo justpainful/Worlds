@@ -32,7 +32,28 @@ android {
     }
 }
 
+/**
+ * HTML pages (docs/HTML_PAGES.md) use the desktop's base styles, runtime and
+ * fonts unchanged: they are copied from src/htmlpage and src-tauri at build time.
+ */
+abstract class HtmlPageAssets : DefaultTask() {
+    @get:InputFiles @get:PathSensitive(PathSensitivity.NAME_ONLY) abstract val sources: ConfigurableFileCollection
+    @get:OutputDirectory abstract val outputDir: DirectoryProperty
+    @TaskAction fun copy() {
+        val target = outputDir.get().asFile.resolve("htmlpage")
+        target.deleteRecursively(); target.mkdirs()
+        sources.files.forEach { it.copyTo(target.resolve(it.name), overwrite = true) }
+    }
+}
+val htmlPageAssets = tasks.register<HtmlPageAssets>("htmlPageAssets") {
+    val repo = rootProject.layout.projectDirectory.dir("..")
+    sources.from(repo.file("src/htmlpage/base.css"), repo.file("src/htmlpage/runtime.js"),
+        repo.dir("src-tauri/assets/htmlpage-fonts").asFileTree.matching { include("*.woff2") })
+    outputDir.set(layout.buildDirectory.dir("generated/htmlpage-assets"))
+}
+
 androidComponents {
+    onVariants { variant -> variant.sources.assets?.addGeneratedSourceDirectory(htmlPageAssets, HtmlPageAssets::outputDir) }
     beforeVariants { variantBuilder ->
         try {
             variantBuilder::class.java.getMethod("setEnableUnitTest", Boolean::class.javaPrimitiveType).invoke(variantBuilder, true)
