@@ -22,6 +22,25 @@ android {
             isUniversalApk = false
         }
     }
+    // Release builds are signed with the Worlds release key when CI provides it
+    // (GitHub secrets, see docs/android-native/RELEASE_SIGNING.md). One fixed key is
+    // what lets a new version install over the last one. Without it they stay unsigned.
+    val releaseKey = System.getenv("WORLDS_RELEASE_KEYSTORE")?.takeIf { file(it).isFile }
+    signingConfigs {
+        if (releaseKey != null) {
+            create("release") {
+                storeFile = file(releaseKey)
+                storePassword = System.getenv("WORLDS_RELEASE_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("WORLDS_RELEASE_KEY_ALIAS")
+                keyPassword = System.getenv("WORLDS_RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+    buildTypes {
+        getByName("release") {
+            if (releaseKey != null) signingConfig = signingConfigs.getByName("release")
+        }
+    }
     buildFeatures { compose = true }
     testOptions {
         unitTests.isIncludeAndroidResources = true

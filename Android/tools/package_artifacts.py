@@ -8,13 +8,18 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ABIS = {"arm64-v8a", "armeabi-v7a", "x86", "x86_64"}
+RELEASE = ROOT / "app/build/outputs/apk/release"
+# Gradle names a release APK app-release.apk when it signed it (the Worlds release key
+# was provided, see docs/android-native/RELEASE_SIGNING.md) and app-release-unsigned.apk otherwise.
+SIGNED = (RELEASE / "app-release.apk").is_file() or any(RELEASE.glob("app-*-release.apk"))
+TAG = "" if SIGNED else "-Unsigned"
 FILES = {
     "Worlds-Android-Universal-Debug.apk": ROOT / "app/build/outputs/apk/debug/app-debug.apk",
-    "Worlds-Android-Universal-Unsigned.apk": ROOT / "app/build/outputs/apk/release/app-release-unsigned.apk",
-    "Worlds-Android-Release-Unsigned.aab": ROOT / "app/build/outputs/bundle/release/app-release.aab",
+    f"Worlds-Android-Universal{TAG}.apk": RELEASE / f"app-release{TAG.lower()}.apk",
+    f"Worlds-Android-Release{TAG}.aab": ROOT / "app/build/outputs/bundle/release/app-release.aab",
 }
 SPLITS = {
-    f"Worlds-Android-{abi}-Unsigned.apk": ROOT / f"app/build/outputs/apk/release/app-{abi}-release-unsigned.apk"
+    f"Worlds-Android-{abi}{TAG}.apk": RELEASE / f"app-{abi}-release{TAG.lower()}.apk"
     for abi in sorted(ABIS)
 }
 
@@ -49,11 +54,13 @@ def main():
     for name, source in packages.items():
         if not source.is_file():
             raise FileNotFoundError(source)
-        split_abi = next((abi for abi in ABIS if name == f"Worlds-Android-{abi}-Unsigned.apk"), None)
+        split_abi = next((abi for abi in ABIS if name == f"Worlds-Android-{abi}{TAG}.apk"), None)
         expected_abis = {split_abi} if split_abi else ABIS
         signatures = inspect_archive(source, name.endswith(".aab"), expected_abis)
         if "Unsigned" in name and signatures:
             raise ValueError(f"{source}: unexpected JAR signature")
+        if SIGNED and name.endswith(".aab") and not signatures:
+            raise ValueError(f"{source}: the app bundle is not signed")
         if name.endswith(".apk"):
             result = subprocess.run([args.apksigner, "verify", "--verbose", str(source)],
                                     capture_output=True, text=True)
@@ -62,6 +69,8 @@ def main():
                 raise ValueError(f"Debug APK signature verification failed: {output}")
             if "Unsigned" in name and (result.returncode == 0 or "DOES NOT VERIFY" not in output):
                 raise ValueError(f"Release APK is signed or could not be verified: {output}")
+            if "Debug" not in name and "Unsigned" not in name and result.returncode != 0:
+                raise ValueError(f"Release APK signature verification failed: {output}")
         destination = args.output / name
         if source.resolve() != destination.resolve():
             shutil.copyfile(source, destination)
