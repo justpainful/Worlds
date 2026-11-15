@@ -268,6 +268,7 @@ export function codeEmail(code: string, lang: EmailLanguage = "en"): { subject: 
         ${note("padlock", t.ignore, serif, "soft", C.cocoaSoft)}
       </td></tr>
       <tr><td align="center" class="soft" style="padding-top:28px;color:${C.cocoaSoft};font:400 ${size - 3}px/${lh} ${sans};">${escape(t.footer)} · <a href="${SITE}" class="link" style="color:${C.cocoa};text-decoration:underline;">enterworlds.space</a></td></tr>
+      <tr><td align="center" style="padding-top:22px;"><img src="${ART}/imbue.png" width="96" alt="imbue" style="display:block;width:96px;height:auto;border:0;"></td></tr>
     </table>
   </td></tr>
 </table>
