@@ -186,10 +186,14 @@ if (state.domain) {
   const en = wrangler(ID_DIR, ["email", "sending", "enable", state.domain], { quiet: true, env: onEdgeAccount });
   if (!en.ok && !/already/i.test(en.out)) {
     say(en.out);
-    say(`   Could not turn on Email Sending for ${state.domain}. In dash.cloudflare.com: Email, Email Sending, Onboard domain.`);
+    say(`   Could not turn on Email Sending for ${state.domain}. It needs the Workers Paid plan on that account; then in dash.cloudflare.com: Email Service, Email Sending, Onboard domain.`);
     if (!state.resendKey) say("   Until then, the Resend key below sends the codes.");
   }
-  state.emailFrom = `Worlds <no-reply@${state.domain}>`;
+  state.domainFrom = `Worlds <no-reply@${state.domain}>`;
+  // Resend keeps its own sender until the domain is verified there too
+  // (set resendDomainVerified in services/.deploy/state.json), so the
+  // fallback never sends from an address Resend would refuse.
+  if (!EDGE || state.resendDomainVerified || !state.resendKey || !state.emailFrom) state.emailFrom = state.domainFrom;
   if (state.resendKey === undefined) {
     const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
     say("   Resend is the fallback when Cloudflare's daily limit is reached or it is down.");
@@ -223,7 +227,11 @@ if (state.domain) {
   state.emailFrom = from ? (from.includes("<") ? from : `Worlds <${from}>`) : "Worlds <onboarding@resend.dev>";
   save();
 }
-ok(`codes are sent from ${state.emailFrom}${state.domain ? (state.resendKey ? ", Cloudflare first, then Resend" : " through Cloudflare") : ""}`);
+ok(
+  state.domain
+    ? `codes are sent from ${state.domainFrom} through Cloudflare${state.resendKey ? `, then Resend from ${state.emailFrom}` : ""}`
+    : `codes are sent from ${state.emailFrom}`,
+);
 if (state.emailFrom.includes("resend.dev"))
   say("   Note: with Resend's test sender, codes only reach the email you signed up to Resend with. Add your own domain in Resend to invite others.");
 
@@ -323,7 +331,7 @@ if (EDGE) {
     SYNC_ORIGIN: state.syncUrl,
     LOGIN_HOST: HOSTS.identity,
     CONNECT_HOST: HOSTS.sync,
-    MAIL_FROM: state.emailFrom,
+    MAIL_FROM: state.domainFrom,
   };
   for (const [key, value] of Object.entries(vars)) toml = toml.replace(new RegExp(`^${key} = ".*"$`, "m"), `${key} = ${JSON.stringify(value)}`);
   toml = toml.replace(/^name = .*$/m, (line) => `${line}\naccount_id = ${JSON.stringify(EDGE.account)}`);
