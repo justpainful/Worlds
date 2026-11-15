@@ -243,8 +243,6 @@ export function codeEmail(code: string, lang: EmailLanguage = "en"): { subject: 
       <tr><td align="center" style="padding-bottom:24px;">
         <table role="presentation" cellpadding="0" cellspacing="0" dir="ltr"><tr>
           <td valign="middle"><img src="${ART}/worlds.png" width="56" height="56" alt="Worlds" style="display:block;width:56px;height:56px;border:0;border-radius:14px;"></td>
-          <td width="12" style="width:12px;"></td>
-          <td valign="middle" class="ink" style="color:${C.cocoa};font:400 30px/1 Georgia,'Iowan Old Style','Times New Roman',serif;">Worlds</td>
           <td width="22" style="width:22px;"></td>
           <td valign="middle" class="soft" style="color:${C.cocoaSoft};font:400 26px/1 Georgia,serif;">&middot;</td>
           <td width="22" style="width:22px;"></td>
