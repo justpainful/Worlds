@@ -216,12 +216,16 @@ pub fn set_active_workspace(conn: &Connection, id: Option<&str>) -> Result<()> {
     Ok(())
 }
 
-/// The server base URL: the setting, else the build default, else the local development server.
+/// The official account service, used by release builds when nothing else is set.
+pub const OFFICIAL_SERVER_URL: &str = "https://login.enterworlds.space";
+
+/// The server base URL: the setting, else the build default, else the local
+/// development server in debug builds and the official service in release ones.
 pub fn server_url(conn: &Connection) -> Option<String> {
     let set =
         db::get_setting(conn, SERVER_URL).ok().flatten().and_then(|v| v.as_str().map(str::to_string)).filter(|s| !s.trim().is_empty());
     set.or_else(|| option_env!("WORLDS_IDENTITY_URL").map(str::to_string))
-        .or_else(|| if cfg!(debug_assertions) { Some("http://localhost:8787".to_string()) } else { None })
+        .or_else(|| Some(if cfg!(debug_assertions) { "http://localhost:8787" } else { OFFICIAL_SERVER_URL }.to_string()))
         .map(|s| s.trim().trim_end_matches('/').to_string())
 }
 

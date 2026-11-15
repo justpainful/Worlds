@@ -20,6 +20,9 @@ import worlds.identity.Workspace
 import worlds.identity.canonicalBaseUrl
 import java.io.IOException
 
+/** The official account service, used when the server field is left empty. */
+internal const val OFFICIAL_SERVER = "https://login.enterworlds.space"
+
 internal data class AccountInfo(val server: String, val name: String, val expiresAt: Long)
 internal data class RestoredAccount(val server: String?, val info: AccountInfo?, val needsLogin: Boolean = false)
 internal enum class AccountStage { LOADING, SIGN_IN, CODE, CONNECTED }

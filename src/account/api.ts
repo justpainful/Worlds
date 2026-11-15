@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { uiLanguage } from "../i18n/ui";
 
 /** Access levels on a page, strongest first. */
 export type Level = "full" | "edit" | "comment" | "view" | "none";
@@ -145,7 +146,8 @@ export const accountApi = {
   setActiveWorkspace: (workspaceId: string | null) => call<AccountView>("setActiveWorkspace", { workspaceId }),
   setServer: (url: string) => call<AccountView>("setServer", { url }),
 
-  emailStart: (email: string) => call<{ challengeId: string; expiresAt: number }>("emailStart", { email }),
+  // The code email is written in the app's language.
+  emailStart: (email: string) => call<{ challengeId: string; expiresAt: number }>("emailStart", { email, lang: uiLanguage() }),
   emailVerify: (challengeId: string, code: string, displayName?: string) => call<AccountView>("emailVerify", { challengeId, code, displayName }),
   passkeySignIn: () => call<AccountView>("passkeySignIn"),
   passkeyAdd: () => call<{ opened: boolean }>("passkeyAdd"),

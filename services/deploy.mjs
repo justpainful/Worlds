@@ -4,6 +4,12 @@
  * Cloudflare account and points this PC's Worlds at them:
  *
  *   pnpm cloud:deploy
+ *   pnpm cloud:deploy --domain enterworlds.space
+ *
+ * With a domain on the same Cloudflare account, the services answer at
+ * login.<domain> (accounts) and connect.<domain> (sync), and sign-in codes
+ * are sent from no-reply@<domain> through Cloudflare Email Service, with
+ * Resend as the fallback when a key is given. The domain is remembered.
  *
  * Safe to run again: it reuses what already exists and keeps the same keys,
  * so nobody is signed out. Everything it creates for you (ids, keys) stays in
@@ -57,6 +63,28 @@ const save = () => {
 };
 const secret = () => randomBytes(32).toString("base64url");
 
+// --domain example.com (or --domain=example.com) moves the services onto it.
+const domainArg = (() => {
+  const i = process.argv.findIndex((a) => a === "--domain" || a.startsWith("--domain="));
+  if (i < 0) return undefined;
+  const v = process.argv[i].includes("=") ? process.argv[i].split("=")[1] : process.argv[i + 1];
+  return v?.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+})();
+if (domainArg !== undefined) {
+  if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(domainArg)) fail(`"${domainArg}" is not a domain name.`);
+  state.domain = domainArg;
+}
+const HOSTS = state.domain ? { identity: `login.${state.domain}`, sync: `connect.${state.domain}` } : null;
+
+/** A custom domain for the Worker, plus the Email Service binding for the account service. */
+const extras = (host, withEmail) =>
+  [
+    host ? `\n[[routes]]\npattern = ${JSON.stringify(host)}\ncustom_domain = true\n` : "",
+    withEmail && state.domain
+      ? `\n[[send_email]]\nname = "EMAIL"\nallowed_sender_addresses = [${JSON.stringify(`no-reply@${state.domain}`)}]\n`
+      : "",
+  ].join("");
+
 /** Copy a wrangler.toml with some values replaced; the copy is git-ignored. */
 function writeConfig(dir, edits, extra = "") {
   let toml = readFileSync(join(dir, "wrangler.toml"), "utf8");
@@ -70,7 +98,7 @@ function writeConfig(dir, edits, extra = "") {
   return path;
 }
 
-function deploy(dir, label) {
+function deploy(dir, label, host) {
   let r = wrangler(dir, ["deploy", "-c", "wrangler.deploy.toml"], { quiet: true });
   if (!r.ok && /workers\.dev subdomain/i.test(r.out)) {
     // A new Cloudflare account has no workers.dev name yet: let Wrangler ask for one.
@@ -83,6 +111,12 @@ function deploy(dir, label) {
   if (!r.ok) {
     say(r.out);
     fail(`${label} did not deploy (see above).`);
+  }
+  // On a custom domain the workers.dev address stays on too, so apps that
+  // still point there keep working until they move.
+  if (host) {
+    if (!r.out.includes(host)) say(`   Note: ${host} was not in Wrangler's output yet. Cloudflare may still be activating the domain.`);
+    return `https://${host}`;
   }
   const url = r.out.match(/https:\/\/[a-z0-9-]+\.[a-z0-9-]+\.workers\.dev/i)?.[0];
   if (!url) fail(`${label} deployed, but its address was not in the output.`);
@@ -108,7 +142,25 @@ if (!wrangler(ID_DIR, ["whoami"], { quiet: true }).out.match(/associated with th
 ok("signed in");
 
 step(3, "Email for sign-in codes");
-if (!state.resendKey) {
+if (state.domain) {
+  // Cloudflare Email Service sends from the domain itself; this adds its SPF and DKIM records.
+  const en = wrangler(ID_DIR, ["email", "sending", "enable", state.domain], { quiet: true });
+  if (!en.ok && !/already/i.test(en.out)) {
+    say(en.out);
+    say(`   Could not turn on Email Sending for ${state.domain}. In dash.cloudflare.com: Email, Email Sending, Onboard domain.`);
+    if (!state.resendKey) say("   Until then, the Resend key below sends the codes.");
+  }
+  state.emailFrom = `Worlds <no-reply@${state.domain}>`;
+  if (state.resendKey === undefined) {
+    const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+    say("   Resend is the fallback when Cloudflare's daily limit is reached or it is down.");
+    say(`   Add ${state.domain} in Resend (Domains) so it can send from it too.`);
+    state.resendKey = (await rl.question("   Resend API key (press Enter to skip): ")).trim();
+    rl.close();
+    if (state.resendKey && !state.resendKey.startsWith("re_")) fail("That does not look like a Resend key (they start with re_).");
+  }
+  save();
+} else if (!state.resendKey) {
   say("   Worlds emails a 6-digit code when someone signs in. It sends them through Resend (free).");
   say("   1) Make a free account at https://resend.com");
   say("   2) Open API Keys, press Create API Key, and copy it.");
@@ -132,7 +184,7 @@ if (!state.resendKey) {
   state.emailFrom = from ? (from.includes("<") ? from : `Worlds <${from}>`) : "Worlds <onboarding@resend.dev>";
   save();
 }
-ok(`codes are sent from ${state.emailFrom}`);
+ok(`codes are sent from ${state.emailFrom}${state.domain ? (state.resendKey ? ", Cloudflare first, then Resend" : " through Cloudflare") : ""}`);
 if (state.emailFrom.includes("resend.dev"))
   say("   Note: with Resend's test sender, codes only reach the email you signed up to Resend with. Add your own domain in Resend to invite others.");
 
@@ -169,7 +221,7 @@ const idVars = (base, syncUrl) => ({
   SYNC_WEBHOOK_URL: syncUrl ? `${syncUrl}/internal/events` : "",
 });
 const writeIdentity = () => {
-  const path = writeConfig(ID_DIR, idVars(state.identityUrl, state.syncUrl));
+  const path = writeConfig(ID_DIR, idVars(HOSTS ? `https://${HOSTS.identity}` : state.identityUrl, state.syncUrl), extras(HOSTS?.identity, true));
   // EMAIL_FROM is not secret; it goes in [vars].
   const toml = readFileSync(path, "utf8").replace(/^\[vars\]$/m, `[vars]\nEMAIL_FROM = ${JSON.stringify(state.emailFrom)}`);
   writeFileSync(path, toml);
@@ -180,10 +232,13 @@ if (!wrangler(ID_DIR, ["d1", "migrations", "apply", "worlds-identity", "--remote
 ok("worlds-identity is ready");
 
 step(6, "Account service");
-state.identityUrl = deploy(ID_DIR, "The account service");
+state.identityUrl = deploy(ID_DIR, "The account service", HOSTS?.identity);
 save();
 const idSecrets = join(STATE_DIR, "identity.secrets.json");
-writeFileSync(idSecrets, JSON.stringify({ JWT_PRIVATE_JWK: state.jwk, SYNC_WEBHOOK_SECRET: state.webhookSecret, RESEND_API_KEY: state.resendKey }));
+writeFileSync(
+  idSecrets,
+  JSON.stringify({ JWT_PRIVATE_JWK: state.jwk, SYNC_WEBHOOK_SECRET: state.webhookSecret, ...(state.resendKey ? { RESEND_API_KEY: state.resendKey } : {}) }),
+);
 if (!wrangler(ID_DIR, ["secret", "bulk", "../.deploy/identity.secrets.json", "-c", "wrangler.deploy.toml"], { quiet: true }).ok) fail("Could not store the account service keys.");
 ok(state.identityUrl);
 
@@ -198,8 +253,8 @@ if (!r2.ok && !/already exists|already own/i.test(r2.out)) {
 ok("worlds-attachments");
 
 step(8, "Sync service");
-writeConfig(SYNC_DIR, { JWKS_URL: `${state.identityUrl}/.well-known/jwks.json` });
-state.syncUrl = deploy(SYNC_DIR, "The sync service");
+writeConfig(SYNC_DIR, { JWKS_URL: `${state.identityUrl}/.well-known/jwks.json` }, extras(HOSTS?.sync, false));
+state.syncUrl = deploy(SYNC_DIR, "The sync service", HOSTS?.sync);
 save();
 const syncSecrets = join(STATE_DIR, "sync.secrets.json");
 writeFileSync(syncSecrets, JSON.stringify({ INTERNAL_SECRET: state.internalSecret, SIGNING_SECRET: state.signingSecret, SYNC_WEBHOOK_SECRET: state.webhookSecret }));
@@ -208,7 +263,7 @@ ok(state.syncUrl);
 
 step(9, "Connect the two services");
 writeIdentity();
-deploy(ID_DIR, "The account service");
+deploy(ID_DIR, "The account service", HOSTS?.identity);
 ok("removing someone from a workspace now closes their live session at once");
 
 step(10, "Point Worlds on this PC at them");
@@ -234,3 +289,5 @@ say("\n\x1b[1mAll set.\x1b[0m");
 say(`   Accounts: ${state.identityUrl}`);
 say(`   Sync:     ${state.syncUrl}`);
 say("   In Worlds, open the workspace menu at the top of the sidebar and choose Sign In.");
+if (state.domain)
+  say("   Passkeys made on the old workers.dev address do not work on the new one. People sign in with the email code once and add a passkey again.");

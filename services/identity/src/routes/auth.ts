@@ -4,7 +4,7 @@ import { parseDevice, refresh, revokeDevice, signIn } from "../domain/sessions";
 import { audit, auditStmt } from "../lib/audit";
 import { callerFromToken, emit, requireAuth } from "../lib/auth";
 import { newId, now, randomDigits, randomToken, sha256B64url, sha256Hex, timingSafeEqual } from "../lib/crypto";
-import { codeEmail, emailSender } from "../lib/email";
+import { codeEmail, emailLanguage, emailSender } from "../lib/email";
 import { ApiError, bad, body, normalizeEmail, optStr, str, unauthorized } from "../lib/http";
 import { clientIp, rateLimit } from "../lib/ratelimit";
 import { normalizeUsername, suggestUsername, usernameMessage, usernameProblem, usernameTaken } from "../lib/usernames";
@@ -81,7 +81,7 @@ auth.post("/email/start", async (c) => {
   await c.env.DB.prepare("INSERT INTO email_codes (id, email, code_hash, created_at, expires_at) VALUES (?1, ?2, ?3, ?4, ?5)")
     .bind(id, email, await sha256Hex(`${id}:${code}`), t, t + CODE_TTL_MS)
     .run();
-  await emailSender(c.env).send({ to: email, ...codeEmail(code) });
+  await emailSender(c.env).send({ to: email, ...codeEmail(code, emailLanguage(b.lang, c.req.header("accept-language"))) });
   const existing = await c.env.DB.prepare("SELECT id FROM users WHERE email = ?1").bind(email).first<{ id: string }>();
   await audit(c.env.DB, { action: "auth.email_code_sent", actorUserId: existing?.id ?? null, actorKind: "user", targetType: "email_code", targetId: id });
   // The same answer whether or not an account exists.

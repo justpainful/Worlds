@@ -1,0 +1,12 @@
+# The landing page at enterworlds.space: static files only, no Worker code.
+# Deploy: npx wrangler deploy -c web/wrangler.toml
+name = "worlds-site"
+compatibility_date = "2026-08-01"
+
+[assets]
+directory = "./site"
+html_handling = "auto-trailing-slash"
+
+[[routes]]
+pattern = "enterworlds.space"
+custom_domain = true

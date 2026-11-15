@@ -38,7 +38,9 @@ class IdentityService(baseUrl: String, private val store: EncryptedSessionStore,
 
     fun startEmail(email: String): EmailChallenge {
         require(email.isNotBlank() && email.length <= 320)
-        val result = transport.request(base, "POST", "/auth/email/start", JSONObject().put("email", email.trim()), null)
+        // The code email is written in the device's language.
+        val lang = if (java.util.Locale.getDefault().language == "ar") "ar" else "en"
+        val result = transport.request(base, "POST", "/auth/email/start", JSONObject().put("email", email.trim()).put("lang", lang), null)
         return EmailChallenge(requiredString(result, "challengeId", 128), result.getLong("expiresAt"))
     }
 

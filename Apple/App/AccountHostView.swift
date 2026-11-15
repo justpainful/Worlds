@@ -45,7 +45,8 @@ struct AccountHostView: View {
     }
 
     private var buildDefault: String {
-        (Bundle.main.object(forInfoDictionaryKey: "WorldsIdentityURL") as? String) ?? ""
+        // A build may name its own service; otherwise the official one.
+        (Bundle.main.object(forInfoDictionaryKey: "WorldsIdentityURL") as? String) ?? "https://login.enterworlds.space"
     }
     private var platform: String {
         #if os(macOS)

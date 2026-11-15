@@ -22,6 +22,19 @@ export interface Env {
   RESEND_API_KEY?: string;
   /** From address for sign-in emails, e.g. "Worlds <login@example.com>". */
   EMAIL_FROM?: string;
+  /** Cloudflare Email Service binding (`send_email` in wrangler.toml); tried before Resend. */
+  EMAIL?: SendEmailBinding;
+}
+
+/** The part of Cloudflare's `send_email` binding this service uses. */
+export interface SendEmailBinding {
+  send(message: {
+    to: string;
+    from: { email: string; name?: string };
+    subject: string;
+    text: string;
+    html?: string;
+  }): Promise<unknown>;
 }
 
 export type ActorKind = "user" | "ai-on-behalf-of-user" | "automation" | "system";
