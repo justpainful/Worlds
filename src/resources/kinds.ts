@@ -3,7 +3,7 @@
  * a Page is one kind among several. See docs/CONTENT.md.
  */
 import type { PageMeta, ResourceKind } from "../lib/types";
-import { isKindHidden } from "../packs/registry";
+import { isKindHidden, isPackKind, kindDefOf } from "../packs/registry";
 
 export interface KindInfo {
   label: string;
@@ -37,6 +37,19 @@ export const KIND_INFO: Record<ResourceKind, KindInfo> = {
 };
 
 /**
+ * A kind's label and icon, for built-in kinds and for pack kinds alike.
+ * Every place that names a kind asks here, so a pack kind never shows
+ * undefined or breaks a view.
+ */
+export function kindInfo(kind: string): KindInfo {
+  const own = KIND_INFO[kind as keyof typeof KIND_INFO];
+  if (own) return own;
+  const def = kindDefOf(kind)?.kind;
+  if (def) return { label: def.label, plural: def.plural, icon: def.icon, blurb: def.blurb };
+  return { label: "Item", plural: "Items", icon: "file", blurb: "" };
+}
+
+/**
  * What a card shows when a resource has no text preview. Spreadsheets,
  * drawings and slides keep their content outside blocks, so "Empty page"
  * would be wrong for them: they show what they are instead.
@@ -44,7 +57,7 @@ export const KIND_INFO: Record<ResourceKind, KindInfo> = {
 export function emptyPreview(kind: string): string {
   if (kind === "page" || kind === "template") return "Empty page";
   if (kind === "document") return "Empty document";
-  return KIND_INFO[kind as ResourceKind]?.label ?? "Empty page";
+  return kindInfo(kind).label;
 }
 
 /**
@@ -57,8 +70,9 @@ export const ITEM_KINDS: ReadonlySet<string> = new Set(["task", "event", "inbox"
 /** Kinds that live under their own sidebar section rather than the page tree. */
 const OWN_SECTION_KINDS: ReadonlySet<string> = new Set(["subject", "lesson"]);
 
+/** Pack kinds are items too: they live in their pack's views, not the page tree. */
 export function isItemKind(kind: string): boolean {
-  return ITEM_KINDS.has(kind);
+  return ITEM_KINDS.has(kind) || isPackKind(kind);
 }
 
 /** Creatable from New, in menu order. */
@@ -66,12 +80,12 @@ export const NEW_KINDS: ResourceKind[] = ["page", "document", "spreadsheet", "pr
 
 /** Anything the user browses and works with (templates are blueprints; items live in their own views). */
 export function isResource(p: Pick<PageMeta, "kind">): boolean {
-  return p.kind !== "template" && !ITEM_KINDS.has(p.kind) && !isKindHidden(p.kind);
+  return p.kind !== "template" && !isItemKind(p.kind) && !isKindHidden(p.kind);
 }
 
 /** Whether a resource appears in the sidebar's page tree. */
 export function isTreeKind(kind: string): boolean {
-  return kind !== "template" && !ITEM_KINDS.has(kind) && !OWN_SECTION_KINDS.has(kind) && !isKindHidden(kind);
+  return kind !== "template" && !isItemKind(kind) && !OWN_SECTION_KINDS.has(kind) && !isKindHidden(kind);
 }
 
 /** Kinds whose content is text blocks (Discord sends, tasks, Claude text tools). */
@@ -95,5 +109,5 @@ export function fileIcon(mime: string, name = ""): string {
 }
 
 export function defaultIcon(kind: ResourceKind): string | null {
-  return kind === "page" ? null : `pi:${KIND_INFO[kind].icon}`;
+  return kind === "page" ? null : `pi:${kindInfo(kind).icon}`;
 }

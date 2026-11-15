@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { api, errorMessage, type NewPage } from "../lib/api";
 import type { PageMeta, Profile } from "../lib/types";
-import { isTreeKind, KIND_INFO } from "../resources/kinds";
+import { isTreeKind, kindInfo } from "../resources/kinds";
+import { PACKS_AI_KEY, packsForClaudeFrom } from "../packs/ai";
 import { syncPackSettings } from "../packs/registry";
 
 // ---------------------------------------------------------------------------
@@ -23,7 +24,9 @@ export type Route =
   | { kind: "tasks"; list?: TaskListId }
   | { kind: "calendar" }
   | { kind: "inbox" }
-  | { kind: "study" };
+  | { kind: "study" }
+  /** A pack's view (docs/PACKS.md); without a view, the pack's first sidebar entry. */
+  | { kind: "pack"; pack: string; view?: string };
 
 /** Smart lists in Tasks. */
 export type TaskListId = "today" | "upcoming" | "all" | "someday" | "goals" | "print" | "done";
@@ -160,6 +163,12 @@ export const useStore = create<State>((set, get) => ({
     // Drop tabs that point at pages that no longer exist.
     layout = sanitizeLayout(layout, pages);
     syncPackSettings(boot.settings);
+    // A newer Worlds may describe its packs differently; keep Claude's copy current.
+    const packsAi = packsForClaudeFrom(boot.settings);
+    if ((boot.settings[PACKS_AI_KEY] ?? "") !== packsAi) {
+      boot.settings[PACKS_AI_KEY] = packsAi;
+      api.setSetting(PACKS_AI_KEY, packsAi).catch(() => {});
+    }
     set({
       ready: true,
       profile: boot.profile,
@@ -476,6 +485,6 @@ export function pageTitle(p: PageMeta | undefined | null): string {
   if (p.title.trim()) return p.title.trim();
   // Untitled things still say what they are.
   if (p.kind === "page" || p.kind === "template") return "Untitled";
-  const info = KIND_INFO[p.kind as keyof typeof KIND_INFO];
+  const info = kindInfo(p.kind);
   return info ? `Untitled ${info.label.toLowerCase()}` : "Untitled";
 }

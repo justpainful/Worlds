@@ -55,6 +55,7 @@ private struct Request: Encodable, Sendable {
     var recoveryID: String? = nil
     var streamURL: String? = nil
     var deletedAt: Int64? = nil
+    var kind: String? = nil
     enum CodingKeys: String, CodingKey {
         case operation, path, page, base, title, parent, blocks, expected, metadata, deleting
         case expectedMetadata = "expected_metadata"
@@ -70,6 +71,7 @@ private struct Request: Encodable, Sendable {
         case recoveryID = "recovery_id"
         case streamURL = "url"
         case deletedAt = "deleted_at"
+        case kind
     }
 }
 private struct Response: Decodable {
@@ -108,6 +110,10 @@ public actor NativePersonalStore {
     /// Pass parent and its observed revision together, or nil for a root document.
     public func createDocumentIdempotent(title: String, parent: String? = nil, parentRevision: Int64? = nil, operationID: UUID) async throws -> JSONValue {
         try await call(Request(operation: "create_document_idempotent", path: url.path, title: title, parent: parent, parentRevision: parentRevision, operationID: operationID.uuidString))
+    }
+    /// A pack item (docs/PACKS.md) of a kind such as "shop.order", with `{"item": {...}}` as its first fields.
+    public func createPackItemIdempotent(title: String, kind: String, metadata: JSONValue, operationID: UUID) async throws -> JSONValue {
+        try await call(Request(operation: "create_pack_item_idempotent", path: url.path, title: title, metadata: metadata, operationID: operationID.uuidString, kind: kind))
     }
     /// Pass the parent and its observed revision together, or nil for a root project.
     public func createProjectIdempotent(title: String, parent: String? = nil, parentRevision: Int64? = nil, operationID: UUID) async throws -> JSONValue {
@@ -179,6 +185,11 @@ public actor NativePersonalStore {
     /// complete metadata baseline and revision; other metadata keys must be unchanged.
     public func saveSpreadsheet(id: String, base: Int64, expectedMetadata: JSONValue, metadata: JSONValue) async throws -> JSONValue {
         try await call(Request(operation: "save_spreadsheet", path: url.path, page: id, base: base, expectedMetadata: expectedMetadata, metadata: metadata))
+    }
+    /// Replaces only `metadata.item` of a personal pack item (docs/PACKS.md),
+    /// comparing the complete metadata baseline and revision like a spreadsheet.
+    public func savePackItem(id: String, base: Int64, expectedMetadata: JSONValue, metadata: JSONValue) async throws -> JSONValue {
+        try await call(Request(operation: "save_pack_item", path: url.path, page: id, base: base, expectedMetadata: expectedMetadata, metadata: metadata))
     }
     public func saveGallery(id: String, base: Int64, expectedMetadata: JSONValue, metadata: JSONValue, expected: [NativeBlockInput], blocks: [NativeBlockInput]) async throws -> JSONValue {
         try await call(Request(operation: "save_gallery", path: url.path, page: id, base: base, blocks: blocks, expected: expected, expectedMetadata: expectedMetadata, metadata: metadata))

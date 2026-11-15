@@ -15,6 +15,8 @@ export interface AccessQuery {
  */
 export interface IdentityRpc {
   checkAccess(q: AccessQuery): Promise<{ level: AccessLevel }>;
+  /** Members holding a role in a pack, for publishing to them (docs/PACKS.md, Design 3). */
+  packMembers(q: { workspaceId: string; packId: string; roleId: string }): Promise<{ userIds: string[] }>;
 }
 
 export interface Env {

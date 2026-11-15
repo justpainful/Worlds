@@ -81,6 +81,8 @@ struct ResourceContentView: View {
                 case "spreadsheet": spreadsheet
                 case "task", "event", "goal", "inbox", "subject", "lesson", "assignment", "exam", "requirement":
                     NativePlanningAndStudyItemView(page: page)
+                case let kind where PackCatalog.isPackKind(kind):
+                    NativePackItemView(page: page)
                 default: Text("This resource type is not available in the reader.")
                 }
                 Label(editingLabel, systemImage: (projectEditingAvailable || otherEditingAvailable) ? "pencil" : "eye")

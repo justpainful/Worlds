@@ -7,7 +7,7 @@ import { IconButton } from "../../ui/Button";
 import { EmojiPicker } from "../../ui/EmojiPicker";
 import { menuAt } from "../../ui/Menu";
 import { PageIcon, relTime } from "../../ui/misc";
-import { KIND_INFO } from "../kinds";
+import { kindInfo } from "../kinds";
 
 /** Load a resource's full record and keep it current with external writes. */
 export function useResource(id: string) {
@@ -68,7 +68,7 @@ export function ResourceHeader({ meta, actions, subtitle }: { meta: PageMeta; ac
           className="res-title bidi"
           dir="auto"
           value={title}
-          placeholder={`Untitled ${KIND_INFO[kind].label.toLowerCase()}`}
+          placeholder={`Untitled ${kindInfo(kind).label.toLowerCase()}`}
           onChange={(e) => setTitle(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => {
@@ -80,7 +80,7 @@ export function ResourceHeader({ meta, actions, subtitle }: { meta: PageMeta; ac
           }}
         />
         <div className="res-sub">
-          <span className="res-kind">{KIND_INFO[kind].label}</span>
+          <span className="res-kind">{kindInfo(kind).label}</span>
           <span>{`Edited ${relTime(meta.updatedAt)}`}</span>
           {subtitle}
         </div>

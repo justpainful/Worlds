@@ -388,6 +388,20 @@ fn pkce_challenge_is_s256_of_the_verifier() {
 }
 
 #[test]
+fn workspace_titles_name_team_pages_for_phones() {
+    let (conn, root, child, _) = team_fixture("titles", "member");
+    let personal = page(&conn, "Personal notes", None);
+    conn.execute("UPDATE pages SET title = ?1 WHERE id = ?2", rusqlite::params![format!("  {}\t ", "x".repeat(400)), child]).unwrap();
+    let titles = state::workspace_titles(&conn, "ws-1").unwrap();
+    assert_eq!(titles.get(&root).map(String::as_str), Some("Handbook"));
+    // Control characters are dropped and a long title is cut to what the service accepts.
+    assert_eq!(titles.get(&child).map(|t| t.chars().count()), Some(300));
+    assert!(!titles.get(&child).unwrap().contains('\t'));
+    // Personal pages never leave the device with the tree.
+    assert!(!titles.contains_key(&personal));
+}
+
+#[test]
 fn workspace_tree_lists_parents_first_and_cuts_links_to_other_workspaces() {
     let (conn, root, child, grandchild) = team_fixture("tree", "member");
     let personal = page(&conn, "Personal", None);

@@ -252,7 +252,8 @@ where
 const PAGE_COLS: &str = "id, title, icon, cover, parent_id, sort_key, owner_id, kind, template_category, \
     pinned, pin_order, favorite, archived, deleted_at, preview, created_at, updated_at, opened_at,     json_extract(metadata, '$.properties'), json_extract(metadata, '$.look'), \
     CASE WHEN kind IN ('task','event','inbox','goal','subject','lesson','assignment','exam','requirement') \
-         THEN json_extract(metadata, '$.' || kind) END";
+         THEN json_extract(metadata, '$.' || kind) \
+         WHEN instr(kind, '.') > 0 THEN json_extract(metadata, '$.item') END";
 
 fn page_meta(r: &Row) -> rusqlite::Result<PageMeta> {
     Ok(PageMeta {
@@ -288,11 +289,11 @@ pub fn set_page_meta(conn: &Connection, ctx: &Ctx, id: &str, key: &str, value: V
     // One key of the metadata object at a time, so no editor can overwrite
     // what another part of the app keeps there.
     if !matches!(key, "properties" | "look" | "doc" | "deck" | "project" | "gallery" | "file" | "stream" | "experiment" | "sheet")
-        && !DATA_KINDS.contains(&key)
+        && !is_data_key(key)
     {
         bail!("unknown page setting {key}");
     }
-    if !value.is_object() && DATA_KINDS.contains(&key) {
+    if !value.is_object() && is_data_key(key) {
         bail!("{key} data must be an object");
     }
     let value = if key == "properties" {

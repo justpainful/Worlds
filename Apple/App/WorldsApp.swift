@@ -471,6 +471,8 @@ private struct WorldsLibraryView: View {
     @StateObject private var focusModel = FocusSessionModel()
     @State private var showSettings = false
     @State private var showAssistant = false
+    /// A pack's Claude request waiting in the assistant's message box.
+    @State private var assistantPrompt = ""
     #if WORLDS_MAIN_APP_MODULES
     @State private var pendingMCPApproval: MCPRenameApproval?
     private let mcpRunner = DualMCPToolRunner()
@@ -531,6 +533,7 @@ private struct WorldsLibraryView: View {
     #endif
     #if WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
     @State private var editingSpreadsheet: LocalSpreadsheetEditorRequest?
+    @State private var editingPackItem: LocalSpreadsheetEditorRequest?
     #endif
     #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_IMPORT
     @State private var importingGallery: LocalGalleryImportRequest?
@@ -897,7 +900,8 @@ private struct WorldsLibraryView: View {
                             selectedSection: $spacesSection,
                             pages: pages,
                             openPage: { openResourceOnPhone($0) },
-                            showSectionPicker: true
+                            showSectionPicker: true,
+                            packs: { AnyView(packsHub(open: { openResourceOnPhone($0) })) }
                         )
                     }
                 }
@@ -954,7 +958,7 @@ private struct WorldsLibraryView: View {
                 .tag(WorkspaceDestination.home)
 
                 phoneTabStack(for: .spaces) {
-                    SpacesDestinationView(selectedSection: $spacesSection, pages: pages, openPage: { openResourceOnPhone($0) }, showSectionPicker: true)
+                    SpacesDestinationView(selectedSection: $spacesSection, pages: pages, openPage: { openResourceOnPhone($0) }, showSectionPicker: true, packs: { AnyView(packsHub(open: { openResourceOnPhone($0) })) })
                 }
                 .tabItem { Label("Spaces", systemImage: "square.stack.3d.up") }
                 .tag(WorkspaceDestination.spaces)
@@ -1104,6 +1108,43 @@ private struct WorldsLibraryView: View {
         }
     }
 
+    /// The sector packs (docs/PACKS.md): writing goes through the opened
+    /// workspace or local copy, and a Claude request opens the assistant with it.
+    private func packsHub(open: @escaping @MainActor (String) -> Void) -> some View {
+        var actions = PackActions(create: nil, setFields: nil, open: open, ask: { text in
+            assistantPrompt = text
+            showAssistant = true
+        })
+        #if WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
+        if let context = copyContext {
+            let generation = databaseGeneration
+            actions.create = { kind, title, fields, edit in
+                guard let id = try? await PackWrites.create(target: context.copy, kind: kind, title: title, fields: fields) else { return }
+                await refreshCopy(id: context.copy.id, generation: generation)
+                if edit { editingPackItem = LocalSpreadsheetEditorRequest(id: id, title: title, context: context, generation: generation) }
+            }
+            actions.setFields = { id, fields in
+                do {
+                    try await PackWrites.setFields(target: context.copy, id: id, fields: fields)
+                    await refreshCopy(id: context.copy.id, generation: generation)
+                    return true
+                } catch { return false }
+            }
+        }
+        #endif
+        return PacksHubView(pages: pages, actions: actions)
+    }
+
+    /// Pack items in this workspace, grouped by their pack, for the sidebar.
+    private var packSidebarGroups: [PackSidebarGroup] {
+        guard let catalog = PackCatalog.shipped else { return [] }
+        return catalog.packs.compactMap { pack in
+            let kinds = Set(pack.kinds.map(\.kind))
+            let items = activeNonTemplatePages.filter { kinds.contains($0.kind) }.sorted { $0.updatedAt > $1.updatedAt }
+            return items.isEmpty ? nil : PackSidebarGroup(id: pack.id, label: pack.label.text, items: items)
+        }
+    }
+
     private var modernSidebarView: some View {
         List(selection: sidebarTagBinding) {
             Section("Workspace") {
@@ -1119,6 +1160,18 @@ private struct WorldsLibraryView: View {
                     Label(col.rawValue, systemImage: col.systemImage)
                         .tag(SidebarSelectionTag.library(col))
                         .accessibilityIdentifier("sidebar-lib-\(col.rawValue)")
+                }
+            }
+
+            // Each pack with items in this workspace (docs/PACKS.md): its items, newest first.
+            ForEach(packSidebarGroups) { group in
+                Section(group.label) {
+                    ForEach(group.items.prefix(8)) { page in
+                        Label(page.title.isEmpty ? "Untitled" : page.title, systemImage: "square.stack")
+                            .lineLimit(1)
+                            .tag(SidebarSelectionTag.page(page.id))
+                            .accessibilityIdentifier("pack-item.\(page.id)")
+                    }
                 }
             }
 
@@ -1204,7 +1257,8 @@ private struct WorldsLibraryView: View {
                     selectedSection: $spacesSection,
                     pages: pages,
                     openPage: { openResourceInModernShell($0) },
-                    showSectionPicker: true
+                    showSectionPicker: true,
+                    packs: { AnyView(packsHub(open: { openResourceInModernShell($0) })) }
                 )
             case .library:
                 LibraryDestinationView(
@@ -1246,7 +1300,7 @@ private struct WorldsLibraryView: View {
             .background(WorldsPalette.groupedCanvas(for: colorScheme))
             .navigationTitle("Concept & Mind Map")
         } else if pageID == "showcase-okr-roadmap" {
-            SpacesDestinationView(selectedSection: $spacesSection, pages: pages, openPage: { openResourceInModernShell($0) }, showSectionPicker: true)
+            SpacesDestinationView(selectedSection: $spacesSection, pages: pages, openPage: { openResourceInModernShell($0) }, showSectionPicker: true, packs: { AnyView(packsHub(open: { openResourceInModernShell($0) })) })
         } else if pageID == "showcase-study-cs301" {
             WorldsStudyPackHubView()
         } else if pageID == "showcase-cad-turbine" || pageID == "showcase-slides-deck" {
@@ -1316,6 +1370,16 @@ private struct WorldsLibraryView: View {
                     editingSpreadsheet = LocalSpreadsheetEditorRequest(id: id, title: page.title, context: context, generation: databaseGeneration)
                 }
                 .accessibilityIdentifier("edit-local-spreadsheet")
+                .disabled(loading)
+            }
+        }
+        // A pack item (docs/PACKS.md): its fields, saved like a spreadsheet's.
+        if let id = selection, let context = copyContext, let page = pages.first(where: { $0.id == id && PackCatalog.isPackKind($0.kind) }) {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Edit item", systemImage: "square.and.pencil") {
+                    editingPackItem = LocalSpreadsheetEditorRequest(id: id, title: page.title, context: context, generation: databaseGeneration)
+                }
+                .accessibilityIdentifier("edit-local-pack-item")
                 .disabled(loading)
             }
         }
@@ -1771,6 +1835,11 @@ private struct WorldsLibraryView: View {
                 Task { await refreshCopy(id: request.context.copy.id, generation: request.generation) }
             }
         }
+        .sheet(item: $editingPackItem) { request in
+            LocalPackItemEditor(copy: request.context.copy, pageID: request.id, title: request.title, pages: pages) {
+                Task { await refreshCopy(id: request.context.copy.id, generation: request.generation) }
+            }
+        }
         #endif
         #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_IMPORT
         .sheet(item: $importingGallery) { request in
@@ -1817,8 +1886,8 @@ private struct WorldsLibraryView: View {
                 .frame(minWidth: 680, idealWidth: 740, minHeight: 580, idealHeight: 660)
                 #endif
         }
-        .sheet(isPresented: $showAssistant) {
-            AssistantHostView(pages: pages)
+        .sheet(isPresented: $showAssistant, onDismiss: { assistantPrompt = "" }) {
+            AssistantHostView(pages: pages, initialPrompt: assistantPrompt)
                 .environment(\.colorScheme, colorScheme)
                 .preferredColorScheme(colorScheme)
                 #if os(macOS)
@@ -2600,7 +2669,7 @@ private struct WorldsLibraryView: View {
         disabled = disabled || editingStream != nil
         #endif
         #if WORLDS_EXPERIMENTAL_SPREADSHEET_EDITOR
-        disabled = disabled || editingSpreadsheet != nil
+        disabled = disabled || editingSpreadsheet != nil || editingPackItem != nil
         #endif
         #if DEBUG && WORLDS_EXPERIMENTAL_GALLERY_IMPORT
         disabled = disabled || importingGallery != nil
@@ -3348,3 +3417,10 @@ private struct LocalDrawingEditorRequest: Identifiable {
     let generation: UUID
 }
 #endif
+
+/// One pack's items in the sidebar (docs/PACKS.md).
+struct PackSidebarGroup: Identifiable {
+    let id: String
+    let label: String
+    let items: [StoredPage]
+}

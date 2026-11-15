@@ -1,0 +1,592 @@
+/* ==========================================================================
+   Packs: the table and board every pack kind gets from its definition
+   (docs/PACKS.md). Logical properties, so Arabic mirrors on its own.
+   ========================================================================== */
+
+.pk-view {
+  max-width: 1180px;
+}
+
+/* ---- Table --------------------------------------------------------------- */
+
+.pk-table-wrap {
+  overflow-x: auto;
+  border-radius: var(--r-sm);
+  background: var(--fill-1);
+  box-shadow: inset 0 0 0 0.5px var(--hairline);
+}
+
+.pk-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--t-body);
+  color: var(--text-1);
+}
+
+.pk-table th {
+  padding: 0;
+  text-align: start;
+  font: var(--t-small);
+  font-weight: 600;
+  color: var(--text-3);
+  border-block-end: 0.5px solid var(--hairline);
+  white-space: nowrap;
+}
+
+.pk-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 14px;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: color var(--d-hover);
+}
+
+.pk-sort:hover {
+  color: var(--text-1);
+}
+
+.pk-sort .pk-asc {
+  transform: rotate(180deg);
+}
+
+.pk-table td {
+  padding: 10px 14px;
+  border-block-end: 0.5px solid var(--hairline);
+  vertical-align: middle;
+  /* Short values stay on one line; the table scrolls sideways when narrow. */
+  white-space: nowrap;
+}
+
+.pk-table td.pk-title,
+.pk-table td.pk-col-text {
+  white-space: normal;
+  min-width: 120px;
+}
+
+.pk-table tbody tr:last-child td {
+  border-block-end: 0;
+}
+
+.pk-table tbody tr {
+  cursor: pointer;
+  transition: background-color var(--d-hover);
+}
+
+.pk-table tbody tr:hover {
+  background: var(--fill-1);
+}
+
+.pk-table tbody tr:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.pk-table tr.is-done .pk-title {
+  color: var(--text-3);
+  text-decoration: line-through;
+}
+
+.pk-title {
+  font-weight: 500;
+  min-width: 160px;
+}
+
+/* Numbers line up on their own edge. */
+.pk-table .pk-col-number,
+.pk-table .pk-col-money {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.pk-table th.pk-col-number .pk-sort,
+.pk-table th.pk-col-money .pk-sort {
+  justify-content: flex-end;
+}
+
+.pk-table .pk-col-date,
+.pk-table .pk-col-time {
+  white-space: nowrap;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.pk-check {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* ---- Board --------------------------------------------------------------- */
+
+.pk-board {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(190px, 1fr);
+  gap: 12px;
+  overflow-x: auto;
+  padding-block-end: 8px;
+}
+
+.pk-lane {
+  --lane: var(--text-3);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 160px;
+  padding: 10px;
+  border-radius: var(--r-sm);
+  background: var(--fill-1);
+  box-shadow: inset 0 0 0 0.5px var(--hairline);
+  transition: background-color var(--d-hover), box-shadow var(--d-hover);
+}
+
+.pk-lane[data-color="red"] { --lane: var(--red); }
+.pk-lane[data-color="green"] { --lane: var(--green); }
+.pk-lane[data-color="yellow"] { --lane: var(--yellow); }
+.pk-lane[data-color="blue"] { --lane: var(--blue); }
+.pk-lane[data-color="accent"] { --lane: var(--accent); }
+
+.pk-lane.is-over {
+  background: var(--fill-2);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.pk-lane-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-inline-start: 4px;
+}
+
+.pk-lane-head::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--lane);
+  flex: none;
+}
+
+.pk-lane-title {
+  flex: 1;
+  min-width: 0;
+  font: var(--t-small);
+  font-weight: 600;
+  color: var(--text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pk-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pk-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--r-xs);
+  background: var(--fill-2);
+  box-shadow: inset 0 0 0 0.5px var(--hairline);
+  color: var(--text-1);
+  text-align: start;
+  cursor: grab;
+  transition: background-color var(--d-hover);
+}
+
+.pk-card:hover {
+  background: var(--fill-3);
+}
+
+.pk-card:active {
+  cursor: grabbing;
+}
+
+.pk-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.pk-card-title {
+  font: var(--t-body);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.pk-card-field {
+  font: var(--t-caption);
+  color: var(--text-2);
+}
+
+.pk-card-label {
+  color: var(--text-3);
+}
+
+/* "Client: Nakhla Studio" in both languages. */
+.pk-card-label::after {
+  content: ":";
+}
+
+/* ---- Totals, linked lists ------------------------------------------------ */
+
+.pk-table tfoot th,
+.pk-table tfoot td {
+  padding: 10px 14px;
+  border-block-start: 0.5px solid var(--hairline);
+  font-weight: 600;
+  color: var(--text-1);
+  text-align: start;
+}
+
+.pk-table tfoot td.pk-col-number,
+.pk-table tfoot td.pk-col-money {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.pk-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pk-none {
+  margin: 0;
+  font: var(--t-small);
+  color: var(--text-3);
+}
+
+/* ---- Alerts -------------------------------------------------------------- */
+
+.pk-alerts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pk-alert-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-block: 4px;
+  padding-inline: 12px 6px;
+  border-radius: var(--r-capsule);
+  background: color-mix(in srgb, var(--yellow) 14%, transparent);
+  color: var(--text-1);
+  font: var(--t-small);
+}
+
+.pk-role-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 8px;
+  padding-inline: 14px 8px;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--accent) 40%, transparent);
+  font: var(--t-small);
+  color: var(--text-1);
+}
+
+.pk-role-text {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+}
+
+/* ---- Home section -------------------------------------------------------- */
+
+.pk-home {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pk-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.pk-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: var(--r-sm);
+  background: var(--fill-1);
+  box-shadow: inset 0 0 0 0.5px var(--hairline);
+}
+
+.pk-stat-value {
+  font: var(--t-title);
+  font-size: 22px;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.pk-stat-label {
+  font: var(--t-small);
+  color: var(--text-3);
+}
+
+.pk-alert {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--yellow) 10%, transparent);
+  color: var(--yellow);
+}
+
+.pk-alert-label {
+  font: var(--t-small);
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.pk-alert-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-inline-start: auto;
+}
+
+.pk-soon {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pk-soon-row {
+  display: grid;
+  grid-template-columns: 110px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--r-xs);
+  color: var(--text-1);
+  text-align: start;
+  cursor: pointer;
+  transition: background-color var(--d-hover);
+}
+
+.pk-soon-row:hover {
+  background: var(--fill-1);
+}
+
+.pk-soon-date {
+  font: var(--t-small);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.pk-soon-title {
+  font: var(--t-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pk-soon-kind {
+  font: var(--t-caption);
+  color: var(--text-3);
+}
+
+/* ---- Choosing packs ------------------------------------------------------ */
+
+.pack-chooser {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pack-families {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pack-family {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding-inline: 10px 14px;
+  border-radius: var(--r-capsule);
+  background: var(--fill-1);
+  box-shadow: inset 0 0 0 0.5px var(--hairline);
+  color: var(--text-1);
+  font: var(--t-small);
+  cursor: pointer;
+  transition: background-color var(--d-hover), box-shadow var(--d-hover);
+}
+
+.pack-family:hover {
+  background: var(--fill-2);
+}
+
+.pack-family.is-on {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.pack-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+}
+
+.pack-choice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  background: var(--fill-1);
+  box-shadow: inset 0 0 0 0.5px var(--hairline);
+  color: var(--text-1);
+  text-align: start;
+  cursor: pointer;
+  transition: background-color var(--d-hover), box-shadow var(--d-hover);
+}
+
+.pack-choice:hover {
+  background: var(--fill-2);
+}
+
+.pack-choice.is-on {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.pack-choice-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.pack-choice-name {
+  font: var(--t-ui-strong);
+}
+
+.pack-choice-blurb {
+  font: var(--t-caption);
+  color: var(--text-3);
+}
+
+.pack-choice-state {
+  font: var(--t-caption);
+  font-weight: 600;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+.pack-choice.is-on .pack-choice-state {
+  color: var(--accent-text);
+}
+
+.pack-chooser .pack-prompt-actions {
+  justify-content: flex-end;
+}
+
+/* ---- Teacher: attendance ------------------------------------------------- */
+
+.pk-att {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-radius: var(--r-sm);
+  background: var(--fill-1);
+  box-shadow: inset 0 0 0 0.5px var(--hairline);
+}
+
+.pk-att-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 8px 14px;
+  border-block-end: 0.5px solid var(--hairline);
+}
+
+.pk-att-row:last-child {
+  border-block-end: 0;
+}
+
+.pk-att-number {
+  width: 24px;
+  color: var(--text-3);
+  font: var(--t-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.pk-att-name {
+  flex: 1 1 9em;
+  min-width: 9em;
+  font: var(--t-body);
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pk-att-row.is-absent .pk-att-name {
+  color: var(--red);
+}
+
+.pk-att-row.is-late .pk-att-name {
+  color: var(--yellow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pk-sort,
+  .pk-table tbody tr,
+  .pk-lane,
+  .pk-card,
+  .pk-soon-row,
+  .pack-family,
+  .pack-choice {
+    transition: none;
+  }
+}
+
+/* A message to someone outside Worlds (MessageDialog). */
+.pl-message {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pl-message textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 120px;
+}
+.pl-message-to {
+  unicode-bidi: plaintext;
+}
+.pl-message-note {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 12px;
+}

@@ -305,6 +305,10 @@ pub const CORE_TOOLS: &[&str] = &[
     "chats_read",
     "history_read",
     "history_undo",
+    // Pack items (docs/PACKS.md): what a teacher, shop or clinic keeps in Worlds.
+    "resources_list",
+    "resources_create",
+    "items_update",
 ];
 
 /// Picked tools first, then the core set, then the rest, up to `limit`.

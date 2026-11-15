@@ -11,6 +11,13 @@ public struct SpreadsheetRecord: Sendable {
     /// The complete resource metadata; the workbook is its `sheet` key.
     public let metadata: JSONValue
 }
+/// A pack item (docs/PACKS.md): its kind ("shop.order") and complete metadata; its fields are the `item` key.
+public struct PackItemRecord: Sendable {
+    public let id: String
+    public let kind: String
+    public let revision: Int64
+    public let metadata: JSONValue
+}
 public struct StreamRecord: Sendable {
     public let id: String
     public let revision: Int64
@@ -45,6 +52,18 @@ public actor NativeResourceRepository: ProjectRepository, GalleryRepository {
         let record = try parse(await store.saveSpreadsheet(id: id, base: baseline.revision, expectedMetadata: baseline.metadata, metadata: metadata))
         guard record.kind == "spreadsheet", record.id == id else { throw NativeResourceRepositoryError.malformedResponse }
         return SpreadsheetRecord(id: record.id, revision: record.revision, metadata: record.metadata)
+    }
+    public func readPackItem(id: String) async throws -> PackItemRecord {
+        let record = try parse(await store.readResource(id: id))
+        guard record.kind.contains("."), record.id == id else { throw NativeResourceRepositoryError.malformedResponse }
+        return PackItemRecord(id: record.id, kind: record.kind, revision: record.revision, metadata: record.metadata)
+    }
+    /// Saves `metadata`, which must equal the baseline except for its `item` key.
+    public func savePackItem(id: String, baseline: PackItemRecord, metadata: JSONValue) async throws -> PackItemRecord {
+        guard baseline.id == id else { throw NativeResourceRepositoryError.malformedResponse }
+        let record = try parse(await store.savePackItem(id: id, base: baseline.revision, expectedMetadata: baseline.metadata, metadata: metadata))
+        guard record.kind == baseline.kind, record.id == id else { throw NativeResourceRepositoryError.malformedResponse }
+        return PackItemRecord(id: record.id, kind: record.kind, revision: record.revision, metadata: record.metadata)
     }
     public func readProject(id: String) async throws -> ProjectRecord {
         let value = try await store.readResource(id: id)

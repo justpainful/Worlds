@@ -10,6 +10,7 @@ import { menuAt, useMenu, type MenuItem } from "../ui/Menu";
 import { useLens } from "../motion/useLens";
 import { RouteView } from "../views/RouteView";
 import { WindowControls } from "./Window";
+import { packDef } from "../packs/registry";
 import { ErrorBoundary } from "../ui/ErrorBoundary";
 import { glassEngine } from "../glass/engine";
 
@@ -121,6 +122,11 @@ export function routeLabel(route: Route, pages: ReturnType<typeof useStore.getSt
       return { title: "Inbox", icon: "inbox", emoji: null };
     case "study":
       return { title: "Study", icon: "folder", emoji: null };
+    case "pack": {
+      const pack = packDef(route.pack);
+      const view = pack?.views.find((v) => v.id === (route.view ?? pack.sidebar[0]));
+      return { title: view?.label ?? pack?.label ?? "Pack", icon: view?.icon ?? "folder", emoji: null };
+    }
   }
 }
 

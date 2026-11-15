@@ -8,7 +8,7 @@ import { EmptyState, PageIcon, relTime, Spinner } from "../../ui/misc";
 import { SearchField } from "../../ui/SearchField";
 import { Select } from "../../ui/Select";
 import { newResourceMenu } from "../create";
-import { KIND_INFO, isResource } from "../kinds";
+import { isResource, kindInfo } from "../kinds";
 import { ResourceHeader, saveMeta, useResource } from "./ResourceHeader";
 import { createItem } from "../../planning/actions";
 import { dataOf, inSubject, taskSort } from "../../planning/model";
@@ -123,7 +123,7 @@ export function ProjectView({ id }: { id: string }) {
       ) : (
         groups.map((g) => (
           <section key={g.kind} className="proj-group">
-            <h2 className="proj-group-title">{KIND_INFO[g.kind].plural}</h2>
+            <h2 className="proj-group-title">{kindInfo(g.kind).plural}</h2>
             <div className="proj-items">
               {g.items.map((p) => (
                 <ResourceCard key={p.id} p={p} onOpen={(e) => openPage(p.id, e.ctrlKey ? "tab" : e.altKey ? "right" : "current")} />
@@ -189,10 +189,10 @@ function ResourceCard({ p, onOpen, onUnlink }: { p: PageMeta; onOpen: (e: React.
   return (
     <div className="proj-card">
       <button className="proj-card-main" onClick={onOpen}>
-        <PageIcon icon={p.icon ?? `pi:${KIND_INFO[kind].icon}`} size={26} />
+        <PageIcon icon={p.icon ?? `pi:${kindInfo(kind).icon}`} size={26} />
         <span className="proj-card-text">
           <span className="proj-card-title bidi">{pageTitle(p)}</span>
-          <span className="proj-card-sub">{KIND_INFO[kind].label} · {relTime(p.updatedAt)}</span>
+          <span className="proj-card-sub">{kindInfo(kind).label} · {relTime(p.updatedAt)}</span>
         </span>
       </button>
       {onUnlink && <IconButton icon="close" label="Unlink" className="proj-unlink" onClick={onUnlink} />}
@@ -216,7 +216,7 @@ function LinkPicker({ anchor, exclude, onPick, onClose }: { anchor: DOMRect; exc
             <button key={p.id} className="menu-item" onClick={() => onPick(p.id)}>
               <span className="menu-icon"><PageIcon icon={p.icon} size={16} /></span>
               <span className="menu-text bidi">{pageTitle(p)}</span>
-              <span className="menu-shortcut">{KIND_INFO[p.kind === "template" ? "page" : p.kind].label}</span>
+              <span className="menu-shortcut">{kindInfo(p.kind === "template" ? "page" : p.kind).label}</span>
             </button>
           ))}
           {list.length === 0 && <p className="proj-hint">Nothing matches.</p>}

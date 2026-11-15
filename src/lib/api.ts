@@ -223,6 +223,8 @@ export const api = {
       | "stream"
       | "experiment"
       | "sheet"
+      // A pack item's fields (docs/PACKS.md).
+      | "item"
       | import("../planning/model").DataKind,
     value: unknown,
   ) => invoke<PageMeta>("page_meta_set", { id, key, value }),

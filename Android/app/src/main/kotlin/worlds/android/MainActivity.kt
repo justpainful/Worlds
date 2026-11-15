@@ -209,7 +209,7 @@ class HomeModel(application: Application, internal val databaseName: String) : A
             if (request != requestId) return@launch
             val pages = result.getOrNull()?.first.orEmpty()
             val badges = result.getOrNull()?.second
-            mutable.update { it.copy(pages = pages.filter { page -> trash || (page.kind != "template" && page.kind !in worlds.android.planning.OWN_VIEW_KINDS) }, loading = false, error = result.isFailure,
+            mutable.update { it.copy(pages = pages.filter { page -> trash || (page.kind != "template" && !worlds.android.planning.hasOwnView(page.kind)) }, loading = false, error = result.isFailure,
                 dueToday = badges?.first ?: it.dueToday, inboxCount = badges?.second ?: it.inboxCount) }
         }
     }
@@ -1002,6 +1002,8 @@ class HomeModel(application: Application, internal val databaseName: String) : A
     var showAccount by rememberSaveable { mutableStateOf(false) }
     var showAppearance by rememberSaveable { mutableStateOf(false) }
     var showAiChat by rememberSaveable { mutableStateOf(false) }
+    // A request a pack hands to Claude, ready in the composer.
+    var aiPrompt by rememberSaveable { mutableStateOf("") }
     var showAutomations by rememberSaveable { mutableStateOf(false) }
     var showDiscordComposer by rememberSaveable { mutableStateOf(false) }
     var showProfile by rememberSaveable { mutableStateOf(false) }
@@ -1015,7 +1017,7 @@ class HomeModel(application: Application, internal val databaseName: String) : A
         return
     }
     if (showAiChat) {
-        AiChatScreen(databaseName = model.databaseName, onBack = { showAiChat = false }, onCreatePage = { title, content -> showAiChat = false; model.createWithContent(title, content) }, onOpenPage = { id -> showAiChat = false; model.open(id) }, onWorkspaceChanged = model::assistantChanged)
+        AiChatScreen(databaseName = model.databaseName, onBack = { showAiChat = false; aiPrompt = "" }, onCreatePage = { title, content -> showAiChat = false; model.createWithContent(title, content) }, onOpenPage = { id -> showAiChat = false; model.open(id) }, onWorkspaceChanged = model::assistantChanged, initialPrompt = aiPrompt)
         return
     }
     if (showAutomations) {
@@ -1027,7 +1029,8 @@ class HomeModel(application: Application, internal val databaseName: String) : A
         // Lesson notes are pages, so they open in the page editor.
         PlanningScreen(openSection, model.databaseName, LocalAppearancePreferences.current.studyPackEnabled,
             onBack = { planningSection = null; model.refresh() },
-            onOpenPage = { id -> planningSection = null; model.refresh(); model.open(id) })
+            onOpenPage = { id -> planningSection = null; model.refresh(); model.open(id) },
+            onAsk = { prompt -> aiPrompt = prompt; showAiChat = true })
         return
     }
     if (showDiscordComposer) {
@@ -1261,6 +1264,7 @@ class HomeModel(application: Application, internal val databaseName: String) : A
                 DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_calendar) }, text = { Text(stringResource(R.string.plan_calendar)) }, onClick = { showLibraryActions = false; planningSection = PlanningSection.Calendar.name })
                 DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_inbox) }, text = { Text(stringResource(R.string.plan_inbox)) }, onClick = { showLibraryActions = false; planningSection = PlanningSection.Inbox.name })
                 if (LocalAppearancePreferences.current.studyPackEnabled) DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_graduation_cap) }, text = { Text(stringResource(R.string.plan_study)) }, onClick = { showLibraryActions = false; planningSection = PlanningSection.Study.name })
+                DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_layers) }, text = { Text(stringResource(R.string.packs_title)) }, onClick = { showLibraryActions = false; planningSection = PlanningSection.Packs.name })
                 DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_share_2) }, text = { Text(stringResource(R.string.discord)) }, onClick = { showLibraryActions = false; showDiscordComposer = true })
                 DropdownMenuItem(leadingIcon = { WorldsGlyph(R.drawable.ic_circle_user) }, text = { Text(stringResource(R.string.profile)) }, onClick = { showLibraryActions = false; showProfile = true })
                 HorizontalDivider()

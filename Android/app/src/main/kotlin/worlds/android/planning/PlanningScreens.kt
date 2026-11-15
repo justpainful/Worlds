@@ -24,14 +24,14 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 /** The planning sections the app opens as pushed screens, in the desktop sidebar's order. */
-internal enum class PlanningSection { Tasks, Calendar, Inbox, Study }
+internal enum class PlanningSection { Tasks, Calendar, Inbox, Study, Packs }
 
 /**
  * Tasks (with Goals), Calendar, Inbox and Study over one ContentStore
  * connection. Lesson notes and captures turned into pages are pages, so they
  * open in the page editor through [onOpenPage].
  */
-@Composable internal fun PlanningScreen(section: PlanningSection, databaseName: String, studyEnabled: Boolean, onBack: () -> Unit, onOpenPage: (String) -> Unit) {
+@Composable internal fun PlanningScreen(section: PlanningSection, databaseName: String, studyEnabled: Boolean, onBack: () -> Unit, onOpenPage: (String) -> Unit, onAsk: (String) -> Unit = {}) {
     val context = LocalContext.current
     val repo = remember(databaseName) { PlanningRepository(context, databaseName) }
     DisposableEffect(repo) {
@@ -43,6 +43,7 @@ internal enum class PlanningSection { Tasks, Calendar, Inbox, Study }
         PlanningSection.Calendar -> CalendarScreen(repo, studyEnabled, onBack)
         PlanningSection.Inbox -> InboxScreen(repo, studyEnabled, onBack, onOpenPage)
         PlanningSection.Study -> StudyScreen(repo, studyEnabled, onBack, onOpenPage)
+        PlanningSection.Packs -> PacksScreen(repo, onBack, onAsk)
     }
 }
 

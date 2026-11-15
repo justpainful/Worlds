@@ -17,6 +17,10 @@ import { ACCENTS, effectiveAccent } from "../shell/appearance";
 import { BridgeCard } from "./IntegrationsView";
 import { Select, DIRECTION_OPTIONS, LANGUAGE_OPTIONS } from "../ui/Select";
 import { AccountSettings } from "../account/AccountSettings";
+import { FAMILIES } from "../packs/definition";
+import { DIGEST_KEY, digestOn } from "../packs/digest";
+import { packDef } from "../packs/registry";
+import { PackRoles } from "../packs/views/PackRoles";
 import { PACKS, setPackEnabled, usePack } from "../packs/packs";
 import { loadSample, removeSample, rewriteSample, sampleLanguageMismatch, useSampleLoaded } from "../demo/sampleActions";
 
@@ -129,30 +133,57 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
 }
 
 function PackSettings() {
+  // Grouped by family, in the order of docs/PACKS.md.
   return (
     <>
-      {PACKS.map((p) => (
-        <PackCard key={p.id} pack={p} />
-      ))}
+      {FAMILIES.map((f) => {
+        const list = PACKS.filter((p) => p.family === f.id);
+        return list.length ? (
+          <Group key={f.id} title={f.label}>
+            {list.map((p) => (
+              <PackRow key={p.id} pack={p} />
+            ))}
+          </Group>
+        ) : null;
+      })}
+      <p className="set-note">Turning a pack off hides its views and items without deleting anything; turning it back on brings them all back.</p>
     </>
   );
 }
 
-function PackCard({ pack }: { pack: (typeof PACKS)[number] }) {
+function PackRow({ pack }: { pack: (typeof PACKS)[number] }) {
   const on = usePack(pack.id);
+  const settings = useStore((s) => s.settings);
+  const setSetting = useStore((s) => s.setSetting);
+  const def = packDef(pack.id);
+  const digest = digestOn(settings).has(pack.id);
+  const setDigest = (v: boolean) => {
+    const next = digestOn(settings);
+    if (v) next.add(pack.id);
+    else next.delete(pack.id);
+    setSetting(DIGEST_KEY, [...next]);
+  };
   return (
-    <Group title={pack.label} note="Turning a pack off hides its views and items without deleting anything; turning it back on brings them all back.">
-      <Row label={`${pack.label} pack`} hint={pack.blurb}>
+    <>
+      <Row label={pack.label} hint={pack.blurb}>
         <Toggle checked={on} onChange={(v) => setPackEnabled(pack.id, v)} label={pack.label} />
       </Row>
-      <div className="set-row">
-        <ul className="pack-adds">
-          {pack.adds.map((a) => (
-            <li key={a}>{a}</li>
-          ))}
-        </ul>
-      </div>
-    </Group>
+      {on && def ? <PackRoles pack={def} /> : null}
+      {on && def?.alerts?.length ? (
+        <Row label="Daily summary in Inbox" hint="Once a day, what needs attention in this pack lands in Inbox.">
+          <Toggle checked={digest} onChange={setDigest} label="Daily summary in Inbox" />
+        </Row>
+      ) : null}
+      {on && (
+        <div className="set-row">
+          <ul className="pack-adds">
+            {pack.adds.map((a) => (
+              <li key={a}>{a}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </>
   );
 }
 function Appearance() {

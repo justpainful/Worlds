@@ -654,6 +654,7 @@
     <string name="shared_history_restore_uncertain">The restore may have completed. Check the page and history before trying again.</string>
     <string name="shared_history_restore_sync_error">Earlier edits were not confirmed, so the page was not restored. Reconnect and try again.</string>
     <string name="shared_duplicate_error">Could not duplicate this block. It may have changed or your access may have been removed.</string>
+    <string name="shared_fields_error">Could not save these fields. The item may have changed or your access may have been removed.</string>
     <!-- Subsystems, Drawing, Document & Settings additions -->
     <string name="ai_chat">AI Assistant</string>
     <string name="automations">Automations</string>
@@ -871,6 +872,19 @@
     <string name="plan_tasks">Tasks</string>
     <string name="plan_calendar">Calendar</string>
     <string name="plan_study">Study</string>
+    <string name="packs_subtitle">Tools for what you do: teaching, a shop, writing and more</string>
+    <string name="packs_add">Add</string>
+    <string name="packs_empty_title">Nothing here yet</string>
+    <string name="packs_none">None</string>
+    <string name="packs_ask_claude">Ask Claude</string>
+    <string name="packs_message_nobody">There is no one to send this to yet. Add a phone number or email first.</string>
+    <string name="packs_message_text">Message</string>
+    <string name="packs_message_note_whatsapp">It opens in WhatsApp, where you send it yourself.</string>
+    <string name="packs_message_note_mail">It opens in your mail app, where you send it yourself.</string>
+    <string name="packs_message_no_app">No app here can open this message.</string>
+    <string name="packs_message_sent">It was sent</string>
+    <string name="packs_message_open_whatsapp">Open in WhatsApp</string>
+    <string name="packs_message_open_mail">Open in Mail</string>
     <string name="plan_today">Today</string>
     <string name="plan_tomorrow">Tomorrow</string>
     <string name="plan_yesterday">Yesterday</string>

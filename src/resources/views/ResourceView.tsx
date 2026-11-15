@@ -10,6 +10,8 @@ import { StreamView } from "./StreamView";
 import { TaskView, EventView, GoalView } from "../../planning/ItemViews";
 import { SubjectView, StudyItemView } from "../../study/StudyViews";
 import { InboxView } from "../../planning/InboxView";
+import { PackItemView } from "../../packs/views/PackItemView";
+import { isPackKind } from "../../packs/registry";
 
 // Drawings and spreadsheets are large and opened less often, so their views load on first use.
 const DrawingView = lazy(() => import("../../drawing/DrawingView").then((m) => ({ default: m.DrawingView })));
@@ -58,6 +60,8 @@ export function ResourceView({ pageId, paneId }: { pageId: string; paneId: strin
     case "requirement":
       return <StudyItemView key={pageId} id={pageId} />;
     default:
+      // An item of a pack kind (freelance.invoice) opens as its fields.
+      if (kind && isPackKind(kind)) return <PackItemView key={pageId} id={pageId} />;
       // Pages, lessons, templates, and anything not loaded yet (PageView handles missing pages).
       return <PageView pageId={pageId} paneId={paneId} />;
   }

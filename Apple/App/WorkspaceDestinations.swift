@@ -13,12 +13,15 @@ struct SpacesDestinationView: View {
     let pages: [StoredPage]
     let openPage: (String) -> Void
     var showSectionPicker: Bool = true
+    /// The sector packs (docs/PACKS.md), when the host can show them.
+    var packs: (() -> AnyView)? = nil
 
     private var availableSections: [SpacesSection] {
         var items: [SpacesSection] = [.projects, .goals, .calendar, .printQueue]
         if studyPackEnabled {
             items.append(.study)
         }
+        if packs != nil { items.append(.packs) }
         return items
     }
 
@@ -64,6 +67,8 @@ struct SpacesDestinationView: View {
 
             if selectedSection == .study && studyPackEnabled {
                 WorldsStudyPackHubView()
+            } else if selectedSection == .packs, let packs {
+                packs()
             } else {
                 WorldsPlanningHubView(initialTab: mappedPlanningTab(selectedSection), showSubTabs: !showSectionPicker)
             }

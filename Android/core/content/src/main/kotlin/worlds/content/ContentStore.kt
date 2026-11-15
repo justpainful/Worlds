@@ -431,7 +431,7 @@ class ContentStore(context: Context, name: String = "worlds-content.db") :
     }
 
     fun create(kind: String, title: String, parentId: String? = null, metadata: String = "{}", instructions: String = "[]"): Resource = writableDatabase.transaction {
-        require(kind in KINDS)
+        require(kind in KINDS || isPackKind(kind)) { "Unknown kind $kind" }
         JSONObject(metadata); JSONArray(instructions)
         if (parentId != null) require(requireResource(parentId).deletedAt == null) { "Parent is in trash" }
         val sort = nextSort(parentId)
@@ -1210,6 +1210,9 @@ class ContentStore(context: Context, name: String = "worlds-content.db") :
         private const val MAX_SNAPSHOT_BYTES = 64 * 1024 * 1024
         const val MAX_IMAGE_BYTES = 16 * 1024 * 1024
         const val MAX_GALLERY_MEDIA_BYTES = 512L * 1024 * 1024
+        /** A pack kind is "pack.kind" (teacher.class), the shape the desktop accepts for every pack (docs/PACKS.md). */
+        fun isPackKind(kind: String): Boolean = kind.length <= 64 && PACK_KIND.matches(kind)
+        private val PACK_KIND = Regex("^[a-z][a-z0-9]*[.][a-z][a-z0-9]*$")
         private val KINDS = setOf("page", "document", "presentation", "project", "gallery", "file", "stream", "drawing", "template", "spreadsheet", "task", "event", "inbox", "goal", "subject", "lesson", "assignment", "exam", "requirement")
 
         /** Arabic letters folded for search: alef forms, taa marbuta, alef maqsura; diacritics and tatweel dropped. */

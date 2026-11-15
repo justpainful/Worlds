@@ -137,6 +137,50 @@ async function route(request: Request, env: Env): Promise<Response> {
   if (level === "none") return problem(403, "no access to this document");
   const room = env.DOCS.getByName(`${workspaceId}/${docId}`);
 
+  // POST .../publish: send this item to every member holding a role in its pack (docs/PACKS.md, Design 3).
+  if (rest.length === 1 && rest[0] === "publish") {
+    if (method !== "POST") return problem(405, "method not allowed");
+    if (!atLeast(level, "edit")) return problem(403, "edit access required");
+    const b = ((await readJson(request)) ?? {}) as Record<string, unknown>;
+    const part = /^[a-z][a-z0-9]{0,31}$/;
+    const kindRe = /^[a-z][a-z0-9]{0,31}\.[a-z][a-z0-9]{0,31}$/;
+    const packId = typeof b.packId === "string" && part.test(b.packId) ? b.packId : null;
+    const roleId = typeof b.roleId === "string" && part.test(b.roleId) ? b.roleId : null;
+    const source = typeof b.source === "string" && kindRe.test(b.source) ? b.source : null;
+    const target = typeof b.target === "string" && kindRe.test(b.target) ? b.target : null;
+    const title = typeof b.title === "string" ? b.title.slice(0, 200) : "";
+    const fields = b.fields && typeof b.fields === "object" && !Array.isArray(b.fields) ? (b.fields as Record<string, unknown>) : null;
+    if (!packId || !roleId || !source || !target || !fields) return problem(400, "packId, roleId, source, target and fields are required");
+    if (JSON.stringify(fields).length > 16 * 1024) return problem(413, "fields too large");
+    const fromName = typeof b.fromName === "string" ? b.fromName.slice(0, 80) : undefined;
+    let userIds: string[];
+    try {
+      userIds = (await env.IDENTITY.packMembers({ workspaceId, packId, roleId })).userIds ?? [];
+    } catch {
+      return problem(503, "could not reach the identity service");
+    }
+    const now = Date.now();
+    const sent = userIds.filter((u) => u !== userId);
+    await Promise.all(
+      sent.map((u) =>
+        env.INBOXES.getByName(u).put({
+          id: `pub:${workspaceId}:${docId}`,
+          kind: "published",
+          workspaceId,
+          docId,
+          threadId: "",
+          commentId: "",
+          from: userId,
+          fromName,
+          excerpt: title,
+          createdAt: now,
+          item: { source, target, title, fields },
+        }),
+      ),
+    );
+    return json({ ok: true, sent: sent.length });
+  }
+
   if(rest[0]==="drawing"&&rest.length===2&&["export-policy","export-authorize"].includes(rest[1])){
     if(rest[1]==="export-policy"&&method==="GET"){const result=await room.drawingExportPolicy(workspaceId,docId,userId,claims.dev,claims.iat);return json(result,result.ok?200:result.status);}
     if(rest[1]==="export-policy"&&method!=="PUT"||rest[1]==="export-authorize"&&method!=="POST")return problem(405,"method not allowed");

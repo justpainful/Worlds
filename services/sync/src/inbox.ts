@@ -1,13 +1,15 @@
 /**
  * UserInbox: one Durable Object per user, holding their notifications feed
- * (mentions and replies). Adding is idempotent by notification id.
+ * (mentions, replies, and items published to them, such as a teacher's
+ * assessment). Adding is idempotent by notification id; publishing again
+ * replaces the earlier copy and marks it unread.
  */
 import { DurableObject } from "cloudflare:workers";
 import type { Env } from "./env";
 
 export interface Notification {
   id: string;
-  kind: "mention" | "reply";
+  kind: "mention" | "reply" | "published";
   workspaceId: string;
   docId: string;
   threadId: string;
@@ -18,6 +20,17 @@ export interface Notification {
   excerpt: string;
   createdAt: number;
   readAt?: number | null;
+  /** For published: the item as its publisher wrote it, for the reader's own pack. */
+  item?: PublishedItem;
+}
+
+export interface PublishedItem {
+  /** The pack and kind the publisher's item belongs to (teacher.assessment). */
+  source: string;
+  /** What it becomes for the reader (study.assignment). */
+  target: string;
+  title: string;
+  fields: Record<string, unknown>;
 }
 
 const MAX_KEPT = 1000;
@@ -51,6 +64,16 @@ export class UserInbox extends DurableObject<Env> {
   async add(n: Notification): Promise<void> {
     this.sql.exec("INSERT OR IGNORE INTO notifications (id, created_at, read_at, payload) VALUES (?, ?, NULL, ?)", n.id, n.createdAt, JSON.stringify(n));
     this.sql.exec("DELETE FROM notifications WHERE id IN (SELECT id FROM notifications ORDER BY created_at DESC LIMIT -1 OFFSET ?)", MAX_KEPT);
+  }
+
+  /** A published item: a newer copy of the same id replaces the old one and is unread again. */
+  async put(n: Notification): Promise<void> {
+    this.sql.exec(
+      "INSERT INTO notifications (id, created_at, read_at, payload) VALUES (?, ?, NULL, ?) ON CONFLICT(id) DO UPDATE SET created_at = excluded.created_at, read_at = NULL, payload = excluded.payload",
+      n.id,
+      n.createdAt,
+      JSON.stringify(n),
+    );
   }
 
   async revokeDevice(deviceId: string, issuedBefore: number, permanent: boolean): Promise<void> {
