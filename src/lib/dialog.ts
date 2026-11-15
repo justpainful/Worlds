@@ -2,6 +2,8 @@
 // so an Arabic Worlds does not open an English "Choose a cover" window.
 import { open as openNative, save as saveNative, type OpenDialogOptions, type SaveDialogOptions } from "@tauri-apps/plugin-dialog";
 import { tr } from "../i18n/ui";
+import { isWeb } from "./api";
+import { pickFiles } from "../web/files";
 
 export function localDialog<T extends { title?: string; filters?: { name: string; extensions: string[] }[] }>(options: T): T {
   return {
@@ -12,6 +14,8 @@ export function localDialog<T extends { title?: string; filters?: { name: string
 }
 
 export function open<T extends OpenDialogOptions>(options: T) {
+  // On the web the browser's picker stands in; the paths it returns are read by the in-browser backend.
+  if (isWeb) return pickFiles(options) as ReturnType<typeof openNative<T>>;
   return openNative(localDialog(options));
 }
 

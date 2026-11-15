@@ -1,10 +1,8 @@
 import { NodeViewWrapper, type ReactNodeViewProps } from "@tiptap/react";
 import { ProductIcon, type ProductIconName } from "../../ui/ProductIcon";
 import { useEffect, useRef, useState } from "react";
-import { revealItemInDir } from "@tauri-apps/plugin-opener";
-import { openAttachment } from "../../lib/links";
-import { api, errorMessage, fileUrl } from "../../lib/api";
-import { useStore } from "../../state/store";
+import { openAttachment, revealAttachment } from "../../lib/links";
+import { api, fileUrl, isWeb } from "../../lib/api";
 import { Icon, type IconName } from "../../ui/Icon";
 import { formatBytes } from "../../ui/misc";
 import { SmartImage } from "../../ui/SmartImage";
@@ -12,13 +10,10 @@ import { FilePreview, canPreview } from "./FilePreview";
 import { Glass } from "../../glass/Glass";
 import { LAYER } from "../../glass/profiles";
 
-async function reveal(id: string) {
-  try {
-    await revealItemInDir(await api.attachmentPath(id));
-  } catch (e) {
-    useStore.getState().toast({ message: errorMessage(e), tone: "error" });
-  }
-}
+const reveal = revealAttachment;
+/** On the web the file is downloaded instead of shown in Explorer. */
+const REVEAL = isWeb ? "Download" : "Show in Explorer";
+const REVEAL_ICON = isWeb ? "download" : "folderOpen";
 const openFile = openAttachment;
 
 /** Drag the edge of media to resize it as a % of the text column. */
@@ -108,7 +103,7 @@ export function ImageView({ node, updateAttributes, selected, deleteNode, editor
           extra={
             <>
               <button className="mt-btn" aria-label="Open" data-tip="Open" onClick={() => openFile(a.attachmentId)}><Icon name="openExternal" size={15} /></button>
-              <button className="mt-btn" aria-label="Show in Explorer" data-tip="Show in Explorer" onClick={() => reveal(a.attachmentId)}><Icon name="folderOpen" size={15} /></button>
+              <button className="mt-btn" aria-label={REVEAL} data-tip={REVEAL} onClick={() => reveal(a.attachmentId)}><Icon name={REVEAL_ICON} size={15} /></button>
               <span className="mt-sep" />
             </>
           }
@@ -263,8 +258,8 @@ export function FileView({ node, selected, updateAttributes, editor }: ReactNode
           <button className="chip-btn" onClick={() => openFile(a.attachmentId)} data-tip="Open in its own app">
             <Icon name="openExternal" size={13} />
           </button>
-          <button className="chip-btn" onClick={() => reveal(a.attachmentId)} data-tip="Show in Explorer">
-            <Icon name="folderOpen" size={13} />
+          <button className="chip-btn" onClick={() => reveal(a.attachmentId)} data-tip={REVEAL}>
+            <Icon name={REVEAL_ICON} size={13} />
           </button>
         </span>
       </div>

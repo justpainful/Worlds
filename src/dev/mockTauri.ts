@@ -18,6 +18,7 @@ import { DEFAULT_EXPORT_RULES, canDrawingExport, type DrawingExportPolicy } from
 import providersJson from "../ai/providers.json";
 import { askToKeep, loadFiles, loadSnapshot, saveFile, saveSnapshot } from "../web/persist";
 import type { Snapshot } from "../web/merge";
+import { takeFile } from "../web/files";
 export { mergeSnapshots, type Snapshot } from "../web/merge";
 /** The public web demo build (`pnpm build:demo`): the mock is the whole backend there. */
 export const WEB_DEMO = import.meta.env.VITE_WEB_DEMO === "1";
@@ -465,6 +466,9 @@ async function handleNow(cmd: string, a: any = {}): Promise<any> {
       return pages[a.id];
     }
     case "attachment_import": {
+      // On the web the path comes from the browser's picker (src/web/files.ts): import the real file.
+      const picked = takeFile(String(a.path ?? ""));
+      if (picked) return importBlob(picked, picked.name, a.pageId ?? null);
       const name: string = a.path.split(/[\\/]/).pop();
       const ext = name.split(".").pop()!.toLowerCase();
       const mime = ext === "gif" ? "image/gif" : ["png", "jpg", "jpeg", "webp"].includes(ext) ? "image/png" : ["mp4", "webm"].includes(ext) ? "video/mp4" : ext === "pdf" ? "application/pdf" : "application/octet-stream";
@@ -623,6 +627,24 @@ async function handleNow(cmd: string, a: any = {}): Promise<any> {
       console.warn("[mock] unhandled", cmd, a);
       return null;
   }
+}
+
+/** Keeps a file as an attachment: shown from a blob URL, saved with the workspace on the web. */
+async function importBlob(blob: Blob, name: string, pageId: string | null) {
+  const mime = blob.type || guessMime(name);
+  const kind = mime === "image/gif" ? "gif" : mime.startsWith("image/") ? "image" : mime.startsWith("video/") ? "video" : "file";
+  let width: number | null = null, height: number | null = null;
+  if (kind === "image" || kind === "gif") {
+    try {
+      const bmp = await createImageBitmap(blob);
+      width = bmp.width; height = bmp.height; bmp.close();
+    } catch { /* an image the browser cannot read is still kept as a file */ }
+  }
+  const aid = id(), stored = blob.type ? blob : new Blob([blob], { type: mime });
+  ASSET[aid] = URL.createObjectURL(stored);
+  fileInfo[aid] = { name, mime, size: blob.size, kind, pageId, createdAt: Date.now() };
+  if (WEB_DEMO) void saveFile(aid, stored);
+  return { id: aid, pageId, kind, fileName: name, mime, size: blob.size, width, height, createdAt: Date.now() };
 }
 
 export function mockFileUrl(attachmentId: string): string {

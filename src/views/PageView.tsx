@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type HTMLAttributes, type ReactNode } from "react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { api, errorMessage, fileUrl, isTauri } from "../lib/api";
+import { api, errorMessage, fileUrl, isTauri, isWeb } from "../lib/api";
 import type { Page } from "../lib/types";
 import { useStore, childrenOf, pageTitle } from "../state/store";
 import { emit, on } from "../lib/bus";
@@ -197,9 +197,9 @@ function LoadedPage({ page, paneId, reload }: { page: Page; paneId: string; relo
     return () => offs.forEach((f) => f());
   }, [page.id]);
 
-  // Files dropped from Explorer onto this page.
+  // Files dropped from Explorer onto this page. On the web the editor takes the browser's drop itself.
   useEffect(() => {
-    if (!isTauri) return;
+    if (!isTauri || isWeb) return;
     const un = getCurrentWebview().onDragDropEvent(async (e) => {
       if (e.payload.type !== "drop") return;
       const dpr = window.devicePixelRatio || 1;

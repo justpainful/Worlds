@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { open as openDialog } from "../../lib/dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { api, errorMessage, fileUrl, isTauri } from "../../lib/api";
+import { api, errorMessage, fileUrl, isTauri, isWeb } from "../../lib/api";
+import { onFilesDropped } from "../../web/drop";
+import { pathForFile } from "../../web/files";
 import type { Attachment } from "../../lib/types";
 import { useStore } from "../../state/store";
 import { Button, IconButton } from "../../ui/Button";
@@ -97,8 +99,9 @@ export function GalleryView({ id }: { id: string }) {
     if (picked) addPaths(Array.isArray(picked) ? picked : [picked]);
   };
 
-  // Files dropped from Explorer onto the gallery.
+  // Files dropped from Explorer onto the gallery (on the web, from the browser's own drop).
   useEffect(() => {
+    if (isWeb) return onFilesDropped(root.current, (files) => addPaths(files.map(pathForFile)));
     if (!isTauri) return;
     const un = getCurrentWebview().onDragDropEvent((e) => {
       if (e.payload.type !== "drop" || !root.current) return;
