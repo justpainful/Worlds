@@ -56,24 +56,6 @@ export async function loadSample(): Promise<boolean> {
   }
 }
 
-/**
- * The public web demo (`pnpm build:demo`): once the app has started, fill it
- * with the sample workspace and say plainly that this is a browser demo.
- */
-export function startWebDemo(): void {
-  let started = false;
-  const go = () => {
-    if (started || !useStore.getState().ready) return;
-    started = true;
-    unsubscribe();
-    void loadSample().then(() =>
-      useStore.getState().toast({ message: "This is a web demo. Everything stays in this tab and is gone when you close it.", tone: "info" }),
-    );
-  };
-  const unsubscribe = useStore.subscribe(go);
-  go();
-}
-
 /** The language the loaded sample is written in, when it is not the interface's. */
 export function sampleLanguageMismatch(): SampleLanguage | null {
   const s = useStore.getState();

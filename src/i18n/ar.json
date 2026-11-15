@@ -1,6 +1,8 @@
 {
  "- or 1.": "- أو 1.",
+ "Start in This Browser": "ابدأ في هذا المتصفح",
  "The same account works in the Worlds app on your PC and phone: sign in there with this email.": "نفس الحساب يعمل في تطبيق Worlds على كمبيوترك وجوالك: سجّل دخولك هناك بهذا البريد.",
+ "Your pages stay in this browser and work without a connection. Sign in to keep them on your account and open them anywhere.": "صفحاتك تبقى في هذا المتصفح وتعمل بدون اتصال. سجّل دخولك لتحفظها في حسابك وتفتحها من أي مكان.",
  "\u2014 AutoSum (`=SUM(...)` of adjacent numbers)": ": جمع تلقائي (`=SUM(...)` للأرقام المجاورة)",
  "\u2014 Bold / Italic / Underline / Strikethrough": ": عريض أو مائل أو تسطير أو يتوسطه خط",
  "\u2014 Copy / Cut / Paste (Excel TSV compatible)": ": نسخ أو قص أو لصق (متوافق مع TSV في Excel)",

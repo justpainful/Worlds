@@ -16,6 +16,7 @@ import type { DrawingDocument } from "../drawing/model";
 import type { LibraryPublication } from "../drawing/library";
 import { DEFAULT_EXPORT_RULES, canDrawingExport, type DrawingExportPolicy } from "../drawing/exportPolicy";
 import providersJson from "../ai/providers.json";
+import { askToKeep, loadFiles, loadSnapshot, saveFile, saveSnapshot } from "../web/persist";
 /** The public web demo build (`pnpm build:demo`): the mock is the whole backend there. */
 export const WEB_DEMO = import.meta.env.VITE_WEB_DEMO === "1";
 const exportPolicies:Record<string,DrawingExportPolicy>={};
@@ -73,9 +74,9 @@ const profile: any = {
   updatedAt: now,
 };
 
-// The public web demo in Arabic shows an Arabic profile, so nothing on screen stays in English.
-if (WEB_DEMO && profile.language === "ar") {
-  Object.assign(profile, { displayName: "ريم", handle: "reem", bio: "طالبة ثانوي، أنظم دراستي ومشاريعي في Worlds.", status: "أراجع لاختبار الأحياء", location: "الرياض" });
+// Worlds on the web starts with the person's own empty profile; onboarding fills it in.
+if (WEB_DEMO) {
+  Object.assign(profile, { id: "me", blocks: [], displayName: "", handle: null, avatar: null, banner: null, bio: null, status: null, location: null, links: [], createdAt: Date.now(), updatedAt: Date.now() });
 }
 
 const pages: Record<string, any> = {};
@@ -185,7 +186,7 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has("mock") && n
   metadata[sampleStream] = { stream: { url: "/src/dev/demo-stream.mp4", format: "progressive" } };
 }
 
-const settings: Record<string, unknown> = WEB_DEMO ? { "account.onboarded": true } : { "advanced.developer": true, "advanced.perfOverlay": new URLSearchParams(location.search).has("perf"), "appearance.glassTone": new URLSearchParams(location.search).get("tone") ?? "auto", ...(new URLSearchParams(location.search).has("demo") && !new URLSearchParams(location.search).has("onboarding") ? { "account.onboarded": true } : {}) };
+const settings: Record<string, unknown> = WEB_DEMO ? {} : { "advanced.developer": true, "advanced.perfOverlay": new URLSearchParams(location.search).has("perf"), "appearance.glassTone": new URLSearchParams(location.search).get("tone") ?? "auto", ...(new URLSearchParams(location.search).has("demo") && !new URLSearchParams(location.search).has("onboarding") ? { "account.onboarded": true } : {}) };
 try { if (localStorage.getItem("worlds.demo.tourSeen")) settings["tour.seen"] = true; } catch { /* private window */ }
 const callbacks = new Map<number, (v: any) => void>();
 const listeners = new Map<string, number[]>();
@@ -213,7 +214,97 @@ const ASSET: Record<string, string> = {
   "mock-white": "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="700"><defs><linearGradient id="g" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#eef1f6"/></linearGradient></defs><rect width="1600" height="700" fill="url(#g)"/><circle cx="1200" cy="420" r="160" fill="#dfe6f0"/></svg>'),
 };
 
+/** What is known about each file a person attached (the bytes live in IndexedDB on the web). */
+const fileInfo: Record<string, { name: string; mime: string; size: number; kind: string; pageId: string | null; createdAt: number }> = {};
+
+function guessMime(name: string): string {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  const known: Record<string, string> = {
+    png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", svg: "image/svg+xml",
+    mp4: "video/mp4", webm: "video/webm", mov: "video/quicktime", pdf: "application/pdf", txt: "text/plain", csv: "text/csv",
+  };
+  return known[ext] ?? "application/octet-stream";
+}
+
+// ---- Worlds on the web: the workspace stays in the browser -----------------
+// Everything the backend holds is saved as one snapshot after each change and
+// read back before the first command, so closing the tab loses nothing.
+
+interface Snapshot {
+  v: 1;
+  savedAt: number;
+  pages: typeof pages; blocks: typeof blocks; metadata: typeof metadata;
+  drawings: typeof drawings; drawingLibrary: typeof drawingLibrary; drawingVersions: typeof drawingVersions; exportPolicies: typeof exportPolicies;
+  settings: typeof settings; profile: any; chats: any[]; chatMessages: typeof chatMessages; fileInfo: typeof fileInfo;
+}
+
+export function snapshot(): Snapshot {
+  return {
+    v: 1, savedAt: Date.now(), pages, blocks, metadata, drawings, drawingLibrary, drawingVersions, exportPolicies,
+    settings, profile, chats, chatMessages, fileInfo,
+  };
+}
+
+const replace = <T extends object>(target: T, source: T | undefined) => {
+  for (const k of Object.keys(target)) delete (target as any)[k];
+  if (source) Object.assign(target, source);
+};
+
+/** Puts a saved workspace in place of what is held now (from this browser, or from the account). */
+export function restore(s: Snapshot): void {
+  replace(pages, s.pages); replace(blocks, s.blocks); replace(metadata, s.metadata);
+  replace(drawings, s.drawings); replace(drawingLibrary, s.drawingLibrary); replace(drawingVersions, s.drawingVersions); replace(exportPolicies, s.exportPolicies);
+  replace(settings, s.settings); replace(profile, s.profile); replace(chatMessages, s.chatMessages); replace(fileInfo, s.fileInfo);
+  chats.splice(0, chats.length, ...(s.chats ?? []));
+}
+
+/** Commands that only read: everything else may change the workspace and is saved after it. */
+const READS = new Set([
+  "bootstrap", "launch_info", "pages_list", "page_get", "drawing_export_policy_cached", "drawing_export_requirements", "drawing_export_check",
+  "drawing_versions", "drawing_version_scene", "drawing_experiments", "drawing_library_list", "drawing_library_read", "drawing_reference_search",
+  "sync_page_mode", "drawing_reference_read", "search", "history_list", "versions_list", "profile_get", "profile_stats", "media_recent", "data_dir",
+  "ai_status", "ai_token_status", "ai_providers", "ai_provider_models", "ai_local_detect", "ai_codex_status", "ai_claude_auth_status", "ai_chats", "ai_chat",
+  "automations_list", "automation_runs", "pending_actions", "discord_destinations", "backups_list", "discord_status", "preview_prepare", "attachment_get",
+  "drawing_sync_pending_pages", "client_log", "session_save", "launch_info", "tray_language", "page_markdown",
+]);
+
+const savedListeners = new Set<(s: Snapshot) => void>();
+/** vault.ts listens here to copy a signed-in person's workspace to their account. */
+export function onWorkspaceSaved(fn: (s: Snapshot) => void): () => void {
+  savedListeners.add(fn);
+  return () => savedListeners.delete(fn);
+}
+
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+function scheduleSave() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    const s = snapshot();
+    void saveSnapshot(s).catch((e) => console.warn("[web] could not save the workspace", e));
+    for (const fn of savedListeners) fn(s);
+  }, 400);
+}
+// Leaving the page saves at once.
+if (WEB_DEMO) addEventListener("pagehide", () => { if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; void saveSnapshot(snapshot()); } });
+
+const ready: Promise<void> = WEB_DEMO
+  ? (async () => {
+      askToKeep();
+      const saved = await loadSnapshot<Snapshot>();
+      if (saved?.v === 1) restore(saved);
+      for (const [fid, blob] of await loadFiles()) ASSET[fid] = URL.createObjectURL(blob);
+    })()
+  : Promise.resolve();
+
 async function handle(cmd: string, a: any = {}): Promise<any> {
+  await ready;
+  const result = await handleNow(cmd, a);
+  if (WEB_DEMO && !cmd.startsWith("plugin:") && !READS.has(cmd)) scheduleSave();
+  return result;
+}
+
+async function handleNow(cmd: string, a: any = {}): Promise<any> {
   if (cmd.startsWith("plugin:event|")) {
     if (cmd === "plugin:event|listen") {
       const arr = listeners.get(a.event) ?? [];
@@ -369,9 +460,15 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
       return { id: aid, pageId: a.pageId, kind: mime.startsWith("image/") ? (ext === "gif" ? "gif" : "image") : mime.startsWith("video/") ? "video" : "file", fileName: name, mime, size: 123456, width: 800, height: 600, createdAt: Date.now() };
     }
     case "attachment_import_raw": {
-      const aid = id(), bytes = new Uint8Array(a.bytes), blob = new Blob([bytes]);
+      // The bytes are kept as a blob URL, and on the web saved with the workspace.
+      const name: string = a.name;
+      const kind = /\.gif$/i.test(name) ? "gif" : /\.(png|jpe?g|webp|svg)$/i.test(name) ? "image" : /\.(mp4|webm|mov)$/i.test(name) ? "video" : "file";
+      const mime = guessMime(name);
+      const aid = id(), bytes = new Uint8Array(a.bytes), blob = new Blob([bytes], { type: mime });
       ASSET[aid] = URL.createObjectURL(blob);
-      return { id: aid, pageId: a.pageId, kind: "image", fileName: a.name, mime: "image/png", size: bytes.byteLength, width: null, height: null, createdAt: Date.now() };
+      fileInfo[aid] = { name, mime, size: bytes.byteLength, kind, pageId: a.pageId, createdAt: Date.now() };
+      if (WEB_DEMO) void saveFile(aid, blob);
+      return { id: aid, pageId: a.pageId, kind, fileName: name, mime, size: bytes.byteLength, width: null, height: null, createdAt: Date.now() };
     }
     case "blocks_save": {
       // Same rule as the real backend: a save based on an older sync is refused.
@@ -389,15 +486,15 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
       const q = foldArabic(String(a.query ?? "").toLowerCase().trim());
       return Object.values(pages).filter((p: any) => !p.deletedAt && q && foldArabic(`${p.title} ${p.preview ?? ""}`.toLowerCase()).includes(q)).map((p: any) => ({ pageId: p.id, title: p.title, icon: p.icon, kind: p.kind, snippet: p.preview, parentTitle: null, updatedAt: p.updatedAt }));
     }
-    case "history_list": return [{ id: 1, pageId: p1, pageTitle: pages[p1].title, opId: null, actor: "user", kind: "edited", summary: "Edited · 3 changed", blockId: null, before: null, after: null, meta: {}, createdAt: now - 600_000 }];
+    case "history_list": if (WEB_DEMO) return []; return [{ id: 1, pageId: p1, pageTitle: pages[p1].title, opId: null, actor: "user", kind: "edited", summary: "Edited · 3 changed", blockId: null, before: null, after: null, meta: {}, createdAt: now - 600_000 }];
     case "versions_list": return [];
     case "profile_get": return profile;
     case "profile_update": Object.assign(profile, a.patch); return { ...profile };
-    case "profile_stats": return {
+    case "profile_stats": if (WEB_DEMO) return { pages: Object.values(pages).filter((p: any) => !p.deletedAt).length, chats: chats.length, automations: 0, streak: 0, edits7d: 0, words: 0, activeDays: [] }; return {
       pages: Object.keys(pages).length, chats: chats.length, automations: 2, streak: 6, edits7d: 23, words: 4180,
       activeDays: Array.from({ length: 28 }, (_, i) => ({ date: new Date(Date.now() - (27 - i) * 864e5).toISOString().slice(0, 10), count: [0, 1, 3, 0, 2, 5, 1][i % 7] })),
     };
-    case "media_recent": return [
+    case "media_recent": if (WEB_DEMO) return Object.entries(fileInfo).map(([fid, f]) => ({ id: fid, pageId: f.pageId, kind: f.kind, fileName: f.name, mime: f.mime, size: f.size, relPath: "", width: null, height: null, createdAt: f.createdAt })).filter((f) => f.kind === "image" || f.kind === "gif").reverse(); return [
       { id: "mock-banner", pageId: null, kind: "image", fileName: "banner.webp", mime: "image/webp", size: 1, relPath: "", width: 1600, height: 900, createdAt: Date.now() },
       { id: "mock-ref-5", pageId: null, kind: "image", fileName: "ref-5.jpg", mime: "image/jpeg", size: 1, relPath: "", width: 1600, height: 900, createdAt: Date.now() },
       { id: "mock-ref-6", pageId: null, kind: "image", fileName: "ref-6.jpg", mime: "image/jpeg", size: 1, relPath: "", width: 1600, height: 900, createdAt: Date.now() },
@@ -429,7 +526,7 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
     case "ai_provider_models": return a.id === "ollama" ? [{ id: "llama3.2:3b", name: "llama3.2:3b", tools: true }, { id: "gemma:2b", name: "gemma:2b", tools: false }] : [{ id: "gpt-5", name: "gpt-5", tools: null }];
     case "ai_local_detect": return mockProviders.filter((p) => p.kind === "local").map((p) => ({ id: p.id, name: p.name, baseUrl: p.baseUrl, running: p.id === "ollama", models: p.id === "ollama" ? [{ id: "llama3.2:3b", name: "llama3.2:3b", tools: true }] : [] }));
     case "ai_codex_status": return { installed: true, signedIn: false, version: "codex-cli 0.144.5", method: "" };
-    case "ai_claude_auth_status": return { installed: true, signedIn: true, method: "claude.ai" };
+    case "ai_claude_auth_status": if (WEB_DEMO) return { installed: false, signedIn: false, method: "" }; return { installed: true, signedIn: true, method: "claude.ai" };
     case "ai_codex_login": case "ai_claude_login": return null;
     case "ai_chats": return [...chats].sort((x, y) => y.updatedAt - x.updatedAt);
     case "ai_chat": return { id: a.id, messages: chatMessages[a.id] ?? [] };
@@ -453,14 +550,13 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
           .slice(0, 5)
           .map((p: any) => `- ${p.title}`)
           .join("\n");
+        // Claude runs in the apps, where it can read and change the pages; the web says so plainly.
         const answer = arabicPrompt
-          ? `**من مساحة عملك**\n\nآخر ما عملت عليه:\n${recent}\n\nهذه نسخة الويب التجريبية. في تطبيق سطح المكتب يقرأ Claude صفحاتك ويكتب فيها فعلًا، ويمكن التراجع عن كل تغيير.`
-          : `**From your workspace**\n\nWhat you worked on most recently:\n${recent}\n\nThis is the web demo. In the desktop app Claude really reads and writes your pages, and every change can be undone.`;
-        setTimeout(() => emit("worlds://ai", { runId, kind: "tool", tool: "pages_read" }), 300);
-        setTimeout(() => emit("worlds://ai", { runId, kind: "tool_result", error: false }), 800);
-        setTimeout(() => emit("worlds://ai", { runId, kind: "text", text: answer }), 1100);
+          ? `Claude يشتغل في تطبيق Worlds على كمبيوترك وجوالك: يقرأ صفحاتك ويعدّل فيها، وتقدر تتراجع عن أي تعديل.\n\nحمّل التطبيق من enterworlds.space، وسجّل دخولك بنفس الحساب.${recent ? `\n\nآخر صفحاتك:\n${recent}` : ""}`
+          : `Claude works in the Worlds app on your computer and phone, where it reads your pages and changes them, and every change can be undone.\n\nGet the app from enterworlds.space and sign in with the same account.${recent ? `\n\nYour latest pages:\n${recent}` : ""}`;
+        setTimeout(() => emit("worlds://ai", { runId, kind: "text", text: answer }), 400);
         setTimeout(() => {
-          chatMessages[chatId].push({ id: id(), role: "assistant", content: answer, steps: [{ tool: "pages_read", ok: true }], opId: null, meta: { changeCount: 0 }, createdAt: Date.now() });
+          chatMessages[chatId].push({ id: id(), role: "assistant", content: answer, steps: [], opId: null, meta: { changeCount: 0 }, createdAt: Date.now() });
           emit("worlds://ai", { runId, kind: "done", chatId, text: "ok" });
         }, 1700);
         return { runId, chatId };
@@ -493,10 +589,10 @@ async function handle(cmd: string, a: any = {}): Promise<any> {
     case "automation_run_now": if (new URLSearchParams(location.search).has("demo")) throw new Error("This demonstration automation cannot send messages."); return null;
     case "pending_actions": return [];
     case "discord_destinations": return { guilds: [], users: [] };
-    case "backups_list": return { backups: [{ file: "worlds-1-daily.db", createdAt: now - 3_600_000, reason: "daily", size: 2_400_000 }], pendingRestore: null, note: null, folder: "C:/Worlds/backups" };
+    case "backups_list": if (WEB_DEMO) return { backups: [], pendingRestore: null, note: null, folder: "" }; return { backups: [{ file: "worlds-1-daily.db", createdAt: now - 3_600_000, reason: "daily", size: 2_400_000 }], pendingRestore: null, note: null, folder: "C:/Worlds/backups" };
     case "backup_now": return { file: "worlds-2-manual.db", createdAt: Date.now(), reason: "manual", size: 2_400_000 };
     case "backup_restore": case "backup_cancel_restore": return null;
-    case "discord_status": return { state: "connected", bot: { tag: "Worlds Bot#0001" }, config: {} };
+    case "discord_status": if (WEB_DEMO) return { state: "disconnected", bot: null, config: {} }; return { state: "connected", bot: { tag: "Worlds Bot#0001" }, config: {} };
     case "preview_prepare": return { kind: "none" };
     case "attachment_import_raw": {
       // Keep the bytes as a blob URL so the editor can show what was pasted.
