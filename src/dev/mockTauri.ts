@@ -19,6 +19,8 @@ import providersJson from "../ai/providers.json";
 import { askToKeep, loadFiles, loadSnapshot, saveFile, saveSnapshot } from "../web/persist";
 import type { Snapshot } from "../web/merge";
 import { takeFile } from "../web/files";
+import { fromMarkdown, toMarkdown } from "../web/markdown";
+import BUILTIN_TEMPLATES from "../web/builtinTemplates.json";
 export { mergeSnapshots, type Snapshot } from "../web/merge";
 /** The public web demo build (`pnpm build:demo`): the mock is the whole backend there. */
 export const WEB_DEMO = import.meta.env.VITE_WEB_DEMO === "1";
@@ -236,10 +238,108 @@ function guessMime(name: string): string {
 /** Pages deleted for good, so a merge with another device does not bring them back. */
 const purged: Record<string, number> = {};
 
+// ---- Page history, kept like the desktop's (src-tauri/src/store/blocks.rs) --
+// A version of a page is kept before each editing session (ten quiet minutes
+// apart) and before a restore; continuous editing is one history line.
+const WINDOW = 10 * 60 * 1000;
+type PageVersion = { id: string; pageId: string; createdAt: number; actor: string; opId: string | null; label: string | null; snap: { title: string; icon: string | null; cover: string | null; metadata: any; blocks: any[] } };
+const pageVersions: Record<string, PageVersion[]> = {};
+const historyLog: any[] = [];
+
+function keepVersion(pid: string, label: string | null = null, actor = "user", opId: string | null = null): PageVersion | null {
+  const p = pages[pid];
+  if (!p) return null;
+  const v: PageVersion = { id: id(), pageId: pid, createdAt: Date.now(), actor, opId, label, snap: structuredClone({ title: p.title, icon: p.icon ?? null, cover: p.cover ?? null, metadata: metadata[pid] ?? {}, blocks: blocks[pid] ?? [] }) };
+  const list = (pageVersions[pid] ??= []);
+  list.push(v);
+  if (list.length > 30) list.splice(0, list.length - 30);
+  return v;
+}
+
+function keepVersionBeforeEdit(pid: string) {
+  const t = Date.now();
+  const last = pageVersions[pid]?.at(-1)?.createdAt;
+  const lastEdit = [...historyLog].reverse().find((h) => h.pageId === pid && h.kind === "edited")?.meta?.until;
+  if ((last == null || t - last > WINDOW) && (lastEdit == null || t - lastEdit > WINDOW) && (blocks[pid]?.length ?? 0) > 0) keepVersion(pid);
+}
+
+function record(pid: string | null, kind: string, summary: string, meta: any = {}) {
+  historyLog.push({ id: Date.now() * 100 + (historyLog.length % 100), pageId: pid, pageTitle: pid ? pages[pid]?.title ?? null : null, opId: null, actor: "user", kind, summary, blockId: null, before: null, after: null, meta, createdAt: Date.now() });
+  if (historyLog.length > 500) historyLog.splice(0, historyLog.length - 500);
+}
+
+const editSummary = (add: number, chg: number, rem: number) => {
+  const parts = [add && `${add} added`, chg && `${chg} changed`, rem && `${rem} removed`].filter(Boolean);
+  return parts.length ? `Edited \u00b7 ${parts.join(", ")}` : "Edited";
+};
+
+function recordEdit(pid: string, add: number, chg: number, rem: number) {
+  if (!add && !chg && !rem) return;
+  const t = Date.now();
+  const last = [...historyLog].reverse().find((h) => h.pageId === pid);
+  if (last?.meta?.edit && t - last.createdAt < WINDOW) {
+    const m = last.meta;
+    Object.assign(m, { added: m.added + add, changed: m.changed + chg, removed: m.removed + rem, until: t });
+    last.summary = editSummary(m.added, m.changed, m.removed);
+    return;
+  }
+  record(pid, "edited", editSummary(add, chg, rem), { edit: true, added: add, changed: chg, removed: rem, until: t });
+}
+
+function restoreVersion(v: PageVersion) {
+  const pid = v.pageId;
+  keepVersion(pid, "Before restore");
+  const s = structuredClone(v.snap);
+  blocks[pid] = s.blocks;
+  metadata[pid] = s.metadata ?? metadata[pid] ?? {};
+  Object.assign(pages[pid], { title: s.title, icon: s.icon, cover: s.cover, updatedAt: Date.now(), preview: previewOf(s.blocks) });
+  record(pid, "restored_version", "Restored an earlier version", { version: v.id });
+}
+
+const withBid = (node: any) => ({ ...node, attrs: { ...(node.attrs ?? {}), bid: id() } });
+
+/** A copy of a page (and its subpages), as the desktop's duplicate_page does. */
+function duplicatePage(srcId: string, deep: boolean, asKind?: string, newParent?: string | null): string {
+  const src = pages[srcId];
+  if (!src) throw "page not found";
+  const kind = asKind ?? src.kind;
+  const title = asKind === undefined && newParent === undefined ? `${src.title} (copy)` : src.title;
+  const meta = structuredClone(metadata[srcId] ?? {});
+  for (const k of ["sync", "drawingExportPolicyCache", "drawingExportPolicyRequest", "drawingLibrary", "experiment"]) delete meta[k];
+  const t = Date.now(), pid = id();
+  pages[pid] = {
+    ...structuredClone(src), id: pid, title, kind, parentId: newParent === undefined ? src.parentId : newParent,
+    sortKey: (src.sortKey ?? 0) + 0.001, pinned: false, pinOrder: null, favorite: false, archived: false, deletedAt: null,
+    createdAt: t, updatedAt: t, openedAt: t, templateCategory: kind === "template" ? src.templateCategory ?? null : null,
+  };
+  blocks[pid] = (blocks[srcId] ?? []).map((c) => withBid(structuredClone(c)));
+  metadata[pid] = meta;
+  if (drawings[srcId]) drawings[pid] = structuredClone(drawings[srcId]);
+  if (deep) for (const child of Object.values(pages).filter((p: any) => p.parentId === srcId && !p.deletedAt && p.id !== pid)) duplicatePage(child.id, true, undefined, pid);
+  record(pid, "created", `Created "${title}"`);
+  return pid;
+}
+
+const localDate = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+/** The built-in templates, once each, like ensure_builtin_templates on the desktop. */
+function seedTemplates() {
+  const have = new Set(Object.keys(metadata).map((pid) => metadata[pid]?.builtin).filter(Boolean));
+  for (const t of BUILTIN_TEMPLATES as { key: string; title: string; icon: string; category: string; description: string; markdown: string }[]) {
+    if (have.has(t.key)) continue;
+    const pid = addPage(t.title, t.icon, [], { kind: "template", templateCategory: t.category, createdAt: now, updatedAt: now, openedAt: null });
+    blocks[pid] = fromMarkdown(t.markdown).map(withBid);
+    metadata[pid] = { builtin: t.key, description: t.description };
+  }
+}
+
 export function snapshot(): Snapshot {
   return {
     v: 1, savedAt: Date.now(), pages, blocks, metadata, drawings, drawingLibrary, drawingVersions, exportPolicies,
-    settings, profile, chats, chatMessages, fileInfo, purged,
+    settings, profile, chats, chatMessages, fileInfo, purged, pageVersions, history: historyLog,
   };
 }
 
@@ -254,6 +354,7 @@ export function restore(s: Snapshot): void {
   replace(drawings, s.drawings); replace(drawingLibrary, s.drawingLibrary); replace(drawingVersions, s.drawingVersions); replace(exportPolicies, s.exportPolicies);
   replace(settings, s.settings); replace(profile, s.profile); replace(chatMessages, s.chatMessages); replace(fileInfo, s.fileInfo); replace(purged, s.purged ?? {});
   chats.splice(0, chats.length, ...(s.chats ?? []));
+  replace(pageVersions, s.pageVersions); historyLog.splice(0, historyLog.length, ...(s.history ?? []));
 }
 
 /** Files the workspace lists that this browser does not hold yet. */
@@ -302,14 +403,14 @@ function scheduleSave() {
 // Leaving the page saves at once.
 if (WEB_DEMO) addEventListener("pagehide", () => { if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; void saveSnapshot(snapshot()); } });
 
-const ready: Promise<void> = WEB_DEMO
+const ready: Promise<void> = (WEB_DEMO
   ? (async () => {
       askToKeep();
       const saved = await loadSnapshot<Snapshot>();
       if (saved?.v === 1) restore(saved);
       for (const [fid, blob] of await loadFiles()) ASSET[fid] = URL.createObjectURL(blob);
     })()
-  : Promise.resolve();
+  : Promise.resolve()).then(seedTemplates);
 
 async function handle(cmd: string, a: any = {}): Promise<any> {
   await ready;
@@ -440,14 +541,49 @@ async function handleNow(cmd: string, a: any = {}): Promise<any> {
       const t = Date.now();
       const pid = addPage(a.page.title ?? "", a.page.icon ?? null, [], { kind: a.page.kind ?? "page", parentId: a.page.parentId ?? null, createdAt: t, updatedAt: t, openedAt: t });
       if (Array.isArray(a.page.blocks)) blocks[pid] = a.page.blocks.map((b: any) => ({ ...b, attrs: { ...(b.attrs ?? {}), bid: b.attrs?.bid ?? id() } }));
-      else if (typeof a.page.markdown === "string") blocks[pid] = md(a.page.markdown.split("\n"));
+      else if (typeof a.page.markdown === "string") blocks[pid] = fromMarkdown(a.page.markdown).map(withBid);
       // Like the backend, only pages and documents have a text preview.
       if (["page", "document", "lesson"].includes(pages[pid].kind)) pages[pid].preview = previewOf(blocks[pid] ?? []);
       metadata[pid] = a.page.metadata ?? {};
       // A pack kind (freelance.invoice) keeps its fields under item, like the backend.
       const dataKey = pages[pid].kind.includes(".") ? "item" : pages[pid].kind;
       if (metadata[pid][dataKey] !== undefined) pages[pid].data = metadata[pid][dataKey];
+      record(pid, "created", `Created "${pages[pid].title}"`);
       return pages[pid];
+    }
+    case "page_duplicate": return pages[duplicatePage(a.id, a.deep !== false)];
+    case "template_save": {
+      const src = pages[a.pageId];
+      const tid = duplicatePage(a.pageId, true, "template", null);
+      if (src?.kind === "drawing") { metadata[tid].templateResourceKind = "drawing"; delete metadata[tid].experiment; }
+      pages[tid].templateCategory = "Custom";
+      return pages[tid];
+    }
+    case "template_instantiate": {
+      const tpl = pages[a.templateId];
+      if (!tpl || tpl.kind !== "template") throw "not a template";
+      const pid = duplicatePage(a.templateId, true, metadata[a.templateId]?.templateResourceKind ?? "page", a.parentId ?? null);
+      const today = localDate();
+      blocks[pid] = JSON.parse(JSON.stringify(blocks[pid]).replaceAll("{{date}}", today));
+      Object.assign(pages[pid], { title: a.title ?? tpl.title.replaceAll("{{date}}", today), templateCategory: null, preview: previewOf(blocks[pid]) });
+      metadata[pid] = { ...metadata[pid], fromTemplate: a.templateId };
+      delete metadata[pid].builtin; delete metadata[pid].description;
+      return pages[pid];
+    }
+    case "page_markdown": {
+      const p = pages[a.id];
+      if (!p) throw "page not found";
+      const body = (blocks[a.id] ?? []).map((b) => toMarkdown(b)).filter((m: string) => m.trim());
+      return `# ${p.title}\n\n${body.join("\n\n")}\n`;
+    }
+    case "page_append_markdown": {
+      const nodes = fromMarkdown(a.markdown ?? "").map(withBid);
+      if (!nodes.length) throw "nothing to add";
+      keepVersionBeforeEdit(a.pageId);
+      (blocks[a.pageId] ??= []).push(...nodes);
+      Object.assign(pages[a.pageId], { updatedAt: Date.now(), preview: previewOf(blocks[a.pageId]) });
+      recordEdit(a.pageId, nodes.length, 0, 0);
+      return nodes.length;
     }
     case "page_delete": {const page=pages[a.id];if(page){const t=Date.now();const walk=(pid:string)=>{if(pages[pid]&&!pages[pid].deletedAt){pages[pid].deletedAt=t;}for(const c of Object.values(pages))if(c.parentId===pid)walk(c.id);};walk(a.id);page.updatedAt=t;}return;}
     case "page_restore": {const t=pages[a.id]?.deletedAt;if(t)for(const p of Object.values(pages))if(p.deletedAt===t)p.deletedAt=null;return;}
@@ -491,20 +627,30 @@ async function handleNow(cmd: string, a: any = {}): Promise<any> {
       // Same rule as the real backend: a save based on an older sync is refused.
       if (a.base != null && pages[a.pageId] && pages[a.pageId].updatedAt > a.base) throw "conflict: the page changed since it was loaded";
       const at = Math.max(Date.now(), (pages[a.pageId]?.updatedAt ?? 0) + 1);
-      blocks[a.pageId] = a.blocks.map((b: any) => b.content);
+      keepVersionBeforeEdit(a.pageId);
+      const before = new Map((blocks[a.pageId] ?? []).map((c: any) => [c.attrs?.bid, JSON.stringify(c)]));
+      const next = a.blocks.map((b: any) => b.content);
+      let added = 0, changed = 0;
+      for (const c of next) { const was = before.get(c.attrs?.bid); if (was === undefined) added++; else if (was !== JSON.stringify(c)) changed++; before.delete(c.attrs?.bid); }
+      const removed = before.size;
+      blocks[a.pageId] = next;
+      recordEdit(a.pageId, added, changed, removed);
       if (pages[a.pageId]) {
         pages[a.pageId].updatedAt = at;
         pages[a.pageId].preview = previewOf(blocks[a.pageId]);
       }
-      return { added: 0, changed: 0, removed: 0, remapped: [], updatedAt: at };
+      return { added, changed, removed, remapped: [], updatedAt: at };
     }
     case "search": {
       // Like the app's search: title and text, with Arabic spellings folded.
       const q = foldArabic(String(a.query ?? "").toLowerCase().trim());
       return Object.values(pages).filter((p: any) => !p.deletedAt && q && foldArabic(`${p.title} ${p.preview ?? ""}`.toLowerCase()).includes(q)).map((p: any) => ({ pageId: p.id, title: p.title, icon: p.icon, kind: p.kind, snippet: p.preview, parentTitle: null, updatedAt: p.updatedAt }));
     }
-    case "history_list": if (WEB_DEMO) return []; return [{ id: 1, pageId: p1, pageTitle: pages[p1].title, opId: null, actor: "user", kind: "edited", summary: "Edited · 3 changed", blockId: null, before: null, after: null, meta: {}, createdAt: now - 600_000 }];
-    case "versions_list": return [];
+    case "history_list": if (WEB_DEMO) return historyLog.filter((h) => (!a.pageId || h.pageId === a.pageId) && (!a.opId || h.opId === a.opId)).slice(-(a.limit ?? 100)).reverse(); return [{ id: 1, pageId: p1, pageTitle: pages[p1].title, opId: null, actor: "user", kind: "edited", summary: "Edited · 3 changed", blockId: null, before: null, after: null, meta: {}, createdAt: now - 600_000 }];
+    case "versions_list": return [...(pageVersions[a.pageId] ?? [])].reverse().map(({ snap, ...v }) => ({ ...v, blockCount: snap.blocks.length }));
+    case "version_get": { const v = Object.values(pageVersions).flat().find((x) => x.id === a.versionId); if (!v) throw "version not found"; return { title: v.snap.title, blocks: structuredClone(v.snap.blocks) }; }
+    case "version_restore": { const v = Object.values(pageVersions).flat().find((x) => x.id === a.versionId); if (!v) throw "version not found"; restoreVersion(v); return pages[v.pageId]; }
+    case "op_undo": { const vs = Object.values(pageVersions).flat().filter((x) => x.opId === a.opId); for (const v of vs) restoreVersion(v); return [...new Set(vs.map((v) => v.pageId))]; }
     case "profile_get": return profile;
     case "profile_update": Object.assign(profile, a.patch); return { ...profile };
     case "profile_stats": if (WEB_DEMO) return { pages: Object.values(pages).filter((p: any) => !p.deletedAt).length, chats: chats.length, automations: 0, streak: 0, edits7d: 0, words: 0, activeDays: [] }; return {

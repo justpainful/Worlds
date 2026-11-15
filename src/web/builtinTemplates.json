@@ -1,0 +1,154 @@
+[
+ {
+  "key": "todo",
+  "title": "To-do List",
+  "icon": "✅",
+  "category": "Personal",
+  "description": "Today, this week, and someday.",
+  "markdown": "\n## Today\n- [ ]\n## This week\n- [ ]\n## Someday\n- [ ]\n---\n> [!note] Move finished items down as you go. Keep the top of the page about what is next.\n"
+ },
+ {
+  "key": "project",
+  "title": "Project Tracker",
+  "icon": "🧭",
+  "category": "Work",
+  "description": "Goal, milestones, owners and status in one place.",
+  "markdown": "\n> [!note] **Goal**: one sentence that says what done looks like.\n\n## Milestones\n| Milestone | Owner | Due | Status |\n|---|---|---|---|\n| Scope agreed |  | {{date}} | Not started |\n|  |  |  |  |\n\n## Open questions\n-\n\n## Decisions\n-\n\n## Tasks\n- [ ]\n"
+ },
+ {
+  "key": "weekly",
+  "title": "Weekly Update {{date}}",
+  "icon": "🗓️",
+  "category": "Work",
+  "description": "What shipped, what is next, what is blocked.",
+  "markdown": "\n## Shipped\n-\n\n## Next\n-\n\n## Blocked\n-\n\n## Notes\n"
+ },
+ {
+  "key": "feedback",
+  "title": "Feedback Tracker",
+  "icon": "💬",
+  "category": "Work",
+  "description": "Collect feedback and decide what to act on.",
+  "markdown": "\n| From | Feedback | Area | Priority | Action |\n|---|---|---|---|---|\n|  |  |  |  |  |\n\n## Themes\n-\n\n## Acting on\n- [ ]\n"
+ },
+ {
+  "key": "release",
+  "title": "Release Notes",
+  "icon": "🚀",
+  "category": "Product",
+  "description": "Version, highlights, fixes and known issues.",
+  "markdown": "\n**Version** v1.0.0 · **Date** {{date}}\n\n## Highlights\n-\n\n## Improvements\n-\n\n## Fixes\n-\n\n## Known issues\n-\n"
+ },
+ {
+  "key": "meeting",
+  "title": "Meeting Notes",
+  "icon": "🪑",
+  "category": "Work",
+  "description": "Agenda, decisions and action items.",
+  "markdown": "\n**Date** {{date}} · **Time**\n\n## Attendees\n-\n\n## Agenda\n1.\n\n## Decisions\n-\n\n## Action items\n- [ ]\n"
+ },
+ {
+  "key": "roadmap",
+  "title": "Roadmap",
+  "icon": "🗺️",
+  "category": "Product",
+  "description": "Now, next, later.",
+  "markdown": "\n## Now\n| Item | Why | Owner |\n|---|---|---|\n|  |  |  |\n\n## Next\n| Item | Why | Owner |\n|---|---|---|\n|  |  |  |\n\n## Later\n-\n\n> [!note] Re-rank this page every two weeks. Anything that has not moved in a month goes to Later.\n"
+ },
+ {
+  "key": "bugs",
+  "title": "Bug Tracker",
+  "icon": "🐞",
+  "category": "Product",
+  "description": "Reproduce, prioritise, fix.",
+  "markdown": "\n| Bug | Steps | Severity | Status | Owner |\n|---|---|---|---|---|\n|  |  | High | Open |  |\n\n## Triage rules\n- **High**: data loss, crash, or blocks a core flow.\n- **Medium**: wrong behaviour with a workaround.\n- **Low**: cosmetic.\n"
+ },
+ {
+  "key": "discord",
+  "title": "Discord Announcement",
+  "icon": "📣",
+  "category": "Discord",
+  "description": "Structured message for Discord, previewed before it is sent.",
+  "markdown": "\n# الاجتماع الإداري\n\n**الوقت** 8:00 PM\n\n---\n\n## المواضيع\n- المتجر\n- السيرفر\n- الطاقم\n\n> [!note] يرجى تأكيد الحضور قبل الموعد.\n"
+ },
+ {
+  "key": "mindmap_radial",
+  "title": "Radial Mind Map — خريطة ذهنية متفرعة",
+  "icon": "🧠",
+  "category": "Mind Maps & Concepts",
+  "description": "Central topic with multi-level radial branches, visual diagram, and action takeaways.",
+  "markdown": "\n> [!note] **الفكرة المركزية (Central Idea)**: اكتب الموضوع الرئيسي في وسط الخريطة ثم فرّع المحاور الأساسية والفرعية.\n\n```mermaid\nmindmap\n  root((الموضوع الرئيسي))\n    المحور الأول\n      فكرة فرعية 1.1\n      فكرة فرعية 1.2\n    المحور الثاني\n      فكرة فرعية 2.1\n      فكرة فرعية 2.2\n    المحور الثالث\n      تطبيق عملي\n      أمثلة وشواهد\n    المحور الرابع\n      أسئلة مفتوحة\n      الخطوات القادمة\n```\n\n## تفصيل المحاور (Branches Breakdown)\n| المحور الأساسي | النقاط الفرعية | الكلمات المفتاحية | الأولوية |\n|---|---|---|---|\n| المحور الأول |  |  | عالية |\n| المحور الثاني |  |  | متوسطة |\n| المحور الثالث |  |  | متوسطة |\n| المحور الرابع |  |  | عادية |\n\n## الروابط غير المباشرة (Cross-Links)\n-\n\n## خطوات قابلة للتنفيذ (Actionable Takeaways)\n- [ ]\n"
+ },
+ {
+  "key": "concept_network",
+  "title": "Concept Map — خريطة مفاهيمية (شبكة العلاقات)",
+  "icon": "🕸️",
+  "category": "Mind Maps & Concepts",
+  "description": "Concept nodes linked by explicit named propositions (causes, depends on, explains).",
+  "markdown": "\n> [!note] **سؤال التركيز (Focus Question)**: ما الظاهرة أو النظام الذي تشرحه هذه الخريطة المفاهيمية؟\n\n```mermaid\nflowchart TD\n  C0([\"المفهوم الأساسي\"])\n  C1[\"المفهوم الأول\"]\n  C2[\"المفهوم الثاني\"]\n  C3[\"المفهوم الثالث\"]\n  C4[\"النتيجة / الأثر\"]\n  C0 -->|يتكون من| C1\n  C0 -->|يعتمد على| C2\n  C1 -->|يؤدي إلى| C3\n  C2 -->|يتفاعل مع| C3\n  C3 -->|ينتج عنه| C4\n```\n\n## جدول القضايا والعلاقات (Propositions Table)\n| المفهوم المصدر (Source) | علاقة الربط (Linking Phrase) | المفهوم الهدف (Target) | مثال أو دليل |\n|---|---|---|---|\n| المفهوم الأساسي | يتكون من | المفهوم الأول |  |\n| المفهوم الأول | يؤدي إلى | المفهوم الثالث |  |\n| المفهوم الثالث | ينتج عنه | النتيجة / الأثر |  |\n\n## تعريفات المفاهيم الحرجة (Key Definitions)\n- **المفهوم الأساسي**:\n- **المفهوم الأول**:\n- **المفهوم الثاني**:\n"
+ },
+ {
+  "key": "fishbone_ishikawa",
+  "title": "Root Cause Fishbone — تحليل الأسباب الجذرية (إيشيكاوا + 5 لماذا)",
+  "icon": "🐟",
+  "category": "Mind Maps & Concepts",
+  "description": "Ishikawa cause-and-effect diagram paired with 5-Whys drilling and corrective actions.",
+  "markdown": "\n> [!warning] **المشكلة / الأثر المرصود (Problem Statement)**: صِف المشكلة بدقة وبأرقام واضحة.\n\n```mermaid\nflowchart LR\n  subgraph People[\"الأفراد (People)\"]\n    P1[\"نقص تدريب\"] --> Effect\n    P2[\"ضغط العمل\"] --> Effect\n  end\n  subgraph Process[\"العمليات (Process)\"]\n    PR1[\"خطوات غير موثقة\"] --> Effect\n    PR2[\"تأخر الاعتماد\"] --> Effect\n  end\n  subgraph Tech[\"التقنية والأدوات (Tools)\"]\n    T1[\"أعطال النظام\"] --> Effect\n    T2[\"ضعف التكامل\"] --> Effect\n  end\n  subgraph Env[\"البيئة والبيانات (Environment)\"]\n    E1[\"بيانات غير مكتملة\"] --> Effect\n  end\n  Effect([\"🎯 المشكلة الأساسية\"])\n```\n\n## تحليل الـ 5 لماذا (5 Whys Drill-down)\n1. **لماذا حدثت المشكلة؟** —\n2. **لماذا حدث ذلك؟** —\n3. **لماذا؟** —\n4. **لماذا؟** —\n5. **السبب الجذري النهائي (Root Cause)** —\n\n## خطة المعالجة والوقاية (CAPA)\n| السبب الجذري | الإجراء التصحيحي | المسؤول | الموعد | الحالة |\n|---|---|---|---|---|\n|  |  |  | {{date}} | قيد التنفيذ |\n"
+ },
+ {
+  "key": "swot_matrix",
+  "title": "SWOT & Strategic Map — مصفوفة SWOT والخريطة الاستراتيجية",
+  "icon": "♟️",
+  "category": "Mind Maps & Concepts",
+  "description": "Strengths, Weaknesses, Opportunities, Threats and TOWS strategic cross-matching.",
+  "markdown": "\n**المبادرة / المشروع** · **التاريخ** {{date}}\n\n```mermaid\nflowchart TB\n  Center([\"الهدف الاستراتيجي\"])\n  subgraph Internal[\"عوامل داخلية (Internal)\"]\n    S[\"💪 نقاط القوة (Strengths)\"]\n    W[\"🩹 نقاط الضعف (Weaknesses)\"]\n  end\n  subgraph External[\"عوامل خارجية (External)\"]\n    O[\"🌱 الفرص (Opportunities)\"]\n    T[\"⚡ التهديدات (Threats)\"]\n  end\n  S --> Center\n  W -.-> Center\n  O --> Center\n  T -.-> Center\n```\n\n## مصفوفة التحليل الرباعي (SWOT Grid)\n| 💪 نقاط القوة (Strengths) | 🩹 نقاط الضعف (Weaknesses) |\n|---|---|\n| • | • |\n| **🌱 الفرص (Opportunities)** | **⚡ التهديدات (Threats)** |\n| • | • |\n\n## استراتيجيات التقاطع (TOWS Actions)\n- **استغلال القوة لاقتناص الفرص (S × O)**:\n- **توظيف القوة لصد التهديدات (S × T)**:\n- **معالجة الضعف عبر الفرص المتاحة (W × O)**:\n- **تحصين نقاط الضعف أمام التهديدات (W × T)**:\n"
+ },
+ {
+  "key": "cornell_feynman",
+  "title": "Cornell + Feynman Map — تدوين كورنيل وطريقة فاينمان",
+  "icon": "🎓",
+  "category": "Mind Maps & Concepts",
+  "description": "Concept hierarchy, Cornell cue-note matrix, and Feynman plain-language explanation.",
+  "markdown": "\n> [!note] **الموضوع / الفصل**: · **التاريخ**: {{date}}\n\n```mermaid\nflowchart LR\n  Topic([\"الفكرة المحورية\"]) --> K1[\"المفهوم 1\"]\n  Topic --> K2[\"المفهوم 2\"]\n  Topic --> K3[\"المفهوم 3\"]\n  K1 --> App1[\"مثال تطبيقي\"]\n  K2 --> App2[\"حالة خاصة\"]\n  K3 --> App3[\"ربط بمفهوم سابق\"]\n```\n\n## جدول كورنيل (Cues & Notes)\n| الأسئلة والكلمات المفتاحية (Cues) | الشرح والتفاصيل والرسوم (Detailed Notes) |\n|---|---|\n| ما الفكرة الأساسية؟ |  |\n| كيف يعمل؟ |  |\n| متى يطبّق ومتى يفشل؟ |  |\n\n## اختبار فاينمان (Feynman Simplification)\n> [!tip] اشرح هذا المفهوم بلغة بسيطة جدًا كأنك تشرحه لشخص غير متخصص:\n\n- **الشرح المبسط**:\n- **التشبيه / الاستعارة (Analogy)**:\n- **الفجوات التي تحتاج مراجعة**:\n  - [ ]\n"
+ },
+ {
+  "key": "decision_tree",
+  "title": "Decision Tree & Scenarios — شجرة القرارات والسيناريوهات",
+  "icon": "🌿",
+  "category": "Mind Maps & Concepts",
+  "description": "Map choices, probabilities, payoffs, risks, and fallback plans.",
+  "markdown": "\n> [!note] **القرار المطلوب اتخاذه**: · **الموعد النهائي**: {{date}}\n\n```mermaid\nflowchart LR\n  D{\"القرار الرئيسي\"}\n  D -->|الخيار أ| A1[\"احتمال نجاح عالٍ\"]\n  D -->|الخيار ب| B1[\"تكلفة أقل / مخاطرة أعلى\"]\n  D -->|الخيار ج| C1[\"تأجيل / إبقاء الوضع\"]\n  A1 --> A2[\"العائد المتوقع\"]\n  B1 --> B2[\"خطة الطوارئ\"]\n```\n\n## مقارنة الخيارات (Options Matrix)\n| الخيار | المزايا | المخاطر | التكلفة / الجهد | الأثر المتوقع | التقييم (1-10) |\n|---|---|---|---|---|---|\n| الخيار أ |  |  |  |  |  |\n| الخيار ب |  |  |  |  |  |\n| الخيار ج |  |  |  |  |  |\n\n## القرار النهائي وخطة التراجع (Reversibility & Fallback)\n- **الخيار المعتمد**:\n- **مؤشر الإنذار المبكر (Kill Criteria)**:\n"
+ },
+ {
+  "key": "argument_map",
+  "title": "Argument & Evidence Map — خريطة الحجج والأدلة والاعتراضات",
+  "icon": "⚖️",
+  "category": "Mind Maps & Concepts",
+  "description": "Structure thesis claims, supporting premises, empirical evidence, objections, and rebuttals.",
+  "markdown": "\n> [!note] **الأطروحة / الادعاء المركزي (Central Thesis)**: اكتب الفرضية أو الرأي المراد فحصه.\n\n```mermaid\nflowchart BT\n  E1[\"📊 دليل 1 / إحصائية\"] --> P1[\"🟢 حجة مؤيدة 1\"]\n  E2[\"📑 دراسة / تجربة\"] --> P2[\"🟢 حجة مؤيدة 2\"]\n  R1[\"🛡️ الرد والتفنيد\"] --> O1[\"🔴 اعتراض / حجة مضادة\"]\n  P1 --> Claim([\"⚖️ الأطروحة المركزية\"])\n  P2 --> Claim\n  O1 -.->|يطعن في| Claim\n```\n\n## تفصيل الحجج والأدلة\n| النوع | النص | مصدر الدليل / المرجع | قوة الحجة |\n|---|---|---|---|\n| 🟢 حجة مؤيدة |  |  | قوية |\n| 🔴 اعتراض |  |  | متوسطة |\n| 🛡️ تفنيد الاعتراض |  |  | قوية |\n\n## الخلاصة والحكم المتوازن\n-\n"
+ },
+ {
+  "key": "systems_causal_loop",
+  "title": "Systems Thinking Loop — التفكير المنظومي وحلقات التغذية الراجعة",
+  "icon": "🔄",
+  "category": "Mind Maps & Concepts",
+  "description": "Reinforcing and balancing feedback loops, bottlenecks, and high-leverage interventions.",
+  "markdown": "\n> [!note] **النظام المدروس (System Boundary)**: ما المتغيرات المتفاعلة داخل هذا النظام؟\n\n```mermaid\nflowchart LR\n  V1([\"المتغير أ\"]) -->|\"+ يزيد\"| V2([\"المتغير ب\"])\n  V2 -->|\"+ يزيد\"| V3([\"المتغير ج\"])\n  V3 -->|\"+ حلقة تعزيز (R)\"| V1\n  V3 -->|\"- يضبط / حلقة توازن (B)\"| V4([\"عامل التوازن\"])\n  V4 -->|\"- يقلل\"| V1\n```\n\n## متغيرات النظام ونقاط الارتكاز (Leverage Points)\n| المتغير | النوع (مخزون / تدفق) | كيف يؤثر على النظام؟ | نقطة التدخل المقترحة |\n|---|---|---|---|\n|  |  |  |  |\n\n## الاختناقات والتأخيرات الزمنية (Delays & Bottlenecks)\n-\n"
+ },
+ {
+  "key": "compare_contrast",
+  "title": "Compare & Contrast Map — خريطة المقارنة والاختلاف والتقاطع",
+  "icon": "🔀",
+  "category": "Mind Maps & Concepts",
+  "description": "Side-by-side conceptual comparison across criteria, shared core, and unique traits.",
+  "markdown": "\n```mermaid\nflowchart TB\n  subgraph Left[\"المفهوم / البديل الأول\"]\n    L1[\"سمة منفردة أ1\"]\n    L2[\"سمة منفردة أ2\"]\n  end\n  subgraph Shared[\"منطقة التقاطع والتشابه\"]\n    S1[\"القاسم المشترك 1\"]\n    S2[\"القاسم المشترك 2\"]\n  end\n  subgraph Right[\"المفهوم / البديل الثاني\"]\n    R1[\"سمة منفردة ب1\"]\n    R2[\"سمة منفردة ب2\"]\n  end\n  L1 --- S1 --- R1\n  L2 --- S2 --- R2\n```\n\n## مصفوفة المعايير (Comparison Criteria)\n| معيار المقارنة | المفهوم الأول | المفهوم الثاني | الفارق الجوهري |\n|---|---|---|---|\n| الهدف الأساسي |  |  |  |\n| آلية العمل |  |  |  |\n| نقاط القوة |  |  |  |\n| القيود والعيوب |  |  |  |\n| متى نختاره؟ |  |  |  |\n"
+ },
+ {
+  "key": "knowledge_mastery_tree",
+  "title": "Knowledge Tree & Spaced Review — شجرة إتقان المعرفة والمراجعة المتباعدة",
+  "icon": "🌳",
+  "category": "Mind Maps & Concepts",
+  "description": "Prerequisite skill tree with mastery status and spaced repetition checkpoints.",
+  "markdown": "\n```mermaid\nflowchart BT\n  F1[\"الأساسيات 1\"] --> M1[\"المستوى المتوسط 1\"]\n  F2[\"الأساسيات 2\"] --> M1\n  F2 --> M2[\"المستوى المتوسط 2\"]\n  M1 --> Adv[\"المستوى المتقدم / الإتقان\"]\n  M2 --> Adv\n```\n\n## سجل الإتقان والمراجعة المتباعدة (Spaced Repetition Log)\n| المفهوم / المهارة | المتطلب السابق | درجة الاستيعاب (1-5) | مراجعة 1 (+1 يوم) | مراجعة 2 (+3 أيام) | مراجعة 3 (+7 أيام) | مراجعة 4 (+21 يوم) |\n|---|---|---|---|---|---|---|\n| الأساسيات 1 | — | ⭐⭐⭐⭐ | ✅ | ⬜ | ⬜ | ⬜ |\n| الأساسيات 2 | — | ⭐⭐⭐ | ⬜ | ⬜ | ⬜ | ⬜ |\n| المستوى المتوسط 1 | الأساسيات 1، 2 | ⭐⭐ | ⬜ | ⬜ | ⬜ | ⬜ |\n"
+ }
+]

@@ -57,4 +57,18 @@ describe("two copies of one web workspace", () => {
     expect(merged.chatMessages.c1).toHaveLength(2);
     expect(Object.keys(merged.fileInfo).sort()).toEqual(["f1", "f2"]);
   });
+
+  it("keeps the versions and history of both copies, each once", () => {
+    const a = empty(100);
+    a.pages.p = page("p", "Plan", 50);
+    a.pageVersions = { p: [{ id: "v1", createdAt: 10 }, { id: "v2", createdAt: 30 }] };
+    a.history = [{ id: 1, createdAt: 10 }, { id: 3, createdAt: 30 }];
+    const b = empty(200);
+    b.pages.p = page("p", "Plan", 40);
+    b.pageVersions = { p: [{ id: "v2", createdAt: 30 }, { id: "v3", createdAt: 20 }] };
+    b.history = [{ id: 2, createdAt: 20 }, { id: 3, createdAt: 30 }];
+    const merged = mergeSnapshots(a, b);
+    expect(merged.pageVersions!.p.map((v) => v.id)).toEqual(["v1", "v3", "v2"]);
+    expect(merged.history!.map((h) => h.id)).toEqual([1, 2, 3]);
+  });
 });

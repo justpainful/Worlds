@@ -21,6 +21,10 @@ export interface Snapshot {
   chats: any[];
   chatMessages: Record<string, any[]>;
   fileInfo: Record<string, { name: string; mime: string; size: number; kind: string; pageId: string | null; createdAt: number }>;
+  /** Earlier versions of each page, newest last. */
+  pageVersions?: Record<string, any[]>;
+  /** The history list (edits, restores, new pages), oldest first. */
+  history?: any[];
 }
 
 /**
@@ -55,6 +59,15 @@ export function mergeSnapshots(a: Snapshot, b: Snapshot): Snapshot {
   for (const c of older.chats ?? []) if (!chatIds.has(c.id)) out.chats.push(structuredClone(c));
   for (const [cid, list] of Object.entries(older.chatMessages ?? {})) if ((out.chatMessages[cid]?.length ?? 0) < list.length) out.chatMessages[cid] = structuredClone(list);
   out.fileInfo = { ...(older.fileInfo ?? {}), ...out.fileInfo };
+  // Versions and history from both copies, each kept once.
+  out.pageVersions ??= {};
+  for (const [pid, list] of Object.entries(older.pageVersions ?? {})) {
+    if (out.purged[pid]) continue;
+    const byId = new Map([...(out.pageVersions[pid] ?? []), ...list].map((v: any) => [v.id, v]));
+    out.pageVersions[pid] = [...byId.values()].sort((x: any, y: any) => x.createdAt - y.createdAt).slice(-30);
+  }
+  const seen = new Map([...(older.history ?? []), ...(out.history ?? [])].map((h: any) => [h.id, h]));
+  out.history = [...seen.values()].sort((x: any, y: any) => x.createdAt - y.createdAt).slice(-500);
   out.savedAt = Date.now();
   return out;
 }
