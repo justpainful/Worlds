@@ -110,7 +110,7 @@ pub fn call(conn: &Connection, ctx: &Ctx, name: &str, a: &Value) -> Result<Optio
             let items: Vec<Value> = store::list_pages(conn, false)?
                 .iter()
                 .filter(|p| icon_for(&p.kind).is_some())
-                .filter(|p| wanted.is_empty() || wanted.iter().any(|k| *k == p.kind))
+                .filter(|p| wanted.is_empty() || wanted.contains(&p.kind))
                 .filter(|p| archived || !p.archived)
                 .map(item_view)
                 .collect();
