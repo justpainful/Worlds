@@ -282,7 +282,7 @@ input[type="time"].field, input[type="datetime-local"].field, input[type="number
 .popover.is-in { --g-fade: 1; }
 
 /* ---- Modal -------------------------------------------------------------- */
-.modal-root { position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center; padding: 32px; }
+.modal-root { position: fixed; inset: 0; z-index: 2000; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; padding: 32px; }
 .modal-scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.44); opacity: 0; transition: opacity var(--d-panel) var(--ease-out); }
 .modal-root.is-in .modal-scrim { opacity: 1; }
 .modal-panel {
@@ -298,6 +298,12 @@ input[type="time"].field, input[type="datetime-local"].field, input[type="number
 .modal-root.is-in .modal-panel { --g-scale: 1; --g-lift: 0px; --g-td: var(--spring-soft-d, 420ms); --g-te: var(--spring-soft); }
 .modal-root:not(.is-in) .modal-panel > .g-layer { transform: translateY(var(--g-lift)) scale(var(--g-scale)); }
 .modal-root.is-in .modal-panel { --g-fade: 1; }
+/* A phone: the window keeps a small margin and never grows wider than the screen. */
+@media (max-width: 720px) {
+  .modal-root { padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)); }
+  .modal-panel { width: 100% !important; max-height: calc(100dvh - 24px); }
+  .modal-panel > .g-content { max-height: calc(100dvh - 24px); }
+}
 .modal-head { display: flex; align-items: center; gap: 12px; padding: 16px 16px 6px 24px; }
 .modal-title { flex: 1; font: var(--t-h3); font-size: 16.5px; letter-spacing: -0.01em; }
 .modal-body { padding: 10px 24px 20px; overflow: auto; }

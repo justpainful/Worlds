@@ -545,6 +545,14 @@ kbd { font: 500 0.82em/1 var(--mono); border: 1px solid var(--line-2); border-bo
 .more strong { display: block; font-size: 1.05em; }
 .more span { display: block; color: var(--ink-2); margin-top: 2px; }
 @media (max-width: 760px) { .more { grid-template-columns: 1fr; } .lb { padding-inline-end: 30px; padding-inline-start: 30px; } }
+/* A phone: the handle and the remove button sit on a row above the block, so the block gets the whole width. */
+@media (max-width: 600px) {
+  .lb { padding: 34px 0 0; }
+  .lb-hello { padding-top: 0; }
+  .lb-grip { inset-inline-start: -4px; top: 0; }
+  .lb-remove { inset-inline-end: -4px; top: 0; }
+  .live-page { padding-inline: 16px; border-radius: 18px; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
