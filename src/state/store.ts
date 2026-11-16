@@ -4,6 +4,7 @@ import type { PageMeta, Profile } from "../lib/types";
 import { isTreeKind, kindInfo } from "../resources/kinds";
 import { PACKS_AI_KEY, packsForClaudeFrom } from "../packs/ai";
 import { syncPackSettings } from "../packs/registry";
+import { isNarrow } from "../lib/narrow";
 
 // ---------------------------------------------------------------------------
 // Routes, tabs, panes
@@ -176,7 +177,8 @@ export const useStore = create<State>((set, get) => ({
       settings: boot.settings,
       dataDir: boot.dataDir,
       layout,
-      sidebar: { ...get().sidebar, ...(session?.sidebar ?? {}) },
+      // On a phone the sidebar lies over the page, so it starts closed there.
+      sidebar: { ...get().sidebar, ...(session?.sidebar ?? {}), ...(isNarrow() ? { collapsed: true } : {}) },
     });
     // Tell the user once if launch restored or recovered the database.
     api

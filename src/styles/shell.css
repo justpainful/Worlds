@@ -378,6 +378,8 @@
   .sidebar.is-collapsed { box-shadow: none; }
   .sidebar + .main { padding-inline-start: 8px; }
   .side-resize { display: none; }
+  /* A phone shows one page at a time: the tab keeps the room, new tabs come from the sidebar. */
+  .tb-tabs .tab-add { display: none; }
 }
 
 /* Packs in the sidebar (Sidebar.tsx PackGroup): one row per pack, its views indented under it. */

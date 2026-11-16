@@ -18,6 +18,7 @@ import type { PackDef } from "../packs/definition";
 import { liveOfKind, subjects, tasksFor, today, dataOf } from "../planning/model";
 import { colorVar } from "../planning/ui";
 import { createSubject } from "../study/StudyViews";
+import { NARROW } from "../lib/narrow";
 
 const ROW_H = 30;
 
@@ -42,8 +43,6 @@ function flatten(pages: Record<string, PageMeta>, expanded: Record<string, boole
   return rows;
 }
 
-/** Screens this narrow get the sidebar as a layer over the page (styles/shell.css). */
-const NARROW = "(max-width: 720px)";
 
 function useActiveRoute(): Route | null {
   return useStore((s) => {
@@ -66,7 +65,7 @@ export function Sidebar() {
   // On a narrow screen (a phone opening the web demo) the sidebar lies over the
   // page, so choosing something in it closes it; arrows and section buttons do not.
   const closeIfNarrow = (e: React.MouseEvent) => {
-    if (!window.matchMedia(NARROW).matches) return;
+    if (sidebar.collapsed || !window.matchMedia(NARROW).matches) return;
     const t = e.target as HTMLElement;
     if (t.closest(".tree-twisty, .tree-actions, .side-section-action, .side-top")) return;
     if (t.closest(".side-item, .tree-row, .side-profile")) toggleSidebar();

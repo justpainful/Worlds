@@ -13,6 +13,7 @@ import { WindowControls } from "./Window";
 import { packDef } from "../packs/registry";
 import { ErrorBoundary } from "../ui/ErrorBoundary";
 import { glassEngine } from "../glass/engine";
+import { useNarrow } from "../lib/narrow";
 
 export function Panes() {
   const layout = useStore((s) => s.layout);
@@ -229,6 +230,7 @@ function PaneView({ pane, index, count, active, width, first, last }: { pane: Pa
 
 function PaneToolbar({ pane, tab, showWindowControls, count }: { pane: Pane; tab: Tab; showWindowControls: boolean; count: number }) {
   const pages = useStore((s) => s.pages);
+  const narrow = useNarrow();
   const open = useStore((s) => s.open);
   const goBack = useStore((s) => s.goBack);
   const goForward = useStore((s) => s.goForward);
@@ -260,7 +262,11 @@ function PaneToolbar({ pane, tab, showWindowControls, count }: { pane: Pane; tab
     },
   ];
 
-  const moreMenu = (): MenuItem[] => [
+  // A phone has room for one pane: it keeps New Tab, and a way back if panes came from a wider window.
+  const moreMenu = (): MenuItem[] => narrow ? [
+    { label: "New Tab", icon: "add", onSelect: () => open({ kind: "home" }, "tab", pane.id) },
+    ...(count > 1 ? [{ label: "Back to One Pane", icon: "square" as const, onSelect: () => collapsePanes() }] : []),
+  ] : [
     { label: "New Tab", icon: "add", shortcut: "Ctrl+T", onSelect: () => open({ kind: "home" }, "tab", pane.id) },
     { label: "Split Right", icon: "splitRight", shortcut: "Ctrl+\\", disabled: count >= 3, onSelect: () => open(tab.route, "right", pane.id) },
     { label: "Split Left", icon: "splitLeft", disabled: count >= 3, onSelect: () => open(tab.route, "left", pane.id) },
@@ -372,7 +378,7 @@ function PaneToolbar({ pane, tab, showWindowControls, count }: { pane: Pane; tab
         <div className="tb-fill" />
         <GlassGroup
           items={[
-            ...(count < 3 ? [{ icon: "splitRight" as const, label: "Split right", onClick: () => open(tab.route, "right", pane.id) }] : []),
+            ...(count < 3 && !narrow ? [{ icon: "splitRight" as const, label: "Split right", onClick: () => open(tab.route, "right", pane.id) }] : []),
             ...(count > 1 ? [{ icon: "close" as const, label: "Close pane", onClick: () => closePane(pane.id) }] : []),
             { icon: "more" as const, label: "More", onClick: (e: React.MouseEvent<HTMLButtonElement>) => menuAt(e.currentTarget, moreMenu(), "end") },
           ]}

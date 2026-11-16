@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useStore } from "../state/store";
+import { isNarrow } from "../lib/narrow";
 import { Glass } from "../glass/Glass";
 import { LAYER } from "../glass/profiles";
 import { Button } from "../ui/Button";
@@ -49,7 +50,10 @@ export function TourHost() {
 
   const finish = useCallback(() => {
     setStep(null);
-    useStore.getState().setSetting(TOUR_SEEN_KEY, true);
+    const st = useStore.getState();
+    st.setSetting(TOUR_SEEN_KEY, true);
+    // On a phone the tour opened the sidebar over the page; give the page back.
+    if (isNarrow() && !st.sidebar.collapsed) st.toggleSidebar();
   }, []);
 
   useEffect(() => {

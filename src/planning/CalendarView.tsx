@@ -15,6 +15,7 @@ import { colorVar, itemMenu, QuickAdd } from "./ui";
 import { useMenu } from "../ui/Menu";
 import { uiLanguage } from "../i18n/ui";
 import { hijriDate, hijriDay, hijriSpan, span } from "../i18n/locale";
+import { COMPACT, useMedia } from "../lib/narrow";
 
 type Mode = "week" | "agenda";
 
@@ -22,7 +23,9 @@ export function CalendarView() {
   const pages = useStore((s) => s.pages);
   const settings = useStore((s) => s.settings);
   const setSetting = useStore((s) => s.setSetting);
-  const mode = ((settings["calendar.mode"] as Mode) ?? "week") as Mode;
+  // Seven columns do not fit a phone or an upright tablet, so they show the agenda until the user picks the week.
+  const compact = useMedia(COMPACT);
+  const mode = ((settings["calendar.mode"] as Mode) ?? (compact ? "agenda" : "week")) as Mode;
   const weekStart = Number(settings["calendar.weekStart"] ?? 0);
   const now = today();
   const [anchor, setAnchor] = useState(now);

@@ -6,6 +6,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { build as viteBuild } from "vite";
 
 const WEB = dirname(fileURLToPath(import.meta.url));
 const CONTENT = join(WEB, "content");
@@ -69,6 +70,34 @@ function parse(file) {
   }
   return { meta, body: m ? raw.slice(m[0].length) : raw };
 }
+
+// The live page on the front page (web/live/live.ts): the app's own engines, bundled.
+await viteBuild({
+  root: join(WEB, ".."),
+  configFile: false,
+  publicDir: false,
+  logLevel: "warn",
+  plugins: [
+    {
+      // Quick add's date helpers without the rest of the planning model (it loads every pack).
+      name: "live-planning-dates",
+      enforce: "pre",
+      resolveId(source, importer) {
+        const from = (importer ?? "").split(String.fromCharCode(92)).join("/");
+        if (source === "./model" && from.endsWith("src/planning/quickAdd.ts")) return join(WEB, "live/planning-dates.ts");
+        return null;
+      },
+    },
+  ],
+  build: {
+    lib: { entry: join(WEB, "live/live.ts"), formats: ["es"], fileName: () => "live.js" },
+    outDir: OUT,
+    emptyOutDir: false,
+    copyPublicDir: false,
+    minify: true,
+    target: "es2020",
+  },
+});
 
 // All pages, by language and route.
 const pages = { ar: new Map(), en: new Map() };
@@ -136,7 +165,7 @@ ${alts}
 <link rel="apple-touch-icon" href="/icon-256.png">
 <link rel="preload" href="/fonts/${lang === "ar" ? "plex-arabic-400" : "instrument-sans"}.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/site.css">
-<script src="/site.js"></script>
+<script src="/site.js"></script>${r === "" ? "\n<script type=\"module\" src=\"/live.js\"></script>" : ""}
 </head>`;
 }
 

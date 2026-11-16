@@ -230,6 +230,8 @@
 /* Quiet until hovered; dimming the layers, not the surface, keeps the lens live. */
 .status-bar { --g-fade: 0.45; }
 .status-bar:hover { --g-fade: 1; }
+/* On a phone the floating counts would sit on the text; the page reads better without them. */
+@media (max-width: 720px) { .status-bar { display: none; } }
 .sb-item { padding: 0 8px; font: var(--t-caption); color: var(--text-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .sb-item + .sb-item { border-inline-start: 0.5px solid rgba(255, 255, 255, 0.1); }
 .sb-lock { display: inline-flex; align-items: center; gap: 4px; color: #f2c94c; }
