@@ -6,6 +6,8 @@
 .drawing-active-tool { min-width: 60px; font-weight: 600; }
 .drawing-options .drawing-field { display: flex; align-items: center; gap: 8px; width: auto; min-width: 175px; margin: 0; }
 .drawing-options .drawing-field input { width: 85px; min-width: 0; }
+/* A label in the options bar stays one word on one line: an Arabic word must never lose its last letter to the next line. */
+.drawing-options .drawing-field > span { flex: none; white-space: nowrap; }
 .drawing-options .drawing-field output { font: 12px var(--font-mono); }
 .drawing-view input[type="color"] { width: 32px; height: 30px; border: 1px solid var(--hairline-strong); padding: 2px; border-radius: 5px; background: transparent; cursor: pointer; }
 .drawing-view input[type="range"] { accent-color: var(--accent); }
@@ -22,7 +24,10 @@
 .drawing-view :is(button, input, select, textarea):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .drawing-stage { position: relative; flex: 1; min-width: 0; overflow: hidden; background-color: rgb(119 119 119); background-image: repeating-conic-gradient(rgb(119 119 119) 0% 25%, rgb(133 133 133) 0% 50%); background-size: 20px 20px; touch-action: none; isolation: isolate; cursor: crosshair; }
 .drawing-stage.tool-select { cursor: default; }
-.drawing-stage.tool-brush, .drawing-stage.tool-eraser, .drawing-stage.tool-highlighter, .drawing-stage.tool-laser { cursor: none; }
+.drawing-stage.tool-brush, .drawing-stage.tool-eraser, .drawing-stage.tool-highlighter, .drawing-stage.tool-laser, .drawing-stage.tool-eyedropper, .drawing-stage.tool-fill { cursor: none; }
+/* The tool icon that follows the pointer (Stage.tsx, toolIcons.tsx). */
+.drawing-cursor-icon { position: absolute; z-index: 4; pointer-events: none; line-height: 0; filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / 0.45)); }
+.drawing-tool-icon { display: block; flex: none; }
 .drawing-pixels, .drawing-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .drawing-overlay { z-index: 2; }
 .drawing-decorations { position: absolute; inset: 0; pointer-events: none; z-index: 3; direction: ltr; }
@@ -239,10 +244,11 @@
 /* Keep translated controls and user-supplied names readable at narrow widths. */
 .drawing-view :is(input,select,textarea), .drawing-step :is(input,select,textarea), .drawing-floating-dialog :is(input,select,textarea) { box-sizing: border-box; max-inline-size: 100%; }
 .drawing-view :is(.drawing-field,.drawing-options,.drawing-footer,.drawing-step,.drawing-library-row,.drawing-error,.drawing-pixel-progress) { min-inline-size: 0; }
-.drawing-view :is(.drawing-field > span,.drawing-layer > button,.drawing-frame-row,.drawing-library-row,.drawing-error,.drawing-pixel-progress,.drawing-step p,.drawing-step label) { overflow-wrap: anywhere; }
+/* break-word, not anywhere: a long name may wrap, but a word is never cut while there is room to move it whole. */
+.drawing-view :is(.drawing-field > span,.drawing-layer > button,.drawing-frame-row,.drawing-library-row,.drawing-error,.drawing-pixel-progress,.drawing-step p,.drawing-step label) { overflow-wrap: break-word; }
 .drawing-options .drawing-field { max-inline-size: 100%; }
 .drawing-options .drawing-field > span { flex-shrink: 0; white-space: nowrap; overflow-wrap: normal; }
-.drawing-tools button small { max-inline-size: 100%; overflow-wrap: anywhere; text-align: center; }
+.drawing-tools button small { max-inline-size: 100%; overflow-wrap: break-word; text-align: center; }
 .drawing-footer { flex-wrap: wrap; gap: 4px 14px; }
 .drawing-footer span { overflow-wrap: anywhere; }
 .drawing-library-filters { grid-template-columns: repeat(2, minmax(0,1fr)); }
