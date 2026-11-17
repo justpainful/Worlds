@@ -1,6 +1,7 @@
 package worlds.android
 
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.painterResource
@@ -291,6 +292,8 @@ private fun historyAvailable(json: String): Pair<Boolean, Boolean> {
     val erase = tool == "eraser"
     var inkColor by rememberSaveable(resource.id) { mutableStateOf("#202023") }
     var highlightColor by rememberSaveable(resource.id) { mutableStateOf("#e6c235") }
+    var showHex by remember { mutableStateOf(false) }
+    var hexDraft by remember { mutableStateOf("") }
     var penWidth by rememberSaveable(resource.id) { mutableFloatStateOf(8f) }
     var pencilWidth by rememberSaveable(resource.id) { mutableFloatStateOf(4f) }
     var highlightWidth by rememberSaveable(resource.id) { mutableFloatStateOf(28f) }
@@ -448,6 +451,17 @@ private fun historyAvailable(json: String): Pair<Boolean, Boolean> {
         )
     }
     LaunchedEffect(resource.id) { drawingFocus.requestFocus() }
+    if (showHex) {
+        val valid = Regex("^#[0-9a-fA-F]{6}$").matches(hexDraft.trim())
+        AlertDialog(onDismissRequest = { showHex = false }, title = { Text(stringResource(R.string.drawing_custom_color)) }, text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(value = hexDraft, onValueChange = { hexDraft = it.take(7) }, singleLine = true, label = { Text("HEX") }, placeholder = { Text("#2B82DE") }, isError = hexDraft.isNotBlank() && !valid)
+                if (valid) Box(Modifier.fillMaxWidth().height(28.dp).background(androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(hexDraft.trim())), RoundedCornerShape(8.dp)))
+            }
+        }, confirmButton = {
+            TextButton(enabled = valid, onClick = { val v = hexDraft.trim().lowercase(); if (tool == "highlighter") highlightColor = v else inkColor = v; showHex = false }) { Text(stringResource(R.string.drawing_use_color)) }
+        }, dismissButton = { TextButton(onClick = { showHex = false }) { Text(stringResource(R.string.cancel)) } })
+    }
     if (showSettings) {
         val colors = listOf("#202023" to R.string.drawing_black, "#245b93" to R.string.drawing_blue, "#b33335" to R.string.drawing_red, "#2c764c" to R.string.drawing_green, "#e6c235" to R.string.drawing_yellow)
         val selectedColor = if (tool == "highlighter") highlightColor else inkColor
@@ -455,6 +469,13 @@ private fun historyAvailable(json: String): Pair<Boolean, Boolean> {
             Column(Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState())) {
                 Text(stringResource(R.string.drawing_color))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    val custom = colors.none { it.first == selectedColor }
+                    FilterChip(selected = custom, onClick = { hexDraft = selectedColor; showHex = true }, label = {
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Box(Modifier.size(14.dp).background(androidx.compose.ui.graphics.Color(runCatching { android.graphics.Color.parseColor(selectedColor) }.getOrDefault(android.graphics.Color.BLACK)), CircleShape))
+                            Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.drawing_custom_color))
+                        }
+                    })
                     colors.forEach { (value, label) ->
                         FilterChip(selected = selectedColor == value, onClick = { if (tool == "highlighter") highlightColor = value else inkColor = value }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f), selectedLabelColor = MaterialTheme.colorScheme.onSurface), label = {
                             Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
@@ -527,7 +548,7 @@ private fun historyAvailable(json: String): Pair<Boolean, Boolean> {
             Box(Modifier.fillMaxSize()) {
                 Box(Modifier.fillMaxSize().glassBackdropSource(backdrop).background(MaterialTheme.colorScheme.surfaceContainerLow), contentAlignment = androidx.compose.ui.Alignment.Center) {
                     if (current != null) AndroidView(factory = { context -> InkView(context) },
-                        update = { view -> view.document = current; view.selectionMode = tool == "select"; view.multiSelect = multiSelect; view.selectedGroup = model.selectedStrokes; view.selectionGroupChanged = model::selectStrokes; view.moveStrokes = model::moveStrokes; view.scaleStrokes = model::scaleStrokes; view.rotateStrokes = model::rotateStrokes; view.referenceImages = model.referenceImages; view.annotations = model.annotations; view.commentMode = tool == "comment"; view.onAnnotationClick = { viewingAnnotation = it }; view.onCanvasTappedForAnnotation = { x, y -> activeAnnotationDialog = x to y }; view.erase = erase; view.barrelEraser = barrelEraser; view.highlighter = tool == "highlighter"; view.pencil = tool == "pencil"; view.inkColor = if (tool == "highlighter") highlightColor else inkColor; view.penWidth = penWidth.toDouble(); view.pencilWidth = pencilWidth.toDouble(); view.highlightWidth = highlightWidth.toDouble(); view.eraserWidth = eraserWidth.toDouble(); view.canDraw = !model.busy && model.pending == null; view.pending = model.pending; view.complete = model::commit; view.gestureChanged = model::updateGesture; view.viewport = model.viewport; view.viewportChanged = model::updateViewport; view.surroundColor = surround; view.accentColor = accentArgb; view.invalidate() },
+                        update = { view -> view.document = current; view.selectionMode = tool == "select"; view.multiSelect = multiSelect; view.selectedGroup = model.selectedStrokes; view.selectionGroupChanged = model::selectStrokes; view.moveStrokes = model::moveStrokes; view.scaleStrokes = model::scaleStrokes; view.rotateStrokes = model::rotateStrokes; view.referenceImages = model.referenceImages; view.annotations = model.annotations; view.commentMode = tool == "comment"; view.onAnnotationClick = { viewingAnnotation = it }; view.onCanvasTappedForAnnotation = { x, y -> activeAnnotationDialog = x to y }; view.erase = erase; view.toolIcon = when (tool) { "pencil" -> R.drawable.tool_pencil; "highlighter" -> R.drawable.tool_highlighter; "eraser" -> R.drawable.tool_eraser; else -> R.drawable.tool_pen }; view.barrelEraser = barrelEraser; view.highlighter = tool == "highlighter"; view.pencil = tool == "pencil"; view.inkColor = if (tool == "highlighter") highlightColor else inkColor; view.penWidth = penWidth.toDouble(); view.pencilWidth = pencilWidth.toDouble(); view.highlightWidth = highlightWidth.toDouble(); view.eraserWidth = eraserWidth.toDouble(); view.canDraw = !model.busy && model.pending == null; view.pending = model.pending; view.complete = model::commit; view.gestureChanged = model::updateGesture; view.viewport = model.viewport; view.viewportChanged = model::updateViewport; view.surroundColor = surround; view.accentColor = accentArgb; view.invalidate() },
                         modifier = Modifier.fillMaxSize().semantics { contentDescription = canvasDescription })
                     else if (model.busy) CircularProgressIndicator()
                 }
@@ -587,8 +608,8 @@ private fun historyAvailable(json: String): Pair<Boolean, Boolean> {
                         DockButton(R.drawable.ic_maximize, stringResource(R.string.drawing_fit), navigationEnabled) { model.fit() }
                     }
                     Row(Modifier.height(56.dp).worldsGlass(RoundedCornerShape(28.dp)).padding(horizontal = 6.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                        listOf(Triple("pen", R.drawable.ic_pen_line, R.string.drawing_pen), Triple("pencil", R.drawable.ic_pencil, R.string.drawing_pencil), Triple("highlighter", R.drawable.ic_highlighter, R.string.drawing_highlighter), Triple("eraser", R.drawable.ic_eraser, R.string.drawing_eraser), Triple("select", R.drawable.ic_maximize, R.string.drawing_select), Triple("comment", R.drawable.ic_message_circle, R.string.drawing_comment)).forEach { (value, icon, labelId) ->
-                            DockButton(icon, stringResource(labelId), chromeEnabled, chosen = tool == value) { tool = value; model.selectStroke(null) }
+                        listOf(Triple("pen", R.drawable.tool_pen, R.string.drawing_pen), Triple("pencil", R.drawable.tool_pencil, R.string.drawing_pencil), Triple("highlighter", R.drawable.tool_highlighter, R.string.drawing_highlighter), Triple("eraser", R.drawable.tool_eraser, R.string.drawing_eraser), Triple("select", R.drawable.tool_select, R.string.drawing_select), Triple("comment", R.drawable.tool_comment, R.string.drawing_comment)).forEach { (value, icon, labelId) ->
+                            DockButton(icon, stringResource(labelId), chromeEnabled, chosen = tool == value, colored = true) { tool = value; model.selectStroke(null) }
                         }
                     }
                 }
@@ -597,9 +618,11 @@ private fun historyAvailable(json: String): Pair<Boolean, Boolean> {
     }
 }
 
-@Composable private fun DockButton(icon: Int, label: String, enabled: Boolean = true, chosen: Boolean = false, onClick: () -> Unit) {
+/** A dock button; [colored] tools keep their own colours (a pink eraser, a yellow marker) instead of the accent tint. */
+@Composable private fun DockButton(icon: Int, label: String, enabled: Boolean = true, chosen: Boolean = false, colored: Boolean = false, onClick: () -> Unit) {
     Box(Modifier.size(42.dp).then(if (chosen) Modifier.worldsGlassLens(CircleShape) else Modifier).clip(CircleShape).clickable(enabled = enabled, role = Role.Button, onClick = onClick).semantics { contentDescription = label; selected = chosen }, contentAlignment = androidx.compose.ui.Alignment.Center) {
-        Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(21.dp), tint = when { !enabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.34f); chosen -> MaterialTheme.colorScheme.primary; else -> MaterialTheme.colorScheme.onSurface })
+        if (colored) Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(if (chosen) 25.dp else 23.dp).alpha(if (enabled) 1f else 0.34f), tint = androidx.compose.ui.graphics.Color.Unspecified)
+        else Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(21.dp), tint = when { !enabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.34f); chosen -> MaterialTheme.colorScheme.primary; else -> MaterialTheme.colorScheme.onSurface })
     }
 }
 
@@ -676,6 +699,21 @@ internal class InkView(context: Context) : View(context) {
     private var hoverPosition: Pair<Float, Float>? = null
     private var hoverEraser = false
     internal val isStylusHovering: Boolean get() = hoverPosition != null
+    var toolIcon: Int = R.drawable.tool_pen
+        set(value) { if (field != value) { field = value; pointerIconCache = null } }
+    private var pointerIconCache: android.view.PointerIcon? = null
+    private fun toolDrawable(id: Int, sizePx: Int): android.graphics.drawable.Drawable? =
+        androidx.core.content.ContextCompat.getDrawable(context, id)?.mutate()?.also { it.setBounds(0, 0, sizePx, sizePx) }
+    // A mouse over the board shows the tool itself, its tip on the point (24-grid tip at 3, 21).
+    override fun onResolvePointerIcon(event: MotionEvent, pointerIndex: Int): android.view.PointerIcon? {
+        if (selectionMode || commentMode || event.getToolType(pointerIndex) != MotionEvent.TOOL_TYPE_MOUSE) return super.onResolvePointerIcon(event, pointerIndex)
+        pointerIconCache?.let { return it }
+        val px = (28 * resources.displayMetrics.density).toInt()
+        val drawable = toolDrawable(if (erase) R.drawable.tool_eraser else toolIcon, px) ?: return super.onResolvePointerIcon(event, pointerIndex)
+        val bitmap = android.graphics.Bitmap.createBitmap(px, px, android.graphics.Bitmap.Config.ARGB_8888)
+        drawable.draw(android.graphics.Canvas(bitmap))
+        return android.view.PointerIcon.create(bitmap, px * 3f / 24f, px * 21f / 24f).also { pointerIconCache = it }
+    }
     private val hoverPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
         style = android.graphics.Paint.Style.STROKE; strokeWidth = 2f; color = android.graphics.Color.DKGRAY
     }
@@ -703,7 +741,15 @@ internal class InkView(context: Context) : View(context) {
             when (event) {
                 is StrokeRecordingEvent.Started -> { val erasing = event.eraser; active[event.pointerId] = mutableListOf(event.first); activeErase[event.pointerId] = erasing; activeColor[event.pointerId] = inkColor; activeBrush[event.pointerId] = brushFor(erasing, event.first); gestureChanged(true) }
                 is StrokeRecordingEvent.Sampled -> active[event.pointerId]?.add(event.sample)
-                is StrokeRecordingEvent.Completed -> { active.remove(event.pointerId); val wasErasing = activeErase.remove(event.pointerId) ?: event.eraser; val color = activeColor.remove(event.pointerId) ?: "#202023"; activeBrush.remove(event.pointerId); currentPointer = null; canDraw = false; complete(PendingStroke(event.samples, event.brush, wasErasing, color)); gestureChanged(navigation != null) }
+                is StrokeRecordingEvent.Completed -> {
+                    active.remove(event.pointerId); val wasErasing = activeErase.remove(event.pointerId) ?: event.eraser; val color = activeColor.remove(event.pointerId) ?: "#202023"; activeBrush.remove(event.pointerId); currentPointer = null
+                    // The board is 1280 by 720: a mark that starts outside it would be kept but never seen.
+                    val first = event.samples.firstOrNull()
+                    if (!wasErasing && first != null && (first.x !in 0.0..1280.0 || first.y !in 0.0..720.0)) {
+                        android.widget.Toast.makeText(context, R.string.drawing_outside_board, android.widget.Toast.LENGTH_SHORT).show()
+                    } else { canDraw = false; complete(PendingStroke(event.samples, event.brush, wasErasing, color)) }
+                    gestureChanged(navigation != null)
+                }
                 is StrokeRecordingEvent.Canceled -> { active.remove(event.pointerId); activeErase.remove(event.pointerId); activeColor.remove(event.pointerId); activeBrush.remove(event.pointerId); currentPointer = null; gestureChanged(navigation != null) }
                 is StrokeRecordingEvent.LimitReached -> Unit
             }
@@ -824,6 +870,11 @@ internal class InkView(context: Context) : View(context) {
             canvas.drawCircle(x, y, radius.toFloat(), hoverPaint)
             hoverPaint.color = android.graphics.Color.DKGRAY; hoverPaint.strokeWidth = 2f
             canvas.drawCircle(x, y, radius.toFloat(), hoverPaint)
+            // The tool the pen holds sits on the edge of the circle, so the circle still shows the size.
+            val px = (26 * resources.displayMetrics.density).toInt()
+            toolDrawable(if (erase || hoverEraser) R.drawable.tool_eraser else toolIcon, px)?.let { icon ->
+                canvas.save(); canvas.translate(x + radius.toFloat() * 0.7f - px * 3f / 24f, y - radius.toFloat() * 0.7f - px * 21f / 24f); icon.draw(canvas); canvas.restore()
+            }
         }
     }
     private fun hitStroke(x: Double, y: Double, tolerance: Double): InkStroke? = saved.asReversed().firstOrNull { stroke ->

@@ -138,6 +138,10 @@ public struct MathBlockView: View {
 public struct MermaidDiagramView: View {
     public let code: String
     @State private var showRawSource: Bool = false
+    /// Concept maps open as a world (ConceptWorldView); any flowchart can switch between World and Diagram.
+    @State private var chosenView: ConceptMapView?
+    @State private var worldID = 0
+    @State private var fullScreen = false
 
     public init(code: String) {
         self.code = code
@@ -151,10 +155,18 @@ public struct MermaidDiagramView: View {
         try? NativeMathDiagramParser.inspectMermaid(code)
     }
 
+    private var conceptGraph: ConceptMapGraph? { ConceptMapParser.parse(code) }
+
+    @ViewBuilder private func world(_ graph: ConceptMapGraph, view: ConceptMapView) -> some View {
+        ConceptWorldView(graph: graph, layered: view == .diagram)
+            .id("\(view.rawValue)-\(worldID)")
+    }
+
     public var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Label(diagramTitle, systemImage: "point.topleft.down.to.point.bottomright.curvepath")
+                Label(conceptGraph.map { (chosenView ?? $0.shownView) == .world } == true ? String(localized: "Concept map") : diagramTitle,
+                      systemImage: "point.topleft.down.to.point.bottomright.curvepath")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -165,6 +177,21 @@ public struct MermaidDiagramView: View {
                         .padding(.vertical, 2)
                         .background(.blue.opacity(0.15), in: Capsule())
                         .foregroundStyle(.blue)
+                }
+                if let graph = conceptGraph, !showRawSource {
+                    Picker("View", selection: Binding(get: { chosenView ?? graph.shownView }, set: { chosenView = $0 })) {
+                        Text("World").tag(ConceptMapView.world)
+                        Text("Diagram").tag(ConceptMapView.diagram)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
+                    Button { worldID &+= 1 } label: { Image(systemName: "arrow.up.left.and.down.right.magnifyingglass").font(.caption) }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(Text("Fit the map"))
+                    Button { fullScreen = true } label: { Image(systemName: "arrow.up.left.and.arrow.down.right").font(.caption) }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(Text("Full screen"))
                 }
                 Button {
                     showRawSource.toggle()
@@ -183,6 +210,16 @@ public struct MermaidDiagramView: View {
                     .padding(10)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+            } else if let graph = conceptGraph, (chosenView ?? graph.shownView) == .world || strictFlowchart == nil {
+                world(graph, view: chosenView ?? graph.shownView)
+                    .frame(height: 360)
+                    .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                if (chosenView ?? graph.shownView) == .world {
+                    Text("Drag to move around, pinch to zoom, tap a concept to light up its links")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             } else if let chart = strictFlowchart {
                 StrictFlowchartView(graph: chart)
                     .padding(8)
@@ -215,6 +252,25 @@ public struct MermaidDiagramView: View {
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Mermaid diagram: \(diagramTitle)")
+        #if os(iOS)
+        .fullScreenCover(isPresented: $fullScreen) { fullScreenWorld }
+        #else
+        .sheet(isPresented: $fullScreen) { fullScreenWorld.frame(minWidth: 900, minHeight: 640) }
+        #endif
+    }
+
+    /// The same world filling the screen, with a way back.
+    @ViewBuilder private var fullScreenWorld: some View {
+        NavigationStack {
+            Group {
+                if let graph = conceptGraph { world(graph, view: chosenView ?? graph.shownView) } else { Text(code).font(.system(.body, design: .monospaced)) }
+            }
+            .padding(8)
+            .navigationTitle(Text("Concept map"))
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { fullScreen = false } }
+            }
+        }
     }
 
     private var diagramTitle: String {

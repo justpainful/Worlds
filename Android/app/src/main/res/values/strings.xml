@@ -1107,4 +1107,18 @@
     <string name="insert_diagram_after">Insert diagram below</string>
     <string name="document_page_of">Page %1$d of %2$d</string>
     <string name="profile_about">About</string>
+    <string name="concept_map_title">Concept map</string>
+    <string name="diagram_title">Diagram</string>
+    <string name="diagram_code">Code</string>
+    <string name="diagram_copy">Copy</string>
+    <string name="diagram_copied">Copied</string>
+    <string name="concept_map_world">World</string>
+    <string name="concept_map_fit">Fit</string>
+    <string name="concept_map_full_screen">Full screen</string>
+    <string name="concept_map_close">Close</string>
+    <string name="concept_map_hint">Drag to move around, pinch to zoom, tap a concept to light up its links</string>
+    <string name="concept_map_description">Concept map you can move around in</string>
+    <string name="drawing_outside_board">Draw inside the board</string>
+    <string name="drawing_custom_color">Custom</string>
+    <string name="drawing_use_color">Use color</string>
 </resources>

@@ -22,6 +22,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.res.stringResource
 import org.json.JSONObject
 import worlds.content.CodeEditing
 import worlds.content.LinkAddress
@@ -256,38 +259,20 @@ internal fun MathBlock(latex: String, display: Boolean = true, modifier: Modifie
 }
 
 /**
- * Visual renderer for Mermaid diagrams.
- * Displays flowchart / graph structure with nodes, connector arrows, and code toggle.
+ * A Mermaid diagram. A flowchart opens as a concept map world (ConceptWorld.kt)
+ * when its links carry phrases, or as a diagram of boxes in rows; any other kind
+ * of diagram shows its code. The views switch with the chips in the header.
  */
 @Composable
 internal fun MermaidBlock(code: String, modifier: Modifier = Modifier) {
     val clipboard = LocalClipboardManager.current
-    var showSource by remember { mutableStateOf(false) }
+    val graph = remember(code) { ConceptMap.parse(code) }
+    var mode by remember(code) { mutableStateOf(if (graph == null) "source" else if (graph.shownView == MapView.WORLD) "world" else "diagram") }
     var copied by remember { mutableStateOf(false) }
-
-    val parsedDiagram = remember(code) {
-        val lines = code.lines().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("%%") }
-        val diagramType = lines.firstOrNull()?.split(" ")?.firstOrNull() ?: "graph"
-        val nodes = mutableListOf<String>()
-        val connections = mutableListOf<Pair<String, String>>()
-
-        val nodeRegex = Regex("([A-Za-z0-9_]+)(?:\\[(.*?)\\])?\\s*(?:-->|---|->)\\s*([A-Za-z0-9_]+)(?:\\[(.*?)\\])?")
-        lines.forEach { line ->
-            val match = nodeRegex.find(line)
-            if (match != null) {
-                val fromId = match.groupValues[1]
-                val fromLabel = match.groupValues[2].ifBlank { fromId }
-                val toId = match.groupValues[3]
-                val toLabel = match.groupValues[4].ifBlank { toId }
-                if (fromLabel !in nodes) nodes.add(fromLabel)
-                if (toLabel !in nodes) nodes.add(toLabel)
-                connections.add(fromLabel to toLabel)
-            }
-        }
-        Triple(diagramType, nodes.take(12), connections.take(12))
-    }
-
-    val (diagramType, nodes, _) = parsedDiagram
+    var full by remember { mutableStateOf(false) }
+    var fitSignal by remember { mutableStateOf(0) }
+    val title = stringResource(if (mode == "world") R.string.concept_map_title else R.string.diagram_title)
+    val description = stringResource(R.string.concept_map_description)
 
     Surface(
         modifier = modifier
@@ -296,97 +281,53 @@ internal fun MermaidBlock(code: String, modifier: Modifier = Modifier) {
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
     ) {
-        Column(Modifier.padding(14.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    WorldsGlyph(R.drawable.ic_files, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-                    Text(
-                        "Diagram (${diagramType.uppercase()})",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Row {
-                    TextButton(onClick = { showSource = !showSource }) {
-                        Text(if (showSource) "Diagram" else "Source", style = MaterialTheme.typography.labelSmall)
-                    }
-                    TextButton(onClick = {
-                        clipboard.setText(AnnotatedString(code))
-                        copied = true
-                    }) {
-                        Text(if (copied) "Copied" else "Copy", style = MaterialTheme.typography.labelSmall)
-                    }
+        Column(Modifier.padding(12.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                WorldsGlyph(R.drawable.ic_files, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                Text(title, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                TextButton(onClick = { clipboard.setText(AnnotatedString(code)); copied = true }) {
+                    Text(stringResource(if (copied) R.string.diagram_copied else R.string.diagram_copy), style = MaterialTheme.typography.labelSmall)
                 }
             }
-
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (graph != null) {
+                    FilterChip(selected = mode == "world", onClick = { mode = "world" }, label = { Text(stringResource(R.string.concept_map_world)) })
+                    FilterChip(selected = mode == "diagram", onClick = { mode = "diagram" }, label = { Text(stringResource(R.string.diagram_title)) })
+                }
+                FilterChip(selected = mode == "source", onClick = { mode = "source" }, label = { Text(stringResource(R.string.diagram_code)) })
+                Spacer(Modifier.weight(1f))
+                if (graph != null && mode != "source") {
+                    TextButton(onClick = { fitSignal++ }) { Text(stringResource(R.string.concept_map_fit), style = MaterialTheme.typography.labelSmall) }
+                    TextButton(onClick = { full = true }) { Text(stringResource(R.string.concept_map_full_screen), style = MaterialTheme.typography.labelSmall) }
+                }
+            }
             Spacer(Modifier.height(8.dp))
-
-            if (showSource) {
+            if (graph != null && mode != "source") {
+                ConceptWorldFrame(graph, layered = mode == "diagram", fitSignal = fitSignal, description = description)
+                if (mode == "world") Text(stringResource(R.string.concept_map_hint), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
+            } else {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
                         .padding(12.dp)
                 ) {
-                    Text(
-                        text = code,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    Text(text = code, fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface)
                 }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (nodes.isEmpty()) {
-                        Text(
-                            text = code.lines().take(6).joinToString("\n"),
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    } else {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            nodes.forEachIndexed { i, nodeName ->
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                                ) {
-                                    Text(
-                                        text = nodeName,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                                    )
-                                }
-                                if (i < nodes.lastIndex) {
-                                    WorldsGlyph(
-                                        R.drawable.ic_arrow_down,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            }
-                        }
+            }
+        }
+    }
+    if (full && graph != null) {
+        Dialog(onDismissRequest = { full = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
+                Column(Modifier.fillMaxSize().padding(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { full = false }) { Text(stringResource(R.string.concept_map_close)) }
                     }
+                    ConceptWorld(graph, layered = mode == "diagram", modifier = Modifier.fillMaxWidth().weight(1f), fitSignal = fitSignal, description = description)
                 }
             }
         }
     }
 }
-

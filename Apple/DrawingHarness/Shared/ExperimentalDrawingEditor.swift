@@ -312,13 +312,31 @@ import WorldsDrawingPencilInput
             Toggle("Correct hand-drawn shapes", isOn: $model.correctShape)
                 .disabled(model.inputBlocked || !["hard", "ink", "pencil"].contains(model.brush))
                 .accessibilityIdentifier("drawing-correct-shapes")
-            Picker("Tool", selection: $model.brush) {
-                ForEach(["hard", "ink", "pencil", "highlighter", "laser"], id: \.self) { Text($0.capitalized).tag($0) }
-            }.pickerStyle(.menu).disabled(model.inputBlocked).accessibilityIdentifier("drawing-tool")
-            Picker("Color", selection: $model.brushColor) {
-                Text("Black").tag("#202023"); Text("Red").tag("#ef3d35"); Text("Blue").tag("#007aff")
-                Text("Green").tag("#30a46c"); Text("Yellow").tag("#f5d742")
-            }.pickerStyle(.menu).disabled(model.inputBlocked).accessibilityIdentifier("drawing-color")
+            HStack(spacing: 10) {
+                // The tool in hand, in its own colour, like the desktop's toolbar.
+                DrawingToolSymbol(tool: model.brush).font(.title2).frame(width: 34)
+                Picker("Tool", selection: $model.brush) {
+                    ForEach(DrawingToolSymbol.tools, id: \.self) { tool in
+                        Label(DrawingToolSymbol.title(tool), systemImage: DrawingToolSymbol.symbol(tool)).tag(tool)
+                    }
+                }.pickerStyle(.menu).disabled(model.inputBlocked).accessibilityIdentifier("drawing-tool")
+            }
+            HStack(spacing: 10) {
+                Picker("Color", selection: $model.brushColor) {
+                    Text("Black").tag("#202023"); Text("Red").tag("#ef3d35"); Text("Blue").tag("#007aff")
+                    Text("Green").tag("#30a46c"); Text("Yellow").tag("#f5d742")
+                    if !["#202023", "#ef3d35", "#007aff", "#30a46c", "#f5d742"].contains(model.brushColor) {
+                        Text(verbatim: model.brushColor.uppercased()).tag(model.brushColor)
+                    }
+                }.pickerStyle(.menu).disabled(model.inputBlocked).accessibilityIdentifier("drawing-color")
+                // Any colour: the system picker has the spectrum, sliders and a HEX field.
+                ColorPicker("Custom color", selection: Binding(
+                    get: { drawingColor(model.brushColor) },
+                    set: { if let hex = drawingHex($0) { model.brushColor = hex } }
+                ), supportsOpacity: false)
+                .disabled(model.inputBlocked)
+                .accessibilityIdentifier("drawing-custom-color")
+            }
             Stepper("Width: \(Int(model.brushSize))", value: $model.brushSize, in: 1...32, step: 1).disabled(model.inputBlocked)
             if model.brush == "laser" {
                 Stepper("Laser fade: \(Int(model.laserLifetime)) ms", value: $model.laserLifetime, in: 200...4000, step: 100)
@@ -395,11 +413,84 @@ import WorldsDrawingPencilInput
                     }
                     PencilCaptureSurface(viewToDocument: CGAffineTransform(scaleX: 1 / scale, y: 1 / scale), onStroke: model.capture, onCancelled: { _ in model.cancelInput() }, onBegan: model.beginInput, onProgress: model.progressInput, onCancellationReason: model.noteCancellation, onDiagnostics: { model.inputDiagnostics = $0 })
                         .frame(width: width, height: height).allowsHitTesting(!model.inputBlocked).accessibilityIdentifier("drawing-canvas")
+                        #if os(macOS)
+                        // Over the canvas the pointer becomes the tool, its tip on the point.
+                        .onHover { inside in
+                            if inside { DrawingToolSymbol.cursor(model.brush).push() } else { NSCursor.pop() }
+                        }
+                        #endif
                 }.frame(width: width, height: height).accessibilityElement(children: .contain).accessibilityIdentifier("drawing-surface")
             }
         }
     }
  }
+
+/// A drawing tool as a coloured symbol, the same family as the desktop's tool icons
+/// (a brown brush, an orange pencil, a yellow highlighter, a red laser).
+struct DrawingToolSymbol: View {
+    let tool: String
+    static let tools = ["hard", "ink", "pencil", "highlighter", "laser"]
+    static func symbol(_ tool: String) -> String {
+        switch tool {
+        case "ink": return "pencil.tip"
+        case "pencil": return "pencil"
+        case "highlighter": return "highlighter"
+        case "laser": return "laser.burst"
+        default: return "paintbrush.pointed.fill"
+        }
+    }
+    static func title(_ tool: String) -> LocalizedStringKey {
+        switch tool {
+        case "ink": return "Ink"
+        case "pencil": return "Pencil"
+        case "highlighter": return "Highlighter"
+        case "laser": return "Laser"
+        default: return "Brush"
+        }
+    }
+    static func tint(_ tool: String) -> Color {
+        switch tool {
+        case "ink": return Color(red: 0.17, green: 0.32, blue: 0.58)
+        case "pencil": return Color(red: 0.96, green: 0.6, blue: 0.2)
+        case "highlighter": return Color(red: 0.93, green: 0.78, blue: 0.13)
+        case "laser": return Color(red: 0.94, green: 0.24, blue: 0.21)
+        default: return Color(red: 0.79, green: 0.54, blue: 0.29)
+        }
+    }
+    var body: some View {
+        Image(systemName: Self.symbol(tool))
+            .symbolRenderingMode(.hierarchical)
+            .foregroundStyle(Self.tint(tool))
+            .accessibilityHidden(true)
+    }
+    #if os(macOS)
+    static func cursor(_ tool: String) -> NSCursor {
+        let configuration = NSImage.SymbolConfiguration(pointSize: 20, weight: .semibold)
+            .applying(NSImage.SymbolConfiguration(paletteColors: [NSColor(tint(tool))]))
+        guard let image = NSImage(systemSymbolName: symbol(tool), accessibilityDescription: nil)?.withSymbolConfiguration(configuration) else { return .crosshair }
+        // Pens point to the lower left; the laser is aimed by its centre.
+        let spot = tool == "laser" ? NSPoint(x: image.size.width / 2, y: image.size.height / 2) : NSPoint(x: 1, y: image.size.height - 1)
+        return NSCursor(image: image, hotSpot: spot)
+    }
+    #endif
+}
+
+/// "#rrggbb" to a colour, and back (sRGB); nil when the colour cannot be read.
+func drawingColor(_ hex: String) -> Color {
+    guard hex.count == 7, hex.first == "#", let rgb = UInt32(hex.dropFirst(), radix: 16) else { return .black }
+    return Color(red: Double((rgb >> 16) & 255) / 255, green: Double((rgb >> 8) & 255) / 255, blue: Double(rgb & 255) / 255)
+}
+func drawingHex(_ color: Color) -> String? {
+    #if canImport(UIKit)
+    var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+    guard UIColor(color).getRed(&r, green: &g, blue: &b, alpha: &a) else { return nil }
+    #else
+    guard let c = NSColor(color).usingColorSpace(.sRGB) else { return nil }
+    let r = c.redComponent, g = c.greenComponent, b = c.blueComponent
+    #endif
+    let channel = { (v: CGFloat) -> Int in min(255, max(0, Int((Double(v) * 255).rounded()))) }
+    return String(format: "#%02x%02x%02x", channel(r), channel(g), channel(b))
+}
 
 private struct LaserOverlayView: View {
     let traces: [LaserTrace]
