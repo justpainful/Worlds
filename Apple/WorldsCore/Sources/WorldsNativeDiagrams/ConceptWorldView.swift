@@ -233,6 +233,7 @@ public struct ConceptWorldView: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("Concept map"))
+        .accessibilityIdentifier("concept-world")
         .accessibilityValue(Text(graph.nodes.map { $0.label }.joined(separator: ", ")))
     }
 
