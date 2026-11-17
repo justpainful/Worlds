@@ -336,8 +336,17 @@ public struct ConceptWorldView: View {
                     let x = Double(s.x) + Double(t.x - s.x) * f, y = Double(s.y) + Double(t.y - s.y) * f
                     return CGRect(x: x - Double(measured.width) / 2 - 7, y: y - Double(measured.height) / 2 - 3, width: Double(measured.width) + 14, height: Double(measured.height) + 6)
                 }
+                // Along the link first, then stepped above or below the middle when links run close.
+                let middle = phraseSpot(at: 0.5), step = Double(middle.height) + 3
                 let spots = [0.5, 0.36, 0.64, 0.26, 0.74].map(phraseSpot)
-                let pill = spots.first { spot in !placed.contains { $0.insetBy(dx: -2, dy: -2).intersects(spot) } } ?? spots[0]
+                    + [step, -step, 2 * step, -2 * step].map { middle.offsetBy(dx: 0, dy: $0) }
+                func covered(_ spot: CGRect) -> Double {
+                    placed.reduce(0.0) { sum, other in
+                        let shared = other.insetBy(dx: -2, dy: -2).intersection(spot)
+                        return shared.isNull ? sum : sum + Double(shared.width * shared.height)
+                    }
+                }
+                let pill = spots.first { covered($0) == 0 } ?? spots.min { covered($0) < covered($1) } ?? middle
                 placed.append(pill)
                 let mid = CGPoint(x: pill.midX, y: pill.midY)
                 context.opacity = dim ? 0.35 : 1

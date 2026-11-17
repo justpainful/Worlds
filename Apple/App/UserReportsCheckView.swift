@@ -47,6 +47,10 @@ struct UserReportsCheckView: View {
             .padding(16)
             .navigationTitle("User reports")
         }
+        #if os(macOS)
+        // Without a size the window opens with nothing to show.
+        .frame(minWidth: 900, minHeight: 720)
+        #endif
         .task {
             do { drawing = try Self.drawingFixture() } catch { problem = "Drawing fixture failed: \(error)" }
         }
