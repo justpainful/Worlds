@@ -337,16 +337,26 @@ public struct ConceptWorldView: View {
                     return CGRect(x: x - Double(measured.width) / 2 - 7, y: y - Double(measured.height) / 2 - 3, width: Double(measured.width) + 14, height: Double(measured.height) + 6)
                 }
                 // Along the link first, then stepped above or below the middle when links run close.
-                let middle = phraseSpot(at: 0.5), step = Double(middle.height) + 3
-                let spots = [0.5, 0.36, 0.64, 0.26, 0.74].map(phraseSpot)
-                    + [step, -step, 2 * step, -2 * step].map { middle.offsetBy(dx: 0, dy: $0) }
+                let middle: CGRect = phraseSpot(at: 0.5)
+                let step: Double = Double(middle.height) + 3
+                var spots: [CGRect] = []
+                for f: Double in [0.5, 0.36, 0.64, 0.26, 0.74] { spots.append(phraseSpot(at: f)) }
+                for k: Double in [1, -1, 2, -2] { spots.append(middle.offsetBy(dx: 0, dy: k * step)) }
                 func covered(_ spot: CGRect) -> Double {
-                    placed.reduce(0.0) { sum, other in
-                        let shared = other.insetBy(dx: -2, dy: -2).intersection(spot)
-                        return shared.isNull ? sum : sum + Double(shared.width * shared.height)
+                    var total: Double = 0
+                    for other in placed {
+                        let shared: CGRect = other.insetBy(dx: -2, dy: -2).intersection(spot)
+                        if !shared.isNull { total += Double(shared.width) * Double(shared.height) }
                     }
+                    return total
                 }
-                let pill = spots.first { covered($0) == 0 } ?? spots.min { covered($0) < covered($1) } ?? middle
+                var pill: CGRect = middle
+                var least: Double = .infinity
+                for spot in spots {
+                    let cover = covered(spot)
+                    if cover < least { least = cover; pill = spot }
+                    if cover == 0 { break }
+                }
                 placed.append(pill)
                 let mid = CGPoint(x: pill.midX, y: pill.midY)
                 context.opacity = dim ? 0.35 : 1
