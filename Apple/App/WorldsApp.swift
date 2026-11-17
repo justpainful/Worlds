@@ -299,7 +299,13 @@ struct WorldsApp: App {
     #endif
 
     @ViewBuilder private var rootView: some View {
-        #if DEBUG
+        #if DEBUG && WORLDS_MAIN_APP_MODULES && WORLDS_EXPERIMENTAL_LOCAL_COPY && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing-user-reports") {
+            UserReportsCheckView()
+        } else {
+            WorldsLibraryView().modifier(UITestingAppearance())
+        }
+        #elseif DEBUG
         WorldsLibraryView().modifier(UITestingAppearance())
         #else
         WorldsLibraryView()

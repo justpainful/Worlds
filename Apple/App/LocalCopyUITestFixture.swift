@@ -40,14 +40,6 @@ enum LocalCopyUITestFixture {
             guard sqlite3_exec(database, gallery, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
         }
         #endif
-        // A page with the concept map template, for the world and diagram views.
-        if ProcessInfo.processInfo.arguments.contains("--ui-testing-concept-map") {
-            let map = #"""
-            INSERT INTO pages(id,title,kind,metadata,created_at,updated_at) VALUES('fixture-concept-map','Concept map fixture','page','{}',1,100);
-            INSERT INTO blocks(id,page_id,type,sort_key,content,created_at,updated_at) VALUES('concept-block','fixture-concept-map','mermaid',0,'{"type":"mermaid","attrs":{"bid":"concept-block","code":"flowchart TD\n  C0([\"Main idea\"])\n  C1[\"First concept\"]\n  C2[\"Second concept\"]\n  C3[\"Third concept\"]\n  C4[\"Result\"]\n  C0 -->|is made of| C1\n  C0 -->|depends on| C2\n  C1 -->|leads to| C3\n  C2 -->|works with| C3\n  C3 -->|produces| C4"}}',1,1);
-            """#
-            guard sqlite3_exec(database, map, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
-        }
         if ProcessInfo.processInfo.arguments.contains("--ui-testing-search-scopes") {
             let search = "UPDATE pages SET title='Geometry project' WHERE id='harness-project'; INSERT INTO pages_fts(page_id,title,body) VALUES('harness-project','Geometry project','geometry fixture'),('fixture-page','Fixture page','geometry fixture');"
             guard sqlite3_exec(database, search, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }

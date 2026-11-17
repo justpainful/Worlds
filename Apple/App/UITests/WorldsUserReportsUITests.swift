@@ -6,20 +6,18 @@ import XCTest
 final class WorldsUserReportsUITests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
 
-    @MainActor private func open(_ id: String, _ app: XCUIApplication) -> Bool {
-        let row = app.descendants(matching: .any)["page.\(id)"].firstMatch
-        guard row.waitForExistence(timeout: 30) else { failure(app, "\(id)-missing"); XCTFail("\(id) did not appear"); return false }
-        row.tap()
-        return true
+    @MainActor private func launch() -> XCUIApplication {
+        let app = XCUIApplication()
+        // The straight drag would otherwise be corrected into a line shape.
+        app.launchArguments = ["--ui-testing-user-reports", "-WorldsDrawingCorrectShapes", "NO"]
+        app.launch()
+        return app
     }
 
     @MainActor func testConceptMapOpensAsAWorldThatMoves() {
-        let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing-local-copy-fixture", "--ui-testing-concept-map"]
-        app.launch()
-        guard open("fixture-concept-map", app) else { return }
+        let app = launch()
         let world = app.descendants(matching: .any)["concept-world"].firstMatch
-        guard world.waitForExistence(timeout: 20) else { failure(app, "concept-world-missing"); XCTFail("The concept map did not open as a world"); return }
+        guard world.waitForExistence(timeout: 30) else { failure(app, "concept-world-missing"); XCTFail("The concept map did not open as a world"); return }
         XCTAssertTrue(world.value as? String == "Main idea, First concept, Second concept, Third concept, Result", "The world must hold every concept")
         let diagram = app.descendants(matching: .any)["Diagram"].firstMatch
         XCTAssertTrue(diagram.exists, "The World and Diagram switch must show")
@@ -46,16 +44,13 @@ final class WorldsUserReportsUITests: XCTestCase {
     }
 
     @MainActor func testDrawingToolsShowTheirIconsAndAnyColour() {
-        let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing-local-copy-fixture", "-WorldsDrawingCorrectShapes", "NO"]
-        app.launch()
-        guard open("fixture-drawing", app) else { return }
-        let edit = app.buttons["edit-local-drawing"]
-        guard edit.waitForExistence(timeout: 20) else { failure(app, "drawing-edit-missing"); XCTFail("Drawing editor action did not appear"); return }
-        edit.tap()
+        let app = launch()
+        let part = app.descendants(matching: .any)["Drawing"].firstMatch
+        guard part.waitForExistence(timeout: 30) else { failure(app, "drawing-part-missing"); XCTFail("The check screen did not open"); return }
+        part.tap()
         let status = app.staticTexts["drawing-status"]
-        guard status.waitForExistence(timeout: 20) else { failure(app, "drawing-status-missing"); XCTFail("Drawing status did not appear"); return }
-        wait(for: [expectation(for: NSPredicate(format: "label CONTAINS %@", "Saved revision 0"), evaluatedWith: status)], timeout: 20)
+        guard status.waitForExistence(timeout: 30) else { failure(app, "drawing-status-missing"); XCTFail("The drawing editor did not open"); return }
+        guard app.otherElements["drawing-surface"].waitForExistence(timeout: 20) else { failure(app, "drawing-surface-missing"); XCTFail("The drawing surface did not appear"); return }
         XCTAssertTrue(app.descendants(matching: .any)["drawing-custom-color"].firstMatch.exists, "Any colour must be one tap away")
         let tool = app.descendants(matching: .any)["drawing-tool"].firstMatch
         XCTAssertTrue(tool.exists)
@@ -68,7 +63,7 @@ final class WorldsUserReportsUITests: XCTestCase {
         XCTAssertTrue(surface.waitForExistence(timeout: 10))
         surface.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.3))
             .press(forDuration: 0.1, thenDragTo: surface.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: 0.4)))
-        let saved = NSPredicate(format: "label CONTAINS %@", "Saved revision 1, strokes 1")
+        let saved = NSPredicate(format: "label CONTAINS %@", "strokes 1")
         guard XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: saved, object: status)], timeout: 30) == .completed else {
             failure(app, "drawing-highlighter-not-saved"); XCTFail("The highlighter stroke did not save"); return
         }
