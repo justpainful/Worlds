@@ -345,6 +345,10 @@ public struct ConceptWorldView: View {
                     let text = context.resolve(Text(verbatim: node.label)
                         .font(.system(size: dot.depth == 0 ? 14.5 : 13, weight: dot.depth == 0 ? .semibold : .medium))
                         .foregroundColor(Color.primary))
+                    // A soft backing, so a name stays readable where a link passes under it.
+                    let size = text.measure(in: CGSize(width: 400, height: 80))
+                    let backing = CGRect(x: dot.x - Double(size.width) / 2 - 5, y: dot.y + r + 4, width: Double(size.width) + 10, height: Double(size.height) + 2)
+                    context.fill(Path(roundedRect: backing, cornerRadius: 6), with: .style(.background))
                     context.draw(text, at: CGPoint(x: dot.x, y: dot.y + r + 5), anchor: .top)
                 }
             }

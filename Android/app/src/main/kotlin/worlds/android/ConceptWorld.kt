@@ -260,6 +260,8 @@ internal fun ConceptWorld(graph: ConceptGraph, layered: Boolean, modifier: Modif
                     drawCircle(color.copy(alpha = if (dim) 0.25f else 1f), r, c)
                     if (zoom >= 0.35f || n.id in near) {
                         val layout = measurer.measure(n.label, TextStyle(fontSize = (if (b.depth == 0) 14.5f else 13f).sp, color = if (dim) muted else ink, fontWeight = if (b.depth == 0) FontWeight.SemiBold else FontWeight.Medium))
+                        // A soft backing, so a name stays readable where a link passes under it.
+                        drawRoundRect(paper.copy(alpha = if (dim) 0.5f else 0.88f), Offset(c.x - layout.size.width / 2f - 5f * density, c.y + r + 4f * density), Size(layout.size.width + 10f * density, layout.size.height + 2f * density), CornerRadius(6f * density))
                         drawText(layout, topLeft = Offset(c.x - layout.size.width / 2f, c.y + r + 5f * density), alpha = if (dim) 0.45f else 1f)
                     }
                 }
