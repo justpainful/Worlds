@@ -57,7 +57,7 @@ import SwiftUI
 /// concepts (not an empty or black picture), as a world and as a diagram.
 @MainActor
 final class ConceptWorldRenderingTests: XCTestCase {
-    private func colouredPixels(_ view: some View) throws -> Int {
+    private func colouredPixels(_ view: some View, tint: CGFloat = 0.25) throws -> Int {
         let renderer = ImageRenderer(content: view.frame(width: 600, height: 420).background(Color.white))
         renderer.scale = 1
         let image = try XCTUnwrap(renderer.cgImage)
@@ -67,7 +67,7 @@ final class ConceptWorldRenderingTests: XCTestCase {
             for y in stride(from: 0, to: rep.pixelsHigh, by: 3) {
                 guard let c = rep.colorAt(x: x, y: y)?.usingColorSpace(.sRGB) else { continue }
                 let spread = max(c.redComponent, c.greenComponent, c.blueComponent) - min(c.redComponent, c.greenComponent, c.blueComponent)
-                if spread > 0.25 { count += 1 }
+                if spread > tint { count += 1 }
             }
         }
         return count
@@ -77,7 +77,8 @@ final class ConceptWorldRenderingTests: XCTestCase {
         let source = "flowchart TD\n  C0([\"المفهوم الأساسي\"])\n  C1[\"المفهوم الأول\"]\n  C2[\"المفهوم الثاني\"]\n  C0 -->|يتكون من| C1\n  C0 -->|يعتمد على| C2"
         let graph = try XCTUnwrap(ConceptMapParser.parse(source))
         XCTAssertGreaterThan(try colouredPixels(ConceptWorldView(graph: graph)), 20, "The concepts must be drawn as coloured points")
-        XCTAssertGreaterThan(try colouredPixels(ConceptWorldView(graph: graph, layered: true)), 20, "The diagram must draw coloured boxes")
+        // The diagram's boxes are a light tint of the concept colour with a coloured edge.
+        XCTAssertGreaterThan(try colouredPixels(ConceptWorldView(graph: graph, layered: true), tint: 0.08), 20, "The diagram must draw coloured boxes")
     }
 }
 #endif
