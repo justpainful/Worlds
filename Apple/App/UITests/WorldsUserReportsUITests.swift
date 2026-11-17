@@ -9,8 +9,15 @@ final class WorldsUserReportsUITests: XCTestCase {
     @MainActor private func launch() -> XCUIApplication {
         let app = XCUIApplication()
         // The straight drag would otherwise be corrected into a line shape.
-        app.launchArguments = ["--ui-testing-user-reports", "-WorldsDrawingCorrectShapes", "NO"]
+        // Window restoration can leave a Mac with no window open after the earlier tests.
+        app.launchArguments = ["--ui-testing-user-reports", "-WorldsDrawingCorrectShapes", "NO", "-ApplePersistenceIgnoreState", "YES"]
         app.launch()
+        #if os(macOS)
+        app.activate()
+        if !app.windows.firstMatch.waitForExistence(timeout: 5) {
+            app.typeKey("n", modifierFlags: .command)
+        }
+        #endif
         return app
     }
 
@@ -61,8 +68,17 @@ final class WorldsUserReportsUITests: XCTestCase {
         highlighter.tap()
         let surface = app.otherElements["drawing-surface"]
         XCTAssertTrue(surface.waitForExistence(timeout: 10))
-        surface.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.3))
-            .press(forDuration: 0.1, thenDragTo: surface.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: 0.4)))
+        // A stroke that starts outside the board is refused, and nothing is saved.
+        surface.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: 0.6))
+            .press(forDuration: 0.1, thenDragTo: surface.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.7)))
+        let refused = NSPredicate(format: "label CONTAINS %@", "outsideRegion")
+        guard XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: refused, object: status)], timeout: 20) == .completed else {
+            failure(app, "drawing-outside-not-refused"); XCTFail("A stroke outside the board must be refused"); return
+        }
+        screenshot(app, "drawing-outside-refused")
+        // Inside the board the highlighter draws and saves.
+        surface.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.10))
+            .press(forDuration: 0.1, thenDragTo: surface.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: 0.20)))
         let saved = NSPredicate(format: "label CONTAINS %@", "strokes 1")
         guard XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: saved, object: status)], timeout: 30) == .completed else {
             failure(app, "drawing-highlighter-not-saved"); XCTFail("The highlighter stroke did not save"); return
