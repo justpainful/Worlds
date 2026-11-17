@@ -57,6 +57,8 @@ function ensureDictionary(): Promise<void> {
   loading ??= import("./ar.json").then((m) => {
     loadDictionary(m.default as Record<string, string>);
     dictionaryReady = true;
+    // Text worked out before the dictionary arrived (the editor's empty-line hints) can now be redone.
+    announce();
   });
   return loading;
 }
@@ -443,6 +445,12 @@ export function applyUiLanguage(language: UiLanguage): void {
   current = language;
   if (language === "ar") start();
   else stop();
+  announce();
+}
+
+/** Tells views that work out text themselves (the editor's empty-line hints) to do it again. */
+function announce() {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("worlds:ui-language"));
 }
 
 /** For code that builds strings outside the page (native dialogs, the window title). */
