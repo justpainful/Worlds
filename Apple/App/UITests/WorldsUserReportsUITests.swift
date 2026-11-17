@@ -15,7 +15,11 @@ final class WorldsUserReportsUITests: XCTestCase {
         #if os(macOS)
         app.activate()
         if !app.windows.firstMatch.waitForExistence(timeout: 5) {
-            app.typeKey("n", modifierFlags: .command)
+            // Clicking the app in the Dock opens a new window, as it does for a person.
+            let dock = XCUIApplication(bundleIdentifier: "com.apple.dock")
+            let icon = dock.descendants(matching: .any)["Worlds"].firstMatch
+            if icon.waitForExistence(timeout: 5) { icon.click() }
+            _ = app.windows.firstMatch.waitForExistence(timeout: 10)
         }
         #endif
         return app
