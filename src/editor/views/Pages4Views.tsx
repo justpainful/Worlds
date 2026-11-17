@@ -5,6 +5,9 @@ import katex from "katex";
 import "katex/dist/katex.min.css";
 import { Icon } from "../../ui/Icon";
 import { menuAt } from "../../ui/Menu";
+import { uiLanguage } from "../../i18n/ui";
+import { mapView, parseConceptMap, withLayout, writeConceptMap, type MapView } from "../conceptMap";
+import { ConceptWorld } from "./ConceptWorld";
 
 // ---------------------------------------------------------------------------
 // Math (KaTeX)
@@ -117,7 +120,16 @@ function loadMermaid() {
       securityLevel: "strict",
       theme: "dark",
       fontFamily: "Instrument Sans Variable, IBM Plex Sans Arabic, system-ui, sans-serif",
-      themeVariables: { background: "transparent", primaryColor: "#2a2a30", primaryTextColor: "#f4f2ee", lineColor: "#8b8d98", primaryBorderColor: "#55555e" },
+      themeVariables: {
+        background: "transparent",
+        primaryColor: "#2a2a30",
+        primaryTextColor: "#f4f2ee",
+        lineColor: "#8b8d98",
+        primaryBorderColor: "#55555e",
+        edgeLabelBackground: "#202023",
+        clusterBkg: "#26262b",
+        clusterBorder: "#55555e",
+      },
     });
     return m;
   });
@@ -125,15 +137,29 @@ function loadMermaid() {
 }
 let mermaidSeq = 0;
 
-export function MermaidView({ node, updateAttributes, selected }: ReactNodeViewProps) {
+export function MermaidView({ node, updateAttributes, selected, editor }: ReactNodeViewProps) {
   const code = node.attrs.code as string;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(code);
   const [svg, setSvg] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+  const [full, setFull] = useState(false);
   const source = editing ? draft : code;
+  // A flowchart can also be shown as a concept map world (ConceptWorld.tsx).
+  const graph = useMemo(() => parseConceptMap(source), [source]);
+  const view: MapView = graph ? mapView(graph) : "diagram";
+  const arabic = uiLanguage() === "ar";
+  const editable = editor.isEditable;
+  const codeRef = useRef(code);
+  codeRef.current = code;
+  const setView = (next: MapView) => {
+    const g = parseConceptMap(codeRef.current);
+    if (!g || !editable) return;
+    updateAttributes({ code: withLayout(codeRef.current, { ...g, view: next }) });
+  };
 
   useEffect(() => {
+    if (view === "world") return;
     let live = true;
     const t = window.setTimeout(async () => {
       try {
@@ -152,13 +178,23 @@ export function MermaidView({ node, updateAttributes, selected }: ReactNodeViewP
       live = false;
       window.clearTimeout(t);
     };
-  }, [source, editing]);
+  }, [source, editing, view]);
 
   return (
-    <NodeViewWrapper className={`mermaid-block ${selected ? "is-selected" : ""}`} data-drag-handle contentEditable={false}>
+    <NodeViewWrapper className={`mermaid-block ${selected ? "is-selected" : ""} ${view === "world" ? "is-world" : ""}`} data-drag-handle contentEditable={false}>
       <div className="mermaid-bar">
-        <span className="mermaid-label"><Icon name="layers" size={13} /> Diagram</span>
+        <span className="mermaid-label"><Icon name="layers" size={13} /> {view === "world" ? (arabic ? "خريطة مفاهيم" : "Concept map") : arabic ? "مخطط" : "Diagram"}</span>
         <span className="grow" />
+        {graph && (
+          <span className="mermaid-views" role="group" aria-label={arabic ? "طريقة العرض" : "View"} translate="no">
+            <button type="button" aria-pressed={view === "world"} disabled={!editable} onClick={() => setView("world")}>
+              {arabic ? "عالم" : "World"}
+            </button>
+            <button type="button" aria-pressed={view === "diagram"} disabled={!editable} onClick={() => setView("diagram")}>
+              {arabic ? "مخطط" : "Diagram"}
+            </button>
+          </span>
+        )}
         <button
           className="chip-btn"
           onClick={() => {
@@ -167,7 +203,7 @@ export function MermaidView({ node, updateAttributes, selected }: ReactNodeViewP
             setEditing(!editing);
           }}
         >
-          {editing ? "Done" : "Edit"}
+          {editing ? (arabic ? "تم" : "Done") : arabic ? "تحرير الشيفرة" : "Edit code"}
         </button>
       </div>
       {editing && (
@@ -182,7 +218,24 @@ export function MermaidView({ node, updateAttributes, selected }: ReactNodeViewP
           onBlur={() => draft !== code && updateAttributes({ code: draft })}
         />
       )}
-      {error ? <div className="mermaid-error">{error}</div> : <div className="mermaid-svg" dangerouslySetInnerHTML={{ __html: svg }} onDoubleClick={() => setEditing(true)} />}
+      {view === "world" && graph ? (
+        <ConceptWorld
+          graph={graph}
+          editable={editable && !editing}
+          arabic={arabic}
+          full={full}
+          onFull={setFull}
+          onLayout={(positions) => {
+            const g = parseConceptMap(codeRef.current);
+            if (g) updateAttributes({ code: withLayout(codeRef.current, { ...g, positions }) });
+          }}
+          onGraph={(g) => updateAttributes({ code: writeConceptMap(g) })}
+        />
+      ) : error ? (
+        <div className="mermaid-error">{error}</div>
+      ) : (
+        <div className="mermaid-svg" dangerouslySetInnerHTML={{ __html: svg }} onDoubleClick={() => setEditing(true)} />
+      )}
     </NodeViewWrapper>
   );
 }

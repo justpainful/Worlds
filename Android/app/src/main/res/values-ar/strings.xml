@@ -1111,4 +1111,18 @@
     <string name="insert_diagram_after">إدراج مخطط بعده</string>
     <string name="document_page_of">صفحة %1$d من %2$d</string>
     <string name="profile_about">نبذة</string>
+    <string name="concept_map_title">خريطة مفاهيم</string>
+    <string name="diagram_title">مخطط</string>
+    <string name="diagram_code">الشيفرة</string>
+    <string name="diagram_copy">نسخ</string>
+    <string name="diagram_copied">نُسخ</string>
+    <string name="concept_map_world">عالم</string>
+    <string name="concept_map_fit">إظهار الكل</string>
+    <string name="concept_map_full_screen">ملء الشاشة</string>
+    <string name="concept_map_close">إغلاق</string>
+    <string name="concept_map_hint">اسحب للتنقل، وقرّب بإصبعين، والمس مفهومًا لتضيء روابطه</string>
+    <string name="concept_map_description">خريطة مفاهيم تتنقل فيها</string>
+    <string name="drawing_outside_board">ارسم داخل اللوحة</string>
+    <string name="drawing_custom_color">لون مخصص</string>
+    <string name="drawing_use_color">استخدام اللون</string>
 </resources>

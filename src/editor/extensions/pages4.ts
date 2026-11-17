@@ -117,7 +117,11 @@ export const Mermaid = Node.create({
     return ["div", mergeAttributes(HTMLAttributes, { "data-mermaid": "" })];
   },
   addNodeView() {
-    return ReactNodeViewRenderer(MermaidView);
+    // The concept map world (and the diagram's own controls) handle their pointer and
+    // keys themselves: the editor must not drag the block or take the focus from them.
+    return ReactNodeViewRenderer(MermaidView, {
+      stopEvent: ({ event }) => event.target instanceof Element && !!event.target.closest(".cw, .mermaid-views, .mermaid-code"),
+    });
   },
   addCommands() {
     return {

@@ -14,7 +14,7 @@ import { DrawingShortcutsDialog } from "./ShortcutsDialog";
 import { drawingShortcutAction, readDrawingShortcuts } from "./shortcuts";
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ScreenDrawing, type CapturedScreen } from "./ScreenDrawing";
+import { ScreenDrawing, type CapturedScreen, type ScreenBoard } from "./ScreenDrawing";
 import { localStore } from "../sync/session";
 import { api, errorMessage } from "../lib/api";
 import { useStore } from "../state/store";
@@ -106,6 +106,8 @@ import type { PixelSampleSource } from "./floatingPixels";
 import { runPixelTask } from "./pixelTasks";
 import "./drawing.css";
 import { shortcutKey } from "../lib/keys";
+import { useMenu } from "../ui/Menu";
+import { ToolIcon } from "./toolIcons";
 
 const TOOLS: { id: Tool; label: string; ar: string; glyph: string; key?: string }[] = [
   { id: "select", label: "Move", ar: "تحريك", glyph: "↖", key: "V" },
@@ -212,6 +214,9 @@ export function DrawingView(props: { id: string; paneId: string }) {
 function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
   const [screenCapture, setScreenCapture] = useState<CapturedScreen | null>(null);
   const [capturingScreen, setCapturingScreen] = useState(false);
+  // Draw on screen first asks whether the board in use comes along onto the screen.
+  const [screenAsk, setScreenAsk] = useState(false);
+  const [screenBoard, setScreenBoard] = useState<ScreenBoard | null>(null);
   useEffect(
     () => () => {
       if (screenCapture) void invoke("end_screen_drawing", { wasFullscreen: screenCapture.wasFullscreen }).catch(() => {});
@@ -1144,6 +1149,70 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
       />
     );
   const currentFrame = scene.frames[frameId] ?? scene.frames[scene.defaultFrameId];
+  // A new board goes to the right of the last one, the same size as the board in use.
+  const addFrame = () => {
+    const right = scene.frameOrder.reduce((m, fid) => Math.max(m, scene.frames[fid].x + scene.frames[fid].w), -Infinity);
+    const f = newFrame(t(`Frame ${scene.frameOrder.length + 1}`, `إطار ${scene.frameOrder.length + 1}`), {
+      x: Number.isFinite(right) ? right + 100 : 0,
+      y: currentFrame?.y ?? 0,
+      w: currentFrame?.w ?? 1280,
+      h: currentFrame?.h ?? 720,
+    });
+    commit("Add frame", [
+      { type: "put", collection: "frames", id: f.id, value: f },
+      { type: "order", list: "frameOrder", ids: [...scene.frameOrder, f.id] },
+    ]);
+    setFrameId(f.id);
+    setView({ ...view, x: f.x - 40, y: f.y - 65 });
+  };
+  // The board's drawing without its paper, as the picture that goes onto the screen.
+  const boardPicture = async (): Promise<ScreenBoard | null> => {
+    const frame = currentFrame;
+    if (!frame || frame.w <= 0 || frame.h <= 0) return null;
+    const scale = Math.min(1, 4096 / Math.max(frame.w, frame.h)),
+      width = Math.max(1, Math.round(frame.w * scale)),
+      height = Math.max(1, Math.round(frame.h * scale)),
+      renderer = new DrawingRenderer(),
+      canvas = document.createElement("canvas");
+    try {
+      await renderer.prepare(scene);
+      canvas.width = width;
+      canvas.height = height;
+      renderer.render(canvas, scene, { ...frame, scale }, { frameId: frame.id, background: false });
+      return { dataUrl: canvas.toDataURL("image/png"), width: frame.w, height: frame.h };
+    } finally {
+      renderer.dispose();
+      canvas.width = canvas.height = 0;
+    }
+  };
+  const startScreenDrawing = async (withBoard: boolean) => {
+    setScreenAsk(false);
+    try {
+      setCapturingScreen(true);
+      await session.flush();
+      if (session.snapshot().pending) throw new Error(t("Save the drawing before capturing the screen", "احفظ الرسم قبل التقاط الشاشة"));
+      const board = withBoard ? await boardPicture() : null;
+      const capture = await invoke<CapturedScreen>("capture_screen_for_drawing");
+      if (!lifetime.current.active) {
+        await invoke("end_screen_drawing", { wasFullscreen: capture.wasFullscreen });
+        return;
+      }
+      setScreenBoard(board);
+      setScreenCapture(capture);
+    } catch (e) {
+      toast({ message: errorMessage(e), tone: "error" });
+    } finally {
+      setCapturingScreen(false);
+    }
+  };
+  const canvasMenu = (_point: unknown, client: { x: number; y: number }) =>
+    useMenu.getState().show(client.x, client.y, [
+      { label: t("New Board", "لوحة جديدة"), icon: "add", disabled: !canEdit, onSelect: addFrame },
+      { label: t("All Boards", "كل اللوحات"), icon: "square", onSelect: () => setTab("frames") },
+      { kind: "separator" },
+      { label: t("Search and Commands", "البحث والأوامر"), icon: "search", shortcut: "Ctrl+K", onSelect: () => useStore.getState().setPalette(true, "all") },
+      { label: t("Ask Claude", "اسأل Claude"), icon: "assistant", shortcut: "Ctrl+J", onSelect: () => window.dispatchEvent(new Event("worlds:toggle-ai")) },
+    ]);
   const currentLayer = scene.layers[layerId] ?? scene.layers[scene.layerOrder[0]];
   const one = selected.length === 1 ? scene.nodes[selected[0]] : undefined;
   const unsupportedEffectNode = scene.nodeOrder
@@ -1186,24 +1255,7 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
                 icon="monitor"
                 variant="quiet"
                 disabled={!canEdit || capturingScreen}
-                onClick={async () => {
-                  try {
-                    setCapturingScreen(true);
-                    await session.flush();
-                    if (session.snapshot().pending)
-                      throw new Error(t("Save the drawing before capturing the screen", "احفظ الرسم قبل التقاط الشاشة"));
-                    const capture = await invoke<CapturedScreen>("capture_screen_for_drawing");
-                    if (!lifetime.current.active) {
-                      await invoke("end_screen_drawing", { wasFullscreen: capture.wasFullscreen });
-                      return;
-                    }
-                    setScreenCapture(capture);
-                  } catch (e) {
-                    toast({ message: errorMessage(e), tone: "error" });
-                  } finally {
-                    setCapturingScreen(false);
-                  }
-                }}
+                onClick={() => setScreenAsk(true)}
               >
                 {t("Draw on screen", "الرسم على الشاشة")}
               </Button>
@@ -1495,12 +1547,13 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
               aria-pressed={tool === item.id}
               onClick={() => chooseTool(item.id)}
             >
-              <span aria-hidden>{item.glyph}</span>
+              <ToolIcon tool={item.id} size={24} />
               <small>{arabic ? item.ar : item.label}</small>
             </button>
           ))}
         </div>
         <DrawingStage
+          onCanvasMenu={canvasMenu}
           keyboardActive={activePane}
           minimap={minimap}
           onTransform={applyObjectTransform}
@@ -1776,17 +1829,7 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
                   <Button
                     icon="add"
                     size="compact"
-                    onClick={() => {
-                      const f = newFrame(t(`Frame ${scene.frameOrder.length + 1}`, `إطار ${scene.frameOrder.length + 1}`), {
-                        x: currentFrame.x + currentFrame.w + 100,
-                      });
-                      commit("Add frame", [
-                        { type: "put", collection: "frames", id: f.id, value: f },
-                        { type: "order", list: "frameOrder", ids: [...scene.frameOrder, f.id] },
-                      ]);
-                      setFrameId(f.id);
-                      setView({ ...view, x: f.x - 40, y: f.y - 65 });
-                    }}
+                    onClick={addFrame}
                   >
                     {t("Add frame", "إضافة إطار")}
                   </Button>
@@ -2975,9 +3018,34 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
           }}
         />
       )}
+      {screenAsk && (
+        <Modal
+          title={t("Move this board onto the screen?", "هل تريد نقل هذه اللوحة إلى الشاشة؟")}
+          width={440}
+          onClose={() => setScreenAsk(false)}
+          footer={
+            <>
+              <Button variant="quiet" onClick={() => void startScreenDrawing(false)}>
+                {t("No, an empty screen", "لا، شاشة فارغة")}
+              </Button>
+              <Button variant="tinted" autoFocus onClick={() => void startScreenDrawing(true)}>
+                {t("Yes", "نعم")}
+              </Button>
+            </>
+          }
+        >
+          <p className="modal-text bidi">
+            {t(
+              `“${shownName(currentFrame.name, false)}” appears over your screen. You can move it and keep drawing on it and around it.`,
+              `تظهر «${shownName(currentFrame.name, true)}» فوق شاشتك، وتقدر تحركها وتكمل الرسم عليها وحولها.`,
+            )}
+          </p>
+        </Modal>
+      )}
       {screenCapture && (
         <ScreenDrawing
           capture={screenCapture}
+          board={screenBoard}
           arabic={arabic}
           initialBrush={brush}
           laserLifetime={laserLifetime}
@@ -2985,6 +3053,7 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
           onClose={async () => {
             await invoke("end_screen_drawing", { wasFullscreen: screenCapture.wasFullscreen });
             setScreenCapture(null);
+            setScreenBoard(null);
           }}
           onSave={async (blob, width, height, shareConfirmed) => {
             if (!canEditNow.current || !lifetime.current.active) throw new Error(t("This drawing is read-only", "هذا الرسم للقراءة فقط"));

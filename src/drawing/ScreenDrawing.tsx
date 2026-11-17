@@ -4,11 +4,16 @@ import { BrushStylePicker } from "./BrushPicker";
 import { DEFAULT_BRUSH, id, newLayer, newNode, newScene, type Brush, type DrawingNode, type Point, type Shape } from "./model";
 import { DrawingRenderer, type Viewport } from "./renderer";
 import { translateObjects } from "./objectTransforms";
+import { DrawingColors } from "./Colors";
+import { ToolIcon } from "./toolIcons";
 import "./screenDrawing.css";
 
 export type CapturedScreen = { dataUrl: string; width: number; height: number; wasFullscreen: boolean };
+/** The board the user chose to bring onto the screen, as a transparent image of its drawing. */
+export type ScreenBoard = { dataUrl: string; width: number; height: number };
 type Props = {
   capture: CapturedScreen;
+  board?: ScreenBoard | null;
   arabic: boolean;
   initialBrush: Brush;
   laserLifetime: number;
@@ -18,7 +23,7 @@ type Props = {
 };
 
 /** A still capture and edits remain local until the user chooses Save. */
-export function ScreenDrawing({ capture, arabic, initialBrush, laserLifetime: initialLifetime, onClose, isShared, onSave }: Props) {
+export function ScreenDrawing({ capture, board, arabic, initialBrush, laserLifetime: initialLifetime, onClose, isShared, onSave }: Props) {
   const t = (en: string, ar: string) => (arabic ? ar : en);
   const [base] = useState(() => {
     const scene = newScene(),
@@ -46,6 +51,20 @@ export function ScreenDrawing({ capture, arabic, initialBrush, laserLifetime: in
     };
     scene.nodes[node.id] = node;
     scene.nodeOrder.push(node.id);
+    if (board && board.width > 0 && board.height > 0) {
+      // The board's drawing comes onto the screen as one movable picture in the
+      // middle, at most four fifths of the screen, ready to draw over and move.
+      const fit = Math.min(1, (capture.width * 0.8) / board.width, (capture.height * 0.8) / board.height),
+        w = board.width * fit,
+        h = board.height * fit,
+        boardAsset = id(),
+        picture = newNode("image", paint.id, frame.id, { x: (capture.width - w) / 2, y: (capture.height - h) / 2, w, h });
+      picture.assetId = boardAsset;
+      picture.name = "Board";
+      scene.assets[boardAsset] = { id: boardAsset, attachmentId: "screen-board", name: "Board", mime: "image/png", width: board.width, height: board.height };
+      scene.nodes[picture.id] = picture;
+      scene.nodeOrder.push(picture.id);
+    }
     return { scene, layerId: paint.id, frameId: frame.id };
   });
   const [scene, setScene] = useState(base.scene),
@@ -58,6 +77,8 @@ export function ScreenDrawing({ capture, arabic, initialBrush, laserLifetime: in
     [autoShape, setAutoShape] = useState(false);
   const [view, setView] = useState<Viewport>({ x: 0, y: 0, w: capture.width, h: capture.height, scale: 1 });
   const [screenImage, setScreenImage] = useState<HTMLImageElement | null>(null),
+    [boardImage, setBoardImage] = useState<HTMLImageElement | null>(null),
+    [recent, setRecent] = useState<string[]>([]),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [confirmClose, setConfirmClose] = useState(false),
@@ -86,7 +107,31 @@ export function ScreenDrawing({ capture, arabic, initialBrush, laserLifetime: in
       image.onerror = null;
     };
   }, [capture.dataUrl]);
-  const images = useMemo(() => (screenImage ? new Map([["screen-capture", screenImage]]) : undefined), [screenImage]);
+  useEffect(() => {
+    if (!board) return;
+    const image = new Image();
+    image.onload = () => {
+      if (alive.current) setBoardImage(image);
+    };
+    image.onerror = () => {
+      if (alive.current) setError(t("The board could not be brought onto the screen", "تعذر نقل اللوحة إلى الشاشة"));
+    };
+    image.src = board.dataUrl;
+    return () => {
+      image.onload = null;
+      image.onerror = null;
+    };
+  }, [board?.dataUrl]);
+  const images = useMemo(() => {
+    if (!screenImage) return undefined;
+    const map = new Map([["screen-capture", screenImage]]);
+    if (boardImage) map.set("screen-board", boardImage);
+    return map;
+  }, [screenImage, boardImage]);
+  const pickColor = (color: string) => {
+    setBrush((b) => ({ ...b, color }));
+    setRecent((list) => [color, ...list.filter((c) => c !== color)].slice(0, 12));
+  };
   const change = (next: typeof scene) => {
     setPast((p) => [...p.slice(-49), sceneRef.current]);
     setFuture([]);
@@ -173,14 +218,14 @@ export function ScreenDrawing({ capture, arabic, initialBrush, laserLifetime: in
     window.addEventListener("keydown", key, true);
     return () => window.removeEventListener("keydown", key, true);
   }, [past.length, busy, textEdit, confirmClose]);
-  const tools: { value: Tool; en: string; ar: string; icon: string }[] = [
-    { value: "select", en: "Move", ar: "تحريك", icon: "↖" },
-    { value: "brush", en: "Brush", ar: "فرشاة", icon: "✎" },
-    { value: "highlighter", en: "Highlighter", ar: "تحديد", icon: "▰" },
-    { value: "eraser", en: "Eraser", ar: "ممحاة", icon: "▱" },
-    { value: "laser", en: "Laser", ar: "ليزر", icon: "●" },
-    { value: "shape", en: "Shape", ar: "شكل", icon: "△" },
-    { value: "text", en: "Text", ar: "نص", icon: "T" },
+  const tools: { value: Tool; en: string; ar: string }[] = [
+    { value: "select", en: "Move", ar: "تحريك" },
+    { value: "brush", en: "Brush", ar: "فرشاة" },
+    { value: "highlighter", en: "Highlighter", ar: "تظليل" },
+    { value: "eraser", en: "Eraser", ar: "ممحاة" },
+    { value: "laser", en: "Laser", ar: "ليزر" },
+    { value: "shape", en: "Shape", ar: "شكل" },
+    { value: "text", en: "Text", ar: "نص" },
   ];
   return (
     <div className="screen-drawing" dir={arabic ? "rtl" : "ltr"}>
@@ -243,19 +288,17 @@ export function ScreenDrawing({ capture, arabic, initialBrush, laserLifetime: in
             aria-pressed={tool === item.value}
             onClick={() => selectTool(item.value)}
           >
-            {item.icon}
+            <ToolIcon tool={item.value} size={22} />
           </button>
         ))}
         <span className="screen-drawing-divider" />
-        {tool === "brush" && <BrushStylePicker brush={brush} arabic={arabic} onChange={setBrush} />}
-        <label>
-          {t("Color", "اللون")}{" "}
-          <input
-            type="color"
-            value={/^#[0-9a-f]{6}/i.test(brush.color) ? brush.color.slice(0, 7) : "#202023"}
-            onChange={(e) => setBrush((b) => ({ ...b, color: e.target.value }))}
-          />
-        </label>
+        {(tool === "brush" || tool === "highlighter") && <BrushStylePicker brush={brush} arabic={arabic} onChange={setBrush} />}
+        {tool !== "eraser" && tool !== "select" && (
+          <span className="screen-drawing-color">
+            {t("Color", "اللون")}
+            <DrawingColors color={/^#[0-9a-f]{6}/i.test(brush.color) ? brush.color : "#202023"} recent={recent} arabic={arabic} onColor={pickColor} />
+          </span>
+        )}
         <label>
           {t("Size", "الحجم")}{" "}
           <input

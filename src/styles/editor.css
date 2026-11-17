@@ -352,6 +352,31 @@
 .mermaid-code { width: 100%; margin-bottom: 10px; resize: vertical; border: 0; outline: 0; border-radius: 10px; padding: 10px 12px; background: rgba(0, 0, 0, 0.28); color: var(--text-1); font: 500 13px/1.5 var(--font-mono, ui-monospace, monospace); }
 .mermaid-svg { display: flex; justify-content: center; overflow-x: auto; }
 .mermaid-svg svg { max-width: 100%; height: auto; }
+/* If Mermaid's own styles are lost, a diagram still reads: grey boxes and lines, never solid black. Its #id rules win when present. */
+.mermaid-svg svg .node rect, .mermaid-svg svg .node polygon, .mermaid-svg svg .node circle, .mermaid-svg svg .node ellipse, .mermaid-svg svg .node path { fill: #2a2a30; stroke: #55555e; }
+.mermaid-svg svg .flowchart-link, .mermaid-svg svg .edgePath path, .mermaid-svg svg .relation { fill: none; stroke: #8b8d98; }
+.mermaid-svg svg marker path, .mermaid-svg svg .arrowheadPath, .mermaid-svg svg .arrowMarkerPath { fill: #8b8d98; stroke: none; }
+.mermaid-svg svg .nodeLabel, .mermaid-svg svg .edgeLabel, .mermaid-svg svg text { color: #f4f2ee; fill: #f4f2ee; }
+.mermaid-svg svg .edgeLabel, .mermaid-svg svg .labelBkg { background-color: #202023; }
+.mermaid-views { display: inline-flex; padding: 2px; border-radius: 9px; background: var(--fill-1); }
+.mermaid-views button { padding: 3px 10px; border-radius: 7px; font: var(--t-caption); font-weight: 600; color: var(--text-3); transition: background 160ms var(--ease-out), color 160ms var(--ease-out); }
+.mermaid-views button[aria-pressed="true"] { background: var(--fill-3); color: var(--text-1); }
+.mermaid-views button:disabled { cursor: default; }
+/* The concept map world (ConceptWorld.tsx) */
+.cw { --cw-paper: var(--surface-1, #1c1c1f); display: flex; flex-direction: column; gap: 6px; }
+.cw.is-full { position: fixed; inset: 0; z-index: 2600; padding: 14px 16px 10px; background: var(--surface-deep, #141416); }
+.cw-bar { display: flex; align-items: center; gap: 4px; }
+.cw-btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 30px; height: 28px; padding: 0 8px; border-radius: 8px; color: var(--text-2); background: var(--fill-1); font: var(--t-small); font-weight: 600; transition: background 110ms var(--ease-out), color 110ms var(--ease-out); }
+.cw-btn:hover { background: var(--fill-2); color: var(--text-1); }
+.cw-btn[aria-pressed="true"] { background: rgba(var(--accent-rgb), 0.22); color: var(--text-1); box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.6); }
+.cw-sep { width: 1px; height: 18px; margin-inline: 4px; background: var(--hairline); }
+.cw-grow { flex: 1; }
+.cw-space { position: relative; height: 440px; border-radius: 12px; overflow: hidden; background: var(--cw-paper); box-shadow: inset 0 0 0 0.5px var(--hairline); touch-action: none; cursor: grab; outline: none; }
+.cw-space:focus-visible { box-shadow: inset 0 0 0 1.5px rgba(var(--accent-rgb), 0.8); }
+.cw.is-full .cw-space { flex: 1; height: auto; }
+.cw-space canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.cw-edit { position: absolute; z-index: 2; transform: translateX(-50%); min-width: 150px; padding: 5px 9px; border-radius: 8px; border: 1px solid rgba(var(--accent-rgb), 0.8); background: var(--surface-2); color: var(--text-1); font: var(--t-ui); text-align: center; outline: none; }
+.cw-hint { margin: 0; font: var(--t-caption); color: var(--text-3); }
 .mermaid-error { padding: 10px 12px; border-radius: 10px; background: rgba(229, 72, 77, 0.1); color: #ff9592; font: var(--t-small); }
 
 /* ---- Charts ---------------------------------------------------------------------- */

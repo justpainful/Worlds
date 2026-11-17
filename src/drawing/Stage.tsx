@@ -39,7 +39,10 @@ import { pathFromNode } from "./paths";
 import { samePixelTransform } from "./floatingPixels";
 import { sampleDrawingColor } from "./colorSample";
 import { viewportReferences } from "./viewportReferences";
+import { TIP, ToolIcon } from "./toolIcons";
 
+/** Tools whose icon tip sits on the drawing point (the system pointer is hidden for them). */
+const TIPPED: ReadonlySet<string> = new Set(["brush", "eraser", "highlighter", "laser", "eyedropper", "fill"]);
 export type Tool =
   | "select"
   | "brush"
@@ -133,6 +136,8 @@ export interface StageProps {
   onPointer?: (point: Point | null) => void;
   onLaser?: (stroke: LaserStroke | null) => void;
   onInteraction?: () => void;
+  /** Right-click on the canvas: the drawing shows its own menu (a new board, not a new page). */
+  onCanvasMenu?: (point: Point, client: { x: number; y: number }) => void;
   commentPins?: { id: string; point: Point; label: string }[];
   onComment?: (id: string) => void;
   onDraft?: (node: DrawingNode | null, selection?: PixelSelection | null) => void;
@@ -864,6 +869,12 @@ export function DrawingStage(props: StageProps) {
       props.onError(arabic ? "شفافية هذه الطبقة مقفلة" : "This layer transparency is locked");
       return;
     }
+    // A drawing with boards is drawn on its boards: a mark that starts outside every
+    // board would sit on the open canvas, so it is refused (the eraser still works there).
+    if (props.tool !== "eraser" && scene.frameOrder.length && !under && !props.pixelSelection) {
+      props.onError(arabic ? "ارسم داخل اللوحة. لإضافة لوحة أخرى اضغط بالزر الأيمن واختر لوحة جديدة." : "Draw inside a board. To add another board, right-click and choose New Board.");
+      return;
+    }
     if (props.tool === "fill") {
       props.onFill(p);
       return;
@@ -1135,6 +1146,11 @@ export function DrawingStage(props: StageProps) {
           e.preventDefault();
           e.stopPropagation();
           setPolygon((points) => points.slice(0, -1));
+          return;
+        }
+        if (props.onCanvasMenu) {
+          e.preventDefault();
+          props.onCanvasMenu(at(e), { x: e.clientX, y: e.clientY });
         }
       }}
       onDoubleClick={(e) => {
@@ -1349,6 +1365,20 @@ export function DrawingStage(props: StageProps) {
               transform: `translate(-50%, -50%) rotate(${uniformCursor || props.brush.kind === "spray" ? 0 : props.brush.angle}deg)`,
             }}
           />
+        )}
+        {cursor && props.tool !== "select" && (
+          // The tool itself rides on the pointer: its tip on the point for the tools
+          // that touch the canvas, a small badge beside the crosshair for the others.
+          <span
+            className={`drawing-cursor-icon ${TIPPED.has(props.tool) ? "is-tip" : "is-badge"}`}
+            style={
+              TIPPED.has(props.tool)
+                ? { left: cursor.x - TIP.x * (26 / 24), top: cursor.y - TIP.y * (26 / 24) }
+                : { left: cursor.x + 10, top: cursor.y + 10 }
+            }
+          >
+            <ToolIcon tool={props.tool} size={TIPPED.has(props.tool) ? 26 : 18} />
+          </span>
         )}
       </div>
       {handles && (

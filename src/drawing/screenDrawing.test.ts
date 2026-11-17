@@ -75,12 +75,32 @@ describe("ScreenDrawing mode (Survey §1.2)", () => {
     expect(html).toContain("أدوات الرسم على الشاشة");
     expect(html).toContain("تحريك");
     expect(html).toContain("فرشاة");
-    expect(html).toContain("تحديد");
+    expect(html).toContain("تظليل");
     expect(html).toContain("ممحاة");
     expect(html).toContain("ليزر");
     expect(html).toContain("شكل");
     expect(html).toContain("نص");
     expect(html).toContain("حفظ في الرسم");
     expect(html).toContain("خروج");
+    // The colour swatch has the chevron that opens HEX, RGB and the swatches.
+    expect(html).toContain("لوحة الألوان");
+    // Tools show their drawn icons, not text glyphs.
+    expect(html).toContain("drawing-tool-icon");
+  });
+
+  it("brings the chosen board onto the screen as a movable picture", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(ScreenDrawing, {
+        capture: dummyCapture,
+        board: { dataUrl: "data:image/png;base64,AA==", width: 1280, height: 720 },
+        arabic: false,
+        initialBrush: DEFAULT_BRUSH,
+        laserLifetime: 1000,
+        onClose: async () => {},
+        isShared: async () => false,
+        onSave: async () => {},
+      })
+    );
+    expect(html).toContain("Color palette");
   });
 });

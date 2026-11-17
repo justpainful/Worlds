@@ -434,7 +434,22 @@ export const PageEditor = forwardRef<
   // empty lines, which are worked out per update, in the new language.
   const language = useStore((s) => s.profile?.language ?? null);
   useEffect(() => {
-    if (editor && !editor.isDestroyed) editor.view.dispatch(editor.state.tr.setMeta("languageChanged", true));
+    if (!editor) return;
+    const redo = () => {
+      if (editor.isDestroyed) return;
+      // The placeholder plugin keeps its hints until the text around them changes, so it
+      // is taken out and put back: it then draws every hint again, in the new language.
+      const hints = editor.state.plugins.find((p) => (p as unknown as { key?: string }).key?.startsWith("tiptap__placeholder"));
+      if (hints) {
+        editor.unregisterPlugin("tiptap__placeholder");
+        editor.registerPlugin(hints);
+      }
+      editor.view.dispatch(editor.state.tr.setMeta("languageChanged", true));
+    };
+    redo();
+    // The interface switches language (and the Arabic dictionary arrives) after this runs; redraw then too.
+    window.addEventListener("worlds:ui-language", redo);
+    return () => window.removeEventListener("worlds:ui-language", redo);
   }, [language, editor]);
 
   // Palette / menu commands targeting this page's editor.

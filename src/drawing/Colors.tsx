@@ -61,12 +61,13 @@ export function DrawingColors({
   onBackground,
 }: {
   color: string;
-  background: string;
+  /** Leave out (with onBackground) where there is no second colour, as on the screen drawing bar. */
+  background?: string;
   recent: string[];
   palette?: string[];
   arabic: boolean;
   onColor: (color: string) => void;
-  onBackground: (color: string) => void;
+  onBackground?: (color: string) => void;
 }) {
   const [open, setOpen] = useState(false),
     [hex, setHex] = useState(color),
@@ -189,23 +190,27 @@ export function DrawingColors({
             />
             <output>{Math.round(parts.alpha * 100)}%</output>
           </label>
-          <label>
-            {arabic ? "اللون الخلفي" : "Background color"}
-            <input
-              type="color"
-              value={colorParts(background).rgb}
-              onChange={(e) => onBackground(colorAlpha(e.target.value, colorParts(background).alpha))}
-            />
-          </label>
-          <button
-            className="drawing-swap-colors"
-            onClick={() => {
-              onBackground(color);
-              onColor(background);
-            }}
-          >
-            {arabic ? "تبديل اللونين" : "Swap colors"}
-          </button>
+          {onBackground && background !== undefined && (
+            <>
+              <label>
+                {arabic ? "اللون الخلفي" : "Background color"}
+                <input
+                  type="color"
+                  value={colorParts(background).rgb}
+                  onChange={(e) => onBackground(colorAlpha(e.target.value, colorParts(background).alpha))}
+                />
+              </label>
+              <button
+                className="drawing-swap-colors"
+                onClick={() => {
+                  onBackground(color);
+                  onColor(background);
+                }}
+              >
+                {arabic ? "تبديل اللونين" : "Swap colors"}
+              </button>
+            </>
+          )}
           {recent.length > 0 && (
             <>
               <p>{arabic ? "آخر الألوان" : "Recent colors"}</p>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A coloured drawing tool, the same drawing as the desktop (src/drawing/toolIcons.tsx); its tip is at the lower left. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:pathData="M14 4.6l3-3a1.4 1.4 0 0 1 2 0l3.4 3.4a1.4 1.4 0 0 1 0 2L19.4 10z" android:fillColor="#FF5B6F66" android:strokeColor="#FF2A2420" android:strokeWidth="1.2" android:strokeLineJoin="round" />
+    <path android:pathData="M14 4.6l5.4 5.4-6.6 6.6-5.4-5.4z" android:fillColor="#FFF5D742" android:strokeColor="#FF2A2420" android:strokeWidth="1.2" android:strokeLineJoin="round" />
+    <path android:pathData="M7.4 11.2l5.4 5.4-2.8 1.2L6.2 14z" android:fillColor="#FFE8C21F" android:strokeColor="#FF2A2420" android:strokeWidth="1.2" android:strokeLineJoin="round" />
+    <path android:pathData="M6.2 14l3.8 3.8-3 3.2H3v-4z" android:fillColor="#FFF5D742" android:strokeColor="#FF2A2420" android:strokeWidth="1.2" android:strokeLineJoin="round" />
+</vector>
