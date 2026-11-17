@@ -24,6 +24,7 @@ import { type Tab, SESSION_START, toast, hostOf, fmt } from "./shared";
 import { BlocksSection } from "./BlocksSection";
 import { PagesTab, MediaTab, AboutTab } from "./tabs";
 import { EditProfile } from "./EditProfile";
+import { PublicProfileSheet } from "./PublicProfile";
 
 export function ProfileView() {
   const profile = useStore((s) => s.profile)!;
@@ -31,6 +32,7 @@ export function ProfileView() {
   const setProfile = useStore((s) => s.setProfile);
   const openRoute = useStore((s) => s.open);
   const [editing, setEditing] = useState(false);
+  const [publicOpen, setPublicOpen] = useState(false);
   const [customizing, setCustomizing] = useState(false);
   const [stats, setStats] = useState<ProfileStats | null>(null);
   const [bridge, setBridge] = useState<LiveData["bridge"]>(null);
@@ -224,6 +226,7 @@ export function ProfileView() {
               <button className="pf-primary" onClick={() => setEditing(true)}>
                 Edit Profile
               </button>
+              <GlassButton icon="globe" label="Public profile" layer={LAYER.chrome} onClick={() => setPublicOpen(true)} />
               <GlassButton icon="share" label="Copy profile card" layer={LAYER.chrome} onClick={share} />
               <GlassButton icon="more" label="More" layer={LAYER.chrome} onClick={(e) => moreMenu(e.currentTarget)} />
             </div>
@@ -309,6 +312,7 @@ export function ProfileView() {
         </div>
       </div>
 
+      {publicOpen && <PublicProfileSheet profile={profile} onClose={() => setPublicOpen(false)} />}
       {editing && <EditProfile profile={profile} onClose={() => setEditing(false)} onSave={save} onPick={pick} onAdjust={(w) => setAdjust(w)} />}
       {adjust === "banner" && bannerSrc && (
         <CropEditor

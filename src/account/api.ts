@@ -42,6 +42,20 @@ export interface AccountView {
   created?: boolean;
 }
 
+/** The account's public profile at profile.<domain>/@username (services/identity/src/routes/profiles.ts). */
+export interface PublicProfileState {
+  published: boolean;
+  visible: boolean;
+  username: string;
+  url: string;
+  profile: Record<string, unknown> | null;
+  avatar: string | null;
+  banner: string | null;
+  publishedAt: number | null;
+  updatedAt: number | null;
+  filesEnabled: boolean;
+}
+
 export interface Member {
   userId: string;
   displayName: string;
@@ -167,6 +181,14 @@ export const accountApi = {
   updateProfile: (patch: { displayName?: string; username?: string }) => call<{ displayName: string; username: string }>("updateProfile", patch),
   checkUsername: (username: string) =>
     call<{ username: string; valid: boolean; available: boolean; reason: string | null; message: string | null }>("checkUsername", { username }),
+  publicProfile: () => call<PublicProfileState>("publicProfile"),
+  /** Publish or update: the profile's text, links and blocks, with pictures already uploaded ("file:<key>"). */
+  publishProfile: (payload: { visible?: boolean; profile: Record<string, unknown>; avatar?: string | null; banner?: string | null }) =>
+    call<PublicProfileState>("publishProfile", payload),
+  setProfileVisible: (visible: boolean) => call<PublicProfileState>("setProfileVisible", { visible }),
+  unpublishProfile: () => call<{ ok: boolean }>("unpublishProfile"),
+  /** One picture or short video in base64; returns its "file:<key>" for the profile. */
+  uploadProfileFile: (mime: string, data: string) => call<{ file: string; size: number }>("uploadProfileFile", { mime, data }),
   devices: () => call<Device[]>("devices"),
   revokeDevice: (deviceId: string) => call<unknown>("revokeDevice", { deviceId }),
   passkeys: () => call<Passkey[]>("passkeys"),

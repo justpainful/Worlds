@@ -123,6 +123,22 @@ Every security-relevant action writes one row: `{ id, at, workspaceId, actorUser
 
 The Personal workspace exists only on the device. It is never sent to this service: its pages have `workspace_id = NULL` locally and are not mirrored.
 
+## 7b. Public profiles
+
+Every account may publish a public profile, shown by `services/edge` at `profile.<domain>/@username` (`src/routes/profiles.ts`, table `public_profiles`, pictures in the `PROFILE_FILES` R2 bucket under `p/<user id>/`). Worlds publishes a copy of the profile on the device: name, bio, status, location, accent, theme, text direction, links and blocks; pictures are uploaded first and named in the copy as `file:<key>`. Hidden blocks and live blocks (streaks, activity) are not published.
+
+| Endpoint | Who | Notes |
+|---|---|---|
+| `GET /me/public-profile` | The account | `{ published, visible, username, url, profile, avatar, banner, publishedAt, updatedAt, filesEnabled }` |
+| `PUT /me/public-profile` | The account | `{ visible?, profile, avatar?, banner? }`. Links must be http(s) or mailto; strings that look like local paths are dropped; `file:` keys must be the account's own. Files the profile no longer names are deleted. |
+| `PATCH /me/public-profile` | The account | `{ visible }`: show or hide without changing what is published |
+| `DELETE /me/public-profile` | The account | Removes the row and every file |
+| `POST /me/public-profile/files` | The account | `{ mime, data }` with base64 data; PNG, JPEG, WebP, GIF, AVIF, MP4 or WebM, up to 10 MB; stored by content hash |
+| `GET /profiles/:username` | Anyone | The published profile, or 404 when there is none or it is hidden (the two are indistinguishable) |
+| `GET /profiles/files/p/:userId/:name` | Anyone | A picture, only while its owner's profile is visible |
+
+Audit actions: `profile.published`, `profile.updated`, `profile.shown`, `profile.hidden`, `profile.removed`. The profile follows the account's username, so changing the username moves the page.
+
 ## 8. Running it
 
 ```

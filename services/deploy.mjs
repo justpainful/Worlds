@@ -316,6 +316,17 @@ if (!wrangler(ID_DIR, ["d1", "migrations", "apply", "worlds-identity", "--remote
   fail("The database tables could not be created.");
 ok("worlds-identity is ready");
 
+step("5b", "Profile pictures");
+// Public profiles keep their pictures here (services/identity/src/routes/profiles.ts).
+const profilesBucket = wrangler(ID_DIR, ["r2", "bucket", "create", "worlds-profiles"], { quiet: true });
+if (!profilesBucket.ok && !/already exists|already own/i.test(profilesBucket.out)) {
+  if (/enable R2|R2 is not enabled|10042/i.test(profilesBucket.out))
+    fail("R2 storage is off on your account. Open dash.cloudflare.com, choose R2, press Enable (it is free up to 10 GB), then run this again.");
+  say(profilesBucket.out);
+  fail("Could not create the profile picture bucket.");
+}
+ok("worlds-profiles");
+
 step(6, "Account service");
 state.identityUrl = deploy(ID_DIR, "The account service", EDGE ? undefined : HOSTS?.identity);
 save();
@@ -365,6 +376,8 @@ if (EDGE) {
     SYNC_ORIGIN: state.syncUrl,
     LOGIN_HOST: HOSTS.identity,
     CONNECT_HOST: HOSTS.sync,
+    PROFILE_HOST: `profile.${state.domain}`,
+    SITE_URL: `https://${state.domain}`,
     MAIL_FROM: state.domainFrom,
   };
   for (const [key, value] of Object.entries(vars)) toml = toml.replace(new RegExp(`^${key} = ".*"$`, "m"), `${key} = ${JSON.stringify(value)}`);
@@ -372,13 +385,14 @@ if (EDGE) {
   toml +=
     `\n[[routes]]\npattern = ${JSON.stringify(HOSTS.identity)}\ncustom_domain = true\n` +
     `\n[[routes]]\npattern = ${JSON.stringify(HOSTS.sync)}\ncustom_domain = true\n` +
+    `\n[[routes]]\npattern = ${JSON.stringify(`profile.${state.domain}`)}\ncustom_domain = true\n` +
     `\n[[send_email]]\nname = "EMAIL"\nallowed_sender_addresses = [${JSON.stringify(`no-reply@${state.domain}`)}]\n`;
   writeFileSync(join(EDGE_DIR, "wrangler.deploy.toml"), toml);
   deploy(ID_DIR, "The edge", HOSTS.identity, "../edge/wrangler.deploy.toml", onEdgeAccount);
   writeFileSync(join(STATE_DIR, "edge.secrets.json"), JSON.stringify({ EDGE_SECRET: state.edgeSecret, MAIL_SECRET: state.mailSecret }));
   if (!wrangler(ID_DIR, ["secret", "bulk", "../.deploy/edge.secrets.json", "-c", "../edge/wrangler.deploy.toml"], { quiet: true, env: onEdgeAccount }).ok)
     fail("Could not store the edge keys.");
-  ok(`${HOSTS.identity} and ${HOSTS.sync} forward to the services; codes are sent from no-reply@${state.domain}`);
+  ok(`${HOSTS.identity} and ${HOSTS.sync} forward to the services, profile.${state.domain} shows public profiles; codes are sent from no-reply@${state.domain}`);
 }
 
 step(10, "Point Worlds on this PC at them");

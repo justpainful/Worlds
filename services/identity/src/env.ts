@@ -30,6 +30,8 @@ export interface Env {
   EDGE_SECRET?: string;
   /** Web origins allowed to call this service from a browser, comma separated (https://app.enterworlds.space). */
   ALLOWED_ORIGINS?: string;
+  /** Pictures on public profiles (src/routes/profiles.ts); without it profiles publish text only. */
+  PROFILE_FILES?: R2Bucket;
 }
 
 /** The part of Cloudflare's `send_email` binding this service uses. */

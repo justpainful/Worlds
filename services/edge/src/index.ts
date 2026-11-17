@@ -5,6 +5,7 @@
  *
  *   login.<domain>    -> the identity service, unchanged
  *   connect.<domain>  -> the sync service, WebSockets included
+ *   profile.<domain>  -> public profiles at /@username, drawn here (src/profile.ts)
  *   POST login.<domain>/_edge/mail -> sends a sign-in email through Cloudflare
  *                        Email Service from the domain (the identity service's
  *                        EMAIL_WEBHOOK_URL, with EMAIL_WEBHOOK_SECRET)
@@ -12,6 +13,8 @@
  * Forwarded requests carry the visitor's IP in x-worlds-client-ip, with
  * EDGE_SECRET in x-worlds-edge so the services can tell it from a forged one.
  */
+
+import { handleProfile } from "./profile";
 
 export interface SendEmailBinding {
   send(message: { to: string; from: { email: string; name?: string }; subject: string; text: string; html?: string }): Promise<unknown>;
@@ -25,6 +28,10 @@ export interface Env {
   SYNC_ORIGIN: string;
   LOGIN_HOST: string;
   CONNECT_HOST: string;
+  /** profile.<domain>; leave empty to turn public profiles off. */
+  PROFILE_HOST?: string;
+  /** Where "Make yours in Worlds" goes, https://<domain>. */
+  SITE_URL?: string;
   /** "Worlds <no-reply@enterworlds.space>" */
   MAIL_FROM: string;
   /** Shared with the services: proves a forwarded request came through here. */
@@ -104,6 +111,11 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (url.hostname.toLowerCase() === env.LOGIN_HOST.toLowerCase() && url.pathname === MAIL_PATH) return sendMail(request, env);
+    if (env.PROFILE_HOST && url.hostname.toLowerCase() === env.PROFILE_HOST.toLowerCase()) {
+      // Only GETs reach the identity service from here, with the visitor's IP for its rate limit.
+      const call = (path: string) => fetch(forwarded(new Request(new URL(path, request.url), { headers: request.headers }), env.IDENTITY_ORIGIN, env));
+      return handleProfile(request, env, call);
+    }
     const target = targetFor(url.hostname, env);
     if (!target) return new Response("Not found", { status: 404 });
     return fetch(forwarded(request, target, env));
