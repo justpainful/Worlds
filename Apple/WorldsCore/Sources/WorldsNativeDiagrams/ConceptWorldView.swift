@@ -122,6 +122,20 @@ final class ConceptWorldModel: ObservableObject {
 
     func fit(force: Bool = false) {
         guard width > 0, height > 0, !bodies.isEmpty, force || !fitted else { return }
+        place()
+        tick &+= 1
+    }
+
+    /// Learns the size while the view is drawn and frames the map the first time,
+    /// without announcing a change (drawing must not publish one).
+    func prepare(_ size: CGSize) {
+        let w = Double(size.width), h = Double(size.height)
+        guard w > 0, h > 0 else { return }
+        if w != width || h != height { width = w; height = h }
+        if !fitted && !bodies.isEmpty { place() }
+    }
+
+    private func place() {
         fitted = true
         let xs = bodies.values.map { $0.x }, ys = bodies.values.map { $0.y }
         let minX = (xs.min() ?? 0) - 120, maxX = (xs.max() ?? 0) + 120
@@ -129,7 +143,6 @@ final class ConceptWorldModel: ObservableObject {
         zoom = max(0.2, min(1.6, min(width / (maxX - minX), height / (maxY - minY))))
         cameraX = (minX + maxX) / 2
         cameraY = (minY + maxY) / 2
-        tick &+= 1
     }
 
     func screenX(_ x: Double) -> Double { (x - cameraX) * zoom + width / 2 }
@@ -195,7 +208,7 @@ public struct ConceptWorldView: View {
 
     public var body: some View {
         GeometryReader { geometry in
-            let picture = snapshot()
+            let picture = snapshot(geometry.size)
             let graph = self.graph
             Canvas { context, _ in ConceptWorldView.draw(picture, graph: graph, in: &context) }
                 .contentShape(Rectangle())
@@ -246,8 +259,9 @@ public struct ConceptWorldView: View {
             }
     }
 
-    private func snapshot() -> ConceptWorldPicture {
+    private func snapshot(_ size: CGSize) -> ConceptWorldPicture {
         _ = model.tick
+        model.prepare(size)
         var picture = ConceptWorldPicture(zoom: model.zoom, width: model.width, height: model.height,
                                           originX: model.screenX(0), originY: model.screenY(0), focus: focus, layered: layered)
         for (id, b) in model.bodies {
