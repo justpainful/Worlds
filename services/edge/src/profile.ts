@@ -62,9 +62,6 @@ const MONTHS: Record<Lang, string[]> = {
   ar: ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"],
 };
 
-/** The arrow after a link that opens elsewhere, as an entity so no file carries the glyph. */
-const ARROW = "&#8599;";
-
 export function esc(v: unknown): string {
   return String(v ?? "")
     .replace(/&/g, "&amp;")
@@ -139,14 +136,20 @@ export function linkLabel(l: { label: string; url: string }): string {
   }
 }
 
-const hostOf = (url: string) => {
-  try {
-    const u = new URL(url);
-    return u.protocol === "mailto:" ? "" : u.hostname.replace(/^www\./, "") + (u.pathname.length > 1 ? u.pathname.replace(/\/$/, "") : "");
-  } catch {
-    return "";
-  }
+/* The page mirrors the app's profile (src/styles/profile.css): the same banner-lit
+ * canvas, avatar, names, links row and the 12-column block grid with its styles. */
+
+/** Lucide geometry (ISC), the same set the app draws its icons from. */
+const GLYPHS: Record<string, string> = {
+  globe: `<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>`,
+  link: `<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>`,
+  external: `<path d="M7 7h10v10"/><path d="M7 17 17 7"/>`,
+  calendar: `<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>`,
 };
+
+function glyph(name: keyof typeof GLYPHS, size = 13): string {
+  return `<svg class="icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${GLYPHS[name]}</svg>`;
+}
 
 function icon(ref: unknown, size = 28): string {
   if (typeof ref !== "string" || !ref) return "";
@@ -154,46 +157,93 @@ function icon(ref: unknown, size = 28): string {
   if (src) return `<img class="ic" src="${esc(src)}" width="${size}" height="${size}" alt="" loading="lazy">`;
   // An emoji or a short symbol; product icons were turned into files when published.
   if (ref.startsWith("pi:") || ref.startsWith("img:") || ref.length > 8) return "";
-  return `<span class="ic emoji" style="font-size:${Math.round(size * 0.8)}px">${esc(ref)}</span>`;
+  return `<span class="ic emoji" style="width:${size}px;height:${size}px;font-size:${Math.round(size * 0.8)}px">${esc(ref)}</span>`;
 }
 
-function picture(ref: unknown, cls: string, focus?: unknown, fit = "cover"): string {
-  const src = fileSrc(ref);
-  if (!src) return "";
-  const style = `object-fit:${fit === "contain" || fit === "whole" ? "contain" : fit === "original" ? "none" : "cover"};object-position:${focusOf(focus)}`;
+const fitOf = (fit: unknown, fallback: string) => (fit === "original" ? "none" : fit === "contain" || fit === "whole" ? "contain" : fit === "cover" || fit === "fill" ? "cover" : fallback);
+
+function media(src: string, cls: string, style: string, lazy = true): string {
   return isVideo(src)
     ? `<video class="${cls}" src="${esc(src)}" autoplay muted loop playsinline style="${style}"></video>`
-    : `<img class="${cls}" src="${esc(src)}" alt="" loading="lazy" style="${style}">`;
+    : `<img class="${cls}" src="${esc(src)}" alt=""${lazy ? ` loading="lazy"` : ""} style="${style}">`;
+}
+
+/** The app's <Art>: a picture beside, above or behind a block's text. */
+function art(ref: unknown, side: string, fit: unknown, focus: unknown): string {
+  const src = fileSrc(ref);
+  if (!src) return "";
+  return `<div class="pb-art pb-art-${side}">${media(src, "", `object-fit:${fitOf(fit, "contain")};object-position:${focusOf(focus)}`)}</div>`;
 }
 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 const items = (v: unknown) => (Array.isArray(v) ? (v as Record<string, unknown>[]).filter((x) => x && typeof x === "object") : []);
 
-function item(it: Record<string, unknown>, kind: "grid" | "list" | "link" | "badge"): string {
+function label(text: unknown, ic?: unknown): string {
+  return text ? `<div class="pb-label">${icon(ic, 16)}<span>${esc(text)}</span></div>` : "";
+}
+
+function itemRow(it: Record<string, unknown>, size: number): string {
   const href = safeHref(it.url);
   const inner =
-    `${icon(it.icon, kind === "badge" ? 20 : kind === "grid" ? 34 : 26)}` +
-    `<span class="it-text"><span class="it-title">${esc(it.title)}</span>${it.subtitle ? `<span class="it-sub">${esc(it.subtitle)}</span>` : ""}</span>` +
-    (href && kind !== "badge" ? `<span class="go" aria-hidden="true">${ARROW}</span>` : "");
-  return href ? `<a class="it it-${kind}" href="${esc(href)}" rel="noopener nofollow ugc" target="_blank">${inner}</a>` : `<div class="it it-${kind}">${inner}</div>`;
+    (it.icon ? `<span class="pb-item-icon" style="width:${size}px;height:${size}px">${icon(it.icon, size)}</span>` : "") +
+    `<span class="pb-item-text"><span class="pb-item-title">${esc(it.title)}</span>${it.subtitle ? `<span class="pb-item-sub">${esc(it.subtitle)}</span>` : ""}</span>`;
+  return href ? `<a class="pb-item is-link" href="${esc(href)}" rel="noopener nofollow ugc" target="_blank">${inner}</a>` : `<div class="pb-item">${inner}</div>`;
 }
 
 const SIZE: Record<string, [number, number]> = { "12x1": [12, 1], "12x2": [12, 2], "8x1": [8, 1], "6x1": [6, 1], "6x2": [6, 2], "4x1": [4, 1], "3x1": [3, 1] };
 const STYLES = new Set(["soft", "tinted", "solid", "compact", "showcase", "minimal"]);
 const FRAME_RATIO: Record<string, number> = { square: 1, large: 1, circle: 1, classic: 4 / 3, upright: 3 / 4, phone: 9 / 16, portrait: 1 / 2.1, column: 0.95 / 2.85, wide: 2.1, pano: 3 };
+const SIDES = ["left", "right", "top", "background"];
+
+/** Cross-fading slides like the app's frame slideshow, in CSS so the page runs no script for it. */
+function slideshow(n: number, interval: number): { name: string; css: string } {
+  const period = n * interval;
+  const pct = (s: number) => +((s / period) * 100).toFixed(3);
+  const name = `fr${n}x${interval}`;
+  return { name, css: `@keyframes ${name}{0%{opacity:0}${pct(0.9)}%{opacity:1}${pct(interval)}%{opacity:1}${pct(interval + 0.9)}%{opacity:0}100%{opacity:0}}` };
+}
+
+function frame(b: Record<string, unknown>): string {
+  const photos = (Array.isArray(b.photos) ? b.photos : []).map(fileSrc).filter((p): p is string => !!p).slice(0, 12);
+  if (!photos.length) return "";
+  const shape = str(b.shape) || "auto";
+  const ratio = FRAME_RATIO[shape];
+  const radius = shape === "circle" ? "50%" : `${Math.max(0, Math.min(80, Number(b.radius) || 0))}px`;
+  const whole = b.fit === "whole";
+  const pos = focusOf(b.focus);
+  const n = photos.length;
+  const interval = Math.max(3, Math.min(60, Math.round(Number(b.interval) || 8)));
+  const show = n > 1 ? slideshow(n, interval) : null;
+  const slides = photos
+    .map((p, k) => {
+      const anim = show ? ` style="animation:${show.name} ${n * interval}s linear ${k * interval - 0.9}s infinite"` : "";
+      return `<div class="frame-slide${k === 0 ? " is-first" : ""}"${anim}>${whole ? media(p, "frame-back", "", k > 0) : ""}${media(p, "frame-img", `object-fit:${whole ? "contain" : "cover"};object-position:${pos}`, k > 0)}</div>`;
+    })
+    .join("");
+  // "Auto" keeps the picture's own shape: an invisible copy of the first photo sizes the frame.
+  const sizer = ratio ? "" : isVideo(photos[0]) ? "" : `<img class="frame-sizer" src="${esc(photos[0])}" alt="">`;
+  const style = `border-radius:${radius};${ratio ? `aspect-ratio:${ratio}` : isVideo(photos[0]) ? "aspect-ratio:1" : ""}`;
+  const text = b.text ? `<div class="frame-text is-${b.textPos === "top" ? "top" : "bottom"}"><span dir="auto">${esc(b.text)}</span></div>` : "";
+  const dots = n > 1 ? `<div class="frame-dots" aria-hidden="true">${photos.map(() => "<span></span>").join("")}</div>` : "";
+  return `${show ? `<style>${show.css}</style>` : ""}<div class="frame-art${b.shadow ? " has-shadow" : ""} fit-${whole ? "whole" : "fill"}" style="${style}">${sizer}${slides}${text}${dots}</div>`;
+}
 
 export function block(b: Record<string, unknown>): string {
   const [cols, rows] = SIZE[str(b.size)] ?? [12, 1];
-  const style = STYLES.has(str(b.style)) ? str(b.style) : "soft";
+  const style = STYLES.has(str(b.style)) ? str(b.style) : "solid";
   const accent = /^#[0-9a-f]{6}$/i.test(str(b.accent)) ? str(b.accent) : "";
-  const title = (t: unknown) => (t ? `<h3 class="bt">${esc(t)}</h3>` : "");
-  const label = (t: unknown, ic?: unknown) => (t ? `<div class="lbl">${icon(ic, 16)}${esc(t)}</div>` : "");
   let body = "";
   switch (b.type) {
     case "info": {
-      const side = ["left", "right", "top", "background"].includes(str(b.imageSide)) ? str(b.imageSide) : "right";
-      const art = picture(b.image, "art", b.focus, str(b.imageFit));
-      body = `<div class="info side-${side}${art ? " has-art" : ""}">${side === "background" ? art : ""}<div class="txt">${label(b.label, b.labelIcon)}<div class="big">${esc(b.title)}</div>${b.subtitle ? `<p class="sub">${esc(b.subtitle)}</p>` : ""}${b.badge ? `<span class="chip">${esc(b.badge)}</span>` : ""}</div>${side !== "background" ? art : ""}</div>`;
+      const side = SIDES.includes(str(b.imageSide)) ? str(b.imageSide) : "right";
+      const a = art(b.image, side, b.imageFit, b.focus);
+      body = `${a}<div class="pb-hero${a ? ` has-art-${side}` : ""}">${label(b.label, b.labelIcon)}<div class="pb-title-row"><h3 class="pb-title">${esc(b.title)}</h3>${b.badge ? `<span class="pb-badge">${esc(b.badge)}</span>` : ""}</div>${b.subtitle ? `<div class="pb-subtitle">${esc(b.subtitle)}</div>` : ""}</div>`;
+      break;
+    }
+    case "quote": {
+      const side = SIDES.includes(str(b.imageSide)) ? str(b.imageSide) : "right";
+      const a = art(b.image, side, b.imageFit, b.focus);
+      body = `${a}<div class="pb-hero pb-quote-body align-${b.align === "center" ? "center" : "start"}${a ? ` has-art-${side}` : ""}">${label(b.label, b.labelIcon)}<div class="pb-statement">${esc(b.statement)}</div>${b.subtext ? `<div class="pb-subtitle">${esc(b.subtext)}</div>` : ""}</div>`;
       break;
     }
     case "progress": {
@@ -201,56 +251,55 @@ export function block(b: Record<string, unknown>): string {
       const value = Math.max(0, Math.min(max, Number(b.value) || 0));
       const pct = Math.round((value / max) * 100);
       const shown = b.display === "none" ? "" : b.display === "percent" ? `${pct}%` : `${value}/${max}`;
-      body = `<div class="prog"><div class="row">${icon(b.icon, 30)}<div class="txt"><div class="big sm">${esc(b.title)}</div>${b.caption ? `<p class="sub">${esc(b.caption)}</p>` : ""}</div><span class="num">${esc(shown)}</span></div><div class="bar" role="progressbar" aria-valuenow="${value}" aria-valuemax="${max}"><span style="width:${pct}%"></span></div></div>`;
-      break;
-    }
-    case "quote": {
-      const side = ["left", "right", "top", "background"].includes(str(b.imageSide)) ? str(b.imageSide) : "right";
-      const art = picture(b.image, "art", b.focus, str(b.imageFit));
-      body = `<div class="info quote side-${side}${art ? " has-art" : ""}${b.align === "center" ? " center" : ""}">${side === "background" ? art : ""}<div class="txt">${label(b.label, b.labelIcon)}<blockquote>${esc(b.statement)}</blockquote>${b.subtext ? `<p class="sub">${esc(b.subtext)}</p>` : ""}</div>${side !== "background" ? art : ""}</div>`;
+      body = `<div class="pb-progress">${b.icon ? `<span class="pb-tile">${icon(b.icon, 44)}</span>` : ""}<div class="pb-progress-main"><div class="pb-bar" role="progressbar" aria-valuenow="${value}" aria-valuemax="${max}"><span style="width:${pct}%"></span></div><div class="pb-progress-row"><div><div class="pb-item-title">${esc(b.title)}</div>${b.caption ? `<div class="pb-item-sub">${esc(b.caption)}</div>` : ""}</div>${shown ? `<span class="pb-progress-value">${esc(shown)}</span>` : ""}</div></div></div>`;
       break;
     }
     case "grid": {
-      const n = [1, 2, 3, 4].includes(Number(b.columns)) ? Number(b.columns) : 3;
-      body = `${title(b.title)}<div class="grid g${n}">${items(b.items).map((it) => item(it, "grid")).join("")}</div>`;
+      const n = [1, 2, 3, 4].includes(Number(b.columns)) ? Number(b.columns) : 2;
+      body = `<div class="pb-section">${label(b.title)}<div class="pb-grid g${n}">${items(b.items).map((it) => itemRow(it, 48)).join("")}</div></div>`;
       break;
     }
     case "list":
-      body = `${title(b.title)}<div class="list">${items(b.items).map((it) => item(it, "list")).join("")}</div>`;
+      body = `<div class="pb-section">${label(b.title)}<div class="pb-list">${items(b.items).map((it) => itemRow(it, 36)).join("")}</div></div>`;
       break;
     case "links":
-      body = `${title(b.title)}<div class="list">${items(b.links).map((it) => item(it, "link")).join("")}</div>`;
+      body = `<div class="pb-section">${label(b.title)}<div class="pb-links">${items(b.links)
+        .map((l) => {
+          const href = safeHref(l.url);
+          const inner = `${l.icon ? icon(l.icon, 20) : glyph("link", 14)}<span>${esc(l.title)}</span>${glyph("external", 12)}`;
+          return href ? `<a class="pb-link" href="${esc(href)}" rel="noopener nofollow ugc" target="_blank">${inner}</a>` : `<span class="pb-link">${inner}</span>`;
+        })
+        .join("")}</div></div>`;
       break;
     case "badges":
-      body = `${title(b.title)}<div class="badges">${items(b.badges).map((it) => item(it, "badge")).join("")}</div>`;
+      body = `<div class="pb-section">${label(b.title)}<div class="pb-badges">${items(b.badges)
+        .map((x) => `<span class="pb-badge-item"${x.subtitle ? ` title="${esc(x.subtitle)}"` : ""}>${icon(x.icon, 28)}<span>${esc(x.title)}</span></span>`)
+        .join("")}</div></div>`;
       break;
     case "fields":
-      body = `${title(b.title)}<dl class="fields">${items(b.fields)
-        .map((f) => `<div><dt>${esc(f.key)}</dt><dd>${esc(f.value)}</dd></div>`)
-        .join("")}</dl>`;
+      body = `<div class="pb-section">${label(b.title)}<dl class="pb-fields">${items(b.fields)
+        .map((f) => `<div class="pb-field"><dt>${esc(f.key)}</dt><dd>${esc(f.value)}</dd></div>`)
+        .join("")}</dl></div>`;
       break;
     case "media": {
-      const art = picture(b.media, "media", b.focus, str(b.fit));
-      if (!art) return "";
-      body = `<figure class="mediawrap">${art}${b.caption ? `<figcaption>${esc(b.caption)}</figcaption>` : ""}</figure>`;
+      const src = fileSrc(b.media);
+      if (!src) return "";
+      body = `<div class="pb-media"><div class="pb-art pb-art-background">${media(src, "", `object-fit:${fitOf(b.fit, "cover")};object-position:${focusOf(b.focus)}`)}</div>${b.caption ? `<div class="pb-media-caption">${esc(b.caption)}</div>` : ""}</div>`;
       break;
     }
-    case "frame": {
-      const photo = Array.isArray(b.photos) ? b.photos.find((p) => fileSrc(p)) : null;
-      if (!photo) return "";
-      const ratio = FRAME_RATIO[str(b.shape)] ?? 0;
-      const radius = str(b.shape) === "circle" ? "50%" : `${Math.max(0, Math.min(60, Number(b.radius) || 18))}px`;
-      const text = b.text ? `<figcaption class="ft ${b.textPos === "top" ? "top" : "bottom"}">${esc(b.text)}</figcaption>` : "";
-      body = `<figure class="frame${b.shadow ? " shadow" : ""}" style="border-radius:${radius};aspect-ratio:${ratio || 4 / 3}">${b.fit === "whole" ? picture(photo, "back", b.focus) : ""}${picture(photo, "front", b.focus, b.fit === "whole" ? "contain" : "cover")}${text}</figure>`;
+    case "frame":
+      body = frame(b);
+      if (!body) return "";
       break;
-    }
     default:
       // Live blocks (streaks, activity) only make sense inside the app.
       return "";
   }
   const href = safeHref(b.url);
-  const open = href ? `<a class="blk-link" href="${esc(href)}" rel="noopener nofollow ugc" target="_blank">` : "";
-  return `<section class="blk st-${style} c${cols} r${rows}"${accent ? ` style="--accent:${esc(accent)}"` : ""}>${open}${body}${href ? "</a>" : ""}</section>`;
+  const tag = href ? "a" : "section";
+  const attrs = href ? ` href="${esc(href)}" rel="noopener nofollow ugc" target="_blank"` : "";
+  const css = `grid-column:span ${cols};grid-row:span ${rows}${accent ? `;--pb-accent:${esc(accent)}` : ""}`;
+  return `<${tag} class="pblock pbt-${esc(b.type)} pb-style-${style} pb-size-${cols}-${rows}${href ? " is-clickable" : ""}" style="${css}"${attrs}>${body}</${tag}>`;
 }
 
 function langOf(p: { language?: string } | null, accept: string | null): Lang {
@@ -259,116 +308,141 @@ function langOf(p: { language?: string } | null, accept: string | null): Lang {
 }
 
 const CSS = `
-:root{--bg:#f8f8fa;--surface:#fdfdfd;--text:#1d1d1f;--muted:#6e6e73;--line:rgba(0,0,0,.08);--card:rgba(255,255,255,.72);--accent:#007aff;color-scheme:light dark}
-@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#171719;--surface:#202023;--text:#f5f5f7;--muted:#aeaeb2;--line:rgba(255,255,255,.1);--card:rgba(40,40,44,.72);--accent:#0a84ff}}
-:root[data-theme=dark]{--bg:#171719;--surface:#202023;--text:#f5f5f7;--muted:#aeaeb2;--line:rgba(255,255,255,.1);--card:rgba(40,40,44,.72);--accent:#0a84ff}
+:root{--text-1:rgba(245,245,247,.94);--text-2:rgba(235,235,245,.62);--text-3:rgba(235,235,245,.5);--text-4:rgba(235,235,245,.24);--accent:#0a84ff;--banner-rgb:120,110,140;--banner-deep:32,30,38;--ring:rgba(255,255,255,.3);--font-ui:"Segoe UI Variable Text","Segoe UI",-apple-system,BlinkMacSystemFont,system-ui,"IBM Plex Sans Arabic","SF Arabic","Noto Sans Arabic",Tahoma,sans-serif;--spring:cubic-bezier(.2,.7,.2,1);color-scheme:dark}
+:root.light-banner{--ring:rgba(0,0,0,.32)}
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--text)}
-body{font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI Variable","Segoe UI","SF Arabic","Noto Sans Arabic",Tahoma,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
-[dir=rtl] body{line-height:1.75}
-a{color:inherit}
-.ambient{position:fixed;inset:-10%;z-index:0;background-size:cover;background-position:center;filter:blur(60px) saturate(1.3);opacity:.35;pointer-events:none}
-.page{position:relative;z-index:1;max-width:940px;margin:0 auto;padding:0 16px 56px}
-.banner{position:relative;height:clamp(150px,30vw,300px);border-radius:0 0 18px 18px;overflow:hidden;background:color-mix(in srgb,var(--accent) 22%,var(--surface))}
-.banner img,.banner video{width:100%;height:100%;display:block}
-.head{position:relative;z-index:1;display:flex;align-items:flex-start;gap:18px;margin-top:-52px;padding:0 8px}
-.avatar{flex:none;width:118px;height:118px;border-radius:50%;overflow:hidden;border:4px solid var(--bg);background:var(--surface);position:relative}
+html,body{margin:0;min-height:100%;background:rgb(var(--banner-deep));color:var(--text-1)}
+body{font:450 15px/1.5 var(--font-ui);-webkit-font-smoothing:antialiased;min-height:100vh}
+a{color:inherit;text-decoration:none}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+.pf{position:relative;min-height:100vh;overflow-x:clip}
+.pf-canvas{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.pf-ambient{position:absolute;left:-15%;top:-10%;width:130%;height:1100px;object-fit:cover;filter:blur(90px) saturate(1.5);opacity:.42;-webkit-mask-image:linear-gradient(#000 0%,rgba(0,0,0,.6) 45%,transparent 100%);mask-image:linear-gradient(#000 0%,rgba(0,0,0,.6) 45%,transparent 100%)}
+.light-banner .pf-ambient{opacity:.26}
+.pf-canvas::after{content:"";position:absolute;inset:0;background:linear-gradient(rgba(var(--banner-deep),.25) 0px,rgba(var(--banner-deep),.55) 420px,rgb(var(--banner-deep)) 980px)}
+.pf-banner{position:relative;z-index:1;height:240px;overflow:hidden;-webkit-mask-image:linear-gradient(#000 calc(100% - 90px),transparent);mask-image:linear-gradient(#000 calc(100% - 90px),transparent)}
+.pf-banner.has-art{height:var(--banner-h,clamp(220px,34vh,470px))}
+.pf-banner-img{display:block;width:100%;height:100%;object-fit:cover}
+.pf-banner-empty{width:100%;height:100%;background:radial-gradient(80% 120% at 30% 0%,rgba(var(--banner-rgb),.35),transparent 70%)}
+.pf-body{position:relative;z-index:2;margin-top:-84px}
+.pf-column{position:relative;max-width:980px;margin:0 auto;padding:0 clamp(16px,5vw,44px) 72px;container-type:inline-size}
+.pf-avatar{display:inline-block;padding:4px;border-radius:50%;background:var(--ring);box-shadow:0 10px 30px rgba(0,0,0,.35);-webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4)}
+.avatar{display:grid;place-items:center;width:132px;height:132px;border-radius:50%;overflow:hidden;background:linear-gradient(160deg,#3a3a40,#2a2a2e);font:600 44px/1 var(--font-ui);color:#fff}
 .avatar img{width:100%;height:100%;object-fit:cover;display:block}
-.avatar .letter{display:grid;place-items:center;width:100%;height:100%;font-size:46px;font-weight:600;color:#fff;background:var(--accent)}
-.who{padding-top:62px;min-width:0}
-h1{margin:0;font-size:clamp(24px,4vw,32px);line-height:1.15;letter-spacing:-.01em;overflow-wrap:anywhere}
-[dir=rtl] h1{letter-spacing:0;line-height:1.4}
-.handle{color:var(--muted);font-size:15px;direction:ltr;unicode-bidi:isolate}
-.status{display:inline-block;margin-top:6px;padding:3px 10px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-size:13px}
-.about{padding:18px 8px 6px}
-.bio{margin:0 0 10px;font-size:16px;white-space:pre-line;overflow-wrap:anywhere}
-.meta{display:flex;flex-wrap:wrap;gap:6px 16px;color:var(--muted);font-size:13px}
-.links{display:flex;flex-wrap:wrap;gap:8px;padding:12px 8px 4px}
-.link{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:var(--card);border:1px solid var(--line);text-decoration:none;font-weight:500;transition:background .11s cubic-bezier(.2,.7,.2,1)}
-.link small{color:var(--muted);font-weight:400;direction:ltr;unicode-bidi:isolate}
-.link:hover{background:color-mix(in srgb,var(--accent) 14%,var(--card))}
-.link:focus-visible,.it:focus-visible,.blk-link:focus-visible,.btn:focus-visible,footer a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.blocks{display:grid;grid-template-columns:repeat(12,1fr);gap:12px;padding:18px 0 0}
-.blk{position:relative;border-radius:16px;background:var(--card);border:1px solid var(--line);padding:16px;overflow:hidden;min-width:0;backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4)}
-.c12{grid-column:span 12}.c8{grid-column:span 8}.c6{grid-column:span 6}.c4{grid-column:span 4}.c3{grid-column:span 3}
-.r2{grid-row:span 2}
-.st-tinted{background:color-mix(in srgb,var(--accent) 16%,var(--card))}
-.st-solid{background:var(--surface)}
-.st-compact{padding:11px 13px;font-size:14px}
-.st-minimal{background:none;border-color:transparent;backdrop-filter:none;-webkit-backdrop-filter:none;padding:8px 4px}
-.st-showcase .big{font-size:24px}
-.blk-link{display:block;text-decoration:none;color:inherit;margin:-16px;padding:16px;height:calc(100% + 32px)}
-.bt{margin:0 0 10px;font-size:14px;font-weight:600;color:var(--muted)}
-.lbl{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--accent);margin-bottom:4px}
-.big{font-size:19px;font-weight:600;line-height:1.25;overflow-wrap:anywhere}
-[dir=rtl] .big{line-height:1.5}
-.big.sm{font-size:16px}
-.sub{margin:4px 0 0;color:var(--muted);font-size:14px;overflow-wrap:anywhere}
-.chip{display:inline-block;margin-top:8px;padding:2px 10px;border-radius:999px;background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent);font-size:12px;font-weight:600}
-.info{display:flex;gap:14px;align-items:center;height:100%}
-.info .txt{flex:1;min-width:0}
-.info .art{width:38%;max-height:160px;border-radius:12px;align-self:stretch}
-.info.side-left{flex-direction:row-reverse}
-.info.side-top{flex-direction:column-reverse;align-items:stretch}
-.info.side-top .art{width:100%;max-height:180px}
-.info.side-background{position:relative;min-height:120px}
-.info.side-background .art{position:absolute;inset:-16px;width:calc(100% + 32px);max-height:none;height:calc(100% + 32px);border-radius:0;opacity:.45}
-.info.side-background .txt{position:relative}
-blockquote{margin:0;font-size:20px;font-weight:600;line-height:1.35;overflow-wrap:anywhere}
-[dir=rtl] blockquote{line-height:1.6}
-.quote.center{text-align:center}
-.prog .row{display:flex;align-items:center;gap:12px}
-.prog .txt{flex:1;min-width:0}
-.num{font-variant-numeric:tabular-nums;color:var(--muted);font-size:14px}
-.bar{height:8px;border-radius:99px;background:var(--line);margin-top:12px;overflow:hidden}
-.bar span{display:block;height:100%;border-radius:99px;background:var(--accent)}
-.grid{display:grid;gap:8px}.g1{grid-template-columns:1fr}.g2{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
-.list{display:flex;flex-direction:column;gap:2px}
-.it{display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px;text-decoration:none;color:inherit;min-width:0}
-a.it:hover{background:color-mix(in srgb,var(--accent) 10%,transparent)}
-.it-grid{position:relative;flex-direction:column;align-items:flex-start;background:color-mix(in srgb,var(--text) 4%,transparent);padding:10px}
-.it-grid .go{position:absolute;top:10px;inset-inline-end:12px}
-.it-text{display:flex;flex-direction:column;min-width:0;flex:1}
-.it-title{font-weight:600;overflow-wrap:anywhere}
-.it-sub{color:var(--muted);font-size:13px;overflow-wrap:anywhere}
-.go{color:var(--muted);font-size:14px}
-[dir=rtl] .go{transform:scaleX(-1)}
-.badges{display:flex;flex-wrap:wrap;gap:6px}
-.it-badge{padding:5px 11px;border-radius:999px;background:color-mix(in srgb,var(--accent) 14%,transparent);gap:6px}
-.it-badge .it-title{font-size:13px}
+.pf-names{margin-top:14px;display:flex;flex-direction:column;gap:3px}
+.pf-name{margin:0;font:700 34px/1.12 var(--font-ui);letter-spacing:-.02em;overflow-wrap:anywhere}
+[dir=rtl] .pf-name{letter-spacing:0;line-height:1.35}
+.pf-handle{font:500 15px/1.35 var(--font-ui);color:var(--text-3)}
+.pf-presence{display:inline-flex;align-items:center;gap:7px;margin-top:6px;font:450 13px/1.4 var(--font-ui);color:var(--text-2)}
+.pf-presence-dot{width:7px;height:7px;border-radius:50%;background:#3ddc84;box-shadow:0 0 8px rgba(61,220,132,.7)}
+.pf-bio{margin:16px 0 0;max-width:640px;font:400 15.5px/1.55 var(--font-ui);white-space:pre-wrap;overflow-wrap:anywhere}
+[dir=rtl] .pf-bio{line-height:1.8}
+.pf-links{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:12px}
+.pf-link{display:inline-flex;align-items:center;gap:6px;font:450 13px/1.4 var(--font-ui);color:var(--text-2);transition:color 110ms var(--spring)}
+.pf-link .icon{color:var(--text-3);flex:none}
+a.pf-link:hover{color:var(--text-1);text-decoration:underline;text-underline-offset:3px}
+.pf-blocks{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-rows:minmax(124px,auto);gap:14px;margin-top:30px}
+@container (max-width:760px){.pf-blocks>*{grid-column:span 6!important}.pf-blocks>.pb-size-12-1,.pf-blocks>.pb-size-12-2{grid-column:span 12!important}}
+@container (max-width:520px){.pf-blocks>*{grid-column:span 12!important;grid-row:auto!important}}
+.pblock{position:relative;display:block;border-radius:24px;overflow:hidden;min-height:124px;color:var(--text-1);--pb-accent:rgb(var(--banner-rgb))}
+.pblock.is-clickable{cursor:pointer}
+.pb-style-solid,.pb-style-compact,.pb-style-showcase{background:linear-gradient(180deg,#202326,#1a1c1f);box-shadow:inset 0 0 0 1px rgba(255,255,255,.06),0 6px 18px rgba(0,0,0,.18)}
+.pb-style-soft,.pb-style-tinted{background:rgba(255,255,255,.06);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);box-shadow:inset 0 0 0 .5px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px rgba(255,255,255,.06)}
+.pb-style-tinted{background:linear-gradient(135deg,color-mix(in srgb,var(--pb-accent) 30%,transparent),transparent 75%),rgba(255,255,255,.05)}
+.pb-style-minimal{background:none;min-height:0}
+.pb-style-minimal .pb-hero,.pb-style-minimal .pb-section,.pb-style-minimal .pb-progress{padding-left:2px;padding-right:2px}
+.pb-style-compact{min-height:0}
+.pb-style-compact .pb-hero,.pb-style-compact .pb-section,.pb-style-compact .pb-progress{padding:12px 14px}
+.pb-style-compact .pb-title,.pb-style-compact .pb-statement{font-size:17px;margin-top:8px}
+.pb-style-showcase .pb-title,.pb-style-showcase .pb-statement{font-size:28px;letter-spacing:-.02em}
+.pb-style-showcase .pb-art{width:58%}
+.pb-style-showcase .pb-hero.has-art-right{padding-right:56%}
+.pb-art{position:absolute;top:0;bottom:0;width:46%;pointer-events:none;z-index:0}
+.pb-art img,.pb-art video{width:100%;height:100%;display:block}
+.pb-art-right{right:0;-webkit-mask-image:linear-gradient(to left,#000 55%,transparent);mask-image:linear-gradient(to left,#000 55%,transparent)}
+.pb-art-left{left:0;-webkit-mask-image:linear-gradient(to right,#000 55%,transparent);mask-image:linear-gradient(to right,#000 55%,transparent)}
+.pb-art-background{inset:0;width:100%}
+.pb-art-top{left:0;right:0;width:100%;bottom:40%;-webkit-mask-image:linear-gradient(#000 50%,transparent);mask-image:linear-gradient(#000 50%,transparent)}
+.pb-hero{position:relative;z-index:1;padding:20px 22px;display:flex;flex-direction:column;height:100%}
+.pb-hero.has-art-right{padding-right:44%}
+.pb-hero.has-art-left{padding-left:44%}
+.pb-hero.has-art-background{text-shadow:0 1px 12px rgba(0,0,0,.6)}
+.pb-label{display:flex;align-items:center;gap:7px;font:600 13px/1.3 var(--font-ui)}
+.pb-title-row{display:flex;align-items:center;gap:8px;margin-top:auto;padding-top:18px}
+.pb-title{margin:0;font:600 21px/1.25 var(--font-ui);letter-spacing:-.01em;overflow-wrap:anywhere}
+.pb-subtitle{margin-top:4px;font:450 13px/1.4 var(--font-ui);color:var(--text-3)}
+.pb-badge{padding:2px 8px;border-radius:999px;background:color-mix(in srgb,var(--pb-accent) 24%,transparent);font:500 11.5px/1.35 var(--font-ui)}
+.pb-quote-body .pb-statement{margin-top:auto;padding-top:18px;font:600 22px/1.25 var(--font-ui);letter-spacing:-.01em;overflow-wrap:anywhere}
+.pb-quote-body.align-center{align-items:center;text-align:center}
+[dir=rtl] .pb-title,[dir=rtl] .pb-statement,[dir=rtl] .pf-name{letter-spacing:0}
+[dir=rtl] .pb-title,[dir=rtl] .pb-quote-body .pb-statement{line-height:1.5}
+.pb-progress{position:relative;display:flex;align-items:center;gap:14px;padding:18px 20px;height:100%}
+.pb-tile{flex:none;width:54px;height:54px;display:grid;place-items:center;border-radius:15px;background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+.pb-progress-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:9px}
+.pb-bar{height:7px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden}
+.pb-bar span{display:block;height:100%;border-radius:inherit;background:#f2f2f2}
+.pb-style-tinted .pb-bar span,.pblock[style*="--pb-accent:#"] .pb-bar span{background:var(--pb-accent)}
+.pb-progress-row{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+.pb-progress-value{font:600 14px/1.2 var(--font-ui);font-variant-numeric:tabular-nums}
+.pb-section{position:relative;padding:18px 20px;display:flex;flex-direction:column;gap:14px}
+.pb-grid{display:grid;gap:16px 22px}.g1{grid-template-columns:minmax(0,1fr)}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.pb-list{display:flex;flex-direction:column;gap:12px}
+.pb-item{display:flex;align-items:center;gap:13px;min-width:0}
+a.pb-item:hover .pb-item-title{text-decoration:underline;text-underline-offset:3px}
+.pb-item-icon{flex:none;display:grid;place-items:center}
+.pb-item-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+.pb-item-title{font:600 14.5px/1.3 var(--font-ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb-item-sub{font:450 12.5px/1.4 var(--font-ui);color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb-media{position:absolute;inset:0}
+.pb-media .pb-art{width:100%;-webkit-mask-image:none;mask-image:none}
+.pb-media-caption{position:absolute;left:0;right:0;bottom:0;padding:30px 18px 14px;font:450 12.5px/1.4 var(--font-ui);color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.6))}
+.pb-fields{margin:0;display:flex;flex-direction:column}
+.pb-field{display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-bottom:.5px solid rgba(255,255,255,.08)}
+.pb-field:last-child{border-bottom:0}
+.pb-field dt{font:450 12.5px/1.4 var(--font-ui);color:var(--text-3)}
+.pb-field dd{margin:0;font:600 13.5px/1.35 var(--font-ui);text-align:end;overflow-wrap:anywhere}
+.pb-links{display:flex;flex-wrap:wrap;gap:8px}
+.pb-link{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px 0 10px;border-radius:999px;background:rgba(255,255,255,.08);font:600 13.5px/1.35 var(--font-ui);transition:background-color 110ms var(--spring)}
+a.pb-link:hover{background:rgba(255,255,255,.15)}
+.pb-link>.icon:last-child{color:var(--text-3)}
+[dir=rtl] .pb-link>.icon:last-child{transform:scaleX(-1)}
+.pb-badges{display:flex;flex-wrap:wrap;gap:12px}
+.pb-badge-item{display:flex;flex-direction:column;align-items:center;gap:6px;width:70px;font:500 11.5px/1.35 var(--font-ui);color:var(--text-2);text-align:center}
 .ic{flex:none;border-radius:24%;object-fit:cover}
 .ic.emoji{display:inline-grid;place-items:center;line-height:1}
-.fields{margin:0;display:grid;gap:8px}
-.fields div{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:6px}
-.fields div:last-child{border-bottom:0}
-.fields dt{color:var(--muted)}.fields dd{margin:0;font-weight:600;text-align:end;overflow-wrap:anywhere}
-.mediawrap{margin:-16px;height:calc(100% + 32px);min-height:180px;position:relative}
-.mediawrap .media{width:100%;height:100%;min-height:180px;display:block}
-.mediawrap figcaption{position:absolute;inset-inline:0;bottom:0;padding:10px 16px;color:#fff;background:rgba(0,0,0,.45);font-size:14px}
-.st-minimal .mediawrap{margin:0}
-.frame{margin:0 auto;position:relative;overflow:hidden;max-height:520px;width:100%;background:var(--line)}
-.frame.shadow{box-shadow:0 10px 30px rgba(0,0,0,.25)}
-.frame img,.frame video{position:absolute;inset:0;width:100%;height:100%}
-.frame .back{filter:blur(24px);transform:scale(1.15);opacity:.7}
-.frame .ft{position:absolute;inset-inline:0;padding:10px 14px;color:#fff;font-weight:600;background:rgba(0,0,0,.35)}
-.frame .ft.top{top:0}.frame .ft.bottom{bottom:0}
-footer{margin-top:36px;padding:0 8px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;color:var(--muted);font-size:13px}
-footer a{color:var(--accent);text-decoration:none;font-weight:500}
-.empty{max-width:520px;margin:18vh auto 0;padding:0 16px;text-align:center}
-.empty h1{margin-bottom:10px}
-.empty p{color:var(--muted)}
-.btn{display:inline-block;margin-top:14px;padding:10px 18px;border-radius:999px;background:var(--accent);color:#fff;text-decoration:none;font-weight:600}
-@media (max-width:720px){
-  .c8,.c6,.c12{grid-column:span 12}.c4,.c3{grid-column:span 6}.r2{grid-row:span 1}
-  .head{gap:12px;margin-top:-44px}.avatar{width:92px;height:92px}.who{padding-top:50px}
-  .g3,.g4{grid-template-columns:repeat(2,1fr)}
-  .info{flex-direction:column-reverse;align-items:stretch}.info .art{width:100%}
-}
-@media (max-width:420px){.c4,.c3{grid-column:span 12}}
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.pblock.pbt-frame{background:none;box-shadow:none;overflow:visible;min-height:0;border-radius:0;align-self:start}
+.frame-art{position:relative;width:100%;overflow:hidden;isolation:isolate;background:rgba(255,255,255,.04);container-type:inline-size}
+.frame-art.has-shadow{box-shadow:0 2px 4px rgba(0,0,0,.18),0 10px 26px rgba(0,0,0,.32),0 22px 48px rgba(0,0,0,.18)}
+.frame-sizer{display:block;width:100%;height:auto;max-height:300vw;visibility:hidden}
+.frame-slide{position:absolute;inset:0;opacity:0}
+.frame-slide.is-first{opacity:1}
+.frame-slide[style]{opacity:0}
+.frame-img{position:absolute;inset:0;width:100%;height:100%;display:block}
+.frame-back{position:absolute;inset:-12%;width:124%;height:124%;object-fit:cover;filter:blur(26px) brightness(.66) saturate(1.2)}
+.frame-text{position:absolute;left:0;right:0;z-index:2;padding:16px;font:700 clamp(14px,4cqw,26px)/1.2 var(--font-ui);color:#fff}
+.frame-text.is-bottom{bottom:0;padding-top:44px;background:linear-gradient(transparent,rgba(0,0,0,.7))}
+.frame-text.is-top{top:0;padding-bottom:44px;background:linear-gradient(rgba(0,0,0,.7),transparent)}
+.frame-dots{position:absolute;z-index:3;left:50%;bottom:10px;transform:translateX(-50%);display:flex;gap:5px;padding:4px 7px;border-radius:999px;background:rgba(0,0,0,.32)}
+.frame-dots span{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.45)}
+footer{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:44px;font:450 12.5px/1.4 var(--font-ui);color:var(--text-3)}
+footer a{color:var(--text-2);font-weight:600}
+footer a:hover{color:var(--text-1)}
+.empty{position:relative;z-index:1;max-width:520px;margin:18vh auto 0;padding:0 16px;text-align:center}
+.empty h1{margin:0 0 10px;font:700 28px/1.2 var(--font-ui)}
+.empty p{color:var(--text-2)}
+.btn{display:inline-block;margin-top:14px;padding:10px 18px;border-radius:999px;background:#f4f2ee;color:#111;font-weight:600}
+@media (max-width:600px){.pf-body{margin-top:-64px}.avatar{width:104px;height:104px;font-size:36px}.pf-name{font-size:28px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}.frame-slide[style]{animation:none!important}.frame-slide.is-first[style]{opacity:1}}
 `;
 
-function shell(opts: { title: string; description: string; lang: Lang; dir: "ltr" | "rtl"; theme: string; accent: string | null; image: string | null; url: string; body: string; ambient?: string | null; noindex?: boolean }): string {
+/**
+ * The app samples the banner for its colour (src/profile/bannerColor.ts) and sizes
+ * the banner by the picture's proportions (src/media/crop.ts bannerHeight). The page
+ * does the same once the banner loads; it is the only script the page runs.
+ */
+export const TONE_SCRIPT = `(function(){var i=document.querySelector("img.pf-banner-img");if(!i)return;var R=document.documentElement;function run(){try{var bw=i.parentNode.offsetWidth||900,vh=innerHeight,mx=Math.max(220,Math.min(vh*.44,470)),h=Math.min(mx,Math.max(220,bw*i.naturalHeight/Math.max(1,i.naturalWidth))),sm=i.naturalHeight*1.6/(devicePixelRatio||1);if(h>sm)h=Math.max(220,sm);R.style.setProperty("--banner-h",Math.round(h)+"px");var W=48,H=Math.max(8,Math.round(i.naturalHeight/Math.max(1,i.naturalWidth)*W)),c=document.createElement("canvas");c.width=W;c.height=H;var x=c.getContext("2d");x.drawImage(i,0,0,W,H);var d=x.getImageData(0,0,W,H).data,r=0,g=0,b=0,s=0,L=0,n=0;for(var y=0;y<H;y++)for(var z=0;z<W;z++){var k=(y*W+z)*4,a=d[k],e=d[k+1],f=d[k+2],hi=Math.max(a,e,f)/255,lo=Math.min(a,e,f)/255,l=(hi+lo)/2,t=hi===lo?0:l>.5?(hi-lo)/(2-hi-lo):(hi-lo)/(hi+lo),w=(.15+t*t)*(l>.08&&l<.92?1:.1);r+=a*w;g+=e*w;b+=f*w;s+=w;if(y>H*.6){L+=(.2126*a+.7152*e+.0722*f)/255;n++}}r/=s;g/=s;b/=s;var raw=[r,g,b].map(function(v){return v*.32+14}),q=Math.min(1,46/Math.max.apply(null,raw));R.style.setProperty("--banner-rgb",[r,g,b].map(Math.round).join(","));R.style.setProperty("--banner-deep",raw.map(function(v){return Math.round(v*q)}).join(","));if(n&&L/n>.62)R.classList.add("light-banner")}catch(_){}}if(i.complete&&i.naturalWidth)run();else i.addEventListener("load",run)})();`;
+
+function shell(opts: { title: string; description: string; lang: Lang; dir: "ltr" | "rtl"; accent: string | null; image: string | null; url: string; body: string; script?: boolean; noindex?: boolean }): string {
   const meta = [
     `<meta property="og:title" content="${esc(opts.title)}">`,
     `<meta property="og:description" content="${esc(opts.description)}">`,
@@ -379,8 +453,8 @@ function shell(opts: { title: string; description: string; lang: Lang; dir: "ltr
     `<meta name="twitter:card" content="${opts.image ? "summary_large_image" : "summary"}">`,
     opts.noindex ? `<meta name="robots" content="noindex">` : "",
   ].join("");
-  const accent = opts.accent ? `<style>:root,:root[data-theme]{--accent:${esc(opts.accent)}}</style>` : "";
-  return `<!doctype html><html lang="${opts.lang}" dir="${opts.dir}"${opts.theme === "light" || opts.theme === "dark" ? ` data-theme="${opts.theme}"` : ""}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(opts.title)}</title><meta name="description" content="${esc(opts.description)}"><link rel="canonical" href="${esc(opts.url)}">${meta}<style>${CSS}</style>${accent}</head><body>${opts.ambient ? `<div class="ambient" style="background-image:url('${esc(opts.ambient)}')"></div>` : ""}${opts.body}</body></html>`;
+  const accent = opts.accent ? `<style>:root{--accent:${esc(opts.accent)}}</style>` : "";
+  return `<!doctype html><html lang="${opts.lang}" dir="${opts.dir}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#1e1d24"><title>${esc(opts.title)}</title><meta name="description" content="${esc(opts.description)}"><link rel="canonical" href="${esc(opts.url)}">${meta}<style>${CSS}</style>${accent}</head><body>${opts.body}${opts.script ? `<script>${TONE_SCRIPT}</script>` : ""}</body></html>`;
 }
 
 export function renderProfile(p: PublicProfile, origin: string, siteUrl: string): string {
@@ -400,39 +474,38 @@ export function renderProfile(p: PublicProfile, origin: string, siteUrl: string)
   const links = p.links
     .map((l) => ({ ...l, href: safeHref(l.url) }))
     .filter((l) => l.href)
-    .map((l) => {
-      const label = linkLabel(l);
-      const host = hostOf(l.url);
-      return `<a class="link" href="${esc(l.href)}" rel="me noopener nofollow ugc" target="_blank">${esc(label)}${host && host !== label ? ` <small>${esc(host)}</small>` : ""}</a>`;
-    })
+    .map((l) => `<a class="pf-link" href="${esc(l.href)}" rel="me noopener nofollow ugc" target="_blank">${glyph("link")}<span>${esc(linkLabel(l))}</span></a>`)
     .join("");
   const blocks = p.blocks.map((b) => block(b)).join("");
+  const stillBanner = banner && !isVideo(banner) ? banner : null;
   const bannerArt = banner
     ? isVideo(banner)
-      ? `<video src="${esc(banner)}" autoplay muted loop playsinline style="object-fit:cover;object-position:${focusOf(p.bannerFocus)}"></video>`
-      : `<img src="${esc(banner)}" alt="" style="object-fit:cover;object-position:${focusOf(p.bannerFocus)}">`
-    : "";
-  const body = `<main class="page">
-<div class="banner">${bannerArt}</div>
-<header class="head"><div class="avatar">${avatar && !isVideo(avatar) ? `<img src="${esc(avatar)}" alt="${esc(p.displayName)}" style="${avatarStyle}">` : `<span class="letter" aria-hidden="true">${esc(initial)}</span>`}</div>
-<div class="who"><h1>${esc(p.displayName)}</h1><div class="handle">@${esc(p.username)}</div>${p.status ? `<div class="status">${esc(p.status)}</div>` : ""}</div></header>
-<section class="about">${p.bio ? `<p class="bio">${esc(p.bio)}</p>` : ""}<div class="meta">${p.location ? `<span>${esc(p.location)}</span>` : ""}<span>${esc(joinedText)}</span></div></section>
-${links ? `<nav class="links" aria-label="${esc(w.links)}">${links}</nav>` : ""}
-${blocks ? `<div class="blocks">${blocks}</div>` : ""}
+      ? `<video class="pf-banner-img" src="${esc(banner)}" autoplay muted loop playsinline style="object-position:${focusOf(p.bannerFocus)}"></video>`
+      : `<img class="pf-banner-img" src="${esc(banner)}" alt="" style="object-position:${focusOf(p.bannerFocus)}">`
+    : `<div class="pf-banner-empty"></div>`;
+  const body = `<div class="pf">
+<div class="pf-canvas" aria-hidden="true">${stillBanner ? `<img class="pf-ambient" src="${esc(stillBanner)}" alt="">` : ""}</div>
+<div class="pf-banner${banner ? " has-art" : ""}">${bannerArt}</div>
+<div class="pf-body"><main class="pf-column">
+<header><div class="pf-avatar"><div class="avatar">${avatar && !isVideo(avatar) ? `<img src="${esc(avatar)}" alt="${esc(p.displayName)}" style="${avatarStyle}">` : `<span aria-hidden="true">${esc(initial)}</span>`}</div></div>
+<div class="pf-names"><h1 class="pf-name">${esc(p.displayName)}</h1><div class="pf-handle"><bdi dir="ltr">@${esc(p.username)}</bdi></div>${p.status ? `<div class="pf-presence" dir="auto"><span class="pf-presence-dot"></span>${esc(p.status)}</div>` : ""}</div></header>
+${p.bio ? `<p class="pf-bio" dir="auto">${esc(p.bio)}</p>` : ""}
+<nav class="pf-links" aria-label="${esc(w.links)}">${p.location ? `<span class="pf-link">${glyph("globe")}<span>${esc(p.location)}</span></span>` : ""}${links}<span class="pf-link">${glyph("calendar")}<span>${esc(joinedText)}</span></span></nav>
+${blocks ? `<div class="pf-blocks">${blocks}</div>` : ""}
 <footer><span>${esc(w.made)}</span><a href="${esc(siteUrl)}">${esc(w.get)}</a></footer>
-</main>`;
+</main></div>
+</div>`;
   const description = p.bio ?? p.status ?? `@${p.username}`;
   return shell({
     title: `${p.displayName} (@${p.username})`,
     description: description.slice(0, 200),
     lang,
     dir,
-    theme: p.theme,
     accent: p.accent,
-    image: avatar && !isVideo(avatar) ? `${origin}${avatar}` : banner && !isVideo(banner) ? `${origin}${banner}` : null,
+    image: avatar && !isVideo(avatar) ? `${origin}${avatar}` : stillBanner ? `${origin}${stillBanner}` : null,
     url: `${origin}/@${p.username}`,
     body,
-    ambient: banner && !isVideo(banner) ? banner : null,
+    script: !!stillBanner,
   });
 }
 
@@ -445,13 +518,19 @@ export function renderMissing(origin: string, siteUrl: string, accept: string | 
     description: home ? w.home : w.missing,
     lang,
     dir: lang === "ar" ? "rtl" : "ltr",
-    theme: "auto",
     accent: null,
     image: null,
     url: origin,
     noindex: !home,
-    body: `<main class="empty"><h1>${esc(title)}</h1><p>${esc(home ? w.home : w.missing)}</p><a class="btn" href="${esc(siteUrl)}">${esc(w.open)}</a></main>`,
+    body: `<div class="pf"><div class="pf-canvas" aria-hidden="true"></div><div class="pf-banner"><div class="pf-banner-empty"></div></div><main class="empty"><h1>${esc(title)}</h1><p>${esc(home ? w.home : w.missing)}</p><a class="btn" href="${esc(siteUrl)}">${esc(w.open)}</a></main></div>`,
   });
+}
+
+let scriptHash: Promise<string> | null = null;
+/** The CSP names the one script the page may run by its hash. */
+function toneHash(): Promise<string> {
+  scriptHash ??= crypto.subtle.digest("SHA-256", new TextEncoder().encode(TONE_SCRIPT)).then((d) => btoa(String.fromCharCode(...new Uint8Array(d))));
+  return scriptHash;
 }
 
 const SECURITY: Record<string, string> = {
@@ -470,8 +549,17 @@ export async function handleProfile(request: Request, env: ProfileEnv, call: (pa
   const origin = `https://${url.host}`;
   const site = env.SITE_URL || `https://${url.host.replace(/^profile\./, "")}`;
   const accept = request.headers.get("accept-language");
+  const hash = await toneHash();
   const html = (status: number, page: string, cache = "public, max-age=60") =>
-    new Response(request.method === "HEAD" ? null : page, { status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": cache, ...SECURITY } });
+    new Response(request.method === "HEAD" ? null : page, {
+      status,
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": cache,
+        ...SECURITY,
+        "content-security-policy": `${SECURITY["content-security-policy"]}; script-src 'sha256-${hash}'`,
+      },
+    });
   if (request.method !== "GET" && request.method !== "HEAD") return new Response("Method not allowed", { status: 405, headers: { allow: "GET, HEAD" } });
 
   const path = url.pathname;

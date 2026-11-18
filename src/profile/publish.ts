@@ -14,7 +14,8 @@ import type { Profile } from "../lib/types";
 import { sanitize, type ProfileBlock } from "./blocks";
 
 /** Longest side, in pixels, of each kind of picture once published. */
-const SIDE = { avatar: 640, banner: 2000, art: 1400, icon: 160 } as const;
+// "full" is for pictures shown at their own size (fit "original"): scaling them would change what shows.
+const SIDE = { avatar: 640, banner: 2000, art: 1400, full: 4096, icon: 160 } as const;
 type Kind = keyof typeof SIDE;
 
 const RAW_LIMIT = 9 * 1024 * 1024;
@@ -97,8 +98,8 @@ async function icon(up: Uploader, ref: string | undefined): Promise<string | und
   return (await up.get(src, "icon")) ?? undefined;
 }
 
-async function art(up: Uploader, id: string | undefined): Promise<string | undefined> {
-  return id ? ((await up.get(fileUrl(id), "art")) ?? undefined) : undefined;
+async function art(up: Uploader, id: string | undefined, fit?: string): Promise<string | undefined> {
+  return id ? ((await up.get(fileUrl(id), fit === "original" ? "full" : "art")) ?? undefined) : undefined;
 }
 
 type Item = { icon?: string; title: string; subtitle?: string; url?: string };
@@ -110,13 +111,13 @@ async function publicBlock(up: Uploader, b: ProfileBlock): Promise<Record<string
     case "dynamic":
       return null;
     case "info":
-      return { ...b, labelIcon: await icon(up, b.labelIcon), image: await art(up, b.image) };
+      return { ...b, labelIcon: await icon(up, b.labelIcon), image: await art(up, b.image, b.imageFit) };
     case "quote":
-      return { ...b, labelIcon: await icon(up, b.labelIcon), image: await art(up, b.image) };
+      return { ...b, labelIcon: await icon(up, b.labelIcon), image: await art(up, b.image, b.imageFit) };
     case "progress":
       return { ...b, icon: await icon(up, b.icon) };
     case "media":
-      return { ...b, media: await art(up, b.media) };
+      return { ...b, media: await art(up, b.media, b.fit) };
     case "frame":
       return { ...b, photos: (await Promise.all((b.photos ?? []).slice(0, 8).map((p) => art(up, p)))).filter(Boolean) };
     case "grid":

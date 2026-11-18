@@ -33,7 +33,8 @@ describe("public profile page", () => {
     expect(html).not.toContain("<script>x</script>");
     expect(html).toContain("&lt;script&gt;");
     expect(html).not.toContain("javascript:");
-    expect(html).toContain(">GitHub <small>github.com/sara</small>");
+    expect(html).toContain('href="https://github.com/sara"');
+    expect(html).toContain("<span>GitHub</span>");
     expect(html).toContain('<meta property="og:image" content="https://profile.enterworlds.space/files/p/u-1/abcdefgh12.png">');
     expect(html).toContain("@sara");
     expect(html).toContain("--accent:#ff5500");
@@ -70,7 +71,8 @@ describe("public profile page", () => {
     const ok = await get("/@sara");
     expect(ok.status).toBe(200);
     expect(ok.headers.get("content-security-policy")).toContain("default-src 'none'");
-    expect(await ok.text()).toContain("<h1>Sara</h1>");
+    expect(await ok.text()).toContain('<h1 class="pf-name">Sara</h1>');
+    expect(ok.headers.get("content-security-policy")).toMatch(/script-src 'sha256-[A-Za-z0-9+/=]+'/);
     const redirect = await get("/Sara");
     expect(redirect.status).toBe(301);
     expect(redirect.headers.get("location")).toBe("https://profile.enterworlds.space/@sara");
