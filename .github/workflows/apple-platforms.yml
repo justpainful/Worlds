@@ -245,8 +245,11 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/WorldsUI" \
             -resultBundlePath "$GITHUB_WORKSPACE/results/${{ matrix.device }}.xcresult" \
             -only-testing:${{ matrix.test_target }}/WorldsUITests/testCompleteVisualShowcaseCaptures \
+            -only-testing:${{ matrix.test_target }}/WorldsUserReportsUITests \
             "${diagnostic_flags[@]}" CODE_SIGNING_ALLOWED=NO test 2>&1 | tee logs/ui-${{ matrix.device }}.log
           grep -Eq 'testCompleteVisualShowcaseCaptures.*passed' logs/ui-${{ matrix.device }}.log
+          grep -Eq 'testConceptMapOpensAsAWorldThatMoves.*passed' logs/ui-${{ matrix.device }}.log
+          grep -Eq 'testDrawingToolsShowTheirIconsAndAnyColour.*passed' logs/ui-${{ matrix.device }}.log
       - name: Export screenshot attachments
         if: always()
         shell: bash

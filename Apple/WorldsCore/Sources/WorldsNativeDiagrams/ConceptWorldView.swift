@@ -233,6 +233,7 @@ public struct ConceptWorldView: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("Concept map"))
+        .accessibilityIdentifier("concept-world")
         .accessibilityValue(Text(graph.nodes.map { $0.label }.joined(separator: ", ")))
     }
 
@@ -299,6 +300,8 @@ public struct ConceptWorldView: View {
                 x += gap
             }
         }
+        // Link phrases slide along their link until they stop covering one another.
+        var placed: [CGRect] = []
         for edge in graph.edges {
             guard let a = picture.dots[edge.from], let b = picture.dots[edge.to] else { continue }
             let dx = b.x - a.x, dy = b.y - a.y
@@ -329,8 +332,33 @@ public struct ConceptWorldView: View {
             if !phrase.isEmpty && (zoom >= 0.5 || lit) {
                 let text = context.resolve(Text(verbatim: phrase).font(.system(size: 11, weight: .medium)).foregroundColor(lit ? Color.primary : Color.secondary))
                 let measured = text.measure(in: CGSize(width: 320, height: 60))
-                let mid = CGPoint(x: (s.x + t.x) / 2, y: (s.y + t.y) / 2)
-                let pill = CGRect(x: mid.x - measured.width / 2 - 7, y: mid.y - measured.height / 2 - 3, width: measured.width + 14, height: measured.height + 6)
+                func phraseSpot(at f: Double) -> CGRect {
+                    let x = Double(s.x) + Double(t.x - s.x) * f, y = Double(s.y) + Double(t.y - s.y) * f
+                    return CGRect(x: x - Double(measured.width) / 2 - 7, y: y - Double(measured.height) / 2 - 3, width: Double(measured.width) + 14, height: Double(measured.height) + 6)
+                }
+                // Along the link first, then stepped above or below the middle when links run close.
+                let middle: CGRect = phraseSpot(at: 0.5)
+                let step: Double = Double(middle.height) + 3
+                var spots: [CGRect] = []
+                for f: Double in [0.5, 0.36, 0.64, 0.26, 0.74] { spots.append(phraseSpot(at: f)) }
+                for k: Double in [1, -1, 2, -2] { spots.append(middle.offsetBy(dx: 0, dy: k * step)) }
+                func covered(_ spot: CGRect) -> Double {
+                    var total: Double = 0
+                    for other in placed {
+                        let shared: CGRect = other.insetBy(dx: -2, dy: -2).intersection(spot)
+                        if !shared.isNull { total += Double(shared.width) * Double(shared.height) }
+                    }
+                    return total
+                }
+                var pill: CGRect = middle
+                var least: Double = .infinity
+                for spot in spots {
+                    let cover = covered(spot)
+                    if cover < least { least = cover; pill = spot }
+                    if cover == 0 { break }
+                }
+                placed.append(pill)
+                let mid = CGPoint(x: pill.midX, y: pill.midY)
                 context.opacity = dim ? 0.35 : 1
                 context.fill(Path(roundedRect: pill, cornerRadius: pill.height / 2), with: .color(Color.gray.opacity(0.2)))
                 context.draw(text, at: mid, anchor: .center)
@@ -348,7 +376,9 @@ public struct ConceptWorldView: View {
                 context.stroke(Path(roundedRect: box, cornerRadius: 10), with: .color(color.opacity(0.7)), lineWidth: 1.2)
                 let size = max(9.0, min(16.0, 13.0 * zoom))
                 let text = context.resolve(Text(verbatim: node.label).font(.system(size: size, weight: .medium)).foregroundColor(Color.primary))
-                context.draw(text, in: box.insetBy(dx: 6, dy: 4))
+                // The name sits in the middle of its box.
+                let fitted = text.measure(in: box.insetBy(dx: 8, dy: 4).size)
+                context.draw(text, in: CGRect(x: dot.x - fitted.width / 2, y: dot.y - fitted.height / 2, width: fitted.width, height: fitted.height))
             } else {
                 let r = dot.radius
                 if node.id == picture.focus {

@@ -299,6 +299,18 @@ struct WorldsApp: App {
     #endif
 
     @ViewBuilder private var rootView: some View {
+        #if WORLDS_UI_CHECKS && WORLDS_MAIN_APP_MODULES && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing-user-reports") {
+            UserReportsCheckView()
+        } else {
+            libraryRoot
+        }
+        #else
+        libraryRoot
+        #endif
+    }
+
+    @ViewBuilder private var libraryRoot: some View {
         #if DEBUG
         WorldsLibraryView().modifier(UITestingAppearance())
         #else

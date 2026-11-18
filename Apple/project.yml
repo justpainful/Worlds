@@ -13,6 +13,8 @@ settings:
     "EXCLUDED_SOURCE_FILE_NAMES[config=Release]": "worlds-v1-fixture.db search-ui-fixture.db reader-ui-fixture.db worlds-v11.db"
     SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) WORLDS_MAIN_APP_MODULES"
     OTHER_SWIFT_FLAGS: "$(inherited) -DWORLDS_MAIN_APP_MODULES"
+    # Debug builds only: the check screen the UI tests open with --ui-testing-user-reports.
+    "OTHER_SWIFT_FLAGS[config=Debug]": "$(inherited) -DWORLDS_MAIN_APP_MODULES -DWORLDS_UI_CHECKS"
     CURRENT_PROJECT_VERSION: 4
     MARKETING_VERSION: "0.3.1"
 packages:

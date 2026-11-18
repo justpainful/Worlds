@@ -165,12 +165,14 @@ public struct MermaidDiagramView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Label(conceptGraph.map { (chosenView ?? $0.shownView) == .world } == true ? String(localized: "Concept map") : diagramTitle,
-                      systemImage: "point.topleft.down.to.point.bottomright.curvepath")
+                Label(headerTitle, systemImage: "point.topleft.down.to.point.bottomright.curvepath")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                 Spacer()
-                if let type = inspection?.diagramType {
+                // A concept map already says what it is; the type tag would crowd the switch on a phone.
+                if conceptGraph == nil, let type = inspection?.diagramType {
                     Text(type)
                         .font(.caption2.weight(.medium))
                         .padding(.horizontal, 6)
@@ -271,6 +273,11 @@ public struct MermaidDiagramView: View {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { fullScreen = false } }
             }
         }
+    }
+
+    private var headerTitle: String {
+        guard let graph = conceptGraph else { return diagramTitle }
+        return (chosenView ?? graph.shownView) == .world ? String(localized: "Concept map") : String(localized: "Diagram")
     }
 
     private var diagramTitle: String {
