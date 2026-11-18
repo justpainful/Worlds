@@ -11,6 +11,7 @@ import { jwks } from "./lib/jwt";
 import { auth } from "./routes/auth";
 import { me } from "./routes/me";
 import { pages } from "./routes/pages";
+import { profiles } from "./routes/profiles";
 import { invites, workspaces } from "./routes/workspaces";
 
 export const app = new Hono<AppEnv>();
@@ -53,6 +54,7 @@ app.route("/auth", auth);
 app.route("/me", me);
 app.route("/workspaces", workspaces);
 app.route("/invites", invites);
+app.route("/profiles", profiles);
 app.route("/", pages);
 
 /** Cron: deliver outstanding access events and clear expired rows. */

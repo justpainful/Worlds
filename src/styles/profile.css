@@ -447,3 +447,20 @@ button.pf-link:hover { color: var(--text-1); text-decoration: underline; text-un
 .pbi-row .field-hint.is-error { color: var(--danger, #ff6961); }
 .pbi-row .field-hint.is-ok { color: var(--success, #30d158); }
 .field.is-invalid { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger, #ff6961) 70%, transparent); }
+
+/* Public profile sheet (src/views/profile/PublicProfile.tsx) */
+.pf-public { display: flex; flex-direction: column; gap: 14px; }
+.pf-public-link { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 12px; border-radius: 12px; background: var(--fill-1, rgba(127, 127, 127, 0.1)); color: var(--text-2); }
+.pf-public-url { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-1); font: var(--t-body); }
+.pf-public-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.pf-public-label { font: var(--t-body); font-weight: 600; color: var(--text-1); }
+.pf-public-hint { margin: 2px 0 0; font: var(--t-small); color: var(--text-3); }
+.pf-public-hint.is-error { color: var(--danger, #ff6961); }
+.pf-public-note { margin: 0; font: var(--t-small); color: var(--text-2); line-height: 1.55; }
+:root[dir="rtl"] .pf-public-note { line-height: 1.8; }
+.pf-public-danger { align-self: flex-start; padding: 0; background: none; border: 0; font: var(--t-small); color: var(--danger, #ff6961); cursor: pointer; }
+.pf-public-danger:hover { text-decoration: underline; }
+.pf-public-danger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.pf-public-remove { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 12px; border-radius: 12px; background: rgba(255, 105, 97, 0.1); font: var(--t-small); color: var(--text-1); }
+.pf-public-remove > span { flex: 1; min-width: 200px; }
+@media (max-width: 520px) { .pf-public-row { flex-direction: column; align-items: stretch; } .pf-public-link { flex-wrap: wrap; } }

@@ -318,6 +318,23 @@ async fn run(app: &tauri::AppHandle, db: &Mutex<Connection>, secrets: &dyn Secre
             let enc = percent_encoding::utf8_percent_encode(&name, percent_encoding::NON_ALPHANUMERIC).to_string();
             Ok(client::send(&base, Method::GET, &format!("/auth/username/{enc}"), None, None, None).await?)
         }
+        // ---- public profile at profile.<domain>/@username
+        "publicProfile" => Ok(authed(db, secrets, Method::GET, "/me/public-profile", None, None).await?),
+        "publishProfile" => Ok(authed(db, secrets, Method::PUT, "/me/public-profile", Some(a), None).await?),
+        "setProfileVisible" => {
+            let visible = a.get("visible").and_then(Value::as_bool).ok_or("visible is required")?;
+            Ok(authed(db, secrets, Method::PATCH, "/me/public-profile", Some(&json!({ "visible": visible })), None).await?)
+        }
+        "unpublishProfile" => Ok(authed(db, secrets, Method::DELETE, "/me/public-profile", None, None).await?),
+        "uploadProfileFile" => Ok(authed(
+            db,
+            secrets,
+            Method::POST,
+            "/me/public-profile/files",
+            Some(&json!({ "mime": s(a, "mime")?, "data": s(a, "data")? })),
+            None,
+        )
+        .await?),
         "devices" => Ok(authed(db, secrets, Method::GET, "/me/devices", None, None).await?),
         "revokeDevice" => Ok(authed(db, secrets, Method::DELETE, &format!("/me/devices/{}", s(a, "deviceId")?), None, None).await?),
         "renameDevice" => Ok(authed(

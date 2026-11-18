@@ -26,6 +26,11 @@ database_name = "worlds-identity"
 database_id = "00000000-0000-0000-0000-000000000000"
 migrations_dir = "migrations"
 
+# Pictures on public profiles (src/routes/profiles.ts).
+[[r2_buckets]]
+binding = "PROFILE_FILES"
+bucket_name = "worlds-profiles"
+
 # Access change events for the sync service. Uncomment after creating the
 # queue with `wrangler queues create worlds-revocations`.
 # [[queues.producers]]

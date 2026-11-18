@@ -30,6 +30,19 @@ const packRoles: PackRole[] = [];
 const invites: Invite[] = [];
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+let pub: { visible: boolean; profile: Record<string, unknown>; avatar: string | null; banner: string | null; at: number } | null = null;
+const publicState = () => ({
+  published: !!pub,
+  visible: pub?.visible ?? false,
+  username: "ada",
+  url: "https://profile.enterworlds.space/@ada",
+  profile: pub?.profile ?? null,
+  avatar: pub?.avatar ?? null,
+  banner: pub?.banner ?? null,
+  publishedAt: pub?.at ?? null,
+  updatedAt: pub?.at ?? null,
+  filesEnabled: true,
+});
 const signIn = (created: boolean): AccountView => {
   view = {
     ...view,
@@ -88,6 +101,21 @@ async function account(action: string, a: Args): Promise<unknown> {
       return { displayName: a.displayName ?? view.account?.displayName, username: a.username };
     case "checkUsername":
       return { username: a.username, valid: true, available: a.username !== "taken", reason: a.username === "taken" ? "taken" : null, message: a.username === "taken" ? "That username is taken." : null };
+    case "publicProfile":
+      return publicState();
+    case "publishProfile":
+      await wait(500);
+      pub = { visible: a.visible ?? pub?.visible ?? true, profile: a.profile, avatar: a.avatar ?? null, banner: a.banner ?? null, at: Date.now() };
+      return publicState();
+    case "setProfileVisible":
+      if (pub) pub = { ...pub, visible: !!a.visible };
+      return publicState();
+    case "unpublishProfile":
+      pub = null;
+      return { ok: true };
+    case "uploadProfileFile":
+      await wait(150);
+      return { file: `file:p/u-ada/mock${Math.random().toString(36).slice(2, 12)}.png`, size: String(a.data ?? "").length };
     case "devices":
       return [
         { id: "d-1", name: "Worlds on DESKTOP", platform: "windows", createdAt: t0 - 86_400_000 * 20, lastSeenAt: Date.now(), current: true },

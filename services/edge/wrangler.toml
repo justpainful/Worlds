@@ -11,6 +11,8 @@ IDENTITY_ORIGIN = "https://worlds-identity.example.workers.dev"
 SYNC_ORIGIN = "https://worlds-sync.example.workers.dev"
 LOGIN_HOST = "login.example.com"
 CONNECT_HOST = "connect.example.com"
+PROFILE_HOST = "profile.example.com"
+SITE_URL = "https://example.com"
 MAIL_FROM = "Worlds <no-reply@example.com>"
 
 # Secrets (wrangler secret put NAME):

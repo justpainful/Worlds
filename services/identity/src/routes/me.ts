@@ -7,9 +7,11 @@ import { now } from "../lib/crypto";
 import { bad, body, conflict, notFound, optStr, str } from "../lib/http";
 import { checkUsername, usernameTaken } from "../lib/usernames";
 import { userById, userView } from "./auth";
+import { ownerRoutes } from "./profiles";
 
 export const me = new Hono<AppEnv>();
 me.use("*", requireAuth);
+ownerRoutes(me);
 
 me.get("/", async (c) => {
   const u = await userById(c.env.DB, c.get("caller").userId);

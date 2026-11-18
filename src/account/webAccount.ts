@@ -233,6 +233,16 @@ export async function webAccount(action: string, a: Args): Promise<unknown> {
       const name = encodeURIComponent(String(a.username ?? a.name ?? ""));
       return request("GET", `/auth/username/${name}`, undefined, false);
     }
+    case "publicProfile":
+      return request("GET", "/me/public-profile");
+    case "publishProfile":
+      return request("PUT", "/me/public-profile", { visible: a.visible, profile: a.profile, avatar: a.avatar, banner: a.banner });
+    case "setProfileVisible":
+      return request("PATCH", "/me/public-profile", { visible: !!a.visible });
+    case "unpublishProfile":
+      return request("DELETE", "/me/public-profile");
+    case "uploadProfileFile":
+      return request("POST", "/me/public-profile/files", { mime: a.mime, data: a.data });
     case "devices": {
       const list = await request<Omit<Device, "current">[]>("GET", "/me/devices");
       return list.map((d) => ({ ...d, current: d.id === session?.deviceId }));

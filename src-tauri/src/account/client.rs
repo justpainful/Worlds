@@ -83,6 +83,10 @@ pub async fn send(
     if let Some(b) = body {
         req = req.json(b);
     }
+    // Profile pictures (up to 25 MB, sent as base64) need longer than the usual 20 s.
+    if path.ends_with("/public-profile/files") {
+        req = req.timeout(Duration::from_secs(180));
+    }
     let res = req.send().await.map_err(|e| ApiError::Offline(e.to_string()))?;
     let status = res.status().as_u16();
     let text = res.text().await.map_err(|e| ApiError::Offline(e.to_string()))?;
