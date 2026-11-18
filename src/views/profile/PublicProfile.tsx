@@ -24,6 +24,7 @@ export function PublicProfileSheet({ profile, onClose }: { profile: Profile; onC
   const [busy, setBusy] = useState<"publish" | "visible" | "remove" | null>(null);
   const [progress, setProgress] = useState<PublishProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [skipped, setSkipped] = useState<{ banner: boolean; large: boolean; count: number } | null>(null);
   const [confirmRemove, setConfirmRemove] = useState(false);
 
   useEffect(() => {
@@ -44,8 +45,9 @@ export function PublicProfileSheet({ profile, onClose }: { profile: Profile; onC
     setError(null);
     setProgress(null);
     try {
-      const s = await publishProfile(profile, { visible: state?.published ? undefined : true, onProgress: setProgress });
+      const { state: s, skipped: miss } = await publishProfile(profile, { visible: state?.published ? undefined : true, onProgress: setProgress });
       setState(s);
+      setSkipped(miss.length ? { banner: miss.some((m) => m.kind === "banner"), large: miss.some((m) => m.reason === "too_large"), count: miss.length } : null);
       toast(state?.published ? "Public profile updated" : "Public profile published");
     } catch (e) {
       setError(errorMessage(e));
@@ -157,6 +159,15 @@ export function PublicProfileSheet({ profile, onClose }: { profile: Profile; onC
             </p>
             {state?.updatedAt && <p className="pf-public-hint">Last published {relTime(state.updatedAt)}</p>}
             {state && !state.filesEnabled && <p className="pf-public-hint is-error">This server cannot store pictures yet, so only the text is published.</p>}
+            {skipped && (
+              <p className="pf-public-hint is-error">
+                {skipped.large
+                  ? skipped.banner
+                    ? "The banner is larger than 25 MB, so it was left out. Use a smaller GIF or picture and publish again."
+                    : `${skipped.count} pictures are larger than 25 MB, so they were left out.`
+                  : `${skipped.count} pictures could not be uploaded. Check the connection and press Update again.`}
+              </p>
+            )}
             {error && <p className="pf-public-hint is-error">{error}</p>}
 
             {state?.published &&

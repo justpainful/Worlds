@@ -18,7 +18,14 @@ import { sanitize, type ProfileBlock } from "./blocks";
 const SIDE = { avatar: 640, banner: 2000, art: 1400, full: 4096, icon: 160 } as const;
 type Kind = keyof typeof SIDE;
 
-const RAW_LIMIT = 9 * 1024 * 1024;
+/** The server takes files up to 25 MB (MAX_FILE_BYTES in services/identity/src/routes/profiles.ts). */
+const RAW_LIMIT = 25 * 1024 * 1024;
+
+export interface PublishResult {
+  state: PublicProfileState;
+  /** Pictures that could not be published, with why. */
+  skipped: { kind: string; reason: "too_large" | "failed" }[];
+}
 
 export interface PublishProgress {
   done: number;
@@ -50,6 +57,7 @@ async function scaled(blob: Blob, side: number): Promise<Blob> {
 /** Uploads one picture once per publish; null when it cannot be read or is too large. */
 class Uploader {
   private done = new Map<string, Promise<string | null>>();
+  readonly skipped: PublishResult["skipped"] = [];
   constructor(private onProgress: () => void) {}
 
   get(src: string, kind: Kind): Promise<string | null> {
@@ -75,10 +83,14 @@ class Uploader {
       // Animated GIFs and videos are kept as they are; everything else is scaled.
       const keep = type === "image/gif" || type.startsWith("video/");
       if (!keep) blob = await scaled(blob, SIDE[kind]);
-      if (blob.size > RAW_LIMIT) return null;
+      if (blob.size > RAW_LIMIT) {
+        this.skipped.push({ kind, reason: "too_large" });
+        return null;
+      }
       const r = await accountApi.uploadProfileFile(blob.type || type, base64(await blob.arrayBuffer()));
       return r.file;
     } catch {
+      this.skipped.push({ kind, reason: "failed" });
       return null;
     }
   }
@@ -133,7 +145,7 @@ async function publicBlock(up: Uploader, b: ProfileBlock): Promise<Record<string
 }
 
 /** Publish (or update) the public copy of this profile. */
-export async function publishProfile(profile: Profile, opts: { visible?: boolean; onProgress?: (p: PublishProgress) => void } = {}): Promise<PublicProfileState> {
+export async function publishProfile(profile: Profile, opts: { visible?: boolean; onProgress?: (p: PublishProgress) => void } = {}): Promise<PublishResult> {
   let finished = 0;
   const up = new Uploader(() => {
     finished += 1;
@@ -145,7 +157,7 @@ export async function publishProfile(profile: Profile, opts: { visible?: boolean
     profile.banner ? up.get(fileUrl(profile.banner), "banner") : Promise.resolve(null),
     Promise.all(blocks.map((b) => publicBlock(up, b))),
   ]);
-  return accountApi.publishProfile({
+  const state = await accountApi.publishProfile({
     visible: opts.visible,
     avatar,
     banner,
@@ -164,4 +176,5 @@ export async function publishProfile(profile: Profile, opts: { visible?: boolean
       avatarCrop: profile.avatarCrop,
     },
   });
+  return { state, skipped: up.skipped };
 }

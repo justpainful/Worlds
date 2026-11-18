@@ -133,7 +133,7 @@ Every account may publish a public profile, shown by `services/edge` at `profile
 | `PUT /me/public-profile` | The account | `{ visible?, profile, avatar?, banner? }`. Links must be http(s) or mailto; strings that look like local paths are dropped; `file:` keys must be the account's own. Files the profile no longer names are deleted. |
 | `PATCH /me/public-profile` | The account | `{ visible }`: show or hide without changing what is published |
 | `DELETE /me/public-profile` | The account | Removes the row and every file |
-| `POST /me/public-profile/files` | The account | `{ mime, data }` with base64 data; PNG, JPEG, WebP, GIF, AVIF, MP4 or WebM, up to 10 MB; stored by content hash |
+| `POST /me/public-profile/files` | The account | `{ mime, data }` with base64 data; PNG, JPEG, WebP, GIF, AVIF, MP4 or WebM, up to 25 MB; stored by content hash |
 | `GET /profiles/:username` | Anyone | The published profile, or 404 when there is none or it is hidden (the two are indistinguishable) |
 | `GET /profiles/files/p/:userId/:name` | Anyone | A picture, only while its owner's profile is visible |
 

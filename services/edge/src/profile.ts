@@ -319,6 +319,7 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius
 .pf-canvas{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
 .pf-ambient{position:absolute;left:-15%;top:-10%;width:130%;height:1100px;object-fit:cover;filter:blur(90px) saturate(1.5);opacity:.42;-webkit-mask-image:linear-gradient(#000 0%,rgba(0,0,0,.6) 45%,transparent 100%);mask-image:linear-gradient(#000 0%,rgba(0,0,0,.6) 45%,transparent 100%)}
 .light-banner .pf-ambient{opacity:.26}
+.pf-ambient:not([src]){display:none}
 .pf-canvas::after{content:"";position:absolute;inset:0;background:linear-gradient(rgba(var(--banner-deep),.25) 0px,rgba(var(--banner-deep),.55) 420px,rgb(var(--banner-deep)) 980px)}
 .pf-banner{position:relative;z-index:1;height:240px;overflow:hidden;-webkit-mask-image:linear-gradient(#000 calc(100% - 90px),transparent);mask-image:linear-gradient(#000 calc(100% - 90px),transparent)}
 .pf-banner.has-art{height:var(--banner-h,clamp(220px,34vh,470px))}
@@ -436,11 +437,14 @@ footer a:hover{color:var(--text-1)}
 `;
 
 /**
+ * The ambient light is a 96 px still copy of the banner, as in the app: blurring
+ * an animated GIF every frame is expensive.
+ *
  * The app samples the banner for its colour (src/profile/bannerColor.ts) and sizes
  * the banner by the picture's proportions (src/media/crop.ts bannerHeight). The page
  * does the same once the banner loads; it is the only script the page runs.
  */
-export const TONE_SCRIPT = `(function(){var i=document.querySelector("img.pf-banner-img");if(!i)return;var R=document.documentElement;function run(){try{var bw=i.parentNode.offsetWidth||900,vh=innerHeight,mx=Math.max(220,Math.min(vh*.44,470)),h=Math.min(mx,Math.max(220,bw*i.naturalHeight/Math.max(1,i.naturalWidth))),sm=i.naturalHeight*1.6/(devicePixelRatio||1);if(h>sm)h=Math.max(220,sm);R.style.setProperty("--banner-h",Math.round(h)+"px");var W=48,H=Math.max(8,Math.round(i.naturalHeight/Math.max(1,i.naturalWidth)*W)),c=document.createElement("canvas");c.width=W;c.height=H;var x=c.getContext("2d");x.drawImage(i,0,0,W,H);var d=x.getImageData(0,0,W,H).data,r=0,g=0,b=0,s=0,L=0,n=0;for(var y=0;y<H;y++)for(var z=0;z<W;z++){var k=(y*W+z)*4,a=d[k],e=d[k+1],f=d[k+2],hi=Math.max(a,e,f)/255,lo=Math.min(a,e,f)/255,l=(hi+lo)/2,t=hi===lo?0:l>.5?(hi-lo)/(2-hi-lo):(hi-lo)/(hi+lo),w=(.15+t*t)*(l>.08&&l<.92?1:.1);r+=a*w;g+=e*w;b+=f*w;s+=w;if(y>H*.6){L+=(.2126*a+.7152*e+.0722*f)/255;n++}}r/=s;g/=s;b/=s;var raw=[r,g,b].map(function(v){return v*.32+14}),q=Math.min(1,46/Math.max.apply(null,raw));R.style.setProperty("--banner-rgb",[r,g,b].map(Math.round).join(","));R.style.setProperty("--banner-deep",raw.map(function(v){return Math.round(v*q)}).join(","));if(n&&L/n>.62)R.classList.add("light-banner")}catch(_){}}if(i.complete&&i.naturalWidth)run();else i.addEventListener("load",run)})();`;
+export const TONE_SCRIPT = `(function(){var i=document.querySelector("img.pf-banner-img");if(!i)return;var R=document.documentElement;function run(){try{var bw=i.parentNode.offsetWidth||900,vh=innerHeight,mx=Math.max(220,Math.min(vh*.44,470)),h=Math.min(mx,Math.max(220,bw*i.naturalHeight/Math.max(1,i.naturalWidth))),sm=i.naturalHeight*1.6/(devicePixelRatio||1);if(h>sm)h=Math.max(220,sm);R.style.setProperty("--banner-h",Math.round(h)+"px");var W=48,H=Math.max(8,Math.round(i.naturalHeight/Math.max(1,i.naturalWidth)*W)),c=document.createElement("canvas");c.width=W;c.height=H;var x=c.getContext("2d");x.drawImage(i,0,0,W,H);var d=x.getImageData(0,0,W,H).data,r=0,g=0,b=0,s=0,L=0,n=0;for(var y=0;y<H;y++)for(var z=0;z<W;z++){var k=(y*W+z)*4,a=d[k],e=d[k+1],f=d[k+2],hi=Math.max(a,e,f)/255,lo=Math.min(a,e,f)/255,l=(hi+lo)/2,t=hi===lo?0:l>.5?(hi-lo)/(2-hi-lo):(hi-lo)/(hi+lo),w=(.15+t*t)*(l>.08&&l<.92?1:.1);r+=a*w;g+=e*w;b+=f*w;s+=w;if(y>H*.6){L+=(.2126*a+.7152*e+.0722*f)/255;n++}}r/=s;g/=s;b/=s;var raw=[r,g,b].map(function(v){return v*.32+14}),q=Math.min(1,46/Math.max.apply(null,raw));R.style.setProperty("--banner-rgb",[r,g,b].map(Math.round).join(","));R.style.setProperty("--banner-deep",raw.map(function(v){return Math.round(v*q)}).join(","));if(n&&L/n>.62)R.classList.add("light-banner");var am=document.querySelector(".pf-ambient");if(am){var t=document.createElement("canvas"),tw=96,th=Math.max(8,Math.round(i.naturalHeight/Math.max(1,i.naturalWidth)*tw));t.width=tw;t.height=th;t.getContext("2d").drawImage(i,0,0,tw,th);am.src=t.toDataURL("image/jpeg",.8)}}catch(_){}}if(i.complete&&i.naturalWidth)run();else i.addEventListener("load",run)})();`;
 
 function shell(opts: { title: string; description: string; lang: Lang; dir: "ltr" | "rtl"; accent: string | null; image: string | null; url: string; body: string; script?: boolean; noindex?: boolean }): string {
   const meta = [
@@ -484,7 +488,7 @@ export function renderProfile(p: PublicProfile, origin: string, siteUrl: string)
       : `<img class="pf-banner-img" src="${esc(banner)}" alt="" style="object-position:${focusOf(p.bannerFocus)}">`
     : `<div class="pf-banner-empty"></div>`;
   const body = `<div class="pf">
-<div class="pf-canvas" aria-hidden="true">${stillBanner ? `<img class="pf-ambient" src="${esc(stillBanner)}" alt="">` : ""}</div>
+<div class="pf-canvas" aria-hidden="true">${stillBanner ? `<img class="pf-ambient" alt="">` : ""}</div>
 <div class="pf-banner${banner ? " has-art" : ""}">${bannerArt}</div>
 <div class="pf-body"><main class="pf-column">
 <header><div class="pf-avatar"><div class="avatar">${avatar && !isVideo(avatar) ? `<img src="${esc(avatar)}" alt="${esc(p.displayName)}" style="${avatarStyle}">` : `<span aria-hidden="true">${esc(initial)}</span>`}</div></div>

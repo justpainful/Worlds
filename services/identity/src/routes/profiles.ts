@@ -16,7 +16,7 @@ import { userById } from "./auth";
  * A hidden profile answers exactly like one that does not exist.
  */
 
-export const MAX_FILE_BYTES = 10 * 1024 * 1024;
+export const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const MAX_DATA_CHARS = 200_000;
 const MAX_BLOCKS = 12;
 const MAX_LINKS = 24;
@@ -267,7 +267,7 @@ export function ownerRoutes(me: Hono<AppEnv>) {
       throw bad("invalid_request", "data must be base64");
     }
     if (!bytes.length) throw bad("invalid_request", "The file is empty.");
-    if (bytes.length > MAX_FILE_BYTES) throw bad("file_too_large", "Files are limited to 10 MB.");
+    if (bytes.length > MAX_FILE_BYTES) throw bad("file_too_large", "Files are limited to 25 MB.");
     // Named by content, so the same picture uploaded twice is stored once.
     const digest = b64urlEncode(await crypto.subtle.digest("SHA-256", bytes)).slice(0, 32);
     const key = `p/${caller.userId}/${digest}.${ext}`;

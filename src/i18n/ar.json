@@ -4701,5 +4701,8 @@
  "Public profile updated": "تم تحديث الملف العام",
  "Public profile published": "تم نشر الملف العام",
  "Public profile removed": "تم حذف الملف العام",
- "Sign in to your Worlds account to give this profile a public page with its own link, like profile.enterworlds.space/@username.": "سجّل الدخول إلى حساب Worlds ليصبح لهذا الملف صفحة عامة برابط خاص، مثل profile.enterworlds.space/@username."
+ "Sign in to your Worlds account to give this profile a public page with its own link, like profile.enterworlds.space/@username.": "سجّل الدخول إلى حساب Worlds ليصبح لهذا الملف صفحة عامة برابط خاص، مثل profile.enterworlds.space/@username.",
+ "The banner is larger than 25 MB, so it was left out. Use a smaller GIF or picture and publish again.": "حجم الغلاف أكبر من 25 ميجابايت، لذلك لم يُنشر. استخدم صورة أو GIF أصغر ثم انشر من جديد.",
+ "§{0} pictures are larger than 25 MB, so they were left out.": "{0} من الصور أكبر من 25 ميجابايت، لذلك لم تُنشر.",
+ "§{0} pictures could not be uploaded. Check the connection and press Update again.": "تعذّر رفع {0} من الصور. تحقق من الاتصال ثم اضغط تحديث مرة أخرى."
 }
