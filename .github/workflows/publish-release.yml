@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Release tag, for example v0.3.1
+        description: Release tag, for example v0.3.2
         required: true
       windows_run:
         description: Run id of the Windows installer workflow
@@ -22,7 +22,7 @@ on:
       notes:
         description: Release notes file in the repository
         required: true
-        default: docs/releases/v0.3.1.md
+        default: docs/releases/v0.3.2.md
 
 permissions:
   contents: write
