@@ -17,6 +17,7 @@ import {
 import type { DrawingGestureLease } from "./gestureLeases";
 import { id, type DrawingNode, type DrawingScene, type Point, type Rect } from "./model";
 import "./imageCrop.css";
+import { MenuSelect } from "../ui/MenuSelect";
 interface Props {
   scene: DrawingScene;
   nodeId: string;
@@ -429,10 +430,10 @@ export function ImageCropDialog(p: Props) {
           {number("h", "Source height", "ارتفاع المصدر")}
           <label className="drawing-field">
             <span>{t("Result geometry", "أبعاد النتيجة")}</span>
-            <select value={mode} onChange={(e) => setMode(e.target.value as CropMode)}>
+            <MenuSelect value={mode} onChange={(e) => setMode(e.target.value as CropMode)}>
               <option value="trim">{t("Trim at original pixel density", "قص مع الحفاظ على كثافة البكسلات")}</option>
               <option value="fit">{t("Fit crop into current display box", "ملء أبعاد العنصر الحالية بالجزء المقصوص")}</option>
-            </select>
+            </MenuSelect>
           </label>
           <Button size="compact" onClick={() => asset && setCrop({ x: 0, y: 0, w: asset.width, h: asset.height })}>
             {t("Full original", "الأصل كاملًا")}
@@ -441,7 +442,7 @@ export function ImageCropDialog(p: Props) {
         <fieldset disabled={!enabled} className="drawing-crop-fields">
           <label className="drawing-field">
             <span>{t("Draft adjustment", "إضافة تأثير للمعاينة")}</span>
-            <select
+            <MenuSelect
               value=""
               onChange={(e) => {
                 const kind = e.target.value as DrawingNode["effects"][number]["kind"];
@@ -481,7 +482,7 @@ export function ImageCropDialog(p: Props) {
                   </option>
                 ),
               )}
-            </select>
+            </MenuSelect>
           </label>
           {effects.map((effect, index) => (
             <div className="drawing-effect" key={effect.id}>
@@ -546,10 +547,10 @@ export function ImageCropDialog(p: Props) {
         </fieldset>
         <label className="drawing-field">
           <span>{t("Compare", "المقارنة")}</span>
-          <select value={compare} onChange={(e) => setCompare(e.target.value as typeof compare)}>
+          <MenuSelect value={compare} onChange={(e) => setCompare(e.target.value as typeof compare)}>
             <option value="crop">{t("Before and after cropping", "قبل الاقتصاص وبعده")}</option>
             <option value="effects">{t("Without and with image effects", "دون تأثيرات الصورة ومعها")}</option>
-          </select>
+          </MenuSelect>
         </label>
         <div className="drawing-crop-comparison">
           <section>

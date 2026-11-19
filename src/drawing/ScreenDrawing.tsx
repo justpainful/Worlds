@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { DrawingStage, type Tool } from "./Stage";
 import { BrushStylePicker } from "./BrushPicker";
 import { DEFAULT_BRUSH, id, newLayer, newNode, newScene, type Brush, type DrawingNode, type Point, type Shape } from "./model";
@@ -6,6 +6,8 @@ import { DrawingRenderer, type Viewport } from "./renderer";
 import { translateObjects } from "./objectTransforms";
 import { DrawingColors } from "./Colors";
 import { ToolIcon } from "./toolIcons";
+import { ShapePicker } from "./ShapePicker";
+import { Button, IconButton } from "../ui/Button";
 import "./screenDrawing.css";
 
 export type CapturedScreen = { dataUrl: string; width: number; height: number; wasFullscreen: boolean };
@@ -280,130 +282,133 @@ export function ScreenDrawing({ capture, board, arabic, initialBrush, laserLifet
         />{" "}
       </div>
       <div className="screen-drawing-bar" role="toolbar" aria-label={t("Screen drawing tools", "أدوات الرسم على الشاشة")}>
-        {tools.map((item) => (
-          <button
-            key={item.value}
-            type="button"
-            title={t(item.en, item.ar)}
-            aria-label={t(item.en, item.ar)}
-            aria-pressed={tool === item.value}
-            onClick={() => selectTool(item.value)}
-          >
-            <ToolIcon tool={item.value} size={22} />
-          </button>
-        ))}
-        <span className="screen-drawing-divider" />
-        {(tool === "brush" || tool === "highlighter") && <BrushStylePicker brush={brush} arabic={arabic} onChange={setBrush} />}
-        {tool !== "eraser" && tool !== "select" && (
-          <span className="screen-drawing-color">
-            {t("Color", "اللون")}
-            <DrawingColors color={/^#[0-9a-f]{6}/i.test(brush.color) ? brush.color : "#202023"} recent={recent} arabic={arabic} onColor={pickColor} />
-          </span>
-        )}
-        <label>
-          {t("Size", "الحجم")}{" "}
-          <input
-            type="range"
-            min="1"
-            max="150"
-            value={Math.min(150, brush.size)}
-            onChange={(e) => setBrush((b) => ({ ...b, size: Number(e.target.value) }))}
-          />
-          <output>{Math.round(brush.size)}</output>
-        </label>
-        {tool === "laser" && (
-          <label>
-            {t("Fade", "مدة الليزر")}{" "}
+        <div className="sdb-group sdb-tools" role="group" aria-label={t("Tools", "الأدوات")}>
+          {tools.map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              className="sdb-tool"
+              data-tip={t(item.en, item.ar)}
+              aria-label={t(item.en, item.ar)}
+              aria-pressed={tool === item.value}
+              onClick={() => selectTool(item.value)}
+            >
+              <ToolIcon tool={item.value} size={22} />
+            </button>
+          ))}
+        </div>
+        <div className="sdb-group sdb-options">
+          {(tool === "brush" || tool === "highlighter") && <BrushStylePicker brush={brush} arabic={arabic} onChange={setBrush} />}
+          {tool === "shape" && <ShapePicker shape={shape} arabic={arabic} onChange={setShape} />}
+          {tool !== "eraser" && tool !== "select" && (
+            <span className="sdb-color" aria-label={t("Color", "اللون")} role="group">
+              <DrawingColors color={/^#[0-9a-f]{6}/i.test(brush.color) ? brush.color : "#202023"} recent={recent} arabic={arabic} onColor={pickColor} />
+            </span>
+          )}
+          <label className="sdb-slider">
+            <span className="sdb-label">{t("Size", "الحجم")}</span>
             <input
               type="range"
-              min="0.2"
-              max="10"
-              step="0.1"
-              value={lifetime / 1000}
-              onChange={(e) => setLifetime(Number(e.target.value) * 1000)}
+              min="1"
+              max="150"
+              value={Math.min(150, brush.size)}
+              style={{ "--fill": `${((Math.min(150, brush.size) - 1) / 149) * 100}%` } as CSSProperties}
+              onChange={(e) => setBrush((b) => ({ ...b, size: Number(e.target.value) }))}
             />
-            <output>
-              {(lifetime / 1000).toFixed(1)} {t("s", "ث")}
-            </output>
+            <output>{Math.round(brush.size)}</output>
           </label>
-        )}
-        {tool === "brush" && (
-          <label>
-            <input type="checkbox" checked={autoShape} onChange={(e) => setAutoShape(e.target.checked)} />
-            {t("Correct shapes", "تصحيح الأشكال")}
-          </label>
-        )}
-        {tool === "shape" && (
-          <select aria-label={t("Shape", "الشكل")} value={shape} onChange={(e) => setShape(e.target.value as Shape)}>
-            <option value="line">{t("Line", "خط")}</option>
-            <option value="arrow">{t("Arrow", "سهم")}</option>
-            <option value="rect">{t("Rectangle", "مستطيل")}</option>
-            <option value="ellipse">{t("Ellipse", "دائرة")}</option>
-            <option value="triangle">{t("Triangle", "مثلث")}</option>
-            <option value="right-triangle">{t("Right triangle", "مثلث قائم")}</option>
-          </select>
-        )}
-        {selectedNode?.kind === "text" && (
-          <>
-            <label>
-              {t("Text size", "حجم النص")}{" "}
+          {tool === "laser" && (
+            <label className="sdb-slider">
+              <span className="sdb-label">{t("Fade", "مدة الليزر")}</span>
               <input
-                type="number"
-                min="1"
-                max="2048"
-                value={selectedNode.textStyle.size}
-                onChange={(e) => {
-                  const value = e.target.valueAsNumber;
-                  if (value >= 1 && value <= 2048) patchNode({ textStyle: { ...selectedNode.textStyle, size: value } });
-                }}
+                type="range"
+                min="0.2"
+                max="10"
+                step="0.1"
+                value={lifetime / 1000}
+                style={{ "--fill": `${((lifetime / 1000 - 0.2) / 9.8) * 100}%` } as CSSProperties}
+                onChange={(e) => setLifetime(Number(e.target.value) * 1000)}
               />
+              <output>
+                {(lifetime / 1000).toFixed(1)} {t("s", "ث")}
+              </output>
             </label>
-            <button
-              type="button"
-              aria-label={t("Bold", "عريض")}
-              aria-pressed={selectedNode.textStyle.weight >= 700}
-              onClick={() =>
-                patchNode({ textStyle: { ...selectedNode.textStyle, weight: selectedNode.textStyle.weight >= 700 ? 400 : 700 } })
-              }
-            >
-              B
+          )}
+          {tool === "brush" && (
+            <button type="button" className="sdb-toggle" role="switch" aria-checked={autoShape} onClick={() => setAutoShape(!autoShape)}>
+              <span className="sdb-switch" aria-hidden="true" />
+              {t("Correct shapes", "تصحيح الأشكال")}
             </button>
-            <button
-              type="button"
-              aria-label={t("Italic", "مائل")}
-              aria-pressed={selectedNode.textStyle.italic}
-              onClick={() => patchNode({ textStyle: { ...selectedNode.textStyle, italic: !selectedNode.textStyle.italic } })}
-            >
-              I
-            </button>
-            <label>
-              {t("Rotation", "الدوران")}{" "}
-              <input
-                type="number"
-                min="-360"
-                max="360"
-                value={selectedNode.rotation}
-                onChange={(e) => {
-                  const value = e.target.valueAsNumber;
-                  if (Number.isFinite(value)) patchNode({ rotation: value });
-                }}
-              />
-            </label>
-          </>
-        )}
-        <span className="screen-drawing-divider" />
-        <button type="button" onClick={undo} disabled={!past.length}>
-          {t("Undo", "تراجع")}
-        </button>
-        <button type="button" onClick={redo} disabled={!future.length}>
-          {t("Redo", "إعادة")}
-        </button>
-        <button type="button" onClick={() => void save()} disabled={busy || !screenImage}>
-          {busy ? t("Saving", "جارٍ الحفظ") : t("Save to drawing", "حفظ في الرسم")}
-        </button>
-        <button type="button" onClick={requestClose} disabled={busy}>
-          {t("Exit", "خروج")}
-        </button>
+          )}
+          {selectedNode?.kind === "text" && (
+            <>
+              <label className="sdb-number">
+                <span className="sdb-label">{t("Text size", "حجم النص")}</span>
+                <input
+                  className="field"
+                  type="number"
+                  min="1"
+                  max="2048"
+                  value={selectedNode.textStyle.size}
+                  onChange={(e) => {
+                    const value = e.target.valueAsNumber;
+                    if (value >= 1 && value <= 2048) patchNode({ textStyle: { ...selectedNode.textStyle, size: value } });
+                  }}
+                />
+              </label>
+              <span className="sdb-pair" role="group">
+                <button
+                  type="button"
+                  className="sdb-tool sdb-letter"
+                  data-tip={t("Bold", "عريض")}
+                  aria-label={t("Bold", "عريض")}
+                  aria-pressed={selectedNode.textStyle.weight >= 700}
+                  onClick={() =>
+                    patchNode({ textStyle: { ...selectedNode.textStyle, weight: selectedNode.textStyle.weight >= 700 ? 400 : 700 } })
+                  }
+                >
+                  <b>B</b>
+                </button>
+                <button
+                  type="button"
+                  className="sdb-tool sdb-letter"
+                  data-tip={t("Italic", "مائل")}
+                  aria-label={t("Italic", "مائل")}
+                  aria-pressed={selectedNode.textStyle.italic}
+                  onClick={() => patchNode({ textStyle: { ...selectedNode.textStyle, italic: !selectedNode.textStyle.italic } })}
+                >
+                  <i>I</i>
+                </button>
+              </span>
+              <label className="sdb-number">
+                <span className="sdb-label">{t("Rotation", "الدوران")}</span>
+                <input
+                  className="field"
+                  type="number"
+                  min="-360"
+                  max="360"
+                  value={selectedNode.rotation}
+                  onChange={(e) => {
+                    const value = e.target.valueAsNumber;
+                    if (Number.isFinite(value)) patchNode({ rotation: value });
+                  }}
+                />
+              </label>
+            </>
+          )}
+        </div>
+        <div className="sdb-group sdb-actions">
+          <span className="sdb-pair" role="group">
+            <IconButton icon="undo" label={t("Undo", "تراجع")} shortcut="Ctrl+Z" onClick={undo} disabled={!past.length} />
+            <IconButton icon="redo" label={t("Redo", "إعادة")} shortcut="Ctrl+Y" onClick={redo} disabled={!future.length} />
+          </span>
+          <Button variant="tinted" size="compact" icon="download" loading={busy} onClick={() => void save()} disabled={!screenImage}>
+            {busy ? t("Saving", "جارٍ الحفظ") : t("Save to drawing", "حفظ في الرسم")}
+          </Button>
+          <Button variant="plain" size="compact" icon="close" onClick={requestClose} disabled={busy}>
+            {t("Exit", "خروج")}
+          </Button>
+        </div>
       </div>
       <div className="screen-drawing-still" role="status">
         {t("Still capture; video behind it may continue playing.", "صورة ثابتة، وقد يستمر تشغيل الفيديو خلفها.")}
@@ -411,20 +416,19 @@ export function ScreenDrawing({ capture, board, arabic, initialBrush, laserLifet
       {error && (
         <div className="screen-drawing-alert" role="alert">
           {error}
-          <button type="button" onClick={() => setError("")}>
-            ×
-          </button>
+          <IconButton icon="close" label={t("Dismiss", "إغلاق")} onClick={() => setError("")} />
         </div>
       )}
       {textEdit && (
         <div className="screen-drawing-prompt" role="dialog" aria-modal="true" aria-label={t("Enter text", "إضافة نص")}>
-          <textarea autoFocus dir="auto" value={textEdit.value} onChange={(e) => setTextEdit({ ...textEdit, value: e.target.value })} />
+          <textarea className="field" autoFocus dir="auto" value={textEdit.value} onChange={(e) => setTextEdit({ ...textEdit, value: e.target.value })} />
           <div>
-            <button type="button" onClick={() => setTextEdit(null)}>
+            <Button variant="plain" onClick={() => setTextEdit(null)}>
               {t("Cancel", "إلغاء")}
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="tinted"
+              disabled={!textEdit.value.trim()}
               onClick={() => {
                 if (!textEdit.value.trim()) return;
                 const node = textEdit.node ?? newNode("text", base.layerId, base.frameId, { ...textEdit.point, w: 360, h: 130 });
@@ -437,7 +441,7 @@ export function ScreenDrawing({ capture, board, arabic, initialBrush, laserLifet
               }}
             >
               {t("Apply", "تطبيق")}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -445,12 +449,12 @@ export function ScreenDrawing({ capture, board, arabic, initialBrush, laserLifet
         <div className="screen-drawing-prompt" role="dialog" aria-modal="true">
           <p>{t("Exit without saving your annotations?", "الخروج دون حفظ الكتابة على الشاشة؟")}</p>
           <div>
-            <button type="button" onClick={() => setConfirmClose(false)}>
+            <Button variant="plain" autoFocus onClick={() => setConfirmClose(false)}>
               {t("Keep editing", "متابعة الرسم")}
-            </button>
-            <button type="button" onClick={() => void onClose()}>
+            </Button>
+            <Button variant="danger" onClick={() => void onClose()}>
               {t("Discard and exit", "خروج دون حفظ")}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -463,18 +467,18 @@ export function ScreenDrawing({ capture, board, arabic, initialBrush, laserLifet
             )}
           </p>
           <div>
-            <button type="button" onClick={() => setConfirmShare(false)}>
+            <Button variant="plain" onClick={() => setConfirmShare(false)}>
               {t("Cancel", "إلغاء")}
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="tinted"
               onClick={() => {
                 setConfirmShare(false);
                 void save(true);
               }}
             >
               {t("Share and save", "مشاركة وحفظ")}
-            </button>
+            </Button>
           </div>
         </div>
       )}

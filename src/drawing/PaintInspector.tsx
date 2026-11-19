@@ -1,5 +1,6 @@
 import type { DrawingNode, Gradient, Paint } from "./model";
 import { ColorField } from "./ColorField";
+import { MenuSelect } from "../ui/MenuSelect";
 export function PaintInspector({ node, arabic, onChange }: { node: DrawingNode; arabic: boolean; onChange: (paint: Paint) => void }) {
   const p = node.paint,
     t = (en: string, ar: string) => (arabic ? ar : en),
@@ -33,23 +34,23 @@ export function PaintInspector({ node, arabic, onChange }: { node: DrawingNode; 
       {field(
         "Line ends",
         "نهايات الخط",
-        <select value={p.cap} onChange={(e) => patch({ cap: e.target.value as Paint["cap"] })}>
+        <MenuSelect value={p.cap} onChange={(e) => patch({ cap: e.target.value as Paint["cap"] })}>
           <option value="round">{t("Round", "دائرية")}</option>
           <option value="butt">{t("Flat", "مسطحة")}</option>
           <option value="square">{t("Square", "مربعة")}</option>
-        </select>,
+        </MenuSelect>,
       )}
       {field(
         "Dashes",
         "تقطيع الحدود",
-        <select
+        <MenuSelect
           value={p.dash.length ? (p.dash.length === 2 && p.dash[0] === p.dash[1] ? "dash" : "dot") : "solid"}
           onChange={(e) => patch({ dash: e.target.value === "solid" ? [] : e.target.value === "dash" ? [12, 12] : [2, 8] })}
         >
           <option value="solid">{t("Solid", "متصل")}</option>
           <option value="dash">{t("Dashed", "متقطع")}</option>
           <option value="dot">{t("Dotted", "منقط")}</option>
-        </select>,
+        </MenuSelect>,
       )}
       {field(
         "Corner radius",
@@ -68,7 +69,7 @@ export function PaintInspector({ node, arabic, onChange }: { node: DrawingNode; 
       {field(
         "Gradient",
         "التدرج اللوني",
-        <select
+        <MenuSelect
           value={g?.type ?? "none"}
           onChange={(e) =>
             patch({
@@ -90,7 +91,7 @@ export function PaintInspector({ node, arabic, onChange }: { node: DrawingNode; 
           <option value="none">{t("None", "بدون")}</option>
           <option value="linear">{t("Linear", "خطي")}</option>
           <option value="radial">{t("Radial", "دائري")}</option>
-        </select>,
+        </MenuSelect>,
       )}
       {g && (
         <>

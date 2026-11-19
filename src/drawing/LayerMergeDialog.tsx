@@ -8,6 +8,7 @@ import { applyChanges } from "./operations";
 import { exportPreparationScene } from "./exportScope";
 import { mergeSourceKey, mergedLayerChanges, renderVisibleMerge, type MergePlan, type MergedFrame } from "./layerMerge";
 import "./imageCrop.css";
+import { MenuSelect } from "../ui/MenuSelect";
 interface Props {
   pageId: string;
   scene: DrawingScene;
@@ -228,13 +229,13 @@ export function LayerMergeDialog(p: Props) {
         </p>
         <label className="drawing-field">
           <span>{t("Preview frame", "معاينة الإطار")}</span>
-          <select value={frameId} onChange={(e) => setFrameId(e.target.value)}>
+          <MenuSelect value={frameId} onChange={(e) => setFrameId(e.target.value)}>
             {source.frameOrder.map((id) => (
               <option key={id} value={id}>
                 {source.frames[id].name}
               </option>
             ))}
-          </select>
+          </MenuSelect>
         </label>
         <div className="drawing-crop-comparison">
           <section>

@@ -13,6 +13,7 @@ import { exportFrameArchive, exportAnnotatedArchive } from "./frameArchive";
 import { flattenedSvg, SvgError, svgErrorMessage } from "./svg";
 import { DrawingExportPolicyDialog } from "./ExportPolicyDialog";
 import { FontDependencies } from "./FontDependencies";
+import { MenuSelect } from "../ui/MenuSelect";
 export function DrawingExportDialog({
   scene,
   frameId,
@@ -276,7 +277,7 @@ export function DrawingExportDialog({
       <div className="drawing-export-options">
         <label>
           {t("Format", "الصيغة")}
-          <select value={format} onChange={(e) => setFormat(e.target.value as typeof format)}>
+          <MenuSelect value={format} onChange={(e) => setFormat(e.target.value as typeof format)}>
             <option value="png">PNG</option>
             <option value="jpeg">JPEG</option>
             <option value="webp">WebP</option>
@@ -285,7 +286,7 @@ export function DrawingExportDialog({
             <option value="frames">{t("Selected frames as PNG archive", "الإطارات المحددة كأرشيف PNG")}</option>
             <option value="pair">{t("Clean and annotated PNG archive", "أرشيف PNG بنسخة نظيفة وأخرى مشروحة")}</option>
             <option value="worldsdraw">{t("Editable Worlds project", "مشروع Worlds قابل للتعديل")}</option>
-          </select>
+          </MenuSelect>
         </label>
         {format !== "worldsdraw" && (
           <>
@@ -309,13 +310,13 @@ export function DrawingExportDialog({
             ) : (
               <label>
                 {t("Frame", "الإطار")}
-                <select value={frame} onChange={(e) => setFrame(e.target.value)}>
+                <MenuSelect value={frame} onChange={(e) => setFrame(e.target.value)}>
                   {scene.frameOrder.map((id) => (
                     <option key={id} value={id}>
                       {shownName(scene.frames[id].name, arabic)}
                     </option>
                   ))}
-                </select>
+                </MenuSelect>
               </label>
             )}
             <label>

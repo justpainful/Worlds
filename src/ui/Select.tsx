@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { menuAt, useMenu } from "./Menu";
 import { Icon } from "./Icon";
 
@@ -40,11 +40,18 @@ export function Select<T extends string>({
   className?: string;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
-  const isOpen = useMenu((s) => s.open !== null);
+  // The menu store is shared: only the control that opened the open menu shows itself expanded.
+  const anyOpen = useMenu((s) => s.open !== null);
+  const [mine, setMine] = useState(false);
+  useEffect(() => {
+    if (!anyOpen) setMine(false);
+  }, [anyOpen]);
+  const isOpen = mine && anyOpen;
   const current = options.find((o) => o.value === value);
 
   const open = () => {
     if (disabled || !ref.current) return;
+    setMine(true);
     menuAt(
       ref.current,
       options.map((o) => ({

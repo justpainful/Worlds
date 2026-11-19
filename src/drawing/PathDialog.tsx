@@ -4,6 +4,7 @@ import { Button } from "../ui/Button";
 import type { DrawingNode, DrawingPath, Point } from "./model";
 import type { DrawingGestureLease } from "./gestureLeases";
 import { movePathVertex, pathBounds, pathFromNode, smoothPathVertex, splitPath, svgPath, validPath } from "./paths";
+import { MenuSelect } from "../ui/MenuSelect";
 const sourceKey = (n: DrawingNode) =>
   JSON.stringify([
     n.id,
@@ -276,13 +277,13 @@ export function PathDialog(p: {
         <fieldset disabled={!enabled}>
           <label className="drawing-field">
             <span>{t("Vertex", "نقطة المسار")}</span>
-            <select value={index} onChange={(e) => setIndex(Number(e.target.value))}>
+            <MenuSelect value={index} onChange={(e) => setIndex(Number(e.target.value))}>
               {path.vertices.map((_, i) => (
                 <option key={i} value={i}>
                   {i + 1}
                 </option>
               ))}
-            </select>
+            </MenuSelect>
           </label>
           <div className="drawing-step-actions">
             <Button

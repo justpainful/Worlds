@@ -6,6 +6,7 @@ import type { DrawingDocument, DrawingScene } from "./model";
 import type { DrawingSession } from "./session";
 import { reserveDrawingRestore } from "./syncManager";
 import { DrawingScenePreview } from "./ScenePreview";
+import { MenuSelect } from "../ui/MenuSelect";
 
 export function DrawingVersionRestoreDialog({
   pageId,
@@ -136,13 +137,13 @@ export function DrawingVersionRestoreDialog({
           <>
             <label>
               {t("Preview frame from saved version", "إطار المعاينة من الإصدار المحفوظ")}
-              <select disabled={busy} value={frameId} onChange={(e) => setFrameId(e.target.value)}>
+              <MenuSelect disabled={busy} value={frameId} onChange={(e) => setFrameId(e.target.value)}>
                 {preview.after.frameOrder.map((id) => (
                   <option value={id} key={id}>
                     {preview.after.frames[id].name}
                   </option>
                 ))}
-              </select>
+              </MenuSelect>
             </label>
             <div className="drawing-version-comparison">
               <section>

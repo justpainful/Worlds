@@ -3,6 +3,7 @@ import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import { readDrawingExportPolicy, useDrawingExportPolicy } from "./exportAccess";
 import type { DrawingExportRules, ExportLevel } from "./exportPolicy";
+import { MenuSelect } from "../ui/MenuSelect";
 export function DrawingExportPolicyDialog({ pageId, arabic, onClose }: { pageId: string; arabic: boolean; onClose: () => void }) {
   const { info, error, refresh } = useDrawingExportPolicy(pageId),
     [draft, setDraft] = useState<DrawingExportRules | null>(null),
@@ -86,7 +87,7 @@ export function DrawingExportPolicyDialog({ pageId, arabic, onClose }: { pageId:
           ).map(([kind, label]) => (
             <label key={kind}>
               {label}
-              <select
+              <MenuSelect
                 value={draft[kind]}
                 disabled={!canManage || busy}
                 onChange={(e) => {
@@ -100,7 +101,7 @@ export function DrawingExportPolicyDialog({ pageId, arabic, onClose }: { pageId:
                     {option.label}
                   </option>
                 ))}
-              </select>
+              </MenuSelect>
             </label>
           ))}
         {stale && (

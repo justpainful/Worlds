@@ -4,6 +4,7 @@ import { errorMessage } from "../lib/api";
 import { PixelEditError, type PixelAction, type PixelEditAction, type PixelSampleSource } from "./floatingPixels";
 import { ObjectTransformError } from "./objectTransforms";
 import { ImageHeaderError } from "./imageHeaders";
+import { MenuSelect } from "../ui/MenuSelect";
 export function pixelEditMessage(error: unknown, arabic: boolean): string {
   if (error instanceof SvgError) return svgErrorMessage(error.code, arabic);
   if (error instanceof ImageHeaderError)
@@ -66,10 +67,10 @@ export function PixelSelectionActions(p: {
     <section className="drawing-pixel-actions" aria-label={t("Edit selected pixels", "تحرير البكسلات المحددة")}>
       <label className="drawing-field">
         <span>{t("Pixel source", "مصدر البكسلات")}</span>
-        <select disabled={p.busy || p.sourceLocked} value={p.source} onChange={(e) => p.setSource(e.target.value as PixelSampleSource)}>
+        <MenuSelect disabled={p.busy || p.sourceLocked} value={p.source} onChange={(e) => p.setSource(e.target.value as PixelSampleSource)}>
           <option value="current">{t("Current layer", "الطبقة الحالية")}</option>
           <option value="visible">{t("Visible layers", "الطبقات الظاهرة")}</option>
-        </select>
+        </MenuSelect>
       </label>
       <p className="drawing-selection-help">
         {t(

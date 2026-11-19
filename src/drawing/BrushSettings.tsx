@@ -5,6 +5,7 @@ import { DEFAULT_BRUSH, type Brush, type BrushKind } from "./model";
 import { BRUSH_PRESETS } from "./presets";
 import type { Tool } from "./Stage";
 import { PenDiagnostics } from "./PenDiagnostics";
+import { MenuSelect } from "../ui/MenuSelect";
 
 const NAMES: Record<BrushKind, [string, string]> = {
   hard: ["Hard brush", "فرشاة صلبة"],
@@ -170,7 +171,7 @@ export function BrushSettings({
       {!laser && (
         <label className="drawing-field">
           <span>{t(dedicated ? "Tip shape" : "Brush type", dedicated ? "شكل الرأس" : "نوع الفرشاة")}</span>
-          <select
+          <MenuSelect
             value={brush.kind}
             onChange={(e) =>
               patch({ kind: e.target.value as BrushKind, ...(e.target.value === "soft" && brush.hardness === 1 ? { hardness: 0.2 } : {}) })
@@ -181,7 +182,7 @@ export function BrushSettings({
                 {NAMES[kind][arabic ? 1 : 0]}
               </option>
             ))}
-          </select>
+          </MenuSelect>
         </label>
       )}
       {number("size", "Size in pixels", "الحجم بالبكسل", 1, 2048, 1, false)}

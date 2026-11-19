@@ -8,7 +8,7 @@
 .drawing-crop-source > p { position:relative; padding:12px; background:var(--surface-deep); }
 .drawing-crop-fields { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; border:0; padding:0; min-inline-size:0; }
 .drawing-crop-fields .drawing-field { min-width:0; }
-.drawing-crop-fields input,.drawing-crop-fields select { max-width:100%; min-width:0; }
+.drawing-crop-fields input,.drawing-crop-fields :is(select, .select-trigger) { max-width:100%; min-width:0; }
 .drawing-crop-fields > label:nth-last-child(2) { grid-column:span 3; }
 .drawing-crop-comparison { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; }
 .drawing-crop-comparison h3 { font-size:14px; font-weight:500; margin-block:8px; }

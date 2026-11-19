@@ -27,6 +27,7 @@ import { fontAvailable } from "./textLayout";
 import { refreshDrawingResource } from "./syncManager";
 import { effectiveLayer } from "./layers";
 import { FontDependencies } from "./FontDependencies";
+import { MenuSelect } from "../ui/MenuSelect";
 
 const LABELS: Record<LibraryKind, [string, string]> = {
   brush: ["Brush", "فرشاة"],
@@ -514,19 +515,19 @@ export function LibraryPanel({
         <input value={query} onChange={(e) => setQuery(e.target.value)} />
       </label>
       <div className="drawing-library-filters">
-        <select aria-label={t("Category", "الفئة")} value={filter} onChange={(e) => setFilter(e.target.value)}>
+        <MenuSelect aria-label={t("Category", "الفئة")} value={filter} onChange={(e) => setFilter(e.target.value)}>
           <option value="all">{t("All categories", "كل الفئات")}</option>
           {Object.entries(LABELS).map(([key, label]) => (
             <option key={key} value={key}>
               {label[arabic ? 1 : 0]}
             </option>
           ))}
-        </select>
-        <select aria-label={t("Library scope", "نطاق المكتبة")} value={scope} onChange={(e) => setScope(e.target.value)}>
+        </MenuSelect>
+        <MenuSelect aria-label={t("Library scope", "نطاق المكتبة")} value={scope} onChange={(e) => setScope(e.target.value)}>
           <option value="all">{t("All libraries", "كل المكتبات")}</option>
           <option value="personal">{t("Personal", "شخصية")}</option>
           <option value="workspace">{t("Workspace", "مساحة العمل")}</option>
-        </select>
+        </MenuSelect>
       </div>
       {visible.map((item) => (
         <button className="drawing-library-row" key={item.page.id} disabled={busy} onClick={() => open(item)}>
@@ -552,7 +553,7 @@ export function LibraryPanel({
           <div className="drawing-step">
             <label>
               {t("Destination", "وجهة الحفظ")}
-              <select
+              <MenuSelect
                 value={existing}
                 onChange={(e) => {
                   const old = items.find((item) => item.page.id === e.target.value);
@@ -573,7 +574,7 @@ export function LibraryPanel({
                       {item.page.title} (v{item.version + 1})
                     </option>
                   ))}
-              </select>
+              </MenuSelect>
             </label>
             <label>
               {t("Name", "الاسم")}
@@ -581,7 +582,7 @@ export function LibraryPanel({
             </label>
             <label>
               {t("Category", "الفئة")}
-              <select
+              <MenuSelect
                 disabled={!!existing}
                 value={kind}
                 onChange={(e) => {
@@ -594,14 +595,14 @@ export function LibraryPanel({
                     {label[arabic ? 1 : 0]}
                   </option>
                 ))}
-              </select>
+              </MenuSelect>
             </label>
             <label>
               {t("Scope", "النطاق")}
-              <select disabled={!!existing} value={saveScope} onChange={(e) => setSaveScope(e.target.value as typeof saveScope)}>
+              <MenuSelect disabled={!!existing} value={saveScope} onChange={(e) => setSaveScope(e.target.value as typeof saveScope)}>
                 <option value="personal">{t("Personal", "شخصية")}</option>
                 <option value="workspace">{t("Current shared workspace", "مساحة العمل المشتركة الحالية")}</option>
-              </select>
+              </MenuSelect>
             </label>
             <label>
               {t("Tags, separated by commas", "وسوم مفصولة بفواصل")}
@@ -828,13 +829,13 @@ export function LibraryPanel({
             </p>
             <label>
               {t("Published version", "الإصدار المنشور")}
-              <select disabled={busy || replacing} value={opened.version} onChange={(e) => open(opened.item, Number(e.target.value))}>
+              <MenuSelect disabled={busy || replacing} value={opened.version} onChange={(e) => open(opened.item, Number(e.target.value))}>
                 {opened.item.versions.map((v) => (
                   <option key={v.version} value={v.version}>
                     {v.version} · {new Date(v.createdAt).toLocaleString()}
                   </option>
                 ))}
-              </select>
+              </MenuSelect>
             </label>
             {!["brush", "palette", "style"].includes(opened.item.kind) && !replacing && (
               <label className="drawing-check">
