@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Icon } from "../ui/Icon";
 import { colorAlpha, colorParts } from "./ColorField";
 const DEFAULT_COLORS = [
   "#202023",
@@ -107,7 +108,7 @@ export function DrawingColors({
         aria-expanded={open}
         onClick={() => setOpen(!open)}
       >
-        ⌄
+        <Icon name="chevronDown" size={12} />
       </button>
       {open && (
         <div

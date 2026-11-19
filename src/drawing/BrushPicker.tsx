@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Icon } from "../ui/Icon";
 import { BRUSH_PRESETS, type BrushPreset } from "./presets";
 import { newNode, newScene, type Brush } from "./model";
 import { DrawingRenderer } from "./renderer";
@@ -65,7 +66,7 @@ export function BrushStylePicker({ brush, arabic, onChange }: { brush: Brush; ar
         onClick={() => setOpen(!open)}
       >
         {current ? (arabic ? current.ar : current.label) : arabic ? "فرشاة مخصصة" : "Custom brush"}
-        <span aria-hidden="true">⌄</span>
+        <Icon name="chevronDown" size={12} />
       </button>
       {open && (
         <div

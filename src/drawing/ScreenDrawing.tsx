@@ -209,7 +209,8 @@ export function ScreenDrawing({ capture, board, arabic, initialBrush, laserLifet
   };
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !textEdit && !confirmClose) {
+      // An open brush or colour menu closes first; only then does Escape leave screen drawing.
+      if (e.key === "Escape" && !textEdit && !confirmClose && !document.querySelector('.screen-drawing [aria-expanded="true"]')) {
         e.preventDefault();
         e.stopPropagation();
         requestClose();
