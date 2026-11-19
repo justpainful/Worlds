@@ -10,6 +10,7 @@ import type { DrawingExportScene } from "./exportPolicy";
 import { canDrawingExport } from "./exportPolicy";
 import { useDrawingExportPolicy } from "./exportAccess";
 import { accountApi } from "../account/api";
+import { MenuSelect } from "../ui/MenuSelect";
 
 export function StepsPanel({
   scene,
@@ -200,14 +201,14 @@ export function StepsPanel({
             </label>
             <label>
               {t("Transition", "الانتقال")}
-              <select
+              <MenuSelect
                 value={step.transition}
                 disabled={!canEdit}
                 onChange={(e) => patch(step, { transition: e.target.value as Step["transition"] })}
               >
                 <option value="cut">{t("Cut", "مباشر")}</option>
                 <option value="fade">{t("Fade", "تلاشي")}</option>
-              </select>
+              </MenuSelect>
             </label>
             <label>
               {t("Auto advance seconds (0 = manual)", "الانتقال بعد ثوانٍ (0 = يدوي)")}
@@ -517,13 +518,13 @@ function DrawingPresentation({
             <Button disabled={!safeIndex} onClick={() => setIndex(safeIndex - 1)}>
               {arabic ? "السابق" : "Previous"}
             </Button>
-            <select aria-label={arabic ? "الخطوة" : "Step"} value={safeIndex} onChange={(e) => setIndex(Number(e.target.value))}>
+            <MenuSelect aria-label={arabic ? "الخطوة" : "Step"} value={safeIndex} onChange={(e) => setIndex(Number(e.target.value))}>
               {scene.stepOrder.map((id, i) => (
                 <option key={id} value={i}>
                   {i + 1}. {scene.steps[id].title}
                 </option>
               ))}
-            </select>
+            </MenuSelect>
             <Button disabled={safeIndex === scene.stepOrder.length - 1} onClick={() => setIndex(safeIndex + 1)}>
               {arabic ? "التالي" : "Next"}
             </Button>

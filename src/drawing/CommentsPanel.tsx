@@ -8,6 +8,7 @@ import { drawingCommentAnchor, drawingCommentLocation, type DrawingLiveSession }
 import { validDrawingAnchor, type DrawingCommentAnchor } from "./collaborationTypes";
 import type { DrawingScene, Rect } from "./model";
 import { DrawingRejectedCommentsDialog } from "./RejectedCommentsDialog";
+import { MenuSelect } from "../ui/MenuSelect";
 const subscribeNone = () => () => {};
 function safeCommentTime(value: number, arabic: boolean) {
   const date = typeof value === "number" && Number.isFinite(value) && Math.abs(value) <= 8.64e15 ? new Date(value) : null;
@@ -151,7 +152,7 @@ export function DrawingCommentsPanel({
               </label>
               <label>
                 {t("Mention a member", "الإشارة إلى عضو")}
-                <select
+                <MenuSelect
                   value=""
                   onChange={(e) => {
                     const p = people.find((p) => p.id === e.target.value);
@@ -166,7 +167,7 @@ export function DrawingCommentsPanel({
                         {p.name}
                       </option>
                     ))}
-                </select>
+                </MenuSelect>
               </label>
               <div className="drawing-step-actions">
                 <Button

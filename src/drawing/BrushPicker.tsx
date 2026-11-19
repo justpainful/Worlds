@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Icon } from "../ui/Icon";
 import { BRUSH_PRESETS, type BrushPreset } from "./presets";
 import { newNode, newScene, type Brush } from "./model";
 import { DrawingRenderer } from "./renderer";
@@ -15,7 +16,14 @@ function StrokePreview({ preset }: { preset: BrushPreset }) {
     frame.h = 34;
     frame.background = "transparent";
     const node = newNode("stroke", scene.layerOrder[0], frame.id, { x: 0, y: 0, w: 120, h: 34 });
-    node.brush = { ...preset.brush, size: Math.min(14, preset.brush.size), color: getComputedStyle(c).color };
+    // Spray and watercolour build up slowly; at preview size they need more paint to read at all.
+    const soft = preset.brush.kind === "spray" || preset.brush.kind === "watercolor";
+    node.brush = {
+      ...preset.brush,
+      size: Math.min(soft ? 22 : 14, preset.brush.size),
+      color: getComputedStyle(c).color,
+      ...(soft ? { opacity: 1, flow: 1, ...(preset.brush.kind === "spray" ? { size: 30, spacing: 0.04 } : {}) } : {}),
+    };
     node.samples = Array.from({ length: 60 }, (_, i) => ({
       x: 9 + (i / 59) * 102,
       y: 17 - Math.sin((i / 59) * Math.PI * 2) * 6,
@@ -65,7 +73,7 @@ export function BrushStylePicker({ brush, arabic, onChange }: { brush: Brush; ar
         onClick={() => setOpen(!open)}
       >
         {current ? (arabic ? current.ar : current.label) : arabic ? "فرشاة مخصصة" : "Custom brush"}
-        <span aria-hidden="true">⌄</span>
+        <Icon name="chevronDown" size={12} />
       </button>
       {open && (
         <div

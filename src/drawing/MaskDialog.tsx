@@ -12,6 +12,7 @@ import type { DrawingGestureLease } from "./gestureLeases";
 import { worldRenderBounds } from "./geometry";
 import "./maskEditor.css";
 import { shortcutKey } from "../lib/keys";
+import { MenuSelect } from "../ui/MenuSelect";
 type Domain = ReturnType<typeof maskDomain>;
 interface Props {
   scene: DrawingScene;
@@ -413,11 +414,11 @@ export function MaskDialog(p: Props) {
         <fieldset disabled={!editable} className="drawing-mask-controls">
           <label className="drawing-field">
             <span>{t("Tool", "الأداة")}</span>
-            <select value={tool} onChange={(e) => setTool(e.target.value as typeof tool)}>
+            <MenuSelect value={tool} onChange={(e) => setTool(e.target.value as typeof tool)}>
               <option value="paint">{t("Grayscale brush", "فرشاة رمادية")}</option>
               <option value="fill">{t("Fill region", "تعبئة منطقة")}</option>
               <option value="gradient">{t("Linear gradient", "تدرج خطي")}</option>
-            </select>
+            </MenuSelect>
           </label>
           {slider("Gray value", "قيمة الرمادي", gray, setGray, 0, 255)}
           {tool === "paint" && (
@@ -440,10 +441,10 @@ export function MaskDialog(p: Props) {
             <>
               <label className="drawing-field">
                 <span>{t("Gradient shape", "شكل التدرج")}</span>
-                <select value={gradientMode} onChange={(e) => setGradientMode(e.target.value as "linear" | "radial")}>
+                <MenuSelect value={gradientMode} onChange={(e) => setGradientMode(e.target.value as "linear" | "radial")}>
                   <option value="linear">{t("Linear", "خطي")}</option>
                   <option value="radial">{t("Radial", "دائري")}</option>
-                </select>
+                </MenuSelect>
               </label>
               {slider("Gradient end", "نهاية التدرج", gradientEnd, setGradientEnd, 0, 255)}
               <p className="drawing-selection-help">

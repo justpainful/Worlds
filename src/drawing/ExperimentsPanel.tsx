@@ -8,6 +8,7 @@ import type { DrawingSession } from "./session";
 import { DrawingRenderer, type Viewport } from "./renderer";
 import { experimentDifferences, mergeExperiment, type AdoptionChoice, type ExperimentDifference } from "./experiments";
 import { sceneChanges } from "./operations";
+import { MenuSelect } from "../ui/MenuSelect";
 type ExperimentRow = Awaited<ReturnType<typeof api.drawingExperiments>>[number];
 
 export function ExperimentsPanel({
@@ -73,7 +74,7 @@ export function ExperimentsPanel({
           </div>
           <label>
             {t("Status", "الحالة")}
-            <select
+            <MenuSelect
               disabled={!canEdit}
               value={entry.experiment.status}
               onChange={async (e) => {
@@ -88,7 +89,7 @@ export function ExperimentsPanel({
               <option value="draft">{t("Draft", "تجربة")}</option>
               <option value="review">{t("Review", "قيد المراجعة")}</option>
               <option value="approved">{t("Approved", "معتمدة")}</option>
-            </select>
+            </MenuSelect>
           </label>
         </section>
       ))}
@@ -463,7 +464,7 @@ function ExperimentComparison({
       ) : (
         <>
           <div className="drawing-compare-controls">
-            <select
+            <MenuSelect
               aria-label={t("Comparison mode", "طريقة المقارنة")}
               value={mode}
               onChange={(e) => setMode(e.target.value as typeof mode)}
@@ -471,7 +472,7 @@ function ExperimentComparison({
               <option value="side">{t("Side by side", "جنبًا إلى جنب")}</option>
               <option value="wipe">{t("Before / after slider", "فاصل قبل وبعد")}</option>
               <option value="changes">{t("Highlight changed elements", "إظهار العناصر المتغيرة")}</option>
-            </select>
+            </MenuSelect>
             <label>
               <input
                 type="checkbox"
@@ -483,14 +484,14 @@ function ExperimentComparison({
               />
               {t("Link zoom and pan", "ربط التكبير والتحريك")}
             </label>
-            <select aria-label={t("Adoption scope", "نطاق الاعتماد")} value={scope} onChange={(e) => setScope(e.target.value)}>
+            <MenuSelect aria-label={t("Adoption scope", "نطاق الاعتماد")} value={scope} onChange={(e) => setScope(e.target.value)}>
               <option value="all">{t("Entire experiment", "التجربة كاملة")}</option>
               {loaded.branch.frameOrder.map((id) => (
                 <option key={id} value={id}>
                   {loaded.branch.frames[id].name}
                 </option>
               ))}
-            </select>
+            </MenuSelect>
           </div>
           <div className={`drawing-compare ${mode === "wipe" ? "is-wipe" : ""}`}>
             <div className="drawing-compare-side">
@@ -539,7 +540,7 @@ function ExperimentComparison({
                     {t("Current", "الحالي")}: {describe(difference.current)} · {t("Experiment", "التجربة")}:{" "}
                     {describe(difference.experiment)}
                   </small>
-                  <select
+                  <MenuSelect
                     aria-label={`${t("Resolve", "اختيار")}: ${propertyLabel(difference.path, arabic)}`}
                     value={choices[difference.key] ?? (difference.conflict ? "" : "experiment")}
                     onChange={(e) => setChoices({ ...choices, [difference.key]: e.target.value as AdoptionChoice })}
@@ -552,7 +553,7 @@ function ExperimentComparison({
                     {difference.collection === "nodes" && loaded.branch.nodes[difference.id] && (
                       <option value="duplicate">{t("Keep both as separate elements", "الاحتفاظ بالاثنين كعنصرين")}</option>
                     )}
-                  </select>
+                  </MenuSelect>
                 </div>
               ))
             ) : (

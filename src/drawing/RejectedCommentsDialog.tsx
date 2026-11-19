@@ -12,6 +12,7 @@ import { rejectedComments, rejectedCommentsText, type RejectedComment } from "./
 import { saveDrawingBlob } from "./files";
 import { useDrawingExportPolicy } from "./exportAccess";
 import { canDrawingExport } from "./exportPolicy";
+import { MenuSelect } from "../ui/MenuSelect";
 const subscribeNone = () => () => {};
 function displayDate(value: number, arabic: boolean) {
   const date = Number.isFinite(value) && Math.abs(value) <= 8.64e15 ? new Date(value) : null;
@@ -133,7 +134,7 @@ export function DrawingRejectedCommentsDialog({
             </p>
             <label>
               {t("Local copy", "النسخة المحلية")}
-              <select
+              <MenuSelect
                 disabled={busy}
                 value={selected?.id ?? ""}
                 onChange={(e) => {
@@ -147,7 +148,7 @@ export function DrawingRejectedCommentsDialog({
                     {displayDate(item.createdAt, arabic).label} · {(item.size / 1024).toFixed(1)} KB
                   </option>
                 ))}
-              </select>
+              </MenuSelect>
             </label>
             {next && (
               <Button

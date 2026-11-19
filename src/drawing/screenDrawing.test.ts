@@ -86,6 +86,8 @@ describe("ScreenDrawing mode (Survey §1.2)", () => {
     expect(html).toContain("لوحة الألوان");
     // Tools show their drawn icons, not text glyphs.
     expect(html).toContain("drawing-tool-icon");
+    // Menu chevrons are drawn icons, not a "⌄" letter that sits low like a v.
+    expect(html).not.toContain("⌄");
   });
 
   it("brings the chosen board onto the screen as a movable picture", () => {

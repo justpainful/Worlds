@@ -12,7 +12,7 @@ import { maskEditChanges, maskPropertyChanges } from "./maskEdit";
 import { LayerBrowser } from "./LayerBrowser";
 import { DrawingShortcutsDialog } from "./ShortcutsDialog";
 import { drawingShortcutAction, readDrawingShortcuts } from "./shortcuts";
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ScreenDrawing, type CapturedScreen, type ScreenBoard } from "./ScreenDrawing";
 import { localStore } from "../sync/session";
@@ -108,6 +108,7 @@ import "./drawing.css";
 import { shortcutKey } from "../lib/keys";
 import { useMenu } from "../ui/Menu";
 import { ToolIcon } from "./toolIcons";
+import { MenuSelect } from "../ui/MenuSelect";
 
 const TOOLS: { id: Tool; label: string; ar: string; glyph: string; key?: string }[] = [
   { id: "select", label: "Move", ar: "تحريك", glyph: "↖", key: "V" },
@@ -196,7 +197,15 @@ function Range({
 }) {
   return (
     <Field label={label}>
-      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} />
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        style={{ "--fill": `${Math.max(0, Math.min(100, ((value - min) / (max - min || 1)) * 100))}%` } as CSSProperties}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
       <output>
         {Math.round(value * (max === 1 ? 100 : 1))}
         {max === 1 ? "%" : ""}
@@ -1309,14 +1318,14 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
         )}
         {tool === "eyedropper" && (
           <Field label={t("Color source", "مصدر اللون")}>
-            <select
+            <MenuSelect
               disabled={!!solo}
               value={sampleMerged && !solo ? "merged" : "current"}
               onChange={(e) => setSampleMerged(e.target.value === "merged")}
             >
               <option value="merged">{t("Visible merged appearance", "المظهر المرئي المدمج")}</option>
               <option value="current">{t("Current layer before opacity", "الطبقة الحالية قبل الشفافية")}</option>
-            </select>
+            </MenuSelect>
           </Field>
         )}
         {tool !== "redact" && (
@@ -1714,7 +1723,7 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
                       />
                     </Field>
                     <Field label={t("Parent group", "المجموعة الأم")}>
-                      <select
+                      <MenuSelect
                         value={currentLayer.parentId ?? ""}
                         disabled={!canEdit || effectiveLayer(scene, currentLayer.id).locked}
                         onChange={(e) =>
@@ -1731,7 +1740,7 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
                               {scene.layers[id].name}
                             </option>
                           ))}
-                      </select>
+                      </MenuSelect>
                     </Field>
                     <label className="drawing-check">
                       <input
@@ -1753,7 +1762,7 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
                       }
                     />
                     <Field label={t("Blend", "المزج")}>
-                      <select
+                      <MenuSelect
                         value={currentLayer.blend}
                         onChange={(e) =>
                           commit("Layer blend", [
@@ -1764,7 +1773,7 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
                         {["source-over", "multiply", "screen", "overlay", "darken", "lighten"].map((v) => (
                           <option key={v} value={v}>{arabic ? AR_BLEND[v] : enName(v)}</option>
                         ))}
-                      </select>
+                      </MenuSelect>
                     </Field>
                     <label className="drawing-check">
                       <input
@@ -1949,7 +1958,7 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
                     />
                   </fieldset>
                   <Field label={t("Frame status", "حالة الإطار")}>
-                    <select
+                    <MenuSelect
                       value={currentFrame.status}
                       onChange={(e) =>
                         commit("Frame status", [
@@ -1960,7 +1969,7 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
                       <option value="draft">{t("Draft", "مسودة")}</option>
                       <option value="ready">{t("Ready", "جاهز")}</option>
                       <option value="approved">{t("Approved", "معتمد")}</option>
-                    </select>
+                    </MenuSelect>
                   </Field>
                   <div className="drawing-step-actions">
                     <Button
@@ -2188,13 +2197,13 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
                   )}
                   {tool === "shape" && (
                     <Field label={t("Shape", "الشكل")}>
-                      <select value={shape} onChange={(e) => setShape(e.target.value as Shape)}>
+                      <MenuSelect value={shape} onChange={(e) => setShape(e.target.value as Shape)}>
                         {SHAPES.map((s) => (
                           <option value={s} key={s}>
                             {arabic ? AR_SHAPES[s] : enName(s)}
                           </option>
                         ))}
-                      </select>
+                      </MenuSelect>
                     </Field>
                   )}
                   {one && (
@@ -2219,7 +2228,7 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
                         />
                       )}
                       <Field label={t("Element frame", "إطار العنصر")}>
-                        <select
+                        <MenuSelect
                           value={one.frameId ?? ""}
                           disabled={
                             !canEdit ||
@@ -2235,7 +2244,7 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
                               {shownName(scene.frames[id].name, arabic)}
                             </option>
                           ))}
-                        </select>
+                        </MenuSelect>
                       </Field>
                       {!isRedaction(one) && (
                         <Range
@@ -2317,7 +2326,7 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
                             </Button>
                           )}
                           <Field label={t("Add adjustment", "إضافة تعديل")}>
-                            <select
+                            <MenuSelect
                               value=""
                               onChange={(e) => {
                                 const kind = e.target.value as DrawingNode["effects"][number]["kind"];
@@ -2351,7 +2360,7 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
                                   {arabic ? AR_EFFECTS[v] : enName(v)}
                                 </option>
                               ))}
-                            </select>
+                            </MenuSelect>
                           </Field>
                           {one.effects.map((effect, index) => (
                             <div className="drawing-effect" key={effect.id}>
@@ -2470,7 +2479,7 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
                       {one.kind !== "image" && one.kind !== "raster" && !one.erase && !isRedaction(one) && (
                         <>
                           <Field label={t("Add adjustment", "إضافة تعديل")}>
-                            <select
+                            <MenuSelect
                               value=""
                               disabled={!canEdit || one.locked || effectiveLayer(scene, one.layerId).locked}
                               onChange={(e) => {
@@ -2495,7 +2504,7 @@ function DrawingEditor({ id: pageId, paneId }: { id: string; paneId: string }) {
                                   {arabic ? AR_EFFECTS[v] : enName(v)}
                                 </option>
                               ))}
-                            </select>
+                            </MenuSelect>
                           </Field>
                           {one.effects.map((effect, index) => (
                             <div className="drawing-effect" key={effect.id}>

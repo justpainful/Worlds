@@ -1,5 +1,6 @@
 import { Button } from "../ui/Button";
 import { id, type Frame } from "./model";
+import { MenuSelect } from "../ui/MenuSelect";
 export function GridControls({ frame, arabic, onChange }: { frame: Frame; arabic: boolean; onChange: (fields: Partial<Frame>) => void }) {
   const t = (en: string, ar: string) => (arabic ? ar : en),
     grid = frame.grid ?? { visible: false, size: 20, snap: false },
@@ -37,7 +38,7 @@ export function GridControls({ frame, arabic, onChange }: { frame: Frame; arabic
         <div className="drawing-guide-row" key={guide.id}>
           <label>
             <span>{t(`Guide ${index + 1} axis`, `اتجاه الدليل ${index + 1}`)}</span>
-            <select
+            <MenuSelect
               value={guide.axis}
               onChange={(e) =>
                 onChange({ guides: guides.map((g) => (g.id === guide.id ? { ...g, axis: e.target.value as "x" | "y" } : g)) })
@@ -45,7 +46,7 @@ export function GridControls({ frame, arabic, onChange }: { frame: Frame; arabic
             >
               <option value="x">{t("Vertical", "رأسي")}</option>
               <option value="y">{t("Horizontal", "أفقي")}</option>
-            </select>
+            </MenuSelect>
           </label>
           <label>
             <span>{t(`Guide ${index + 1} position`, `موضع الدليل ${index + 1}`)}</span>

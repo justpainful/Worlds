@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { Icon } from "../ui/Icon";
 import { colorAlpha, colorParts } from "./ColorField";
 const DEFAULT_COLORS = [
   "#202023",
@@ -107,7 +108,7 @@ export function DrawingColors({
         aria-expanded={open}
         onClick={() => setOpen(!open)}
       >
-        ⌄
+        <Icon name="chevronDown" size={12} />
       </button>
       {open && (
         <div
@@ -186,6 +187,7 @@ export function DrawingColors({
               min={0}
               max={100}
               value={Math.round(parts.alpha * 100)}
+              style={{ "--fill": `${Math.round(parts.alpha * 100)}%` } as CSSProperties}
               onChange={(e) => onColor(colorAlpha(parts.rgb, Number(e.target.value) / 100))}
             />
             <output>{Math.round(parts.alpha * 100)}%</output>

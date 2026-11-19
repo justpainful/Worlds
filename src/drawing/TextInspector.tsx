@@ -3,6 +3,7 @@ import type { DrawingNode, TextStyle } from "./model";
 import { ColorField } from "./ColorField";
 import { fontAvailable } from "./textLayout";
 import { Button } from "../ui/Button";
+import { MenuSelect } from "../ui/MenuSelect";
 export function TextInspector({
   node,
   arabic,
@@ -59,7 +60,7 @@ export function TextInspector({
       {field(
         "Typeface",
         "نوع الخط",
-        <select
+        <MenuSelect
           value={custom ? "custom" : s.font}
           onChange={(e) => {
             const local = e.target.value === "custom";
@@ -72,7 +73,7 @@ export function TextInspector({
           <option>Instrument Sans</option>
           <option>IBM Plex Mono</option>
           <option value="custom">{t("Installed font", "خط مثبت على الجهاز")}</option>
-        </select>,
+        </MenuSelect>,
       )}
       {field(
         "Font name",
@@ -128,13 +129,13 @@ export function TextInspector({
       {field(
         "Weight",
         "وزن الخط",
-        <select value={s.weight} onChange={(e) => patch({ weight: Number(e.target.value) })}>
+        <MenuSelect value={s.weight} onChange={(e) => patch({ weight: Number(e.target.value) })}>
           {[300, 400, 500, 600, 700, 800, 900].map((w) => (
             <option key={w} value={w}>
               {w}
             </option>
           ))}
-        </select>,
+        </MenuSelect>,
       )}
       <label className="drawing-check">
         <input type="checkbox" checked={s.weight >= 700} onChange={(e) => patch({ weight: e.target.checked ? 700 : 400 })} />
@@ -174,20 +175,20 @@ export function TextInspector({
       {field(
         "Alignment",
         "المحاذاة",
-        <select value={s.align} onChange={(e) => patch({ align: e.target.value as TextStyle["align"] })}>
+        <MenuSelect value={s.align} onChange={(e) => patch({ align: e.target.value as TextStyle["align"] })}>
           <option value="start">{t("Start", "البداية")}</option>
           <option value="center">{t("Center", "الوسط")}</option>
           <option value="end">{t("End", "النهاية")}</option>
-        </select>,
+        </MenuSelect>,
       )}
       {field(
         "Direction",
         "اتجاه النص",
-        <select value={s.direction} onChange={(e) => patch({ direction: e.target.value as TextStyle["direction"] })}>
+        <MenuSelect value={s.direction} onChange={(e) => patch({ direction: e.target.value as TextStyle["direction"] })}>
           <option value="auto">{t("Automatic", "تلقائي")}</option>
           <option value="rtl">{t("Right to left", "من اليمين لليسار")}</option>
           <option value="ltr">{t("Left to right", "من اليسار لليمين")}</option>
-        </select>,
+        </MenuSelect>,
       )}
       {field(
         "Line height",
@@ -228,10 +229,10 @@ export function TextInspector({
       {field(
         "When resizing",
         "عند تغيير المقاس",
-        <select value={s.resizeMode ?? "scale"} onChange={(e) => patch({ resizeMode: e.target.value as "wrap" | "scale" })}>
+        <MenuSelect value={s.resizeMode ?? "scale"} onChange={(e) => patch({ resizeMode: e.target.value as "wrap" | "scale" })}>
           <option value="wrap">{t("Wrap text, keep font size", "التفاف النص مع ثبات حجم الخط")}</option>
           <option value="scale">{t("Scale text with box", "تحجيم النص مع الإطار")}</option>
-        </select>,
+        </MenuSelect>,
       )}
     </section>
   );

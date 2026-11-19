@@ -1,25 +1,74 @@
-.screen-drawing { position: fixed; inset: 0; z-index: 9000; background: #242426; color: #f5f5f7; font: var(--t-ui); }
+.screen-drawing { position: fixed; inset: 0; z-index: 9000; background: #242426; color: var(--text-1); font: var(--t-ui); }
 .screen-drawing[dir="rtl"] { font-family: "IBM Plex Sans Arabic", sans-serif; font-size: 15.5px; line-height: 1.7; letter-spacing: 0; }
 .screen-drawing-stage { position: absolute; inset: 0; display: flex; }
 .screen-drawing-stage .drawing-stage { width: 100%; height: 100%; }
-/* The bar does not scroll or clip: the brush styles and the colour picker open below it in full. */
-.screen-drawing-bar { position: absolute; inset-block-start: 8px; inset-inline: 8px; z-index: 2; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; padding: 6px; background: #1c1c1e; border: 1px solid #55555a; border-radius: 8px; }
-.screen-drawing-bar > button { display: inline-grid; place-items: center; }
-.screen-drawing-color { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+
+/* One floating glass bar: tools, then the current tool's options, then history and the two exits.
+   The bar does not scroll or clip, so the brush, shape and colour menus open below it in full. */
+.screen-drawing-bar {
+  position: absolute; inset-block-start: 10px; left: 50%; transform: translateX(-50%); z-index: 2;
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px 10px;
+  width: max-content; max-width: calc(100% - 24px); box-sizing: border-box; padding: 6px;
+  background: rgba(32, 32, 35, 0.82); -webkit-backdrop-filter: blur(24px) saturate(1.5); backdrop-filter: blur(24px) saturate(1.5);
+  border: 0.5px solid rgba(255, 255, 255, 0.14); border-radius: 18px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), var(--elev-3);
+}
+.sdb-group { display: flex; align-items: center; gap: 8px; min-height: 36px; }
+.sdb-group + .sdb-group { padding-inline-start: 10px; border-inline-start: 0.5px solid rgba(255, 255, 255, 0.12); }
+.sdb-group:empty { display: none; }
+.sdb-tools { gap: 2px; }
+.sdb-label { color: var(--text-2); font-size: 12.5px; white-space: nowrap; }
+
+/* Tools: quiet until chosen; the chosen one sits on a light lens. */
+.sdb-tool {
+  display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; color: var(--text-2);
+  transition: background 110ms cubic-bezier(0.2, 0.7, 0.2, 1), transform 160ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.sdb-tool:hover { background: var(--fill-2); color: var(--text-1); }
+.sdb-tool:active { transform: scale(0.94); }
+.sdb-tool[aria-pressed="true"] { background: rgba(255, 255, 255, 0.16); color: var(--text-1); }
+.sdb-tool:focus-visible, .sdb-toggle:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.sdb-letter { width: 32px; height: 32px; font-size: 15px; }
+.sdb-pair { display: inline-flex; align-items: center; gap: 2px; }
+
+/* The brush, shape and colour capsules and the slider look come from drawing.css. */
 .screen-drawing-bar .drawing-brush-menu, .screen-drawing-bar .drawing-color-menu { max-height: calc(100vh - 120px); overflow-y: auto; }
-.screen-drawing-bar .drawing-palette-trigger { min-width: 30px; min-height: 32px; padding: 4px 8px; }
-.screen-drawing-bar > button, .screen-drawing-bar .drawing-brush-trigger, .screen-drawing-bar .drawing-palette-trigger, .screen-drawing-prompt button { min-width: 36px; min-height: 36px; padding: 5px 9px; color: #f5f5f7; background: #303034; border: 1px solid #5b5b61; border-radius: 6px; cursor: pointer; }
-.screen-drawing-bar > button[aria-pressed="true"] { background: rgba(var(--accent-rgb), 0.35); border-color: var(--accent); }
-.screen-drawing-bar > button:disabled { opacity: .45; cursor: default; }
-.screen-drawing-bar label { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
-.screen-drawing-bar input[type="range"] { width: 92px; accent-color: var(--accent); }
-.screen-drawing-bar input[type="number"] { width: 62px; }
-.screen-drawing-bar > label input, .screen-drawing-bar select, .screen-drawing-prompt textarea { color: #f5f5f7; background: #303034; border: 1px solid #69696d; border-radius: 5px; }
-.screen-drawing-bar input[type="color"] { width: 34px; height: 32px; padding: 2px; }
-.screen-drawing-divider { height: 25px; border-inline-start: 1px solid #69696d; }
-.screen-drawing-still { position: absolute; inset-inline-start: 12px; bottom: 12px; padding: 4px 9px; color: #f5f5f7; background: #1c1c1e; border-radius: 6px; font-size: 12px; }
-.screen-drawing-alert { position: absolute; inset-inline: 16px; bottom: 16px; padding: 12px; background: #5c2525; border-radius: 8px; }
-.screen-drawing-alert button { float: inline-end; color: white; }
-.screen-drawing-prompt { position: absolute; inset: 50% auto auto 50%; transform: translate(-50%, -50%); width: min(460px, calc(100% - 32px)); box-sizing: border-box; padding: 18px; background: #1c1c1e; border: 1px solid #69696d; border-radius: 12px; }
+.sdb-slider { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.sdb-slider input[type="range"] { width: 104px; }
+.sdb-slider output { min-width: 3ch; color: var(--text-2); font-size: 12.5px; font-variant-numeric: tabular-nums; text-align: center; }
+
+/* Correct shapes: a switch with its label, not a bare checkbox. */
+.sdb-toggle { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding-inline: 6px 10px; border-radius: var(--r-capsule); color: var(--text-1); font-size: 13px; white-space: nowrap; }
+.sdb-toggle:hover { background: var(--fill-1); }
+.sdb-switch { position: relative; flex: none; width: 30px; height: 18px; border-radius: 9px; background: rgba(255, 255, 255, 0.2); transition: background 160ms cubic-bezier(0.2, 0.7, 0.2, 1); }
+.sdb-switch::after { content: ""; position: absolute; inset-block-start: 2px; inset-inline-start: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); transition: inset-inline-start 220ms cubic-bezier(0.2, 0.7, 0.2, 1); }
+.sdb-toggle[aria-checked="true"] .sdb-switch { background: var(--accent); }
+.sdb-toggle[aria-checked="true"] .sdb-switch::after { inset-inline-start: 14px; }
+
+.sdb-number { display: inline-flex; align-items: center; gap: 6px; }
+.sdb-number .field { width: 64px; height: 30px; padding: 0 8px; }
+.sdb-actions { gap: 6px; }
+/* The actions wrap to their own row on narrow screens, where a leading hairline would hang alone. */
+.sdb-group.sdb-actions { padding-inline-start: 4px; border-inline-start: 0; }
+
+.screen-drawing-still {
+  position: absolute; inset-inline-start: 12px; bottom: 12px; padding: 4px 12px; color: var(--text-2); font-size: 12px;
+  background: rgba(32, 32, 35, 0.82); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+  border: 0.5px solid rgba(255, 255, 255, 0.12); border-radius: var(--r-capsule);
+}
+.screen-drawing-alert {
+  position: absolute; inset-inline: 16px; bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 8px 8px 8px 14px; background: rgba(92, 37, 37, 0.92); border-radius: 14px; box-shadow: var(--elev-3);
+}
+.screen-drawing-prompt {
+  position: absolute; inset: 50% auto auto 50%; transform: translate(-50%, -50%); z-index: 3; width: min(460px, calc(100% - 32px)); box-sizing: border-box; padding: 20px;
+  background: rgba(36, 36, 39, 0.92); -webkit-backdrop-filter: blur(28px) saturate(1.5); backdrop-filter: blur(28px) saturate(1.5);
+  border: 0.5px solid rgba(255, 255, 255, 0.14); border-radius: 16px; box-shadow: var(--elev-3);
+}
+.screen-drawing-prompt p { margin: 0; }
 .screen-drawing-prompt textarea { box-sizing: border-box; width: 100%; min-height: 110px; padding: 10px; resize: vertical; }
-.screen-drawing-prompt div { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.screen-drawing-prompt div { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sdb-tool, .sdb-switch, .sdb-switch::after { transition: none; }
+}

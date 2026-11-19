@@ -19,6 +19,7 @@ import {
   type AnnotationStatus,
 } from "./annotations";
 import "./annotations.css";
+import { MenuSelect } from "../ui/MenuSelect";
 type Edit = { scene: DrawingScene; node: DrawingNode; key: "anchor" | "endAnchor"; target: string; u: number; v: number };
 interface Props {
   scene: DrawingScene;
@@ -121,7 +122,7 @@ export function AnnotationsPanel({ scene, frameId, layerId, selected, canEdit, a
         <div className="drawing-step">
           <label>
             {t("Status", "الحالة")}
-            <select
+            <MenuSelect
               value={current.annotationStatus ?? "open"}
               disabled={!canEdit || busy}
               onChange={(e) =>
@@ -139,11 +140,11 @@ export function AnnotationsPanel({ scene, frameId, layerId, selected, canEdit, a
                   {s === "open" ? t("Open", "مفتوح") : s === "active" ? t("In progress", "قيد العمل") : t("Resolved", "مكتمل")}
                 </option>
               ))}
-            </select>
+            </MenuSelect>
           </label>
           <label>
             {t("Appearance preset", "نمط المظهر")}
-            <select
+            <MenuSelect
               value=""
               disabled={!canEdit || busy}
               onChange={(e) => {
@@ -159,7 +160,7 @@ export function AnnotationsPanel({ scene, frameId, layerId, selected, canEdit, a
                   {arabic ? s.ar : s.en}
                 </option>
               ))}
-            </select>
+            </MenuSelect>
           </label>
           <Button size="compact" disabled={busy} onClick={() => onSelect(members.map((n) => n.id))}>
             {t("Select annotation group", "تحديد مجموعة الشرح")}
@@ -225,13 +226,13 @@ export function AnnotationsPanel({ scene, frameId, layerId, selected, canEdit, a
         <>
           <label>
             {t("Show annotations", "عرض الشروحات")}
-            <select value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)}>
+            <MenuSelect value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)}>
               <option value="all">{t("All", "الكل")}</option>
               <option value="review">{t("Need review", "تحتاج مراجعة")}</option>
               <option value="open">{t("Open", "مفتوح")}</option>
               <option value="active">{t("In progress", "قيد العمل")}</option>
               <option value="resolved">{t("Resolved", "مكتمل")}</option>
-            </select>
+            </MenuSelect>
           </label>
           {rows
             .filter((n) =>
@@ -305,7 +306,7 @@ export function AnnotationsPanel({ scene, frameId, layerId, selected, canEdit, a
           <div className="drawing-step">
             <label>
               {t("Target element", "العنصر المرتبط")}
-              <select value={editor.target} disabled={busy} onChange={(e) => setEditor({ ...editor, target: e.target.value })}>
+              <MenuSelect value={editor.target} disabled={busy} onChange={(e) => setEditor({ ...editor, target: e.target.value })}>
                 <option value="">{t("Detach at current location", "فصل الرابط في موضعه الحالي")}</option>
                 {editor.target && !editor.scene.nodes[editor.target] && (
                   <option value={editor.target}>{t("Deleted target: choose a replacement", "العنصر محذوف، اختر بديلًا")}</option>
@@ -318,7 +319,7 @@ export function AnnotationsPanel({ scene, frameId, layerId, selected, canEdit, a
                       {n.name}
                     </option>
                   ))}
-              </select>
+              </MenuSelect>
             </label>
             {editor.scene.nodes[editor.target] && (
               <DrawingScenePreview

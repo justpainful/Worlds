@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "../ui/Button";
 import type { SelectionKind, SelectionMode, SelectionOperation } from "./pixelSelection";
 import type { PixelSelection } from "./selectionController";
+import { MenuSelect } from "../ui/MenuSelect";
 interface Props {
   kind: SelectionKind;
   mode: SelectionMode;
@@ -43,13 +44,13 @@ export function SelectionControls(p: Props) {
     <div className="drawing-pixel-selection-controls">
       <label className="drawing-field">
         <span>{t("Area selection", "تحديد منطقة")}</span>
-        <select value={p.kind} onChange={(e) => p.setKind(e.target.value as SelectionKind)}>
+        <MenuSelect value={p.kind} onChange={(e) => p.setKind(e.target.value as SelectionKind)}>
           {kinds.map((k) => (
             <option key={k.id} value={k.id}>
               {t(k.en, k.ar)}
             </option>
           ))}
-        </select>
+        </MenuSelect>
       </label>
       <div className="drawing-selection-modes" role="group" aria-label={t("Selection combination", "دمج التحديد")}>
         {modes.map((m) => (
