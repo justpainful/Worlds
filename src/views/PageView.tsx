@@ -37,6 +37,7 @@ import {
 import { shortcutKey } from "../lib/keys";
 import { openSideBySide, openTimeMachine, readAloud } from "../ai/writingTools";
 import { PrivateGate, isPrivate, lockPrivate, togglePrivate, usePrivacy } from "../pages/privacy";
+import { exportBook, exportDocx } from "../files/importExport";
 
 export function PageView({ pageId, paneId }: { pageId: string; paneId: string }) {
   const meta = useStore((s) => s.pages[pageId]);
@@ -337,6 +338,8 @@ function LoadedPage({ page, paneId, reload }: { page: Page; paneId: string; relo
                           { label: "Copy as Markdown", onSelect: () => copyMarkdown(page.id) },
                           { label: "Save as Markdown file", onSelect: () => downloadMarkdown(meta) },
                           { label: "Print or Save as PDF", onSelect: () => printPage() },
+                          { label: "Word Document (.docx)", onSelect: () => exportDocx(page.id) },
+                          { label: "Book with Subpages as Chapters (EPUB)", onSelect: () => exportBook(page.id) },
                         ],
                       },
                       { label: "Read Aloud", icon: "speaker", onSelect: () => readAloud() },
