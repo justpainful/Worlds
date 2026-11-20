@@ -369,6 +369,9 @@ function EditorSettings() {
       <Row label="Your shortcuts" hint="Give any command from the command palette a key combination.">
         <ShortcutSettings />
       </Row>
+      <Row label="Browser extension" hint="Install the Worlds extension in Chrome or Edge, then paste this token into it once. It sends pages, selections and articles to Worlds on this computer.">
+        <CaptureToken />
+      </Row>
       <Row label="Private pages" hint="Private pages open with this passcode or Windows Hello and stay out of search. Mark a page private from its ... menu.">
         <div className="set-buttons">
           <button className="btn btn-plain btn-compact" onClick={() => choosePasscode()}>
@@ -706,5 +709,28 @@ function Advanced() {
         </Button>
       </Row>
     </Group>
+  );
+}
+
+/** The token the browser extension needs, with a copy button. */
+function CaptureToken() {
+  const [info, setInfo] = useState<{ port: number; token: string } | null>(null);
+  useEffect(() => {
+    api.captureInfo().then(setInfo).catch(() => setInfo(null));
+  }, []);
+  if (!info) return <span className="set-static">Available in the Worlds app on your computer</span>;
+  return (
+    <div className="set-buttons">
+      <code className="capture-token" dir="ltr">{info.token.slice(0, 8)}...</code>
+      <button
+        className="btn btn-plain btn-compact"
+        onClick={() => {
+          navigator.clipboard.writeText(info.token);
+          useStore.getState().toast({ message: "Token copied" });
+        }}
+      >
+        Copy token
+      </button>
+    </div>
   );
 }

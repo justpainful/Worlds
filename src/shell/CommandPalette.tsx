@@ -27,6 +27,8 @@ import { openLinksMap } from "../views/LinksMap";
 import { visibleNow } from "../pages/privacy";
 import { openPluginStore } from "../plugins/PluginViews";
 import { exportEverything, importFiles, importFolder } from "../files/importExport";
+import { saveArticle } from "../files/capture";
+import { promptText } from "../editor/prompt";
 
 export interface Cmd {
   id: string;
@@ -96,6 +98,16 @@ export function commands(): Cmd[] {
     { id: "auto-new", title: "Create Automation", icon: "schedule", keywords: "schedule discord send", run: () => emit("automation:new", { pageId: page?.id ?? null }) },
     { id: "ask", title: "Ask Claude", icon: "assistant", hint: "Ctrl+J", keywords: "ai assistant claude", run: () => emit("ai:open", { pageId: page?.id ?? null }) },
     { id: "chats", title: "Claude Conversations", icon: "assistant", keywords: "ai chats history claude", run: (w) => s.open({ kind: "chat" }, w) },
+    {
+      id: "read-later",
+      title: "Save an Article to Read Later",
+      icon: "reader",
+      keywords: "article read later reading list pocket save link web قراءة مقال",
+      run: async () => {
+        const url = await promptText({ title: "Save an article", placeholder: "https://", confirm: "Save", validate: (v) => (/^https?:\/\/\S+$/.test(v) ? null : "Enter a full link") });
+        if (url) void saveArticle(url);
+      },
+    },
     { id: "import", title: "Import Pages", icon: "upload", keywords: "import markdown word docx notion obsidian html csv zip استيراد", run: () => void importFiles(page?.id ?? null) },
     { id: "import-folder", title: "Import a Folder (Obsidian)", icon: "folderOpen", keywords: "import obsidian vault folder markdown", run: () => void importFolder(page?.id ?? null) },
     { id: "export-all", title: "Export Everything", icon: "exportAll", keywords: "export backup zip markdown all تصدير نسخة", run: () => void exportEverything() },
