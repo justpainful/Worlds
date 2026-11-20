@@ -22,6 +22,7 @@ import { startTour } from "./Tour";
 import { translate } from "../i18n/ui";
 import { foldArabic } from "../i18n/locale";
 import { pageFromTemplate, templateName } from "../templates/fromTemplate";
+import { openAskSpace, openSideBySide, openTimeMachine, readAloud, weeklySummary } from "../ai/writingTools";
 
 interface Cmd {
   id: string;
@@ -91,6 +92,17 @@ function commands(): Cmd[] {
     { id: "auto-new", title: "Create Automation", icon: "schedule", keywords: "schedule discord send", run: () => emit("automation:new", { pageId: page?.id ?? null }) },
     { id: "ask", title: "Ask Claude", icon: "assistant", hint: "Ctrl+J", keywords: "ai assistant claude", run: () => emit("ai:open", { pageId: page?.id ?? null }) },
     { id: "chats", title: "Claude Conversations", icon: "assistant", keywords: "ai chats history claude", run: (w) => s.open({ kind: "chat" }, w) },
+    { id: "ask-space", title: "Ask Your Space", icon: "search", hint: "Ctrl+Shift+K", keywords: "ask question answer search pages ai", run: () => openAskSpace() },
+    {
+      id: "weekly",
+      title: "Write My Weekly Summary",
+      icon: "calendarDays",
+      keywords: "week summary review report claude",
+      run: () =>
+        weeklySummary()
+          .then((id) => id && s.openPage(id))
+          .catch((e) => s.toast({ message: String(e), tone: "error" })),
+    },
     { id: "split", title: "Split Right", icon: "splitRight", hint: "Ctrl+\\", run: () => route && s.open(route, "right") },
     { id: "splitl", title: "Split Left", icon: "splitLeft", run: () => route && s.open(route, "left") },
     { id: "collapse", title: "Back to One Pane", icon: "square", run: () => s.collapsePanes() },
@@ -105,6 +117,9 @@ function commands(): Cmd[] {
   if (page) {
     list.unshift(
       { id: "sub", title: "New Subpage", icon: "subpage", keywords: "child page", run: (w) => s.createPage({ parentId: page.id }, w) },
+      { id: "read-aloud", title: "Read Page Aloud", icon: "speaker", keywords: "speak voice listen tts", run: () => readAloud() },
+      { id: "side-by-side", title: "Translate Side by Side", icon: "translate", keywords: "translate translation language", run: () => openSideBySide(page.id) },
+      { id: "time-machine", title: "Time Machine", icon: "history", keywords: "versions history past restore", run: () => openTimeMachine(page.id) },
       { id: "pin", title: page.pinned ? "Unpin Page" : "Pin Page", icon: page.pinned ? "unpin" : "pin", run: () => pageOps.togglePin(page) },
       { id: "img", title: "Insert Image", icon: "image", keywords: "upload picture", run: () => emit("editor:command", { pageId: page.id, command: "insertImage" }) },
       { id: "file", title: "Insert File", icon: "file", keywords: "attach upload", run: () => emit("editor:command", { pageId: page.id, command: "insertFile" }) },

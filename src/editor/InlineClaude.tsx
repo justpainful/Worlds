@@ -11,7 +11,15 @@ import { emit } from "../lib/bus";
 import { tr, uiLanguage } from "../i18n/ui";
 import { Icon, type IconName } from "../ui/Icon";
 
-export const INLINE_ACTIONS: { id: string; label: string; icon: IconName; instruction: string }[] = [
+export const INLINE_ACTIONS: { id: string; label: string; icon: IconName; instruction: string; lookup?: boolean }[] = [
+  {
+    id: "define",
+    label: "Meaning and synonyms",
+    icon: "dictionary",
+    lookup: true,
+    instruction:
+      "Explain the meaning of this word or phrase in one or two short lines, then list up to six synonyms and, if useful, one opposite. Answer in the same language as the text, and add the English meaning when the text is Arabic. Plain text only.",
+  },
   { id: "improve", label: "Improve writing", icon: "assistant", instruction: "Improve the writing: clearer, more natural, same meaning and length. Keep the language." },
   { id: "fix", label: "Fix spelling and grammar", icon: "spellcheck", instruction: "Fix spelling, grammar and punctuation only. Change nothing else. Keep the language. In Arabic, fix hamzas, taa marbuta and alif maqsura." },
   { id: "shorter", label: "Make shorter", icon: "minimize", instruction: "Make it shorter while keeping every important point. Keep the language." },
@@ -61,15 +69,17 @@ function Panel({ editor, pageId, from, to, text, rect, close, initial }: { edito
   const [error, setError] = useState<string | null>(null);
   const [ask, setAsk] = useState("");
   const [last, setLast] = useState<string | null>(null);
+  const [lookup, setLookup] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
-  const run = async (instruction: string) => {
+  const run = async (instruction: string, isLookup = INLINE_ACTIONS.some((a) => a.instruction === instruction && a.lookup)) => {
+    setLookup(isLookup);
     setBusy(true);
     setError(null);
     setResult(null);
     setLast(instruction);
     try {
-      const out = await api.aiRewrite(text, `${instruction}\nThe text is part of a page; return only the rewritten text, as plain paragraphs.`);
+      const out = await api.aiRewrite(text, isLookup ? instruction : `${instruction}\nThe text is part of a page; return only the rewritten text, as plain paragraphs.`);
       setResult(out.trim());
     } catch (e) {
       setError(errorMessage(e));
@@ -148,7 +158,23 @@ function Panel({ editor, pageId, from, to, text, rect, close, initial }: { edito
         </div>
       )}
       {error && <div className="ic-error">{error}</div>}
-      {result !== null && (
+      {result !== null && lookup && (
+        <>
+          <div className="ic-lookup bidi" dir="auto">
+            {result}
+          </div>
+          <div className="ic-foot">
+            <button className="btn btn-plain btn-compact" onClick={() => navigator.clipboard.writeText(result)}>
+              <Icon name="duplicate" size={13} />
+              {tr("Copy")}
+            </button>
+            <button className="btn btn-tinted btn-compact" onClick={close}>
+              {tr("Done")}
+            </button>
+          </div>
+        </>
+      )}
+      {result !== null && !lookup && (
         <>
           <div className="ic-diff bidi" dir="auto">
             {wordDiff(text, result).map((p, i) => (

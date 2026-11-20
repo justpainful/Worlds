@@ -35,6 +35,7 @@ import {
   printPage,
 } from "../pages/PageChrome";
 import { shortcutKey } from "../lib/keys";
+import { openSideBySide, openTimeMachine, readAloud } from "../ai/writingTools";
 
 export function PageView({ pageId, paneId }: { pageId: string; paneId: string }) {
   const meta = useStore((s) => s.pages[pageId]);
@@ -324,6 +325,9 @@ function LoadedPage({ page, paneId, reload }: { page: Page; paneId: string; relo
                           { label: "Print or Save as PDF", onSelect: () => printPage() },
                         ],
                       },
+                      { label: "Read Aloud", icon: "speaker", onSelect: () => readAloud() },
+                      { label: "Translate Side by Side", icon: "translate", onSelect: () => openSideBySide(page.id) },
+                      { label: "Time Machine", icon: "history", onSelect: () => openTimeMachine(page.id) },
                       { label: "Keyboard Shortcuts", icon: "keyboard", shortcut: "Ctrl+/", onSelect: () => setShortcuts(true) },
                       { kind: "separator" },
                       { kind: "label", label: "Style" },

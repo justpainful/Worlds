@@ -27,6 +27,7 @@ import { pages5Extensions } from "./extensions/pages5";
 import { afterSave } from "./synced";
 import { CommentMark, commentSelection, openCommentThread } from "./comments";
 import { INLINE_ACTIONS, openInlineClaude } from "./InlineClaude";
+import { ArabicSpell } from "./arabicSpell";
 import { BlockSelection, blockActions, clearBlockSelection, toggleBlockSelection, watchBlockDrags } from "./blockActions";
 import { shortcutKey } from "../lib/keys";
 
@@ -214,6 +215,7 @@ export const PageEditor = forwardRef<
         Tab,
         ...pages5Extensions,
         BlockSelection,
+        ArabicSpell,
         CommentMark.configure({
           onOpen: (threadId, el) => {
             const ed = editorRef.current;

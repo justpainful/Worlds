@@ -347,6 +347,23 @@ function EditorSettings() {
       <Row label="Spell check">
         <Toggle checked={(settings["editor.spellcheck"] as boolean) ?? true} onChange={(v) => set("editor.spellcheck", v)} label="Spell check" />
       </Row>
+      <Row label="Arabic spelling" hint="Underlines common mistakes in hamzas, taa marbuta and alif maqsura. Click one to fix it.">
+        <Toggle checked={(settings["editor.arabicSpell"] as boolean) ?? true} onChange={(v) => set("editor.arabicSpell", v)} label="Arabic spelling" />
+      </Row>
+      <Row label="Weekly summary" hint="Claude writes a page about your week on this day, the first time Worlds is open.">
+        <Select
+          label="Weekly summary"
+          value={String((settings["summary.weekday"] as number | undefined) ?? -1)}
+          options={[
+            { value: "-1", label: "Off" },
+            { value: "5", label: "Friday" },
+            { value: "6", label: "Saturday" },
+            { value: "0", label: "Sunday" },
+            { value: "4", label: "Thursday" },
+          ]}
+          onChange={(v) => set("summary.weekday", Number(v))}
+        />
+      </Row>
     </Group>
   );
 }

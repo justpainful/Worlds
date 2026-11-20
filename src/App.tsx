@@ -25,6 +25,7 @@ import { useWindowTitle } from "./shell/windowTitle";
 import { useDigests } from "./packs/useDigests";
 import { usePublishedImport } from "./packs/published";
 import { startReminders } from "./pages/reminders";
+import { maybeWeeklySummary, openAskSpace } from "./ai/writingTools";
 
 export function App() {
   const ready = useStore((s) => s.ready);
@@ -37,7 +38,21 @@ export function App() {
   usePublishedImport(ready);
   // Date properties with a reminder show it when it comes due.
   useEffect(() => {
-    if (ready) startReminders();
+    if (!ready) return;
+    startReminders();
+    const t = window.setTimeout(maybeWeeklySummary, 20000);
+    // Ctrl+Shift+K asks the whole workspace.
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        openAskSpace();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener("keydown", onKey);
+    };
   }, [ready]);
 
   useEffect(() => {
