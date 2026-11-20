@@ -307,6 +307,7 @@ pub fn run() {
             commands::client_log,
             window_style::window_set_transparency,
             commands::page_append_markdown,
+            commands::link_graph,
             preview::preview_prepare,
             ai::ai_run,
             ai::ai_cancel,

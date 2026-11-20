@@ -218,6 +218,8 @@ export const api = {
   updatePage: (id: string, patch: PagePatch) => invoke<PageMeta>("page_update", { id, patch }),
   /** Merge one key into a page's metadata (properties, look). */
   pageMarkdown: (id: string) => invoke<string>("page_markdown", { id }),
+  /** Links between pages as [source, target] pairs, for the links map. */
+  linkGraph: () => invoke<[string, string][]>("link_graph"),
   setPageMeta: (
     id: string,
     key:

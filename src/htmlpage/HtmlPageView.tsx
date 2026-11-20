@@ -141,7 +141,7 @@ function SourceEditor({ value, onChange }: { value: string; onChange: (v: string
  * strict policy; in the web version it is built here. Either way the frame
  * may only run scripts: no same origin, no popups, no top navigation.
  */
-function HtmlFrame({ id, source, state, revision }: { id: string; source: string; state: unknown; revision: number }) {
+export function HtmlFrame({ id, source, state, revision, home }: { id: string; source: string; state: unknown; revision: number; home?: () => unknown }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState(320);
   const lang = uiLanguage();
@@ -163,9 +163,19 @@ function HtmlFrame({ id, source, state, revision }: { id: string; source: string
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
       if (!frame.current || e.source !== frame.current.contentWindow) return;
-      const data = e.data as { worldsHtmlPage?: number; type?: string; height?: number; url?: string; id?: string; state?: string };
+      const data = e.data as { worldsHtmlPage?: number; type?: string; height?: number; url?: string; id?: string; state?: string; title?: string };
       if (!data || data.worldsHtmlPage !== 1) return;
       switch (data.type) {
+        case "ready":
+          if (home) frame.current.contentWindow?.postMessage({ worldsHome: 1, data: home() }, "*");
+          break;
+        case "newPage":
+          if (home)
+            useStore
+              .getState()
+              .createPage({ title: typeof data.title === "string" ? data.title.slice(0, 200) : "" })
+              .catch(() => undefined);
+          break;
         case "height":
           if (typeof data.height === "number" && Number.isFinite(data.height)) setHeight(Math.min(Math.max(data.height, 120), 40000));
           break;
@@ -182,7 +192,7 @@ function HtmlFrame({ id, source, state, revision }: { id: string; source: string
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [saveState]);
+  }, [saveState, home]);
 
   const common = {
     ref: frame,

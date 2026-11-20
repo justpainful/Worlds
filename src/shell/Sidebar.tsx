@@ -1,4 +1,6 @@
 import { emit } from "../lib/bus";
+import { isPrivate, usePrivacy } from "../pages/privacy";
+import { tr } from "../i18n/ui";
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { ProductIcon, type ProductIconName } from "../ui/ProductIcon";
 import { useStore, childrenOf, pageTitle, type Route } from "../state/store";
@@ -454,6 +456,7 @@ function TreeRow({
   const setExpanded = useStore((s) => s.setExpanded);
   const createPage = useStore((s) => s.createPage);
   const show = useMenu((s) => s.show);
+  const privateOpen = usePrivacy();
   const [title, setTitle] = useState(page.title);
 
   useEffect(() => setTitle(page.title), [page.title, renaming]);
@@ -542,7 +545,7 @@ function TreeRow({
           }}
         />
       ) : (
-        <span className={`tree-label bidi ${page.title ? "" : "is-untitled"}`}>{pageTitle(page)}</span>
+        <span className={`tree-label bidi ${page.title ? "" : "is-untitled"}`}>{isPrivate(page) && !privateOpen ? tr("Private page") : pageTitle(page)}</span>
       )}
       <span className="tree-actions">
         <IconButton

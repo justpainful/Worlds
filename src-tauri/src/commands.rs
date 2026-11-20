@@ -136,6 +136,12 @@ pub async fn html_page_save_state(state: State<'_, AppState>, id: String, value:
     with_conn!(state, |c| crate::html_page::save_state(&c, &Ctx::user(), &id, &value))
 }
 
+/// Links between pages, as [source, target] pairs, for the links map.
+#[tauri::command]
+pub async fn link_graph(state: State<'_, AppState>) -> CmdResult<Vec<(String, String)>> {
+    with_conn!(state, |c| store::link_graph(&c))
+}
+
 #[tauri::command]
 pub async fn page_update(state: State<'_, AppState>, id: String, patch: store::PagePatch) -> CmdResult<store::PageMeta> {
     with_conn!(state, |c| store::update_page(&c, &Ctx::user(), &id, patch))

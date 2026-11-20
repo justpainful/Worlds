@@ -10,8 +10,22 @@
     try { parent.postMessage(message, "*"); } catch (e) { /* not embedded */ }
   };
   var state = boot.state === undefined ? null : boot.state;
+  // A page used as Home also receives a snapshot of the workspace (titles,
+  // pinned and recent pages, today's tasks) and can open or create pages.
+  var data = null;
+  var listeners = [];
+  window.addEventListener("message", function (event) {
+    var m = event.data;
+    if (event.source !== parent || !m || m.worldsHome !== 1) return;
+    data = m.data;
+    listeners.forEach(function (fn) { try { fn(data); } catch (e) { console.error(e); } });
+  });
   window.worlds = Object.freeze({
     get state() { return state; },
+    get data() { return data; },
+    onData: function (fn) { if (typeof fn === "function") { listeners.push(fn); if (data) fn(data); } },
+    openPage: function (id) { post({ type: "openPage", id: String(id) }); },
+    newPage: function (title) { post({ type: "newPage", title: String(title || "") }); },
     lang: boot.lang === "ar" ? "ar" : "en",
     save: function (value) {
       var text = JSON.stringify(value === undefined ? null : value);
@@ -42,4 +56,5 @@
     if (page) post({ type: "openPage", id: page[1] });
     else if (/^https?:\/\//i.test(href) || /^mailto:/i.test(href)) post({ type: "openLink", url: href });
   }, true);
+  post({ type: "ready" });
 })();

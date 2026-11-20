@@ -24,6 +24,7 @@ import { packDef } from "../packs/registry";
 import { PackRoles } from "../packs/views/PackRoles";
 import { PACKS, setPackEnabled, usePack } from "../packs/packs";
 import { loadSample, removeSample, rewriteSample, sampleLanguageMismatch, useSampleLoaded } from "../demo/sampleActions";
+import { choosePasscode, enableHello, hasPasscode } from "../pages/privacy";
 
 const SECTIONS: { id: string; label: string; ar?: string; tile: string; group: number; keywords: string }[] = [
   { id: "account", label: "Account", tile: "team", group: 0, keywords: "sign in passkey email devices workspaces team members sign out server" },
@@ -363,6 +364,21 @@ function EditorSettings() {
           ]}
           onChange={(v) => set("summary.weekday", Number(v))}
         />
+      </Row>
+      <Row label="Private pages" hint="Private pages open with this passcode or Windows Hello and stay out of search. Mark a page private from its ... menu.">
+        <div className="set-buttons">
+          <button className="btn btn-plain btn-compact" onClick={() => choosePasscode()}>
+            {hasPasscode() ? "Change passcode" : "Set a passcode"}
+          </button>
+          {hasPasscode() && (
+            <button
+              className="btn btn-plain btn-compact"
+              onClick={async () => useStore.getState().toast({ message: (await enableHello()) ? "Windows Hello is ready for private pages" : "Windows Hello is not available here", tone: undefined })}
+            >
+              Use Windows Hello
+            </button>
+          )}
+        </div>
       </Row>
     </Group>
   );

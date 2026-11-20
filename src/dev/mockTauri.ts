@@ -709,6 +709,18 @@ async function handleNow(cmd: string, a: any = {}): Promise<any> {
     case "ai_chat": return { id: a.id, messages: chatMessages[a.id] ?? [] };
     case "ai_chat_delete": return null;
     case "ai_chat_rename": return null;
+    case "link_graph": {
+      // Mentions and page links found in the stored blocks.
+      const out: [string, string][] = [];
+      const walk = (src: string, n: any) => {
+        if (!n || typeof n !== "object") return;
+        const t = n.type === "pageMention" ? n.attrs?.id : n.type === "pageLink" ? n.attrs?.pageId : null;
+        if (t && pages[t] && t !== src) out.push([src, t]);
+        (n.content ?? []).forEach((c: any) => walk(src, c));
+      };
+      for (const [pid, list] of Object.entries(blocks)) if (pages[pid] && !pages[pid].deletedAt) (list as any[]).forEach((b) => walk(pid, b));
+      return out;
+    }
     // Previews show a visible change; the web version has no Claude to call.
     case "ai_rewrite":
       if (WEB_DEMO) throw new Error("Claude works in the Worlds app on your computer.");

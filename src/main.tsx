@@ -22,6 +22,7 @@ import "./styles/profile.css";
 import "./styles/settings.css";
 import "./styles/pages.css";
 import "./styles/pages5.css";
+import "./styles/worlds10.css";
 import "./styles/editor.css";
 import "./styles/resources.css";
 import "./styles/system.css";

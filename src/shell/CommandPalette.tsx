@@ -23,6 +23,8 @@ import { translate } from "../i18n/ui";
 import { foldArabic } from "../i18n/locale";
 import { pageFromTemplate, templateName } from "../templates/fromTemplate";
 import { openAskSpace, openSideBySide, openTimeMachine, readAloud, weeklySummary } from "../ai/writingTools";
+import { openLinksMap } from "../views/LinksMap";
+import { visibleNow } from "../pages/privacy";
 
 interface Cmd {
   id: string;
@@ -92,6 +94,7 @@ function commands(): Cmd[] {
     { id: "auto-new", title: "Create Automation", icon: "schedule", keywords: "schedule discord send", run: () => emit("automation:new", { pageId: page?.id ?? null }) },
     { id: "ask", title: "Ask Claude", icon: "assistant", hint: "Ctrl+J", keywords: "ai assistant claude", run: () => emit("ai:open", { pageId: page?.id ?? null }) },
     { id: "chats", title: "Claude Conversations", icon: "assistant", keywords: "ai chats history claude", run: (w) => s.open({ kind: "chat" }, w) },
+    { id: "links-map", title: "Links Map", icon: "graph", keywords: "graph network links connections map backlinks", run: () => openLinksMap() },
     { id: "ask-space", title: "Ask Your Space", icon: "search", hint: "Ctrl+Shift+K", keywords: "ask question answer search pages ai", run: () => openAskSpace() },
     {
       id: "weekly",
@@ -189,7 +192,7 @@ function Palette({ mode, onClose }: { mode: "all" | "pages" | "commands"; onClos
     if (mode !== "commands") {
       if (!query) {
         const recent = Object.values(pages)
-          .filter((p) => isResource(p) && !p.deletedAt && !p.archived)
+          .filter((p) => isResource(p) && !p.deletedAt && !p.archived && visibleNow(p))
           .sort((a, b) => (b.openedAt ?? b.updatedAt) - (a.openedAt ?? a.updatedAt))
           .slice(0, 6);
         for (const p of recent) {
@@ -205,7 +208,7 @@ function Palette({ mode, onClose }: { mode: "all" | "pages" | "commands"; onClos
         }
       } else {
         for (const h of hits) {
-          if (isKindHidden(h.kind)) continue;
+          if (isKindHidden(h.kind) || !visibleNow(s.pages[h.pageId])) continue;
           const isTpl = h.kind === "template";
           out.push({
             key: `p${h.pageId}`,
