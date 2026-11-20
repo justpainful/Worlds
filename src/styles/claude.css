@@ -79,7 +79,7 @@
   max-width: 82%;
   padding: 10px 15px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.13);
+  background: rgba(var(--ink-rgb), 0.13);
   box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.12);
   font: var(--t-ui);
   font-size: 14.5px;
@@ -90,7 +90,7 @@
 .ai-step { font: var(--t-caption); color: var(--text-3); gap: 7px; padding: 1px 2px; }
 .ai-step .icon:first-child { opacity: 0.8; }
 .ai-turn { gap: 6px; }
-.ai-result { background: rgba(255, 255, 255, 0.06); border-radius: 14px; }
+.ai-result { background: rgba(var(--ink-rgb), 0.06); border-radius: 14px; }
 
 /* ---- Siri-style panel -------------------------------------------------- */
 .ai-panel {
@@ -130,11 +130,11 @@
   color: var(--text-1);
   transition: background-color var(--d-hover), transform var(--d-release) var(--spring-snappy);
 }
-.composer-plus:hover { background: rgba(255, 255, 255, 0.09); }
+.composer-plus:hover { background: rgba(var(--ink-rgb), 0.09); }
 .composer-plus:active { transform: scale(0.92); }
 .composer-body { position: relative; z-index: 1; display: flex; flex-direction: column; padding: 12px 10px 8px; padding-inline-start: 60px; min-width: 0; }
 .composer-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; }
-.composer-chips .ai-context { margin: 0; height: 26px; background: rgba(255, 255, 255, 0.09); }
+.composer-chips .ai-context { margin: 0; height: 26px; background: rgba(var(--ink-rgb), 0.09); }
 .composer-chips .att-strip { width: 100%; }
 .composer-input {
   width: 100%;
@@ -164,9 +164,9 @@
   font: var(--t-caption);
   font-weight: 560;
   color: var(--text-2);
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(var(--ink-rgb), 0.07);
 }
-.ai-model-btn:hover { background: rgba(255, 255, 255, 0.13); color: var(--text-1); }
+.ai-model-btn:hover { background: rgba(var(--ink-rgb), 0.13); color: var(--text-1); }
 .composer-send {
   flex: none;
   width: 34px;
@@ -175,7 +175,7 @@
   display: grid;
   place-items: center;
   color: var(--text-3);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--ink-rgb), 0.1);
   transition: background-color 160ms ease, color 160ms ease, transform var(--d-release) var(--spring-snappy);
 }
 .composer-send.is-ready, .composer-send.is-stop { background: #f4f2ee; color: #111; }
@@ -264,10 +264,10 @@
 .step-slider { display: flex; flex-direction: column; gap: 6px; user-select: none; }
 .ss-track { position: relative; height: 26px; margin: 0 11px; cursor: pointer; touch-action: none; outline: none; }
 .ss-rail, .ss-fill { position: absolute; inset-inline-start: -11px; top: 50%; height: 6px; margin-top: -3px; border-radius: 999px; }
-.ss-rail { inset-inline-end: -11px; background: rgba(255, 255, 255, 0.1); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35); }
+.ss-rail { inset-inline-end: -11px; background: rgba(var(--ink-rgb), 0.1); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35); }
 .ss-fill { width: calc(var(--ss-pct) + 11px); background: linear-gradient(90deg, color-mix(in srgb, var(--ss-hue) 55%, transparent), var(--ss-hue)); transition: width 320ms var(--spring-snappy); }
-.ss-stop { position: absolute; top: 50%; width: 4px; height: 4px; margin-block-start: -2px; margin-inline-start: -2px; border-radius: 50%; background: rgba(255, 255, 255, 0.35); }
-.ss-stop.is-on { background: rgba(255, 255, 255, 0.8); }
+.ss-stop { position: absolute; top: 50%; width: 4px; height: 4px; margin-block-start: -2px; margin-inline-start: -2px; border-radius: 50%; background: rgba(var(--ink-rgb), 0.35); }
+.ss-stop.is-on { background: rgba(var(--ink-rgb), 0.8); }
 .ss-thumb {
   position: absolute;
   top: 50%;
@@ -295,23 +295,23 @@
    No rainbow ring, no coloured dots, neutral sliders. The only motion cue is
    a faint white sheen around the field while Claude is working. */
 .ai-glow::before,
-.ai-glow::after { background: conic-gradient(from var(--ai-angle), rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.05) 40%, rgba(255, 255, 255, 0.05)); }
+.ai-glow::after { background: conic-gradient(from var(--ai-angle), rgba(var(--ink-rgb), 0.05), rgba(var(--ink-rgb), 0.55), rgba(var(--ink-rgb), 0.05) 40%, rgba(var(--ink-rgb), 0.05)); }
 .ai-glow.is-focus, .ai-glow.is-large { opacity: 0; }
 .ai-glow.is-working { opacity: 0.7; }
 .ai-glow.is-working::after { opacity: 0.25; filter: blur(14px); }
 .ai-model-dot { display: none; }
-.ss-fill { background: rgba(255, 255, 255, 0.75); }
+.ss-fill { background: rgba(var(--ink-rgb), 0.75); }
 .ss-thumb { box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(0, 0, 0, 0.2); }
-.ai-context.is-chat, .ai-context.is-tool { color: var(--text-1); background: rgba(255, 255, 255, 0.09); }
-.chat-chip { background: rgba(255, 255, 255, 0.1); color: var(--text-1); }
-.chat-chip:hover { background: rgba(255, 255, 255, 0.16); }
+.ai-context.is-chat, .ai-context.is-tool { color: var(--text-1); background: rgba(var(--ink-rgb), 0.09); }
+.chat-chip { background: rgba(var(--ink-rgb), 0.1); color: var(--text-1); }
+.chat-chip:hover { background: rgba(var(--ink-rgb), 0.16); }
 
 /* ---- @ menu -------------------------------------------------------------- */
 .mention-menu .g-content { padding: 6px; }
 .mm-list { max-height: 360px; overflow-y: auto; }
 .mm-section { padding: 8px 10px 4px; font: var(--t-small); font-weight: 600; color: var(--text-3); }
 .mm-row { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: 10px; cursor: default; }
-.mm-row.is-sel { background: rgba(255, 255, 255, 0.09); }
+.mm-row.is-sel { background: rgba(var(--ink-rgb), 0.09); }
 .mm-icon { flex: none; width: 22px; display: grid; place-items: center; }
 .mm-label { flex: none; font: var(--t-ui-strong); font-size: 14px; color: var(--text-1); max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mm-note { min-width: 0; font: var(--t-small); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -330,7 +330,7 @@
 .ai-panel-head { padding: 16px 16px 6px; }
 .ai-panel-head .glass-group { height: 38px; }
 .ai-panel-head .glass-group .gg-btn { width: 38px; height: 38px; }
-.tool-chip { display: inline-flex; align-items: center; gap: 4px; padding: 0.05em 0.5em 0.05em 0.3em; margin: 0 1px; border-radius: 7px; background: rgba(255, 255, 255, 0.1); color: var(--text-1); font-weight: 600; vertical-align: baseline; }
+.tool-chip { display: inline-flex; align-items: center; gap: 4px; padding: 0.05em 0.5em 0.05em 0.3em; margin: 0 1px; border-radius: 7px; background: rgba(var(--ink-rgb), 0.1); color: var(--text-1); font-weight: 600; vertical-align: baseline; }
 
 /* Stay signed in (long-lived Claude Code token) */
 .stay-signed-in { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
@@ -356,7 +356,7 @@
 .provider-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .provider-line .field { flex: 1 1 260px; min-width: 0; }
 .provider-models { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; max-height: 132px; overflow-y: auto; }
-.provider-models li { padding: 2px 8px; border-radius: 7px; background: var(--fill-1, rgba(255, 255, 255, 0.07)); font: var(--t-small); color: var(--text-2); }
+.provider-models li { padding: 2px 8px; border-radius: 7px; background: var(--fill-1, rgba(var(--ink-rgb), 0.07)); font: var(--t-small); color: var(--text-2); }
 .provider-models li.is-chat-only { color: var(--text-4, var(--text-3)); }
 .set-row.provider-detect { justify-content: flex-end; min-height: 40px; }
 .provider-settings[dir="rtl"] .set-row + .set-row::before { left: 0; right: 14px; }

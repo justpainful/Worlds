@@ -336,7 +336,7 @@ input[type="time"].field, input[type="datetime-local"].field, input[type="number
   transform: translateX(-50%);
   padding: 5px 9px;
   border-radius: 8px;
-  background: #2c2c2e;
+  background: var(--surface-2);
   color: var(--text-1);
   font: var(--t-caption);
   white-space: pre;

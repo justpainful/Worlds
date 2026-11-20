@@ -1,4 +1,9 @@
-.screen-drawing { position: fixed; inset: 0; z-index: 9000; background: #242426; color: var(--text-1); font: var(--t-ui); }
+/* Screen drawing sits over the whole screen and stays dark in both themes. */
+.screen-drawing {
+  position: fixed; inset: 0; z-index: 9000; background: #242426; color: var(--text-1); font: var(--t-ui);
+  color-scheme: dark; --ink-rgb: 255, 255, 255; --menu-solid: #29292c; --surface-hover: #29292b;
+  --text-1: rgba(245, 245, 247, 0.94); --text-2: rgba(235, 235, 245, 0.62); --text-3: rgba(235, 235, 245, 0.5);
+}
 .screen-drawing[dir="rtl"] { font-family: "IBM Plex Sans Arabic", sans-serif; font-size: 15.5px; line-height: 1.7; letter-spacing: 0; }
 .screen-drawing-stage { position: absolute; inset: 0; display: flex; }
 .screen-drawing-stage .drawing-stage { width: 100%; height: 100%; }

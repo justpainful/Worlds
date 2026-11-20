@@ -10,7 +10,7 @@
 .dc-app { font-size: 10px; font-weight: 600; padding: 1px 4px; border-radius: 4px; background: #5865f2; color: #fff; }
 .dc-time { font-size: 12px; color: #949ba4; }
 .dc-components { display: flex; flex-direction: column; gap: 8px; }
-.dc-container { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 8px; background: #393a41; border: 1px solid rgba(255, 255, 255, 0.04); max-width: 520px; }
+.dc-container { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 8px; background: #393a41; border: 1px solid rgba(var(--ink-rgb), 0.04); max-width: 520px; }
 .dc-preview.is-mobile .dc-container { max-width: 100%; }
 .dc-container.has-accent { border-left: 4px solid var(--dc-accent); }
 .dc-text { white-space: normal; overflow-wrap: anywhere; }

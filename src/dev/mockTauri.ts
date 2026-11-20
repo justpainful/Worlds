@@ -193,6 +193,8 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has("mock") && n
 
 const settings: Record<string, unknown> = WEB_DEMO ? {} : { "advanced.developer": true, "advanced.perfOverlay": new URLSearchParams(location.search).has("perf"), "appearance.glassTone": new URLSearchParams(location.search).get("tone") ?? "auto", ...(new URLSearchParams(location.search).has("demo") && !new URLSearchParams(location.search).has("onboarding") ? { "account.onboarded": true } : {}) };
 try { if (localStorage.getItem("worlds.demo.tourSeen")) settings["tour.seen"] = true; } catch { /* private window */ }
+// Previews can open in a theme: ?theme=light, dark or system.
+{ const theme = new URLSearchParams(location.search).get("theme"); if (theme) settings["appearance.theme"] = theme; }
 const callbacks = new Map<number, (v: any) => void>();
 const listeners = new Map<string, number[]>();
 let cbSeq = 1;

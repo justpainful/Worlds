@@ -199,9 +199,17 @@ function Appearance() {
   return (
     <>
       <Group title="Appearance">
-        <Row label="Theme" hint="A light appearance is planned.">
-          {/* One theme for now: a value, not a control that cannot change. */}
-          <span className="set-static">Dark</span>
+        <Row label="Theme" hint="Automatic follows your system and switches with it.">
+          <Segmented
+            value={(settings["appearance.theme"] as string) ?? "dark"}
+            onChange={(v) => set("appearance.theme", v)}
+            label="Theme"
+            options={[
+              { value: "dark", label: "Dark" },
+              { value: "light", label: "Light" },
+              { value: "system", label: "Automatic" },
+            ]}
+          />
         </Row>
         <Row label="Accent" hint="Used sparingly: selection, mentions, focus.">
           <div className="swatches">

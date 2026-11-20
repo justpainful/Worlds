@@ -13,6 +13,9 @@
   --surface-2: #2c2c2e;
   --surface-3: #3a3a3c;
   --surface-sidebar: #111113;
+  --surface-hover: #29292b;
+  --code-bg: #151517;
+  --menu-solid: #29292c;
 
   /* ---- Text ------------------------------------------------------------ */
   --text-1: rgba(245, 245, 247, 0.94);
@@ -21,13 +24,19 @@
   --text-4: rgba(235, 235, 245, 0.24);
   --text-on-light: rgba(18, 18, 20, 0.88);
 
+  /* ---- Ink: the colour fills and lines are made of ---------------------- */
+  /* White over the dark theme, black over the light one. Translucent fills,
+     hairlines and hover states use rgba(var(--ink-rgb), a) so both themes work. */
+  --ink-rgb: 255, 255, 255;
+  --paper-rgb: 0, 0, 0;
+
   /* ---- Lines & fills --------------------------------------------------- */
-  --hairline: rgba(255, 255, 255, 0.075);
-  --hairline-strong: rgba(255, 255, 255, 0.12);
-  --fill-1: rgba(255, 255, 255, 0.045);
-  --fill-2: rgba(255, 255, 255, 0.075);
-  --fill-3: rgba(255, 255, 255, 0.11);
-  --fill-press: rgba(255, 255, 255, 0.14);
+  --hairline: rgba(var(--ink-rgb), 0.075);
+  --hairline-strong: rgba(var(--ink-rgb), 0.12);
+  --fill-1: rgba(var(--ink-rgb), 0.045);
+  --fill-2: rgba(var(--ink-rgb), 0.075);
+  --fill-3: rgba(var(--ink-rgb), 0.11);
+  --fill-press: rgba(var(--ink-rgb), 0.14);
 
   /* ---- Accent (configurable; set from profile) ------------------------- */
   --accent: #2e92ff;
@@ -119,6 +128,47 @@
   --win-margin: 20px;
 
   --focus-ring: 0 0 0 2px rgba(var(--accent-rgb), 0.55);
+}
+
+/* ---- Light theme ------------------------------------------------------------
+   Settings › Appearance › Theme. Surfaces step from a soft grey canvas up to
+   white cards; text is near black with Apple's grey secondary levels. */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --canvas: #f2f2f5;
+  --surface-deep: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-2: #f2f2f4;
+  --surface-3: #e3e3e8;
+  --surface-sidebar: #ebebef;
+  --surface-hover: #ececf0;
+  --code-bg: #f4f4f7;
+  --menu-solid: #ffffff;
+
+  --text-1: rgba(29, 29, 31, 0.94);
+  --text-2: rgba(60, 60, 67, 0.74);
+  --text-3: rgba(60, 60, 67, 0.6);
+  --text-4: rgba(60, 60, 67, 0.3);
+  --text-on-light: rgba(18, 18, 20, 0.88);
+
+  --ink-rgb: 0, 0, 0;
+  --paper-rgb: 255, 255, 255;
+
+  --red: #d23a30;
+  --red-soft: rgba(210, 58, 48, 0.1);
+  --green: #23854a;
+  --green-soft: rgba(35, 133, 74, 0.1);
+  --yellow: #a8760a;
+  --yellow-soft: rgba(168, 118, 10, 0.1);
+  --blue: #2a6dd4;
+  --blue-soft: rgba(42, 109, 212, 0.1);
+  --mention: #2563c9;
+  --mention-bg: rgba(37, 99, 201, 0.1);
+
+  --shadow-glass: 0 4px 16px rgba(0, 0, 0, 0.07);
+  --shadow-float: 0 10px 34px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.07);
+  --shadow-window: 0 4px 13px rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.14);
 }
 
 @media (prefers-reduced-motion: reduce) {

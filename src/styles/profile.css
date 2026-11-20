@@ -146,8 +146,8 @@ button.pf-link:hover { color: var(--text-1); text-decoration: underline; text-un
 .pf-compact.is-on .pf-compact-bar { visibility: visible; transform: none; transition: transform 420ms var(--spring-snappy), visibility 0s; }
 .pf-compact-bar > .g-content { display: flex; align-items: center; gap: 2px; padding: 0 6px; }
 .pf-compact-id { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px 0 4px; border-radius: 999px; font: var(--t-ui-strong); color: var(--text-1); }
-.pf-compact-id:hover { background: rgba(255, 255, 255, 0.07); }
-.pf-compact-bar .gg-sep { width: 0.5px; height: 18px; margin: 0 4px; background: rgba(255, 255, 255, 0.16); }
+.pf-compact-id:hover { background: rgba(var(--ink-rgb), 0.07); }
+.pf-compact-bar .gg-sep { width: 0.5px; height: 18px; margin: 0 4px; background: rgba(var(--ink-rgb), 0.16); }
 
 /* ---- Blocks grid ----------------------------------------------------------- */
 .pf-blocks-wrap { margin-top: 30px; }
@@ -155,7 +155,7 @@ button.pf-link:hover { color: var(--text-1); text-decoration: underline; text-un
 .pf-blocks-title { font: var(--t-ui-strong); font-size: 15px; }
 .pf-blocks-count { font: var(--t-caption); color: var(--text-3); }
 .pf-customize { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 999px; font: var(--t-small); font-weight: 550; color: var(--text-3); }
-.pf-customize:hover { background: rgba(255, 255, 255, 0.07); color: var(--text-1); }
+.pf-customize:hover { background: rgba(var(--ink-rgb), 0.07); color: var(--text-1); }
 .pf-blocks { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-auto-rows: minmax(124px, auto); gap: 14px; }
 @container (max-width: 760px) {
   .pf-blocks > * { grid-column: span 6 !important; }
@@ -209,9 +209,9 @@ button.pf-link:hover { color: var(--text-1); text-decoration: underline; text-un
 
 /* Progress */
 .pb-progress { position: relative; display: flex; align-items: center; gap: 14px; padding: 18px 20px; height: 100%; box-sizing: border-box; }
-.pb-tile { flex: none; width: 54px; height: 54px; display: grid; place-items: center; border-radius: 15px; background: rgba(255, 255, 255, 0.05); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
+.pb-tile { flex: none; width: 54px; height: 54px; display: grid; place-items: center; border-radius: 15px; background: rgba(var(--ink-rgb), 0.05); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
 .pb-progress-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 9px; }
-.pb-bar { height: 7px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+.pb-bar { height: 7px; border-radius: 999px; background: rgba(var(--ink-rgb), 0.12); overflow: hidden; }
 .pb-bar span { display: block; height: 100%; border-radius: inherit; background: #f2f2f2; transition: width 600ms var(--spring-snappy); }
 .pb-style-tinted .pb-bar span, .pblock[style*="--pb-accent: #"] .pb-bar span { background: var(--pb-accent); }
 .pb-progress-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
@@ -237,13 +237,13 @@ button.pf-link:hover { color: var(--text-1); text-decoration: underline; text-un
 
 /* Fields, links, badges */
 .pb-fields { margin: 0; display: flex; flex-direction: column; }
-.pb-field { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; border-bottom: 0.5px solid rgba(255, 255, 255, 0.08); }
+.pb-field { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; border-bottom: 0.5px solid rgba(var(--ink-rgb), 0.08); }
 .pb-field:last-child { border-bottom: 0; }
 .pb-field dt { font: var(--t-small); color: var(--text-3); }
 .pb-field dd { margin: 0; font: var(--t-ui-strong); color: var(--text-1); text-align: end; }
 .pb-links { display: flex; flex-wrap: wrap; gap: 8px; }
-.pb-link { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px 0 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); font: var(--t-ui-strong); color: var(--text-1); transition: background-color 160ms ease; }
-.pb-link:hover { background: rgba(255, 255, 255, 0.15); }
+.pb-link { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px 0 10px; border-radius: 999px; background: rgba(var(--ink-rgb), 0.08); font: var(--t-ui-strong); color: var(--text-1); transition: background-color 160ms ease; }
+.pb-link:hover { background: rgba(var(--ink-rgb), 0.15); }
 .pb-link > .icon:last-child { color: var(--text-3); }
 .pb-badges { display: flex; flex-wrap: wrap; gap: 12px; }
 .pb-badge-item { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 70px; font: var(--t-caption); color: var(--text-2); text-align: center; }
@@ -272,7 +272,7 @@ button.pf-link:hover { color: var(--text-1); text-decoration: underline; text-un
 .pf-edit-row { display: flex; align-items: center; gap: 2px; padding: 3px; }
 .pf-edit-grip { display: grid; place-items: center; width: 26px; height: 26px; color: var(--text-3); cursor: grab; }
 .pf-edit-btn { display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; font: var(--t-caption); color: var(--text-2); }
-.pf-edit-btn:hover { background: rgba(255, 255, 255, 0.1); color: var(--text-1); }
+.pf-edit-btn:hover { background: rgba(var(--ink-rgb), 0.1); color: var(--text-1); }
 .pf-edit-btn.is-danger:hover { background: rgba(255, 80, 80, 0.2); color: #ff8a8a; }
 .pf-featured { padding: 0 8px; font: var(--t-caption); font-weight: 600; color: #f3c969; }
 .pf-add-block {
@@ -284,12 +284,12 @@ button.pf-link:hover { color: var(--text-1); text-decoration: underline; text-un
   justify-content: center;
   gap: 8px;
   border-radius: 24px;
-  border: 1.5px dashed rgba(255, 255, 255, 0.16);
+  border: 1.5px dashed rgba(var(--ink-rgb), 0.16);
   color: var(--text-3);
   font: var(--t-ui-strong);
   transition: background-color 160ms ease, color 160ms ease;
 }
-.pf-add-block:hover { background: rgba(255, 255, 255, 0.04); color: var(--text-1); }
+.pf-add-block:hover { background: rgba(var(--ink-rgb), 0.04); color: var(--text-1); }
 
 .pf-inspector { position: fixed !important; z-index: 2300; inset-inline-end: 24px; top: 84px; bottom: 24px; width: 372px; }
 .pf-inspector > .g-content { display: flex; flex-direction: column; height: 100%; }
@@ -338,7 +338,7 @@ button.pf-link:hover { color: var(--text-1); text-decoration: underline; text-un
 .pb-picker-foot { margin: 14px 0 0; font: var(--t-caption); color: var(--text-3); }
 
 /* Empty blocks */
-.pf-blocks-empty { margin-top: 30px; padding: 30px 24px; border-radius: 26px; background: rgba(255, 255, 255, 0.035); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05); text-align: center; }
+.pf-blocks-empty { margin-top: 30px; padding: 30px 24px; border-radius: 26px; background: rgba(var(--ink-rgb), 0.035); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05); text-align: center; }
 .pf-blocks-empty-art { display: flex; justify-content: center; margin-bottom: 14px; }
 .pf-blocks-empty-art > * { margin: 0 -6px; }
 .pf-blocks-empty-art > :nth-child(1) { transform: rotate(-10deg) translateY(4px); }
@@ -351,8 +351,8 @@ button.pf-link:hover { color: var(--text-1); text-decoration: underline; text-un
 /* ---- Tabs -------------------------------------------------------------- */
 .pf-tabs { display: flex; margin: 38px 0 16px; }
 .pf-pages { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
-.pf-page { display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: 20px; background: rgba(255, 255, 255, 0.045); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04); text-align: start; transition: background-color 160ms ease, transform var(--d-release) var(--spring-snappy); }
-.pf-page:hover { background: rgba(255, 255, 255, 0.075); transform: translateY(-1px); }
+.pf-page { display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: 20px; background: rgba(var(--ink-rgb), 0.045); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04); text-align: start; transition: background-color 160ms ease, transform var(--d-release) var(--spring-snappy); }
+.pf-page:hover { background: rgba(var(--ink-rgb), 0.075); transform: translateY(-1px); }
 .pf-page-top { display: flex; align-items: center; justify-content: space-between; color: var(--text-3); }
 .pf-page-title { font: var(--t-ui-strong); font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pf-page-preview { font: var(--t-small); color: var(--text-3); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.45; }
@@ -399,8 +399,8 @@ button.pf-link:hover { color: var(--text-1); text-decoration: underline; text-un
   opacity: 0;
   transition: opacity 180ms ease;
   background:
-    linear-gradient(to right, transparent calc(33.33% - 0.5px), rgba(255, 255, 255, 0.35) calc(33.33% - 0.5px), rgba(255, 255, 255, 0.35) calc(33.33% + 0.5px), transparent calc(33.33% + 0.5px), transparent calc(66.66% - 0.5px), rgba(255, 255, 255, 0.35) calc(66.66% - 0.5px), rgba(255, 255, 255, 0.35) calc(66.66% + 0.5px), transparent calc(66.66% + 0.5px)),
-    linear-gradient(to bottom, transparent calc(33.33% - 0.5px), rgba(255, 255, 255, 0.35) calc(33.33% - 0.5px), rgba(255, 255, 255, 0.35) calc(33.33% + 0.5px), transparent calc(33.33% + 0.5px), transparent calc(66.66% - 0.5px), rgba(255, 255, 255, 0.35) calc(66.66% - 0.5px), rgba(255, 255, 255, 0.35) calc(66.66% + 0.5px), transparent calc(66.66% + 0.5px));
+    linear-gradient(to right, transparent calc(33.33% - 0.5px), rgba(var(--ink-rgb), 0.35) calc(33.33% - 0.5px), rgba(var(--ink-rgb), 0.35) calc(33.33% + 0.5px), transparent calc(33.33% + 0.5px), transparent calc(66.66% - 0.5px), rgba(var(--ink-rgb), 0.35) calc(66.66% - 0.5px), rgba(var(--ink-rgb), 0.35) calc(66.66% + 0.5px), transparent calc(66.66% + 0.5px)),
+    linear-gradient(to bottom, transparent calc(33.33% - 0.5px), rgba(var(--ink-rgb), 0.35) calc(33.33% - 0.5px), rgba(var(--ink-rgb), 0.35) calc(33.33% + 0.5px), transparent calc(33.33% + 0.5px), transparent calc(66.66% - 0.5px), rgba(var(--ink-rgb), 0.35) calc(66.66% - 0.5px), rgba(var(--ink-rgb), 0.35) calc(66.66% + 0.5px), transparent calc(66.66% + 0.5px));
 }
 .crop-frame.is-dragging .crop-grid, .crop-frame:hover .crop-grid { opacity: 1; }
 .crop-controls { display: flex; align-items: center; gap: 10px; color: var(--text-3); }
@@ -408,7 +408,7 @@ button.pf-link:hover { color: var(--text-1); text-decoration: underline; text-un
 .crop-hint { margin: 10px 0 0; font: var(--t-caption); color: var(--text-3); }
 .crop-sheet .modal-foot .grow { flex: 1; }
 .pf-media-item { position: relative; }
-.pf-media-wait { display: block; width: 100%; height: 100%; background: linear-gradient(110deg, rgba(255, 255, 255, 0.04) 30%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.04) 70%); background-size: 200% 100%; animation: pf-wait 1.4s linear infinite; }
+.pf-media-wait { display: block; width: 100%; height: 100%; background: linear-gradient(110deg, rgba(var(--ink-rgb), 0.04) 30%, rgba(var(--ink-rgb), 0.08) 50%, rgba(var(--ink-rgb), 0.04) 70%); background-size: 200% 100%; animation: pf-wait 1.4s linear infinite; }
 @keyframes pf-wait { to { background-position: -200% 0; } }
 .pf-media-badge { position: absolute; inset-inline-start: 8px; bottom: 8px; padding: 2px 7px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); color: #fff; font: var(--t-caption); font-size: 10.5px; font-weight: 600; letter-spacing: 0.02em; }
 /* The ambient copy is tiny, so the blur is cheap; keep it on its own layer. */
@@ -418,9 +418,9 @@ button.pf-link:hover { color: var(--text-1); text-decoration: underline; text-un
 
 /* ---- Frame block: the photo is the widget ------------------------------- */
 .pblock.pbt-frame { background: none !important; box-shadow: none !important; overflow: visible; min-height: 0; border-radius: 0; align-self: start; }
-.frame-art { position: relative; width: 100%; overflow: hidden; isolation: isolate; background: rgba(255, 255, 255, 0.04); }
+.frame-art { position: relative; width: 100%; overflow: hidden; isolation: isolate; background: rgba(var(--ink-rgb), 0.04); }
 .frame-art.has-shadow { box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18), 0 10px 26px rgba(0, 0, 0, 0.32), 0 22px 48px rgba(0, 0, 0, 0.18); }
-.frame-art.is-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--text-3); font: var(--t-small); border: 1.5px dashed rgba(255, 255, 255, 0.14); background: none; }
+.frame-art.is-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--text-3); font: var(--t-small); border: 1.5px dashed rgba(var(--ink-rgb), 0.14); background: none; }
 .frame-slide { position: absolute; inset: 0; opacity: 0; transition: opacity 900ms ease; }
 .frame-slide.is-on { opacity: 1; }
 .frame-img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
@@ -430,7 +430,7 @@ button.pf-link:hover { color: var(--text-1); text-decoration: underline; text-un
 .frame-text.is-top { top: 0; padding-bottom: 44px; background: linear-gradient(rgba(0, 0, 0, 0.7), transparent); }
 .frame-art { container-type: inline-size; }
 .frame-dots { position: absolute; z-index: 3; left: 50%; bottom: 10px; transform: translateX(-50%); display: flex; gap: 5px; padding: 4px 7px; border-radius: 999px; background: rgba(0, 0, 0, 0.32); }
-.frame-dots span { width: 5px; height: 5px; border-radius: 50%; background: rgba(255, 255, 255, 0.45); transition: background-color 300ms ease; }
+.frame-dots span { width: 5px; height: 5px; border-radius: 50%; background: rgba(var(--ink-rgb), 0.45); transition: background-color 300ms ease; }
 .frame-dots span.is-on { background: #fff; }
 .pbi-photos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .pbi-photo { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: var(--fill-1); }
@@ -439,7 +439,7 @@ button.pf-link:hover { color: var(--text-1); text-decoration: underline; text-un
 .pbi-photo:hover .pbi-photo-actions { opacity: 1; }
 .pbi-photo-actions button { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: rgba(0, 0, 0, 0.6); color: #fff; }
 .pbi-photo-actions button:disabled { opacity: 0.35; }
-.pbi-photo-add { aspect-ratio: 1; border-radius: 10px; display: grid; place-items: center; border: 1.5px dashed rgba(255, 255, 255, 0.18); color: var(--text-3); }
+.pbi-photo-add { aspect-ratio: 1; border-radius: 10px; display: grid; place-items: center; border: 1.5px dashed rgba(var(--ink-rgb), 0.18); color: var(--text-3); }
 .pbi-photo-add:hover { color: var(--text-1); background: var(--fill-1); }
 
 /* Username: one line under the field says what is wrong, or that it is free. */
