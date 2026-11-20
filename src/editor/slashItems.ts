@@ -118,6 +118,16 @@ export function slashItems(): SlashItem[] {
       } },
     { id: "tabs", title: "Tabs", subtitle: "Switch between sections in place", icon: "tabs", group: "Layout", keywords: "tabs tabbed sections switch", run: (e, r) => block(e, r).insertTabs().run() },
 
+    // Pages 2.0
+    { id: "synced", title: "Synced Block", subtitle: "The same blocks on several pages", icon: "synced", group: "Layout", keywords: "synced sync mirror shared reuse transclude", run: (e, r) => block(e, r).insertSynced().run() },
+    { id: "whiteboard", title: "Whiteboard", subtitle: "Notes, shapes and arrows on an open board", icon: "whiteboard", group: "Layout", keywords: "whiteboard board canvas sticky notes brainstorm miro", run: (e, r) => block(e, r).insertWhiteboard().run() },
+    { id: "button", title: "Button", subtitle: "Insert text, open a page or ask Claude", icon: "button", group: "Insert", keywords: "button action click run template automation", run: (e, r) => block(e, r).insertButtonBlock().run() },
+    { id: "footnote", title: "Footnote", subtitle: "A numbered note, listed at the end", icon: "footnote", group: "Insert", keywords: "footnote note reference citation source", run: (e, r) => e.chain().focus().deleteRange(r).insertFootnote().run() },
+    { id: "form", title: "Form", subtitle: "Questions whose answers become pages", icon: "form", group: "Insert", keywords: "form survey questions responses quiz sign up", run: (e, r) => block(e, r).insertForm().run() },
+    { id: "voice", title: "Voice Note", subtitle: "Record, with the words written down", icon: "voice", group: "Media", keywords: "voice audio record microphone transcribe dictate speech", run: (e, r) => block(e, r).insertVoiceNote().run() },
+    { id: "code-js", title: "Run JavaScript", subtitle: "Code you can run in the page", icon: "terminal", group: "Knowledge", keywords: "code run javascript js script execute", run: (e, r) => block(e, r).insertCodeRun("javascript").run() },
+    { id: "code-py", title: "Run Python", subtitle: "Python in the page, loaded once", icon: "terminal", group: "Knowledge", keywords: "code run python py script execute pyodide", run: (e, r) => block(e, r).insertCodeRun("python").run() },
+
     // AI
     { id: "prompt", title: "Prompt", subtitle: "Reusable instruction for Claude", icon: "prompt", group: "Assistant", run: (e, r) => block(e, r).setPrompt().run() },
     {

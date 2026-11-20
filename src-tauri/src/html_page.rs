@@ -16,6 +16,11 @@ pub const MAX_STATE: usize = 256 * 1024;
 pub const RULES: &str = include_str!("../../docs/HTML_PAGES.md");
 const BASE_CSS: &str = include_str!("../../src/htmlpage/base.css");
 const RUNTIME_JS: &str = include_str!("../../src/htmlpage/runtime.js");
+/// The frame that runs code blocks (src/editor/runner.html).
+const RUNNER_HTML: &str = include_str!("../../src/editor/runner.html");
+/// Code blocks may run inline scripts, and Python may load Pyodide from its CDN.
+/// The frame is sandboxed without same origin, so it cannot reach Worlds.
+pub const RUNNER_CSP: &str = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'unsafe-inline'; img-src data: blob:; connect-src https://cdn.jsdelivr.net; frame-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'";
 
 /// The frame's own policy: inline code only, nothing from the network.
 pub const CSP: &str =
@@ -282,6 +287,16 @@ pub fn serve(request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
                 .unwrap(),
             None => empty(StatusCode::NOT_FOUND),
         };
+    }
+    if path == "_w/runner" {
+        return Response::builder()
+            .header(header::CONTENT_TYPE, "text/html; charset=utf-8")
+            .header("Content-Security-Policy", RUNNER_CSP)
+            .header("X-Content-Type-Options", "nosniff")
+            .header("Referrer-Policy", "no-referrer")
+            .header(header::CACHE_CONTROL, "no-store")
+            .body(RUNNER_HTML.as_bytes().to_vec())
+            .unwrap();
     }
     let Some(id) =
         path.strip_prefix("page/").filter(|id| !id.is_empty() && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'))

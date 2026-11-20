@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"></head>
+<body>
+<script>
+// Runs a code block from a Worlds page in a sandboxed frame and sends what it
+// prints back to the page. JavaScript runs as an inline script; Python loads
+// Pyodide once, the first time it is needed.
+(function () {
+  var send = function (type, text) { parent.postMessage({ worldsRun: 1, type: type, text: text }, "*"); };
+  var show = function (args) {
+    return Array.prototype.map.call(args, function (x) {
+      if (typeof x === "string") return x;
+      try { return JSON.stringify(x, null, 2); } catch (e) { return String(x); }
+    }).join(" ");
+  };
+  ["log", "info", "warn", "error", "debug"].forEach(function (k) {
+    var original = console[k];
+    console[k] = function () {
+      send(k === "error" || k === "warn" ? "err" : "out", show(arguments));
+      if (original) original.apply(console, arguments);
+    };
+  });
+  addEventListener("error", function (e) { send("err", String(e.message)); send("done", ""); });
+  addEventListener("unhandledrejection", function (e) { send("err", String(e.reason && e.reason.message || e.reason)); });
+  var python = null;
+  function loadPython() {
+    if (python) return python;
+    python = new Promise(function (resolve, reject) {
+      send("status", "Loading Python");
+      var s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js";
+      s.onload = function () {
+        loadPyodide().then(resolve, reject);
+      };
+      s.onerror = function () { python = null; reject(new Error("Python could not be loaded. It needs an internet connection the first time.")); };
+      document.head.appendChild(s);
+    });
+    return python;
+  }
+  addEventListener("message", function (e) {
+    var d = e.data;
+    if (!d || d.worldsRun !== 1) return;
+    if (d.language === "python") {
+      loadPython().then(function (py) {
+        py.setStdout({ batched: function (t) { send("out", t); } });
+        py.setStderr({ batched: function (t) { send("err", t); } });
+        return py.runPythonAsync(d.code).then(function (r) {
+          if (r !== undefined && r !== null) send("out", String(r));
+        });
+      }).catch(function (err) {
+        send("err", String(err && err.message || err));
+      }).then(function () { send("done", ""); });
+      return;
+    }
+    var s = document.createElement("script");
+    s.textContent = d.code + "\n;parent.postMessage({ worldsRun: 1, type: 'done', text: '' }, '*');";
+    document.body.appendChild(s);
+  });
+  send("ready", "");
+})();
+</script>
+</body>
+</html>

@@ -23,6 +23,9 @@ import { BackgroundColor, Color, FindReplace, Gallery, TextStyle, Toc, WikiLink 
 import { openLightbox } from "./views/Pages3Views";
 import { documentExtensions } from "./extensions/document";
 import { Chart, MathBlock, MathInline, Mermaid, Tab, Tabs } from "./extensions/pages4";
+import { pages5Extensions } from "./extensions/pages5";
+import { afterSave } from "./synced";
+import { BlockSelection, blockActions, clearBlockSelection, toggleBlockSelection, watchBlockDrags } from "./blockActions";
 import { shortcutKey } from "../lib/keys";
 
 /** Apple-like text and background colours. */
@@ -207,6 +210,8 @@ export const PageEditor = forwardRef<
         Chart,
         Tabs,
         Tab,
+        ...pages5Extensions,
+        BlockSelection,
         ...(variant === "document" ? documentExtensions : []),
         SlashCommand.configure({ getContext: () => ({ pageId }) }),
         WorldsContext.configure({ pageId }),
@@ -299,6 +304,7 @@ export const PageEditor = forwardRef<
           syncedAt.current,
         );
         syncedAt.current = res.updatedAt;
+        afterSave(pageId, blocks, baseline.current);
         if (live && !ed.isDestroyed) {
           if (res.remapped.length) applyRemaps(ed, res.remapped);
           baseline.current = new Map(blocksOf(ed).map((n) => [n.attrs?.bid as string, JSON.stringify(n)]));
@@ -452,6 +458,13 @@ export const PageEditor = forwardRef<
     return () => window.removeEventListener("worlds:ui-language", redo);
   }, [language, editor]);
 
+  // Blocks dragged by their handle can be dropped on a page in the sidebar.
+  const wrapRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!editor || !wrapRef.current) return;
+    return watchBlockDrags(editor, pageId, wrapRef.current);
+  }, [editor, pageId]);
+
   // Palette / menu commands targeting this page's editor.
   useEffect(() => {
     return on("editor:command", ({ pageId: target, command, args }) => {
@@ -542,6 +555,7 @@ export const PageEditor = forwardRef<
         ],
       });
     }
+    items.push(...blockActions(editor, pageId, node, pos));
     items.push(
       { kind: "separator" },
       { label: "Duplicate", icon: "duplicate", shortcut: "Ctrl+D", onSelect: () => duplicateBlock(editor, pos, node) },
@@ -584,7 +598,7 @@ export const PageEditor = forwardRef<
   };
 
   return (
-    <div className="editor-wrap" onDoubleClick={onDoubleClick}>
+    <div className="editor-wrap" ref={wrapRef} onDoubleClick={onDoubleClick} onPointerDown={(e) => !e.shiftKey && !(e.target as HTMLElement).closest(".block-handle") && clearBlockSelection(editor)}>
       {collab.render(editor)}
       <DragHandle
         editor={editor}
@@ -616,7 +630,12 @@ export const PageEditor = forwardRef<
             data-tip="Drag to move · Click for options"
             onClick={(e) => {
               if (!hovered) return;
-              editor.view.dispatch(editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, hovered.pos)));
+              // Shift-click adds the block to a selection of several blocks.
+              if (e.shiftKey && hovered.node.attrs.bid) {
+                toggleBlockSelection(editor, hovered.node.attrs.bid);
+                return;
+              }
+              editor.view.dispatch(editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, hovered.pos)).setMeta("keepBlockSelection", true));
               const r = e.currentTarget.getBoundingClientRect();
               show(r.left, r.bottom + 4, blockMenu(hovered.node, hovered.pos));
             }}

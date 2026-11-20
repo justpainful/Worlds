@@ -1,3 +1,4 @@
+import { emit } from "../lib/bus";
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { ProductIcon, type ProductIconName } from "../ui/ProductIcon";
 import { useStore, childrenOf, pageTitle, type Route } from "../state/store";
@@ -337,6 +338,13 @@ function Tree({ rows, activeRoute }: { rows: Row[]; activeRoute: Route | null })
   }, [virtual]);
 
   const onDragOver = (e: DragEvent, row: Row) => {
+    // Blocks dragged out of a page move into the page they are dropped on.
+    if (e.dataTransfer.types.includes("application/x-worlds-blocks")) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      if (!drop || drop.id !== row.page.id || drop.zone !== "inside") setDrop({ id: row.page.id, zone: "inside" });
+      return;
+    }
     if (!e.dataTransfer.types.includes("application/x-worlds-page")) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
@@ -360,6 +368,17 @@ function Tree({ rows, activeRoute }: { rows: Row[]; activeRoute: Route | null })
 
   const onDrop = async (e: DragEvent, row: Row) => {
     e.preventDefault();
+    const blocks = e.dataTransfer.getData("application/x-worlds-blocks");
+    if (blocks) {
+      setDrop(null);
+      try {
+        const { pageId: from, bids } = JSON.parse(blocks) as { pageId: string; bids: string[] };
+        if (from !== row.page.id && bids.length) emit("blocks:moved-out", { pageId: from, bids, target: row.page.id });
+      } catch {
+        /* not ours */
+      }
+      return;
+    }
     const id = e.dataTransfer.getData("application/x-worlds-page");
     const d = drop;
     setDrop(null);

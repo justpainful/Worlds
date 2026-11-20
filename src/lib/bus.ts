@@ -7,6 +7,8 @@ export interface BusEvents {
   "discord:compose": { pageId: string };
   "automation:new": { pageId: string | null };
   "page:info": { pageId: string; panel: "info" | "history" | "instructions" };
+  /** Blocks dragged from a page onto another page in the sidebar. */
+  "blocks:moved-out": { pageId: string; bids: string[]; target: string };
 }
 
 const target = new EventTarget();
