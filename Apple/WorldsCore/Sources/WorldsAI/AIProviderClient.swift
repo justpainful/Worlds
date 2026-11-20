@@ -27,7 +27,7 @@ extension AIProviderConfiguration: CustomStringConvertible, CustomDebugStringCon
 /// Talks to one provider over HTTPS (or HTTP for local servers). Replies stream
 /// as text deltas. The key only travels in request headers; it is never logged
 /// or put into error messages.
-public struct AIProviderClient: Sendable {
+public struct AIProviderClient: AITransport {
     public let configuration: AIProviderConfiguration
     private let session: URLSession
 
@@ -141,6 +141,42 @@ public struct AIProviderClient: Sendable {
             }
         }
         return false
+    }
+
+    /// Sends one tool loop request. A 2xx body is passed on line by line;
+    /// lines are split on bytes, so a UTF-8 character split across network
+    /// chunks stays whole. Any other status returns its code and body.
+    public func send(_ request: AIHTTPRequest, onLine: (String) async throws -> Bool) async throws -> AIHTTPFailure? {
+        do {
+            let (bytes, response) = try await session.bytes(for: request.urlRequest(timeout: 120))
+            guard let http = response as? HTTPURLResponse else { throw AIProviderError.malformed(provider: providerName) }
+            if !(200..<300).contains(http.statusCode) {
+                var body = Data()
+                for try await byte in bytes {
+                    body.append(byte)
+                    if body.count >= 65_536 { break }
+                }
+                return AIHTTPFailure(status: http.statusCode, body: String(decoding: body, as: UTF8.self))
+            }
+            var buffer: [UInt8] = []
+            for try await byte in bytes {
+                guard byte == 0x0A else {
+                    buffer.append(byte)
+                    if buffer.count > 8 * 1024 * 1024 { throw AIProviderError.malformed(provider: providerName) }
+                    continue
+                }
+                let line = String(decoding: buffer, as: UTF8.self)
+                buffer.removeAll(keepingCapacity: true)
+                let keepReading = try await onLine(line)
+                if !keepReading { return nil }
+                try Task.checkCancellation()
+            }
+            if !buffer.isEmpty { _ = try await onLine(String(decoding: buffer, as: UTF8.self)) }
+            try Task.checkCancellation()
+            return nil
+        } catch {
+            throw translate(error)
+        }
     }
 
     func translate(_ error: Error) -> Error {

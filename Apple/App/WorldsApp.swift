@@ -939,7 +939,7 @@ private struct WorldsLibraryView: View {
                 }
                 Tab("AI", systemImage: "sparkles", value: WorkspaceDestination.ai) {
                     phoneTabStack(for: .ai) {
-                        AssistantHostView(pages: pages, embeddedInNavigation: true)
+                        assistantHost(embedded: true, open: { openResourceOnPhone($0) })
                     }
                 }
                 Tab("Search", systemImage: "magnifyingglass", value: WorkspaceDestination.search, role: .search) {
@@ -997,7 +997,7 @@ private struct WorldsLibraryView: View {
                 .tag(WorkspaceDestination.library)
 
                 phoneTabStack(for: .ai) {
-                    AssistantHostView(pages: pages, embeddedInNavigation: true)
+                    assistantHost(embedded: true, open: { openResourceOnPhone($0) })
                 }
                 .tabItem { Label("AI", systemImage: "sparkles") }
                 .tag(WorkspaceDestination.ai)
@@ -1290,7 +1290,7 @@ private struct WorldsLibraryView: View {
                     permanentDeletionAvailable: permanentDeletionAvailable
                 )
             case .ai:
-                AssistantHostView(pages: pages, embeddedInNavigation: true)
+                assistantHost(embedded: true, open: { openResourceInModernShell($0) })
             case .search:
                 SearchDestinationView(
                     searchQuery: $searchQuery,
@@ -1551,6 +1551,53 @@ private struct WorldsLibraryView: View {
             }
             .allowsHitTesting(false)
             .accessibilityIdentifier("reading-ruler-overlay")
+        }
+    }
+
+    /// The assistant, with the workspace it may read and edit and the way back to a changed page.
+    @ViewBuilder
+    private func assistantHost(embedded: Bool, prompt: String = "", open: @escaping (String) -> Void) -> some View {
+        #if WORLDS_MAIN_APP_MODULES
+        AssistantHostView(pages: pages, embeddedInNavigation: embedded, initialPrompt: prompt, workspace: assistantWorkspace,
+                          openPage: open, onWorkspaceChanged: { refreshAfterAssistant() })
+        #else
+        AssistantHostView(pages: pages, embeddedInNavigation: embedded, initialPrompt: prompt)
+        #endif
+    }
+
+    #if WORLDS_MAIN_APP_MODULES
+    /// The opened workspace for the assistant: written in place when the
+    /// preflight allowed it (or a local copy is active), otherwise read only
+    /// with the reason the person also sees.
+    private var assistantWorkspace: AssistantWorkspaceAccess? {
+        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+        if let context = copyContext {
+            return AssistantWorkspaceAccess(readURL: context.copy.databaseURL, writeURL: context.copy.databaseURL,
+                                            readOnlyReason: nil, isLocalCopy: context.copy.isLocalCopy)
+        }
+        guard loaded, let url = openedVideoDatabase?.url else { return nil }
+        return AssistantWorkspaceAccess(readURL: url, writeURL: nil, readOnlyReason: workspaceReadOnlyText(readOnlyReason), isLocalCopy: false)
+        #else
+        guard loaded, let url = openedVideoDatabase?.url else { return nil }
+        return AssistantWorkspaceAccess(readURL: url, writeURL: nil, readOnlyReason: String(localized: "This database cannot be edited here."), isLocalCopy: false)
+        #endif
+    }
+
+    /// Reloads the pages after the assistant changed them or undid a reply.
+    private func refreshAfterAssistant() {
+        #if WORLDS_EXPERIMENTAL_LOCAL_COPY
+        guard let context = copyContext else { return }
+        let generation = databaseGeneration
+        Task { await refreshCopy(id: context.copy.id, generation: generation) }
+        #endif
+    }
+    #endif
+
+    private func openFromAssistant(_ id: String) {
+        if horizontalSizeClass == .compact {
+            phoneDetailPageID = id
+        } else {
+            selectedID = id
         }
     }
 
@@ -1905,7 +1952,7 @@ private struct WorldsLibraryView: View {
                 #endif
         }
         .sheet(isPresented: $showAssistant, onDismiss: { assistantPrompt = "" }) {
-            AssistantHostView(pages: pages, initialPrompt: assistantPrompt)
+            assistantHost(embedded: false, prompt: assistantPrompt, open: { id in showAssistant = false; openFromAssistant(id) })
                 .environment(\.colorScheme, colorScheme)
                 .preferredColorScheme(colorScheme)
                 #if os(macOS)
