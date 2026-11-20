@@ -60,6 +60,7 @@ import { useCollab } from "../sync/useCollab";
 import { LayoutShortcuts } from "./extensions/layoutShortcuts";
 import { PluginBlock } from "../plugins/PluginViews";
 import { PlacesMap } from "./views/PlacesMap";
+import { fileActions } from "../files/readFiles";
 
 export interface PageEditorHandle {
   editor: Editor | null;
@@ -569,6 +570,7 @@ export const PageEditor = forwardRef<
         ],
       });
     }
+    items.push(...fileActions(editor, pageId, node, pos));
     items.push(...blockActions(editor, pageId, node, pos));
     items.push(
       { kind: "separator" },

@@ -310,6 +310,8 @@ export const api = {
   aiCancel: (runId: string) => invoke<void>("ai_cancel", { runId }),
   /** Rewrite text by an instruction and get only the result back (no tools, no chat). */
   aiRewrite: (text: string, instructions: string, model?: string) => invoke<string>("ai_rewrite", { text, instructions, model: model ?? null }),
+  /** Have Claude read an attached picture or PDF and return what the instruction asks. */
+  aiReadFile: (attachmentId: string, instructions: string) => invoke<string>("ai_read_file", { attachmentId, instructions }),
   aiStatus: () => invoke<{ available: boolean; version?: string; path?: string; mcpRegistered?: boolean }>("ai_status"),
   aiRegisterMcp: () => invoke<string>("ai_register_mcp"),
   /** Long-lived Claude Code token kept in Windows Credential Manager (never returned to the UI). */

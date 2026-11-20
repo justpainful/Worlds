@@ -38,6 +38,7 @@ import { shortcutKey } from "../lib/keys";
 import { openSideBySide, openTimeMachine, readAloud } from "../ai/writingTools";
 import { PrivateGate, isPrivate, lockPrivate, togglePrivate, usePrivacy } from "../pages/privacy";
 import { exportBook, exportDocx } from "../files/importExport";
+import { collectHighlights } from "../files/readFiles";
 
 export function PageView({ pageId, paneId }: { pageId: string; paneId: string }) {
   const meta = useStore((s) => s.pages[pageId]);
@@ -343,6 +344,7 @@ function LoadedPage({ page, paneId, reload }: { page: Page; paneId: string; relo
                         ],
                       },
                       { label: "Read Aloud", icon: "speaker", onSelect: () => readAloud() },
+                      { label: "Gather Highlights", icon: "highlight", onSelect: () => editor && collectHighlights(editor) },
                       { label: "Translate Side by Side", icon: "translate", onSelect: () => openSideBySide(page.id) },
                       { label: "Time Machine", icon: "history", onSelect: () => openTimeMachine(page.id) },
                       { label: "Keyboard Shortcuts", icon: "keyboard", shortcut: "Ctrl+/", onSelect: () => setShortcuts(true) },

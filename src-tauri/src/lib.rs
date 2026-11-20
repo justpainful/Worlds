@@ -318,6 +318,7 @@ pub fn run() {
             ai::ai_run,
             ai::ai_cancel,
             ai::ai_rewrite,
+            ai::ai_read_file,
             ai::ai_status,
             ai::ai_register_mcp,
             ai::ai_token_status,
