@@ -59,6 +59,7 @@ import { menuAt, useMenu, type MenuItem } from "../ui/Menu";
 import { useCollab } from "../sync/useCollab";
 import { LayoutShortcuts } from "./extensions/layoutShortcuts";
 import { PluginBlock } from "../plugins/PluginViews";
+import { PlacesMap } from "./views/PlacesMap";
 
 export interface PageEditorHandle {
   editor: Editor | null;
@@ -218,6 +219,7 @@ export const PageEditor = forwardRef<
         BlockSelection,
         ArabicSpell,
         PluginBlock,
+        PlacesMap,
         CommentMark.configure({
           onOpen: (threadId, el) => {
             const ed = editorRef.current;

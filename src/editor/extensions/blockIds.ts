@@ -39,6 +39,7 @@ export const BLOCK_TYPES = [
   "codeRun",
   "whiteboard",
   "pluginBlock",
+  "placesMap",
 ];
 
 export function newBlockId(): string {

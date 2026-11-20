@@ -131,3 +131,22 @@
 .ps-swatch span { position: absolute; inset-inline-end: 10px; bottom: 10px; width: 22px; height: 22px; border-radius: 50%; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.7); }
 .ps-empty { color: var(--text-3); }
 .ps-note { margin: 14px 0 0; color: var(--text-3); font: var(--t-caption); }
+
+/* ---- Map of places ------------------------------------------------------- */
+.places-map { margin: 12px 0; }
+.pm-frame { position: relative; overflow: hidden; border-radius: 16px; background: #aad3df; touch-action: none; cursor: grab; box-shadow: inset 0 0 0 0.5px var(--hairline-strong); direction: ltr; }
+.pm-frame:active { cursor: grabbing; }
+.pm-frame.is-adding { cursor: crosshair; }
+.pm-tile { position: absolute; width: 256px; height: 256px; user-select: none; pointer-events: none; }
+:root[data-theme="dark"] .pm-tile, :root:not([data-theme]) .pm-tile { filter: brightness(0.82) contrast(1.05) saturate(0.85); }
+.pm-pin { position: absolute; z-index: 2; display: flex; flex-direction: column; align-items: center; transform: translate(-50%, -100%); color: #e5534b; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35)); }
+.pm-pin.has-page { color: #2e92ff; }
+.pm-label { margin-top: -2px; padding: 1px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.92); color: #1d1d1f; font: 600 11.5px var(--font-ui); white-space: nowrap; }
+.pm-tools { position: absolute; z-index: 3; inset-block-start: 10px; inset-inline-start: 10px; display: flex; gap: 4px; }
+.pm-tools button { display: inline-flex; align-items: center; gap: 5px; height: 30px; min-width: 30px; justify-content: center; padding: 0 9px; border-radius: 999px; background: var(--menu-solid); color: var(--text-1); font: var(--t-small); box-shadow: var(--shadow-glass), inset 0 0 0 0.5px var(--hairline-strong); }
+.pm-tools button.is-on { background: var(--accent); color: var(--on-accent); }
+.pm-credit { position: absolute; z-index: 3; right: 6px; bottom: 4px; padding: 1px 6px; border-radius: 6px; background: rgba(255, 255, 255, 0.8); color: #333; font: 10px var(--font-ui); text-decoration: none; }
+.pm-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.pm-list button { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px; border-radius: 999px; background: var(--fill-2); color: var(--text-1); font: var(--t-small); }
+.pm-list button:hover { background: var(--fill-3); }
+.pm-page { color: var(--text-3); }
