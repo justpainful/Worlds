@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { Node, mergeAttributes } from "@tiptap/core";
 import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from "@tiptap/react";
 import { errorMessage, isTauri } from "../lib/api";
-import { composeHtmlPage } from "../htmlpage/compose";
+import { appTheme, composeHtmlPage } from "../htmlpage/compose";
 import { useStore } from "../state/store";
 import { tr, uiLanguage } from "../i18n/ui";
 import { Icon, type IconName } from "../ui/Icon";
@@ -63,7 +63,7 @@ function PluginBlockView({ node, updateAttributes }: ReactNodeViewProps) {
         {nameOf(plugin)}
       </div>
       {isTauri && !mock ? (
-        <iframe ref={frame} title={plugin.name} sandbox="allow-scripts" style={{ height }} src={`http://whtml.localhost/plugin/${encodeURIComponent(plugin.id)}?lang=${lang}&v=${plugin.version}`} />
+        <iframe ref={frame} title={plugin.name} sandbox="allow-scripts" style={{ height }} src={`http://whtml.localhost/plugin/${encodeURIComponent(plugin.id)}?lang=${lang}&theme=${appTheme()}&v=${plugin.version}`} />
       ) : (
         <iframe ref={frame} title={plugin.name} sandbox="allow-scripts" style={{ height }} srcDoc={composeHtmlPage(plugin.html ?? "", null, lang)} />
       )}

@@ -7,7 +7,7 @@ import { Segmented } from "../ui/Segmented";
 import { EmptyState, Spinner } from "../ui/misc";
 import { Icon } from "../ui/Icon";
 import { ResourceHeader, useResource } from "../resources/views/ResourceHeader";
-import { composeHtmlPage } from "./compose";
+import { appTheme, composeHtmlPage } from "./compose";
 import "./htmlpage.css";
 
 type Mode = "page" | "source";
@@ -203,7 +203,7 @@ export function HtmlFrame({ id, source, state, revision, home }: { id: string; s
     style: { height },
   };
   return useProtocol ? (
-    <iframe key={revision} {...common} src={`http://whtml.localhost/page/${encodeURIComponent(id)}?lang=${lang}&v=${revision}`} />
+    <iframe key={revision} {...common} src={`http://whtml.localhost/page/${encodeURIComponent(id)}?lang=${lang}&theme=${appTheme()}&v=${revision}`} />
   ) : (
     <iframe key={revision} {...common} srcDoc={composeHtmlPage(source, state, lang)} />
   );

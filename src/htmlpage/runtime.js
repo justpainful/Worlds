@@ -5,6 +5,8 @@
 (function () {
   var boot = window.__worldsBoot || {};
   delete window.__worldsBoot;
+  // Follow the Worlds theme: from the boot data in the browser, from the address on the desktop.
+  if (boot.theme === "light" || /[?&]theme=light(&|$)/.test(location.search)) document.documentElement.setAttribute("data-theme", "light");
   var post = function (message) {
     message.worldsHtmlPage = 1;
     try { parent.postMessage(message, "*"); } catch (e) { /* not embedded */ }

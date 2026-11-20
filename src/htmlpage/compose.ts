@@ -5,8 +5,11 @@
 import baseCss from "./base.css?raw";
 import runtimeJs from "./runtime.js?raw";
 
-export function composeHtmlPage(source: string, state: unknown, lang: "ar" | "en"): string {
-  const boot = JSON.stringify({ state: state === undefined ? null : state, lang }).replace(/<\//g, "<\\/");
+/** The app's current theme, for frames that follow it. */
+export const appTheme = (): "dark" | "light" => (document.documentElement.dataset.theme === "light" ? "light" : "dark");
+
+export function composeHtmlPage(source: string, state: unknown, lang: "ar" | "en", theme: "dark" | "light" = appTheme()): string {
+  const boot = JSON.stringify({ state: state === undefined ? null : state, lang, theme }).replace(/<\//g, "<\\/");
   const head =
     `<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">` +
     `<style data-worlds-base>${baseCss}</style><script>window.__worldsBoot=${boot};</script><script>${runtimeJs}</script>`;
