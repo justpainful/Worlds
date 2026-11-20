@@ -363,3 +363,19 @@
 .provider-settings[dir="rtl"] .set-title, .provider-settings[dir="rtl"] .set-note { text-align: start; }
 .provider-pick[dir="rtl"] .intel-title, :lang(ar) .provider-pick .intel-title { letter-spacing: 0; text-transform: none; }
 .provider-pick .intel-note, .provider-pick .warn span, .provider-edit .bad-text { unicode-bidi: plaintext; text-align: start; }
+
+/* ---- Composer as one capsule (Worlds 1.0) ------------------------------
+   The field on top; +, the model, the hint and Send share the row under it,
+   all inside one rounded body with a soft shadow, light or dark. */
+.composer-shell { border-radius: 26px; }
+.composer-shell > .composer-glass { border-radius: 26px; }
+.composer-shell > .ai-glow { inset-inline-start: 0; }
+.composer-body, .ai-composer-page .composer-body { padding: 14px 10px 8px 14px; padding-inline-start: 14px; }
+.composer-plus {
+  position: static; flex: none; width: 32px; height: 32px; margin-inline-start: -2px;
+  background: rgba(var(--ink-rgb), 0.07); color: var(--text-1);
+}
+.composer-plus:hover { background: rgba(var(--ink-rgb), 0.13); }
+.composer-send.is-ready, .composer-send.is-stop { background: rgb(var(--ink-rgb)); color: rgb(var(--paper-rgb)); }
+.composer-send.is-ready:hover, .composer-send.is-stop:hover { background: rgba(var(--ink-rgb), 0.82); }
+.ai-composer-page .composer-input { min-height: 48px; }
