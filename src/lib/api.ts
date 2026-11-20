@@ -231,6 +231,11 @@ export const api = {
       | "stream"
       | "experiment"
       | "sheet"
+      // Comments on the text, page lock, web publishing and books.
+      | "comments"
+      | "lock"
+      | "publish"
+      | "book"
       // A pack item's fields (docs/PACKS.md).
       | "item"
       | import("../planning/model").DataKind,
@@ -297,6 +302,8 @@ export const api = {
   aiChatDelete: (id: string) => invoke<void>("ai_chat_delete", { id }),
   aiChatRename: (id: string, title: string) => invoke<void>("ai_chat_rename", { id, title }),
   aiCancel: (runId: string) => invoke<void>("ai_cancel", { runId }),
+  /** Rewrite text by an instruction and get only the result back (no tools, no chat). */
+  aiRewrite: (text: string, instructions: string, model?: string) => invoke<string>("ai_rewrite", { text, instructions, model: model ?? null }),
   aiStatus: () => invoke<{ available: boolean; version?: string; path?: string; mcpRegistered?: boolean }>("ai_status"),
   aiRegisterMcp: () => invoke<string>("ai_register_mcp"),
   /** Long-lived Claude Code token kept in Windows Credential Manager (never returned to the UI). */

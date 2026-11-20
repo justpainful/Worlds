@@ -919,6 +919,17 @@ pub async fn ai_chat_rename(state: State<'_, AppState>, id: String, title: Strin
     Ok(())
 }
 
+/// Rewrite a piece of text by an instruction and return only the result:
+/// Claude in the text, translation, word meanings, summaries. Runs without
+/// tools, with the provider or Claude Code chosen in Settings.
+#[tauri::command]
+pub async fn ai_rewrite(app: tauri::AppHandle, text: String, instructions: String, model: Option<String>) -> CmdResult<String> {
+    if text.len() > 400_000 {
+        return Err("The text is too long to send at once".into());
+    }
+    transform_markdown(&app, &text, &instructions, model).await.map_err(|e| format!("{e:#}"))
+}
+
 #[tauri::command]
 pub async fn ai_cancel(run_id: String) -> CmdResult<()> {
     // API runs stop through their signal; Claude Code and Codex runs are processes.

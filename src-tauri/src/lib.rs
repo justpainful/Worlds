@@ -310,6 +310,7 @@ pub fn run() {
             preview::preview_prepare,
             ai::ai_run,
             ai::ai_cancel,
+            ai::ai_rewrite,
             ai::ai_status,
             ai::ai_register_mcp,
             ai::ai_token_status,

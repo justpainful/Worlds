@@ -25,6 +25,8 @@ import { documentExtensions } from "./extensions/document";
 import { Chart, MathBlock, MathInline, Mermaid, Tab, Tabs } from "./extensions/pages4";
 import { pages5Extensions } from "./extensions/pages5";
 import { afterSave } from "./synced";
+import { CommentMark, commentSelection, openCommentThread } from "./comments";
+import { INLINE_ACTIONS, openInlineClaude } from "./InlineClaude";
 import { BlockSelection, blockActions, clearBlockSelection, toggleBlockSelection, watchBlockDrags } from "./blockActions";
 import { shortcutKey } from "../lib/keys";
 
@@ -212,6 +214,12 @@ export const PageEditor = forwardRef<
         Tab,
         ...pages5Extensions,
         BlockSelection,
+        CommentMark.configure({
+          onOpen: (threadId, el) => {
+            const ed = editorRef.current;
+            if (ed) openCommentThread(ed, pageId, threadId, el.getBoundingClientRect(), el.textContent ?? "");
+          },
+        }),
         ...(variant === "document" ? documentExtensions : []),
         SlashCommand.configure({ getContext: () => ({ pageId }) }),
         WorldsContext.configure({ pageId }),
@@ -674,6 +682,7 @@ export const PageEditor = forwardRef<
             <span className="bb-sep" />
             <BB icon="text" label="Bold" shortcut="Ctrl+B" active={editor.isActive("bold")} run={() => editor.chain().focus().toggleBold().run()} glyph="B" />
             <BB icon="text" label="Italic" shortcut="Ctrl+I" active={editor.isActive("italic")} run={() => editor.chain().focus().toggleItalic().run()} glyph="I" italic />
+            <BB icon="text" label="Underline" shortcut="Ctrl+U" active={editor.isActive("underline")} run={() => editor.chain().focus().toggleUnderline().run()} glyph="U" underline />
             <BB icon="text" label="Strikethrough" active={editor.isActive("strike")} run={() => editor.chain().focus().toggleStrike().run()} glyph="S" strike />
             <BB icon="code" label="Code" active={editor.isActive("code")} run={() => editor.chain().focus().toggleCode().run()} />
             <BB icon="highlight" label="Highlight" active={editor.isActive("highlight")} run={() => editor.chain().focus().toggleHighlight().run()} />
@@ -712,15 +721,32 @@ export const PageEditor = forwardRef<
               }}
             />
             <span className="bb-sep" />
+            <BB icon="comment" label="Comment" run={() => commentSelection(editor, pageId)} />
             <BB
-              icon="assistant"
-              label="Ask Claude about the selection"
+              icon="footnote"
+              label="Footnote"
               run={() => {
-                const { from, to } = editor.state.selection;
-                const text = editor.state.doc.textBetween(from, to, "\n");
-                emit("ai:open", { pageId, prompt: `Regarding this part of the page:\n"""\n${text}\n"""\n` });
+                const { to } = editor.state.selection;
+                editor.chain().focus().setTextSelection(to).insertFootnote().run();
               }}
             />
+            <span className="bb-sep" />
+            <button
+              className="bb-btn bb-text bb-claude"
+              data-tip="Claude in the text"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => openInlineClaude(editor, pageId)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                menuAt(
+                  e.currentTarget,
+                  INLINE_ACTIONS.map((a) => ({ label: a.label, icon: a.icon, onSelect: () => openInlineClaude(editor, pageId, a.instruction) })),
+                );
+              }}
+            >
+              <Icon name="assistant" size={15} />
+              Claude
+            </button>
           </div>
         </Glass>
       </BubbleMenu>
@@ -765,7 +791,7 @@ export const PageEditor = forwardRef<
   );
 });
 
-function BB({ icon, label, active, run, glyph, italic, strike, shortcut }: { icon: IconName; label: string; active?: boolean; run: () => void; glyph?: string; italic?: boolean; strike?: boolean; shortcut?: string }) {
+function BB({ icon, label, active, run, glyph, italic, strike, underline, shortcut }: { icon: IconName; label: string; active?: boolean; run: () => void; glyph?: string; italic?: boolean; strike?: boolean; underline?: boolean; shortcut?: string }) {
   return (
     <button
       className={`bb-btn ${active ? "is-active" : ""}`}
@@ -774,7 +800,7 @@ function BB({ icon, label, active, run, glyph, italic, strike, shortcut }: { ico
       onMouseDown={(e) => e.preventDefault()}
       onClick={run}
     >
-      {glyph ? <span className={`bb-glyph ${italic ? "is-italic" : ""} ${strike ? "is-strike" : ""}`}>{glyph}</span> : <Icon name={icon} size={15} />}
+      {glyph ? <span className={`bb-glyph ${italic ? "is-italic" : ""} ${strike ? "is-strike" : ""} ${underline ? "is-underline" : ""}`}>{glyph}</span> : <Icon name={icon} size={15} />}
     </button>
   );
 }

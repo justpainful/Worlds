@@ -283,3 +283,44 @@
 .prop-remind { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; color: var(--text-3); }
 .prop-remind:hover { background: var(--fill-2); color: var(--text-1); }
 .prop-remind.is-on { color: var(--accent-text); background: var(--accent-soft); }
+
+/* ---- Format bar additions ------------------------------------------------ */
+.bb-glyph.is-underline { text-decoration: underline; text-underline-offset: 2px; }
+.bb-claude { gap: 5px; color: var(--accent-text); }
+
+/* ---- Claude in the text -------------------------------------------------- */
+.inline-claude, .comment-thread {
+  position: fixed; z-index: 3100; box-sizing: border-box; padding: 8px;
+  border-radius: 18px; background: var(--menu-solid); color: var(--text-1);
+  box-shadow: var(--shadow-float), inset 0 0 0 0.5px var(--hairline-strong);
+  animation: ic-in 180ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+@keyframes ic-in { from { opacity: 0; transform: translateY(-4px) scale(0.98); } }
+.ic-ask { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 6px 0 12px; border-radius: var(--r-capsule); background: var(--fill-1); box-shadow: inset 0 0 0 0.5px var(--hairline-strong); color: var(--accent-text); }
+.ic-ask input { flex: 1; min-width: 0; border: 0; background: none; color: var(--text-1); font: var(--t-ui); outline: none; }
+.ic-send { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--on-accent); }
+.ic-send:disabled { background: var(--fill-2); color: var(--text-4); }
+.ic-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-top: 6px; }
+.ic-action { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border-radius: 10px; color: var(--text-1); font: var(--t-ui); text-align: start; }
+.ic-action:hover { background: var(--fill-2); }
+.ic-action .icon { color: var(--text-3); }
+.ic-busy { display: flex; align-items: center; gap: 8px; padding: 14px 12px; color: var(--text-2); }
+.ic-error { padding: 10px 12px; color: var(--red); font: var(--t-small); }
+.ic-diff { max-height: 300px; overflow: auto; padding: 10px 12px; font: var(--t-body); white-space: pre-wrap; }
+.ic-del { color: var(--red); background: var(--red-soft); text-decoration: line-through; text-decoration-thickness: 1px; border-radius: 3px; }
+.ic-add { color: var(--green); background: var(--green-soft); border-radius: 3px; }
+.ic-foot { display: flex; justify-content: flex-end; gap: 6px; padding: 6px 4px 2px; border-top: 0.5px solid var(--hairline); }
+
+/* ---- Comments ------------------------------------------------------------ */
+.comment-mark { background: rgba(240, 196, 64, 0.22); border-bottom: 2px solid rgba(240, 196, 64, 0.75); cursor: pointer; }
+.comment-mark:hover { background: rgba(240, 196, 64, 0.36); }
+.comment-thread { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
+.ct-quote { padding-inline-start: 10px; border-inline-start: 3px solid rgba(240, 196, 64, 0.8); color: var(--text-2); font: var(--t-small); max-height: 60px; overflow: hidden; }
+.ct-msg { display: flex; flex-direction: column; gap: 2px; }
+.ct-meta { display: flex; align-items: baseline; gap: 8px; }
+.ct-author { font: var(--t-ui-strong); }
+.ct-time { color: var(--text-3); font: var(--t-caption); }
+.ct-text { color: var(--text-1); font: var(--t-ui); white-space: pre-wrap; }
+.ct-reply textarea { width: 100%; box-sizing: border-box; resize: vertical; }
+.ct-actions { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+@media (prefers-reduced-motion: reduce) { .inline-claude, .comment-thread { animation: none; } }

@@ -439,7 +439,7 @@ async function handleNow(cmd: string, a: any = {}): Promise<any> {
     return null;
   }
   if (cmd.startsWith("plugin:")) return cmd.endsWith("is_enabled") ? false : null;
-  const page = (pid: string) => pages[pid] && { ...pages[pid], metadata: metadata[pid] ?? {}, instructions: [], blocks: (blocks[pid] ?? []).map((c, i) => ({ id: c.attrs.bid, pageId: pid, type: c.type, order: i, content: c, properties: {}, direction: "auto", createdAt: now, updatedAt: now })), backlinks: [], attachments: [], breadcrumbs: [] };
+  const page = (pid: string) => pages[pid] && { ...pages[pid], metadata: metadata[pid] ?? {}, instructions: [], blocks: (blocks[pid] ?? []).map((c, i) => ({ id: c.attrs?.bid ?? `b${i}`, pageId: pid, type: c.type, order: i, content: c, properties: {}, direction: "auto", createdAt: now, updatedAt: now })), backlinks: [], attachments: [], breadcrumbs: [] };
   switch (cmd) {
     case "capture_screen_for_drawing": {
       if (!new URLSearchParams(location.search).has("demo")) throw new Error("Screen capture is unavailable in the browser mock");
@@ -709,6 +709,10 @@ async function handleNow(cmd: string, a: any = {}): Promise<any> {
     case "ai_chat": return { id: a.id, messages: chatMessages[a.id] ?? [] };
     case "ai_chat_delete": return null;
     case "ai_chat_rename": return null;
+    // Previews show a visible change; the web version has no Claude to call.
+    case "ai_rewrite":
+      if (WEB_DEMO) throw new Error("Claude works in the Worlds app on your computer.");
+      return String(a.text).replace(/\b(\w)/g, (m: string) => m.toUpperCase());
     case "ai_run": {
       const runId = id();
       const chatId = a.request.chatId ?? "c-new";

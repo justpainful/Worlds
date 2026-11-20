@@ -27,6 +27,17 @@ export const BLOCK_TYPES = [
   "collection",
   "toc",
   "gallery",
+  "mathBlock",
+  "mermaid",
+  "chart",
+  "tabs",
+  "synced",
+  "buttonBlock",
+  "voiceNote",
+  "footnotes",
+  "formBlock",
+  "codeRun",
+  "whiteboard",
 ];
 
 export function newBlockId(): string {
