@@ -324,3 +324,17 @@
 .ct-reply textarea { width: 100%; box-sizing: border-box; resize: vertical; }
 .ct-actions { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
 @media (prefers-reduced-motion: reduce) { .inline-claude, .comment-thread { animation: none; } }
+
+/* ---- Slash menu: icon tiles coloured by group ---------------------------- */
+.suggest-host .suggest { width: 340px; }
+.sg-icon[data-group] { --tile: 142, 142, 150; background: rgba(var(--tile), 0.16); color: rgb(var(--tile)); box-shadow: inset 0 0 0 0.5px rgba(var(--tile), 0.3); }
+.sg-icon[data-group="Basic"] { --tile: 142, 142, 150; }
+.sg-icon[data-group="Pages"] { --tile: 88, 156, 255; }
+.sg-icon[data-group="Layout"] { --tile: 170, 128, 255; }
+.sg-icon[data-group="Media"] { --tile: 245, 112, 180; }
+.sg-icon[data-group="Insert"] { --tile: 61, 200, 120; }
+.sg-icon[data-group="Knowledge"] { --tile: 255, 150, 72; }
+.sg-icon[data-group="Assistant"] { --tile: var(--accent-rgb); }
+.sg-icon[data-group="Discord"] { --tile: 114, 137, 218; }
+:root[data-theme="light"] .sg-icon[data-group] { color: rgb(var(--tile)); filter: saturate(1.1) brightness(0.85); }
+.sg-item.is-sel .sg-icon[data-group] { background: rgba(var(--tile), 0.26); }
