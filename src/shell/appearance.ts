@@ -5,6 +5,7 @@ import { setAdaptiveQuality } from "../perf/monitor";
 import { setTonalLook } from "../ui/tonal/scene";
 import { applyUiLanguage, resolveUiLanguage, setUserTexts } from "../i18n/ui";
 import { api, isTauri } from "../lib/api";
+import { applyPluginTheme } from "../plugins/plugins";
 
 /** The language the tray menu was last told, so it is rebuilt only on a change. */
 let trayLanguage: string | null = null;
@@ -77,6 +78,7 @@ export function applyAppearance() {
     root.dataset.theme = theme;
     glassEngine.refreshAll();
   }
+  applyPluginTheme();
   const language = resolveUiLanguage(profile?.language);
   applyUiLanguage(language);
   if (isTauri && trayLanguage !== null && trayLanguage !== language) api.trayLanguage(language === "ar").catch(() => {});

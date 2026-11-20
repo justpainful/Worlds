@@ -14,9 +14,17 @@
   // pinned and recent pages, today's tasks) and can open or create pages.
   var data = null;
   var listeners = [];
+  var stateListeners = [];
   window.addEventListener("message", function (event) {
     var m = event.data;
-    if (event.source !== parent || !m || m.worldsHome !== 1) return;
+    if (event.source !== parent || !m) return;
+    // A plugin block gets its saved state after it loads.
+    if (m.worldsState === 1) {
+      state = m.state === undefined ? null : m.state;
+      stateListeners.forEach(function (fn) { try { fn(state); } catch (e) { console.error(e); } });
+      return;
+    }
+    if (m.worldsHome !== 1) return;
     data = m.data;
     listeners.forEach(function (fn) { try { fn(data); } catch (e) { console.error(e); } });
   });
@@ -24,6 +32,7 @@
     get state() { return state; },
     get data() { return data; },
     onData: function (fn) { if (typeof fn === "function") { listeners.push(fn); if (data) fn(data); } },
+    onState: function (fn) { if (typeof fn === "function") { stateListeners.push(fn); if (state !== null) fn(state); } },
     openPage: function (id) { post({ type: "openPage", id: String(id) }); },
     newPage: function (title) { post({ type: "newPage", title: String(title || "") }); },
     lang: boot.lang === "ar" ? "ar" : "en",

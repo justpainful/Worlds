@@ -38,6 +38,7 @@ export const BLOCK_TYPES = [
   "formBlock",
   "codeRun",
   "whiteboard",
+  "pluginBlock",
 ];
 
 export function newBlockId(): string {

@@ -25,6 +25,7 @@ import { PackRoles } from "../packs/views/PackRoles";
 import { PACKS, setPackEnabled, usePack } from "../packs/packs";
 import { loadSample, removeSample, rewriteSample, sampleLanguageMismatch, useSampleLoaded } from "../demo/sampleActions";
 import { choosePasscode, enableHello, hasPasscode } from "../pages/privacy";
+import { ShortcutSettings } from "../shell/customShortcuts";
 
 const SECTIONS: { id: string; label: string; ar?: string; tile: string; group: number; keywords: string }[] = [
   { id: "account", label: "Account", tile: "team", group: 0, keywords: "sign in passkey email devices workspaces team members sign out server" },
@@ -364,6 +365,9 @@ function EditorSettings() {
           ]}
           onChange={(v) => set("summary.weekday", Number(v))}
         />
+      </Row>
+      <Row label="Your shortcuts" hint="Give any command from the command palette a key combination.">
+        <ShortcutSettings />
       </Row>
       <Row label="Private pages" hint="Private pages open with this passcode or Windows Hello and stay out of search. Mark a page private from its ... menu.">
         <div className="set-buttons">

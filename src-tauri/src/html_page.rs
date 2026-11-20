@@ -298,6 +298,21 @@ pub fn serve(request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
             .body(RUNNER_HTML.as_bytes().to_vec())
             .unwrap();
     }
+    // An installed plugin's block (settings "plugins.installed"), under the same policy as HTML pages.
+    if let Some(plugin) = path.strip_prefix("plugin/").filter(|id| !id.is_empty() && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.')) {
+        let lang = request.uri().query().unwrap_or("").split('&').any(|p| p == "lang=ar");
+        let Ok(conn) = db::open(&db::db_path()) else { return empty(StatusCode::INTERNAL_SERVER_ERROR) };
+        let html = db::get_setting(&conn, "plugins.installed")
+            .ok()
+            .flatten()
+            .and_then(|v| v.as_array().cloned())
+            .and_then(|list| list.into_iter().find(|p| p.get("id").and_then(Value::as_str) == Some(plugin)))
+            .and_then(|p| p.get("html").and_then(Value::as_str).map(str::to_string));
+        return match html {
+            Some(source) => document_response(compose(&source, None, if lang { "ar" } else { "en" })),
+            None => empty(StatusCode::NOT_FOUND),
+        };
+    }
     let Some(id) =
         path.strip_prefix("page/").filter(|id| !id.is_empty() && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'))
     else {

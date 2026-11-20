@@ -25,8 +25,9 @@ import { pageFromTemplate, templateName } from "../templates/fromTemplate";
 import { openAskSpace, openSideBySide, openTimeMachine, readAloud, weeklySummary } from "../ai/writingTools";
 import { openLinksMap } from "../views/LinksMap";
 import { visibleNow } from "../pages/privacy";
+import { openPluginStore } from "../plugins/PluginViews";
 
-interface Cmd {
+export interface Cmd {
   id: string;
   title: string;
   icon: IconName;
@@ -65,7 +66,7 @@ function score(text: string, q: string): number {
   return i === query.length ? 1 : 0;
 }
 
-function commands(): Cmd[] {
+export function commands(): Cmd[] {
   const s = useStore.getState();
   const route = activeRoute();
   const page = route?.kind === "page" ? s.pages[route.pageId] : null;
@@ -94,6 +95,7 @@ function commands(): Cmd[] {
     { id: "auto-new", title: "Create Automation", icon: "schedule", keywords: "schedule discord send", run: () => emit("automation:new", { pageId: page?.id ?? null }) },
     { id: "ask", title: "Ask Claude", icon: "assistant", hint: "Ctrl+J", keywords: "ai assistant claude", run: () => emit("ai:open", { pageId: page?.id ?? null }) },
     { id: "chats", title: "Claude Conversations", icon: "assistant", keywords: "ai chats history claude", run: (w) => s.open({ kind: "chat" }, w) },
+    { id: "plugins", title: "Plugins and Gallery", icon: "puzzle", keywords: "plugins extensions store gallery themes templates addons", run: () => openPluginStore() },
     { id: "links-map", title: "Links Map", icon: "graph", keywords: "graph network links connections map backlinks", run: () => openLinksMap() },
     { id: "ask-space", title: "Ask Your Space", icon: "search", hint: "Ctrl+Shift+K", keywords: "ask question answer search pages ai", run: () => openAskSpace() },
     {

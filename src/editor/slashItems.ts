@@ -4,6 +4,7 @@ import { emit } from "../lib/bus";
 import { useStore } from "../state/store";
 import { pickAndInsert } from "./media";
 import { promptText } from "./prompt";
+import { pluginSlashItems } from "../plugins/PluginViews";
 
 export interface SlashItem {
   id: string;
@@ -19,7 +20,9 @@ export interface SlashItem {
 const block = (editor: Editor, range: Range) => editor.chain().focus().deleteRange(range);
 
 export function slashItems(): SlashItem[] {
+  const plugins: SlashItem[] = pluginSlashItems().map((p) => ({ ...p, run: (e, r) => block(e, r).insertPluginBlock(p.id.slice("plugin:".length)).run() }));
   return [
+    ...plugins,
     // Text
     { id: "text", title: "Text", icon: "text", group: "Basic", keywords: "paragraph plain", run: (e, r) => block(e, r).setParagraph().run() },
     { id: "h1", title: "Heading 1", icon: "h1", group: "Basic", hint: "#", keywords: "title big", run: (e, r) => block(e, r).setHeading({ level: 1 }).run() },

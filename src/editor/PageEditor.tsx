@@ -58,6 +58,7 @@ import { Icon, type IconName } from "../ui/Icon";
 import { menuAt, useMenu, type MenuItem } from "../ui/Menu";
 import { useCollab } from "../sync/useCollab";
 import { LayoutShortcuts } from "./extensions/layoutShortcuts";
+import { PluginBlock } from "../plugins/PluginViews";
 
 export interface PageEditorHandle {
   editor: Editor | null;
@@ -216,6 +217,7 @@ export const PageEditor = forwardRef<
         ...pages5Extensions,
         BlockSelection,
         ArabicSpell,
+        PluginBlock,
         CommentMark.configure({
           onOpen: (threadId, el) => {
             const ed = editorRef.current;
