@@ -207,3 +207,79 @@
 @media (prefers-reduced-motion: reduce) {
   .voice-note.is-recording .voice-icon { animation: none; }
 }
+
+/* ---- Collection: calendar ------------------------------------------------ */
+.col-cal { display: flex; flex-direction: column; gap: 8px; }
+.col-cal-head, .col-tl-head { display: flex; align-items: center; gap: 6px; }
+.col-cal-title { min-width: 130px; text-align: center; font: var(--t-ui-strong); }
+.col-cal-today { height: 26px; padding: 0 10px; border-radius: var(--r-capsule); background: var(--fill-2); color: var(--text-1); font: var(--t-small); }
+.col-cal-today:hover { background: var(--fill-3); }
+.col-cal-note { color: var(--text-3); font: var(--t-caption); }
+.col-cal-grid {
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); overflow: hidden;
+  border-radius: 14px; box-shadow: inset 0 0 0 0.5px var(--hairline-strong); background: var(--hairline);
+  gap: 0.5px;
+}
+.col-cal-wd { padding: 6px 8px; background: var(--surface-raised); color: var(--text-3); font: var(--t-caption); text-align: center; }
+.col-cal-day {
+  position: relative; min-height: 92px; padding: 4px 4px 22px; background: var(--surface-deep);
+  display: flex; flex-direction: column; gap: 2px; min-width: 0;
+}
+.col-cal-day.is-out { background: var(--surface-raised); }
+.col-cal-day.is-out .col-cal-num { color: var(--text-4); }
+.col-cal-day.is-over { background: var(--accent-soft); }
+.col-cal-num { align-self: flex-end; min-width: 22px; height: 22px; padding: 0 4px; border-radius: var(--r-capsule); color: var(--text-2); font: 500 12px/22px var(--font-ui); text-align: center; font-variant-numeric: tabular-nums; }
+.col-cal-day.is-today .col-cal-num { background: var(--accent); color: var(--on-accent); }
+.col-cal-item {
+  display: block; width: 100%; min-width: 0; padding: 2px 6px; border-radius: 6px; text-align: start;
+  background: rgba(var(--chip), 0.16); color: var(--text-1); font: var(--t-caption);
+  box-shadow: inset 2px 0 0 rgba(var(--chip), 0.9); overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+[dir="rtl"] .col-cal-item { box-shadow: inset -2px 0 0 rgba(var(--chip), 0.9); }
+.col-cal-item:hover { background: rgba(var(--chip), 0.26); }
+.col-cal-more { padding: 0 6px; color: var(--text-3); font: var(--t-caption); }
+.col-cal-add { position: absolute; inset-block-end: 3px; inset-inline-start: 4px; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; color: var(--text-3); opacity: 0; }
+.col-cal-day:hover .col-cal-add { opacity: 1; }
+.col-cal-add:hover { background: var(--fill-2); color: var(--text-1); }
+
+/* ---- Collection: timeline ------------------------------------------------ */
+.col-tl { display: flex; flex-direction: column; gap: 8px; }
+.col-tl-scale { display: inline-flex; padding: 2px; border-radius: var(--r-capsule); background: var(--fill-1); }
+.col-tl-scale button { height: 24px; padding: 0 10px; border-radius: var(--r-capsule); color: var(--text-2); font: var(--t-small); }
+.col-tl-scale button.is-on { background: var(--surface-deep); color: var(--text-1); box-shadow: var(--shadow-glass); }
+.col-tl-scroll { overflow-x: auto; overflow-y: hidden; border-radius: 14px; background: var(--surface-raised); box-shadow: inset 0 0 0 0.5px var(--hairline-strong); }
+.col-tl-track { position: relative; min-height: 120px; padding: 34px 0 10px; }
+.col-tl-months { position: absolute; inset: 0 0 auto 0; height: 26px; border-bottom: 0.5px solid var(--hairline); }
+.col-tl-months span { position: absolute; top: 6px; padding-inline-start: 8px; color: var(--text-3); font: var(--t-caption); white-space: nowrap; border-inline-start: 0.5px solid var(--hairline); }
+.col-tl-today { position: absolute; top: 26px; bottom: 0; width: 2px; margin-left: -1px; background: var(--red); opacity: 0.7; }
+.col-tl-row { position: relative; height: 34px; }
+.col-tl-bar {
+  position: absolute; top: 4px; height: 26px; box-sizing: border-box; display: flex; align-items: center; gap: 6px; padding: 0 10px;
+  border-radius: 8px; background: rgba(var(--chip), 0.2); color: var(--text-1); font: var(--t-small);
+  box-shadow: inset 0 0 0 1px rgba(var(--chip), 0.45); cursor: grab; overflow: hidden; white-space: nowrap; user-select: none;
+}
+.col-tl-bar:hover { background: rgba(var(--chip), 0.3); }
+.col-tl-bar.is-dragging { cursor: grabbing; box-shadow: inset 0 0 0 1.5px rgba(var(--chip), 0.9), var(--shadow-float); }
+.col-tl-bar > span { overflow: hidden; text-overflow: ellipsis; }
+.col-tl-end { position: absolute; top: 0; right: 0; width: 8px; height: 100%; cursor: ew-resize; }
+.col-tl-end::after { content: ""; position: absolute; top: 7px; right: 3px; width: 2px; height: 12px; border-radius: 1px; background: rgba(var(--chip), 0.9); opacity: 0; }
+.col-tl-bar:hover .col-tl-end::after { opacity: 1; }
+
+/* ---- Relation and formula properties ------------------------------------- */
+.prop-chip.is-relation { --chip: var(--accent-rgb); }
+.cell-formula { font-variant-numeric: tabular-nums; }
+.cell-formula.is-error, .prop-formula.is-error { color: var(--red); font: var(--t-small); }
+.prop-formula { display: inline-flex; align-items: center; min-height: 28px; padding: 0 8px; color: var(--text-1); font-variant-numeric: tabular-nums; }
+.prop-relation { flex-wrap: wrap; gap: 4px; }
+.prop-rel { display: inline-flex; align-items: center; border-radius: var(--r-capsule); background: var(--fill-2); }
+.prop-rel-open { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding-inline: 8px 4px; color: var(--text-1); font: var(--t-small); }
+.prop-rel-open:hover { color: var(--accent-text); }
+.prop-rel-remove { display: grid; place-items: center; width: 18px; height: 18px; margin-inline-end: 3px; border-radius: 50%; color: var(--text-3); }
+.prop-rel-remove:hover { background: var(--fill-3); color: var(--text-1); }
+.prop-rel-add { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border-radius: var(--r-capsule); color: var(--text-3); font: var(--t-small); }
+.prop-rel-add:hover { background: var(--fill-2); color: var(--text-1); }
+.prop-date { display: inline-flex; align-items: center; gap: 4px; }
+.prop-time { width: 104px; }
+.prop-remind { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; color: var(--text-3); }
+.prop-remind:hover { background: var(--fill-2); color: var(--text-1); }
+.prop-remind.is-on { color: var(--accent-text); background: var(--accent-soft); }

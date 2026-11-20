@@ -19,6 +19,8 @@ import {
   type Property,
 } from "../../pages/properties";
 import { isResource } from "../../resources/kinds";
+import { withComputed } from "../../pages/formula";
+import { CalendarView, TimelineView } from "./CollectionViews";
 
 // ---------------------------------------------------------------------------
 // Toggle
@@ -47,22 +49,24 @@ export function ToggleView({ node, updateAttributes, editor }: ReactNodeViewProp
 // Collection
 // ---------------------------------------------------------------------------
 
-type View = "table" | "board" | "gallery" | "list";
+type View = "table" | "board" | "gallery" | "list" | "calendar" | "timeline";
 const VIEWS: { id: View; label: string; icon: IconName }[] = [
   { id: "table", label: "Table", icon: "table" },
   { id: "board", label: "Board", icon: "splitVertical" },
   { id: "gallery", label: "Gallery", icon: "grid" },
   { id: "list", label: "List", icon: "listView" },
+  { id: "calendar", label: "Calendar", icon: "calendarDays" },
+  { id: "timeline", label: "Timeline", icon: "timeline" },
 ];
 
 const toast = (e: unknown) => useStore.getState().toast({ message: errorMessage(e), tone: "error" });
 
 /** Set one property on a page, creating it (with the collection's options) when missing. */
-async function setProp(page: PageMeta, template: Property | undefined, name: string, value: Property["value"]) {
+async function setProp(page: PageMeta, template: Property | undefined, name: string, value: Property["value"], type?: Property["type"]) {
   const props = propsOf(page).map((p) => ({ ...p }));
   let p = props.find((x) => x.name.toLowerCase() === name.toLowerCase());
   if (!p) {
-    p = template ? { ...template, id: `p${Math.random().toString(36).slice(2, 9)}`, value: null } : newProperty(name === "Status" ? "status" : "select", name);
+    p = template ? { ...template, id: `p${Math.random().toString(36).slice(2, 9)}`, value: null } : newProperty(type ?? (name === "Status" ? "status" : "select"), name);
     props.push(p);
   }
   p.value = value;
@@ -87,6 +91,20 @@ function Chip({ prop, value }: { prop: Property | undefined; value: string }) {
 
 function PropValue({ prop }: { prop: Property | undefined }) {
   if (!prop || prop.value === null || prop.value === "" || (Array.isArray(prop.value) && !prop.value.length)) return <span className="cell-empty" />;
+  if (prop.type === "relation" && Array.isArray(prop.value))
+    return (
+      <span className="chip-row">
+        {prop.value.map((id) => (
+          <span key={id} className="prop-chip is-relation">
+            {propText({ ...prop, value: [id] })}
+          </span>
+        ))}
+      </span>
+    );
+  if (prop.type === "formula") {
+    const bad = typeof prop.value === "string" && prop.value.startsWith("⚠");
+    return <span className={`cell-formula ${bad ? "is-error" : ""}`}>{typeof prop.value === "boolean" ? <Icon name={prop.value ? "check" : "close"} size={12} /> : propText(prop)}</span>;
+  }
   if (prop.type === "status" || prop.type === "select") return <Chip prop={prop} value={String(prop.value)} />;
   if (prop.type === "tags" && Array.isArray(prop.value))
     return (
@@ -113,6 +131,8 @@ export function CollectionView({ node, updateAttributes, editor, selected }: Rea
     tag: string;
     view: View;
     groupBy: string;
+    dateBy: string | null;
+    endBy: string | null;
     sortBy: string;
     sortDir: "asc" | "desc";
     filter: string;
@@ -142,6 +162,7 @@ export function CollectionView({ node, updateAttributes, editor, selected }: Rea
     const dir = a.sortDir === "asc" ? 1 : -1;
     const key = (p: PageMeta): string | number =>
       a.sortBy === "updated" ? p.updatedAt : a.sortBy === "created" ? p.createdAt : a.sortBy === "title" ? pageTitle(p).toLowerCase() : propText(propByName(p, a.sortBy)).toLowerCase();
+    list = list.map((p) => withComputed(p, pages));
     return [...list].sort((x, y) => (key(x) > key(y) ? dir : key(x) < key(y) ? -dir : 0));
   }, [pages, pageId, a.source, a.tag, a.filter, a.sortBy, a.sortDir]);
 
@@ -160,6 +181,14 @@ export function CollectionView({ node, updateAttributes, editor, selected }: Rea
   };
 
   const groupProp = template(a.groupBy);
+  // Calendar and timeline place pages by a date property: the chosen one, else the first.
+  const dateNames = propNames.filter((n) => template(n)?.type === "date");
+  const dateBy = a.dateBy && dateNames.includes(a.dateBy) ? a.dateBy : (dateNames[0] ?? "Date");
+  const endBy = a.endBy && dateNames.includes(a.endBy) && a.endBy !== dateBy ? a.endBy : "";
+  const moveDates = async (page: PageMeta, start: string, end: string | null) => {
+    await setProp(page, template(dateBy), dateBy, start, "date");
+    if (end && endBy) await setProp(useStore.getState().pages[page.id] ?? page, template(endBy), endBy, end, "date");
+  };
   const groups = useMemo(() => {
     const opts = groupProp?.options?.map((o) => o.name) ?? (a.groupBy === "Status" ? STATUS_OPTIONS.map((o) => o.name) : []);
     const names = [...opts];
@@ -170,11 +199,11 @@ export function CollectionView({ node, updateAttributes, editor, selected }: Rea
     return ["", ...names];
   }, [rows, groupProp, a.groupBy]);
 
-  const createRow = async (preset?: { name: string; value: string }) => {
+  const createRow = async (preset?: { name: string; value: string; type?: Property["type"] }) => {
     try {
       const meta = await api.createPage({ title: "", parentId: a.source === "children" ? pageId : null });
       useStore.getState().patchPageLocal(meta);
-      if (preset?.value) await setProp(meta, template(preset.name), preset.name, preset.value);
+      if (preset?.value) await setProp(meta, template(preset.name), preset.name, preset.value, preset.type);
       else if (a.source === "tag" && a.tag) {
         const t = template("Tags");
         await setProp(meta, t ?? { ...newProperty("tags", "Tags") }, t?.name ?? "Tags", [a.tag]);
@@ -220,6 +249,21 @@ export function CollectionView({ node, updateAttributes, editor, selected }: Rea
           if (t !== null) updateAttributes({ source: "tag", tag: t.trim() });
         },
       },
+      ...(a.view === "calendar" || a.view === "timeline"
+        ? [
+            { kind: "separator" as const },
+            { kind: "label" as const, label: "Place by date" },
+            ...(dateNames.length ? dateNames : ["Date"]).map((n) => ({ label: n, checked: dateBy === n, onSelect: () => updateAttributes({ dateBy: n }) })),
+            ...(a.view === "timeline"
+              ? [
+                  { kind: "separator" as const },
+                  { kind: "label" as const, label: "End date" },
+                  { label: "None", checked: !endBy, onSelect: () => updateAttributes({ endBy: null }) },
+                  ...dateNames.filter((n) => n !== dateBy).map((n) => ({ label: n, checked: endBy === n, onSelect: () => updateAttributes({ endBy: n }) })),
+                ]
+              : []),
+          ]
+        : []),
       ...(a.view === "board"
         ? [
             { kind: "separator" as const },
@@ -268,7 +312,14 @@ export function CollectionView({ node, updateAttributes, editor, selected }: Rea
         )}
       </div>
 
-      {rows.length === 0 && (
+      {(a.view === "calendar" || a.view === "timeline") &&
+        (a.view === "calendar" ? (
+          <CalendarView rows={rows} dateBy={dateBy} endBy={endBy} editable={editable} colorBy={a.groupBy} open={open} move={moveDates} create={(d) => createRow({ name: dateBy, value: d, type: "date" })} />
+        ) : (
+          <TimelineView rows={rows} dateBy={dateBy} endBy={endBy} editable={editable} colorBy={a.groupBy} open={open} move={moveDates} create={(d) => createRow({ name: dateBy, value: d, type: "date" })} />
+        ))}
+
+      {rows.length === 0 && a.view !== "calendar" && a.view !== "timeline" && (
         <div className="col-empty">
           {a.source === "children" ? "No subpages yet. New adds one here, with its own properties." : a.source === "tag" ? "No pages carry this tag yet." : "No pages."}
         </div>

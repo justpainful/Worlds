@@ -156,6 +156,8 @@ export const Collection = Node.create({
       tag: { default: "" },
       view: { default: "table" }, // table | board | gallery | list
       groupBy: { default: "Status" },
+      dateBy: { default: null }, // calendar and timeline: the date property
+      endBy: { default: null }, // timeline: the end date property
       sortBy: { default: "updated" }, // updated | created | title | <property name>
       sortDir: { default: "desc" },
       filter: { default: "" },

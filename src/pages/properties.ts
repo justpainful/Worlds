@@ -1,7 +1,7 @@
 import type { PageMeta } from "../lib/types";
 
 /** Page properties: typed fields under the title, stored in page metadata. */
-export type PropType = "status" | "select" | "tags" | "date" | "number" | "checkbox" | "url" | "text";
+export type PropType = "status" | "select" | "tags" | "date" | "number" | "checkbox" | "url" | "text" | "relation" | "formula";
 
 export interface PropOption {
   name: string;
@@ -16,6 +16,12 @@ export interface Property {
   type: PropType;
   value: string | number | boolean | string[] | null;
   options?: PropOption[];
+  /** Formula properties: the expression (pages/formula.ts). The value is worked out when shown. */
+  formula?: string;
+  /** Date properties: when to remind (minutes before the date's start; 0 = at the time). */
+  remind?: number | null;
+  /** Date properties: a time of day, "HH:MM", for the reminder and the calendar. */
+  time?: string | null;
 }
 
 export const PROP_TYPES: { id: PropType; label: string; icon: string }[] = [
@@ -27,6 +33,8 @@ export const PROP_TYPES: { id: PropType; label: string; icon: string }[] = [
   { id: "checkbox", label: "Checkbox", icon: "check" },
   { id: "url", label: "Link", icon: "link" },
   { id: "text", label: "Text", icon: "text" },
+  { id: "relation", label: "Relation", icon: "link" },
+  { id: "formula", label: "Formula", icon: "formula" },
 ];
 
 export const STATUS_OPTIONS: PropOption[] = [
@@ -57,7 +65,8 @@ export function newProperty(type: PropType, name?: string): Property {
     id: newPropId(),
     name: label,
     type,
-    value: type === "checkbox" ? false : type === "tags" ? [] : type === "status" ? "Not started" : null,
+    value: type === "checkbox" ? false : type === "tags" || type === "relation" ? [] : type === "status" ? "Not started" : null,
+    ...(type === "formula" ? { formula: "" } : {}),
     options: type === "status" ? STATUS_OPTIONS.map((o) => ({ ...o })) : type === "select" || type === "tags" ? [] : undefined,
   };
 }
@@ -72,9 +81,16 @@ export function propByName(meta: Pick<PageMeta, "properties">, name: string): Pr
   return propsOf(meta).find((p) => p.name.toLowerCase() === n);
 }
 
+/** Page titles for relation values; the store installs it. */
+let titleOf: (id: string) => string = (id) => id;
+export function setRelationTitles(fn: (id: string) => string) {
+  titleOf = fn;
+}
+
 /** Plain text for search, sorting and the table view. */
 export function propText(p: Property | undefined): string {
   if (!p || p.value === null || p.value === undefined) return "";
+  if (p.type === "relation" && Array.isArray(p.value)) return p.value.map(titleOf).join(", ");
   if (Array.isArray(p.value)) return p.value.join(", ");
   if (typeof p.value === "boolean") return p.value ? "Yes" : "No";
   if (p.type === "date" && typeof p.value === "string") {

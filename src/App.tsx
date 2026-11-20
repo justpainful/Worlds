@@ -24,6 +24,7 @@ import { watchSampleLanguage } from "./demo/sampleActions";
 import { useWindowTitle } from "./shell/windowTitle";
 import { useDigests } from "./packs/useDigests";
 import { usePublishedImport } from "./packs/published";
+import { startReminders } from "./pages/reminders";
 
 export function App() {
   const ready = useStore((s) => s.ready);
@@ -34,6 +35,10 @@ export function App() {
   useDigests(ready);
   // Items a teacher or manager sent arrive in this person's own packs.
   usePublishedImport(ready);
+  // Date properties with a reminder show it when it comes due.
+  useEffect(() => {
+    if (ready) startReminders();
+  }, [ready]);
 
   useEffect(() => {
     if (!isTauri) {
