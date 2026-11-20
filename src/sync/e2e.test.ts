@@ -17,6 +17,8 @@ import { fragmentOf } from "./mirror";
 import { CollabSession } from "./session";
 import { createThread, listThreads, upsertPerson } from "./comments";
 import { listVersions, restoreInto, saveVersion, versionState } from "./versions";
+import { markKind, pushFields, readFields } from "./fields";
+import { fieldsToAdopt } from "../packs/hidden";
 
 const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {};
 const SYNC = env.WORLDS_SYNC_URL ?? "http://localhost:8790";
@@ -151,6 +153,39 @@ describe.skipIf(!enabled)("live sync end to end", { timeout: 60_000 }, () => {
     await until(() => texts(ann.store.blocks.get(page))[0] === "Final Draft 0 1 2 3 4 5 6 7 8 9", "ann has ben's offline edits");
     await until(() => texts(ben.store.blocks.get(page))[0] === "Final Draft 0 1 2 3 4 5 6 7 8 9", "ben has ann's edit");
     await until(async () => (await ben.store.outbox(null)).length === 0, "ben's outbox drained");
+  });
+
+  it("a shared pack item's fields merge field by field, offline edits included, and reach a late opener", async () => {
+    const page = `page${run}f`;
+    const ann = computer("ann", page);
+    ann.store.blocks.set(page, [p("b1", "Order 1042")]);
+    await ann.s.start();
+    const ben = computer("ben", page);
+    await ben.s.start();
+    await until(() => ann.s.info.state === "synced" && ben.s.info.state === "synced", "both synced");
+
+    // Ann's desktop records the kind and the item's fields (useItemSync / the manager).
+    markKind(ann.s.content, "shop.order");
+    pushFields(ann.s.content, { status: "new", total: 170 });
+    await until(() => readFields(ben.s.content).status === "new", "ben has ann's fields");
+    expect(ben.s.content.getMap("meta").get("kind")).toBe("shop.order");
+
+    // Ben goes offline and fixes the total while Ann ships the order.
+    ben.net.online = false;
+    for (const w of ben.net.watchers) w(false);
+    await until(() => ben.s.info.state === "offline", "ben offline");
+    pushFields(ben.s.content, { ...readFields(ben.s.content), total: 230 });
+    pushFields(ann.s.content, { ...readFields(ann.s.content), status: "shipped" });
+    ben.net.online = true;
+    for (const w of ben.net.watchers) w(true);
+    const both = (f: Record<string, unknown>) => f.status === "shipped" && f.total === 230;
+    await until(() => both(readFields(ann.s.content)) && both(readFields(ben.s.content)), "both changes kept on both computers");
+
+    // A computer that had the item closed opens it later and catches up (catchUpPackItems).
+    const cara = computer("cara", page);
+    await cara.s.start();
+    await until(() => cara.s.info.state === "synced", "cara synced");
+    expect(fieldsToAdopt(readFields(cara.s.content), null, { status: "new", total: 170 }, new Set())).toEqual({ status: "shipped", total: 230 });
   });
 
   it("attachments travel between computers: resumable upload, verified download, same id", async () => {
