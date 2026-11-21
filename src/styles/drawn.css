@@ -1,0 +1,82 @@
+/*
+ * The hand-drawn look (on whenever the icons are drawn, see drawnMap.ts).
+ * Cognition's language across the app: ink edges, a hard offset shadow,
+ * slightly uneven corners. Glass bars and menus keep their single edge.
+ */
+:root[data-style="drawn"] {
+  --dr-edge: #171820;
+  --dr-paper: #fffdf8;
+  --dr-radius: 16px 13px 17px 12px / 13px 17px 12px 16px;
+  --dr-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+:root[data-style="drawn"]:not([data-theme="light"]) {
+  --dr-edge: #07070b;
+  --dr-paper: #26262b;
+}
+
+/* Cards */
+:root[data-style="drawn"] .page-card {
+  background: var(--dr-paper);
+  border: 2px solid var(--dr-edge);
+  border-radius: var(--dr-radius);
+  box-shadow: 3px 4px 0 var(--dr-edge);
+  transition: transform 160ms var(--dr-ease), box-shadow 160ms var(--dr-ease);
+}
+:root[data-style="drawn"] .page-card:hover { transform: translate(-1px, -2px) rotate(-0.4deg); box-shadow: 4px 6px 0 var(--dr-edge); }
+:root[data-style="drawn"] .page-card:active { transform: translate(1px, 1px); box-shadow: 1px 2px 0 var(--dr-edge); }
+
+/* Lists (Tasks, Home, Inbox, packs) */
+:root[data-style="drawn"] .pl-add {
+  border: 2px dashed color-mix(in srgb, var(--dr-edge) 55%, var(--text-2));
+  border-radius: var(--dr-radius);
+  background: transparent;
+}
+:root[data-style="drawn"] .pl-row { border-radius: 12px; }
+:root[data-style="drawn"] .pl-row:hover { background: color-mix(in srgb, var(--dr-paper) 70%, transparent); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--dr-edge) 45%, transparent); }
+
+/* Sidebar */
+:root[data-style="drawn"] .side-item { border-radius: 13px 10px 14px 10px; }
+:root[data-style="drawn"] .side-item.is-active {
+  background: var(--dr-paper);
+  box-shadow: inset 0 0 0 2px var(--dr-edge), 2px 3px 0 var(--dr-edge);
+}
+:root[data-style="drawn"] .side-item .icon-drawn,
+:root[data-style="drawn"] .side-item .product-icon-drawn { transition: transform 160ms var(--dr-ease); }
+:root[data-style="drawn"] .side-item:hover .icon-drawn,
+:root[data-style="drawn"] .side-item:hover .product-icon-drawn { transform: rotate(-7deg) scale(1.08); }
+
+/* Settings groups and other grouped containers */
+:root[data-style="drawn"] .set-rows {
+  border: 2px solid var(--dr-edge);
+  border-radius: var(--dr-radius);
+  box-shadow: 3px 4px 0 var(--dr-edge);
+  background: var(--dr-paper);
+}
+
+/* The one accent button per view */
+:root[data-style="drawn"] .btn-tinted {
+  box-shadow: inset 0 0 0 2px var(--dr-edge), 2px 3px 0 var(--dr-edge);
+  transition: transform 110ms var(--dr-ease), box-shadow 110ms var(--dr-ease);
+}
+:root[data-style="drawn"] .btn-tinted:hover:not(:disabled) { transform: translateY(-1px); box-shadow: inset 0 0 0 2px var(--dr-edge), 3px 4px 0 var(--dr-edge); }
+:root[data-style="drawn"] .btn-tinted:active:not(:disabled) { transform: translateY(1px); box-shadow: inset 0 0 0 2px var(--dr-edge), 1px 1px 0 var(--dr-edge); }
+
+/* Calendar days */
+:root[data-style="drawn"] .cal-week-day,
+:root[data-style="drawn"] .cal-day {
+  border-radius: var(--dr-radius);
+}
+:root[data-style="drawn"] .cal-week-day.is-today,
+:root[data-style="drawn"] .cal-day.is-today { box-shadow: inset 0 0 0 2px var(--dr-edge), 2px 3px 0 var(--dr-edge); }
+
+/* Empty states use Cognition's drawings */
+:root[data-style="drawn"] .empty-art { transform: rotate(-3deg); transition: transform 220ms var(--dr-ease); }
+:root[data-style="drawn"] .empty:hover .empty-art { transform: rotate(2deg) scale(1.04); }
+
+/* Drawn icons get a little hover life wherever they sit in a button */
+:root[data-style="drawn"] button:hover > .icon-drawn { transform: rotate(-6deg); }
+:root[data-style="drawn"] .icon-drawn { transition: transform 110ms var(--dr-ease); }
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-style="drawn"] * { transition: none !important; }
+}

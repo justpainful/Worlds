@@ -24,6 +24,7 @@ import "./styles/pages.css";
 import "./styles/pages5.css";
 import "./styles/worlds10.css";
 import "./styles/cognition.css";
+import "./styles/drawn.css";
 import "./styles/editor.css";
 import "./styles/resources.css";
 import "./styles/system.css";

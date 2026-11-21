@@ -380,7 +380,9 @@ export function Icon({ name, size = 16, weight, className = "", style, label, fi
   const drawn = iconStyle === "lines" ? null : drawnUrl(iconStyle, DRAWN[name]);
   if (drawn) {
     // A hand-drawn picture reads small: give it a little more room than a line glyph.
-    const px = Math.round(size * 1.18);
+    // Pictures need more room than lines to read: small sizes grow the most.
+    // The outer margin stays negative, so rows keep their height.
+    const px = Math.round(size < 14 ? Math.max(17, size * 1.55) : size < 20 ? size * 1.4 : size * 1.25);
     return (
       <img
         src={drawn}
