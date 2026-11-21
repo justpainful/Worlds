@@ -24,9 +24,9 @@ const T = {
   ar: {
     dir: "rtl", other: "en", otherName: "English", locale: "ar_SA",
     skip: "انتقل إلى المحتوى", menu: "القائمة", home: "Worlds الصفحة الرئيسية",
-    nav: [["apps", "التطبيقات"], ["docs", "الدليل"], ["tools", "الأدوات"], ["support", "الدعم"]],
+    nav: [["apps", "التطبيقات"], ["story", "القصة"], ["docs", "الدليل"], ["tools", "الأدوات"], ["support", "الدعم"]],
     github: "GitHub", docsMenu: "صفحات الدليل", docs: "الدليل", prev: "السابق", next: "التالي",
-    foot: [["apps", "التطبيقات"], ["docs", "الدليل"], ["tools", "الأدوات"], ["support", "الدعم"], ["privacy", "الخصوصية"], ["terms", "شروط الاستخدام"]],
+    foot: [["apps", "التطبيقات"], ["story", "القصة"], ["docs", "الدليل"], ["tools", "الأدوات"], ["support", "الدعم"], ["privacy", "الخصوصية"], ["terms", "شروط الاستخدام"]],
     festival: "مهرجان الذكاء الطبيعي يقود الذكاء الاصطناعي 2026، مسار التجارب المتميزة.",
     fine: "Worlds اسم عمل إبداعي غير مسجل رسميًا، مستقل عن هوية imbue. الشيفرة منشورة على GitHub.",
     siteName: "Worlds",
@@ -34,9 +34,9 @@ const T = {
   en: {
     dir: "ltr", other: "ar", otherName: "العربية", locale: "en_US",
     skip: "Skip to content", menu: "Menu", home: "Worlds home",
-    nav: [["apps", "Apps"], ["docs", "Docs"], ["tools", "Tools"], ["support", "Support"]],
+    nav: [["apps", "Apps"], ["story", "Story"], ["docs", "Docs"], ["tools", "Tools"], ["support", "Support"]],
     github: "GitHub", docsMenu: "Docs pages", docs: "Docs", prev: "Previous", next: "Next",
-    foot: [["apps", "Apps"], ["docs", "Docs"], ["tools", "Tools"], ["support", "Support"], ["privacy", "Privacy"], ["terms", "Terms of use"]],
+    foot: [["apps", "Apps"], ["story", "Story"], ["docs", "Docs"], ["tools", "Tools"], ["support", "Support"], ["privacy", "Privacy"], ["terms", "Terms of use"]],
     festival: "Natural Intelligence Leads Artificial Intelligence festival 2026, outstanding experiments track.",
     fine: "Worlds is a creative working name, not a registered mark, and is independent of the imbue identity. The code is published on GitHub.",
     siteName: "Worlds",
@@ -229,7 +229,7 @@ ${footer(lang)}
 }
 
 // Generated folders are rebuilt from scratch; hand-made files (css, js, fonts, media) stay.
-for (const dir of ["docs", "apps", "tools", "support", "privacy", "terms", "en"]) rmSync(join(OUT, dir), { recursive: true, force: true });
+for (const dir of ["docs", "apps", "story", "tools", "support", "privacy", "terms", "en"]) rmSync(join(OUT, dir), { recursive: true, force: true });
 
 const problems = [];
 const written = [];

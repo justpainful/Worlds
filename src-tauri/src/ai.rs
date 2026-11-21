@@ -933,8 +933,12 @@ pub async fn ai_read_file(state: State<'_, AppState>, attachment_id: String, ins
     let empty_mcp = db::data_dir().join("ai").join("mcp-none.json");
     std::fs::create_dir_all(empty_mcp.parent().unwrap()).map_err(|e| e.to_string())?;
     std::fs::write(&empty_mcp, r#"{"mcpServers":{}}"#).map_err(|e| e.to_string())?;
-    let prompt = format!("Read the file {} with the Read tool. {}
-Output only the result, with no commentary.", path.display(), instructions);
+    let prompt = format!(
+        "Read the file {} with the Read tool. {}
+Output only the result, with no commentary.",
+        path.display(),
+        instructions
+    );
     let mut cmd = tokio::process::Command::new(claude);
     cmd.args(["-p", "--model", &model, "--output-format", "json", "--no-session-persistence", "--strict-mcp-config", "--mcp-config"])
         .arg(&empty_mcp)
@@ -953,7 +957,10 @@ Output only the result, with no commentary.", path.display(), instructions);
         stdin.write_all(prompt.as_bytes()).await.map_err(|e| e.to_string())?;
         stdin.shutdown().await.map_err(|e| e.to_string())?;
     }
-    let out = tokio::time::timeout(std::time::Duration::from_secs(240), child.wait_with_output()).await.map_err(|_| "Claude took too long".to_string())?.map_err(|e| e.to_string())?;
+    let out = tokio::time::timeout(std::time::Duration::from_secs(240), child.wait_with_output())
+        .await
+        .map_err(|_| "Claude took too long".to_string())?
+        .map_err(|e| e.to_string())?;
     let v: Value = serde_json::from_slice(&out.stdout).map_err(|_| String::from_utf8_lossy(&out.stderr).trim().to_string())?;
     if v.get("is_error").and_then(Value::as_bool).unwrap_or(false) {
         return Err(v.get("result").and_then(Value::as_str).unwrap_or("Claude returned an error").to_string());

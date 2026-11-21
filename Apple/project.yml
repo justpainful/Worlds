@@ -15,8 +15,8 @@ settings:
     OTHER_SWIFT_FLAGS: "$(inherited) -DWORLDS_MAIN_APP_MODULES"
     # Debug builds only: the check screen the UI tests open with --ui-testing-user-reports.
     "OTHER_SWIFT_FLAGS[config=Debug]": "$(inherited) -DWORLDS_MAIN_APP_MODULES -DWORLDS_UI_CHECKS"
-    CURRENT_PROJECT_VERSION: 5
-    MARKETING_VERSION: "0.3.2"
+    CURRENT_PROJECT_VERSION: 6
+    MARKETING_VERSION: "1.0.0"
 packages:
   WorldsCore:
     path: WorldsCore

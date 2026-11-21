@@ -339,7 +339,9 @@ async fn run(app: &tauri::AppHandle, db: &Mutex<Connection>, secrets: &dyn Secre
         // Worlds 1.0: pages on the web, share links and the email inbox (identity routes/published.ts).
         "publishedList" => Ok(authed(db, secrets, Method::GET, "/published/mine", None, None).await?),
         "publishPage" => Ok(authed(db, secrets, Method::PUT, "/published/mine", Some(a), None).await?),
-        "unpublishPage" => Ok(authed(db, secrets, Method::DELETE, &format!("/published/mine/{}/{}", s(a, "kind")?, s(a, "slug")?), None, None).await?),
+        "unpublishPage" => {
+            Ok(authed(db, secrets, Method::DELETE, &format!("/published/mine/{}/{}", s(a, "kind")?, s(a, "slug")?), None, None).await?)
+        }
         "mailAddress" => Ok(authed(db, secrets, Method::GET, "/published/mail/address", None, None).await?),
         "mailItems" => Ok(authed(db, secrets, Method::GET, "/published/mail/items", None, None).await?),
         "mailAck" => Ok(authed(db, secrets, Method::POST, "/published/mail/items/ack", Some(a), None).await?),

@@ -299,7 +299,10 @@ pub fn serve(request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
             .unwrap();
     }
     // An installed plugin's block (settings "plugins.installed"), under the same policy as HTML pages.
-    if let Some(plugin) = path.strip_prefix("plugin/").filter(|id| !id.is_empty() && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.')) {
+    if let Some(plugin) = path
+        .strip_prefix("plugin/")
+        .filter(|id| !id.is_empty() && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.'))
+    {
         let lang = request.uri().query().unwrap_or("").split('&').any(|p| p == "lang=ar");
         let Ok(conn) = db::open(&db::db_path()) else { return empty(StatusCode::INTERNAL_SERVER_ERROR) };
         let html = db::get_setting(&conn, "plugins.installed")

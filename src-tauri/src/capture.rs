@@ -184,7 +184,10 @@ async fn handle(mut stream: tokio::net::TcpStream, app: AppHandle, token: String
                     }
                     buf.extend_from_slice(&chunk[..n]);
                 }
-                match serde_json::from_slice::<Value>(&buf[head_end..(head_end + length).min(buf.len())]).map_err(|e| e.to_string()).and_then(|v| api_create(&v)) {
+                match serde_json::from_slice::<Value>(&buf[head_end..(head_end + length).min(buf.len())])
+                    .map_err(|e| e.to_string())
+                    .and_then(|v| api_create(&v))
+                {
                     Ok(v) => {
                         let _ = app.emit("pages:changed", v.clone());
                         response("200 OK", &v.to_string())
