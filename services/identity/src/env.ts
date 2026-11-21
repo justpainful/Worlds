@@ -28,6 +28,8 @@ export interface Env {
   EMAIL?: SendEmailBinding;
   /** Shared with services/edge: a request carrying it came through the edge, so its x-worlds-client-ip is the visitor's. */
   EDGE_SECRET?: string;
+  /** The domain the email inbox addresses use, e.g. in.enterworlds.space (routes/published.ts). */
+  MAIL_INBOX_DOMAIN?: string;
   /** Web origins allowed to call this service from a browser, comma separated (https://app.enterworlds.space). */
   ALLOWED_ORIGINS?: string;
   /** Pictures on public profiles (src/routes/profiles.ts); without it profiles publish text only. */

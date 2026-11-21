@@ -14,6 +14,8 @@ CONNECT_HOST = "connect.example.com"
 PROFILE_HOST = "profile.example.com"
 SITE_URL = "https://example.com"
 MAIL_FROM = "Worlds <no-reply@example.com>"
+# Mail to <key>@this domain goes to its owner's Worlds (Email Routing catch-all to this Worker).
+MAIL_INBOX_DOMAIN = "in.example.com"
 
 # Secrets (wrangler secret put NAME):
 #   EDGE_SECRET  shared with both services: marks a request forwarded by this edge

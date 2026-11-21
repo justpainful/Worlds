@@ -35,7 +35,7 @@ export function clientIp(req: Request, edgeSecret?: string): string {
   return req.headers.get("cf-connecting-ip") ?? "local";
 }
 
-function sameSecret(a: string | null, b: string): boolean {
+export function sameSecret(a: string | null, b: string): boolean {
   if (a === null || a.length !== b.length) return false;
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
