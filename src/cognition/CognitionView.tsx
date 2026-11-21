@@ -15,6 +15,7 @@ import { relTime } from "../ui/misc";
 import { choosePage } from "../editor/choosePage";
 import { promptText } from "../editor/prompt";
 import { Art } from "./art";
+import { WorldView } from "./WorldView";
 import {
   JIGSAW_TEMPLATES,
   cardAnswer,
@@ -43,9 +44,10 @@ function usePageList(): PageMeta[] {
   return useMemo(() => Object.values(map), [map]);
 }
 
-export type CognitionSection = "today" | "memory" | "questions" | "sparks" | "jigsaw" | "aha";
+export type CognitionSection = "world" | "today" | "memory" | "questions" | "sparks" | "jigsaw" | "aha";
 
 const SECTIONS: { value: CognitionSection; label: string }[] = [
+  { value: "world", label: "World" },
   { value: "today", label: "Today" },
   { value: "memory", label: "Memory" },
   { value: "questions", label: "Questions" },
@@ -64,7 +66,7 @@ export const CARD_ART: Record<CardState, string> = {
 const CARD_LABEL: Record<CardState, string> = { new: "New", learning: "Learning", remembered: "Remembered", fading: "Fading", outdated: "Outdated" };
 
 export function CognitionView({ section }: { section?: string }) {
-  const [tab, setTab] = useState<CognitionSection>((SECTIONS.find((s) => s.value === section)?.value ?? "today") as CognitionSection);
+  const [tab, setTab] = useState<CognitionSection>((SECTIONS.find((s) => s.value === section)?.value ?? "world") as CognitionSection);
   useEffect(() => {
     if (section && SECTIONS.some((s) => s.value === section)) setTab(section as CognitionSection);
   }, [section]);
@@ -80,6 +82,7 @@ export function CognitionView({ section }: { section?: string }) {
       <div className="cg-tabs">
         <Segmented value={tab} onChange={setTab} options={SECTIONS.map((s) => ({ value: s.value, label: tr(s.label) }))} label={tr("Cognition")} />
       </div>
+      {tab === "world" && <WorldView />}
       {tab === "today" && <TodayPanel go={setTab} />}
       {tab === "memory" && <MemoryPanel />}
       {tab === "questions" && <QuestionsPanel />}
