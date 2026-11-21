@@ -4,10 +4,12 @@
 // The checks fail the build: a dash where the house style forbids it, a link
 // to a page or file that does not exist, an image without its size.
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as viteBuild } from "vite";
+import { loadArabic, loadPacks } from "./packs/load.mjs";
+import { packPages } from "./packs/pages.mjs";
 
 const WEB = dirname(fileURLToPath(import.meta.url));
 const CONTENT = join(WEB, "content");
@@ -40,7 +42,7 @@ const T = {
     skip: "انتقل إلى المحتوى", menu: "القائمة", home: "Worlds الصفحة الرئيسية",
     nav: [["features", "المزايا"], ["apps", "التطبيقات"], ["story", "القصة"], ["docs", "الدليل"], ["tools", "الأدوات"], ["support", "الدعم"]],
     github: "GitHub", docsMenu: "صفحات الدليل", docs: "الدليل", prev: "السابق", next: "التالي",
-    foot: [["features", "المزايا"], ["notion-alternative", "بديل لـ Notion"], ["apps", "التطبيقات"], ["story", "القصة"], ["docs", "الدليل"], ["tools", "الأدوات"], ["support", "الدعم"], ["privacy", "الخصوصية"], ["terms", "شروط الاستخدام"]],
+    foot: [["features", "المزايا"], ["packs", "الحزم"], ["notion-alternative", "بديل لـ Notion"], ["apps", "التطبيقات"], ["story", "القصة"], ["docs", "الدليل"], ["tools", "الأدوات"], ["support", "الدعم"], ["privacy", "الخصوصية"], ["terms", "شروط الاستخدام"]],
     away: [["https://changelog.enterworlds.space/", "سجل التحديثات"], ["https://status.enterworlds.space/", "الحالة"]],
     festival: "مهرجان الذكاء الطبيعي يقود الذكاء الاصطناعي 2026، مسار التجارب المتميزة.",
     fine: "Worlds اسم عمل إبداعي غير مسجل رسميًا، مستقل عن هوية imbue. الشيفرة منشورة على GitHub.",
@@ -51,7 +53,7 @@ const T = {
     skip: "Skip to content", menu: "Menu", home: "Worlds home",
     nav: [["features", "Features"], ["apps", "Apps"], ["story", "Story"], ["docs", "Docs"], ["tools", "Tools"], ["support", "Support"]],
     github: "GitHub", docsMenu: "Docs pages", docs: "Docs", prev: "Previous", next: "Next",
-    foot: [["features", "Features"], ["notion-alternative", "A Notion alternative"], ["apps", "Apps"], ["story", "Story"], ["docs", "Docs"], ["tools", "Tools"], ["support", "Support"], ["privacy", "Privacy"], ["terms", "Terms of use"]],
+    foot: [["features", "Features"], ["packs", "Packs"], ["notion-alternative", "A Notion alternative"], ["apps", "Apps"], ["story", "Story"], ["docs", "Docs"], ["tools", "Tools"], ["support", "Support"], ["privacy", "Privacy"], ["terms", "Terms of use"]],
     away: [["https://changelog.enterworlds.space/en/", "Changelog"], ["https://status.enterworlds.space/en/", "Status"]],
     festival: "Natural Intelligence Leads Artificial Intelligence festival 2026, outstanding experiments track.",
     fine: "Worlds is a creative working name, not a registered mark, and is independent of the imbue identity. The code is published on GitHub.",
@@ -124,6 +126,18 @@ for (const lang of ["ar", "en"]) {
   }
 }
 
+// A page for every pack, written from the app's own pack definitions.
+const PACK_SOURCE = join(WEB, "..", "src", "packs", "definitions");
+const packData = await loadPacks();
+const generated = packPages(packData, loadArabic());
+for (const lang of ["ar", "en"]) for (const g of generated[lang]) pages[lang].set(g.route, { ...g, file: PACK_SOURCE });
+// The pack and kind icons: the app's new hand-drawn set.
+rmSync(join(OUT, "media", "packs"), { recursive: true, force: true });
+for (const [rel, src] of generated.icons) {
+  mkdirSync(dirname(join(OUT, "media", "packs", rel)), { recursive: true });
+  copyFileSync(src, join(OUT, "media", "packs", rel));
+}
+
 const nav = JSON.parse(readFileSync(join(CONTENT, "nav.json"), "utf8"));
 const flat = nav.flatMap((s) => s.items.map((i) => `${i}/`));
 const hello = readFileSync(join(CONTENT, "hello.svg"), "utf8").trim();
@@ -189,10 +203,11 @@ function jsonld(lang, page) {
   } else {
     const trail = [{ name: "Worlds", item: `${SITE}${url(lang, "")}` }];
     if (r.startsWith("docs/") && r !== "docs/") trail.push({ name: t.docs, item: `${SITE}${url(lang, "docs/")}` });
+    if (r.startsWith("packs/") && r !== "packs/") trail.push({ name: lang === "ar" ? "الحزم" : "Packs", item: `${SITE}${url(lang, "packs/")}` });
     trail.push({ name: meta.nav ?? meta.title, item: pageUrl });
     graph.push({ "@type": "BreadcrumbList", itemListElement: trail.map((x, i) => ({ "@type": "ListItem", position: i + 1, ...x })) });
     if (r === "apps/") graph.push(app);
-    else if (r.startsWith("docs/") || r === "story/") {
+    else if (r.startsWith("docs/") || r === "story/" || (r.startsWith("packs/") && r !== "packs/")) {
       graph.push({
         "@type": r === "story/" ? "Article" : "TechArticle",
         headline: meta.title,
@@ -296,6 +311,21 @@ function render(lang, page) {
   let body = page.body.replace("<!-- hello -->", hello).replace("<!-- docs-index -->", docsIndex(lang));
   for (const [k, v] of Object.entries(LINKS)) body = body.replaceAll(`{{${k}}}`, v);
   let main;
+  // A pack page reads like a store listing inside an app: a slim bar, no site header.
+  if (page.meta.layout === "store") {
+    const back = url(lang, "packs/");
+    const alt = url(t.other, r);
+    return `${head(lang, r, page.meta, page)}
+<body class="store-page">
+<a class="skip" href="#main">${t.skip}</a>
+<header class="store-bar"><a class="store-back" href="${back}">${lang === "ar" ? "الحزم" : "Packs"}</a><a class="store-home" href="${url(lang, "")}" aria-label="${t.home}"><img src="/icon-256.png" alt="" width="28" height="28"></a><a class="lang" href="${alt}" hreflang="${t.other}" lang="${t.other}">${t.otherName}</a></header>
+<main id="main" class="store">
+${body}
+</main>
+</body>
+</html>
+`;
+  }
   if (r === "") main = `<main id="main">\n${body}\n</main>`;
   else if (r.startsWith("docs/")) {
     main = `<div class="wrap docs">\n${sidebar(lang, r)}\n<main id="main" class="article">\n${crumb(lang, r)}\n${body}\n${pager(lang, r)}\n</main>\n</div>`;
@@ -312,7 +342,7 @@ ${footer(lang)}
 }
 
 // Generated folders are rebuilt from scratch; hand-made files (css, js, fonts, media) stay.
-for (const dir of ["docs", "apps", "features", "notion-alternative", "story", "tools", "support", "privacy", "terms", "en"]) rmSync(join(OUT, dir), { recursive: true, force: true });
+for (const dir of ["docs", "apps", "features", "packs", "notion-alternative", "story", "tools", "support", "privacy", "terms", "en"]) rmSync(join(OUT, dir), { recursive: true, force: true });
 
 const problems = [];
 const written = [];
@@ -376,7 +406,7 @@ for (const [lang, page, html] of written) {
 const urls = written.filter(([, page]) => page.route !== "404/").map(([lang, page]) => {
   const alts = ["ar", "en"].filter((l) => pages[l].has(page.route)).map((l) => `<xhtml:link rel="alternate" hreflang="${l}" href="${SITE}${url(l, page.route)}"/>`).join("");
   const xd = `<xhtml:link rel="alternate" hreflang="x-default" href="${SITE}${url("ar", page.route)}"/>`;
-  const pri = page.route === "" ? "1.0" : ["features/", "apps/", "notion-alternative/", "docs/", "story/"].includes(page.route) ? "0.8" : page.route.startsWith("docs/") ? "0.6" : "0.4";
+  const pri = page.route === "" ? "1.0" : ["features/", "apps/", "packs/", "notion-alternative/", "docs/", "story/"].includes(page.route) ? "0.8" : page.route.startsWith("docs/") || page.route.startsWith("packs/") ? "0.6" : "0.4";
   return `<url><loc>${SITE}${url(lang, page.route)}</loc><lastmod>${lastChanged(page.file).slice(0, 10)}</lastmod><priority>${pri}</priority>${alts}${xd}</url>`;
 }).join("\n");
 writeFileSync(join(OUT, "sitemap.xml"), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls}\n</urlset>\n`);
