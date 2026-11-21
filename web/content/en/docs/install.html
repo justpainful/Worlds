@@ -6,16 +6,16 @@ description: Which file to download for your device, what works on each platform
 <p class="lead">Pick your device, download one file from the releases page, then follow the steps on your device's page. To start without installing anything, open Worlds in your browser.</p>
 
 <h2 id="which-file">Which file for your device</h2>
-<p>All files are on the <a href="https://github.com/justpainful/Worlds/releases/latest">latest release page on GitHub</a>, under Assets. The current version is 0.3.2.</p>
+<p>All files are on the <a href="https://github.com/justpainful/Worlds/releases/latest">latest release page on GitHub</a>, under Assets. The current version is 1.0.0.</p>
 <table>
 <thead><tr><th>Device</th><th>File</th><th>Size</th><th>Guide</th></tr></thead>
 <tbody>
-<tr><td>Windows PC</td><td><code>Worlds-0.3.2-Windows-x64-setup.exe</code></td><td>219 MB</td><td><a href="/en/docs/install/windows/">Install on Windows</a></td></tr>
-<tr><td>Android phone or tablet</td><td><code>Worlds-0.3.2-Android-Universal.apk</code></td><td>29.0 MB</td><td><a href="/en/docs/install/android/">Install on Android</a></td></tr>
-<tr><td>iPhone</td><td><code>Worlds-0.3.2-iPhone-Unsigned.ipa</code></td><td>12.1 MB</td><td><a href="/en/docs/install/iphone-ipad/">Install on iPhone and iPad</a></td></tr>
-<tr><td>iPad</td><td><code>Worlds-0.3.2-iPad-Unsigned.ipa</code></td><td>12.1 MB</td><td><a href="/en/docs/install/iphone-ipad/">Install on iPhone and iPad</a></td></tr>
-<tr><td>Mac</td><td><code>Worlds-0.3.2-macOS-Unsigned.dmg</code><br>or <code>Worlds-0.3.2-macOS-Unsigned.zip</code></td><td>26.6 MB<br>22.5 MB</td><td><a href="/en/docs/install/macos/">Install on Mac</a></td></tr>
-<tr><td>Linux PC</td><td><code>Worlds-0.3.2-Linux-x86_64.AppImage</code><br>or <code>Worlds-0.3.2-Linux-amd64.deb</code></td><td>@@size:Linux-x86_64.AppImage@@<br>@@size:Linux-amd64.deb@@</td><td><a href="/en/docs/install/linux/">Install on Linux</a></td></tr>
+<tr><td>Windows PC</td><td><code>Worlds-1.0.0-Windows-x64-setup.exe</code></td><td>302 MB</td><td><a href="/en/docs/install/windows/">Install on Windows</a></td></tr>
+<tr><td>Android phone or tablet</td><td><code>Worlds-1.0.0-Android-Universal.apk</code></td><td>29.5 MB</td><td><a href="/en/docs/install/android/">Install on Android</a></td></tr>
+<tr><td>iPhone</td><td><code>Worlds-1.0.0-iPhone-Unsigned.ipa</code></td><td>13.3 MB</td><td><a href="/en/docs/install/iphone-ipad/">Install on iPhone and iPad</a></td></tr>
+<tr><td>iPad</td><td><code>Worlds-1.0.0-iPad-Unsigned.ipa</code></td><td>13.3 MB</td><td><a href="/en/docs/install/iphone-ipad/">Install on iPhone and iPad</a></td></tr>
+<tr><td>Mac</td><td><code>Worlds-1.0.0-macOS-Unsigned.dmg</code><br>or <code>Worlds-1.0.0-macOS-Unsigned.zip</code></td><td>28.6 MB<br>24.4 MB</td><td><a href="/en/docs/install/macos/">Install on Mac</a></td></tr>
+<tr><td>Linux PC</td><td><code>Worlds-1.0.0-Linux-x86_64.AppImage</code><br>or <code>Worlds-1.0.0-Linux-amd64.deb</code></td><td>94.9 MB<br>20.6 MB</td><td><a href="/en/docs/install/linux/">Install on Linux</a></td></tr>
 <tr><td>Any device with a browser</td><td>No file needed</td><td>None</td><td><a href="/en/docs/install/web/">Worlds in the browser</a></td></tr>
 </tbody>
 </table>
@@ -63,25 +63,25 @@ description: Which file to download for your device, what works on each platform
 <li><h3>Download SHA256SUMS.txt</h3><p>Get it from the <a href="https://github.com/justpainful/Worlds/releases/latest">latest release page</a> and save it in the same folder as the installer (usually Downloads). You can also open it in the browser and read it there.</p></li>
 <li><h3>Work out the file's fingerprint</h3>
 <p><strong>On Windows:</strong> open PowerShell from the Start menu, paste this command and press <kbd>Enter</kbd>:</p>
-<pre><code>Get-FileHash "$env:USERPROFILE\Downloads\Worlds-0.3.2-Windows-x64-setup.exe" -Algorithm SHA256</code></pre>
+<pre><code>Get-FileHash "$env:USERPROFILE\Downloads\Worlds-1.0.0-Windows-x64-setup.exe" -Algorithm SHA256</code></pre>
 <p>The fingerprint appears in capital letters, and the file lists it in small letters. Case does not matter, only that they match.</p>
 <p><strong>On a Mac:</strong> open Terminal and paste:</p>
-<pre><code>shasum -a 256 ~/Downloads/Worlds-0.3.2-macOS-Unsigned.dmg</code></pre>
+<pre><code>shasum -a 256 ~/Downloads/Worlds-1.0.0-macOS-Unsigned.dmg</code></pre>
 <p><strong>On Linux, or Linux on a Chromebook:</strong> put both files in one folder and run:</p>
 <pre><code>cd ~/Downloads
 sha256sum -c SHA256SUMS.txt --ignore-missing</code></pre>
 <p>The command prints <code>OK</code> next to each intact file.</p>
 <p><strong>On a phone:</strong> Android and iOS do not work out fingerprints on their own. Download the file on a computer and check it there, or use an app you trust that computes SHA-256.</p></li>
-<li><h3>Compare the two fingerprints</h3><p>Compare the result with the line that carries the file's name. These are the fingerprints of version 0.3.2, for comparison:</p>
+<li><h3>Compare the two fingerprints</h3><p>Compare the result with the line that carries the file's name. These are the fingerprints of version 1.0.0, for comparison:</p>
 <dl class="facts">
-<div><dt><code>Worlds-0.3.2-Windows-x64-setup.exe</code></dt><dd><code>da99d756ded68b4704fab31647c2ff620f4108c5cc3b35b52334743890525765</code></dd></div>
-<div><dt><code>Worlds-0.3.2-Android-Universal.apk</code></dt><dd><code>ac2b0ea443cdfa87a9e6633c96041b2e665a60b230d904abc616c7866828540c</code></dd></div>
-<div><dt><code>Worlds-0.3.2-iPhone-Unsigned.ipa</code></dt><dd><code>c6745e1cefaea1a53ce6876a458873d0fc95c21f83b17ca603731b29db8b4d3b</code></dd></div>
-<div><dt><code>Worlds-0.3.2-iPad-Unsigned.ipa</code></dt><dd><code>1f1fe2d88efcb06716f57dd38aa5825439be6c20a2ee4e7abbfdd3df289fa089</code></dd></div>
-<div><dt><code>Worlds-0.3.2-macOS-Unsigned.dmg</code></dt><dd><code>f65dec6d47a62e7445f8004a4c502402ce7cb20f0bf79991edcab921bdc10eab</code></dd></div>
-<div><dt><code>Worlds-0.3.2-macOS-Unsigned.zip</code></dt><dd><code>dfe3c06b8861068957dfa206b5ec5d89a56f5c0181824393fb0c5ebfab3e58d2</code></dd></div>
-<div><dt><code>Worlds-0.3.2-Linux-x86_64.AppImage</code></dt><dd><code>@@sha:Linux-x86_64.AppImage@@</code></dd></div>
-<div><dt><code>Worlds-0.3.2-Linux-amd64.deb</code></dt><dd><code>@@sha:Linux-amd64.deb@@</code></dd></div>
+<div><dt><code>Worlds-1.0.0-Windows-x64-setup.exe</code></dt><dd><code>d25f7c74720d77a56401c0f5d007af60be5de4394efecd8327fbc0dfd30ee4a8</code></dd></div>
+<div><dt><code>Worlds-1.0.0-Android-Universal.apk</code></dt><dd><code>b518e052f4d7f73dac4c01561f90653d3ce1b58695f0ffc9190cd8c10e9bb68c</code></dd></div>
+<div><dt><code>Worlds-1.0.0-iPhone-Unsigned.ipa</code></dt><dd><code>0c12cfea042559be79fa0021b8507225d0b432370dc05cb3e0d4d6e841841c34</code></dd></div>
+<div><dt><code>Worlds-1.0.0-iPad-Unsigned.ipa</code></dt><dd><code>6be2eaa547ccec0b57ac85f967398d30f3676e74ae83698dd341f85062886921</code></dd></div>
+<div><dt><code>Worlds-1.0.0-macOS-Unsigned.dmg</code></dt><dd><code>142657bb79949810da590ecb17c1e14b5143ba76b58b2c5ca963d5f921bdd646</code></dd></div>
+<div><dt><code>Worlds-1.0.0-macOS-Unsigned.zip</code></dt><dd><code>5ccaf660ff684c93b7f2b737b2cea899a587762a668584f986fbeb5a6311885f</code></dd></div>
+<div><dt><code>Worlds-1.0.0-Linux-x86_64.AppImage</code></dt><dd><code>dda21a0295890b59b995ffddc9788d7021b45ba860838675b5e73224531ac905</code></dd></div>
+<div><dt><code>Worlds-1.0.0-Linux-amd64.deb</code></dt><dd><code>941e0500f9263f86942988f313ece8e313323ec03cf299651f5c92743b5d36fc</code></dd></div>
 </dl>
 <p>If you downloaded a newer version, use the <code>SHA256SUMS.txt</code> that comes with it.</p></li>
 </ol>

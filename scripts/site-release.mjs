@@ -81,6 +81,9 @@ for (const p of files) {
   }
 
   for (const [suffix, hash] of Object.entries(before.sha)) if (after.sha[suffix]) s = s.replaceAll(hash, after.sha[suffix]);
+  // The Windows guide quotes the start and end of its fingerprint as well.
+  for (const [suffix, hash] of Object.entries(before.sha))
+    if (after.sha[suffix]) s = s.replaceAll(`<code>${hash.slice(0, 8)}</code>`, `<code>${after.sha[suffix].slice(0, 8)}</code>`).replaceAll(`<code>${hash.slice(-9)}</code>`, `<code>${after.sha[suffix].slice(-9)}</code>`);
   s = s.replace(/@@size:([^@]+)@@/g, (m, x) => (after.size[x] ? mb(after.size[x]) : m));
   s = s.replace(/@@sha:([^@]+)@@/g, (m, x) => after.sha[x] ?? m);
   s = s.replaceAll(oldV, newV);
