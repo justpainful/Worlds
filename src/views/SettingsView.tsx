@@ -1,3 +1,6 @@
+import { drawnUrl } from "../ui/drawnMap";
+import { SYMBOLIC_AVAILABLE, symbolicUrl } from "../ui/symbolicMap";
+import { tr } from "../i18n/ui";
 import { useEffect, useState, type ReactNode } from "react";
 import { StaySignedIn } from "../ai/StaySignedIn";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
@@ -24,6 +27,10 @@ import { packDef } from "../packs/registry";
 import { PackRoles } from "../packs/views/PackRoles";
 import { PACKS, setPackEnabled, usePack } from "../packs/packs";
 import { loadSample, removeSample, rewriteSample, sampleLanguageMismatch, useSampleLoaded } from "../demo/sampleActions";
+import { choosePasscode, enableHello, hasPasscode } from "../pages/privacy";
+import { ShortcutSettings } from "../shell/customShortcuts";
+import { MailAddress } from "../account/PublishPage";
+import { ApiSettings, CalendarSettings, WebhookSettings } from "./IntegrationSettings";
 
 const SECTIONS: { id: string; label: string; ar?: string; tile: string; group: number; keywords: string }[] = [
   { id: "account", label: "Account", tile: "team", group: 0, keywords: "sign in passkey email devices workspaces team members sign out server" },
@@ -199,9 +206,45 @@ function Appearance() {
   return (
     <>
       <Group title="Appearance">
-        <Row label="Theme" hint="A light appearance is planned.">
-          {/* One theme for now: a value, not a control that cannot change. */}
-          <span className="set-static">Dark</span>
+        <Row label="Theme" hint="Automatic follows your system and switches with it.">
+          <Segmented
+            value={(settings["appearance.theme"] as string) ?? "dark"}
+            onChange={(v) => set("appearance.theme", v)}
+            label="Theme"
+            options={[
+              { value: "dark", label: "Dark" },
+              { value: "light", label: "Light" },
+              { value: "system", label: "Automatic" },
+            ]}
+          />
+        </Row>
+        <Row label="Design" hint="The original glass design, or a hand-drawn one in Cognition's style.">
+          <Segmented
+            value={(settings["appearance.design"] as string) === "drawn" ? "drawn" : "original"}
+            onChange={(v) => set("appearance.design", v)}
+            label="Design"
+            options={[
+              { value: "original", label: "Original" },
+              { value: "drawn", label: "Hand-drawn" },
+            ]}
+          />
+        </Row>
+        <Row label="Icons" hint="The original icons, your Symbolic library, or hand-drawn ones.">
+          <div className="icon-sets" role="radiogroup" aria-label={tr("Icons")}>
+            {(SYMBOLIC_AVAILABLE ? (["lines", "symbolic", "gold", "teal", "pink", "blue"] as const) : (["lines", "gold", "teal", "pink", "blue"] as const)).map((v) => (
+              <button
+                key={v}
+                role="radio"
+                aria-checked={((settings["appearance.icons"] as string) ?? "lines") === v}
+                className={`icon-set ${((settings["appearance.icons"] as string) ?? "lines") === v ? "is-on" : ""}`}
+                onClick={() => set("appearance.icons", v)}
+                title={tr(ICON_SET_LABEL[v])}
+              >
+                {v === "lines" ? <span className="icon-set-lines"><Lines /></span> : v === "symbolic" ? <span className="icon-set-lines"><span className="icon-symbol" style={{ width: 26, height: 26, WebkitMaskImage: `url("${symbolicUrl("home")}")`, maskImage: `url("${symbolicUrl("home")}")` }} /></span> : <img src={drawnUrl(v, "home") ?? ""} alt="" width={30} height={30} />}
+                <span>{tr(ICON_SET_LABEL[v])}</span>
+              </button>
+            ))}
+          </div>
         </Row>
         <Row label="Accent" hint="Used sparingly: selection, mentions, focus.">
           <div className="swatches">
@@ -338,6 +381,56 @@ function EditorSettings() {
       </Row>
       <Row label="Spell check">
         <Toggle checked={(settings["editor.spellcheck"] as boolean) ?? true} onChange={(v) => set("editor.spellcheck", v)} label="Spell check" />
+      </Row>
+      <Row label="Arabic spelling" hint="Underlines common mistakes in hamzas, taa marbuta and alif maqsura. Click one to fix it.">
+        <Toggle checked={(settings["editor.arabicSpell"] as boolean) ?? true} onChange={(v) => set("editor.arabicSpell", v)} label="Arabic spelling" />
+      </Row>
+      <Row label="Weekly summary" hint="Claude writes a page about your week on this day, the first time Worlds is open.">
+        <Select
+          label="Weekly summary"
+          value={String((settings["summary.weekday"] as number | undefined) ?? -1)}
+          options={[
+            { value: "-1", label: "Off" },
+            { value: "5", label: "Friday" },
+            { value: "6", label: "Saturday" },
+            { value: "0", label: "Sunday" },
+            { value: "4", label: "Thursday" },
+          ]}
+          onChange={(v) => set("summary.weekday", Number(v))}
+        />
+      </Row>
+      <Row label="Your shortcuts" hint="Give any command from the command palette a key combination.">
+        <ShortcutSettings />
+      </Row>
+      <Row label="Browser extension" hint="Install the Worlds extension in Chrome or Edge, then paste this token into it once. It sends pages, selections and articles to Worlds on this computer.">
+        <CaptureToken />
+      </Row>
+      <Row label="Calendars" hint="Show a Google or Apple calendar here by its secret iCal address, and give calendar apps a feed of your Worlds events.">
+        <CalendarSettings />
+      </Row>
+      <Row label="Local API" hint="Your programs on this computer can read and add pages with the token from Browser extension.">
+        <ApiSettings />
+      </Row>
+      <Row label="Webhooks" hint="Worlds tells these addresses when a page is created or changes.">
+        <WebhookSettings />
+      </Row>
+      <Row label="Email to Worlds" hint="Mail sent to this address arrives in Worlds as a page under From email.">
+        <MailAddress />
+      </Row>
+      <Row label="Private pages" hint="Private pages open with this passcode or Windows Hello and stay out of search. Mark a page private from its ... menu.">
+        <div className="set-buttons">
+          <button className="btn btn-plain btn-compact" onClick={() => choosePasscode()}>
+            {hasPasscode() ? "Change passcode" : "Set a passcode"}
+          </button>
+          {hasPasscode() && (
+            <button
+              className="btn btn-plain btn-compact"
+              onClick={async () => useStore.getState().toast({ message: (await enableHello()) ? "Windows Hello is ready for private pages" : "Windows Hello is not available here", tone: undefined })}
+            >
+              Use Windows Hello
+            </button>
+          )}
+        </div>
       </Row>
     </Group>
   );
@@ -661,5 +754,41 @@ function Advanced() {
         </Button>
       </Row>
     </Group>
+  );
+}
+
+/** The token the browser extension needs, with a copy button. */
+function CaptureToken() {
+  const [info, setInfo] = useState<{ port: number; token: string } | null>(null);
+  useEffect(() => {
+    api.captureInfo().then(setInfo).catch(() => setInfo(null));
+  }, []);
+  if (!info) return <span className="set-static">Available in the Worlds app on your computer</span>;
+  return (
+    <div className="set-buttons">
+      <code className="capture-token" dir="ltr">{info.token.slice(0, 8)}...</code>
+      <button
+        className="btn btn-plain btn-compact"
+        onClick={() => {
+          navigator.clipboard.writeText(info.token);
+          useStore.getState().toast({ message: "Token copied" });
+        }}
+      >
+        Copy token
+      </button>
+    </div>
+  );
+}
+
+const ICON_SET_LABEL = { gold: "Gold", teal: "Teal", pink: "Pink", blue: "Blue", symbolic: "Symbolic", lines: "Original" } as const;
+
+/** The line style's sample, drawn as lines whatever the current style. */
+function Lines() {
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 10.5 12 3l9 7.5" />
+      <path d="M5 9.5V20h14V9.5" />
+      <path d="M10 20v-6h4v6" />
+    </svg>
   );
 }

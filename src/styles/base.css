@@ -108,7 +108,7 @@ bdi,
   scrollbar-color: transparent transparent;
 }
 .scroll:hover {
-  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+  scrollbar-color: rgba(var(--ink-rgb), 0.16) transparent;
 }
 
 .visually-hidden {

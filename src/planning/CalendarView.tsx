@@ -16,6 +16,7 @@ import { useMenu } from "../ui/Menu";
 import { uiLanguage } from "../i18n/ui";
 import { hijriDate, hijriDay, hijriSpan, span } from "../i18n/locale";
 import { COMPACT, useMedia } from "../lib/narrow";
+import { useExternalEvents, type ExternalEvent } from "./calendarSync";
 
 type Mode = "week" | "agenda";
 
@@ -41,6 +42,13 @@ export function CalendarView() {
     for (const o of occ) m.set(o.date, [...(m.get(o.date) ?? []), o]);
     return m;
   }, [occ]);
+  // Events from subscribed Google or Apple calendars, read only.
+  const external = useExternalEvents(from, to);
+  const extByDay = useMemo(() => {
+    const m = new Map<string, ExternalEvent[]>();
+    for (const e of external) m.set(e.date, [...(m.get(e.date) ?? []), e]);
+    return m;
+  }, [external]);
 
   const step = mode === "week" ? 7 : 35;
   // The weekend is Friday and Saturday in Saudi Arabia, Saturday and Sunday elsewhere.
@@ -106,6 +114,9 @@ export function CalendarView() {
                 {(byDay.get(day) ?? []).map((o) => (
                   <Chip key={o.key} o={o} />
                 ))}
+                {(extByDay.get(day) ?? []).map((e) => (
+                  <ExtChip key={e.uid + e.date} e={e} />
+                ))}
               </div>
             </div>
           ))}
@@ -129,11 +140,24 @@ export function CalendarView() {
                   {byDay.get(day)!.map((o) => (
                     <Chip key={o.key} o={o} wide />
                   ))}
+                  {(extByDay.get(day) ?? []).map((e) => (
+                    <ExtChip key={e.uid + e.date} e={e} />
+                  ))}
                 </div>
               </section>
             ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/** An event from a subscribed calendar: shown, not edited here. */
+function ExtChip({ e }: { e: ExternalEvent }) {
+  return (
+    <div className="cal-ext" data-tip={[e.calendar, e.location].filter(Boolean).join(" · ")}>
+      {e.start && <span className="cal-ext-time">{formatTime(e.start)}</span>}
+      <span className="bidi">{e.title}</span>
     </div>
   );
 }

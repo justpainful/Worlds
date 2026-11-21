@@ -1,0 +1,181 @@
+/* ==========================================================================
+   First run: the intro (HelloIntro, seven seconds) and the onboarding steps.
+   The intro keeps its own colours. No shadows anywhere.
+   ========================================================================== */
+
+.hi {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  overflow: hidden;
+  background: #f9f1e8;
+  transition: background-color 600ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-hi: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --pop: cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+/* The end hands over to the steps on their own background: the app underneath never shows. */
+.hi.is-out { background: var(--canvas, #1c1c1e); }
+.hi.is-out > * { opacity: 0; transition: opacity 500ms cubic-bezier(0.2, 0.7, 0.2, 1); }
+
+/* The pen: "Hello, Worlds!" */
+.hl-word { position: absolute; inset: 0; display: grid; place-items: center; }
+.hl-word svg { width: min(78vw, 840px); height: auto; overflow: visible; }
+.hi .hw-l0 { color: #d4644d; }
+.hi .hw-l1 { color: #24706b; }
+.hi .hw-fill { fill: currentColor; opacity: 0; stroke: currentColor; stroke-width: 0; stroke-linejoin: round; paint-order: stroke; transition: stroke-width 600ms var(--pop), opacity 200ms; }
+.hi .hw path[data-t] { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
+.hi .hw.is-writing path[data-t] { stroke-dasharray: 1 2; stroke-dashoffset: 1; animation: hi-draw var(--d) linear var(--t) both; }
+.hi .hw.is-done .hw-fill { opacity: 1; }
+.hi .hw.is-done path[data-t] { opacity: 0; animation: none; }
+@keyframes hi-draw { 0% { stroke-dashoffset: 1; opacity: 0; } 0.1% { opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 1; } }
+
+/* The swell into Imbue's colours */
+.hi.is-swell .hw-fill { fill: url(#hi-bands); stroke: url(#hi-bands); stroke-width: 170; }
+.hi.is-swell .hl-word svg { animation: hl-jelly 700ms var(--ease-hi) both; }
+@keyframes hl-jelly { 0% { transform: none; } 35% { transform: scale(1.05, 0.93); } 65% { transform: scale(0.98, 1.03); } 100% { transform: none; } }
+
+/* The burst: the words hand over to the particles */
+.hb-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.hi.is-burst .hl-word, .hi.is-scribble .hl-word, .hi.is-out .hl-word { visibility: hidden; }
+
+/* Cognition: the pink ribbon scribbles itself over the dimmed Imbue */
+.hl-scribble { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.hl-scribble path { fill: none; stroke: #fb94c1; stroke-width: 46; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1 2; stroke-dashoffset: 1; opacity: 0; }
+.hi.is-scribble .hl-scribble path, .hi.is-out .hl-scribble path { opacity: 1; animation: hl-scribble 1100ms cubic-bezier(0.5, 0, 0.3, 1) both; }
+@keyframes hl-scribble { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+
+.hi-skip {
+  position: absolute;
+  top: 18px;
+  inset-inline-end: 18px;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font: 600 13px/1 var(--font-ui, system-ui);
+  background: rgba(0, 0, 0, 0.08);
+  color: #1d1d1f;
+  cursor: pointer;
+}
+.hi-skip:hover { background: rgba(0, 0, 0, 0.14); }
+
+@media (prefers-reduced-motion: reduce) {
+  .hi *, .hi { animation: none !important; transition: none !important; }
+  .hi .hl-word { display: none; }
+  .hi .hl-scribble path { opacity: 1; stroke-dashoffset: 0; }
+}
+
+/* --------------------------------------------------------------- the steps */
+.ob {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+  background:
+    radial-gradient(900px 500px at 50% -10%, rgba(var(--accent-rgb, 10, 132, 255), 0.14), transparent 70%),
+    var(--canvas, #1c1c1e);
+}
+.ob-card {
+  position: relative;
+  width: min(100%, 580px);
+  padding: 26px 30px 22px;
+  border-radius: 24px;
+  background: var(--surface-raised, var(--surface, #26262a));
+  box-shadow: 0 0 0 0.5px rgba(var(--ink-rgb, 255, 255, 255), 0.1), 0 24px 70px rgba(0, 0, 0, 0.35);
+  animation: ob-in 260ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes ob-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.ob-dots { display: flex; gap: 6px; justify-content: center; margin-bottom: 20px; }
+.ob-dots i { width: 7px; height: 7px; border-radius: 999px; background: rgba(var(--ink-rgb, 255, 255, 255), 0.16); transition: width 220ms cubic-bezier(0.2, 0.7, 0.2, 1), background 220ms; }
+.ob-dots i.is-past { background: rgba(var(--ink-rgb, 255, 255, 255), 0.4); }
+.ob-dots i.is-on { width: 22px; background: var(--accent); }
+.ob-hero-logo { display: block; margin: 0 auto 14px; width: auto; }
+.ob-imbue-logo { display: block; margin: 8px auto 18px; height: 96px; width: auto; }
+.ob-title { margin: 0 0 6px; text-align: center; font: 700 24px/1.25 var(--font-ui); color: var(--text-1); }
+.ob-text { margin: 0 auto 18px; max-width: 440px; text-align: center; color: var(--text-2); font-size: 14px; line-height: 1.6; }
+
+.ob-choices { display: grid; gap: 8px; }
+.ob-choices.is-two { grid-template-columns: 1fr 1fr; }
+.ob-choice {
+  display: grid;
+  gap: 4px;
+  padding: 16px;
+  border: 0;
+  border-radius: 16px;
+  background: rgba(var(--ink-rgb, 255, 255, 255), 0.05);
+  color: var(--text-1);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition: background 110ms cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 160ms;
+}
+.ob-choice:hover { background: rgba(var(--ink-rgb, 255, 255, 255), 0.09); }
+.ob-choice.is-on { background: rgba(var(--accent-rgb, 10, 132, 255), 0.16); box-shadow: inset 0 0 0 2px var(--accent); }
+.ob-choice b { font-size: 18px; }
+.ob-choice span { font-size: 12.5px; color: var(--text-2); }
+.ob-choice.is-row { display: flex; align-items: center; gap: 14px; text-align: start; padding: 12px 14px; }
+.ob-choice-text { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.ob-choice-text b { font-size: 15px; }
+.ob-check { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; box-shadow: inset 0 0 0 1.5px rgba(var(--ink-rgb, 255, 255, 255), 0.25); flex: none; }
+.ob-choice.is-on .ob-check { background: var(--accent); color: #fff; box-shadow: none; }
+
+.ob-rows { display: grid; gap: 2px; border-radius: 16px; background: rgba(var(--ink-rgb, 255, 255, 255), 0.05); padding: 4px 16px; }
+.ob-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 56px; flex-wrap: wrap; }
+.ob-row + .ob-row { border-top: 0.5px solid rgba(var(--ink-rgb, 255, 255, 255), 0.08); }
+.ob-row > span { font-weight: 600; font-size: 14px; color: var(--text-1); }
+.ob-row.is-icons { padding: 8px 0; }
+.ob-icon-sets { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+
+.ob-features { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ob-feature { display: grid; gap: 4px; justify-items: start; padding: 14px; border-radius: 16px; background: rgba(var(--ink-rgb, 255, 255, 255), 0.05); }
+.ob-feature b { font-size: 14px; color: var(--text-1); margin-top: 4px; }
+.ob-feature span { font-size: 12.5px; color: var(--text-2); line-height: 1.5; }
+
+.ob-imbue { position: relative; height: 210px; margin: 4px 0 6px; }
+.ob-imbue img { position: absolute; transition: transform 220ms cubic-bezier(0.2, 0.7, 0.2, 1); }
+.ob-imbue-0 { height: 200px; inset-inline-start: 8%; top: 0; transform: rotate(-6deg); }
+.ob-imbue-1 { width: 190px; inset-inline-start: 36%; top: 60px; transform: rotate(4deg); }
+.ob-imbue-2 { width: 160px; inset-inline-end: 6%; top: 8px; transform: rotate(-3deg); }
+.ob-imbue img:hover { transform: rotate(0) scale(1.05); }
+
+.ob-actions { display: grid; gap: 8px; margin-top: 6px; }
+.ob-foot-note { text-align: center; color: var(--text-3, var(--text-2)); font-size: 12px; margin: 12px 0 0; }
+.ob-done-marks { display: flex; align-items: center; justify-content: center; gap: 34px; margin: 6px 0 20px; flex-wrap: wrap; }
+.ob-done-marks img { width: auto; }
+
+.ob-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 22px; gap: 10px; }
+.ob-foot-end { display: flex; gap: 8px; }
+.ob-skip {
+  position: fixed;
+  top: 16px;
+  inset-inline-end: 16px;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 999px;
+}
+.ob-skip:hover { background: rgba(var(--ink-rgb, 255, 255, 255), 0.08); color: var(--text-1); }
+
+@media (max-width: 560px) {
+  .ob-card { padding: 22px 18px 18px; }
+  .ob-features { grid-template-columns: 1fr; }
+  .ob-imbue { height: 170px; }
+  .ob-imbue-0 { height: 150px; }
+  .ob-imbue-1 { width: 140px; }
+  .ob-imbue-2 { width: 120px; }
+  .hi-marks { gap: 10px; }
+  .hi-mark img { transform: scale(0.75); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ob-card { animation: none; }
+}
+

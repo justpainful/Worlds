@@ -22,8 +22,15 @@ import { startTour } from "./Tour";
 import { translate } from "../i18n/ui";
 import { foldArabic } from "../i18n/locale";
 import { pageFromTemplate, templateName } from "../templates/fromTemplate";
+import { openAskSpace, openSideBySide, openTimeMachine, readAloud, weeklySummary } from "../ai/writingTools";
+import { openLinksMap } from "../views/LinksMap";
+import { visibleNow } from "../pages/privacy";
+import { openPluginStore } from "../plugins/PluginViews";
+import { exportEverything, importFiles, importFolder } from "../files/importExport";
+import { saveArticle } from "../files/capture";
+import { promptText } from "../editor/prompt";
 
-interface Cmd {
+export interface Cmd {
   id: string;
   title: string;
   icon: IconName;
@@ -62,7 +69,7 @@ function score(text: string, q: string): number {
   return i === query.length ? 1 : 0;
 }
 
-function commands(): Cmd[] {
+export function commands(): Cmd[] {
   const s = useStore.getState();
   const route = activeRoute();
   const page = route?.kind === "page" ? s.pages[route.pageId] : null;
@@ -70,6 +77,7 @@ function commands(): Cmd[] {
     { id: "new", title: "Create Page", icon: "add", hint: "Ctrl+N", keywords: "new page", run: (w) => s.createPage({}, w) },
     { id: "home", title: "Go Home", icon: "home", run: (w) => s.open({ kind: "home" }, w) },
     { id: "tour", title: "Take the Tour", icon: "info", keywords: "tour help guide start جولة شرح مساعدة", run: () => startTour() },
+    { id: "welcome", title: "Show the Welcome Again", icon: "home", keywords: "welcome onboarding hello intro start ترحيب بداية", run: () => window.dispatchEvent(new Event("worlds:onboarding")) },
     { id: "tasks", title: "Tasks", icon: "checklist", keywords: "todo due today upcoming مهام", run: (w) => s.open({ kind: "tasks" }, w) },
     { id: "new-task", title: "New Task", icon: "checklist", keywords: "todo add task مهمة", run: (w) => { void createItem("task", { data: { due: today() }, open: w }); } },
     { id: "calendar", title: "Calendar", icon: "calendar", keywords: "week agenda schedule events تقويم جدول", run: (w) => s.open({ kind: "calendar" }, w) },
@@ -91,6 +99,32 @@ function commands(): Cmd[] {
     { id: "auto-new", title: "Create Automation", icon: "schedule", keywords: "schedule discord send", run: () => emit("automation:new", { pageId: page?.id ?? null }) },
     { id: "ask", title: "Ask Claude", icon: "assistant", hint: "Ctrl+J", keywords: "ai assistant claude", run: () => emit("ai:open", { pageId: page?.id ?? null }) },
     { id: "chats", title: "Claude Conversations", icon: "assistant", keywords: "ai chats history claude", run: (w) => s.open({ kind: "chat" }, w) },
+    {
+      id: "read-later",
+      title: "Save an Article to Read Later",
+      icon: "reader",
+      keywords: "article read later reading list pocket save link web قراءة مقال",
+      run: async () => {
+        const url = await promptText({ title: "Save an article", placeholder: "https://", confirm: "Save", validate: (v) => (/^https?:\/\/\S+$/.test(v) ? null : "Enter a full link") });
+        if (url) void saveArticle(url);
+      },
+    },
+    { id: "import", title: "Import Pages", icon: "upload", keywords: "import markdown word docx notion obsidian html csv zip استيراد", run: () => void importFiles(page?.id ?? null) },
+    { id: "import-folder", title: "Import a Folder (Obsidian)", icon: "folderOpen", keywords: "import obsidian vault folder markdown", run: () => void importFolder(page?.id ?? null) },
+    { id: "export-all", title: "Export Everything", icon: "exportAll", keywords: "export backup zip markdown all تصدير نسخة", run: () => void exportEverything() },
+    { id: "plugins", title: "Plugins and Gallery", icon: "puzzle", keywords: "plugins extensions store gallery themes templates addons", run: () => openPluginStore() },
+    { id: "links-map", title: "Links Map", icon: "graph", keywords: "graph network links connections map backlinks", run: () => openLinksMap() },
+    { id: "ask-space", title: "Ask Your Space", icon: "search", hint: "Ctrl+Shift+K", keywords: "ask question answer search pages ai", run: () => openAskSpace() },
+    {
+      id: "weekly",
+      title: "Write My Weekly Summary",
+      icon: "calendarDays",
+      keywords: "week summary review report claude",
+      run: () =>
+        weeklySummary()
+          .then((id) => id && s.openPage(id))
+          .catch((e) => s.toast({ message: String(e), tone: "error" })),
+    },
     { id: "split", title: "Split Right", icon: "splitRight", hint: "Ctrl+\\", run: () => route && s.open(route, "right") },
     { id: "splitl", title: "Split Left", icon: "splitLeft", run: () => route && s.open(route, "left") },
     { id: "collapse", title: "Back to One Pane", icon: "square", run: () => s.collapsePanes() },
@@ -105,6 +139,9 @@ function commands(): Cmd[] {
   if (page) {
     list.unshift(
       { id: "sub", title: "New Subpage", icon: "subpage", keywords: "child page", run: (w) => s.createPage({ parentId: page.id }, w) },
+      { id: "read-aloud", title: "Read Page Aloud", icon: "speaker", keywords: "speak voice listen tts", run: () => readAloud() },
+      { id: "side-by-side", title: "Translate Side by Side", icon: "translate", keywords: "translate translation language", run: () => openSideBySide(page.id) },
+      { id: "time-machine", title: "Time Machine", icon: "history", keywords: "versions history past restore", run: () => openTimeMachine(page.id) },
       { id: "pin", title: page.pinned ? "Unpin Page" : "Pin Page", icon: page.pinned ? "unpin" : "pin", run: () => pageOps.togglePin(page) },
       { id: "img", title: "Insert Image", icon: "image", keywords: "upload picture", run: () => emit("editor:command", { pageId: page.id, command: "insertImage" }) },
       { id: "file", title: "Insert File", icon: "file", keywords: "attach upload", run: () => emit("editor:command", { pageId: page.id, command: "insertFile" }) },
@@ -174,7 +211,7 @@ function Palette({ mode, onClose }: { mode: "all" | "pages" | "commands"; onClos
     if (mode !== "commands") {
       if (!query) {
         const recent = Object.values(pages)
-          .filter((p) => isResource(p) && !p.deletedAt && !p.archived)
+          .filter((p) => isResource(p) && !p.deletedAt && !p.archived && visibleNow(p))
           .sort((a, b) => (b.openedAt ?? b.updatedAt) - (a.openedAt ?? a.updatedAt))
           .slice(0, 6);
         for (const p of recent) {
@@ -190,7 +227,7 @@ function Palette({ mode, onClose }: { mode: "all" | "pages" | "commands"; onClos
         }
       } else {
         for (const h of hits) {
-          if (isKindHidden(h.kind)) continue;
+          if (isKindHidden(h.kind) || !visibleNow(s.pages[h.pageId])) continue;
           const isTpl = h.kind === "template";
           out.push({
             key: `p${h.pageId}`,

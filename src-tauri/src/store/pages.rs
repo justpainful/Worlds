@@ -70,6 +70,19 @@ pub(crate) fn breadcrumbs(conn: &Connection, parent: Option<&str>) -> Result<Vec
     Ok(out)
 }
 
+/// Every link between two live pages, once per pair and direction, for the links map.
+pub fn link_graph(conn: &Connection) -> Result<Vec<(String, String)>> {
+    let mut stmt = conn.prepare(
+        "SELECT DISTINCT r.source_page, r.target_page
+         FROM refs r
+         JOIN pages s ON s.id = r.source_page AND s.deleted_at IS NULL
+         JOIN pages t ON t.id = r.target_page AND t.deleted_at IS NULL
+         WHERE r.source_page != r.target_page",
+    )?;
+    let rows = stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?;
+    Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+}
+
 pub fn backlinks(conn: &Connection, page_id: &str) -> Result<Vec<Backlink>> {
     let mut stmt = conn.prepare(
         "SELECT r.source_page, p.title, p.icon, r.source_block, r.kind, COALESCE(b.text, '')

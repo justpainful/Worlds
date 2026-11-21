@@ -1,0 +1,38 @@
+<!--
+title: Install Worlds on Linux
+description: Worlds on Linux as an AppImage that runs on most distributions, or as a .deb package for Ubuntu and Debian.
+-->
+<h1>Install Worlds on Linux</h1>
+<p class="lead">There are two files with the same app: an AppImage that runs on most distributions without installing, and a .deb package that installs it on Ubuntu, Debian and the systems built on them. Pick one.</p>
+
+<h2 id="before">Before you start</h2>
+<dl class="facts">
+<div><dt>AppImage</dt><dd><code>Worlds-1.0.0-Linux-x86_64.AppImage</code> (@@size:Linux-x86_64.AppImage@@)</dd></div>
+<div><dt>deb</dt><dd><code>Worlds-1.0.0-Linux-amd64.deb</code> (@@size:Linux-amd64.deb@@)</dd></div>
+<div><dt>System</dt><dd>64-bit Linux (x86_64) with WebKitGTK 4.1, which comes with Ubuntu 22.04 and later, Debian 12 and Fedora 39.</dd></div>
+<div><dt>Where your pages live</dt><dd><code>~/.local/share/Worlds</code>, with <code>worlds.db</code> and the attachments folder</dd></div>
+</dl>
+
+<h2 id="appimage">With the AppImage</h2>
+<ol class="steps">
+<li><h3>Download the file</h3><p>On the <a href="https://github.com/justpainful/Worlds/releases/latest">latest release page on GitHub</a>, under Assets, click <code>Worlds-1.0.0-Linux-x86_64.AppImage</code>.</p></li>
+<li><h3>Make it executable</h3><p>In your file manager: right-click the file, open Properties, then Permissions, and turn on "Allow executing file as program". Or in a terminal:</p>
+<pre><code>chmod +x ~/Downloads/Worlds-1.0.0-Linux-x86_64.AppImage</code></pre></li>
+<li><h3>Run it</h3><p>Double-click it, or run it by its path in a terminal. If you see an error about FUSE on Ubuntu 22.04 or later, install the library AppImages need:</p>
+<pre><code>sudo apt install libfuse2</code></pre>
+<p>On Ubuntu 24.04 the package is called <code>libfuse2t64</code>.</p></li>
+</ol>
+
+<h2 id="deb">With the .deb package</h2>
+<ol class="steps">
+<li><h3>Download the package</h3><p>On the same release page, click <code>Worlds-1.0.0-Linux-amd64.deb</code>.</p></li>
+<li><h3>Install it</h3><p>Open a terminal in your Downloads folder and run:</p>
+<pre><code>sudo apt install ./Worlds-1.0.0-Linux-amd64.deb</code></pre>
+<p>apt installs any missing libraries with it. Worlds then shows up in your applications menu.</p></li>
+</ol>
+
+<h2 id="verify">Check the file</h2>
+<p>Put the file and <code>SHA256SUMS.txt</code> in one folder and run <code>sha256sum -c SHA256SUMS.txt --ignore-missing</code>. It prints <code>OK</code> next to a good file. More on the <a href="/en/docs/install/#verify">install page</a>.</p>
+
+<h2 id="remove">Removing it</h2>
+<p>AppImage: delete the file. deb: <code>sudo apt remove worlds</code>. Your pages stay in <code>~/.local/share/Worlds</code> until you delete that folder yourself.</p>

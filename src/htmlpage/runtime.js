@@ -5,13 +5,38 @@
 (function () {
   var boot = window.__worldsBoot || {};
   delete window.__worldsBoot;
+  // Follow the Worlds theme: from the boot data in the browser, from the address on the desktop.
+  if (boot.theme === "light" || /[?&]theme=light(&|$)/.test(location.search)) document.documentElement.setAttribute("data-theme", "light");
   var post = function (message) {
     message.worldsHtmlPage = 1;
     try { parent.postMessage(message, "*"); } catch (e) { /* not embedded */ }
   };
   var state = boot.state === undefined ? null : boot.state;
+  // A page used as Home also receives a snapshot of the workspace (titles,
+  // pinned and recent pages, today's tasks) and can open or create pages.
+  var data = null;
+  var listeners = [];
+  var stateListeners = [];
+  window.addEventListener("message", function (event) {
+    var m = event.data;
+    if (event.source !== parent || !m) return;
+    // A plugin block gets its saved state after it loads.
+    if (m.worldsState === 1) {
+      state = m.state === undefined ? null : m.state;
+      stateListeners.forEach(function (fn) { try { fn(state); } catch (e) { console.error(e); } });
+      return;
+    }
+    if (m.worldsHome !== 1) return;
+    data = m.data;
+    listeners.forEach(function (fn) { try { fn(data); } catch (e) { console.error(e); } });
+  });
   window.worlds = Object.freeze({
     get state() { return state; },
+    get data() { return data; },
+    onData: function (fn) { if (typeof fn === "function") { listeners.push(fn); if (data) fn(data); } },
+    onState: function (fn) { if (typeof fn === "function") { stateListeners.push(fn); if (state !== null) fn(state); } },
+    openPage: function (id) { post({ type: "openPage", id: String(id) }); },
+    newPage: function (title) { post({ type: "newPage", title: String(title || "") }); },
     lang: boot.lang === "ar" ? "ar" : "en",
     save: function (value) {
       var text = JSON.stringify(value === undefined ? null : value);
@@ -42,4 +67,5 @@
     if (page) post({ type: "openPage", id: page[1] });
     else if (/^https?:\/\//i.test(href) || /^mailto:/i.test(href)) post({ type: "openLink", url: href });
   }, true);
+  post({ type: "ready" });
 })();

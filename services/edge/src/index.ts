@@ -15,6 +15,7 @@
  */
 
 import { handleProfile } from "./profile";
+import { handlePublished, receiveMail, type InboundMessage } from "./pages";
 
 export interface SendEmailBinding {
   send(message: { to: string; from: { email: string; name?: string }; subject: string; text: string; html?: string }): Promise<unknown>;
@@ -38,6 +39,8 @@ export interface Env {
   EDGE_SECRET: string;
   /** Shared with the identity service: allows POST /_edge/mail. */
   MAIL_SECRET: string;
+  /** Mail to <key>@<this domain> goes to that person's Worlds (routes/published.ts in identity). */
+  MAIL_INBOX_DOMAIN?: string;
 }
 
 export const MAIL_PATH = "/_edge/mail";
@@ -114,10 +117,29 @@ export default {
     if (env.PROFILE_HOST && url.hostname.toLowerCase() === env.PROFILE_HOST.toLowerCase()) {
       // Only GETs reach the identity service from here, with the visitor's IP for its rate limit.
       const call = (path: string) => fetch(forwarded(new Request(new URL(path, request.url), { headers: request.headers }), env.IDENTITY_ORIGIN, env));
+      // Published pages and share links; share passwords arrive as a POSTed form.
+      const callWith = (path: string, init?: RequestInit) =>
+        fetch(forwarded(new Request(new URL(path, request.url), { method: init?.method ?? "GET", headers: { ...Object.fromEntries(request.headers), ...((init?.headers as Record<string, string>) ?? {}) }, body: init?.body }), env.IDENTITY_ORIGIN, env));
+      const site = env.SITE_URL || `https://${url.host.replace(/^profile\./, "")}`;
+      const published = await handlePublished(request, site, callWith);
+      if (published) return published;
       return handleProfile(request, env, call);
     }
     const target = targetFor(url.hostname, env);
     if (!target) return new Response("Not found", { status: 404 });
     return fetch(forwarded(request, target, env));
+  },
+
+  /** Cloudflare Email Routing: mail to <key>@MAIL_INBOX_DOMAIN goes to its owner's Worlds. */
+  async email(message: InboundMessage, env: Env): Promise<void> {
+    const domain = (env.MAIL_INBOX_DOMAIN ?? "").toLowerCase();
+    if (!domain || !message.to.toLowerCase().endsWith(`@${domain}`)) return message.setReject("Unknown address");
+    await receiveMail(message, (body) =>
+      fetch(new URL("/published/mail/inbound", env.IDENTITY_ORIGIN).toString(), {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-worlds-edge": env.EDGE_SECRET },
+        body: JSON.stringify(body),
+      }),
+    );
   },
 };

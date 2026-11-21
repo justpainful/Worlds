@@ -1,3 +1,5 @@
+import { useDesign, useIconStyle } from "./drawnMap";
+import { artUrl } from "../cognition/art";
 import { useEffect, useState, type ReactNode } from "react";
 import { ProductIcon, RefIcon } from "./ProductIcon";
 import { cropStyle, parseCrop } from "../media/crop";
@@ -9,6 +11,27 @@ import { LAYER } from "../glass/profiles";
 import { Icon, type IconName } from "./Icon";
 
 /** Empty states show the matching product icon when one exists, like Apple apps. */
+/** Cognition drawings for empty states in the hand-drawn look. */
+const EMPTY_ART: Partial<Record<IconName, string>> = {
+  template: "ctx_source",
+  automation: "state_processing",
+  page: "b_details",
+  pages: "act_compare",
+  image: "act_inspect",
+  activity: "act_history",
+  delete: "act_archive",
+  pin: "b_bookmark",
+  search: "act_search",
+  assistant: "respond",
+  calendar: "state_delayed",
+  clock: "wait",
+  inbox: "rest",
+  checklist: "credit_completed",
+  folder: "remember",
+  users: "credit_collaboration",
+  mail: "ctx_answer",
+};
+
 const EMPTY_PRODUCT: Partial<Record<IconName, string>> = {
   template: "templates",
   automation: "automations",
@@ -44,6 +67,19 @@ export function EmptyState({
   action?: ReactNode;
   compact?: boolean;
 }) {
+  const iconStyle = useIconStyle();
+  const design = useDesign();
+  const art = design === "drawn" || (iconStyle !== "lines" && iconStyle !== "symbolic") ? artUrl(EMPTY_ART[icon] ?? "think") : null;
+  if (art) {
+    return (
+      <div className={`empty ${compact ? "empty-compact" : ""}`}>
+        <img src={art} width={compact ? 56 : 92} height={compact ? 56 : 92} alt="" draggable={false} className="empty-art" />
+        <div className="empty-title">{title}</div>
+        {text && <div className="empty-text">{text}</div>}
+        {action && <div className="empty-action">{action}</div>}
+      </div>
+    );
+  }
   const product = EMPTY_PRODUCT[icon];
   return (
     <div className={`empty ${compact ? "empty-compact" : ""}`}>

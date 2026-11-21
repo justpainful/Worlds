@@ -123,6 +123,8 @@ export function routeLabel(route: Route, pages: ReturnType<typeof useStore.getSt
       return { title: "Inbox", icon: "inbox", emoji: null };
     case "study":
       return { title: "Study", icon: "folder", emoji: null };
+    case "cognition":
+      return { title: "Cognition", icon: "puzzle", emoji: null };
     case "pack": {
       const pack = packDef(route.pack);
       const view = pack?.views.find((v) => v.id === (route.view ?? pack.sidebar[0]));

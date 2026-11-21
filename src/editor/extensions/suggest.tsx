@@ -26,6 +26,8 @@ export interface ListEntry {
   emoji?: string | null;
   group?: string;
   hint?: string;
+  /** The colour family of the icon tile, when it differs from the group (recent items keep theirs). */
+  tone?: string;
 }
 
 interface ListProps {
@@ -83,7 +85,9 @@ const SuggestList = forwardRef<ListHandle, ListProps>(function SuggestList({ ite
                   onPick(i);
                 }}
               >
-                <span className="sg-icon">{it.emoji ? <PageIcon icon={it.emoji} size={16} /> : it.icon ? <Icon name={it.icon} size={16} /> : null}</span>
+                <span className="sg-icon" data-group={it.emoji ? undefined : (it.tone ?? it.group)}>
+                  {it.emoji ? <PageIcon icon={it.emoji} size={16} /> : it.icon ? <Icon name={it.icon} size={16} /> : null}
+                </span>
                 <span className="sg-main">
                   <span className="sg-title bidi">{it.title}</span>
                   {it.subtitle && <span className="sg-sub bidi">{it.subtitle}</span>}
@@ -162,6 +166,26 @@ function popupRenderer<T>(toEntries: (items: T[]) => ListEntry[], empty: string)
 // Slash command
 // ---------------------------------------------------------------------------
 
+const RECENT_KEY = "worlds.slash.recent";
+
+/** Block ids chosen from the slash menu, newest first (this device only). */
+function recentSlash(): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]");
+    return Array.isArray(v) ? v.filter((x) => typeof x === "string").slice(0, 5) : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberSlash(id: string) {
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify([id, ...recentSlash().filter((x) => x !== id)].slice(0, 5)));
+  } catch {
+    /* private window */
+  }
+}
+
 export interface EditorContext {
   pageId: string;
 }
@@ -188,7 +212,14 @@ export const SlashCommand = Extension.create<{ getContext: () => EditorContext }
         items: ({ query }) => {
           const q = foldArabic(query.toLowerCase().trim());
           const all = slashItems();
-          if (!q) return all;
+          if (!q) {
+            // The blocks used last come first, then everything by group.
+            const recent = recentSlash()
+              .map((id) => all.find((i) => i.id === id))
+              .filter((i): i is SlashItem => !!i)
+              .map((i) => ({ ...i, recentOf: i.group, group: "Recent" }));
+            return [...recent, ...all];
+          }
           // Rank: title starts with the query, a title word does, the title contains it, then keywords.
           const score = (i: SlashItem) => {
             // The Arabic names count too, so /صورة finds Image in the Arabic interface.
@@ -214,10 +245,20 @@ export const SlashCommand = Extension.create<{ getContext: () => EditorContext }
             .slice(0, 14);
         },
         command: ({ editor, range, props }) => {
+          rememberSlash(props.id);
           props.run(editor as Editor, range as Range, getContext());
         },
         render: popupRenderer<SlashItem>(
-          (items) => items.map((i) => ({ key: i.id, title: i.title, subtitle: i.subtitle, icon: i.icon, group: i.group, hint: i.hint })),
+          (items) =>
+            items.map((i) => ({
+              key: `${i.group}:${i.id}`,
+              title: i.title,
+              subtitle: i.subtitle,
+              icon: i.icon,
+              group: i.group,
+              hint: i.hint,
+              tone: (i as SlashItem & { recentOf?: string }).recentOf,
+            })),
           "No matching blocks",
         ),
       }),

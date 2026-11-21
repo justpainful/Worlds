@@ -242,27 +242,16 @@ export function Composer({
   const canSend = (!!text.trim() || files.length > 0) && !uploading;
   const hasChips = files.length > 0 || uploading > 0 || !!page || refs.length > 0 || toolRefs.length > 0 || pageRefs.length > 0;
 
-  // One glass body: the round "+" lens melts into the field (bottom-left).
-  const P = 46;
-  const shapes =
-    box.w > 0
-      ? [
-          // The round + sits at the start edge: the left, or the right in Arabic.
-          { x: box.rtl ? 0 : P / 2 + 4, y: 0, w: box.w - (P / 2 + 4), h: box.h, r: Math.min(24, box.h / 2) },
-          { x: box.rtl ? box.w - P : 0, y: box.h - P - 4, w: P, h: P, r: P / 2 },
-        ]
-      : undefined;
+  // One capsule: the field on top, then +, the model, the hint and Send in one row inside it.
+  void box;
 
   return (
     <div className={`ai-composer ai-composer-${size} ${busy ? "is-busy" : ""} ${focused ? "is-focused" : ""}`} ref={root}>
       <div className="composer-shell" ref={shell}>
         <span className={`ai-glow ${busy ? "is-working" : focused ? "is-focus" : ""}`} aria-hidden />
-        <Glass material="menu" layer={LAYER.popover + 0.3} className="composer-glass" shapes={shapes} merge={14}>
+        <Glass material="menu" layer={LAYER.popover + 0.3} className="composer-glass" radius="26px">
           <span />
         </Glass>
-        <button className="composer-plus" aria-label="Add" data-tip="Files, a page, or another chat" onClick={(e) => plusMenu(e.currentTarget)}>
-          <Icon name="add" size={20} weight={2} />
-        </button>
         <div className="composer-body">
           {hasChips && (
             <div className="composer-chips">
@@ -338,6 +327,9 @@ export function Composer({
             }}
           />
           <div className="composer-bar">
+            <button className="composer-plus" aria-label="Add" data-tip="Files, a page, or another chat" onClick={(e) => plusMenu(e.currentTarget)}>
+              <Icon name="add" size={18} weight={2} />
+            </button>
             <ModelButton />
             <span className="grow" />
             <span className="composer-hint">{busy ? "Esc to stop" : "Enter to send · Shift+Enter for a new line"}</span>

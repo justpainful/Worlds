@@ -24,6 +24,13 @@ import { watchSampleLanguage } from "./demo/sampleActions";
 import { useWindowTitle } from "./shell/windowTitle";
 import { useDigests } from "./packs/useDigests";
 import { usePublishedImport } from "./packs/published";
+import { startReminders } from "./pages/reminders";
+import { maybeWeeklySummary, openAskSpace } from "./ai/writingTools";
+import { installCustomShortcuts } from "./shell/customShortcuts";
+import { listenForCaptures } from "./files/capture";
+import { startMailInbox } from "./account/PublishPage";
+import { startCalendarSync } from "./planning/calendarSync";
+import { startWebhooks } from "./views/IntegrationSettings";
 
 export function App() {
   const ready = useStore((s) => s.ready);
@@ -34,6 +41,29 @@ export function App() {
   useDigests(ready);
   // Items a teacher or manager sent arrive in this person's own packs.
   usePublishedImport(ready);
+  // Date properties with a reminder show it when it comes due.
+  useEffect(() => {
+    if (!ready) return;
+    startReminders();
+    installCustomShortcuts();
+    void listenForCaptures();
+    startMailInbox();
+    startCalendarSync();
+    startWebhooks();
+    const t = window.setTimeout(maybeWeeklySummary, 20000);
+    // Ctrl+Shift+K asks the whole workspace.
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        openAskSpace();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [ready]);
 
   useEffect(() => {
     if (!isTauri) {

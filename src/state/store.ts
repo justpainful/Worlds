@@ -5,6 +5,7 @@ import { isTreeKind, kindInfo } from "../resources/kinds";
 import { PACKS_AI_KEY, packsForClaudeFrom } from "../packs/ai";
 import { syncPackSettings } from "../packs/registry";
 import { isNarrow } from "../lib/narrow";
+import { setRelationTitles } from "../pages/properties";
 
 // ---------------------------------------------------------------------------
 // Routes, tabs, panes
@@ -26,6 +27,7 @@ export type Route =
   | { kind: "calendar" }
   | { kind: "inbox" }
   | { kind: "study" }
+  | { kind: "cognition"; section?: string }
   /** A pack's view (docs/PACKS.md); without a view, the pack's first sidebar entry. */
   | { kind: "pack"; pack: string; view?: string };
 
@@ -493,3 +495,6 @@ export function pageTitle(p: PageMeta | undefined | null): string {
   const label = /^[A-Z]{2}/.test(info.label) ? info.label : info.label.toLowerCase();
   return `Untitled ${label}`;
 }
+
+// Relation properties show the titles of the pages they point to.
+setRelationTitles((id) => pageTitle(useStore.getState().pages[id]));

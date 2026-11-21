@@ -16,6 +16,11 @@ pub const MAX_STATE: usize = 256 * 1024;
 pub const RULES: &str = include_str!("../../docs/HTML_PAGES.md");
 const BASE_CSS: &str = include_str!("../../src/htmlpage/base.css");
 const RUNTIME_JS: &str = include_str!("../../src/htmlpage/runtime.js");
+/// The frame that runs code blocks (src/editor/runner.html).
+const RUNNER_HTML: &str = include_str!("../../src/editor/runner.html");
+/// Code blocks may run inline scripts, and Python may load Pyodide from its CDN.
+/// The frame is sandboxed without same origin, so it cannot reach Worlds.
+pub const RUNNER_CSP: &str = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'unsafe-inline'; img-src data: blob:; connect-src https://cdn.jsdelivr.net; frame-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'";
 
 /// The frame's own policy: inline code only, nothing from the network.
 pub const CSP: &str =
@@ -280,6 +285,34 @@ pub fn serve(request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
                 .header(header::CACHE_CONTROL, "public, max-age=31536000, immutable")
                 .body(bytes.to_vec())
                 .unwrap(),
+            None => empty(StatusCode::NOT_FOUND),
+        };
+    }
+    if path == "_w/runner" {
+        return Response::builder()
+            .header(header::CONTENT_TYPE, "text/html; charset=utf-8")
+            .header("Content-Security-Policy", RUNNER_CSP)
+            .header("X-Content-Type-Options", "nosniff")
+            .header("Referrer-Policy", "no-referrer")
+            .header(header::CACHE_CONTROL, "no-store")
+            .body(RUNNER_HTML.as_bytes().to_vec())
+            .unwrap();
+    }
+    // An installed plugin's block (settings "plugins.installed"), under the same policy as HTML pages.
+    if let Some(plugin) = path
+        .strip_prefix("plugin/")
+        .filter(|id| !id.is_empty() && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.'))
+    {
+        let lang = request.uri().query().unwrap_or("").split('&').any(|p| p == "lang=ar");
+        let Ok(conn) = db::open(&db::db_path()) else { return empty(StatusCode::INTERNAL_SERVER_ERROR) };
+        let html = db::get_setting(&conn, "plugins.installed")
+            .ok()
+            .flatten()
+            .and_then(|v| v.as_array().cloned())
+            .and_then(|list| list.into_iter().find(|p| p.get("id").and_then(Value::as_str) == Some(plugin)))
+            .and_then(|p| p.get("html").and_then(Value::as_str).map(str::to_string));
+        return match html {
+            Some(source) => document_response(compose(&source, None, if lang { "ar" } else { "en" })),
             None => empty(StatusCode::NOT_FOUND),
         };
     }

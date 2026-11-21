@@ -33,6 +33,18 @@
   --w-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
+:root[data-theme="light"] {
+  color-scheme: light;
+  --w-page: #ffffff;
+  --w-surface: #f4f4f7;
+  --w-surface-2: #ebebef;
+  --w-line: rgba(0, 0, 0, 0.1);
+  --w-text: rgba(29, 29, 31, 0.94);
+  --w-text-2: rgba(60, 60, 67, 0.74);
+  --w-text-3: rgba(60, 60, 67, 0.6);
+  --w-accent-rgb: 0, 122, 255;
+}
+
 *, *::before, *::after { box-sizing: border-box; }
 html { background: var(--w-page); color: var(--w-text); font: 400 15.5px/1.68 var(--w-font); -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 html:lang(ar) { font-size: 17px; line-height: 1.85; }

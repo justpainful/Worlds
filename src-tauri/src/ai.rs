@@ -919,6 +919,66 @@ pub async fn ai_chat_rename(state: State<'_, AppState>, id: String, title: Strin
     Ok(())
 }
 
+/// Read a picture or PDF the person attached and return what the instruction
+/// asks (its text, a summary). Claude Code may only read that one file.
+#[tauri::command]
+pub async fn ai_read_file(state: State<'_, AppState>, attachment_id: String, instructions: String) -> CmdResult<String> {
+    let (claude, model, path) = {
+        let c = state.conn();
+        let a = crate::store::get_attachment(&c, &attachment_id).map_err(|e| e.to_string())?.ok_or("The file is not there any more")?;
+        let path = crate::store::attachment_abs_path(&a);
+        (claude_path(&c).ok_or("Claude Code is not installed")?, setting_str(&c, "ai.model", "haiku"), path)
+    };
+    let dir = path.parent().map(|p| p.to_path_buf()).unwrap_or_else(db::data_dir);
+    let empty_mcp = db::data_dir().join("ai").join("mcp-none.json");
+    std::fs::create_dir_all(empty_mcp.parent().unwrap()).map_err(|e| e.to_string())?;
+    std::fs::write(&empty_mcp, r#"{"mcpServers":{}}"#).map_err(|e| e.to_string())?;
+    let prompt = format!(
+        "Read the file {} with the Read tool. {}
+Output only the result, with no commentary.",
+        path.display(),
+        instructions
+    );
+    let mut cmd = tokio::process::Command::new(claude);
+    cmd.args(["-p", "--model", &model, "--output-format", "json", "--no-session-persistence", "--strict-mcp-config", "--mcp-config"])
+        .arg(&empty_mcp)
+        .args(["--allowedTools", "Read", "--tools", "Read", "--add-dir"])
+        .arg(&dir)
+        .current_dir(&dir)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .kill_on_drop(true);
+    prepare_claude(&mut cmd);
+    let mut child = cmd.spawn().map_err(|e| e.to_string())?;
+    crate::jobs::adopt_tokio(&child);
+    {
+        let mut stdin = child.stdin.take().unwrap();
+        stdin.write_all(prompt.as_bytes()).await.map_err(|e| e.to_string())?;
+        stdin.shutdown().await.map_err(|e| e.to_string())?;
+    }
+    let out = tokio::time::timeout(std::time::Duration::from_secs(240), child.wait_with_output())
+        .await
+        .map_err(|_| "Claude took too long".to_string())?
+        .map_err(|e| e.to_string())?;
+    let v: Value = serde_json::from_slice(&out.stdout).map_err(|_| String::from_utf8_lossy(&out.stderr).trim().to_string())?;
+    if v.get("is_error").and_then(Value::as_bool).unwrap_or(false) {
+        return Err(v.get("result").and_then(Value::as_str).unwrap_or("Claude returned an error").to_string());
+    }
+    Ok(v.get("result").and_then(Value::as_str).unwrap_or("").trim().to_string())
+}
+
+/// Rewrite a piece of text by an instruction and return only the result:
+/// Claude in the text, translation, word meanings, summaries. Runs without
+/// tools, with the provider or Claude Code chosen in Settings.
+#[tauri::command]
+pub async fn ai_rewrite(app: tauri::AppHandle, text: String, instructions: String, model: Option<String>) -> CmdResult<String> {
+    if text.len() > 400_000 {
+        return Err("The text is too long to send at once".into());
+    }
+    transform_markdown(&app, &text, &instructions, model).await.map_err(|e| format!("{e:#}"))
+}
+
 #[tauri::command]
 pub async fn ai_cancel(run_id: String) -> CmdResult<()> {
     // API runs stop through their signal; Claude Code and Codex runs are processes.

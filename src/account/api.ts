@@ -148,6 +148,17 @@ export interface AuditRow {
   meta: Record<string, unknown>;
 }
 
+export interface PublishedPage {
+  slug: string;
+  kind: "page" | "share";
+  title: string;
+  lang: string;
+  expiresAt: number | null;
+  hasPassword: number | boolean;
+  views: number;
+  updatedAt: number;
+}
+
 export interface InvitePreview {
   valid: boolean;
   reason?: string;
@@ -190,6 +201,15 @@ export const accountApi = {
   /** One picture or short video in base64; returns its "file:<key>" for the profile. */
   uploadProfileFile: (mime: string, data: string) => call<{ file: string; size: number }>("uploadProfileFile", { mime, data }),
   devices: () => call<Device[]>("devices"),
+  /** Pages published to the web and share links. */
+  publishedList: () => call<{ pages: PublishedPage[] }>("publishedList"),
+  publishPage: (p: { kind: "page" | "share"; slug?: string; title: string; html: string; lang: "ar" | "en"; password?: string; expiresAt?: number | null }) =>
+    call<{ slug: string; kind: "page" | "share"; expiresAt: number | null }>("publishPage", p),
+  unpublishPage: (kind: "page" | "share", slug: string) => call<{ ok: boolean }>("unpublishPage", { kind, slug }),
+  /** The email inbox: an address of your own; mail to it becomes pages. */
+  mailAddress: () => call<{ address: string }>("mailAddress"),
+  mailItems: () => call<{ items: { id: string; sender: string; subject: string; body: string; receivedAt: number }[] }>("mailItems"),
+  mailAck: (ids: string[]) => call<{ ok: boolean }>("mailAck", { ids }),
   revokeDevice: (deviceId: string) => call<unknown>("revokeDevice", { deviceId }),
   passkeys: () => call<Passkey[]>("passkeys"),
   removePasskey: (passkeyId: string) => call<unknown>("removePasskey", { passkeyId }),

@@ -1,3 +1,4 @@
+import { setDesign, setIconStyle } from "../ui/drawnMap";
 import { useStore } from "../state/store";
 import { glassEngine } from "../glass/engine";
 import type { QualityTier } from "../glass/profiles";
@@ -5,6 +6,7 @@ import { setAdaptiveQuality } from "../perf/monitor";
 import { setTonalLook } from "../ui/tonal/scene";
 import { applyUiLanguage, resolveUiLanguage, setUserTexts } from "../i18n/ui";
 import { api, isTauri } from "../lib/api";
+import { applyPluginTheme } from "../plugins/plugins";
 
 /** The language the tray menu was last told, so it is rebuilt only on a change. */
 let trayLanguage: string | null = null;
@@ -34,6 +36,18 @@ function hexToRgb(hex: string): [number, number, number] | null {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
+export type ThemeChoice = "dark" | "light" | "system";
+
+const systemLight = typeof matchMedia === "function" ? matchMedia("(prefers-color-scheme: light)") : null;
+systemLight?.addEventListener("change", () => applyAppearance());
+
+/** Dark or light for a stored choice; Automatic follows the system. Dark is the default. */
+export function resolvedTheme(choice: unknown): "dark" | "light" {
+  if (choice === "light") return "light";
+  if (choice === "system") return systemLight?.matches ? "light" : "dark";
+  return "dark";
+}
+
 /** Apply accent, glass quality, motion and density from profile + settings. */
 export function applyAppearance() {
   const { profile, settings } = useStore.getState();
@@ -46,7 +60,10 @@ export function applyAppearance() {
   root.style.setProperty("--accent-rgb", accent.join(", "));
   const quality = (settings["appearance.glass"] as QualityTier) ?? "full";
   glassEngine.setQuality(quality);
-  const tone = (settings["appearance.glassTone"] as "auto" | "light" | "dark") ?? "auto";
+  const theme = resolvedTheme(settings["appearance.theme"]);
+  const chosenTone = (settings["appearance.glassTone"] as "auto" | "light" | "dark") ?? "auto";
+  // Automatic glass follows the theme: light glass on the light theme.
+  const tone = chosenTone === "auto" && theme === "light" ? "light" : chosenTone;
   const frost = typeof settings["appearance.glassFrost"] === "number" ? (settings["appearance.glassFrost"] as number) : 1;
   glassEngine.setLook(tone, frost);
   setTonalLook(tone);
@@ -55,9 +72,16 @@ export function applyAppearance() {
   if (motion === "reduced") root.dataset.motion = "reduced";
   else delete root.dataset.motion;
   root.dataset.density = (settings["appearance.density"] as string) ?? "comfortable";
+  setIconStyle(settings["appearance.icons"]);
+  setDesign(settings["appearance.design"]);
   // Settings › Editor › Spell check: every text area without its own choice inherits this.
   root.spellcheck = settings["editor.spellcheck"] !== false;
   root.dataset.transparency = (settings["appearance.transparency"] as string) ?? "off";
+  if (root.dataset.theme !== theme) {
+    root.dataset.theme = theme;
+    glassEngine.refreshAll();
+  }
+  applyPluginTheme();
   const language = resolveUiLanguage(profile?.language);
   applyUiLanguage(language);
   if (isTauri && trayLanguage !== null && trayLanguage !== language) api.trayLanguage(language === "ar").catch(() => {});

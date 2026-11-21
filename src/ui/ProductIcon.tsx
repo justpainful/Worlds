@@ -1,6 +1,8 @@
 import type { CSSProperties } from "react";
 import { PRODUCT_ICONS, type ProductIconName } from "../assets/product-icons";
 import { fileUrl } from "../lib/api";
+import { DRAWN_PRODUCT, drawnUrl, useIconStyle } from "./drawnMap";
+import { symbolicProductUrl, tileColor } from "./symbolicMap";
 
 export type { ProductIconName };
 export const PRODUCT_ICON_NAMES = Object.keys(PRODUCT_ICONS) as ProductIconName[];
@@ -10,6 +12,25 @@ export const PRODUCT_ICON_NAMES = Object.keys(PRODUCT_ICONS) as ProductIconName[
  * The simplified "-sm" artwork is used at 32px and below so small icons stay crisp.
  */
 export function ProductIcon({ name, size = 20, className = "", style }: { name: ProductIconName; size?: number; className?: string; style?: CSSProperties }) {
+  const iconStyle = useIconStyle();
+  const symbol = iconStyle === "symbolic" ? symbolicProductUrl(name) : null;
+  if (symbol) {
+    // A white SF Symbol on a tile of its own colour, like Apple's settings.
+    return (
+      <span
+        className={`product-icon product-symbol ${className}`}
+        style={{ width: size, height: size, borderRadius: size * 0.24, background: tileColor(name), ...style }}
+        aria-hidden="true"
+      >
+        <span className="icon-symbol" style={{ width: size * 0.62, height: size * 0.62, color: "#fff", WebkitMaskImage: `url("${symbol}")`, maskImage: `url("${symbol}")` }} />
+      </span>
+    );
+  }
+  const drawn = iconStyle === "lines" || iconStyle === "symbolic" ? null : drawnUrl(iconStyle, DRAWN_PRODUCT[name]);
+  if (drawn) {
+    const px = Math.round(size <= 24 ? size * 1.05 : size * 0.86);
+    return <img src={drawn} width={px} height={px} alt="" draggable={false} className={`product-icon product-icon-drawn ${className}`} style={{ margin: (size - px) / 2, ...style }} />;
+  }
   const art = PRODUCT_ICONS[name];
   if (!art) return null;
   return (

@@ -2,6 +2,7 @@ pub mod account;
 pub mod ai;
 pub mod automations;
 pub mod backup;
+pub mod capture;
 pub mod commands;
 pub mod content;
 pub mod db;
@@ -168,6 +169,9 @@ pub fn run() {
         .setup(|app| {
             let handle = app.handle().clone();
 
+            // The browser extension sends pages and selections here (127.0.0.1 only, with a token).
+            capture::start_capture_server(handle.clone());
+
             // Daily backup, off the startup path.
             std::thread::spawn(|| {
                 std::thread::sleep(std::time::Duration::from_secs(20));
@@ -307,9 +311,15 @@ pub fn run() {
             commands::client_log,
             window_style::window_set_transparency,
             commands::page_append_markdown,
+            commands::link_graph,
+            capture::fetch_article,
+            capture::capture_info,
+            capture::webhook_post,
             preview::preview_prepare,
             ai::ai_run,
             ai::ai_cancel,
+            ai::ai_rewrite,
+            ai::ai_read_file,
             ai::ai_status,
             ai::ai_register_mcp,
             ai::ai_token_status,

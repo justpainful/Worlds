@@ -124,8 +124,43 @@ import {
   ArrowUp,
   Mic,
   type LucideIcon,
+  AppWindow,
+  AudioLines,
+  AudioWaveform,
+  BellRing,
+  BookA,
+  BookOpen,
+  CalendarDays,
+  ChartGantt,
+  Circle,
+  ClipboardList,
+  Eraser,
+  Flame,
+  Hand,
+  LayoutDashboard,
+  Mail,
+  MapPin,
+  MessageSquareText,
+  MousePointer2,
+  MousePointerClick,
+  Network,
+  Newspaper,
+  PackageOpen,
+  PenTool,
+  Puzzle,
+  Shapes,
+  Sigma,
+  Smartphone,
+  SpellCheck,
+  StickyNote,
+  Superscript,
+  Volume2,
+  Watch,
+  Webhook,
 } from "lucide-react";
 import type { CSSProperties, SVGProps } from "react";
+import { DRAWN, drawnUrl, useIconStyle } from "./drawnMap";
+import { symbolicUrl } from "./symbolicMap";
 
 const Discord = (props: SVGProps<SVGSVGElement> & { size?: number; strokeWidth?: number }) => {
   // The Discord mark, filled (a stroked outline reads as a smudge at toolbar sizes).
@@ -260,6 +295,46 @@ const REGISTRY = {
   expand: Expand,
   arrowUp: ArrowUp,
   mic: Mic,
+  synced: RefreshCw,
+  button: MousePointerClick,
+  footnote: Superscript,
+  form: ClipboardList,
+  whiteboard: PenTool,
+  terminal: SquareTerminal,
+  voice: AudioLines,
+  timeline: ChartGantt,
+  formula: Sigma,
+  reminder: BellRing,
+  book: BookOpen,
+  translate: Languages,
+  dictionary: BookA,
+  spellcheck: SpellCheck,
+  reader: Newspaper,
+  graph: Network,
+  widgets: LayoutDashboard,
+  mapPin: MapPin,
+  flame: Flame,
+  puzzle: Puzzle,
+  palette: Palette,
+  webhook: Webhook,
+  device: Smartphone,
+  exportAll: PackageOpen,
+  mail: Mail,
+  browser: AppWindow,
+  watch: Watch,
+  waveform: AudioWaveform,
+  calendarDays: CalendarDays,
+  shapes: Shapes,
+  sticky: StickyNote,
+  typeTool: Type,
+  comment: MessageSquareText,
+  speaker: Volume2,
+  circle: Circle,
+  arrowUpRight: ArrowUpRight,
+  eraser: Eraser,
+  hand: Hand,
+  pointer: MousePointer2,
+  pen: Highlighter,
 } satisfies Record<string, IconComp>;
 
 export type IconName = keyof typeof REGISTRY;
@@ -302,6 +377,40 @@ const DIRECTIONAL: ReadonlySet<string> = new Set([
 ]);
 
 export function Icon({ name, size = 16, weight, className = "", style, label, filled }: IconProps) {
+  const iconStyle = useIconStyle();
+  const symbol = iconStyle === "symbolic" ? symbolicUrl(name) : null;
+  if (symbol) {
+    // SF Symbols take the text colour, like the line icons, through a mask.
+    const px = Math.round(size * 1.12);
+    return (
+      <span
+        className={`icon icon-symbol ${DIRECTIONAL.has(name) ? "icon-dir" : ""} ${className}`}
+        style={{ width: px, height: px, margin: (size - px) / 2, WebkitMaskImage: `url("${symbol}")`, maskImage: `url("${symbol}")`, ...style }}
+        role={label ? "img" : undefined}
+        aria-label={label}
+        aria-hidden={label ? undefined : true}
+      />
+    );
+  }
+  const drawn = iconStyle === "lines" || iconStyle === "symbolic" ? null : drawnUrl(iconStyle, DRAWN[name]);
+  if (drawn) {
+    // A hand-drawn picture reads small: give it a little more room than a line glyph.
+    // Pictures need more room than lines to read: small sizes grow the most.
+    // The outer margin stays negative, so rows keep their height.
+    const px = Math.round(size < 14 ? Math.max(17, size * 1.55) : size < 20 ? size * 1.4 : size * 1.25);
+    return (
+      <img
+        src={drawn}
+        width={px}
+        height={px}
+        alt={label ?? ""}
+        draggable={false}
+        className={`icon icon-drawn ${DIRECTIONAL.has(name) ? "icon-dir" : ""} ${filled ? "is-filled" : ""} ${className}`}
+        style={{ margin: (size - px) / 2, ...style }}
+        aria-hidden={label ? undefined : true}
+      />
+    );
+  }
   const Comp = REGISTRY[name] as IconComp;
   // Optical weights in the SF Symbols "medium" range: small glyphs get a heavier
   // stroke so every size reads with the same visual weight.

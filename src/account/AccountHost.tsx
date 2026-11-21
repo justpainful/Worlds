@@ -17,14 +17,23 @@ export function AccountHost() {
   const close = useAccount((s) => s.close);
   const view = useAccount((s) => s.view);
   const onboarded = useStore((s) => !!s.settings["account.onboarded"]);
-  // Decided once, from the first account state: signing in during onboarding keeps it open for its last step.
-  const [firstRun, setFirstRun] = useState<boolean | null>(null);
+  // Decided once, at once: the welcome covers the window from the first frame, so the app never
+  // shows before it. Signing in during onboarding keeps it open for its last step.
+  const [firstRun, setFirstRun] = useState<boolean | null>(() => (useStore.getState().settings["account.onboarded"] ? false : true));
+  // "Show the Welcome Again" in the command palette opens it on purpose.
+  const [again, setAgain] = useState(() => typeof location !== "undefined" && new URLSearchParams(location.search).has("welcome"));
   useEffect(() => {
-    // Without an account server there is nothing to choose: start on this PC quietly.
-    if (firstRun === null && view) setFirstRun(!onboarded && view.status === "signed_out" && view.configured);
+    // Someone already signed in on this device does not need the welcome.
+    if (firstRun && view && view.status !== "signed_out" && !onboarded) setFirstRun(false);
   }, [view, onboarded, firstRun]);
+  useEffect(() => {
+    const show = () => setAgain(true);
+    window.addEventListener("worlds:onboarding", show);
+    return () => window.removeEventListener("worlds:onboarding", show);
+  }, []);
 
-  if (firstRun && !onboarded) return <Onboarding />;
+  if (again) return <Onboarding withAccount={!!view?.configured && view.status === "signed_out"} onClose={() => setAgain(false)} />;
+  if (firstRun && !onboarded) return <Onboarding withAccount={!!view?.configured} />;
   if (!sheet) return null;
   switch (sheet.kind) {
     case "signin":

@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Worlds",
+  "short_name": "Worlds",
+  "version": "1.0.0",
+  "description": "Save pages, selections and articles to Worlds on this computer.",
+  "default_locale": "en",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Save to Worlds",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png"
+    }
+  },
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:47321/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}

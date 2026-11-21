@@ -19,7 +19,7 @@
   overflow: hidden;
   border-radius: var(--r-window);
   background:
-    radial-gradient(1200px 600px at 0% 0%, rgba(255, 255, 255, 0.025), transparent 60%),
+    radial-gradient(1200px 600px at 0% 0%, rgba(var(--ink-rgb), 0.025), transparent 60%),
     var(--canvas);
   box-shadow:
     var(--shadow-window),

@@ -288,8 +288,24 @@ pub fn set_page_meta(conn: &Connection, ctx: &Ctx, id: &str, key: &str, value: V
     }
     // One key of the metadata object at a time, so no editor can overwrite
     // what another part of the app keeps there.
-    if !matches!(key, "properties" | "look" | "doc" | "deck" | "project" | "gallery" | "file" | "stream" | "experiment" | "sheet" | "html")
-        && !is_data_key(key)
+    if !matches!(
+        key,
+        "properties"
+            | "look"
+            | "doc"
+            | "deck"
+            | "project"
+            | "gallery"
+            | "file"
+            | "stream"
+            | "experiment"
+            | "sheet"
+            | "html"
+            | "comments"
+            | "lock"
+            | "publish"
+            | "book"
+    ) && !is_data_key(key)
     {
         bail!("unknown page setting {key}");
     }

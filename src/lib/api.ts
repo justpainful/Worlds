@@ -218,6 +218,14 @@ export const api = {
   updatePage: (id: string, patch: PagePatch) => invoke<PageMeta>("page_update", { id, patch }),
   /** Merge one key into a page's metadata (properties, look). */
   pageMarkdown: (id: string) => invoke<string>("page_markdown", { id }),
+  /** Links between pages as [source, target] pairs, for the links map. */
+  linkGraph: () => invoke<[string, string][]>("link_graph"),
+  /** A web page's HTML, fetched by the app, for the article reader. */
+  fetchArticle: (url: string) => invoke<string>("fetch_article", { url }),
+  /** Where the browser extension sends captures, and the token it needs. */
+  captureInfo: () => invoke<{ port: number; token: string }>("capture_info"),
+  /** Post an event to a webhook address. */
+  webhookPost: (url: string, body: unknown) => invoke<number>("webhook_post", { url, body }),
   setPageMeta: (
     id: string,
     key:
@@ -231,6 +239,11 @@ export const api = {
       | "stream"
       | "experiment"
       | "sheet"
+      // Comments on the text, page lock, web publishing and books.
+      | "comments"
+      | "lock"
+      | "publish"
+      | "book"
       // A pack item's fields (docs/PACKS.md).
       | "item"
       | import("../planning/model").DataKind,
@@ -297,6 +310,10 @@ export const api = {
   aiChatDelete: (id: string) => invoke<void>("ai_chat_delete", { id }),
   aiChatRename: (id: string, title: string) => invoke<void>("ai_chat_rename", { id, title }),
   aiCancel: (runId: string) => invoke<void>("ai_cancel", { runId }),
+  /** Rewrite text by an instruction and get only the result back (no tools, no chat). */
+  aiRewrite: (text: string, instructions: string, model?: string) => invoke<string>("ai_rewrite", { text, instructions, model: model ?? null }),
+  /** Have Claude read an attached picture or PDF and return what the instruction asks. */
+  aiReadFile: (attachmentId: string, instructions: string) => invoke<string>("ai_read_file", { attachmentId, instructions }),
   aiStatus: () => invoke<{ available: boolean; version?: string; path?: string; mcpRegistered?: boolean }>("ai_status"),
   aiRegisterMcp: () => invoke<string>("ai_register_mcp"),
   /** Long-lived Claude Code token kept in Windows Credential Manager (never returned to the UI). */

@@ -20,7 +20,7 @@
 .md-list { margin: 0; padding-inline-start: 1.4em; display: flex; flex-direction: column; gap: 3px; }
 .md-list li { unicode-bidi: plaintext; }
 .md-quote { margin: 0; padding-inline-start: 12px; border-inline-start: 2px solid var(--hairline-strong); color: var(--text-2); }
-.md-code { margin: 0; padding: 10px 12px; border-radius: 10px; background: #151517; font: 12.5px/1.55 var(--font-mono); color: #e6e1d8; overflow-x: auto; white-space: pre; user-select: text; }
+.md-code { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--code-bg); font: 12.5px/1.55 var(--font-mono); color: #e6e1d8; overflow-x: auto; white-space: pre; user-select: text; }
 .md-icode { font: 0.88em var(--font-mono); padding: 0.1em 0.35em; border-radius: 5px; background: var(--fill-2); unicode-bidi: isolate; }
 .md-link { color: var(--text-1); text-decoration: underline; text-decoration-color: rgba(var(--accent-rgb), 0.6); text-underline-offset: 3px; unicode-bidi: isolate; }
 .ai-answer { user-select: text; }

@@ -2,7 +2,7 @@
   "name": "worlds",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
-  "version": "0.3.2",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

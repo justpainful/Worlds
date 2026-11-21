@@ -1,3 +1,9 @@
+import { Art } from "../cognition/art";
+import { useCognition } from "../cognition/store";
+import { dayOf, dueCards } from "../cognition/model";
+import { emit } from "../lib/bus";
+import { isPrivate, usePrivacy } from "../pages/privacy";
+import { tr } from "../i18n/ui";
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { ProductIcon, type ProductIconName } from "../ui/ProductIcon";
 import { useStore, childrenOf, pageTitle, type Route } from "../state/store";
@@ -74,6 +80,8 @@ export function Sidebar() {
   const packs = useEnabledPacks();
   const dueCount = useMemo(() => tasksFor(pages, "today", today()).length, [pages]);
   const inboxCount = useMemo(() => liveOfKind(pages, "inbox").length, [pages]);
+  const cards = useCognition("cards");
+  const cognitionDue = useMemo(() => dueCards(cards, dayOf(Date.now())).length, [cards]);
   const studySubjects = useMemo(() => (study ? subjects(pages) : []), [pages, study]);
 
   const rows = useMemo(() => flatten(pages, sidebar.expanded), [pages, sidebar.expanded]);
@@ -138,6 +146,14 @@ export function Sidebar() {
           {nav("checklist", "Tasks", { kind: "tasks" }, dueCount || undefined, "checklist")}
           {nav("calendar", "Calendar", { kind: "calendar" }, undefined, "calendar")}
           {nav("inbox", "Inbox", { kind: "inbox" }, inboxCount || undefined, "inbox")}
+          <button
+            className={`side-item side-cognition ${active?.kind === "cognition" ? "is-active" : ""}`}
+            onClick={(e) => open({ kind: "cognition" }, e.ctrlKey ? "tab" : e.altKey ? "right" : "current")}
+          >
+            <Art name="aha-27" size={26} className="side-pi" />
+            <span className="side-label">Cognition</span>
+            {cognitionDue ? <span className="side-badge">{cognitionDue}</span> : null}
+          </button>
           {nav("assistant", "Claude", { kind: "chat" }, undefined, "claude")}
           {pendingCount > 0 && nav("inbox", "Needs approval", { kind: "activity" }, pendingCount)}
         </nav>
@@ -337,6 +353,13 @@ function Tree({ rows, activeRoute }: { rows: Row[]; activeRoute: Route | null })
   }, [virtual]);
 
   const onDragOver = (e: DragEvent, row: Row) => {
+    // Blocks dragged out of a page move into the page they are dropped on.
+    if (e.dataTransfer.types.includes("application/x-worlds-blocks")) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      if (!drop || drop.id !== row.page.id || drop.zone !== "inside") setDrop({ id: row.page.id, zone: "inside" });
+      return;
+    }
     if (!e.dataTransfer.types.includes("application/x-worlds-page")) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
@@ -360,6 +383,17 @@ function Tree({ rows, activeRoute }: { rows: Row[]; activeRoute: Route | null })
 
   const onDrop = async (e: DragEvent, row: Row) => {
     e.preventDefault();
+    const blocks = e.dataTransfer.getData("application/x-worlds-blocks");
+    if (blocks) {
+      setDrop(null);
+      try {
+        const { pageId: from, bids } = JSON.parse(blocks) as { pageId: string; bids: string[] };
+        if (from !== row.page.id && bids.length) emit("blocks:moved-out", { pageId: from, bids, target: row.page.id });
+      } catch {
+        /* not ours */
+      }
+      return;
+    }
     const id = e.dataTransfer.getData("application/x-worlds-page");
     const d = drop;
     setDrop(null);
@@ -435,6 +469,7 @@ function TreeRow({
   const setExpanded = useStore((s) => s.setExpanded);
   const createPage = useStore((s) => s.createPage);
   const show = useMenu((s) => s.show);
+  const privateOpen = usePrivacy();
   const [title, setTitle] = useState(page.title);
 
   useEffect(() => setTitle(page.title), [page.title, renaming]);
@@ -523,7 +558,7 @@ function TreeRow({
           }}
         />
       ) : (
-        <span className={`tree-label bidi ${page.title ? "" : "is-untitled"}`}>{pageTitle(page)}</span>
+        <span className={`tree-label bidi ${page.title ? "" : "is-untitled"}`}>{isPrivate(page) && !privateOpen ? tr("Private page") : pageTitle(page)}</span>
       )}
       <span className="tree-actions">
         <IconButton

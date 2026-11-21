@@ -330,7 +330,8 @@ class GlassEngine {
 
   // ------------------------------------------------------------------ internals
 
-  private refreshAll() {
+  /** Re-tone every surface, for example after the app theme changed. */
+  refreshAll() {
     for (const s of this.surfaces.values()) {
       this.applyStatic(s);
       this.applyOptics(s);
@@ -567,7 +568,7 @@ class GlassEngine {
     const base = L > 0.2 ? lerp(p.tint.mid, p.tint.light, clamp((L - 0.2) / 0.4, 0, 1)) : lerp(p.tint.dark, p.tint.mid, clamp(L / 0.2, 0, 1));
     let alpha = base * (this.frost > 1 ? 1 + (this.frost - 1) * 0.6 : this.frost);
     let colour: [number, number, number] = s.tone === "light" || !p.flips ? [255, 255, 255] : [255, 255, 255];
-    // Large glass in a dark app keeps a dark body; its tint lifts it only slightly.
+    // Large glass keeps the app theme's body: dark in the dark theme; its tint lifts it only slightly.
     if (!p.flips && s.tone === "dark") colour = [44, 44, 48];
     // A tone forced against the scene needs a body solid enough for its own ink.
     const against = this.tone !== "auto" && p.flips && (this.tone === "light") !== L > 0.36;
@@ -591,7 +592,7 @@ class GlassEngine {
     const L = a.luminance;
     // Small glass flips with hysteresis; large glass keeps the app's (dark) tone.
     let tone: "light" | "dark";
-    if (!p.flips) tone = "dark";
+    if (!p.flips) tone = document.documentElement.dataset.theme === "light" ? "light" : "dark";
     else if (this.tone !== "auto") tone = this.tone;
     else tone = s.tone === "light" ? (L > 0.3 ? "light" : "dark") : L > 0.38 ? "light" : "dark";
     s.tone = tone;

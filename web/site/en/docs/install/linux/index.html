@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Install Worlds on Linux · Worlds</title>
+<meta name="description" content="Worlds on Linux as an AppImage that runs on most distributions, or as a .deb package for Ubuntu and Debian.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://enterworlds.space/en/docs/install/linux/">
+<link rel="alternate" hreflang="ar" href="https://enterworlds.space/docs/install/linux/">
+<link rel="alternate" hreflang="en" href="https://enterworlds.space/en/docs/install/linux/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Worlds">
+<meta property="og:title" content="Install Worlds on Linux">
+<meta property="og:description" content="Worlds on Linux as an AppImage that runs on most distributions, or as a .deb package for Ubuntu and Debian.">
+<meta property="og:image" content="https://enterworlds.space/media/og.png">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-256.png">
+<link rel="preload" href="/fonts/instrument-sans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/site.css">
+<script src="/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="wrap top">
+  <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="46" height="46"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="70" height="26"></a>
+  <nav class="nav" aria-label="Menu"><a href="/en/apps/">Apps</a><a href="/en/story/">Story</a><a href="/en/docs/" aria-current="page">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/docs/install/linux/" hreflang="ar" lang="ar">العربية</a></nav>
+  <details class="menu"><summary>Menu</summary><div class="nav"><a href="/en/apps/">Apps</a><a href="/en/story/">Story</a><a href="/en/docs/" aria-current="page">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/docs/install/linux/" hreflang="ar" lang="ar">العربية</a></div></details>
+</header>
+<div class="wrap docs">
+<details class="side" open><summary>Docs pages</summary><div class="side-list"><h2>Start here</h2><ul><li><a href="/en/docs/">Overview</a></li><li><a href="/en/docs/getting-started/">Getting started with Worlds</a></li></ul><h2>Install</h2><ul><li><a href="/en/docs/install/">Install Worlds</a></li><li class="sub"><a href="/en/docs/install/windows/">Install Worlds on Windows</a></li><li class="sub"><a href="/en/docs/install/macos/">Install Worlds on Mac</a></li><li class="sub"><a href="/en/docs/install/linux/" aria-current="page">Install Worlds on Linux</a></li><li class="sub"><a href="/en/docs/install/iphone-ipad/">Install Worlds on iPhone and iPad</a></li><li class="sub"><a href="/en/docs/install/android/">Install Worlds on Android</a></li><li class="sub"><a href="/en/docs/install/web/">Worlds in the browser</a></li><li class="sub"><a href="/en/docs/install/update-uninstall/">Update and uninstall</a></li><li><a href="/en/docs/troubleshooting/">Troubleshooting</a></li></ul><h2>Write and organise</h2><ul><li><a href="/en/docs/pages/">Pages and blocks</a></li><li><a href="/en/docs/documents/">Documents</a></li><li><a href="/en/docs/tables/">Tables and spreadsheets</a></li><li><a href="/en/docs/projects/">Projects and resources</a></li><li><a href="/en/docs/templates/">Templates</a></li><li><a href="/en/docs/search-commands/">Search and commands</a></li><li><a href="/en/docs/history/">History and backups</a></li></ul><h2>Draw, present and media</h2><ul><li><a href="/en/docs/drawing/">Drawing</a></li><li><a href="/en/docs/presentations/">Presentations</a></li><li><a href="/en/docs/media-files/">Media and files</a></li></ul><h2>Claude and automations</h2><ul><li><a href="/en/docs/claude/">Claude and other AI providers</a></li><li><a href="/en/docs/automations/">Automations</a></li><li><a href="/en/docs/discord/">Discord bridge</a></li><li><a href="/en/docs/integrations/">Integrations</a></li></ul><h2>Account and sharing</h2><ul><li><a href="/en/docs/account/">Your Worlds account</a></li><li><a href="/en/docs/sharing/">Sharing and working together</a></li><li><a href="/en/docs/sync/">How sync works</a></li><li><a href="/en/docs/packs/">Packs</a></li><li><a href="/en/docs/profile/">Profile and Activity</a></li><li><a href="/en/docs/settings/">Settings</a></li></ul><h2>For developers</h2><ul><li><a href="/en/docs/html-pages/">HTML pages</a></li><li><a href="/en/docs/mcp/">The Worlds MCP server</a></li></ul></div></details>
+<main id="main" class="article">
+<p class="crumb"><a href="/en/docs/">Docs</a> / Install</p>
+<h1>Install Worlds on Linux</h1>
+<p class="lead">There are two files with the same app: an AppImage that runs on most distributions without installing, and a .deb package that installs it on Ubuntu, Debian and the systems built on them. Pick one.</p>
+
+<h2 id="before">Before you start</h2>
+<dl class="facts">
+<div><dt>AppImage</dt><dd><code>Worlds-1.0.0-Linux-x86_64.AppImage</code> (@@size:Linux-x86_64.AppImage@@)</dd></div>
+<div><dt>deb</dt><dd><code>Worlds-1.0.0-Linux-amd64.deb</code> (@@size:Linux-amd64.deb@@)</dd></div>
+<div><dt>System</dt><dd>64-bit Linux (x86_64) with WebKitGTK 4.1, which comes with Ubuntu 22.04 and later, Debian 12 and Fedora 39.</dd></div>
+<div><dt>Where your pages live</dt><dd><code>~/.local/share/Worlds</code>, with <code>worlds.db</code> and the attachments folder</dd></div>
+</dl>
+
+<h2 id="appimage">With the AppImage</h2>
+<ol class="steps">
+<li><h3>Download the file</h3><p>On the <a href="https://github.com/justpainful/Worlds/releases/latest">latest release page on GitHub</a>, under Assets, click <code>Worlds-1.0.0-Linux-x86_64.AppImage</code>.</p></li>
+<li><h3>Make it executable</h3><p>In your file manager: right-click the file, open Properties, then Permissions, and turn on "Allow executing file as program". Or in a terminal:</p>
+<pre><code>chmod +x ~/Downloads/Worlds-1.0.0-Linux-x86_64.AppImage</code></pre></li>
+<li><h3>Run it</h3><p>Double-click it, or run it by its path in a terminal. If you see an error about FUSE on Ubuntu 22.04 or later, install the library AppImages need:</p>
+<pre><code>sudo apt install libfuse2</code></pre>
+<p>On Ubuntu 24.04 the package is called <code>libfuse2t64</code>.</p></li>
+</ol>
+
+<h2 id="deb">With the .deb package</h2>
+<ol class="steps">
+<li><h3>Download the package</h3><p>On the same release page, click <code>Worlds-1.0.0-Linux-amd64.deb</code>.</p></li>
+<li><h3>Install it</h3><p>Open a terminal in your Downloads folder and run:</p>
+<pre><code>sudo apt install ./Worlds-1.0.0-Linux-amd64.deb</code></pre>
+<p>apt installs any missing libraries with it. Worlds then shows up in your applications menu.</p></li>
+</ol>
+
+<h2 id="verify">Check the file</h2>
+<p>Put the file and <code>SHA256SUMS.txt</code> in one folder and run <code>sha256sum -c SHA256SUMS.txt --ignore-missing</code>. It prints <code>OK</code> next to a good file. More on the <a href="/en/docs/install/#verify">install page</a>.</p>
+
+<h2 id="remove">Removing it</h2>
+<p>AppImage: delete the file. deb: <code>sudo apt remove worlds</code>. Your pages stay in <code>~/.local/share/Worlds</code> until you delete that folder yourself.</p>
+
+<nav class="pager" aria-label="Docs"><a class="prev" href="/en/docs/install/macos/"><small>Previous</small>Install Worlds on Mac</a><a class="next" href="/en/docs/install/iphone-ipad/"><small>Next</small>Install Worlds on iPhone and iPad</a></nav>
+</main>
+</div>
+<footer class="wrap foot">
+  <div class="row">
+    <div class="credit">
+      <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
+      <p>Natural Intelligence Leads Artificial Intelligence festival 2026, outstanding experiments track.</p>
+    </div>
+    <nav aria-label="Worlds"><a href="/en/apps/">Apps</a><a href="/en/story/">Story</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="/en/privacy/">Privacy</a><a href="/en/terms/">Terms of use</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+  </div>
+  <p class="fine">Worlds is a creative working name, not a registered mark, and is independent of the imbue identity. The code is published on GitHub.</p>
+</footer>
+</body>
+</html>

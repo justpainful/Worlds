@@ -112,8 +112,28 @@ class MainActivity : ComponentActivity() {
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        LaunchPrompt.take(intent)
         enableEdgeToEdge()
         setContent { WorldsTheme { val model: HomeModel = viewModel(); val account: AccountModel = viewModel(); Home(model, account) } }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        LaunchPrompt.take(intent)
+    }
+}
+
+/**
+ * A request from a launcher shortcut, the home-screen widget or Google
+ * Assistant: it opens Claude with the words already written, so nothing
+ * changes before the person sends it.
+ */
+internal object LaunchPrompt {
+    const val EXTRA = "worlds.prompt"
+    var pending by mutableStateOf<String?>(null)
+    fun take(intent: Intent?) {
+        val text = intent?.getStringExtra(EXTRA) ?: intent?.data?.getQueryParameter("prompt")
+        if (!text.isNullOrBlank()) pending = text
     }
 }
 
@@ -1021,6 +1041,9 @@ class HomeModel(application: Application, internal val databaseName: String) : A
     var showAiChat by rememberSaveable { mutableStateOf(false) }
     // A request a pack hands to Claude, ready in the composer.
     var aiPrompt by rememberSaveable { mutableStateOf("") }
+    LaunchedEffect(LaunchPrompt.pending) {
+        LaunchPrompt.pending?.let { aiPrompt = it; showAiChat = true; LaunchPrompt.pending = null }
+    }
     var showAutomations by rememberSaveable { mutableStateOf(false) }
     var showDiscordComposer by rememberSaveable { mutableStateOf(false) }
     var showProfile by rememberSaveable { mutableStateOf(false) }

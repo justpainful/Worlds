@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Apps and platforms · Worlds</title>
-<meta name="description" content="Worlds for Windows, Mac, iPhone, iPad and Android, and in the browser with nothing to install: the files, the supported systems, and what works on each platform.">
+<meta name="description" content="Worlds for Windows, Mac, Linux, iPhone, iPad and Android, and in the browser with nothing to install: the files, the supported systems, and what works on each platform.">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Worlds">
 <meta property="og:title" content="Apps and platforms">
-<meta property="og:description" content="Worlds for Windows, Mac, iPhone, iPad and Android, and in the browser with nothing to install: the files, the supported systems, and what works on each platform.">
+<meta property="og:description" content="Worlds for Windows, Mac, Linux, iPhone, iPad and Android, and in the browser with nothing to install: the files, the supported systems, and what works on each platform.">
 <meta property="og:image" content="https://enterworlds.space/media/og.png">
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
@@ -28,17 +28,17 @@
 <a class="skip" href="#main">Skip to content</a>
 <header class="wrap top">
   <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="46" height="46"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="70" height="26"></a>
-  <nav class="nav" aria-label="Menu"><a href="/en/apps/" aria-current="page">Apps</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/apps/" hreflang="ar" lang="ar">العربية</a></nav>
-  <details class="menu"><summary>Menu</summary><div class="nav"><a href="/en/apps/" aria-current="page">Apps</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/apps/" hreflang="ar" lang="ar">العربية</a></div></details>
+  <nav class="nav" aria-label="Menu"><a href="/en/apps/" aria-current="page">Apps</a><a href="/en/story/">Story</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/apps/" hreflang="ar" lang="ar">العربية</a></nav>
+  <details class="menu"><summary>Menu</summary><div class="nav"><a href="/en/apps/" aria-current="page">Apps</a><a href="/en/story/">Story</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/apps/" hreflang="ar" lang="ar">العربية</a></div></details>
 </header>
 <div class="wrap page-solo"><main id="main" class="article">
 <h1>Apps and platforms</h1>
-<p class="lead">Worlds runs on Windows, Mac, iPhone, iPad and Android, and in the browser. The Windows app is the most complete; the Apple and Android apps are built for their own systems and catch up feature by feature. This page lists what really works in version 0.3.0.</p>
+<p class="lead">Worlds runs on Windows, Mac, Linux, iPhone, iPad and Android, and in the browser. The Windows and Linux apps are the most complete; the Apple and Android apps are built for their own systems and catch up feature by feature. This page lists what really works in version 0.3.2.</p>
 <div class="callout"><p>Every file is on the <a href="https://github.com/justpainful/Worlds/releases/latest">GitHub releases page</a>. Before installing, you can check that a file is intact with its fingerprint in <code>SHA256SUMS.txt</code>; the <a href="/en/docs/install/">install page</a> shows how.</p></div>
 
 <h2 id="windows">Windows</h2>
 <dl class="facts">
-  <div><dt>File</dt><dd><code>Worlds-0.3.0-Windows-x64-setup.exe</code>, 218 MB</dd></div>
+  <div><dt>File</dt><dd><code>Worlds-0.3.2-Windows-x64-setup.exe</code>, 219 MB</dd></div>
   <div><dt>System</dt><dd>Windows 10 or 11, 64-bit. WebView2 is included, so it installs offline.</dd></div>
   <div><dt>Install</dt><dd><a href="/en/docs/install/windows/">Step by step, with pictures</a></dd></div>
 </dl>
@@ -51,14 +51,21 @@
 
 <h2 id="mac">Mac</h2>
 <dl class="facts">
-  <div><dt>File</dt><dd><code>Worlds-0.3.0-macOS-Unsigned.dmg</code>, 23.4 MB, or the <code>.zip</code>, 19.2 MB</dd></div>
+  <div><dt>File</dt><dd><code>Worlds-0.3.2-macOS-Unsigned.dmg</code>, 26.6 MB, or the <code>.zip</code>, 22.5 MB</dd></div>
   <div><dt>System</dt><dd>macOS 14 or later.</dd></div>
   <div><dt>Install</dt><dd><a href="/en/docs/install/macos/">Step by step, with pictures</a>. The app is not signed by Apple, so you open it the first time with a right click, then Open.</dd></div>
 </dl>
 
+<h2 id="linux">Linux</h2>
+<dl class="facts">
+  <div><dt>File</dt><dd><code>Worlds-0.3.2-Linux-x86_64.AppImage</code>, @@size:Linux-x86_64.AppImage@@, or <code>Worlds-0.3.2-Linux-amd64.deb</code> at @@size:Linux-amd64.deb@@</dd></div>
+  <div><dt>System</dt><dd>64-bit Linux with WebKitGTK 4.1: Ubuntu 22.04 and later, Debian 12, Fedora 39.</dd></div>
+  <div><dt>Install</dt><dd><a href="/en/docs/install/linux/">Step by step</a>. The same app as on Windows, with every feature.</dd></div>
+</dl>
+
 <h2 id="iphone-ipad">iPhone and iPad</h2>
 <dl class="facts">
-  <div><dt>File</dt><dd><code>Worlds-0.3.0-iPhone-Unsigned.ipa</code> and <code>Worlds-0.3.0-iPad-Unsigned.ipa</code>, 10.7 MB each</dd></div>
+  <div><dt>File</dt><dd><code>Worlds-0.3.2-iPhone-Unsigned.ipa</code> and <code>Worlds-0.3.2-iPad-Unsigned.ipa</code>, 12.1 MB each</dd></div>
   <div><dt>System</dt><dd>iOS and iPadOS 17 or later.</dd></div>
   <div><dt>Install</dt><dd><a href="/en/docs/install/iphone-ipad/">Step by step, with pictures</a>. The app is not on the App Store, so it needs signing with a tool such as SideStore.</dd></div>
 </dl>
@@ -72,7 +79,7 @@
 
 <h2 id="android">Android</h2>
 <dl class="facts">
-  <div><dt>File</dt><dd><code>Worlds-0.3.0-Android-Universal.apk</code>, 28.4 MB</dd></div>
+  <div><dt>File</dt><dd><code>Worlds-0.3.2-Android-Universal.apk</code>, 29.0 MB</dd></div>
   <div><dt>System</dt><dd>Android 8 or later, and Chromebooks.</dd></div>
   <div><dt>Install</dt><dd><a href="/en/docs/install/android/">Step by step, with pictures</a>. The file is signed with a development key and is not from Google Play.</dd></div>
 </dl>
@@ -108,7 +115,7 @@
       <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
       <p>Natural Intelligence Leads Artificial Intelligence festival 2026, outstanding experiments track.</p>
     </div>
-    <nav aria-label="Worlds"><a href="/en/apps/">Apps</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="/en/privacy/">Privacy</a><a href="/en/terms/">Terms of use</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+    <nav aria-label="Worlds"><a href="/en/apps/">Apps</a><a href="/en/story/">Story</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="/en/privacy/">Privacy</a><a href="/en/terms/">Terms of use</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
   </div>
   <p class="fine">Worlds is a creative working name, not a registered mark, and is independent of the imbue identity. The code is published on GitHub.</p>
 </footer>

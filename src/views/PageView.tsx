@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type HTMLAttributes, type ReactNode } from "react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { api, errorMessage, fileUrl, isTauri, isWeb } from "../lib/api";
-import type { Page } from "../lib/types";
+import type { Page, PageMeta } from "../lib/types";
 import { useStore, childrenOf, pageTitle } from "../state/store";
 import { emit, on } from "../lib/bus";
 import { PageEditor, whenSaved, type PageEditorHandle } from "../editor/PageEditor";
@@ -35,6 +35,11 @@ import {
   printPage,
 } from "../pages/PageChrome";
 import { shortcutKey } from "../lib/keys";
+import { openSideBySide, openTimeMachine, readAloud } from "../ai/writingTools";
+import { PrivateGate, isPrivate, lockPrivate, togglePrivate, usePrivacy } from "../pages/privacy";
+import { exportBook, exportDocx } from "../files/importExport";
+import { collectHighlights } from "../files/readFiles";
+import { openPublish } from "../account/PublishPage";
 
 export function PageView({ pageId, paneId }: { pageId: string; paneId: string }) {
   const meta = useStore((s) => s.pages[pageId]);
@@ -86,7 +91,14 @@ export function PageView({ pageId, paneId }: { pageId: string; paneId: string })
       </div>
     );
   }
-  return <LoadedPage key={`${page.id}:${rev}`} page={page} paneId={paneId} reload={load} />;
+  return <PrivacyCheck meta={meta} page={page} paneId={paneId} rev={rev} reload={load} />;
+}
+
+/** A private page shows its lock until the passcode or Windows Hello opens it. */
+function PrivacyCheck({ meta, page, paneId, rev, reload }: { meta: PageMeta; page: Page; paneId: string; rev: number; reload: () => void }) {
+  const open = usePrivacy();
+  if (isPrivate(meta) && !open) return <PrivateGate meta={meta} />;
+  return <LoadedPage key={`${page.id}:${rev}`} page={page} paneId={paneId} reload={reload} />;
 }
 
 function LoadedPage({ page, paneId, reload }: { page: Page; paneId: string; reload: () => void }) {
@@ -316,14 +328,27 @@ function LoadedPage({ page, paneId, reload }: { page: Page; paneId: string; relo
                         onSelect: () => setLook({ locked: !locked }),
                       },
                       {
+                        label: isPrivate(meta) ? "Make Page Not Private" : "Make Page Private",
+                        icon: "shield",
+                        onSelect: () => togglePrivate(meta, setLook),
+                      },
+                      ...(isPrivate(meta) ? [{ label: "Lock Private Pages Now", icon: "lock" as const, onSelect: () => lockPrivate() }] : []),
+                      {
                         label: "Export",
                         icon: "download",
                         submenu: [
                           { label: "Copy as Markdown", onSelect: () => copyMarkdown(page.id) },
                           { label: "Save as Markdown file", onSelect: () => downloadMarkdown(meta) },
                           { label: "Print or Save as PDF", onSelect: () => printPage() },
+                          { label: "Word Document (.docx)", onSelect: () => exportDocx(page.id) },
+                          { label: "Book with Subpages as Chapters (EPUB)", onSelect: () => exportBook(page.id) },
                         ],
                       },
+                      { label: "Publish to the Web", icon: "globe", onSelect: () => openPublish(page.id) },
+                      { label: "Read Aloud", icon: "speaker", onSelect: () => readAloud() },
+                      { label: "Gather Highlights", icon: "highlight", onSelect: () => editor && collectHighlights(editor) },
+                      { label: "Translate Side by Side", icon: "translate", onSelect: () => openSideBySide(page.id) },
+                      { label: "Time Machine", icon: "history", onSelect: () => openTimeMachine(page.id) },
                       { label: "Keyboard Shortcuts", icon: "keyboard", shortcut: "Ctrl+/", onSelect: () => setShortcuts(true) },
                       { kind: "separator" },
                       { kind: "label", label: "Style" },

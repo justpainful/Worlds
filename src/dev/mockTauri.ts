@@ -193,6 +193,8 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has("mock") && n
 
 const settings: Record<string, unknown> = WEB_DEMO ? {} : { "advanced.developer": true, "advanced.perfOverlay": new URLSearchParams(location.search).has("perf"), "appearance.glassTone": new URLSearchParams(location.search).get("tone") ?? "auto", ...(new URLSearchParams(location.search).has("demo") && !new URLSearchParams(location.search).has("onboarding") ? { "account.onboarded": true } : {}) };
 try { if (localStorage.getItem("worlds.demo.tourSeen")) settings["tour.seen"] = true; } catch { /* private window */ }
+// Previews can open in a theme: ?theme=light, dark or system.
+{ const theme = new URLSearchParams(location.search).get("theme"); if (theme) settings["appearance.theme"] = theme; }
 const callbacks = new Map<number, (v: any) => void>();
 const listeners = new Map<string, number[]>();
 let cbSeq = 1;
@@ -437,7 +439,7 @@ async function handleNow(cmd: string, a: any = {}): Promise<any> {
     return null;
   }
   if (cmd.startsWith("plugin:")) return cmd.endsWith("is_enabled") ? false : null;
-  const page = (pid: string) => pages[pid] && { ...pages[pid], metadata: metadata[pid] ?? {}, instructions: [], blocks: (blocks[pid] ?? []).map((c, i) => ({ id: c.attrs.bid, pageId: pid, type: c.type, order: i, content: c, properties: {}, direction: "auto", createdAt: now, updatedAt: now })), backlinks: [], attachments: [], breadcrumbs: [] };
+  const page = (pid: string) => pages[pid] && { ...pages[pid], metadata: metadata[pid] ?? {}, instructions: [], blocks: (blocks[pid] ?? []).map((c, i) => ({ id: c.attrs?.bid ?? `b${i}`, pageId: pid, type: c.type, order: i, content: c, properties: {}, direction: "auto", createdAt: now, updatedAt: now })), backlinks: [], attachments: [], breadcrumbs: [] };
   switch (cmd) {
     case "capture_screen_for_drawing": {
       if (!new URLSearchParams(location.search).has("demo")) throw new Error("Screen capture is unavailable in the browser mock");
@@ -707,6 +709,22 @@ async function handleNow(cmd: string, a: any = {}): Promise<any> {
     case "ai_chat": return { id: a.id, messages: chatMessages[a.id] ?? [] };
     case "ai_chat_delete": return null;
     case "ai_chat_rename": return null;
+    case "link_graph": {
+      // Mentions and page links found in the stored blocks.
+      const out: [string, string][] = [];
+      const walk = (src: string, n: any) => {
+        if (!n || typeof n !== "object") return;
+        const t = n.type === "pageMention" ? n.attrs?.id : n.type === "pageLink" ? n.attrs?.pageId : null;
+        if (t && pages[t] && t !== src) out.push([src, t]);
+        (n.content ?? []).forEach((c: any) => walk(src, c));
+      };
+      for (const [pid, list] of Object.entries(blocks)) if (pages[pid] && !pages[pid].deletedAt) (list as any[]).forEach((b) => walk(pid, b));
+      return out;
+    }
+    // Previews show a visible change; the web version has no Claude to call.
+    case "ai_rewrite":
+      if (WEB_DEMO) throw new Error("Claude works in the Worlds app on your computer.");
+      return String(a.text).replace(/\b(\w)/g, (m: string) => m.toUpperCase());
     case "ai_run": {
       const runId = id();
       const chatId = a.request.chatId ?? "c-new";

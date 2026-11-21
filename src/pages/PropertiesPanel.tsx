@@ -2,7 +2,11 @@ import { useEffect, useState } from "react";
 import { openExternal } from "../lib/links";
 import { api, errorMessage } from "../lib/api";
 import type { PageMeta } from "../lib/types";
-import { useStore } from "../state/store";
+import { useStore, pageTitle } from "../state/store";
+import { choosePage } from "../editor/choosePage";
+import { computedProps, formulaError } from "./formula";
+import { askForNotifications } from "./reminders";
+import { PageIcon } from "../ui/misc";
 import { Icon, type IconName } from "../ui/Icon";
 import { menuAt } from "../ui/Menu";
 import { promptText } from "../editor/prompt";
@@ -13,6 +17,8 @@ const toast = (e: unknown) => useStore.getState().toast({ message: errorMessage(
 /** Typed fields under the page title. Collections read and edit the same data. */
 export function PropertiesPanel({ page, editable = true }: { page: PageMeta; editable?: boolean }) {
   const props = propsOf(page);
+  const pages = useStore((s) => s.pages);
+  const shown = computedProps(page, pages);
 
   const save = async (next: Property[]) => {
     try {
@@ -48,6 +54,24 @@ export function PropertiesPanel({ page, editable = true }: { page: PageMeta; edi
           if (v?.trim()) update(p.id, { name: v.trim() });
         },
       },
+      ...(p.type === "formula"
+        ? [
+            {
+              label: "Edit Formula",
+              icon: "formula" as const,
+              onSelect: async () => {
+                const v = await promptText({
+                  title: `${p.name}: formula`,
+                  initial: p.formula ?? "",
+                  placeholder: 'days(prop("Due"))',
+                  confirm: "Save",
+                  validate: (x) => formulaError(x),
+                });
+                if (v !== null) update(p.id, { formula: v });
+              },
+            },
+          ]
+        : []),
       { kind: "separator" },
       { label: "Delete property", icon: "delete", danger: true, onSelect: () => save(props.filter((x) => x.id !== p.id)) },
     ]);
@@ -63,7 +87,7 @@ export function PropertiesPanel({ page, editable = true }: { page: PageMeta; edi
             <span className="bidi">{p.name}</span>
           </button>
           <div className="prop-value">
-            <ValueEditor prop={p} editable={editable} onChange={(patch) => update(p.id, patch)} />
+            <ValueEditor prop={p} shown={shown.find((x) => x.id === p.id) ?? p} editable={editable} onChange={(patch) => update(p.id, patch)} />
           </div>
         </div>
       ))}
@@ -77,7 +101,17 @@ export function PropertiesPanel({ page, editable = true }: { page: PageMeta; edi
   );
 }
 
-function ValueEditor({ prop, editable, onChange }: { prop: Property; editable: boolean; onChange: (patch: Partial<Property>) => void }) {
+const REMINDERS: { label: string; value: number | null }[] = [
+  { label: "No reminder", value: null },
+  { label: "At the time", value: 0 },
+  { label: "10 minutes before", value: 10 },
+  { label: "1 hour before", value: 60 },
+  { label: "1 day before", value: 1440 },
+  { label: "1 week before", value: 10080 },
+];
+
+function ValueEditor({ prop, shown, editable, onChange }: { prop: Property; shown: Property; editable: boolean; onChange: (patch: Partial<Property>) => void }) {
+  const pages = useStore((s) => s.pages);
   const [draft, setDraft] = useState(prop.value === null || prop.value === undefined ? "" : String(prop.value));
   useEffect(() => setDraft(prop.value === null || prop.value === undefined ? "" : String(prop.value)), [prop.value]);
   const commit = (v: string | number | null) => {
@@ -151,7 +185,77 @@ function ValueEditor({ prop, editable, onChange }: { prop: Property; editable: b
         </button>
       );
     case "date":
-      return <input className="prop-input" type="date" value={draft} disabled={!editable} onChange={(e) => commit(e.target.value)} />;
+      return (
+        <span className="prop-date">
+          <input className="prop-input" type="date" value={draft} disabled={!editable} onChange={(e) => commit(e.target.value)} />
+          {(prop.value || prop.time) && (
+            <input className="prop-input prop-time" type="time" value={prop.time ?? ""} disabled={!editable} aria-label="Time" onChange={(e) => onChange({ time: e.target.value || null })} />
+          )}
+          {editable && prop.value ? (
+            <button
+              className={`prop-remind ${prop.remind != null ? "is-on" : ""}`}
+              aria-label="Reminder"
+              data-tip={REMINDERS.find((r) => r.value === (prop.remind ?? null))?.label ?? "Reminder"}
+              onClick={(e) => menuAt(e.currentTarget, REMINDERS.map((r) => ({ label: r.label, checked: (prop.remind ?? null) === r.value, onSelect: () => (r.value !== null && askForNotifications(), onChange({ remind: r.value })) })))}
+            >
+              <Icon name="reminder" size={13} />
+            </button>
+          ) : null}
+        </span>
+      );
+    case "relation": {
+      const ids = Array.isArray(prop.value) ? prop.value : [];
+      return (
+        <span className="prop-relation chip-row">
+          {ids.map((id) => (
+            <span key={id} className="prop-rel">
+              <button className="prop-rel-open" onClick={() => pages[id] && useStore.getState().openPage(id)}>
+                <PageIcon icon={pages[id]?.icon} size={13} />
+                <span className="bidi">{pageTitle(pages[id])}</span>
+              </button>
+              {editable && (
+                <button className="prop-rel-remove" aria-label="Remove" onClick={() => onChange({ value: ids.filter((x) => x !== id) })}>
+                  <Icon name="close" size={10} />
+                </button>
+              )}
+            </span>
+          ))}
+          {editable && (
+            <button
+              className="prop-rel-add"
+              aria-label="Link a page"
+              onClick={async (e) => {
+                const id = await choosePage(e.currentTarget);
+                if (id && !ids.includes(id)) onChange({ value: [...ids, id] });
+              }}
+            >
+              <Icon name="add" size={12} />
+              {ids.length ? null : <span>Link a page</span>}
+            </button>
+          )}
+        </span>
+      );
+    }
+    case "formula": {
+      const v = shown.value;
+      const bad = typeof v === "string" && v.startsWith("⚠");
+      return (
+        <span className={`prop-formula ${bad ? "is-error" : ""}`} data-tip={prop.formula || undefined}>
+          {prop.formula ? (
+            v === null || v === "" ? (
+              <span className="prop-empty">Empty</span>
+            ) : typeof v === "boolean" ? (
+              <Icon name={v ? "check" : "close"} size={13} />
+            ) : (
+              String(v)
+            )
+          ) : (
+            <span className="prop-empty">No formula yet</span>
+          )}
+        </span>
+      );
+    }
+
     case "number":
       return (
         <input

@@ -1121,4 +1121,12 @@
     <string name="drawing_outside_board">Draw inside the board</string>
     <string name="drawing_custom_color">Custom</string>
     <string name="drawing_use_color">Use color</string>
+    <string name="widget_title">Today in Worlds</string>
+    <string name="widget_description">Your events and tasks for today</string>
+    <string name="widget_empty">Nothing left for today</string>
+    <string name="widget_add">Add a task</string>
+    <string name="widget_add_prompt">Add a task for today: </string>
+    <string name="shortcut_ask">Ask Worlds</string>
+    <string name="shortcut_task">Add a task</string>
+    <string name="shortcut_note">Quick note</string>
 </resources>

@@ -13,6 +13,10 @@ public final class ConversationViewModel: ObservableObject {
     @Published public private(set) var canRetrySave = false
     @Published public private(set) var retryingSave = false
     @Published public private(set) var error: String?
+    /// The running reply is chat only because the model refused tools.
+    @Published public private(set) var chatOnly = false
+    /// The reply whose changes are being undone.
+    @Published public private(set) var undoing: String?
     @Published public var draft = ""
     public let conversationID: String
     private let service: any ConversationService
@@ -42,14 +46,16 @@ public final class ConversationViewModel: ObservableObject {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, loaded, !running, !loading, !canRetrySave else { return }
         let id = UUID(); activeRun = id; loadToken = UUID()
-        running = true; stopping = false; error = nil; canRetrySave = false; streamedText = ""; tools = []
+        running = true; stopping = false; error = nil; canRetrySave = false; streamedText = ""; tools = []; chatOnly = false
         // Retain the draft until the service confirms that it persisted a snapshot.
         var accepted = false
         do {
             for try await event in service.send(conversationID: conversationID, runID: id, text: text) {
                 guard activeRun == id else { return }
                 switch event {
-                case .snapshot(let value): messages = value
+                case .snapshot(let value):
+                    // A saved snapshot holds the reply so far; the live copy is not shown twice.
+                    messages = value; streamedText = ""; tools = []
                 case .accepted(let value):
                     messages = value
                     if !accepted { if draft.trimmingCharacters(in: .whitespacesAndNewlines) == text { draft = "" }; accepted = true }
@@ -57,12 +63,13 @@ public final class ConversationViewModel: ObservableObject {
                 case .tool(let value):
                     if let index = tools.firstIndex(where: { $0.id == value.id }) { tools[index] = value }
                     else { tools.append(value) }
+                case .chatOnly: chatOnly = true
                 }
             }
             guard activeRun == id else { return }
             activeRun = nil; running = false; stopping = false
             await load()
-            if error == nil { streamedText = ""; tools = [] }
+            if error == nil { streamedText = ""; tools = []; chatOnly = false }
         } catch {
             guard activeRun == id else { return }
             let pending: Bool
@@ -83,6 +90,19 @@ public final class ConversationViewModel: ObservableObject {
             await load()
             if error == nil { streamedText = ""; tools = [] }
         } catch { self.error = error.localizedDescription }
+    }
+    /// Whether replies can be undone and their pages opened.
+    public var supportsWorkspaceActions: Bool { service is any ConversationWorkspaceActions }
+    /// Puts back every page one reply changed.
+    public func undo(messageID: String) async {
+        guard !running, undoing == nil, let actions = service as? any ConversationWorkspaceActions else { return }
+        undoing = messageID; defer { undoing = nil }
+        do { messages = try await actions.undo(conversationID: conversationID, messageID: messageID) }
+        catch { self.error = error.localizedDescription }
+    }
+    public func open(pageID: String) async {
+        guard let actions = service as? any ConversationWorkspaceActions else { return }
+        await actions.open(pageID: pageID)
     }
     public func stop() async {
         guard let id = activeRun, !stopping else { return }

@@ -27,10 +27,20 @@ import { loadSample } from "../demo/sampleActions";
 import { resolveUiLanguage } from "../i18n/ui";
 import { dateLine } from "../i18n/locale";
 import { pageFromTemplate, templateName } from "../templates/fromTemplate";
+import { CustomHome, HomeModeButton, WidgetsHome, useHomeMode } from "./home/HomeModes";
 
 type View = "grid" | "list";
 
 export function HomeView() {
+  const mode = useHomeMode();
+  const customId = useStore((s) => s.settings["home.custom"]) as string | undefined;
+  const customOk = useStore((s) => !!customId && !!s.pages[customId] && !s.pages[customId].deletedAt);
+  if (mode === "widgets") return <WidgetsHome />;
+  if (mode === "custom" && customOk) return <CustomHome />;
+  return <WorldsHome />;
+}
+
+function WorldsHome() {
   const pages = useStore((s) => s.pages);
   const setPalette = useStore((s) => s.setPalette);
   const open = useStore((s) => s.open);
@@ -169,6 +179,7 @@ export function HomeView() {
           <GlassButton icon="add" prominent onClick={(e) => newResourceMenu(e.currentTarget, { align: "end" })}>
             New
           </GlassButton>
+          <HomeModeButton />
         </div>
       </div>
 

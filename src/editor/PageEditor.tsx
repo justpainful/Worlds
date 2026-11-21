@@ -23,6 +23,15 @@ import { BackgroundColor, Color, FindReplace, Gallery, TextStyle, Toc, WikiLink 
 import { openLightbox } from "./views/Pages3Views";
 import { documentExtensions } from "./extensions/document";
 import { Chart, MathBlock, MathInline, Mermaid, Tab, Tabs } from "./extensions/pages4";
+import { pages5Extensions } from "./extensions/pages5";
+import { cognitionExtensions } from "../cognition/blocks";
+import { addCards, addQuestion, makeSpark } from "../cognition/CognitionView";
+import { cardsInText } from "../cognition/model";
+import { afterSave } from "./synced";
+import { CommentMark, commentSelection, openCommentThread } from "./comments";
+import { INLINE_ACTIONS, openInlineClaude } from "./InlineClaude";
+import { ArabicSpell } from "./arabicSpell";
+import { BlockSelection, blockActions, clearBlockSelection, toggleBlockSelection, watchBlockDrags } from "./blockActions";
 import { shortcutKey } from "../lib/keys";
 
 /** Apple-like text and background colours. */
@@ -52,6 +61,9 @@ import { Icon, type IconName } from "../ui/Icon";
 import { menuAt, useMenu, type MenuItem } from "../ui/Menu";
 import { useCollab } from "../sync/useCollab";
 import { LayoutShortcuts } from "./extensions/layoutShortcuts";
+import { PluginBlock } from "../plugins/PluginViews";
+import { PlacesMap } from "./views/PlacesMap";
+import { fileActions } from "../files/readFiles";
 
 export interface PageEditorHandle {
   editor: Editor | null;
@@ -207,6 +219,18 @@ export const PageEditor = forwardRef<
         Chart,
         Tabs,
         Tab,
+        ...pages5Extensions,
+        ...cognitionExtensions,
+        BlockSelection,
+        ArabicSpell,
+        PluginBlock,
+        PlacesMap,
+        CommentMark.configure({
+          onOpen: (threadId, el) => {
+            const ed = editorRef.current;
+            if (ed) openCommentThread(ed, pageId, threadId, el.getBoundingClientRect(), el.textContent ?? "");
+          },
+        }),
         ...(variant === "document" ? documentExtensions : []),
         SlashCommand.configure({ getContext: () => ({ pageId }) }),
         WorldsContext.configure({ pageId }),
@@ -299,6 +323,7 @@ export const PageEditor = forwardRef<
           syncedAt.current,
         );
         syncedAt.current = res.updatedAt;
+        afterSave(pageId, blocks, baseline.current);
         if (live && !ed.isDestroyed) {
           if (res.remapped.length) applyRemaps(ed, res.remapped);
           baseline.current = new Map(blocksOf(ed).map((n) => [n.attrs?.bid as string, JSON.stringify(n)]));
@@ -452,6 +477,13 @@ export const PageEditor = forwardRef<
     return () => window.removeEventListener("worlds:ui-language", redo);
   }, [language, editor]);
 
+  // Blocks dragged by their handle can be dropped on a page in the sidebar.
+  const wrapRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!editor || !wrapRef.current) return;
+    return watchBlockDrags(editor, pageId, wrapRef.current);
+  }, [editor, pageId]);
+
   // Palette / menu commands targeting this page's editor.
   useEffect(() => {
     return on("editor:command", ({ pageId: target, command, args }) => {
@@ -542,6 +574,36 @@ export const PageEditor = forwardRef<
         ],
       });
     }
+    items.push(...fileActions(editor, pageId, node, pos));
+    items.push(...blockActions(editor, pageId, node, pos));
+    if (node.textContent.trim()) {
+      const text = node.textContent.trim();
+      items.push(
+        { kind: "separator" },
+        {
+          label: "Remember This",
+          icon: "book",
+          onSelect: () => {
+            const found = cardsInText(text);
+            addCards(found.length ? found : [{ front: text, back: "" }], pageId);
+            useStore.getState().toast({ message: found.length > 1 ? `${found.length} cards added to Cognition` : "Card added to Cognition" });
+          },
+        },
+        {
+          label: "Spark With Another Idea",
+          icon: "puzzle",
+          onSelect: () => makeSpark((document.activeElement as HTMLElement) ?? document.body, { pageId, blockId: node.attrs.bid ?? null, text: text.slice(0, 120) }),
+        },
+        {
+          label: "Ask as a Question",
+          icon: "info",
+          onSelect: () => {
+            addQuestion(text.slice(0, 300), pageId);
+            useStore.getState().toast({ message: "Question added to Cognition" });
+          },
+        },
+      );
+    }
     items.push(
       { kind: "separator" },
       { label: "Duplicate", icon: "duplicate", shortcut: "Ctrl+D", onSelect: () => duplicateBlock(editor, pos, node) },
@@ -584,7 +646,7 @@ export const PageEditor = forwardRef<
   };
 
   return (
-    <div className="editor-wrap" onDoubleClick={onDoubleClick}>
+    <div className="editor-wrap" ref={wrapRef} onDoubleClick={onDoubleClick} onPointerDown={(e) => !e.shiftKey && !(e.target as HTMLElement).closest(".block-handle") && clearBlockSelection(editor)}>
       {collab.render(editor)}
       <DragHandle
         editor={editor}
@@ -616,7 +678,12 @@ export const PageEditor = forwardRef<
             data-tip="Drag to move · Click for options"
             onClick={(e) => {
               if (!hovered) return;
-              editor.view.dispatch(editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, hovered.pos)));
+              // Shift-click adds the block to a selection of several blocks.
+              if (e.shiftKey && hovered.node.attrs.bid) {
+                toggleBlockSelection(editor, hovered.node.attrs.bid);
+                return;
+              }
+              editor.view.dispatch(editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, hovered.pos)).setMeta("keepBlockSelection", true));
               const r = e.currentTarget.getBoundingClientRect();
               show(r.left, r.bottom + 4, blockMenu(hovered.node, hovered.pos));
             }}
@@ -655,6 +722,7 @@ export const PageEditor = forwardRef<
             <span className="bb-sep" />
             <BB icon="text" label="Bold" shortcut="Ctrl+B" active={editor.isActive("bold")} run={() => editor.chain().focus().toggleBold().run()} glyph="B" />
             <BB icon="text" label="Italic" shortcut="Ctrl+I" active={editor.isActive("italic")} run={() => editor.chain().focus().toggleItalic().run()} glyph="I" italic />
+            <BB icon="text" label="Underline" shortcut="Ctrl+U" active={editor.isActive("underline")} run={() => editor.chain().focus().toggleUnderline().run()} glyph="U" underline />
             <BB icon="text" label="Strikethrough" active={editor.isActive("strike")} run={() => editor.chain().focus().toggleStrike().run()} glyph="S" strike />
             <BB icon="code" label="Code" active={editor.isActive("code")} run={() => editor.chain().focus().toggleCode().run()} />
             <BB icon="highlight" label="Highlight" active={editor.isActive("highlight")} run={() => editor.chain().focus().toggleHighlight().run()} />
@@ -693,15 +761,32 @@ export const PageEditor = forwardRef<
               }}
             />
             <span className="bb-sep" />
+            <BB icon="comment" label="Comment" run={() => commentSelection(editor, pageId)} />
             <BB
-              icon="assistant"
-              label="Ask Claude about the selection"
+              icon="footnote"
+              label="Footnote"
               run={() => {
-                const { from, to } = editor.state.selection;
-                const text = editor.state.doc.textBetween(from, to, "\n");
-                emit("ai:open", { pageId, prompt: `Regarding this part of the page:\n"""\n${text}\n"""\n` });
+                const { to } = editor.state.selection;
+                editor.chain().focus().setTextSelection(to).insertFootnote().run();
               }}
             />
+            <span className="bb-sep" />
+            <button
+              className="bb-btn bb-text bb-claude"
+              data-tip="Claude in the text"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => openInlineClaude(editor, pageId)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                menuAt(
+                  e.currentTarget,
+                  INLINE_ACTIONS.map((a) => ({ label: a.label, icon: a.icon, onSelect: () => openInlineClaude(editor, pageId, a.instruction) })),
+                );
+              }}
+            >
+              <Icon name="assistant" size={15} />
+              Claude
+            </button>
           </div>
         </Glass>
       </BubbleMenu>
@@ -746,7 +831,7 @@ export const PageEditor = forwardRef<
   );
 });
 
-function BB({ icon, label, active, run, glyph, italic, strike, shortcut }: { icon: IconName; label: string; active?: boolean; run: () => void; glyph?: string; italic?: boolean; strike?: boolean; shortcut?: string }) {
+function BB({ icon, label, active, run, glyph, italic, strike, underline, shortcut }: { icon: IconName; label: string; active?: boolean; run: () => void; glyph?: string; italic?: boolean; strike?: boolean; underline?: boolean; shortcut?: string }) {
   return (
     <button
       className={`bb-btn ${active ? "is-active" : ""}`}
@@ -755,7 +840,7 @@ function BB({ icon, label, active, run, glyph, italic, strike, shortcut }: { ico
       onMouseDown={(e) => e.preventDefault()}
       onClick={run}
     >
-      {glyph ? <span className={`bb-glyph ${italic ? "is-italic" : ""} ${strike ? "is-strike" : ""}`}>{glyph}</span> : <Icon name={icon} size={15} />}
+      {glyph ? <span className={`bb-glyph ${italic ? "is-italic" : ""} ${strike ? "is-strike" : ""} ${underline ? "is-underline" : ""}`}>{glyph}</span> : <Icon name={icon} size={15} />}
     </button>
   );
 }
