@@ -6,7 +6,7 @@ import baseCss from "./base.css?raw";
 import runtimeJs from "./runtime.js?raw";
 
 /** The app's current theme, for frames that follow it. */
-export const appTheme = (): "dark" | "light" => (document.documentElement.dataset.theme === "light" ? "light" : "dark");
+export const appTheme = (): "dark" | "light" => (typeof document !== "undefined" && document.documentElement.dataset.theme === "light" ? "light" : "dark");
 
 export function composeHtmlPage(source: string, state: unknown, lang: "ar" | "en", theme: "dark" | "light" = appTheme()): string {
   const boot = JSON.stringify({ state: state === undefined ? null : state, lang, theme }).replace(/<\//g, "<\\/");
