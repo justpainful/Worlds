@@ -236,7 +236,7 @@ function banner(rel, lang, { labels = true, id = "" } = {}) {
 
 // ---------- Pages ----------
 
-function shell(lang, { title, desc, path, body, alt }) {
+function shell(lang, { title, desc, path, body, alt, ld }) {
   const t = T[lang];
   const canonical = SITE + path;
   return `<!doctype html>
@@ -246,16 +246,27 @@ function shell(lang, { title, desc, path, body, alt }) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(desc)}">
+<meta name="robots" content="${path === "/404" ? "noindex" : "index, follow, max-image-preview:large, max-snippet:-1"}">
 <link rel="canonical" href="${canonical}">
+<link rel="alternate" hreflang="${lang}" href="${canonical}">
 <link rel="alternate" hreflang="${t.other}" href="${SITE}${alt}">
+<link rel="alternate" hreflang="x-default" href="${SITE}${lang === "ar" ? path : alt}">
 <link rel="alternate" type="application/atom+xml" title="${esc(t.feed)}" href="${base(lang)}feed.xml">
 <link rel="icon" href="/icon-32.png" sizes="32x32">
 <link rel="stylesheet" href="/changelog.css">
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(desc)}">
 <meta property="og:url" content="${canonical}">
+<meta property="og:type" content="${path.split("/").filter(Boolean).some((x) => /^\d/.test(x)) ? "article" : "website"}">
+<meta property="og:site_name" content="Worlds">
 <meta property="og:image" content="${SITE}/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta property="og:locale" content="${t.locale}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${esc(title)}">
+<meta name="twitter:description" content="${esc(desc)}">
+<meta name="twitter:image" content="${SITE}/og.png">${ld ? `\n<script type="application/ld+json">${JSON.stringify({ "@context": "https://schema.org", "@graph": ld }).replace(/</g, "\\u003c")}</script>` : ""}
 </head>
 <body>
 <a class="skip" href="#main">${t.skip}</a>
@@ -300,12 +311,33 @@ ${rel.note ? `<p class="note">${esc(rel.note[lang])}</p>` : ""}
 </section>
 <nav class="pn" aria-label="${t.back}">${older ? `<a class="older" href="${base(lang)}${older.version}/"><small>${t.prev}</small><span>${esc(older.version)} · ${esc(older.title[lang])}</span></a>` : "<span></span>"}${newer ? `<a class="newer" href="${base(lang)}${newer.version}/"><small>${t.next}</small><span>${esc(newer.version)} · ${esc(newer.title[lang])}</span></a>` : `<a class="newer" href="${base(lang)}"><small>${t.back}</small><span>${t.name}</span></a>`}</nav>
 </article>`;
+  const page = `${SITE}${base(lang)}${rel.version}/`;
+  const ld = [
+    {
+      "@type": "TechArticle",
+      headline: `Worlds ${rel.version}: ${rel.title[lang]}`,
+      description: rel.summary[lang],
+      inLanguage: lang,
+      url: page,
+      datePublished: rel.date,
+      image: `${SITE}/og.png`,
+      author: { "@type": "Organization", name: "Worlds", url: MAIN + "/" },
+      publisher: { "@type": "Organization", name: "Worlds", logo: { "@type": "ImageObject", url: `${SITE}/icon-256.png` } },
+      about: { "@type": "SoftwareApplication", name: "Worlds", softwareVersion: rel.version, applicationCategory: "ProductivityApplication", operatingSystem: "Windows, macOS, Linux, Android, iOS, iPadOS, Web", offers: { "@type": "Offer", price: "0", priceCurrency: "USD" }, url: MAIN + "/", releaseNotes: page },
+    },
+    { "@type": "BreadcrumbList", itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Worlds", item: lang === "ar" ? MAIN + "/" : MAIN + "/en/" },
+      { "@type": "ListItem", position: 2, name: t.name, item: `${SITE}${base(lang)}` },
+      { "@type": "ListItem", position: 3, name: `${rel.version}`, item: page },
+    ] },
+  ];
   return shell(lang, {
     title: `Worlds ${rel.version}: ${rel.title[lang]}`,
     desc: rel.summary[lang],
     path: `${base(lang)}${rel.version}/`,
     alt: `${base(t.other)}${rel.version}/`,
     body,
+    ld,
   });
 }
 
@@ -318,7 +350,15 @@ function indexPage(all, lang) {
 <h2>${esc(rel.title[lang])}</h2><p>${esc(rel.summary[lang])}</p><p class="count">${t.count(rel.total)} · ${t.areaCount(rel.groups.length)}</p></div></a></li>`;
   const body = `<section class="wrap lead"><h1>${t.name}</h1><p>${t.lead}</p></section>
 <ol class="wrap list">${card(latest, true)}${rest.map((r) => card(r, false)).join("")}</ol>`;
-  return shell(lang, { title: `${t.name} · Worlds`, desc: t.lead, path: base(lang), alt: base(t.other), body });
+  const ld = [{
+    "@type": "CollectionPage",
+    name: `${t.name} · Worlds`,
+    description: t.lead,
+    inLanguage: lang,
+    url: `${SITE}${base(lang)}`,
+    mainEntity: { "@type": "ItemList", itemListElement: all.map((rel, i) => ({ "@type": "ListItem", position: i + 1, url: `${SITE}${base(lang)}${rel.version}/`, name: `Worlds ${rel.version}: ${rel.title[lang]}` })) },
+  }];
+  return shell(lang, { title: `${t.name} · Worlds`, desc: t.lead, path: base(lang), alt: base(t.other), body, ld });
 }
 
 function feed(all, lang) {
@@ -348,7 +388,8 @@ for (const lang of ["ar", "en"]) {
 }
 write("404.html", shell("ar", { title: "Worlds", desc: T.ar.nf, path: "/404", alt: "/en/", body: `<section class="wrap lead"><h1>404</h1><p>${T.ar.nf}</p><p><a href="/">${T.ar.nfLink}</a></p><p lang="en" dir="ltr">${T.en.nf} <a href="/en/">${T.en.nfLink}</a></p></section>` }));
 write("robots.txt", `User-agent: *\nAllow: /\nSitemap: ${SITE}/sitemap.xml\n`);
-write("sitemap.xml", `<?xml version="1.0" encoding="utf-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${["/", "/en/", ...rels.flatMap((r) => [`/${r.version}/`, `/en/${r.version}/`])].map((p) => `<url><loc>${SITE}${p}</loc></url>`).join("\n")}\n</urlset>\n`);
+const entry = (ar, en, date) => [ar, en].map((p) => `<url><loc>${SITE}${p}</loc><lastmod>${date}</lastmod><xhtml:link rel="alternate" hreflang="ar" href="${SITE}${ar}"/><xhtml:link rel="alternate" hreflang="en" href="${SITE}${en}"/><xhtml:link rel="alternate" hreflang="x-default" href="${SITE}${ar}"/></url>`).join("\n");
+write("sitemap.xml", `<?xml version="1.0" encoding="utf-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${[entry("/", "/en/", rels[0].date), ...rels.map((r) => entry(`/${r.version}/`, `/en/${r.version}/`, r.date))].join("\n")}\n</urlset>\n`);
 const SITE_DIR = join(HERE, "..", "site");
 copyFileSync(join(HERE, "changelog.css"), join(OUT, "changelog.css"));
 copyFileSync(join(HERE, "_headers"), join(OUT, "_headers"));
@@ -356,5 +397,8 @@ for (const f of ["icon-32.png", "icon-256.png"]) copyFileSync(join(SITE_DIR, f),
 copyFileSync(join(SITE_DIR, "media", "og.png"), join(OUT, "og.png"));
 mkdirSync(join(OUT, "fonts"), { recursive: true });
 for (const f of readdirSync(join(SITE_DIR, "fonts"))) copyFileSync(join(SITE_DIR, "fonts", f), join(OUT, "fonts", f));
+// IndexNow: the same key as the main site, so search engines accept pings for this host.
+const KEY = readFileSync(join(HERE, "..", "indexnow-key.txt"), "utf8").trim();
+writeFileSync(join(OUT, `${KEY}.txt`), KEY);
 if (!existsSync(join(OUT, "index.html"))) fail("nothing was written");
 console.log(`changelog: ${rels.length} releases, ${rels.reduce((n, r) => n + r.total, 0)} changes, written to ${OUT}`);

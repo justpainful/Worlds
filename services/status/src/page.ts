@@ -149,8 +149,19 @@ export function render(data: PageData, lang: Lang): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="refresh" content="60">
 <title>${esc(`${t.overall[data.overall]} · ${t.title}`)}</title>
-<meta name="description" content="${esc(t.title)}">
+<meta name="description" content="${esc(t.how)}">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://status.enterworlds.space${home}">
+<link rel="alternate" hreflang="${lang}" href="https://status.enterworlds.space${home}">
 <link rel="alternate" hreflang="${t.other}" href="https://status.enterworlds.space${alt}">
+<link rel="alternate" hreflang="x-default" href="https://status.enterworlds.space/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Worlds">
+<meta property="og:title" content="${esc(t.title)}">
+<meta property="og:description" content="${esc(t.how)}">
+<meta property="og:url" content="https://status.enterworlds.space${home}">
+<meta property="og:image" content="https://enterworlds.space/media/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/icon-32.png" sizes="32x32">
 <link rel="stylesheet" href="/status.css">
 </head>
