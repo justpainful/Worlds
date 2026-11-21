@@ -124,6 +124,47 @@ export const DRAWN: Record<string, string> = {
   graph: "handoff",
   layers: "layout",
   disconnected: "cloudOff",
+  forward: "forward",
+  arrowRight: "arrowRight",
+  arrowLeft: "arrowLeft",
+  chevronDown: "chevronDown",
+  more: "more",
+  subpage: "subpage",
+  unpin: "unpin",
+  splitLeft: "splitLeft",
+  splitRight: "splitRight",
+  sidebarClose: "sidebarClose",
+  sidebarOpen: "sidebarOpen",
+  splitVertical: "splitVertical",
+  splitHorizontal: "splitHorizontal",
+  tabs: "tabs",
+  video: "video",
+  h1: "h1",
+  h2: "h2",
+  h3: "h3",
+  text: "text",
+  typeTool: "typeTool",
+  footnote: "footnote",
+  formula: "formula",
+  numberedList: "numberedList",
+  quote: "quote",
+  table: "table",
+  divider: "divider",
+  highlight: "highlight",
+  redo: "redo",
+  external: "external",
+  openExternal: "openExternal",
+  arrowUpRight: "arrowUpRight",
+  alignLeft: "alignLeft",
+  alignCenter: "alignCenter",
+  alignRight: "alignRight",
+  expand: "expand",
+  whiteboard: "whiteboard",
+  spellcheck: "spellcheck",
+  shapes: "shapes",
+  circle: "circle",
+  square: "square",
+  eraser: "eraser",
 };
 
 /** Product tiles (sidebar, Home) drawn the same way. */
@@ -247,11 +288,15 @@ export const DRAWN_PRODUCT: Record<string, string> = {
   project: "category",
 };
 
-const files = import.meta.glob("../assets/drawn/*/*.png", { eager: true, import: "default" }) as Record<string, string>;
+const files = {
+  ...(import.meta.glob("../assets/drawn/*/*.png", { eager: true, import: "default" }) as Record<string, string>),
+  // Glyphs drawn for icons the library has no picture for (scripts/drawn-glyphs.py).
+  ...(import.meta.glob("../assets/drawn/*/*.svg", { eager: true, query: "?url", import: "default" }) as Record<string, string>),
+};
 
 const BY_SET: Record<DrawnSet, Record<string, string>> = { gold: {}, teal: {}, pink: {}, blue: {} };
 for (const [path, url] of Object.entries(files)) {
-  const m = path.match(/drawn\/(gold|teal|pink|blue)\/(.+)\.png$/);
+  const m = path.match(/drawn\/(gold|teal|pink|blue)\/(.+)\.(png|svg)$/);
   if (m) BY_SET[m[1] as DrawnSet][m[2]] = url;
 }
 
