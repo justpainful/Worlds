@@ -2,11 +2,12 @@ import "./devMock";
 import { useMemo } from "react";
 import { create } from "zustand";
 import { listen } from "@tauri-apps/api/event";
-import { errorMessage, isTauri } from "../lib/api";
+import { api, errorMessage, isTauri } from "../lib/api";
 import type { PageMeta } from "../lib/types";
 import { useStore } from "../state/store";
 import { accountApi, type AccountView, type Workspace } from "./api";
 import { scopePages, workspaceOf } from "./scope";
+import { adoptWebProfile } from "./webProfile";
 
 export type Sheet =
   | { kind: "signin"; start?: "choose" | "create" | "signin" }
@@ -74,6 +75,19 @@ export function startAccount() {
   const s = useAccount.getState();
   s.load();
   listen("worlds://account", () => useAccount.getState().load()).catch(() => {});
+  // Signed in as someone new on this computer: the profile takes the account's
+  // name and username (Rust), so show them, then bring the pictures and details
+  // the person set on Worlds on the web (./webProfile.ts).
+  let lastUser: string | null = null;
+  useAccount.subscribe((st) => {
+    const v = st.view;
+    const user = v?.status === "active" ? v.account?.userId ?? null : null;
+    if (user === lastUser) return;
+    lastUser = user;
+    if (!user) return;
+    api.profile().then((p) => useStore.getState().setProfile(p), () => {});
+    adoptWebProfile(user, v?.serverUrl ?? v?.account?.serverUrl ?? null).catch(() => {});
+  });
   window.addEventListener("worlds:changed", () => useAccount.getState().load());
   // Opening a Team page you cannot edit: say so once, plainly.
   const told = new Set<string>();

@@ -431,7 +431,7 @@ function LoadedPage({ page, paneId, reload }: { page: Page; paneId: string; relo
           <div className="page-meta">
             <button className="owner-chip" onClick={() => setInspector("info")} aria-label="Owner">
               <Avatar id={profile?.avatar} name={profile?.displayName} size={18} />
-              <span className="bidi">{profile?.displayName || "You"}</span>
+              <span className="bidi" translate={profile?.displayName ? "no" : undefined}>{profile?.displayName || "You"}</span>
             </button>
             {page.instructions.length > 0 && (
               <button className="meta-chip" onClick={() => setInspector("instructions")}>

@@ -41,10 +41,19 @@ fn lock(db: &Mutex<Connection>) -> std::sync::MutexGuard<'_, Connection> {
     db.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-/// What a new account should start with: the profile's name and handle.
+/// The name a new profile starts with: the Windows (or other) user name of this PC.
+/// It is the computer's, not the person's choice ("Admin", "User"), so it is never
+/// sent to an account.
+fn os_user_name() -> String {
+    std::env::var("USERNAME").or_else(|_| std::env::var("USER")).unwrap_or_default()
+}
+
+/// What a new account should start with: the profile's name and handle, when
+/// the person set them (not the PC's user name the profile started with).
 pub fn sign_up_fields(db: &Mutex<Connection>) -> (Option<String>, Option<String>) {
     let Ok(p) = store::profile(&lock(db)) else { return (None, None) };
-    let name = Some(p.display_name.trim().to_string()).filter(|n| !n.is_empty());
+    let os = os_user_name();
+    let name = Some(p.display_name.trim().to_string()).filter(|n| !n.is_empty() && !n.eq_ignore_ascii_case(os.trim()));
     let handle = p.handle.as_deref().map(normalize).filter(|h| valid_username(h));
     (name, handle)
 }
@@ -56,15 +65,15 @@ fn from_name(name: &str) -> Option<String> {
 }
 
 /// Make the profile and the account agree. `me` is the account as the
-/// server just returned it; `created` is true right after sign-up. The first
-/// time an account meets this profile, the profile is what it takes on.
+/// server just returned it; `created` is true only when the server says the
+/// account was made by this sign-in. A new account takes this profile's name
+/// and handle; an account that already existed (made on the web or another
+/// PC) is the source of truth, and this profile takes on its name and username.
 pub async fn reconcile(db: &Mutex<Connection>, secrets: &dyn SecretStore, me: Value, created: bool) -> Result<Value, ApiError> {
     let user_id = me.get("id").and_then(Value::as_str).unwrap_or("").to_string();
-    let linked = crate::db::get_setting(&lock(db), LINKED).ok().flatten().and_then(|v| v.as_str().map(str::to_string));
-    let created = created || (!user_id.is_empty() && linked.as_deref() != Some(user_id.as_str()));
     let (name, handle) = sign_up_fields(db);
-    // No handle on this PC yet: offer one made from the name instead of the system's.
-    let handle = handle.or_else(|| name.as_deref().and_then(from_name));
+    // No handle on this PC yet: offer one made from the name, for a new account only.
+    let handle = if created { handle.or_else(|| name.as_deref().and_then(from_name)) } else { handle };
     let online_username = me.get("username").and_then(Value::as_str).unwrap_or("").to_string();
     let online_name = me.get("displayName").and_then(Value::as_str).unwrap_or("").to_string();
     let auto = me.get("usernameAuto").and_then(Value::as_bool).unwrap_or(false);

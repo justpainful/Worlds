@@ -214,7 +214,7 @@ export function Sidebar() {
         <div className="side-bottom">
           <button className={`side-profile ${isActive({ kind: "profile" }) ? "is-active" : ""}`} onClick={() => open({ kind: "profile" })}>
             <Avatar id={profile?.avatar} name={profile?.displayName} size={26} />
-            <span className="side-profile-name bidi">{profile?.displayName || "Profile"}</span>
+            <span className="side-profile-name bidi" translate={profile?.displayName ? "no" : undefined}>{profile?.displayName || "Profile"}</span>
           </button>
           <IconButton icon="settings" label="Settings" shortcut="Ctrl+," onClick={() => open({ kind: "settings" })} />
         </div>

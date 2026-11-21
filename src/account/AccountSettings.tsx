@@ -91,7 +91,7 @@ function SignedIn() {
                 }}
               />
             ) : (
-              <div className="acct-me-name bidi">{account.displayName || "No name yet"}</div>
+              <div className="acct-me-name bidi" translate={account.displayName ? "no" : undefined}>{account.displayName || "No name yet"}</div>
             )}
             <div className="acct-me-sub isolate">{username ? `@${username}  ·  ${account.email}` : account.email}</div>
           </div>

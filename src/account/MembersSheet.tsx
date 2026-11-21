@@ -175,7 +175,7 @@ function People({
               <Avatar name={m.displayName || m.email || "?"} size={32} />
               <div className="acct-person-text">
                 <div className="acct-person-name bidi">
-                  {m.displayName || m.email}
+                  <span translate="no">{m.displayName || m.email}</span>
                   {m.userId === me && <span className="acct-you">You</span>}
                 </div>
                 <div className="acct-person-sub isolate">{m.email}</div>
@@ -310,7 +310,7 @@ function Groups({ ws, manager, members, disabled }: { ws: string; manager: boole
                           });
                         }}
                       />
-                      <span className="bidi">{m.displayName || m.email}</span>
+                      <span className="bidi" translate="no">{m.displayName || m.email}</span>
                     </label>
                   );
                 })}

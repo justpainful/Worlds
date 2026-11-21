@@ -76,7 +76,7 @@ export function PackRoles({ pack }: { pack: PackDef }) {
         .map((m) => (
           <div key={m.userId} className="set-row">
             <div className="set-row-text">
-              <div className="set-row-label bidi">{m.displayName || m.email || m.userId}</div>
+              <div className="set-row-label bidi" translate="no">{m.displayName || m.email || m.userId}</div>
             </div>
             <Select
               value={roleOf(m.userId)}
