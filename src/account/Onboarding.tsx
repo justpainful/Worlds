@@ -14,9 +14,6 @@ import { SignInFlow } from "./SignIn";
 import worldsLogo from "../assets/onboarding/worlds-logo.png";
 import imbueLogo from "../assets/onboarding/imbue-logo.png";
 import cognitionLogo from "../assets/onboarding/cognition-logo.png";
-import imbueApp from "../assets/onboarding/imbue-app.png";
-import imbueLetter from "../assets/onboarding/imbue-letter.png";
-import imbueLayers from "../assets/onboarding/imbue-layers.png";
 
 /** Worlds on the web keeps pages in the browser, and an account also keeps them on the person's account (src/web/vault.ts). */
 const WEB = import.meta.env.VITE_WEB_DEMO === "1";
@@ -75,7 +72,7 @@ export function Onboarding({ withAccount = true, onClose }: { withAccount?: bool
 
         {step === "language" && (
           <>
-            <img className="ob-hero-logo is-worlds" src={worldsLogo} alt="" height={56} />
+            <img className="ob-hero-logo" src={worldsLogo} alt="" height={96} />
             <h1 className="ob-title">{tr("Which language do you want?")}</h1>
             <p className="ob-text">{tr("You can change it any time in Settings.")}</p>
             <div className="ob-choices is-two">
@@ -175,7 +172,7 @@ export function Onboarding({ withAccount = true, onClose }: { withAccount?: bool
 
         {step === "worlds" && (
           <>
-            <img className="ob-hero-logo is-worlds" src={worldsLogo} alt="" height={64} />
+            <img className="ob-hero-logo" src={worldsLogo} alt="" height={110} />
             <h1 className="ob-title">{tr("Worlds: everything in one place")}</h1>
             <div className="ob-features">
               {(
@@ -198,7 +195,7 @@ export function Onboarding({ withAccount = true, onClose }: { withAccount?: bool
 
         {step === "cognition" && (
           <>
-            <img className="ob-hero-logo" src={cognitionLogo} alt="" height={92} />
+            <img className="ob-hero-logo" src={cognitionLogo} alt="" height={140} />
             <h1 className="ob-title">{tr("Cognition: for your own thinking")}</h1>
             <p className="ob-text">{tr("Not an assistant. Tools that help you understand and remember.")}</p>
             <div className="ob-features">
@@ -220,14 +217,9 @@ export function Onboarding({ withAccount = true, onClose }: { withAccount?: bool
 
         {step === "imbue" && (
           <>
-            <img className="ob-imbue-logo" src={imbueLogo} alt="Imbue" height={54} />
-            <h1 className="ob-title">{tr("Imbue: make the pictures")}</h1>
-            <p className="ob-text">{tr("Vectors, characters and icons, drawn and designed inside Worlds. It arrives with this update.")}</p>
-            <div className="ob-imbue">
-              {[imbueApp, imbueLetter, imbueLayers].map((src, i) => (
-                <img key={i} src={src} alt="" className={`ob-imbue-${i}`} />
-              ))}
-            </div>
+            <img className="ob-imbue-logo" src={imbueLogo} alt="Imbue" height={96} />
+            <h1 className="ob-title">Imbue</h1>
+            <p className="ob-text">{tr("Imbue arrives with this update.")}</p>
           </>
         )}
 
@@ -236,9 +228,9 @@ export function Onboarding({ withAccount = true, onClose }: { withAccount?: bool
         {step === "done" && (
           <>
             <div className="ob-done-marks">
-              <img src={worldsLogo} alt="" height={40} className="is-worlds" />
-              <img src={imbueLogo} alt="" height={34} />
-              <img src={cognitionLogo} alt="" height={60} />
+              <img src={worldsLogo} alt="" height={84} />
+              <img src={imbueLogo} alt="" height={66} />
+              <img src={cognitionLogo} alt="" height={112} />
             </div>
             <h1 className="ob-title">{tr("You're ready")}</h1>
             <p className="ob-text">{tr("Take the short tour of the window, or start right away.")}</p>
