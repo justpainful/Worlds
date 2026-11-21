@@ -241,7 +241,7 @@
 .chat-view-column .ai-prompt { font-size: 15px; }
 .chat-view-compose { padding: 4px 28px 22px; }
 .chat-view-compose .ai-composer { max-width: 780px; margin: 0 auto; }
-.chat-view.is-empty .chat-view-main { justify-content: safe center; padding-bottom: 10vh; position: relative; overflow-y: auto; }
+.chat-view.is-empty .chat-view-main { justify-content: safe center; padding-top: 44px; padding-bottom: 10vh; position: relative; overflow-y: auto; }
 .chat-view.is-empty .chat-view-head { position: absolute; top: 0; left: 0; right: 0; }
 .chat-view.is-empty .chat-view-feed { flex: none; overflow: visible; }
 .chat-view.is-empty .ai-empty { text-align: center; padding: 0 0 18px; }
