@@ -20,7 +20,7 @@ export function AccountHost() {
   // Decided once, from the first account state: signing in during onboarding keeps it open for its last step.
   const [firstRun, setFirstRun] = useState<boolean | null>(null);
   // "Show the Welcome Again" in the command palette opens it on purpose.
-  const [again, setAgain] = useState(false);
+  const [again, setAgain] = useState(() => typeof location !== "undefined" && new URLSearchParams(location.search).has("welcome"));
   useEffect(() => {
     if (firstRun === null && view) setFirstRun(!onboarded && view.status === "signed_out");
   }, [view, onboarded, firstRun]);
