@@ -42,7 +42,7 @@ function write(svg: SVGSVGElement, speed = 1): number {
 /** Erase a phrase in the reverse order it was written, quickly. */
 function erase(svg: SVGSVGElement): number {
   const total = Number(svg.dataset.total || 2);
-  const k = 0.28;
+  const k = 0.16;
   svg.querySelectorAll<SVGPathElement>("path[data-t]").forEach((p) => {
     const t = Number(p.dataset.t);
     const d = Number(p.dataset.d);
@@ -77,31 +77,31 @@ export function HelloIntro({ onDone, onSkip }: { onDone: () => void; onSkip: () 
     );
     let live = true;
     (async () => {
-      await wait(write(hello) + 80);
+      await wait(write(hello, 1.6) + 60);
       if (!live) return;
       hello.classList.add("is-done");
-      await wait(1100);
+      await wait(550);
       if (!live) return;
       await wait(erase(hello));
       if (!live) return;
       setPhase("imbue");
-      await wait(260);
-      await wait(write(imbue, 1.25) + 80);
+      await wait(120);
+      await wait(write(imbue, 2.2) + 60);
       if (!live) return;
       imbue.classList.add("is-done");
-      await wait(1500);
+      await wait(950);
       if (!live) return;
       await wait(erase(imbue));
       if (!live) return;
       setPhase("cognition");
-      await wait(260);
-      await wait(write(cognition, 0.85) + 80);
+      await wait(120);
+      await wait(write(cognition, 1.3) + 60);
       if (!live) return;
       cognition.classList.add("is-done");
-      await wait(1500);
+      await wait(900);
       if (!live) return;
       setPhase("marks");
-      await wait(2600);
+      await wait(2000);
       if (live) onDone();
     })();
     return () => {
