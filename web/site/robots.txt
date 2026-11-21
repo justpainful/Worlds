@@ -1,3 +1,5 @@
 User-agent: *
 Allow: /
+
 Sitemap: https://enterworlds.space/sitemap.xml
+Sitemap: https://changelog.enterworlds.space/sitemap.xml

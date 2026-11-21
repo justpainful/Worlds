@@ -3,6 +3,7 @@
 // Each fragment in web/content/{ar,en} becomes a page (see web/content/README.md).
 // The checks fail the build: a dash where the house style forbids it, a link
 // to a page or file that does not exist, an image without its size.
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,6 +13,19 @@ const WEB = dirname(fileURLToPath(import.meta.url));
 const CONTENT = join(WEB, "content");
 const OUT = join(WEB, "site");
 const SITE = "https://enterworlds.space";
+const VERSION = JSON.parse(readFileSync(join(WEB, "..", "package.json"), "utf8")).version;
+const PLATFORMS = "Windows, macOS, Linux, Android, iOS, iPadOS, Web";
+
+// When a page last changed, from git, for the sitemap and the article dates.
+const changed = new Map();
+function lastChanged(file) {
+  if (!changed.has(file)) {
+    let d = "";
+    try { d = execFileSync("git", ["log", "-1", "--format=%cI", "--", file], { cwd: WEB, encoding: "utf8" }).trim(); } catch {}
+    changed.set(file, d || new Date().toISOString());
+  }
+  return changed.get(file);
+}
 export const LINKS = {
   app: "https://app.enterworlds.space",
   demo: "https://demo.enterworlds.space",
@@ -24,9 +38,9 @@ const T = {
   ar: {
     dir: "rtl", other: "en", otherName: "English", locale: "ar_SA",
     skip: "انتقل إلى المحتوى", menu: "القائمة", home: "Worlds الصفحة الرئيسية",
-    nav: [["apps", "التطبيقات"], ["story", "القصة"], ["docs", "الدليل"], ["tools", "الأدوات"], ["support", "الدعم"]],
+    nav: [["features", "المزايا"], ["apps", "التطبيقات"], ["story", "القصة"], ["docs", "الدليل"], ["tools", "الأدوات"], ["support", "الدعم"]],
     github: "GitHub", docsMenu: "صفحات الدليل", docs: "الدليل", prev: "السابق", next: "التالي",
-    foot: [["apps", "التطبيقات"], ["story", "القصة"], ["docs", "الدليل"], ["tools", "الأدوات"], ["support", "الدعم"], ["privacy", "الخصوصية"], ["terms", "شروط الاستخدام"]],
+    foot: [["features", "المزايا"], ["notion-alternative", "بديل لـ Notion"], ["apps", "التطبيقات"], ["story", "القصة"], ["docs", "الدليل"], ["tools", "الأدوات"], ["support", "الدعم"], ["privacy", "الخصوصية"], ["terms", "شروط الاستخدام"]],
     away: [["https://changelog.enterworlds.space/", "سجل التحديثات"], ["https://status.enterworlds.space/", "الحالة"]],
     festival: "مهرجان الذكاء الطبيعي يقود الذكاء الاصطناعي 2026، مسار التجارب المتميزة.",
     fine: "Worlds اسم عمل إبداعي غير مسجل رسميًا، مستقل عن هوية imbue. الشيفرة منشورة على GitHub.",
@@ -35,9 +49,9 @@ const T = {
   en: {
     dir: "ltr", other: "ar", otherName: "العربية", locale: "en_US",
     skip: "Skip to content", menu: "Menu", home: "Worlds home",
-    nav: [["apps", "Apps"], ["story", "Story"], ["docs", "Docs"], ["tools", "Tools"], ["support", "Support"]],
+    nav: [["features", "Features"], ["apps", "Apps"], ["story", "Story"], ["docs", "Docs"], ["tools", "Tools"], ["support", "Support"]],
     github: "GitHub", docsMenu: "Docs pages", docs: "Docs", prev: "Previous", next: "Next",
-    foot: [["apps", "Apps"], ["story", "Story"], ["docs", "Docs"], ["tools", "Tools"], ["support", "Support"], ["privacy", "Privacy"], ["terms", "Terms of use"]],
+    foot: [["features", "Features"], ["notion-alternative", "A Notion alternative"], ["apps", "Apps"], ["story", "Story"], ["docs", "Docs"], ["tools", "Tools"], ["support", "Support"], ["privacy", "Privacy"], ["terms", "Terms of use"]],
     away: [["https://changelog.enterworlds.space/en/", "Changelog"], ["https://status.enterworlds.space/en/", "Status"]],
     festival: "Natural Intelligence Leads Artificial Intelligence festival 2026, outstanding experiments track.",
     fine: "Worlds is a creative working name, not a registered mark, and is independent of the imbue identity. The code is published on GitHub.",
@@ -140,10 +154,67 @@ function footer(lang) {
 </footer>`;
 }
 
-function head(lang, r, meta) {
+// Schema.org data: who makes Worlds, the app itself, and where each page sits.
+function jsonld(lang, page) {
+  const t = T[lang];
+  const r = page.route;
+  const meta = page.meta;
+  const pageUrl = `${SITE}${url(lang, r)}`;
+  const org = { "@type": "Organization", "@id": `${SITE}/#org`, name: "Worlds", url: `${SITE}/`, logo: `${SITE}/icon-256.png`, sameAs: [LINKS.github] };
+  const app = {
+    "@type": "SoftwareApplication",
+    "@id": `${SITE}/#app`,
+    name: "Worlds",
+    alternateName: lang === "ar" ? "وورلدز" : "Worlds app",
+    description: pages[lang].get("")?.meta.description,
+    url: `${SITE}${url(lang, "")}`,
+    applicationCategory: "ProductivityApplication",
+    applicationSubCategory: lang === "ar" ? "مساحة عمل للملاحظات والمهام والمستندات" : "Notes, tasks and documents workspace",
+    operatingSystem: PLATFORMS,
+    softwareVersion: VERSION,
+    inLanguage: ["ar", "en"],
+    isAccessibleForFree: true,
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    downloadUrl: LINKS.releases,
+    installUrl: `${SITE}${url(lang, "apps/")}`,
+    releaseNotes: `https://changelog.enterworlds.space${lang === "en" ? "/en/" : "/"}${VERSION}/`,
+    screenshot: `${SITE}/media/og.png`,
+    image: `${SITE}/icon-256.png`,
+    publisher: { "@id": `${SITE}/#org` },
+    sameAs: [LINKS.github, "https://app.enterworlds.space/"],
+  };
+  const graph = [];
+  if (r === "") {
+    graph.push(org, { "@type": "WebSite", "@id": `${SITE}/#site`, name: "Worlds", url: `${SITE}/`, inLanguage: lang, publisher: { "@id": `${SITE}/#org` } }, app);
+  } else {
+    const trail = [{ name: "Worlds", item: `${SITE}${url(lang, "")}` }];
+    if (r.startsWith("docs/") && r !== "docs/") trail.push({ name: t.docs, item: `${SITE}${url(lang, "docs/")}` });
+    trail.push({ name: meta.nav ?? meta.title, item: pageUrl });
+    graph.push({ "@type": "BreadcrumbList", itemListElement: trail.map((x, i) => ({ "@type": "ListItem", position: i + 1, ...x })) });
+    if (r === "apps/") graph.push(app);
+    else if (r.startsWith("docs/") || r === "story/") {
+      graph.push({
+        "@type": r === "story/" ? "Article" : "TechArticle",
+        headline: meta.title,
+        description: meta.description,
+        inLanguage: lang,
+        url: pageUrl,
+        dateModified: lastChanged(page.file),
+        image: `${SITE}/media/og.png`,
+        author: { "@id": `${SITE}/#org` },
+        publisher: { "@type": "Organization", name: "Worlds", logo: { "@type": "ImageObject", url: `${SITE}/icon-256.png` } },
+        about: { "@type": "SoftwareApplication", name: "Worlds", operatingSystem: PLATFORMS, applicationCategory: "ProductivityApplication" },
+      });
+    }
+  }
+  return `<script type="application/ld+json">${JSON.stringify({ "@context": "https://schema.org", "@graph": graph }).replace(/</g, "\\u003c")}</script>`;
+}
+
+function head(lang, r, meta, page) {
   const t = T[lang];
   const title = r ? `${meta.title} · Worlds` : meta.title;
-  const alts = ["ar", "en"].filter((l) => pages[l].has(r) && r !== "404/").map((l) => `<link rel="alternate" hreflang="${l}" href="${SITE}${url(l, r)}">`).join("\n");
+  const alts = ["ar", "en"].filter((l) => pages[l].has(r) && r !== "404/").map((l) => `<link rel="alternate" hreflang="${l}" href="${SITE}${url(l, r)}">`).join("\n")
+    + (pages.ar.has(r) && r !== "404/" ? `\n<link rel="alternate" hreflang="x-default" href="${SITE}${url("ar", r)}">` : "");
   return `<!doctype html>
 <html lang="${lang}" dir="${t.dir}">
 <head>
@@ -154,20 +225,30 @@ function head(lang, r, meta) {
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
-${r === "404/" ? '<meta name="robots" content="noindex">' : `<link rel="canonical" href="${SITE}${url(lang, r)}">`}
+${r === "404/" ? '<meta name="robots" content="noindex">' : `<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">\n<link rel="canonical" href="${SITE}${url(lang, r)}">`}
 ${alts}
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Worlds">
 <meta property="og:title" content="${esc(meta.title)}">
 <meta property="og:description" content="${esc(meta.description ?? "")}">
+<meta property="og:url" content="${SITE}${url(lang, r === "404/" ? "" : r)}">
 <meta property="og:image" content="${SITE}/media/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="${lang === "ar" ? "صفحة Worlds مكتوب عليها Hello, Worlds! بخط اليد" : "A Worlds page with Hello, Worlds! written by hand"}">
 <meta property="og:locale" content="${t.locale}">
+<meta property="og:locale:alternate" content="${lang === "ar" ? "en_US" : "ar_SA"}">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${esc(meta.title)}">
+<meta name="twitter:description" content="${esc(meta.description ?? "")}">
+<meta name="twitter:image" content="${SITE}/media/og.png">
+<meta name="application-name" content="Worlds">
+<link rel="alternate" type="application/atom+xml" title="${lang === "ar" ? "تحديثات Worlds" : "Worlds updates"}" href="https://changelog.enterworlds.space${lang === "en" ? "/en/" : "/"}feed.xml">
 <link rel="icon" href="/icon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="/icon-256.png">
 <link rel="preload" href="/fonts/${lang === "ar" ? "plex-arabic-400" : "instrument-sans"}.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/site.css">
-<script src="/site.js"></script>${r === "" ? "\n<script type=\"module\" src=\"/live.js\"></script>" : ""}
+<script src="/site.js"></script>${r === "" ? "\n<script type=\"module\" src=\"/live.js\"></script>" : ""}${page && r !== "404/" ? `\n${jsonld(lang, page)}` : ""}
 </head>`;
 }
 
@@ -219,7 +300,7 @@ function render(lang, page) {
   else if (r.startsWith("docs/")) {
     main = `<div class="wrap docs">\n${sidebar(lang, r)}\n<main id="main" class="article">\n${crumb(lang, r)}\n${body}\n${pager(lang, r)}\n</main>\n</div>`;
   } else main = `<div class="wrap page-solo"><main id="main" class="article">\n${body}\n</main></div>`;
-  return `${head(lang, r, page.meta)}
+  return `${head(lang, r, page.meta, page)}
 <body>
 <a class="skip" href="#main">${t.skip}</a>
 ${header(lang, r)}
@@ -231,7 +312,7 @@ ${footer(lang)}
 }
 
 // Generated folders are rebuilt from scratch; hand-made files (css, js, fonts, media) stay.
-for (const dir of ["docs", "apps", "story", "tools", "support", "privacy", "terms", "en"]) rmSync(join(OUT, dir), { recursive: true, force: true });
+for (const dir of ["docs", "apps", "features", "notion-alternative", "story", "tools", "support", "privacy", "terms", "en"]) rmSync(join(OUT, dir), { recursive: true, force: true });
 
 const problems = [];
 const written = [];
@@ -282,15 +363,24 @@ for (const [lang, page, html] of written) {
     if (!/\balt="/.test(m[0])) problems.push(`${where}: image without alt: ${m[0].slice(0, 80)}`);
   }
   if (/\sstyle="/.test(html.replace(hello, ""))) problems.push(`${where}: inline style (the site's CSP refuses it)`);
-  if (/<script(?![^>]*\bsrc=)/.test(html)) problems.push(`${where}: inline script (the site's CSP refuses it)`);
+  if (/<script(?![^>]*\b(?:src=|type="application\/ld\+json"))/.test(html)) problems.push(`${where}: inline script (the site's CSP refuses it)`);
+  for (const m of html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) {
+    try { JSON.parse(m[1]); } catch { problems.push(`${where}: structured data is not valid JSON`); }
+  }
   if (page.route === "404/") continue;
   if (pages[lang === "ar" ? "en" : "ar"].has(page.route) === false) problems.push(`${where}: no ${lang === "ar" ? "English" : "Arabic"} version`);
 }
 
 // Sitemap.
-const urls = written.filter(([, page]) => page.route !== "404/").map(([lang, page]) => `<url><loc>${SITE}${url(lang, page.route)}</loc></url>`).join("");
-writeFileSync(join(OUT, "sitemap.xml"), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>\n`);
-writeFileSync(join(OUT, "robots.txt"), `User-agent: *\nAllow: /\nSitemap: ${SITE}/sitemap.xml\n`);
+// Sitemap: every page with when it last changed and its other language.
+const urls = written.filter(([, page]) => page.route !== "404/").map(([lang, page]) => {
+  const alts = ["ar", "en"].filter((l) => pages[l].has(page.route)).map((l) => `<xhtml:link rel="alternate" hreflang="${l}" href="${SITE}${url(l, page.route)}"/>`).join("");
+  const xd = `<xhtml:link rel="alternate" hreflang="x-default" href="${SITE}${url("ar", page.route)}"/>`;
+  const pri = page.route === "" ? "1.0" : ["features/", "apps/", "notion-alternative/", "docs/", "story/"].includes(page.route) ? "0.8" : page.route.startsWith("docs/") ? "0.6" : "0.4";
+  return `<url><loc>${SITE}${url(lang, page.route)}</loc><lastmod>${lastChanged(page.file).slice(0, 10)}</lastmod><priority>${pri}</priority>${alts}${xd}</url>`;
+}).join("\n");
+writeFileSync(join(OUT, "sitemap.xml"), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls}\n</urlset>\n`);
+writeFileSync(join(OUT, "robots.txt"), `User-agent: *\nAllow: /\n\nSitemap: ${SITE}/sitemap.xml\nSitemap: https://changelog.enterworlds.space/sitemap.xml\n`);
 
 console.log(`${written.length} pages`);
 const missingNav = flat.filter((r) => !pages.ar.has(r));
