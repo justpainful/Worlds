@@ -1951,6 +1951,19 @@ private struct WorldsLibraryView: View {
                 .frame(minWidth: 680, idealWidth: 740, minHeight: 580, idealHeight: 660)
                 #endif
         }
+        // Siri and Shortcuts (WorldsAppIntents.swift) open the assistant with their words written.
+        .onReceive(NotificationCenter.default.publisher(for: WorldsIntentInbox.notification)) { _ in
+            if let prompt = WorldsIntentInbox.take() {
+                assistantPrompt = prompt
+                showAssistant = true
+            }
+        }
+        .task {
+            if let prompt = WorldsIntentInbox.take() {
+                assistantPrompt = prompt
+                showAssistant = true
+            }
+        }
         .sheet(isPresented: $showAssistant, onDismiss: { assistantPrompt = "" }) {
             assistantHost(embedded: false, prompt: assistantPrompt, open: { id in showAssistant = false; openFromAssistant(id) })
                 .environment(\.colorScheme, colorScheme)

@@ -1,0 +1,49 @@
+name: Linux build
+
+# Builds Worlds for Linux as an AppImage (runs on most distributions) and a
+# .deb (Debian, Ubuntu and their relatives). Started by hand from the Actions
+# tab, like the Windows installer; the checkout never contains private/.
+on:
+  workflow_dispatch:
+  # Release branches build Linux too, so a release is checked before it ships.
+  push:
+    branches: ["release/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: System libraries Tauri needs
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libssl-dev libdbus-1-dev libsecret-1-dev
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: pnpm install --frozen-lockfile
+      - name: Build the AppImage and the .deb
+        run: pnpm tauri build --bundles appimage,deb
+      - name: Check that no private files are in the tree
+        run: |
+          if [ -e private ]; then echo "private/ must not exist in a public build"; exit 1; fi
+          ls -la src-tauri/target/release/bundle/appimage src-tauri/target/release/bundle/deb
+      - uses: actions/upload-artifact@v4
+        with:
+          name: worlds-linux
+          path: |
+            src-tauri/target/release/bundle/appimage/*.AppImage
+            src-tauri/target/release/bundle/deb/*.deb
+          if-no-files-found: error

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="ask" android:enabled="true" android:icon="@drawable/worlds_icon" android:shortcutShortLabel="@string/shortcut_ask" android:shortcutLongLabel="@string/shortcut_ask">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="worlds.android" android:targetClass="worlds.android.MainActivity" android:data="worlds://ask?prompt=%20" />
+    </shortcut>
+    <shortcut android:shortcutId="task" android:enabled="true" android:icon="@drawable/worlds_icon" android:shortcutShortLabel="@string/shortcut_task" android:shortcutLongLabel="@string/shortcut_task">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="worlds.android" android:targetClass="worlds.android.MainActivity" android:data="worlds://ask?prompt=Add%20a%20task%20for%20today%3A%20" />
+    </shortcut>
+    <shortcut android:shortcutId="note" android:enabled="true" android:icon="@drawable/worlds_icon" android:shortcutShortLabel="@string/shortcut_note" android:shortcutLongLabel="@string/shortcut_note">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="worlds.android" android:targetClass="worlds.android.MainActivity" android:data="worlds://ask?prompt=Make%20a%20new%20page%20with%20this%20note%3A%20" />
+    </shortcut>
+</shortcuts>

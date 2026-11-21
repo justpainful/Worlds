@@ -1125,4 +1125,12 @@
     <string name="drawing_outside_board">ارسم داخل اللوحة</string>
     <string name="drawing_custom_color">لون مخصص</string>
     <string name="drawing_use_color">استخدام اللون</string>
+    <string name="widget_title">اليوم في Worlds</string>
+    <string name="widget_description">مواعيدك ومهامك لهذا اليوم</string>
+    <string name="widget_empty">ما بقي شيء لليوم</string>
+    <string name="widget_add">أضف مهمة</string>
+    <string name="widget_add_prompt">أضف مهمة لليوم: </string>
+    <string name="shortcut_ask">اسأل Worlds</string>
+    <string name="shortcut_task">أضف مهمة</string>
+    <string name="shortcut_note">ملاحظة سريعة</string>
 </resources>
