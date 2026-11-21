@@ -1,115 +1,95 @@
 /* ==========================================================================
-   First run: the intro (HelloIntro) and the onboarding steps.
-   The intro keeps its own colours whatever the theme. No shadows anywhere.
+   First run: the intro (HelloIntro, three takes of five seconds) and the
+   onboarding steps. The intro keeps its own colours. No shadows anywhere.
    ========================================================================== */
+
+@property --hi-a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
 
 .hi {
   position: fixed;
   inset: 0;
   z-index: 5000;
   overflow: hidden;
-  background: #f9f1e8;
-  transition: background-color 600ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  background: #0d0d10;
   --ease-hi: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --pop: cubic-bezier(0.3, 1.5, 0.5, 1);
 }
-.hi.is-imbue { background: #ffffff; }
-.hi.is-cognition { background: #ffffff; }
-.hi.is-marks { background: #0d0d10; }
+.hi-line { background: #f9f1e8; transition: background-color 500ms var(--ease-hi); }
+.hi-line:has(.hl.is-marks) { background: #0d0d10; }
 
-/* Three phrases share one stage; only the current one shows. */
-.hi-stage { position: absolute; inset: 0; display: grid; place-items: center; }
-.hi-p { grid-area: 1 / 1; width: min(80vw, 860px); opacity: 0; transition: opacity 260ms var(--ease-hi), transform 700ms var(--ease-hi); }
-.hi-p-imbue { width: min(88vw, 1100px); }
-.hi-p-cognition { width: min(46vw, 460px); }
-.hi.is-worlds .hi-p-worlds,
-.hi.is-imbue .hi-p-imbue,
-.hi.is-cognition .hi-p-cognition { opacity: 1; }
-.hi.is-marks .hi-p { opacity: 0; transform: scale(0.9); }
-.hi-p svg { display: block; width: 100%; height: auto; overflow: visible; }
+/* The marks row, shared by every take */
+.hi-row { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: clamp(28px, 6vw, 96px); pointer-events: none; }
+.hi-m { margin: 0; display: grid; justify-items: center; align-content: center; gap: 18px; }
+.hi-m figcaption { font: 700 clamp(16px, 1.8vw, 22px)/1 var(--font-ui, system-ui); color: #f5f5f7; opacity: 0; transition: opacity 400ms var(--ease-hi); }
+.hi-w { position: relative; height: clamp(90px, 14vw, 160px); }
+.hi-w img { display: block; height: 100%; width: auto; }
+.hi-w-piece, .hi-w-sweep { position: absolute; inset: 0; }
+.hi-w-base { visibility: hidden; }
+.hi-w-l { clip-path: inset(0 52% 0 0); }
+.hi-w-c { clip-path: inset(0 33% 0 33%); }
+.hi-w-r { clip-path: inset(0 0 0 52%); }
+.hi-w-sweep { -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.95) 50%, transparent 65%) no-repeat; background-size: 300% 100%; background-position: 130% 0; opacity: 0; }
+.hi-imbue-img { display: block; height: clamp(70px, 10vw, 120px); width: auto; }
+.hi-letters { position: relative; height: clamp(70px, 10vw, 120px); aspect-ratio: 1326 / 497; }
+.hi-letter { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hi-cog { display: block; height: clamp(110px, 17vw, 190px); width: auto; }
 
-/* Writing and erasing, stroke by stroke */
-.hi .hw-fill { fill: currentColor; opacity: 0; stroke: currentColor; stroke-width: 0; stroke-linejoin: round; paint-order: stroke; transition: opacity 300ms var(--ease-hi); }
-.hi .hw path[data-t] { fill: none; stroke: var(--c, currentColor); stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
-.hi .hw.is-writing path[data-t] { stroke-dasharray: 1 2; stroke-dashoffset: 1; animation: hi-draw var(--d) linear var(--t) both; }
-.hi .hw.is-done .hw-fill { opacity: 1; }
-.hi .hw.is-done path[data-t] { opacity: 0; animation: none; }
-.hi .hw.is-erasing path[data-t] { stroke-dasharray: 1 2; animation: hi-erase var(--ed) linear var(--e) both; }
-@keyframes hi-draw {
-  0% { stroke-dashoffset: 1; opacity: 0; }
-  0.1% { opacity: 1; }
-  100% { stroke-dashoffset: 0; opacity: 1; }
+/* ---- film: the marks arrive one after another, each in its own manner */
+.hi-film .hi-w-piece { opacity: 0; animation: hf-piece 700ms var(--pop) both; }
+.hi-film .hi-w-l { --from: translate(-90px, 10px) rotate(-12deg); animation-delay: 100ms; }
+.hi-film .hi-w-c { --from: translate(0, 70px) scale(0.7); animation-delay: 220ms; }
+.hi-film .hi-w-r { --from: translate(90px, 10px) rotate(12deg); animation-delay: 340ms; }
+@keyframes hf-piece { from { opacity: 0; transform: var(--from); } to { opacity: 1; transform: none; } }
+.hi-film .hi-w-sweep { animation: hf-sweep 800ms var(--ease-hi) 950ms both; }
+@keyframes hf-sweep { 0% { opacity: 1; background-position: 130% 0; } 100% { opacity: 1; background-position: -30% 0; } }
+.hi-film .hi-letter { opacity: 0; animation: hf-drop 700ms var(--ease-hi) both; animation-delay: calc(1500ms + var(--i) * 110ms); transform-origin: 50% 100%; }
+@keyframes hf-drop {
+  0% { opacity: 0; transform: translateY(-160%); }
+  45% { opacity: 1; transform: translateY(0) scale(1.1, 0.82); }
+  65% { transform: translateY(-9%) scale(0.95, 1.06); }
+  82% { transform: translateY(0) scale(1.03, 0.97); }
+  100% { opacity: 1; transform: none; }
 }
-@keyframes hi-erase {
-  0% { stroke-dashoffset: 0; opacity: 1; }
-  99.9% { opacity: 1; }
-  100% { stroke-dashoffset: 1; opacity: 0; }
-}
+.hi-film .hi-cog { -webkit-mask-image: conic-gradient(from -30deg, #000 var(--hi-a), transparent 0); mask-image: conic-gradient(from -30deg, #000 var(--hi-a), transparent 0); animation: hf-draw 900ms var(--ease-hi) 2550ms both, hf-nod 600ms var(--pop) 3450ms both; }
+@keyframes hf-draw { from { --hi-a: 0deg; } to { --hi-a: 360deg; } }
+@keyframes hf-nod { 0% { transform: none; } 45% { transform: rotate(-7deg) scale(1.06); } 100% { transform: none; } }
+.hi-film .hi-m figcaption { opacity: 1; transition-delay: 0ms; animation: hi-fade 500ms var(--ease-hi) 3700ms both; }
+@keyframes hi-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
-/* Worlds: the site's two inks */
-.hi-p-worlds .hw-l0 { color: #d4644d; }
-.hi-p-worlds .hw-l1 { color: #24706b; }
+/* ---- line: one pen through all three */
+.hl { position: absolute; inset: 0; }
+.hl-word { position: absolute; inset: 0; display: grid; place-items: center; transition: opacity 400ms var(--ease-hi), transform 500ms var(--ease-hi); }
+.hl-word svg { width: min(78vw, 840px); height: auto; overflow: visible; }
+.hl .hw-l0 { color: #d4644d; }
+.hl .hw-l1 { color: #24706b; }
+.hl .hw-fill { fill: currentColor; opacity: 0; stroke: currentColor; stroke-width: 0; stroke-linejoin: round; paint-order: stroke; transition: stroke-width 600ms var(--pop), opacity 200ms; }
+.hl .hw path[data-t] { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
+.hl .hw.is-writing path[data-t] { stroke-dasharray: 1 2; stroke-dashoffset: 1; animation: hi-draw var(--d) linear var(--t) both; }
+.hl .hw.is-done .hw-fill { opacity: 1; }
+.hl .hw.is-done path[data-t] { opacity: 0; animation: none; }
+@keyframes hi-draw { 0% { stroke-dashoffset: 1; opacity: 0; } 0.1% { opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 1; } }
+.hl.is-swell .hw-fill, .hl.is-scribble .hw-fill { fill: url(#hi-bands); stroke: url(#hi-bands); stroke-width: 170; }
+.hl.is-swell .hl-word svg { animation: hl-jelly 700ms var(--ease-hi) both; }
+@keyframes hl-jelly { 0% { transform: none; } 35% { transform: scale(1.05, 0.93); } 65% { transform: scale(0.98, 1.03); } 100% { transform: none; } }
+.hl.is-scribble .hl-word { opacity: 0.25; transform: scale(0.96); }
+.hl.is-marks .hl-word { opacity: 0; transform: scale(0.9); }
+.hl-scribble { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.hl-scribble path { fill: none; stroke: #fb94c1; stroke-width: 46; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1 2; stroke-dashoffset: 1; opacity: 0; }
+.hl.is-scribble .hl-scribble path { opacity: 1; animation: hl-scribble 950ms cubic-bezier(0.5, 0, 0.3, 1) both; }
+.hl.is-marks .hl-scribble { opacity: 0; transition: opacity 250ms; }
+@keyframes hl-scribble { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+.hl .hi-row .hi-m { opacity: 0; transform: scale(0.85); transition: opacity 350ms var(--ease-hi), transform 600ms var(--pop); }
+.hl.is-marks .hi-row .hi-m-cognition { opacity: 1; transform: none; }
+.hl.is-marks .hi-row .hi-m-worlds, .hl.is-marks .hi-row .hi-m-imbue { opacity: 1; transform: none; transition-delay: 220ms; }
+.hl.is-marks .hi-m figcaption { opacity: 1; transition-delay: 500ms; }
 
-/* Imbue: written in its five colours, then the letters swell like its logo */
-.hi-p-imbue .hw-fill { fill: url(#hi-imbue-bands); stroke: url(#hi-imbue-bands); }
-.hi-p-imbue .hw path[data-t] { stroke-width: 120px; }
-.hi-p-imbue .hw.is-done .hw-fill { animation: hi-swell 900ms cubic-bezier(0.3, 1.5, 0.5, 1) both; }
-.hi-p-imbue .hw.is-done { animation: hi-jelly 900ms var(--ease-hi) both; transform-origin: 50% 70%; }
-@keyframes hi-swell {
-  0% { stroke-width: 0; }
-  100% { stroke-width: 230px; }
-}
-@keyframes hi-jelly {
-  0% { transform: scale(1, 1); }
-  30% { transform: scale(1.05, 0.93); }
-  55% { transform: scale(0.97, 1.04); }
-  78% { transform: scale(1.015, 0.99); }
-  100% { transform: scale(1, 1); }
-}
-
-/* Cognition: a thick pink ribbon, like its mark, then sparks */
-.hi-p-cognition .hw { color: #fb94c1; }
-.hi-p-cognition .hw path[data-t] { stroke-width: 260px; }
-.hi-p-cognition .hw-fill { stroke-width: 200px; }
-.hi-p-cognition .hw.is-done { animation: hi-click 700ms cubic-bezier(0.3, 1.5, 0.5, 1) both; transform-origin: 40% 80%; }
-@keyframes hi-click {
-  0% { transform: rotate(0) scale(1); }
-  40% { transform: rotate(-6deg) scale(1.08); }
-  100% { transform: rotate(-3deg) scale(1.02); }
-}
-.hi-sparks { position: absolute; inset: 0; pointer-events: none; }
-.hi-spark { position: absolute; width: 34px; height: 34px; opacity: 0; transform: scale(0) rotate(-45deg); transition: opacity 200ms var(--ease-hi), transform 520ms cubic-bezier(0.3, 1.6, 0.5, 1); }
-.hi-spark path { fill: #ffd400; }
-.hi-spark:nth-child(3n) path { fill: #0761ea; }
-.hi-spark:nth-child(3n + 1) path { fill: #fb94c1; }
-.hi.is-cognition .hw.is-done ~ * .hi-spark,
-.hi.is-cognition:has(.hi-p-cognition .is-done) .hi-spark { opacity: 1; transform: none; }
-.hi-spark-0 { top: 24%; left: 30%; transition-delay: 0ms; }
-.hi-spark-1 { top: 64%; left: 68%; transition-delay: 90ms; width: 46px; height: 46px; }
-.hi-spark-2 { top: 20%; left: 64%; transition-delay: 160ms; width: 22px; height: 22px; }
-.hi-spark-3 { top: 70%; left: 33%; transition-delay: 230ms; width: 26px; height: 26px; }
-.hi-spark-4 { top: 44%; left: 22%; transition-delay: 300ms; width: 18px; height: 18px; }
-.hi-spark-5 { top: 38%; left: 77%; transition-delay: 360ms; width: 30px; height: 30px; }
-.hi-spark-6 { top: 14%; left: 47%; transition-delay: 420ms; width: 16px; height: 16px; }
-.hi-spark-7 { top: 80%; left: 52%; transition-delay: 480ms; width: 20px; height: 20px; }
-
-/* The three marks, large, on black */
-.hi-marks {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(28px, 6vw, 96px);
-  pointer-events: none;
-}
-.hi-mark { margin: 0; display: grid; justify-items: center; align-content: center; gap: 18px; opacity: 0; transform: translateY(30px) scale(0.8); transition: opacity 420ms var(--ease-hi), transform 700ms cubic-bezier(0.3, 1.45, 0.5, 1); }
-.hi-mark img { display: block; width: auto; height: clamp(90px, 15vw, 170px); object-fit: contain; }
-.hi-mark-imbue img { height: clamp(70px, 11vw, 130px); }
-.hi-mark-cognition img { height: clamp(110px, 18vw, 200px); }
-.hi-mark figcaption { font: 700 clamp(16px, 1.8vw, 22px)/1 var(--font-ui, system-ui); color: #f5f5f7; }
-.hi.is-marks .hi-mark { opacity: 1; transform: none; }
-.hi.is-marks .hi-mark-imbue { transition-delay: 200ms; }
-.hi.is-marks .hi-mark-cognition { transition-delay: 400ms; }
+/* ---- burst: particles, then the marks */
+.hb-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hb .hi-row .hi-m { opacity: 0; transform: scale(0.92); transition: opacity 450ms var(--ease-hi), transform 600ms var(--pop); }
+.hb.is-marks .hi-row .hi-m { opacity: 1; transform: none; }
+.hb.is-marks .hi-row .hi-m-imbue { transition-delay: 90ms; }
+.hb.is-marks .hi-row .hi-m-cognition { transition-delay: 180ms; }
+.hb.is-marks .hi-m figcaption { opacity: 1; transition-delay: 350ms; }
 
 .hi-skip {
   position: absolute;
@@ -119,17 +99,17 @@
   border-radius: 999px;
   padding: 8px 16px;
   font: 600 13px/1 var(--font-ui, system-ui);
-  background: rgba(0, 0, 0, 0.07);
-  color: #1d1d1f;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
   cursor: pointer;
-  transition: background 110ms var(--ease-hi);
 }
-.hi-skip:hover { background: rgba(0, 0, 0, 0.13); }
-.hi.is-marks .hi-skip { background: rgba(255, 255, 255, 0.14); color: #fff; }
+.hi-line .hi-skip { background: rgba(0, 0, 0, 0.08); color: #1d1d1f; }
 
-@media (prefers-reduced-motion: reduce) {
-  .hi *, .hi { animation: none !important; transition: none !important; }
-}
+/* Reduced motion: the marks, still */
+.hi.is-still * { animation: none !important; transition: none !important; }
+.hi.is-still .hi-row .hi-m, .hi.is-still .hi-m figcaption, .hi.is-still .hi-w-piece, .hi.is-still .hi-letter { opacity: 1 !important; transform: none !important; }
+.hi.is-still .hi-cog { -webkit-mask-image: none; mask-image: none; }
+.hi.is-still .hl-word, .hi.is-still .hl-scribble { display: none; }
 
 /* --------------------------------------------------------------- the steps */
 .ob {
