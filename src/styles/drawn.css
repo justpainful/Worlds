@@ -100,6 +100,8 @@
 /* --------------------------------------------- glass becomes paper stickers */
 :root[data-style="drawn"] .glass > :is(.g-optics, .g-env, .g-shade, .g-light, .g-glow, .g-cast) { display: none !important; }
 :root[data-style="drawn"] .glass {
+  /* hidden glass (menus closing, bars waiting) fades the same way as before */
+  opacity: var(--g-fade, 1);
   background: var(--dr-paper) !important;
   box-shadow: inset 0 0 0 2px var(--dr-line), 3px 4px 0 var(--dr-shadow) !important;
   color: var(--dr-text);
