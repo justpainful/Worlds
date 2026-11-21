@@ -27,6 +27,7 @@ import { loadSample, removeSample, rewriteSample, sampleLanguageMismatch, useSam
 import { choosePasscode, enableHello, hasPasscode } from "../pages/privacy";
 import { ShortcutSettings } from "../shell/customShortcuts";
 import { MailAddress } from "../account/PublishPage";
+import { ApiSettings, CalendarSettings, WebhookSettings } from "./IntegrationSettings";
 
 const SECTIONS: { id: string; label: string; ar?: string; tile: string; group: number; keywords: string }[] = [
   { id: "account", label: "Account", tile: "team", group: 0, keywords: "sign in passkey email devices workspaces team members sign out server" },
@@ -372,6 +373,15 @@ function EditorSettings() {
       </Row>
       <Row label="Browser extension" hint="Install the Worlds extension in Chrome or Edge, then paste this token into it once. It sends pages, selections and articles to Worlds on this computer.">
         <CaptureToken />
+      </Row>
+      <Row label="Calendars" hint="Show a Google or Apple calendar here by its secret iCal address, and give calendar apps a feed of your Worlds events.">
+        <CalendarSettings />
+      </Row>
+      <Row label="Local API" hint="Your programs on this computer can read and add pages with the token from Browser extension.">
+        <ApiSettings />
+      </Row>
+      <Row label="Webhooks" hint="Worlds tells these addresses when a page is created or changes.">
+        <WebhookSettings />
       </Row>
       <Row label="Email to Worlds" hint="Mail sent to this address arrives in Worlds as a page under From email.">
         <MailAddress />

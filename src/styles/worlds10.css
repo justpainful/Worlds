@@ -166,3 +166,12 @@
 .pub-item:hover { background: var(--fill-1); }
 .pub-item .bidi { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .capture-token { padding: 3px 8px; border-radius: 7px; background: var(--fill-2); font: 500 12px var(--font-mono); }
+
+/* ---- Integrations -------------------------------------------------------- */
+.int-block { display: flex; flex-direction: column; gap: 6px; width: min(460px, 100%); }
+.int-row { display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 4px 0 8px; border-radius: 9px; background: var(--fill-1); }
+.int-row > .bidi { font: var(--t-ui); }
+.int-dim { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-3); font: var(--t-small); }
+.int-code { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--code-bg); font: 12px/1.6 var(--font-mono); white-space: pre-wrap; }
+.cal-ext { display: flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 6px; background: rgba(142, 142, 150, 0.16); color: var(--text-2); font: var(--t-caption); box-shadow: inset 2px 0 0 rgba(142, 142, 150, 0.8); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.cal-ext-time { color: var(--text-3); font-variant-numeric: tabular-nums; }

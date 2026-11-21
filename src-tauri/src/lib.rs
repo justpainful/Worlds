@@ -314,6 +314,7 @@ pub fn run() {
             commands::link_graph,
             capture::fetch_article,
             capture::capture_info,
+            capture::webhook_post,
             preview::preview_prepare,
             ai::ai_run,
             ai::ai_cancel,

@@ -6,6 +6,10 @@
 //!   request must carry the capture token shown in Settings; what it sends
 //!   reaches the window as a `capture:received` event, and the window decides
 //!   where it goes.
+//! - The local API on the same server, with the same token: list pages, read
+//!   one as Markdown, create one; and /calendar.ics, the calendar feed the
+//!   window keeps in settings ("calendar.ics").
+//! - `webhook_post`: Worlds tells the addresses in Settings when pages change.
 
 use crate::commands::CmdResult;
 use crate::db;
@@ -59,6 +63,56 @@ pub async fn capture_info() -> CmdResult<Value> {
     Ok(json!({ "port": CAPTURE_PORT, "token": capture_token() }))
 }
 
+fn page_markdown(id: &str) -> Option<String> {
+    let conn = db::open(&db::db_path()).ok()?;
+    let page = crate::store::get_page(&conn, id).ok()??;
+    let body: Vec<String> = page.blocks.iter().map(|b| crate::content::to_markdown(&b.content)).filter(|m| !m.trim().is_empty()).collect();
+    Some(format!("# {}\n\n{}\n", page.meta.title, body.join("\n\n")))
+}
+
+fn api_get(path: &str) -> Option<(String, String)> {
+    let conn = db::open(&db::db_path()).ok()?;
+    if path == "/api/pages" {
+        let pages: Vec<Value> = crate::store::list_pages(&conn, false)
+            .ok()?
+            .into_iter()
+            .map(|p| json!({ "id": p.id, "title": p.title, "parentId": p.parent_id, "kind": p.kind, "updatedAt": p.updated_at }))
+            .collect();
+        return Some(("application/json".into(), json!({ "pages": pages }).to_string()));
+    }
+    if let Some(id) = path.strip_prefix("/api/pages/") {
+        return page_markdown(id).map(|md| ("text/markdown; charset=utf-8".into(), md));
+    }
+    if path == "/calendar.ics" {
+        let ics = db::get_setting(&conn, "calendar.ics").ok().flatten().and_then(|v| v.as_str().map(str::to_string)).unwrap_or_default();
+        return Some(("text/calendar; charset=utf-8".into(), ics));
+    }
+    None
+}
+
+fn api_create(body: &Value) -> Result<Value, String> {
+    let conn = db::open(&db::db_path()).map_err(|e| e.to_string())?;
+    let new = crate::store::NewPage {
+        title: body.get("title").and_then(Value::as_str).map(|s| s.chars().take(200).collect()),
+        parent_id: body.get("parentId").and_then(Value::as_str).map(str::to_string),
+        markdown: body.get("markdown").and_then(Value::as_str).map(str::to_string),
+        ..Default::default()
+    };
+    let meta = crate::store::create_page(&conn, &crate::store::Ctx::user(), new).map_err(|e| e.to_string())?;
+    Ok(json!({ "id": meta.id, "title": meta.title }))
+}
+
+/// Post a JSON event to a webhook address from Settings.
+#[tauri::command]
+pub async fn webhook_post(url: String, body: Value) -> CmdResult<u16> {
+    if !url.starts_with("https://") && !url.starts_with("http://127.0.0.1") && !url.starts_with("http://localhost") {
+        return Err("Webhooks need an https address".into());
+    }
+    let client = reqwest::Client::builder().timeout(std::time::Duration::from_secs(10)).build().map_err(|e| e.to_string())?;
+    let res = client.post(&url).json(&body).send().await.map_err(|e| e.to_string())?;
+    Ok(res.status().as_u16())
+}
+
 fn response(status: &str, body: &str) -> Vec<u8> {
     format!(
         "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers: content-type, x-worlds-token\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
@@ -92,6 +146,11 @@ async fn handle(mut stream: tokio::net::TcpStream, app: AppHandle, token: String
     let path = parts.next().unwrap_or("");
     let mut length = 0usize;
     let mut given = String::new();
+    // Calendar apps cannot send headers, so the feed also takes ?token=.
+    let (path, query) = path.split_once('?').unwrap_or((path, ""));
+    if let Some(t) = query.split('&').find_map(|p| p.strip_prefix("token=")) {
+        given = t.to_string();
+    }
     for l in lines {
         if let Some((k, v)) = l.split_once(':') {
             match k.trim().to_ascii_lowercase().as_str() {
@@ -104,6 +163,36 @@ async fn handle(mut stream: tokio::net::TcpStream, app: AppHandle, token: String
     let out = match (method, path) {
         ("OPTIONS", _) => response("204 No Content", ""),
         ("GET", "/ping") => response("200 OK", r#"{"app":"Worlds","ok":true}"#),
+        ("GET", p) if p.starts_with("/api/") || p == "/calendar.ics" => {
+            if given.is_empty() || given != token {
+                response("401 Unauthorized", r#"{"error":"Send the token from Worlds › Settings in x-worlds-token"}"#)
+            } else {
+                match api_get(p) {
+                    Some((kind, body)) => typed(&kind, &body),
+                    None => response("404 Not Found", r#"{"error":"Not found"}"#),
+                }
+            }
+        }
+        ("POST", "/api/pages") => {
+            if given.is_empty() || given != token {
+                response("401 Unauthorized", r#"{"error":"Send the token from Worlds › Settings in x-worlds-token"}"#)
+            } else {
+                while buf.len() < head_end + length.min(MAX_BODY) {
+                    let Ok(n) = stream.read(&mut chunk).await else { return };
+                    if n == 0 {
+                        break;
+                    }
+                    buf.extend_from_slice(&chunk[..n]);
+                }
+                match serde_json::from_slice::<Value>(&buf[head_end..(head_end + length).min(buf.len())]).map_err(|e| e.to_string()).and_then(|v| api_create(&v)) {
+                    Ok(v) => {
+                        let _ = app.emit("pages:changed", v.clone());
+                        response("200 OK", &v.to_string())
+                    }
+                    Err(e) => response("400 Bad Request", &json!({ "error": e }).to_string()),
+                }
+            }
+        }
         ("POST", "/capture") => {
             if given.is_empty() || given != token {
                 response("401 Unauthorized", r#"{"error":"Copy the capture token from Worlds › Settings › Editor"}"#)
@@ -129,6 +218,13 @@ async fn handle(mut stream: tokio::net::TcpStream, app: AppHandle, token: String
         _ => response("404 Not Found", r#"{"error":"Not found"}"#),
     };
     let _ = stream.write_all(&out).await;
+    fn typed(kind: &str, body: &str) -> Vec<u8> {
+        format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: {kind}\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len()
+        )
+        .into_bytes()
+    }
     let _ = stream.shutdown().await;
 }
 

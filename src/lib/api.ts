@@ -224,6 +224,8 @@ export const api = {
   fetchArticle: (url: string) => invoke<string>("fetch_article", { url }),
   /** Where the browser extension sends captures, and the token it needs. */
   captureInfo: () => invoke<{ port: number; token: string }>("capture_info"),
+  /** Post an event to a webhook address. */
+  webhookPost: (url: string, body: unknown) => invoke<number>("webhook_post", { url, body }),
   setPageMeta: (
     id: string,
     key:

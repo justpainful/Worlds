@@ -123,4 +123,6 @@ export async function listenForCaptures() {
   if (!isTauri || (window as unknown as { __WORLDS_MOCK__?: boolean }).__WORLDS_MOCK__) return;
   const { listen } = await import("@tauri-apps/api/event");
   await listen<Captured>("capture:received", (e) => void receiveCapture(e.payload));
+  // A page made through the local API: show it.
+  await listen("pages:changed", () => void useStore.getState().refreshPages());
 }

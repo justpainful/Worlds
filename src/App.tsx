@@ -29,6 +29,8 @@ import { maybeWeeklySummary, openAskSpace } from "./ai/writingTools";
 import { installCustomShortcuts } from "./shell/customShortcuts";
 import { listenForCaptures } from "./files/capture";
 import { startMailInbox } from "./account/PublishPage";
+import { startCalendarSync } from "./planning/calendarSync";
+import { startWebhooks } from "./views/IntegrationSettings";
 
 export function App() {
   const ready = useStore((s) => s.ready);
@@ -46,6 +48,8 @@ export function App() {
     installCustomShortcuts();
     void listenForCaptures();
     startMailInbox();
+    startCalendarSync();
+    startWebhooks();
     const t = window.setTimeout(maybeWeeklySummary, 20000);
     // Ctrl+Shift+K asks the whole workspace.
     const onKey = (e: KeyboardEvent) => {
