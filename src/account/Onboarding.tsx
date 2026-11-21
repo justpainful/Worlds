@@ -9,6 +9,7 @@ import { PACKS_KEY } from "../packs/registry";
 import { SYMBOLIC_AVAILABLE, symbolicUrl } from "../ui/symbolicMap";
 import { drawnUrl } from "../ui/drawnMap";
 import { HelloIntro } from "../onboarding/HelloIntro";
+import { LineTake } from "../onboarding/LineTake";
 import { artUrl } from "../cognition/art";
 import { SignInFlow } from "./SignIn";
 import worldsLogo from "../assets/onboarding/worlds-logo.png";
@@ -51,7 +52,11 @@ export function Onboarding({ withAccount = true, onClose }: { withAccount?: bool
   const next = () => setStep(steps[Math.min(steps.length - 1, steps.indexOf(step) + 1)]);
   const back = () => setStep(steps[Math.max(0, steps.indexOf(step) - 1)]);
 
-  if (step === "intro") return <HelloIntro onDone={() => setStep("language")} onSkip={() => setStep("language")} />;
+  if (step === "intro") {
+    // ?intro=line shows the earlier take, kept while the owner reviews it.
+    const Take = typeof location !== "undefined" && new URLSearchParams(location.search).get("intro") === "line" ? LineTake : HelloIntro;
+    return <Take onDone={() => setStep("language")} onSkip={() => setStep("language")} />;
+  }
 
   const index = steps.indexOf(step);
   const language = profile?.language ?? "en";
