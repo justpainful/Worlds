@@ -27,6 +27,7 @@ export type Route =
   | { kind: "calendar" }
   | { kind: "inbox" }
   | { kind: "study" }
+  | { kind: "cognition"; section?: string }
   /** A pack's view (docs/PACKS.md); without a view, the pack's first sidebar entry. */
   | { kind: "pack"; pack: string; view?: string };
 

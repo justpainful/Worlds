@@ -1,3 +1,6 @@
+import { Art } from "../cognition/art";
+import { useCognition } from "../cognition/store";
+import { dayOf, dueCards } from "../cognition/model";
 import { emit } from "../lib/bus";
 import { isPrivate, usePrivacy } from "../pages/privacy";
 import { tr } from "../i18n/ui";
@@ -77,6 +80,8 @@ export function Sidebar() {
   const packs = useEnabledPacks();
   const dueCount = useMemo(() => tasksFor(pages, "today", today()).length, [pages]);
   const inboxCount = useMemo(() => liveOfKind(pages, "inbox").length, [pages]);
+  const cards = useCognition("cards");
+  const cognitionDue = useMemo(() => dueCards(cards, dayOf(Date.now())).length, [cards]);
   const studySubjects = useMemo(() => (study ? subjects(pages) : []), [pages, study]);
 
   const rows = useMemo(() => flatten(pages, sidebar.expanded), [pages, sidebar.expanded]);
@@ -141,6 +146,14 @@ export function Sidebar() {
           {nav("checklist", "Tasks", { kind: "tasks" }, dueCount || undefined, "checklist")}
           {nav("calendar", "Calendar", { kind: "calendar" }, undefined, "calendar")}
           {nav("inbox", "Inbox", { kind: "inbox" }, inboxCount || undefined, "inbox")}
+          <button
+            className={`side-item side-cognition ${active?.kind === "cognition" ? "is-active" : ""}`}
+            onClick={(e) => open({ kind: "cognition" }, e.ctrlKey ? "tab" : e.altKey ? "right" : "current")}
+          >
+            <Art name="aha-27" size={26} className="side-pi" />
+            <span className="side-label">Cognition</span>
+            {cognitionDue ? <span className="side-badge">{cognitionDue}</span> : null}
+          </button>
           {nav("assistant", "Claude", { kind: "chat" }, undefined, "claude")}
           {pendingCount > 0 && nav("inbox", "Needs approval", { kind: "activity" }, pendingCount)}
         </nav>
