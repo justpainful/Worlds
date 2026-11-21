@@ -218,14 +218,14 @@ function Appearance() {
             ]}
           />
         </Row>
-        <Row label="Icons" hint="Hand-drawn icons, or the thin line icons.">
+        <Row label="Icons" hint="The original icons, or hand-drawn ones that give the whole app a drawn look.">
           <div className="icon-sets" role="radiogroup" aria-label={tr("Icons")}>
-            {(SYMBOLIC_AVAILABLE ? (["gold", "teal", "pink", "blue", "symbolic", "lines"] as const) : (["gold", "teal", "pink", "blue", "lines"] as const)).map((v) => (
+            {(SYMBOLIC_AVAILABLE ? (["lines", "symbolic", "gold", "teal", "pink", "blue"] as const) : (["lines", "gold", "teal", "pink", "blue"] as const)).map((v) => (
               <button
                 key={v}
                 role="radio"
-                aria-checked={((settings["appearance.icons"] as string) ?? "gold") === v}
-                className={`icon-set ${((settings["appearance.icons"] as string) ?? "gold") === v ? "is-on" : ""}`}
+                aria-checked={((settings["appearance.icons"] as string) ?? "lines") === v}
+                className={`icon-set ${((settings["appearance.icons"] as string) ?? "lines") === v ? "is-on" : ""}`}
                 onClick={() => set("appearance.icons", v)}
                 title={tr(ICON_SET_LABEL[v])}
               >
@@ -769,7 +769,7 @@ function CaptureToken() {
   );
 }
 
-const ICON_SET_LABEL = { gold: "Gold", teal: "Teal", pink: "Pink", blue: "Blue", symbolic: "Symbolic", lines: "Lines" } as const;
+const ICON_SET_LABEL = { gold: "Gold", teal: "Teal", pink: "Pink", blue: "Blue", symbolic: "Symbolic", lines: "Original" } as const;
 
 /** The line style's sample, drawn as lines whatever the current style. */
 function Lines() {

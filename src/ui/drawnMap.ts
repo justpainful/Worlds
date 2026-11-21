@@ -313,10 +313,11 @@ export function drawingsInUse(): string[] {
 
 /** "lines" keeps the line glyphs; a set draws every icon that has a drawing. */
 export type IconStyle = "lines" | "symbolic" | DrawnSet;
-let current: IconStyle = "gold";
+// The original line icons and design are the default; the drawn look is a choice.
+let current: IconStyle = "lines";
 const listeners = new Set<() => void>();
 export function setIconStyle(style: unknown) {
-  const next: IconStyle = style === "lines" || style === "symbolic" || DRAWN_SETS.includes(style as DrawnSet) ? (style as IconStyle) : "gold";
+  const next: IconStyle = style === "lines" || style === "symbolic" || DRAWN_SETS.includes(style as DrawnSet) ? (style as IconStyle) : "lines";
   if (typeof document !== "undefined") {
     const drawn = next !== "lines" && next !== "symbolic";
     document.documentElement.dataset.style = drawn ? "drawn" : next;
