@@ -312,12 +312,16 @@ export function drawingsInUse(): string[] {
 }
 
 /** "lines" keeps the line glyphs; a set draws every icon that has a drawing. */
-export type IconStyle = "lines" | DrawnSet;
+export type IconStyle = "lines" | "symbolic" | DrawnSet;
 let current: IconStyle = "gold";
 const listeners = new Set<() => void>();
 export function setIconStyle(style: unknown) {
-  const next: IconStyle = style === "lines" || DRAWN_SETS.includes(style as DrawnSet) ? (style as IconStyle) : "gold";
-  if (typeof document !== "undefined") document.documentElement.dataset.style = next === "lines" ? "lines" : "drawn";
+  const next: IconStyle = style === "lines" || style === "symbolic" || DRAWN_SETS.includes(style as DrawnSet) ? (style as IconStyle) : "gold";
+  if (typeof document !== "undefined") {
+    const drawn = next !== "lines" && next !== "symbolic";
+    document.documentElement.dataset.style = drawn ? "drawn" : next;
+    document.documentElement.dataset.drawnSet = drawn ? next : "";
+  }
   if (next === current) return;
   current = next;
   for (const l of listeners) l();

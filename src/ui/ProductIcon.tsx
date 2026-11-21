@@ -12,7 +12,7 @@ export const PRODUCT_ICON_NAMES = Object.keys(PRODUCT_ICONS) as ProductIconName[
  */
 export function ProductIcon({ name, size = 20, className = "", style }: { name: ProductIconName; size?: number; className?: string; style?: CSSProperties }) {
   const iconStyle = useIconStyle();
-  const drawn = iconStyle === "lines" ? null : drawnUrl(iconStyle, DRAWN_PRODUCT[name]);
+  const drawn = iconStyle === "lines" || iconStyle === "symbolic" ? null : drawnUrl(iconStyle, DRAWN_PRODUCT[name]);
   if (drawn) {
     const px = Math.round(size <= 24 ? size * 1.05 : size * 0.86);
     return <img src={drawn} width={px} height={px} alt="" draggable={false} className={`product-icon product-icon-drawn ${className}`} style={{ margin: (size - px) / 2, ...style }} />;

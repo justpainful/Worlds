@@ -1,87 +1,240 @@
 /*
- * The hand-drawn look (on whenever the icons are drawn, see drawnMap.ts).
- * Cognition's language across the app: ink edges, a hard offset shadow,
- * slightly uneven corners. Glass bars and menus keep their single edge.
+ * The hand-drawn look: Worlds in Cognition's language.
+ *
+ * On whenever the icons are drawn (Settings > Appearance > Icons; see
+ * drawnMap.ts, which sets data-style and data-drawn-set on the root).
+ * Paper and ink: dotted paper behind everything, panes and controls as
+ * stickers with an ink line and a hard offset shadow, uneven corners, the
+ * chosen colour as a marker. Glass layers give way to paper.
  */
+
+/* ---------------------------------------------------------------- tokens */
 :root[data-style="drawn"] {
-  --dr-edge: #171820;
+  --dr-line: #171820;
+  --dr-shadow: #171820;
   --dr-paper: #fffdf8;
-  --dr-radius: 16px 13px 17px 12px / 13px 17px 12px 16px;
+  --dr-canvas: #f6efe0;
+  --dr-dot: rgba(23, 24, 32, 0.13);
+  --dr-text: #1d1d1f;
+  --dr-text-2: rgba(29, 29, 31, 0.66);
+  --dr-on-accent: #171820;
+  --dr-accent: #ffd63d;
+  --dr-accent-soft: color-mix(in srgb, var(--dr-accent) 32%, var(--dr-paper));
+  --dr-r: 18px 14px 20px 13px / 14px 20px 13px 18px;
+  --dr-r-sm: 12px 10px 13px 9px / 10px 13px 9px 12px;
   --dr-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 :root[data-style="drawn"]:not([data-theme="light"]) {
-  --dr-edge: #07070b;
-  --dr-paper: #26262b;
+  --dr-line: rgba(255, 243, 217, 0.62);
+  --dr-shadow: #000;
+  --dr-paper: #25242b;
+  --dr-canvas: #17161c;
+  --dr-dot: rgba(255, 243, 217, 0.07);
+  --dr-text: rgba(255, 249, 237, 0.95);
+  --dr-text-2: rgba(255, 243, 217, 0.62);
+}
+:root[data-style="drawn"][data-drawn-set="pink"] { --dr-accent: #ff9ec6; }
+:root[data-style="drawn"][data-drawn-set="teal"] { --dr-accent: #5ed3c4; }
+:root[data-style="drawn"][data-drawn-set="blue"] { --dr-accent: #8fb4ff; }
+
+/* ---------------------------------------------------------- paper and ink */
+:root[data-style="drawn"] .frame {
+  background:
+    radial-gradient(circle at 1.5px 1.5px, var(--dr-dot) 1.3px, transparent 1.8px) 0 0 / 20px 20px,
+    var(--dr-canvas);
+}
+:root[data-style="drawn"] .pane {
+  background: var(--dr-paper);
+  border-radius: var(--dr-r);
+  box-shadow: inset 0 0 0 2.5px var(--dr-line), 5px 6px 0 var(--dr-shadow);
+}
+:root[data-style="drawn"] .main { padding-block: 12px 16px; padding-inline: 4px 16px; }
+:root[data-style="drawn"] .panes { gap: 14px; }
+
+/* Titles wear a marker stroke in the chosen colour. */
+:root[data-style="drawn"] :is(.pl-title, .home-title, .res-title, .settings-head h1) {
+  background: linear-gradient(to top, transparent 6%, var(--dr-accent) 6%, var(--dr-accent) 36%, transparent 36%) no-repeat;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  width: fit-content;
+  max-width: 100%;
+  padding-inline: 4px;
+  margin-inline: -4px;
 }
 
-/* Cards */
-:root[data-style="drawn"] .page-card,
-:root[data-style="drawn"] .study-card,
-:root[data-style="drawn"] .res-card,
-:root[data-style="drawn"] .pk-card {
+/* -------------------------------------------------------------- sidebar */
+:root[data-style="drawn"] .sidebar-inner { padding: 14px 10px 14px 12px; }
+:root[data-style="drawn"] .side-item {
+  min-height: 40px;
+  border-radius: var(--dr-r-sm);
+  font-weight: 600;
+  color: var(--dr-text);
+  transition: background 110ms var(--dr-ease), transform 110ms var(--dr-ease), box-shadow 110ms var(--dr-ease);
+}
+:root[data-style="drawn"] .side-item:hover { background: var(--dr-accent-soft); }
+:root[data-style="drawn"] .side-item.is-active {
+  background: var(--dr-accent);
+  color: var(--dr-on-accent);
+  box-shadow: inset 0 0 0 2px #171820, 3px 4px 0 var(--dr-shadow);
+  transform: rotate(-0.6deg);
+}
+:root[data-style="drawn"] .side-item.is-active .side-label { color: var(--dr-on-accent); }
+:root[data-style="drawn"] .side-item :is(.icon-drawn, .product-icon-drawn, .cg-art) { transition: transform 160ms var(--dr-ease); }
+:root[data-style="drawn"] .side-item:hover :is(.icon-drawn, .product-icon-drawn, .cg-art) { transform: rotate(-8deg) scale(1.1); }
+:root[data-style="drawn"] .side-section-head {
+  font-weight: 700;
+  color: var(--dr-text-2);
+  border-bottom: 2px dashed color-mix(in srgb, var(--dr-line) 45%, transparent);
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+}
+:root[data-style="drawn"] .side-badge {
+  background: var(--dr-accent);
+  color: var(--dr-on-accent);
+  box-shadow: inset 0 0 0 1.5px #171820;
+  font-weight: 700;
+}
+:root[data-style="drawn"] .tree-row { border-radius: var(--dr-r-sm); }
+:root[data-style="drawn"] .tree-row:hover { background: var(--dr-accent-soft); }
+
+/* --------------------------------------------- glass becomes paper stickers */
+:root[data-style="drawn"] .glass > :is(.g-optics, .g-env, .g-shade, .g-light, .g-glow, .g-cast) { display: none !important; }
+:root[data-style="drawn"] .glass {
+  background: var(--dr-paper) !important;
+  box-shadow: inset 0 0 0 2px var(--dr-line), 3px 4px 0 var(--dr-shadow) !important;
+  color: var(--dr-text);
+  --text-1: var(--dr-text);
+  --text-2: var(--dr-text-2);
+  --text-3: var(--dr-text-2);
+}
+:root[data-style="drawn"] .tonal.tonal {
   background: var(--dr-paper);
-  border: 2px solid var(--dr-edge);
-  border-radius: var(--dr-radius);
-  box-shadow: 3px 4px 0 var(--dr-edge);
+  background-image: none;
+  box-shadow: inset 0 0 0 2px var(--dr-line), 3px 4px 0 var(--dr-shadow);
+  color: var(--dr-text);
+  --tn-fill: var(--dr-paper);
+  --tn-hover: var(--dr-accent-soft);
+  --tn-thumb: var(--dr-accent);
+  --text-1: var(--dr-text);
+  --text-2: var(--dr-text-2);
+  --text-3: var(--dr-text-2);
+  --text-4: var(--dr-text-2);
+  --fill-1: color-mix(in srgb, var(--dr-accent) 18%, transparent);
+  --fill-2: color-mix(in srgb, var(--dr-accent) 30%, transparent);
+  --fill-3: color-mix(in srgb, var(--dr-accent) 45%, transparent);
+  --hairline: color-mix(in srgb, var(--dr-line) 40%, transparent);
+}
+:root[data-style="drawn"] :is(.gg-btn, .icon-btn):hover { background: var(--dr-accent-soft) !important; }
+
+/* Tabs along the top */
+:root[data-style="drawn"] .tab-lens {
+  background: var(--dr-accent) !important;
+  box-shadow: inset 0 0 0 2px #171820 !important;
+}
+:root[data-style="drawn"] .tab.is-active { color: var(--dr-on-accent); --text-1: var(--dr-on-accent); --text-2: var(--dr-on-accent); }
+
+/* Choice tracks */
+:root[data-style="drawn"] .segmented-track {
+  background: var(--dr-paper) !important;
+  box-shadow: inset 0 0 0 2px var(--dr-line) !important;
+}
+:root[data-style="drawn"] .segmented-lens {
+  background: var(--dr-accent) !important;
+  box-shadow: inset 0 0 0 2px #171820, 2px 2px 0 var(--dr-shadow) !important;
+}
+:root[data-style="drawn"] .segmented-item.is-selected { color: var(--dr-on-accent) !important; font-weight: 700; }
+:root[data-style="drawn"] .segmented-sep { opacity: 0; }
+
+/* ---------------------------------------------------- buttons and fields */
+:root[data-style="drawn"] .btn {
+  border-radius: var(--dr-r-sm);
+  box-shadow: inset 0 0 0 2px var(--dr-line), 2px 3px 0 var(--dr-shadow);
+  font-weight: 650;
+  transition: transform 110ms var(--dr-ease), box-shadow 110ms var(--dr-ease), background 110ms var(--dr-ease);
+}
+:root[data-style="drawn"] .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: inset 0 0 0 2px var(--dr-line), 3px 4px 0 var(--dr-shadow); }
+:root[data-style="drawn"] .btn:active:not(:disabled) { transform: translateY(1px); box-shadow: inset 0 0 0 2px var(--dr-line), 1px 1px 0 var(--dr-shadow); }
+:root[data-style="drawn"] .btn-tinted { background: var(--dr-accent) !important; color: var(--dr-on-accent) !important; box-shadow: inset 0 0 0 2px #171820, 2px 3px 0 var(--dr-shadow); }
+:root[data-style="drawn"] .btn-quiet { box-shadow: none; }
+:root[data-style="drawn"] :is(.search-field, .select-trigger) {
+  background: var(--dr-paper) !important;
+  box-shadow: inset 0 0 0 2px var(--dr-line) !important;
+  border-radius: var(--dr-r-sm);
+}
+:root[data-style="drawn"] .switch { box-shadow: inset 0 0 0 2px var(--dr-line); }
+:root[data-style="drawn"] .pl-check { border-width: 2.5px !important; border-color: var(--dr-line) !important; }
+
+/* --------------------------------------------------------- cards, lists */
+:root[data-style="drawn"] :is(.page-card, .study-card, .res-card, .pk-card) {
+  background: var(--dr-paper);
+  border: 0;
+  border-radius: var(--dr-r);
+  box-shadow: inset 0 0 0 2px var(--dr-line), 4px 5px 0 var(--dr-shadow);
   transition: transform 160ms var(--dr-ease), box-shadow 160ms var(--dr-ease);
 }
-:root[data-style="drawn"] .page-card:hover,
-:root[data-style="drawn"] .study-card:hover { transform: translate(-1px, -2px) rotate(-0.4deg); box-shadow: 4px 6px 0 var(--dr-edge); }
-:root[data-style="drawn"] .page-card:active,
-:root[data-style="drawn"] .study-card:active { transform: translate(1px, 1px); box-shadow: 1px 2px 0 var(--dr-edge); }
-
-/* Lists (Tasks, Home, Inbox, packs) */
+:root[data-style="drawn"] :is(.page-card, .study-card, .pk-card):hover { transform: translate(-1px, -2px) rotate(-0.5deg); box-shadow: inset 0 0 0 2px var(--dr-line), 6px 8px 0 var(--dr-shadow); }
+:root[data-style="drawn"] :is(.page-card, .study-card, .pk-card):active { transform: translate(1px, 1px); box-shadow: inset 0 0 0 2px var(--dr-line), 1px 2px 0 var(--dr-shadow); }
 :root[data-style="drawn"] .pl-add {
-  border: 2px dashed color-mix(in srgb, var(--dr-edge) 55%, var(--text-2));
-  border-radius: var(--dr-radius);
   background: transparent;
+  border: 2.5px dashed color-mix(in srgb, var(--dr-line) 70%, transparent);
+  border-radius: var(--dr-r);
 }
-:root[data-style="drawn"] .pl-row { border-radius: 12px; }
-:root[data-style="drawn"] .pl-row:hover { background: color-mix(in srgb, var(--dr-paper) 70%, transparent); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--dr-edge) 45%, transparent); }
-
-/* Sidebar */
-:root[data-style="drawn"] .side-item { border-radius: 13px 10px 14px 10px; }
-:root[data-style="drawn"] .side-item.is-active {
-  background: var(--dr-paper);
-  box-shadow: inset 0 0 0 2px var(--dr-edge), 2px 3px 0 var(--dr-edge);
-}
-:root[data-style="drawn"] .side-item .icon-drawn,
-:root[data-style="drawn"] .side-item .product-icon-drawn { transition: transform 160ms var(--dr-ease); }
-:root[data-style="drawn"] .side-item:hover .icon-drawn,
-:root[data-style="drawn"] .side-item:hover .product-icon-drawn { transform: rotate(-7deg) scale(1.08); }
-
-/* Settings groups and other grouped containers */
+:root[data-style="drawn"] .pl-row { border-radius: var(--dr-r-sm); }
+:root[data-style="drawn"] .pl-row:hover { background: var(--dr-accent-soft); box-shadow: none; }
 :root[data-style="drawn"] .set-rows {
-  border: 2px solid var(--dr-edge);
-  border-radius: var(--dr-radius);
-  box-shadow: 3px 4px 0 var(--dr-edge);
   background: var(--dr-paper);
+  border: 0;
+  border-radius: var(--dr-r);
+  box-shadow: inset 0 0 0 2px var(--dr-line), 4px 5px 0 var(--dr-shadow);
 }
+:root[data-style="drawn"] .set-row + .set-row { border-top: 2px dashed color-mix(in srgb, var(--dr-line) 30%, transparent); }
+:root[data-style="drawn"] .set-row + .set-row::before { display: none; }
+:root[data-style="drawn"] .settings-nav-item.is-active { background: var(--dr-accent); color: var(--dr-on-accent); box-shadow: inset 0 0 0 2px #171820, 2px 3px 0 var(--dr-shadow); }
+:root[data-style="drawn"] .cal-day { border-radius: var(--dr-r); }
+:root[data-style="drawn"] .cal-day.is-today { background: var(--dr-accent-soft); box-shadow: inset 0 0 0 2.5px var(--dr-line), 3px 4px 0 var(--dr-shadow); }
 
-/* The one accent button per view */
-:root[data-style="drawn"] .btn-tinted {
-  box-shadow: inset 0 0 0 2px var(--dr-edge), 2px 3px 0 var(--dr-edge);
-  transition: transform 110ms var(--dr-ease), box-shadow 110ms var(--dr-ease);
+/* ---------------------------------------------- menus, sheets and toasts */
+:root[data-style="drawn"] :is(.menu-panel, .popover, .modal-panel) {
+  border-radius: var(--dr-r) !important;
+  box-shadow: inset 0 0 0 2.5px var(--dr-line), 6px 7px 0 var(--dr-shadow) !important;
 }
-:root[data-style="drawn"] .btn-tinted:hover:not(:disabled) { transform: translateY(-1px); box-shadow: inset 0 0 0 2px var(--dr-edge), 3px 4px 0 var(--dr-edge); }
-:root[data-style="drawn"] .btn-tinted:active:not(:disabled) { transform: translateY(1px); box-shadow: inset 0 0 0 2px var(--dr-edge), 1px 1px 0 var(--dr-edge); }
-
-/* Calendar days */
-:root[data-style="drawn"] .cal-week-day,
-:root[data-style="drawn"] .cal-day {
-  border-radius: var(--dr-radius);
+:root[data-style="drawn"] .menu-item { border-radius: var(--dr-r-sm); font-weight: 550; }
+:root[data-style="drawn"] .menu-item.is-active { background: var(--dr-accent) !important; color: var(--dr-on-accent); --text-2: var(--dr-on-accent); --text-3: var(--dr-on-accent); }
+:root[data-style="drawn"] .tooltip {
+  background: var(--dr-accent) !important;
+  color: var(--dr-on-accent) !important;
+  box-shadow: inset 0 0 0 2px #171820, 2px 3px 0 #171820 !important;
+  font-weight: 600;
 }
-:root[data-style="drawn"] .cal-week-day.is-today,
-:root[data-style="drawn"] .cal-day.is-today { box-shadow: inset 0 0 0 2px var(--dr-edge), 2px 3px 0 var(--dr-edge); }
+:root[data-style="drawn"] .toast { border-radius: var(--dr-r) !important; box-shadow: inset 0 0 0 2.5px var(--dr-line), 4px 5px 0 var(--dr-shadow) !important; }
 
-/* Empty states use Cognition's drawings */
+/* ---------------------------------------------------------------- editor */
+:root[data-style="drawn"] .sg-icon[data-group] {
+  border-radius: var(--dr-r-sm);
+  box-shadow: inset 0 0 0 2px var(--dr-line);
+  background: rgba(var(--tile), 0.35);
+}
+:root[data-style="drawn"] .ProseMirror blockquote { border-inline-start: 5px solid var(--dr-accent); }
+:root[data-style="drawn"] .ProseMirror hr {
+  height: 10px;
+  border: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='10'%3E%3Cpath d='M0 5 q5 -5 10 0 t10 0 t10 0 t10 0' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") repeat-x center;
+}
+:root[data-style="drawn"] .callout {
+  border-radius: var(--dr-r);
+  box-shadow: inset 0 0 0 2px var(--dr-line), 3px 4px 0 var(--dr-shadow);
+}
+:root[data-style="drawn"] .ProseMirror pre { border-radius: var(--dr-r); box-shadow: inset 0 0 0 2px var(--dr-line); }
+:root[data-style="drawn"] .ProseMirror mark { background: var(--dr-accent); color: var(--dr-on-accent); border-radius: 3px 5px 2px 6px; padding-inline: 2px; }
+:root[data-style="drawn"] .ProseMirror a { text-decoration-color: var(--dr-accent); text-decoration-thickness: 3px; text-underline-offset: 3px; }
+
+/* ------------------------------------------------------ empty and motion */
 :root[data-style="drawn"] .empty-art { transform: rotate(-3deg); transition: transform 220ms var(--dr-ease); }
-:root[data-style="drawn"] .empty:hover .empty-art { transform: rotate(2deg) scale(1.04); }
-
-/* Drawn icons get a little hover life wherever they sit in a button */
-:root[data-style="drawn"] button:hover > .icon-drawn { transform: rotate(-6deg); }
+:root[data-style="drawn"] .empty:hover .empty-art { transform: rotate(2deg) scale(1.05); }
 :root[data-style="drawn"] .icon-drawn { transition: transform 110ms var(--dr-ease); }
+:root[data-style="drawn"] button:hover > .icon-drawn { transform: rotate(-7deg) scale(1.06); }
 
 @media (prefers-reduced-motion: reduce) {
   :root[data-style="drawn"] * { transition: none !important; }
+  :root[data-style="drawn"] .side-item.is-active { transform: none; }
 }

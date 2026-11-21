@@ -160,6 +160,7 @@ import {
 } from "lucide-react";
 import type { CSSProperties, SVGProps } from "react";
 import { DRAWN, drawnUrl, useIconStyle } from "./drawnMap";
+import { symbolicUrl } from "./symbolicMap";
 
 const Discord = (props: SVGProps<SVGSVGElement> & { size?: number; strokeWidth?: number }) => {
   // The Discord mark, filled (a stroked outline reads as a smudge at toolbar sizes).
@@ -377,7 +378,21 @@ const DIRECTIONAL: ReadonlySet<string> = new Set([
 
 export function Icon({ name, size = 16, weight, className = "", style, label, filled }: IconProps) {
   const iconStyle = useIconStyle();
-  const drawn = iconStyle === "lines" ? null : drawnUrl(iconStyle, DRAWN[name]);
+  const symbol = iconStyle === "symbolic" ? symbolicUrl(name) : null;
+  if (symbol) {
+    // SF Symbols take the text colour, like the line icons, through a mask.
+    const px = Math.round(size * 1.12);
+    return (
+      <span
+        className={`icon icon-symbol ${DIRECTIONAL.has(name) ? "icon-dir" : ""} ${className}`}
+        style={{ width: px, height: px, margin: (size - px) / 2, WebkitMaskImage: `url("${symbol}")`, maskImage: `url("${symbol}")`, ...style }}
+        role={label ? "img" : undefined}
+        aria-label={label}
+        aria-hidden={label ? undefined : true}
+      />
+    );
+  }
+  const drawn = iconStyle === "lines" || iconStyle === "symbolic" ? null : drawnUrl(iconStyle, DRAWN[name]);
   if (drawn) {
     // A hand-drawn picture reads small: give it a little more room than a line glyph.
     // Pictures need more room than lines to read: small sizes grow the most.

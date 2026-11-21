@@ -68,7 +68,7 @@ export function EmptyState({
   compact?: boolean;
 }) {
   const iconStyle = useIconStyle();
-  const art = iconStyle === "lines" ? null : artUrl(EMPTY_ART[icon] ?? "think");
+  const art = iconStyle === "lines" || iconStyle === "symbolic" ? null : artUrl(EMPTY_ART[icon] ?? "think");
   if (art) {
     return (
       <div className={`empty ${compact ? "empty-compact" : ""}`}>

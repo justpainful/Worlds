@@ -1,4 +1,5 @@
 import { drawnUrl } from "../ui/drawnMap";
+import { SYMBOLIC_AVAILABLE, symbolicUrl } from "../ui/symbolicMap";
 import { tr } from "../i18n/ui";
 import { useEffect, useState, type ReactNode } from "react";
 import { StaySignedIn } from "../ai/StaySignedIn";
@@ -219,7 +220,7 @@ function Appearance() {
         </Row>
         <Row label="Icons" hint="Hand-drawn icons, or the thin line icons.">
           <div className="icon-sets" role="radiogroup" aria-label={tr("Icons")}>
-            {(["gold", "teal", "pink", "blue", "lines"] as const).map((v) => (
+            {(SYMBOLIC_AVAILABLE ? (["gold", "teal", "pink", "blue", "symbolic", "lines"] as const) : (["gold", "teal", "pink", "blue", "lines"] as const)).map((v) => (
               <button
                 key={v}
                 role="radio"
@@ -228,7 +229,7 @@ function Appearance() {
                 onClick={() => set("appearance.icons", v)}
                 title={tr(ICON_SET_LABEL[v])}
               >
-                {v === "lines" ? <span className="icon-set-lines"><Lines /></span> : <img src={drawnUrl(v, "home") ?? ""} alt="" width={30} height={30} />}
+                {v === "lines" ? <span className="icon-set-lines"><Lines /></span> : v === "symbolic" ? <span className="icon-set-lines"><span className="icon-symbol" style={{ width: 26, height: 26, WebkitMaskImage: `url("${symbolicUrl("home")}")`, maskImage: `url("${symbolicUrl("home")}")` }} /></span> : <img src={drawnUrl(v, "home") ?? ""} alt="" width={30} height={30} />}
                 <span>{tr(ICON_SET_LABEL[v])}</span>
               </button>
             ))}
@@ -768,7 +769,7 @@ function CaptureToken() {
   );
 }
 
-const ICON_SET_LABEL = { gold: "Gold", teal: "Teal", pink: "Pink", blue: "Blue", lines: "Lines" } as const;
+const ICON_SET_LABEL = { gold: "Gold", teal: "Teal", pink: "Pink", blue: "Blue", symbolic: "Symbolic", lines: "Lines" } as const;
 
 /** The line style's sample, drawn as lines whatever the current style. */
 function Lines() {

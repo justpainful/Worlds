@@ -204,3 +204,6 @@
 .pl-head > .segmented { max-width: 100%; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
 .pl-head > .segmented::-webkit-scrollbar { display: none; }
 .pl-head > .segmented .segmented-track { width: max-content; }
+
+/* Symbolic icons (machine-local SF Symbols): the text colour through a mask */
+.icon-symbol { display: inline-block; flex: none; vertical-align: middle; background: currentColor; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; -webkit-mask-size: contain; mask-size: contain; }
