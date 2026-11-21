@@ -1,0 +1,260 @@
+/* ==========================================================================
+   First run: "Hello, Worlds!" (HelloIntro) and the onboarding steps.
+   The intro keeps its own colours whatever the theme: the site's paper and
+   two inks, then Imbue's, then Cognition's.
+   ========================================================================== */
+
+.hi {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #f9f1e8;
+  transition: background-color 700ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-hi: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.hi-word {
+  width: min(78vw, 820px);
+  transition: transform 800ms var(--ease-hi), filter 600ms var(--ease-hi);
+  position: relative;
+}
+.hi .hw { display: block; width: 100%; height: auto; overflow: visible; }
+.hi .hw-l0 { color: #d4644d; transition: color 600ms var(--ease-hi); }
+.hi .hw-l1 { color: #24706b; transition: color 600ms var(--ease-hi); }
+.hi .hw-fill { fill: currentColor; stroke: currentColor; stroke-width: 0; stroke-linejoin: round; paint-order: stroke; transition: opacity 400ms var(--ease-hi), stroke-width 600ms var(--ease-hi); }
+.hi .hw path[data-t] { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
+.hi .hw:not(.is-writing) path[data-t] { display: none; }
+.hi .hw:not(.is-done) .hw-fill { opacity: 0; }
+.hi .hw.is-writing path[data-t] { stroke-dasharray: 1 2; stroke-dashoffset: 1; animation: hi-draw var(--d) linear var(--t) both; }
+.hi .hw.is-done .hw-fill { opacity: 1; }
+@keyframes hi-draw {
+  0% { stroke-dashoffset: 1; opacity: 0; }
+  0.1% { opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+/* The shine: a bright band sweeping through the letters */
+.hi .hw-shine { opacity: 0; mix-blend-mode: soft-light; }
+.hi.is-shine .hw-shine { opacity: 1; animation: hi-shine 950ms var(--ease-hi) both; }
+.hi.is-shine .hi-word { filter: drop-shadow(0 0 22px rgba(255, 214, 61, 0.55)); }
+@keyframes hi-shine {
+  from { transform: translateX(0); }
+  to { transform: translateX(16500px); }
+}
+
+/* Imbue: white ground, bold puffy colour, a soft shadow underneath */
+.hi.is-imbue { background: #ffffff; }
+.hi.is-imbue .hw-l0 { color: #0040ff; }
+.hi.is-imbue .hw-l1 { color: #ff3b8d; }
+.hi.is-imbue .hw-fill { stroke-width: 150; }
+.hi.is-imbue .hi-word { animation: hi-bounce 700ms var(--ease-hi); }
+.hi.is-imbue .hi-word::after,
+.hi.is-cognition .hi-word::after {
+  content: "";
+  position: absolute;
+  inset-inline: 12%;
+  bottom: -6%;
+  height: 7%;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.12);
+  filter: blur(4px);
+}
+@keyframes hi-bounce {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.06, 0.94); }
+  65% { transform: scale(0.97, 1.03); }
+  100% { transform: scale(1); }
+}
+
+/* Cognition: the cobalt ground of its mark, pink ribbon letters, sparks */
+.hi.is-cognition { background: #0761ea; }
+.hi.is-cognition .hw-l0 { color: #ff9ec6; }
+.hi.is-cognition .hw-l1 { color: #ff9ec6; }
+.hi.is-cognition .hw-fill { stroke-width: 120; }
+.hi.is-cognition .hi-word { filter: drop-shadow(14px 18px 0 #0437d0); animation: hi-tilt 900ms var(--ease-hi); }
+.hi.is-cognition .hi-word::after { background: transparent; }
+@keyframes hi-tilt {
+  0% { transform: rotate(0); }
+  40% { transform: rotate(-3deg) scale(1.03); }
+  100% { transform: rotate(-1.5deg); }
+}
+.hi-sparks { position: absolute; inset: 0; pointer-events: none; }
+.hi-spark { position: absolute; opacity: 0; transform: scale(0.3) rotate(-30deg); transition: opacity 300ms var(--ease-hi), transform 500ms cubic-bezier(0.3, 1.4, 0.5, 1); }
+.hi.is-cognition .hi-spark, .hi-marks-on .hi-spark { opacity: 1; transform: none; }
+.hi-spark-0 { top: 22%; left: 18%; transition-delay: 60ms; }
+.hi-spark-1 { top: 70%; left: 78%; transition-delay: 160ms; }
+.hi-spark-2 { top: 18%; left: 74%; transition-delay: 240ms; width: 22px; }
+.hi-spark-3 { top: 76%; left: 24%; transition-delay: 320ms; width: 20px; }
+.hi-spark-4 { top: 46%; left: 8%; transition-delay: 400ms; width: 18px; }
+.hi-spark-5 { top: 40%; left: 90%; transition-delay: 460ms; width: 26px; }
+.hi-spark-6 { top: 12%; left: 46%; transition-delay: 520ms; width: 16px; }
+.hi-spark-1 path, .hi-spark-4 path { fill: #fff; }
+
+/* The three marks */
+.hi-marks {
+  position: absolute;
+  inset: auto 0 18% 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(14px, 3vw, 34px);
+  pointer-events: none;
+}
+.hi-mark { margin: 0; display: grid; justify-items: center; gap: 10px; opacity: 0; transform: translateY(24px) scale(0.85); transition: opacity 380ms var(--ease-hi), transform 620ms cubic-bezier(0.3, 1.45, 0.5, 1); }
+.hi-mark img { display: block; width: auto; }
+.hi-mark-worlds img { filter: drop-shadow(0 0 18px rgba(255, 255, 255, 0.25)); }
+.hi-mark figcaption { font: 700 16px/1 var(--font-ui, system-ui); color: #1d1d1f; letter-spacing: -0.01em; transition: color 600ms var(--ease-hi); }
+.hi-amp { font: 800 28px/1 var(--font-ui, system-ui); color: #1d1d1f; opacity: 0; transition: opacity 400ms var(--ease-hi) 500ms; }
+.hi-marks .hi-mark-worlds { transition-delay: 0ms; }
+.hi-marks .hi-mark-imbue { transition-delay: 220ms; }
+.hi-marks .hi-mark-cognition { transition-delay: 440ms; }
+/* The marks stand on black, like the Worlds icon: the white W, Imbue and Cognition all read on it. */
+.hi.is-marks { background: #0d0d10; }
+.hi.is-marks .hi-mark figcaption, .hi.is-marks .hi-amp { color: #f5f5f7; }
+.hi.is-marks .hi-skip { background: rgba(255, 255, 255, 0.14); color: #fff; }
+.hi.is-marks .hi-word { transform: translateY(-16vh) scale(0.62); filter: none; }
+.hi.is-marks .hw-l0 { color: #ec8a72; }
+.hi.is-marks .hw-l1 { color: #5cc2b8; }
+.hi.is-marks .hw-fill { stroke-width: 0; }
+.hi.is-marks .hi-mark { opacity: 1; transform: none; }
+.hi.is-marks .hi-amp { opacity: 0.55; }
+.hi.is-marks .hi-spark { opacity: 0.9; transform: none; }
+
+.hi-skip {
+  position: absolute;
+  top: 18px;
+  inset-inline-end: 18px;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font: 600 13px/1 var(--font-ui, system-ui);
+  background: rgba(0, 0, 0, 0.08);
+  color: #1d1d1f;
+  cursor: pointer;
+  transition: background 110ms var(--ease-hi);
+}
+.hi-skip:hover { background: rgba(0, 0, 0, 0.14); }
+.hi.is-cognition .hi-skip { background: rgba(255, 255, 255, 0.18); color: #fff; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hi *, .hi { animation: none !important; transition: none !important; }
+}
+
+/* --------------------------------------------------------------- the steps */
+.ob {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+  background:
+    radial-gradient(900px 500px at 50% -10%, rgba(var(--accent-rgb, 10, 132, 255), 0.14), transparent 70%),
+    var(--canvas, #1c1c1e);
+}
+.ob-card {
+  position: relative;
+  width: min(100%, 580px);
+  padding: 26px 30px 22px;
+  border-radius: 24px;
+  background: var(--surface-raised, var(--surface, #26262a));
+  box-shadow: 0 0 0 0.5px rgba(var(--ink-rgb, 255, 255, 255), 0.1), 0 24px 70px rgba(0, 0, 0, 0.35);
+  animation: ob-in 260ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes ob-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.ob-dots { display: flex; gap: 6px; justify-content: center; margin-bottom: 20px; }
+.ob-dots i { width: 7px; height: 7px; border-radius: 999px; background: rgba(var(--ink-rgb, 255, 255, 255), 0.16); transition: width 220ms cubic-bezier(0.2, 0.7, 0.2, 1), background 220ms; }
+.ob-dots i.is-past { background: rgba(var(--ink-rgb, 255, 255, 255), 0.4); }
+.ob-dots i.is-on { width: 22px; background: var(--accent); }
+.ob-hero-logo { display: block; margin: 0 auto 14px; width: auto; }
+/* The white W keeps an edge on a light card */
+.ob-hero-logo.is-worlds, .ob-done-marks .is-worlds { filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.35)); }
+.ob-imbue-logo { display: block; margin: 4px auto 14px; height: 54px; width: auto; }
+.ob-title { margin: 0 0 6px; text-align: center; font: 700 24px/1.25 var(--font-ui); color: var(--text-1); }
+.ob-text { margin: 0 auto 18px; max-width: 440px; text-align: center; color: var(--text-2); font-size: 14px; line-height: 1.6; }
+
+.ob-choices { display: grid; gap: 8px; }
+.ob-choices.is-two { grid-template-columns: 1fr 1fr; }
+.ob-choice {
+  display: grid;
+  gap: 4px;
+  padding: 16px;
+  border: 0;
+  border-radius: 16px;
+  background: rgba(var(--ink-rgb, 255, 255, 255), 0.05);
+  color: var(--text-1);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition: background 110ms cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 160ms;
+}
+.ob-choice:hover { background: rgba(var(--ink-rgb, 255, 255, 255), 0.09); }
+.ob-choice.is-on { background: rgba(var(--accent-rgb, 10, 132, 255), 0.16); box-shadow: inset 0 0 0 2px var(--accent); }
+.ob-choice b { font-size: 18px; }
+.ob-choice span { font-size: 12.5px; color: var(--text-2); }
+.ob-choice.is-row { display: flex; align-items: center; gap: 14px; text-align: start; padding: 12px 14px; }
+.ob-choice-text { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.ob-choice-text b { font-size: 15px; }
+.ob-check { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; box-shadow: inset 0 0 0 1.5px rgba(var(--ink-rgb, 255, 255, 255), 0.25); flex: none; }
+.ob-choice.is-on .ob-check { background: var(--accent); color: #fff; box-shadow: none; }
+
+.ob-rows { display: grid; gap: 2px; border-radius: 16px; background: rgba(var(--ink-rgb, 255, 255, 255), 0.05); padding: 4px 16px; }
+.ob-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 56px; flex-wrap: wrap; }
+.ob-row + .ob-row { border-top: 0.5px solid rgba(var(--ink-rgb, 255, 255, 255), 0.08); }
+.ob-row > span { font-weight: 600; font-size: 14px; color: var(--text-1); }
+.ob-row.is-icons { padding: 8px 0; }
+.ob-icon-sets { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+
+.ob-features { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ob-feature { display: grid; gap: 4px; justify-items: start; padding: 14px; border-radius: 16px; background: rgba(var(--ink-rgb, 255, 255, 255), 0.05); }
+.ob-feature b { font-size: 14px; color: var(--text-1); margin-top: 4px; }
+.ob-feature span { font-size: 12.5px; color: var(--text-2); line-height: 1.5; }
+
+.ob-imbue { position: relative; height: 210px; margin: 4px 0 6px; }
+.ob-imbue img { position: absolute; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.2)); transition: transform 220ms cubic-bezier(0.2, 0.7, 0.2, 1); }
+.ob-imbue-0 { height: 200px; inset-inline-start: 8%; top: 0; transform: rotate(-6deg); }
+.ob-imbue-1 { width: 190px; inset-inline-start: 36%; top: 60px; transform: rotate(4deg); }
+.ob-imbue-2 { width: 160px; inset-inline-end: 6%; top: 8px; transform: rotate(-3deg); }
+.ob-imbue img:hover { transform: rotate(0) scale(1.05); }
+
+.ob-actions { display: grid; gap: 8px; margin-top: 6px; }
+.ob-foot-note { text-align: center; color: var(--text-3, var(--text-2)); font-size: 12px; margin: 12px 0 0; }
+.ob-done-marks { display: flex; align-items: center; justify-content: center; gap: 18px; margin-bottom: 14px; }
+.ob-done-marks img { width: auto; }
+
+.ob-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 22px; gap: 10px; }
+.ob-foot-end { display: flex; gap: 8px; }
+.ob-skip {
+  position: fixed;
+  top: 16px;
+  inset-inline-end: 16px;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 999px;
+}
+.ob-skip:hover { background: rgba(var(--ink-rgb, 255, 255, 255), 0.08); color: var(--text-1); }
+
+@media (max-width: 560px) {
+  .ob-card { padding: 22px 18px 18px; }
+  .ob-features { grid-template-columns: 1fr; }
+  .ob-imbue { height: 170px; }
+  .ob-imbue-0 { height: 150px; }
+  .ob-imbue-1 { width: 140px; }
+  .ob-imbue-2 { width: 120px; }
+  .hi-marks { gap: 10px; }
+  .hi-mark img { transform: scale(0.75); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ob-card { animation: none; }
+}

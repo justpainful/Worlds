@@ -77,6 +77,7 @@ export function commands(): Cmd[] {
     { id: "new", title: "Create Page", icon: "add", hint: "Ctrl+N", keywords: "new page", run: (w) => s.createPage({}, w) },
     { id: "home", title: "Go Home", icon: "home", run: (w) => s.open({ kind: "home" }, w) },
     { id: "tour", title: "Take the Tour", icon: "info", keywords: "tour help guide start جولة شرح مساعدة", run: () => startTour() },
+    { id: "welcome", title: "Show the Welcome Again", icon: "home", keywords: "welcome onboarding hello intro start ترحيب بداية", run: () => window.dispatchEvent(new Event("worlds:onboarding")) },
     { id: "tasks", title: "Tasks", icon: "checklist", keywords: "todo due today upcoming مهام", run: (w) => s.open({ kind: "tasks" }, w) },
     { id: "new-task", title: "New Task", icon: "checklist", keywords: "todo add task مهمة", run: (w) => { void createItem("task", { data: { due: today() }, open: w }); } },
     { id: "calendar", title: "Calendar", icon: "calendar", keywords: "week agenda schedule events تقويم جدول", run: (w) => s.open({ kind: "calendar" }, w) },
