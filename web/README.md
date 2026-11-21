@@ -6,6 +6,8 @@
 | `app.enterworlds.space` | Worlds on the web, with real accounts and the workspace kept on the account | the app, built by `pnpm build:demo` into `dist-demo/` | `pnpm build:demo`, then `npx wrangler deploy -c web/app.wrangler.toml` |
 | `demo.enterworlds.space` | the demo: the sample workspace, no accounts | the app, built by `pnpm build:sample` into `dist-sample/` | `pnpm build:sample`, then `npx wrangler deploy -c web/demo.wrangler.toml` |
 | `go.enterworlds.space` | the old address of the web app, now a redirect to `app.` | `web/go/index.js` | `npx wrangler deploy -c web/go/wrangler.toml` |
+| `changelog.enterworlds.space` | every release with every change, a page and a map banner for each | `web/changelog/releases/` built into `web/changelog/site/` by `node web/changelog/build.mjs` | `node web/changelog/build.mjs`, then `npx wrangler deploy -c web/changelog/wrangler.toml` |
+| `status.enterworlds.space` | checks every address every five minutes and keeps 90 days | `services/status` | `node services/status/deploy.mjs --account <the domain's account id>` |
 | `login.enterworlds.space` | the account service | `services/identity` | `pnpm cloud:deploy --domain enterworlds.space` |
 | `connect.enterworlds.space` | the sync service | `services/sync` | same command |
 

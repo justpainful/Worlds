@@ -27,6 +27,7 @@ const T = {
     nav: [["apps", "التطبيقات"], ["story", "القصة"], ["docs", "الدليل"], ["tools", "الأدوات"], ["support", "الدعم"]],
     github: "GitHub", docsMenu: "صفحات الدليل", docs: "الدليل", prev: "السابق", next: "التالي",
     foot: [["apps", "التطبيقات"], ["story", "القصة"], ["docs", "الدليل"], ["tools", "الأدوات"], ["support", "الدعم"], ["privacy", "الخصوصية"], ["terms", "شروط الاستخدام"]],
+    away: [["https://changelog.enterworlds.space/", "سجل التحديثات"], ["https://status.enterworlds.space/", "الحالة"]],
     festival: "مهرجان الذكاء الطبيعي يقود الذكاء الاصطناعي 2026، مسار التجارب المتميزة.",
     fine: "Worlds اسم عمل إبداعي غير مسجل رسميًا، مستقل عن هوية imbue. الشيفرة منشورة على GitHub.",
     siteName: "Worlds",
@@ -37,6 +38,7 @@ const T = {
     nav: [["apps", "Apps"], ["story", "Story"], ["docs", "Docs"], ["tools", "Tools"], ["support", "Support"]],
     github: "GitHub", docsMenu: "Docs pages", docs: "Docs", prev: "Previous", next: "Next",
     foot: [["apps", "Apps"], ["story", "Story"], ["docs", "Docs"], ["tools", "Tools"], ["support", "Support"], ["privacy", "Privacy"], ["terms", "Terms of use"]],
+    away: [["https://changelog.enterworlds.space/en/", "Changelog"], ["https://status.enterworlds.space/en/", "Status"]],
     festival: "Natural Intelligence Leads Artificial Intelligence festival 2026, outstanding experiments track.",
     fine: "Worlds is a creative working name, not a registered mark, and is independent of the imbue identity. The code is published on GitHub.",
     siteName: "Worlds",
@@ -132,7 +134,7 @@ function footer(lang) {
       <a class="lockup small" href="${url(lang, "")}" aria-label="${t.home}"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
       <p>${t.festival}</p>
     </div>
-    <nav aria-label="${t.siteName}">${t.foot.filter(([k]) => pages[lang].has(`${k}/`)).map(([k, label]) => `<a href="${url(lang, `${k}/`)}">${label}</a>`).join("")}<a href="${LINKS.github}">GitHub</a></nav>
+    <nav aria-label="${t.siteName}">${t.foot.filter(([k]) => pages[lang].has(`${k}/`)).map(([k, label]) => `<a href="${url(lang, `${k}/`)}">${label}</a>`).join("")}${t.away.map(([href, label]) => `<a href="${href}">${label}</a>`).join("")}<a href="${LINKS.github}">GitHub</a></nav>
   </div>
   <p class="fine">${t.fine}</p>
 </footer>`;

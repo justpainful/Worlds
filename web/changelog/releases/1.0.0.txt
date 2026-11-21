@@ -1,0 +1,107 @@
+version: 1.0.0
+date: 2026-11-21
+title: Worlds 1.0 وCognition || Worlds 1.0 and Cognition
+summary: أكبر تحديث في تاريخ Worlds: أول إصدار من Cognition، وصفحات 2.0، وClaude داخل النص، والمظهر الفاتح، وتصميم مرسوم يدويًا، وأيقونات وترحيب جديدان، وإضافات، واستيراد وتصدير، ونشر على الويب، ونسخة لينكس. || The largest update in Worlds' history: the first release of Cognition, Pages 2.0, Claude in the text, a light theme, a hand-drawn design, new icons and welcome, plugins, import and export, publishing to the web and a Linux build.
+intro: يجمع Worlds 1.0 كل ما بُني منذ اليوم الأول في الرابع من أكتوبر 2026، ويضيف إليه أكثر من خمسين ميزة جديدة. وفي مقدمتها Cognition: مجموعة أدوات لتفكيرك وفهمك وذاكرتك أنت، تحوّل مساحة عملك إلى عالم من الجزر، وتعيد إليك ما تعلّمته قبل أن تنساه، وتُبقي أسئلتك المفتوحة حاضرة حتى تجد إجاباتها. || Worlds 1.0 brings together everything built since day one on 4 October 2026 and adds more than fifty new features. Leading them is Cognition: a set of tools for your own thinking, understanding and memory that turns your workspace into a world of islands, brings back what you learned before you forget it, and keeps your open questions in view until you answer them.
+
+# highlights
+- new: Cognition: عالمك، والذاكرة بالتكرار المتباعد، والأسئلة المفتوحة، والشرارات، ولوحات Jigsaw، ودفتر لحظات Aha!. || Cognition: your world, spaced-repetition memory, open questions, sparks, Jigsaw boards and the Aha! journal.
+- new: صفحات 2.0: كتل متزامنة وأزرار وملاحظات صوتية وحواشٍ ونماذج وأكواد تعمل وسبورات بيضاء وخرائط أماكن. || Pages 2.0: synced blocks, buttons, voice notes, footnotes, forms, runnable code, whiteboards and maps of places.
+- new: Claude داخل النص: حدّد كلامًا واطلب تحسينه أو اختصاره أو ترجمته، وراجع الفرق كلمة بكلمة قبل قبوله. || Claude in the text: select words and ask to improve, shorten or translate them, then review the difference word by word before accepting.
+- new: المظهر الفاتح، وتصميم مرسوم يدويًا اختياري، وأيقونات مرسومة بأربعة ألوان، وترحيب جديد. || A light theme, an optional hand-drawn design, drawn icons in four colours, and a new welcome.
+- new: النشر على الويب، والبريد إلى Worlds، والتقاويم في الاتجاهين، ونسخة لينكس. || Publishing to the web, email to Worlds, two-way calendars and a Linux build.
+
+# cognition
+- new: عالمك: صفحاتك جزر، والصفحات تحتها بيوت، والروابط جسور، والأسئلة المفتوحة ضباب، والصفحات المتروكة شهرًا يكسوها العشب، ولحظات الفهم نجوم. || Your world: your pages are islands, the pages under them are houses, links are bridges, open questions are fog, pages left for a month grow grass, and moments of understanding are stars.
+- new: الذاكرة: بطاقات تذكّر بالتكرار المتباعد تعود إليك قبل أن تنساها، مع جلسة مراجعة يومية وبطاقات بالفراغات. || Memory: spaced-repetition cards that come back before you forget them, with a daily review and cloze cards.
+- new: الأسئلة: سؤال مفتوح يبقى حتى تحلّه، وتتحول إجابته إلى لحظة Aha!. || Questions: an open question stays until you solve it, and its answer becomes an Aha! moment.
+- new: الشرارات: ربط فكرتين وحفظ ما رأيته بينهما، مع اقتراح الصفحات التي يذكر بعضها بعضًا دون رابط. || Sparks: connect two ideas and keep what you saw between them, with suggestions for pages that mention each other without a link.
+- new: Jigsaw: لوحات للبحث أو الاختبار أو المشروع أو القرار تكشف القطع الناقصة. || Jigsaw: boards for research, an exam, a project or a decision that reveal the missing pieces.
+- new: دفتر Aha! يجمع لحظات الفهم، ومراجعة لما كتبته قبل مدة. || The Aha! journal gathers moments of understanding, with revisits of what you wrote a while ago.
+- new: كتل للتفكير: بطاقة تذكّر، وسؤال مفتوح، ورأي ودليل، وإيجابيات وسلبيات بأوزان، وسجل قرار يذكّرك بمراجعته، ولماذا خمس مرات، وبصمة الصفحة. || Thinking blocks: memory card, open question, claim and evidence, weighted pros and cons, a decision log that reminds you to review it, five whys and the page fingerprint.
+- new: يُعلَّم النص الملصوق بأنه مقتبس، فتفرّق بصمة الصفحة بين كلامك وكلام غيرك. || Pasted text is marked as quoted, so the page fingerprint separates your words from others'.
+- new: Cognition بالعربية بالكامل، مع 101 رسم توضيحي. || Cognition fully in Arabic, with 101 illustrations.
+
+# pages
+- new: كتلة متزامنة تظهر في أكثر من صفحة. || A synced block that appears on several pages.
+- new: زر يضيف نصًا أو يفتح صفحة أو يشغّل أتمتة أو يسأل Claude. || A button that adds text, opens a page, runs an automation or asks Claude.
+- new: ملاحظة صوتية يُكتب كلامها، وحواشٍ مرقّمة، ونموذج تتحول ردوده إلى صفحات. || A voice note that is transcribed, numbered footnotes, and a form whose responses become pages.
+- new: أكواد JavaScript وPython تعمل داخل الصفحة. || JavaScript and Python code that runs inside the page.
+- new: سبورة بيضاء بالملاحظات والأشكال والأسهم. || A whiteboard with notes, shapes and arrows.
+- new: خريطة أماكن بدبابيس على OpenStreetMap، يرتبط كل منها بصفحة. || A map of places with pins on OpenStreetMap, each linked to a page.
+- new: المجموعات: عرض التقويم والخط الزمني، والربط بين المجموعات، وخصائص بالمعادلات، وتذكيرات على التواريخ. || Collections: calendar and timeline views, relations, formula properties and date reminders.
+- new: تحديد عدة كتل بمفتاح Shift ونقلها أو مزامنتها مع صفحة أخرى، أو سحبها إلى أي صفحة في الشريط الجانبي. || Select several blocks with Shift and move or sync them to another page, or drag them onto any page in the sidebar.
+- improved: تبدأ قائمة / بآخر ما استخدمته، بأيقونات ملونة حسب المجموعة. || The / menu starts with what you used last, with icons coloured by group.
+- improved: شريط التنسيق يضم التسطير والتعليق والحاشية وزر Claude. || The formatting bar adds underline, comment, footnote and a Claude button.
+- improved: معرّف ثابت لكل كتلة من كل الأنواع. || A stable id for every block of every type.
+
+# claude
+- new: اسأل مساحتك (Ctrl+Shift+K): سؤال تُجاب عنه من صفحاتك مع روابط المصادر. || Ask your space (Ctrl+Shift+K): a question answered from your pages with links to the sources.
+- new: المعنى والمرادفات للكلمة المحددة. || Meaning and synonyms for the selected word.
+- new: ملخص أسبوعي يكتبه Claude. || A weekly summary written by Claude.
+- new: المساعد في أجهزة أبل يقرأ مساحة العمل ويحرّرها بالأدوات، مع حفظ النسخ والتراجع. || The assistant on Apple devices reads and edits the workspace with tools, with version save and undo.
+- improved: محادثة Claude بمربع كتابة جديد على شكل كبسولة تضم + والنموذج وزر الإرسال. || Claude chat has a new capsule composer with +, the model and Send.
+- fixed: تبدأ المحادثة الفارغة أسفل ترويستها في النوافذ القصيرة. || An empty chat starts below its header in short windows.
+
+# writing
+- new: التعليقات على النص. || Comments on text.
+- new: القراءة بصوت مع تظليل الجملة الجارية. || Read aloud with the current sentence highlighted.
+- new: الترجمة جنبًا إلى جنب مع الأصل. || Translation side by side with the original.
+- new: آلة الزمن للتنقل بين نسخ الصفحة. || The time machine for moving between page versions.
+- new: التدقيق الإملائي العربي: خط تحت أخطاء الهمزات والتاء المربوطة والألف المقصورة، وتصحيح بضغطة، مع دعم السوابق المركّبة. || Arabic spelling: underlines for hamza, taa marbuta and alef maqsura mistakes, one-press fixes, and stacked prefixes.
+
+# look
+- new: المظهر الفاتح، والوضع التلقائي الذي يتبع النظام. || A light theme, and an automatic mode that follows the system.
+- new: التصميم المرسوم يدويًا خيارًا في المظهر: ورق منقّط، ولوحات وأزرار كملصقات بالحبر، وأقلام ملونة تحت العناوين، وقوائم ونوافذ ورقية. || The hand-drawn design as a choice in Appearance: dotted paper, panes and controls as ink stickers, coloured markers under titles, and paper menus and dialogs.
+- new: أيقونات مرسومة يدويًا بأربعة ألوان (ذهبي وأزرق مخضر ووردي وأزرق) للحزم والأدوات والصفحات، مع حالات فارغة برسومات Cognition. || Hand-drawn icons in four colours (gold, teal, pink and blue) for packs, tools and pages, with empty states drawn from Cognition art.
+- new: التصميم والأيقونات خياران منفصلان، ويبقى التصميم الأصلي وأيقوناته الافتراضيين. || Design and icons are separate choices, and the original design and icons remain the default.
+- new: شعار Worlds الجديد بالشرائط المتشابكة في كل مكان. || The new interlocking ribbon logo everywhere.
+- improved: الأيقونات الصغيرة أكبر، والبطاقات والقوائم والشريط الجانبي والإعدادات بالأسلوب المرسوم. || Small icons are larger, with cards, lists, the sidebar and settings in the drawn style.
+- improved: تلتف أدوات الرئيسية وإجراءات الوارد في اللوحات الضيقة، وتتمرر خيارات الاختيار الطويلة. || Home controls and Inbox actions wrap in narrow panes, and long choice tracks scroll.
+
+# welcome
+- new: ترحيب جديد في سبع ثوانٍ: يكتب القلم «Hello, Worlds!» بخط اليد، فتنتفخ الحروف بألوان Imbue وتنفجر إلى شعارها، ثم يرسم شريط Cognition الوردي. || A new seven-second welcome: a pen writes «Hello, Worlds!» by hand, the letters swell in Imbue's colours and burst into its logo, then Cognition's pink ribbon draws.
+- new: أسئلة تجهّز Worlds لك: اللغة، وما تستخدم Worlds من أجله، والمظهر، وWorlds، وCognition، وImbue، والحساب. || Questions that set Worlds up for you: language, what you use Worlds for, the look, Worlds, Cognition, Imbue and the account.
+- new: «عرض الترحيب مرة أخرى» من لوحة الأوامر. || Show the Welcome Again from the command palette.
+- improved: يغطي الترحيب النافذة من أول إطار، وينتقل إلى الخطوات دون أن يظهر التطبيق تحته. || The welcome covers the window from the first frame and hands over to the steps without showing the app underneath.
+
+# home
+- new: الرئيسية كما تريد: رئيسية Worlds، أو ودجتات ترتّبها (اليوم والأخيرة والتقويم والتذكيرات وسلسلة الكتابة والساعة)، أو واجهة تبرمجها بنفسك بلغات HTML وCSS وSVG وتقرأ بيانات مساحتك. || Home your way: the Worlds Home, widgets you arrange (Today, Recent, Calendar, Reminders, writing streak and clock), or a home you code yourself in HTML, CSS and SVG with your workspace's data.
+- new: خريطة الروابط بين صفحاتك. || A map of the links between your pages.
+- new: صفحات خاصة تُفتح برمز أو Windows Hello ولا تظهر في البحث. || Private pages that open with a code or Windows Hello and stay out of search.
+
+# plugins
+- new: الإضافات ومعرضها: كتل وثيمات وواجهات وقوالب تثبّتها من المعرض أو من ملف أو رابط. || Plugins and their gallery: blocks, themes, homes and templates installed from the gallery, a file or a link.
+- new: مشاركة ثيمك وقوالبك، واختصارات تختارها لأي أمر. || Share your theme and templates, and set your own shortcut for any command.
+- improved: صفحات HTML وكتل الإضافات تتبع المظهر الفاتح. || HTML pages and plugin blocks follow the light theme.
+
+# files
+- new: الاستيراد من Notion وObsidian وWord وMarkdown وHTML وCSV. || Import from Notion, Obsidian, Word, Markdown, HTML and CSV.
+- new: تصدير الصفحة بصيغة Word أو PDF، والصفحة وفروعها كتابًا بصيغة EPUB، ومساحتك كاملة في ملف واحد. || Export a page to Word or PDF, a page and its children as an EPUB book, and your whole workspace in one file.
+- new: قائمة القراءة: احفظ مقالة نظيفة لقراءتها دون اتصال. || Reading list: save a clean article to read offline.
+- new: إضافة المتصفح لـ Chrome وEdge لحفظ الصفحة أو النص المحدد أو المقالة. || The browser extension for Chrome and Edge saves the page, the selected text or the article.
+- new: قراءة النص في الصور وملفات PDF ليصبح جزءًا من الصفحة ويجده البحث، وفتح PDF كصفحة تقرأها وتظلّلها وتجمع تظليلاتها. || Text in pictures and PDFs is read into the page and found by search, and a PDF opens as a page you read, highlight and gather highlights from.
+
+# publishing
+- new: النشر على الويب: صفحة في ملفك العام، أو رابط مؤقت بكلمة مرور وتاريخ انتهاء. || Publish to the web: a page on your public profile, or a temporary link with a password and an end date.
+- new: البريد إلى Worlds: عنوان خاص بك، وتتحول الرسائل إلى صفحات. || Email to Worlds: an address of your own, with messages turned into pages.
+- new: تقويما Google وApple يظهران في تقويم Worlds، وتخرج مواعيدك كتغذية وملف ics. || Google and Apple calendars appear in the Worlds calendar, and your events go out as a feed and an ics file.
+- new: واجهة برمجية محلية وWebhooks لبرامجك. || A local API and webhooks for your own programs.
+
+# platforms
+- new: نسخة لينكس بصيغتي AppImage وdeb. || A Linux build as AppImage and deb.
+- new: Siri واختصارات Apple. || Siri and Apple Shortcuts.
+- new: ودجت أندرويد لليوم، واختصارات Google Assistant. || An Android Today widget and Google Assistant shortcuts.
+- improved: تطبيقات أبل وأندرويد تحصل في هذا الإصدار على الودجت والاختصارات، وتلحق بها بقية الميزات الجديدة في التحديثات القادمة. || Apple and Android get the widget and shortcuts in this release, with the remaining new features following in coming updates.
+
+# arabic
+- new: العربية لكتل صفحات 2.0 والمجموعات وClaude داخل النص وأدوات الكتابة والرئيسية والإضافات والملفات والتقاويم والنشر. || Arabic for the Pages 2.0 blocks, collections, Claude in the text, writing tools, Home, plugins, files, calendars and publishing.
+
+# fixes
+- fixed: تحتفظ تحية الرئيسية بمساحتها، وأسئلة النماذج بلغة الواجهة. || The Home greeting keeps its room, and form questions appear in the interface language.
+- fixed: تقرأ صفحات HTML المظهر فقط عند وجود مستند. || HTML pages read the theme only where there is a document.
+- fixed: يبقى الزجاج المخفي مخفيًا في التصميم المرسوم. || Hidden glass stays hidden in the drawn design.
+
+# internals
+- improved: اختبار مزامنة حقول الحزم من البداية إلى النهاية مقابل خدمة المزامنة الفعلية. || End-to-end tests of pack field sync against the real sync Worker.
+- improved: نشر الخدمات يجيب على البريد الوارد إلى عنوان كل مستخدم على النطاق. || The services deploy answers mail to each user's address on the domain.

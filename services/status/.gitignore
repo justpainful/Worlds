@@ -1,0 +1,8 @@
+# Filled by deploy.mjs: the database id and the account.
+wrangler.deploy.toml
+# Copied from web/site by deploy.mjs.
+public/fonts/
+public/icon-32.png
+public/icon-256.png
+.wrangler/
+public/_headers

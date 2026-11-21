@@ -1,0 +1,14 @@
+# changelog.enterworlds.space: static files only, built by web/changelog/build.mjs.
+# Deploy: node web/changelog/build.mjs, then npx wrangler deploy -c web/changelog/wrangler.toml
+# on the account that holds the domain.
+name = "worlds-changelog"
+compatibility_date = "2026-08-01"
+
+[assets]
+directory = "./site"
+html_handling = "auto-trailing-slash"
+not_found_handling = "404-page"
+
+[[routes]]
+pattern = "changelog.enterworlds.space"
+custom_domain = true

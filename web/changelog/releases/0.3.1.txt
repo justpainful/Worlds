@@ -1,0 +1,83 @@
+version: 0.3.1
+date: 2026-11-15
+published: no
+title: العربية في كل مكان || Arabic everywhere
+summary: واجهة عربية كاملة ومعكوسة على كل الأجهزة، وبحث يفهم الكتابة العربية، وتاريخ هجري، وجولة تعريفية، ونسخة ويب تعمل على الجوال. || A complete, mirrored Arabic interface on every device, search that understands Arabic writing, the Hijri date, a guided tour and a web version that works on phones.
+intro: يكمل هذا الإصدار مسيرة العربية في Worlds: أصبحت الواجهة معكوسة بالكامل من اليمين إلى اليسار على ويندوز وأندرويد وأجهزة أبل، وتتفق الأعداد مع معدودها، ويظهر التاريخ الهجري في التقويم والرئيسية. ويجد البحث الكلمة العربية أيًّا كانت طريقة كتابة الألف والتاء المربوطة، وتعمل الاختصارات كلها مع لوحة المفاتيح العربية. || This release completes Worlds' Arabic journey: the interface is fully mirrored right to left on Windows, Android and Apple devices, counts agree with what they count, and the Hijri date appears in the calendar and on Home. Search finds an Arabic word however its alef and taa marbuta were typed, and every shortcut works with the Arabic keyboard layout.
+note: لم يُنشر هذا الإصدار بملفات تثبيت مستقلة، وصدرت جميع تغييراته ضمن الإصدار 0.3.2. || This version was not published with its own installers; all of its changes shipped in 0.3.2.
+
+# highlights
+- new: واجهة عربية معكوسة بالكامل على ويندوز وأندرويد وأجهزة أبل، تشمل إطار النافذة والقوائم والأيقونات الاتجاهية. || A fully mirrored Arabic interface on Windows, Android and Apple devices, including the window frame, menus and directional icons.
+- new: بحث عربي يجد الكلمة أيًّا كانت كتابة الألف والتاء المربوطة، ويقبل الأرقام العربية. || Arabic search that finds a word however its alef and taa marbuta were typed, and accepts Arabic digits.
+- new: التاريخ الهجري إلى جانب كل يوم في التقويم والأجندة والرئيسية، مع تظليل عطلة الجمعة والسبت. || The Hijri date beside each day in the calendar, agenda and Home, with the Friday and Saturday weekend shaded.
+- new: جولة تعريفية قصيرة عند فتح Worlds أول مرة. || A short guided tour the first time you open Worlds.
+- new: نسخة الويب التجريبية تعمل على الجوال. || The web demo works on phones.
+
+# arabic
+- new: تتفق الأعداد مع معدودها في كل مكان: عنصران، و5 عناصر، و12 مستندًا، على الحاسوب وأندرويد وأجهزة أبل. || Counts agree with their nouns everywhere: عنصران, 5 عناصر, 12 مستندًا, on the computer, Android and Apple devices.
+- new: ترجمة تطبيقات أبل وشاشات أندرويد المتبقية، ورسائل الخادم، ونوافذ الملفات، وكل تلميح يعرض اختصارًا. || The Apple apps, the remaining Android screens, backend messages, file dialogs and every shortcut tooltip are translated.
+- new: يمكن اختيار لغة Worlds داخل تطبيق أندرويد بشكل مستقل عن لغة الجهاز. || On Android, Worlds' language can be chosen inside the app, independent of the device.
+- new: مثبّت ويندوز بالعربية على أنظمة ويندوز العربية، وقائمة شريط المهام تتبع لغة الواجهة فورًا. || The Windows installer is in Arabic on Arabic Windows, and the tray menu follows the interface language at once.
+- new: تسمية كل أيقونة بالعربية والبحث عنها بالعربية في منتقي الأيقونات، والبحث عن الكتل والأوامر بأسمائها العربية. || Every icon is named in Arabic and searchable in the icon picker, and blocks and commands can be found by their Arabic names.
+- new: وصف دوال الجداول بالعربية في قائمة إدراج دالة. || Spreadsheet functions are described in Arabic in the Insert function menu.
+- new: القوالب المدمجة والخرائط الذهنية بلغة الواجهة. || Built-in templates and mind maps appear in the interface language.
+- new: تُكتب مساحة العمل النموذجية بلغة الواجهة، ويُعرض إعادة كتابتها عند تغيير اللغة. || The sample workspace is written in the interface language, with an offer to rewrite it after a language switch.
+- improved: النقاط والأرقام وأشرطة الاقتباس وأيقونات التنبيهات وأسهم الطيّ في الجهة الصحيحة من النص العربي. || Bullets, numbers, quote bars, callout icons and toggle chevrons sit on the correct side of Arabic text.
+- improved: تبدأ الجداول ومربعات الإدخال الفارغة من اليمين، ويتحرك التحديد في الجداول باتجاه السهم في العربية. || Tables and empty fields start on the right, and spreadsheet selection follows the arrow's direction in Arabic.
+- improved: تُفتح القوائم والنوافذ المنبثقة نحو جهة القراءة. || Menus and popovers open towards the reading side.
+- improved: علامات التنصيص العربية «»، وأسماء الأيام والجداول بالعربية مع تسميات الأسبوع السعودية. || Arabic quotation marks «», and weekday names and schedules in Arabic with Saudi week labels.
+- improved: يُكتب نطاق الوقت والتاريخ بكلمة بدلًا من الشرطة، وتُترجم العدادات جملًا كاملة. || Time and date ranges are written with a word instead of a dash, and counts are translated as whole sentences.
+- improved: يُحمَّل القاموس العربي أثناء تحميل مساحة العمل، فلا تظهر الشاشة الأولى بالإنجليزية. || The Arabic dictionary loads with the workspace, so the first screen is never in English.
+- improved: تضمين الوزن العريض للخط العربي لتظهر العناوين بوزنها الحقيقي. || The bold Arabic face is bundled so headings are not synthesised.
+- fixed: لم تعد أنماط الجمع تبتلع جملًا كاملة، ولم تعد الأعداد العشرية تُعامل معاملة الجمع. || Plural patterns no longer swallow whole sentences, and decimals are no longer treated as plurals.
+
+# search
+- new: البحث والاستبدال داخل المستندات بالاختصارين Ctrl+F وCtrl+H. || Find and replace in documents with Ctrl+F and Ctrl+H.
+- new: البحث عن النص المحدد من قائمة الزر الأيمن. || Search for the selected text from the context menu.
+- improved: البحث العربي المرن في البحث الكامل وعناوين أندرويد وأبل ونسخة الويب. || Flexible Arabic search in full text search, Android and Apple titles, and the web demo.
+- improved: البحث بالأرقام العربية يجد الأرقام الغربية. || Searching with Arabic digits finds Western digits.
+
+# keyboard
+- improved: تعمل جميع الاختصارات مع لوحة المفاتيح العربية، بما فيها فتح الإعدادات وتقسيم اللوحات وCtrl+B. || Every shortcut works with the Arabic keyboard layout, including opening Settings, split panes and Ctrl+B.
+- improved: تُحتسب الأرقام المكتوبة بلوحة المفاتيح العربية في الجداول على كل الأجهزة. || Numbers typed with an Arabic keyboard count in spreadsheets on every device.
+- improved: تفهم الإضافة السريعة العبارات العربية كما يكتبها الناس، على الحاسوب وأندرويد. || Quick add understands Arabic phrases as people type them, on the computer and Android.
+- fixed: يشير اسم اليوم المجرد في اليوم نفسه إلى الأسبوع القادم، وتُرفض الأيام غير الموجودة في الشهر. || A bare weekday on the same day points to next week, and days a month lacks are refused.
+
+# pages
+- new: تنسيق شرطي ونافذة لتظليل الخلايا في الجداول، مع أيقونات حقيقية في شريط الأدوات. || Conditional formatting and a Highlight cells dialog in spreadsheets, with real icons in the toolbar.
+- improved: تبقى المعادلات والعروض والدمج والتظليل صحيحة عند إضافة الصفوف والأعمدة أو حذفها. || Formulas, widths, merges and highlights stay correct when rows or columns change.
+- improved: تُفتح المصنفات العربية المصدّرة من اليمين إلى اليسار في Excel. || Exported Arabic workbooks open right to left in Excel.
+- improved: صفوف الجداول أكثر إحكامًا، وطباعة أنظف للصفحات، وإزالة الفراغات الزائدة بين عناصر القوائم وداخل التنبيهات. || Tighter table rows, cleaner printing, and no stray gaps between list items or inside callouts.
+- improved: إحصاءات الصفحة من كلمات وأحرف ووقت قراءة بعبارات كاملة، ووقت آخر تعديل أوضح قراءةً. || Page word, character and reading time counts read as whole phrases, and the last edited time is easier to read.
+- fixed: محاذاة مربعات قوائم المهام مع نصها، ومقبض الكتلة في بدايتها. || Checklist boxes line up with their text, and the block handle sits at the block's start.
+- fixed: إعداد التدقيق الإملائي يوقفه فعلًا عند إيقافه. || The spell check setting now turns spell checking off.
+
+# home
+- new: تاريخ اليوم في الرئيسية مع التاريخ الهجري بالعربية، وعدد مهام اليوم المتبقية بعبارة كاملة. || Today's date on Home with the Hijri date in Arabic, and the number of tasks left today in a full phrase.
+- new: معاينات حقيقية في بطاقات الرئيسية، وتثبيت المساحة النموذجية فيها. || Real previews on Home cards, with the sample pinned on Home.
+- new: اختيار العربية أو الإنجليزية من الشاشة الأولى. || A choice of English or Arabic on the first Home screen.
+- improved: أيقونات التطبيق بدلًا من الرموز التعبيرية في مؤقت التركيز والأهداف. || The app's icons replace emoji in the focus timer and goals.
+
+# windows
+- new: دعم وضع التباين العالي في ويندوز. || Windows High Contrast support.
+- new: اسم الصفحة المفتوحة في شريط المهام وAlt+Tab. || The open page's name in the taskbar and Alt+Tab.
+- new: شرح لأيقونة شريط المهام عند إغلاق النافذة أول مرة. || An explanation of the tray the first time the window is closed.
+- improved: أشرطة تمرير رفيعة في كل اللوحات، وتلميح بالاسم الكامل للتبويبات والعناوين المقطوعة. || Thin scrollbars in every panel, and the full name on hover for cut-off tabs and titles.
+- improved: يبقى العرض المتعطل داخل لوحته بدلًا من إفراغ النافذة، مع زري «إعادة المحاولة» و«الرئيسية». || A crashed view stays inside its pane instead of emptying the window, with Try again and Go Home.
+- fixed: تفتح النافذة داخل الشاشة على الحواسيب المحمولة ذات التكبير، وتبقى النوافذ المستعادة ظاهرة. || The window opens inside the screen on scaled laptops, and restored windows stay on screen.
+
+# accessibility
+- improved: رفع تباين النص الثالثي، ووقت آخر تعديل من 2:1 إلى 4.4:1. || Higher tertiary text contrast, with the last edited time raised from 2:1 to 4.4:1.
+- improved: تلتف إجراءات الموارد إلى صف ثانٍ قبل أن يضيق العنوان، وعناوين الأحداث على سطرين في أعمدة الأسبوع الضيقة. || Resource actions wrap to a second row before the title is squeezed, and event titles get two lines in narrow week columns.
+
+# web
+- new: نسخة الويب التجريبية على الجوال، ويجيب Claude فيها من صفحات النسخة نفسها. || The web demo on phones, with its Claude answering from the demo's own pages.
+- fixed: تُختم الصفحات المنشأة في نسخة الويب بالوقت الحالي، وتُتذكر الجولة المغلقة بعد إعادة التحميل. || Pages made in the web demo carry the current time, and a closed tour is remembered across reloads.
+
+# performance
+- improved: تُحمَّل واجهتا الرسم والجداول عند أول استخدام فقط. || The drawing and spreadsheet views load on first use.
+- improved: ترجمة 500 نص على الشاشة في نحو 2 ملي ثانية، وضبط اتجاه السطور الفارغة لـ 5,000 فقرة في 0.8 ملي ثانية. || 500 screen texts translate in about 2 ms, and empty-line direction is set for 5,000 paragraphs in 0.8 ms.
+
+# internals
+- new: رخصة Worlds: الشيفرة متاحة للقراءة وليست مفتوحة المصدر. || The Worlds licence: the source is available to read, not open source.
+- new: خطة حزم لكل القطاعات: 38 حزمة ومحرك حزم وكتل مشتركة. || A plan for packs across every sector: 38 packs, a pack engine and shared blocks.

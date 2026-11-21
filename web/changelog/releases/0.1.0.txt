@@ -1,0 +1,60 @@
+version: 0.1.0
+date: 2026-10-12
+title: أول إصدار من Worlds || The first release of Worlds
+summary: مساحة عمل تحفظ صفحاتك على جهازك، بواجهة من الزجاج السائل، ويعمل فيها Claude على صفحاتك مباشرة، مع حسابات ومزامنة اختيارية. || A workspace that keeps your pages on your own computer, with a Liquid Glass interface, Claude working directly in your pages, and optional accounts and sync.
+intro: يسعدنا أن نقدّم الإصدار الأول من Worlds لنظام ويندوز. صُمّم Worlds ليكون مساحة عمل واحدة للصفحات والمستندات والعروض والمعارض، تُحفظ كلها على جهازك أولًا. يعمل Claude داخل صفحاتك فيقرأ ويحرّر وينشئ، وتظهر لك كل خطوة يتخذها، ويمكنك التراجع عن أي تغيير. الحسابات والمزامنة اختيارية بالكامل. || This is the first release of Worlds, for Windows. Worlds is one workspace for pages, documents, presentations and galleries, all saved on your computer first. Claude works inside your pages, reading, editing and creating, with every step shown and every change reversible. Accounts and sync are entirely optional.
+
+# highlights
+- new: الصفحات: عناوين وقوائم مهام وجداول وتنبيهات وأعمدة وأقسام قابلة للطي، ورسوم بيانية من الجداول، ومخططات Mermaid، ومعادلات LaTeX، وأغلفة وأيقونات، وروابط بين الصفحات وفهرس للمحتوى. || Pages: headings, checklists, tables, callouts, columns and toggles, charts from tables, Mermaid diagrams, LaTeX equations, covers and icons, page links and an outline.
+- new: أنواع محتوى جديدة إلى جانب الصفحات: مستندات بمقاسات الورق، ومشاريع، ومعارض صور، وملفات، وتدفقات، وعروض تقديمية، تُنشأ جميعها من قائمة «جديد». || New kinds of content beside pages: paper-sized documents, projects, galleries, files, streams and presentations, all created from the New menu.
+- new: Claude داخل صفحاتك: يقرأ الصفحات والمهام ويحرّرها وينشئها، ويعرض كل خطوة، ويمكن التراجع عن كل تغيير. || Claude in your pages: reads, edits and creates pages and tasks, shows every step, and every change can be undone.
+- new: حسابات ومزامنة اختيارية: مفاتيح المرور ورموز الدخول بالبريد، ومساحات عمل مشتركة، وتعاون مباشر بالمؤشرات والتعليقات. || Optional accounts and sync: passkeys and email codes, shared workspaces, and live collaboration with cursors and comments.
+
+# pages
+- new: مستندات بمقاسات الورق (A4 وA5 وLetter وLegal) مع أنماط الفقرات والخطوط والأحجام والألوان والمحاذاة وإعداد الصفحة، والطباعة أو الحفظ بصيغة PDF. || Paper-sized documents (A4, A5, Letter, Legal) with paragraph styles, fonts, sizes, colours, alignment and page setup, plus print or PDF.
+- new: تبويبات ولوحات متجاورة، مع أولوية للوحة المفاتيح: يفتح Ctrl K البحث ويشغّل الأوامر. || Tabs and side-by-side panes, keyboard first: Ctrl K opens search and runs commands.
+- new: معادلات LaTeX، ومخططات Mermaid، ورسوم بيانية حية من الجداول، وتبويبات داخل الصفحة، وعناصر مضمّنة قابلة للتشغيل. || LaTeX, Mermaid diagrams, live charts from tables, in-page tabs and playable embeds.
+- new: محرر العروض التقديمية. || The presentation editor.
+- new: أوامر لكل نوع محتوى في لوحة الأوامر، وإضافة الصور ومقاطع الفيديو إلى المعارض. || Palette commands for every kind of content, and adding pictures and videos to galleries.
+- improved: لا تُفقد التعديلات ولا تعود نسخة قديمة عند التنقل السريع أو تقسيم اللوحات أو إغلاق التطبيق. || Edits are never lost or reverted when you move quickly, split panes or quit.
+- improved: يدمج الحفظ التغييرات قبل الكتابة، ويُرفض الحفظ المتعارض ثم يُدمج. || Saves merge first, and a conflicting save is refused and then merged.
+
+# claude
+- new: أدوات Claude وMCP لكل نوع من أنواع المحتوى، مع حارس صلاحيات يشمل الموارد. || Claude and MCP tools for every kind of content, with a permission guard that covers resources.
+- new: يبقى Claude مسجّل الدخول عبر رمز طويل المدى من Claude Code يُحفظ في مدير بيانات الاعتماد في ويندوز، مع إمكانية تسجيل الدخول من الإعدادات أو من المحادثة. || Claude stays signed in with a long-lived Claude Code token kept in Windows Credential Manager, with sign-in from Settings or from the chat.
+- fixed: لم تعد أحداث التشغيل تضيع، ولا يعلق Claude في حالة غير مكتملة، وتُحفظ المسودات. || Run events are no longer lost, Claude no longer gets stuck, and drafts are kept.
+
+# accounts
+- new: خدمة الحسابات: مفاتيح المرور، ورموز الدخول بالبريد، والأجهزة، والجلسات، ومساحات العمل، والصلاحيات، وسجل التدقيق. || The account service: passkeys, email codes, devices, sessions, workspaces, permissions and an audit log.
+- new: خدمة المزامنة: لكل مستند مساحته الخاصة مع مزامنة Yjs والحضور والتعليقات والسجل والمرفقات. || The sync service: each document in its own space with Yjs sync, presence, comments, history and attachments.
+- new: المزامنة على الحاسوب: نسخة محلية، وصندوق صادر يعمل دون اتصال، ومؤشرات، ونسخة مطابقة من الكتل. || Sync on the computer: a local replica, an offline outbox, cursors and a block mirror.
+- new: التعاون المباشر في المحرر: الجلسات والحضور والتعليقات والإشعارات. || Live collaboration in the editor: sessions, presence, comments and notifications.
+- new: شاشات الحساب: الترحيب، والتبديل بين مساحات العمل، والإعدادات، والأشخاص، ونافذة المشاركة. || Account screens: onboarding, the workspace switcher, Settings, people and the Share sheet.
+- new: سجل مشترك يعرض نسخ الصفحة بأسماء كاتبيها، مع الحفظ والاستعادة. || Shared history with versions by their authors, plus save and restore.
+- new: تتزامن المرفقات بين الأجهزة. || Attachments sync between computers.
+- new: نشر خدمات Cloudflare بأمر واحد (pnpm cloud:deploy)، مع إمكانية إرسال رموز الدخول عبر Resend. || Cloudflare in one command (pnpm cloud:deploy), with sign-in codes sent through Resend.
+- improved: أصبح اسم المستخدم مطلوبًا (من 3 إلى 20 حرفًا)، ويُعدّ الملف الشخصي على جهازك والحساب على الإنترنت شخصًا واحدًا. || Usernames are now required (3 to 20 characters), and the profile on your computer and the online account are one person.
+- improved: تفضّل مفاتيح المرور هذا الجهاز (Windows Hello) على مفتاح الأمان الخارجي. || Passkeys prefer this device (Windows Hello) over a security key.
+- improved: يظهر تنبيه واحد عند فتح صفحة فريق لا تملك صلاحية تعديلها، ولا تُنقل الصفحات من عرض غير مكتمل. || One notice appears when you open a Team page you cannot edit, and pages are never moved from a partial view.
+- fixed: لم تعد تظهر نوافذ مسدودة أو عرض لتسجيل الدخول عند التشغيل الأول في حال عدم وجود خادم. || Without a server, there are no more dead-end sheets or first-run sign-in offers.
+
+# look
+- new: إعادة بناء الزجاج السائل من الصفر بزجاج شفاف يطابق شريط أدوات تطبيق Mail، والمظهر الفاتح هو الافتراضي. || Liquid Glass rebuilt from scratch, with clear glass matched to the Mail toolbar and light as the default tone.
+- new: إعدادات لون الزجاج وكثافته، وجودة تتكيّف مع قدرات الجهاز. || Glass tone and density settings, with quality that adapts to the device.
+- new: أزرار نغمية تحل محل أزرار الزجاج: الأشرطة والتبويبات والأزرار كبسولات تأخذ لون ما خلفها، بنص مقروء وضغطة نابضية، بينما تبقى القوائم والنوافذ زجاجية. || Tonal controls replace glass buttons: toolbars, tabs and buttons are capsules coloured by what lies behind them, with readable ink and a spring press, while menus and sheets stay glass.
+- new: مختبر تجريبي للجيل الثاني من الزجاج: انكسار وانعكاس ولمعة وحواف من سطح واحد، خلف خيار للمطورين. || An experimental lab for second-generation glass: refraction, Fresnel, specular and bevel from one surface, behind a developer flag.
+- fixed: أصبح محتوى أزرار الزجاج في المنتصف، وأزرار الأيقونات دوائر تامة. || Glass button content is centred, and icon buttons are true circles.
+- fixed: تبقى خلفية الواجهة شفافة لتظهر شفافية النافذة. || The interface background stays transparent so the window's translucency shows.
+
+# safety
+- new: شبكة أمان تشمل النسخ الاحتياطية والاستعادة والاختبارات وتشديد الأمان. || A safety net of backups, recovery, tests and tighter security.
+- improved: تشغيل أسرع بفحص خفيف عند البدء ونقل الفحص الكامل إلى الجولة اليومية، دون نسخ أي ملف تالف. وتظهر الحالة في الإعدادات ضمن التخزين. || Faster launch with a light check at start and the full check in the daily pass, never backing up a damaged file. Health appears in Settings, Storage.
+- improved: تقوية حفظ الصفحات والمرفقات. || Pages and attachments are hardened.
+
+# performance
+- improved: تقل قراءة الزجاج أثناء الخمول وتتجدد فور التنقل، وذاكرة الصور المصغّرة محدودة الحجم. || Glass sampling slows while idle and refreshes at once on navigation, and the thumbnail cache is bounded.
+- improved: تنتقل المرفقات بصيغتها الثنائية مباشرة. || Attachments travel as raw binary.
+
+# internals
+- improved: تقسيم محادثة Claude والملف الشخصي والمخزن وأدوات MCP والتنسيقات إلى وحدات أصغر دون أي تغيير في السلوك. || Claude chat, the profile, the store, the MCP tools and the stylesheets split into smaller modules with no change in behaviour.
+- new: بيئة مزامنة محلية واختبارات شاملة مقابل الخدمة الفعلية. || A local sync environment and end-to-end tests against the real Worker.

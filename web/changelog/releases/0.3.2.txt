@@ -1,0 +1,58 @@
+version: 0.3.2
+date: 2026-11-19
+title: الحزم والنطاق الجديد والملف الشخصي العام || Packs, a new home and public profiles
+summary: 38 حزمة للقطاعات، وWorlds على enterworlds.space، وصفحات HTML، وملف شخصي عام لكل حساب، وإصلاحات من بلاغات المستخدمين في الرسم وخرائط المفاهيم. || 38 sector packs, Worlds at enterworlds.space, HTML pages, a public profile for every account, and fixes from user reports in drawing and concept maps.
+intro: يحمل هذا الإصدار تغييرات 0.3.1 كاملة، ويضيف إليها حزم القطاعات: 38 حزمة بالعربية والإنجليزية تحوّل Worlds إلى أداة للمعلم والمستقل وصاحب المشروع الصغير وغيرهم. وانتقل Worlds إلى نطاقه الرسمي enterworlds.space، مع نسخة ويب بحسابك الحقيقي، وملف شخصي عام يمكنك نشره. || This release carries all of 0.3.1 and adds sector packs: 38 packs in Arabic and English that turn Worlds into a tool for teachers, freelancers, small business owners and more. Worlds also moved to its official home at enterworlds.space, with a web version on your real account and a public profile you can publish.
+
+# highlights
+- new: حزم القطاعات: 38 حزمة منها المعلم والعمل الحر والمشروع الصغير والكتابة، بمحرك يدعم الروابط والقواعد والمجاميع. || Sector packs: 38 packs including Teacher, Freelance, Small business and Writing, on an engine with links, rules and totals.
+- new: Worlds على الويب في app.enterworlds.space بتسجيل دخول حقيقي، وتُحفظ مساحة عملك في حسابك. || Worlds on the web at app.enterworlds.space with real sign-in, keeping your workspace on your account.
+- new: صفحات HTML: نوع صفحة يشغّل مستند HTML واحدًا وفق قواعد Worlds، على كل المنصات. || HTML pages: a page kind that runs one HTML document under Worlds' rules, on every platform.
+- new: ملف شخصي عام على profile.enterworlds.space/@اسمك بصورتك وبانرك وروابطك وكتلك. || A public profile at profile.enterworlds.space/@username with your picture, banner, links and blocks.
+- improved: إصلاحات من بلاغات المستخدمين في الرسم على الشاشة وخرائط المفاهيم. || Fixes from user reports in screen drawing and concept maps.
+
+# packs
+- new: الدفعة الأولى من الحزم: المعلم والعمل الحر والمشروع الصغير والكتابة، ثم 34 حزمة أخرى بالعربية والإنجليزية. || The first wave of packs: Teacher, Freelance, Small business and Writing, followed by 34 more in Arabic and English.
+- new: مُنتقي الحزم، ومعاينة الحزم حسب الدور، وملخص يومي للحزم في صندوق الوارد. || A pack chooser, previews by role, and a daily pack summary in Inbox.
+- new: يعمل Claude على عناصر الحزم، وأدوات MCP لتخطيط عناصر حزمة الدراسة. || Claude works with pack items, with MCP planning tools for Study pack items.
+- new: إرسال عناصر الحزم بين مساحات العمل، مثل تقييم من المعلم إلى طلابه. || Sending pack items between workspaces, such as a teacher's assessment to students.
+- new: مزامنة حقول عناصر الحزم المشتركة بين أعضاء الفريق، حتى للعناصر غير المفتوحة، مع إرسال رسائل حول العناصر. || Shared pack item fields sync between team members, even for items that are not open, with messages about items.
+- new: الحزم على أندرويد وأجهزة أبل: المركز والأرقام واللوحات والحضور، وتحرير الحقول المشتركة ولو دون اتصال. || Packs on Android and Apple devices: the hub, figures, boards and attendance, with shared fields editable even offline.
+- improved: المبالغ والأرقام والتواريخ في الحزم بلغة الواجهة، وتسميات عربية بمعانيها الصحيحة، ولوحات تتسع للشاشة. || Pack money, numbers and dates in the interface language, Arabic labels with the right meaning, and boards that fit the screen.
+- improved: لا تصل الحقول التي لا يحق لدور ما رؤيتها إلى أجهزة ذلك العضو. || Fields a role must not see never reach that member's devices.
+
+# web
+- new: الموقع الرسمي enterworlds.space بأسلوب كتاب Worlds، مع دليل لكل منصة وصفحة رئيسية حية يبني فيها الزائر صفحته. || The official site enterworlds.space in the style of the Worlds book, with docs for every platform and a live front page the visitor builds.
+- new: نسخة تجريبية مستقلة على demo.enterworlds.space، ورمز QR للموقع. || A separate demo at demo.enterworlds.space, and a QR code for the site.
+- new: الويب: اختيار الملفات وسحبها وفتحها وتنزيلها عبر المتصفح، والقوالب والتكرار ونسخ الصفحات والسجل والتراجع وMarkdown. || The web: choosing, dropping, opening and downloading files through the browser, plus templates, duplicates, page versions, history, undo and Markdown.
+- improved: نسخة الويب تلائم الهواتف والأجهزة اللوحية، وتستبعد ما يعمل على الحاسوب فقط مع توضيح مكان حفظ البيانات. || The web version fits phones and tablets, leaves out what only runs on a computer, and says where things are kept.
+
+# accounts
+- new: رسالة تسجيل الدخول بالعربية والإنجليزية بأسلوب القلم المرسوم يدويًا، مع رمز يُنسخ كاملًا وشعار Worlds. || A bilingual sign-in email in the hand-drawn marker style, with a code that copies whole and the Worlds logo.
+- new: أسماء الصفحات المشتركة تأتي من خدمة الحسابات، وتُحفظ الصفحات المشتركة المفتوحة على أجهزة أبل لتعمل دون اتصال. || Shared page names come from the identity service, and opened shared pages are saved on Apple devices for offline use.
+- improved: خدمة على حافة النطاق تُبقي النطاق في حسابه الخاص على Cloudflare، ومزوّد بريد احتياطي ثانٍ. || An edge Worker keeps the domain on its own Cloudflare account, with a second fallback email sender.
+
+# profile
+- new: صفحة عامة مرسومة مثل الملف الشخصي داخل التطبيق. || A public page drawn like the profile in the app.
+- new: نشر البانر والصورة حتى 25 ميغابايت، بما فيها صور GIF المتحركة، مع إشعار عند استبعاد أي منها. || Banners and pictures up to 25 MB, animated GIFs included, with a notice when one is left out.
+- new: إخفاء الملف الشخصي أو حذفه في أي وقت. || Hide or delete the profile at any time.
+
+# drawing
+- new: خرائط المفاهيم عالم ثنائي الأبعاد تتحرك فيه بالسحب والتكبير، على ويندوز والويب وأندرويد وآيفون وآيباد وماك. || Concept maps are a 2D world you move through by dragging and zooming, on Windows, the web, Android, iPhone, iPad and Mac.
+- new: الرسم على الشاشة: يسألك Worlds قبل نقل اللوحة إلى الشاشة، وشريط عائم واحد بتسعة أنواع فرش، وألوان HEX وRGB مع الشفافية. || Screen drawing: Worlds asks before moving the board onto the screen, with one floating bar of nine brushes and HEX, RGB and opacity colours.
+- new: أدوات ملونة وأي لون تريده على أندرويد وأجهزة أبل. || Coloured tools and any colour on Android and Apple devices.
+- improved: قوائم Worlds وكبسولاته ومفاتيحه بدلًا من عناصر النظام في الرسم، ومفتاح Escape يغلق القائمة المفتوحة أولًا. || Worlds' own menus, capsules and switches replace system controls in drawing, and Escape closes the open menu first.
+- improved: أسماء خرائط المفاهيم بخلفية واضحة، والعبارات متباعدة، والعالم يؤطر نفسه أثناء الرسم. || Concept map names get a backing, phrases stay apart, and the world frames itself as it draws.
+- fixed: لا يمكن بدء الرسم خارج اللوحة. || Drawing can no longer start outside the board.
+
+# arabic
+- improved: تلميحات المحرر تتبع لغة الواجهة، وتسمية الدليل بالعربية. || Editor hints follow the interface language, and the docs are called الدليل in Arabic.
+- fixed: لا تنزل التاء المربوطة وآخر الحروف وحدها إلى سطر جديد، وتصحيح تسميات عربية خاطئة وإضافة الناقص منها. || Taa marbuta and final letters no longer wrap alone onto a new line, and wrong Arabic labels are fixed and missing ones added.
+
+# platforms
+- new: ماك: توقيع محلي للتطبيق باسم Worlds.app مع اختصار لمجلد Applications، وفتح نافذة من Dock عند التشغيل دون نافذة. || Mac: an ad hoc signed Worlds.app with an Applications shortcut, and a window from the Dock when the app starts without one.
+- new: أندرويد: توقيع الإصدارات بمفتاح Worlds واحد. || Android: releases signed with one Worlds key.
+- fixed: إيقاف أزرار نظام ويندوز الإضافية نهائيًا، وإصلاح خللين في النافذة. || Windows' own caption buttons stay off for good, and two window glitches are fixed.
+
+# pages
+- fixed: لم يعد سطر قائمة ينتهي بمسافة جدولة يعلّق قارئ Markdown. || A list line ending in a tab no longer hangs the Markdown reader.

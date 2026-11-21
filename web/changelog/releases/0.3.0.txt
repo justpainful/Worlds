@@ -1,0 +1,51 @@
+version: 0.3.0
+date: 2026-11-12
+title: ذكاء اصطناعي على كل المنصات وواجهة عربية || AI everywhere and an Arabic interface
+summary: مزوّدو ذكاء اصطناعي حقيقيون على كل المنصات، وواجهة عربية كاملة، ومساحة عمل تجريبية، وتحرير مساحة عملك من أجهزة أبل. || Real AI providers on every platform, a complete Arabic interface, a sample workspace, and editing your own workspace from Apple devices.
+intro: صدر هذا الإصدار لمعرض imbue، ويركّز على أمرين: أن يعمل الذكاء الاصطناعي فعليًا على كل منصة بالمزوّد الذي تختاره، وأن تكون الواجهة عربية بالكامل من اليمين إلى اليسار. كما أصبح بإمكانك تجربة Worlds في المتصفح بمساحة عمل نموذجية، وتحرير مساحة عملك من آيفون وآيباد وماك. || This release was prepared for the imbue exhibition and focuses on two things: AI that genuinely works on every platform with the provider you choose, and an interface that is fully Arabic from right to left. You can also try Worlds in the browser with a sample workspace, and edit your own workspace from iPhone, iPad and Mac.
+
+# highlights
+- new: الذكاء الاصطناعي في ويندوز: Claude Code أو Codex بحساب ChatGPT، أو مفتاح API من Anthropic وOpenAI وGemini وGroq وDeepSeek وMistral وxAI وOpenRouter، أو نموذج محلي مثل Ollama وLM Studio يعمل دون اتصال. || AI on Windows: Claude Code or Codex with a ChatGPT account, an API key from Anthropic, OpenAI, Gemini, Groq, DeepSeek, Mistral, xAI or OpenRouter, or a local model such as Ollama or LM Studio that works offline.
+- new: واجهة عربية كاملة في ويندوز من اليمين إلى اليسار، بما فيها التواريخ والقوائم. || A complete Arabic interface on Windows, right to left, including dates and menus.
+- new: مساحة عمل نموذجية لأسبوع طالب بالعربية والإنجليزية تُحمَّل بضغطة، ونسخة تجريبية تعمل في المتصفح. || A sample student week in Arabic and English that loads in one press, and a demo that runs in the browser.
+- new: تحرير مساحة عملك من آيفون وآيباد وماك عندما تكون قاعدة البيانات على قرص محلي، مع التحقق من النسخة قبل كل حفظ. || Editing your own workspace from iPhone, iPad and Mac when the database is on a local disk, with a version check before every save.
+
+# claude
+- new: الذكاء الاصطناعي في أندرويد يقرأ الصفحات وينشئها ويحرّرها ويضيف المهام بأدوات ويندوز نفسها، مع التراجع عن تغييرات الرد كاملة بخطوة واحدة. ويُحفظ المفتاح في Keystore. || AI on Android reads, creates and edits pages and adds tasks with the same tools as Windows, undoing a whole reply's changes in one step. The key is kept in Keystore.
+- new: الذكاء الاصطناعي في آيفون وآيباد وماك بالمزوّدين أنفسهم، والمفتاح في Keychain. وإذا كانت مساحة العمل للقراءة فقط (iCloud أو قرص شبكة) يوضح السبب دون أن يغيّر شيئًا. || AI on iPhone, iPad and Mac with the same providers, the key in Keychain. When the workspace is read-only (iCloud or a network drive) it explains why and changes nothing.
+- new: الأتمتة في أندرويد تكتب ملخصًا بالذكاء الاصطناعي عبر المزوّد المختار، وترسل إشعارًا على الجهاز إلى جانب ديسكورد. || Android automations write an AI summary through the chosen provider and send a notification on the device alongside Discord.
+- improved: يتعرّف Worlds على خوادم الذكاء الاصطناعي المحلية حتى عندما يتضمن العنوان منفذًا. || Local AI servers are recognised even when the address includes a port.
+- fixed: لم تعد أخطاء تسجيل الدخول أو حدود الاستخدام تُعامَل كرفض من الأداة. || Sign-in and rate limit errors are no longer treated as a tool refusal.
+
+# arabic
+- new: ترجمة مساحة العمل النموذجية وأنماط المزج وأوقات التعديل. || The sample workspace, blend modes and edit times are translated.
+- new: قائمة أيقونة شريط المهام بالعربية عندما تكون الواجهة عربية. || The tray menu is in Arabic when the interface is Arabic.
+- new: شاشات الذكاء الاصطناعي في أندرويد بالعربية. || The Android AI screens are in Arabic.
+- improved: يُحمَّل القاموس العربي فقط عندما تكون الواجهة عربية. || The Arabic dictionary loads only when the interface is Arabic.
+- fixed: ترجمة الجمل المقسّمة على أكثر من جزء نصي. || Sentences split across several text pieces are translated.
+
+# platforms
+- new: الدراسة والتخطيط في أندرويد: شاشات المهام والأهداف والوارد والتقويم بعرض القائمة والأسبوع، والمواد بالدروس والواجبات والاختبارات، وإضافة سريعة تفهم عبارات مثل «بكرة» و«tomorrow 4pm». || Study and planning on Android: tasks, goals, inbox and calendar in list and week views, subjects with lessons, assignments and exams, and quick add that understands phrases such as «بكرة» and «tomorrow 4pm».
+- new: جداول البيانات في آيفون وآيباد وماك بمحرك المعادلات نفسه المستخدم في ويندوز وأندرويد، مع التحرير في النسخة المحلية. || Spreadsheets on iPhone, iPad and Mac with the same formula engine as Windows and Android, editable in the local copy.
+- new: تحرير الصفحات والمستندات والجداول والرسومات والعروض وإنشاؤها ونقلها إلى سلة المحذوفات من أجهزة أبل، مع فحص مسبق قبل الكتابة. || Editing, creating and trashing pages, documents, spreadsheets, drawings and presentations from Apple devices, with a check before every write.
+- improved: تصميم أندرويد بزجاج حقيقي وعناصر تحكم بأسلوب أبل ولونها الأزرق، والأزرق نفسه في ويندوز وأبل. || Android redesigned with real glass and Apple-style controls in Apple blue, with the same blue on Windows and Apple.
+
+# drawing
+- new: الرسم في آيفون وآيباد وماك: الممحاة وقفل الشفافية والأقنعة والمؤثرات والطبقات المتداخلة، وكل أنواع الفرش والأشكال. || Drawing on iPhone, iPad and Mac: the eraser, alpha lock, masks, effects and nested layers, with every brush and shape.
+- new: تصحيح الأشكال المرسومة يدويًا في محرر الرسم على أجهزة أبل. || Hand-drawn shapes are corrected in the Apple drawing editor.
+- improved: ألوان الرسم في أجهزة أبل بنظام sRGB لتطابق ويندوز. || Apple drawings render in sRGB to match Windows.
+- fixed: الضغط على خط محدد يحرّكه بدلًا من تغيير حجمه، ويمكن سحب عدة خطوط محددة في أندرويد. || Pressing a selected stroke moves it instead of resizing it, and several selected strokes can be dragged on Android.
+
+# pages
+- fixed: عادت ميزة «حفظ الصورة الأصلية» في قائمة كتلة الصورة. || Save original image is back in the image block menu.
+- fixed: تبقى القوائم والنوافذ المنبثقة داخل الشاشة عندما يتغيّر محتواها أو عرض عناوينها. || Menus and popovers stay on screen when their content or labels change width.
+
+# safety
+- improved: يتضمن مثبّت ويندوز WebView2 فيعمل دون إنترنت، ويُنشر مع بصمة SHA-256. || The Windows installer includes WebView2 so it installs offline, and ships with a SHA-256 fingerprint.
+- fixed: يتحقق جسر ديسكورد من الخادم والمستخدم ومسار المفتاح قبل الاتصال. || The Discord bridge validates the host, user and key path before connecting.
+- fixed: تحديث مكتبتي dompurify وkatex المستخدمتين في Mermaid لإغلاق ثغرات معروفة. || The vulnerable dompurify and katex pulled in by Mermaid are overridden.
+
+# internals
+- improved: رقم الإصدار 0.2.0 موحد على جميع المنصات، وبناء مثبّت ويندوز ونشر الإصدارات من GitHub. || Version 0.2.0 set on every platform, and the Windows installer built and releases published from GitHub.
+- improved: فحوص Rust بلا تحذيرات، واختبارات شاملة على كل فرع، وإعادة الاختبارات المتعثرة على المحاكيات الأبطأ. || Rust lints with warnings denied, end-to-end suites on every branch, and retries for flaky tests on slower emulators.
+- improved: وثائق صادقة عن حالة ميزات أبل وأندرويد. || Honest documentation of Apple and Android feature status.
