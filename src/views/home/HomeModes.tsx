@@ -157,6 +157,23 @@ export async function startCustomHome(fresh = false) {
   }
 }
 
+/** Use an HTML Home from a plugin: it becomes the HTML page of "My Own Home". */
+export async function useHomeHtml(html: string, name: string) {
+  const s = useStore.getState();
+  try {
+    let id = s.settings["home.custom"] as string | undefined;
+    if (!id || !s.pages[id] || s.pages[id].deletedAt) id = (await api.createPage({ title: name, kind: "html" } as never)).id;
+    const check = await api.htmlPageWrite(id, html);
+    if (check.errors.length) throw new Error(check.errors.join(" "));
+    s.setSetting("home.custom", id);
+    s.setSetting("home.mode", "custom");
+    await s.refreshPages();
+    s.open({ kind: "home" });
+  } catch (e) {
+    s.toast({ message: errorMessage(e), tone: "error" });
+  }
+}
+
 export function editCustomHome() {
   const id = useStore.getState().settings["home.custom"] as string | undefined;
   if (id) useStore.getState().openPage(id);

@@ -173,6 +173,39 @@ worlds.onState(function (v) { if (v) { s = v; document.getElementById("list").va
     light: { "--canvas": "#f5efe4", "--surface-deep": "#fffaf1", "--surface-raised": "#fffaf1", "--surface-sidebar": "#efe6d6", "--accent": "#b0662f", "--accent-rgb": "176, 102, 47" },
   },
   {
+    id: "worlds.home.focus",
+    name: "Focus Home",
+    nameAr: "رئيسية التركيز",
+    description: "One big line for today's tasks, your pinned pages under it, nothing else.",
+    descriptionAr: "سطر كبير لمهام اليوم، وتحته صفحاتك المثبّتة، ولا شيء غيرها.",
+    author: "Worlds",
+    version: "1.0.0",
+    kind: "home",
+    icon: "home",
+    html: `<style>
+  :root { --bg: #0e0e11; --ink: #f5f5f7; --dim: rgba(235,235,245,.55); --accent: #2e92ff; }
+  :root[data-theme="light"] { --bg: #f6f6f8; --ink: #1d1d1f; --dim: #6e6e73; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--bg); color: var(--ink); }
+  main { width: min(680px, 90vw); }
+  .day { color: var(--dim); font-size: 15px; }
+  h1 { font-size: 44px; line-height: 1.15; margin: 8px 0 28px; letter-spacing: -.02em; }
+  a { color: var(--ink); text-decoration: none; display: inline-block; margin: 0 14px 10px 0; padding: 8px 14px; border-radius: 999px; background: rgba(127,127,127,.14); }
+  a:hover { background: var(--accent); color: #fff; }
+</style>
+<main><div class="day" id="day"></div><h1 id="focus"></h1><div id="pins"></div></main>
+<script>
+  worlds.onData(function (d) {
+    document.documentElement.dataset.theme = d.theme;
+    var ar = d.language === "ar";
+    document.getElementById("day").textContent = new Date().toLocaleDateString(ar ? "ar" : undefined, { weekday: "long", day: "numeric", month: "long" });
+    var n = d.tasks.length;
+    document.getElementById("focus").textContent = n ? (ar ? "اليوم: " : "Today: ") + d.tasks.slice(0, 3).map(function (t) { return t.title; }).join(ar ? "، " : ", ") : (ar ? "يومك فاضي. استمتع." : "Nothing due today. Enjoy it.");
+    var pins = document.getElementById("pins"); pins.innerHTML = "";
+    d.pinned.slice(0, 8).forEach(function (p) { var a = document.createElement("a"); a.href = "worlds://page/" + p.id; a.textContent = p.title; pins.appendChild(a); });
+  });
+</script>`,
+  },
+  {
     id: "worlds.template.meeting",
     name: "Meeting notes",
     nameAr: "ملاحظات اجتماع",

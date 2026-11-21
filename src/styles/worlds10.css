@@ -175,3 +175,9 @@
 .int-code { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--code-bg); font: 12px/1.6 var(--font-mono); white-space: pre-wrap; }
 .cal-ext { display: flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 6px; background: rgba(142, 142, 150, 0.16); color: var(--text-2); font: var(--t-caption); box-shadow: inset 2px 0 0 rgba(142, 142, 150, 0.8); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .cal-ext-time { color: var(--text-3); font-variant-numeric: tabular-nums; }
+
+/* ---- Review fixes -------------------------------------------------------- */
+/* The greeting keeps its width; the controls move to their own line instead of covering it. */
+.home-top .home-heading { flex: 1 1 auto; min-width: min(100%, max-content); }
+.wb-toolbar { scrollbar-width: none; }
+.wb-toolbar::-webkit-scrollbar { display: none; }

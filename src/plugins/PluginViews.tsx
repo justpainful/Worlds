@@ -9,6 +9,7 @@ import { tr, uiLanguage } from "../i18n/ui";
 import { Icon, type IconName } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
 import { promptText } from "../editor/prompt";
+import { useHomeHtml } from "../views/home/HomeModes";
 import { applyPluginTheme, exportMyTheme, gallery, installFromFile, installFromUrl, installPlugin, installed, uninstallPlugin, type Plugin } from "./plugins";
 
 const nameOf = (p: Plugin) => (uiLanguage() === "ar" && p.nameAr ? p.nameAr : p.name);
@@ -200,6 +201,11 @@ function Store({ close }: { close: () => void }) {
                 <div className="ps-actions">
                   {has ? (
                     <>
+                      {p.kind === "home" && (
+                        <button className="btn btn-tinted btn-compact" onClick={() => (useHomeHtml(p.html ?? "", nameOf(p)), close())}>
+                          {tr("Use as Home")}
+                        </button>
+                      )}
                       {p.kind === "theme" && (
                         <button
                           className={`btn btn-${activeTheme === p.id ? "tinted" : "plain"} btn-compact`}

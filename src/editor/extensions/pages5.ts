@@ -5,6 +5,7 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 import { newSyncId } from "../synced";
+import { tr } from "../../i18n/ui";
 import {
   ButtonBlockView,
   CodeRunView,
@@ -245,9 +246,9 @@ export const FormBlock = Node.create({
             attrs: {
               title: "",
               fields: [
-                { id: "name", label: "Name", type: "text", required: true },
-                { id: "email", label: "Email", type: "email" },
-                { id: "message", label: "Message", type: "longtext" },
+                { id: "name", label: tr("Name"), type: "text", required: true },
+                { id: "email", label: tr("Email"), type: "email" },
+                { id: "message", label: tr("Message"), type: "longtext" },
               ],
             },
           }),

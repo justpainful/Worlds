@@ -5040,5 +5040,13 @@
  "Installed": "المثبّتة",
  "views": "مشاهدة",
  "added": "مضاف",
- "changed": "متغيّر"
+ "changed": "متغيّر",
+ "Set a passcode": "عيّن رمزًا",
+ "Change passcode": "غيّر الرمز",
+ "Windows Hello is ready for private pages": "Windows Hello جاهز للصفحات الخاصة",
+ "Windows Hello is not available here": "Windows Hello غير متاح هنا",
+ "Make Page Private": "اجعل الصفحة خاصة",
+ "Make Page Not Private": "ألغِ خصوصية الصفحة",
+ "Use as Home": "استخدمها رئيسية",
+ "Focus Home": "رئيسية التركيز"
 }
