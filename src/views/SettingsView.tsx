@@ -1,3 +1,5 @@
+import { drawnUrl } from "../ui/drawnMap";
+import { tr } from "../i18n/ui";
 import { useEffect, useState, type ReactNode } from "react";
 import { StaySignedIn } from "../ai/StaySignedIn";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
@@ -214,6 +216,23 @@ function Appearance() {
               { value: "system", label: "Automatic" },
             ]}
           />
+        </Row>
+        <Row label="Icons" hint="Hand-drawn icons, or the thin line icons.">
+          <div className="icon-sets" role="radiogroup" aria-label={tr("Icons")}>
+            {(["gold", "teal", "pink", "blue", "lines"] as const).map((v) => (
+              <button
+                key={v}
+                role="radio"
+                aria-checked={((settings["appearance.icons"] as string) ?? "gold") === v}
+                className={`icon-set ${((settings["appearance.icons"] as string) ?? "gold") === v ? "is-on" : ""}`}
+                onClick={() => set("appearance.icons", v)}
+                title={tr(ICON_SET_LABEL[v])}
+              >
+                {v === "lines" ? <span className="icon-set-lines"><Lines /></span> : <img src={drawnUrl(v, "home") ?? ""} alt="" width={30} height={30} />}
+                <span>{tr(ICON_SET_LABEL[v])}</span>
+              </button>
+            ))}
+          </div>
         </Row>
         <Row label="Accent" hint="Used sparingly: selection, mentions, focus.">
           <div className="swatches">
@@ -746,5 +765,18 @@ function CaptureToken() {
         Copy token
       </button>
     </div>
+  );
+}
+
+const ICON_SET_LABEL = { gold: "Gold", teal: "Teal", pink: "Pink", blue: "Blue", lines: "Lines" } as const;
+
+/** The line style's sample, drawn as lines whatever the current style. */
+function Lines() {
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 10.5 12 3l9 7.5" />
+      <path d="M5 9.5V20h14V9.5" />
+      <path d="M10 20v-6h4v6" />
+    </svg>
   );
 }

@@ -159,6 +159,7 @@ import {
   Webhook,
 } from "lucide-react";
 import type { CSSProperties, SVGProps } from "react";
+import { DRAWN, drawnUrl, useIconStyle } from "./drawnMap";
 
 const Discord = (props: SVGProps<SVGSVGElement> & { size?: number; strokeWidth?: number }) => {
   // The Discord mark, filled (a stroked outline reads as a smudge at toolbar sizes).
@@ -375,6 +376,24 @@ const DIRECTIONAL: ReadonlySet<string> = new Set([
 ]);
 
 export function Icon({ name, size = 16, weight, className = "", style, label, filled }: IconProps) {
+  const iconStyle = useIconStyle();
+  const drawn = iconStyle === "lines" ? null : drawnUrl(iconStyle, DRAWN[name]);
+  if (drawn) {
+    // A hand-drawn picture reads small: give it a little more room than a line glyph.
+    const px = Math.round(size * 1.18);
+    return (
+      <img
+        src={drawn}
+        width={px}
+        height={px}
+        alt={label ?? ""}
+        draggable={false}
+        className={`icon icon-drawn ${DIRECTIONAL.has(name) ? "icon-dir" : ""} ${filled ? "is-filled" : ""} ${className}`}
+        style={{ margin: (size - px) / 2, ...style }}
+        aria-hidden={label ? undefined : true}
+      />
+    );
+  }
   const Comp = REGISTRY[name] as IconComp;
   // Optical weights in the SF Symbols "medium" range: small glyphs get a heavier
   // stroke so every size reads with the same visual weight.

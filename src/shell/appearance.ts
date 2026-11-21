@@ -1,3 +1,4 @@
+import { setIconStyle } from "../ui/drawnMap";
 import { useStore } from "../state/store";
 import { glassEngine } from "../glass/engine";
 import type { QualityTier } from "../glass/profiles";
@@ -71,6 +72,7 @@ export function applyAppearance() {
   if (motion === "reduced") root.dataset.motion = "reduced";
   else delete root.dataset.motion;
   root.dataset.density = (settings["appearance.density"] as string) ?? "comfortable";
+  setIconStyle(settings["appearance.icons"]);
   // Settings › Editor › Spell check: every text area without its own choice inherits this.
   root.spellcheck = settings["editor.spellcheck"] !== false;
   root.dataset.transparency = (settings["appearance.transparency"] as string) ?? "off";
