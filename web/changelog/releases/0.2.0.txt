@@ -1,0 +1,78 @@
+version: 0.2.0
+date: 2026-11-10
+title: Worlds على جميع أجهزتك || Worlds on every device
+summary: تطبيقات أصلية لآيفون وآيباد وماك وأندرويد وكروم بوك، وأدوات للطلاب والتخطيط، وجداول بيانات، ومساحة رسم متكاملة. || Native apps for iPhone, iPad, Mac, Android and ChromeOS, student and planning tools, spreadsheets and a complete drawing workspace.
+intro: يُعدّ هذا الإصدار من أكبر تحديثات Worlds حتى الآن. أصبح Worlds متاحًا بتطبيقات أصلية على آيفون وآيباد وماك وأندرويد وكروم بوك، إلى جانب ويندوز. ويضيف الإصدار أدوات متكاملة للطلاب والتخطيط، وجداول بيانات بمعادلات، ومساحة رسم كاملة بالفرش والطبقات والخرائط الذهنية. || This is one of the largest Worlds updates to date. Worlds now runs as a native app on iPhone, iPad, Mac, Android and ChromeOS, alongside Windows. The release also adds complete student and planning tools, spreadsheets with formulas, and a full drawing workspace with brushes, layers and mind maps.
+note: تعرض ملفات هذا الإصدار الرقم الداخلي 0.1.0 لأن رقم الإصدار لم يُحدَّث في الشيفرة. || These builds report the internal version 0.1.0 because the version number in the source was not updated.
+
+# highlights
+- new: تطبيقات أصلية لآيفون وآيباد وماك بتنقل من الزجاج السائل، ولأندرويد وكروم بوك بدعم الأقلام. || Native apps for iPhone, iPad and Mac with Liquid Glass navigation, and for Android and ChromeOS with pen support.
+- new: أدوات الطلاب: المواد والدروس والواجبات والاختبارات والمطلوب إحضاره والكتب والروابط. || Student tools: subjects, lessons, assignments, exams, things to bring, textbooks and links.
+- new: التخطيط: المهام والأحداث والتقويم والأهداف وصندوق الوارد ومؤقت التركيز. || Planning: tasks, events, a calendar, goals, an inbox and a focus timer.
+- new: جداول بيانات متعددة الأوراق بالمعادلات والفرز والتصفية، مع دعم XLSX وCSV. || Multi-sheet spreadsheets with formulas, sorting and filters, plus XLSX and CSV.
+- new: مساحة رسم متكاملة: فرش وطبقات وأقنعة وأشكال ونص عربي وخرائط ذهنية ورسم مشترك. || A complete drawing workspace: brushes, layers, masks, shapes, Arabic text, mind maps and shared drawing.
+
+# platforms
+- new: آيفون: خمس وجهات هي الرئيسية والمساحات والمكتبة والذكاء الاصطناعي والبحث، مع شريط تبويب عائم من الزجاج السائل وشريط علوي يضم مؤقت التركيز وزر الإنشاء. || iPhone: five destinations (Home, Spaces, Library, AI and Search), a floating Liquid Glass tab bar and a top bar with the focus timer and New.
+- new: آيباد: واجهة مقسّمة قابلة للطي، وشريط جانبي يفصل مساحة العمل عن المجموعات، ولوحة Inspector تُفتح وتُغلق عند الحاجة. || iPad: a collapsible split view, a sidebar that separates the workspace from collections, and an Inspector shown when needed.
+- new: ماك: شريط جانبي شفاف، وشريط أدوات مدمج في النافذة، وقوائم واختصارات ماك، وHot Corners مع نافذة Quick Note العائمة. || Mac: a translucent sidebar, a toolbar merged into the window, Mac menus and shortcuts, and Hot Corners with a floating Quick Note.
+- new: أندرويد وكروم بوك: يعمل على الهواتف والأجهزة اللوحية والقابلة للطي، ويشمل الصفحات والمستندات والرسم بأقلام S Pen وUSI، ومحادثة الذكاء الاصطناعي، والأتمتة، وديسكورد، والملف الشخصي، والطباعة إلى PDF، والمساحات المشتركة دون اتصال. || Android and ChromeOS: phones, tablets and foldables, with pages, documents, drawing with S Pen and USI pens, AI chat, automations, Discord, the profile, print to PDF and shared offline workspaces.
+- new: أندرويد: أدوات الطلاب والجداول والتخطيط، والحفظ من لوحة المفاتيح، وتكرار كتل النص المشترك، وزجاج متكيّف. || Android: student tools, spreadsheets and planning, keyboard save, duplicating shared text blocks and adaptive glass.
+- new: أجهزة أبل: القوالب وحزمة الدراسة، وجداول Excel، والخرائط الذهنية، والتخطيط، واستوديو ثلاثي الأبعاد، ومعاينة ملفات Office، والرياضيات ومخططات Mermaid، ومساعد بالذكاء الاصطناعي. || Apple devices: templates and the study pack, Excel spreadsheets, mind maps, planning, a 3D studio, Office previews, math and Mermaid, and an AI assistant.
+- new: أجهزة أبل: إنشاء الصفحات والمستندات والمشاريع والعروض والمعارض والتدفقات والرسومات، وإعادة تسميتها ونقلها، وتبويبات الصفحات، والصفحات الفرعية، وسجل الصفحة. || Apple devices: creating pages, documents, projects, presentations, galleries, streams and drawings, renaming and moving them, page tabs, child pages and page history.
+- new: أجهزة أبل: العناوين والقوائم المتداخلة والمهام، والإزاحة من لوحة المفاتيح، ومحاذاة النص، وأنماط الفقرات، وإضافة صفوف الجداول وأعمدتها وحذفها بأمان. || Apple devices: headings, nested lists and tasks, keyboard indentation, alignment, paragraph styles, and safely adding or deleting table rows and columns.
+- new: أجهزة أبل: محرر العروض مع ملاحظات المتحدث، ومحاذاة النص ووزنه ومَيله وحجمه ولونه، وتحريكه وتدويره، وترتيب الطبقات، وتعبئة الأشكال، وخلفية الشريحة. || Apple devices: the presentation editor with speaker notes, text alignment, weight, italic, size and colour, moving and rotating text, layer order, shape fills and slide backgrounds.
+- new: أجهزة أبل: استيراد الصور إلى المعارض ومسودات المعارض، ومعاينة المرفقات والصور داخل النص، وصور AVIF، ومشغّل التدفقات على ماك، والتعليق على الشاشة في ماك. || Apple devices: importing pictures into galleries and gallery drafts, attachment and inline image previews, AVIF images, the stream player on Mac and screen annotation on Mac.
+- new: أجهزة أبل: مفاتيح المرور، والحساب، والبحث الشخصي، ونماذج الأتمتة، ومحادثات Claude، وموافقات أدوات MCP. || Apple devices: passkeys, the account, personal search, automation models, Claude conversations and MCP tool approvals.
+- improved: أجهزة أبل: الاقتباسات والتظليل في قارئ الصفحات، ومحرر يلائم أحجام الخط الكبيرة، وأدوات التنسيق فوق لوحة المفاتيح، وأوامر لوحة المفاتيح للقوائم على آيباد. || Apple devices: quotations and highlights in the page reader, an editor that suits large text, formatting controls above the keyboard and list keyboard commands on iPad.
+- improved: أجهزة أبل: تصميم جديد بالزجاج السائل، وتبويبات وتخطيطات تتكيّف مع ماك وآيباد وآيفون، والمظهر الداكن. || Apple devices: a Liquid Glass redesign with tabs and layouts that adapt to Mac, iPad and iPhone, and dark mode.
+
+# study
+- new: المواد: صفحة لكل مادة تجمع المعلم والجدول الدراسي والدروس والواجبات والاختبارات. || Subjects: a page for each subject with the teacher, timetable, lessons, assignments and exams.
+- new: الواجبات والاختبارات: مواعيد التسليم والدرجات، ونطاق كل اختبار ونتيجته. || Assignments and exams: due dates and grades, each exam's scope and result.
+- new: المطلوب إحضاره: قائمة بما يلزم إحضاره أو طباعته أو تجهيزه. || Things to bring: a list of what to bring, print or prepare.
+- new: الكتب والروابط: كتب المادة وكتب الحلول، وروابط يوتيوب وتيليجرام وClassroom ومدرستي. || Books and links: textbooks and solution books, and YouTube, Telegram, Classroom and Madrasati links.
+- new: التخطيط: مهام بخطوات وأولويات وتكرار، وأحداث، وتقويم، وأهداف، وصندوق وارد للالتقاط السريع. || Planning: tasks with steps, priorities and repeats, events, a calendar, goals and an inbox for quick capture.
+- new: مؤقت التركيز لجلسات المذاكرة. || A focus timer for study sessions.
+- new: حزمة الدراسة اختيارية من الإعدادات، ولا تظهر لمن لا يحتاجها. || The study pack is optional in Settings and stays hidden for those who do not need it.
+
+# pages
+- new: جداول بيانات متعددة الأوراق بالمعادلات والفرز والتصفية وتثبيت الصفوف، مع استيراد XLSX وCSV وتصديرها. || Spreadsheets with several sheets, formulas, sorting, filters and frozen rows, with XLSX and CSV import and export.
+- new: تصدير الصفحات المشتركة ومشاركتها ونسخها بصيغة Markdown. || Shared pages export, share and copy as Markdown.
+- improved: أدوات بحث وتحكم أوضح في التحرير المشترك. || Clearer find and editing controls in shared editing.
+- fixed: لم يعد السطر الأول في صفحة أو مستند جديد يضيع عند حدوث تعارض في الحفظ بعد إعادة التسمية. || The first line of a new page or document is no longer lost when a save conflicts right after a rename.
+
+# drawing
+- new: الفرش: فرشاة، وفرشاة خط، وقلم للكتابة اليدوية، وبخّاخ، وألوان زيتية ومائية، وقلم تلوين، وقلم تمييز، وقلم رصاص، مع إعدادات مفصّلة. || Brushes: brush, calligraphy, handwriting pen, airbrush, oils, watercolour, crayon, highlighter and pencil, with detailed settings.
+- new: مؤشر ليزر للشرح، والرسم مباشرة فوق الشاشة. || A laser pointer for explaining, and drawing directly on the screen.
+- new: الطبقات: البحث والعزل والدمج والأقنعة. || Layers: search, isolate, merge and masks.
+- new: التحديد والتحويل: قلم التحديد، وتحريك البكسلات، وتكرار الخطوط، واختصارات لوحة المفاتيح للتحديد. || Selection and transform: the lasso, moving pixels, duplicating strokes and keyboard shortcuts for selection.
+- new: الأشكال والمسارات مع تصحيح الأشكال، ونصوص عربية وإنجليزية. || Shapes and paths with shape correction, and Arabic and English text.
+- new: الصور: القص والأقنعة والتحويل إلى بكسلات وحجب المعلومات الحساسة. || Pictures: crop, masks, rasterise and redact sensitive details.
+- new: الإطارات والخطوات والتجارب للعرض ومقارنة الأفكار، والإصدارات لاستعادة العمل، والمقارنة بين نسختين. || Frames, steps and experiments for presenting and comparing ideas, versions to restore work, and comparing two versions.
+- new: مكتبة لإعادة استخدام العناصر، والتعليقات، وروابط مكانية مع صفحات Worlds ومهامها. || A library to reuse elements, comments, and spatial links to Worlds pages and tasks.
+- new: قوالب الخرائط الذهنية: المتفرعة والمفاهيمية وعظمة السمكة وSWOT. || Mind map templates: branching, concept, fishbone and SWOT.
+- new: التصدير بصيغ PNG وSVG وحزم المشاريع. || Export to PNG, SVG and project bundles.
+- new: الرسم المشترك على اللوحة نفسها، والتعرّف على الأشكال في أجهزة أبل. || Drawing together on one canvas, and shape recognition on Apple devices.
+- improved: إدخال القلم أسرع، وتُنقل المعالجة الثقيلة إلى الخلفية لتبقى الواجهة سريعة الاستجابة. || Faster pen input, with heavy work moved to the background so the interface stays responsive.
+- fixed: تصحيح إحداثيات الرسم، وتوزيع اللمس داخل مساحة الرسم فقط. || Corrected drawing coordinates, and touch handled only inside the canvas.
+
+# accounts
+- improved: مزامنة أكثر متانة: إعادة المحاولة عند تأخر التأكيد، ومهلة للإرسال المتعثر، وإغلاق الاتصال عند تعطل الحضور. || Sturdier sync: retries when acknowledgements stall, time-outs for stuck sends, and closing the connection when presence is blocked.
+- improved: ترفض المزامنة التحديثات التالفة قبل حفظها، ولا تؤكد تحديثًا لم تستلمه. || Sync rejects malformed updates before saving and never acknowledges an update it has not received.
+- improved: يرتبط تجديد رمز الدخول بالاتصال الحالي، وتُدمج طلبات التجديد المتزامنة في طلب واحد. || Token refresh is bound to the current connection, and concurrent refreshes join one request.
+- improved: يتوقف التعاون عند سحب الصلاحية أو تغيير الحساب، ويتطلب الحضور موافقتك. || Collaboration stops when access is withdrawn or the account changes, and presence requires your consent.
+- improved: يجب أن يكون مصدر المزامنة موثوقًا قبل استخدام الرمز، وترتبط الموافقة بالحساب ومساحة العمل. || The sync origin must be trusted before the token is used, and approval is bound to the account and workspace.
+- fixed: تُرفض رموز الدخول القديمة المرسلة بالبريد. || Old email sign-in challenges are rejected.
+- fixed: تُحفظ تعديلات التعاون المرفوضة بدلًا من ضياعها. || Rejected collaboration edits are kept instead of lost.
+
+# safety
+- improved: حماية البيانات المستوردة: تُرفض قواعد بيانات المعارض المستبدلة، ويُتحقق من الملفات والمجلدات قبل الاستيراد. || Imported data is protected: substituted gallery databases are rejected, and files and folders are verified before import.
+- improved: تحتفظ الشرائح والمعارض بالخصائص والألوان والمقاسات غير المدعومة في الواجهة، ولا يُعاد كتابة ما لم يتغير. || Slides and galleries keep properties, colours and geometry the interface does not support, and unchanged data is never rewritten.
+- improved: لا يتكرر إنشاء الصفحات أو المستندات أو المشاريع أو العروض عند الضغط مرتين، وترفض سلة المحذوفات عمليات النقل الدائرية. || Pages, documents, projects and presentations are never created twice on a double press, and the trash rejects circular moves.
+- fixed: يبقى المحتوى المقروء ظاهرًا حتى مع وجود خصائص تالفة. || Readable content stays visible even with malformed attributes.
+
+# internals
+- new: نواة أبل الأصلية بلغتي Swift وRust تشارك مخزن Worlds نفسه، مع اختبارات واجهة على الأجهزة الثلاثة في كل بناء. || The native Apple core in Swift and Rust shares Worlds' own store, with UI tests on all three devices in every build.
+- new: نواة أندرويد بلغة Kotlin مع لقطات شاشة آلية في كل بناء. || The Android core in Kotlin, with automated screenshots in every build.
+- improved: التوافق مع Swift 6 ونموذج التزامن، وتقارير أعطال أوضح. || Swift 6 concurrency compatibility and clearer failure reports.

@@ -1,0 +1,31 @@
+# status.enterworlds.space (src/index.ts): checks every Worlds address every
+# five minutes and draws the status page. It runs on the Cloudflare account that
+# holds the domain. `node services/status/deploy.mjs --account <id>` creates the
+# database, copies the fonts and icons into public/, writes a filled copy
+# (wrangler.deploy.toml, git-ignored) and deploys it.
+name = "worlds-status"
+main = "src/index.ts"
+compatibility_date = "2026-08-01"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "worlds-status"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+# The site at the apex runs on a route, which a Worker on the same zone cannot
+# fetch; the binding reaches it directly.
+[[services]]
+binding = "SITE"
+service = "worlds-site"
+
+[[routes]]
+pattern = "status.enterworlds.space"
+custom_domain = true
