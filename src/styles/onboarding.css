@@ -179,36 +179,3 @@
   .ob-card { animation: none; }
 }
 
-/* ---- The earlier "line" take, kept for review at ?intro=line (LineTake.tsx) */
-.lt { position: fixed; inset: 0; z-index: 5000; overflow: hidden; background: #f9f1e8; transition: background-color 500ms cubic-bezier(0.2, 0.7, 0.2, 1); }
-.lt.is-marks { background: #0d0d10; }
-.lt-word { position: absolute; inset: 0; display: grid; place-items: center; transition: opacity 400ms cubic-bezier(0.2, 0.7, 0.2, 1), transform 500ms cubic-bezier(0.2, 0.7, 0.2, 1); }
-.lt-word svg { width: min(78vw, 840px); height: auto; overflow: visible; }
-.lt .hw-l0 { color: #d4644d; }
-.lt .hw-l1 { color: #24706b; }
-.lt .hw-fill { fill: currentColor; opacity: 0; stroke: currentColor; stroke-width: 0; stroke-linejoin: round; paint-order: stroke; transition: stroke-width 600ms cubic-bezier(0.3, 1.5, 0.5, 1), opacity 200ms; }
-.lt .hw path[data-t] { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
-.lt .hw.is-writing path[data-t] { stroke-dasharray: 1 2; stroke-dashoffset: 1; animation: hi-draw var(--d) linear var(--t) both; }
-.lt .hw.is-done .hw-fill { opacity: 1; }
-.lt .hw.is-done path[data-t] { opacity: 0; animation: none; }
-.lt.is-swell .hw-fill, .lt.is-scribble .hw-fill { fill: url(#lt-bands); stroke: url(#lt-bands); stroke-width: 170; }
-.lt.is-swell .lt-word svg { animation: hl-jelly 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
-.lt.is-scribble .lt-word { opacity: 0.25; transform: scale(0.96); }
-.lt.is-marks .lt-word { opacity: 0; transform: scale(0.9); }
-.lt-scribble { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.lt-scribble path { fill: none; stroke: #fb94c1; stroke-width: 46; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1 2; stroke-dashoffset: 1; opacity: 0; }
-.lt.is-scribble .lt-scribble path { opacity: 1; animation: hl-scribble 950ms cubic-bezier(0.5, 0, 0.3, 1) both; }
-.lt.is-marks .lt-scribble { opacity: 0; transition: opacity 250ms; }
-.lt-row { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: clamp(28px, 6vw, 96px); pointer-events: none; }
-.lt-m { margin: 0; display: grid; justify-items: center; align-content: center; gap: 18px; opacity: 0; transform: scale(0.85); transition: opacity 350ms cubic-bezier(0.2, 0.7, 0.2, 1), transform 600ms cubic-bezier(0.3, 1.5, 0.5, 1); }
-.lt-m img { display: block; width: auto; }
-.lt-worlds { height: clamp(90px, 14vw, 160px); }
-.lt-imbue { height: clamp(70px, 10vw, 120px); }
-.lt-cog { height: clamp(110px, 17vw, 190px); }
-.lt-m figcaption { font: 700 clamp(16px, 1.8vw, 22px)/1 var(--font-ui, system-ui); color: #f5f5f7; opacity: 0; transition: opacity 400ms cubic-bezier(0.2, 0.7, 0.2, 1); }
-.lt.is-marks .lt-m-cognition { opacity: 1; transform: none; }
-.lt.is-marks .lt-m-worlds, .lt.is-marks .lt-m-imbue { opacity: 1; transform: none; transition-delay: 220ms; }
-.lt.is-marks .lt-m figcaption { opacity: 1; transition-delay: 500ms; }
-.lt-skip { position: absolute; top: 18px; inset-inline-end: 18px; border: 0; border-radius: 999px; padding: 8px 16px; font: 600 13px/1 var(--font-ui, system-ui); background: rgba(0, 0, 0, 0.08); color: #1d1d1f; cursor: pointer; }
-.lt.is-marks .lt-skip { background: rgba(255, 255, 255, 0.14); color: #fff; }
-@keyframes hl-scribble { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
