@@ -15,15 +15,20 @@
 }
 
 /* Cards */
-:root[data-style="drawn"] .page-card {
+:root[data-style="drawn"] .page-card,
+:root[data-style="drawn"] .study-card,
+:root[data-style="drawn"] .res-card,
+:root[data-style="drawn"] .pk-card {
   background: var(--dr-paper);
   border: 2px solid var(--dr-edge);
   border-radius: var(--dr-radius);
   box-shadow: 3px 4px 0 var(--dr-edge);
   transition: transform 160ms var(--dr-ease), box-shadow 160ms var(--dr-ease);
 }
-:root[data-style="drawn"] .page-card:hover { transform: translate(-1px, -2px) rotate(-0.4deg); box-shadow: 4px 6px 0 var(--dr-edge); }
-:root[data-style="drawn"] .page-card:active { transform: translate(1px, 1px); box-shadow: 1px 2px 0 var(--dr-edge); }
+:root[data-style="drawn"] .page-card:hover,
+:root[data-style="drawn"] .study-card:hover { transform: translate(-1px, -2px) rotate(-0.4deg); box-shadow: 4px 6px 0 var(--dr-edge); }
+:root[data-style="drawn"] .page-card:active,
+:root[data-style="drawn"] .study-card:active { transform: translate(1px, 1px); box-shadow: 1px 2px 0 var(--dr-edge); }
 
 /* Lists (Tasks, Home, Inbox, packs) */
 :root[data-style="drawn"] .pl-add {
