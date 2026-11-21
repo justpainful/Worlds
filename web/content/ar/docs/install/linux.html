@@ -1,0 +1,38 @@
+<!--
+title: تثبيت Worlds على Linux
+description: Worlds على Linux بملف AppImage يعمل على أغلب التوزيعات، أو بحزمة deb لـ Ubuntu وDebian.
+-->
+<h1>تثبيت Worlds على Linux</h1>
+<p class="lead">لـ Linux ملفان بنفس التطبيق: AppImage يعمل على أغلب التوزيعات بدون تثبيت، وحزمة deb تثبّته في Ubuntu وDebian وما بُني عليهما. اختر واحدًا.</p>
+
+<h2 id="before">قبل أن تبدأ</h2>
+<dl class="facts">
+<div><dt>AppImage</dt><dd><code>Worlds-1.0.0-Linux-x86_64.AppImage</code> (@@size:Linux-x86_64.AppImage@@)</dd></div>
+<div><dt>deb</dt><dd><code>Worlds-1.0.0-Linux-amd64.deb</code> (@@size:Linux-amd64.deb@@)</dd></div>
+<div><dt>النظام</dt><dd>Linux بمعالج 64 بت (x86_64)، مع WebKitGTK 4.1. موجود في Ubuntu 22.04 وما بعده، وDebian 12، وFedora 39.</dd></div>
+<div><dt>مكان صفحاتك</dt><dd><code>~/.local/share/Worlds</code>، وفيه الملف <code>worlds.db</code> ومجلد المرفقات</dd></div>
+</dl>
+
+<h2 id="appimage">بملف AppImage</h2>
+<ol class="steps">
+<li><h3>حمّل الملف</h3><p>من <a href="https://github.com/justpainful/Worlds/releases/latest">صفحة آخر إصدار على GitHub</a>، في قسم Assets اضغط <code>Worlds-1.0.0-Linux-x86_64.AppImage</code>.</p></li>
+<li><h3>اجعله قابلًا للتشغيل</h3><p>في مدير الملفات: الزر الأيمن على الملف، ثم الخصائص، ثم الأذونات، وفعّل «السماح بتشغيله كبرنامج». أو من Terminal:</p>
+<pre><code>chmod +x ~/Downloads/Worlds-1.0.0-Linux-x86_64.AppImage</code></pre></li>
+<li><h3>شغّله</h3><p>اضغطه مرتين، أو شغّله من Terminal بمساره. إذا ظهر خطأ عن FUSE في Ubuntu 22.04 وما بعده، ثبّت المكتبة التي يحتاجها AppImage:</p>
+<pre><code>sudo apt install libfuse2</code></pre>
+<p>في Ubuntu 24.04 اسم الحزمة <code>libfuse2t64</code>.</p></li>
+</ol>
+
+<h2 id="deb">بحزمة deb</h2>
+<ol class="steps">
+<li><h3>حمّل الحزمة</h3><p>من صفحة الإصدار نفسها، اضغط <code>Worlds-1.0.0-Linux-amd64.deb</code>.</p></li>
+<li><h3>ثبّتها</h3><p>افتح Terminal في مجلد التنزيلات وشغّل:</p>
+<pre><code>sudo apt install ./Worlds-1.0.0-Linux-amd64.deb</code></pre>
+<p>يثبّت apt معها المكتبات الناقصة. بعدها يظهر Worlds في قائمة التطبيقات.</p></li>
+</ol>
+
+<h2 id="verify">التأكد من الملف</h2>
+<p>ضع الملف و<code>SHA256SUMS.txt</code> في مجلد واحد وشغّل <code>sha256sum -c SHA256SUMS.txt --ignore-missing</code>. يكتب الأمر <code>OK</code> بجانب الملف السليم. التفاصيل في <a href="/docs/install/#verify">صفحة التثبيت</a>.</p>
+
+<h2 id="remove">الإزالة</h2>
+<p>AppImage: احذف الملف. deb: <code>sudo apt remove worlds</code>. صفحاتك تبقى في <code>~/.local/share/Worlds</code> حتى تحذف المجلد بنفسك.</p>

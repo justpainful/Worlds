@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>تثبيت Worlds على Linux · Worlds</title>
+<meta name="description" content="Worlds على Linux بملف AppImage يعمل على أغلب التوزيعات، أو بحزمة deb لـ Ubuntu وDebian.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f9f1e8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://enterworlds.space/docs/install/linux/">
+<link rel="alternate" hreflang="ar" href="https://enterworlds.space/docs/install/linux/">
+<link rel="alternate" hreflang="en" href="https://enterworlds.space/en/docs/install/linux/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Worlds">
+<meta property="og:title" content="تثبيت Worlds على Linux">
+<meta property="og:description" content="Worlds على Linux بملف AppImage يعمل على أغلب التوزيعات، أو بحزمة deb لـ Ubuntu وDebian.">
+<meta property="og:image" content="https://enterworlds.space/media/og.png">
+<meta property="og:locale" content="ar_SA">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-256.png">
+<link rel="preload" href="/fonts/plex-arabic-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/site.css">
+<script src="/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">انتقل إلى المحتوى</a>
+<header class="wrap top">
+  <a class="lockup small" href="/" aria-label="Worlds الصفحة الرئيسية"><img class="logo" src="/icon-256.png" alt="" width="46" height="46"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="70" height="26"></a>
+  <nav class="nav" aria-label="القائمة"><a href="/apps/">التطبيقات</a><a href="/story/">القصة</a><a href="/docs/" aria-current="page">الدليل</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/en/docs/install/linux/" hreflang="en" lang="en">English</a></nav>
+  <details class="menu"><summary>القائمة</summary><div class="nav"><a href="/apps/">التطبيقات</a><a href="/story/">القصة</a><a href="/docs/" aria-current="page">الدليل</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="https://github.com/justpainful/Worlds">GitHub</a><a class="lang" href="/en/docs/install/linux/" hreflang="en" lang="en">English</a></div></details>
+</header>
+<div class="wrap docs">
+<details class="side" open><summary>صفحات الدليل</summary><div class="side-list"><h2>البداية</h2><ul><li><a href="/docs/">نظرة عامة</a></li><li><a href="/docs/getting-started/">البداية مع Worlds</a></li></ul><h2>التثبيت</h2><ul><li><a href="/docs/install/">تثبيت Worlds</a></li><li class="sub"><a href="/docs/install/windows/">تثبيت Worlds على Windows</a></li><li class="sub"><a href="/docs/install/macos/">تثبيت Worlds على Mac</a></li><li class="sub"><a href="/docs/install/linux/" aria-current="page">تثبيت Worlds على Linux</a></li><li class="sub"><a href="/docs/install/iphone-ipad/">تثبيت Worlds على iPhone و iPad</a></li><li class="sub"><a href="/docs/install/android/">تثبيت Worlds على Android</a></li><li class="sub"><a href="/docs/install/web/">Worlds في المتصفح</a></li><li class="sub"><a href="/docs/install/update-uninstall/">التحديث والإزالة</a></li><li><a href="/docs/troubleshooting/">حل المشكلات</a></li></ul><h2>الكتابة والتنظيم</h2><ul><li><a href="/docs/pages/">الصفحات والكتل</a></li><li><a href="/docs/documents/">المستندات</a></li><li><a href="/docs/tables/">الجداول وجداول البيانات</a></li><li><a href="/docs/projects/">المشاريع والمصادر</a></li><li><a href="/docs/templates/">القوالب</a></li><li><a href="/docs/search-commands/">البحث والأوامر</a></li><li><a href="/docs/history/">السجل والنسخ الاحتياطية</a></li></ul><h2>الرسم والعرض والوسائط</h2><ul><li><a href="/docs/drawing/">الرسم</a></li><li><a href="/docs/presentations/">العروض التقديمية</a></li><li><a href="/docs/media-files/">الوسائط والملفات</a></li></ul><h2>Claude والأتمتة</h2><ul><li><a href="/docs/claude/">Claude والمزوّدون الآخرون</a></li><li><a href="/docs/automations/">الأتمتة</a></li><li><a href="/docs/discord/">جسر Discord</a></li><li><a href="/docs/integrations/">التكاملات</a></li></ul><h2>الحساب والمشاركة</h2><ul><li><a href="/docs/account/">حساب Worlds</a></li><li><a href="/docs/sharing/">المشاركة والعمل معًا</a></li><li><a href="/docs/sync/">كيف تعمل المزامنة</a></li><li><a href="/docs/packs/">الحزم</a></li><li><a href="/docs/profile/">الملف الشخصي والنشاط</a></li><li><a href="/docs/settings/">الإعدادات</a></li></ul><h2>للمطورين</h2><ul><li><a href="/docs/html-pages/">صفحات HTML</a></li><li><a href="/docs/mcp/">خادم MCP في Worlds</a></li></ul></div></details>
+<main id="main" class="article">
+<p class="crumb"><a href="/docs/">الدليل</a> / التثبيت</p>
+<h1>تثبيت Worlds على Linux</h1>
+<p class="lead">لـ Linux ملفان بنفس التطبيق: AppImage يعمل على أغلب التوزيعات بدون تثبيت، وحزمة deb تثبّته في Ubuntu وDebian وما بُني عليهما. اختر واحدًا.</p>
+
+<h2 id="before">قبل أن تبدأ</h2>
+<dl class="facts">
+<div><dt>AppImage</dt><dd><code>Worlds-1.0.0-Linux-x86_64.AppImage</code> (@@size:Linux-x86_64.AppImage@@)</dd></div>
+<div><dt>deb</dt><dd><code>Worlds-1.0.0-Linux-amd64.deb</code> (@@size:Linux-amd64.deb@@)</dd></div>
+<div><dt>النظام</dt><dd>Linux بمعالج 64 بت (x86_64)، مع WebKitGTK 4.1. موجود في Ubuntu 22.04 وما بعده، وDebian 12، وFedora 39.</dd></div>
+<div><dt>مكان صفحاتك</dt><dd><code>~/.local/share/Worlds</code>، وفيه الملف <code>worlds.db</code> ومجلد المرفقات</dd></div>
+</dl>
+
+<h2 id="appimage">بملف AppImage</h2>
+<ol class="steps">
+<li><h3>حمّل الملف</h3><p>من <a href="https://github.com/justpainful/Worlds/releases/latest">صفحة آخر إصدار على GitHub</a>، في قسم Assets اضغط <code>Worlds-1.0.0-Linux-x86_64.AppImage</code>.</p></li>
+<li><h3>اجعله قابلًا للتشغيل</h3><p>في مدير الملفات: الزر الأيمن على الملف، ثم الخصائص، ثم الأذونات، وفعّل «السماح بتشغيله كبرنامج». أو من Terminal:</p>
+<pre><code>chmod +x ~/Downloads/Worlds-1.0.0-Linux-x86_64.AppImage</code></pre></li>
+<li><h3>شغّله</h3><p>اضغطه مرتين، أو شغّله من Terminal بمساره. إذا ظهر خطأ عن FUSE في Ubuntu 22.04 وما بعده، ثبّت المكتبة التي يحتاجها AppImage:</p>
+<pre><code>sudo apt install libfuse2</code></pre>
+<p>في Ubuntu 24.04 اسم الحزمة <code>libfuse2t64</code>.</p></li>
+</ol>
+
+<h2 id="deb">بحزمة deb</h2>
+<ol class="steps">
+<li><h3>حمّل الحزمة</h3><p>من صفحة الإصدار نفسها، اضغط <code>Worlds-1.0.0-Linux-amd64.deb</code>.</p></li>
+<li><h3>ثبّتها</h3><p>افتح Terminal في مجلد التنزيلات وشغّل:</p>
+<pre><code>sudo apt install ./Worlds-1.0.0-Linux-amd64.deb</code></pre>
+<p>يثبّت apt معها المكتبات الناقصة. بعدها يظهر Worlds في قائمة التطبيقات.</p></li>
+</ol>
+
+<h2 id="verify">التأكد من الملف</h2>
+<p>ضع الملف و<code>SHA256SUMS.txt</code> في مجلد واحد وشغّل <code>sha256sum -c SHA256SUMS.txt --ignore-missing</code>. يكتب الأمر <code>OK</code> بجانب الملف السليم. التفاصيل في <a href="/docs/install/#verify">صفحة التثبيت</a>.</p>
+
+<h2 id="remove">الإزالة</h2>
+<p>AppImage: احذف الملف. deb: <code>sudo apt remove worlds</code>. صفحاتك تبقى في <code>~/.local/share/Worlds</code> حتى تحذف المجلد بنفسك.</p>
+
+<nav class="pager" aria-label="الدليل"><a class="prev" href="/docs/install/macos/"><small>السابق</small>تثبيت Worlds على Mac</a><a class="next" href="/docs/install/iphone-ipad/"><small>التالي</small>تثبيت Worlds على iPhone و iPad</a></nav>
+</main>
+</div>
+<footer class="wrap foot">
+  <div class="row">
+    <div class="credit">
+      <a class="lockup small" href="/" aria-label="Worlds الصفحة الرئيسية"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
+      <p>مهرجان الذكاء الطبيعي يقود الذكاء الاصطناعي 2026، مسار التجارب المتميزة.</p>
+    </div>
+    <nav aria-label="Worlds"><a href="/apps/">التطبيقات</a><a href="/story/">القصة</a><a href="/docs/">الدليل</a><a href="/tools/">الأدوات</a><a href="/support/">الدعم</a><a href="/privacy/">الخصوصية</a><a href="/terms/">شروط الاستخدام</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+  </div>
+  <p class="fine">Worlds اسم عمل إبداعي غير مسجل رسميًا، مستقل عن هوية imbue. الشيفرة منشورة على GitHub.</p>
+</footer>
+</body>
+</html>
