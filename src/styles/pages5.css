@@ -334,6 +334,7 @@
 .sg-icon[data-group="Media"] { --tile: 245, 112, 180; }
 .sg-icon[data-group="Insert"] { --tile: 61, 200, 120; }
 .sg-icon[data-group="Knowledge"] { --tile: 255, 150, 72; }
+.sg-icon[data-group="Cognition"] { --tile: 255, 120, 175; }
 .sg-icon[data-group="Assistant"] { --tile: var(--accent-rgb); }
 .sg-icon[data-group="Discord"] { --tile: 114, 137, 218; }
 :root[data-theme="light"] .sg-icon[data-group] { color: rgb(var(--tile)); filter: saturate(1.1) brightness(0.85); }

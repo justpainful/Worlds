@@ -24,6 +24,9 @@ import { openLightbox } from "./views/Pages3Views";
 import { documentExtensions } from "./extensions/document";
 import { Chart, MathBlock, MathInline, Mermaid, Tab, Tabs } from "./extensions/pages4";
 import { pages5Extensions } from "./extensions/pages5";
+import { cognitionExtensions } from "../cognition/blocks";
+import { addCards, addQuestion, makeSpark } from "../cognition/CognitionView";
+import { cardsInText } from "../cognition/model";
 import { afterSave } from "./synced";
 import { CommentMark, commentSelection, openCommentThread } from "./comments";
 import { INLINE_ACTIONS, openInlineClaude } from "./InlineClaude";
@@ -217,6 +220,7 @@ export const PageEditor = forwardRef<
         Tabs,
         Tab,
         ...pages5Extensions,
+        ...cognitionExtensions,
         BlockSelection,
         ArabicSpell,
         PluginBlock,
@@ -572,6 +576,34 @@ export const PageEditor = forwardRef<
     }
     items.push(...fileActions(editor, pageId, node, pos));
     items.push(...blockActions(editor, pageId, node, pos));
+    if (node.textContent.trim()) {
+      const text = node.textContent.trim();
+      items.push(
+        { kind: "separator" },
+        {
+          label: "Remember This",
+          icon: "book",
+          onSelect: () => {
+            const found = cardsInText(text);
+            addCards(found.length ? found : [{ front: text, back: "" }], pageId);
+            useStore.getState().toast({ message: found.length > 1 ? `${found.length} cards added to Cognition` : "Card added to Cognition" });
+          },
+        },
+        {
+          label: "Spark With Another Idea",
+          icon: "puzzle",
+          onSelect: () => makeSpark((document.activeElement as HTMLElement) ?? document.body, { pageId, blockId: node.attrs.bid ?? null, text: text.slice(0, 120) }),
+        },
+        {
+          label: "Ask as a Question",
+          icon: "info",
+          onSelect: () => {
+            addQuestion(text.slice(0, 300), pageId);
+            useStore.getState().toast({ message: "Question added to Cognition" });
+          },
+        },
+      );
+    }
     items.push(
       { kind: "separator" },
       { label: "Duplicate", icon: "duplicate", shortcut: "Ctrl+D", onSelect: () => duplicateBlock(editor, pos, node) },

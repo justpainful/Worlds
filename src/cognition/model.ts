@@ -151,6 +151,15 @@ export function questionAge(q: Question, now: number): number {
   return Math.max(0, dayOf(now) - dayOf(q.created));
 }
 
+/** A decision to look at again on a date (from a Decision block). */
+export interface Revisit {
+  id: string;
+  pageId: string | null;
+  title: string;
+  /** YYYY-MM-DD */
+  date: string;
+}
+
 /* ------------------------------------------------------------------ */
 /* Sparks                                                              */
 /* ------------------------------------------------------------------ */

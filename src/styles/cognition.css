@@ -216,3 +216,16 @@
   .cg-cols { grid-template-columns: 1fr; }
   .cg-spark { grid-template-columns: 1fr; }
 }
+
+.cg-flip { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 12px; border: 2px dashed color-mix(in srgb, var(--cg-edge) 50%, var(--text-2)); background: transparent; color: var(--text-1); font: inherit; cursor: pointer; text-align: start; }
+.cg-flip:hover { background: var(--surface-hover); }
+.cg-whys { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.cg-whys li { display: flex; align-items: center; gap: 8px; }
+.cg-whys li:nth-child(2) { padding-inline-start: 14px; }
+.cg-whys li:nth-child(3) { padding-inline-start: 28px; }
+.cg-whys li:nth-child(4) { padding-inline-start: 42px; }
+.cg-whys li:nth-child(5) { padding-inline-start: 56px; }
+.cg-why-n { flex: none; font-size: 12px; font-weight: 600; color: var(--text-2); min-width: 44px; }
+.cg-sources { margin: 8px 0 0; padding-inline-start: 20px; font-size: 12px; color: var(--text-2); display: grid; gap: 2px; }
+.cg-block.is-due { box-shadow: 3px 4px 0 var(--cg-edge), 0 0 0 3px color-mix(in srgb, var(--cg-yellow) 60%, transparent); }
+.origin-quoted { text-decoration: underline dotted color-mix(in srgb, var(--cg-blue) 55%, transparent); text-underline-offset: 3px; }

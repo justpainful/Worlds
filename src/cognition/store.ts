@@ -3,7 +3,7 @@
  * the workspace, backed up with it, and needs no new tables.
  */
 import { useStore } from "../state/store";
-import type { Aha, Card, Jigsaw, Question, Spark } from "./model";
+import type { Aha, Card, Jigsaw, Question, Revisit, Spark } from "./model";
 
 const KEYS = {
   cards: "cognition.cards",
@@ -11,9 +11,10 @@ const KEYS = {
   sparks: "cognition.sparks",
   aha: "cognition.aha",
   jigsaws: "cognition.jigsaws",
+  revisits: "cognition.revisits",
 } as const;
 
-type Kinds = { cards: Card; questions: Question; sparks: Spark; aha: Aha; jigsaws: Jigsaw };
+type Kinds = { cards: Card; questions: Question; sparks: Spark; aha: Aha; jigsaws: Jigsaw; revisits: Revisit };
 type Kind = keyof Kinds;
 
 const EMPTY: never[] = [];

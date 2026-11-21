@@ -132,6 +132,16 @@ export function slashItems(): SlashItem[] {
     { id: "code-js", title: "Run JavaScript", subtitle: "Code you can run in the page", icon: "terminal", group: "Knowledge", keywords: "code run javascript js script execute", run: (e, r) => block(e, r).insertCodeRun("javascript").run() },
     { id: "code-py", title: "Run Python", subtitle: "Python in the page, loaded once", icon: "terminal", group: "Knowledge", keywords: "code run python py script execute pyodide", run: (e, r) => block(e, r).insertCodeRun("python").run() },
 
+    // Cognition
+    { id: "cg-card", title: "Memory Card", subtitle: "Something to remember, brought back on time", icon: "book", group: "Cognition", keywords: "card flashcard memory remember review spaced repetition anki بطاقة تذكر", run: (e, r) => block(e, r).insertCognition("cgCard").run() },
+    { id: "cg-question", title: "Open Question", subtitle: "Stays open until you resolve it", icon: "info", group: "Cognition", keywords: "question ask unclear understand سؤال", run: (e, r) => block(e, r).insertCognition("cgQuestion").run() },
+    { id: "cg-argument", title: "Claim and Evidence", subtitle: "A claim, what supports it, what speaks against it", icon: "shield", group: "Cognition", keywords: "claim evidence argument counter debate رأي دليل", run: (e, r) => block(e, r).insertCognition("cgArgument").run() },
+    { id: "cg-proscons", title: "Pros and Cons", subtitle: "Reasons for and against, with weights", icon: "sliders", group: "Cognition", keywords: "pros cons weigh compare decide إيجابيات سلبيات", run: (e, r) => block(e, r).insertCognition("cgProsCons").run() },
+    { id: "cg-decision", title: "Decision", subtitle: "What you chose, why, and when to look again", icon: "check", group: "Cognition", keywords: "decision decide choose record revisit قرار", run: (e, r) => block(e, r).insertCognition("cgDecision").run() },
+    { id: "cg-whys", title: "Five Whys", subtitle: "Ask why until you reach the root", icon: "refresh", group: "Cognition", keywords: "why five whys root cause problem لماذا", run: (e, r) => block(e, r).insertCognition("cgWhys").run() },
+    { id: "cg-fingerprint", title: "Page Fingerprint", subtitle: "Your words, quotes and sources on this page", icon: "activity", group: "Cognition", keywords: "fingerprint credit origin sources quotes plagiarism بصمة مصادر", run: (e, r) => block(e, r).insertCognition("cgFingerprint").run() },
+
+
     // AI
     { id: "prompt", title: "Prompt", subtitle: "Reusable instruction for Claude", icon: "prompt", group: "Assistant", run: (e, r) => block(e, r).setPrompt().run() },
     {

@@ -134,6 +134,9 @@ function TodayPanel({ go }: { go: (s: CognitionSection) => void }) {
     [pages],
   );
   const unfinished = jigsaws.map((j) => ({ j, c: completeness(j) })).filter((x) => x.c.ratio < 1);
+  const revisits = useCognition("revisits");
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const dueDecisions = revisits.filter((r) => r.date <= todayIso);
   const [reviewing, setReviewing] = useState(false);
 
   if (reviewing) return <ReviewSession onDone={() => setReviewing(false)} />;
@@ -167,6 +170,23 @@ function TodayPanel({ go }: { go: (s: CognitionSection) => void }) {
             {pageTitle(back)}
           </button>
           <p className="cg-note">{tr("You last opened it")} {relTime(back.updatedAt)}. {tr("An old idea next to a new one is where sparks come from.")}</p>
+        </Sticker>
+      )}
+
+      {dueDecisions.length > 0 && (
+        <Sticker art="state_delayed" title={tr("Decisions to look at again")} tone="yellow">
+          <ul className="cg-list">
+            {dueDecisions.map((r) => (
+              <li key={r.id}>
+                {r.pageId ? (
+                  <button className="cg-inline-link cg-li-text bidi" dir="auto" onClick={() => openPage(r.pageId!)}>{r.title}</button>
+                ) : (
+                  <span className="cg-li-text bidi" dir="auto">{r.title}</span>
+                )}
+                <span className="cg-li-meta">{r.date}</span>
+              </li>
+            ))}
+          </ul>
         </Sticker>
       )}
 

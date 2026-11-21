@@ -38,6 +38,13 @@ export const BLOCK_TYPES = [
   "formBlock",
   "codeRun",
   "whiteboard",
+  "cgCard",
+  "cgQuestion",
+  "cgArgument",
+  "cgProsCons",
+  "cgDecision",
+  "cgWhys",
+  "cgFingerprint",
   "pluginBlock",
   "placesMap",
 ];
