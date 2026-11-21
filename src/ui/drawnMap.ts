@@ -311,22 +311,50 @@ export function drawingsInUse(): string[] {
   return [...new Set([...Object.values(DRAWN), ...Object.values(DRAWN_PRODUCT)])].sort();
 }
 
-/** "lines" keeps the line glyphs; a set draws every icon that has a drawing. */
+/** "lines" keeps the original icons; "symbolic" uses SF Symbols; a set draws every icon that has a drawing. */
 export type IconStyle = "lines" | "symbolic" | DrawnSet;
-// The original line icons and design are the default; the drawn look is a choice.
+/** The interface design, chosen apart from the icons. */
+export type Design = "original" | "drawn";
+
+// The original icons and design are the default; the rest are choices.
 let current: IconStyle = "lines";
 const listeners = new Set<() => void>();
+const notify = () => {
+  for (const l of listeners) l();
+};
+
 export function setIconStyle(style: unknown) {
   const next: IconStyle = style === "lines" || style === "symbolic" || DRAWN_SETS.includes(style as DrawnSet) ? (style as IconStyle) : "lines";
   if (typeof document !== "undefined") {
-    const drawn = next !== "lines" && next !== "symbolic";
-    document.documentElement.dataset.style = drawn ? "drawn" : next;
-    document.documentElement.dataset.drawnSet = drawn ? next : "";
+    document.documentElement.dataset.icons = next;
+    // The drawn design takes its marker colour from drawn icons when they are on.
+    document.documentElement.dataset.drawnSet = DRAWN_SETS.includes(next as DrawnSet) ? next : "";
   }
   if (next === current) return;
   current = next;
-  for (const l of listeners) l();
+  notify();
 }
+
+let currentDesign: Design = "original";
+export function setDesign(design: unknown) {
+  const next: Design = design === "drawn" ? "drawn" : "original";
+  if (typeof document !== "undefined") document.documentElement.dataset.style = next;
+  if (next === currentDesign) return;
+  currentDesign = next;
+  notify();
+}
+
+export function useDesign(): Design {
+  return useSyncExternalStore(
+    (l) => {
+      listeners.add(l);
+      return () => listeners.delete(l);
+    },
+    () => currentDesign,
+    () => currentDesign,
+  );
+}
+
 export function useIconStyle(): IconStyle {
   return useSyncExternalStore(
     (l) => {

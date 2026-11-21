@@ -207,3 +207,7 @@
 
 /* Symbolic icons (machine-local SF Symbols): the text colour through a mask */
 .icon-symbol { display: inline-block; flex: none; vertical-align: middle; background: currentColor; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; -webkit-mask-size: contain; mask-size: contain; }
+
+/* Symbolic product tiles: a white symbol on a colour of its own */
+.product-symbol { display: inline-grid; place-items: center; flex: none; vertical-align: middle; box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.12); }
+.product-symbol .icon-symbol { background: #fff; }

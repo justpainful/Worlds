@@ -218,7 +218,18 @@ function Appearance() {
             ]}
           />
         </Row>
-        <Row label="Icons" hint="The original icons, or hand-drawn ones that give the whole app a drawn look.">
+        <Row label="Design" hint="The original glass design, or a hand-drawn one in Cognition's style.">
+          <Segmented
+            value={(settings["appearance.design"] as string) === "drawn" ? "drawn" : "original"}
+            onChange={(v) => set("appearance.design", v)}
+            label="Design"
+            options={[
+              { value: "original", label: "Original" },
+              { value: "drawn", label: "Hand-drawn" },
+            ]}
+          />
+        </Row>
+        <Row label="Icons" hint="The original icons, your Symbolic library, or hand-drawn ones.">
           <div className="icon-sets" role="radiogroup" aria-label={tr("Icons")}>
             {(SYMBOLIC_AVAILABLE ? (["lines", "symbolic", "gold", "teal", "pink", "blue"] as const) : (["lines", "gold", "teal", "pink", "blue"] as const)).map((v) => (
               <button

@@ -1,4 +1,4 @@
-import { useIconStyle } from "./drawnMap";
+import { useDesign, useIconStyle } from "./drawnMap";
 import { artUrl } from "../cognition/art";
 import { useEffect, useState, type ReactNode } from "react";
 import { ProductIcon, RefIcon } from "./ProductIcon";
@@ -68,7 +68,8 @@ export function EmptyState({
   compact?: boolean;
 }) {
   const iconStyle = useIconStyle();
-  const art = iconStyle === "lines" || iconStyle === "symbolic" ? null : artUrl(EMPTY_ART[icon] ?? "think");
+  const design = useDesign();
+  const art = design === "drawn" || (iconStyle !== "lines" && iconStyle !== "symbolic") ? artUrl(EMPTY_ART[icon] ?? "think") : null;
   if (art) {
     return (
       <div className={`empty ${compact ? "empty-compact" : ""}`}>
