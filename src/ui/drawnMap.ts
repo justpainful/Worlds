@@ -180,5 +180,6 @@ export function useIconStyle(): IconStyle {
       return () => listeners.delete(l);
     },
     () => current,
+    () => current,
   );
 }
