@@ -4,7 +4,7 @@
 // The checks fail the build: a dash where the house style forbids it, a link
 // to a page or file that does not exist, an image without its size.
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as viteBuild } from "vite";
@@ -131,6 +131,12 @@ const PACK_SOURCE = join(WEB, "..", "src", "packs", "definitions");
 const packData = await loadPacks();
 const generated = packPages(packData, loadArabic());
 for (const lang of ["ar", "en"]) for (const g of generated[lang]) pages[lang].set(g.route, { ...g, file: PACK_SOURCE });
+// The pack and kind icons: the app's new hand-drawn set.
+rmSync(join(OUT, "media", "packs"), { recursive: true, force: true });
+for (const [rel, src] of generated.icons) {
+  mkdirSync(dirname(join(OUT, "media", "packs", rel)), { recursive: true });
+  copyFileSync(src, join(OUT, "media", "packs", rel));
+}
 
 const nav = JSON.parse(readFileSync(join(CONTENT, "nav.json"), "utf8"));
 const flat = nav.flatMap((s) => s.items.map((i) => `${i}/`));
@@ -305,6 +311,21 @@ function render(lang, page) {
   let body = page.body.replace("<!-- hello -->", hello).replace("<!-- docs-index -->", docsIndex(lang));
   for (const [k, v] of Object.entries(LINKS)) body = body.replaceAll(`{{${k}}}`, v);
   let main;
+  // A pack page reads like a store listing inside an app: a slim bar, no site header.
+  if (page.meta.layout === "store") {
+    const back = url(lang, "packs/");
+    const alt = url(t.other, r);
+    return `${head(lang, r, page.meta, page)}
+<body class="store-page">
+<a class="skip" href="#main">${t.skip}</a>
+<header class="store-bar"><a class="store-back" href="${back}">${lang === "ar" ? "الحزم" : "Packs"}</a><a class="store-home" href="${url(lang, "")}" aria-label="${t.home}"><img src="/icon-256.png" alt="" width="28" height="28"></a><a class="lang" href="${alt}" hreflang="${t.other}" lang="${t.other}">${t.otherName}</a></header>
+<main id="main" class="store">
+${body}
+</main>
+</body>
+</html>
+`;
+  }
   if (r === "") main = `<main id="main">\n${body}\n</main>`;
   else if (r.startsWith("docs/")) {
     main = `<div class="wrap docs">\n${sidebar(lang, r)}\n<main id="main" class="article">\n${crumb(lang, r)}\n${body}\n${pager(lang, r)}\n</main>\n</div>`;

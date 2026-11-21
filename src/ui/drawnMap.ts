@@ -286,6 +286,16 @@ export const DRAWN_PRODUCT: Record<string, string> = {
   drawing: "rename",
   gallery: "image",
   project: "category",
+  // Pack icons with no drawing of their own: the closest drawing instead.
+  "palm-tree": "sun",
+  flower: "heart",
+  film: "video",
+  printer: "file",
+  mosque: "guide",
+  food: "coffee",
+  leaf: "sun",
+  camera: "image",
+  car: "location",
 };
 
 const files = {

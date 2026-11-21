@@ -1,163 +1,220 @@
 // A page for every pack and an index of them, in Arabic and English, written
 // from the pack definitions (src/packs/definitions) and the app's Arabic
-// dictionary. Nothing here is typed by hand per pack: when a pack changes in
-// the app, its page changes with the next site build.
+// dictionary. Each pack page reads like a store listing: the pack's icon and
+// name with a button to turn it on, a banner of ready requests, what it keeps,
+// and an information table. Nothing here is typed by hand per pack.
+
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const DRAWN_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "src", "assets", "drawn");
+// Each family draws its icons in one of the four colours of the new icon set.
+const SET = { education: "teal", business: "gold", field: "blue", services: "pink", creative: "pink", community: "teal", personal: "blue" };
 
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
+// Each family keeps one colour on its banner, from the site's palette.
+const HUE = { education: "teal", business: "terra", field: "ochre", services: "sage", creative: "plum", community: "teal", personal: "ochre" };
+
 const W = {
   ar: {
+    sep: "، ",
     index: "الحزم",
     indexTitle: "حزم Worlds: 39 حزمة للدراسة والعمل والمجتمع والحياة",
     indexDesc: "حزم Worlds تضيف ما يحتاجه عملك بالضبط: المعلم والعمل الحر والمشروع الصغير والمطاعم والمقاولات والجمعيات والمالية الشخصية وغيرها، بالعربية والإنجليزية.",
     indexLead: "الحزمة مجموعة ميزات اختيارية تفعّلها حسب ما تستخدم Worlds له: أنواع عناصر بحقولها، وجداول ولوحات، وأرقام وتنبيهات في الصفحة الرئيسية، وطلبات جاهزة لـ Claude. كل الحزم مجانية، وتعمل بالعربية والإنجليزية، ويمكن تفعيل أكثر من حزمة معًا.",
-    pack: (l) => `حزمة ${l}`,
     title: (l) => `حزمة ${l} في Worlds`,
-    adds: "ما تضيفه الحزمة",
-    kinds: "ما تحفظه فيها",
-    fields: "الحقول",
-    views: "الجداول واللوحات",
-    board: "لوحة",
-    table: "جدول",
-    custom: "عرض خاص",
-    home: "في الصفحة الرئيسية",
-    figures: "أرقام",
-    alerts: "تنبيهات عندما يحتاج شيء انتباهك",
-    claude: "طلبات جاهزة لـ Claude",
-    claudeNote: "تختار الطلب من الحزمة، فيصل إلى Claude مع العنصر المفتوح، وكل تعديل يجريه يمكن التراجع عنه.",
-    messages: "رسائل جاهزة",
-    messagesNote: "يملأ Worlds الرسالة من بيانات العنصر ويفتحها في واتساب أو البريد، فتراجعها وترسلها بنفسك.",
-    team: "الأدوار في مساحة الفريق",
-    seesAll: "يرى كل العناصر",
-    seesAssigned: "يرى ما أُسند إليه فقط",
-    canEdit: "ويعدّل",
-    readOnly: "للقراءة",
-    send: (to) => `إرسال إلى ${to}`,
-    start: "ابدأ بها",
-    steps: [
-      ["ثبّت Worlds أو افتحه في المتصفح", 'من <a href="/apps/">صفحة التطبيقات</a>، أو افتح <a href="https://app.enterworlds.space/">Worlds على الويب</a>.'],
-      ["فعّل الحزمة", (l) => `من <strong>الإعدادات</strong>، <strong>الحزم</strong>، شغّل حزمة ${esc(l)}. أو اخترها من سؤال «لأي شيء تستخدم Worlds؟» في الترحيب.`],
-      ["جرّبها بأمثلة", "أضف الأمثلة الجاهزة من الحزمة لترى كيف تعمل، ثم احذفها متى شئت."],
-    ],
+    by: "من Worlds",
+    get: "فعّلها في Worlds",
+    keeps: "ما تحفظه",
+    info: "معلومات",
+    rows: {
+      developer: ["المطوّر", "Worlds"],
+      family: "الفئة",
+      can: "القدرات",
+      views: "الجداول واللوحات",
+      figures: "أرقام الرئيسية",
+      alerts: "التنبيهات",
+      roles: "الأدوار في الفريق",
+      messages: "رسائل جاهزة",
+      price: ["السعر", "مجانية"],
+      languages: ["اللغات", "العربية والإنجليزية"],
+      platforms: ["المنصات", "ويندوز وماك ولينكس والويب، وأندرويد وآيفون وآيباد"],
+      since: "متاحة منذ",
+      guide: "الدليل",
+      website: "الموقع",
+      privacy: "سياسة الخصوصية",
+      terms: "شروط الاستخدام",
+    },
+    caps: { tables: "جداول", boards: "لوحات", home: "أرقام وتنبيهات في الرئيسية", claude: "طلبات لـ Claude", messages: "رسائل واتساب وبريد", team: "أدوار للفريق", send: "إرسال للأعضاء" },
+    guideLink: "دليل الحزم",
+    fine: "تعمل الحزمة داخل Worlds على جهازك، وتبقى بياناتها معك. إطفاؤها يخفي واجهاتها وعناصرها دون حذف أي شيء، وإعادة تشغيلها تعيدها كلها. فعّلها من الإعدادات، الحزم، أو من سؤال «لأي شيء تستخدم Worlds؟» في الترحيب.",
+    claudeName: "Claude",
+    worldsName: "Worlds",
     related: "حزم قريبة",
     all: "كل الحزم",
-    guide: "دليل الحزم",
   },
   en: {
+    sep: ", ",
     index: "Packs",
     indexTitle: "Worlds packs: 39 packs for study, work, community and life",
     indexDesc: "Worlds packs add exactly what your work needs: Teacher, Freelance, Small business, Restaurants, Contracting, Nonprofits, Personal finance and more, in Arabic and English.",
     indexLead: "A pack is an optional set of features you turn on for what you use Worlds for: kinds of items with their fields, tables and boards, figures and alerts on Home, and ready requests for Claude. Every pack is free, works in Arabic and English, and you can turn on several at once.",
-    pack: (l) => `The ${l} pack`,
     title: (l) => `The ${l} pack in Worlds`,
-    adds: "What the pack adds",
-    kinds: "What you keep in it",
-    fields: "Fields",
-    views: "Tables and boards",
-    board: "Board",
-    table: "Table",
-    custom: "Custom view",
-    home: "On Home",
-    figures: "Figures",
-    alerts: "Alerts when something needs you",
-    claude: "Ready requests for Claude",
-    claudeNote: "Pick a request from the pack and Claude gets it with the open item; every change it makes can be undone.",
-    messages: "Ready messages",
-    messagesNote: "Worlds fills in the message from the item and opens it in WhatsApp or email, so you read it and send it yourself.",
-    team: "Roles in a Team workspace",
-    seesAll: "sees every item",
-    seesAssigned: "sees only what is assigned to them",
-    canEdit: "and edits",
-    readOnly: "read only",
-    send: (to) => `Send to ${to}`,
-    start: "Get started",
-    steps: [
-      ["Install Worlds or open it in the browser", 'From the <a href="/en/apps/">apps page</a>, or open <a href="https://app.enterworlds.space/">Worlds on the web</a>.'],
-      ["Turn the pack on", (l) => `In <strong>Settings</strong>, <strong>Packs</strong>, turn on ${esc(l)}. Or pick it when the welcome asks "What do you use Worlds for?".`],
-      ["Try it with examples", "Add the pack's ready examples to see how it works, and delete them whenever you like."],
-    ],
+    by: "By Worlds",
+    get: "Turn on in Worlds",
+    keeps: "What it keeps",
+    info: "Information",
+    rows: {
+      developer: ["Developer", "Worlds"],
+      family: "Category",
+      can: "Capabilities",
+      views: "Tables and boards",
+      figures: "Home figures",
+      alerts: "Alerts",
+      roles: "Team roles",
+      messages: "Ready messages",
+      price: ["Price", "Free"],
+      languages: ["Languages", "Arabic and English"],
+      platforms: ["Platforms", "Windows, Mac, Linux and the web, plus Android, iPhone and iPad"],
+      since: "Available since",
+      guide: "Guide",
+      website: "Website",
+      privacy: "Privacy Policy",
+      terms: "Terms of Use",
+    },
+    caps: { tables: "Tables", boards: "Boards", home: "Home figures and alerts", claude: "Claude requests", messages: "WhatsApp and email messages", team: "Team roles", send: "Sending to members" },
+    guideLink: "Packs guide",
+    fine: "The pack runs inside Worlds on your device, and its data stays with you. Turning it off hides its views and items without deleting anything, and turning it back on brings them all back. Turn it on in Settings, Packs, or when the welcome asks what you use Worlds for.",
+    claudeName: "Claude",
+    worldsName: "Worlds",
     related: "Related packs",
     all: "All packs",
-    guide: "Packs guide",
   },
 };
 
-export function packPages({ packs, families }, ar) {
+export function packPages({ packs, families, drawn }, ar) {
   const tr = (lang, s) => (lang === "ar" ? ar[s] ?? s : s);
   const base = (lang) => (lang === "en" ? "/en/" : "/");
-  const out = { ar: [], en: [] };
+  // The new hand-drawn icons, picked the way the app picks them (src/ui/drawnMap.ts):
+  // the drawing for the product icon, in the family's colour, gold filling a gap.
+  const icons = new Map();
+  const icon = (name, size, cls = "", family = "education") => {
+    const drawing = drawn[name] ?? name;
+    let file = null;
+    for (const set of [SET[family] ?? "gold", "gold"]) {
+      for (const ext of ["png", "svg"]) if (!file && existsSync(join(DRAWN_DIR, set, `${drawing}.${ext}`))) file = `${set}/${drawing}.${ext}`;
+    }
+    if (!file) throw new Error(`pack icon ${name}: no drawing ${drawing}`);
+    icons.set(file, join(DRAWN_DIR, file));
+    return `<img${cls ? ` class="${cls}"` : ""} src="/media/packs/${file}" alt="" width="${size}" height="${size}" loading="lazy">`;
+  };
+  const out = { ar: [], en: [], icons };
+
   for (const lang of ["ar", "en"]) {
     const w = W[lang];
     const t = (s) => esc(tr(lang, s));
+    const join = (list) => esc(list.join(w.sep));
     const fam = (id) => tr(lang, families.find((f) => f.id === id)?.label ?? id);
 
-    // The index: every family with its packs.
+    // The index: every family with its packs, each row with the pack's icon.
     const groups = families
       .map((f) => {
         const list = packs.filter((p) => p.family === f.id);
         if (!list.length) return "";
-        return `<h2 id="${f.id}">${t(f.label)}</h2>\n<ul class="index">${list.map((p) => `<li><a href="${base(lang)}packs/${p.id}/"><strong>${t(p.label)}</strong><span>${t(p.blurb)}</span></a></li>`).join("")}</ul>`;
+        return `<h2 id="${f.id}">${t(f.label)}</h2>\n<ul class="pk-rows pk-links">${list
+          .map((p) => `<li><a href="${base(lang)}packs/${p.id}/">${icon(p.icon, 44, "", p.family)}<div><strong>${t(p.label)}</strong><span>${t(p.blurb)}</span></div></a></li>`)
+          .join("")}</ul>`;
       })
       .join("\n");
     out[lang].push({
       route: "packs/",
       meta: { title: w.indexTitle, nav: w.index, description: w.indexDesc },
-      body: `<h1>${esc(w.index)}</h1>\n<p class="lead">${esc(w.indexLead)}</p>\n${groups}\n<p><a href="${base(lang)}docs/packs/">${esc(w.guide)}</a></p>`,
+      body: `<h1>${esc(w.index)}</h1>\n<p class="lead">${esc(w.indexLead)}</p>\n${groups}\n<p><a href="${base(lang)}docs/packs/">${esc(w.guideLink)}</a></p>`,
     });
 
     for (const p of packs) {
       const label = tr(lang, p.label);
+      const hue = HUE[p.family] ?? "teal";
       const parts = [];
       parts.push(`<p class="crumb"><a href="${base(lang)}packs/">${esc(w.index)}</a> / ${esc(fam(p.family))}</p>`);
-      parts.push(`<h1>${esc(w.pack(label))}</h1>`);
-      parts.push(`<p class="lead">${t(p.blurb)}</p>`);
-      if (p.adds?.length) parts.push(`<h2 id="adds">${w.adds}</h2>\n<ul>${p.adds.map((a) => `<li>${t(a)}</li>`).join("")}</ul>`);
+
+      // Head: icon, name, maker and family, and the button.
       parts.push(
-        `<h2 id="kinds">${w.kinds}</h2>\n` +
-          p.kinds
-            .map((k) => {
-              const fields = k.fields.filter((f) => !f.detailOnly && f.id !== "notes").map((f) => tr(lang, f.label));
-              const msgs = (k.messages ?? []).map((m) => tr(lang, m.label));
-              return `<h3>${t(k.plural)}</h3>\n<p>${t(k.blurb)}${fields.length ? `. ${w.fields}: ${esc(fields.join(lang === "ar" ? "، " : ", "))}.` : "."}</p>${msgs.length ? `\n<p>${esc(w.messages)}: ${esc(msgs.join(lang === "ar" ? "، " : ", "))}.</p>` : ""}`;
-            })
-            .join("\n"),
+        `<header class="pk-head">${icon(p.icon, 64, "pk-icon", p.family)}<div class="pk-name"><h1>${esc(label)}</h1><p>${esc(w.by)} · ${esc(fam(p.family))}</p></div>` +
+          `<a class="pk-get" href="https://app.enterworlds.space/">${esc(w.get)}</a></header>`,
       );
-      const views = (p.views ?? []).filter((v) => v.type !== "custom" || v.label);
-      if (views.length) parts.push(`<h2 id="views">${w.views}</h2>\n<ul>${views.map((v) => `<li>${t(v.label)} (${w[v.type] ?? w.table})</li>`).join("")}</ul>`);
-      if (p.stats?.length || p.alerts?.length) {
-        let s = `<h2 id="home">${w.home}</h2>`;
-        if (p.stats?.length) s += `\n<p><strong>${w.figures}:</strong> ${esc(p.stats.map((x) => tr(lang, x.label)).join(lang === "ar" ? "، " : ", "))}.</p>`;
-        if (p.alerts?.length) s += `\n<p><strong>${w.alerts}:</strong> ${esc(p.alerts.map((x) => tr(lang, x.label)).join(lang === "ar" ? "، " : ", "))}.</p>`;
-        parts.push(s);
-      }
-      if (p.prompts?.length) parts.push(`<h2 id="claude">${w.claude}</h2>\n<ul>${p.prompts.map((x) => `<li>${t(x.label)}</li>`).join("")}</ul>\n<p>${esc(w.claudeNote)}</p>`);
-      const roleName = (id) => tr(lang, p.roles?.find((r) => r.id === id)?.label ?? id);
-      const publishes = p.kinds.filter((k) => k.publish).map((k) => (lang === "ar" ? `${tr(lang, k.plural)} إلى كل ${roleName(k.publish.role)}` : `${tr(lang, k.plural)} to every ${roleName(k.publish.role)}`));
-      if (p.roles?.length) {
+
+      // Banner: the ready requests for Claude, or what the pack adds when it has none.
+      const chips = (p.prompts?.length ? p.prompts.map((x) => [w.claudeName, tr(lang, x.label)]) : (p.adds ?? []).map((a) => [w.worldsName, tr(lang, a)])).slice(0, 3);
+      if (chips.length) {
         parts.push(
-          `<h2 id="team">${w.team}</h2>\n<ul>${p.roles.map((r) => `<li><strong>${t(r.label)}</strong>: ${r.sees === "all" ? w.seesAll : w.seesAssigned}${lang === "ar" ? "، " : ", "}${r.canEdit ? w.canEdit : w.readOnly}</li>`).join("")}</ul>` +
-            (publishes.length ? `\n<p>${lang === "ar" ? "ترسل من هنا، فيصل كل عنصر إلى Worlds الخاص بالعضو" : "Send from here, and each item arrives in the member's own Worlds"}: ${esc(publishes.join(lang === "ar" ? "، " : ", "))}.</p>` : ""),
+          `<div class="pk-hero h-${hue}" role="presentation"><ul>${chips
+            .map(([who, text]) => `<li><span class="pk-who">${esc(who)}</span> ${esc(text)}<span class="pk-go" aria-hidden="true"></span></li>`)
+            .join("")}</ul></div>`,
         );
       }
-      if (p.kinds.some((k) => k.messages?.length)) parts.push(`<p>${esc(w.messagesNote)}</p>`);
+
+      // Description: one short paragraph, as on a store page.
+      const adds = (p.adds ?? []).map((a) => tr(lang, a));
+      parts.push(`<p class="pk-desc">${t(p.blurb)}</p>`);
+
+      // What it keeps: one row per kind, like the app list of a store page.
       parts.push(
-        `<h2 id="start">${w.start}</h2>\n<ol class="steps">${w.steps
-          .slice(0, p.samples?.length ? 3 : 2)
-          .map(([h, b]) => `<li><h3>${esc(h)}</h3><p>${typeof b === "function" ? b(label) : b}</p></li>`)
-          .join("")}</ol>`,
+        `<section class="pk-sec"><h2>${esc(w.keeps)} <span class="pk-count">${p.kinds.length}</span></h2>\n<ul class="pk-rows">${p.kinds
+          .map((k) => {
+            const fields = k.fields.filter((f) => !f.detailOnly && f.id !== "notes").map((f) => tr(lang, f.label));
+            return `<li>${icon(k.icon, 44, "", p.family)}<div><strong>${t(k.plural)}</strong><span>${t(k.blurb)}${fields.length ? `: ${join(fields)}` : ""}</span></div></li>`;
+          })
+          .join("")}</ul></section>`,
       );
+
+      // Information: capabilities and the facts, as label and value rows.
+      const views = p.views ?? [];
+      const caps = [];
+      if (views.some((v) => v.type === "table")) caps.push(w.caps.tables);
+      if (views.some((v) => v.type === "board")) caps.push(w.caps.boards);
+      if (p.stats?.length || p.alerts?.length) caps.push(w.caps.home);
+      if (p.prompts?.length) caps.push(w.caps.claude);
+      if (p.kinds.some((k) => k.messages?.length)) caps.push(w.caps.messages);
+      if (p.roles?.length) caps.push(w.caps.team);
+      if (p.kinds.some((k) => k.publish)) caps.push(w.caps.send);
+      const r = w.rows;
+      const rows = [
+        [r.can, join(caps)],
+        [r.developer[0], esc(r.developer[1])],
+        [r.family, esc(fam(p.family))],
+        views.length ? [r.views, join(views.map((v) => tr(lang, v.label)))] : null,
+        p.stats?.length ? [r.figures, join(p.stats.map((x) => tr(lang, x.label)))] : null,
+        p.alerts?.length ? [r.alerts, join(p.alerts.map((x) => tr(lang, x.label)))] : null,
+        p.roles?.length ? [r.roles, join(p.roles.map((x) => tr(lang, x.label)))] : null,
+        p.kinds.some((k) => k.messages?.length) ? [r.messages, join(p.kinds.flatMap((k) => (k.messages ?? []).map((m) => tr(lang, m.label))))] : null,
+        [r.price[0], esc(r.price[1])],
+        [r.languages[0], esc(r.languages[1])],
+        [r.platforms[0], esc(r.platforms[1])],
+        [r.since, `<a href="https://changelog.enterworlds.space${base(lang)}${p.id === "study" ? "0.2.0" : "0.3.2"}/">${p.id === "study" ? "0.2.0" : "0.3.2"}</a>`],
+        [r.guide, `<a class="ext" href="${base(lang)}docs/packs/">${esc(w.guideLink)}</a>`],
+        [r.website, `<a class="ext" href="${base(lang)}" aria-label="enterworlds.space"></a>`],
+        [r.privacy, `<a class="ext" href="${base(lang)}privacy/" aria-label="${esc(r.privacy)}"></a>`],
+        [r.terms, `<a class="ext" href="${base(lang)}terms/" aria-label="${esc(r.terms)}"></a>`],
+      ].filter(Boolean);
+      parts.push(`<section class="pk-sec"><h2>${esc(w.info)}</h2>\n<dl class="pk-info">${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`).join("")}</dl></section>`);
+      parts.push(`<p class="pk-fine">${esc(w.fine)}</p>`);
+
       const near = packs.filter((x) => x.family === p.family && x.id !== p.id);
-      if (near.length) parts.push(`<h2 id="related">${w.related}</h2>\n<ul class="index">${near.map((x) => `<li><a href="${base(lang)}packs/${x.id}/"><strong>${t(x.label)}</strong><span>${t(x.blurb)}</span></a></li>`).join("")}</ul>`);
+      if (near.length) {
+        parts.push(
+          `<section class="pk-sec"><h2>${esc(w.related)}</h2>\n<ul class="pk-rows pk-links">${near
+            .map((x) => `<li><a href="${base(lang)}packs/${x.id}/">${icon(x.icon, 44, "", x.family)}<div><strong>${t(x.label)}</strong><span>${t(x.blurb)}</span></div></a></li>`)
+            .join("")}</ul></section>`,
+        );
+      }
       parts.push(`<p><a href="${base(lang)}packs/">${esc(w.all)}</a></p>`);
 
-      const adds = (p.adds ?? []).slice(0, 3).map((a) => tr(lang, a)).join(lang === "ar" ? "، " : ", ");
-      let description = `${tr(lang, p.blurb)} ${adds}${adds ? "." : ""}`.replace(/\.\./g, ".");
+      let description = `${tr(lang, p.blurb)} ${adds.slice(0, 3).join(w.sep)}${adds.length ? "." : ""}`;
       if (description.length > 300) description = `${description.slice(0, 297).replace(/\s+\S*$/, "")}...`;
-      out[lang].push({
-        route: `packs/${p.id}/`,
-        meta: { title: w.title(label), nav: label, description },
-        body: parts.join("\n\n"),
-      });
+      out[lang].push({ route: `packs/${p.id}/`, meta: { title: w.title(label), nav: label, description, layout: "store" }, body: parts.join("\n") });
     }
   }
   return out;

@@ -12,7 +12,8 @@ export async function loadPacks() {
   try {
     const registry = await server.ssrLoadModule("/src/packs/registry.ts");
     const definition = await server.ssrLoadModule("/src/packs/definition.ts");
-    return { packs: registry.PACK_DEFS, families: definition.FAMILIES };
+    const drawn = await server.ssrLoadModule("/src/ui/drawnMap.ts");
+    return { packs: registry.PACK_DEFS, families: definition.FAMILIES, drawn: drawn.DRAWN_PRODUCT };
   } finally {
     await server.close();
   }
