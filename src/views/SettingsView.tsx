@@ -26,6 +26,7 @@ import { PACKS, setPackEnabled, usePack } from "../packs/packs";
 import { loadSample, removeSample, rewriteSample, sampleLanguageMismatch, useSampleLoaded } from "../demo/sampleActions";
 import { choosePasscode, enableHello, hasPasscode } from "../pages/privacy";
 import { ShortcutSettings } from "../shell/customShortcuts";
+import { MailAddress } from "../account/PublishPage";
 
 const SECTIONS: { id: string; label: string; ar?: string; tile: string; group: number; keywords: string }[] = [
   { id: "account", label: "Account", tile: "team", group: 0, keywords: "sign in passkey email devices workspaces team members sign out server" },
@@ -371,6 +372,9 @@ function EditorSettings() {
       </Row>
       <Row label="Browser extension" hint="Install the Worlds extension in Chrome or Edge, then paste this token into it once. It sends pages, selections and articles to Worlds on this computer.">
         <CaptureToken />
+      </Row>
+      <Row label="Email to Worlds" hint="Mail sent to this address arrives in Worlds as a page under From email.">
+        <MailAddress />
       </Row>
       <Row label="Private pages" hint="Private pages open with this passcode or Windows Hello and stay out of search. Mark a page private from its ... menu.">
         <div className="set-buttons">

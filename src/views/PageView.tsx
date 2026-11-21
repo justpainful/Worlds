@@ -39,6 +39,7 @@ import { openSideBySide, openTimeMachine, readAloud } from "../ai/writingTools";
 import { PrivateGate, isPrivate, lockPrivate, togglePrivate, usePrivacy } from "../pages/privacy";
 import { exportBook, exportDocx } from "../files/importExport";
 import { collectHighlights } from "../files/readFiles";
+import { openPublish } from "../account/PublishPage";
 
 export function PageView({ pageId, paneId }: { pageId: string; paneId: string }) {
   const meta = useStore((s) => s.pages[pageId]);
@@ -343,6 +344,7 @@ function LoadedPage({ page, paneId, reload }: { page: Page; paneId: string; relo
                           { label: "Book with Subpages as Chapters (EPUB)", onSelect: () => exportBook(page.id) },
                         ],
                       },
+                      { label: "Publish to the Web", icon: "globe", onSelect: () => openPublish(page.id) },
                       { label: "Read Aloud", icon: "speaker", onSelect: () => readAloud() },
                       { label: "Gather Highlights", icon: "highlight", onSelect: () => editor && collectHighlights(editor) },
                       { label: "Translate Side by Side", icon: "translate", onSelect: () => openSideBySide(page.id) },

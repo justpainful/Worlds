@@ -150,3 +150,19 @@
 .pm-list button { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px; border-radius: 999px; background: var(--fill-2); color: var(--text-1); font: var(--t-small); }
 .pm-list button:hover { background: var(--fill-3); }
 .pm-page { color: var(--text-3); }
+
+/* ---- Publish to the web -------------------------------------------------- */
+.pub-section { margin-bottom: 18px; }
+.pub-section h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font: var(--t-ui-strong); font-size: 15px; }
+.pub-row { display: flex; align-items: center; gap: 6px; }
+.pub-row .field { flex: 1; min-width: 0; }
+.pub-row .select-trigger { width: auto; }
+.pub-prefix { color: var(--text-3); font: var(--t-small); white-space: nowrap; }
+.pub-note { margin: 6px 0 0; color: var(--text-3); font: var(--t-small); }
+.pub-made { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; padding: 10px 12px; border-radius: 12px; background: var(--green-soft); color: var(--green); }
+.pub-made a { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-1); }
+.pub-dim { color: var(--text-3); font: var(--t-caption); white-space: nowrap; }
+.pub-item { display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 8px; border-radius: 10px; }
+.pub-item:hover { background: var(--fill-1); }
+.pub-item .bidi { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.capture-token { padding: 3px 8px; border-radius: 7px; background: var(--fill-2); font: 500 12px var(--font-mono); }

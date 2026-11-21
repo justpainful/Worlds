@@ -28,6 +28,7 @@ import { startReminders } from "./pages/reminders";
 import { maybeWeeklySummary, openAskSpace } from "./ai/writingTools";
 import { installCustomShortcuts } from "./shell/customShortcuts";
 import { listenForCaptures } from "./files/capture";
+import { startMailInbox } from "./account/PublishPage";
 
 export function App() {
   const ready = useStore((s) => s.ready);
@@ -44,6 +45,7 @@ export function App() {
     startReminders();
     installCustomShortcuts();
     void listenForCaptures();
+    startMailInbox();
     const t = window.setTimeout(maybeWeeklySummary, 20000);
     // Ctrl+Shift+K asks the whole workspace.
     const onKey = (e: KeyboardEvent) => {
