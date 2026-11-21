@@ -307,7 +307,12 @@ const idVars = (base, syncUrl) => ({
 const writeIdentity = () => {
   const path = writeConfig(ID_DIR, idVars(HOSTS ? `https://${HOSTS.identity}` : state.identityUrl, state.syncUrl), extras(HOSTS?.identity, true));
   // EMAIL_FROM is not secret; it goes in [vars].
-  const extraVars = [`EMAIL_FROM = ${JSON.stringify(state.emailFrom)}`, ...(EDGE ? [`EMAIL_WEBHOOK_URL = ${JSON.stringify(EDGE.mailUrl)}`] : [])];
+  const extraVars = [
+    `EMAIL_FROM = ${JSON.stringify(state.emailFrom)}`,
+    ...(EDGE ? [`EMAIL_WEBHOOK_URL = ${JSON.stringify(EDGE.mailUrl)}`] : []),
+    // Email to Worlds: each person's address is <key>@<domain>; Email Routing's catch-all hands it to the edge.
+    ...(state.domain ? [`MAIL_INBOX_DOMAIN = ${JSON.stringify(state.domain)}`] : []),
+  ];
   const toml = readFileSync(path, "utf8").replace(/^\[vars\]$/m, `[vars]\n${extraVars.join("\n")}`);
   writeFileSync(path, toml);
 };
@@ -379,6 +384,7 @@ if (EDGE) {
     PROFILE_HOST: `profile.${state.domain}`,
     SITE_URL: `https://${state.domain}`,
     MAIL_FROM: state.domainFrom,
+    MAIL_INBOX_DOMAIN: state.domain,
   };
   for (const [key, value] of Object.entries(vars)) toml = toml.replace(new RegExp(`^${key} = ".*"$`, "m"), `${key} = ${JSON.stringify(value)}`);
   toml = toml.replace(/^name = .*$/m, (line) => `${line}\naccount_id = ${JSON.stringify(EDGE.account)}`);
