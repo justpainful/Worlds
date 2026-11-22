@@ -19,6 +19,8 @@ import type { EventEnvelope } from "../lib/events";
 import { ApiError, bad, body, conflict, forbidden, normalizeEmail, notFound, optStr, str } from "../lib/http";
 import { checkUsername, usernameTaken } from "../lib/usernames";
 import { foldName } from "../lib/names";
+import { reportersOf, setTeamHidden, targetKey, type Target } from "../lib/content";
+import { eventStmt } from "../lib/events";
 import { noticeMail } from "../lib/noticeMail";
 import { cancelDeletion, eraseAccount, exportAccount, scheduleDeletion } from "../domain/deletion";
 import { authenticationOptions, webauthn } from "../lib/webauthn";
@@ -45,17 +47,19 @@ export const PERMISSIONS = [
   "users.delete", // schedule or erase an account
   "users.export", // a copy of an account's data
   "names", // reserved usernames and words not allowed in names
+  "content", // public profiles, published pages, reports, suspicious accounts
+  "content.workspaces", // move or trash someone's shared workspace
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
 const ROLE_PERMISSIONS: Record<AdminRole, readonly Permission[]> = {
   owner: PERMISSIONS,
-  moderator: ["users.read", "users.edit", "users.suspend", "notes", "audit", "stats", "tickets", "names"],
+  moderator: ["users.read", "users.edit", "users.suspend", "notes", "audit", "stats", "tickets", "names", "content"],
   support: ["users.read", "users.email", "notes", "stats", "tickets"],
 };
 
 /** Actions that need a second check made in the last STEP_UP_MS. */
-const NEEDS_STEP_UP: ReadonlySet<Permission> = new Set(["users.edit_email", "users.suspend", "users.ban", "users.devices", "team", "users.delete", "users.export"]);
+const NEEDS_STEP_UP: ReadonlySet<Permission> = new Set(["users.edit_email", "users.suspend", "users.ban", "users.devices", "team", "users.delete", "users.export", "content.workspaces"]);
 export const STEP_UP_MS = 10 * 60 * 1000;
 
 const DAY = 86_400_000;
@@ -1022,5 +1026,262 @@ admin.delete("/names/banned/:word", async (c) => {
   const r = await c.env.DB.prepare("DELETE FROM banned_words WHERE word = ?1").bind(foldName(decodeURIComponent(c.req.param("word")))).run();
   if (!r.meta.changes) throw notFound();
   await logStmt(c, "admin.names.unbanned", c.get("caller").userId, { count: 1 }).run();
+  return c.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// Public content: profiles, published pages, shared workspaces (lib/content.ts)
+// ---------------------------------------------------------------------------
+
+const likeQ = (q: string) => `%${q.toLowerCase().replace(/[\\%_]/g, (m) => "\\" + m)}%`;
+
+async function tellOwner(c: AdminCtx, ownerId: string, title: string, reason: string, tell: boolean) {
+  if (!tell) return;
+  const owner = await c.env.DB.prepare("SELECT email FROM users WHERE id = ?1").bind(ownerId).first<{ email: string }>();
+  if (owner) await sendSupportMail(c.env, { to: owner.email, ...noticeMail("ar", "content_removed", { title, reason }) });
+  const n = notifyStmt(c.env.DB, ownerId, { id: `content:${ownerId}:${now()}`, topic: "content.removed", title, excerpt: reason });
+  await n.stmt.run();
+  emit(c as unknown as Context<AppEnv>, [n.envelope]);
+}
+
+admin.get("/content/profiles", async (c) => {
+  await need(c, "content");
+  const q = (c.req.query("q") ?? "").trim();
+  const state = c.req.query("state") ?? "all";
+  const where: string[] = [];
+  const args: unknown[] = [];
+  if (q) {
+    args.push(likeQ(q));
+    where.push(`(u.username LIKE ?${args.length} ESCAPE '\\' OR lower(u.display_name) LIKE ?${args.length} ESCAPE '\\')`);
+  }
+  if (state === "visible") where.push("p.visible = 1 AND p.team_hidden = 0");
+  else if (state === "hidden") where.push("p.visible = 0");
+  else if (state === "team") where.push("p.team_hidden = 1");
+  const { results } = await c.env.DB.prepare(
+    `SELECT p.user_id, p.visible, p.team_hidden, p.team_reason, p.published_at, p.updated_at, p.avatar_key IS NOT NULL AS avatar, u.username, u.display_name
+     FROM public_profiles p JOIN users u ON u.id = p.user_id ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY p.team_hidden DESC, p.updated_at DESC LIMIT 200`,
+  )
+    .bind(...args)
+    .all<{ user_id: string; visible: number; team_hidden: number; team_reason: string | null; published_at: number; updated_at: number; avatar: number; username: string; display_name: string }>();
+  return c.json(
+    await Promise.all(
+      results.map(async (r) => ({
+        userId: r.user_id,
+        username: r.username,
+        displayName: r.display_name,
+        visible: r.visible === 1,
+        teamHidden: r.team_hidden === 1,
+        teamReason: r.team_reason,
+        publishedAt: r.published_at,
+        updatedAt: r.updated_at,
+        reports: await reportersOf(c.env.DB, { type: "profile", username: r.username }),
+      })),
+    ),
+  );
+});
+
+admin.get("/content/pages", async (c) => {
+  await need(c, "content");
+  const q = (c.req.query("q") ?? "").trim();
+  const kind = c.req.query("kind");
+  const where: string[] = [];
+  const args: unknown[] = [];
+  if (q) {
+    args.push(likeQ(q));
+    where.push(`(lower(p.title) LIKE ?${args.length} ESCAPE '\\' OR u.username LIKE ?${args.length} ESCAPE '\\' OR p.slug LIKE ?${args.length} ESCAPE '\\')`);
+  }
+  if (kind === "page" || kind === "share") {
+    args.push(kind);
+    where.push(`p.kind = ?${args.length}`);
+  }
+  if (c.req.query("state") === "team") where.push("p.team_hidden = 1");
+  const { results } = await c.env.DB.prepare(
+    `SELECT p.id, p.slug, p.kind, p.title, p.lang, p.views, p.expires_at, p.password_hash IS NOT NULL AS locked, p.team_hidden, p.team_reason, p.created_at, p.updated_at, u.id AS user_id, u.username, u.display_name
+     FROM published_pages p JOIN users u ON u.id = p.user_id ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY p.team_hidden DESC, p.updated_at DESC LIMIT 200`,
+  )
+    .bind(...args)
+    .all<Record<string, unknown>>();
+  return c.json(
+    await Promise.all(
+      results.map(async (r) => ({
+        id: r.id,
+        slug: r.slug,
+        kind: r.kind,
+        title: r.title,
+        lang: r.lang,
+        views: r.views,
+        expiresAt: r.expires_at,
+        locked: r.locked === 1,
+        teamHidden: r.team_hidden === 1,
+        teamReason: r.team_reason,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+        userId: r.user_id,
+        username: r.username,
+        displayName: r.display_name,
+        reports: await reportersOf(c.env.DB, r.kind === "share" ? { type: "share", slug: String(r.slug) } : { type: "page", username: String(r.username), slug: String(r.slug) }),
+      })),
+    ),
+  );
+});
+
+/** Hide or show a profile ({ username }) or a published page ({ pageId }), with a reason the owner is told. */
+admin.post("/content/hide", async (c) => {
+  await need(c, "content");
+  const b = await body(c.req);
+  const hidden = b.hidden !== false;
+  const reason = hidden ? reasonOf(b.reason) : (optStr(b.reason, "reason", 500) ?? "");
+  let target: Target | null = null;
+  if (typeof b.username === "string") target = { type: "profile", username: b.username.toLowerCase() };
+  else if (typeof b.pageId === "string") {
+    const p = await c.env.DB.prepare("SELECT p.kind, p.slug, u.username FROM published_pages p JOIN users u ON u.id = p.user_id WHERE p.id = ?1").bind(b.pageId).first<{ kind: string; slug: string; username: string }>();
+    if (p) target = p.kind === "share" ? { type: "share", slug: p.slug } : { type: "page", username: p.username, slug: p.slug };
+  }
+  if (!target) throw notFound("content_not_found");
+  const hit = await setTeamHidden(c.env.DB, target, hidden, hidden ? reason : null);
+  if (!hit) throw notFound("content_not_found");
+  await logStmt(c, hidden ? "admin.content.hidden" : "admin.content.shown", hit.ownerId, { content: targetKey(target), reason }).run();
+  if (hidden) await tellOwner(c, hit.ownerId, hit.title, reason, b.tell !== false);
+  return c.json({ ok: true });
+});
+
+admin.get("/content/workspaces", async (c) => {
+  await need(c, "content");
+  const q = (c.req.query("q") ?? "").trim();
+  const trash = c.req.query("state") === "trash";
+  const args: unknown[] = [];
+  const where = [trash ? "w.deleted_at IS NOT NULL" : "w.deleted_at IS NULL"];
+  if (q) {
+    args.push(likeQ(q));
+    where.push(`(lower(w.name) LIKE ?${args.length} ESCAPE '\\' OR o.username LIKE ?${args.length} ESCAPE '\\')`);
+  }
+  const { results } = await c.env.DB.prepare(
+    `SELECT w.id, w.name, w.created_at, w.updated_at, w.deleted_at, o.id AS owner_id, o.username AS owner_username, o.display_name AS owner_name,
+       (SELECT COUNT(*) FROM members m WHERE m.workspace_id = w.id) AS members,
+       (SELECT COUNT(*) FROM pages p WHERE p.workspace_id = w.id) AS pages
+     FROM workspaces w JOIN users o ON o.id = w.owner_id WHERE ${where.join(" AND ")} ORDER BY w.updated_at DESC LIMIT 200`,
+  )
+    .bind(...args)
+    .all<Record<string, unknown>>();
+  return c.json(
+    results.map((w) => ({
+      id: w.id,
+      name: w.name,
+      createdAt: w.created_at,
+      updatedAt: w.updated_at,
+      deletedAt: w.deleted_at,
+      owner: { id: w.owner_id, username: w.owner_username, name: w.owner_name },
+      members: w.members,
+      pages: w.pages,
+    })),
+  );
+});
+
+admin.get("/content/workspaces/:id", async (c) => {
+  await need(c, "content");
+  const { results } = await c.env.DB.prepare(
+    "SELECT u.id, u.username, u.display_name, m.role, m.joined_at FROM members m JOIN users u ON u.id = m.user_id WHERE m.workspace_id = ?1 ORDER BY m.joined_at",
+  )
+    .bind(c.req.param("id"))
+    .all<{ id: string; username: string; display_name: string; role: string; joined_at: number }>();
+  return c.json(results.map((m) => ({ id: m.id, username: m.username, displayName: m.display_name, role: m.role, joinedAt: m.joined_at })));
+});
+
+/** Give a workspace to one of its members (the old owner becomes an admin). */
+admin.post("/content/workspaces/:id/owner", async (c) => {
+  await need(c, "content.workspaces");
+  const id = c.req.param("id");
+  const b = await body(c.req);
+  const reason = reasonOf(b.reason);
+  const to = str(b.userId, "userId", 64);
+  const w = await c.env.DB.prepare("SELECT owner_id FROM workspaces WHERE id = ?1").bind(id).first<{ owner_id: string }>();
+  if (!w) throw notFound("workspace_not_found");
+  const member = await c.env.DB.prepare("SELECT 1 FROM members WHERE workspace_id = ?1 AND user_id = ?2").bind(id, to).first();
+  if (!member) throw bad("not_a_member", "The new owner must be a member of the workspace.");
+  const ev = eventStmt(c.env.DB, { type: "access.changed", workspaceId: id, docIds: null, userIds: [w.owner_id, to] });
+  await c.env.DB.batch([
+    c.env.DB.prepare("UPDATE workspaces SET owner_id = ?1, updated_at = ?2 WHERE id = ?3").bind(to, now(), id),
+    c.env.DB.prepare("UPDATE members SET role = 'admin' WHERE workspace_id = ?1 AND user_id = ?2").bind(id, w.owner_id),
+    c.env.DB.prepare("UPDATE members SET role = 'owner' WHERE workspace_id = ?1 AND user_id = ?2").bind(id, to),
+    logStmt(c, "admin.workspace.owner_changed", to, { workspace: id, from: w.owner_id, reason }),
+    ev.stmt,
+  ]);
+  emit(c as unknown as Context<AppEnv>, [ev.envelope]);
+  return c.json({ ok: true });
+});
+
+/** Into the trash ({ restore: false }) or back out of it ({ restore: true }). */
+admin.post("/content/workspaces/:id/trash", async (c) => {
+  await need(c, "content.workspaces");
+  const id = c.req.param("id");
+  const b = await body(c.req);
+  const reason = reasonOf(b.reason);
+  const restore = b.restore === true;
+  const w = await c.env.DB.prepare("SELECT owner_id, deleted_at FROM workspaces WHERE id = ?1").bind(id).first<{ owner_id: string; deleted_at: number | null }>();
+  if (!w || (restore ? !w.deleted_at : !!w.deleted_at)) throw notFound("workspace_not_found");
+  const ev = eventStmt(c.env.DB, restore ? { type: "access.changed", workspaceId: id, docIds: null, userIds: null } : { type: "workspace.deleted", workspaceId: id });
+  await c.env.DB.batch([
+    restore
+      ? c.env.DB.prepare("UPDATE workspaces SET deleted_at = NULL, deleted_by = NULL, updated_at = ?1 WHERE id = ?2").bind(now(), id)
+      : c.env.DB.prepare("UPDATE workspaces SET deleted_at = ?1, deleted_by = ?2, updated_at = ?1 WHERE id = ?3").bind(now(), c.get("caller").userId, id),
+    logStmt(c, restore ? "admin.workspace.restored" : "admin.workspace.deleted", w.owner_id, { workspace: id, reason }),
+    ev.stmt,
+  ]);
+  emit(c as unknown as Context<AppEnv>, [ev.envelope]);
+  return c.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// Suspicious accounts
+// ---------------------------------------------------------------------------
+
+/** Throwaway mail services; a sign-up from one is worth a look. */
+const DISPOSABLE = new Set([
+  "mailinator.com", "guerrillamail.com", "guerrillamail.net", "sharklasers.com", "10minutemail.com", "temp-mail.org", "tempmail.com", "tempmail.net",
+  "yopmail.com", "trashmail.com", "getnada.com", "dispostable.com", "maildrop.cc", "fakeinbox.com", "throwawaymail.com", "mohmal.com", "emailondeck.com",
+  "mintemail.com", "spamgourmet.com", "tempr.email", "tempmailo.com", "minuteinbox.com", "mail.tm", "moakt.com", "emailfake.com",
+]);
+/** Words that pretend to speak for Worlds. */
+const IMPERSONATION = ["worlds", "support", "admin", "official", "staff", "claude", "anthropic", "enterworlds", "وورلدز", "الدعم", "رسمي"];
+
+admin.get("/suspicious", async (c) => {
+  await need(c, "content");
+  const t = now();
+  const since = t - 30 * 86_400_000;
+  const owners = envOwners(c.env.ADMIN_OWNERS);
+  const { results } = await c.env.DB.prepare(
+    `SELECT ${LIST_COLS},
+       (SELECT COUNT(*) FROM published_pages p WHERE p.user_id = u.id AND p.created_at < u.created_at + 3600000) AS quick_pages,
+       (SELECT r.reviewed_at FROM suspicious_reviews r WHERE r.user_id = u.id) AS reviewed_at
+     FROM users u WHERE u.created_at > ?1 ORDER BY u.created_at DESC LIMIT 1000`,
+  )
+    .bind(since)
+    .all<UserListRow & { quick_pages: number; reviewed_at: number | null }>();
+  // Bursts: five or more sign-ups within ten minutes of each other.
+  const times = results.map((r) => r.created_at).sort((a, b) => a - b);
+  const inBurst = (ts: number) => times.filter((x) => Math.abs(x - ts) <= 5 * 60_000).length >= 5;
+  const out = [];
+  for (const r of results) {
+    if (r.reviewed_at || owners.includes(r.id) || r.team_role) continue;
+    const reasons: string[] = [];
+    const domain = r.email.split("@")[1]?.toLowerCase() ?? "";
+    if (DISPOSABLE.has(domain)) reasons.push("disposable_email");
+    const name = foldName(`${r.username ?? ""} ${r.display_name}`);
+    if (IMPERSONATION.some((w) => name.includes(foldName(w)))) reasons.push("impersonation");
+    if (r.quick_pages >= 3) reasons.push("quick_publishing");
+    if (inBurst(r.created_at)) reasons.push("signup_burst");
+    if (r.username && (await reportersOf(c.env.DB, { type: "profile", username: r.username })) > 0) reasons.push("reported");
+    if (reasons.length) out.push({ ...listItem(c, r, owners), reasons });
+  }
+  return c.json(out.slice(0, 200));
+});
+
+admin.post("/suspicious/:id/review", async (c) => {
+  await need(c, "content");
+  const id = c.req.param("id");
+  await c.env.DB.batch([
+    c.env.DB.prepare("INSERT OR REPLACE INTO suspicious_reviews (user_id, reviewed_by, reviewed_at) VALUES (?1, ?2, ?3)").bind(id, c.get("caller").userId, now()),
+    logStmt(c, "admin.suspicious.reviewed", id),
+  ]);
   return c.json({ ok: true });
 });

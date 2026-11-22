@@ -288,7 +288,7 @@ profiles.get("/:username", async (c) => {
   const name = normalizeUsername(decodeURIComponent(c.req.param("username")));
   const row = await c.env.DB.prepare(
     `SELECT p.*, u.username, u.created_at AS joined FROM public_profiles p JOIN users u ON u.id = p.user_id
-     WHERE u.username = ?1 AND p.visible = 1 AND (u.suspended_until IS NULL OR u.suspended_until <= ?2) AND u.deletion_due_at IS NULL`,
+     WHERE u.username = ?1 AND p.visible = 1 AND p.team_hidden = 0 AND (u.suspended_until IS NULL OR u.suspended_until <= ?2) AND u.deletion_due_at IS NULL`,
   )
     .bind(name, now())
     .first<Row & { username: string; joined: number }>();
@@ -314,7 +314,7 @@ profiles.get("/files/p/:userId/:name", async (c) => {
   const key = `p/${userId}/${c.req.param("name")}`;
   if (!c.env.PROFILE_FILES || !ownsKey(userId, key)) throw notFound();
   const row = await c.env.DB.prepare(
-    "SELECT p.visible FROM public_profiles p JOIN users u ON u.id = p.user_id WHERE p.user_id = ?1 AND (u.suspended_until IS NULL OR u.suspended_until <= ?2) AND u.deletion_due_at IS NULL",
+    "SELECT p.visible FROM public_profiles p JOIN users u ON u.id = p.user_id WHERE p.user_id = ?1 AND p.team_hidden = 0 AND (u.suspended_until IS NULL OR u.suspended_until <= ?2) AND u.deletion_due_at IS NULL",
   )
     .bind(userId, now())
     .first<{ visible: number }>();
