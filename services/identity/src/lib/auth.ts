@@ -13,8 +13,12 @@ export function actorFrom(header: string | undefined): ActorKind {
 export async function callerFromToken(c: Context<AppEnv>, token: string): Promise<Caller | null> {
   const claims = await verifyAccessToken(c.env, token);
   if (!claims) return null;
-  const dev = await c.env.DB.prepare("SELECT revoked_at FROM devices WHERE id = ?1 AND user_id = ?2").bind(claims.dev, claims.sub).first<{ revoked_at: number | null }>();
+  const dev = await c.env.DB.prepare("SELECT d.revoked_at, u.suspended_until FROM devices d JOIN users u ON u.id = d.user_id WHERE d.id = ?1 AND d.user_id = ?2")
+    .bind(claims.dev, claims.sub)
+    .first<{ revoked_at: number | null; suspended_until: number | null }>();
   if (!dev || dev.revoked_at) return null;
+  // A suspension signs every device out, but an access token minted just before it ends here too.
+  if (dev.suspended_until && dev.suspended_until > Date.now()) return null;
   return { userId: claims.sub, deviceId: claims.dev, actor: actorFrom(c.req.header("x-worlds-actor")) };
 }
 

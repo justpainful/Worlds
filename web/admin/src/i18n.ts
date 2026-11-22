@@ -1,0 +1,528 @@
+import { useSyncExternalStore } from "react";
+
+export type Lang = "ar" | "en";
+
+const ar = {
+  appName: "لوحة Worlds",
+  // Sign in
+  signInTitle: "لوحة التحكم",
+  signInLead: "للفريق فقط. ادخل بحسابك في Worlds.",
+  withPasskey: "الدخول بمفتاح الدخول",
+  orEmail: "أو برمز إلى بريدك",
+  email: "البريد",
+  sendCode: "أرسل الرمز",
+  code: "الرمز",
+  codeSent: "أرسلنا رمزًا من 6 أرقام إلى {email}.",
+  signIn: "دخول",
+  back: "رجوع",
+  notTeam: "هذا الحساب ليس في فريق اللوحة.",
+  signOut: "خروج",
+  // Navigation
+  overview: "نظرة عامة",
+  accounts: "الحسابات",
+  log: "سجل الأمان",
+  team: "الفريق",
+  refresh: "تحديث",
+  search: "بحث",
+  searchAccounts: "ابحث بالاسم أو اسم المستخدم أو البريد",
+  searchAccountsNoEmail: "ابحث بالاسم أو اسم المستخدم",
+  theme: "المظهر",
+  themeSystem: "تلقائي",
+  themeLight: "فاتح",
+  themeDark: "داكن",
+  language: "English",
+  // Roles
+  role_owner: "مالك",
+  role_moderator: "مشرف",
+  role_support: "دعم",
+  // Overview
+  updated: "آخر تحديث {time}",
+  accountsGroup: "الحسابات",
+  allAccounts: "كل الحسابات",
+  newDay: "جديدة آخر 24 ساعة",
+  newWeek: "جديدة آخر 7 أيام",
+  newMonth: "جديدة آخر 30 يومًا",
+  suspendedCount: "موقوفة",
+  bannedCount: "محظورة",
+  withPasskeyCount: "لها مفتاح دخول",
+  signupsChart: "التسجيلات يوميًا، آخر 30 يومًا (بتوقيت UTC)",
+  noSignups: "لا تسجيلات في آخر 30 يومًا.",
+  activity: "النشاط",
+  activeDay: "نشطون آخر 24 ساعة",
+  activeWeek: "نشطون آخر 7 أيام",
+  activeMonth: "نشطون آخر 30 يومًا",
+  devicesSignedIn: "أجهزة مسجّلة الدخول",
+  activeNote: "النشاط من آخر تحديث للجلسة، بلا أي تتبع داخل التطبيق.",
+  platforms: "المنصات، آخر 30 يومًا",
+  devicesUsers: "{devices} جهاز، {users} حساب",
+  publicGroup: "المحتوى العام والمساحات",
+  profiles: "ملفات عامة ظاهرة",
+  publishedPages: "صفحات منشورة",
+  shareLinks: "روابط مشاركة سارية",
+  workspaces: "مساحات العمل",
+  sharedWorkspaces: "{shared} منها مشتركة",
+  // Accounts
+  filterAll: "الكل",
+  filterActive: "نشطة",
+  filterSuspended: "موقوفة",
+  filterBanned: "محظورة",
+  filterTeam: "الفريق",
+  sortCreated: "الأحدث تسجيلًا",
+  sortActive: "آخر نشاط",
+  sortName: "الاسم",
+  results: "{n} حساب",
+  loadMore: "المزيد",
+  noResults: "لا حسابات تطابق البحث.",
+  status_active: "نشط",
+  status_suspended: "موقوف",
+  status_banned: "محظور",
+  until: "حتى {date}",
+  never: "لم يدخل بعد",
+  seen: "آخر نشاط {time}",
+  joined: "سجّل {date}",
+  chooseAccount: "اختر حسابًا لتظهر تفاصيله هنا.",
+  // Account
+  edit: "تعديل",
+  suspend: "إيقاف",
+  lift: "رفع الإيقاف",
+  unban: "رفع الحظر",
+  ban: "حظر",
+  signOutAll: "خروج من كل الأجهزة",
+  more: "المزيد",
+  copyId: "نسخ المعرّف",
+  copied: "نُسخ",
+  suspension: "الإيقاف",
+  reason: "السبب",
+  since: "منذ",
+  endsAt: "ينتهي",
+  noEnd: "بلا نهاية",
+  account: "الحساب",
+  id: "المعرّف",
+  username: "اسم المستخدم",
+  usernameAuto: "اختاره النظام",
+  displayName: "الاسم",
+  created: "التسجيل",
+  changed: "آخر تعديل",
+  emailVerified: "تأكيد البريد",
+  hiddenForRole: "مخفي عن دورك",
+  devices: "الأجهزة",
+  noDevices: "لا أجهزة.",
+  signedOut: "خرج {time}",
+  deviceKey: "مربوط بمفتاح الجهاز",
+  signOutDevice: "تسجيل خروج",
+  passkeys: "مفاتيح الدخول",
+  noPasskeys: "لا مفاتيح دخول.",
+  synced: "متزامن بين أجهزته",
+  lastUsed: "آخر استخدام {time}",
+  notUsed: "لم يُستخدم بعد",
+  remove: "إزالة",
+  workspacesOf: "المساحات",
+  noWorkspaces: "ليس عضوًا في أي مساحة.",
+  owns: "يملكها",
+  membersPages: "{members} عضو، {pages} صفحة",
+  wsRole_owner: "مالك",
+  wsRole_admin: "مدير",
+  wsRole_member: "عضو",
+  wsRole_guest: "ضيف",
+  publicProfile: "الملف العام",
+  noProfile: "لم ينشر ملفًا عامًا.",
+  profileVisible: "ظاهر",
+  profileHidden: "مخفي بيده",
+  profileHiddenSuspended: "مخفي بسبب الإيقاف",
+  open: "فتح",
+  published: "الصفحات المنشورة",
+  noPublished: "لا صفحات منشورة.",
+  kind_page: "صفحة",
+  kind_share: "رابط مشاركة",
+  views: "{n} مشاهدة",
+  locked: "بكلمة مرور",
+  expires: "ينتهي {date}",
+  mail: "بريد Worlds",
+  waiting: "{n} رسالة تنتظر",
+  notes: "ملاحظات الفريق",
+  notesLead: "لا يراها صاحب الحساب.",
+  addNote: "أضف ملاحظة",
+  notePlaceholder: "مثلًا: بلّغ عن مشكلة الاسم وانحلت في 1.0.1",
+  noNotes: "لا ملاحظات.",
+  activityLog: "النشاط",
+  noActivity: "لا نشاط مسجل.",
+  // Dialogs
+  cancel: "إلغاء",
+  save: "حفظ",
+  reasonHint: "يُحفظ في سجل الأمان مع اسمك.",
+  reasonRequired: "اكتب السبب.",
+  editTitle: "تعديل الحساب",
+  clearAvatar: "إزالة الصورة",
+  emailOwnerOnly: "تغيير البريد للمالك فقط.",
+  suspendTitle: "إيقاف الحساب",
+  suspendLead: "يخرج من كل أجهزته فورًا، ولا يقدر يدخل، وينخفي ملفه العام وصفحاته المنشورة حتى ينتهي الإيقاف.",
+  days: "المدة",
+  daysN: "{n} يوم",
+  banTitle: "حظر الحساب",
+  banLead: "مثل الإيقاف لكن بلا نهاية، إلى أن يرفعه مالك.",
+  liftTitle: "رفع الإيقاف",
+  liftLead: "يقدر يدخل مرة ثانية، ويرجع ملفه وصفحاته كما كانت.",
+  signOutAllTitle: "تسجيل الخروج من كل الأجهزة",
+  signOutAllLead: "تنتهي كل جلساته الآن، ويحتاج يدخل من جديد.",
+  signOutOneTitle: "تسجيل خروج {name}",
+  removePasskeyTitle: "إزالة {name}",
+  removePasskeyLead: "لن يقدر يدخل بهذا المفتاح بعد الآن.",
+  // Second check
+  confirmTitle: "تأكيد أنك أنت",
+  confirmLead: "هذا الإجراء يحتاج تأكيدًا ثانيًا. يبقى التأكيد 10 دقائق على هذا الجهاز.",
+  confirmPasskey: "تأكيد بمفتاح الدخول",
+  confirmEmail: "أرسل رمزًا إلى بريدك بدلًا من ذلك",
+  confirm: "تأكيد",
+  confirmed: "تم التأكيد",
+  confirmedUntil: "مؤكد حتى {time}",
+  // Log
+  logFilter: "النوع",
+  logAll: "الكل",
+  logAuth: "الدخول",
+  logAccount: "الحسابات",
+  logDevice: "الأجهزة",
+  logPasskey: "مفاتيح الدخول",
+  logAdmin: "اللوحة",
+  logWorkspace: "المساحات",
+  logProfile: "الملفات العامة",
+  forAccount: "حساب: {name}",
+  clearFilter: "إزالة",
+  system: "النظام",
+  ai: "Claude نيابة عنه",
+  automation: "أتمتة",
+  someone: "حساب غير معروف",
+  onAccount: "على",
+  noLog: "لا شيء في السجل بهذا الفلتر.",
+  details: "التفاصيل",
+  // Team
+  teamLead: "المالك يقدر كل شيء. المشرف يراجع الحسابات ويوقفها ولا يرى البريد. الدعم يقرأ الحسابات وبريدها ويكتب الملاحظات.",
+  fixedOwner: "مالك من إعدادات الخدمة",
+  addMember: "أضف للفريق",
+  addMemberHint: "ابحث عن الحساب ثم اختر دوره.",
+  removeFromTeam: "إزالة من الفريق",
+  removeMemberTitle: "إزالة {name} من الفريق",
+  removeMemberLead: "يفقد الوصول إلى اللوحة فورًا.",
+  role: "الدور",
+  members: "الأعضاء",
+  // Errors
+  error_offline: "تعذّر الوصول إلى الخدمة. تأكد من الاتصال.",
+  error_cancelled: "أُلغي.",
+  error_invalid_code: "الرمز غير صحيح.",
+  error_code_expired: "انتهى الرمز. اطلب رمزًا جديدًا.",
+  error_no_account: "لا يوجد حساب بهذا البريد.",
+  error_not_admin: "هذا الحساب ليس في فريق اللوحة.",
+  error_not_allowed: "دورك لا يسمح بهذا.",
+  error_own_account: "عدّل حسابك من إعدادات حسابك.",
+  error_protected_owner: "هذا المالك يُغيَّر من إعدادات الخدمة فقط.",
+  error_protected_member: "عضو الفريق لا يغيّره إلا مالك.",
+  error_username_taken: "اسم المستخدم مأخوذ.",
+  error_email_taken: "حساب آخر يستخدم هذا البريد.",
+  error_rate_limited: "محاولات كثيرة. انتظر قليلًا.",
+  error_wrong_origin: "هذا المتصفح لا يسمح بمفاتيح الدخول من هذا العنوان بعد. استخدم الرمز.",
+  error_no_webauthn: "هذا المتصفح لا يدعم مفاتيح الدخول.",
+  error_passkey_unknown: "هذا المفتاح ليس مسجلًا في Worlds.",
+  error_account_suspended: "هذا الحساب موقوف.",
+  error_account_banned: "هذا الحساب محظور.",
+  errorGeneric: "صار خطأ: {message}",
+  retry: "أعد المحاولة",
+};
+
+type Dict = Record<keyof typeof ar, string>;
+
+const en: Dict = {
+  appName: "Worlds dashboard",
+  signInTitle: "Control dashboard",
+  signInLead: "For the team only. Sign in with your Worlds account.",
+  withPasskey: "Sign in with a passkey",
+  orEmail: "or with a code to your email",
+  email: "Email",
+  sendCode: "Send the code",
+  code: "Code",
+  codeSent: "We sent a 6-digit code to {email}.",
+  signIn: "Sign in",
+  back: "Back",
+  notTeam: "This account is not on the dashboard team.",
+  signOut: "Sign out",
+  overview: "Overview",
+  accounts: "Accounts",
+  log: "Security log",
+  team: "Team",
+  refresh: "Refresh",
+  search: "Search",
+  searchAccounts: "Search by name, username or email",
+  searchAccountsNoEmail: "Search by name or username",
+  theme: "Appearance",
+  themeSystem: "Automatic",
+  themeLight: "Light",
+  themeDark: "Dark",
+  language: "العربية",
+  role_owner: "Owner",
+  role_moderator: "Moderator",
+  role_support: "Support",
+  updated: "Updated {time}",
+  accountsGroup: "Accounts",
+  allAccounts: "All accounts",
+  newDay: "New in the last 24 hours",
+  newWeek: "New in the last 7 days",
+  newMonth: "New in the last 30 days",
+  suspendedCount: "Suspended",
+  bannedCount: "Banned",
+  withPasskeyCount: "With a passkey",
+  signupsChart: "Sign-ups per day, last 30 days (UTC)",
+  noSignups: "No sign-ups in the last 30 days.",
+  activity: "Activity",
+  activeDay: "Active in the last 24 hours",
+  activeWeek: "Active in the last 7 days",
+  activeMonth: "Active in the last 30 days",
+  devicesSignedIn: "Devices signed in",
+  activeNote: "Activity comes from session refreshes, with no tracking inside the app.",
+  platforms: "Platforms, last 30 days",
+  devicesUsers: "{devices} devices, {users} accounts",
+  publicGroup: "Public content and workspaces",
+  profiles: "Visible public profiles",
+  publishedPages: "Published pages",
+  shareLinks: "Live share links",
+  workspaces: "Workspaces",
+  sharedWorkspaces: "{shared} of them shared",
+  filterAll: "All",
+  filterActive: "Active",
+  filterSuspended: "Suspended",
+  filterBanned: "Banned",
+  filterTeam: "Team",
+  sortCreated: "Newest",
+  sortActive: "Last active",
+  sortName: "Name",
+  results: "{n} accounts",
+  loadMore: "Load more",
+  noResults: "No accounts match.",
+  status_active: "Active",
+  status_suspended: "Suspended",
+  status_banned: "Banned",
+  until: "until {date}",
+  never: "Never signed in",
+  seen: "Active {time}",
+  joined: "Joined {date}",
+  chooseAccount: "Choose an account to see it here.",
+  edit: "Edit",
+  suspend: "Suspend",
+  lift: "Lift suspension",
+  unban: "Lift ban",
+  ban: "Ban",
+  signOutAll: "Sign out everywhere",
+  more: "More",
+  copyId: "Copy id",
+  copied: "Copied",
+  suspension: "Suspension",
+  reason: "Reason",
+  since: "Since",
+  endsAt: "Ends",
+  noEnd: "No end",
+  account: "Account",
+  id: "Id",
+  username: "Username",
+  usernameAuto: "chosen by the system",
+  displayName: "Name",
+  created: "Joined",
+  changed: "Last changed",
+  emailVerified: "Email confirmed",
+  hiddenForRole: "Hidden for your role",
+  devices: "Devices",
+  noDevices: "No devices.",
+  signedOut: "Signed out {time}",
+  deviceKey: "Bound to a device key",
+  signOutDevice: "Sign out",
+  passkeys: "Passkeys",
+  noPasskeys: "No passkeys.",
+  synced: "Syncs between their devices",
+  lastUsed: "Last used {time}",
+  notUsed: "Not used yet",
+  remove: "Remove",
+  workspacesOf: "Workspaces",
+  noWorkspaces: "Not a member of any workspace.",
+  owns: "owns it",
+  membersPages: "{members} members, {pages} pages",
+  wsRole_owner: "Owner",
+  wsRole_admin: "Admin",
+  wsRole_member: "Member",
+  wsRole_guest: "Guest",
+  publicProfile: "Public profile",
+  noProfile: "No public profile.",
+  profileVisible: "Visible",
+  profileHidden: "Hidden by them",
+  profileHiddenSuspended: "Hidden by the suspension",
+  open: "Open",
+  published: "Published pages",
+  noPublished: "No published pages.",
+  kind_page: "Page",
+  kind_share: "Share link",
+  views: "{n} views",
+  locked: "Password",
+  expires: "Ends {date}",
+  mail: "Worlds mail",
+  waiting: "{n} waiting",
+  notes: "Team notes",
+  notesLead: "The account holder never sees them.",
+  addNote: "Add a note",
+  notePlaceholder: "For example: reported the name bug, fixed in 1.0.1",
+  noNotes: "No notes.",
+  activityLog: "Activity",
+  noActivity: "Nothing logged.",
+  cancel: "Cancel",
+  save: "Save",
+  reasonHint: "Saved in the security log with your name.",
+  reasonRequired: "Write the reason.",
+  editTitle: "Edit account",
+  clearAvatar: "Remove the picture",
+  emailOwnerOnly: "Only an owner can change the email.",
+  suspendTitle: "Suspend account",
+  suspendLead: "Every device signs out now, sign-in stops, and the public profile and pages hide until it ends.",
+  days: "For",
+  daysN: "{n} days",
+  banTitle: "Ban account",
+  banLead: "Like a suspension with no end, until an owner lifts it.",
+  liftTitle: "Lift suspension",
+  liftLead: "They can sign in again, and their profile and pages come back as they were.",
+  signOutAllTitle: "Sign out everywhere",
+  signOutAllLead: "Every session ends now, and they need to sign in again.",
+  signOutOneTitle: "Sign out {name}",
+  removePasskeyTitle: "Remove {name}",
+  removePasskeyLead: "They can no longer sign in with this passkey.",
+  confirmTitle: "Confirm it is you",
+  confirmLead: "This needs a second check. It lasts 10 minutes on this device.",
+  confirmPasskey: "Confirm with a passkey",
+  confirmEmail: "Send a code to your email instead",
+  confirm: "Confirm",
+  confirmed: "Confirmed",
+  confirmedUntil: "Confirmed until {time}",
+  logFilter: "Kind",
+  logAll: "All",
+  logAuth: "Sign-in",
+  logAccount: "Accounts",
+  logDevice: "Devices",
+  logPasskey: "Passkeys",
+  logAdmin: "Dashboard",
+  logWorkspace: "Workspaces",
+  logProfile: "Public profiles",
+  forAccount: "Account: {name}",
+  clearFilter: "Clear",
+  system: "System",
+  ai: "Claude on their behalf",
+  automation: "Automation",
+  someone: "Unknown account",
+  onAccount: "on",
+  noLog: "Nothing in the log for this filter.",
+  details: "Details",
+  teamLead: "An owner can do everything. A moderator reviews and suspends accounts without seeing emails. Support reads accounts and their email, and writes notes.",
+  fixedOwner: "Owner from the service settings",
+  addMember: "Add to the team",
+  addMemberHint: "Find the account, then choose its role.",
+  removeFromTeam: "Remove from the team",
+  removeMemberTitle: "Remove {name} from the team",
+  removeMemberLead: "They lose access to the dashboard at once.",
+  role: "Role",
+  members: "Members",
+  error_offline: "The service could not be reached. Check the connection.",
+  error_cancelled: "Cancelled.",
+  error_invalid_code: "That code is not right.",
+  error_code_expired: "That code expired. Ask for a new one.",
+  error_no_account: "There is no account with this email.",
+  error_not_admin: "This account is not on the dashboard team.",
+  error_not_allowed: "Your role cannot do this.",
+  error_own_account: "Change your own account from your account settings.",
+  error_protected_owner: "This owner can only be changed in the service settings.",
+  error_protected_member: "Only an owner can change a team member.",
+  error_username_taken: "That username is taken.",
+  error_email_taken: "Another account uses that email.",
+  error_rate_limited: "Too many tries. Wait a little.",
+  error_wrong_origin: "This browser does not allow passkeys from this address yet. Use a code.",
+  error_no_webauthn: "This browser cannot use passkeys.",
+  error_passkey_unknown: "This passkey is not registered with Worlds.",
+  error_account_suspended: "This account is suspended.",
+  error_account_banned: "This account is banned.",
+  errorGeneric: "Something went wrong: {message}",
+  retry: "Try again",
+};
+
+export type Key = keyof typeof ar;
+const DICTS: Record<Lang, Dict> = { ar, en };
+
+function initial(): Lang {
+  try {
+    const saved = localStorage.getItem("worlds.admin.lang");
+    if (saved === "ar" || saved === "en") return saved;
+  } catch {
+    // No storage: follow the browser.
+  }
+  return navigator.language?.toLowerCase().startsWith("ar") ? "ar" : navigator.language ? "en" : "ar";
+}
+
+let lang: Lang = initial();
+const subs = new Set<() => void>();
+function apply() {
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  document.title = DICTS[lang].appName;
+}
+apply();
+
+export function setLang(l: Lang) {
+  lang = l;
+  try {
+    localStorage.setItem("worlds.admin.lang", l);
+  } catch {
+    // Kept for this visit only.
+  }
+  apply();
+  for (const s of subs) s();
+}
+
+export function useLang(): Lang {
+  return useSyncExternalStore(
+    (cb) => {
+      subs.add(cb);
+      return () => subs.delete(cb);
+    },
+    () => lang,
+  );
+}
+
+export function t(key: Key, vars: Record<string, string | number> = {}): string {
+  const s = DICTS[lang][key] ?? key;
+  return s.replace(/\{(\w+)\}/g, (_, k) => (vars[k] === undefined ? `{${k}}` : String(vars[k])));
+}
+
+/** The message for an API error code, or a generic one. */
+export function errorText(e: unknown): string {
+  const code = (e as { code?: string })?.code;
+  const key = `error_${code}` as Key;
+  if (code && key in ar) return t(key);
+  return t("errorGeneric", { message: (e as Error)?.message ?? String(e) });
+}
+
+const locale = () => (lang === "ar" ? "ar-u-nu-latn" : "en-GB");
+
+export function fmtDate(ms: number | null | undefined, withTime = false): string {
+  if (!ms) return "";
+  return new Intl.DateTimeFormat(locale(), withTime ? { dateStyle: "medium", timeStyle: "short" } : { dateStyle: "medium" }).format(ms);
+}
+
+export function fmtTime(ms: number): string {
+  return new Intl.DateTimeFormat(locale(), { timeStyle: "short" }).format(ms);
+}
+
+export function fmtNum(n: number): string {
+  return new Intl.NumberFormat(locale()).format(n);
+}
+
+export function ago(ms: number | null | undefined): string {
+  if (!ms) return "";
+  const s = Math.round((ms - Date.now()) / 1000);
+  const rtf = new Intl.RelativeTimeFormat(locale(), { numeric: "auto" });
+  const a = Math.abs(s);
+  if (a < 60) return rtf.format(s, "second");
+  if (a < 3600) return rtf.format(Math.round(s / 60), "minute");
+  if (a < 86400) return rtf.format(Math.round(s / 3600), "hour");
+  if (a < 86400 * 30) return rtf.format(Math.round(s / 86400), "day");
+  if (a < 86400 * 365) return rtf.format(Math.round(s / (86400 * 30)), "month");
+  return rtf.format(Math.round(s / (86400 * 365)), "year");
+}

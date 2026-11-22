@@ -8,6 +8,8 @@ import type { Level } from "./domain/roles";
 import { retryOutbox } from "./lib/events";
 import { ApiError } from "./lib/http";
 import { jwks } from "./lib/jwt";
+import { expectedOrigins } from "./lib/webauthn";
+import { admin } from "./routes/admin";
 import { auth } from "./routes/auth";
 import { me } from "./routes/me";
 import { pages } from "./routes/pages";
@@ -51,12 +53,15 @@ app.notFound((c) => c.json({ error: "not_found", message: "Not found." }, 404));
 
 app.get("/", (c) => c.json({ service: "worlds-identity", ok: true }));
 app.get("/.well-known/jwks.json", async (c) => c.json(await jwks(c.env), 200, { "cache-control": "public, max-age=300" }));
+// WebAuthn related origins: the dashboard on admin.<domain> signs in with passkeys made for login.<domain>.
+app.get("/.well-known/webauthn", (c) => c.json({ origins: expectedOrigins(c.env).slice(1) }, 200, { "cache-control": "public, max-age=3600" }));
 app.route("/auth", auth);
 app.route("/me", me);
 app.route("/workspaces", workspaces);
 app.route("/invites", invites);
 app.route("/profiles", profiles);
 app.route("/published", published);
+app.route("/admin", admin);
 app.route("/", pages);
 
 /** Cron: deliver outstanding access events and clear expired rows. */

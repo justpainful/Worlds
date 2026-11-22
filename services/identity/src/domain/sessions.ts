@@ -4,6 +4,7 @@ import { isValidEd25519PublicKey, newId, now, randomToken, sha256Hex, verifyEd25
 import { eventStmt, type EventEnvelope } from "../lib/events";
 import { bad, unauthorized } from "../lib/http";
 import { signAccessToken } from "../lib/jwt";
+import { suspendedError, suspensionOf } from "./suspension";
 
 export interface DeviceInput {
   name: string;
@@ -43,6 +44,8 @@ export async function refreshMessage(deviceId: string, ts: number, refreshToken:
 
 /** Register a new device for the user and open its first session. */
 export async function signIn(env: Env, userId: string, device: DeviceInput, how: string, actor: ActorKind = "user"): Promise<TokenSet> {
+  const held = await suspensionOf(env.DB, userId);
+  if (held) throw suspendedError(held);
   const t = now();
   const deviceId = newId();
   const sessionId = newId();
@@ -108,6 +111,8 @@ export async function refresh(
   if (row.revoked_at || row.device_revoked) throw unauthorized("session_revoked", "This device was signed out.");
   if (row.expires_at <= t) throw unauthorized("session_expired", "Your sign-in expired. Sign in again.");
   if (input.deviceId && input.deviceId !== row.device_id) throw unauthorized("device_mismatch");
+  const held = await suspensionOf(env.DB, row.user_id);
+  if (held) throw suspendedError(held);
   if (row.public_key) {
     // Device-bound: proof of possession of the device key.
     if (!input.signature || typeof input.ts !== "number" || Math.abs(t - input.ts) > REFRESH_SKEW_MS) throw unauthorized("device_signature_required");

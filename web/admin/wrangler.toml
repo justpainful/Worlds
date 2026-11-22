@@ -1,0 +1,15 @@
+# The control dashboard at admin.enterworlds.space (docs/admin/PLAN.md).
+# It is static: everything it shows comes from the identity service, which
+# checks the team role on every request.
+# Deploy: npx vite build --config web/admin/vite.config.ts,
+# then npx wrangler deploy -c web/admin/wrangler.toml
+name = "worlds-admin"
+compatibility_date = "2026-08-01"
+
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"
+
+[[routes]]
+pattern = "admin.enterworlds.space"
+custom_domain = true

@@ -285,9 +285,10 @@ profiles.get("/:username", async (c) => {
   await rateLimit(c.env.DB, `profile:read:${clientIp(c.req.raw, c.env.EDGE_SECRET)}`, 600, 60_000);
   const name = normalizeUsername(decodeURIComponent(c.req.param("username")));
   const row = await c.env.DB.prepare(
-    `SELECT p.*, u.username, u.created_at AS joined FROM public_profiles p JOIN users u ON u.id = p.user_id WHERE u.username = ?1 AND p.visible = 1`,
+    `SELECT p.*, u.username, u.created_at AS joined FROM public_profiles p JOIN users u ON u.id = p.user_id
+     WHERE u.username = ?1 AND p.visible = 1 AND (u.suspended_until IS NULL OR u.suspended_until <= ?2)`,
   )
-    .bind(name)
+    .bind(name, now())
     .first<Row & { username: string; joined: number }>();
   if (!row) throw notFound("profile_not_found", "There is no public profile with that username.");
   const data = JSON.parse(row.data) as PublicProfileData;
@@ -310,7 +311,11 @@ profiles.get("/files/p/:userId/:name", async (c) => {
   const userId = c.req.param("userId");
   const key = `p/${userId}/${c.req.param("name")}`;
   if (!c.env.PROFILE_FILES || !ownsKey(userId, key)) throw notFound();
-  const row = await c.env.DB.prepare("SELECT visible FROM public_profiles WHERE user_id = ?1").bind(userId).first<{ visible: number }>();
+  const row = await c.env.DB.prepare(
+    "SELECT p.visible FROM public_profiles p JOIN users u ON u.id = p.user_id WHERE p.user_id = ?1 AND (u.suspended_until IS NULL OR u.suspended_until <= ?2)",
+  )
+    .bind(userId, now())
+    .first<{ visible: number }>();
   if (!row || row.visible !== 1) throw notFound();
   const obj = await c.env.PROFILE_FILES.get(key);
   if (!obj) throw notFound();

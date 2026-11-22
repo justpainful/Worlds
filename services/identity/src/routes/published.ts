@@ -80,9 +80,9 @@ published.get("/page/:username/:slug", async (c) => {
   const slug = c.req.param("slug").toLowerCase();
   const row = await c.env.DB.prepare(
     `SELECT p.id, p.title, p.html, p.lang, u.display_name AS author, u.username FROM published_pages p JOIN users u ON u.id = p.user_id
-     WHERE u.username = ?1 AND p.slug = ?2 AND p.kind = 'page'`,
+     WHERE u.username = ?1 AND p.slug = ?2 AND p.kind = 'page' AND (u.suspended_until IS NULL OR u.suspended_until <= ?3)`,
   )
-    .bind(c.req.param("username").toLowerCase(), slug)
+    .bind(c.req.param("username").toLowerCase(), slug, now())
     .first<{ id: string }>();
   if (!row) throw notFound();
   await c.env.DB.prepare("UPDATE published_pages SET views = views + 1 WHERE id = ?1").bind(row.id).run();
@@ -93,8 +93,11 @@ published.get("/page/:username/:slug", async (c) => {
 published.post("/share/:slug", async (c) => {
   const slug = c.req.param("slug").toLowerCase();
   await rateLimit(c.env.DB, `share:${clientIp(c.req.raw, c.env.EDGE_SECRET)}`, 60, 600_000);
-  const row = await c.env.DB.prepare("SELECT id, title, html, lang, password_hash AS passwordHash, expires_at AS expiresAt FROM published_pages WHERE slug = ?1 AND kind = 'share'")
-    .bind(slug)
+  const row = await c.env.DB.prepare(
+    `SELECT p.id, p.title, p.html, p.lang, p.password_hash AS passwordHash, p.expires_at AS expiresAt FROM published_pages p JOIN users u ON u.id = p.user_id
+     WHERE p.slug = ?1 AND p.kind = 'share' AND (u.suspended_until IS NULL OR u.suspended_until <= ?2)`,
+  )
+    .bind(slug, now())
     .first<{ id: string; title: string; html: string; lang: string; passwordHash: string | null; expiresAt: number | null }>();
   if (!row || (row.expiresAt && row.expiresAt < now())) throw notFound();
   if (row.passwordHash) {

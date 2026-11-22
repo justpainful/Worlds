@@ -302,7 +302,9 @@ const idVars = (base, syncUrl) => ({
   PUBLIC_URL: base ?? "http://localhost:8787",
   SYNC_WEBHOOK_URL: syncUrl ? `${syncUrl}/internal/events` : "",
   // Worlds on the web signs in from the browser (src/account/webAccount.ts).
-  ALLOWED_ORIGINS: state.domain ? `https://app.${state.domain},https://${state.domain}` : "",
+  ALLOWED_ORIGINS: state.domain ? `https://app.${state.domain},https://${state.domain},https://admin.${state.domain}` : "",
+  // The control dashboard signs in with the same passkeys (WebAuthn related origins).
+  WEBAUTHN_RELATED_ORIGINS: state.domain ? `https://admin.${state.domain}` : "",
 });
 const writeIdentity = () => {
   const path = writeConfig(ID_DIR, idVars(HOSTS ? `https://${HOSTS.identity}` : state.identityUrl, state.syncUrl), extras(HOSTS?.identity, true));
@@ -312,6 +314,8 @@ const writeIdentity = () => {
     ...(EDGE ? [`EMAIL_WEBHOOK_URL = ${JSON.stringify(EDGE.mailUrl)}`] : []),
     // Email to Worlds: each person's address is <key>@<domain>; Email Routing's catch-all hands it to the edge.
     ...(state.domain ? [`MAIL_INBOX_DOMAIN = ${JSON.stringify(state.domain)}`] : []),
+    // The dashboard's owners: account ids, set once in services/.deploy/state.json ("adminOwners").
+    ...(state.adminOwners ? [`ADMIN_OWNERS = ${JSON.stringify(state.adminOwners)}`] : []),
   ];
   const toml = readFileSync(path, "utf8").replace(/^\[vars\]$/m, `[vars]\n${extraVars.join("\n")}`);
   writeFileSync(path, toml);
