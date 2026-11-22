@@ -237,7 +237,9 @@ export type Permission =
   | "tickets.private"
   | "users.delete"
   | "users.export"
-  | "names";
+  | "names"
+  | "content"
+  | "content.workspaces";
 
 export type TicketStatus = "open" | "waiting" | "working" | "solved" | "closed";
 export type TicketKind = "problem" | "account" | "recovery" | "deletion" | "report" | "security" | "suggestion" | "other";

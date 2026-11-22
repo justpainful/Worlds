@@ -81,7 +81,7 @@ published.get("/page/:username/:slug", async (c) => {
   const slug = c.req.param("slug").toLowerCase();
   const row = await c.env.DB.prepare(
     `SELECT p.id, p.title, p.html, p.lang, u.display_name AS author, u.username FROM published_pages p JOIN users u ON u.id = p.user_id
-     WHERE u.username = ?1 AND p.slug = ?2 AND p.kind = 'page' AND (u.suspended_until IS NULL OR u.suspended_until <= ?3) AND u.deletion_due_at IS NULL`,
+     WHERE u.username = ?1 AND p.slug = ?2 AND p.kind = 'page' AND p.team_hidden = 0 AND (u.suspended_until IS NULL OR u.suspended_until <= ?3) AND u.deletion_due_at IS NULL`,
   )
     .bind(c.req.param("username").toLowerCase(), slug, now())
     .first<{ id: string }>();
@@ -96,7 +96,7 @@ published.post("/share/:slug", async (c) => {
   await rateLimit(c.env.DB, `share:${clientIp(c.req.raw, c.env.EDGE_SECRET)}`, 60, 600_000);
   const row = await c.env.DB.prepare(
     `SELECT p.id, p.title, p.html, p.lang, p.password_hash AS passwordHash, p.expires_at AS expiresAt FROM published_pages p JOIN users u ON u.id = p.user_id
-     WHERE p.slug = ?1 AND p.kind = 'share' AND (u.suspended_until IS NULL OR u.suspended_until <= ?2) AND u.deletion_due_at IS NULL`,
+     WHERE p.slug = ?1 AND p.kind = 'share' AND p.team_hidden = 0 AND (u.suspended_until IS NULL OR u.suspended_until <= ?2) AND u.deletion_due_at IS NULL`,
   )
     .bind(slug, now())
     .first<{ id: string; title: string; html: string; lang: string; passwordHash: string | null; expiresAt: number | null }>();

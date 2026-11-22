@@ -10,6 +10,8 @@
  * the page loads nothing from other sites (see the Content-Security-Policy).
  */
 
+import { reportLink } from "./pages";
+
 export interface PublicProfile {
   username: string;
   displayName: string;
@@ -38,6 +40,7 @@ const WORDS: Record<Lang, Record<string, string>> = {
     links: "Links",
     made: "A Worlds profile",
     get: "Make yours in Worlds",
+    report: "Report",
     missingTitle: "No profile here",
     missing: "There is no public profile with this username, or its owner has hidden it.",
     homeTitle: "Worlds profiles",
@@ -49,6 +52,7 @@ const WORDS: Record<Lang, Record<string, string>> = {
     links: "الروابط",
     made: "ملف شخصي في Worlds",
     get: "أنشئ ملفك في Worlds",
+    report: "إبلاغ",
     missingTitle: "لا يوجد ملف هنا",
     missing: "لا يوجد ملف عام بهذا الاسم، أو أخفاه صاحبه.",
     homeTitle: "الملفات الشخصية في Worlds",
@@ -427,6 +431,7 @@ a.pb-link:hover{background:rgba(255,255,255,.15)}
 .frame-dots span{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.45)}
 footer{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:44px;font:450 12.5px/1.4 var(--font-ui);color:var(--text-3)}
 footer a{color:var(--text-2);font-weight:600}
+.pf-foot-links{display:inline-flex;gap:14px}
 footer a:hover{color:var(--text-1)}
 .empty{position:relative;z-index:1;max-width:520px;margin:18vh auto 0;padding:0 16px;text-align:center}
 .empty h1{margin:0 0 10px;font:700 28px/1.2 var(--font-ui)}
@@ -496,7 +501,7 @@ export function renderProfile(p: PublicProfile, origin: string, siteUrl: string)
 ${p.bio ? `<p class="pf-bio" dir="auto">${esc(p.bio)}</p>` : ""}
 <nav class="pf-links" aria-label="${esc(w.links)}">${p.location ? `<span class="pf-link">${glyph("globe")}<span>${esc(p.location)}</span></span>` : ""}${links}<span class="pf-link">${glyph("calendar")}<span>${esc(joinedText)}</span></span></nav>
 ${blocks ? `<div class="pf-blocks">${blocks}</div>` : ""}
-<footer><span>${esc(w.made)}</span><a href="${esc(siteUrl)}">${esc(w.get)}</a></footer>
+<footer><span>${esc(w.made)}</span><span class="pf-foot-links"><a href="${esc(siteUrl)}">${esc(w.get)}</a><a href="${esc(reportLink(siteUrl, `${origin}/@${p.username}`, lang))}" rel="nofollow">${esc(w.report)}</a></span></footer>
 </main></div>
 </div>`;
   const description = p.bio ?? p.status ?? `@${p.username}`;

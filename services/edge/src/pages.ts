@@ -23,7 +23,13 @@ export function clean(html: string): string {
     .replace(/(href|src)\s*=\s*("|')\s*javascript:[^"']*\2/gi, '$1="#"');
 }
 
-function page(title: string, lang: string, inner: string, site: string, by = ""): string {
+/** The support site's report form for this address (support.<domain>/new/report). */
+export function reportLink(site: string, url: string, lang: string): string {
+  const support = site.replace(/^https:\/\//, "https://support.").replace(/\/+$/, "");
+  return `${support}/new/report?${new URLSearchParams({ link: url, lang: lang === "ar" ? "ar" : "en" })}`;
+}
+
+function page(title: string, lang: string, inner: string, site: string, by = "", report = ""): string {
   const ar = lang === "ar";
   return `<!doctype html><html lang="${ar ? "ar" : "en"}"${ar ? ' dir="rtl"' : ""}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(title)}</title><meta name="robots" content="noindex">
 <style>
@@ -41,7 +47,7 @@ img{max-width:100%;border-radius:12px}a{color:var(--accent)}
 footer{margin-top:60px;color:var(--dim);font-size:13px}
 form{display:flex;gap:8px;margin-top:20px}input{flex:1;font:inherit;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:transparent;color:inherit}
 button{font:inherit;padding:10px 18px;border:0;border-radius:999px;background:var(--accent);color:#fff}
-</style></head><body><main>${inner}<footer>${ar ? "صُنعت في" : "Made in"} <a href="${esc(site)}">Worlds</a>${by ? ` · ${esc(by)}` : ""}</footer></main></body></html>`;
+</style></head><body><main>${inner}<footer>${ar ? "صُنعت في" : "Made in"} <a href="${esc(site)}">Worlds</a>${by ? ` · ${esc(by)}` : ""}${report ? ` · <a href="${esc(report)}" rel="nofollow">${ar ? "إبلاغ" : "Report"}</a>` : ""}</footer></main></body></html>`;
 }
 
 const html = (status: number, body: string, cache = "public, max-age=60") => new Response(body, { status, headers: { ...HEADERS, "cache-control": cache } });
@@ -59,7 +65,7 @@ export async function handlePublished(request: Request, site: string, call: (pat
     if (!r.ok) return missing(site);
     const p = (await r.json()) as { title: string; html: string; lang: string; author: string; username: string };
     const inner = `<h1>${esc(p.title)}</h1><div class="by"><a href="/@${esc(p.username)}">${esc(p.author || `@${p.username}`)}</a></div>${clean(p.html)}`;
-    return html(200, page(p.title, p.lang, inner, site));
+    return html(200, page(p.title, p.lang, inner, site, "", reportLink(site, url.origin + url.pathname, p.lang)));
   }
   const share = /^\/s\/([a-z0-9]{6,64})\/?$/.exec(path);
   if (share) {
@@ -77,7 +83,7 @@ export async function handlePublished(request: Request, site: string, call: (pat
     if (!r.ok) return missing(site);
     const p = (await r.json()) as { title: string; html: string; lang: string; expiresAt: number | null };
     const until = p.expiresAt ? `<div class="by">${p.lang === "ar" ? "متاحة حتى" : "Available until"} ${new Date(p.expiresAt).toISOString().slice(0, 10)}</div>` : "";
-    return html(200, page(p.title, p.lang, `<h1>${esc(p.title)}</h1>${until}${clean(p.html)}`, site), "private, no-store");
+    return html(200, page(p.title, p.lang, `<h1>${esc(p.title)}</h1>${until}${clean(p.html)}`, site, "", reportLink(site, url.origin + url.pathname, p.lang)), "private, no-store");
   }
   return null;
 }

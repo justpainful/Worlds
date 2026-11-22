@@ -16,6 +16,7 @@ import { deliver, eventStmt, type EventEnvelope } from "../lib/events";
 import { ApiError, bad, body, notFound, optStr, str, unauthorized } from "../lib/http";
 import { clientIp, rateLimit } from "../lib/ratelimit";
 import { freshPart, replyAddress, sendSupportMail, supportMail, ticketRef } from "../lib/supportMail";
+import { autoHideOnReports } from "../lib/content";
 import { consumeEmailCode } from "./auth";
 
 export const KINDS = ["problem", "account", "recovery", "deletion", "report", "security", "suggestion", "other"] as const;
@@ -354,6 +355,8 @@ support.post("/requests", async (c) => {
     via: b.via === "app" ? "app" : "web",
   });
   await addMessage(c.env, t, { author: "person", authorId: r.userId, body: text, files, via: t.via });
+  // Several people reporting the same public content hide it until the team looks.
+  if (kind === "report") await autoHideOnReports(c.env, safeJson<Record<string, string>>(t.fields, {}).link);
   const mail = supportMail("received", t, null);
   later(c, sendSupportMail(c.env, { to: t.email, ...mail, replyTo: replyAddress(c.env, t.reply_key) }));
   later(c, tellTeam(c.env, t, `${ticketRef(t.number)} · ${subject}`, text).then((ev) => deliver(c.env, ev)));
