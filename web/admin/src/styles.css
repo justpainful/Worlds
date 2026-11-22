@@ -1623,3 +1623,39 @@ input[type="search"]::-webkit-search-cancel-button {
 .bar.is-hot > span {
   background: var(--danger);
 }
+
+.proposal {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+}
+.proposal + .proposal::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  inset-inline: 12px;
+  height: 1px;
+  background: var(--hairline);
+}
+.proposal-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: var(--text-caption);
+}
+.proposal-summary {
+  font-weight: 600;
+}
+.proposal-details {
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+.proposal-body {
+  max-width: 100%;
+  white-space: pre-wrap;
+}
+.key-once .mono {
+  overflow-wrap: anywhere;
+}

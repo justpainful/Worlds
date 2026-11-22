@@ -31,7 +31,7 @@ app.use(
   cors({
     origin: (origin, c) => (allowedOrigins(c.env.ALLOWED_ORIGINS).includes(origin) ? origin : null),
     allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-    allowHeaders: ["content-type", "authorization", "x-support-session"],
+    allowHeaders: ["content-type", "authorization", "x-support-session", "x-worlds-version"],
     maxAge: 600,
   }),
 );
