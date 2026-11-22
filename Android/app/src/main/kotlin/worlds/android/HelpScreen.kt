@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -79,6 +80,7 @@ private enum class HelpDialog { IDEA, PROBLEM, DELETE }
 
 @Composable internal fun HelpScreen(identity: String, onBack: () -> Unit, onSignedOut: () -> Unit, gatewayOverride: HelpGateway? = null) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val app = context.applicationContext
     val gateway = remember(identity, gatewayOverride) { gatewayOverride ?: DeviceHelpGateway(identity, app, WorldsAccountSync.get(app)) }
     val scope = rememberCoroutineScope()
@@ -99,7 +101,7 @@ private enum class HelpDialog { IDEA, PROBLEM, DELETE }
         scope.launch {
             runCatching { action() }.fold({ message = it }, { e ->
                 failed = true
-                message = if (e is IdentityApiException && e.code == "owns_shared_workspaces") context.getString(R.string.help_delete_shared) else errorText
+                message = if (e is IdentityApiException && e.code == "owns_shared_workspaces") resources.getString(R.string.help_delete_shared) else errorText
             })
             busy = false
         }
@@ -116,7 +118,7 @@ private enum class HelpDialog { IDEA, PROBLEM, DELETE }
         if (uri != null) perform {
             val json = withContext(Dispatchers.IO) { gateway.export() }
             withContext(Dispatchers.IO) { context.contentResolver.openOutputStream(uri)?.use { it.write(json.toByteArray()) } ?: error("no stream") }
-            context.getString(R.string.help_data_saved)
+            resources.getString(R.string.help_data_saved)
         }
     }
 
@@ -124,7 +126,7 @@ private enum class HelpDialog { IDEA, PROBLEM, DELETE }
     when (dialog) {
         HelpDialog.IDEA -> TextDialog(stringResource(R.string.help_idea), stringResource(R.string.help_idea_title), stringResource(R.string.help_idea_body), false, onDismiss = { dialog = null }) { title, body, _, _ ->
             dialog = null
-            perform { val n = withContext(Dispatchers.IO) { gateway.suggest(title, body) }; context.getString(R.string.help_idea_sent, n) }
+            perform { val n = withContext(Dispatchers.IO) { gateway.suggest(title, body) }; resources.getString(R.string.help_idea_sent, n) }
         }
         HelpDialog.PROBLEM -> TextDialog(stringResource(R.string.help_problem), stringResource(R.string.help_problem_title), stringResource(R.string.help_problem_body), true, onDismiss = { dialog = null }) { title, body, details, pictures ->
             dialog = null
@@ -137,12 +139,12 @@ private enum class HelpDialog { IDEA, PROBLEM, DELETE }
                     val files = pictures.take(6).map { uri -> gateway.uploadPicture("image/jpeg", screenshotBase64(context, uri)) }
                     gateway.report(title, body, fields, files)
                 }
-                context.getString(R.string.help_problem_sent, ref)
+                resources.getString(R.string.help_problem_sent, ref)
             }
         }
         HelpDialog.DELETE -> DeleteDialog(gateway, onDismiss = { dialog = null }, onDeleted = { due ->
             dialog = null
-            android.widget.Toast.makeText(context, context.getString(R.string.help_delete_done, DateFormat.getDateInstance().format(Date(due))), android.widget.Toast.LENGTH_LONG).show()
+            android.widget.Toast.makeText(context, resources.getString(R.string.help_delete_done, DateFormat.getDateInstance().format(Date(due))), android.widget.Toast.LENGTH_LONG).show()
             onSignedOut()
         })
         null -> Unit
@@ -162,7 +164,7 @@ private enum class HelpDialog { IDEA, PROBLEM, DELETE }
             Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.errorContainer, modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp)) {
                     Text(stringResource(R.string.help_delete_pending, DateFormat.getDateInstance().format(Date(due))), color = MaterialTheme.colorScheme.onErrorContainer, lineHeight = 24.sp)
-                    TextButton(enabled = !busy, onClick = { perform { withContext(Dispatchers.IO) { gateway.cancelDeletion() }; dueAt = null; context.getString(R.string.help_delete_cancelled) } }) {
+                    TextButton(enabled = !busy, onClick = { perform { withContext(Dispatchers.IO) { gateway.cancelDeletion() }; dueAt = null; resources.getString(R.string.help_delete_cancelled) } }) {
                         Text(stringResource(R.string.help_delete_cancel))
                     }
                 }
@@ -280,7 +282,7 @@ private fun screenshotBase64(context: android.content.Context, uri: Uri): String
 
 @Composable private fun DeleteDialog(gateway: HelpGateway, onDismiss: () -> Unit, onDeleted: (Long) -> Unit) {
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
+    val resources = LocalResources.current
     var challenge by remember { mutableStateOf<String?>(null) }
     var code by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -289,7 +291,7 @@ private fun screenshotBase64(context: android.content.Context, uri: Uri): String
         busy = true; error = null
         scope.launch {
             runCatching { action() }.onFailure { e ->
-                error = context.getString(when {
+                error = resources.getString(when {
                     e is IdentityApiException && e.code == "owns_shared_workspaces" -> R.string.help_delete_shared
                     e is IdentityApiException && e.status == 400 -> R.string.account_invalid_code
                     else -> R.string.help_error

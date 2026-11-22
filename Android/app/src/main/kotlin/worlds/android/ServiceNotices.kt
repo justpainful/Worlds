@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -47,14 +48,14 @@ private fun pick(o: JSONObject?): String {
     return if (lang() == "ar") ar.ifBlank { en } else en.ifBlank { ar }
 }
 
-private fun noticesOf(config: JSONObject, dismissed: Set<String>, context: Context): List<Notice> {
+private fun noticesOf(config: JSONObject, dismissed: Set<String>, resources: android.content.res.Resources): List<Notice> {
     val out = mutableListOf<Notice>()
     config.optJSONObject("incident")?.takeIf { it.optBoolean("on") }?.let { i ->
         out += Notice("incident", true, listOf(pick(i.optJSONObject("title")), pick(i.optJSONObject("body"))).filter { it.isNotBlank() }.joinToString(". "),
             "https://status.enterworlds.space", R.string.service_status, false)
     }
     config.optJSONObject("maintenance")?.takeIf { it.optBoolean("on") }?.let { m ->
-        val text = pick(m.optJSONObject("message")).ifBlank { context.getString(if (m.optBoolean("readOnly")) R.string.service_maintenance_read_only else R.string.service_maintenance) }
+        val text = pick(m.optJSONObject("message")).ifBlank { resources.getString(if (m.optBoolean("readOnly")) R.string.service_maintenance_read_only else R.string.service_maintenance) }
         out += Notice("maintenance", true, text, null, 0, false)
     }
     val list = config.optJSONArray("announcements")
@@ -65,7 +66,7 @@ private fun noticesOf(config: JSONObject, dismissed: Set<String>, context: Conte
     }
     config.optJSONObject("update")?.takeIf { it.optBoolean("required") }?.let { u ->
         val id = "update:" + u.optString("minimum")
-        if (!u.optBoolean("dismissible") || id !in dismissed) out += Notice(id, !u.optBoolean("dismissible"), context.getString(R.string.service_update, u.optString("minimum")),
+        if (!u.optBoolean("dismissible") || id !in dismissed) out += Notice(id, !u.optBoolean("dismissible"), resources.getString(R.string.service_update, u.optString("minimum")),
             u.optString("url").takeIf { it.startsWith("https://") } ?: "https://enterworlds.space/apps/", R.string.service_download, u.optBoolean("dismissible"))
     }
     return out.filter { it.text.isNotBlank() }.take(3)
@@ -73,6 +74,7 @@ private fun noticesOf(config: JSONObject, dismissed: Set<String>, context: Conte
 
 @Composable internal fun ServiceNotices(identity: String?, pageCount: Int, modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val prefs = remember { servicePrefs(context) }
     var config by remember { mutableStateOf<JSONObject?>(null) }
     var dismissed by remember { mutableStateOf(prefs.getStringSet(DISMISSED, emptySet()).orEmpty()) }
@@ -98,7 +100,7 @@ private fun noticesOf(config: JSONObject, dismissed: Set<String>, context: Conte
         }
     }
 
-    val notices = config?.let { noticesOf(it, dismissed, context) }.orEmpty()
+    val notices = config?.let { noticesOf(it, dismissed, resources) }.orEmpty()
     Column(modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp).windowInsetsPadding(WindowInsets.navigationBars), verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         if (ask) Surface(shape = RoundedCornerShape(16.dp), tonalElevation = 6.dp, shadowElevation = 6.dp, modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
