@@ -84,6 +84,14 @@ export function App() {
     }
   }, [theme]);
 
+  // An incident or maintenance the team declared (identity GET /config).
+  const [notice, setNotice] = useState<{ ar: string; en: string } | null>(null);
+  useEffect(() => {
+    call<{ incident?: { on: boolean; title: { ar: string; en: string } }; maintenance?: { on: boolean; message?: { ar: string; en: string } } }>("GET", "/config?platform=web")
+      .then((c) => setNotice(c.incident?.on ? c.incident.title : c.maintenance?.on && c.maintenance.message ? c.maintenance.message : null))
+      .catch(() => setNotice(null));
+  }, []);
+
   const [, section, arg] = path.split("/");
   let page: ReactNode;
   if (section === "new") page = <NewRequest kind={(KINDS.find((k) => k.kind === arg)?.kind ?? null) as Kind | null} />;
@@ -127,6 +135,13 @@ export function App() {
           </Button>
         </nav>
       </header>
+      {notice && (notice[lang] || notice.ar) && (
+        <div className="notice-bar" role="status">
+          <Icon name="exclamationmark.triangle" size={16} />
+          <span>{notice[lang] || notice.ar}</span>
+          <a href="https://status.enterworlds.space/">{t("status")}</a>
+        </div>
+      )}
       <main className="support-main" key={lang}>
         {page}
       </main>

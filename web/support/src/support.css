@@ -419,3 +419,17 @@ body {
   font-size: var(--text-caption);
   color: var(--text-2);
 }
+
+.notice-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: color-mix(in srgb, var(--warning) 18%, var(--bg));
+  font-size: var(--text-caption);
+}
+.notice-bar a {
+  color: var(--accent);
+  font-weight: 600;
+}

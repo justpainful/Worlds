@@ -3,6 +3,7 @@ import type { AppEnv } from "../env";
 import { audit } from "../lib/audit";
 import { b64urlEncode, now } from "../lib/crypto";
 import { bannedWordIn } from "../lib/names";
+import { assertPublishingOpen } from "../lib/control";
 import { ApiError, bad, body, notFound } from "../lib/http";
 import { clientIp, rateLimit } from "../lib/ratelimit";
 import { normalizeUsername } from "../lib/usernames";
@@ -190,6 +191,7 @@ export function ownerRoutes(me: Hono<AppEnv>) {
 
   /** Publish (or update) the profile. { visible?, profile, avatar?, banner? } with avatar/banner as "file:<key>" or null. */
   me.put("/public-profile", async (c) => {
+    await assertPublishingOpen(c.env.DB);
     const caller = c.get("caller");
     const u = await userById(c.env.DB, caller.userId);
     if (!u) throw notFound();

@@ -13,6 +13,8 @@ import { expectedOrigins } from "./lib/webauthn";
 import { admin } from "./routes/admin";
 import { support, supportHousekeeping } from "./routes/support";
 import { community, mine } from "./routes/community";
+import { config } from "./routes/config";
+import { settings } from "./lib/control";
 import { auth } from "./routes/auth";
 import { me } from "./routes/me";
 import { pages } from "./routes/pages";
@@ -41,6 +43,17 @@ export function allowedOrigins(list: string | undefined): string[] {
     .filter((o) => /^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(o) || /^http:\/\/localhost(:\d+)?$/.test(o));
 }
 
+// Maintenance in read-only mode: reading and signing in still work, changes wait.
+const OPEN_WHILE_READ_ONLY = /^\/(auth|admin|config|support|community|\.well-known)(\/|$)/;
+app.use("*", async (c, next) => {
+  const m = c.req.method;
+  if (m !== "GET" && m !== "HEAD" && m !== "OPTIONS" && !OPEN_WHILE_READ_ONLY.test(c.req.path)) {
+    const s = await settings(c.env.DB);
+    if (s.maintenance.on && s.maintenance.readOnly) throw new ApiError(503, "read_only", "Worlds is read-only for maintenance. Try again soon.");
+  }
+  await next();
+});
+
 app.onError((err, c) => {
   if (err instanceof ApiError) {
     const headers: Record<string, string> = {};
@@ -67,6 +80,7 @@ app.route("/published", published);
 app.route("/admin", admin);
 app.route("/support", support);
 app.route("/community", community);
+app.route("/config", config);
 app.route("/me", mine);
 app.route("/", pages);
 
@@ -113,6 +127,12 @@ export class IdentityRPC extends WorkerEntrypoint<Env> {
   async packMembers(args: { workspaceId: string; packId: string; roleId: string }): Promise<{ userIds: string[] }> {
     if (!args || typeof args.workspaceId !== "string" || typeof args.packId !== "string" || typeof args.roleId !== "string") return { userIds: [] };
     return { userIds: await packMembers(this.env.DB, args) };
+  }
+
+  /** Whether shared pages take changes right now (maintenance in read-only mode). */
+  async serviceState(): Promise<{ readOnly: boolean }> {
+    const s = await settings(this.env.DB);
+    return { readOnly: s.maintenance.on && s.maintenance.readOnly };
   }
 
   async listDocs(args: { userId: string; workspaceId: string }): Promise<{ docId: string; level: AccessLevel }[]> {

@@ -120,6 +120,18 @@ function syncFrame(channel: number, kind: number, payload: Uint8Array): Uint8Arr
   return encoding.toUint8Array(e);
 }
 
+/** Asked of the identity service at most every 30 seconds per room process. */
+let readOnly = { value: false, at: 0 };
+async function readOnlyNow(env: Env): Promise<boolean> {
+  if (Date.now() - readOnly.at < 30_000) return readOnly.value;
+  try {
+    readOnly = { value: !!(await env.IDENTITY.serviceState?.())?.readOnly, at: Date.now() };
+  } catch {
+    readOnly = { value: false, at: Date.now() };
+  }
+  return readOnly.value;
+}
+
 export class DocRoom extends DurableObject<Env> {
   private docs: Y.Doc[] = [new Y.Doc({ gc: true }), new Y.Doc({ gc: true })];
   private awareness = new Map<number, { clock: number; state: string }>();
@@ -840,6 +852,7 @@ export class DocRoom extends DurableObject<Env> {
   /** Apply a client write after checking rights. Persisted before broadcast or ack. */
   private async write(ws: WebSocket, channel: number, update: Uint8Array): Promise<WriteResult> {
     if (channel !== CH_CONTENT && channel !== CH_COMMENTS) return { status: ACK_INVALID, reason: "unknown channel" };
+    if ((await readOnlyNow(this.env)) && wouldChange(this.docs[channel], update)) return { status: ACK_DENIED, reason: "Worlds is read-only for maintenance" };
     const session = await this.ensureAccess(ws);
     if (!session) return { status: ACK_DENIED, reason: "access revoked" };
     if (!canWrite(session.level, channel)) {

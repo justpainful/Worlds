@@ -3,6 +3,7 @@ import type { AppEnv } from "../env";
 import { requireAuth } from "../lib/auth";
 import { now, randomToken, sha256Hex } from "../lib/crypto";
 import { inboundSupport } from "./support";
+import { assertPublishingOpen } from "../lib/control";
 import { bad, body, notFound } from "../lib/http";
 import { clientIp, rateLimit, sameSecret } from "../lib/ratelimit";
 
@@ -43,6 +44,7 @@ published.get("/mine", async (c) => {
 
 /** Publish or update a page; `kind: "share"` makes a share link with a random slug. */
 published.put("/mine", async (c) => {
+  await assertPublishingOpen(c.env.DB);
   const caller = c.get("caller");
   const b = await body(c.req);
   const kind = b.kind === "share" ? "share" : "page";

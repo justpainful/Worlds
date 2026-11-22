@@ -12,6 +12,8 @@ import { type Lang, type PageData, render } from "./page";
 
 export interface Env {
   DB: D1Database;
+  /** The identity service's GET /config, for an incident declared from the dashboard. */
+  CONFIG_URL?: string;
   SITE?: Fetcher;
   ASSETS: Fetcher;
 }
@@ -57,7 +59,16 @@ export async function load(env: Env, now = Math.floor(Date.now() / 1000)): Promi
     return { svc, state: stateOf(mine), ms: mine[0]?.ms ?? null, uptime: uptime(dayRows, svc.id), bars: bars(dayRows, svc.id, today) };
   });
   const times = Object.values(lastAt);
+  let notice: PageData["notice"] = null;
+  try {
+    const r = await fetch(env.CONFIG_URL || "https://login.enterworlds.space/config", { signal: AbortSignal.timeout(3000) });
+    const c = r.ok ? ((await r.json()) as { incident?: { on?: boolean } & PageData["notice"] }) : null;
+    if (c?.incident?.on) notice = { title: c.incident.title, body: c.incident.body, startedAt: c.incident.startedAt, updates: c.incident.updates ?? [] };
+  } catch {
+    // The page still shows the checks without it.
+  }
   return {
+    notice,
     overall: overall(services.map((s) => s.state)),
     lastAt: times.length ? Math.max(...times) : null,
     services,

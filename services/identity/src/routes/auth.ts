@@ -8,6 +8,7 @@ import { codeEmail, emailLanguage, emailSender } from "../lib/email";
 import { ApiError, bad, body, normalizeEmail, notFound, optStr, str, unauthorized } from "../lib/http";
 import { clientIp, rateLimit } from "../lib/ratelimit";
 import { bannedWordIn } from "../lib/names";
+import { emailBlocked, settings } from "../lib/control";
 import { normalizeUsername, suggestUsername, usernameMessage, usernameProblem, usernameTaken } from "../lib/usernames";
 import { authenticationOptions, registrationOptions, webauthn } from "../lib/webauthn";
 
@@ -79,6 +80,7 @@ auth.post("/email/start", async (c) => {
   const email = normalizeEmail(b.email);
   await rateLimit(c.env.DB, `email-start:ip:${clientIp(c.req.raw, c.env.EDGE_SECRET)}`, 30, HOUR);
   await rateLimit(c.env.DB, `email-start:email:${email}`, 5, HOUR);
+  if (await emailBlocked(c.env.DB, email)) throw new ApiError(403, "email_blocked", "This email cannot be used with Worlds.");
   const id = newId();
   const code = randomDigits(6);
   const t = now();
@@ -130,6 +132,16 @@ auth.post("/email/verify", async (c) => {
   // The dashboard signs in to existing accounts only.
   if (!user && b.create === false) throw notFound("no_account", "There is no account with this email.");
   if (!user) {
+    // New accounts: closed for now, or by invitation only.
+    const mode = (await settings(c.env.DB)).signups.mode;
+    if (mode === "closed") throw new ApiError(403, "signups_closed", "New accounts are paused for now.");
+    if (mode === "invite") {
+      const code = typeof b.inviteCode === "string" ? b.inviteCode.trim() : "";
+      const used = code
+        ? await c.env.DB.prepare("UPDATE signup_invites SET uses = uses + 1 WHERE code_hash = ?1 AND uses < max_uses AND (expires_at IS NULL OR expires_at > ?2)").bind(await sha256Hex(code.toUpperCase()), now()).run()
+        : null;
+      if (!used?.meta.changes) throw new ApiError(403, "invite_required", "New accounts need an invitation code for now.");
+    }
     const t = now();
     const id = newId();
     let name = optStr(b.displayName, "displayName", 80) ?? email.split("@")[0];

@@ -103,6 +103,15 @@ export function Capsule({ children, label }: { children: ReactNode; label?: stri
   );
 }
 
+/** On or off: a blue track and a white knob that springs across (role="switch"). */
+export function Switch({ checked, onChange, label, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
+  return (
+    <button type="button" role="switch" aria-checked={checked} aria-label={label} disabled={disabled} className={`switch ${checked ? "is-on" : ""}`} onClick={() => onChange(!checked)}>
+      <span className="switch-knob" aria-hidden />
+    </button>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // A track with a sliding glass lens
 // ---------------------------------------------------------------------------
