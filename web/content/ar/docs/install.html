@@ -6,16 +6,16 @@ description: أي ملف تحمّله لجهازك، وما الذي يعمل ع
 <p class="lead">اختر جهازك، وحمّل ملفًا واحدًا من صفحة الإصدارات، ثم اتبع الخطوات في صفحة جهازك. وإذا أردت أن تبدأ دون تثبيت أي شيء، افتح Worlds في المتصفح.</p>
 
 <h2 id="which-file">أي ملف لجهازك</h2>
-<p>كل الملفات موجودة في <a href="https://github.com/justpainful/Worlds/releases/latest">صفحة آخر إصدار على GitHub</a> تحت قسم Assets. الإصدار الحالي هو 1.0.1.</p>
+<p>كل الملفات موجودة في <a href="https://github.com/justpainful/Worlds/releases/latest">صفحة آخر إصدار على GitHub</a> تحت قسم Assets. الإصدار الحالي هو 1.1.0.</p>
 <table>
 <thead><tr><th>الجهاز</th><th>الملف</th><th>الحجم</th><th>الشرح</th></tr></thead>
 <tbody>
-<tr><td>كمبيوتر Windows</td><td><code>Worlds-1.0.1-Windows-x64-setup.exe</code></td><td>302 MB</td><td><a href="/docs/install/windows/">التثبيت على Windows</a></td></tr>
-<tr><td>هاتف أو جهاز لوحي Android</td><td><code>Worlds-1.0.1-Android-Universal.apk</code></td><td>29.5 MB</td><td><a href="/docs/install/android/">التثبيت على Android</a></td></tr>
-<tr><td>iPhone</td><td><code>Worlds-1.0.1-iPhone-Unsigned.ipa</code></td><td>13.3 MB</td><td><a href="/docs/install/iphone-ipad/">التثبيت على iPhone و iPad</a></td></tr>
-<tr><td>iPad</td><td><code>Worlds-1.0.1-iPad-Unsigned.ipa</code></td><td>13.3 MB</td><td><a href="/docs/install/iphone-ipad/">التثبيت على iPhone و iPad</a></td></tr>
-<tr><td>Mac</td><td><code>Worlds-1.0.1-macOS-Unsigned.dmg</code><br>أو <code>Worlds-1.0.1-macOS-Unsigned.zip</code></td><td>28.6 MB<br>24.4 MB</td><td><a href="/docs/install/macos/">التثبيت على Mac</a></td></tr>
-<tr><td>كمبيوتر Linux</td><td><code>Worlds-1.0.1-Linux-x86_64.AppImage</code><br>أو <code>Worlds-1.0.1-Linux-amd64.deb</code></td><td>94.9 MB<br>20.5 MB</td><td><a href="/docs/install/linux/">التثبيت على Linux</a></td></tr>
+<tr><td>كمبيوتر Windows</td><td><code>Worlds-1.1.0-Windows-x64-setup.exe</code></td><td>302 MB</td><td><a href="/docs/install/windows/">التثبيت على Windows</a></td></tr>
+<tr><td>هاتف أو جهاز لوحي Android</td><td><code>Worlds-1.1.0-Android-Universal.apk</code></td><td>29.6 MB</td><td><a href="/docs/install/android/">التثبيت على Android</a></td></tr>
+<tr><td>iPhone</td><td><code>Worlds-1.1.0-iPhone-Unsigned.ipa</code></td><td>13.4 MB</td><td><a href="/docs/install/iphone-ipad/">التثبيت على iPhone و iPad</a></td></tr>
+<tr><td>iPad</td><td><code>Worlds-1.1.0-iPad-Unsigned.ipa</code></td><td>13.4 MB</td><td><a href="/docs/install/iphone-ipad/">التثبيت على iPhone و iPad</a></td></tr>
+<tr><td>Mac</td><td><code>Worlds-1.1.0-macOS-Unsigned.dmg</code><br>أو <code>Worlds-1.1.0-macOS-Unsigned.zip</code></td><td>29.0 MB<br>24.7 MB</td><td><a href="/docs/install/macos/">التثبيت على Mac</a></td></tr>
+<tr><td>كمبيوتر Linux</td><td><code>Worlds-1.1.0-Linux-x86_64.AppImage</code><br>أو <code>Worlds-1.1.0-Linux-amd64.deb</code></td><td>95.4 MB<br>21.2 MB</td><td><a href="/docs/install/linux/">التثبيت على Linux</a></td></tr>
 <tr><td>أي جهاز فيه متصفح</td><td>لا تحتاج إلى ملف</td><td>لا شيء</td><td><a href="/docs/install/web/">Worlds في المتصفح</a></td></tr>
 </tbody>
 </table>
@@ -63,25 +63,25 @@ description: أي ملف تحمّله لجهازك، وما الذي يعمل ع
 <li><h3>حمّل SHA256SUMS.txt</h3><p>من <a href="https://github.com/justpainful/Worlds/releases/latest">صفحة آخر إصدار</a>، واحفظه في المجلد نفسه الذي فيه ملف التثبيت (عادة مجلد التنزيلات). يمكنك أيضًا فتحه في المتصفح وقراءته مباشرة.</p></li>
 <li><h3>احسب بصمة الملف</h3>
 <p><strong>في Windows:</strong> افتح PowerShell من قائمة ابدأ، والصق هذا الأمر ثم اضغط <kbd>Enter</kbd>:</p>
-<pre><code>Get-FileHash "$env:USERPROFILE\Downloads\Worlds-1.0.1-Windows-x64-setup.exe" -Algorithm SHA256</code></pre>
+<pre><code>Get-FileHash "$env:USERPROFILE\Downloads\Worlds-1.1.0-Windows-x64-setup.exe" -Algorithm SHA256</code></pre>
 <p>تظهر البصمة بأحرف كبيرة، وفي الملف بأحرف صغيرة. لا يهم حجم الأحرف، المهم أن تتطابق.</p>
 <p><strong>في Mac:</strong> افتح Terminal والصق:</p>
-<pre><code>shasum -a 256 ~/Downloads/Worlds-1.0.1-macOS-Unsigned.dmg</code></pre>
+<pre><code>shasum -a 256 ~/Downloads/Worlds-1.1.0-macOS-Unsigned.dmg</code></pre>
 <p><strong>في Linux أو في Linux على Chromebook:</strong> ضع الملفين في مجلد واحد ثم شغّل:</p>
 <pre><code>cd ~/Downloads
 sha256sum -c SHA256SUMS.txt --ignore-missing</code></pre>
 <p>يكتب الأمر <code>OK</code> بجانب كل ملف سليم.</p>
 <p><strong>على الهاتف:</strong> لا يحسب Android ولا iOS البصمة بنفسيهما. حمّل الملف على كمبيوتر وتحقق منه هناك، أو استخدم تطبيقًا تثق به لحساب SHA-256.</p></li>
-<li><h3>قارن البصمتين</h3><p>قارن البصمة الناتجة بالسطر الذي يحمل اسم الملف. هذه بصمات الإصدار 1.0.1 للمقارنة:</p>
+<li><h3>قارن البصمتين</h3><p>قارن البصمة الناتجة بالسطر الذي يحمل اسم الملف. هذه بصمات الإصدار 1.1.0 للمقارنة:</p>
 <dl class="facts">
-<div><dt><code>Worlds-1.0.1-Windows-x64-setup.exe</code></dt><dd><code>7981b71ad6d4e2e8bfb9d4c3dc05170b9f8f4d92c8e5b3714302693c06b23de7</code></dd></div>
-<div><dt><code>Worlds-1.0.1-Android-Universal.apk</code></dt><dd><code>be14a528b7b096a2649392331f720c72de952a0aacdde6f6d7bb732681084b74</code></dd></div>
-<div><dt><code>Worlds-1.0.1-iPhone-Unsigned.ipa</code></dt><dd><code>b8245422319f10bf0d2ad7e4c51833c1d3078581d203b990beb669c57dc33249</code></dd></div>
-<div><dt><code>Worlds-1.0.1-iPad-Unsigned.ipa</code></dt><dd><code>cd4bcddbb1ed6a20a7eac99a47d85c059d811f721d5c8b41590d03c3c8ccedd6</code></dd></div>
-<div><dt><code>Worlds-1.0.1-macOS-Unsigned.dmg</code></dt><dd><code>91fcdb6ebb199529718024a2f5193fa85654b384932d1e4aca1169a944507a4d</code></dd></div>
-<div><dt><code>Worlds-1.0.1-macOS-Unsigned.zip</code></dt><dd><code>8b4f7fc5be4f16b8bc584897be8f88d440a30e50453591605d66ad1775594b81</code></dd></div>
-<div><dt><code>Worlds-1.0.1-Linux-x86_64.AppImage</code></dt><dd><code>1aa99a13f87795e0373eaaa68b849cbb9db52ba5c4783ca38a0bfd0e497c97ee</code></dd></div>
-<div><dt><code>Worlds-1.0.1-Linux-amd64.deb</code></dt><dd><code>4542b8104bfd16a09a252a0487a7efdc8ba6b15b956c0ab0eeafdc1b91d3e1e9</code></dd></div>
+<div><dt><code>Worlds-1.1.0-Windows-x64-setup.exe</code></dt><dd><code>c7038136dcf93546dc94109ae1dc31978f91460bfeed26862450425b9e6f42b6</code></dd></div>
+<div><dt><code>Worlds-1.1.0-Android-Universal.apk</code></dt><dd><code>b21d1c463256f6bdcfebb0a7f8e258785b3e95de4f31524a59486cd605bae3d6</code></dd></div>
+<div><dt><code>Worlds-1.1.0-iPhone-Unsigned.ipa</code></dt><dd><code>0b512298b6a86db9d97c00d0eb80b76be7d5b2d1d440f28a067fd812e61885ba</code></dd></div>
+<div><dt><code>Worlds-1.1.0-iPad-Unsigned.ipa</code></dt><dd><code>a1410f051922a72fe74f6771c7011b2a209c01eff68194d11703e552d5958a73</code></dd></div>
+<div><dt><code>Worlds-1.1.0-macOS-Unsigned.dmg</code></dt><dd><code>c40f85509d5fa54511d2760b6d72e1a8f3702540e973830bfe724fefa908eeb9</code></dd></div>
+<div><dt><code>Worlds-1.1.0-macOS-Unsigned.zip</code></dt><dd><code>ddb51e7024cf6fd38009ed8ec3fa50237ff47d441bf5699d655e86435698a35f</code></dd></div>
+<div><dt><code>Worlds-1.1.0-Linux-x86_64.AppImage</code></dt><dd><code>a5cea0edb1e7f8529944a1e554b6237a4c426c9a8cc9a15fb71c993b343d8f15</code></dd></div>
+<div><dt><code>Worlds-1.1.0-Linux-amd64.deb</code></dt><dd><code>6f76060ad280f060aefcb7be366104b5f051a9753168d05f3824f109b9135fa0</code></dd></div>
 </dl>
 <p>إذا حمّلت إصدارًا أحدث، فاستخدم ملف <code>SHA256SUMS.txt</code> الموجود معه.</p></li>
 </ol>
