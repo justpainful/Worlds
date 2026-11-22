@@ -3,6 +3,8 @@ date: 2026-10-12
 title: أول إصدار من Worlds || The first release of Worlds
 summary: مساحة عمل تحفظ صفحاتك على جهازك، بواجهة من الزجاج السائل، ويعمل فيها Claude على صفحاتك مباشرة، مع حسابات ومزامنة اختيارية. || A workspace that keeps your pages on your own computer, with a Liquid Glass interface, Claude working directly in your pages, and optional accounts and sync.
 intro: يسعدنا أن نقدّم الإصدار الأول من Worlds لنظام ويندوز. صُمّم Worlds ليكون مساحة عمل واحدة للصفحات والمستندات والعروض والمعارض، تُحفظ كلها على جهازك أولًا. يعمل Claude داخل صفحاتك فيقرأ ويحرّر وينشئ، وتظهر لك كل خطوة يتخذها، ويمكنك التراجع عن أي تغيير. الحسابات والمزامنة اختيارية بالكامل. || This is the first release of Worlds, for Windows. Worlds is one workspace for pages, documents, presentations and galleries, all saved on your computer first. Claude works inside your pages, reading, editing and creating, with every step shown and every change reversible. Accounts and sync are entirely optional.
+feature: blocks pages :: صفحات من كتل :: جداول ومعادلات ومخططات وروابط بين الصفحات، محفوظة على جهازك. || Pages made of blocks :: Tables, equations, diagrams and links between pages, kept on your computer.
+feature: claude claude :: Claude داخل صفحاتك :: يقرأ صفحاتك ويحرّرها وينشئها، ويمكن التراجع عن كل تغيير. || Claude in your pages :: It reads, edits and creates your pages, and every change can be undone.
 
 # highlights
 - new: الصفحات: عناوين وقوائم مهام وجداول وتنبيهات وأعمدة وأقسام قابلة للطي، ورسوم بيانية من الجداول، ومخططات Mermaid، ومعادلات LaTeX، وأغلفة وأيقونات، وروابط بين الصفحات وفهرس للمحتوى. || Pages: headings, checklists, tables, callouts, columns and toggles, charts from tables, Mermaid diagrams, LaTeX equations, covers and icons, page links and an outline.

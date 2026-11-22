@@ -4,6 +4,8 @@ title: Worlds على جميع أجهزتك || Worlds on every device
 summary: تطبيقات أصلية لآيفون وآيباد وماك وأندرويد وكروم بوك، وأدوات للطلاب والتخطيط، وجداول بيانات، ومساحة رسم متكاملة. || Native apps for iPhone, iPad, Mac, Android and ChromeOS, student and planning tools, spreadsheets and a complete drawing workspace.
 intro: يُعدّ هذا الإصدار من أكبر تحديثات Worlds حتى الآن. أصبح Worlds متاحًا بتطبيقات أصلية على آيفون وآيباد وماك وأندرويد وكروم بوك، إلى جانب ويندوز. ويضيف الإصدار أدوات متكاملة للطلاب والتخطيط، وجداول بيانات بمعادلات، ومساحة رسم كاملة بالفرش والطبقات والخرائط الذهنية. || This is one of the largest Worlds updates to date. Worlds now runs as a native app on iPhone, iPad, Mac, Android and ChromeOS, alongside Windows. The release also adds complete student and planning tools, spreadsheets with formulas, and a full drawing workspace with brushes, layers and mind maps.
 note: تعرض ملفات هذا الإصدار الرقم الداخلي 0.1.0 لأن رقم الإصدار لم يُحدَّث في الشيفرة. || These builds report the internal version 0.1.0 because the version number in the source was not updated.
+feature: devices platforms :: على كل أجهزتك :: تطبيقات أصلية لآيفون وآيباد وماك وأندرويد وكروم بوك. || On every device :: Native apps for iPhone, iPad, Mac, Android and ChromeOS.
+feature: drawing drawing :: مساحة رسم متكاملة :: فرش وطبقات وأقنعة وأشكال ونص عربي ورسم مشترك. || A complete drawing workspace :: Brushes, layers, masks, shapes, Arabic text and drawing together.
 
 # highlights
 - new: تطبيقات أصلية لآيفون وآيباد وماك بتنقل من الزجاج السائل، ولأندرويد وكروم بوك بدعم الأقلام. || Native apps for iPhone, iPad and Mac with Liquid Glass navigation, and for Android and ChromeOS with pen support.

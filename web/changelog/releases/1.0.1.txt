@@ -3,6 +3,8 @@ date: 2026-11-22
 title: الحساب نفسه على كل أجهزتك || The same account on every device
 summary: إصلاح لتسجيل الدخول على الكمبيوتر بحساب أُنشئ على الويب: يبقى الاسم كما هو، وتصل الصورة والبانر إلى الجهاز، ولا تُترجم أسماء الأشخاص. || A fix for signing in on a computer with an account made on the web: the name stays as it is, the picture and banner reach the computer, and people's names are no longer translated.
 intro: أبلغنا أحد المستخدمين أنه أنشأ حسابه على Worlds على الويب، ثم سجّل دخوله في تطبيق ويندوز، فوجد اسم حسابه قد تغيّر إلى اسم مستخدم ويندوز، وصورته وبانره غائبين عن الجهاز. يعالج هذا الإصدار السبب من جذوره: أصبح الحساب الموجود هو المرجع، ويجلب الجهاز ملفك الشخصي من الويب بدل أن يكتب فوقه. || A user told us they made their account on Worlds on the web, then signed in on the Windows app and found the account renamed to their Windows user name, with their picture and banner missing on the computer. This release fixes the cause: an existing account is now the source, and the computer brings your profile from the web instead of writing over it.
+feature: sync accounts :: الحساب نفسه في كل مكان :: يحفظ تسجيل الدخول على الكمبيوتر اسمك كما هو، ويجلب صورتك وبانرك من الويب. || One account everywhere :: Signing in on a computer keeps your name as it is, and brings your picture and banner from the web.
+feature: name arabic :: الأسماء لا تُترجم :: تبقى أسماء الأشخاص كما كتبها أصحابها في الواجهة العربية. || Names stay names :: People's names stay as their owners wrote them in the Arabic interface.
 
 # highlights
 - fixed: تسجيل الدخول على الكمبيوتر بحساب موجود لم يعد يغيّر اسمه إلى اسم مستخدم الجهاز. || Signing in on a computer with an existing account no longer renames it to the computer's user name.
