@@ -4,6 +4,7 @@
  * support+<reply key>@<domain> (docs/admin/PLAN.md, phase 2).
  */
 import type { Env } from "../env";
+import { logEmail } from "./activity";
 import { ART, C, DevEmailSender, ResendEmailSender, SITE, emailSender, escape, type EmailLanguage, type EmailMessage, type EmailSender } from "./email";
 
 export const SUPPORT_SITE = "https://support.enterworlds.space";
@@ -155,10 +156,13 @@ export function supportMail(
 /** Send support mail; a failure is logged, never thrown, so the request itself still saves. */
 export async function sendSupportMail(env: Env, msg: EmailMessage): Promise<boolean> {
   try {
-    await supportSender(env).send({ ...msg, from: supportAddress(env) });
+    const sender = supportSender(env);
+    await sender.send({ ...msg, from: supportAddress(env) });
+    await logEmail(env, "support", sender.provider ?? null, true);
     return true;
   } catch (e) {
     console.error("support mail failed", e);
+    await logEmail(env, "support", null, false, String(e));
     return false;
   }
 }

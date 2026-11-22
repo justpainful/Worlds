@@ -165,6 +165,41 @@ community.post("/suggestions/:id/vote", async (c) => {
 export const mine = new Hono<AppEnv>();
 mine.use("*", requireAuth);
 
+/**
+ * Counts a device sends once a day when its owner agreed (Settings, Privacy):
+ * how many pages, blocks and attachments, which features and packs are in use,
+ * the language and theme, and how many errors. Never content or titles.
+ */
+mine.post("/usage", async (c) => {
+  const caller = c.get("caller");
+  await rateLimit(c.env.DB, `usage:${caller.deviceId}`, 10, 86_400_000);
+  const b = await body(c.req);
+  const d = (b.data ?? {}) as Record<string, unknown>;
+  const int = (v: unknown, max = 1e9) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.min(Math.round(v), max) : undefined);
+  const word = (v: unknown, max = 30) => (typeof v === "string" && /^[\w.\- ]{1,60}$/.test(v) ? v.slice(0, max) : undefined);
+  const features: Record<string, boolean> = {};
+  for (const [k, v] of Object.entries((d.features ?? {}) as Record<string, unknown>).slice(0, 40)) if (/^[a-z][a-zA-Z0-9]{0,30}$/.test(k) && typeof v === "boolean") features[k] = v;
+  const clean = {
+    platform: word(d.platform, 20),
+    version: word(d.version, 20),
+    pages: int(d.pages),
+    blocks: int(d.blocks),
+    attachments: int(d.attachments),
+    attachmentBytes: int(d.attachmentBytes, 1e13),
+    features,
+    packs: Array.isArray(d.packs) ? d.packs.filter((p): p is string => typeof p === "string" && /^[a-z][a-z0-9._-]{0,40}$/.test(p)).slice(0, 60) : [],
+    language: word(d.language, 10),
+    theme: word(d.theme, 10),
+    errors: int(d.errors, 100_000),
+  };
+  await c.env.DB.prepare("INSERT OR REPLACE INTO usage_reports (user_id, device_id, day, data) VALUES (?1, ?2, ?3, ?4)")
+    .bind(caller.userId, caller.deviceId, Math.floor(now() / 86_400_000), JSON.stringify(clean))
+    .run();
+  // Ninety days are enough for every chart.
+  await c.env.DB.prepare("DELETE FROM usage_reports WHERE day < ?1").bind(Math.floor(now() / 86_400_000) - 90).run();
+  return c.json({ ok: true });
+});
+
 mine.get("/testers", async (c) => {
   const row = await c.env.DB.prepare("SELECT status, platforms, applied_at, decided_at FROM testers WHERE user_id = ?1").bind(c.get("caller").userId).first<{
     status: string;

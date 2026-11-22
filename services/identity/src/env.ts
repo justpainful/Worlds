@@ -36,6 +36,10 @@ export interface Env {
   PROFILE_FILES?: R2Bucket;
   /** "Worlds Support <support@enterworlds.space>": the sender of support mail (lib/supportMail.ts). */
   SUPPORT_FROM?: string;
+  /** Cloudflare analytics for the dashboard (Account Analytics and Zone Analytics: Read), account ids, and the zone. */
+  CF_API_TOKEN?: string;
+  CF_ACCOUNTS?: string;
+  CF_ZONE?: string;
   /** User ids that own the control dashboard, comma separated (src/routes/admin.ts). */
   ADMIN_OWNERS?: string;
   /**

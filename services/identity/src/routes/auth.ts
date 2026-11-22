@@ -9,6 +9,7 @@ import { ApiError, bad, body, normalizeEmail, notFound, optStr, str, unauthorize
 import { clientIp, rateLimit } from "../lib/ratelimit";
 import { bannedWordIn } from "../lib/names";
 import { emailBlocked, settings } from "../lib/control";
+import { logEmail, recordActivity } from "../lib/activity";
 import { normalizeUsername, suggestUsername, usernameMessage, usernameProblem, usernameTaken } from "../lib/usernames";
 import { authenticationOptions, registrationOptions, webauthn } from "../lib/webauthn";
 
@@ -87,7 +88,14 @@ auth.post("/email/start", async (c) => {
   await c.env.DB.prepare("INSERT INTO email_codes (id, email, code_hash, created_at, expires_at) VALUES (?1, ?2, ?3, ?4, ?5)")
     .bind(id, email, await sha256Hex(`${id}:${code}`), t, t + CODE_TTL_MS)
     .run();
-  await emailSender(c.env).send({ to: email, ...codeEmail(code, emailLanguage(b.lang, c.req.header("accept-language"))) });
+  const sender = emailSender(c.env);
+  try {
+    await sender.send({ to: email, ...codeEmail(code, emailLanguage(b.lang, c.req.header("accept-language"))) });
+    await logEmail(c.env, "code", sender.provider ?? null, true);
+  } catch (e) {
+    await logEmail(c.env, "code", null, false, String(e));
+    throw e;
+  }
   const existing = await c.env.DB.prepare("SELECT id FROM users WHERE email = ?1").bind(email).first<{ id: string }>();
   await audit(c.env.DB, { action: "auth.email_code_sent", actorUserId: existing?.id ?? null, actorKind: "user", targetType: "email_code", targetId: id });
   // The same answer whether or not an account exists.
@@ -168,6 +176,7 @@ auth.post("/email/verify", async (c) => {
     created = true;
   }
   const tokens = await signIn(c.env, user.id, parseDevice(b.device), "email");
+  await recordActivity(c, tokens.userId, tokens.deviceId);
   return c.json({ ...tokens, user: userView(user), created });
 });
 
@@ -307,6 +316,7 @@ auth.post("/passkey/login/verify", async (c) => {
   }
   const user = (await userById(c.env.DB, cred.user_id))!;
   const tokens = await signIn(c.env, user.id, parseDevice(b.device), "passkey");
+  await recordActivity(c, tokens.userId, tokens.deviceId);
   return c.json({ ...tokens, user: userView(user) });
 });
 
@@ -325,6 +335,7 @@ auth.post("/token", async (c) => {
   if (!timingSafeEqual(await sha256B64url(verifier), row.code_challenge)) throw bad("invalid_grant", "This sign-in could not be verified.");
   const user = (await userById(c.env.DB, row.user_id))!;
   const tokens = await signIn(c.env, user.id, parseDevice(b.device), "passkey");
+  await recordActivity(c, tokens.userId, tokens.deviceId);
   return c.json({ ...tokens, user: userView(user) });
 });
 
@@ -340,6 +351,7 @@ auth.post("/refresh", async (c) => {
     },
     (events) => emit(c, events),
   );
+  await recordActivity(c, tokens.userId, tokens.deviceId);
   return c.json(tokens);
 });
 

@@ -78,6 +78,34 @@ async function route(request: Request, env: Env): Promise<Response> {
   }
 
   // Access change events from the identity service (signed webhook).
+  /**
+   * The dashboard's storage numbers (identity routes/admin.ts): bytes kept per
+   * account (web copy and its files) and per shared workspace (attachments).
+   * Signed like the events webhook, over "storage:<unix seconds>".
+   */
+  if (url.pathname === "/internal/storage") {
+    const ts = Number(url.searchParams.get("ts"));
+    if (!env.SYNC_WEBHOOK_SECRET || !Number.isFinite(ts) || Math.abs(Date.now() / 1000 - ts) > 300) return problem(403, "forbidden");
+    if (!(await validSignature(env.SYNC_WEBHOOK_SECRET, `storage:${ts}`, request.headers.get("x-worlds-signature")))) return problem(403, "forbidden");
+    const users: Record<string, number> = {};
+    const workspaces: Record<string, number> = {};
+    let total = 0;
+    let objects = 0;
+    let cursor: string | undefined;
+    do {
+      const list = await env.BLOBS.list({ cursor, limit: 1000 });
+      for (const o of list.objects) {
+        objects++;
+        total += o.size;
+        const [top, id] = o.key.split("/");
+        if (top === "vault" && id) users[id] = (users[id] ?? 0) + o.size;
+        else if (top === "ws" && id) workspaces[id] = (workspaces[id] ?? 0) + o.size;
+      }
+      cursor = list.truncated ? list.cursor : undefined;
+    } while (cursor && objects < 50_000);
+    return json({ total, objects, users, workspaces, complete: !cursor });
+  }
+
   if (url.pathname === "/internal/events") {
     if (method !== "POST") return problem(405, "method not allowed");
     const body = await request.text();
