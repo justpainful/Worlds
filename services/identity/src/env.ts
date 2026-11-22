@@ -34,6 +34,13 @@ export interface Env {
   ALLOWED_ORIGINS?: string;
   /** Pictures on public profiles (src/routes/profiles.ts); without it profiles publish text only. */
   PROFILE_FILES?: R2Bucket;
+  /** User ids that own the control dashboard, comma separated (src/routes/admin.ts). */
+  ADMIN_OWNERS?: string;
+  /**
+   * Other web origins that may use passkeys made for WEBAUTHN_RP_ID, comma separated
+   * (https://admin.enterworlds.space). Served at /.well-known/webauthn for the browser.
+   */
+  WEBAUTHN_RELATED_ORIGINS?: string;
 }
 
 /** The part of Cloudflare's `send_email` binding this service uses. */

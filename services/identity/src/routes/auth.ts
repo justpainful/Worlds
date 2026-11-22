@@ -88,10 +88,13 @@ auth.post("/email/start", async (c) => {
   return c.json({ challengeId: id, expiresAt: t + CODE_TTL_MS });
 });
 
-auth.post("/email/verify", async (c) => {
-  const b = await body(c.req);
-  const challengeId = str(b.challengeId, "challengeId", 64);
-  const code = str(b.code, "code", 12).replace(/\s+/g, "");
+/**
+ * Check a 6-digit code and use it up. Returns the email it was sent to.
+ * Shared by sign-in and the dashboard's second check (routes/admin.ts).
+ */
+export async function consumeEmailCode(c: Context<AppEnv>, challengeIdIn: unknown, codeIn: unknown): Promise<string> {
+  const challengeId = str(challengeIdIn, "challengeId", 64);
+  const code = str(codeIn, "code", 12).replace(/\s+/g, "");
   await rateLimit(c.env.DB, `email-verify:ip:${clientIp(c.req.raw, c.env.EDGE_SECRET)}`, 30, 10 * 60 * 1000);
   const row = await c.env.DB.prepare("SELECT id, email, code_hash, attempts, expires_at, consumed_at FROM email_codes WHERE id = ?1")
     .bind(challengeId)
@@ -110,14 +113,20 @@ auth.post("/email/verify", async (c) => {
   }
   const used = await c.env.DB.prepare("UPDATE email_codes SET consumed_at = ?1 WHERE id = ?2 AND consumed_at IS NULL").bind(now(), row.id).run();
   if (!used.meta.changes) throw bad("invalid_code", "That code is no longer valid. Ask for a new one.");
+  return row.email;
+}
 
-  let user = await c.env.DB.prepare(`SELECT ${USER_COLS} FROM users WHERE email = ?1`).bind(row.email).first<UserRow>();
+auth.post("/email/verify", async (c) => {
+  const b = await body(c.req);
+  const email = await consumeEmailCode(c, b.challengeId, b.code);
+
+  let user = await c.env.DB.prepare(`SELECT ${USER_COLS} FROM users WHERE email = ?1`).bind(email).first<UserRow>();
   let created = false;
   if (user) user = await withUsername(c.env.DB, user);
   if (!user) {
     const t = now();
     const id = newId();
-    const name = optStr(b.displayName, "displayName", 80) ?? row.email.split("@")[0];
+    const name = optStr(b.displayName, "displayName", 80) ?? email.split("@")[0];
     // The person's own handle when it is valid and free; otherwise the system picks one
     // (marked automatic, so the app can still claim the handle later).
     let username: string | null = null;
@@ -126,11 +135,11 @@ auth.post("/email/verify", async (c) => {
       if (!usernameProblem(wanted) && !(await usernameTaken(c.env.DB, wanted))) username = wanted;
     }
     const auto = username ? 0 : 1;
-    username ??= await suggestUsername(c.env.DB, [name, row.email.split("@")[0]]);
+    username ??= await suggestUsername(c.env.DB, [name, email.split("@")[0]]);
     await c.env.DB.batch([
       c.env.DB.prepare(
         "INSERT INTO users (id, email, display_name, username, username_auto, email_verified_at, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6, ?6)",
-      ).bind(id, row.email, name, username, auto, t),
+      ).bind(id, email, name, username, auto, t),
       auditStmt(c.env.DB, { action: "account.created", actorUserId: id, actorKind: "user", targetType: "user", targetId: id, meta: { method: "email" } }),
     ]);
     user = (await userById(c.env.DB, id))!;
@@ -144,7 +153,7 @@ auth.post("/email/verify", async (c) => {
 // Passkeys
 // ---------------------------------------------------------------------------
 
-async function newChallenge(db: D1Database, kind: "register" | "authenticate", challenge: string, userId: string | null): Promise<string> {
+export async function newChallenge(db: D1Database, kind: "register" | "authenticate", challenge: string, userId: string | null): Promise<string> {
   const id = newId();
   const t = now();
   await db.prepare("INSERT INTO webauthn_challenges (id, kind, challenge, user_id, created_at, expires_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)")
@@ -153,7 +162,7 @@ async function newChallenge(db: D1Database, kind: "register" | "authenticate", c
   return id;
 }
 
-async function takeChallenge(db: D1Database, id: string, kind: "register" | "authenticate"): Promise<{ challenge: string; user_id: string | null }> {
+export async function takeChallenge(db: D1Database, id: string, kind: "register" | "authenticate"): Promise<{ challenge: string; user_id: string | null }> {
   const row = await db
     .prepare("UPDATE webauthn_challenges SET consumed_at = ?1 WHERE id = ?2 AND kind = ?3 AND consumed_at IS NULL AND expires_at > ?1 RETURNING challenge, user_id")
     .bind(now(), id, kind)

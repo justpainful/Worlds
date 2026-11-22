@@ -4,6 +4,7 @@ import {
   verifyAuthenticationResponse,
   verifyRegistrationResponse,
   type AuthenticationResponseJSON,
+  type AuthenticatorTransport,
   type RegistrationResponseJSON,
 } from "@simplewebauthn/server";
 import type { Env } from "../env";
@@ -31,7 +32,8 @@ export interface StoredCredential {
  */
 export interface WebAuthnVerifier {
   verifyRegistration(env: Env, response: unknown, expectedChallenge: string): Promise<VerifiedRegistration | null>;
-  verifyAuthentication(env: Env, response: unknown, expectedChallenge: string, credential: StoredCredential): Promise<{ newCounter: number } | null>;
+  /** `userVerified`: the person proved it is them (biometrics or PIN), required for a second check. */
+  verifyAuthentication(env: Env, response: unknown, expectedChallenge: string, credential: StoredCredential, requireUserVerification?: boolean): Promise<{ newCounter: number } | null>;
 }
 
 export const simpleWebAuthn: WebAuthnVerifier = {
@@ -40,7 +42,7 @@ export const simpleWebAuthn: WebAuthnVerifier = {
       const r = await verifyRegistrationResponse({
         response: response as RegistrationResponseJSON,
         expectedChallenge,
-        expectedOrigin: env.WEBAUTHN_ORIGIN,
+        expectedOrigin: expectedOrigins(env),
         expectedRPID: env.WEBAUTHN_RP_ID,
         requireUserVerification: false,
       });
@@ -58,14 +60,14 @@ export const simpleWebAuthn: WebAuthnVerifier = {
       return null;
     }
   },
-  async verifyAuthentication(env, response, expectedChallenge, credential) {
+  async verifyAuthentication(env, response, expectedChallenge, credential, requireUserVerification = false) {
     try {
       const r = await verifyAuthenticationResponse({
         response: response as AuthenticationResponseJSON,
         expectedChallenge,
-        expectedOrigin: env.WEBAUTHN_ORIGIN,
+        expectedOrigin: expectedOrigins(env),
         expectedRPID: env.WEBAUTHN_RP_ID,
-        requireUserVerification: false,
+        requireUserVerification,
         credential: { id: credential.id, publicKey: b64urlDecode(credential.publicKey), counter: credential.counter, transports: credential.transports },
       });
       return r.verified ? { newCounter: r.authenticationInfo.newCounter } : null;
@@ -74,6 +76,15 @@ export const simpleWebAuthn: WebAuthnVerifier = {
     }
   },
 };
+
+/** The login page's own origin, then the related origins allowed to use the same passkeys. */
+export function expectedOrigins(env: Env): string[] {
+  const related = (env.WEBAUTHN_RELATED_ORIGINS ?? "")
+    .split(",")
+    .map((o) => o.trim().replace(/\/+$/, ""))
+    .filter((o) => /^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(o) || /^http:\/\/localhost(:\d+)?$/.test(o));
+  return [env.WEBAUTHN_ORIGIN, ...related];
+}
 
 let verifier: WebAuthnVerifier = simpleWebAuthn;
 
@@ -99,7 +110,16 @@ export async function registrationOptions(env: Env, user: { id: string; email: s
   });
 }
 
-export async function authenticationOptions(env: Env) {
+export async function authenticationOptions(env: Env, allow?: { id: string; transports: string[] }[]) {
   // Discoverable credentials: the authenticator offers the user's passkeys, no email needed.
+  // With `allow` (a second check for someone already signed in) only their passkeys answer,
+  // and the person must prove it is them (fingerprint, face or PIN).
+  if (allow) {
+    return generateAuthenticationOptions({
+      rpID: env.WEBAUTHN_RP_ID,
+      userVerification: "required",
+      allowCredentials: allow.map((c) => ({ id: c.id, transports: c.transports as AuthenticatorTransport[] })),
+    });
+  }
   return generateAuthenticationOptions({ rpID: env.WEBAUTHN_RP_ID, userVerification: "preferred" });
 }
