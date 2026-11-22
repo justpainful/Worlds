@@ -35,7 +35,7 @@
 <link rel="preload" href="/fonts/plex-arabic-400.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/site.css">
 <script src="/site.js"></script>
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Worlds","item":"https://enterworlds.space/"},{"@type":"ListItem","position":2,"name":"الدليل","item":"https://enterworlds.space/docs/"},{"@type":"ListItem","position":3,"name":"تثبيت Worlds على Linux","item":"https://enterworlds.space/docs/install/linux/"}]},{"@type":"TechArticle","headline":"تثبيت Worlds على Linux","description":"Worlds على Linux بملف AppImage يعمل على أغلب التوزيعات، أو بحزمة deb لـ Ubuntu وDebian.","inLanguage":"ar","url":"https://enterworlds.space/docs/install/linux/","dateModified":"2026-11-22T10:22:13+03:00","image":"https://enterworlds.space/media/og.png","author":{"@id":"https://enterworlds.space/#org"},"publisher":{"@type":"Organization","name":"Worlds","logo":{"@type":"ImageObject","url":"https://enterworlds.space/icon-256.png"}},"about":{"@type":"SoftwareApplication","name":"Worlds","operatingSystem":"Windows, macOS, Linux, Android, iOS, iPadOS, Web","applicationCategory":"ProductivityApplication"}}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Worlds","item":"https://enterworlds.space/"},{"@type":"ListItem","position":2,"name":"الدليل","item":"https://enterworlds.space/docs/"},{"@type":"ListItem","position":3,"name":"تثبيت Worlds على Linux","item":"https://enterworlds.space/docs/install/linux/"}]},{"@type":"TechArticle","headline":"تثبيت Worlds على Linux","description":"Worlds على Linux بملف AppImage يعمل على أغلب التوزيعات، أو بحزمة deb لـ Ubuntu وDebian.","inLanguage":"ar","url":"https://enterworlds.space/docs/install/linux/","dateModified":"2026-11-22T20:20:01+03:00","image":"https://enterworlds.space/media/og.png","author":{"@id":"https://enterworlds.space/#org"},"publisher":{"@type":"Organization","name":"Worlds","logo":{"@type":"ImageObject","url":"https://enterworlds.space/icon-256.png"}},"about":{"@type":"SoftwareApplication","name":"Worlds","operatingSystem":"Windows, macOS, Linux, Android, iOS, iPadOS, Web","applicationCategory":"ProductivityApplication"}}]}</script>
 </head>
 <body>
 <a class="skip" href="#main">انتقل إلى المحتوى</a>
@@ -53,17 +53,17 @@
 
 <h2 id="before">قبل أن تبدأ</h2>
 <dl class="facts">
-<div><dt>AppImage</dt><dd><code>Worlds-1.0.1-Linux-x86_64.AppImage</code> (94.9 MB)</dd></div>
-<div><dt>deb</dt><dd><code>Worlds-1.0.1-Linux-amd64.deb</code> (20.5 MB)</dd></div>
+<div><dt>AppImage</dt><dd><code>Worlds-1.1.0-Linux-x86_64.AppImage</code> (95.4 MB)</dd></div>
+<div><dt>deb</dt><dd><code>Worlds-1.1.0-Linux-amd64.deb</code> (21.2 MB)</dd></div>
 <div><dt>النظام</dt><dd>Linux بمعالج 64 بت (x86_64)، مع WebKitGTK 4.1. موجود في Ubuntu 22.04 وما بعده، وDebian 12، وFedora 39.</dd></div>
 <div><dt>مكان صفحاتك</dt><dd><code>~/.local/share/Worlds</code>، وفيه الملف <code>worlds.db</code> ومجلد المرفقات</dd></div>
 </dl>
 
 <h2 id="appimage">بملف AppImage</h2>
 <ol class="steps">
-<li><h3>حمّل الملف</h3><p>من <a href="https://github.com/justpainful/Worlds/releases/latest">صفحة آخر إصدار على GitHub</a>، في قسم Assets اضغط <code>Worlds-1.0.1-Linux-x86_64.AppImage</code>.</p></li>
+<li><h3>حمّل الملف</h3><p>من <a href="https://github.com/justpainful/Worlds/releases/latest">صفحة آخر إصدار على GitHub</a>، في قسم Assets اضغط <code>Worlds-1.1.0-Linux-x86_64.AppImage</code>.</p></li>
 <li><h3>اجعله قابلًا للتشغيل</h3><p>في مدير الملفات: الزر الأيمن على الملف، ثم الخصائص، ثم الأذونات، وفعّل «السماح بتشغيله كبرنامج». أو من Terminal:</p>
-<pre><code>chmod +x ~/Downloads/Worlds-1.0.1-Linux-x86_64.AppImage</code></pre></li>
+<pre><code>chmod +x ~/Downloads/Worlds-1.1.0-Linux-x86_64.AppImage</code></pre></li>
 <li><h3>شغّله</h3><p>اضغطه مرتين، أو شغّله من Terminal بمساره. إذا ظهر خطأ عن FUSE في Ubuntu 22.04 وما بعده، ثبّت المكتبة التي يحتاجها AppImage:</p>
 <pre><code>sudo apt install libfuse2</code></pre>
 <p>في Ubuntu 24.04 اسم الحزمة <code>libfuse2t64</code>.</p></li>
@@ -71,9 +71,9 @@
 
 <h2 id="deb">بحزمة deb</h2>
 <ol class="steps">
-<li><h3>حمّل الحزمة</h3><p>من صفحة الإصدار نفسها، اضغط <code>Worlds-1.0.1-Linux-amd64.deb</code>.</p></li>
+<li><h3>حمّل الحزمة</h3><p>من صفحة الإصدار نفسها، اضغط <code>Worlds-1.1.0-Linux-amd64.deb</code>.</p></li>
 <li><h3>ثبّتها</h3><p>افتح Terminal في مجلد التنزيلات وشغّل:</p>
-<pre><code>sudo apt install ./Worlds-1.0.1-Linux-amd64.deb</code></pre>
+<pre><code>sudo apt install ./Worlds-1.1.0-Linux-amd64.deb</code></pre>
 <p>يثبّت apt معها المكتبات الناقصة. بعدها يظهر Worlds في قائمة التطبيقات.</p></li>
 </ol>
 
