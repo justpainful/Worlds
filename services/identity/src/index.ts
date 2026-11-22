@@ -12,6 +12,7 @@ import { jwks } from "./lib/jwt";
 import { expectedOrigins } from "./lib/webauthn";
 import { admin } from "./routes/admin";
 import { support, supportHousekeeping } from "./routes/support";
+import { community, mine } from "./routes/community";
 import { auth } from "./routes/auth";
 import { me } from "./routes/me";
 import { pages } from "./routes/pages";
@@ -65,6 +66,8 @@ app.route("/profiles", profiles);
 app.route("/published", published);
 app.route("/admin", admin);
 app.route("/support", support);
+app.route("/community", community);
+app.route("/me", mine);
 app.route("/", pages);
 
 /** Cron: deliver outstanding access events and clear expired rows. */

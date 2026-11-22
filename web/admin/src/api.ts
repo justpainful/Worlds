@@ -239,7 +239,9 @@ export type Permission =
   | "users.export"
   | "names"
   | "content"
-  | "content.workspaces";
+  | "content.workspaces"
+  | "community"
+  | "messages";
 
 export type TicketStatus = "open" | "waiting" | "working" | "solved" | "closed";
 export type TicketKind = "problem" | "account" | "recovery" | "deletion" | "report" | "security" | "suggestion" | "other";

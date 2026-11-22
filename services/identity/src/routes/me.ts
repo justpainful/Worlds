@@ -12,6 +12,7 @@ import { checkUsername, usernameTaken } from "../lib/usernames";
 import { bannedWordIn } from "../lib/names";
 import { consumeEmailCode, newChallenge, takeChallenge, userById, userView } from "./auth";
 import { ownerRoutes } from "./profiles";
+import { notifyTeam } from "./support";
 
 export const me = new Hono<AppEnv>();
 me.use("*", requireAuth);
@@ -155,6 +156,7 @@ me.post("/deletion", async (c) => {
   const lang = b.lang === "en" ? "en" : "ar";
   const r = await scheduleDeletion(c.env, caller.userId, { userId: caller.userId, deviceId: caller.deviceId, actor: caller.actor, who: "self" }, lang);
   emit(c, r.events);
+  emit(c, await notifyTeam(c.env, { id: `deletion:${caller.userId}`, topic: "deletion.requested", title: "Deletion", excerpt: new Date(r.dueAt).toISOString().slice(0, 10), link: `https://admin.enterworlds.space/#/accounts/${caller.userId}` }));
   return c.json({ dueAt: r.dueAt });
 });
 

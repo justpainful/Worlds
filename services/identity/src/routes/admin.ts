@@ -20,6 +20,7 @@ import { ApiError, bad, body, conflict, forbidden, normalizeEmail, notFound, opt
 import { checkUsername, usernameTaken } from "../lib/usernames";
 import { foldName } from "../lib/names";
 import { reportersOf, setTeamHidden, targetKey, type Target } from "../lib/content";
+import { SUGGESTION_STATUSES, suggestionView, type SuggestionRow, type SuggestionStatus } from "./community";
 import { eventStmt } from "../lib/events";
 import { noticeMail } from "../lib/noticeMail";
 import { cancelDeletion, eraseAccount, exportAccount, scheduleDeletion } from "../domain/deletion";
@@ -49,13 +50,15 @@ export const PERMISSIONS = [
   "names", // reserved usernames and words not allowed in names
   "content", // public profiles, published pages, reports, suspicious accounts
   "content.workspaces", // move or trash someone's shared workspace
+  "community", // suggestions, the roadmap, testers, surveys
+  "messages", // write to one person in their app
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
 const ROLE_PERMISSIONS: Record<AdminRole, readonly Permission[]> = {
   owner: PERMISSIONS,
-  moderator: ["users.read", "users.edit", "users.suspend", "notes", "audit", "stats", "tickets", "names", "content"],
-  support: ["users.read", "users.email", "notes", "stats", "tickets"],
+  moderator: ["users.read", "users.edit", "users.suspend", "notes", "audit", "stats", "tickets", "names", "content", "community"],
+  support: ["users.read", "users.email", "notes", "stats", "tickets", "community", "messages"],
 };
 
 /** Actions that need a second check made in the last STEP_UP_MS. */
@@ -1284,4 +1287,274 @@ admin.post("/suspicious/:id/review", async (c) => {
     logStmt(c, "admin.suspicious.reviewed", id),
   ]);
   return c.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// Community: suggestions, testers, surveys, messages (routes/community.ts)
+// ---------------------------------------------------------------------------
+
+admin.get("/suggestions", async (c) => {
+  await need(c, "community");
+  const status = c.req.query("status");
+  const args: unknown[] = [];
+  const where: string[] = [];
+  if (status && SUGGESTION_STATUSES.includes(status as SuggestionStatus)) {
+    args.push(status);
+    where.push(`s.status = ?${args.length}`);
+  }
+  if (c.req.query("public") === "0") where.push("s.public = 0");
+  const { results } = await c.env.DB.prepare(
+    `SELECT s.*, (SELECT COUNT(*) FROM suggestion_votes v WHERE v.suggestion_id = s.id) AS votes, u.display_name AS user_name, u.username AS user_username
+     FROM suggestions s LEFT JOIN users u ON u.id = s.user_id ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY s.public, votes DESC, s.updated_at DESC LIMIT 300`,
+  )
+    .bind(...args)
+    .all<SuggestionRow & { user_name: string | null; user_username: string | null }>();
+  return c.json(
+    results.map((s) => ({
+      ...suggestionView(s),
+      public: s.public === 1,
+      mergedInto: s.merged_into,
+      userId: s.user_id,
+      userName: s.user_name,
+      userUsername: s.user_username,
+      email: can(c, "users.email") ? s.email : null,
+    })),
+  );
+});
+
+/** Approve for the board, move along the roadmap, note the version it shipped in. Shipping tells everyone who voted. */
+admin.patch("/suggestions/:id", async (c) => {
+  await need(c, "community");
+  const id = c.req.param("id");
+  const s = await c.env.DB.prepare("SELECT * FROM suggestions WHERE id = ?1").bind(id).first<SuggestionRow>();
+  if (!s) throw notFound();
+  const b = await body(c.req);
+  const sets: string[] = [];
+  const args: unknown[] = [];
+  const set = (col: string, v: unknown) => {
+    args.push(v);
+    sets.push(`${col} = ?${args.length}`);
+  };
+  if (b.status !== undefined) {
+    if (!SUGGESTION_STATUSES.includes(b.status as SuggestionStatus)) throw bad("invalid_status");
+    set("status", b.status);
+  }
+  if (b.public !== undefined) set("public", b.public ? 1 : 0);
+  if (b.title !== undefined) set("title", str(b.title, "title", 140));
+  if (b.body !== undefined) set("body", optStr(b.body, "body", 4000) ?? "");
+  if (b.shippedIn !== undefined) set("shipped_in", optStr(b.shippedIn, "shippedIn", 20) ?? null);
+  if (b.teamNote !== undefined) set("team_note", optStr(b.teamNote, "teamNote", 500) ?? null);
+  if (!sets.length) return c.json({ ok: true });
+  set("updated_at", now());
+  args.push(id);
+  await c.env.DB.batch([c.env.DB.prepare(`UPDATE suggestions SET ${sets.join(", ")} WHERE id = ?${args.length}`).bind(...args), logStmt(c, "admin.suggestion.updated", c.get("caller").userId, { suggestion: s.number, ...b })]);
+  let told = 0;
+  if (b.status === "shipped" && s.status !== "shipped") {
+    const version = (optStr(b.shippedIn, "shippedIn", 20) ?? s.shipped_in) || "";
+    const { results } = await c.env.DB.prepare("SELECT voter FROM suggestion_votes WHERE suggestion_id = ?1 AND voter LIKE 'u:%'").bind(id).all<{ voter: string }>();
+    const stmts = results.map((v) =>
+      notifyStmt(c.env.DB, v.voter.slice(2), {
+        id: `idea:${id}:shipped`,
+        topic: "suggestion.shipped",
+        title: s.title,
+        excerpt: version ? `Worlds ${version}` : "",
+        link: "https://support.enterworlds.space/roadmap",
+      }),
+    );
+    if (stmts.length) await c.env.DB.batch(stmts.map((x) => x.stmt));
+    emit(c as unknown as Context<AppEnv>, stmts.map((x) => x.envelope));
+    told = stmts.length;
+  }
+  return c.json({ ok: true, told });
+});
+
+/** Fold a duplicate into another idea: its votes move over and it stops showing. */
+admin.post("/suggestions/:id/merge", async (c) => {
+  await need(c, "community");
+  const id = c.req.param("id");
+  const into = str((await body(c.req)).into, "into", 64);
+  if (into === id) throw bad("same_suggestion");
+  const target = await c.env.DB.prepare("SELECT id, number FROM suggestions WHERE id = ?1").bind(into).first<{ id: string; number: number }>();
+  if (!target) throw notFound();
+  await c.env.DB.batch([
+    c.env.DB.prepare("INSERT OR IGNORE INTO suggestion_votes (suggestion_id, voter, created_at) SELECT ?1, voter, created_at FROM suggestion_votes WHERE suggestion_id = ?2").bind(into, id),
+    c.env.DB.prepare("DELETE FROM suggestion_votes WHERE suggestion_id = ?1").bind(id),
+    c.env.DB.prepare("UPDATE suggestions SET status = 'duplicate', merged_into = ?1, public = 0, updated_at = ?2 WHERE id = ?3").bind(into, now(), id),
+    logStmt(c, "admin.suggestion.merged", c.get("caller").userId, { into: target.number }),
+  ]);
+  return c.json({ ok: true });
+});
+
+admin.get("/testers", async (c) => {
+  await need(c, "community");
+  const { results } = await c.env.DB.prepare(
+    "SELECT t.*, u.display_name, u.username FROM testers t JOIN users u ON u.id = t.user_id ORDER BY CASE t.status WHEN 'applied' THEN 0 WHEN 'accepted' THEN 1 ELSE 2 END, t.applied_at DESC",
+  ).all<{ user_id: string; status: string; platforms: string; note: string | null; applied_at: number; decided_at: number | null; display_name: string; username: string }>();
+  return c.json(
+    results.map((t) => ({ userId: t.user_id, displayName: t.display_name, username: t.username, status: t.status, platforms: safeJson<string[]>(t.platforms, []), note: t.note, appliedAt: t.applied_at, decidedAt: t.decided_at })),
+  );
+});
+
+admin.post("/testers/:id", async (c) => {
+  await need(c, "community");
+  const id = c.req.param("id");
+  const status = (await body(c.req)).status;
+  if (status !== "accepted" && status !== "removed") throw bad("invalid_status");
+  const r = await c.env.DB.prepare("UPDATE testers SET status = ?1, decided_at = ?2, decided_by = ?3 WHERE user_id = ?4").bind(status, now(), c.get("caller").userId, id).run();
+  if (!r.meta.changes) throw notFound();
+  await logStmt(c, `admin.testers.${status}`, id).run();
+  if (status === "accepted") {
+    const n = notifyStmt(c.env.DB, id, { id: `tester:${id}:accepted`, topic: "testers.accepted", title: "Worlds", excerpt: "testers.accepted" });
+    await n.stmt.run();
+    emit(c as unknown as Context<AppEnv>, [n.envelope]);
+  }
+  return c.json({ ok: true });
+});
+
+admin.get("/surveys", async (c) => {
+  await need(c, "community");
+  const { results } = await c.env.DB.prepare("SELECT * FROM surveys ORDER BY created_at DESC LIMIT 50").all<{
+    id: string;
+    question_ar: string;
+    question_en: string;
+    choices: string;
+    audience: string;
+    active: number;
+    created_at: number;
+    ends_at: number | null;
+  }>();
+  const out = [];
+  for (const s of results) {
+    const answers = await c.env.DB.prepare("SELECT choice, text, created_at FROM survey_answers WHERE survey_id = ?1 ORDER BY created_at DESC").bind(s.id).all<{ choice: number | null; text: string | null; created_at: number }>();
+    const choices = safeJson<{ ar: string; en: string }[]>(s.choices, []);
+    out.push({
+      id: s.id,
+      question: { ar: s.question_ar, en: s.question_en },
+      choices,
+      audience: s.audience,
+      active: s.active === 1,
+      createdAt: s.created_at,
+      endsAt: s.ends_at,
+      answers: answers.results.length,
+      counts: choices.map((_, i) => answers.results.filter((a) => a.choice === i).length),
+      texts: choices.length ? [] : answers.results.slice(0, 200).map((a) => ({ text: a.text, at: a.created_at })),
+    });
+  }
+  return c.json(out);
+});
+
+admin.post("/surveys", async (c) => {
+  await need(c, "community");
+  const b = await body(c.req);
+  const choices = Array.isArray(b.choices) ? (b.choices as unknown[]).slice(0, 8) : [];
+  const clean = choices.map((x) => {
+    const o = (x ?? {}) as Record<string, unknown>;
+    return { ar: str(o.ar, "choice.ar", 80), en: str(o.en, "choice.en", 80) };
+  });
+  const id = newId();
+  const days = Number(b.days);
+  await c.env.DB.batch([
+    c.env.DB.prepare("INSERT INTO surveys (id, question_ar, question_en, choices, audience, created_by, created_at, ends_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)").bind(
+      id,
+      str(b.questionAr, "questionAr", 300),
+      str(b.questionEn, "questionEn", 300),
+      JSON.stringify(clean),
+      b.audience === "testers" ? "testers" : "all",
+      c.get("caller").userId,
+      now(),
+      Number.isInteger(days) && days > 0 ? now() + days * 86_400_000 : null,
+    ),
+    logStmt(c, "admin.survey.created", c.get("caller").userId, { survey: id }),
+  ]);
+  return c.json({ id }, 201);
+});
+
+admin.patch("/surveys/:id", async (c) => {
+  await need(c, "community");
+  const active = (await body(c.req)).active;
+  if (typeof active !== "boolean") throw bad("invalid_request");
+  const r = await c.env.DB.prepare("UPDATE surveys SET active = ?1 WHERE id = ?2").bind(active ? 1 : 0, c.req.param("id")).run();
+  if (!r.meta.changes) throw notFound();
+  return c.json({ ok: true });
+});
+
+/** Every conversation with people, newest first; the person's unread replies first. */
+admin.get("/messages", async (c) => {
+  await need(c, "messages");
+  const { results } = await c.env.DB.prepare(
+    `SELECT t.*, u.display_name, u.username,
+       (SELECT m.author FROM team_messages m WHERE m.thread_id = t.id ORDER BY m.created_at DESC LIMIT 1) AS last_author,
+       (SELECT m.body FROM team_messages m WHERE m.thread_id = t.id ORDER BY m.created_at DESC LIMIT 1) AS last_body
+     FROM team_threads t JOIN users u ON u.id = t.user_id ORDER BY t.updated_at DESC LIMIT 200`,
+  ).all<{ id: string; user_id: string; subject: string; status: string; created_at: number; updated_at: number; display_name: string; username: string; last_author: string; last_body: string }>();
+  return c.json(results.map((t) => ({ id: t.id, userId: t.user_id, displayName: t.display_name, username: t.username, subject: t.subject, status: t.status, updatedAt: t.updated_at, lastAuthor: t.last_author, last: t.last_body })));
+});
+
+admin.get("/messages/:id", async (c) => {
+  await need(c, "messages");
+  const t = await c.env.DB.prepare("SELECT t.*, u.display_name, u.username FROM team_threads t JOIN users u ON u.id = t.user_id WHERE t.id = ?1").bind(c.req.param("id")).first<{
+    id: string;
+    user_id: string;
+    subject: string;
+    status: string;
+    display_name: string;
+    username: string;
+  }>();
+  if (!t) throw notFound();
+  const { results } = await c.env.DB.prepare("SELECT m.*, a.display_name AS author_name FROM team_messages m LEFT JOIN users a ON a.id = m.author_id WHERE m.thread_id = ?1 ORDER BY m.created_at")
+    .bind(t.id)
+    .all<{ id: string; author: string; author_name: string | null; body: string; created_at: number; read_at: number | null }>();
+  return c.json({
+    id: t.id,
+    userId: t.user_id,
+    displayName: t.display_name,
+    username: t.username,
+    subject: t.subject,
+    status: t.status,
+    messages: results.map((m) => ({ id: m.id, author: m.author, authorName: m.author_name, body: m.body, createdAt: m.created_at, read: !!m.read_at })),
+  });
+});
+
+async function sendTeamMessage(c: AdminCtx, threadId: string, userId: string, subject: string, text: string, mail: boolean) {
+  const id = newId();
+  const n = notifyStmt(c.env.DB, userId, { id: `dm:${id}`, topic: "messages.team", title: subject, excerpt: text.slice(0, 300) });
+  await c.env.DB.batch([
+    c.env.DB.prepare("INSERT INTO team_messages (id, thread_id, author, author_id, body, created_at) VALUES (?1, ?2, 'team', ?3, ?4, ?5)").bind(id, threadId, c.get("caller").userId, text, now()),
+    c.env.DB.prepare("UPDATE team_threads SET updated_at = ?1, status = 'open' WHERE id = ?2").bind(now(), threadId),
+    logStmt(c, "admin.message.sent", userId, { thread: threadId }),
+    n.stmt,
+  ]);
+  emit(c as unknown as Context<AppEnv>, [n.envelope]);
+  if (mail) {
+    const u = await c.env.DB.prepare("SELECT email FROM users WHERE id = ?1").bind(userId).first<{ email: string }>();
+    if (u) await sendSupportMail(c.env, { to: u.email, ...noticeMail("ar", "team_message", { body: text }) });
+  }
+  return id;
+}
+
+/** Start a conversation with one person: it appears in their app; with { email: true } they also get it by email. */
+admin.post("/users/:id/messages", async (c) => {
+  await need(c, "messages");
+  const userId = c.req.param("id");
+  if (!(await c.env.DB.prepare("SELECT 1 FROM users WHERE id = ?1").bind(userId).first())) throw notFound("user_not_found");
+  const b = await body(c.req);
+  const subject = str(b.subject, "subject", 140);
+  const text = str(b.body, "body", 4000);
+  const threadId = newId();
+  await c.env.DB.prepare("INSERT INTO team_threads (id, user_id, subject, started_by, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?5)").bind(threadId, userId, subject, c.get("caller").userId, now()).run();
+  await sendTeamMessage(c, threadId, userId, subject, text, b.email === true);
+  return c.json({ id: threadId }, 201);
+});
+
+admin.post("/messages/:id", async (c) => {
+  await need(c, "messages");
+  const t = await c.env.DB.prepare("SELECT id, user_id, subject FROM team_threads WHERE id = ?1").bind(c.req.param("id")).first<{ id: string; user_id: string; subject: string }>();
+  if (!t) throw notFound();
+  const b = await body(c.req);
+  if (b.close === true) {
+    await c.env.DB.prepare("UPDATE team_threads SET status = 'closed', updated_at = ?1 WHERE id = ?2").bind(now(), t.id).run();
+    return c.json({ ok: true });
+  }
+  const id = await sendTeamMessage(c, t.id, t.user_id, t.subject, str(b.body, "body", 4000), b.email === true);
+  return c.json({ id }, 201);
 });

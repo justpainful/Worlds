@@ -308,3 +308,114 @@ body {
     padding-bottom: 40px;
   }
 }
+
+.home-links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+}
+.ideas {
+  display: grid;
+}
+.idea {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  position: relative;
+}
+.ideas .idea + .idea::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  inset-inline: 12px;
+  height: 1px;
+  background: var(--hairline);
+}
+.vote {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  width: 48px;
+  min-height: 52px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--r-group);
+  background: var(--surface);
+  color: var(--text-2);
+  font-weight: 700;
+  cursor: pointer;
+  flex: none;
+  transition:
+    background var(--t-hover) var(--ease),
+    transform var(--t-hover) var(--ease);
+}
+.vote:active {
+  transform: scale(0.95);
+}
+.vote.is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.idea-main {
+  min-width: 0;
+  flex: 1;
+}
+.idea-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-weight: 600;
+}
+.idea-body {
+  margin-top: 4px;
+  color: var(--text-2);
+  white-space: pre-wrap;
+}
+.idea-note {
+  margin-top: 6px;
+  font-size: var(--text-caption);
+  color: var(--accent);
+}
+.roadmap-page {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+.road {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 20px;
+}
+@media (max-width: 760px) {
+  .road {
+    grid-template-columns: 1fr;
+  }
+}
+.road-col {
+  background: var(--group-bg);
+  border-radius: var(--r-card);
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+.road-col h2 {
+  font-size: var(--text-callout);
+  font-weight: 700;
+  margin: 2px 4px;
+}
+.road-card {
+  background: var(--surface);
+  border-radius: var(--r-group);
+}
+.road-card .idea {
+  padding: 10px 12px 4px;
+}
+.road-meta {
+  display: block;
+  padding: 0 12px 10px;
+  font-size: var(--text-caption);
+  color: var(--text-2);
+}
