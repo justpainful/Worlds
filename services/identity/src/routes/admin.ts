@@ -28,7 +28,7 @@ import { hmacSha256Hex } from "../lib/crypto";
 import { sha256Hex } from "../lib/crypto";
 import { SUGGESTION_STATUSES, suggestionView, type SuggestionRow, type SuggestionStatus } from "./community";
 import { eventStmt } from "../lib/events";
-import { noticeMail } from "../lib/noticeMail";
+import { noticeMail, type NoticeKind } from "../lib/noticeMail";
 import { cancelDeletion, eraseAccount, exportAccount, scheduleDeletion } from "../domain/deletion";
 import { authenticationOptions, webauthn } from "../lib/webauthn";
 import { consumeEmailCode, newChallenge, takeChallenge, userById, userView } from "./auth";
@@ -134,12 +134,39 @@ function logStmt(c: AdminCtx, action: string, targetId: string, meta: Record<str
   return auditStmt(c.env.DB, { action, actorUserId: caller.userId, actorKind: caller.actor, deviceId: caller.deviceId, targetType: "user", targetId, meta: { ...meta, role: c.get("role") } });
 }
 
+/**
+ * Tell the person about something the team changed on their account, from
+ * support@. The dashboard can keep it quiet with notify: false.
+ */
+function tellPerson(c: AdminCtx, to: string | null | undefined, lang: unknown, kind: NoticeKind, vars: Parameters<typeof noticeMail>[2] = {}) {
+  if (!to) return;
+  const sent = sendSupportMail(c.env, { to, ...noticeMail(lang === "en" ? "en" : "ar", kind, vars) });
+  try {
+    c.executionCtx.waitUntil(sent);
+  } catch {
+    // Tests: it simply runs.
+  }
+}
+
+/** a***@example.com: enough for the owner of the old address to recognise the change. */
+function maskEmail(email: string): string {
+  const [name, domain] = email.split("@");
+  return `${name.slice(0, 1)}${"*".repeat(Math.max(2, Math.min(name.length - 1, 6)))}@${domain ?? ""}`;
+}
+
+const FIELD_NAMES: Record<string, { ar: string; en: string }> = {
+  displayName: { ar: "الاسم", en: "the name" },
+  username: { ar: "اسم المستخدم", en: "the username" },
+  avatarUrl: { ar: "الصورة", en: "the picture" },
+};
+
 interface UserListRow {
   id: string;
   email: string;
   display_name: string;
   username: string | null;
   avatar_url: string | null;
+  avatar_key: string | null;
   created_at: number;
   suspended_until: number | null;
   banned: number;
@@ -149,6 +176,16 @@ interface UserListRow {
   team_role: AdminRole | null;
 }
 
+/**
+ * The picture to show for an account: one set on the account, or else the
+ * picture of its public profile (served while that profile is visible; the
+ * dashboard falls back to the initial when it is not).
+ */
+function avatarOf(c: AdminCtx, url: string | null, key: string | null): string | null {
+  if (url) return url;
+  return key ? `${c.env.PUBLIC_URL.replace(/\/+$/, "")}/profiles/files/${key}` : null;
+}
+
 function listItem(c: AdminCtx, r: UserListRow, owners: string[]) {
   const s = activeSuspension(r);
   return {
@@ -156,7 +193,7 @@ function listItem(c: AdminCtx, r: UserListRow, owners: string[]) {
     email: can(c, "users.email") ? r.email : null,
     displayName: r.display_name,
     username: r.username,
-    avatarUrl: r.avatar_url,
+    avatarUrl: avatarOf(c, r.avatar_url, r.avatar_key),
     createdAt: r.created_at,
     lastSeenAt: r.last_seen,
     devices: r.devices,
@@ -166,7 +203,7 @@ function listItem(c: AdminCtx, r: UserListRow, owners: string[]) {
   };
 }
 
-const LIST_COLS = `u.id, u.email, u.display_name, u.username, u.avatar_url, u.created_at, u.suspended_until, u.banned, u.suspend_reason,
+const LIST_COLS = `u.id, u.email, u.display_name, u.username, u.avatar_url, (SELECT p.avatar_key FROM public_profiles p WHERE p.user_id = u.id) AS avatar_key, u.created_at, u.suspended_until, u.banned, u.suspend_reason,
   (SELECT MAX(d.last_seen_at) FROM devices d WHERE d.user_id = u.id) AS last_seen,
   (SELECT COUNT(*) FROM devices d WHERE d.user_id = u.id AND d.revoked_at IS NULL) AS devices,
   (SELECT r.role FROM admin_roles r WHERE r.user_id = u.id) AS team_role`;
@@ -199,8 +236,10 @@ admin.get("/me", async (c) => {
   const u = await userById(c.env.DB, caller.userId);
   if (!u) throw notFound();
   const passkeys = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM passkeys WHERE user_id = ?1").bind(caller.userId).first<{ n: number }>();
+  const prof = await c.env.DB.prepare("SELECT avatar_key FROM public_profiles WHERE user_id = ?1").bind(caller.userId).first<{ avatar_key: string | null }>();
+  const view = userView(u);
   return c.json({
-    user: userView(u),
+    user: { ...view, avatarUrl: avatarOf(c, view.avatarUrl, prof?.avatar_key ?? null) },
     role: c.get("role"),
     permissions: ROLE_PERMISSIONS[c.get("role")],
     stepUpUntil: await stepUpUntil(c),
@@ -538,6 +577,16 @@ admin.patch("/users/:id", async (c) => {
   } catch {
     throw conflict("taken", "That username or email is taken.");
   }
+  if (b.notify !== false) {
+    const lang = b.lang === "en" ? "en" : "ar";
+    const after = await userById(c.env.DB, id);
+    if (changed.email) {
+      tellPerson(c, old.email, lang, "email_changed_old", { email: maskEmail(after?.email ?? "") });
+      tellPerson(c, after?.email, lang, "email_changed_new", { username: after?.username ?? undefined });
+    }
+    const fields = Object.keys(changed).filter((k) => FIELD_NAMES[k]).map((k) => FIELD_NAMES[k][lang]);
+    if (fields.length) tellPerson(c, after?.email, lang, "profile_changed", { fields: fields.join(lang === "ar" ? " و" : " and ") });
+  }
   return c.json({ ok: true, changed: Object.keys(changed) });
 });
 
@@ -575,7 +624,7 @@ admin.post("/users/:id/suspend", async (c) => {
   ]);
   emit(c as unknown as Context<AppEnv>, await signOutAll(c, id, ban ? "banned" : "suspended"));
   const target = await c.env.DB.prepare("SELECT email FROM users WHERE id = ?1").bind(id).first<{ email: string }>();
-  if (target && b.tell !== false) {
+  if (target && b.tell !== false && b.notify !== false) {
     const mail = noticeMail(b.lang === "en" ? "en" : "ar", ban ? "account_banned" : "account_suspended", { date: until, reason: b.tellReason === false ? undefined : reason });
     const sent = sendSupportMail(c.env, { to: target.email, ...mail });
     try {
@@ -601,6 +650,7 @@ admin.post("/users/:id/unsuspend", async (c) => {
     c.env.DB.prepare("UPDATE users SET suspended_until = NULL, suspended_at = NULL, suspend_reason = NULL, banned = 0, updated_at = ?1 WHERE id = ?2").bind(now(), id),
     logStmt(c, s.banned ? "admin.user.unbanned" : "admin.user.unsuspended", id, { reason }),
   ]);
+  if (b.notify !== false) tellPerson(c, (await userById(c.env.DB, id))?.email, b.lang, "suspension_lifted");
   return c.json({ ok: true });
 });
 
@@ -613,12 +663,14 @@ admin.post("/users/:id/signout", async (c) => {
   await guardTarget(c, id);
   const deviceId = optStr(b.deviceId, "deviceId", 64);
   const caller = c.get("caller");
+  const deviceName = deviceId ? (await c.env.DB.prepare("SELECT name FROM devices WHERE id = ?1 AND user_id = ?2").bind(deviceId, id).first<{ name: string }>())?.name : undefined;
   const events = deviceId
     ? await revokeDevice(c.env, id, deviceId, { userId: caller.userId, deviceId: caller.deviceId, actor: caller.actor }, "admin")
     : await signOutAll(c, id, "admin");
   if (deviceId && !events.length) throw notFound("device_not_found", "That device is not signed in.");
   await logStmt(c, "admin.user.signed_out", id, { reason, devices: deviceId ? [deviceId] : events.length }).run();
   emit(c as unknown as Context<AppEnv>, events);
+  if (b.notify !== false && events.length) tellPerson(c, (await userById(c.env.DB, id))?.email, b.lang, "devices_signed_out", { title: deviceName });
   return c.json({ ok: true, devices: events.length });
 });
 
@@ -627,9 +679,11 @@ admin.delete("/users/:id/passkeys/:passkey", async (c) => {
   const reason = reasonOf(c.req.query("reason"));
   await need(c, "users.devices");
   await guardTarget(c, id);
+  const key = await c.env.DB.prepare("SELECT name FROM passkeys WHERE id = ?1 AND user_id = ?2").bind(c.req.param("passkey"), id).first<{ name: string }>();
   const r = await c.env.DB.prepare("DELETE FROM passkeys WHERE id = ?1 AND user_id = ?2").bind(c.req.param("passkey"), id).run();
   if (!r.meta.changes) throw notFound("passkey_not_found");
   await logStmt(c, "admin.user.passkey_removed", id, { reason, passkey: c.req.param("passkey") }).run();
+  if (c.req.query("notify") !== "0") tellPerson(c, (await userById(c.env.DB, id))?.email, c.req.query("lang"), "passkey_removed", { title: key?.name });
   return c.json({ ok: true });
 });
 
@@ -705,18 +759,18 @@ admin.get("/team", async (c) => {
   const owners = envOwners(c.env.ADMIN_OWNERS);
   const ids = owners.map((_, i) => `?${i + 1}`);
   const { results } = await c.env.DB.prepare(
-    `SELECT u.id, u.display_name, u.username, u.avatar_url, r.role, r.granted_at, r.granted_by
+    `SELECT u.id, u.display_name, u.username, u.avatar_url, (SELECT p.avatar_key FROM public_profiles p WHERE p.user_id = u.id) AS avatar_key, r.role, r.granted_at, r.granted_by
      FROM users u LEFT JOIN admin_roles r ON r.user_id = u.id
      WHERE r.user_id IS NOT NULL${ids.length ? ` OR u.id IN (${ids.join(", ")})` : ""} ORDER BY r.granted_at`,
   )
     .bind(...owners)
-    .all<{ id: string; display_name: string; username: string; avatar_url: string | null; role: AdminRole | null; granted_at: number | null; granted_by: string | null }>();
+    .all<{ id: string; display_name: string; username: string; avatar_url: string | null; avatar_key: string | null; role: AdminRole | null; granted_at: number | null; granted_by: string | null }>();
   return c.json(
     results.map((r) => ({
       id: r.id,
       displayName: r.display_name,
       username: r.username,
-      avatarUrl: r.avatar_url,
+      avatarUrl: avatarOf(c, r.avatar_url, r.avatar_key),
       role: owners.includes(r.id) ? "owner" : r.role,
       fixed: owners.includes(r.id),
       grantedAt: r.granted_at,
@@ -975,11 +1029,13 @@ admin.post("/users/:id/delete", async (c) => {
   await guardTarget(c, id);
   const caller = c.get("caller");
   if (b.now === true) {
+    const email = (await userById(c.env.DB, id))?.email;
     await logStmt(c, "admin.user.erased", id, { reason }).run();
+    if (b.notify !== false) tellPerson(c, email, b.lang, "account_erased");
     emit(c as unknown as Context<AppEnv>, await eraseAccount(c.env, id, "team"));
     return c.json({ ok: true, erased: true });
   }
-  const r = await scheduleDeletion(c.env, id, { userId: caller.userId, deviceId: caller.deviceId, actor: caller.actor, who: "team", reason }, b.lang === "en" ? "en" : "ar");
+  const r = await scheduleDeletion(c.env, id, { userId: caller.userId, deviceId: caller.deviceId, actor: caller.actor, who: "team", reason }, b.lang === "en" ? "en" : "ar", b.notify !== false);
   emit(c as unknown as Context<AppEnv>, r.events);
   return c.json({ ok: true, dueAt: r.dueAt });
 });
@@ -988,7 +1044,8 @@ admin.post("/users/:id/deletion/cancel", async (c) => {
   await need(c, "users.delete");
   const id = c.req.param("id");
   const caller = c.get("caller");
-  const ok = await cancelDeletion(c.env, id, { userId: caller.userId, deviceId: caller.deviceId, actor: caller.actor, who: "team" });
+  const b = await body(c.req).catch(() => ({}) as Record<string, unknown>);
+  const ok = await cancelDeletion(c.env, id, { userId: caller.userId, deviceId: caller.deviceId, actor: caller.actor, who: "team" }, b.lang === "en" ? "en" : "ar", b.notify !== false);
   if (!ok) throw notFound("not_scheduled", "This account is not scheduled for deletion.");
   return c.json({ ok: true });
 });

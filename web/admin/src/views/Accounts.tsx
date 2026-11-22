@@ -455,7 +455,7 @@ function Account({ id, onChanged }: { id: string; onChanged: () => void }) {
           action={u.status === "banned" ? t("unban") : t("lift")}
           icon="play.circle"
           onClose={() => setDlg(null)}
-          run={(reason) => guard(() => call("POST", `/admin/users/${encodeURIComponent(u.id)}/unsuspend`, { reason }))}
+          run={(reason, notify) => guard(() => call("POST", `/admin/users/${encodeURIComponent(u.id)}/unsuspend`, { reason, notify }))}
           onDone={changed}
         />
       )}
@@ -467,7 +467,7 @@ function Account({ id, onChanged }: { id: string; onChanged: () => void }) {
           icon="rectangle.portrait.and.arrow.right"
           danger
           onClose={() => setDlg(null)}
-          run={(reason) => guard(() => call("POST", `/admin/users/${encodeURIComponent(u.id)}/signout`, { reason, deviceId: dlg.device?.id }))}
+          run={(reason, notify) => guard(() => call("POST", `/admin/users/${encodeURIComponent(u.id)}/signout`, { reason, notify, deviceId: dlg.device?.id }))}
           onDone={changed}
         />
       )}
@@ -479,7 +479,7 @@ function Account({ id, onChanged }: { id: string; onChanged: () => void }) {
           icon="trash"
           danger
           onClose={() => setDlg(null)}
-          run={(reason) => guard(() => call("DELETE", `/admin/users/${encodeURIComponent(u.id)}/passkeys/${encodeURIComponent(dlg.id)}?${new URLSearchParams({ reason })}`))}
+          run={(reason, notify) => guard(() => call("DELETE", `/admin/users/${encodeURIComponent(u.id)}/passkeys/${encodeURIComponent(dlg.id)}?${new URLSearchParams({ reason, notify: notify ? "1" : "0" })}`))}
           onDone={changed}
         />
       )}
@@ -492,7 +492,7 @@ function Account({ id, onChanged }: { id: string; onChanged: () => void }) {
           action={t("cancelDeletion")}
           icon="play.circle"
           onClose={() => setDlg(null)}
-          run={() => guard(() => call("POST", `/admin/users/${encodeURIComponent(u.id)}/deletion/cancel`, {}))}
+          run={(_reason, notify) => guard(() => call("POST", `/admin/users/${encodeURIComponent(u.id)}/deletion/cancel`, { notify }))}
           onDone={changed}
         />
       )}
@@ -603,6 +603,19 @@ function ReasonField({ value, onChange }: { value: string; onChange: (v: string)
   );
 }
 
+/** On by default: the person gets an email from support@ about what changed. */
+function NotifyField({ value, onChange, hint }: { value: boolean; onChange: (v: boolean) => void; hint?: string }) {
+  return (
+    <label className="check">
+      <input type="checkbox" checked={value} onChange={(e) => onChange(e.target.checked)} />
+      <span>
+        {t("notifyPerson")}
+        <span className="field-hint">{hint ?? t("notifyPersonHint")}</span>
+      </span>
+    </label>
+  );
+}
+
 function ErrorLine({ text }: { text: string }) {
   return text ? (
     <p className="form-error" role="alert">
@@ -626,11 +639,12 @@ function ReasonDialog({
   action: string;
   icon: "play.circle" | "rectangle.portrait.and.arrow.right" | "trash";
   danger?: boolean;
-  run: (reason: string) => Promise<unknown>;
+  run: (reason: string, notify: boolean) => Promise<unknown>;
   onClose: () => void;
   onDone: () => void;
 }) {
   const [reason, setReason] = useState("");
+  const [notify, setNotify] = useState(true);
   const { busy, error, submit } = useSubmit(onDone);
   return (
     <Dialog
@@ -640,13 +654,14 @@ function ReasonDialog({
       footer={
         <>
           <Button onClick={onClose}>{t("cancel")}</Button>
-          <Button variant={danger ? "danger" : "accent"} icon={icon} busy={busy} disabled={!reason.trim()} onClick={() => submit(() => run(reason.trim()))}>
+          <Button variant={danger ? "danger" : "accent"} icon={icon} busy={busy} disabled={!reason.trim()} onClick={() => submit(() => run(reason.trim(), notify))}>
             {action}
           </Button>
         </>
       }
     >
       <ReasonField value={reason} onChange={setReason} />
+      <NotifyField value={notify} onChange={setNotify} />
       <ErrorLine text={error} />
     </Dialog>
   );
@@ -659,6 +674,7 @@ function EditDialog({ u, onClose, onDone }: { u: UserDetail; onClose: () => void
   const [email, setEmail] = useState(u.email ?? "");
   const [clearAvatar, setClearAvatar] = useState(false);
   const [reason, setReason] = useState("");
+  const [notify, setNotify] = useState(true);
   const { busy, error, submit } = useSubmit(onDone);
   const changes = useMemo(() => {
     const c: Record<string, unknown> = {};
@@ -683,7 +699,7 @@ function EditDialog({ u, onClose, onDone }: { u: UserDetail; onClose: () => void
             disabled={!has || !reason.trim()}
             onClick={() =>
               submit(async () => {
-                await guard(() => call("PATCH", `/admin/users/${encodeURIComponent(u.id)}`, { ...changes, reason: reason.trim() }));
+                await guard(() => call("PATCH", `/admin/users/${encodeURIComponent(u.id)}`, { ...changes, reason: reason.trim(), notify }));
                 toast(t("save"));
               })
             }
@@ -713,6 +729,7 @@ function EditDialog({ u, onClose, onDone }: { u: UserDetail; onClose: () => void
         </label>
       )}
       <ReasonField value={reason} onChange={setReason} />
+      <NotifyField value={notify} onChange={setNotify} hint={changes.email ? t("notifyEmailHint") : undefined} />
       <ErrorLine text={error} />
     </Dialog>
   );
@@ -722,6 +739,7 @@ function DeleteDialog({ u, onClose, onDone }: { u: UserDetail; onClose: () => vo
   const { guard } = useAdmin();
   const [when, setWhen] = useState<"later" | "now">("later");
   const [reason, setReason] = useState("");
+  const [notify, setNotify] = useState(true);
   const { busy, error, submit } = useSubmit(onDone);
   return (
     <Dialog
@@ -736,7 +754,7 @@ function DeleteDialog({ u, onClose, onDone }: { u: UserDetail; onClose: () => vo
             icon="trash"
             busy={busy}
             disabled={!reason.trim()}
-            onClick={() => submit(() => guard(() => call("POST", `/admin/users/${encodeURIComponent(u.id)}/delete`, { now: when === "now", reason: reason.trim() })))}
+            onClick={() => submit(() => guard(() => call("POST", `/admin/users/${encodeURIComponent(u.id)}/delete`, { now: when === "now", reason: reason.trim(), notify })))}
           >
             {t("deleteAccount")}
           </Button>
@@ -755,6 +773,7 @@ function DeleteDialog({ u, onClose, onDone }: { u: UserDetail; onClose: () => vo
         />
       </Field>
       <ReasonField value={reason} onChange={setReason} />
+      <NotifyField value={notify} onChange={setNotify} />
       <ErrorLine text={error} />
     </Dialog>
   );
@@ -766,6 +785,7 @@ function SuspendDialog({ u, ban, onClose, onDone }: { u: UserDetail; ban: boolea
   const { guard } = useAdmin();
   const [days, setDays] = useState<(typeof DAY_CHOICES)[number]>("7");
   const [reason, setReason] = useState("");
+  const [notify, setNotify] = useState(true);
   const { busy, error, submit } = useSubmit(onDone);
   return (
     <Dialog
@@ -781,7 +801,7 @@ function SuspendDialog({ u, ban, onClose, onDone }: { u: UserDetail; ban: boolea
             busy={busy}
             disabled={!reason.trim()}
             onClick={() =>
-              submit(() => guard(() => call("POST", `/admin/users/${encodeURIComponent(u.id)}/suspend`, ban ? { ban: true, reason: reason.trim() } : { days: Number(days), reason: reason.trim() })))
+              submit(() => guard(() => call("POST", `/admin/users/${encodeURIComponent(u.id)}/suspend`, ban ? { ban: true, reason: reason.trim(), notify } : { days: Number(days), reason: reason.trim(), notify })))
             }
           >
             {ban ? t("ban") : t("suspend")}
@@ -795,6 +815,7 @@ function SuspendDialog({ u, ban, onClose, onDone }: { u: UserDetail; ban: boolea
         </Field>
       )}
       <ReasonField value={reason} onChange={setReason} />
+      <NotifyField value={notify} onChange={setNotify} hint={t("notifySuspendHint")} />
       <ErrorLine text={error} />
     </Dialog>
   );

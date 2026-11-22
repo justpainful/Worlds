@@ -5,7 +5,21 @@
 import { ART, C, SITE, escape, type EmailLanguage } from "./email";
 import { SUPPORT_SITE } from "./supportMail";
 
-export type NoticeKind = "deletion_scheduled" | "deletion_cancelled" | "account_suspended" | "account_banned" | "content_removed" | "team_message";
+export type NoticeKind =
+  | "deletion_scheduled"
+  | "deletion_scheduled_team"
+  | "deletion_cancelled"
+  | "account_erased"
+  | "account_suspended"
+  | "account_banned"
+  | "suspension_lifted"
+  | "content_removed"
+  | "team_message"
+  | "email_changed_old"
+  | "email_changed_new"
+  | "profile_changed"
+  | "devices_signed_out"
+  | "passkey_removed";
 
 const COPY = {
   ar: {
@@ -50,6 +64,62 @@ const COPY = {
       hint: "ترد عليها من التطبيق، أو من منصة الدعم.",
       button: "منصة الدعم",
       url: SUPPORT_SITE,
+    },
+    deletion_scheduled_team: {
+      subject: "حسابك في Worlds مجدول للحذف",
+      lead: (v: Vars) => `جدول فريق Worlds حذف حسابك. خرج حسابك من كل أجهزته، واختفى ملفك العام وصفحاتك المنشورة. يُحذف كل شيء نهائيًا في ${v.dateText}.`,
+      hint: "إذا ترى أن هذا خطأ، فاعترض من منصة الدعم قبل هذا التاريخ. صفحاتك على جهازك لا تُحذف أبدًا.",
+      button: "اعترض على القرار",
+      url: `${SUPPORT_SITE}/new/account`,
+    },
+    account_erased: {
+      subject: "حُذف حسابك في Worlds",
+      lead: () => "حذف فريق Worlds حسابك نهائيًا، مع ملفك العام وصفحاتك المنشورة وعضويتك في الفرق. صفحاتك على جهازك لا تتأثر.",
+      hint: "إذا عندك سؤال عن هذا القرار، راسلنا من منصة الدعم.",
+      button: "منصة الدعم",
+      url: `${SUPPORT_SITE}/new/account`,
+    },
+    email_changed_old: {
+      subject: "تغيّر بريد حسابك في Worlds",
+      lead: (v: Vars) => `غيّر فريق Worlds البريد المربوط بحسابك إلى ${v.email ?? ""}. من الآن تصل رموز الدخول إلى البريد الجديد، ولا تصل إلى هذا البريد.`,
+      hint: "إذا ما طلبت هذا التغيير، راسلنا فورًا من منصة الدعم.",
+      button: "منصة الدعم",
+      url: `${SUPPORT_SITE}/new/account`,
+    },
+    email_changed_new: {
+      subject: "صار هذا البريد لحسابك في Worlds",
+      lead: (v: Vars) => `ربط فريق Worlds هذا البريد بحسابك${v.username ? ` (@${v.username})` : ""}. من الآن تصل رموز الدخول إلى هنا.`,
+      hint: "إذا ما تعرف هذا الحساب، راسلنا من منصة الدعم.",
+      button: "منصة الدعم",
+      url: `${SUPPORT_SITE}/new/account`,
+    },
+    profile_changed: {
+      subject: "عدّل فريق Worlds حسابك",
+      lead: (v: Vars) => `غيّر فريق Worlds ${v.fields ?? ""} في حسابك.`,
+      hint: "إذا عندك سؤال عن التغيير، راسلنا من منصة الدعم.",
+      button: "منصة الدعم",
+      url: `${SUPPORT_SITE}/new/account`,
+    },
+    suspension_lifted: {
+      subject: "رجع حسابك في Worlds",
+      lead: () => "رفع فريق Worlds الإيقاف عن حسابك. تقدر تدخل الآن، ورجع ملفك العام وصفحاتك المنشورة.",
+      hint: "شكرًا على صبرك. إذا عندك سؤال، راسلنا من منصة الدعم.",
+      button: "منصة الدعم",
+      url: SUPPORT_SITE,
+    },
+    devices_signed_out: {
+      subject: "سجّلنا خروج أجهزتك من Worlds",
+      lead: (v: Vars) => `سجّل فريق Worlds خروج ${v.title ? `«${v.title}»` : "كل أجهزتك"} من حسابك. صفحاتك على أجهزتك باقية، وتقدر تسجّل دخولك من جديد.`,
+      hint: "إذا ما تعرف سبب هذا، راسلنا من منصة الدعم.",
+      button: "منصة الدعم",
+      url: `${SUPPORT_SITE}/new/account`,
+    },
+    passkey_removed: {
+      subject: "أُزيل مفتاح دخول من حسابك في Worlds",
+      lead: (v: Vars) => `أزال فريق Worlds مفتاح الدخول «${v.title ?? ""}» من حسابك. تقدر تدخل برمز يصلك على البريد، وتضيف مفتاحًا جديدًا من الإعدادات.`,
+      hint: "إذا ما تعرف سبب هذا، راسلنا من منصة الدعم.",
+      button: "منصة الدعم",
+      url: `${SUPPORT_SITE}/new/account`,
     },
     reason: "السبب:",
     footer: "Worlds يحفظ صفحاتك على جهازك",
@@ -98,6 +168,62 @@ const COPY = {
       button: "Support",
       url: SUPPORT_SITE,
     },
+    deletion_scheduled_team: {
+      subject: "Your Worlds account is scheduled for deletion",
+      lead: (v: Vars) => `The Worlds team scheduled your account for deletion. It is signed out of every device, and your public profile and published pages are hidden. Everything is erased for good on ${v.dateText}.`,
+      hint: "If you think this is a mistake, appeal from the support site before that date. Pages on your device are never deleted.",
+      button: "Appeal",
+      url: `${SUPPORT_SITE}/new/account`,
+    },
+    account_erased: {
+      subject: "Your Worlds account was deleted",
+      lead: () => "The Worlds team deleted your account for good, with your public profile, published pages and Team memberships. Pages on your device are not affected.",
+      hint: "If you have a question about this, write to us from the support site.",
+      button: "Support",
+      url: `${SUPPORT_SITE}/new/account`,
+    },
+    email_changed_old: {
+      subject: "The email of your Worlds account changed",
+      lead: (v: Vars) => `The Worlds team changed the email of your account to ${v.email ?? ""}. Sign-in codes now go to the new address, not to this one.`,
+      hint: "If you did not ask for this, write to us from the support site right away.",
+      button: "Support",
+      url: `${SUPPORT_SITE}/new/account`,
+    },
+    email_changed_new: {
+      subject: "This email is now on your Worlds account",
+      lead: (v: Vars) => `The Worlds team linked this address to your account${v.username ? ` (@${v.username})` : ""}. Sign-in codes come here from now on.`,
+      hint: "If you do not know this account, write to us from the support site.",
+      button: "Support",
+      url: `${SUPPORT_SITE}/new/account`,
+    },
+    profile_changed: {
+      subject: "The Worlds team changed your account",
+      lead: (v: Vars) => `The Worlds team changed ${v.fields ?? ""} on your account.`,
+      hint: "If you have a question about the change, write to us from the support site.",
+      button: "Support",
+      url: `${SUPPORT_SITE}/new/account`,
+    },
+    suspension_lifted: {
+      subject: "Your Worlds account is back",
+      lead: () => "The Worlds team lifted the suspension on your account. You can sign in now, and your public profile and published pages are back.",
+      hint: "Thank you for your patience. If you have a question, write to us from the support site.",
+      button: "Support",
+      url: SUPPORT_SITE,
+    },
+    devices_signed_out: {
+      subject: "We signed your devices out of Worlds",
+      lead: (v: Vars) => `The Worlds team signed ${v.title ? `“${v.title}”` : "all your devices"} out of your account. Your pages stay on your devices, and you can sign in again.`,
+      hint: "If you do not know why, write to us from the support site.",
+      button: "Support",
+      url: `${SUPPORT_SITE}/new/account`,
+    },
+    passkey_removed: {
+      subject: "A passkey was removed from your Worlds account",
+      lead: (v: Vars) => `The Worlds team removed the passkey “${v.title ?? ""}” from your account. You can sign in with a code sent to your email, and add a new passkey in Settings.`,
+      hint: "If you do not know why, write to us from the support site.",
+      button: "Support",
+      url: `${SUPPORT_SITE}/new/account`,
+    },
     reason: "Reason:",
     footer: "Worlds keeps your pages on your own device",
     team: "The Worlds team",
@@ -110,6 +236,9 @@ interface Vars {
   title?: string;
   reason?: string;
   body?: string;
+  email?: string;
+  username?: string;
+  fields?: string;
 }
 
 export function noticeMail(lang: EmailLanguage, kind: NoticeKind, v: Vars = {}): { subject: string; text: string; html: string } {
