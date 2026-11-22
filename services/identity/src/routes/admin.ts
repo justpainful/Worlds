@@ -140,6 +140,7 @@ interface UserListRow {
   display_name: string;
   username: string | null;
   avatar_url: string | null;
+  avatar_key: string | null;
   created_at: number;
   suspended_until: number | null;
   banned: number;
@@ -149,6 +150,16 @@ interface UserListRow {
   team_role: AdminRole | null;
 }
 
+/**
+ * The picture to show for an account: one set on the account, or else the
+ * picture of its public profile (served while that profile is visible; the
+ * dashboard falls back to the initial when it is not).
+ */
+function avatarOf(c: AdminCtx, url: string | null, key: string | null): string | null {
+  if (url) return url;
+  return key ? `${c.env.PUBLIC_URL.replace(/\/+$/, "")}/profiles/files/${key}` : null;
+}
+
 function listItem(c: AdminCtx, r: UserListRow, owners: string[]) {
   const s = activeSuspension(r);
   return {
@@ -156,7 +167,7 @@ function listItem(c: AdminCtx, r: UserListRow, owners: string[]) {
     email: can(c, "users.email") ? r.email : null,
     displayName: r.display_name,
     username: r.username,
-    avatarUrl: r.avatar_url,
+    avatarUrl: avatarOf(c, r.avatar_url, r.avatar_key),
     createdAt: r.created_at,
     lastSeenAt: r.last_seen,
     devices: r.devices,
@@ -166,7 +177,7 @@ function listItem(c: AdminCtx, r: UserListRow, owners: string[]) {
   };
 }
 
-const LIST_COLS = `u.id, u.email, u.display_name, u.username, u.avatar_url, u.created_at, u.suspended_until, u.banned, u.suspend_reason,
+const LIST_COLS = `u.id, u.email, u.display_name, u.username, u.avatar_url, (SELECT p.avatar_key FROM public_profiles p WHERE p.user_id = u.id) AS avatar_key, u.created_at, u.suspended_until, u.banned, u.suspend_reason,
   (SELECT MAX(d.last_seen_at) FROM devices d WHERE d.user_id = u.id) AS last_seen,
   (SELECT COUNT(*) FROM devices d WHERE d.user_id = u.id AND d.revoked_at IS NULL) AS devices,
   (SELECT r.role FROM admin_roles r WHERE r.user_id = u.id) AS team_role`;
@@ -199,8 +210,10 @@ admin.get("/me", async (c) => {
   const u = await userById(c.env.DB, caller.userId);
   if (!u) throw notFound();
   const passkeys = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM passkeys WHERE user_id = ?1").bind(caller.userId).first<{ n: number }>();
+  const prof = await c.env.DB.prepare("SELECT avatar_key FROM public_profiles WHERE user_id = ?1").bind(caller.userId).first<{ avatar_key: string | null }>();
+  const view = userView(u);
   return c.json({
-    user: userView(u),
+    user: { ...view, avatarUrl: avatarOf(c, view.avatarUrl, prof?.avatar_key ?? null) },
     role: c.get("role"),
     permissions: ROLE_PERMISSIONS[c.get("role")],
     stepUpUntil: await stepUpUntil(c),
@@ -705,18 +718,18 @@ admin.get("/team", async (c) => {
   const owners = envOwners(c.env.ADMIN_OWNERS);
   const ids = owners.map((_, i) => `?${i + 1}`);
   const { results } = await c.env.DB.prepare(
-    `SELECT u.id, u.display_name, u.username, u.avatar_url, r.role, r.granted_at, r.granted_by
+    `SELECT u.id, u.display_name, u.username, u.avatar_url, (SELECT p.avatar_key FROM public_profiles p WHERE p.user_id = u.id) AS avatar_key, r.role, r.granted_at, r.granted_by
      FROM users u LEFT JOIN admin_roles r ON r.user_id = u.id
      WHERE r.user_id IS NOT NULL${ids.length ? ` OR u.id IN (${ids.join(", ")})` : ""} ORDER BY r.granted_at`,
   )
     .bind(...owners)
-    .all<{ id: string; display_name: string; username: string; avatar_url: string | null; role: AdminRole | null; granted_at: number | null; granted_by: string | null }>();
+    .all<{ id: string; display_name: string; username: string; avatar_url: string | null; avatar_key: string | null; role: AdminRole | null; granted_at: number | null; granted_by: string | null }>();
   return c.json(
     results.map((r) => ({
       id: r.id,
       displayName: r.display_name,
       username: r.username,
-      avatarUrl: r.avatar_url,
+      avatarUrl: avatarOf(c, r.avatar_url, r.avatar_key),
       role: owners.includes(r.id) ? "owner" : r.role,
       fixed: owners.includes(r.id),
       grantedAt: r.granted_at,
