@@ -13,12 +13,13 @@ import { Content } from "./views/Content";
 import { Community } from "./views/Community";
 import { Control } from "./views/Control";
 import { Insights } from "./views/Insights";
+import { Claude } from "./views/Claude";
 
 // ---------------------------------------------------------------------------
 // Where we are: #/overview, #/accounts/<id>, #/log?user=<id>, #/team
 // ---------------------------------------------------------------------------
 
-export type View = "overview" | "insights" | "accounts" | "support" | "content" | "community" | "control" | "log" | "names" | "team";
+export type View = "overview" | "insights" | "accounts" | "support" | "content" | "community" | "control" | "log" | "names" | "claude" | "team";
 export interface Route {
   view: View;
   id?: string;
@@ -28,7 +29,7 @@ export interface Route {
 function parse(): Route {
   const [path, query] = location.hash.replace(/^#\/?/, "").split("?");
   const [view, id] = path.split("/");
-  const v = (["overview", "insights", "accounts", "support", "content", "community", "control", "log", "names", "team"] as View[]).includes(view as View) ? (view as View) : "overview";
+  const v = (["overview", "insights", "accounts", "support", "content", "community", "control", "log", "names", "claude", "team"] as View[]).includes(view as View) ? (view as View) : "overview";
   return { view: v, id: id ? decodeURIComponent(id) : undefined, params: new URLSearchParams(query ?? "") };
 }
 
@@ -302,6 +303,7 @@ const NAV: { view: View; icon: SymbolName; label: () => string; need: Permission
   { view: "control", icon: "shield.lefthalf.filled", label: () => t("control"), need: "control.read" },
   { view: "log", icon: "list.bullet.rectangle", label: () => t("log"), need: "audit" },
   { view: "names", icon: "at", label: () => t("names"), need: "names" },
+  { view: "claude", icon: "text.page", label: () => "Claude", need: "users.read" },
   { view: "team", icon: "person.badge.key", label: () => t("team"), need: "users.read" },
 ];
 
@@ -429,6 +431,7 @@ function Signed({ theme, setTheme }: { theme: Theme; setTheme: (t: Theme) => voi
           {view === "control" && <Control />}
           {view === "insights" && <Insights />}
           {view === "names" && <Names />}
+          {view === "claude" && <Claude />}
           {view === "team" && <Team />}
         </div>
         <nav className="tabbar glass" aria-label={t("appName")}>

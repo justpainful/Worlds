@@ -16,7 +16,7 @@ import { auditStmt } from "../lib/audit";
 import { emit, requireAuth } from "../lib/auth";
 import { newId, now } from "../lib/crypto";
 import type { EventEnvelope } from "../lib/events";
-import { ApiError, bad, body, conflict, forbidden, normalizeEmail, notFound, optStr, str } from "../lib/http";
+import { ApiError, bad, body, conflict, forbidden, normalizeEmail, notFound, optStr, str, unauthorized } from "../lib/http";
 import { checkUsername, usernameTaken } from "../lib/usernames";
 import { foldName } from "../lib/names";
 import { reportersOf, setTeamHidden, targetKey, type Target } from "../lib/content";
@@ -31,6 +31,8 @@ import { cancelDeletion, eraseAccount, exportAccount, scheduleDeletion } from ".
 import { authenticationOptions, webauthn } from "../lib/webauthn";
 import { consumeEmailCode, newChallenge, takeChallenge, userById, userView } from "./auth";
 import { SUPPORT_SITE, replyAddress, sendSupportMail, supportMail, ticketRef } from "../lib/supportMail";
+import { notifyTeam } from "./support";
+import { randomToken } from "../lib/crypto";
 import { STATUSES, addMessage, assertKind, messageView, notifyStmt, safeJson, ticketView, type MessageRow, type TicketRow, type TicketStatus } from "./support";
 
 export type AdminRole = "owner" | "moderator" | "support";
@@ -168,7 +170,23 @@ const LIST_COLS = `u.id, u.email, u.display_name, u.username, u.avatar_url, u.cr
   (SELECT r.role FROM admin_roles r WHERE r.user_id = u.id) AS team_role`;
 
 export const admin = new Hono<AppEnv & { Variables: { role: AdminRole } }>();
-admin.use("*", requireAuth, requireAdmin);
+/**
+ * Claude's MCP server signs in with a key (x-worlds-admin-key) instead of a
+ * session: it reads as the owner who made the key, and the only change it can
+ * make is to propose one (POST /admin/proposals), which a person approves.
+ */
+const keyOrSession: MiddlewareHandler<AppEnv & { Variables: { role: AdminRole } }> = async (c, next) => {
+  const key = c.req.header("x-worlds-admin-key");
+  if (!key) return requireAuth(c as unknown as Context<AppEnv>, next);
+  const row = await c.env.DB.prepare("SELECT id, user_id FROM admin_keys WHERE key_hash = ?1 AND revoked_at IS NULL").bind(await sha256Hex(key)).first<{ id: string; user_id: string }>();
+  if (!row) throw unauthorized("invalid_key", "That key is not valid.");
+  const writes = c.req.method !== "GET" && c.req.method !== "HEAD";
+  if (writes && c.req.path !== "/admin/proposals") throw forbidden("propose_only", "Claude can only propose changes; a person approves them in the dashboard.");
+  c.set("caller", { userId: row.user_id, deviceId: `key:${row.id}`, actor: "ai-on-behalf-of-user" });
+  await c.env.DB.prepare("UPDATE admin_keys SET last_used_at = ?1 WHERE id = ?2").bind(now(), row.id).run();
+  await next();
+};
+admin.use("*", keyOrSession, requireAdmin);
 
 // ---------------------------------------------------------------------------
 // Who am I, and the second check
@@ -2022,4 +2040,120 @@ admin.get("/insights/cloudflare", async (c) => {
     limits: { workerRequests: 100_000, d1RowsRead: 5_000_000, d1RowsWritten: 100_000, r2Bytes: 10 * 1024 ** 3, doRequests: 100_000 },
     ...data,
   });
+});
+
+// ---------------------------------------------------------------------------
+// Claude: keys for the MCP server, and the changes it proposes
+// ---------------------------------------------------------------------------
+
+/** The changes Claude may propose, and the dashboard route each one becomes once approved. */
+export const PROPOSALS: Record<string, { method: string; path: (p: Record<string, unknown>) => string; body: (p: Record<string, unknown>) => Record<string, unknown> }> = {
+  reply: { method: "POST", path: (p) => `/admin/support/${Number(p.number)}/reply`, body: (p) => ({ body: p.body, status: p.status }) },
+  note: { method: "POST", path: (p) => `/admin/users/${encodeURIComponent(String(p.userId))}/notes`, body: (p) => ({ body: p.body }) },
+  suspend: { method: "POST", path: (p) => `/admin/users/${encodeURIComponent(String(p.userId))}/suspend`, body: (p) => ({ days: p.days, ban: p.ban === true, reason: p.reason }) },
+  unsuspend: { method: "POST", path: (p) => `/admin/users/${encodeURIComponent(String(p.userId))}/unsuspend`, body: (p) => ({ reason: p.reason }) },
+  hide: { method: "POST", path: () => "/admin/content/hide", body: (p) => ({ username: p.username, pageId: p.pageId, reason: p.reason, hidden: true }) },
+  show: { method: "POST", path: () => "/admin/content/hide", body: (p) => ({ username: p.username, pageId: p.pageId, hidden: false }) },
+  ticket: { method: "PATCH", path: (p) => `/admin/support/${Number(p.number)}`, body: (p) => ({ status: p.status, priority: p.priority }) },
+  suggestion: { method: "PATCH", path: (p) => `/admin/suggestions/${encodeURIComponent(String(p.id))}`, body: (p) => ({ status: p.status, public: p.public, shippedIn: p.shippedIn }) },
+  message: { method: "POST", path: (p) => `/admin/users/${encodeURIComponent(String(p.userId))}/messages`, body: (p) => ({ subject: p.subject, body: p.body, email: p.email === true }) },
+};
+
+admin.post("/proposals", async (c) => {
+  const b = await body(c.req);
+  const action = str(b.action, "action", 20);
+  if (!PROPOSALS[action]) throw bad("invalid_action", `action must be one of ${Object.keys(PROPOSALS).join(", ")}`);
+  const payload = (b.payload ?? {}) as Record<string, unknown>;
+  if (typeof payload !== "object" || Array.isArray(payload) || JSON.stringify(payload).length > 12_000) throw bad("invalid_payload");
+  const summary = str(b.summary, "summary", 300);
+  const id = newId();
+  const keyId = c.get("caller").deviceId.startsWith("key:") ? c.get("caller").deviceId.slice(4) : null;
+  await c.env.DB.batch([
+    c.env.DB.prepare("INSERT INTO admin_proposals (id, key_id, action, payload, summary, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)").bind(id, keyId, action, JSON.stringify(payload), summary, now()),
+    logStmt(c, "admin.proposal.created", c.get("caller").userId, { proposal: id, action }),
+  ]);
+  emit(
+    c as unknown as Context<AppEnv>,
+    await notifyTeam(c.env, { id: `proposal:${id}`, topic: "claude.proposal", title: "Claude", excerpt: summary, link: "https://admin.enterworlds.space/#/claude" }),
+  );
+  return c.json({ id, status: "pending", approveAt: "https://admin.enterworlds.space/#/claude" }, 201);
+});
+
+admin.get("/proposals", async (c) => {
+  await need(c, "users.read");
+  const status = c.req.query("status") ?? "pending";
+  const { results } = await c.env.DB.prepare(
+    "SELECT p.*, k.label AS key_label, u.display_name AS decided_name FROM admin_proposals p LEFT JOIN admin_keys k ON k.id = p.key_id LEFT JOIN users u ON u.id = p.decided_by WHERE p.status = ?1 OR ?1 = 'all' ORDER BY p.created_at DESC LIMIT 100",
+  )
+    .bind(status)
+    .all<Record<string, unknown>>();
+  return c.json(
+    results.map((p) => {
+      const payload = safeJson<Record<string, unknown>>(p.payload as string, {});
+      const route = PROPOSALS[p.action as string];
+      return {
+        id: p.id,
+        action: p.action,
+        payload,
+        summary: p.summary,
+        status: p.status,
+        keyLabel: p.key_label ?? null,
+        createdAt: p.created_at,
+        decidedBy: p.decided_name ?? null,
+        decidedAt: p.decided_at,
+        result: p.result,
+        // What the dashboard calls when someone approves it, with their own rights.
+        call: route ? { method: route.method, path: route.path(payload), body: route.body(payload) } : null,
+      };
+    }),
+  );
+});
+
+/** Recorded after the dashboard made the change (or chose not to). */
+admin.post("/proposals/:id/decide", async (c) => {
+  if (c.get("caller").deviceId.startsWith("key:")) throw forbidden("not_allowed", "Only a person on the team can decide.");
+  const b = await body(c.req);
+  const status = b.status === "approved" ? "approved" : b.status === "rejected" ? "rejected" : null;
+  if (!status) throw bad("invalid_status");
+  const r = await c.env.DB.prepare("UPDATE admin_proposals SET status = ?1, decided_by = ?2, decided_at = ?3, result = ?4 WHERE id = ?5 AND status = 'pending'")
+    .bind(status, c.get("caller").userId, now(), optStr(b.result, "result", 500) ?? null, c.req.param("id"))
+    .run();
+  if (!r.meta.changes) throw notFound();
+  await logStmt(c, `admin.proposal.${status}`, c.get("caller").userId, { proposal: c.req.param("id") }).run();
+  return c.json({ ok: true });
+});
+
+admin.get("/keys", async (c) => {
+  await need(c, "users.read");
+  const { results } = await c.env.DB.prepare("SELECT k.id, k.label, k.created_at, k.last_used_at, k.revoked_at, u.display_name FROM admin_keys k JOIN users u ON u.id = k.user_id ORDER BY k.created_at DESC").all<{
+    id: string;
+    label: string;
+    created_at: number;
+    last_used_at: number | null;
+    revoked_at: number | null;
+    display_name: string;
+  }>();
+  return c.json(results.map((k) => ({ id: k.id, label: k.label, owner: k.display_name, createdAt: k.created_at, lastUsedAt: k.last_used_at, revokedAt: k.revoked_at })));
+});
+
+/** A key for Claude's MCP server: it reads as you and can only propose changes. Shown once. */
+admin.post("/keys", async (c) => {
+  await need(c, "team");
+  if (c.get("role") !== "owner") throw forbidden("not_allowed", "Only an owner can make a key.");
+  const label = optStr((await body(c.req)).label, "label", 60) ?? "Claude";
+  const key = randomToken("wak_");
+  const id = newId();
+  await c.env.DB.batch([
+    c.env.DB.prepare("INSERT INTO admin_keys (id, key_hash, label, user_id, created_at) VALUES (?1, ?2, ?3, ?4, ?5)").bind(id, await sha256Hex(key), label, c.get("caller").userId, now()),
+    logStmt(c, "admin.key.created", c.get("caller").userId, { key: id, label }),
+  ]);
+  return c.json({ id, key, label }, 201);
+});
+
+admin.delete("/keys/:id", async (c) => {
+  await need(c, "team");
+  const r = await c.env.DB.prepare("UPDATE admin_keys SET revoked_at = ?1 WHERE id = ?2 AND revoked_at IS NULL").bind(now(), c.req.param("id")).run();
+  if (!r.meta.changes) throw notFound();
+  await logStmt(c, "admin.key.revoked", c.get("caller").userId, { key: c.req.param("id") }).run();
+  return c.json({ ok: true });
 });
