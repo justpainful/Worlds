@@ -23,6 +23,13 @@ feature: profile accounts :: حسابك بيدك :: نزّل نسخة من بي�
 - new: أعداد الاستخدام اختيارية ومطفأة حتى توافق: مرة في اليوم، كم صفحة وأي الميزات، دون أي محتوى. || Usage counts are optional and off until you agree: once a day, how many pages and which features, never any content.
 - new: تنبيهات من Worlds أسفل النافذة عند الصيانة أو انقطاع الخدمة أو صدور نسخة تحتاج إلى التحديث. || Notices from Worlds at the bottom of the window during maintenance, an outage, or when an update is needed.
 
+# windows
+- new: يحدّث Worlds نفسه من داخل التطبيق: ينزّل التحديث في الخلفية ويتحقق من توقيعه، ثم يعرض إعادة التشغيل للتثبيت. التحديثات التالية لهذا الإصدار تصل تلقائيًا. || Worlds updates itself from inside the app: it downloads the update in the background, checks its signature, then offers to restart and install. Updates after this release arrive on their own.
+- new: الإعدادات، متقدم، التحديثات: النسخة الحالية، والبحث عن تحديث الآن، ومفتاح التحديث التلقائي. || Settings, Advanced, Updates: the current version, Check Now, and a switch for automatic updates.
+- new: يحصل المختبرون على النسخ التجريبية أولًا عبر قناة التجربة. || Testers get beta versions first through the beta channel.
+- new: بعد كل تحديث تظهر أبرز تغييراته مرة واحدة، مع رابط إلى كل التغييرات. || After each update, its highlights show once, with a link to every change.
+- new: خطوة في الترحيب للموافقة على شروط الاستخدام وسياسة الخصوصية وسياسة المحتوى، وخانة لازمة عند إنشاء الحساب، وسؤال واحد عند تغيّر الشروط. || A welcome step to accept the terms of use, the privacy policy and the content policy, a required box when creating an account, and one prompt when the terms change.
+
 # web
 - new: مركز المساعدة support.enterworlds.space: مقالات، وطلب دعم بنموذج حسب نوع المشكلة، ومتابعة طلباتك ببريدك. || The help center at support.enterworlds.space: articles, a support request form that fits the kind of problem, and following your requests with your email.
 - new: لوحة الأفكار يصوّت فيها الجميع، وخطة العمل تعرض ما هو مخطط له وما يُعمل عليه وما صدر. || A board of ideas everyone can vote on, and a roadmap with what is planned, in progress and shipped.
