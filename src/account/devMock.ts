@@ -65,6 +65,68 @@ const signIn = (created: boolean): AccountView => {
   return { ...view, created };
 };
 
+// ---- the account service's own features (src/account/service.ts) ----------
+let deletionDueAt: number | null = null;
+let tester: string | null = null;
+const threads = [
+  {
+    id: "t-1",
+    subject: "Thanks for the report",
+    status: "open",
+    createdAt: t0 - 86_400_000,
+    updatedAt: t0 - 3_600_000,
+    messages: [{ id: "m-1", author: "team", body: "We fixed the sync problem you reported. Could you check that pages sync again?", createdAt: t0 - 3_600_000, read: false }],
+  },
+];
+async function mockService(method: string, path: string, body: Args | null): Promise<unknown> {
+  await wait(250);
+  const route = path.split("?")[0];
+  if (route === "/config")
+    return {
+      at: Date.now(),
+      signups: "open",
+      maintenance: { on: false, readOnly: false },
+      update: { required: false },
+      announcements: new URLSearchParams(location.search).has("announce")
+        ? [{ id: "a-preview", text: { ar: "نسخة 1.1 وصلت: اقتراحات وبلاغات من داخل التطبيق.", en: "Worlds 1.1 is here: ideas and problem reports from inside the app." }, level: "info", link: "https://enterworlds.space", dismissible: true }]
+        : [],
+      flags: {},
+      publishing: { paused: false },
+      incident: { on: false },
+      tester: tester === "accepted",
+    };
+  if (route === "/me/deletion" && method === "GET") return { dueAt: deletionDueAt, days: 30, sharedWorkspaces: [] };
+  if (route === "/me/deletion" && method === "POST") {
+    if (String(body?.code) !== "123456") throw "That code is not right. Check it and try again.";
+    deletionDueAt = Date.now() + 30 * 86_400_000;
+    return { dueAt: deletionDueAt };
+  }
+  if (route === "/me/deletion" && method === "DELETE") {
+    deletionDueAt = null;
+    return { ok: true };
+  }
+  if (route === "/me/export") return { account: view.account, exportedAt: Date.now() };
+  if (route === "/me/testers") {
+    if (method === "POST") tester = "applied";
+    if (method === "DELETE") tester = null;
+    return method === "DELETE" ? { ok: true } : { status: tester };
+  }
+  if (route === "/me/surveys" && method === "GET")
+    return [{ id: "s-1", question: { ar: "وش أكثر شي تستخدمه في Worlds؟", en: "What do you use Worlds for most?" }, choices: [{ ar: "الدراسة", en: "Study" }, { ar: "العمل", en: "Work" }, { ar: "أفكاري", en: "My own notes" }] }];
+  if (route.startsWith("/me/surveys/")) return { ok: true };
+  if (route === "/me/messages" && method === "GET") return threads;
+  if (route.startsWith("/me/messages/")) {
+    const th = threads.find((x) => route.endsWith(x.id));
+    th?.messages.push({ id: `m-${Date.now()}`, author: "person", body: String(body?.body ?? ""), createdAt: Date.now(), read: true });
+    return { id: "m-new" };
+  }
+  if (route === "/me/usage") return { ok: true };
+  if (route === "/community/suggestions") return { id: "i-1", number: 42 };
+  if (route === "/support/files") return { key: `s/preview-${Date.now()}` };
+  if (route === "/support/requests") return { number: 1001, ref: "W-1001" };
+  throw `Not in the preview: ${method} ${route}`;
+}
+
 async function account(action: string, a: Args): Promise<unknown> {
   switch (action) {
     case "state":
@@ -77,6 +139,8 @@ async function account(action: string, a: Args): Promise<unknown> {
     case "setActiveWorkspace":
       view = { ...view, activeWorkspaceId: a.workspaceId ?? null };
       return view;
+    case "service":
+      return mockService(String(a.method ?? "GET"), String(a.path ?? ""), a.body ?? null);
     case "setServer":
       view = { ...view, serverUrl: a.url };
       return view;

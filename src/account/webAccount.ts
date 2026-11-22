@@ -13,6 +13,7 @@
  */
 import type { Account, AccountView, Device, Workspace } from "./api";
 import { tr } from "../i18n/ui";
+import { APP_VERSION } from "../appVersion";
 
 type Args = Record<string, any>;
 
@@ -97,6 +98,7 @@ async function request<T>(method: string, path: string, body?: unknown, auth = t
     res = await fetch(IDENTITY_URL + path, {
       method,
       headers: {
+        "x-worlds-version": APP_VERSION,
         ...(body === undefined ? {} : { "content-type": "application/json" }),
         ...(auth && session ? { authorization: `Bearer ${session.accessToken}` } : {}),
       },
@@ -195,6 +197,8 @@ export async function webAccount(action: string, a: Args): Promise<unknown> {
       }
     case "setServer":
       return view();
+    case "service":
+      return request(String(a.method ?? "GET"), String(a.path), a.body ?? undefined, a.auth !== false && !!session);
     case "emailStart":
       return request("POST", "/auth/email/start", { email: a.email, lang: a.lang }, false);
     case "emailVerify": {

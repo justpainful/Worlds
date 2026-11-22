@@ -184,7 +184,7 @@ pub async fn account(app: tauri::AppHandle, state: State<'_, AppState>, action: 
     let db = &state.db;
     let secrets = &KeyringStore;
     let out = run(&app, db, secrets, &action, &a).await;
-    if !matches!(action.as_str(), "state" | "pageLevel" | "pageWorkspaces") {
+    if !matches!(action.as_str(), "state" | "pageLevel" | "pageWorkspaces" | "service") {
         let _ = app.emit("worlds://account", ());
     }
     out
@@ -200,6 +200,63 @@ async fn run(app: &tauri::AppHandle, db: &Mutex<Connection>, secrets: &dyn Secre
             let c = lock(db);
             local(state::set_active_workspace(&c, a.get("workspaceId").and_then(Value::as_str)))?;
             local(view(&c))
+        }
+        // ---- the account service's own features: deletion, data export, testers,
+        // surveys, messages from the team, usage counts, suggestions, support and
+        // the service's settings. Only these paths; anything else is refused.
+        "service" => {
+            let path = s(a, "path")?;
+            const ALLOWED: [&str; 11] = [
+                "/me/deletion",
+                "/me/confirm/options",
+                "/me/export",
+                "/me/testers",
+                "/me/surveys",
+                "/me/messages",
+                "/me/usage",
+                "/community/",
+                "/support/requests",
+                "/support/files",
+                "/config",
+            ];
+            if !ALLOWED.iter().any(|p| {
+                path == *p
+                    || path.starts_with(&format!("{p}/"))
+                    || path.starts_with(&format!("{p}?"))
+                    || (p.ends_with('/') && path.starts_with(p))
+            }) {
+                return Err("That address is not allowed.".into());
+            }
+            // No way out of those paths: no dot segments, escapes or fragments.
+            let route = path.split_once('?').map_or(path, |(r, _)| r);
+            if route.split('/').any(|seg| seg == "." || seg == "..") || route.contains(['%', '\\', '#']) {
+                return Err("That address is not allowed.".into());
+            }
+            let method = match a.get("method").and_then(Value::as_str).unwrap_or("GET") {
+                "POST" => Method::POST,
+                "PUT" => Method::PUT,
+                "PATCH" => Method::PATCH,
+                "DELETE" => Method::DELETE,
+                _ => Method::GET,
+            };
+            let body = a.get("body").filter(|b| !b.is_null());
+            let signed_in = state::account(&lock(db)).ok().flatten().is_some();
+            let out = if signed_in && a.get("auth").and_then(Value::as_bool) != Some(false) {
+                authed(db, secrets, method, path, body, None).await?
+            } else {
+                let base = base_url(db)?;
+                client::send(&base, method, path, body, None, None).await?
+            };
+            // The copy of one's data goes straight to the file the person picked.
+            if let Some(to) = a.get("saveTo").and_then(Value::as_str) {
+                if path != "/me/export" {
+                    return Err("Only the data export can be saved to a file.".into());
+                }
+                let bytes = serde_json::to_vec_pretty(&out).map_err(|e| e.to_string())?;
+                std::fs::write(to, bytes).map_err(|e| format!("The file could not be written: {e}"))?;
+                return Ok(json!({ "saved": true }));
+            }
+            Ok(out)
         }
         "setServer" => {
             let url = a.get("url").and_then(Value::as_str).unwrap_or("").trim().trim_end_matches('/').to_string();

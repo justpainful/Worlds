@@ -20,7 +20,11 @@ import { acquireSession, localStore, openSessions, releaseSession, type CollabSe
 
 export interface Notice {
   id: string;
-  kind: "mention" | "reply" | "published";
+  kind: "mention" | "reply" | "published" | "worlds";
+  /** worlds: what it is about (support.reply, team.message), its title and where it leads. */
+  topic?: string;
+  title?: string;
+  link?: string;
   workspaceId: string;
   docId: string;
   threadId: string;
