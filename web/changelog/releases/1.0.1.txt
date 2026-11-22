@@ -1,0 +1,20 @@
+version: 1.0.1
+date: 2026-11-22
+title: الحساب نفسه على كل أجهزتك || The same account on every device
+summary: إصلاح لتسجيل الدخول على الكمبيوتر بحساب أُنشئ على الويب: يبقى الاسم كما هو، وتصل الصورة والبانر إلى الجهاز، ولا تُترجم أسماء الأشخاص. || A fix for signing in on a computer with an account made on the web: the name stays as it is, the picture and banner reach the computer, and people's names are no longer translated.
+intro: أبلغنا أحد المستخدمين أنه أنشأ حسابه على Worlds على الويب، ثم سجّل دخوله في تطبيق ويندوز، فوجد اسم حسابه قد تغيّر إلى اسم مستخدم ويندوز، وصورته وبانره غائبين عن الجهاز. يعالج هذا الإصدار السبب من جذوره: أصبح الحساب الموجود هو المرجع، ويجلب الجهاز ملفك الشخصي من الويب بدل أن يكتب فوقه. || A user told us they made their account on Worlds on the web, then signed in on the Windows app and found the account renamed to their Windows user name, with their picture and banner missing on the computer. This release fixes the cause: an existing account is now the source, and the computer brings your profile from the web instead of writing over it.
+
+# highlights
+- fixed: تسجيل الدخول على الكمبيوتر بحساب موجود لم يعد يغيّر اسمه إلى اسم مستخدم الجهاز. || Signing in on a computer with an existing account no longer renames it to the computer's user name.
+- new: يجلب الكمبيوتر صورتك وبانرك وتفاصيل ملفك الشخصي من Worlds على الويب بعد تسجيل الدخول. || After sign-in, the computer brings your picture, banner and profile details from Worlds on the web.
+
+# accounts
+- fixed: الحساب الموجود هو المرجع: يأخذ الجهاز منه الاسم واسم المستخدم عند أول تسجيل دخول، ولا يرسل إليه شيئًا. || An existing account is the source: on the first sign-in the computer takes its name and username and sends nothing back.
+- fixed: لا يُرسل اسم مستخدم النظام اسمًا للحساب أبدًا، حتى للحساب الجديد. || The system user name is never sent as the account's name, even for a new account.
+- new: بعد تسجيل الدخول، تُملأ الصورة والبانر والنبذة والحالة والروابط من ملفك الشخصي على الويب، في الحقول الفارغة فقط، ومرة واحدة لكل حساب. || After sign-in, the picture, banner, bio, status and links are filled from your profile on the web, only where empty, once per account.
+
+# arabic
+- fixed: أسماء الأشخاص لا تمر على ترجمة الواجهة، فلا يظهر اسم مثل Admin بترجمته «مشرف». || People's names skip the interface translation, so a name like Admin is no longer shown as «مشرف».
+
+# packs
+- improved: مع الأيقونات المرسومة، صار لكل حزمة رسم، بما فيها تسع حزم كانت تعرض أيقونتها القديمة. || With drawn icons on, every pack has a drawing, including nine packs that still showed their old icon.
