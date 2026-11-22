@@ -61,6 +61,7 @@ export function forwarded(request: Request, target: string, env: Env): Request {
   // Whatever the client sent in these is replaced, never passed on.
   headers.set("x-worlds-edge", env.EDGE_SECRET);
   headers.set("x-worlds-client-ip", request.headers.get("cf-connecting-ip") ?? "");
+  headers.set("x-worlds-country", String((request as Request & { cf?: { country?: string } }).cf?.country ?? ""));
   headers.set("x-forwarded-host", url.host);
   const bodyless = request.method === "GET" || request.method === "HEAD";
   // duplex is what the Fetch standard asks for with a streamed body; Workers ignores it.

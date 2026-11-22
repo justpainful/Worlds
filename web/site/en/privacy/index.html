@@ -78,7 +78,7 @@
   <li>An account is optional. If you create one, we keep your email, name, username, passkeys and signed-in devices. The account database holds none of your page content.</li>
   <li>What you share with other people, and the browser version's copy on your account, is kept on the sync service so it can reach your devices and theirs.</li>
   <li>AI requests go from your device straight to the provider you chose, with your own key or sign-in. They do not pass through us.</li>
-  <li>There are no ads, no analytics or tracking tools, and no cookies from Worlds.</li>
+  <li>There are no ads, no tracking tools, and no cookies from Worlds. The app sends counts without content only if you agree (<a href="#analytics">details</a>).</li>
 </ul>
 <p>"We" on this page means the developer of Worlds, who runs its services on enterworlds.space.</p>
 
@@ -209,7 +209,11 @@
 <p>This site, the web version, and the account and sync services set no cookies. The web version uses IndexedDB and localStorage as described in <a href="#web-version">Worlds in the browser</a>, and they stay in your browser. The only exception is content embedded from other sites.</p>
 
 <h2 id="analytics">Analytics and tracking</h2>
-<p>The site, the web version and the apps have no analytics, tracking, ads, or crash reports sent to us. This site's security policy stops its pages from connecting to any server. Its only script shows the date and a greeting and marks the open section; it sends nothing.</p>
+<p>The site, the web version and the apps have no tracking tools, no ads, and nothing that follows you across sites. This site's security policy stops its pages from connecting to any server.</p>
+<ul>
+  <li><strong>Counts you can choose to send</strong>: once, the app asks whether it may send counts without content to help improve Worlds. If you agree, each device sends once a day how many pages, blocks and attachments it has and their total size, which features and packs are in use, the app's language, theme, version and system, and how many errors happened. Never page content, titles, names or files. You can turn it off at any time in Settings, Privacy. Reports are kept 90 days.</li>
+  <li><strong>What the account service notes for its own numbers</strong>: the days an account was active (a sign-in or a session refresh), the app version and the country of each signed-in device (two letters from Cloudflare's lookup; the IP address is not kept), and whether each email it sent went through (the kind and the provider, not the address or the text).</li>
+</ul>
 
 <h2 id="security">How we protect data</h2>
 <ul>

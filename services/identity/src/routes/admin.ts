@@ -21,6 +21,8 @@ import { checkUsername, usernameTaken } from "../lib/usernames";
 import { foldName } from "../lib/names";
 import { reportersOf, setTeamHidden, targetKey, type Target } from "../lib/content";
 import { SETTING_KEYS, settings, type SettingKey } from "../lib/control";
+import { dayOf } from "../lib/activity";
+import { hmacSha256Hex } from "../lib/crypto";
 import { sha256Hex } from "../lib/crypto";
 import { SUGGESTION_STATUSES, suggestionView, type SuggestionRow, type SuggestionStatus } from "./community";
 import { eventStmt } from "../lib/events";
@@ -1769,4 +1771,255 @@ admin.delete("/control/limits", async (c) => {
   await c.env.DB.prepare("DELETE FROM rate_limits WHERE key = ?1").bind(key).run();
   await logStmt(c, "admin.control.limit_cleared", c.get("caller").userId).run();
   return c.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// Numbers (docs/admin/PLAN.md, phase 7; lib/activity.ts)
+// ---------------------------------------------------------------------------
+
+admin.get("/insights", async (c) => {
+  await need(c, "stats");
+  const db = c.env.DB;
+  const t = now();
+  const today = dayOf(t);
+  const d30 = t - 30 * DAY;
+  const [versions, countries, daily, wau, mau, funnelCodes, funnelNew, funnelTwo, funnelShared, email, emailFails, support, replies, ratings, usage] = await db.batch<Record<string, unknown>>([
+    db.prepare("SELECT platform, COALESCE(app_version, '?') AS version, COUNT(*) AS devices FROM devices WHERE revoked_at IS NULL AND last_seen_at > ?1 GROUP BY platform, version ORDER BY devices DESC").bind(d30),
+    db.prepare("SELECT country, COUNT(DISTINCT user_id) AS users FROM devices WHERE last_seen_at > ?1 AND country IS NOT NULL GROUP BY country ORDER BY users DESC LIMIT 40").bind(d30),
+    db.prepare("SELECT day, COUNT(*) AS users FROM activity_days WHERE day > ?1 GROUP BY day ORDER BY day").bind(today - 30),
+    db.prepare("SELECT COUNT(DISTINCT user_id) AS n FROM activity_days WHERE day > ?1").bind(today - 7),
+    db.prepare("SELECT COUNT(DISTINCT user_id) AS n FROM activity_days WHERE day > ?1").bind(today - 30),
+    db.prepare("SELECT COUNT(*) AS n FROM email_log WHERE kind = 'code' AND ok = 1 AND at > ?1").bind(d30),
+    db.prepare("SELECT COUNT(*) AS n FROM users WHERE created_at > ?1").bind(d30),
+    db.prepare("SELECT COUNT(*) AS n FROM (SELECT user_id FROM devices d JOIN users u ON u.id = d.user_id WHERE u.created_at > ?1 GROUP BY user_id HAVING COUNT(*) > 1)").bind(d30),
+    db
+      .prepare(
+        "SELECT COUNT(DISTINCT m.user_id) AS n FROM members m JOIN users u ON u.id = m.user_id WHERE u.created_at > ?1 AND (SELECT COUNT(*) FROM members x WHERE x.workspace_id = m.workspace_id) > 1",
+      )
+      .bind(d30),
+    db.prepare("SELECT CAST(at / 86400000 AS INTEGER) AS day, kind, COALESCE(provider, '-') AS provider, SUM(ok) AS ok, SUM(1 - ok) AS failed FROM email_log WHERE at > ?1 GROUP BY day, kind, provider ORDER BY day").bind(d30),
+    db.prepare("SELECT at, kind, error FROM email_log WHERE ok = 0 ORDER BY at DESC LIMIT 15"),
+    db.prepare("SELECT kind, status, COUNT(*) AS n FROM support_tickets WHERE created_at > ?1 GROUP BY kind, status").bind(d30),
+    db.prepare("SELECT (first_reply_at - created_at) AS ms FROM support_tickets WHERE first_reply_at IS NOT NULL AND created_at > ?1 ORDER BY ms").bind(d30),
+    db.prepare("SELECT SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) AS yes, SUM(CASE WHEN rating = 0 THEN 1 ELSE 0 END) AS no FROM support_tickets WHERE created_at > ?1").bind(d30),
+    // The newest report of each device in the last week.
+    db.prepare("SELECT r.data FROM usage_reports r WHERE r.day > ?1 AND r.day = (SELECT MAX(x.day) FROM usage_reports x WHERE x.device_id = r.device_id)").bind(today - 7),
+  ]);
+  const n = (r: D1Result<Record<string, unknown>>) => Number(r.results[0]?.n ?? 0);
+
+  // Cohorts by week of sign-up, for the last eight weeks: who came back after a week and after a month.
+  const cohorts = [];
+  for (let w = 8; w >= 1; w--) {
+    const from = t - w * 7 * DAY;
+    const to = from + 7 * DAY;
+    const row = await db
+      .prepare(
+        `SELECT COUNT(*) AS size,
+           SUM(CASE WHEN EXISTS (SELECT 1 FROM activity_days a WHERE a.user_id = u.id AND a.day >= CAST(u.created_at / 86400000 AS INTEGER) + 7) THEN 1 ELSE 0 END) AS week,
+           SUM(CASE WHEN EXISTS (SELECT 1 FROM activity_days a WHERE a.user_id = u.id AND a.day >= CAST(u.created_at / 86400000 AS INTEGER) + 30) THEN 1 ELSE 0 END) AS month
+         FROM users u WHERE u.created_at >= ?1 AND u.created_at < ?2`,
+      )
+      .bind(from, to)
+      .first<{ size: number; week: number | null; month: number | null }>();
+    cohorts.push({ from, size: row?.size ?? 0, week: row?.week ?? 0, month: to + 30 * DAY <= t ? (row?.month ?? 0) : null });
+  }
+
+  const replyMs = replies.results.map((r) => Number(r.ms));
+  const median = replyMs.length ? replyMs[Math.floor(replyMs.length / 2)] : null;
+
+  // Usage reports: averages, how many use each feature, packs, languages and errors per version.
+  const reports = usage.results.map((r) => safeJson<UsageReport>(r.data as string, {}));
+  const features: Record<string, number> = {};
+  const packs: Record<string, number> = {};
+  const langs: Record<string, number> = {};
+  const errors: Record<string, number> = {};
+  let pages = 0;
+  let blocks = 0;
+  for (const r of reports) {
+    pages += r.pages ?? 0;
+    blocks += r.blocks ?? 0;
+    for (const [k, v] of Object.entries(r.features ?? {})) if (v) features[k] = (features[k] ?? 0) + 1;
+    for (const p of r.packs ?? []) packs[p] = (packs[p] ?? 0) + 1;
+    if (r.language) langs[r.language] = (langs[r.language] ?? 0) + 1;
+    if (r.errors) errors[`${r.platform ?? "?"} ${r.version ?? "?"}`] = (errors[`${r.platform ?? "?"} ${r.version ?? "?"}`] ?? 0) + r.errors;
+  }
+
+  return c.json({
+    at: t,
+    versions: versions.results,
+    countries: countries.results,
+    active: { perDay: daily.results.map((r) => ({ day: Number(r.day) * DAY, users: Number(r.users) })), week: n(wau), month: n(mau) },
+    cohorts,
+    funnel: { codes: n(funnelCodes), accounts: n(funnelNew), secondDevice: n(funnelTwo), sharedWorkspace: n(funnelShared) },
+    email: { perDay: email.results.map((r) => ({ day: Number(r.day) * DAY, kind: r.kind, provider: r.provider, ok: Number(r.ok), failed: Number(r.failed) })), failures: emailFails.results },
+    support: { byKind: support.results, medianFirstReplyMs: median, solved: Number(ratings.results[0]?.yes ?? 0), notSolved: Number(ratings.results[0]?.no ?? 0) },
+    usage: {
+      devices: reports.length,
+      avgPages: reports.length ? Math.round(pages / reports.length) : 0,
+      avgBlocks: reports.length ? Math.round(blocks / reports.length) : 0,
+      features,
+      packs,
+      languages: langs,
+      errors,
+    },
+  });
+});
+
+interface UsageReport {
+  platform?: string;
+  version?: string;
+  pages?: number;
+  blocks?: number;
+  attachments?: number;
+  attachmentBytes?: number;
+  features?: Record<string, boolean>;
+  packs?: string[];
+  language?: string;
+  theme?: string;
+  errors?: number;
+}
+
+/** Bytes kept per account and per workspace on the sync service, and profile pictures here. */
+admin.get("/insights/storage", async (c) => {
+  await need(c, "stats");
+  let sync: { total: number; objects: number; users: Record<string, number>; workspaces: Record<string, number>; complete: boolean } | null = null;
+  const base = c.env.SYNC_WEBHOOK_URL?.replace(/\/internal\/events$/, "");
+  if (base && c.env.SYNC_WEBHOOK_SECRET) {
+    const ts = Math.floor(Date.now() / 1000);
+    try {
+      const r = await fetch(`${base}/internal/storage?ts=${ts}`, { headers: { "x-worlds-signature": `sha256=${await hmacSha256Hex(c.env.SYNC_WEBHOOK_SECRET, `storage:${ts}`)}` } });
+      if (r.ok) sync = await r.json();
+    } catch {
+      // Shown as unavailable.
+    }
+  }
+  const pictures: Record<string, number> = {};
+  if (c.env.PROFILE_FILES) {
+    let cursor: string | undefined;
+    let count = 0;
+    do {
+      const list = await c.env.PROFILE_FILES.list({ prefix: "p/", cursor, limit: 1000 });
+      for (const o of list.objects) {
+        const id = o.key.split("/")[1];
+        if (id) pictures[id] = (pictures[id] ?? 0) + o.size;
+        count++;
+      }
+      cursor = list.truncated ? list.cursor : undefined;
+    } while (cursor && count < 20_000);
+  }
+  const perUser: Record<string, { web: number; pictures: number }> = {};
+  for (const [id, b] of Object.entries(sync?.users ?? {})) perUser[id] = { web: b, pictures: 0 };
+  for (const [id, b] of Object.entries(pictures)) perUser[id] = { web: perUser[id]?.web ?? 0, pictures: b };
+  const top = Object.entries(perUser)
+    .map(([id, v]) => ({ id, ...v, total: v.web + v.pictures }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 25);
+  const names = top.length
+    ? (
+        await c.env.DB.prepare(`SELECT id, display_name, username FROM users WHERE id IN (${top.map((_, i) => `?${i + 1}`).join(", ")})`)
+          .bind(...top.map((x) => x.id))
+          .all<{ id: string; display_name: string; username: string }>()
+      ).results
+    : [];
+  const wsTop = Object.entries(sync?.workspaces ?? {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 15);
+  const wsNames = wsTop.length
+    ? (
+        await c.env.DB.prepare(`SELECT id, name FROM workspaces WHERE id IN (${wsTop.map((_, i) => `?${i + 1}`).join(", ")})`)
+          .bind(...wsTop.map(([id]) => id))
+          .all<{ id: string; name: string }>()
+      ).results
+    : [];
+  return c.json({
+    sync: sync ? { total: sync.total, objects: sync.objects, complete: sync.complete } : null,
+    pictures: Object.values(pictures).reduce((a, b) => a + b, 0),
+    accounts: top.map((x) => ({ ...x, name: names.find((n) => n.id === x.id)?.display_name ?? null, username: names.find((n) => n.id === x.id)?.username ?? null })),
+    workspaces: wsTop.map(([id, bytes]) => ({ id, bytes, name: wsNames.find((w) => w.id === id)?.name ?? null })),
+  });
+});
+
+async function cached<T>(c: AdminCtx, key: string, maxAgeMs: number, load: () => Promise<T>): Promise<T> {
+  const row = await c.env.DB.prepare("SELECT value, at FROM stats_cache WHERE key = ?1").bind(key).first<{ value: string; at: number }>();
+  if (row && now() - row.at < maxAgeMs && c.req.query("fresh") !== "1") return JSON.parse(row.value) as T;
+  const value = await load();
+  await c.env.DB.prepare("INSERT OR REPLACE INTO stats_cache (key, value, at) VALUES (?1, ?2, ?3)").bind(key, JSON.stringify(value), now()).run();
+  return value;
+}
+
+/** Downloads of every release asset, from GitHub's public API (kept an hour). */
+admin.get("/insights/downloads", async (c) => {
+  await need(c, "stats");
+  const releases = await cached(c, "github-releases", 3_600_000, async () => {
+    const r = await fetch("https://api.github.com/repos/justpainful/Worlds/releases?per_page=30", { headers: { "user-agent": "worlds-dashboard", accept: "application/vnd.github+json" } });
+    if (!r.ok) throw new ApiError(502, "github_unavailable", `GitHub answered ${r.status}`);
+    const list = (await r.json()) as { tag_name: string; published_at: string; assets: { name: string; download_count: number; size: number }[] }[];
+    return list.map((x) => ({ tag: x.tag_name, publishedAt: x.published_at, assets: x.assets.map((a) => ({ name: a.name, downloads: a.download_count, size: a.size })) }));
+  });
+  return c.json(releases);
+});
+
+/**
+ * Cloudflare usage against the free plan, and visits per site, from the
+ * GraphQL Analytics API. Needs CF_API_TOKEN (Account Analytics: Read, Zone
+ * Analytics: Read) and CF_ACCOUNTS / CF_ZONE as settings; says so when missing.
+ */
+admin.get("/insights/cloudflare", async (c) => {
+  await need(c, "stats");
+  const token = c.env.CF_API_TOKEN;
+  const accounts = (c.env.CF_ACCOUNTS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  if (!token || !accounts.length) return c.json({ configured: false });
+  const data = await cached(c, "cloudflare-usage", 3_600_000, async () => {
+    const since = new Date(Date.now() - 86_400_000).toISOString();
+    const until = new Date().toISOString();
+    const day = since.slice(0, 10);
+    const gql = async (query: string, variables: Record<string, unknown>) => {
+      const r = await fetch("https://api.cloudflare.com/client/v4/graphql", {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({ query, variables }),
+      });
+      const j = (await r.json()) as { data?: unknown; errors?: { message: string }[] };
+      if (j.errors?.length) throw new Error(j.errors.map((e) => e.message).join("; "));
+      return j.data as Record<string, unknown>;
+    };
+    const out: Record<string, unknown> = { since, until, accounts: [] as unknown[] };
+    for (const acc of accounts) {
+      try {
+        const d = await gql(
+          `query($a: String!, $s: Time!, $u: Time!, $day: Date!) { viewer { accounts(filter: { accountTag: $a }) {
+            workers: workersInvocationsAdaptive(limit: 100, filter: { datetime_geq: $s, datetime_leq: $u }) { sum { requests errors } dimensions { scriptName } }
+            d1: d1AnalyticsAdaptiveGroups(limit: 100, filter: { date_geq: $day }) { sum { rowsRead rowsWritten } }
+            r2: r2StorageAdaptiveGroups(limit: 100, filter: { datetime_geq: $s, datetime_leq: $u }) { max { payloadSize objectCount } dimensions { bucketName } }
+            dos: durableObjectsInvocationsAdaptiveGroups(limit: 100, filter: { datetime_geq: $s, datetime_leq: $u }) { sum { requests } }
+          } } }`,
+          { a: acc, s: since, u: until, day },
+        );
+        (out.accounts as unknown[]).push({ id: acc, data: (d.viewer as { accounts: unknown[] }).accounts[0] ?? null });
+      } catch (e) {
+        (out.accounts as unknown[]).push({ id: acc, error: String(e).slice(0, 300) });
+      }
+    }
+    if (c.env.CF_ZONE) {
+      try {
+        const d = await gql(
+          `query($z: String!, $s: Time!, $u: Time!) { viewer { zones(filter: { zoneTag: $z }) {
+            hosts: httpRequestsAdaptiveGroups(limit: 50, filter: { datetime_geq: $s, datetime_leq: $u, requestSource: "eyeball" }, orderBy: [count_DESC]) { count dimensions { clientRequestHTTPHost } }
+            paths: httpRequestsAdaptiveGroups(limit: 30, filter: { datetime_geq: $s, datetime_leq: $u, requestSource: "eyeball", edgeResponseContentTypeName: "html" }, orderBy: [count_DESC]) { count dimensions { clientRequestHTTPHost clientRequestPath } }
+          } } }`,
+          { z: c.env.CF_ZONE, s: since, u: until },
+        );
+        out.zone = (d.viewer as { zones: unknown[] }).zones[0] ?? null;
+      } catch (e) {
+        out.zoneError = String(e).slice(0, 300);
+      }
+    }
+    return out;
+  });
+  // The free plan, per day unless said otherwise.
+  return c.json({
+    configured: true,
+    limits: { workerRequests: 100_000, d1RowsRead: 5_000_000, d1RowsWritten: 100_000, r2Bytes: 10 * 1024 ** 3, doRequests: 100_000 },
+    ...data,
+  });
 });

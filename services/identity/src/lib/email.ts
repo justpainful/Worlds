@@ -14,10 +14,13 @@ export interface EmailMessage {
 /** Sends sign-in emails. Swap the implementation without touching the auth flow. */
 export interface EmailSender {
   send(msg: EmailMessage): Promise<void>;
+  /** Which service delivered the last message (cloudflare, edge, resend, brevo, dev). */
+  provider?: string | null;
 }
 
 /** Development: logs the message (and keeps the last few for tests). */
 export class DevEmailSender implements EmailSender {
+  provider = "dev";
   static outbox: EmailMessage[] = [];
   async send(msg: EmailMessage): Promise<void> {
     DevEmailSender.outbox.push(msg);
@@ -28,6 +31,7 @@ export class DevEmailSender implements EmailSender {
 
 /** Posts { to, subject, text, html } to any HTTP endpoint that delivers mail. */
 export class WebhookEmailSender implements EmailSender {
+  provider = "edge";
   constructor(
     private url: string,
     private secret?: string,
@@ -54,6 +58,7 @@ export function parseFrom(from: string): { name?: string; email: string } {
  * key, and the from address must be on a domain onboarded to Email Sending.
  */
 export class CloudflareEmailSender implements EmailSender {
+  provider = "cloudflare";
   constructor(
     private binding: SendEmailBinding,
     private from: string,
@@ -66,6 +71,7 @@ export class CloudflareEmailSender implements EmailSender {
 /** Sends through Resend's HTTP API. Without a verified domain Resend only
  * delivers to the account owner's own address (from onboarding@resend.dev). */
 export class ResendEmailSender implements EmailSender {
+  provider = "resend";
   constructor(
     private apiKey: string,
     private from: string,
@@ -90,6 +96,7 @@ export class ResendEmailSender implements EmailSender {
 /** Sends through Brevo's HTTP API (free up to 300 emails a day). The from
  * address must be on a domain authenticated in Brevo. */
 export class BrevoEmailSender implements EmailSender {
+  provider = "brevo";
   constructor(
     private apiKey: string,
     private from: string,
@@ -116,12 +123,14 @@ export class BrevoEmailSender implements EmailSender {
  * sign-in: the first that accepts the message wins. Fails only when all fail.
  */
 export class FallbackEmailSender implements EmailSender {
+  provider: string | null = null;
   constructor(private senders: EmailSender[]) {}
   async send(msg: EmailMessage): Promise<void> {
     const errors: string[] = [];
     for (const s of this.senders) {
       try {
         await s.send(msg);
+        this.provider = s.provider ?? null;
         return;
       } catch (e) {
         errors.push(e instanceof Error ? `${(e as { code?: string }).code ?? ""} ${e.message}`.trim() : String(e));
