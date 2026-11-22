@@ -20,7 +20,9 @@ import { ApiError, bad, body, conflict, forbidden, normalizeEmail, notFound, opt
 import { checkUsername, usernameTaken } from "../lib/usernames";
 import { foldName } from "../lib/names";
 import { reportersOf, setTeamHidden, targetKey, type Target } from "../lib/content";
-import { SETTING_KEYS, settings, type SettingKey } from "../lib/control";
+import { SETTING_KEYS, settings, type SettingKey, type Settings } from "../lib/control";
+import { DEFAULT_LIMITS, MAX_LIMITS, limitsFor } from "../lib/limits";
+import { currentDownloads, releases } from "./downloads";
 import { dayOf } from "../lib/activity";
 import { hmacSha256Hex } from "../lib/crypto";
 import { sha256Hex } from "../lib/crypto";
@@ -1625,7 +1627,8 @@ admin.get("/control", async (c) => {
 admin.put("/control/settings/:key", async (c) => {
   await need(c, "control");
   const key = c.req.param("key") as SettingKey;
-  if (!SETTING_KEYS.includes(key)) throw bad("invalid_setting");
+  // The download links have their own routes below, which check the release and keep who pulled what.
+  if (!SETTING_KEYS.includes(key) || key === "downloads") throw bad("invalid_setting");
   const b = await body(c.req);
   const value = b.value as Record<string, unknown>;
   if (!value || typeof value !== "object" || Array.isArray(value)) throw bad("invalid_value");
@@ -2057,6 +2060,8 @@ export const PROPOSALS: Record<string, { method: string; path: (p: Record<string
   ticket: { method: "PATCH", path: (p) => `/admin/support/${Number(p.number)}`, body: (p) => ({ status: p.status, priority: p.priority }) },
   suggestion: { method: "PATCH", path: (p) => `/admin/suggestions/${encodeURIComponent(String(p.id))}`, body: (p) => ({ status: p.status, public: p.public, shippedIn: p.shippedIn }) },
   message: { method: "POST", path: (p) => `/admin/users/${encodeURIComponent(String(p.userId))}/messages`, body: (p) => ({ subject: p.subject, body: p.body, email: p.email === true }) },
+  limits: { method: "PUT", path: (p) => `/admin/users/${encodeURIComponent(String(p.userId))}/limits`, body: (p) => ({ webCopyMb: p.webCopyMb ?? null, fileMb: p.fileMb ?? null, note: p.note }) },
+  pull: { method: "POST", path: () => "/admin/downloads/pull", body: (p) => ({ name: p.name, reason: p.reason }) },
 };
 
 admin.post("/proposals", async (c) => {
@@ -2155,5 +2160,99 @@ admin.delete("/keys/:id", async (c) => {
   const r = await c.env.DB.prepare("UPDATE admin_keys SET revoked_at = ?1 WHERE id = ?2 AND revoked_at IS NULL").bind(now(), c.req.param("id")).run();
   if (!r.meta.changes) throw notFound();
   await logStmt(c, "admin.key.revoked", c.get("caller").userId, { key: c.req.param("id") }).run();
+  return c.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// Limits for one account, and the download links (docs/admin/PLAN.md, section 7)
+// ---------------------------------------------------------------------------
+
+admin.get("/users/:id/limits", async (c) => {
+  await need(c, "users.read");
+  return c.json({ ...(await limitsFor(c.env.DB, c.req.param("id"))), defaults: DEFAULT_LIMITS, max: MAX_LIMITS });
+});
+
+/** Raise or lower one account's limits; null keeps the default for that one. */
+admin.put("/users/:id/limits", async (c) => {
+  await need(c, "users.edit");
+  const id = c.req.param("id");
+  if (!(await userById(c.env.DB, id))) throw notFound("user_not_found", "No such account.");
+  const b = await body(c.req);
+  const mb = (v: unknown, k: keyof typeof MAX_LIMITS): number | null => {
+    if (v === null || v === undefined || v === "") return null;
+    const n = Number(v);
+    if (!Number.isInteger(n) || n < 1 || n > MAX_LIMITS[k]) throw bad("invalid_limit", `${k} must be a whole number from 1 to ${MAX_LIMITS[k]}.`);
+    return n;
+  };
+  const webCopyMb = mb(b.webCopyMb, "webCopyMb");
+  const fileMb = mb(b.fileMb, "fileMb");
+  const note = optStr(b.note, "note", 300) ?? null;
+  const db = c.env.DB;
+  await db.batch([
+    webCopyMb === null && fileMb === null
+      ? db.prepare("DELETE FROM account_limits WHERE user_id = ?1").bind(id)
+      : db
+          .prepare(
+            "INSERT INTO account_limits (user_id, web_copy_mb, file_mb, note, updated_by, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6) ON CONFLICT(user_id) DO UPDATE SET web_copy_mb = ?2, file_mb = ?3, note = ?4, updated_by = ?5, updated_at = ?6",
+          )
+          .bind(id, webCopyMb, fileMb, note, c.get("caller").userId, now()),
+    logStmt(c, "admin.user.limits", id, { webCopyMb, fileMb }),
+  ]);
+  return c.json({ ...(await limitsFor(db, id)), defaults: DEFAULT_LIMITS, max: MAX_LIMITS });
+});
+
+/** The releases, the file each platform gets now, the pinned release and the pulled files. */
+admin.get("/downloads", async (c) => {
+  await need(c, "control.read");
+  const s = await settings(c.env.DB);
+  const { tag, picks, releases: list } = await currentDownloads(c.env, c.req.query("fresh") === "1");
+  return c.json({
+    current: tag,
+    pinnedTag: s.downloads.pinnedTag,
+    pulled: s.downloads.pulled,
+    picks: picks.map(({ url: _url, ...p }) => p),
+    releases: list.filter((r) => !r.draft).map((r) => ({ tag: r.tag, publishedAt: r.publishedAt, prerelease: r.prerelease, assets: r.assets.map(({ url: _u, ...a }) => a) })),
+  });
+});
+
+async function saveDownloads(c: AdminCtx, value: Settings["downloads"], action: string, meta: Record<string, unknown>) {
+  const db = c.env.DB;
+  await db.batch([
+    db
+      .prepare("INSERT INTO service_settings (key, value, updated_by, updated_at) VALUES ('downloads', ?1, ?2, ?3) ON CONFLICT(key) DO UPDATE SET value = ?1, updated_by = ?2, updated_at = ?3")
+      .bind(JSON.stringify(value), c.get("caller").userId, now()),
+    logStmt(c, action, c.get("caller").userId, meta),
+  ]);
+}
+
+/** Everyone gets this release instead of the newest one; null goes back to the newest. */
+admin.post("/downloads/pin", async (c) => {
+  await need(c, "control");
+  const b = await body(c.req);
+  const tag = b.tag === null || b.tag === undefined || b.tag === "" ? null : str(b.tag, "tag", 60);
+  if (tag && !(await releases(c.env)).some((r) => r.tag === tag && !r.draft && !r.prerelease)) throw bad("unknown_release", "There is no published release with that tag.");
+  const s = await settings(c.env.DB);
+  await saveDownloads(c, { ...s.downloads, pinnedTag: tag }, "admin.downloads.pin", { tag });
+  return c.json({ ok: true });
+});
+
+/** Take one file off the download links; its platform gets the same file from the release before. */
+admin.post("/downloads/pull", async (c) => {
+  await need(c, "control");
+  const b = await body(c.req);
+  const name = str(b.name, "name", 200);
+  const reason = str(b.reason, "reason", 300);
+  if (!(await releases(c.env)).some((r) => r.assets.some((a) => a.name === name))) throw bad("unknown_file", "No release has a file with that name.");
+  const s = await settings(c.env.DB);
+  const pulled = [...s.downloads.pulled.filter((p) => p.name !== name), { name, reason, at: now(), by: c.get("caller").userId }].slice(-100);
+  await saveDownloads(c, { ...s.downloads, pulled }, "admin.downloads.pull", { name, reason });
+  return c.json({ ok: true });
+});
+
+admin.post("/downloads/restore", async (c) => {
+  await need(c, "control");
+  const name = str((await body(c.req)).name, "name", 200);
+  const s = await settings(c.env.DB);
+  await saveDownloads(c, { ...s.downloads, pulled: s.downloads.pulled.filter((p) => p.name !== name) }, "admin.downloads.restore", { name });
   return c.json({ ok: true });
 });

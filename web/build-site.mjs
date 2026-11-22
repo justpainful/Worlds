@@ -33,6 +33,7 @@ export const LINKS = {
   demo: "https://demo.enterworlds.space",
   github: "https://github.com/justpainful/Worlds",
   releases: "https://github.com/justpainful/Worlds/releases/latest",
+  dl: "https://login.enterworlds.space/downloads",
   issues: "https://github.com/justpainful/Worlds/issues",
 };
 

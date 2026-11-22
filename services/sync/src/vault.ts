@@ -23,10 +23,22 @@ const key = (userId: string) => `vault/${userId}/workspace.json`;
 const fileKey = (userId: string, id: string) => `vault/${userId}/files/${id}`;
 
 async function readLimited(request: Request, limit: number): Promise<ArrayBuffer | Response> {
-  if (Number(request.headers.get("content-length") ?? 0) > limit) return problem(413, "too large");
+  const tooLarge = () => problem(413, `too large: the limit is ${Math.round(limit / 1048576)} MB`);
+  if (Number(request.headers.get("content-length") ?? 0) > limit) return tooLarge();
   const body = await request.arrayBuffer();
-  if (body.byteLength > limit) return problem(413, "too large");
+  if (body.byteLength > limit) return tooLarge();
   return body;
+}
+
+/** The defaults, or what the team set for this person in the dashboard. */
+async function limitsOf(env: Env, userId: string): Promise<{ snapshot: number; file: number }> {
+  try {
+    const l = await env.IDENTITY.limits?.({ userId });
+    if (l && l.webCopyBytes > 0 && l.fileBytes > 0) return { snapshot: l.webCopyBytes, file: l.fileBytes };
+  } catch {
+    // The account service is busy: the defaults hold.
+  }
+  return { snapshot: MAX_SNAPSHOT, file: MAX_FILE };
 }
 
 export async function vault(request: Request, env: Env, userId: string, parts: string[]): Promise<Response> {
@@ -41,7 +53,7 @@ export async function vault(request: Request, env: Env, userId: string, parts: s
     if (method === "PUT") {
       const expected = request.headers.get("if-match");
       if (!expected) return problem(428, "If-Match is required");
-      const body = await readLimited(request, MAX_SNAPSHOT);
+      const body = await readLimited(request, (await limitsOf(env, userId)).snapshot);
       if (body instanceof Response) return body;
       let parsed: unknown;
       try {
@@ -78,7 +90,7 @@ export async function vault(request: Request, env: Env, userId: string, parts: s
       });
     }
     if (method === "PUT") {
-      const body = await readLimited(request, MAX_FILE);
+      const body = await readLimited(request, (await limitsOf(env, userId)).file);
       if (body instanceof Response) return body;
       const type = request.headers.get("content-type") ?? "application/octet-stream";
       await env.BLOBS.put(k, body, { httpMetadata: { contentType: type.slice(0, 100) } });

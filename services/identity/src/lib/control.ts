@@ -13,6 +13,8 @@ export interface Settings {
   minVersion: Record<string, { version: string; dismissible: boolean }>;
   publishing: { paused: boolean };
   incident: { on: boolean; title: { ar: string; en: string }; body: { ar: string; en: string }; startedAt: number | null; updates: { at: number; text: { ar: string; en: string } }[] };
+  /** The download links (routes/downloads.ts): a release everyone gets instead of the newest, and files taken off. */
+  downloads: { pinnedTag: string | null; pulled: { name: string; reason: string; at: number; by: string }[] };
 }
 
 export const DEFAULTS: Settings = {
@@ -21,6 +23,7 @@ export const DEFAULTS: Settings = {
   minVersion: {},
   publishing: { paused: false },
   incident: { on: false, title: { ar: "", en: "" }, body: { ar: "", en: "" }, startedAt: null, updates: [] },
+  downloads: { pinnedTag: null, pulled: [] },
 };
 
 export type SettingKey = keyof Settings;
