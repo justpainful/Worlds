@@ -95,6 +95,16 @@ const TOOLS = {
     input: { status: { type: "string" } },
     run: (a) => api("GET", `/admin/suggestions${q({ status: a.status })}`),
   },
+  worlds_downloads: {
+    description: "The download links on enterworlds.space: the release offered, the file each platform gets, pulled files, and every release with its download counts.",
+    input: {},
+    run: () => api("GET", "/admin/downloads"),
+  },
+  worlds_account_limits: {
+    description: "One account's size limits: the web copy of the workspace and each file, in MB, with the defaults.",
+    input: { userId: { type: "string", required: true } },
+    run: (a) => api("GET", `/admin/users/${encodeURIComponent(a.userId)}/limits`),
+  },
   worlds_proposals: {
     description: "Changes already proposed and whether a person approved them. status: pending, approved, rejected, all.",
     input: { status: { type: "string" } },
@@ -140,6 +150,16 @@ const TOOLS = {
     description: "Propose moving a suggestion: status (planned, working, shipped, declined), public (on the board), shippedIn (a version).",
     input: { id: { type: "string", required: true }, status: { type: "string" }, public: { type: "boolean" }, shippedIn: { type: "string" }, summary: { type: "string", required: true } },
     run: (a) => propose("suggestion", a.summary, { id: a.id, status: a.status, public: a.public, shippedIn: a.shippedIn }),
+  },
+  propose_limits: {
+    description: "Propose new size limits for one account, in MB (webCopyMb up to 95, fileMb up to 95). Leave both out to go back to the defaults.",
+    input: { userId: { type: "string", required: true }, webCopyMb: { type: "number" }, fileMb: { type: "number" }, note: { type: "string" }, summary: { type: "string", required: true } },
+    run: (a) => propose("limits", a.summary, { userId: a.userId, webCopyMb: a.webCopyMb, fileMb: a.fileMb, note: a.note }),
+  },
+  propose_pull_download: {
+    description: "Propose taking one release file off the download links (its platform then gets the file from the release before), with the reason.",
+    input: { name: { type: "string", required: true }, reason: { type: "string", required: true }, summary: { type: "string", required: true } },
+    run: (a) => propose("pull", a.summary, { name: a.name, reason: a.reason }),
   },
   propose_message: {
     description: "Propose a message from the Worlds team to one person, in their app (and by email from support@ with email: true).",

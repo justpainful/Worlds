@@ -19,6 +19,8 @@ export interface IdentityRpc {
   packMembers(q: { workspaceId: string; packId: string; roleId: string }): Promise<{ userIds: string[] }>;
   /** Maintenance in read-only mode stops changes to shared pages (identity routes/config.ts). */
   serviceState?(): Promise<{ readOnly: boolean }>;
+  /** This person's limits for the web copy and each file, in bytes (the team can change them). */
+  limits?(args: { userId: string }): Promise<{ webCopyBytes: number; fileBytes: number }>;
 }
 
 export interface Env {

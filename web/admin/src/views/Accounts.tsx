@@ -307,6 +307,8 @@ function Account({ id, onChanged }: { id: string; onChanged: () => void }) {
               <Row icon="pencil" label={t("changed")} value={fmtDate(u.updatedAt, true)} />
             </Section>
 
+            <AccountLimits id={u.id} />
+
             <Section title={t("devices")}>
               {u.devices.length ? (
                 u.devices.map((d) => (
@@ -795,5 +797,100 @@ function SuspendDialog({ u, ban, onClose, onDone }: { u: UserDetail; ban: boolea
       <ReasonField value={reason} onChange={setReason} />
       <ErrorLine text={error} />
     </Dialog>
+  );
+}
+
+interface AccountLimitsData {
+  webCopyMb: number;
+  fileMb: number;
+  custom: boolean;
+  note: string | null;
+  updatedAt: number | null;
+  defaults: { webCopyMb: number; fileMb: number };
+  max: { webCopyMb: number; fileMb: number };
+}
+
+/** The size of this person's web copy and of each file, raised or lowered by the team. */
+function AccountLimits({ id }: { id: string }) {
+  const { can, guard } = useAdmin();
+  const { data } = useLoad(() => call<AccountLimitsData>("GET", `/admin/users/${encodeURIComponent(id)}/limits`), [id]);
+  const [form, setForm] = useState<{ webCopyMb: string; fileMb: string; note: string } | null>(null);
+  const [shown, setShown] = useState<AccountLimitsData | null>(null);
+  const l = shown ?? data;
+  if (!l) return null;
+  const write = can("users.edit");
+  const save = async (reset: boolean) => {
+    const num = (v: string) => (v.trim() ? Number(v) : null);
+    try {
+      const r = await guard(() =>
+        call<AccountLimitsData>("PUT", `/admin/users/${encodeURIComponent(id)}/limits`, reset ? { webCopyMb: null, fileMb: null } : { webCopyMb: num(form!.webCopyMb), fileMb: num(form!.fileMb), note: form!.note.trim() || null }),
+      );
+      setShown(r);
+      setForm(null);
+      toast(t("saved"));
+    } catch (e) {
+      if ((e as ApiError).code !== "cancelled") toast(errorText(e), "error");
+    }
+  };
+  return (
+    <Section
+      title={t("accountLimits")}
+      note={t("accountLimitsLead", { web: l.defaults.webCopyMb, file: l.defaults.fileMb })}
+      trailing={
+        write &&
+        !form && (
+          <button type="button" className="link-btn" onClick={() => setForm({ webCopyMb: String(l.webCopyMb), fileMb: String(l.fileMb), note: l.note ?? "" })}>
+            {t("changeLimits")}
+          </button>
+        )
+      }
+    >
+      {form ? (
+        <>
+          <label className="row version-row">
+            <span className="row-main">
+              <span className="row-label">{t("webCopyLimit")}</span>
+            </span>
+            <input className="input mono" dir="ltr" inputMode="numeric" value={form.webCopyMb} placeholder={String(l.defaults.webCopyMb)} onChange={(e) => setForm({ ...form, webCopyMb: e.target.value.replace(/\D/g, "") })} />
+            <span className="muted">MB</span>
+          </label>
+          <label className="row version-row">
+            <span className="row-main">
+              <span className="row-label">{t("fileLimit")}</span>
+            </span>
+            <input className="input mono" dir="ltr" inputMode="numeric" value={form.fileMb} placeholder={String(l.defaults.fileMb)} onChange={(e) => setForm({ ...form, fileMb: e.target.value.replace(/\D/g, "") })} />
+            <span className="muted">MB</span>
+          </label>
+          <div className="row">
+            <input className="input grow" dir="auto" maxLength={300} placeholder={t("limitNote")} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
+          </div>
+          <div className="row row-end">
+            <Button onClick={() => setForm(null)}>{t("cancel")}</Button>
+            <Button variant="accent" icon="checkmark" onClick={() => save(false)}>
+              {t("save")}
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <Row icon="gauge.with.dots.needle.33percent" label={t("webCopyLimit")} value={<bdi dir="ltr">{l.webCopyMb} MB</bdi>} />
+          <Row icon="text.document" label={t("fileLimit")} value={<bdi dir="ltr">{l.fileMb} MB</bdi>} />
+          {l.custom && (
+            <Row
+              icon="info.circle"
+              label={t("customLimits")}
+              sub={l.note ?? undefined}
+              trailing={
+                write && (
+                  <button type="button" className="link-btn" onClick={() => save(true)}>
+                    {t("backToDefaults")}
+                  </button>
+                )
+              }
+            />
+          )}
+        </>
+      )}
+    </Section>
   );
 }

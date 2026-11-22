@@ -31,7 +31,7 @@ interface Key {
 function details(p: Proposal): string {
   const x = p.payload;
   const parts: string[] = [];
-  for (const k of ["number", "userId", "username", "pageId", "id", "days", "status", "priority", "subject", "reason"]) if (x[k] !== undefined && x[k] !== null && x[k] !== "") parts.push(`${k}: ${String(x[k])}`);
+  for (const k of ["number", "userId", "username", "pageId", "id", "name", "days", "webCopyMb", "fileMb", "status", "priority", "subject", "reason", "note"]) if (x[k] !== undefined && x[k] !== null && x[k] !== "") parts.push(`${k}: ${String(x[k])}`);
   if (x.ban) parts.push("ban");
   return parts.join(" · ");
 }

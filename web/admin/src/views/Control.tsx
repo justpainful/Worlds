@@ -78,6 +78,7 @@ export function Control() {
           <MinVersions s={s} write={write} save={save} />
           <Announcements data={data} write={write} act={act} />
           <Flags data={data} write={write} act={act} />
+          <Downloads write={write} />
           <Blocks data={data} write={write} act={act} />
         </div>
       </div>
@@ -469,5 +470,121 @@ function Blocks({ data, write, act }: { data: ControlData; write: boolean; act: 
         )}
       </Section>
     </>
+  );
+}
+
+interface DownloadsData {
+  current: string | null;
+  pinnedTag: string | null;
+  pulled: { name: string; reason: string; at: number; by: string }[];
+  picks: { platform: string; label: string; tag: string; name: string; size: number; fallback: boolean }[];
+  releases: { tag: string; publishedAt: string; prerelease: boolean; assets: { name: string; size: number; downloads: number }[] }[];
+}
+
+const mb = (n: number) => `${(n / 1048576).toFixed(1)} MB`;
+
+/** The download links on enterworlds.space: pull a file with a problem, or pin an older release for everyone. */
+function Downloads({ write }: { write: boolean }) {
+  const { guard } = useAdmin();
+  const { data, error, reload } = useLoad(() => call<DownloadsData>("GET", "/admin/downloads"), []);
+  const [pulling, setPulling] = useState<{ name: string; reason: string } | null>(null);
+  const act = async (fn: () => Promise<unknown>) => {
+    try {
+      await guard(fn);
+      toast(t("saved"));
+      reload();
+    } catch (e) {
+      if ((e as ApiError).code !== "cancelled") toast(errorText(e), "error");
+    }
+  };
+  if (!data) return <Section title={t("downloadsTitle")}>{error ? <Failed error={error} retry={reload} /> : <Loading />}</Section>;
+  const published = data.releases.filter((r) => !r.prerelease);
+  const pulled = new Set(data.pulled.map((p) => p.name));
+  return (
+    <Section title={t("downloadsTitle")} note={t("downloadsLead")}>
+      <div className="row version-row">
+        <span className="row-main">
+          <span className="row-label">{t("releaseShown")}</span>
+          <span className="row-sub">{data.pinnedTag ? t("pinnedNote") : t("newestNote")}</span>
+        </span>
+        <select
+          className="input mono"
+          dir="ltr"
+          disabled={!write}
+          aria-label={t("releaseShown")}
+          value={data.pinnedTag ?? ""}
+          onChange={(e) => act(() => call("POST", "/admin/downloads/pin", { tag: e.target.value || null }))}
+        >
+          <option value="">{t("newestRelease")}</option>
+          {published.map((r) => (
+            <option key={r.tag} value={r.tag}>
+              {r.tag}
+            </option>
+          ))}
+        </select>
+      </div>
+      {data.picks.map((p) => (
+        <Row
+          key={p.platform}
+          icon={/iphone|ipad|android/.test(p.platform) ? "iphone" : "desktopcomputer"}
+          label={
+            <span className="label-chips">
+              {p.label}
+              {p.fallback && <Chip>{p.tag}</Chip>}
+            </span>
+          }
+          sub={
+            <bdi dir="ltr">
+              {p.name} · {mb(p.size)}
+            </bdi>
+          }
+          trailing={
+            write &&
+            !pulled.has(p.name) && (
+              <button type="button" className="link-btn" onClick={() => setPulling({ name: p.name, reason: "" })}>
+                {t("pullFile")}
+              </button>
+            )
+          }
+        />
+      ))}
+      {pulling && (
+        <div className="row">
+          <span className="row-main">
+            <span className="row-label">
+              <bdi dir="ltr">{pulling.name}</bdi>
+            </span>
+            <input className="input grow" dir="auto" autoFocus maxLength={300} placeholder={t("pullReason")} value={pulling.reason} onChange={(e) => setPulling({ ...pulling, reason: e.target.value })} />
+          </span>
+          <Button onClick={() => setPulling(null)}>{t("cancel")}</Button>
+          <Button
+            variant="accent"
+            icon="pause.circle"
+            disabled={!pulling.reason.trim()}
+            onClick={async () => {
+              await act(() => call("POST", "/admin/downloads/pull", { name: pulling.name, reason: pulling.reason.trim() }));
+              setPulling(null);
+            }}
+          >
+            {t("pullFile")}
+          </Button>
+        </div>
+      )}
+      {data.pulled.map((p) => (
+        <Row
+          key={p.name}
+          icon="pause.circle"
+          label={<bdi dir="ltr">{p.name}</bdi>}
+          sub={`${t("pulledOn", { date: fmtDate(p.at) })} · ${p.reason}`}
+          trailing={
+            write && (
+              <button type="button" className="link-btn" onClick={() => act(() => call("POST", "/admin/downloads/restore", { name: p.name }))}>
+                {t("restoreFile")}
+              </button>
+            )
+          }
+        />
+      ))}
+    </Section>
   );
 }

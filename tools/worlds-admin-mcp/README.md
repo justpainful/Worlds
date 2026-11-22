@@ -13,11 +13,11 @@ admin.enterworlds.space (Claude page), with their own account and second check.
 Reads: worlds_overview, worlds_insights, worlds_find_accounts, worlds_account,
 worlds_support_requests, worlds_support_request, worlds_security_log,
 worlds_public_content, worlds_suspicious_accounts, worlds_suggestions,
-worlds_proposals.
+worlds_downloads, worlds_account_limits, worlds_proposals.
 
 Proposals: propose_reply, propose_ticket_status, propose_note, propose_suspend,
 propose_lift_suspension, propose_hide_content, propose_show_content,
-propose_suggestion, propose_message.
+propose_suggestion, propose_message, propose_limits, propose_pull_download.
 
 A key can be revoked at any time from the same page. `WORLDS_IDENTITY_URL`
 points the server at another account service (a local one for testing).

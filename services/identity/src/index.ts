@@ -14,6 +14,8 @@ import { admin } from "./routes/admin";
 import { support, supportHousekeeping } from "./routes/support";
 import { community, mine } from "./routes/community";
 import { config } from "./routes/config";
+import { downloads } from "./routes/downloads";
+import { limitsFor, MB } from "./lib/limits";
 import { settings } from "./lib/control";
 import { auth } from "./routes/auth";
 import { me } from "./routes/me";
@@ -81,6 +83,7 @@ app.route("/admin", admin);
 app.route("/support", support);
 app.route("/community", community);
 app.route("/config", config);
+app.route("/downloads", downloads);
 app.route("/me", mine);
 app.route("/", pages);
 
@@ -133,6 +136,12 @@ export class IdentityRPC extends WorkerEntrypoint<Env> {
   async serviceState(): Promise<{ readOnly: boolean }> {
     const s = await settings(this.env.DB);
     return { readOnly: s.maintenance.on && s.maintenance.readOnly };
+  }
+
+  /** How big this person's web copy and each of its files may be, in bytes. */
+  async limits(args: { userId: string }): Promise<{ webCopyBytes: number; fileBytes: number }> {
+    const l = await limitsFor(this.env.DB, typeof args?.userId === "string" ? args.userId : "");
+    return { webCopyBytes: l.webCopyMb * MB, fileBytes: l.fileMb * MB };
   }
 
   async listDocs(args: { userId: string; workspaceId: string }): Promise<{ docId: string; level: AccessLevel }[]> {
