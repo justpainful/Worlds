@@ -1,3 +1,6 @@
+import { AUTO_UPDATES, checkForUpdate, installUpdate, updatesSupported, useAppUpdate } from "../account/appUpdate";
+import { useService } from "../account/service";
+import { APP_VERSION } from "../appVersion";
 import { drawnUrl } from "../ui/drawnMap";
 import { SYMBOLIC_AVAILABLE, symbolicUrl } from "../ui/symbolicMap";
 import { tr } from "../i18n/ui";
@@ -50,7 +53,7 @@ const SECTIONS: { id: string; label: string; ar?: string; tile: string; group: n
   { id: "integrations", label: "Integrations", tile: "integrations", group: 2, keywords: "connect" },
   { id: "discord", label: "Discord", tile: "discord", group: 2, keywords: "bot bridge host tunnel" },
   { id: "storage", label: "Storage", tile: "archive", group: 3, keywords: "data folder database backup sample demo workspace" },
-  { id: "advanced", label: "Advanced", tile: "settings", group: 3, keywords: "developer lab reset layout" },
+  { id: "advanced", label: "Advanced", tile: "settings", group: 3, keywords: "developer lab reset layout update updates version beta" },
 ];
 
 /** Sections that are about this computer (keys, Discord bot, startup, connected apps) do not apply to Worlds in the browser. */
@@ -732,10 +735,56 @@ function SampleWorkspaceSettings() {
   );
 }
 
+/** Updates for Worlds on Windows (account/appUpdate.ts). */
+function Updates() {
+  const auto = useStore((s) => s.settings[AUTO_UPDATES] !== false);
+  const set = useStore((s) => s.setSetting);
+  const { phase, update, checkedAt } = useAppUpdate();
+  const tester = useService((s) => !!s.config?.tester);
+  if (!updatesSupported()) return null;
+  const v = update?.version ?? "";
+  const status =
+    phase === "checking"
+      ? "Checking for updates"
+      : phase === "downloading"
+        ? `Downloading Worlds ${v}`
+        : phase === "ready"
+          ? `Worlds ${v} is ready to install`
+          : phase === "installing"
+            ? "Installing"
+            : phase === "failed"
+              ? "Could not check for updates. Try again later."
+              : update
+                ? `Worlds ${v} is available`
+                : checkedAt
+                  ? "Worlds is up to date"
+                  : "Not checked yet";
+  return (
+    <Group title="Updates" note={tester ? "You are a tester, so new versions reach you first on the beta channel." : "Every update is checked against the Worlds signature before it installs."}>
+      <Row label={`Worlds ${APP_VERSION}`} hint={status}>
+        {phase === "ready" ? (
+          <Button variant="tinted" onClick={() => void installUpdate()}>
+            Restart to Update
+          </Button>
+        ) : (
+          <Button variant="plain" loading={phase === "checking" || phase === "downloading"} disabled={phase === "installing"} onClick={() => void checkForUpdate(true)}>
+            Check Now
+          </Button>
+        )}
+      </Row>
+      <Row label="Download updates automatically" hint="In the background. Worlds asks before it restarts to install.">
+        <Toggle checked={auto} onChange={(v) => set(AUTO_UPDATES, v)} label="Download updates automatically" />
+      </Row>
+    </Group>
+  );
+}
+
 function Advanced() {
   const settings = useStore((s) => s.settings);
   const set = useStore((s) => s.setSetting);
   return (
+    <>
+    <Updates />
     <Group title="Advanced">
       <Row label="Developer tools" hint="Adds the Material Lab to the command palette for tuning glass.">
         <Toggle checked={!!settings["advanced.developer"]} onChange={(v) => set("advanced.developer", v)} label="Developer tools" />
@@ -754,6 +803,7 @@ function Advanced() {
         </Button>
       </Row>
     </Group>
+    </>
   );
 }
 

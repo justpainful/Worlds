@@ -1,3 +1,4 @@
+import { TERMS_VERSION, TermsCheck, TermsLinks } from "./terms";
 import { useEffect, useRef, useState } from "react";
 import { errorMessage } from "../lib/api";
 import { useStore } from "../state/store";
@@ -26,6 +27,8 @@ type Step =
 export function SignInFlow({ start = "choose", onDone, onCancel }: { start?: "choose" | "create" | "signin"; onDone: () => void; onCancel?: () => void }) {
   const view = useAccount((s) => s.view);
   const apply = useAccount((s) => s.apply);
+  // Creating an account needs the terms accepted on the form.
+  const [agree, setAgree] = useState(false);
   const [step, setStep] = useState<Step>(start === "create" ? { kind: "email", create: true } : start === "signin" ? { kind: "choose" } : { kind: "choose" });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -107,7 +110,7 @@ export function SignInFlow({ start = "choose", onDone, onCancel }: { start?: "ch
   if (step.kind === "code") {
     const verify = () =>
       act(async () => {
-        const v = await accountApi.emailVerify(step.challengeId, code.replace(/\s+/g, ""), step.create ? step.name : undefined);
+        const v = await accountApi.emailVerify(step.challengeId, code.replace(/\s+/g, ""), step.create ? step.name : undefined, step.create ? TERMS_VERSION : undefined);
         signedIn(v, !!v.created);
       });
     return (
@@ -152,7 +155,7 @@ export function SignInFlow({ start = "choose", onDone, onCancel }: { start?: "ch
   }
 
   if (step.kind === "email") {
-    const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) && (!step.create || name.trim().length > 0);
+    const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) && (!step.create || (name.trim().length > 0 && agree));
     const send = () =>
       act(async () => {
         const r = await accountApi.emailStart(email.trim());
@@ -189,6 +192,12 @@ export function SignInFlow({ start = "choose", onDone, onCancel }: { start?: "ch
             onKeyDown={(e) => e.key === "Enter" && valid && send()}
           />
         </div>
+        {step.create && (
+          <div className="acct-terms">
+            <TermsCheck checked={agree} onChange={setAgree} />
+            <TermsLinks />
+          </div>
+        )}
         {error && <p className="acct-error">{error}</p>}
         <div className="acct-actions">
           <Button variant="tinted" size="large" loading={busy} disabled={!valid} onClick={send}>

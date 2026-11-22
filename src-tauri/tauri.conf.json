@@ -62,8 +62,22 @@
         "silent": true
       },
       "nsis": {
-        "languages": ["English", "Arabic"],
+        "languages": [
+          "English",
+          "Arabic"
+        ],
         "displayLanguageSelector": false
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IERDMzZGNUNGMTA4Njk1QkUKUldTK2xZWVF6L1UyM0dqdWE5cVV1dVVVTUxHZ0NWWWJncmxENGM0ZU1PNFYrUUg2dW80dldvTzAK",
+      "endpoints": [
+        "https://login.enterworlds.space/updates/{{target}}/{{arch}}/{{current_version}}"
+      ],
+      "windows": {
+        "installMode": "passive"
       }
     }
   }

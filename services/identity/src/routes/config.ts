@@ -13,6 +13,7 @@ import { callerFromToken } from "../lib/auth";
 import { compareVersions, inPercent, settings } from "../lib/control";
 import { now } from "../lib/crypto";
 import { safeJson } from "./support";
+import { TERMS_PAGES, TERMS_VERSION } from "../lib/terms";
 
 const DOWNLOADS = "https://enterworlds.space/apps/";
 
@@ -67,6 +68,7 @@ config.get("/", async (c) => {
       flags,
       publishing: s.publishing,
       incident: s.incident.on ? s.incident : { on: false },
+      terms: { version: TERMS_VERSION, pages: TERMS_PAGES },
       tester,
     },
     200,

@@ -177,3 +177,20 @@
 }
 /* While notices show at the bottom, the content ends above them. */
 .main { padding-block-end: calc(8px + var(--svc-notes-h, 0px)); }
+
+/* ---- The terms (terms.tsx) ---- */
+.terms-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; margin: 0 0 12px; }
+.terms-link { color: var(--accent); font: var(--t-footnote); text-decoration: underline; text-underline-offset: 2px; }
+.terms-link:hover { color: var(--text-1); }
+.terms-check { display: flex; gap: 8px; align-items: flex-start; max-width: 340px; margin: 0 auto 18px; text-align: start; font: var(--t-footnote); color: var(--text-2); line-height: 1.45; }
+.terms-check input { margin-top: 2px; accent-color: var(--accent); flex: none; }
+.acct-terms { width: 100%; max-width: 300px; margin-bottom: 8px; }
+.acct-terms .terms-check { margin-bottom: 8px; }
+.ob-terms { display: flex; flex-direction: column; align-items: center; margin-top: 8px; }
+
+/* ---- What's new after an update (whatsNew.tsx) ---- */
+.whats-new { padding: 0 24px 4px; }
+.whats-new-title { margin: 0 0 6px; font: var(--t-title3); color: var(--text-1); }
+.whats-new-summary { margin: 0 0 12px; font: var(--t-subhead); color: var(--text-2); line-height: 1.55; }
+.whats-new-list { margin: 0; padding-inline-start: 20px; display: flex; flex-direction: column; gap: 8px; font: var(--t-subhead); color: var(--text-1); line-height: 1.55; }
+.whats-new-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 24px 20px; }

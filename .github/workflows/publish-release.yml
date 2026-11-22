@@ -60,6 +60,9 @@ jobs:
           gh run download "$APPLE" -n Worlds-iPad-Unsigned -D dl/ipad
           gh run download "$APPLE" -n Worlds-macOS-Unsigned -D dl/mac
           cp "$(find dl/win -name '*.exe' | head -n 1)" "out/Worlds-$v-Windows-x64-setup.exe"
+          # The signature for the in-app updater (services/identity/src/routes/updates.ts), when the build had the key.
+          sig="$(find dl/win -name '*.exe.sig' | head -n 1)"
+          [ -z "$sig" ] || cp "$sig" "out/Worlds-$v-Windows-x64-setup.exe.sig"
           # The release build signed with the Worlds release key, so each version installs over the last.
           # Before that key is in the secrets, the debug build (signed with the runner's own key) as before.
           apk="$(find dl/android -name 'Worlds-Android-Universal.apk' | head -n 1)"

@@ -1,7 +1,8 @@
+import { TERMS_VERSION } from "../lib/terms";
 import { Hono, type Context } from "hono";
 import type { AppEnv } from "../env";
 import { revokeDevice } from "../domain/sessions";
-import { audit, listAudit } from "../lib/audit";
+import { audit, auditStmt, listAudit } from "../lib/audit";
 import { emit, requireAuth } from "../lib/auth";
 import { now } from "../lib/crypto";
 import { bad, body, conflict, forbidden, notFound, optStr, str } from "../lib/http";
@@ -98,6 +99,18 @@ me.delete("/passkeys/:id", async (c) => {
 me.get("/audit", async (c) => {
   const limit = Number(c.req.query("limit") ?? 100);
   return c.json(await listAudit(c.env.DB, { actorUserId: c.get("caller").userId }, limit));
+});
+
+/** The person accepts the current terms (after they changed, or on a device that asks). */
+me.post("/terms", async (c) => {
+  const caller = c.get("caller");
+  const version = (await body(c.req)).version;
+  if (version !== TERMS_VERSION) throw bad("terms_outdated", "Those are not the current terms.");
+  await c.env.DB.batch([
+    c.env.DB.prepare("UPDATE users SET terms_version = ?1, terms_accepted_at = ?2 WHERE id = ?3").bind(TERMS_VERSION, now(), caller.userId),
+    auditStmt(c.env.DB, { action: "account.terms_accepted", actorUserId: caller.userId, actorKind: caller.actor, deviceId: caller.deviceId, targetType: "user", targetId: caller.userId, meta: { version: TERMS_VERSION } }),
+  ]);
+  return c.json({ version: TERMS_VERSION });
 });
 
 // ---------------------------------------------------------------------------

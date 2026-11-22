@@ -95,8 +95,9 @@ function safeUrl(u: string): boolean {
  * skipping pulled files, and falling back to older releases for a platform
  * whose file was pulled.
  */
-export function resolve(list: Release[], pinnedTag: string | null, pulled: string[]): { tag: string | null; picks: Pick[] } {
-  const published = list.filter((r) => !r.draft && !r.prerelease).sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+/** includePrerelease: the beta channel for testers also gets prereleases. */
+export function resolve(list: Release[], pinnedTag: string | null, pulled: string[], includePrerelease = false): { tag: string | null; picks: Pick[] } {
+  const published = list.filter((r) => !r.draft && (includePrerelease || !r.prerelease)).sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
   let start = 0;
   if (pinnedTag) {
     const i = published.findIndex((r) => r.tag === pinnedTag);

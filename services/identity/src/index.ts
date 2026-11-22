@@ -15,6 +15,7 @@ import { support, supportHousekeeping } from "./routes/support";
 import { community, mine } from "./routes/community";
 import { config } from "./routes/config";
 import { downloads } from "./routes/downloads";
+import { updates } from "./routes/updates";
 import { limitsFor, MB } from "./lib/limits";
 import { settings } from "./lib/control";
 import { auth } from "./routes/auth";
@@ -84,6 +85,7 @@ app.route("/support", support);
 app.route("/community", community);
 app.route("/config", config);
 app.route("/downloads", downloads);
+app.route("/updates", updates);
 app.route("/me", mine);
 app.route("/", pages);
 
