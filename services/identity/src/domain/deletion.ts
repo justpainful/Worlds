@@ -41,6 +41,7 @@ export async function scheduleDeletion(
   userId: string,
   by: { userId: string; deviceId: string | null; actor: ActorKind; who: "self" | "team"; reason?: string },
   lang: "ar" | "en",
+  notify = true,
 ): Promise<{ dueAt: number; events: EventEnvelope[] }> {
   const blocked = await sharedOwned(env.DB, userId);
   if (blocked.length) throw new ApiError(409, "owns_shared_workspaces", "Hand over or delete your shared workspaces first.", { workspaces: blocked });
@@ -63,11 +64,18 @@ export async function scheduleDeletion(
   const events: EventEnvelope[] = [];
   const { results } = await env.DB.prepare("SELECT id FROM devices WHERE user_id = ?1 AND revoked_at IS NULL").bind(userId).all<{ id: string }>();
   for (const d of results) events.push(...(await revokeDevice(env, userId, d.id, { userId: by.userId, deviceId: by.deviceId, actor: by.actor }, "deletion")));
-  await sendSupportMail(env, { to: u.email, ...noticeMail(lang, "deletion_scheduled", { date: dueAt }) });
+  // The person always hears about their own request; a team decision may be kept quiet (notify: false).
+  if (by.who === "self" || notify) await sendSupportMail(env, { to: u.email, ...noticeMail(lang, by.who === "team" ? "deletion_scheduled_team" : "deletion_scheduled", { date: dueAt }) });
   return { dueAt, events };
 }
 
-export async function cancelDeletion(env: Env, userId: string, by: { userId: string; deviceId: string | null; actor: ActorKind; who: "self" | "team" }): Promise<boolean> {
+export async function cancelDeletion(
+  env: Env,
+  userId: string,
+  by: { userId: string; deviceId: string | null; actor: ActorKind; who: "self" | "team" },
+  lang: "ar" | "en" = "ar",
+  notify = true,
+): Promise<boolean> {
   const r = await env.DB.prepare("UPDATE users SET deletion_requested_at = NULL, deletion_due_at = NULL, deletion_by = NULL, updated_at = ?1 WHERE id = ?2 AND deletion_due_at IS NOT NULL")
     .bind(now(), userId)
     .run();
@@ -80,6 +88,10 @@ export async function cancelDeletion(env: Env, userId: string, by: { userId: str
     targetType: "user",
     targetId: userId,
   }).run();
+  if (notify) {
+    const u = await env.DB.prepare("SELECT email FROM users WHERE id = ?1").bind(userId).first<{ email: string }>();
+    if (u) await sendSupportMail(env, { to: u.email, ...noticeMail(lang, "deletion_cancelled") });
+  }
   return true;
 }
 

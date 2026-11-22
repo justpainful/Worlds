@@ -787,6 +787,16 @@ bdi {
   width: 16px;
   height: 16px;
 }
+.check:has(.field-hint) {
+  align-items: flex-start;
+}
+.check:has(.field-hint) input {
+  margin-top: 2px;
+}
+.check .field-hint {
+  display: block;
+  margin-top: 2px;
+}
 
 /* ---- Dialogs and toasts --------------------------------------------- */
 
