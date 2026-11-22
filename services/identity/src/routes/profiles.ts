@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { AppEnv } from "../env";
 import { audit } from "../lib/audit";
 import { b64urlEncode, now } from "../lib/crypto";
+import { bannedWordIn } from "../lib/names";
 import { ApiError, bad, body, notFound } from "../lib/http";
 import { clientIp, rateLimit } from "../lib/ratelimit";
 import { normalizeUsername } from "../lib/usernames";
@@ -198,6 +199,7 @@ export function ownerRoutes(me: Hono<AppEnv>) {
     if (typeof raw !== "object" || Array.isArray(raw)) throw bad("invalid_profile", "profile must be an object");
     const data = cleanProfile(caller.userId, raw, u.display_name || u.username || "Worlds");
     const json = JSON.stringify(data);
+    if (await bannedWordIn(c.env.DB, `${data.displayName} ${(data as { bio?: string }).bio ?? ""}`)) throw bad("name_not_allowed", "The profile has a word that is not allowed.");
     if (json.length > MAX_DATA_CHARS) throw bad("profile_too_large", "The profile is too large to publish. Remove a few blocks and try again.");
     const key = (v: unknown) => (typeof v === "string" && v.startsWith("file:") && ownsKey(caller.userId, v.slice(5)) ? v.slice(5) : null);
     const old = await rowFor(c.env.DB, caller.userId);
@@ -286,7 +288,7 @@ profiles.get("/:username", async (c) => {
   const name = normalizeUsername(decodeURIComponent(c.req.param("username")));
   const row = await c.env.DB.prepare(
     `SELECT p.*, u.username, u.created_at AS joined FROM public_profiles p JOIN users u ON u.id = p.user_id
-     WHERE u.username = ?1 AND p.visible = 1 AND (u.suspended_until IS NULL OR u.suspended_until <= ?2)`,
+     WHERE u.username = ?1 AND p.visible = 1 AND (u.suspended_until IS NULL OR u.suspended_until <= ?2) AND u.deletion_due_at IS NULL`,
   )
     .bind(name, now())
     .first<Row & { username: string; joined: number }>();
@@ -312,7 +314,7 @@ profiles.get("/files/p/:userId/:name", async (c) => {
   const key = `p/${userId}/${c.req.param("name")}`;
   if (!c.env.PROFILE_FILES || !ownsKey(userId, key)) throw notFound();
   const row = await c.env.DB.prepare(
-    "SELECT p.visible FROM public_profiles p JOIN users u ON u.id = p.user_id WHERE p.user_id = ?1 AND (u.suspended_until IS NULL OR u.suspended_until <= ?2)",
+    "SELECT p.visible FROM public_profiles p JOIN users u ON u.id = p.user_id WHERE p.user_id = ?1 AND (u.suspended_until IS NULL OR u.suspended_until <= ?2) AND u.deletion_due_at IS NULL",
   )
     .bind(userId, now())
     .first<{ visible: number }>();

@@ -11,6 +11,8 @@ import { clientIp, rateLimit } from "../lib/ratelimit";
 
 export const workspaces = new Hono<AppEnv>();
 export const invites = new Hono<AppEnv>();
+/** How long a deleted workspace stays in the trash before its content is erased. */
+export const TRASH_MS = 30 * 86_400_000;
 
 type C = Context<AppEnv>;
 
@@ -20,7 +22,7 @@ type C = Context<AppEnv>;
 
 /** The caller's role, or 404 (non-members cannot tell a workspace exists). */
 async function roleIn(c: C, workspaceId: string): Promise<Role> {
-  const row = await c.env.DB.prepare("SELECT role FROM members WHERE workspace_id = ?1 AND user_id = ?2")
+  const row = await c.env.DB.prepare("SELECT m.role FROM members m JOIN workspaces w ON w.id = m.workspace_id WHERE m.workspace_id = ?1 AND m.user_id = ?2 AND w.deleted_at IS NULL")
     .bind(workspaceId, c.get("caller").userId)
     .first<{ role: Role }>();
   if (!row) throw notFound("workspace_not_found", "Workspace not found.");
@@ -41,7 +43,7 @@ async function commit(c: C, stmts: D1PreparedStatement[], audits: AuditEntry[], 
 
 async function workspaceView(db: D1Database, workspaceId: string, role: Role) {
   const w = await db
-    .prepare("SELECT id, name, owner_id, default_level, created_at, (SELECT COUNT(*) FROM members m WHERE m.workspace_id = w.id) AS member_count FROM workspaces w WHERE id = ?1")
+    .prepare("SELECT id, name, owner_id, default_level, created_at, (SELECT COUNT(*) FROM members m WHERE m.workspace_id = w.id) AS member_count FROM workspaces w WHERE id = ?1 AND deleted_at IS NULL")
     .bind(workspaceId)
     .first<{ id: string; name: string; owner_id: string; default_level: string; created_at: number; member_count: number }>();
   if (!w) throw notFound("workspace_not_found", "Workspace not found.");
@@ -82,7 +84,7 @@ workspaces.get("/", async (c) => {
   const { results } = await c.env.DB.prepare(
     `SELECT w.id, w.name, w.owner_id, w.default_level, w.created_at, m.role,
             (SELECT COUNT(*) FROM members x WHERE x.workspace_id = w.id) AS member_count
-     FROM members m JOIN workspaces w ON w.id = m.workspace_id WHERE m.user_id = ?1 ORDER BY w.name COLLATE NOCASE`,
+     FROM members m JOIN workspaces w ON w.id = m.workspace_id WHERE m.user_id = ?1 AND w.deleted_at IS NULL ORDER BY w.name COLLATE NOCASE`,
   )
     .bind(c.get("caller").userId)
     .all<{ id: string; name: string; owner_id: string; default_level: string; created_at: number; role: Role; member_count: number }>();
@@ -120,11 +122,36 @@ workspaces.delete("/:id", async (c) => {
   if ((await roleIn(c, id)) !== "owner") throw forbidden("forbidden", "Only the owner can delete a workspace.");
   await commit(
     c,
-    [c.env.DB.prepare("DELETE FROM workspaces WHERE id = ?1").bind(id)],
+    // Into the trash for 30 days (restore below); the cron erases it after that.
+    [c.env.DB.prepare("UPDATE workspaces SET deleted_at = ?1, deleted_by = ?2, updated_at = ?1 WHERE id = ?3").bind(now(), caller.userId, id)],
     [auditOf(caller, id, { action: "workspace.deleted", targetType: "workspace", targetId: id })],
     [{ type: "workspace.deleted", workspaceId: id }],
   );
   return c.json({ ok: true });
+});
+
+/** The owner's deleted workspaces that can still come back (30 days). */
+workspaces.get("/trash/list", async (c) => {
+  const { results } = await c.env.DB.prepare(
+    "SELECT id, name, deleted_at, (SELECT COUNT(*) FROM members m WHERE m.workspace_id = w.id) AS member_count FROM workspaces w WHERE owner_id = ?1 AND deleted_at IS NOT NULL ORDER BY deleted_at DESC",
+  )
+    .bind(c.get("caller").userId)
+    .all<{ id: string; name: string; deleted_at: number; member_count: number }>();
+  return c.json(results.map((w) => ({ id: w.id, name: w.name, deletedAt: w.deleted_at, purgeAt: w.deleted_at + TRASH_MS, memberCount: w.member_count })));
+});
+
+workspaces.post("/:id/restore", async (c) => {
+  const caller = c.get("caller");
+  const id = c.req.param("id");
+  const w = await c.env.DB.prepare("SELECT owner_id, deleted_at FROM workspaces WHERE id = ?1").bind(id).first<{ owner_id: string; deleted_at: number | null }>();
+  if (!w || w.owner_id !== caller.userId || !w.deleted_at) throw notFound("workspace_not_found", "Workspace not found.");
+  await commit(
+    c,
+    [c.env.DB.prepare("UPDATE workspaces SET deleted_at = NULL, deleted_by = NULL, updated_at = ?1 WHERE id = ?2").bind(now(), id)],
+    [auditOf(caller, id, { action: "workspace.restored", targetType: "workspace", targetId: id })],
+    [{ type: "access.changed", workspaceId: id, docIds: null, userIds: null }],
+  );
+  return c.json(await workspaceView(c.env.DB, id, "owner"));
 });
 
 // ---------------------------------------------------------------------------
@@ -459,7 +486,7 @@ type InviteRow = {
 async function inviteByToken(db: D1Database, token: string): Promise<InviteRow | null> {
   return db
     .prepare(
-      "SELECT i.id, i.workspace_id, i.role, i.expires_at, i.max_uses, i.uses, i.revoked_at, i.page_id, i.page_level, w.name FROM invites i JOIN workspaces w ON w.id = i.workspace_id WHERE i.token_hash = ?1",
+      "SELECT i.id, i.workspace_id, i.role, i.expires_at, i.max_uses, i.uses, i.revoked_at, i.page_id, i.page_level, w.name FROM invites i JOIN workspaces w ON w.id = i.workspace_id WHERE i.token_hash = ?1 AND w.deleted_at IS NULL",
     )
     .bind(await sha256Hex(token))
     .first<InviteRow>();

@@ -5,7 +5,8 @@ import { HTTPException } from "hono/http-exception";
 import type { AppEnv, Env } from "./env";
 import { checkAccess, listDocs, packMembers } from "./domain/access";
 import type { Level } from "./domain/roles";
-import { retryOutbox } from "./lib/events";
+import { deliver, retryOutbox } from "./lib/events";
+import { deletionHousekeeping } from "./domain/deletion";
 import { ApiError } from "./lib/http";
 import { jwks } from "./lib/jwt";
 import { expectedOrigins } from "./lib/webauthn";
@@ -70,6 +71,7 @@ app.route("/", pages);
 export async function scheduled(env: Env): Promise<void> {
   await retryOutbox(env);
   await supportHousekeeping(env);
+  await deliver(env, await deletionHousekeeping(env));
   const t = Date.now();
   await env.DB.batch([
     env.DB.prepare("DELETE FROM email_codes WHERE expires_at < ?1").bind(t - 86_400_000),

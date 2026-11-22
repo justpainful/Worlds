@@ -80,6 +80,11 @@ export class UserInbox extends DurableObject<Env> {
     );
   }
 
+  /** The account was erased: drop everything this inbox kept. */
+  async erase(): Promise<void> {
+    await this.ctx.storage.deleteAll();
+  }
+
   async revokeDevice(deviceId: string, issuedBefore: number, permanent: boolean): Promise<void> {
     this.sql.exec("INSERT INTO revoked_devices(device_id, revoked_before, permanent) VALUES (?, ?, ?) ON CONFLICT(device_id) DO UPDATE SET revoked_before = MAX(revoked_before, excluded.revoked_before), permanent = MAX(permanent, excluded.permanent)", deviceId, issuedBefore, permanent ? 1 : 0);
   }

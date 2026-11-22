@@ -234,7 +234,10 @@ export type Permission =
   | "stats"
   | "team"
   | "tickets"
-  | "tickets.private";
+  | "tickets.private"
+  | "users.delete"
+  | "users.export"
+  | "names";
 
 export type TicketStatus = "open" | "waiting" | "working" | "solved" | "closed";
 export type TicketKind = "problem" | "account" | "recovery" | "deletion" | "report" | "security" | "suggestion" | "other";
@@ -325,6 +328,7 @@ export interface UserDetail extends Omit<UserItem, "devices"> {
   emailVerifiedAt: number | null;
   updatedAt: number;
   suspension: { until: number | null; banned: boolean; reason: string | null; since: number | null } | null;
+  deletion: { dueAt: number; by: "self" | "team" } | null;
   devices: Device[];
   passkeys: { id: string; name: string; synced: boolean; createdAt: number; lastUsedAt: number | null }[];
   workspaces: { id: string; name: string; role: string; owns: boolean; members: number; pages: number; joinedAt: number }[];

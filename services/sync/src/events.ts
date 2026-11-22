@@ -13,6 +13,8 @@ export type AccessEvent =
   | { type: "workspace.deleted"; workspaceId: string }
   | { type: "device.revoked"; userId: string; deviceId: string }
   | { type: "session.revoked"; userId: string; deviceId: string; sessionId: string }
+  | { type: "user.erased"; userId: string }
+  | { type: "workspace.purged"; workspaceId: string; docIds: string[] }
   | { type: "user.notify"; userId: string; notification: { id: string; topic: string; title: string; excerpt: string; link?: string; createdAt: number } };
 
 export type EventEnvelope = AccessEvent & { id: string; at: number };
@@ -46,6 +48,17 @@ export async function applyEvent(env: Env, ev: AccessEvent): Promise<number> {
         n += await room(env, workspaceId, docId).revoke({ userId: ev.userId, deviceId: ev.deviceId });
       }
       return n;
+    case "user.erased": {
+      // The account is gone: its web copy and files, and its notifications.
+      await eraseR2Prefix(env, `vault/${ev.userId}/`);
+      await env.INBOXES.getByName(ev.userId).erase();
+      return 0;
+    }
+    case "workspace.purged": {
+      for (const docId of ev.docIds ?? []) n += await room(env, ev.workspaceId, docId).erase();
+      await eraseR2Prefix(env, `ws/${ev.workspaceId}/`);
+      return n;
+    }
     case "user.notify": {
       // A note from Worlds itself: a support reply or a message from the team.
       const x = ev.notification;
@@ -71,7 +84,17 @@ export async function applyEvent(env: Env, ev: AccessEvent): Promise<number> {
   return 0;
 }
 
-const KNOWN = new Set(["access.changed", "member.removed", "member.role_changed", "workspace.deleted", "device.revoked", "session.revoked", "user.notify"]);
+const KNOWN = new Set(["access.changed", "member.removed", "member.role_changed", "workspace.deleted", "device.revoked", "session.revoked", "user.notify", "user.erased", "workspace.purged"]);
+
+/** Delete every object under a prefix in the blob bucket. */
+async function eraseR2Prefix(env: Env, prefix: string): Promise<void> {
+  let cursor: string | undefined;
+  do {
+    const list = await env.BLOBS.list({ prefix, cursor });
+    if (list.objects.length) await env.BLOBS.delete(list.objects.map((o) => o.key));
+    cursor = list.truncated ? list.cursor : undefined;
+  } while (cursor);
+}
 
 export function parseEvent(v: unknown): EventEnvelope | null {
   if (!v || typeof v !== "object") return null;

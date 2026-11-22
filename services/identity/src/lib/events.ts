@@ -14,6 +14,10 @@ export type AccessEvent =
   | { type: "device.revoked"; userId: string; deviceId: string }
   | { type: "session.revoked"; userId: string; deviceId: string; sessionId: string }
   /** A note from Worlds itself (a support reply, a message from the team) for the person's notifications. */
+  /** The account is erased for good: its web copy, files and notifications go too. */
+  | { type: "user.erased"; userId: string }
+  /** A workspace left the trash: its pages' content and files are erased. */
+  | { type: "workspace.purged"; workspaceId: string; docIds: string[] }
   | { type: "user.notify"; userId: string; notification: { id: string; topic: string; title: string; excerpt: string; link?: string; createdAt: number } };
 
 export type EventEnvelope = AccessEvent & { id: string; at: number };

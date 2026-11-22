@@ -816,6 +816,13 @@ export class DocRoom extends DurableObject<Env> {
   }
 
   /** Close every connection (the workspace was deleted). */
+  /** The workspace left the trash: close every socket and drop the page's stored content and versions. */
+  async erase(): Promise<number> {
+    const n = await this.closeAll("workspace deleted");
+    await this.ctx.storage.deleteAll();
+    return n;
+  }
+
   async closeAll(reason: string): Promise<number> {
     this.setMeta("drawingAccessEpoch", String(Number(this.meta("drawingAccessEpoch") ?? 0) + 1));
     this.removeDrawingLeases();

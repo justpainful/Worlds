@@ -7,7 +7,7 @@ import { Failed, Loading, Toolbar, useLoad } from "./common";
 import { LogRows } from "./Log";
 import { PLATFORM_ICON, PLATFORM_NAME } from "./Overview";
 
-type Filter = "all" | "active" | "suspended" | "banned" | "team";
+type Filter = "all" | "active" | "suspended" | "banned" | "deleting" | "team";
 type Sort = "created" | "active" | "name";
 
 const PROFILE_HOST = "https://profile.enterworlds.space";
@@ -66,6 +66,7 @@ export function Accounts({ id }: { id?: string }) {
                   { value: "active", label: t("filterActive") },
                   { value: "suspended", label: t("filterSuspended") },
                   { value: "banned", label: t("filterBanned") },
+                  { value: "deleting", label: t("filterDeleting") },
                   { value: "team", label: t("filterTeam") },
                 ]}
               />
@@ -160,7 +161,9 @@ type Dlg =
   | { kind: "ban" }
   | { kind: "lift" }
   | { kind: "signout"; device?: Device }
-  | { kind: "passkey"; id: string; name: string };
+  | { kind: "passkey"; id: string; name: string }
+  | { kind: "delete" }
+  | { kind: "canceldel" };
 
 function Account({ id, onChanged }: { id: string; onChanged: () => void }) {
   const { can, guard } = useAdmin();
@@ -190,6 +193,20 @@ function Account({ id, onChanged }: { id: string; onChanged: () => void }) {
     );
 
   const suspended = u.status !== "active";
+  const exportData = async () => {
+    try {
+      const data = await guard(() => call("GET", `/admin/users/${encodeURIComponent(u.id)}/export`));
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `worlds-account-${u.username ?? u.id}.json`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      toast(t("exported"));
+    } catch (e) {
+      if ((e as ApiError).code !== "cancelled") toast(errorText(e), "error");
+    }
+  };
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(u.id);
@@ -252,12 +269,21 @@ function Account({ id, onChanged }: { id: string; onChanged: () => void }) {
                   can("users.devices") && u.devices.some((d) => !d.revokedAt) && { key: "out", label: t("signOutAll"), icon: "rectangle.portrait.and.arrow.right", onSelect: () => setDlg({ kind: "signout" }) },
                   !suspended && can("users.ban") && { key: "ban", label: t("ban"), icon: "nosign", danger: true, onSelect: () => setDlg({ kind: "ban" }) },
                   can("audit") && { key: "log", label: t("log"), icon: "list.bullet.rectangle", onSelect: () => go("log", undefined, { user: u.id }) },
+                  can("users.export") && { key: "export", label: t("exportData"), icon: "document.on.document", onSelect: () => void exportData() },
+                  can("users.delete") && u.deletion && { key: "undel", label: t("cancelDeletion"), icon: "arrow.clockwise", onSelect: () => setDlg({ kind: "canceldel" }) },
+                  can("users.delete") && !u.deletion && { key: "del", label: t("deleteAccount"), icon: "trash", danger: true, onSelect: () => setDlg({ kind: "delete" }) },
                   { key: "copy", label: t("copyId"), icon: "document.on.document", onSelect: copy },
                 ]}
               />
             </Capsule>
           </div>
         </header>
+
+        {u.deletion && (
+          <Section title={t("deletionTitle")}>
+            <Row icon="trash" label={t("deletionDue")} sub={u.deletion.by === "self" ? t("deletionBySelf") : t("deletionByTeam")} value={fmtDate(u.deletion.dueAt, true)} />
+          </Section>
+        )}
 
         {u.suspension && (
           <Section title={t("suspension")}>
@@ -449,6 +475,18 @@ function Account({ id, onChanged }: { id: string; onChanged: () => void }) {
           danger
           onClose={() => setDlg(null)}
           run={(reason) => guard(() => call("DELETE", `/admin/users/${encodeURIComponent(u.id)}/passkeys/${encodeURIComponent(dlg.id)}?${new URLSearchParams({ reason })}`))}
+          onDone={changed}
+        />
+      )}
+      {dlg?.kind === "delete" && <DeleteDialog u={u} onClose={() => setDlg(null)} onDone={changed} />}
+      {dlg?.kind === "canceldel" && (
+        <ReasonDialog
+          title={t("cancelDeletion")}
+          lead={t("cancelDeletionLead")}
+          action={t("cancelDeletion")}
+          icon="play.circle"
+          onClose={() => setDlg(null)}
+          run={() => guard(() => call("POST", `/admin/users/${encodeURIComponent(u.id)}/deletion/cancel`, {}))}
           onDone={changed}
         />
       )}
@@ -668,6 +706,48 @@ function EditDialog({ u, onClose, onDone }: { u: UserDetail; onClose: () => void
           <span>{t("clearAvatar")}</span>
         </label>
       )}
+      <ReasonField value={reason} onChange={setReason} />
+      <ErrorLine text={error} />
+    </Dialog>
+  );
+}
+
+function DeleteDialog({ u, onClose, onDone }: { u: UserDetail; onClose: () => void; onDone: () => void }) {
+  const { guard } = useAdmin();
+  const [when, setWhen] = useState<"later" | "now">("later");
+  const [reason, setReason] = useState("");
+  const { busy, error, submit } = useSubmit(onDone);
+  return (
+    <Dialog
+      title={t("deleteAccount")}
+      lead={t("deleteLead")}
+      onClose={onClose}
+      footer={
+        <>
+          <Button onClick={onClose}>{t("cancel")}</Button>
+          <Button
+            variant="danger"
+            icon="trash"
+            busy={busy}
+            disabled={!reason.trim()}
+            onClick={() => submit(() => guard(() => call("POST", `/admin/users/${encodeURIComponent(u.id)}/delete`, { now: when === "now", reason: reason.trim() })))}
+          >
+            {t("deleteAccount")}
+          </Button>
+        </>
+      }
+    >
+      <Field label={t("deleteWhen")} as="div">
+        <Segmented
+          label={t("deleteWhen")}
+          value={when}
+          onChange={setWhen}
+          options={[
+            { value: "later", label: t("deleteSchedule") },
+            { value: "now", label: t("deleteNow") },
+          ]}
+        />
+      </Field>
       <ReasonField value={reason} onChange={setReason} />
       <ErrorLine text={error} />
     </Dialog>
