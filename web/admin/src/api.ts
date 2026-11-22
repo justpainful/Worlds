@@ -241,7 +241,9 @@ export type Permission =
   | "content"
   | "content.workspaces"
   | "community"
-  | "messages";
+  | "messages"
+  | "control"
+  | "control.read";
 
 export type TicketStatus = "open" | "waiting" | "working" | "solved" | "closed";
 export type TicketKind = "problem" | "account" | "recovery" | "deletion" | "report" | "security" | "suggestion" | "other";

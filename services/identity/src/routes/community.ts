@@ -13,7 +13,7 @@ import { Hono, type Context } from "hono";
 import type { AppEnv, Env } from "../env";
 import { callerFromToken, emit, requireAuth } from "../lib/auth";
 import { newId, now } from "../lib/crypto";
-import { bad, body, conflict, notFound, optStr, str } from "../lib/http";
+import { bad, body, conflict, normalizeEmail, notFound, optStr, str } from "../lib/http";
 import { bannedWordIn } from "../lib/names";
 import { clientIp, rateLimit } from "../lib/ratelimit";
 import { notifyTeam, requester, safeJson } from "./support";
@@ -114,6 +114,15 @@ community.get("/suggestions", async (c) => {
     .bind(...args)
     .all<SuggestionRow>();
   return c.json(results.map(suggestionView), 200, { "cache-control": voter ? "private, no-store" : "public, max-age=60" });
+});
+
+/** While sign-up is by invitation, people leave their email to get a code later. */
+community.post("/waitlist", async (c) => {
+  await rateLimit(c.env.DB, `waitlist:${clientIp(c.req.raw, c.env.EDGE_SECRET)}`, 10, 3_600_000);
+  const b = await body(c.req);
+  const email = normalizeEmail(b.email);
+  await c.env.DB.prepare("INSERT OR IGNORE INTO waitlist (email, lang, created_at) VALUES (?1, ?2, ?3)").bind(email, b.lang === "en" ? "en" : "ar", now()).run();
+  return c.json({ ok: true });
 });
 
 community.get("/roadmap", async (c) => {

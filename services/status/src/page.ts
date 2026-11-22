@@ -11,7 +11,16 @@ export interface ServiceView {
   bars: Bar[];
 }
 
+/** An incident the Worlds team declared from the dashboard (identity GET /config). */
+export interface Notice {
+  title: { ar: string; en: string };
+  body: { ar: string; en: string };
+  startedAt: number | null;
+  updates: { at: number; text: { ar: string; en: string } }[];
+}
+
 export interface PageData {
+  notice?: Notice | null;
   overall: State;
   lastAt: number | null;
   services: ServiceView[];
@@ -171,6 +180,17 @@ export function render(data: PageData, lang: Lang): string {
   <nav class="nav">${t.nav.map(([n, h]) => `<a href="${h}">${n}</a>`).join("")}<a class="lang" href="${alt}" hreflang="${t.other}" lang="${t.other}">${t.otherName}</a></nav>
 </header>
 <main id="main" class="wrap">
+${
+  data.notice
+    ? `<section class="notice" role="alert"><h2>${esc(data.notice.title[lang] || data.notice.title.ar || data.notice.title.en)}</h2>${
+        data.notice.body[lang] ? `<p>${esc(data.notice.body[lang])}</p>` : ""
+      }${data.notice.updates
+        .slice()
+        .reverse()
+        .map((u) => `<p class="notice-update"><time>${time(Math.floor(u.at / 1000), lang, false)}</time> ${esc(u.text[lang] || u.text.ar || u.text.en)}</p>`)
+        .join("")}</section>`
+    : ""
+}
 <section class="overall st-${data.overall}"><span class="lamp" aria-hidden="true"></span><div><h1>${t.overall[data.overall]}</h1>${data.lastAt ? `<p>${t.last(time(data.lastAt, lang, false))}</p>` : ""}</div></section>
 ${groups}
 <section class="group"><h2>${t.incidents}</h2>${inc}</section>

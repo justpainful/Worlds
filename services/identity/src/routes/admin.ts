@@ -20,6 +20,8 @@ import { ApiError, bad, body, conflict, forbidden, normalizeEmail, notFound, opt
 import { checkUsername, usernameTaken } from "../lib/usernames";
 import { foldName } from "../lib/names";
 import { reportersOf, setTeamHidden, targetKey, type Target } from "../lib/content";
+import { SETTING_KEYS, settings, type SettingKey } from "../lib/control";
+import { sha256Hex } from "../lib/crypto";
 import { SUGGESTION_STATUSES, suggestionView, type SuggestionRow, type SuggestionStatus } from "./community";
 import { eventStmt } from "../lib/events";
 import { noticeMail } from "../lib/noticeMail";
@@ -52,17 +54,19 @@ export const PERMISSIONS = [
   "content.workspaces", // move or trash someone's shared workspace
   "community", // suggestions, the roadmap, testers, surveys
   "messages", // write to one person in their app
+  "control", // sign-ups, maintenance, versions, flags, announcements, blocks
+  "control.read",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
 const ROLE_PERMISSIONS: Record<AdminRole, readonly Permission[]> = {
   owner: PERMISSIONS,
-  moderator: ["users.read", "users.edit", "users.suspend", "notes", "audit", "stats", "tickets", "names", "content", "community"],
-  support: ["users.read", "users.email", "notes", "stats", "tickets", "community", "messages"],
+  moderator: ["users.read", "users.edit", "users.suspend", "notes", "audit", "stats", "tickets", "names", "content", "community", "control.read"],
+  support: ["users.read", "users.email", "notes", "stats", "tickets", "community", "messages", "control.read"],
 };
 
 /** Actions that need a second check made in the last STEP_UP_MS. */
-const NEEDS_STEP_UP: ReadonlySet<Permission> = new Set(["users.edit_email", "users.suspend", "users.ban", "users.devices", "team", "users.delete", "users.export", "content.workspaces"]);
+const NEEDS_STEP_UP: ReadonlySet<Permission> = new Set(["users.edit_email", "users.suspend", "users.ban", "users.devices", "team", "users.delete", "users.export", "content.workspaces", "control"]);
 export const STEP_UP_MS = 10 * 60 * 1000;
 
 const DAY = 86_400_000;
@@ -1557,4 +1561,212 @@ admin.post("/messages/:id", async (c) => {
   }
   const id = await sendTeamMessage(c, t.id, t.user_id, t.subject, str(b.body, "body", 4000), b.email === true);
   return c.json({ id }, 201);
+});
+
+// ---------------------------------------------------------------------------
+// Controls over the service (lib/control.ts, routes/config.ts)
+// ---------------------------------------------------------------------------
+
+admin.get("/control", async (c) => {
+  await need(c, "control.read");
+  const db = c.env.DB;
+  const [flags, ann, invites, wait, blocked] = await db.batch<Record<string, unknown>>([
+    db.prepare("SELECT * FROM feature_flags ORDER BY key"),
+    db.prepare("SELECT * FROM announcements ORDER BY created_at DESC LIMIT 50"),
+    db.prepare("SELECT label, max_uses, uses, expires_at, created_at, substr(code_hash, 1, 8) AS id FROM signup_invites ORDER BY created_at DESC LIMIT 100"),
+    db.prepare("SELECT email, lang, created_at, invited_at FROM waitlist ORDER BY invited_at IS NOT NULL, created_at LIMIT 500"),
+    db.prepare("SELECT value, kind, reason, added_at FROM blocked_emails ORDER BY added_at DESC"),
+  ]);
+  return c.json({
+    settings: await settings(db),
+    flags: flags.results.map((f) => ({ key: f.key, description: f.description, mode: f.mode, percent: f.percent, users: safeJson<string[]>(f.users as string, []), updatedAt: f.updated_at })),
+    announcements: ann.results.map((a) => ({
+      id: a.id,
+      text: { ar: a.text_ar, en: a.text_en },
+      level: a.level,
+      link: a.link,
+      platforms: safeJson<string[]>(a.platforms as string, []),
+      minVersion: a.min_version,
+      maxVersion: a.max_version,
+      startsAt: a.starts_at,
+      endsAt: a.ends_at,
+      dismissible: a.dismissible === 1,
+      active: a.active === 1,
+      createdAt: a.created_at,
+    })),
+    invites: invites.results.map((i) => ({ id: i.id, label: i.label, maxUses: i.max_uses, uses: i.uses, expiresAt: i.expires_at, createdAt: i.created_at })),
+    waitlist: wait.results.map((w) => ({ email: can(c, "users.email") ? w.email : null, lang: w.lang, createdAt: w.created_at, invitedAt: w.invited_at })),
+    waitlistCount: wait.results.length,
+    blocked: blocked.results.map((b) => ({ value: b.value, kind: b.kind, reason: b.reason, addedAt: b.added_at })),
+  });
+});
+
+/** Change one setting (signups, maintenance, minVersion, publishing, incident). */
+admin.put("/control/settings/:key", async (c) => {
+  await need(c, "control");
+  const key = c.req.param("key") as SettingKey;
+  if (!SETTING_KEYS.includes(key)) throw bad("invalid_setting");
+  const b = await body(c.req);
+  const value = b.value as Record<string, unknown>;
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw bad("invalid_value");
+  const json = JSON.stringify(value);
+  if (json.length > 8000) throw bad("too_large");
+  if (key === "signups" && !["open", "closed", "invite"].includes(value.mode as string)) throw bad("invalid_value", "mode must be open, closed or invite");
+  await c.env.DB.batch([
+    c.env.DB.prepare("INSERT INTO service_settings (key, value, updated_by, updated_at) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(key) DO UPDATE SET value = ?2, updated_by = ?3, updated_at = ?4").bind(
+      key,
+      json,
+      c.get("caller").userId,
+      now(),
+    ),
+    logStmt(c, "admin.control.setting", c.get("caller").userId, { key, value }),
+  ]);
+  return c.json({ ok: true, settings: await settings(c.env.DB) });
+});
+
+admin.put("/control/flags/:key", async (c) => {
+  await need(c, "control");
+  const key = c.req.param("key");
+  if (!/^[a-z][a-z0-9_.-]{1,40}$/.test(key)) throw bad("invalid_key", "Use lowercase letters, digits, dots, dashes and underscores.");
+  const b = await body(c.req);
+  const mode = b.mode as string;
+  if (!["off", "all", "testers", "percent", "users"].includes(mode)) throw bad("invalid_mode");
+  const percent = Math.min(Math.max(Number(b.percent ?? 0) || 0, 0), 100);
+  const users = Array.isArray(b.users) ? b.users.filter((u): u is string => typeof u === "string").slice(0, 500) : [];
+  await c.env.DB.batch([
+    c.env.DB.prepare(
+      "INSERT INTO feature_flags (key, description, mode, percent, users, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6) ON CONFLICT(key) DO UPDATE SET description = COALESCE(?2, description), mode = ?3, percent = ?4, users = ?5, updated_at = ?6",
+    ).bind(key, optStr(b.description, "description", 200) ?? null, mode, percent, JSON.stringify(users), now()),
+    logStmt(c, "admin.control.flag", c.get("caller").userId, { key, mode, percent }),
+  ]);
+  return c.json({ ok: true });
+});
+
+admin.delete("/control/flags/:key", async (c) => {
+  await need(c, "control");
+  await c.env.DB.prepare("DELETE FROM feature_flags WHERE key = ?1").bind(c.req.param("key")).run();
+  await logStmt(c, "admin.control.flag_removed", c.get("caller").userId, { key: c.req.param("key") }).run();
+  return c.json({ ok: true });
+});
+
+admin.post("/control/announcements", async (c) => {
+  await need(c, "control");
+  const b = await body(c.req);
+  const id = newId();
+  const level = ["info", "warning", "critical"].includes(b.level as string) ? (b.level as string) : "info";
+  const platforms = Array.isArray(b.platforms) ? b.platforms.filter((p): p is string => typeof p === "string").slice(0, 10) : [];
+  const link = optStr(b.link, "link", 300) ?? null;
+  if (link && !/^https:\/\//.test(link)) throw bad("invalid_link", "Links must start with https://");
+  const num = (v: unknown) => (typeof v === "number" && v > 0 ? v : null);
+  await c.env.DB.batch([
+    c.env.DB.prepare(
+      "INSERT INTO announcements (id, text_ar, text_en, level, link, platforms, min_version, max_version, starts_at, ends_at, dismissible, created_by, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+    ).bind(
+      id,
+      str(b.textAr, "textAr", 300),
+      str(b.textEn, "textEn", 300),
+      level,
+      link,
+      JSON.stringify(platforms),
+      optStr(b.minVersion, "minVersion", 20) ?? null,
+      optStr(b.maxVersion, "maxVersion", 20) ?? null,
+      num(b.startsAt),
+      num(b.endsAt),
+      b.dismissible === false ? 0 : 1,
+      c.get("caller").userId,
+      now(),
+    ),
+    logStmt(c, "admin.control.announcement", c.get("caller").userId, { id, level }),
+  ]);
+  return c.json({ id }, 201);
+});
+
+admin.patch("/control/announcements/:id", async (c) => {
+  await need(c, "control");
+  const active = (await body(c.req)).active;
+  if (typeof active !== "boolean") throw bad("invalid_request");
+  const r = await c.env.DB.prepare("UPDATE announcements SET active = ?1 WHERE id = ?2").bind(active ? 1 : 0, c.req.param("id")).run();
+  if (!r.meta.changes) throw notFound();
+  return c.json({ ok: true });
+});
+
+/** A new invitation code. It is shown once; only its hash is kept. */
+admin.post("/control/invites", async (c) => {
+  await need(c, "control");
+  const b = await body(c.req);
+  const code = Array.from(crypto.getRandomValues(new Uint8Array(8)), (x) => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[x % 32]).join("");
+  const days = Number(b.days);
+  const max = Math.min(Math.max(Number(b.maxUses ?? 1) || 1, 1), 1000);
+  await c.env.DB.batch([
+    c.env.DB.prepare("INSERT INTO signup_invites (code_hash, label, max_uses, expires_at, created_by, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)").bind(
+      await sha256Hex(code),
+      optStr(b.label, "label", 80) ?? null,
+      max,
+      Number.isInteger(days) && days > 0 ? now() + days * 86_400_000 : null,
+      c.get("caller").userId,
+      now(),
+    ),
+    logStmt(c, "admin.control.invite", c.get("caller").userId, { maxUses: max }),
+  ]);
+  return c.json({ code, maxUses: max }, 201);
+});
+
+/** Send an invitation code to people on the waiting list, from support@. */
+admin.post("/control/waitlist/invite", async (c) => {
+  await need(c, "control");
+  const b = await body(c.req);
+  const count = Math.min(Math.max(Number(b.count ?? 10) || 10, 1), 100);
+  const { results } = await c.env.DB.prepare("SELECT email, lang FROM waitlist WHERE invited_at IS NULL ORDER BY created_at LIMIT ?1").bind(count).all<{ email: string; lang: string }>();
+  let sent = 0;
+  for (const w of results) {
+    const code = Array.from(crypto.getRandomValues(new Uint8Array(8)), (x) => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[x % 32]).join("");
+    await c.env.DB.batch([
+      c.env.DB.prepare("INSERT INTO signup_invites (code_hash, label, max_uses, expires_at, created_by, created_at) VALUES (?1, ?2, 1, ?3, ?4, ?5)").bind(await sha256Hex(code), "waitlist", now() + 30 * 86_400_000, c.get("caller").userId, now()),
+      c.env.DB.prepare("UPDATE waitlist SET invited_at = ?1 WHERE email = ?2").bind(now(), w.email),
+    ]);
+    const lang = w.lang === "en" ? "en" : "ar";
+    const text = lang === "ar" ? `رمز دعوتك: ${code}\nاكتبه عند إنشاء حسابك في Worlds. يعمل 30 يومًا.` : `Your invitation code: ${code}\nType it when you create your Worlds account. It works for 30 days.`;
+    if (await sendSupportMail(c.env, { to: w.email, ...noticeMail(lang, "team_message", { body: text }) })) sent++;
+  }
+  await logStmt(c, "admin.control.waitlist_invited", c.get("caller").userId, { count: sent }).run();
+  return c.json({ ok: true, sent });
+});
+
+admin.post("/control/blocked", async (c) => {
+  await need(c, "control");
+  const b = await body(c.req);
+  const raw = str(b.value, "value", 254).toLowerCase().replace(/^@/, "");
+  const kind = raw.includes("@") ? "email" : "domain";
+  if (kind === "domain" && !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(raw)) throw bad("invalid_value", "Write an email address or a domain such as example.com");
+  await c.env.DB.batch([
+    c.env.DB.prepare("INSERT OR REPLACE INTO blocked_emails (value, kind, reason, added_by, added_at) VALUES (?1, ?2, ?3, ?4, ?5)").bind(raw, kind, optStr(b.reason, "reason", 200) ?? null, c.get("caller").userId, now()),
+    logStmt(c, "admin.control.blocked", c.get("caller").userId, { kind }),
+  ]);
+  return c.json({ ok: true, kind }, 201);
+});
+
+admin.delete("/control/blocked/:value", async (c) => {
+  await need(c, "control");
+  await c.env.DB.prepare("DELETE FROM blocked_emails WHERE value = ?1").bind(decodeURIComponent(c.req.param("value")).toLowerCase()).run();
+  return c.json({ ok: true });
+});
+
+/** Request counters that are at or near their limit now, to lift one by hand. */
+admin.get("/control/limits", async (c) => {
+  await need(c, "control.read");
+  const { results } = await c.env.DB.prepare("SELECT key, window_start, count FROM rate_limits WHERE window_start > ?1 ORDER BY count DESC LIMIT 100").bind(now() - 86_400_000).all<{
+    key: string;
+    window_start: number;
+    count: number;
+  }>();
+  const showEmail = can(c, "users.email");
+  return c.json(results.map((r) => ({ key: showEmail ? r.key : r.key.replace(/[^:]+@[^:]+/, "***"), id: r.key, windowStart: r.window_start, count: r.count })));
+});
+
+admin.delete("/control/limits", async (c) => {
+  await need(c, "control");
+  const key = str((await body(c.req)).key, "key", 400);
+  await c.env.DB.prepare("DELETE FROM rate_limits WHERE key = ?1").bind(key).run();
+  await logStmt(c, "admin.control.limit_cleared", c.get("caller").userId).run();
+  return c.json({ ok: true });
 });
