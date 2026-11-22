@@ -6,7 +6,7 @@
  */
 import { useEffect, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { SYMBOLS, type SymbolName } from "./symbols";
+import type { SymbolName } from "./symbols";
 
 // ---------------------------------------------------------------------------
 // SF Symbols, each with a hover motion that matches what it shows
@@ -43,24 +43,25 @@ const MOTION: Partial<Record<SymbolName, string>> = {
   xmark: "turn",
 };
 
+/**
+ * How a glyph is drawn is set once per site: the dashboard draws SF Symbols
+ * (src/symbols.ts), the public support site draws its own icon set, so the
+ * SF outlines never ship in a public page.
+ */
+export interface IconProps {
+  className: string;
+  "data-m"?: string;
+  size: number;
+  label?: string;
+}
+type IconRenderer = (name: SymbolName, props: IconProps) => ReactNode;
+let renderIcon: IconRenderer = () => null;
+export function setIconRenderer(r: IconRenderer) {
+  renderIcon = r;
+}
+
 export function Icon({ name, size = 17, label }: { name: SymbolName; size?: number; label?: string }) {
-  const s = SYMBOLS[name];
-  const [x, y, w, h] = s.vb;
-  return (
-    <svg
-      className="sym"
-      data-m={MOTION[name]}
-      viewBox={`${x} ${y} ${w} ${h}`}
-      height={size}
-      width={(size * w) / h}
-      role={label ? "img" : undefined}
-      aria-label={label}
-      aria-hidden={label ? undefined : true}
-      focusable="false"
-    >
-      <path d={s.d} fill="currentColor" />
-    </svg>
-  );
+  return <>{renderIcon(name, { className: "sym", "data-m": MOTION[name], size, label })}</>;
 }
 
 // ---------------------------------------------------------------------------
