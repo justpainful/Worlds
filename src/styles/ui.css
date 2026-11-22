@@ -318,7 +318,7 @@ input[type="time"].field, input[type="datetime-local"].field, input[type="number
 .view-error-actions { display: flex; gap: 8px; margin-top: 8px; }
 .view-error-detail { margin: 16px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--fill-1); color: var(--text-3); font: 12px/1.5 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; direction: ltr; text-align: left; }
 
-.toasts { position: fixed; z-index: 4000; left: 0; right: 0; bottom: 26px; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
+.toasts { position: fixed; z-index: 4000; left: 0; right: 0; bottom: calc(26px + var(--svc-notes-h, 0px)); display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
 .toast { pointer-events: auto; }
 .toast > .g-layer { animation: toast-in var(--d-panel) var(--spring-snappy); }
 .toast-row { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 8px 0 18px; font: var(--t-ui); max-width: 560px; }

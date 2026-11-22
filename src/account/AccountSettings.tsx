@@ -9,6 +9,12 @@ import { accountApi, ROLE_LABEL, type Device, type Passkey } from "./api";
 import { startAccount, useAccount } from "./store";
 import { SignInFlow } from "./SignIn";
 import { Group, Notice, Row, WorkspaceTile } from "./parts";
+import { isWeb } from "../lib/api";
+import { save } from "../lib/dialog";
+import { openExternal } from "../lib/links";
+import { appPlatform } from "../appVersion";
+import { openFeedback, useServiceUi } from "./ServiceHost";
+import { serviceApi, setUsageCounts, SUPPORT_URL, type Deletion } from "./service";
 
 /** Settings > Account: who you are, passkeys, devices, workspaces, server, sign out. */
 export function AccountSettings() {
@@ -23,6 +29,7 @@ export function AccountSettings() {
             <SignInFlow onDone={() => {}} />
           </div>
         </Group>
+        <HelpGroup signedIn={false} />
         <ServerGroup />
       </>
     );
@@ -55,6 +62,7 @@ function SignedIn() {
 
   return (
     <>
+      {!expired && <PendingDeletion />}
       {expired && (
         <Notice icon="warning" tone="warning">
           This PC was signed out by the server (the device was removed or the sign-in expired). Your pages are safe here. Sign in again to reach your Team
@@ -157,7 +165,12 @@ function SignedIn() {
         )}
       </Group>
 
+      <HelpGroup signedIn={!expired} />
+      {!expired && <PrivacyGroup />}
+
       <ServerGroup />
+
+      {!expired && <DataGroup />}
 
       <Group note="Signing out keeps every page on this PC. Team pages are hidden until you sign in again.">
         <Row label="Sign out of Worlds on this PC" hint={account.deviceName}>
@@ -308,6 +321,167 @@ function ServerGroup() {
           </Button>
         </div>
       )}
+    </Group>
+  );
+}
+
+/** Shown while the account is set to be deleted: one button keeps it. */
+function PendingDeletion() {
+  const [d, setD] = useState<Deletion | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    serviceApi.deletion().then(setD, () => undefined);
+  }, []);
+  if (!d?.dueAt) return null;
+  return (
+    <Notice icon="warning" tone="warning">
+      <span>This account will be deleted on {new Date(d.dueAt).toLocaleDateString()}. Until then everything can come back as it was.</span>
+      <div className="acct-notice-action">
+        <Button
+          variant="tinted"
+          size="compact"
+          loading={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await serviceApi.cancelDeletion();
+              setD({ ...d, dueAt: null });
+              useStore.getState().toast({ message: "Your account is kept", tone: "success" });
+            } catch (e) {
+              useStore.getState().toast({ message: errorMessage(e), tone: "error" });
+            }
+            setBusy(false);
+          }}
+        >
+          Cancel Deletion
+        </Button>
+      </div>
+    </Notice>
+  );
+}
+
+/** Ideas, problems, the help center and messages from the team. */
+function HelpGroup({ signedIn }: { signedIn: boolean }) {
+  const open = useServiceUi((s) => s.open);
+  return (
+    <Group title="Help and Feedback" note="Replies to problems come by email from support@enterworlds.space and to your notifications here.">
+      <Row label="Suggest an idea" hint="Others can vote for it once it is on the board.">
+        <Button variant="plain" size="compact" onClick={() => openFeedback("idea")}>
+          Suggest
+        </Button>
+      </Row>
+      <Row label="Report a problem" hint="With screenshots and, if you like, technical details.">
+        <Button variant="plain" size="compact" onClick={() => openFeedback("problem")}>
+          Send Report
+        </Button>
+      </Row>
+      {signedIn && (
+        <Row label="Messages from Worlds" hint="When the Worlds team writes to you.">
+          <Button variant="plain" size="compact" onClick={() => open({ kind: "messages" })}>
+            Open
+          </Button>
+        </Row>
+      )}
+      <Row label="Help center" hint="support.enterworlds.space">
+        <Button variant="plain" size="compact" icon="openExternal" onClick={() => void openExternal(SUPPORT_URL)}>
+          Open
+        </Button>
+      </Row>
+      <Row label="Ideas and roadmap" hint="What people asked for, and what is coming.">
+        <Button variant="plain" size="compact" icon="openExternal" onClick={() => void openExternal(`${SUPPORT_URL}/roadmap`)}>
+          Open
+        </Button>
+      </Row>
+    </Group>
+  );
+}
+
+function Switch({ on, label, onChange, disabled }: { on: boolean; label: string; onChange: (v: boolean) => void; disabled?: boolean }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} aria-label={label} disabled={disabled} className={`switch ${on ? "is-on" : ""}`} onClick={() => onChange(!on)}>
+      <span className="switch-knob" />
+    </button>
+  );
+}
+
+/** Usage counts and the testers programme. */
+function PrivacyGroup() {
+  const usage = useStore((s) => s.settings["privacy.usageCounts"] === true);
+  const [tester, setTester] = useState<string | null | undefined>(undefined);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    serviceApi.testers().then(
+      (t) => setTester(t.status),
+      () => setTester(undefined),
+    );
+  }, []);
+  const toggleTester = async (on: boolean) => {
+    setBusy(true);
+    try {
+      if (on) setTester((await serviceApi.applyTesters([appPlatform()])).status);
+      else {
+        await serviceApi.leaveTesters();
+        setTester(null);
+      }
+    } catch (e) {
+      useStore.getState().toast({ message: errorMessage(e), tone: "error" });
+    }
+    setBusy(false);
+  };
+  const testerHint =
+    tester === "accepted" ? "You are a tester. Thank you." : tester === "applied" ? "Asked. The team answers soon." : tester === "declined" ? "Not this time." : "Try new versions before everyone else.";
+  return (
+    <Group title="Privacy and Testing" note="Counts are how many, never what: no titles, text or files. Testers get new versions first and a short question now and then.">
+      <Row label="Send usage counts" hint="Once a day: pages, kinds of pages and features in use, version, language and theme.">
+        <Switch on={usage} label="Send usage counts" onChange={setUsageCounts} />
+      </Row>
+      <Row label="Be a Worlds tester" hint={testerHint}>
+        <Switch on={tester === "applied" || tester === "accepted"} label="Be a Worlds tester" disabled={busy || tester === undefined} onChange={toggleTester} />
+      </Row>
+    </Group>
+  );
+}
+
+/** A copy of one's data, and deleting the account. */
+function DataGroup() {
+  const open = useServiceUi((s) => s.open);
+  const [busy, setBusy] = useState(false);
+  const download = async () => {
+    const name = `worlds-account-${new Date().toISOString().slice(0, 10)}.json`;
+    setBusy(true);
+    try {
+      if (isWeb) {
+        const data = await serviceApi.exportData();
+        const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = name;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 30_000);
+      } else {
+        const path = await save({ defaultPath: name, filters: [{ name: "JSON", extensions: ["json"] }] });
+        if (path) {
+          await serviceApi.exportTo(path);
+          useStore.getState().toast({ message: "Your data is saved", tone: "success" });
+        }
+      }
+    } catch (e) {
+      useStore.getState().toast({ message: errorMessage(e), tone: "error" });
+    }
+    setBusy(false);
+  };
+  return (
+    <Group title="Your Data" note="The copy has what the account service keeps about you. Your pages are already on this PC.">
+      <Row label="Download my data" hint="One JSON file: account, devices, workspaces, profile, published pages, requests.">
+        <Button variant="plain" size="compact" loading={busy} onClick={download}>
+          Download
+        </Button>
+      </Row>
+      <Row label="Delete account" hint="30 days to change your mind. Pages on this PC are not touched.">
+        <Button variant="danger" size="compact" onClick={() => open({ kind: "delete" })}>
+          Delete Account
+        </Button>
+      </Row>
     </Group>
   );
 }

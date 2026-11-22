@@ -1,0 +1,30 @@
+version: 1.1.0
+date: 2026-11-22
+title: Worlds يسمعك || Worlds is listening
+summary: الاقتراحات والإبلاغ عن المشاكل من داخل التطبيق، ومركز مساعدة جديد، ورسائل من فريق Worlds، وحذف الحساب وتنزيل بياناتك بنفسك. || Ideas and problem reports from inside the app, a new help center, messages from the Worlds team, and deleting your account or downloading your data yourself.
+intro: يفتح هذا الإصدار طريقًا مباشرًا بينك وبين فريق Worlds. تقترح فكرة أو تبلغ عن مشكلة من الإعدادات دون أن تغادر التطبيق، ويصلك الرد بالبريد من support@enterworlds.space وفي إشعاراتك. وصار حسابك بيدك بالكامل: تنزّل نسخة من بياناتك، وتحذف حسابك متى شئت مع مهلة 30 يومًا لتغيير رأيك. || This release opens a direct line between you and the Worlds team. Suggest an idea or report a problem from Settings without leaving the app, and the reply reaches you by email from support@enterworlds.space and in your notifications. Your account is now fully yours: download a copy of your data, and delete the account whenever you like, with 30 days to change your mind.
+note: هذه الميزات في تطبيق الكمبيوتر وعلى الويب. تطبيقات الهاتف والجهاز اللوحي تستخدم مركز المساعدة حتى تصلها. || These features are in the desktop app and on the web. The phone and tablet apps use the help center until they get them.
+feature: bubble accounts :: ملاحظاتك من داخل التطبيق :: اقترح فكرة أو أبلغ عن مشكلة مع لقطات شاشة، ويصلك الرد بالبريد وفي إشعاراتك. || Feedback from inside the app :: Suggest an idea or report a problem with screenshots, and the reply reaches you by email and in your notifications.
+feature: profile accounts :: حسابك بيدك :: نزّل نسخة من بياناتك، أو احذف حسابك مع 30 يومًا لتغيير رأيك. || Your account, your call :: Download a copy of your data, or delete your account with 30 days to change your mind.
+
+# highlights
+- new: اقتراح فكرة والإبلاغ عن مشكلة من الإعدادات، الحساب، المساعدة والملاحظات. || Suggest an idea or report a problem from Settings, Account, Help and Feedback.
+- new: حذف الحساب من التطبيق، مع 30 يومًا لإلغاء الحذف، وتنزيل نسخة من بياناتك في ملف واحد. || Delete your account from the app, with 30 days to cancel, and download a copy of your data in one file.
+- new: مركز مساعدة جديد على support.enterworlds.space، مع لوحة للأفكار وخطة العمل. || A new help center at support.enterworlds.space, with a board of ideas and a roadmap.
+
+# accounts
+- new: الإبلاغ عن مشكلة يقبل حتى ست لقطات شاشة، ويرفق عند موافقتك تفاصيل تقنية: النسخة والنظام وحجم الشاشة وعدد الصفحات، دون عناوينها أو نصوصها. || A problem report takes up to six screenshots and, if you agree, technical details: the version, the system, the screen size and how many pages you have, never their titles or text.
+- new: رسائل من فريق Worlds تظهر في الإعدادات وفي الإشعارات، ويمكنك الرد عليها من التطبيق. || Messages from the Worlds team show up in Settings and in your notifications, and you can reply from the app.
+- new: الردود على طلبات الدعم تصل إلى إشعاراتك، وتفتح الطلب في مركز المساعدة. || Replies to support requests reach your notifications and open the request in the help center.
+- new: حذف الحساب يُخرج كل الأجهزة فورًا، ويمسح الحساب بعد 30 يومًا. تسجيل الدخول قبلها يعرض زر إلغاء الحذف. الصفحات على جهازك لا تُمس. || Deleting the account signs out every device at once and erases it after 30 days. Signing in before then shows a Cancel Deletion button. Pages on your device are not touched.
+- new: تنزيل بياناتي يحفظ في ملف JSON كل ما تحفظه خدمة الحساب عنك. || Download My Data saves everything the account service keeps about you in one JSON file.
+- new: الانضمام إلى مختبري Worlds من الإعدادات، لتصلك النسخ الجديدة أولًا. || Join the Worlds testers from Settings, to get new versions first.
+- new: سؤال قصير من الفريق يظهر أحيانًا في زاوية النافذة، ويمكن تخطيه. || A short question from the team shows up now and then in a corner of the window, and can be skipped.
+- new: أعداد الاستخدام اختيارية ومطفأة حتى توافق: مرة في اليوم، كم صفحة وأي الميزات، دون أي محتوى. || Usage counts are optional and off until you agree: once a day, how many pages and which features, never any content.
+- new: تنبيهات من Worlds أسفل النافذة عند الصيانة أو انقطاع الخدمة أو صدور نسخة تحتاج إلى التحديث. || Notices from Worlds at the bottom of the window during maintenance, an outage, or when an update is needed.
+
+# web
+- new: مركز المساعدة support.enterworlds.space: مقالات، وطلب دعم بنموذج حسب نوع المشكلة، ومتابعة طلباتك ببريدك. || The help center at support.enterworlds.space: articles, a support request form that fits the kind of problem, and following your requests with your email.
+- new: لوحة الأفكار يصوّت فيها الجميع، وخطة العمل تعرض ما هو مخطط له وما يُعمل عليه وما صدر. || A board of ideas everyone can vote on, and a roadmap with what is planned, in progress and shipped.
+- new: صفحة سياسة حذف الحساب وصفحة سياسة المحتوى، مع تحديث سياسة الخصوصية والشروط. || An account deletion page and a content policy, with an updated privacy policy and terms.
+- new: زر الإبلاغ أسفل الصفحات المنشورة والملفات الشخصية العامة. || A Report link at the bottom of published pages and public profiles.

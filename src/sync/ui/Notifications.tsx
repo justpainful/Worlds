@@ -8,6 +8,8 @@ import { useStore } from "../../state/store";
 import { markNotificationsRead, refreshNotifications, useNotifications, type Notice } from "../manager";
 import { useCommentsUi } from "./commentsUi";
 import { openDrawingComment } from "../../drawing/navigation";
+import { openExternal } from "../../lib/links";
+import { useServiceUi } from "../../account/ServiceHost";
 
 /** Mentions and replies, newest first, under the bell. */
 export function NotificationsPopover({ anchor, onClose }: { anchor: HTMLElement; onClose: () => void }) {
@@ -40,6 +42,13 @@ export function NotificationsPopover({ anchor, onClose }: { anchor: HTMLElement;
 
   const openNotice = (n: Notice) => {
     void markNotificationsRead([n.id]);
+    if (n.kind === "worlds") {
+      // A message from the team opens here; a support reply opens the request on the help center.
+      if (n.topic === "messages.team") useServiceUi.getState().open({ kind: "messages" });
+      else if (n.link) void openExternal(n.link);
+      onClose();
+      return;
+    }
     if (n.kind === "published") {
       // A sent item opens as this person's own copy of it.
       const mine = Object.values(useStore.getState().pages).find((p) => !p.deletedAt && (p.data as Record<string, unknown> | undefined)?.publishedFrom === n.id);
@@ -73,13 +82,22 @@ export function NotificationsPopover({ anchor, onClose }: { anchor: HTMLElement;
         )}
         {items.map((n) => {
           // A sent item's page is in the sender's workspace, not here.
-          const page = n.kind === "published" ? undefined : pages[n.docId];
+          const page = n.kind === "published" || n.kind === "worlds" ? undefined : pages[n.docId];
           return (
             <button key={n.id} type="button" className={`np-item ${n.readAt ? "" : "is-unread"}`} onClick={() => openNotice(n)}>
               <span className="np-mark" aria-hidden />
               <span className="np-text">
                 <span className="np-line bidi">
-                  <strong>{n.fromName || t("Someone", "عضو")}</strong> {n.kind === "mention" ? t("mentioned you", "أشار إليك") : n.kind === "published" ? t("sent you", "أرسل إليك") : t("replied", "ردّ")}
+                  <strong>{n.fromName || t("Someone", "عضو")}</strong>{" "}
+                  {n.kind === "worlds" ? (
+                    <span translate="no">{n.topic === "testers.accepted" ? t("added you to the testers", "أضافك إلى المختبرين") : n.title}</span>
+                  ) : n.kind === "mention" ? (
+                    t("mentioned you", "أشار إليك")
+                  ) : n.kind === "published" ? (
+                    t("sent you", "أرسل إليك")
+                  ) : (
+                    t("replied", "ردّ")
+                  )}
                   {page ? (
                     <>
                       {t(" in ", " في ")}
@@ -88,7 +106,7 @@ export function NotificationsPopover({ anchor, onClose }: { anchor: HTMLElement;
                   ) : null}
                 </span>
                 <span className="np-excerpt bidi" dir="auto">
-                  {n.excerpt}
+                  {n.topic === "testers.accepted" ? t("New versions reach you before everyone else. Thank you for helping.", "ستصلك النسخ الجديدة قبل الجميع. شكرًا على مساعدتك.") : n.excerpt}
                 </span>
               </span>
               <span className="np-time">{relTime(n.createdAt)}</span>

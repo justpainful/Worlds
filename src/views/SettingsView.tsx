@@ -33,7 +33,7 @@ import { MailAddress } from "../account/PublishPage";
 import { ApiSettings, CalendarSettings, WebhookSettings } from "./IntegrationSettings";
 
 const SECTIONS: { id: string; label: string; ar?: string; tile: string; group: number; keywords: string }[] = [
-  { id: "account", label: "Account", tile: "team", group: 0, keywords: "sign in passkey email devices workspaces team members sign out server" },
+  { id: "account", label: "Account", tile: "team", group: 0, keywords: "sign in passkey email devices workspaces team members sign out server feedback idea problem support help messages privacy usage testers data export delete" },
   { id: "appearance", label: "Appearance", tile: "design", group: 0, keywords: "theme accent language glass transparency window motion density background liquid" },
   { id: "editor", label: "Editor", tile: "writing", group: 0, keywords: "direction rtl arabic spell check paragraph" },
   { id: "packs", label: "Packs", tile: "graduation", group: 0, keywords: "study school university subjects timetable assignments exams" },

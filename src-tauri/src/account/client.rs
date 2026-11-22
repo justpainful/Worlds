@@ -73,7 +73,7 @@ pub async fn send(
     token: Option<&str>,
     actor: Option<&str>,
 ) -> Result<Value, ApiError> {
-    let mut req = http().request(method, format!("{base}{path}"));
+    let mut req = http().request(method, format!("{base}{path}")).header("x-worlds-version", env!("CARGO_PKG_VERSION"));
     if let Some(t) = token {
         req = req.bearer_auth(t);
     }

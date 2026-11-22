@@ -93,6 +93,10 @@ ${plus(40, 36, 4)}`,
 <path d="M104 26 Q82 14 64 24"/><path d="M70 21 L64 24 L67 30"/>`,
 
   // A name tag with a handwritten name: names are never translated.
+  // A speech bubble with a few lines: feedback and help from inside the app (1.1).
+  bubble: `<path d="M36 30 Q36 24 42 24 L118 22.5 Q124 22.5 124.2 28.5 L125 68 Q125 74 119 74.2 L74 75.5 L55 92 L58.5 76 L43 76.5 Q37 76.5 36.8 70.5 Z"/>
+<path d="M50 39 L108 37.8"/><path d="M50 49.5 L100 48.8"/><path d="M50 60 L86 59.6"/>
+${plus(134, 86, 4)}`,
   name: `<path class="k" d="M48 38 H112 Q118 38 118 44 V82 Q118 88 112 88 H48 Q42 88 42 82 V44 Q42 38 48 38 Z"/>
 <path class="k" d="M72 32 H88 V42 H72 Z"/><path d="M76 37 H84"/>
 <path d="M42 54 H118"/>

@@ -31,6 +31,7 @@ import { listenForCaptures } from "./files/capture";
 import { startMailInbox } from "./account/PublishPage";
 import { startCalendarSync } from "./planning/calendarSync";
 import { startWebhooks } from "./views/IntegrationSettings";
+import { ServiceHost } from "./account/ServiceHost";
 
 export function App() {
   const ready = useStore((s) => s.ready);
@@ -208,6 +209,7 @@ export function App() {
       <CommandPalette />
       <MenuHost />
       <Toasts />
+      <ServiceHost />
       <TooltipHost />
       <TourHost />
       <AiHost />

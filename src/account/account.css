@@ -139,3 +139,41 @@
 @media (prefers-reduced-motion: reduce) {
   .acct-disclosure-chevron { transition: none; }
 }
+
+/* ---- The account service in the app (ServiceHost.tsx) ---- */
+.svc-notes { position: fixed; z-index: 1900; bottom: 26px; inset-inline: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
+.svc-note { pointer-events: auto; max-width: min(640px, calc(100vw - 32px)); }
+.svc-note-row { display: flex; align-items: center; gap: 10px; min-height: 40px; padding-block: 4px; padding-inline: 16px 6px; font: var(--t-ui); color: var(--text-1); }
+.svc-note-row > svg { flex: none; color: var(--accent); }
+.svc-note.is-warning .svc-note-row > svg { color: var(--yellow); }
+.svc-note-text { flex: 1; min-width: 0; line-height: 1.4; }
+.svc-card { position: fixed; z-index: 1800; bottom: calc(24px + var(--svc-notes-h, 0px)); inset-inline-end: 24px; width: min(360px, calc(100vw - 32px)); padding: 14px 16px 16px; }
+.svc-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--text-2); }
+.svc-card-title { flex: 1; font: var(--t-headline); color: var(--text-1); }
+.svc-card-text { margin: 0 0 12px; font: var(--t-subhead); color: var(--text-2); line-height: 1.5; }
+.svc-choices { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.svc-answer { display: flex; gap: 8px; align-items: flex-end; }
+.svc-answer textarea { flex: 1; min-width: 0; resize: vertical; }
+.svc-spacer { flex: 1; }
+.svc-form { display: flex; flex-direction: column; gap: 14px; padding: 4px 24px 8px; }
+.svc-label { display: flex; flex-direction: column; gap: 6px; font: var(--t-footnote); color: var(--text-2); }
+.svc-label textarea { resize: vertical; min-height: 96px; }
+.svc-check { display: flex; gap: 8px; align-items: flex-start; font: var(--t-footnote); color: var(--text-2); line-height: 1.45; }
+.svc-check input { margin-top: 2px; accent-color: var(--accent); }
+.svc-pictures { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.svc-picture { display: inline-flex; align-items: center; gap: 6px; max-width: 220px; padding-inline: 10px 2px; border-radius: var(--r-capsule); background: var(--fill-1); font: var(--t-footnote); color: var(--text-2); }
+.svc-picture-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.svc-threads { display: flex; flex-direction: column; gap: 18px; padding: 4px 24px 18px; max-height: 60vh; overflow: auto; }
+.svc-thread { display: flex; flex-direction: column; gap: 8px; }
+.svc-thread + .svc-thread { padding-top: 18px; border-top: 0.5px solid var(--separator); }
+.svc-thread-title { margin: 0; font: var(--t-headline); color: var(--text-1); }
+.svc-bubble { max-width: 85%; padding: 9px 12px; border-radius: var(--r-lg); background: var(--fill-1); }
+.svc-bubble.is-person { align-self: flex-end; background: rgba(var(--accent-rgb), 0.14); }
+.svc-bubble-body { font: var(--t-subhead); color: var(--text-1); white-space: pre-wrap; overflow-wrap: anywhere; }
+.svc-bubble-meta { display: flex; gap: 8px; margin-top: 4px; font: var(--t-caption); color: var(--text-3); }
+.svc-empty { margin: 0; font: var(--t-footnote); color: var(--text-3); }
+@media (prefers-reduced-motion: no-preference) {
+  .svc-note > .g-layer, .svc-card > .g-layer { animation: toast-in var(--d-panel) var(--spring-snappy); }
+}
+/* While notices show at the bottom, the content ends above them. */
+.main { padding-block-end: calc(8px + var(--svc-notes-h, 0px)); }
