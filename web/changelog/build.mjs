@@ -1,13 +1,14 @@
 // Builds changelog.enterworlds.space from web/changelog/releases into web/changelog/site.
 //   node web/changelog/build.mjs
 // Each release is a text file (see web/changelog/README.md). Every release gets
-// a page and a banner: a map of islands drawn from its own changes, one island
-// per area, one house per change, with the same seeded shapes as Cognition's world.
+// a page whose hero is a dark panel with the release's feature cards, each with
+// its own line drawing (web/changelog/art.mjs).
 // The build fails on a dash the house style forbids, an unknown area or kind,
 // or a line without both languages.
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { ART, art } from "./art.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT = join(HERE, "site");
@@ -16,7 +17,7 @@ const MAIN = "https://enterworlds.space";
 const STATUS = "https://status.enterworlds.space";
 const GITHUB = "https://github.com/justpainful/Worlds";
 
-// Areas keep one colour in every banner, so Cognition is the same island colour in every release.
+// Areas keep one colour on every page, so Cognition has the same colour in every release.
 const AREAS = {
   cognition: ["Cognition", "Cognition", "terra"],
   welcome: ["الترحيب", "Welcome", "terra"],
@@ -58,7 +59,7 @@ const T = {
     areas: "المجالات", prev: "الإصدار الأقدم", next: "الإصدار الأحدث", back: "كل الإصدارات",
     count: (n) => (n === 1 ? "تغيير واحد" : n === 2 ? "تغييران" : n <= 10 ? `${n} تغييرات` : `${n} تغييرًا`),
     areaCount: (n) => (n === 1 ? "مجال واحد" : n === 2 ? "مجالان" : n <= 10 ? `${n} مجالات` : `${n} مجالًا`),
-    mapLabel: (v, a, c) => `خريطة الإصدار ${v}: ${a} و${c}، لكل مجال جزيرة ولكل تغيير بيت`,
+    featured: (v) => `أبرز ما جاء في Worlds ${v}`, see: (a) => `تفاصيل ${a}`, toHighlights: "انتقل إلى الأبرز",
     feed: "خلاصة التحديثات", fine: "Worlds اسم عمل إبداعي غير مسجل رسميًا. الشيفرة منشورة على GitHub.",
     nf: "ما وجدنا هذه الصفحة.", nfLink: "ارجع إلى سجل التحديثات",
   },
@@ -72,7 +73,7 @@ const T = {
     areas: "Areas", prev: "Older release", next: "Newer release", back: "All releases",
     count: (n) => (n === 1 ? "1 change" : `${n} changes`),
     areaCount: (n) => (n === 1 ? "1 area" : `${n} areas`),
-    mapLabel: (v, a, c) => `Map of release ${v}: ${a} and ${c}, an island for each area and a house for each change`,
+    featured: (v) => `The best of Worlds ${v}`, see: (a) => `${a} in detail`, toHighlights: "Go to the highlights",
     feed: "Changelog feed", fine: "Worlds is a creative working name, not a registered mark. The code is published on GitHub.",
     nf: "We could not find this page.", nfLink: "Back to the changelog",
   },
@@ -95,7 +96,7 @@ function pair(text, where) {
 function parse(file) {
   const raw = readFileSync(file, "utf8").replace(/^﻿/, "").replace(/\r\n/g, "\n");
   if (/[–—]/.test(raw)) fail(`${file}: an en or em dash`);
-  const rel = { groups: [], highlights: [] };
+  const rel = { groups: [], highlights: [], features: [] };
   let group = null;
   raw.split("\n").forEach((line, n) => {
     const where = `${file}:${n + 1}`;
@@ -121,9 +122,22 @@ function parse(file) {
     if (i < 0) fail(`${where}: not a field, area or item`);
     const k = line.slice(0, i);
     const v = line.slice(i + 2);
+    if (k === "feature") {
+      // feature: <drawing> <area or all> :: title :: words[ :: link] || the same in English
+      const m = v.match(/^(\S+) (\S+) :: (.*)$/);
+      if (!m) fail(`${where}: write feature: <drawing> <area> :: title :: words || English`);
+      if (!ART[m[1]]) fail(`${where}: no drawing named ${m[1]}`);
+      const both = pair(m[3], where);
+      const [ar, en] = [both.ar, both.en].map((x) => x.split(" :: ").map((y) => y.trim()));
+      if (ar.length < 2 || en.length < 2) fail(`${where}: a feature needs a title and words in both languages`);
+      rel.features.push({ art: m[1], anchor: m[2], title: { ar: ar[0], en: en[0] }, desc: { ar: ar[1], en: en[1] }, link: ar[2] && en[2] ? { ar: ar[2], en: en[2] } : null });
+      return;
+    }
     rel[k] = ["version", "date", "published"].includes(k) ? v.trim() : pair(v, where);
   });
   for (const k of ["version", "date", "title", "summary", "intro"]) if (!rel[k]) fail(`${file}: missing ${k}`);
+  if (!rel.features.length) fail(`${file}: add at least one feature: line for the release panel`);
+  for (const f of rel.features) if (f.anchor !== "all" && !rel.groups.some((g) => g.key === f.anchor)) fail(`${file}: feature ${f.art} points at ${f.anchor}, which has no changes here`);
   rel.total = rel.groups.reduce((n, g) => n + g.items.length, 0);
   rel.kinds = { new: 0, improved: 0, fixed: 0 };
   for (const g of rel.groups) for (const it of g.items) rel.kinds[it.kind]++;
@@ -131,107 +145,61 @@ function parse(file) {
   return rel;
 }
 
-// ---------- The banner: a map of the release ----------
+// ---------- The release panel ----------
+// One component for every release: a near-black panel with the version, the
+// title and the release's feature cards, each with its own line drawing
+// (web/changelog/art.mjs). The release page shows it as its hero; the list
+// shows the newest release the same way and the older ones as smaller cards.
 
-function seeded(seed) {
-  let h = 2166136261;
-  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
-  return () => {
-    h += 0x6d2b79f5;
-    let t = h;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+// The version as people say it: 1.0.0 is "1.0", 0.3.1 stays "0.3.1".
+const spoken = (v) => v.replace(/\.0$/, "");
+
+function kindParts(rel, lang) {
+  const k = rel.kinds;
+  const ar = (n, [one, two, few, many]) => (n === 1 ? one : n === 2 ? two : `<b>${n}</b> ${n <= 10 ? few : many}`);
+  const parts = lang === "ar"
+    ? [ar(k.new, ["ميزة جديدة", "ميزتان جديدتان", "ميزات جديدة", "ميزة جديدة"]), ar(k.improved, ["تحسين واحد", "تحسينان", "تحسينات", "تحسينًا"]), ar(k.fixed, ["إصلاح واحد", "إصلاحان", "إصلاحات", "إصلاحًا"])]
+    : [`<b>${k.new}</b> added`, `<b>${k.improved}</b> improved`, `<b>${k.fixed}</b> fixed`];
+  return parts.filter((_, j) => [k.new, k.improved, k.fixed][j] > 0);
 }
 
-function blob(cx, cy, r, rand, points = 11, wobble = 0.24) {
-  const pts = Array.from({ length: points }, (_, i) => {
-    const a = (i / points) * Math.PI * 2;
-    const rr = r * (1 - wobble / 2 + rand() * wobble);
-    return [cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * 0.78];
-  });
-  const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-  let d = "";
-  pts.forEach((p, i) => {
-    const m = mid(p, pts[(i + 1) % pts.length]);
-    if (i === 0) {
-      const s = mid(pts[pts.length - 1], p);
-      d += `M${s[0].toFixed(1)} ${s[1].toFixed(1)}`;
-    }
-    d += ` Q${p[0].toFixed(1)} ${p[1].toFixed(1)} ${m[0].toFixed(1)} ${m[1].toFixed(1)}`;
-  });
-  return `${d} Z`;
-}
+const arrow = (lang) => (lang === "ar" ? "&#8598;" : "&#8599;");
 
-const GOLDEN = Math.PI * (3 - Math.sqrt(5));
-const W = 1200;
-const H = 440;
-
-function layout(rel) {
-  const groups = [...rel.groups].sort((a, b) => b.items.length - a.items.length || (a.key < b.key ? -1 : 1));
-  const placed = [];
-  for (const g of groups) {
-    const r = 28 + Math.sqrt(g.items.length) * 13;
-    let x = 0;
-    let y = 0;
-    for (let k = placed.length ? placed.length * 2 : 0; k < 6000; k++) {
-      const dist = k === 0 ? 0 : 26 * Math.sqrt(k);
-      x = Math.cos(k * GOLDEN) * dist * 2.1;
-      y = Math.sin(k * GOLDEN) * dist * 0.85;
-      if (placed.every((o) => Math.abs(o.x - x) > o.r + r + 110 || Math.abs(o.y - y) > (o.r + r) * 0.8 + 34)) break;
-    }
-    placed.push({ g, x, y, r });
-  }
-  // Fit the archipelago into the sea beside the version number.
-  const box = { x0: 430, x1: W - 40, y0: 34, y1: H - 30 };
-  const minX = Math.min(...placed.map((p) => p.x - p.r));
-  const maxX = Math.max(...placed.map((p) => p.x + p.r));
-  const minY = Math.min(...placed.map((p) => p.y - p.r * 0.8));
-  const maxY = Math.max(...placed.map((p) => p.y + p.r * 0.8 + 30));
-  const s = Math.min(1.25, (box.x1 - box.x0) / (maxX - minX), (box.y1 - box.y0) / (maxY - minY));
-  const ox = box.x0 + ((box.x1 - box.x0) - (maxX - minX) * s) / 2 - minX * s;
-  const oy = box.y0 + ((box.y1 - box.y0) - (maxY - minY) * s) / 2 - minY * s;
-  return placed.map((p) => ({ ...p, x: ox + p.x * s, y: oy + p.y * s, r: p.r * s }));
-}
-
-function banner(rel, lang, { labels = true, id = "" } = {}) {
+/** One feature: the drawing above, the words below, the whole card a link. */
+function featureCard(f, rel, lang, page, heading) {
   const t = T[lang];
-  const islands = layout(rel);
-  const pat = `dots-${rel.version.replace(/\./g, "-")}${id}`;
-  const star = seeded(`stars${rel.version}`);
-  let out = `<svg class="map" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t.mapLabel(rel.version, t.areaCount(rel.groups.length), t.count(rel.total)))}">`;
-  out += `<defs><pattern id="${pat}" width="28" height="28" patternUnits="userSpaceOnUse"><circle class="dot" cx="2" cy="2" r="1.4"/></pattern></defs>`;
-  out += `<rect class="sea" width="${W}" height="${H}"/><rect width="${W}" height="${H}" fill="url(#${pat})"/>`;
-  // One star for each highlight, in the sky above the version.
-  for (let i = 0; i < rel.highlights.length; i++) {
-    const x = 48 + star() * 330;
-    const y = 40 + star() * 150;
-    const s = 5 + star() * 4;
-    out += `<path class="star" d="M${x} ${y - s} L${x + s * 0.3} ${y - s * 0.3} L${x + s} ${y} L${x + s * 0.3} ${y + s * 0.3} L${x} ${y + s} L${x - s * 0.3} ${y + s * 0.3} L${x - s} ${y} L${x - s * 0.3} ${y - s * 0.3} Z"/>`;
-  }
-  for (const isl of islands) {
-    const rand = seeded(`${rel.version}:${isl.g.key}`);
-    const hue = AREAS[isl.g.key][2];
-    out += `<g class="isl h-${hue}"><path class="land" d="${blob(isl.x, isl.y, isl.r, rand)}"/>`;
-    const n = isl.g.items.length;
-    const hs = Math.max(3.5, Math.min(9, (isl.r * 1.5) / Math.sqrt(n)));
-    isl.g.items.forEach((it, j) => {
-      const rr = isl.r * 0.72 * Math.sqrt((j + 0.5) / n);
-      const a = j * GOLDEN + rand() * 0.2;
-      const x = isl.x + Math.cos(a) * rr - hs / 2;
-      const y = isl.y + Math.sin(a) * rr * 0.74 - hs / 2;
-      out += `<rect class="house k-${it.kind}" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${hs.toFixed(1)}" height="${(hs * 0.82).toFixed(1)}" rx="1"/>`;
-    });
-    out += "</g>";
-    if (labels) {
-      const name = AREAS[isl.g.key][lang === "ar" ? 0 : 1];
-      out += `<text class="lbl" x="${isl.x.toFixed(1)}" y="${(isl.y + isl.r * 0.8 + 20).toFixed(1)}" text-anchor="middle">${esc(name)} <tspan class="num">${n}</tspan></text>`;
-    }
-  }
-  out += `<text class="ver" x="48" y="330">${esc(rel.version)}</text><rect class="rule" x="50" y="350" width="${Math.min(330, rel.version.length * 52)}" height="5" rx="2.5"/>`;
-  out += `<text class="when" x="48" y="396">${esc(dateText(rel.date, "en"))}</text>`;
-  return `${out}</svg>`;
+  const href = `${page}#${f.anchor}`;
+  const go = f.link?.[lang] || (f.anchor === "all" ? t.all : t.see(AREAS[f.anchor][lang === "ar" ? 0 : 1]));
+  return `<li class="feat"><a href="${href}"><div class="feat-art">${art(f.art)}</div><div class="feat-body"><${heading}>${esc(f.title[lang])}</${heading}><p>${esc(f.desc[lang])}</p><span class="feat-go">${esc(go)} <span aria-hidden="true">${arrow(lang)}</span></span></div></a></li>`;
+}
+
+/**
+ * The panel. On a release page `page` is "" (links stay on the page) and the
+ * title is the page's h1; in the list it links to the release page.
+ */
+function releasePanel(rel, lang, { latest = false, onPage = true } = {}) {
+  const t = T[lang];
+  const page = onPage ? "" : `${base(lang)}${rel.version}/`;
+  const h = onPage ? "h1" : "h2";
+  const id = `t-${rel.version.replace(/\./g, "-")}`;
+  const title = onPage ? esc(rel.title[lang]) : `<a href="${page}">${esc(rel.title[lang])}</a>`;
+  return `<section class="panel" aria-labelledby="${id}">
+<div class="panel-top"><p class="crumbs"><a href="${MAIN}${lang === "ar" ? "/" : "/en/"}">Worlds</a><span aria-hidden="true">/</span><a href="${base(lang)}">${t.name}</a></p><time datetime="${rel.date}">${esc(dateText(rel.date, lang))}</time></div>
+<p class="panel-ver">${t.version} <span class="mono">${esc(rel.version)}</span>${latest ? `<span class="badge">${t.latest}</span>` : ""}</p>
+<${h} id="${id}">${title}</${h}>
+<p class="panel-sub">${esc(t.featured(spoken(rel.version)))}</p>
+<ul class="feats">${rel.features.map((f) => featureCard(f, rel, lang, page, "h3")).join("")}</ul>
+<div class="panel-foot"><p class="panel-stats">${kindParts(rel, lang).join('<span class="dot" aria-hidden="true"></span>')}</p><a class="down" href="${page}#${onPage ? "hl" : "all"}" aria-label="${onPage ? t.toHighlights : t.read}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v13M6.5 12.5 12 18l5.5-5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a></div>
+</section>`;
+}
+
+/** An older release in the list: its first drawing on the dark panel, then the words. */
+function releaseCard(rel, lang) {
+  const t = T[lang];
+  const f = rel.features[0];
+  return `<li class="card"><a href="${base(lang)}${rel.version}/"><div class="card-art">${art(f.art)}</div>
+<div class="card-body"><p class="eyebrow"><span class="mono">${esc(rel.version)}</span><span>${esc(dateText(rel.date, lang))}</span></p>
+<h2>${esc(rel.title[lang])}</h2><p>${esc(rel.summary[lang])}</p><p class="count">${t.count(rel.total)} · ${t.areaCount(rel.groups.length)}</p></div></a></li>`;
 }
 
 // ---------- Pages ----------
@@ -290,17 +258,10 @@ function releasePage(rel, i, all, lang) {
   const older = all[i + 1];
   const newer = all[i - 1];
   const tag = `${GITHUB}/releases/tag/v${rel.version}`;
-  const k = rel.kinds;
-  const ar = (n, [one, two, few, many]) => (n === 1 ? one : n === 2 ? two : `<b>${n}</b> ${n <= 10 ? few : many}`);
-  const parts = lang === "ar"
-    ? [ar(k.new, ["ميزة جديدة", "ميزتان جديدتان", "ميزات جديدة", "ميزة جديدة"]), ar(k.improved, ["تحسين واحد", "تحسينان", "تحسينات", "تحسينًا"]), ar(k.fixed, ["إصلاح واحد", "إصلاحان", "إصلاحات", "إصلاحًا"])]
-    : [`<b>${k.new}</b> added`, `<b>${k.improved}</b> improved`, `<b>${k.fixed}</b> fixed`];
-  const shown = parts.filter((_, j) => [k.new, k.improved, k.fixed][j] > 0);
+  const shown = kindParts(rel, lang);
   const stats = lang === "ar" ? shown.join("، و") : shown.join(", ");
   let body = `<article class="wrap rel">
-<figure class="hero">${banner(rel, lang)}</figure>
-<p class="eyebrow"><span>${t.version} <span class="mono">${esc(rel.version)}</span></span><span>${esc(dateText(rel.date, lang))}</span>${i === 0 ? `<span class="badge">${t.latest}</span>` : ""}</p>
-<h1>${esc(rel.title[lang])}</h1>
+${releasePanel(rel, lang, { latest: i === 0 })}
 <p class="intro">${esc(rel.intro[lang])}</p>
 ${rel.note ? `<p class="note">${esc(rel.note[lang])}</p>` : ""}
 <p class="actions">${rel.published ? `<a class="btn" href="${tag}">${t.download}</a>` : `<span class="muted">${t.notPublished}</span>`}<span class="stats">${t.count(rel.total)}: ${stats}</span></p>
@@ -344,12 +305,10 @@ ${rel.note ? `<p class="note">${esc(rel.note[lang])}</p>` : ""}
 function indexPage(all, lang) {
   const t = T[lang];
   const [latest, ...rest] = all;
-  const card = (rel, big) => `<li class="${big ? "card big" : "card"}"><a href="${base(lang)}${rel.version}/">
-<figure>${banner(rel, lang, { labels: big, id: big ? "-big" : "-s" })}</figure>
-<div class="meta"><p class="eyebrow"><span class="mono">${esc(rel.version)}</span><span>${esc(dateText(rel.date, lang))}</span>${big ? `<span class="badge">${t.latest}</span>` : ""}</p>
-<h2>${esc(rel.title[lang])}</h2><p>${esc(rel.summary[lang])}</p><p class="count">${t.count(rel.total)} · ${t.areaCount(rel.groups.length)}</p></div></a></li>`;
   const body = `<section class="wrap lead"><h1>${t.name}</h1><p>${t.lead}</p></section>
-<ol class="wrap list">${card(latest, true)}${rest.map((r) => card(r, false)).join("")}</ol>`;
+<div class="wrap">${releasePanel(latest, lang, { latest: true, onPage: false })}
+<p class="latest-sum">${esc(latest.summary[lang])} <a href="${base(lang)}${latest.version}/">${t.read}</a></p></div>
+<ol class="wrap list">${rest.map((r) => releaseCard(r, lang)).join("")}</ol>`;
   const ld = [{
     "@type": "CollectionPage",
     name: `${t.name} · Worlds`,

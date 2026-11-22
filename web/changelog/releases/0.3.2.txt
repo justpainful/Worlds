@@ -3,6 +3,8 @@ date: 2026-11-19
 title: الحزم والنطاق الجديد والملف الشخصي العام || Packs, a new home and public profiles
 summary: 38 حزمة للقطاعات، وWorlds على enterworlds.space، وصفحات HTML، وملف شخصي عام لكل حساب، وإصلاحات من بلاغات المستخدمين في الرسم وخرائط المفاهيم. || 38 sector packs, Worlds at enterworlds.space, HTML pages, a public profile for every account, and fixes from user reports in drawing and concept maps.
 intro: يحمل هذا الإصدار تغييرات 0.3.1 كاملة، ويضيف إليها حزم القطاعات: 38 حزمة بالعربية والإنجليزية تحوّل Worlds إلى أداة للمعلم والمستقل وصاحب المشروع الصغير وغيرهم. وانتقل Worlds إلى نطاقه الرسمي enterworlds.space، مع نسخة ويب بحسابك الحقيقي، وملف شخصي عام يمكنك نشره. || This release carries all of 0.3.1 and adds sector packs: 38 packs in Arabic and English that turn Worlds into a tool for teachers, freelancers, small business owners and more. Worlds also moved to its official home at enterworlds.space, with a web version on your real account and a public profile you can publish.
+feature: packs packs :: حزم القطاعات :: 38 حزمة تجعل Worlds أداة للمعلم والمستقل وصاحب المشروع الصغير. || Sector packs :: 38 packs that make Worlds a tool for teachers, freelancers and small business owners.
+feature: profile profile :: ملف شخصي عام :: صفحة عامة بصورتك وبانرك وروابطك وكتلك على profile.enterworlds.space. || A public profile :: A public page with your picture, banner, links and blocks at profile.enterworlds.space.
 
 # highlights
 - new: حزم القطاعات: 38 حزمة منها المعلم والعمل الحر والمشروع الصغير والكتابة، بمحرك يدعم الروابط والقواعد والمجاميع. || Sector packs: 38 packs including Teacher, Freelance, Small business and Writing, on an engine with links, rules and totals.

@@ -51,52 +51,67 @@ html[lang="ar"] :is(h1, h2, h3) { line-height: 1.5; }
 .lead h1 { font-size: clamp(2rem, 4vw, 2.75rem); }
 .lead p { color: var(--ink-2); margin: 8px 0 0; max-width: 40rem; }
 
-/* The map banner. */
-.map { direction: ltr; display: block; width: 100%; height: auto; border-radius: 16px; border: 1px solid var(--line); }
-.map .sea { fill: var(--paper-2); }
-.map .dot { fill: var(--line-2); }
-.map .star { fill: var(--ochre); }
-.map .land { stroke-width: 2; stroke-linejoin: round; }
-.map .h-terra .land { fill: color-mix(in srgb, var(--terra) 18%, var(--surface)); stroke: var(--terra); }
-.map .h-teal .land { fill: color-mix(in srgb, var(--teal) 18%, var(--surface)); stroke: var(--teal); }
-.map .h-sage .land { fill: color-mix(in srgb, var(--sage) 18%, var(--surface)); stroke: var(--sage); }
-.map .h-ochre .land { fill: color-mix(in srgb, var(--ochre) 18%, var(--surface)); stroke: var(--ochre); }
-.map .h-plum .land { fill: color-mix(in srgb, var(--plum) 18%, var(--surface)); stroke: var(--plum); }
-.map .h-ink .land { fill: color-mix(in srgb, var(--ink-2) 14%, var(--surface)); stroke: var(--ink-2); }
-.map .h-terra .house { fill: var(--terra); } .map .h-teal .house { fill: var(--teal); } .map .h-sage .house { fill: var(--sage); }
-.map .h-ochre .house { fill: var(--ochre); } .map .h-plum .house { fill: var(--plum); } .map .h-ink .house { fill: var(--ink-2); }
-.map .house.k-fixed { opacity: 0.55; }
-.map .lbl { fill: var(--ink); font: 600 15px var(--font); }
-.map .lbl .num { fill: var(--ink-2); font: 500 13px var(--mono); }
-.map .ver { fill: var(--ink); font: 500 92px var(--mono); }
-.map .rule { fill: var(--terra); }
-.map .when { fill: var(--ink-2); font: 400 22px var(--font); }
+/* The release panel: line drawings on near-black, words on charcoal. The same
+   in light and dark, like a printed card laid on the page. */
+:root {
+  --p-bg: #1a1a1a; --p-art: #0b0b0b; --p-card: #222222; --p-line: #2e2e2e; --p-line-2: #474747;
+  --p-ink: #f4f2ef; --p-soft: #aaa6a0;
+}
+.panel { background: var(--p-bg); color: var(--p-ink); border: 1px solid var(--p-line); border-radius: 20px; padding: clamp(18px, 3vw, 30px); }
+.panel a { color: inherit; }
+.panel a:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 3px; border-radius: 8px; }
+.panel-top { display: flex; justify-content: space-between; align-items: center; gap: 6px 16px; flex-wrap: wrap; font-size: 0.85em; color: var(--p-soft); }
+.crumbs { margin: 0; display: flex; gap: 8px; }
+.crumbs a { color: var(--p-soft); text-decoration: none; transition: color 110ms var(--ease); }
+.crumbs a:hover { color: var(--p-ink); }
+.panel-ver { margin: 28px 0 0; display: flex; align-items: center; gap: 10px; font-size: 0.88em; color: var(--p-soft); }
+.panel :is(h1, h2) { margin-top: 6px; font-size: clamp(1.8rem, 4.2vw, 2.7rem); color: var(--p-ink); }
+.panel h2 a { text-decoration: none; }
+.panel h2 a:hover { text-decoration: underline; text-decoration-thickness: 1px; }
+.panel-sub { margin: 6px 0 0; color: var(--p-soft); }
+.panel .badge { color: var(--p-ink); background: transparent; border-color: var(--p-line-2); }
 
-/* The list of releases. */
-.list { list-style: none; padding-block: 8px 24px; margin-block: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 20px; }
-.card a { display: flex; flex-direction: column; height: 100%; color: inherit; text-decoration: none; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; transition: border-color 110ms var(--ease), transform 160ms var(--ease); }
-.card a:hover { border-color: var(--line-2); transform: translateY(-2px); }
-.card figure { margin: 0; width: 100%; }
-.card .map { border: 0; border-radius: 0; }
-.card .meta { padding: 16px 18px 18px; }
-.card h2 { font-size: 1.2rem; margin-top: 4px; }
-.card p { margin: 6px 0 0; color: var(--ink-2); }
+.feats { list-style: none; padding: 0; margin: 28px 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 16px; }
+.feat a { display: flex; flex-direction: column; height: 100%; text-decoration: none; background: var(--p-card); border: 1px solid var(--p-line); border-radius: 14px; overflow: hidden; transition: border-color 110ms var(--ease); }
+.feat a:hover { border-color: var(--p-line-2); }
+.feat-art, .card-art { display: grid; place-items: center; background: var(--p-art); color: var(--p-ink); aspect-ratio: 16 / 7; border-bottom: 1px solid var(--p-line); }
+.art { width: min(52%, 220px); height: auto; overflow: visible; }
+.art .k { fill: var(--p-art); }
+.feat-body { display: flex; flex-direction: column; flex: 1; padding: 18px 20px 20px; }
+.feat h3 { font-size: 1.12rem; color: var(--p-ink); }
+.feat p { margin: 8px 0 0; color: var(--p-soft); font-size: 0.95em; }
+.feat-go { margin-top: auto; padding-top: 18px; font-size: 0.9em; font-weight: 600; color: var(--p-ink); }
+
+.panel-foot { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; margin-top: 20px; }
+.panel-stats { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; color: var(--p-soft); font-size: 0.9em; }
+.panel-stats b { color: var(--p-ink); font-family: var(--mono); font-weight: 500; }
+.panel-stats .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--p-soft); }
+.down { grid-column: 2; display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--p-line-2); border-radius: 50%; color: var(--p-ink); transition: background 110ms var(--ease), border-color 110ms var(--ease); }
+.down:hover { background: var(--p-card); border-color: #5c5c5c; }
+.panel .feat a:focus-visible { border-radius: 14px; }
+.panel .down:focus-visible { border-radius: 50%; }
+.down svg { width: 20px; height: 20px; }
+@media (max-width: 600px) { .panel-foot { grid-template-columns: 1fr auto; } .down { grid-column: auto; } }
+
+/* The list of releases: the newest as a panel, the older ones as cards. */
+.latest-sum { color: var(--ink-2); margin: 14px 0 0; max-width: 48rem; }
+.list { list-style: none; padding-block: 28px 24px; margin-block: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 20px; }
+.card a { display: flex; flex-direction: column; height: 100%; color: var(--p-ink); text-decoration: none; background: var(--p-card); border: 1px solid var(--p-line); border-radius: 16px; overflow: hidden; transition: border-color 110ms var(--ease); }
+.card a:hover { border-color: var(--p-line-2); }
+.card-art { aspect-ratio: 16 / 8; }
+.card-body { padding: 16px 18px 18px; }
+.card .eyebrow { color: var(--p-soft); }
+.card h2 { font-size: 1.15rem; margin-top: 4px; color: var(--p-ink); }
+.card p { margin: 6px 0 0; color: var(--p-soft); }
 .card .count { font-size: 0.9em; }
-.card.big { grid-column: 1 / -1; }
-.card.big a { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); align-items: center; }
-.card.big h2 { font-size: clamp(1.5rem, 3vw, 2rem); }
-.card.big .meta { padding: 24px 28px; }
-@media (max-width: 860px) { .card.big a { display: flex; } }
-@media (prefers-reduced-motion: reduce) { .card a, .card a:hover { transition: none; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .feat a, .card a, .down, .crumbs a { transition: none; } }
 
 .eyebrow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; color: var(--ink-2); font-size: 0.92em; margin: 0; }
 .badge { background: color-mix(in srgb, var(--terra) 16%, transparent); color: var(--ink); border: 1px solid color-mix(in srgb, var(--terra) 45%, transparent); border-radius: 999px; padding: 0 10px; font-size: 0.9em; }
 
 /* A release. */
 .rel { padding-block: 12px 32px; }
-.hero { margin: 0 0 22px; }
-.rel h1 { font-size: clamp(1.9rem, 4.2vw, 2.9rem); margin-top: 8px; }
-.intro { font-size: 1.1em; max-width: 48rem; margin: 14px 0 0; }
+.intro { font-size: 1.1em; max-width: 48rem; margin: 28px 0 0; }
 .note { max-width: 48rem; background: var(--paper-2); border: 1px solid var(--line); border-inline-start: 3px solid var(--ochre); border-radius: 0 12px 12px 0; padding: 10px 16px; margin: 16px 0 0; color: var(--ink-2); }
 html[dir="rtl"] .note { border-radius: 12px 0 0 12px; }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin: 20px 0 0; }

@@ -14,6 +14,8 @@ title: عنوان الإصدار || Release title
 summary: سطر واحد للقائمة || One line for the list
 intro: فقرة تفتح صفحة الإصدار || The paragraph that opens the release page
 note: ملاحظة اختيارية || An optional note
+feature: pages all :: عنوان البطاقة :: سطر يشرحها :: نص الرابط || Card title :: One line about it :: Link text
+feature: cognition cognition :: Cognition :: سطر يشرحها || Cognition :: One line about it
 
 # highlights
 - new: أبرز ما في الإصدار || What matters most
@@ -24,11 +26,13 @@ note: ملاحظة اختيارية || An optional note
 - fixed: إصلاح || Fixed
 ```
 
-Areas are the keys of `AREAS` in `build.mjs` (pages, cognition, drawing, claude, platforms, accounts...). Each area keeps one colour in every banner. The build fails on a dash, an unknown area, an item without a kind, or a line without both languages.
+Areas are the keys of `AREAS` in `build.mjs` (pages, cognition, drawing, claude, platforms, accounts...). Each area keeps one colour on every page. The build fails on a dash, an unknown area, an item without a kind, or a line without both languages.
 
-## The banner
+## The release panel
 
-Each release page opens with a map drawn from the release itself: an island for each area, sized by its number of changes, with a house for each change (fixes are paler) and a star for each highlight. The shapes are seeded by the version, so a release always draws the same map. The rules follow Cognition's world (`src/cognition/world.ts`).
+Each release page opens with a dark panel: the version, the title, and a card for each `feature:` line. A card has a line drawing on near-black above its title and words on charcoal, and links to its area on the page (`all` links to every change). The newest release shows the same panel at the top of the list; older releases show their first drawing on a card.
+
+The drawings are in `art.mjs`: white lines on a 160 x 120 canvas, a little loose, one meaning each. Add a new drawing there when no existing one fits a release; the build fails on a drawing it does not know or a feature whose area has no changes. Every release needs at least one feature, and two read best.
 
 ## Adding a release
 
