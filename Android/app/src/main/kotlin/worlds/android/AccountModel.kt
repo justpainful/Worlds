@@ -123,6 +123,8 @@ internal class AccountModel(application: Application, private val gateway: Accou
     }
     fun changeEmail() { if (!mutable.value.busy) mutable.update { it.copy(stage = AccountStage.SIGN_IN, challengeId = null, error = null) } }
     fun refresh() = accountAction { gateway.refresh(it) }
+    /** The service signed this device out (the account is being deleted): back to signing in. */
+    fun signedOut() = mutable.update { it.copy(stage = AccountStage.SIGN_IN, info = null, workspaces = null, workspaceAttempted = false, error = null, busy = false) }
     fun logout() = accountAction { gateway.logout(it); null }
     private fun accountAction(action: (String) -> AccountInfo?) {
         val state = mutable.value
