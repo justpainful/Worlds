@@ -20,6 +20,8 @@ import { ApiError, bad, body, conflict, forbidden, normalizeEmail, notFound, opt
 import { checkUsername, usernameTaken } from "../lib/usernames";
 import { authenticationOptions, webauthn } from "../lib/webauthn";
 import { consumeEmailCode, newChallenge, takeChallenge, userById, userView } from "./auth";
+import { SUPPORT_SITE, replyAddress, sendSupportMail, supportMail, ticketRef } from "../lib/supportMail";
+import { STATUSES, addMessage, assertKind, messageView, notifyStmt, safeJson, ticketView, type MessageRow, type TicketRow, type TicketStatus } from "./support";
 
 export type AdminRole = "owner" | "moderator" | "support";
 
@@ -35,13 +37,15 @@ export const PERMISSIONS = [
   "audit",
   "stats",
   "team",
+  "tickets", // support requests: read, answer, notes, status
+  "tickets.private", // security reports
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
 const ROLE_PERMISSIONS: Record<AdminRole, readonly Permission[]> = {
   owner: PERMISSIONS,
-  moderator: ["users.read", "users.edit", "users.suspend", "notes", "audit", "stats"],
-  support: ["users.read", "users.email", "notes", "stats"],
+  moderator: ["users.read", "users.edit", "users.suspend", "notes", "audit", "stats", "tickets"],
+  support: ["users.read", "users.email", "notes", "stats", "tickets"],
 };
 
 /** Actions that need a second check made in the last STEP_UP_MS. */
@@ -698,4 +702,201 @@ admin.delete("/team/:id", async (c) => {
   // The person's dashboard devices lose their second check with the role.
   await c.env.DB.prepare("DELETE FROM admin_stepups WHERE user_id = ?1").bind(id).run();
   return c.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// Support requests (routes/support.ts)
+// ---------------------------------------------------------------------------
+
+type TicketJoined = TicketRow & { assignee_name?: string | null; user_name?: string | null; user_username?: string | null; last_author?: string | null };
+
+function ticketAdminView(c: AdminCtx, t: TicketJoined) {
+  return {
+    ...ticketView(t),
+    email: can(c, "users.email") ? t.email : null,
+    name: t.name,
+    userId: t.user_id,
+    userName: t.user_name ?? null,
+    userUsername: t.user_username ?? null,
+    priority: t.priority,
+    assignee: t.assignee_id ? { id: t.assignee_id, name: t.assignee_name ?? null } : null,
+    tags: safeJson<string[]>(t.tags, []),
+    private: t.private === 1,
+    via: t.via,
+    firstReplyAt: t.first_reply_at,
+    lastAuthor: t.last_author ?? null,
+  };
+}
+
+const TICKET_COLS = `t.*, a.display_name AS assignee_name, u.display_name AS user_name, u.username AS user_username,
+  (SELECT m.author FROM support_messages m WHERE m.ticket_id = t.id AND m.author != 'note' ORDER BY m.created_at DESC LIMIT 1) AS last_author`;
+const TICKET_FROM = "support_tickets t LEFT JOIN users a ON a.id = t.assignee_id LEFT JOIN users u ON u.id = t.user_id";
+
+const likeOf = (q: string) => `%${q.replace(/[\\%_]/g, (m) => "\\" + m)}%`;
+
+async function ticketByNumber(c: AdminCtx): Promise<TicketRow> {
+  const n = Number(c.req.param("number"));
+  const t = Number.isInteger(n) ? await c.env.DB.prepare("SELECT * FROM support_tickets WHERE number = ?1").bind(n).first<TicketRow>() : null;
+  if (!t || (t.private === 1 && !can(c, "tickets.private"))) throw notFound("request_not_found");
+  return t;
+}
+
+admin.get("/support", async (c) => {
+  await need(c, "tickets");
+  const where: string[] = [];
+  const args: unknown[] = [];
+  const arg = (v: unknown) => {
+    args.push(v);
+    return `?${args.length}`;
+  };
+  const status = c.req.query("status") ?? "active";
+  if (status === "active") where.push("t.status IN ('open', 'working')");
+  else if (STATUSES.includes(status as TicketStatus)) where.push(`t.status = ${arg(status)}`);
+  const kind = c.req.query("kind");
+  if (kind) where.push(`t.kind = ${arg(kind)}`);
+  if (c.req.query("mine") === "1") where.push(`t.assignee_id = ${arg(c.get("caller").userId)}`);
+  const q = (c.req.query("q") ?? "").trim().toLowerCase().slice(0, 100);
+  if (q) {
+    const num = Number(q.replace(/^w-?/i, ""));
+    const like = arg(likeOf(q));
+    const parts = [`lower(t.subject) LIKE ${like} ESCAPE '\\'`];
+    if (Number.isInteger(num) && num > 0) parts.push(`t.number = ${arg(num)}`);
+    if (can(c, "users.email")) parts.push(`t.email LIKE ${like} ESCAPE '\\'`);
+    where.push(`(${parts.join(" OR ")})`);
+  }
+  if (!can(c, "tickets.private")) where.push("t.private = 0");
+  const limit = Math.min(Math.max(Number(c.req.query("limit") ?? 50) || 50, 1), 100);
+  const offset = Math.max(Number(c.req.query("offset") ?? 0) || 0, 0);
+  const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+  const countArgs = [...args];
+  const { results } = await c.env.DB.prepare(
+    `SELECT ${TICKET_COLS} FROM ${TICKET_FROM} ${whereSql}
+     ORDER BY CASE t.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 ELSE 3 END, t.updated_at DESC LIMIT ${arg(limit)} OFFSET ${arg(offset)}`,
+  )
+    .bind(...args)
+    .all<TicketJoined>();
+  const total = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM support_tickets t ${whereSql}`).bind(...countArgs).first<{ n: number }>();
+  const counts = await c.env.DB.prepare(`SELECT status, COUNT(*) AS n FROM support_tickets ${can(c, "tickets.private") ? "" : "WHERE private = 0"} GROUP BY status`).all<{
+    status: string;
+    n: number;
+  }>();
+  return c.json({
+    total: total?.n ?? 0,
+    counts: Object.fromEntries(counts.results.map((r) => [r.status, r.n])),
+    requests: results.map((t) => ticketAdminView(c, t)),
+  });
+});
+
+admin.get("/support/:number", async (c) => {
+  await need(c, "tickets");
+  const t = await ticketByNumber(c);
+  const full = await c.env.DB.prepare(`SELECT ${TICKET_COLS} FROM ${TICKET_FROM} WHERE t.id = ?1`).bind(t.id).first<TicketJoined>();
+  const { results } = await c.env.DB.prepare(
+    "SELECT m.*, u.display_name AS author_name FROM support_messages m LEFT JOIN users u ON u.id = m.author_id WHERE m.ticket_id = ?1 ORDER BY m.created_at",
+  )
+    .bind(t.id)
+    .all<MessageRow & { author_name: string | null }>();
+  const others = await c.env.DB.prepare(
+    "SELECT number, subject, status, created_at FROM support_tickets WHERE (email = ?1 OR (user_id IS NOT NULL AND user_id = ?2)) AND id != ?3 ORDER BY created_at DESC LIMIT 10",
+  )
+    .bind(t.email, t.user_id, t.id)
+    .all<{ number: number; subject: string; status: string; created_at: number }>();
+  return c.json({
+    ...ticketAdminView(c, full!),
+    messages: results.map((m) => messageView(m, m.author === "person" ? (t.name ?? full?.user_name ?? null) : m.author_name)),
+    others: others.results.map((o) => ({ number: o.number, subject: o.subject, status: o.status, createdAt: o.created_at })),
+  });
+});
+
+/** Answer the person: mail from support@ and, for an account, a note in the app. */
+admin.post("/support/:number/reply", async (c) => {
+  await need(c, "tickets");
+  const t = await ticketByNumber(c);
+  const b = await body(c.req);
+  const text = str(b.body, "body", 10_000);
+  const status = (b.status === "solved" || b.status === "working" ? b.status : "waiting") as TicketStatus;
+  const m = await addMessage(c.env, t, { author: "team", authorId: c.get("caller").userId, body: text, via: "dashboard" }, status);
+  const mailed = await sendSupportMail(c.env, { to: t.email, ...supportMail(status === "solved" ? "solved" : "reply", t, text), replyTo: replyAddress(c.env, t.reply_key) });
+  const stmts: D1PreparedStatement[] = [logStmt(c, "admin.support.replied", t.user_id ?? t.id, { request: t.number, status, mailed })];
+  const events: EventEnvelope[] = [];
+  if (t.user_id) {
+    const n = notifyStmt(c.env.DB, t.user_id, {
+      id: `support:${t.id}:${m.id}`,
+      topic: "support.reply",
+      title: `${ticketRef(t.number)} · ${t.subject}`,
+      excerpt: text.slice(0, 300),
+      link: `${SUPPORT_SITE}/requests/${t.number}`,
+    });
+    stmts.push(n.stmt);
+    events.push(n.envelope);
+  }
+  await c.env.DB.batch(stmts);
+  emit(c as unknown as Context<AppEnv>, events);
+  return c.json({ ok: true, mailed, message: messageView(m) });
+});
+
+admin.post("/support/:number/note", async (c) => {
+  await need(c, "tickets");
+  const t = await ticketByNumber(c);
+  const text = str((await body(c.req)).body, "body", 10_000);
+  const m = await addMessage(c.env, t, { author: "note", authorId: c.get("caller").userId, body: text, via: "dashboard" });
+  return c.json(messageView(m), 201);
+});
+
+admin.patch("/support/:number", async (c) => {
+  await need(c, "tickets");
+  const t = await ticketByNumber(c);
+  const b = await body(c.req);
+  const sets: string[] = [];
+  const args: unknown[] = [];
+  const set = (col: string, v: unknown) => {
+    args.push(v);
+    sets.push(`${col} = ?${args.length}`);
+  };
+  const changed: Record<string, unknown> = {};
+  if (b.status !== undefined) {
+    if (!STATUSES.includes(b.status as TicketStatus)) throw bad("invalid_status");
+    set("status", b.status);
+    set("closed_at", b.status === "solved" || b.status === "closed" ? (t.closed_at ?? now()) : null);
+    changed.status = b.status;
+  }
+  if (b.priority !== undefined) {
+    if (!["low", "normal", "high", "urgent"].includes(b.priority as string)) throw bad("invalid_priority");
+    set("priority", b.priority);
+    changed.priority = b.priority;
+  }
+  if (b.assignee !== undefined) {
+    if (b.assignee !== null && (typeof b.assignee !== "string" || !(await roleOf(c as unknown as Context<AppEnv>, b.assignee)))) throw bad("invalid_assignee", "Assign to someone on the team.");
+    set("assignee_id", b.assignee);
+    changed.assignee = b.assignee;
+  }
+  if (b.kind !== undefined) {
+    set("kind", assertKind(b.kind));
+    changed.kind = b.kind;
+  }
+  if (b.tags !== undefined) {
+    if (!Array.isArray(b.tags) || b.tags.length > 10 || b.tags.some((x) => typeof x !== "string" || x.length > 30)) throw bad("invalid_tags");
+    set("tags", JSON.stringify(b.tags));
+    changed.tags = b.tags;
+  }
+  if (!sets.length) return c.json({ ok: true });
+  set("updated_at", now());
+  args.push(t.id);
+  await c.env.DB.batch([
+    c.env.DB.prepare(`UPDATE support_tickets SET ${sets.join(", ")} WHERE id = ?${args.length}`).bind(...args),
+    logStmt(c, "admin.support.updated", t.user_id ?? t.id, { request: t.number, ...changed }),
+  ]);
+  return c.json({ ok: true });
+});
+
+admin.get("/support-files/*", async (c) => {
+  await need(c, "tickets");
+  const key = c.req.path.replace(/^.*?\/support-files\//, "");
+  const f = await c.env.DB.prepare("SELECT f.mime, t.private FROM support_files f LEFT JOIN support_tickets t ON t.id = f.ticket_id WHERE f.key = ?1")
+    .bind(key)
+    .first<{ mime: string; private: number | null }>();
+  if (!f || (f.private === 1 && !can(c, "tickets.private")) || !c.env.PROFILE_FILES) throw notFound();
+  const obj = await c.env.PROFILE_FILES.get(key);
+  if (!obj) throw notFound();
+  return new Response(obj.body, { headers: { "content-type": f.mime, "cache-control": "private, max-age=3600", "x-content-type-options": "nosniff" } });
 });

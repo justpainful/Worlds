@@ -34,6 +34,8 @@ export interface Env {
   ALLOWED_ORIGINS?: string;
   /** Pictures on public profiles (src/routes/profiles.ts); without it profiles publish text only. */
   PROFILE_FILES?: R2Bucket;
+  /** "Worlds Support <support@enterworlds.space>": the sender of support mail (lib/supportMail.ts). */
+  SUPPORT_FROM?: string;
   /** User ids that own the control dashboard, comma separated (src/routes/admin.ts). */
   ADMIN_OWNERS?: string;
   /**

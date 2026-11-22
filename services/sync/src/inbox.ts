@@ -9,7 +9,11 @@ import type { Env } from "./env";
 
 export interface Notification {
   id: string;
-  kind: "mention" | "reply" | "published";
+  /** worlds: a note from Worlds itself (support, the team), with a title and a link. */
+  kind: "mention" | "reply" | "published" | "worlds";
+  topic?: string;
+  title?: string;
+  link?: string;
   workspaceId: string;
   docId: string;
   threadId: string;

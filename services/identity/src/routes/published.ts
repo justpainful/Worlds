@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { AppEnv } from "../env";
 import { requireAuth } from "../lib/auth";
 import { now, randomToken, sha256Hex } from "../lib/crypto";
+import { inboundSupport } from "./support";
 import { bad, body, notFound } from "../lib/http";
 import { clientIp, rateLimit, sameSecret } from "../lib/ratelimit";
 
@@ -146,6 +147,8 @@ published.post("/mail/inbound", async (c) => {
   if (!c.env.EDGE_SECRET || !sameSecret(c.req.header("x-worlds-edge") ?? null, c.env.EDGE_SECRET)) throw notFound();
   const b = await body(c.req);
   const to = typeof b.to === "string" ? b.to.toLowerCase() : "";
+  // support@ and support+<request>@ belong to the support desk (routes/support.ts).
+  if (await inboundSupport(c.env, { to, from: String(b.from ?? ""), subject: String(b.subject ?? ""), text: typeof b.text === "string" ? b.text : "" })) return c.json({ ok: true });
   const key = to.split("@")[0]?.split("+")[0] ?? "";
   const row = await c.env.DB.prepare("SELECT user_id AS userId FROM mail_addresses WHERE key = ?1").bind(key).first<{ userId: string }>();
   if (!row) throw notFound();

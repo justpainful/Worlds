@@ -12,7 +12,9 @@ export type AccessEvent =
   | { type: "member.role_changed"; workspaceId: string; userId: string; role: string }
   | { type: "workspace.deleted"; workspaceId: string }
   | { type: "device.revoked"; userId: string; deviceId: string }
-  | { type: "session.revoked"; userId: string; deviceId: string; sessionId: string };
+  | { type: "session.revoked"; userId: string; deviceId: string; sessionId: string }
+  /** A note from Worlds itself (a support reply, a message from the team) for the person's notifications. */
+  | { type: "user.notify"; userId: string; notification: { id: string; topic: string; title: string; excerpt: string; link?: string; createdAt: number } };
 
 export type EventEnvelope = AccessEvent & { id: string; at: number };
 
