@@ -1,6 +1,30 @@
 import SwiftUI
+import PhotosUI
 import UniformTypeIdentifiers
 import WorldsIdentity
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
+
+/// A screenshot made small enough for a report: at most 1600 points across, as JPEG.
+func reportPicture(_ data: Data) -> Data? {
+    #if canImport(UIKit)
+    guard let image = UIImage(data: data) else { return nil }
+    let longest = max(image.size.width, image.size.height)
+    let scale = min(1, 1600 / max(longest, 1))
+    let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+    let format = UIGraphicsImageRendererFormat.default(); format.scale = 1
+    let sized = UIGraphicsImageRenderer(size: size, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
+    return sized.jpegData(compressionQuality: 0.82)
+    #elseif canImport(AppKit)
+    guard let rep = NSBitmapImageRep(data: data) else { return nil }
+    return rep.representation(using: .jpeg, properties: [.compressionFactor: 0.82])
+    #else
+    return nil
+    #endif
+}
 
 /// Help and feedback, messages from the Worlds team, a copy of one's data and
 /// deleting the account (docs/admin/PLAN.md, phase 9).
@@ -44,6 +68,8 @@ final class HelpModel: ObservableObject {
     @Published var failed = false
     @Published var exportDocument: AccountDataDocument?
     @Published var deletionChallenge: EmailChallenge?
+    @Published var tester: String?
+    @Published var testerKnown = false
     /// Set by the account view: the service signed this device out after a deletion.
     var onSignedOut: @MainActor () -> Void = {}
     private let session: any AccountSession
@@ -83,10 +109,42 @@ final class HelpModel: ObservableObject {
         } else {
             dueAt = nil
         }
+        if let data = try? await call("/me/testers"),
+           let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            tester = object["status"] as? String
+            testerKnown = true
+        }
+        await sendUsageIfDue()
         if let data = try? await call("/me/messages") {
             threads = (try? JSONDecoder().decode([TeamThread].self, from: data)) ?? []
         } else {
             threads = []
+        }
+    }
+
+    /// Once a day, when the person agreed in Privacy and testing: how many, never what.
+    private func sendUsageIfDue() async {
+        let defaults = UserDefaults.standard
+        guard defaults.bool(forKey: "service.usageCounts"), Date().timeIntervalSince1970 - defaults.double(forKey: "service.usageSentAt") > 86_400 else { return }
+        let data: [String: Any] = ["platform": platform, "version": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "", "language": Self.lang]
+        if (try? await call("/me/usage", "POST", ["data": data])) != nil { defaults.set(Date().timeIntervalSince1970, forKey: "service.usageSentAt") }
+    }
+
+    func setUsageCounts(_ on: Bool) async {
+        UserDefaults.standard.set(on, forKey: "service.usageCounts")
+        if on { UserDefaults.standard.set(0, forKey: "service.usageSentAt"); await sendUsageIfDue() }
+    }
+
+    func setTester(_ on: Bool) async {
+        await perform {
+            if on {
+                let data = try await call("/me/testers", "POST", ["platforms": [platform]])
+                tester = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["status"] as? String
+            } else {
+                _ = try await call("/me/testers", "DELETE")
+                tester = nil
+            }
+            return nil
         }
     }
 
@@ -98,14 +156,20 @@ final class HelpModel: ObservableObject {
         }
     }
 
-    func report(subject: String, body: String, details: Bool) async {
+    func report(subject: String, body: String, details: Bool, pictures: [Data] = []) async {
         var fields: [String: String] = ["platform": platform, "version": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""]
         if details {
             fields["system"] = ProcessInfo.processInfo.operatingSystemVersionString
             fields["language"] = Locale.current.identifier
         }
         await perform {
-            let data = try await call("/support/requests", "POST", ["kind": "problem", "via": "app", "lang": Self.lang, "subject": subject, "body": body, "fields": fields])
+            var files: [String] = []
+            for picture in pictures.prefix(6) {
+                guard let jpeg = reportPicture(picture) else { continue }
+                let uploaded = try await call("/support/files", "POST", ["mime": "image/jpeg", "data": jpeg.base64EncodedString()])
+                if let key = (try? JSONSerialization.jsonObject(with: uploaded) as? [String: Any])?["key"] as? String { files.append(key) }
+            }
+            let data = try await call("/support/requests", "POST", ["kind": "problem", "via": "app", "lang": Self.lang, "subject": subject, "body": body, "fields": fields, "files": files])
             let ref = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["ref"] as? String ?? ""
             return String(format: String(localized: "Request %@ is open. The reply comes by email."), ref)
         }
@@ -162,6 +226,7 @@ struct HelpSections: View {
     @State private var sheet: HelpSheet?
     @State private var drafts: [String: String] = [:]
     @State private var exporting = false
+    @AppStorage("service.usageCounts") private var usageCounts = false
 
     var body: some View {
         if let due = model.dueAt {
@@ -179,8 +244,8 @@ struct HelpSections: View {
         }
         .sheet(item: $sheet) { which in
             switch which {
-            case .idea: FeedbackForm(problem: false) { title, body, _ in Task { await model.suggest(title: title, body: body) } }
-            case .problem: FeedbackForm(problem: true) { title, body, details in Task { await model.report(subject: title, body: body, details: details) } }
+            case .idea: FeedbackForm(problem: false) { title, body, _, _ in Task { await model.suggest(title: title, body: body) } }
+            case .problem: FeedbackForm(problem: true) { title, body, details, pictures in Task { await model.report(subject: title, body: body, details: details, pictures: pictures) } }
             case .delete: DeleteAccountForm(model: model, email: email)
             }
         }
@@ -210,6 +275,24 @@ struct HelpSections: View {
             }
         }
         Section {
+            Toggle(isOn: Binding(get: { usageCounts }, set: { on in usageCounts = on; Task { await model.setUsageCounts(on) } })) {
+                VStack(alignment: .leading) {
+                    Text("Send usage counts")
+                    Text("Once a day: the version and language. Never titles, text or files.").font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+            Toggle(isOn: Binding(get: { model.tester == "applied" || model.tester == "accepted" }, set: { on in Task { await model.setTester(on) } })) {
+                VStack(alignment: .leading) {
+                    Text("Be a Worlds tester")
+                    Text(model.tester == "accepted" ? "You are a tester. Thank you." : model.tester == "applied" ? "Asked. The team answers soon." : model.tester == "declined" ? "Not this time." : "Try new versions before everyone else.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+            .disabled(!model.testerKnown || model.busy)
+        } header: {
+            Text("Privacy and testing")
+        }
+        Section {
             Button { Task { await model.exportData(); exporting = model.exportDocument != nil } } label: { Label("Download my data", systemImage: "arrow.down.doc") }
                 .disabled(model.busy)
             Button(role: .destructive) { sheet = .delete } label: { Label("Delete account", systemImage: "trash") }
@@ -228,11 +311,13 @@ struct HelpSections: View {
 
 private struct FeedbackForm: View {
     let problem: Bool
-    let send: (String, String, Bool) -> Void
+    let send: (String, String, Bool, [Data]) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var title = ""
     @State private var text = ""
     @State private var details = true
+    @State private var items: [PhotosPickerItem] = []
+    @State private var pictures: [Data] = []
 
     var body: some View {
         NavigationStack {
@@ -240,13 +325,25 @@ private struct FeedbackForm: View {
                 TextField(problem ? "What went wrong, in a line" : "Your idea in a line", text: $title)
                 TextField(problem ? "What you did, what you expected, and what happened" : "Why it would help (optional)", text: $text, axis: .vertical)
                     .lineLimit(4...10)
-                if problem { Toggle("Include the Worlds version, system version and language", isOn: $details) }
+                if problem {
+                    PhotosPicker(selection: $items, maxSelectionCount: 6, matching: .images) {
+                        Label(pictures.isEmpty ? String(localized: "Add screenshots") : String(format: String(localized: "%@ screenshots"), "\(pictures.count)"), systemImage: "photo")
+                    }
+                    .onChange(of: items) { _, picked in
+                        Task {
+                            var loaded: [Data] = []
+                            for item in picked { if let data = try? await item.loadTransferable(type: Data.self) { loaded.append(data) } }
+                            pictures = loaded
+                        }
+                    }
+                    Toggle("Include the Worlds version, system version and language", isOn: $details)
+                }
             }
             .navigationTitle(problem ? "Report a problem" : "Suggest an idea")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Send") { send(String(title.prefix(140)), String(text.prefix(4000)), details); dismiss() }
+                    Button("Send") { send(String(title.prefix(140)), String(text.prefix(4000)), details, pictures); dismiss() }
                         .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (problem && text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
                 }
             }

@@ -325,11 +325,12 @@ class IdentityService(baseUrl: String, private val store: EncryptedSessionStore,
     }
 
     /** A support request about a problem; returns its reference, such as W-1001. */
-    fun reportProblem(subject: String, body: String, fields: Map<String, String>): String = synchronized(LOCK) {
+    fun reportProblem(subject: String, body: String, fields: Map<String, String>, files: List<String> = emptyList()): String = synchronized(LOCK) {
         val cleanSubject = subject.trim(); require(cleanSubject.isNotEmpty() && cleanSubject.length <= 160 && body.isNotBlank() && body.length <= 10_000)
         val lang = if (java.util.Locale.getDefault().language == "ar") "ar" else "en"
         val extra = JSONObject(); fields.entries.take(20).forEach { (k, v) -> extra.put(k, v.take(2000)) }
         val request = JSONObject().put("kind", "problem").put("via", "app").put("lang", lang).put("subject", cleanSubject).put("body", body.trim()).put("fields", extra)
+        if (files.isNotEmpty()) request.put("files", org.json.JSONArray(files.take(6)))
         requiredString(transport.request(base, "POST", "/support/requests", request, activeSession().accessToken), "ref", 40)
     }
 
@@ -347,6 +348,40 @@ class IdentityService(baseUrl: String, private val store: EncryptedSessionStore,
         val text = body.trim(); require(text.isNotEmpty() && text.length <= 4000)
         transport.request(base, "POST", "/me/messages/${pathId(thread)}", JSONObject().put("body", text), activeSession().accessToken)
         Unit
+    }
+
+    /** The service's settings for this app: maintenance, incidents, announcements, the oldest version allowed and feature flags. */
+    fun serviceConfig(platform: String, version: String, lang: String): JSONObject = synchronized(LOCK) {
+        require(platform.matches(Regex("[a-z]{1,20}")) && version.matches(Regex("[0-9A-Za-z.\\-]{0,20}")) && lang.matches(Regex("[a-z]{2}")))
+        val bearer = try { session()?.let { activeSession().accessToken } } catch (_: Exception) { null }
+        transport.request(base, "GET", "/config?platform=$platform&version=$version&lang=$lang", null, bearer)
+    }
+
+    /** applied, accepted, declined, or null when this person never asked. */
+    fun testerStatus(): String? = synchronized(LOCK) {
+        val result = transport.request(base, "GET", "/me/testers", null, activeSession().accessToken)
+        if (result.isNull("status")) null else result.getString("status").take(20)
+    }
+
+    fun applyTesters(platform: String): String = synchronized(LOCK) {
+        transport.request(base, "POST", "/me/testers", JSONObject().put("platforms", org.json.JSONArray().put(platform)), activeSession().accessToken).getString("status").take(20)
+    }
+
+    fun leaveTesters() = synchronized(LOCK) {
+        transport.request(base, "DELETE", "/me/testers", null, activeSession().accessToken)
+        Unit
+    }
+
+    /** The day's counts, when the person agreed: how many, never what. */
+    fun sendUsage(data: JSONObject) = synchronized(LOCK) {
+        transport.request(base, "POST", "/me/usage", JSONObject().put("data", data), activeSession().accessToken)
+        Unit
+    }
+
+    /** One screenshot for a problem report (PNG, JPEG, WebP or GIF, up to 10 MB); returns its key. */
+    fun uploadSupportPicture(mime: String, base64: String): String = synchronized(LOCK) {
+        require(mime in setOf("image/png", "image/jpeg", "image/webp", "image/gif") && base64.length <= 15_000_000)
+        requiredString(transport.request(base, "POST", "/support/files", JSONObject().put("mime", mime).put("data", base64), activeSession().accessToken), "key", 200)
     }
 
     /** Only clear the local record once the service confirms device revocation. */

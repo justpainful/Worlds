@@ -37,7 +37,10 @@ internal const val SUPPORT_SITE = "https://support.enterworlds.space"
  */
 internal interface HelpGateway {
     fun suggest(title: String, body: String): Int
-    fun report(subject: String, body: String, fields: Map<String, String>): String
+    fun report(subject: String, body: String, fields: Map<String, String>, files: List<String>): String
+    fun uploadPicture(mime: String, base64: String): String
+    fun testerStatus(): String?
+    fun setTester(on: Boolean): String?
     fun messages(): List<TeamThread>
     fun reply(thread: String, body: String)
     fun export(): String
@@ -54,7 +57,10 @@ private class DeviceHelpGateway(private val identity: String, private val app: a
         throw e
     }
     override fun suggest(title: String, body: String) = guarded { service().suggestIdea(title, body) }
-    override fun report(subject: String, body: String, fields: Map<String, String>) = guarded { service().reportProblem(subject, body, fields) }
+    override fun report(subject: String, body: String, fields: Map<String, String>, files: List<String>) = guarded { service().reportProblem(subject, body, fields, files) }
+    override fun uploadPicture(mime: String, base64: String) = guarded { service().uploadSupportPicture(mime, base64) }
+    override fun testerStatus() = guarded { service().testerStatus() }
+    override fun setTester(on: Boolean) = guarded { val client = service(); if (on) client.applyTesters("android") else { client.leaveTesters(); null } }
     override fun messages() = guarded { service().teamMessages() }
     override fun reply(thread: String, body: String) = guarded { service().replyToTeam(thread, body) }
     override fun export() = guarded { service().exportAccount().toString(2) }
@@ -82,6 +88,9 @@ private enum class HelpDialog { IDEA, PROBLEM, DELETE }
     var dialog by remember { mutableStateOf<HelpDialog?>(null) }
     var threads by remember { mutableStateOf<List<TeamThread>?>(null) }
     var dueAt by remember { mutableStateOf<Long?>(null) }
+    var tester by remember { mutableStateOf<String?>(null) }
+    var testerKnown by remember { mutableStateOf(false) }
+    var usage by remember { mutableStateOf(usageCountsOn(context)) }
     val errorText = stringResource(R.string.help_error)
 
     fun perform(action: suspend () -> String?) {
@@ -100,6 +109,7 @@ private enum class HelpDialog { IDEA, PROBLEM, DELETE }
     LaunchedEffect(gateway) {
         dueAt = runCatching { withContext(Dispatchers.IO) { gateway.deletionDueAt() } }.getOrNull()
         threads = runCatching { withContext(Dispatchers.IO) { gateway.messages() } }.getOrNull()
+        runCatching { withContext(Dispatchers.IO) { gateway.testerStatus() } }.onSuccess { tester = it; testerKnown = true }
     }
 
     val saveData = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
@@ -112,17 +122,23 @@ private enum class HelpDialog { IDEA, PROBLEM, DELETE }
 
     BackHandler(enabled = !busy && dialog == null) { onBack() }
     when (dialog) {
-        HelpDialog.IDEA -> TextDialog(stringResource(R.string.help_idea), stringResource(R.string.help_idea_title), stringResource(R.string.help_idea_body), false, onDismiss = { dialog = null }) { title, body, _ ->
+        HelpDialog.IDEA -> TextDialog(stringResource(R.string.help_idea), stringResource(R.string.help_idea_title), stringResource(R.string.help_idea_body), false, onDismiss = { dialog = null }) { title, body, _, _ ->
             dialog = null
             perform { val n = withContext(Dispatchers.IO) { gateway.suggest(title, body) }; context.getString(R.string.help_idea_sent, n) }
         }
-        HelpDialog.PROBLEM -> TextDialog(stringResource(R.string.help_problem), stringResource(R.string.help_problem_title), stringResource(R.string.help_problem_body), true, onDismiss = { dialog = null }) { title, body, details ->
+        HelpDialog.PROBLEM -> TextDialog(stringResource(R.string.help_problem), stringResource(R.string.help_problem_title), stringResource(R.string.help_problem_body), true, onDismiss = { dialog = null }) { title, body, details, pictures ->
             dialog = null
             val fields = buildMap {
                 put("platform", "android"); put("version", runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "")
                 if (details) { put("system", "Android ${Build.VERSION.RELEASE} (${Build.MODEL})"); put("language", java.util.Locale.getDefault().toLanguageTag()) }
             }
-            perform { val ref = withContext(Dispatchers.IO) { gateway.report(title, body, fields) }; context.getString(R.string.help_problem_sent, ref) }
+            perform {
+                val ref = withContext(Dispatchers.IO) {
+                    val files = pictures.take(6).map { uri -> gateway.uploadPicture("image/jpeg", screenshotBase64(context, uri)) }
+                    gateway.report(title, body, fields, files)
+                }
+                context.getString(R.string.help_problem_sent, ref)
+            }
         }
         HelpDialog.DELETE -> DeleteDialog(gateway, onDismiss = { dialog = null }, onDeleted = { due ->
             dialog = null
@@ -186,6 +202,26 @@ private enum class HelpDialog { IDEA, PROBLEM, DELETE }
         }
 
         Spacer(Modifier.height(16.dp)); HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant); Spacer(Modifier.height(16.dp))
+        Text(stringResource(R.string.help_privacy), style = MaterialTheme.typography.titleMedium)
+        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.help_usage))
+                Text(stringResource(R.string.help_usage_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 20.sp)
+            }
+            Switch(checked = usage, onCheckedChange = { usage = it; setUsageCounts(context, it) })
+        }
+        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.help_tester))
+                Text(stringResource(when (tester) { "accepted" -> R.string.help_tester_accepted; "applied" -> R.string.help_tester_applied; "declined" -> R.string.help_tester_declined; else -> R.string.help_tester_note }),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 20.sp)
+            }
+            Switch(checked = tester == "applied" || tester == "accepted", enabled = testerKnown && !busy, onCheckedChange = { on ->
+                perform { tester = withContext(Dispatchers.IO) { gateway.setTester(on) }; null }
+            })
+        }
+
+        Spacer(Modifier.height(16.dp)); HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant); Spacer(Modifier.height(16.dp))
         Text(stringResource(R.string.help_data), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(4.dp))
         Text(stringResource(R.string.help_data_note), color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 26.sp)
@@ -201,22 +237,44 @@ private enum class HelpDialog { IDEA, PROBLEM, DELETE }
     }
 }
 
-@Composable private fun TextDialog(title: String, firstLabel: String, secondLabel: String, withDetails: Boolean, onDismiss: () -> Unit, onSend: (String, String, Boolean) -> Unit) {
+/** A screenshot made small enough for a report: at most 1600 pixels across, as JPEG. */
+private fun screenshotBase64(context: android.content.Context, uri: Uri): String {
+    val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    context.contentResolver.openInputStream(uri)?.use { android.graphics.BitmapFactory.decodeStream(it, null, bounds) }
+    var sample = 1
+    while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= 1600) sample *= 2
+    val bitmap = context.contentResolver.openInputStream(uri)?.use { android.graphics.BitmapFactory.decodeStream(it, null, android.graphics.BitmapFactory.Options().apply { inSampleSize = sample }) }
+        ?: error("not a picture")
+    val scale = minOf(1f, 1600f / maxOf(bitmap.width, bitmap.height))
+    val sized = if (scale < 1f) android.graphics.Bitmap.createScaledBitmap(bitmap, (bitmap.width * scale).toInt(), (bitmap.height * scale).toInt(), true) else bitmap
+    val out = java.io.ByteArrayOutputStream()
+    sized.compress(android.graphics.Bitmap.CompressFormat.JPEG, 82, out)
+    return android.util.Base64.encodeToString(out.toByteArray(), android.util.Base64.NO_WRAP)
+}
+
+@Composable private fun TextDialog(title: String, firstLabel: String, secondLabel: String, withDetails: Boolean, onDismiss: () -> Unit, onSend: (String, String, Boolean, List<Uri>) -> Unit) {
     var first by remember { mutableStateOf("") }
     var second by remember { mutableStateOf("") }
     var details by remember { mutableStateOf(true) }
+    var pictures by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    val pick = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(6)) { picked -> pictures = (pictures + picked).distinct().take(6) }
     AlertDialog(onDismissRequest = onDismiss, title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(value = first, onValueChange = { first = it.take(140) }, label = { Text(firstLabel) }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = second, onValueChange = { second = it.take(4000) }, label = { Text(secondLabel) }, minLines = 3, modifier = Modifier.fillMaxWidth())
-                if (withDetails) Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = details, onCheckedChange = { details = it })
-                    Text(stringResource(R.string.help_problem_details), style = MaterialTheme.typography.bodySmall, lineHeight = 20.sp)
+                if (withDetails) {
+                    TextButton(enabled = pictures.size < 6, onClick = { pick.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) {
+                        WorldsActionLabel(R.drawable.ic_image, if (pictures.isEmpty()) stringResource(R.string.help_add_screenshot) else stringResource(R.string.help_screenshots, pictures.size))
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = details, onCheckedChange = { details = it })
+                        Text(stringResource(R.string.help_problem_details), style = MaterialTheme.typography.bodySmall, lineHeight = 20.sp)
+                    }
                 }
             }
         },
-        confirmButton = { TextButton(enabled = first.isNotBlank() && (!withDetails || second.isNotBlank()), onClick = { onSend(first, second, details) }) { Text(stringResource(R.string.help_send)) } },
+        confirmButton = { TextButton(enabled = first.isNotBlank() && (!withDetails || second.isNotBlank()), onClick = { onSend(first, second, details, pictures) }) { Text(stringResource(R.string.help_send)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } })
 }
 

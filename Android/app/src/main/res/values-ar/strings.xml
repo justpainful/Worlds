@@ -1168,4 +1168,25 @@
     <string name="help_delete_cancelled">تم الاحتفاظ بحسابك.</string>
     <string name="help_delete_shared">تملك مساحات عمل مشتركة. انقل ملكيتها إلى شخص آخر أو احذفها أولًا.</string>
     <string name="help_error">لم تنجح العملية. تحقق من الاتصال وحاول مرة أخرى.</string>
+    <string name="help_privacy">الخصوصية والتجربة</string>
+    <string name="help_usage">إرسال أعداد الاستخدام</string>
+    <string name="help_usage_note">مرة في اليوم: عدد الصفحات والنسخة واللغة. لا عناوين ولا نصوص ولا ملفات أبدًا.</string>
+    <string name="help_tester">انضم إلى مختبري Worlds</string>
+    <string name="help_tester_note">جرّب النسخ الجديدة قبل الجميع.</string>
+    <string name="help_tester_applied">وصل طلبك. سيرد الفريق قريبًا.</string>
+    <string name="help_tester_accepted">أنت من المختبرين. شكرًا لك.</string>
+    <string name="help_tester_declined">ليس هذه المرة.</string>
+    <string name="help_add_screenshot">إضافة لقطات شاشة</string>
+    <string name="help_screenshots">%1$d لقطات شاشة</string>
+    <string name="service_status">الحالة</string>
+    <string name="service_learn_more">اعرف المزيد</string>
+    <string name="service_download">تنزيل</string>
+    <string name="service_dismiss">إخفاء</string>
+    <string name="service_maintenance">Worlds قيد الصيانة.</string>
+    <string name="service_maintenance_read_only">Worlds قيد الصيانة. المشاركة والمزامنة للقراءة فقط حاليًا.</string>
+    <string name="service_update">Worlds %1$s جاهز. حدّث التطبيق ليبقى كل شيء يعمل.</string>
+    <string name="service_usage_title">ساعدنا في تحسين Worlds</string>
+    <string name="service_usage_text">يستطيع Worlds أن يرسل مرة في اليوم أعدادًا فقط: عدد الصفحات والنسخة واللغة. لا يرسل أبدًا العناوين أو النصوص أو الملفات. يمكنك تغيير ذلك من الحساب، المساعدة والملاحظات.</string>
+    <string name="service_usage_no">لا ترسل</string>
+    <string name="service_usage_yes">أرسل الأعداد</string>
 </resources>

@@ -3,7 +3,7 @@ date: 2026-11-22
 title: Worlds يسمعك || Worlds is listening
 summary: الاقتراحات والإبلاغ عن المشاكل من داخل التطبيق، ومركز مساعدة جديد، ورسائل من فريق Worlds، وحذف الحساب وتنزيل بياناتك بنفسك. || Ideas and problem reports from inside the app, a new help center, messages from the Worlds team, and deleting your account or downloading your data yourself.
 intro: يفتح هذا الإصدار طريقًا مباشرًا بينك وبين فريق Worlds. تقترح فكرة أو تبلغ عن مشكلة من الإعدادات دون أن تغادر التطبيق، ويصلك الرد بالبريد من support@enterworlds.space وفي إشعاراتك. وصار حسابك بيدك بالكامل: تنزّل نسخة من بياناتك، وتحذف حسابك متى شئت مع مهلة 30 يومًا لتغيير رأيك. || This release opens a direct line between you and the Worlds team. Suggest an idea or report a problem from Settings without leaving the app, and the reply reaches you by email from support@enterworlds.space and in your notifications. Your account is now fully yours: download a copy of your data, and delete the account whenever you like, with 30 days to change your mind.
-note: كل هذا في تطبيق الكمبيوتر وعلى الويب. وفي أندرويد والآيفون والآيباد، من صفحة الحساب: الاقتراح والبلاغ ورسائل الفريق وتنزيل البيانات وحذف الحساب. أما التنبيهات وأعداد الاستخدام والمختبرون فما زالت في الكمبيوتر والويب فقط. || All of this is in the desktop app and on the web. On Android, iPhone and iPad, Account has ideas, problem reports, team messages, downloading your data and deleting the account. Notices, usage counts and the testers are still desktop and web only.
+note: كل هذا في تطبيق الكمبيوتر وعلى الويب، وفي أندرويد والآيفون والآيباد والماك من صفحة الحساب. || All of this is in the desktop app and on the web, and on Android, iPhone, iPad and Mac from Account.
 feature: bubble accounts :: ملاحظاتك من داخل التطبيق :: اقترح فكرة أو أبلغ عن مشكلة مع لقطات شاشة، ويصلك الرد بالبريد وفي إشعاراتك. || Feedback from inside the app :: Suggest an idea or report a problem with screenshots, and the reply reaches you by email and in your notifications.
 feature: profile accounts :: حسابك بيدك :: نزّل نسخة من بياناتك، أو احذف حسابك مع 30 يومًا لتغيير رأيك. || Your account, your call :: Download a copy of your data, or delete your account with 30 days to change your mind.
 
@@ -24,7 +24,7 @@ feature: profile accounts :: حسابك بيدك :: نزّل نسخة من بي�
 - new: تنبيهات من Worlds أسفل النافذة عند الصيانة أو انقطاع الخدمة أو صدور نسخة تحتاج إلى التحديث. || Notices from Worlds at the bottom of the window during maintenance, an outage, or when an update is needed.
 
 # platforms
-- new: في أندرويد والآيفون والآيباد، صفحة الحساب فيها المساعدة والملاحظات، ورسائل الفريق، وتنزيل البيانات، وحذف الحساب مع مهلة 30 يومًا. || On Android, iPhone and iPad, Account has help and feedback, team messages, downloading your data, and deleting the account with 30 days to cancel.
+- new: في أندرويد والآيفون والآيباد والماك، صفحة الحساب فيها المساعدة والملاحظات مع لقطات الشاشة، ورسائل الفريق، والمختبرون وأعداد الاستخدام، وتنزيل البيانات، وحذف الحساب مع مهلة 30 يومًا، وتظهر تنبيهات الخدمة أسفل النافذة. || On Android, iPhone, iPad and Mac, Account has help and feedback with screenshots, team messages, the testers and usage counts, downloading your data, and deleting the account with 30 days to cancel, and service notices show at the bottom of the window.
 
 # web
 - new: مركز المساعدة support.enterworlds.space: مقالات، وطلب دعم بنموذج حسب نوع المشكلة، ومتابعة طلباتك ببريدك. || The help center at support.enterworlds.space: articles, a support request form that fits the kind of problem, and following your requests with your email.

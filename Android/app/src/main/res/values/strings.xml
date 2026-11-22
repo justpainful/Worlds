@@ -1164,4 +1164,25 @@
     <string name="help_delete_cancelled">Your account is kept.</string>
     <string name="help_delete_shared">You own shared workspaces. Hand them to someone else or delete them first.</string>
     <string name="help_error">That did not work. Check the connection and try again.</string>
+    <string name="help_privacy">Privacy and testing</string>
+    <string name="help_usage">Send usage counts</string>
+    <string name="help_usage_note">Once a day: how many pages, the version and language. Never titles, text or files.</string>
+    <string name="help_tester">Be a Worlds tester</string>
+    <string name="help_tester_note">Try new versions before everyone else.</string>
+    <string name="help_tester_applied">Asked. The team answers soon.</string>
+    <string name="help_tester_accepted">You are a tester. Thank you.</string>
+    <string name="help_tester_declined">Not this time.</string>
+    <string name="help_add_screenshot">Add screenshots</string>
+    <string name="help_screenshots">%1$d screenshots</string>
+    <string name="service_status">Status</string>
+    <string name="service_learn_more">Learn more</string>
+    <string name="service_download">Download</string>
+    <string name="service_dismiss">Dismiss</string>
+    <string name="service_maintenance">Worlds is under maintenance.</string>
+    <string name="service_maintenance_read_only">Worlds is under maintenance. Sharing and syncing are read only for now.</string>
+    <string name="service_update">Worlds %1$s is ready. Update to keep everything working.</string>
+    <string name="service_usage_title">Help us improve Worlds</string>
+    <string name="service_usage_text">Once a day Worlds can send counts: how many pages, the version and language. Never titles, text or files. You can change this in Account, Help and feedback.</string>
+    <string name="service_usage_no">Not now</string>
+    <string name="service_usage_yes">Send counts</string>
 </resources>
