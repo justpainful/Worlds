@@ -22,6 +22,8 @@ class CreatedInvite(val id: String, val url: String) { override fun toString() =
 class InvitePreview(val profile: AccountProfile, internal val token: String, val valid: Boolean, val reason: String?, val workspaceId: String?, val workspaceName: String?, val role: String?, val expiresAt: Long?, val pageLevel: String?) {
     override fun toString() = "InvitePreview(valid=$valid, workspaceId=$workspaceId, token=[redacted])"
 }
+data class TeamMessage(val author: String, val body: String, val createdAt: Long)
+data class TeamThread(val id: String, val subject: String, val status: String, val messages: List<TeamMessage>)
 data class AcceptedInvite(val workspace: Workspace, val alreadyMember: Boolean, val pageId: String?)
 
 
@@ -281,6 +283,105 @@ class IdentityService(baseUrl: String, private val store: EncryptedSessionStore,
         val role = requiredString(obj, "role", 40); val count = obj.getInt("memberCount")
         require(count >= 0)
         return Workspace(id, name, role, count)
+    }
+
+    // ---- The account service's own features (docs/admin/PLAN.md, phase 9) ----
+
+    /** When the account is set to be deleted, or null. */
+    fun deletionDueAt(): Long? = synchronized(LOCK) {
+        val result = transport.request(base, "GET", "/me/deletion", null, activeSession().accessToken)
+        if (result.isNull("dueAt")) null else result.getLong("dueAt")
+    }
+
+    /** The account's own email, for the code that confirms a big step. */
+    fun accountEmail(): String = synchronized(LOCK) {
+        requiredString(transport.request(base, "GET", "/me", null, activeSession().accessToken), "email", 320)
+    }
+
+    /** Every device signs out at once and the account is erased after 30 days; returns when. */
+    fun scheduleDeletion(challengeId: String, code: String): Long = synchronized(LOCK) {
+        require(challengeId.isNotBlank() && challengeId.length <= 128 && code.matches(Regex("[0-9]{6}")))
+        val lang = if (java.util.Locale.getDefault().language == "ar") "ar" else "en"
+        val body = JSONObject().put("challengeId", challengeId).put("code", code).put("lang", lang)
+        transport.request(base, "POST", "/me/deletion", body, activeSession().accessToken).getLong("dueAt")
+    }
+
+    fun cancelDeletion() = synchronized(LOCK) {
+        transport.request(base, "DELETE", "/me/deletion", null, activeSession().accessToken)
+        Unit
+    }
+
+    /** Forget the session on this device after the service signed it out (the account is being deleted). */
+    fun forget() = synchronized(LOCK) { store.clear() }
+
+    /** Everything the account service keeps about this account. */
+    fun exportAccount(): JSONObject = synchronized(LOCK) { transport.request(base, "GET", "/me/export", null, activeSession().accessToken) }
+
+    /** A new idea for the board; returns its number. */
+    fun suggestIdea(title: String, body: String): Int = synchronized(LOCK) {
+        val cleanTitle = title.trim(); require(cleanTitle.isNotEmpty() && cleanTitle.length <= 140 && body.length <= 4000)
+        val lang = if (java.util.Locale.getDefault().language == "ar") "ar" else "en"
+        transport.request(base, "POST", "/community/suggestions", JSONObject().put("title", cleanTitle).put("body", body.trim()).put("lang", lang), activeSession().accessToken).getInt("number")
+    }
+
+    /** A support request about a problem; returns its reference, such as W-1001. */
+    fun reportProblem(subject: String, body: String, fields: Map<String, String>, files: List<String> = emptyList()): String = synchronized(LOCK) {
+        val cleanSubject = subject.trim(); require(cleanSubject.isNotEmpty() && cleanSubject.length <= 160 && body.isNotBlank() && body.length <= 10_000)
+        val lang = if (java.util.Locale.getDefault().language == "ar") "ar" else "en"
+        val extra = JSONObject(); fields.entries.take(20).forEach { (k, v) -> extra.put(k, v.take(2000)) }
+        val request = JSONObject().put("kind", "problem").put("via", "app").put("lang", lang).put("subject", cleanSubject).put("body", body.trim()).put("fields", extra)
+        if (files.isNotEmpty()) request.put("files", org.json.JSONArray(files.take(6)))
+        requiredString(transport.request(base, "POST", "/support/requests", request, activeSession().accessToken), "ref", 40)
+    }
+
+    /** Conversations the Worlds team started with this person, newest first. */
+    fun teamMessages(): List<TeamThread> = synchronized(LOCK) {
+        val list = transport.requestArray(base, "/me/messages", activeSession().accessToken)
+        (0 until minOf(list.length(), 50)).map { i ->
+            val t = list.getJSONObject(i); val items = t.getJSONArray("messages")
+            TeamThread(requiredString(t, "id", 128), t.optString("subject").take(200), t.optString("status"),
+                (0 until minOf(items.length(), 200)).map { j -> items.getJSONObject(j).let { m -> TeamMessage(m.optString("author"), m.optString("body").take(4000), m.optLong("createdAt")) } })
+        }
+    }
+
+    fun replyToTeam(thread: String, body: String) = synchronized(LOCK) {
+        val text = body.trim(); require(text.isNotEmpty() && text.length <= 4000)
+        transport.request(base, "POST", "/me/messages/${pathId(thread)}", JSONObject().put("body", text), activeSession().accessToken)
+        Unit
+    }
+
+    /** The service's settings for this app: maintenance, incidents, announcements, the oldest version allowed and feature flags. */
+    fun serviceConfig(platform: String, version: String, lang: String): JSONObject = synchronized(LOCK) {
+        require(platform.matches(Regex("[a-z]{1,20}")) && version.matches(Regex("[0-9A-Za-z.\\-]{0,20}")) && lang.matches(Regex("[a-z]{2}")))
+        val bearer = try { session()?.let { activeSession().accessToken } } catch (_: Exception) { null }
+        transport.request(base, "GET", "/config?platform=$platform&version=$version&lang=$lang", null, bearer)
+    }
+
+    /** applied, accepted, declined, or null when this person never asked. */
+    fun testerStatus(): String? = synchronized(LOCK) {
+        val result = transport.request(base, "GET", "/me/testers", null, activeSession().accessToken)
+        if (result.isNull("status")) null else result.getString("status").take(20)
+    }
+
+    fun applyTesters(platform: String): String = synchronized(LOCK) {
+        transport.request(base, "POST", "/me/testers", JSONObject().put("platforms", org.json.JSONArray().put(platform)), activeSession().accessToken).getString("status").take(20)
+    }
+
+    fun leaveTesters() = synchronized(LOCK) {
+        transport.request(base, "DELETE", "/me/testers", null, activeSession().accessToken)
+        Unit
+    }
+
+    /** The day's counts, when the person agreed: how many, never what. */
+    fun sendUsage(data: JSONObject) = synchronized(LOCK) {
+        transport.request(base, "POST", "/me/usage", JSONObject().put("data", data), activeSession().accessToken)
+        Unit
+    }
+
+    /** One screenshot for a problem report (PNG, JPEG, WebP or GIF, up to 10 MB); returns its key. */
+    fun uploadSupportPicture(mime: String, base64: String): String = synchronized(LOCK) {
+        require(mime in setOf("image/png", "image/jpeg", "image/webp", "image/gif") && base64.length <= 15_000_000)
+        requiredString(transport.request(base, "POST", "/support/files", JSONObject().put("mime", mime).put("data", base64), activeSession().accessToken), "key", 200)
     }
 
     /** Only clear the local record once the service confirms device revocation. */

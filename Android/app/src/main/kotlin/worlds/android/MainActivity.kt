@@ -114,7 +114,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         LaunchPrompt.take(intent)
         enableEdgeToEdge()
-        setContent { WorldsTheme { val model: HomeModel = viewModel(); val account: AccountModel = viewModel(); Home(model, account) } }
+        setContent { WorldsTheme {
+            val model: HomeModel = viewModel(); val account: AccountModel = viewModel()
+            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
+                Home(model, account)
+                // Notices from the account service sit at the bottom of the window (ServiceNotices.kt).
+                val home by model.state.collectAsStateWithLifecycle()
+                val signedIn by account.state.collectAsStateWithLifecycle()
+                ServiceNotices(signedIn.server, home.pages.size, androidx.compose.ui.Modifier.align(androidx.compose.ui.Alignment.BottomCenter))
+            }
+        } }
     }
 
     override fun onNewIntent(intent: Intent) {

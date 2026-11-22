@@ -35,7 +35,10 @@ class HttpsIdentityTransport(private val patchClient: OkHttpClient = OkHttpClien
     private fun exchange(baseUrl: String, method: String, path: String, body: JSONObject?, bearer: String?): Any {
         val base = canonicalBaseUrl(baseUrl)
         require(method in setOf("GET", "POST", "PUT", "PATCH", "DELETE"))
-        require(path.startsWith("/") && !path.startsWith("//") && '?' !in path && '#' !in path)
+        // A query only on reads, and only plain words: /config?platform=android&version=1.1.0&lang=ar.
+        val query = path.indexOf('?')
+        require(path.startsWith("/") && !path.startsWith("//") && '#' !in path &&
+            (query < 0 || (method == "GET" && path.substring(query + 1).matches(Regex("[A-Za-z0-9=&._-]{0,200}")))))
         require(bearer == null || (bearer.isNotBlank() && bearer.none { it == '\r' || it == '\n' }))
         if (method == "PATCH") return patch(base, path, requireNotNull(body), bearer)
         val connection = URL(base + path).openConnection() as HttpURLConnection
