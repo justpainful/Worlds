@@ -191,7 +191,7 @@ export function ProfileView() {
         <Glass material="menu" layer={LAYER.chrome + 0.2} className="pf-compact-bar" radius="var(--r-capsule)">
           <button className="pf-compact-id" onClick={() => root.current?.closest(".pane-scroll")?.scrollTo({ top: 0, behavior: "smooth" })}>
             <Avatar id={profile.avatar} name={profile.displayName} size={28} />
-            <span className="bidi">{profile.displayName || "Your profile"}</span>
+            <span className="bidi" translate={profile.displayName ? "no" : undefined}>{profile.displayName || "Your profile"}</span>
           </button>
           <span className="gg-sep" />
           <IconButton icon="share" label="Copy profile card" onClick={share} />
@@ -234,7 +234,7 @@ export function ProfileView() {
 
           <div className="pf-names">
             <h1 className="pf-name bidi">
-              {profile.displayName || "Your name"}
+              <span translate={profile.displayName ? "no" : undefined}>{profile.displayName || "Your name"}</span>
               <Verified size={26} />
             </h1>
             {profile.handle && (

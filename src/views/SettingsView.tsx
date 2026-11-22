@@ -77,7 +77,7 @@ export function SettingsView({ section = "appearance" }: { section?: string }) {
           <button className="settings-account" onClick={() => open({ kind: "profile" })}>
             <Avatar id={profile?.avatar} name={profile?.displayName} size={40} />
             <span className="settings-account-text">
-              <span className="settings-account-name bidi">{profile?.displayName || "Your profile"}</span>
+              <span className="settings-account-name bidi" translate={profile?.displayName ? "no" : undefined}>{profile?.displayName || "Your profile"}</span>
               <span className="settings-account-sub">Profile, banner and blocks</span>
             </span>
             <Icon name="forward" size={13} />

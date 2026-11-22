@@ -78,7 +78,7 @@ function InfoPanel({ page, meta }: { page: Page; meta: PageMeta }) {
       <div className="owner-card">
         <Avatar id={profile?.avatar} name={profile?.displayName} size={36} />
         <div>
-          <div className="owner-name bidi">{profile?.displayName || "You"}</div>
+          <div className="owner-name bidi" translate={profile?.displayName ? "no" : undefined}>{profile?.displayName || "You"}</div>
           <div className="owner-role">
             <Icon name="owner" size={12} />
             Owner
