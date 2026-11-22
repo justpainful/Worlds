@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "ES2023",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": [
+      "vite/client"
+    ],
+    "resolveJsonModule": true
+  },
+  "include": [
+    "src",
+    "../admin/src/ui.tsx",
+    "../admin/src/symbols.ts"
+  ]
+}

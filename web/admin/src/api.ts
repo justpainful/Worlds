@@ -115,6 +115,14 @@ export async function call<T = any>(method: string, path: string, body?: unknown
   }
 }
 
+/** A file the service only gives to the team (support pictures), as an object URL. */
+export async function callBlob(path: string): Promise<string> {
+  const token = await fresh();
+  const res = await fetch(IDENTITY + path, { headers: { authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new ApiError(res.status, "http_error", String(res.status));
+  return URL.createObjectURL(await res.blob());
+}
+
 // ---------------------------------------------------------------------------
 // Signing in
 // ---------------------------------------------------------------------------
@@ -224,7 +232,54 @@ export type Permission =
   | "notes"
   | "audit"
   | "stats"
-  | "team";
+  | "team"
+  | "tickets"
+  | "tickets.private";
+
+export type TicketStatus = "open" | "waiting" | "working" | "solved" | "closed";
+export type TicketKind = "problem" | "account" | "recovery" | "deletion" | "report" | "security" | "suggestion" | "other";
+
+export interface Ticket {
+  id: string;
+  number: number;
+  ref: string;
+  kind: TicketKind;
+  subject: string;
+  fields: Record<string, string>;
+  lang: string;
+  status: TicketStatus;
+  rating: number | null;
+  createdAt: number;
+  updatedAt: number;
+  closedAt: number | null;
+  email: string | null;
+  name: string | null;
+  userId: string | null;
+  userName: string | null;
+  userUsername: string | null;
+  priority: "low" | "normal" | "high" | "urgent";
+  assignee: { id: string; name: string | null } | null;
+  tags: string[];
+  private: boolean;
+  via: string;
+  firstReplyAt: number | null;
+  lastAuthor: "person" | "team" | "system" | null;
+}
+
+export interface TicketMessage {
+  id: string;
+  author: "person" | "team" | "note" | "system";
+  authorName: string | null;
+  body: string;
+  files: string[];
+  via: string;
+  createdAt: number;
+}
+
+export interface TicketDetail extends Ticket {
+  messages: TicketMessage[];
+  others: { number: number; subject: string; status: TicketStatus; createdAt: number }[];
+}
 
 export interface Me {
   user: { id: string; email: string; displayName: string; username: string; avatarUrl: string | null };

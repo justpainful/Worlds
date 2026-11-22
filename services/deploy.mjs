@@ -302,7 +302,7 @@ const idVars = (base, syncUrl) => ({
   PUBLIC_URL: base ?? "http://localhost:8787",
   SYNC_WEBHOOK_URL: syncUrl ? `${syncUrl}/internal/events` : "",
   // Worlds on the web signs in from the browser (src/account/webAccount.ts).
-  ALLOWED_ORIGINS: state.domain ? `https://app.${state.domain},https://${state.domain},https://admin.${state.domain}` : "",
+  ALLOWED_ORIGINS: state.domain ? `https://app.${state.domain},https://${state.domain},https://admin.${state.domain},https://support.${state.domain}` : "",
   // The control dashboard signs in with the same passkeys (WebAuthn related origins).
   WEBAUTHN_RELATED_ORIGINS: state.domain ? `https://admin.${state.domain}` : "",
 });

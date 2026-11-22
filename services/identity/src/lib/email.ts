@@ -6,6 +6,9 @@ export interface EmailMessage {
   text: string;
   /** The designed version; mail apps that cannot show it fall back to `text`. */
   html?: string;
+  /** A different sender than EMAIL_FROM (support mail). Only senders that can honour it are used for it. */
+  from?: string;
+  replyTo?: string;
 }
 
 /** Sends sign-in emails. Swap the implementation without touching the auth flow. */
@@ -71,7 +74,14 @@ export class ResendEmailSender implements EmailSender {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${this.apiKey}` },
-      body: JSON.stringify({ from: this.from, to: [msg.to], subject: msg.subject, text: msg.text, ...(msg.html ? { html: msg.html } : {}) }),
+      body: JSON.stringify({
+        from: msg.from ?? this.from,
+        to: [msg.to],
+        subject: msg.subject,
+        text: msg.text,
+        ...(msg.html ? { html: msg.html } : {}),
+        ...(msg.replyTo ? { reply_to: msg.replyTo } : {}),
+      }),
     });
     if (!res.ok) throw new Error(`email service answered ${res.status}`);
   }
@@ -178,12 +188,12 @@ const COPY = {
   },
 } as const;
 
-const SITE = "https://enterworlds.space";
+export const SITE = "https://enterworlds.space";
 /** Drawings for the email, served by the site (web/site/mail), in the hand-drawn marker style. */
-const ART = `${SITE}/mail`;
+export const ART = `${SITE}/mail`;
 
 /** Cream for most of the page, cocoa for words, ink for outlines; red lives only inside the drawings. */
-const C = {
+export const C = {
   cream: "#FBEFE1",
   cocoa: "#4A1C10",
   cocoaSoft: "#7A4A3A",
@@ -191,7 +201,7 @@ const C = {
   label: "#F7DD72",
 };
 
-const escape = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+export const escape = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
 /**
  * The sign-in email, written like a short letter on cream paper: the drawn

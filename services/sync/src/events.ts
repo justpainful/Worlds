@@ -12,7 +12,8 @@ export type AccessEvent =
   | { type: "member.role_changed"; workspaceId: string; userId: string; role: string }
   | { type: "workspace.deleted"; workspaceId: string }
   | { type: "device.revoked"; userId: string; deviceId: string }
-  | { type: "session.revoked"; userId: string; deviceId: string; sessionId: string };
+  | { type: "session.revoked"; userId: string; deviceId: string; sessionId: string }
+  | { type: "user.notify"; userId: string; notification: { id: string; topic: string; title: string; excerpt: string; link?: string; createdAt: number } };
 
 export type EventEnvelope = AccessEvent & { id: string; at: number };
 
@@ -45,11 +46,32 @@ export async function applyEvent(env: Env, ev: AccessEvent): Promise<number> {
         n += await room(env, workspaceId, docId).revoke({ userId: ev.userId, deviceId: ev.deviceId });
       }
       return n;
+    case "user.notify": {
+      // A note from Worlds itself: a support reply or a message from the team.
+      const x = ev.notification;
+      if (!x || typeof x.id !== "string") return 0;
+      await env.INBOXES.getByName(ev.userId).put({
+        id: x.id,
+        kind: "worlds",
+        topic: String(x.topic ?? "").slice(0, 40),
+        title: String(x.title ?? "").slice(0, 200),
+        link: typeof x.link === "string" ? x.link.slice(0, 500) : undefined,
+        workspaceId: "",
+        docId: "",
+        threadId: "",
+        commentId: "",
+        from: "worlds",
+        fromName: "Worlds",
+        excerpt: String(x.excerpt ?? "").slice(0, 400),
+        createdAt: typeof x.createdAt === "number" ? x.createdAt : Date.now(),
+      });
+      return 0;
+    }
   }
   return 0;
 }
 
-const KNOWN = new Set(["access.changed", "member.removed", "member.role_changed", "workspace.deleted", "device.revoked", "session.revoked"]);
+const KNOWN = new Set(["access.changed", "member.removed", "member.role_changed", "workspace.deleted", "device.revoked", "session.revoked", "user.notify"]);
 
 export function parseEvent(v: unknown): EventEnvelope | null {
   if (!v || typeof v !== "object") return null;

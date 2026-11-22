@@ -10,6 +10,7 @@ import { ApiError } from "./lib/http";
 import { jwks } from "./lib/jwt";
 import { expectedOrigins } from "./lib/webauthn";
 import { admin } from "./routes/admin";
+import { support, supportHousekeeping } from "./routes/support";
 import { auth } from "./routes/auth";
 import { me } from "./routes/me";
 import { pages } from "./routes/pages";
@@ -26,7 +27,7 @@ app.use(
   cors({
     origin: (origin, c) => (allowedOrigins(c.env.ALLOWED_ORIGINS).includes(origin) ? origin : null),
     allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-    allowHeaders: ["content-type", "authorization"],
+    allowHeaders: ["content-type", "authorization", "x-support-session"],
     maxAge: 600,
   }),
 );
@@ -62,11 +63,13 @@ app.route("/invites", invites);
 app.route("/profiles", profiles);
 app.route("/published", published);
 app.route("/admin", admin);
+app.route("/support", support);
 app.route("/", pages);
 
 /** Cron: deliver outstanding access events and clear expired rows. */
 export async function scheduled(env: Env): Promise<void> {
   await retryOutbox(env);
+  await supportHousekeeping(env);
   const t = Date.now();
   await env.DB.batch([
     env.DB.prepare("DELETE FROM email_codes WHERE expires_at < ?1").bind(t - 86_400_000),

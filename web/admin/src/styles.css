@@ -1375,3 +1375,147 @@ input[type="search"]::-webkit-search-cancel-button {
     bottom: 96px;
   }
 }
+
+/* ---- Support -------------------------------------------------------- */
+
+.chip-success {
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  color: var(--success);
+}
+.ticket-kind {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text-2);
+  flex: none;
+}
+.ticket-kind.is-waiting {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.ticket-kind.is-waiting::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  inset-inline-end: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--group-bg);
+}
+.ref {
+  font-family: var(--mono);
+  font-size: var(--text-caption);
+  color: var(--text-2);
+  font-weight: 500;
+  flex: none;
+}
+.chips {
+  display: inline-flex;
+  gap: 4px;
+}
+.ticket-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 0;
+}
+.spacer {
+  flex: 1;
+}
+.ticket-grid {
+  grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr);
+}
+@media (max-width: 900px) {
+  .ticket-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.thread {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+.bubble {
+  max-width: 88%;
+  padding: 10px 12px;
+  border-radius: var(--r-card);
+  background: var(--surface);
+  justify-self: start;
+}
+.bubble-team {
+  justify-self: end;
+  background: var(--accent-soft);
+}
+.bubble-note {
+  justify-self: end;
+  background: color-mix(in srgb, var(--warning) 14%, var(--surface));
+  border: 1px dashed color-mix(in srgb, var(--warning) 55%, transparent);
+}
+.bubble-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: var(--text-caption);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.bubble-head .muted {
+  font-weight: 400;
+}
+.bubble-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.bubble-system {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-caption);
+  color: var(--text-2);
+}
+.thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.thumb {
+  display: block;
+  width: 88px;
+  height: 66px;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.composer {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid var(--hairline);
+}
+.composer .seg {
+  justify-self: start;
+}
+.input.is-note {
+  background: color-mix(in srgb, var(--warning) 8%, var(--surface));
+}
+.composer-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
