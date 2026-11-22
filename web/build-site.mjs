@@ -42,7 +42,7 @@ const T = {
     skip: "انتقل إلى المحتوى", menu: "القائمة", home: "Worlds الصفحة الرئيسية",
     nav: [["features", "المزايا"], ["apps", "التطبيقات"], ["story", "القصة"], ["docs", "الدليل"], ["tools", "الأدوات"], ["support", "الدعم"]],
     github: "GitHub", docsMenu: "صفحات الدليل", docs: "الدليل", prev: "السابق", next: "التالي",
-    foot: [["features", "المزايا"], ["packs", "الحزم"], ["notion-alternative", "بديل لـ Notion"], ["apps", "التطبيقات"], ["story", "القصة"], ["docs", "الدليل"], ["tools", "الأدوات"], ["support", "الدعم"], ["privacy", "الخصوصية"], ["terms", "شروط الاستخدام"]],
+    foot: [["features", "المزايا"], ["packs", "الحزم"], ["notion-alternative", "بديل لـ Notion"], ["apps", "التطبيقات"], ["story", "القصة"], ["docs", "الدليل"], ["tools", "الأدوات"], ["support", "الدعم"], ["privacy", "الخصوصية"], ["terms", "شروط الاستخدام"], ["content-policy", "سياسة المحتوى"]],
     away: [["https://changelog.enterworlds.space/", "سجل التحديثات"], ["https://status.enterworlds.space/", "الحالة"]],
     festival: "مهرجان الذكاء الطبيعي يقود الذكاء الاصطناعي 2026، مسار التجارب المتميزة.",
     fine: "Worlds اسم عمل إبداعي غير مسجل رسميًا، مستقل عن هوية imbue. الشيفرة منشورة على GitHub.",
@@ -53,7 +53,7 @@ const T = {
     skip: "Skip to content", menu: "Menu", home: "Worlds home",
     nav: [["features", "Features"], ["apps", "Apps"], ["story", "Story"], ["docs", "Docs"], ["tools", "Tools"], ["support", "Support"]],
     github: "GitHub", docsMenu: "Docs pages", docs: "Docs", prev: "Previous", next: "Next",
-    foot: [["features", "Features"], ["packs", "Packs"], ["notion-alternative", "A Notion alternative"], ["apps", "Apps"], ["story", "Story"], ["docs", "Docs"], ["tools", "Tools"], ["support", "Support"], ["privacy", "Privacy"], ["terms", "Terms of use"]],
+    foot: [["features", "Features"], ["packs", "Packs"], ["notion-alternative", "A Notion alternative"], ["apps", "Apps"], ["story", "Story"], ["docs", "Docs"], ["tools", "Tools"], ["support", "Support"], ["privacy", "Privacy"], ["terms", "Terms of use"], ["content-policy", "Content policy"]],
     away: [["https://changelog.enterworlds.space/en/", "Changelog"], ["https://status.enterworlds.space/en/", "Status"]],
     festival: "Natural Intelligence Leads Artificial Intelligence festival 2026, outstanding experiments track.",
     fine: "Worlds is a creative working name, not a registered mark, and is independent of the imbue identity. The code is published on GitHub.",
@@ -342,7 +342,7 @@ ${footer(lang)}
 }
 
 // Generated folders are rebuilt from scratch; hand-made files (css, js, fonts, media) stay.
-for (const dir of ["docs", "apps", "features", "packs", "notion-alternative", "story", "tools", "support", "privacy", "terms", "en"]) rmSync(join(OUT, dir), { recursive: true, force: true });
+for (const dir of ["docs", "apps", "features", "packs", "notion-alternative", "story", "tools", "support", "privacy", "terms", "content-policy", "en"]) rmSync(join(OUT, dir), { recursive: true, force: true });
 
 const problems = [];
 const written = [];

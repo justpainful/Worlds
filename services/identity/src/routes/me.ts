@@ -1,12 +1,16 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import type { AppEnv } from "../env";
 import { revokeDevice } from "../domain/sessions";
 import { audit, listAudit } from "../lib/audit";
 import { emit, requireAuth } from "../lib/auth";
 import { now } from "../lib/crypto";
-import { bad, body, conflict, notFound, optStr, str } from "../lib/http";
+import { bad, body, conflict, forbidden, notFound, optStr, str } from "../lib/http";
+import { cancelDeletion, DELETION_DAYS, exportAccount, scheduleDeletion, sharedOwned } from "../domain/deletion";
+import { rateLimit } from "../lib/ratelimit";
+import { authenticationOptions, webauthn } from "../lib/webauthn";
 import { checkUsername, usernameTaken } from "../lib/usernames";
-import { userById, userView } from "./auth";
+import { bannedWordIn } from "../lib/names";
+import { consumeEmailCode, newChallenge, takeChallenge, userById, userView } from "./auth";
 import { ownerRoutes } from "./profiles";
 
 export const me = new Hono<AppEnv>();
@@ -23,6 +27,7 @@ me.patch("/", async (c) => {
   const caller = c.get("caller");
   const b = await body(c.req);
   const name = optStr(b.displayName, "displayName", 80);
+  if (name && (await bannedWordIn(c.env.DB, name))) throw bad("name_not_allowed", "That name is not allowed.");
   const avatar = b.avatarUrl === null ? null : optStr(b.avatarUrl, "avatarUrl", 500);
   if (avatar && !/^https:\/\//.test(avatar)) throw bad("invalid_avatar", "avatarUrl must be an https URL");
   // A username is required and cannot be cleared, only changed to another free one.
@@ -92,4 +97,80 @@ me.delete("/passkeys/:id", async (c) => {
 me.get("/audit", async (c) => {
   const limit = Number(c.req.query("limit") ?? 100);
   return c.json(await listAudit(c.env.DB, { actorUserId: c.get("caller").userId }, limit));
+});
+
+// ---------------------------------------------------------------------------
+// Deleting the account, and a copy of its data (domain/deletion.ts)
+// ---------------------------------------------------------------------------
+
+me.get("/deletion", async (c) => {
+  const userId = c.get("caller").userId;
+  const u = await c.env.DB.prepare("SELECT deletion_due_at FROM users WHERE id = ?1").bind(userId).first<{ deletion_due_at: number | null }>();
+  return c.json({ dueAt: u?.deletion_due_at ?? null, days: DELETION_DAYS, sharedWorkspaces: await sharedOwned(c.env.DB, userId) });
+});
+
+/** Passkey options for confirming a big step (deleting the account): only this account's passkeys, with biometrics or PIN. */
+me.post("/confirm/options", async (c) => {
+  const userId = c.get("caller").userId;
+  const { results } = await c.env.DB.prepare("SELECT id, transports FROM passkeys WHERE user_id = ?1").bind(userId).all<{ id: string; transports: string }>();
+  if (!results.length) throw bad("no_passkey", "This account has no passkey. Confirm with an email code instead.");
+  const options = await authenticationOptions(
+    c.env,
+    results.map((r) => ({ id: r.id, transports: JSON.parse(r.transports) as string[] })),
+  );
+  return c.json({ challengeId: await newChallenge(c.env.DB, "authenticate", options.challenge, userId), options });
+});
+
+/** The person proves it is them: an email code sent to their own address, or one of their passkeys. */
+async function confirmed(c: Context<AppEnv>, b: Record<string, unknown>): Promise<void> {
+  const userId = c.get("caller").userId;
+  if (b.code !== undefined) {
+    const email = await consumeEmailCode(c, b.challengeId, b.code);
+    const u = await c.env.DB.prepare("SELECT email FROM users WHERE id = ?1").bind(userId).first<{ email: string }>();
+    if (!u || u.email !== email) throw forbidden("code_not_yours", "That code was sent to another address.");
+    return;
+  }
+  const ch = await takeChallenge(c.env.DB, str(b.challengeId, "challengeId", 64), "authenticate");
+  if (ch.user_id !== userId) throw bad("challenge_mismatch");
+  const response = b.response as { id?: unknown } | undefined;
+  const cred = await c.env.DB.prepare("SELECT id, public_key, counter, transports FROM passkeys WHERE id = ?1 AND user_id = ?2")
+    .bind(str(response?.id, "response.id", 1024), userId)
+    .first<{ id: string; public_key: string; counter: number; transports: string }>();
+  if (!cred) throw forbidden("passkey_unknown", "That passkey is not one of yours.");
+  const v = await webauthn().verifyAuthentication(
+    c.env,
+    b.response,
+    ch.challenge,
+    { id: cred.id, publicKey: cred.public_key, counter: cred.counter, transports: JSON.parse(cred.transports) as string[] },
+    true,
+  );
+  if (!v) throw forbidden("passkey_invalid", "The passkey could not be verified.");
+  await c.env.DB.prepare("UPDATE passkeys SET counter = ?1, last_used_at = ?2 WHERE id = ?3").bind(v.newCounter, now(), cred.id).run();
+}
+
+me.post("/deletion", async (c) => {
+  const caller = c.get("caller");
+  const b = await body(c.req);
+  await confirmed(c, b);
+  const lang = b.lang === "en" ? "en" : "ar";
+  const r = await scheduleDeletion(c.env, caller.userId, { userId: caller.userId, deviceId: caller.deviceId, actor: caller.actor, who: "self" }, lang);
+  emit(c, r.events);
+  return c.json({ dueAt: r.dueAt });
+});
+
+me.delete("/deletion", async (c) => {
+  const caller = c.get("caller");
+  const ok = await cancelDeletion(c.env, caller.userId, { userId: caller.userId, deviceId: caller.deviceId, actor: caller.actor, who: "self" });
+  if (!ok) throw notFound("not_scheduled", "This account is not scheduled for deletion.");
+  return c.json({ ok: true });
+});
+
+/** A copy of everything the account service keeps about this account. */
+me.get("/export", async (c) => {
+  const caller = c.get("caller");
+  await rateLimit(c.env.DB, `export:${caller.userId}`, 10, 86_400_000);
+  const data = await exportAccount(c.env.DB, caller.userId);
+  await audit(c.env.DB, { action: "account.exported", actorUserId: caller.userId, actorKind: caller.actor, deviceId: caller.deviceId, targetType: "user", targetId: caller.userId });
+  const day = new Date().toISOString().slice(0, 10);
+  return c.json(data, 200, { "content-disposition": "attachment; filename=" + JSON.stringify(`worlds-account-${day}.json`) });
 });

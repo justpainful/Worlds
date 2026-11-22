@@ -7,6 +7,7 @@ import { newId, now, randomDigits, randomToken, sha256B64url, sha256Hex, timingS
 import { codeEmail, emailLanguage, emailSender } from "../lib/email";
 import { ApiError, bad, body, normalizeEmail, notFound, optStr, str, unauthorized } from "../lib/http";
 import { clientIp, rateLimit } from "../lib/ratelimit";
+import { bannedWordIn } from "../lib/names";
 import { normalizeUsername, suggestUsername, usernameMessage, usernameProblem, usernameTaken } from "../lib/usernames";
 import { authenticationOptions, registrationOptions, webauthn } from "../lib/webauthn";
 
@@ -27,9 +28,10 @@ export interface UserRow {
   username_auto: number;
   avatar_url: string | null;
   created_at: number;
+  deletion_due_at?: number | null;
 }
 
-export const USER_COLS = "id, email, display_name, username, username_auto, avatar_url, created_at";
+export const USER_COLS = "id, email, display_name, username, username_auto, avatar_url, created_at, deletion_due_at";
 
 export function userView(u: UserRow) {
   return {
@@ -40,6 +42,8 @@ export function userView(u: UserRow) {
     usernameAuto: u.username_auto === 1,
     avatarUrl: u.avatar_url,
     createdAt: u.created_at,
+    /** Set while the account waits to be erased; the app offers to cancel. */
+    deletionDueAt: u.deletion_due_at ?? null,
   };
 }
 
@@ -128,7 +132,11 @@ auth.post("/email/verify", async (c) => {
   if (!user) {
     const t = now();
     const id = newId();
-    const name = optStr(b.displayName, "displayName", 80) ?? email.split("@")[0];
+    let name = optStr(b.displayName, "displayName", 80) ?? email.split("@")[0];
+    if (await bannedWordIn(c.env.DB, name)) {
+      if (b.displayName) throw bad("name_not_allowed", "That name is not allowed.");
+      name = "Worlds";
+    }
     // The person's own handle when it is valid and free; otherwise the system picks one
     // (marked automatic, so the app can still claim the handle later).
     let username: string | null = null;

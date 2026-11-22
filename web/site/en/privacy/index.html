@@ -47,7 +47,7 @@
 <div class="wrap page-solo"><main id="main" class="article">
 <h1>Privacy policy</h1>
 <p class="lead">This page explains exactly what Worlds does with your data: what stays only on your device, what our services keep when you create an account or share a page, and who else handles any of it.</p>
-<p>Last updated: 15 November 2026</p>
+<p>Last updated: 22 November 2026</p>
 
 <ul>
   <li><a href="#summary">In short</a></li>
@@ -57,6 +57,8 @@
   <li><a href="#sign-in-codes">Sign-in codes and email</a></li>
   <li><a href="#rate-limits">Abuse protection and IP addresses</a></li>
   <li><a href="#sync">Shared pages and sync</a></li>
+  <li><a href="#support-requests">Support requests</a></li>
+  <li><a href="#team-access">The Worlds team and your account</a></li>
   <li><a href="#hosting">Hosting and logs</a></li>
   <li><a href="#ai">AI</a></li>
   <li><a href="#discord">Discord</a></li>
@@ -106,7 +108,8 @@
     <tr><td>Passkeys</td><td>The passkey's ID and public key, its use counter, the name you give it, its type and whether it syncs between your devices, and when it was added and last used. The private key and your fingerprint or face never leave your device.</td><td>Until you remove it in account settings, or the account is deleted.</td></tr>
     <tr><td>Devices</td><td>The device name and its system, its public key if it has one, when it first signed in and was last seen, and when it was signed out.</td><td>As long as the account exists.</td></tr>
     <tr><td>Sessions</td><td>A SHA-256 hash of the refresh token (never the token itself), and when the session started, was refreshed and expires. The access token lives 15 minutes; the refresh token lives 60 days and renews each time it is used.</td><td>Deleted 30 days after it expires or the device signs out.</td></tr>
-    <tr><td>Security log</td><td>What happened (a sign-in, a code sent, a passkey added, a change in a workspace), when, from which account and device, with short details such as the device name and sign-in method. It does not store IP addresses.</td><td>Not deleted automatically today.</td></tr>
+    <tr><td>Security log</td><td>What happened (a sign-in, a code sent, a passkey added, a change in a workspace), when, from which account and device, with short details such as the device name and sign-in method. It does not store IP addresses.</td><td>Deleted after 12 months.</td></tr>
+    <tr><td>Account status</td><td>If the account is suspended or banned: when, until when, and the reason the team wrote. If you asked to delete it: when you asked and the date it will be erased. Private notes the Worlds team writes about the account (for example, what a support request was about).</td><td>Until the status is lifted, or the account is erased.</td></tr>
     <tr><td>Shared workspaces</td><td>The workspace name, its members and their roles, groups, invites (only a hash of the invite link), the page tree with page IDs and titles when your device sends them, permissions, and pack roles. No page content is kept here.</td><td>Until the owner deletes the workspace.</td></tr>
   </tbody>
 </table>
@@ -150,6 +153,22 @@
 <p>The device apps do not send your personal workspace to the service. What they send is the pages you put in a shared workspace.</p>
 <p>This data stays while the workspace or account exists. Deleting a shared workspace ends everyone's access at once, but the service does not yet erase its stored copies automatically, and there is no button today that erases the web copy from your account. To have them erased, ask as described in <a href="#delete">Deleting your data</a>.</p>
 <p>The service checks your permission on every connection and every edit, so a page's content never reaches someone without access to it.</p>
+
+<h2 id="support-requests">Support requests</h2>
+<p>When you send a request from <a href="https://support.enterworlds.space/">support.enterworlds.space</a>, from the app, or by email to <code>support@enterworlds.space</code>, we keep:</p>
+<ul>
+  <li>Your email address (confirmed with a 6-digit code), your name if you gave it, and your account if the email belongs to one.</li>
+  <li>The kind of request, its subject, the answers you gave in its form (such as your system and Worlds version), the messages between you and the team, and the pictures you attached (in Cloudflare R2, only you and the team can open them).</li>
+  <li>Its number, status and dates, and whether you said it was solved.</li>
+</ul>
+<p>Answers go out from <code>support@enterworlds.space</code> through Resend, and, if you have an account, also as a note in the app. A confirmed email on the support site keeps a support session in your browser for 30 days, so you can follow your requests; only a hash of it is kept on our side. Security reports are seen only by the Worlds owners. Requests are kept so we can follow up and learn from them; when an account is erased, its requests stay without a name or email.</p>
+
+<h2 id="team-access">The Worlds team and your account</h2>
+<p>The Worlds team uses a private dashboard to answer support requests and keep the shared services safe. Only people the owners add can open it, each with a role that limits what they see and do, and they must confirm with a passkey or a code before any risky action. Everything they change is written to the security log with the reason they gave.</p>
+<ul>
+  <li><strong>What they can see</strong>: the records in <a href="#account">What your account keeps</a>, your public profile and published pages, and the number of items waiting in your Worlds mail. They never see the content of your pages, your shared pages, or your web copy.</li>
+  <li><strong>What they can do</strong>: fix your name or username when you ask, sign out your devices if your account is at risk, suspend or ban an account that breaks the <a href="/en/terms/">terms of use</a>, and take down public content that breaks the <a href="/en/content-policy/">content policy</a>. When they do, you get an email that says why and how to appeal.</li>
+</ul>
 
 <h2 id="hosting">Hosting and logs</h2>
 <p>All Worlds services run on Cloudflare:</p>
@@ -207,15 +226,16 @@
 <ul>
   <li><strong>On your device</strong>: remove the app and its data. On Windows, delete the folder <code>%APPDATA%\Worlds</code>. Clear your AI keys in the app's AI settings first.</li>
   <li><strong>In the browser</strong>: clear the site data for <code>app.enterworlds.space</code> and <code>demo.enterworlds.space</code> in your browser settings.</li>
-  <li><strong>In your account, yourself</strong>: today you can sign out any device, remove passkeys, change your name, username and picture, leave workspaces, and delete workspaces you own.</li>
-  <li><strong>Deleting the whole account</strong>: there is no button for this yet. Open a report on <a href="https://github.com/justpainful/Worlds/issues">GitHub Issues</a> titled "Account deletion request", and do not write your email or any personal details in it, because reports are public. We will answer there and tell you how to show the account is yours. Once confirmed, we delete your account, passkeys, devices, sessions and memberships, the web copy and its files, and your notifications. If you own a shared workspace with other members, transfer it or delete it first. You can ask the same way to erase only the web copy, or the content of a shared workspace you deleted.</li>
+  <li><strong>In your account, yourself</strong>: you can sign out any device, remove passkeys, change your name, username and picture, leave workspaces, and delete workspaces you own. A deleted workspace stays in the trash for 30 days, so you can restore it; after that its pages, versions and files are erased.</li>
+  <li><strong>A copy of your data</strong>: in the app, Account settings, choose Download my data. You get one file with everything the account service keeps about you.</li>
+  <li><strong>Deleting the whole account</strong>: in the app, Account settings, choose Delete account and confirm with a passkey or a code. Every device signs out at once, and your public profile, published pages and Worlds mail are hidden. For 30 days you can change your mind: sign in again and choose Cancel deletion. After 30 days we erase your account, passkeys, devices, sessions and memberships, your public profile and its pictures, your published pages, your Worlds mail, the web copy and its files, and your notifications. The security log keeps what happened without linking it to you, and support requests stay without your name or email. If you own a shared workspace with other members, hand it over or delete it first. The steps are on <a href="/en/docs/account-deletion/">Account deletion</a>; you can also ask from the <a href="https://support.enterworlds.space/new/deletion">support site</a>.</li>
 </ul>
 
 <h2 id="changes">Changes to this policy</h2>
 <p>If what Worlds does with data changes, we update this page and the date at its top. If the change is significant, we also mention it in the release notes on GitHub.</p>
 
 <h2 id="contact">Contact</h2>
-<p>For any privacy question, open a report on <a href="https://github.com/justpainful/Worlds/issues">GitHub Issues</a> and leave out personal details. For security problems, use a <a href="https://github.com/justpainful/Worlds/security/advisories/new">private security advisory</a>. For more, see the <a href="/en/support/">support page</a>.</p>
+<p>For any privacy question, send a request from <a href="https://support.enterworlds.space/">support.enterworlds.space</a> or write to <code>support@enterworlds.space</code>. For security problems, choose Security issue there: only the Worlds owners see it. For more, see the <a href="/en/support/">support page</a>.</p>
 
 </main></div>
 <footer class="wrap foot">
@@ -224,7 +244,7 @@
       <a class="lockup small" href="/en/" aria-label="Worlds home"><img class="logo" src="/icon-256.png" alt="" width="34" height="34"><span class="sep" aria-hidden="true"></span><img class="imbue" src="/mail/imbue.png" alt="imbue" width="51" height="19"></a>
       <p>Natural Intelligence Leads Artificial Intelligence festival 2026, outstanding experiments track.</p>
     </div>
-    <nav aria-label="Worlds"><a href="/en/features/">Features</a><a href="/en/packs/">Packs</a><a href="/en/notion-alternative/">A Notion alternative</a><a href="/en/apps/">Apps</a><a href="/en/story/">Story</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="/en/privacy/">Privacy</a><a href="/en/terms/">Terms of use</a><a href="https://changelog.enterworlds.space/en/">Changelog</a><a href="https://status.enterworlds.space/en/">Status</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
+    <nav aria-label="Worlds"><a href="/en/features/">Features</a><a href="/en/packs/">Packs</a><a href="/en/notion-alternative/">A Notion alternative</a><a href="/en/apps/">Apps</a><a href="/en/story/">Story</a><a href="/en/docs/">Docs</a><a href="/en/tools/">Tools</a><a href="/en/support/">Support</a><a href="/en/privacy/">Privacy</a><a href="/en/terms/">Terms of use</a><a href="/en/content-policy/">Content policy</a><a href="https://changelog.enterworlds.space/en/">Changelog</a><a href="https://status.enterworlds.space/en/">Status</a><a href="https://github.com/justpainful/Worlds">GitHub</a></nav>
   </div>
   <p class="fine">Worlds is a creative working name, not a registered mark, and is independent of the imbue identity. The code is published on GitHub.</p>
 </footer>

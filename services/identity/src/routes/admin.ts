@@ -18,6 +18,9 @@ import { newId, now } from "../lib/crypto";
 import type { EventEnvelope } from "../lib/events";
 import { ApiError, bad, body, conflict, forbidden, normalizeEmail, notFound, optStr, str } from "../lib/http";
 import { checkUsername, usernameTaken } from "../lib/usernames";
+import { foldName } from "../lib/names";
+import { noticeMail } from "../lib/noticeMail";
+import { cancelDeletion, eraseAccount, exportAccount, scheduleDeletion } from "../domain/deletion";
 import { authenticationOptions, webauthn } from "../lib/webauthn";
 import { consumeEmailCode, newChallenge, takeChallenge, userById, userView } from "./auth";
 import { SUPPORT_SITE, replyAddress, sendSupportMail, supportMail, ticketRef } from "../lib/supportMail";
@@ -39,17 +42,20 @@ export const PERMISSIONS = [
   "team",
   "tickets", // support requests: read, answer, notes, status
   "tickets.private", // security reports
+  "users.delete", // schedule or erase an account
+  "users.export", // a copy of an account's data
+  "names", // reserved usernames and words not allowed in names
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
 const ROLE_PERMISSIONS: Record<AdminRole, readonly Permission[]> = {
   owner: PERMISSIONS,
-  moderator: ["users.read", "users.edit", "users.suspend", "notes", "audit", "stats", "tickets"],
+  moderator: ["users.read", "users.edit", "users.suspend", "notes", "audit", "stats", "tickets", "names"],
   support: ["users.read", "users.email", "notes", "stats", "tickets"],
 };
 
 /** Actions that need a second check made in the last STEP_UP_MS. */
-const NEEDS_STEP_UP: ReadonlySet<Permission> = new Set(["users.edit_email", "users.suspend", "users.ban", "users.devices", "team"]);
+const NEEDS_STEP_UP: ReadonlySet<Permission> = new Set(["users.edit_email", "users.suspend", "users.ban", "users.devices", "team", "users.delete", "users.export"]);
 export const STEP_UP_MS = 10 * 60 * 1000;
 
 const DAY = 86_400_000;
@@ -326,6 +332,7 @@ admin.get("/users", async (c) => {
   if (status === "active") where.push(`(u.suspended_until IS NULL OR u.suspended_until <= ${arg(t)})`);
   else if (status === "suspended") where.push(`(u.suspended_until > ${arg(t)} AND u.banned = 0)`);
   else if (status === "banned") where.push(`(u.suspended_until > ${arg(t)} AND u.banned = 1)`);
+  else if (status === "deleting") where.push("u.deletion_due_at IS NOT NULL");
   else if (status === "team") {
     const ids = owners.map((o) => arg(o));
     where.push(`(u.id IN (SELECT user_id FROM admin_roles)${ids.length ? ` OR u.id IN (${ids.join(", ")})` : ""})`);
@@ -346,9 +353,9 @@ admin.get("/users/:id", async (c) => {
   const id = c.req.param("id");
   const db = c.env.DB;
   const owners = envOwners(c.env.ADMIN_OWNERS);
-  const row = await db.prepare(`SELECT ${LIST_COLS}, u.username_auto, u.email_verified_at, u.updated_at, u.suspended_at FROM users u WHERE u.id = ?1`)
+  const row = await db.prepare(`SELECT ${LIST_COLS}, u.username_auto, u.email_verified_at, u.updated_at, u.suspended_at, u.deletion_due_at, u.deletion_by FROM users u WHERE u.id = ?1`)
     .bind(id)
-    .first<UserListRow & { username_auto: number; email_verified_at: number | null; updated_at: number; suspended_at: number | null }>();
+    .first<UserListRow & { username_auto: number; email_verified_at: number | null; updated_at: number; suspended_at: number | null; deletion_due_at: number | null; deletion_by: string | null }>();
   if (!row) throw notFound("user_not_found", "There is no account with that id.");
   const [devices, passkeys, spaces, profile, pages, mail, notes, log] = await db.batch<Record<string, unknown>>([
     db.prepare("SELECT id, name, platform, public_key IS NOT NULL AS bound, created_at, last_seen_at, revoked_at FROM devices WHERE user_id = ?1 ORDER BY revoked_at IS NOT NULL, last_seen_at DESC LIMIT 50").bind(id),
@@ -388,6 +395,7 @@ admin.get("/users/:id", async (c) => {
     emailVerifiedAt: can(c, "users.email") ? row.email_verified_at : null,
     updatedAt: row.updated_at,
     suspension: s ? { until: s.banned ? null : s.until, banned: s.banned, reason: s.reason, since: row.suspended_at } : null,
+    deletion: row.deletion_due_at ? { dueAt: row.deletion_due_at, by: row.deletion_by } : null,
     devices: devices.results.map((d) => ({
       id: d.id,
       name: d.name,
@@ -533,6 +541,16 @@ admin.post("/users/:id/suspend", async (c) => {
     logStmt(c, ban ? "admin.user.banned" : "admin.user.suspended", id, { reason, ...(ban ? {} : { until }) }),
   ]);
   emit(c as unknown as Context<AppEnv>, await signOutAll(c, id, ban ? "banned" : "suspended"));
+  const target = await c.env.DB.prepare("SELECT email FROM users WHERE id = ?1").bind(id).first<{ email: string }>();
+  if (target && b.tell !== false) {
+    const mail = noticeMail(b.lang === "en" ? "en" : "ar", ban ? "account_banned" : "account_suspended", { date: until, reason: b.tellReason === false ? undefined : reason });
+    const sent = sendSupportMail(c.env, { to: target.email, ...mail });
+    try {
+      c.executionCtx.waitUntil(sent);
+    } catch {
+      await sent;
+    }
+  }
   return c.json({ ok: true, until: ban ? null : until, banned: ban });
 });
 
@@ -899,4 +917,110 @@ admin.get("/support-files/*", async (c) => {
   const obj = await c.env.PROFILE_FILES.get(key);
   if (!obj) throw notFound();
   return new Response(obj.body, { headers: { "content-type": f.mime, "cache-control": "private, max-age=3600", "x-content-type-options": "nosniff" } });
+});
+
+// ---------------------------------------------------------------------------
+// Deletion, export and the workspace trash (domain/deletion.ts)
+// ---------------------------------------------------------------------------
+
+admin.get("/deletions", async (c) => {
+  await need(c, "users.read");
+  const { results } = await c.env.DB.prepare(
+    `SELECT ${LIST_COLS}, u.deletion_requested_at, u.deletion_due_at, u.deletion_by FROM users u WHERE u.deletion_due_at IS NOT NULL ORDER BY u.deletion_due_at`,
+  ).all<UserListRow & { deletion_requested_at: number; deletion_due_at: number; deletion_by: string }>();
+  const owners = envOwners(c.env.ADMIN_OWNERS);
+  return c.json(results.map((r) => ({ ...listItem(c, r, owners), requestedAt: r.deletion_requested_at, dueAt: r.deletion_due_at, by: r.deletion_by })));
+});
+
+/** Schedule the 30 days ({ now: false }) or erase at once ({ now: true }). */
+admin.post("/users/:id/delete", async (c) => {
+  await need(c, "users.delete");
+  const id = c.req.param("id");
+  const b = await body(c.req);
+  const reason = reasonOf(b.reason);
+  if (!(await userById(c.env.DB, id))) throw notFound("user_not_found");
+  await guardTarget(c, id);
+  const caller = c.get("caller");
+  if (b.now === true) {
+    await logStmt(c, "admin.user.erased", id, { reason }).run();
+    emit(c as unknown as Context<AppEnv>, await eraseAccount(c.env, id, "team"));
+    return c.json({ ok: true, erased: true });
+  }
+  const r = await scheduleDeletion(c.env, id, { userId: caller.userId, deviceId: caller.deviceId, actor: caller.actor, who: "team", reason }, b.lang === "en" ? "en" : "ar");
+  emit(c as unknown as Context<AppEnv>, r.events);
+  return c.json({ ok: true, dueAt: r.dueAt });
+});
+
+admin.post("/users/:id/deletion/cancel", async (c) => {
+  await need(c, "users.delete");
+  const id = c.req.param("id");
+  const caller = c.get("caller");
+  const ok = await cancelDeletion(c.env, id, { userId: caller.userId, deviceId: caller.deviceId, actor: caller.actor, who: "team" });
+  if (!ok) throw notFound("not_scheduled", "This account is not scheduled for deletion.");
+  return c.json({ ok: true });
+});
+
+admin.get("/users/:id/export", async (c) => {
+  await need(c, "users.export");
+  const id = c.req.param("id");
+  if (!(await userById(c.env.DB, id))) throw notFound("user_not_found");
+  await logStmt(c, "admin.user.exported", id).run();
+  return c.json(await exportAccount(c.env.DB, id));
+});
+
+// ---------------------------------------------------------------------------
+// Reserved usernames and words not allowed in names (lib/names.ts)
+// ---------------------------------------------------------------------------
+
+admin.get("/names", async (c) => {
+  await need(c, "names");
+  const [reserved, banned] = await c.env.DB.batch<{ name?: string; word?: string; reason?: string | null; added_at: number; added_by: string | null }>([
+    c.env.DB.prepare("SELECT name, reason, added_at, added_by FROM reserved_names ORDER BY name"),
+    c.env.DB.prepare("SELECT word, added_at, added_by FROM banned_words ORDER BY word"),
+  ]);
+  return c.json({
+    reserved: reserved.results.map((r) => ({ name: r.name, reason: r.reason ?? null, addedAt: r.added_at })),
+    banned: banned.results.map((r) => ({ word: r.word, addedAt: r.added_at })),
+  });
+});
+
+admin.post("/names/reserved", async (c) => {
+  await need(c, "names");
+  const b = await body(c.req);
+  const name = checkUsername(b.name);
+  const taken = await c.env.DB.prepare("SELECT id FROM users WHERE username = ?1").bind(name).first();
+  if (taken) throw conflict("username_taken", "Someone already has that username.");
+  await c.env.DB.batch([
+    c.env.DB.prepare("INSERT OR REPLACE INTO reserved_names (name, reason, added_by, added_at) VALUES (?1, ?2, ?3, ?4)").bind(name, optStr(b.reason, "reason", 200) ?? null, c.get("caller").userId, now()),
+    logStmt(c, "admin.names.reserved", c.get("caller").userId, { name }),
+  ]);
+  return c.json({ ok: true, name }, 201);
+});
+
+admin.delete("/names/reserved/:name", async (c) => {
+  await need(c, "names");
+  const name = c.req.param("name").toLowerCase();
+  const r = await c.env.DB.prepare("DELETE FROM reserved_names WHERE name = ?1").bind(name).run();
+  if (!r.meta.changes) throw notFound();
+  await logStmt(c, "admin.names.released", c.get("caller").userId, { name }).run();
+  return c.json({ ok: true });
+});
+
+admin.post("/names/banned", async (c) => {
+  await need(c, "names");
+  const word = foldName(str((await body(c.req)).word, "word", 40)).trim();
+  if (word.length < 2) throw bad("invalid_word", "Use at least two letters.");
+  await c.env.DB.batch([
+    c.env.DB.prepare("INSERT OR IGNORE INTO banned_words (word, added_by, added_at) VALUES (?1, ?2, ?3)").bind(word, c.get("caller").userId, now()),
+    logStmt(c, "admin.names.banned", c.get("caller").userId, { count: 1 }),
+  ]);
+  return c.json({ ok: true, word }, 201);
+});
+
+admin.delete("/names/banned/:word", async (c) => {
+  await need(c, "names");
+  const r = await c.env.DB.prepare("DELETE FROM banned_words WHERE word = ?1").bind(foldName(decodeURIComponent(c.req.param("word")))).run();
+  if (!r.meta.changes) throw notFound();
+  await logStmt(c, "admin.names.unbanned", c.get("caller").userId, { count: 1 }).run();
+  return c.json({ ok: true });
 });

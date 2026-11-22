@@ -36,7 +36,7 @@ function r(e, t, r) {
 	}) : e[t] = r, e;
 }
 //#endregion
-//#region src/spreadsheet/engine.ts
+//#region ../src/spreadsheet/engine.ts
 function i(e) {
 	let t = e + 1, n = "";
 	for (; t > 0;) {
@@ -882,7 +882,7 @@ function S(e, t) {
 	return String(e);
 }
 //#endregion
-//#region web/live/planning-dates.ts
+//#region live/planning-dates.ts
 var C = (e) => String(e).padStart(2, "0"), w = (e) => `${e.getFullYear()}-${C(e.getMonth() + 1)}-${C(e.getDate())}`, T = (e) => {
 	let [t, n, r] = e.split("-").map(Number);
 	return new Date(t, (n || 1) - 1, r || 1);
@@ -898,7 +898,7 @@ function re(e) {
 	return T(e).getDay();
 }
 //#endregion
-//#region src/planning/quickAdd.ts
+//#region ../src/planning/quickAdd.ts
 var D = {
 	sun: 0,
 	sunday: 0,
@@ -1082,7 +1082,7 @@ function ue(e, t) {
 	].every(Number.isFinite)) || !(le(e, t) <= 1e6)) throw Error("This stroke exceeds the paint limit; start another stroke");
 }
 //#endregion
-//#region src/drawing/model.ts
+//#region ../src/drawing/model.ts
 var N = {
 	kind: "hard",
 	size: 12,
@@ -1130,7 +1130,7 @@ function pe(e) {
 	return (typeof t.color != "string" || !t.color || t.color.length > 128 || /[<>;{}]|url\s*\(/i.test(t.color)) && (t.color = N.color), t.tipAssetId !== void 0 && (typeof t.tipAssetId != "string" || !t.tipAssetId || t.tipAssetId.length > 160) && delete t.tipAssetId, t.straightLine !== void 0 && typeof t.straightLine != "boolean" && delete t.straightLine, t;
 }
 //#endregion
-//#region src/drawing/geometry.ts
+//#region ../src/drawing/geometry.ts
 var P = (e, t, n) => Math.max(t, Math.min(n, e)), F = (e, t) => Math.hypot(e.x - t.x, e.y - t.y);
 function I(e, t = 0) {
 	if (!e.length) return {
@@ -1149,7 +1149,7 @@ function I(e, t = 0) {
 	};
 }
 //#endregion
-//#region src/drawing/recognition.ts
+//#region ../src/drawing/recognition.ts
 function me(e) {
 	let t = 1200;
 	return e.length <= t ? e : Array.from({ length: t }, (t, n) => e[Math.round(n * (e.length - 1) / 1199)]);
@@ -1257,7 +1257,7 @@ function he(e) {
 	} : null;
 }
 //#endregion
-//#region src/drawing/brush.ts
+//#region ../src/drawing/brush.ts
 function ge(e, t, n = 1) {
 	return Array.from(_e(e, t, n));
 }
@@ -1307,7 +1307,7 @@ function* _e(e, t, n = 1) {
 	e.length > 1 && (yield* c(e[e.length - 1], s));
 }
 //#endregion
-//#region web/live/live.ts
+//#region live/live.ts
 var z = document.documentElement.lang === "ar", ve = "https://app.enterworlds.space", ye = `worlds.site.livepage.${z ? "ar" : "en"}`, B = matchMedia("(prefers-reduced-motion: reduce)"), V = z ? {
 	title: "صفحتي الأولى",
 	add: "اكتب / لإضافة كتلة، أو اكتب نصًا واضغط Enter",

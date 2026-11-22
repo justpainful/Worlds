@@ -4,6 +4,7 @@
  * Three-character names are allowed. Unique across the service.
  */
 import { ApiError, bad } from "./http";
+import { bannedWordIn, reservedName } from "./names";
 
 export const USERNAME_MIN = 3;
 export const USERNAME_MAX = 20;
@@ -52,9 +53,12 @@ export function usernameMessage(p: UsernameProblem): string {
   return MESSAGES[p];
 }
 
+/** Taken by someone else, reserved by the team, or containing a word the team does not allow. */
 export async function usernameTaken(db: D1Database, name: string, exceptUserId?: string): Promise<boolean> {
   const row = await db.prepare("SELECT id FROM users WHERE username = ?1").bind(name).first<{ id: string }>();
-  return !!row && row.id !== exceptUserId;
+  if (row && row.id !== exceptUserId) return true;
+  if (row) return false;
+  return (await reservedName(db, name)) || !!(await bannedWordIn(db, name));
 }
 
 /** Turn any text into username material: ASCII letters and digits only. */

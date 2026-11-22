@@ -9,6 +9,6 @@
   { "id": "write", "ar": "الكتابة والتنظيم", "en": "Write and organise", "items": ["docs/pages", "docs/documents", "docs/tables", "docs/projects", "docs/templates", "docs/search-commands", "docs/history"] },
   { "id": "draw", "ar": "الرسم والعرض والوسائط", "en": "Draw, present and media", "items": ["docs/drawing", "docs/presentations", "docs/media-files"] },
   { "id": "claude", "ar": "Claude والأتمتة", "en": "Claude and automations", "items": ["docs/claude", "docs/automations", "docs/discord", "docs/integrations"] },
-  { "id": "account", "ar": "الحساب والمشاركة", "en": "Account and sharing", "items": ["docs/account", "docs/sharing", "docs/sync", "docs/packs", "docs/profile", "docs/settings"] },
+  { "id": "account", "ar": "الحساب والمشاركة", "en": "Account and sharing", "items": ["docs/account", "docs/sharing", "docs/sync", "docs/packs", "docs/profile", "docs/settings", "docs/account-deletion"] },
   { "id": "developers", "ar": "للمطورين", "en": "For developers", "items": ["docs/html-pages", "docs/mcp"] }
 ]

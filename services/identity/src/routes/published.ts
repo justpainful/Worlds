@@ -81,7 +81,7 @@ published.get("/page/:username/:slug", async (c) => {
   const slug = c.req.param("slug").toLowerCase();
   const row = await c.env.DB.prepare(
     `SELECT p.id, p.title, p.html, p.lang, u.display_name AS author, u.username FROM published_pages p JOIN users u ON u.id = p.user_id
-     WHERE u.username = ?1 AND p.slug = ?2 AND p.kind = 'page' AND (u.suspended_until IS NULL OR u.suspended_until <= ?3)`,
+     WHERE u.username = ?1 AND p.slug = ?2 AND p.kind = 'page' AND (u.suspended_until IS NULL OR u.suspended_until <= ?3) AND u.deletion_due_at IS NULL`,
   )
     .bind(c.req.param("username").toLowerCase(), slug, now())
     .first<{ id: string }>();
@@ -96,7 +96,7 @@ published.post("/share/:slug", async (c) => {
   await rateLimit(c.env.DB, `share:${clientIp(c.req.raw, c.env.EDGE_SECRET)}`, 60, 600_000);
   const row = await c.env.DB.prepare(
     `SELECT p.id, p.title, p.html, p.lang, p.password_hash AS passwordHash, p.expires_at AS expiresAt FROM published_pages p JOIN users u ON u.id = p.user_id
-     WHERE p.slug = ?1 AND p.kind = 'share' AND (u.suspended_until IS NULL OR u.suspended_until <= ?2)`,
+     WHERE p.slug = ?1 AND p.kind = 'share' AND (u.suspended_until IS NULL OR u.suspended_until <= ?2) AND u.deletion_due_at IS NULL`,
   )
     .bind(slug, now())
     .first<{ id: string; title: string; html: string; lang: string; passwordHash: string | null; expiresAt: number | null }>();
@@ -150,7 +150,11 @@ published.post("/mail/inbound", async (c) => {
   // support@ and support+<request>@ belong to the support desk (routes/support.ts).
   if (await inboundSupport(c.env, { to, from: String(b.from ?? ""), subject: String(b.subject ?? ""), text: typeof b.text === "string" ? b.text : "" })) return c.json({ ok: true });
   const key = to.split("@")[0]?.split("+")[0] ?? "";
-  const row = await c.env.DB.prepare("SELECT user_id AS userId FROM mail_addresses WHERE key = ?1").bind(key).first<{ userId: string }>();
+  const row = await c.env.DB.prepare(
+    "SELECT a.user_id AS userId FROM mail_addresses a JOIN users u ON u.id = a.user_id WHERE a.key = ?1 AND u.deletion_due_at IS NULL AND (u.suspended_until IS NULL OR u.suspended_until <= ?2)",
+  )
+    .bind(key, now())
+    .first<{ userId: string }>();
   if (!row) throw notFound();
   await rateLimit(c.env.DB, `mail:${row.userId}`, 200, 86_400_000);
   const text = typeof b.text === "string" ? b.text.slice(0, 200_000) : "";

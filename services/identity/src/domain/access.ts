@@ -111,7 +111,7 @@ export async function loadAcl(db: D1Database, workspaceId: string): Promise<Work
 export async function loadSubject(db: D1Database, workspaceId: string, userId: string): Promise<Subject> {
   const [m, g] = await db.batch([
     db
-      .prepare("SELECT m.role, w.default_level FROM members m JOIN workspaces w ON w.id = m.workspace_id WHERE m.workspace_id = ?1 AND m.user_id = ?2")
+      .prepare("SELECT m.role, w.default_level FROM members m JOIN workspaces w ON w.id = m.workspace_id WHERE m.workspace_id = ?1 AND m.user_id = ?2 AND w.deleted_at IS NULL")
       .bind(workspaceId, userId),
     db
       .prepare("SELECT gm.group_id FROM group_members gm JOIN groups g ON g.id = gm.group_id WHERE g.workspace_id = ?1 AND gm.user_id = ?2")
