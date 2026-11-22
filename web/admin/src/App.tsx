@@ -10,12 +10,13 @@ import { Team } from "./views/Team";
 import { Support } from "./views/Support";
 import { Names } from "./views/Names";
 import { Content } from "./views/Content";
+import { Community } from "./views/Community";
 
 // ---------------------------------------------------------------------------
 // Where we are: #/overview, #/accounts/<id>, #/log?user=<id>, #/team
 // ---------------------------------------------------------------------------
 
-export type View = "overview" | "accounts" | "support" | "content" | "log" | "names" | "team";
+export type View = "overview" | "accounts" | "support" | "content" | "community" | "log" | "names" | "team";
 export interface Route {
   view: View;
   id?: string;
@@ -25,7 +26,7 @@ export interface Route {
 function parse(): Route {
   const [path, query] = location.hash.replace(/^#\/?/, "").split("?");
   const [view, id] = path.split("/");
-  const v = (["overview", "accounts", "support", "content", "log", "names", "team"] as View[]).includes(view as View) ? (view as View) : "overview";
+  const v = (["overview", "accounts", "support", "content", "community", "log", "names", "team"] as View[]).includes(view as View) ? (view as View) : "overview";
   return { view: v, id: id ? decodeURIComponent(id) : undefined, params: new URLSearchParams(query ?? "") };
 }
 
@@ -294,6 +295,7 @@ const NAV: { view: View; icon: SymbolName; label: () => string; need: Permission
   { view: "accounts", icon: "person.2", label: () => t("accounts"), need: "users.read" },
   { view: "support", icon: "tray", label: () => t("support"), need: "tickets" },
   { view: "content", icon: "text.document", label: () => t("content"), need: "content" },
+  { view: "community", icon: "character.bubble", label: () => t("community"), need: "community" },
   { view: "log", icon: "list.bullet.rectangle", label: () => t("log"), need: "audit" },
   { view: "names", icon: "at", label: () => t("names"), need: "names" },
   { view: "team", icon: "person.badge.key", label: () => t("team"), need: "users.read" },
@@ -419,6 +421,7 @@ function Signed({ theme, setTheme }: { theme: Theme; setTheme: (t: Theme) => voi
           {view === "support" && <Support id={route.id} />}
           {view === "log" && <Log params={route.params} />}
           {view === "content" && <Content />}
+          {view === "community" && <Community />}
           {view === "names" && <Names />}
           {view === "team" && <Team />}
         </div>

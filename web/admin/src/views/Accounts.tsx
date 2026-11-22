@@ -5,6 +5,7 @@ import { ago, errorText, fmtDate, fmtNum, t, useLang } from "../i18n";
 import { Avatar, Button, Capsule, Chip, Dialog, Empty, Field, Icon, IconButton, MenuButton, Popup, Row, Section, Segmented, toast } from "../ui";
 import { Failed, Loading, Toolbar, useLoad } from "./common";
 import { LogRows } from "./Log";
+import { MessageDialog } from "./Community";
 import { PLATFORM_ICON, PLATFORM_NAME } from "./Overview";
 
 type Filter = "all" | "active" | "suspended" | "banned" | "deleting" | "team";
@@ -163,6 +164,7 @@ type Dlg =
   | { kind: "signout"; device?: Device }
   | { kind: "passkey"; id: string; name: string }
   | { kind: "delete" }
+  | { kind: "message" }
   | { kind: "canceldel" };
 
 function Account({ id, onChanged }: { id: string; onChanged: () => void }) {
@@ -269,6 +271,7 @@ function Account({ id, onChanged }: { id: string; onChanged: () => void }) {
                   can("users.devices") && u.devices.some((d) => !d.revokedAt) && { key: "out", label: t("signOutAll"), icon: "rectangle.portrait.and.arrow.right", onSelect: () => setDlg({ kind: "signout" }) },
                   !suspended && can("users.ban") && { key: "ban", label: t("ban"), icon: "nosign", danger: true, onSelect: () => setDlg({ kind: "ban" }) },
                   can("audit") && { key: "log", label: t("log"), icon: "list.bullet.rectangle", onSelect: () => go("log", undefined, { user: u.id }) },
+                  can("messages") && { key: "msg", label: t("writeTo"), icon: "envelope", onSelect: () => setDlg({ kind: "message" }) },
                   can("users.export") && { key: "export", label: t("exportData"), icon: "document.on.document", onSelect: () => void exportData() },
                   can("users.delete") && u.deletion && { key: "undel", label: t("cancelDeletion"), icon: "arrow.clockwise", onSelect: () => setDlg({ kind: "canceldel" }) },
                   can("users.delete") && !u.deletion && { key: "del", label: t("deleteAccount"), icon: "trash", danger: true, onSelect: () => setDlg({ kind: "delete" }) },
@@ -478,6 +481,7 @@ function Account({ id, onChanged }: { id: string; onChanged: () => void }) {
           onDone={changed}
         />
       )}
+      {dlg?.kind === "message" && <MessageDialog userId={u.id} onClose={() => setDlg(null)} />}
       {dlg?.kind === "delete" && <DeleteDialog u={u} onClose={() => setDlg(null)} onDone={changed} />}
       {dlg?.kind === "canceldel" && (
         <ReasonDialog

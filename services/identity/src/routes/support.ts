@@ -97,7 +97,7 @@ export function safeJson<T>(s: string | null | undefined, fallback: T): T {
 // Who is asking
 // ---------------------------------------------------------------------------
 
-interface Requester {
+export interface Requester {
   email: string;
   userId: string | null;
 }
@@ -106,7 +106,7 @@ async function userIdForEmail(db: D1Database, email: string): Promise<string | n
   return (await db.prepare("SELECT id FROM users WHERE email = ?1").bind(email).first<{ id: string }>())?.id ?? null;
 }
 
-async function requester(c: Context<AppEnv>, required = true): Promise<Requester | null> {
+export async function requester(c: Context<AppEnv>, required = true): Promise<Requester | null> {
   const h = c.req.header("authorization");
   if (h?.startsWith("Bearer ")) {
     const caller = await callerFromToken(c, h.slice(7).trim());
@@ -192,11 +192,14 @@ async function teamToTell(env: Env): Promise<string[]> {
 }
 
 export async function tellTeam(env: Env, t: TicketRow, title: string, excerpt: string): Promise<EventEnvelope[]> {
+  return notifyTeam(env, { id: `support:${t.id}:${now()}`, topic: "support.team", title, excerpt, link: `https://admin.enterworlds.space/#/support/${t.number}` });
+}
+
+/** A note in the app for every owner and support member: a new request, suggestion, deletion or report. */
+export async function notifyTeam(env: Env, n: { id: string; topic: string; title: string; excerpt: string; link: string }): Promise<EventEnvelope[]> {
   const ids = await teamToTell(env);
   if (!ids.length) return [];
-  const stmts = ids.map((id) =>
-    notifyStmt(env.DB, id, { id: `support:${t.id}:${now()}`, topic: "support.team", title, excerpt: excerpt.slice(0, 200), link: `https://admin.enterworlds.space/#/support/${t.number}` }),
-  );
+  const stmts = ids.map((id) => notifyStmt(env.DB, id, { ...n, id: `${n.id}:${id}`, excerpt: n.excerpt.slice(0, 200) }));
   await env.DB.batch(stmts.map((s) => s.stmt));
   return stmts.map((s) => s.envelope);
 }

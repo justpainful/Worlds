@@ -3,6 +3,7 @@ import { Ban, Bug, CircleUser, Ellipsis, Flag, KeyRound, Lightbulb, ShieldAlert,
 import { ApiError, call, confirmEmail, currentEmail, onSession, picture, signOut, startEmail, upload, type Kind, type Message, type Request, type Status } from "./api";
 import { errorText, fmtDate, setLang, t, useLang, type Key } from "./i18n";
 import { popular, search, type Article } from "./search";
+import { Ideas, Roadmap } from "./Ideas";
 import { Button, Chip, Empty, Field, Icon, IconButton, Popup, Section, Spinner, Toasts, toast } from "../../admin/src/ui";
 
 // ---------------------------------------------------------------------------
@@ -88,6 +89,8 @@ export function App() {
   if (section === "new") page = <NewRequest kind={(KINDS.find((k) => k.kind === arg)?.kind ?? null) as Kind | null} />;
   else if (section === "requests" && arg) page = <RequestPage number={arg} />;
   else if (section === "requests") page = <MyRequests />;
+  else if (section === "ideas") page = <Ideas gate={() => <EmailGate compact />} />;
+  else if (section === "roadmap") page = <Roadmap />;
   else page = <Home />;
 
   return (
@@ -98,6 +101,12 @@ export function App() {
           <span>{t("title")}</span>
         </A>
         <nav className="top-actions">
+          <A to="/ideas" className="btn btn-plain hide-phone">
+            <span>{t("ideasNav")}</span>
+          </A>
+          <A to="/roadmap" className="btn btn-plain hide-phone">
+            <span>{t("roadmapNav")}</span>
+          </A>
           <A to="/requests" className="btn btn-plain">
             <Icon name="tray" />
             <span className="hide-phone">{t("myRequests")}</span>
@@ -207,6 +216,26 @@ function Home() {
         <Section title={t("popular")}>
           <ArticleList items={popular(lang)} />
         </Section>
+        <div className="home-links">
+          <A to="/ideas" className="kind-card">
+            <span className="kind-icon">
+              <Icon name="character.bubble" size={20} />
+            </span>
+            <span className="kind-text">
+              <span className="kind-title">{t("ideasTitle")}</span>
+              <span className="kind-desc">{t("ideasLead")}</span>
+            </span>
+          </A>
+          <A to="/roadmap" className="kind-card">
+            <span className="kind-icon">
+              <Icon name="list.bullet.rectangle" size={20} />
+            </span>
+            <span className="kind-text">
+              <span className="kind-title">{t("roadmap")}</span>
+              <span className="kind-desc">{t("roadmapLead")}</span>
+            </span>
+          </A>
+        </div>
         <p className="write-us">
           {t("orWrite")}{" "}
           <a href="mailto:support@enterworlds.space" dir="ltr">
@@ -485,6 +514,12 @@ function NewRequest({ kind }: { kind: Kind | null }) {
     setBusy(true);
     setError("");
     try {
+      if (kind === "suggestion") {
+        await call("POST", "/community/suggestions", { title: subject.trim(), body: body.trim(), lang });
+        nav("/ideas");
+        toast(t("ideaSent"));
+        return;
+      }
       const r = await call<Request>("POST", "/support/requests", { kind, subject: subject.trim(), body: body.trim(), fields: values, files, lang, via: params.get("via") === "app" ? "app" : "web" });
       setSent(r);
     } catch (e) {
