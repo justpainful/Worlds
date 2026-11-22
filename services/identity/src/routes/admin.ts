@@ -431,7 +431,7 @@ function logRow(r: Record<string, unknown>) {
     targetType: r.target_type ?? null,
     targetId: r.target_id ?? null,
     meta,
-    ...(r.actor_name !== undefined ? { actorName: r.actor_name ?? null, actorUsername: r.actor_username ?? null } : {}),
+    ...(r.actor_name !== undefined ? { actorName: r.actor_name ?? null, actorUsername: r.actor_username ?? null, targetName: r.target_name ?? null } : {}),
   };
 }
 
@@ -631,7 +631,8 @@ admin.get("/audit", async (c) => {
   if (Number.isFinite(since) && since > 0) where.push(`l.at >= ${arg(since)}`);
   const limit = Math.min(Math.max(Number(c.req.query("limit") ?? 100) || 100, 1), 200);
   const { results } = await c.env.DB.prepare(
-    `SELECT l.*, a.display_name AS actor_name, a.username AS actor_username FROM audit_log l LEFT JOIN users a ON a.id = l.actor_user_id
+    `SELECT l.*, a.display_name AS actor_name, a.username AS actor_username, tu.display_name AS target_name
+     FROM audit_log l LEFT JOIN users a ON a.id = l.actor_user_id LEFT JOIN users tu ON l.target_type = 'user' AND tu.id = l.target_id
      ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY l.at DESC, l.id DESC LIMIT ${arg(limit)}`,
   )
     .bind(...args)

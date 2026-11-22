@@ -274,3 +274,14 @@ describe("numbers", () => {
     expect(r.json.platforms.find((p: { platform: string }) => p.platform === "windows").devices).toBeGreaterThan(0);
   });
 });
+
+describe("signing in from the dashboard", () => {
+  it("never creates an account", async () => {
+    const email = `nobody.${Date.now().toString(36)}@example.com`;
+    const start = await api("POST", "/auth/email/start", { body: { email } });
+    const v = await api("POST", "/auth/email/verify", { body: { challengeId: start.json.challengeId, code: lastCode(email), create: false } });
+    expect(v.status).toBe(404);
+    expect(v.json.error).toBe("no_account");
+    expect(await env.DB.prepare("SELECT 1 FROM users WHERE email = ?1").bind(email).first()).toBeNull();
+  });
+});

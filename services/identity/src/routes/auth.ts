@@ -5,7 +5,7 @@ import { audit, auditStmt } from "../lib/audit";
 import { callerFromToken, emit, requireAuth } from "../lib/auth";
 import { newId, now, randomDigits, randomToken, sha256B64url, sha256Hex, timingSafeEqual } from "../lib/crypto";
 import { codeEmail, emailLanguage, emailSender } from "../lib/email";
-import { ApiError, bad, body, normalizeEmail, optStr, str, unauthorized } from "../lib/http";
+import { ApiError, bad, body, normalizeEmail, notFound, optStr, str, unauthorized } from "../lib/http";
 import { clientIp, rateLimit } from "../lib/ratelimit";
 import { normalizeUsername, suggestUsername, usernameMessage, usernameProblem, usernameTaken } from "../lib/usernames";
 import { authenticationOptions, registrationOptions, webauthn } from "../lib/webauthn";
@@ -123,6 +123,8 @@ auth.post("/email/verify", async (c) => {
   let user = await c.env.DB.prepare(`SELECT ${USER_COLS} FROM users WHERE email = ?1`).bind(email).first<UserRow>();
   let created = false;
   if (user) user = await withUsername(c.env.DB, user);
+  // The dashboard signs in to existing accounts only.
+  if (!user && b.create === false) throw notFound("no_account", "There is no account with this email.");
   if (!user) {
     const t = now();
     const id = newId();

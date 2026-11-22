@@ -1,0 +1,7 @@
+/*
+  Content-Security-Policy: default-src 'self'; connect-src 'self' https://login.enterworlds.space; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: publickey-credentials-get=(self), camera=(), microphone=(), geolocation=()
+  X-Robots-Tag: noindex, nofollow
