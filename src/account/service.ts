@@ -38,6 +38,8 @@ export interface ServiceConfig {
   flags: Record<string, boolean>;
   publishing: { paused?: boolean; message?: Text } & Record<string, unknown>;
   incident: { on: boolean; title?: Text; body?: Text; startedAt?: number | null };
+  /** The terms everyone must accept (terms.tsx). */
+  terms?: { version: string; pages?: Record<string, string> };
   tester: boolean;
 }
 

@@ -1,3 +1,4 @@
+import { acceptTerms, termsAccepted, TermsCheck, TermsLinks } from "./terms";
 import { useState } from "react";
 import { api } from "../lib/api";
 import { useStore } from "../state/store";
@@ -18,8 +19,8 @@ import cognitionLogo from "../assets/onboarding/cognition-logo.png";
 /** Worlds on the web keeps pages in the browser, and an account also keeps them on the person's account (src/web/vault.ts). */
 const WEB = import.meta.env.VITE_WEB_DEMO === "1";
 
-type Step = "intro" | "language" | "you" | "look" | "worlds" | "cognition" | "imbue" | "account" | "done";
-const STEPS: Step[] = ["language", "you", "look", "worlds", "cognition", "imbue", "account", "done"];
+type Step = "intro" | "language" | "terms" | "you" | "look" | "worlds" | "cognition" | "imbue" | "account" | "done";
+const STEPS: Step[] = ["language", "terms", "you", "look", "worlds", "cognition", "imbue", "account", "done"];
 
 /** What brings you here, and the packs that come with it. */
 const ROLES: { id: string; label: string; text: string; icon: IconName; packs: string[] }[] = [
@@ -41,6 +42,7 @@ export function Onboarding({ withAccount = true, onClose }: { withAccount?: bool
   const profile = useStore((s) => s.profile);
   const setProfile = useStore((s) => s.setProfile);
   const [step, setStep] = useState<Step>("intro");
+  const [agreed, setAgreed] = useState(() => termsAccepted());
   const [roles, setRoles] = useState<string[]>([]);
   const steps = withAccount ? STEPS : STEPS.filter((s) => s !== "account");
   const finish = (tour = false) => {
@@ -85,6 +87,17 @@ export function Onboarding({ withAccount = true, onClose }: { withAccount?: bool
                   <span>{o.sub}</span>
                 </button>
               ))}
+            </div>
+          </>
+        )}
+
+        {step === "terms" && (
+          <>
+            <h1 className="ob-title">{tr("A few rules first")}</h1>
+            <p className="ob-text">{tr("Worlds keeps your pages on this PC. These pages say what you can expect from us, and what we ask of you when you share or publish.")}</p>
+            <div className="ob-terms">
+              <TermsLinks />
+              <TermsCheck checked={agreed} onChange={setAgreed} />
             </div>
           </>
         )}
@@ -254,7 +267,16 @@ export function Onboarding({ withAccount = true, onClose }: { withAccount?: bool
                 </Button>
               </div>
             ) : (
-              <Button variant="tinted" size="large" autoFocus onClick={next}>
+              <Button
+                variant="tinted"
+                size="large"
+                autoFocus
+                disabled={step === "terms" && !agreed}
+                onClick={() => {
+                  if (step === "terms") void acceptTerms();
+                  next();
+                }}
+              >
                 {tr("Continue")}
               </Button>
             )}

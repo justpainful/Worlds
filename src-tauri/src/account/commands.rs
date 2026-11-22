@@ -206,7 +206,7 @@ async fn run(app: &tauri::AppHandle, db: &Mutex<Connection>, secrets: &dyn Secre
         // the service's settings. Only these paths; anything else is refused.
         "service" => {
             let path = s(a, "path")?;
-            const ALLOWED: [&str; 11] = [
+            const ALLOWED: [&str; 12] = [
                 "/me/deletion",
                 "/me/confirm/options",
                 "/me/export",
@@ -214,6 +214,7 @@ async fn run(app: &tauri::AppHandle, db: &Mutex<Connection>, secrets: &dyn Secre
                 "/me/surveys",
                 "/me/messages",
                 "/me/usage",
+                "/me/terms",
                 "/community/",
                 "/support/requests",
                 "/support/files",
@@ -292,6 +293,7 @@ async fn run(app: &tauri::AppHandle, db: &Mutex<Connection>, secrets: &dyn Secre
             let body = json!({
                 "challengeId": s(a, "challengeId")?, "code": s(a, "code")?,
                 "displayName": display_name, "username": handle, "device": device_body(&key),
+                "terms": a.get("terms").and_then(Value::as_str),
             });
             let tokens = client::send(&base, Method::POST, "/auth/email/verify", Some(&body), None, None).await?;
             local(complete_sign_in(db, secrets, &base, &key, &tokens))?;

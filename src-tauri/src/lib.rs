@@ -1,5 +1,6 @@
 pub mod account;
 pub mod ai;
+mod app_update;
 pub mod automations;
 pub mod backup;
 pub mod capture;
@@ -158,6 +159,8 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app)))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .manage(app_update::Pending::default())
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec!["--hidden"])))
         .manage(AppState { db: Mutex::new(conn), launched_hidden: hidden, storage_note: Mutex::new(storage_note) })
         .register_asynchronous_uri_scheme_protocol("wfile", |_ctx, request, responder| {
@@ -233,6 +236,7 @@ pub fn run() {
             screen_drawing::end_screen_drawing,
             commands::bootstrap,
             account::commands::account,
+            app_update::app_update,
             commands::backups_list,
             commands::attachment_import_raw,
             commands::backup_now,

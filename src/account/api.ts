@@ -182,7 +182,8 @@ export const accountApi = {
 
   // The code email is written in the app's language.
   emailStart: (email: string) => call<{ challengeId: string; expiresAt: number }>("emailStart", { email, lang: uiLanguage() }),
-  emailVerify: (challengeId: string, code: string, displayName?: string) => call<AccountView>("emailVerify", { challengeId, code, displayName }),
+  /** terms: the version of the terms accepted on the sign-up form (terms.tsx), for a new account. */
+  emailVerify: (challengeId: string, code: string, displayName?: string, terms?: string) => call<AccountView>("emailVerify", { challengeId, code, displayName, terms }),
   passkeySignIn: () => call<AccountView>("passkeySignIn"),
   passkeyAdd: () => call<{ opened: boolean }>("passkeyAdd"),
   signOut: () => call<AccountView>("signOut"),

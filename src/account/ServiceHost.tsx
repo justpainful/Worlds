@@ -23,6 +23,9 @@ import { APP_VERSION, appPlatform } from "../appVersion";
 import { uiLanguage } from "../i18n/ui";
 import { accountApi } from "./api";
 import { useAccount } from "./store";
+import { installUpdate, startAppUpdates, useAppUpdate } from "./appUpdate";
+import { TermsGate } from "./terms";
+import { WhatsNew } from "./whatsNew";
 import { pick, serviceApi, setUsageCounts, startService, SUPPORT_URL, usageAsked, useService, type ServiceConfig, type Survey, type TeamThread } from "./service";
 
 type Sheet = { kind: "feedback"; mode?: "idea" | "problem" } | { kind: "messages" } | { kind: "delete" } | null;
@@ -35,11 +38,14 @@ const PROMPT_DELAY = typeof location !== "undefined" && new URLSearchParams(loca
 
 export function ServiceHost() {
   useEffect(() => startService(), []);
+  useEffect(() => startAppUpdates(), []);
   const sheet = useServiceUi((s) => s.sheet);
   const close = () => useServiceUi.getState().open(null);
   return (
     <>
       <ServiceNotices />
+      <TermsGate />
+      <WhatsNew />
       <Prompts />
       {sheet?.kind === "feedback" && <FeedbackSheet initial={sheet.mode ?? "idea"} onClose={close} />}
       {sheet?.kind === "messages" && <MessagesSheet onClose={close} />}
@@ -55,7 +61,11 @@ interface Note {
   tone: "info" | "warning";
   text: string;
   link?: { label: string; url: string };
+  /** A button that does something here, such as restarting into an update. */
+  action?: { label: string; run: () => void };
   dismissible: boolean;
+  /** Dismissing for this session only, instead of remembering it. */
+  onDismiss?: () => void;
 }
 
 function notesOf(config: ServiceConfig, dismissed: string[] | undefined): Note[] {
@@ -92,7 +102,22 @@ function ServiceNotices() {
   const onboarded = useStore((s) => !!s.settings["account.onboarded"]);
   // A required update that cannot wait covers the window.
   const [later, setLater] = useState(false);
-  const notes = config && onboarded ? notesOf(config, dismissed) : [];
+  const app = useAppUpdate();
+  const notes: Note[] = [];
+  // A downloaded update, verified and waiting for a restart (appUpdate.ts).
+  if (app.phase === "ready" && app.update && app.dismissed !== app.update.version) {
+    const v = app.update.version;
+    notes.push({
+      id: `app:${v}`,
+      tone: "info",
+      text: `Worlds ${v} is ready. Restart to update.`,
+      action: { label: "Restart Now", run: () => void installUpdate() },
+      link: { label: "What's New", url: `https://changelog.enterworlds.space/${v}/` },
+      dismissible: true,
+      onDismiss: () => useAppUpdate.setState({ dismissed: v }),
+    });
+  }
+  if (config && onboarded) notes.push(...notesOf(config, dismissed));
   const box = useRef<HTMLDivElement>(null);
   // Notices sit at the bottom of the window; toasts rise above them.
   useEffect(() => {
@@ -109,8 +134,7 @@ function ServiceNotices() {
       root.style.removeProperty("--svc-notes-h");
     };
   }, [notes.length]);
-  if (!config) return null;
-  const update = config.update;
+  const update = config?.update ?? { required: false as const };
 
   return (
     <>
@@ -121,7 +145,7 @@ function ServiceNotices() {
               <Glass key={n.id} material="menu" layer={LAYER.floating} className={`svc-note is-${n.tone}`} radius="var(--r-capsule)">
                 <div className="svc-note-row">
                   <Icon name={n.tone === "warning" ? "warning" : "announce"} size={16} />
-                  <span className="svc-note-text bidi" translate={n.id.startsWith("update:") ? undefined : "no"}>
+                  <span className="svc-note-text bidi" translate={n.id.startsWith("update:") || n.id.startsWith("app:") ? undefined : "no"}>
                     {n.text}
                   </span>
                   {n.link && (
@@ -129,7 +153,14 @@ function ServiceNotices() {
                       {n.link.label}
                     </button>
                   )}
-                  {n.dismissible && <IconButton icon="close" label="Dismiss" onClick={() => setSetting(DISMISSED, [...(dismissed ?? []), n.id].slice(-50))} />}
+                  {n.action && (
+                    <button type="button" className="toast-action" onClick={n.action.run}>
+                      {n.action.label}
+                    </button>
+                  )}
+                  {n.dismissible && (
+                    <IconButton icon="close" label="Dismiss" onClick={() => (n.onDismiss ? n.onDismiss() : setSetting(DISMISSED, [...(dismissed ?? []), n.id].slice(-50)))} />
+                  )}
                 </div>
               </Glass>
             ))}

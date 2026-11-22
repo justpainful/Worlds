@@ -1,3 +1,4 @@
+import { TERMS_VERSION } from "../lib/terms";
 import { Hono, type Context } from "hono";
 import type { AppEnv } from "../env";
 import { parseDevice, refresh, revokeDevice, signIn } from "../domain/sessions";
@@ -31,9 +32,10 @@ export interface UserRow {
   avatar_url: string | null;
   created_at: number;
   deletion_due_at?: number | null;
+  terms_version?: string | null;
 }
 
-export const USER_COLS = "id, email, display_name, username, username_auto, avatar_url, created_at, deletion_due_at";
+export const USER_COLS = "id, email, display_name, username, username_auto, avatar_url, created_at, deletion_due_at, terms_version";
 
 export function userView(u: UserRow) {
   return {
@@ -46,6 +48,8 @@ export function userView(u: UserRow) {
     createdAt: u.created_at,
     /** Set while the account waits to be erased; the app offers to cancel. */
     deletionDueAt: u.deletion_due_at ?? null,
+    /** The version of the terms this account accepted (lib/terms.ts), or null. */
+    termsVersion: u.terms_version ?? null,
   };
 }
 
@@ -166,10 +170,12 @@ auth.post("/email/verify", async (c) => {
     }
     const auto = username ? 0 : 1;
     username ??= await suggestUsername(c.env.DB, [name, email.split("@")[0]]);
+    // The app sends the version of the terms the person accepted before creating the account.
+    const accepted = b.terms === TERMS_VERSION ? TERMS_VERSION : null;
     await c.env.DB.batch([
       c.env.DB.prepare(
-        "INSERT INTO users (id, email, display_name, username, username_auto, email_verified_at, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6, ?6)",
-      ).bind(id, email, name, username, auto, t),
+        "INSERT INTO users (id, email, display_name, username, username_auto, email_verified_at, created_at, updated_at, terms_version, terms_accepted_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6, ?6, ?7, ?8)",
+      ).bind(id, email, name, username, auto, t, accepted, accepted ? t : null),
       auditStmt(c.env.DB, { action: "account.created", actorUserId: id, actorKind: "user", targetType: "user", targetId: id, meta: { method: "email" } }),
     ]);
     user = (await userById(c.env.DB, id))!;

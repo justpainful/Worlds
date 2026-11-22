@@ -205,7 +205,7 @@ export async function webAccount(action: string, a: Args): Promise<unknown> {
       const t = await request<Omit<Session, "signedInAt"> & { user: UserView; created: boolean }>(
         "POST",
         "/auth/email/verify",
-        { challengeId: a.challengeId, code: a.code, displayName: a.displayName, device: DEVICE },
+        { challengeId: a.challengeId, code: a.code, displayName: a.displayName, terms: a.terms, device: DEVICE },
         false,
       );
       session = {
