@@ -8,6 +8,11 @@ protocol AccountSession: Sendable {
     func verifyCode(challengeID: String, code: String, deviceName: String, platform: String) async throws
     func fetchAccount() async throws -> IdentityAccountSnapshot
     func logout() async throws -> IdentitySignOutResult
+    /// The account service's own features (HelpViews.swift).
+    func serviceRequest(path: String, method: String, body: Data?) async throws -> Data
+}
+extension AccountSession {
+    func serviceRequest(path: String, method: String, body: Data?) async throws -> Data { throw IdentityError.invalidPath }
 }
 extension IdentitySessionCoordinator: AccountSession {
     func accountHasSession() async throws -> Bool { try await hasStoredSession() }
@@ -17,16 +22,19 @@ extension IdentitySessionCoordinator: AccountSession {
     }
     func fetchAccount() async throws -> IdentityAccountSnapshot { try await accountSnapshot() }
     func logout() async throws -> IdentitySignOutResult { try await signOut() }
+    func serviceRequest(path: String, method: String, body: Data?) async throws -> Data { try await request(path: path, method: method, body: body) }
 }
 
 /// Host supplies a coordinator configured with the actual service URL and one
 /// app-private lock directory. No credentials or example accounts are embedded.
 public struct WorldsAccountView: View {
     @StateObject private var model: AccountModel
+    @StateObject private var help: HelpModel
     @State private var email = ""
     @State private var code = ""
     public init(coordinator: IdentitySessionCoordinator, deviceName: String, platform: String) {
         _model = StateObject(wrappedValue: AccountModel(coordinator: coordinator, deviceName: deviceName, platform: platform))
+        _help = StateObject(wrappedValue: HelpModel(session: coordinator, platform: platform))
     }
 
     public var body: some View {
@@ -48,6 +56,7 @@ public struct WorldsAccountView: View {
                 }
                 Button("Refresh account") { Task { await model.refresh() } }.disabled(model.busy)
                 Button("Sign out", role: .destructive) { Task { await model.signOut() } }.disabled(model.busy)
+                HelpSections(model: help, email: snapshot.profile.email)
             } else if model.hasSession {
                 Section("Account") {
                     Text("Account details are unavailable.")
@@ -71,9 +80,14 @@ public struct WorldsAccountView: View {
                     Button("Send verification code") { Task { await model.startEmail(email) } }
                         .disabled(model.busy || email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
+                Section {
+                    Link(destination: HelpModel.supportSite) { Label("Help center", systemImage: "questionmark.circle") }
+                }
+                if let message = help.message { Text(message).foregroundStyle(.secondary) }
             }
         }
         .task { await model.restore() }
+        .onAppear { let account = model; help.onSignedOut = { [weak account] in account?.signedOutByService() } }
     }
 }
 
@@ -139,6 +153,10 @@ final class AccountModel: ObservableObject {
         catch IdentityContinuityError.signedOut { snapshot = nil; hasSession = false }
         catch is CancellationError { if !isRestore { notice = "The request was cancelled." } }
         catch { self.error = error.localizedDescription }
+    }
+    /// The service already signed this device out (the account is being deleted).
+    func signedOutByService() {
+        snapshot = nil; challenge = nil; hasSession = false; error = nil
     }
     func signOut() async {
         guard !busy else { return }

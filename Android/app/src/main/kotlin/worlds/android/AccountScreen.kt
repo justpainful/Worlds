@@ -64,6 +64,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
         CachedPagesScreen(state.server, onBack = { showCached = false }, onOpen = { cachedSelection = it })
         return
     }
+    var showHelp by remember { mutableStateOf(false) }
+    if (showHelp) {
+        HelpScreen(state.server, onBack = { showHelp = false }, onSignedOut = { showHelp = false; model.signedOut() })
+        return
+    }
     var showRecovery by remember { mutableStateOf(false) }
     if (showRecovery) {
         RecoveryLibraryScreen(state.server, onBack = { showRecovery = false })
@@ -120,6 +125,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Done, autoCorrectEnabled = false), textStyle = LocalTextStyle.current.copy(textDirection = TextDirection.Ltr), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(16.dp))
                 Button(enabled = !state.busy, onClick = { keyboard?.hide(); model.sendCode(server.ifBlank { OFFICIAL_SERVER }, email) }) { WorldsActionLabel(R.drawable.ic_send_horizontal, stringResource(R.string.account_send_code)) }
+                val context = androidx.compose.ui.platform.LocalContext.current
+                TextButton(onClick = { runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(SUPPORT_SITE))) } }) {
+                    WorldsActionLabel(R.drawable.ic_arrow_up_right, stringResource(R.string.help_center))
+                }
                 }
             }
             AccountStage.CODE -> {
@@ -154,6 +163,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
                 }
                 TextButton(enabled = !state.busy, onClick = { showCached = true }, modifier = Modifier.testTag("open_cached_pages")) {
                     WorldsActionLabel(R.drawable.ic_files, stringResource(R.string.cached_pages_title))
+                }
+                TextButton(enabled = !state.busy, onClick = { showHelp = true }, modifier = Modifier.testTag("open_help")) {
+                    WorldsActionLabel(R.drawable.ic_message_circle, stringResource(R.string.help_title))
                 }
                 Spacer(Modifier.height(20.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

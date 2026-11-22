@@ -299,6 +299,15 @@ struct WorldsApp: App {
     #endif
 
     @ViewBuilder private var rootView: some View {
+        #if WORLDS_EXPERIMENTAL_ACCOUNT
+        // Notices from the account service sit at the bottom of the window (ServiceNoticesView.swift).
+        rootContent.overlay(alignment: .bottom) { ServiceNoticesView() }
+        #else
+        rootContent
+        #endif
+    }
+
+    @ViewBuilder private var rootContent: some View {
         #if WORLDS_UI_CHECKS && WORLDS_MAIN_APP_MODULES && WORLDS_EXPERIMENTAL_DRAWING_EDITOR
         if ProcessInfo.processInfo.arguments.contains("--ui-testing-user-reports") {
             UserReportsCheckView()
