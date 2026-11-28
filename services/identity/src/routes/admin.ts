@@ -20,7 +20,7 @@ import { ApiError, bad, body, conflict, forbidden, normalizeEmail, notFound, opt
 import { checkUsername, usernameTaken } from "../lib/usernames";
 import { foldName } from "../lib/names";
 import { reportersOf, setTeamHidden, targetKey, type Target } from "../lib/content";
-import { SETTING_KEYS, settings, type SettingKey, type Settings } from "../lib/control";
+import { KEY_ROTATION_MS, MAX_RETENTION_MONTHS, SETTING_KEYS, settings, type SettingKey, type Settings } from "../lib/control";
 import { DEFAULT_LIMITS, MAX_LIMITS, limitsFor } from "../lib/limits";
 import { currentDownloads, releases } from "./downloads";
 import { dayOf } from "../lib/activity";
@@ -95,9 +95,40 @@ export async function roleOf(c: Context<AppEnv>, userId: string): Promise<AdminR
 const requireAdmin: MiddlewareHandler<AppEnv & { Variables: { role: AdminRole } }> = async (c, next) => {
   const role = await roleOf(c as unknown as Context<AppEnv>, c.get("caller").userId);
   if (!role) throw forbidden("not_admin", "This account has no access to the dashboard.");
+  await idleCheck(c as unknown as Context<AppEnv>);
   c.set("role", role);
   await next();
 };
+
+/** The dashboard signs out after this long without a request (docs/admin/PLAN.md, section 9). */
+export const IDLE_MS = 15 * 60 * 1000;
+/** How often a busy dashboard device writes down that it is still in use. */
+const IDLE_TOUCH_MS = 60 * 1000;
+
+/**
+ * A sliding 15 minutes for devices signed in to the dashboard itself (platform
+ * "admin"): each request moves it on, and a request after a longer gap signs
+ * that device out. The app's own devices and Claude's key are left alone.
+ */
+async function idleCheck(c: Context<AppEnv>): Promise<void> {
+  const caller = c.get("caller");
+  if (caller.deviceId.startsWith("key:")) return;
+  const db = c.env.DB;
+  const row = await db
+    .prepare("SELECT d.platform, a.last_at FROM devices d LEFT JOIN admin_activity a ON a.device_id = d.id WHERE d.id = ?1")
+    .bind(caller.deviceId)
+    .first<{ platform: string; last_at: number | null }>();
+  if (row?.platform !== "admin") return;
+  const t = now();
+  if (row.last_at !== null && t - row.last_at > IDLE_MS) {
+    emit(c, await revokeDevice(c.env, caller.userId, caller.deviceId, { userId: caller.userId, deviceId: caller.deviceId, actor: caller.actor }, "admin_idle"));
+    await db.prepare("DELETE FROM admin_activity WHERE device_id = ?1").bind(caller.deviceId).run();
+    throw unauthorized("idle_locked", "The dashboard locked after 15 minutes without activity. Sign in again.");
+  }
+  if (row.last_at === null || t - row.last_at > IDLE_TOUCH_MS) {
+    await db.prepare("INSERT INTO admin_activity (device_id, last_at) VALUES (?1, ?2) ON CONFLICT(device_id) DO UPDATE SET last_at = ?2").bind(caller.deviceId, t).run();
+  }
+}
 
 function can(c: AdminCtx, p: Permission): boolean {
   return ROLE_PERMISSIONS[c.get("role")].includes(p);
@@ -372,8 +403,24 @@ admin.get("/stats", async (c) => {
     workspaces: { total: n(s.total), shared: n(s.shared) },
     public: { profiles: n(p.profiles), pages: n(p.pages), shares: n(p.shares) },
     passkeys: n(k.passkeys),
+    keys: can(c, "control") ? keyReminder((await settings(db)).keys, t) : null,
   });
 });
+
+/**
+ * When the session signing key and the Resend key were last replaced, as the
+ * owner noted it in the settings, and whether either is due (no date, or older
+ * than about 6 months). The keys themselves are never read here.
+ */
+function keyReminder(k: Settings["keys"], t: number) {
+  const due = (at: number | null) => !at || t - at > KEY_ROTATION_MS;
+  return {
+    signingRotatedAt: k.signingRotatedAt,
+    resendRotatedAt: k.resendRotatedAt,
+    signingDue: due(k.signingRotatedAt),
+    resendDue: due(k.resendRotatedAt),
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Accounts
@@ -1680,7 +1727,7 @@ admin.get("/control", async (c) => {
   });
 });
 
-/** Change one setting (signups, maintenance, minVersion, publishing, incident). */
+/** Change one setting (signups, maintenance, minVersion, publishing, incident, retention, keys). */
 admin.put("/control/settings/:key", async (c) => {
   await need(c, "control");
   const key = c.req.param("key") as SettingKey;
@@ -1692,6 +1739,18 @@ admin.put("/control/settings/:key", async (c) => {
   const json = JSON.stringify(value);
   if (json.length > 8000) throw bad("too_large");
   if (key === "signups" && !["open", "closed", "invite"].includes(value.mode as string)) throw bad("invalid_value", "mode must be open, closed or invite");
+  if (key === "retention") {
+    for (const f of ["auditMonths", "closedTicketMonths"]) {
+      const m = value[f];
+      if (typeof m !== "number" || !Number.isInteger(m) || m < 1 || m > MAX_RETENTION_MONTHS) throw bad("invalid_value", `${f} must be a whole number of months from 1 to ${MAX_RETENTION_MONTHS}`);
+    }
+  }
+  if (key === "keys") {
+    for (const f of ["signingRotatedAt", "resendRotatedAt"]) {
+      const at = value[f];
+      if (at !== null && (typeof at !== "number" || !Number.isFinite(at) || at < Date.UTC(2020, 0, 1) || at > now() + DAY)) throw bad("invalid_value", `${f} must be a date that has passed, or null`);
+    }
+  }
   await c.env.DB.batch([
     c.env.DB.prepare("INSERT INTO service_settings (key, value, updated_by, updated_at) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(key) DO UPDATE SET value = ?2, updated_by = ?3, updated_at = ?4").bind(
       key,

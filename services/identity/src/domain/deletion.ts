@@ -158,8 +158,7 @@ export async function deletionHousekeeping(env: Env): Promise<EventEnvelope[]> {
     ]);
     events.push(ev.envelope);
   }
-  // The security log is kept for 12 months.
-  await env.DB.prepare("DELETE FROM audit_log WHERE at < ?1").bind(t - 365 * DAY).run();
+  // The security log's period is kept by lib/retention.ts (12 months unless the dashboard changes it).
   return events;
 }
 

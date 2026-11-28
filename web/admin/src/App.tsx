@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore } from "react";
-import { ApiError, call, emailStart, emailSignIn, getCredential, isSignedIn, onSession, passkeySignIn, passkeysSupported, signOut, type Me, type Permission } from "./api";
+import { ApiError, IDLE_MS, call, emailStart, emailSignIn, getCredential, isSignedIn, lastActive, lock, lockedState, markActive, onSession, passkeySignIn, passkeysSupported, signOut, type Me, type Permission } from "./api";
 import { errorText, fmtTime, setLang, t, useLang } from "./i18n";
 import { Avatar, Button, Dialog, Field, Icon, Popup, Spinner, Toasts, toast } from "./ui";
 import type { SymbolName } from "./symbols";
@@ -97,7 +97,7 @@ export function App() {
   useEffect(() => applyTheme(theme), [theme]);
   return (
     <>
-      {signedIn ? <Signed theme={theme} setTheme={setTheme} /> : <SignIn />}
+      {signedIn ? <Signed theme={theme} setTheme={setTheme} /> : <SignIn key={lockedState() ? "locked" : "signin"} locked={lockedState()} />}
       <Toasts />
     </>
   );
@@ -107,9 +107,10 @@ export function App() {
 // Signing in
 // ---------------------------------------------------------------------------
 
-function SignIn({ notice }: { notice?: string }) {
+/** Signing in; after 15 minutes without activity it is the lock screen, with the same ways in. */
+function SignIn({ notice, locked }: { notice?: string; locked?: { email: string } | null }) {
   const lang = useLang();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(locked?.email ?? "");
   const [challenge, setChallenge] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState<"passkey" | "send" | "code" | null>(null);
@@ -131,8 +132,8 @@ function SignIn({ notice }: { notice?: string }) {
     <main className="signin">
       <div className="signin-card">
         <img src="/icon-256.png" alt="" width={64} height={64} className="signin-icon" />
-        <h1>{t("signInTitle")}</h1>
-        <p className="signin-lead">{t("signInLead")}</p>
+        <h1>{locked ? t("lockedTitle") : t("signInTitle")}</h1>
+        <p className="signin-lead">{locked ? t("lockedLead") : t("signInLead")}</p>
         {!challenge ? (
           <>
             {passkeysSupported() && (
@@ -307,10 +308,47 @@ const NAV: { view: View; icon: SymbolName; label: () => string; need: Permission
   { view: "team", icon: "person.badge.key", label: () => t("team"), need: "users.read" },
 ];
 
+/**
+ * Lock after IDLE_MS without a pointer, key or wheel in any tab of the
+ * dashboard. A page left open, or opened again, after that locks straight away.
+ */
+function useIdleLock(email: string | undefined) {
+  useEffect(() => {
+    if (email === undefined) return;
+    let last = 0;
+    const idle = () => {
+      const seen = Math.max(last, lastActive());
+      return seen > 0 && Date.now() - seen >= IDLE_MS;
+    };
+    if (idle()) {
+      lock(email);
+      return;
+    }
+    last = Date.now();
+    const mark = () => {
+      last = Date.now();
+      markActive(last);
+    };
+    const check = () => {
+      if (idle()) lock(email);
+    };
+    const events = ["pointerdown", "pointermove", "keydown", "wheel", "touchstart"] as const;
+    for (const e of events) window.addEventListener(e, mark, { passive: true, capture: true });
+    document.addEventListener("visibilitychange", check);
+    const timer = window.setInterval(check, 10_000);
+    return () => {
+      for (const e of events) window.removeEventListener(e, mark, { capture: true });
+      document.removeEventListener("visibilitychange", check);
+      window.clearInterval(timer);
+    };
+  }, [email]);
+}
+
 function Signed({ theme, setTheme }: { theme: Theme; setTheme: (t: Theme) => void }) {
   const lang = useLang();
   const route = useRoute();
   const [me, setMe] = useState<Me | null>(null);
+  useIdleLock(me?.user.email);
   const [failure, setFailure] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<((ok: boolean) => void) | null>(null);
 
